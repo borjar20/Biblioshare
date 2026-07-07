@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "PowerShell(\\(Get-Command node\\).Source; \\(Get-Command npm\\).Source)",
-      "mcp__mcp-registry__search_mcp_registry"
+      "mcp__mcp-registry__search_mcp_registry",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__generate_typescript_types"
     ]
   }
 }

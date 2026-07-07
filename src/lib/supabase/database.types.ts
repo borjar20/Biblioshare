@@ -14,56 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      book_progress: {
-        Row: {
-          book_id: string
-          created_at: string
-          current_page: number
-          end_date: string | null
-          id: string
-          notes: string | null
-          rating: number | null
-          start_date: string | null
-          status: Database["public"]["Enums"]["media_status"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          book_id: string
-          created_at?: string
-          current_page?: number
-          end_date?: string | null
-          id?: string
-          notes?: string | null
-          rating?: number | null
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["media_status"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          book_id?: string
-          created_at?: string
-          current_page?: number
-          end_date?: string | null
-          id?: string
-          notes?: string | null
-          rating?: number | null
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["media_status"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "book_progress_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "books"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       books: {
         Row: {
           author: string | null
@@ -106,49 +56,50 @@ export type Database = {
         }
         Relationships: []
       }
-      movie_progress: {
+      library_entries: {
         Row: {
           created_at: string
+          finished_at: string | null
           id: string
-          movie_id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
           notes: string | null
+          position: Json
           rating: number | null
+          started_at: string | null
           status: Database["public"]["Enums"]["media_status"]
           updated_at: string
           user_id: string
-          watched_date: string | null
         }
         Insert: {
           created_at?: string
+          finished_at?: string | null
           id?: string
-          movie_id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
           notes?: string | null
+          position?: Json
           rating?: number | null
+          started_at?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
           user_id: string
-          watched_date?: string | null
         }
         Update: {
           created_at?: string
+          finished_at?: string | null
           id?: string
-          movie_id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
           notes?: string | null
+          position?: Json
           rating?: number | null
+          started_at?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
           user_id?: string
-          watched_date?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "movie_progress_movie_id_fkey"
-            columns: ["movie_id"]
-            isOneToOne: false
-            referencedRelation: "movies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       movies: {
         Row: {
@@ -186,6 +137,39 @@ export type Database = {
           synopsis?: string | null
           title?: string
           tmdb_id?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          is_public: boolean
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          is_public?: boolean
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          is_public?: boolean
+          updated_at?: string
+          user_id?: string
+          username?: string
         }
         Relationships: []
       }
@@ -231,59 +215,6 @@ export type Database = {
         }
         Relationships: []
       }
-      series_progress: {
-        Row: {
-          created_at: string
-          current_episode: number
-          current_season: number
-          end_date: string | null
-          id: string
-          notes: string | null
-          rating: number | null
-          series_id: string
-          start_date: string | null
-          status: Database["public"]["Enums"]["media_status"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_episode?: number
-          current_season?: number
-          end_date?: string | null
-          id?: string
-          notes?: string | null
-          rating?: number | null
-          series_id: string
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["media_status"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          current_episode?: number
-          current_season?: number
-          end_date?: string | null
-          id?: string
-          notes?: string | null
-          rating?: number | null
-          series_id?: string
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["media_status"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "series_progress_series_id_fkey"
-            columns: ["series_id"]
-            isOneToOne: false
-            referencedRelation: "series"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -292,6 +223,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
     }
     CompositeTypes: {
@@ -420,6 +352,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
     },
   },
