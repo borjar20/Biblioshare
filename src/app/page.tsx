@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { logout } from "./(auth)/actions";
 
 export default async function Home() {
@@ -21,33 +22,25 @@ export default async function Home() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 px-4 text-center dark:bg-black">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
       <h1 className="text-3xl font-semibold tracking-tight">
         {t("common.appName")}
       </h1>
-      <p className="max-w-md text-lg text-zinc-600 dark:text-zinc-400">
+      <p className="max-w-md text-lg text-muted-foreground">
         {t("home.tagline")}
       </p>
 
       {username ? (
         <div className="flex items-center gap-4">
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            @{username}
-          </span>
+          <span className="text-sm text-muted-foreground">@{username}</span>
           <form action={logout}>
-            <button
-              type="submit"
-              className="rounded-full border border-black/[.15] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.2] dark:hover:bg-white/[.06]"
-            >
+            <Button type="submit" variant="secondary">
               {t("auth.logout")}
-            </button>
+            </Button>
           </form>
         </div>
       ) : (
-        <Link
-          href="/signup"
-          className="rounded-full bg-foreground px-6 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-        >
+        <Link href="/signup" className={buttonVariants("primary", "px-6")}>
           {t("home.cta")}
         </Link>
       )}

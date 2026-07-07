@@ -3,6 +3,9 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 import { signup, type AuthActionState } from "../actions";
 
 const initialState: AuthActionState = {};
@@ -15,9 +18,7 @@ export function SignupForm() {
     return (
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-xl font-semibold">{t("signup.title")}</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {t("signup.checkEmail")}
-        </p>
+        <p className="text-sm text-muted-foreground">{t("signup.checkEmail")}</p>
       </div>
     );
   }
@@ -26,52 +27,32 @@ export function SignupForm() {
     <form action={formAction} className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">{t("signup.title")}</h1>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="text-sm font-medium">
-          {t("signup.email")}
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="rounded-md border border-black/[.15] px-3 py-2 text-sm dark:border-white/[.2] dark:bg-black"
-        />
-      </div>
+      <Field label={t("signup.email")} htmlFor="email">
+        <Input id="email" name="email" type="email" required autoComplete="email" />
+      </Field>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="text-sm font-medium">
-          {t("signup.password")}
-        </label>
-        <input
+      <Field label={t("signup.password")} htmlFor="password">
+        <Input
           id="password"
           name="password"
           type="password"
           required
           minLength={6}
           autoComplete="new-password"
-          className="rounded-md border border-black/[.15] px-3 py-2 text-sm dark:border-white/[.2] dark:bg-black"
         />
-      </div>
+      </Field>
 
       {state.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">
-          {t(`errors.${state.error}`)}
-        </p>
+        <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-2 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
-      >
+      <Button type="submit" disabled={pending} className="mt-2 w-full">
         {pending ? t("signup.submitting") : t("signup.submit")}
-      </button>
+      </Button>
 
-      <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-center text-sm text-muted-foreground">
         {t("signup.hasAccount")}{" "}
-        <Link href="/login" className="font-medium underline">
+        <Link href="/login" className="font-medium text-accent underline">
           {t("signup.loginLink")}
         </Link>
       </p>
