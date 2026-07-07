@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { Header } from "@/components/header";
 import { ThemeScript } from "@/components/theme-script";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,6 +26,13 @@ export const metadata: Metadata = {
   description: "Tu biblioteca de libros, películas y series en un solo lugar.",
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffe9fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#2c002b" },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,6 +48,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        <ServiceWorkerRegister />
         <NextIntlClientProvider>
           <Header />
           <div className="flex flex-1 flex-col">{children}</div>

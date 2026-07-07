@@ -63,6 +63,12 @@
     "empty": "Escribe algo para buscar.",
     "noResults": "No se encontraron resultados."
   },
+  "offline": {
+    "title": "Sin conexión",
+    "description": "No se pudo cargar esta página porque no tienes conexión. Podrás verla en cuanto vuelvas a estar en línea; mientras tanto puedes seguir navegando lo que ya cargaste antes.",
+    "retry": "Reintentar",
+    "backHome": "Ir al inicio"
+  },
   "library": {
     "title": "Mi biblioteca",
     "empty": "Aún no has añadido nada a tu biblioteca.",
