@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const AUTH_PATHS = ["/login", "/signup"];
 const ONBOARDING_PATH = "/onboarding";
+const PROTECTED_PATHS = ["/biblioteca"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -36,7 +37,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user) {
-    if (pathname === ONBOARDING_PATH) {
+    if (pathname === ONBOARDING_PATH || PROTECTED_PATHS.includes(pathname)) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return response;

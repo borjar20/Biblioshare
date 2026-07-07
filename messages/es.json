@@ -62,5 +62,21 @@
     "added": "En tu biblioteca",
     "empty": "Escribe algo para buscar.",
     "noResults": "No se encontraron resultados."
+  },
+  "library": {
+    "title": "Mi biblioteca",
+    "empty": "Aún no has añadido nada a tu biblioteca.",
+    "emptyCta": "Buscar algo",
+    "filters": {
+      "allTypes": "Todo",
+      "allStatuses": "Todos los estados"
+    },
+    "status": {
+      "planned": "Pendiente",
+      "in_progress": "En curso",
+      "completed": "Completado",
+      "dropped": "Abandonado"
+    },
+    "remove": "Quitar"
   }
 }

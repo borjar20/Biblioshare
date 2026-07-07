@@ -33,9 +33,6 @@ export default async function Home() {
       {username ? (
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">@{username}</span>
-          <Link href="/buscar" className={buttonVariants("primary")}>
-            {t("search.title")}
-          </Link>
           <form action={logout}>
             <Button type="submit" variant="secondary">
               {t("auth.logout")}
