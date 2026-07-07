@@ -47,5 +47,20 @@
   "home": {
     "tagline": "Tu biblioteca de libros, películas y series en un solo lugar.",
     "cta": "Empezar"
+  },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Busca un título...",
+    "submit": "Buscar",
+    "types": {
+      "book": "Libros",
+      "movie": "Películas",
+      "series": "Series"
+    },
+    "add": "Añadir",
+    "adding": "Añadiendo...",
+    "added": "En tu biblioteca",
+    "empty": "Escribe algo para buscar.",
+    "noResults": "No se encontraron resultados."
   }
 }
