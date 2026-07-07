@@ -5,12 +5,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --surface: #ffffff;
-  --surface-muted: #fafafa;
-  --foreground: #18181b;
-  --muted-foreground: #71717a;
-  --border: #e4e4e7;
+  --background: #ffacfd;
+  --surface: #fffbfe;
+  --surface-muted: #ffe9fc;
+  --foreground: #1f1420;
+  --muted-foreground: #7a5f78;
+  --border: rgba(31, 20, 32, 0.14);
 
   --accent: #6366f1;
   --accent-foreground: #ffffff;
@@ -79,9 +79,16 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
 }
