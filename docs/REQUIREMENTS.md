@@ -40,7 +40,15 @@ Tabla única `library_entries` (una fila por `usuario` × `ítem de catálogo`):
 - RLS: el dueño ve/edita sus filas; cualquiera (incl. anónimo) puede **leer** las filas de un perfil público. Escritura solo el dueño.
 - Trade-off aceptado: los detalles finos de `position` no se validan a nivel de BD (viven en JSONB), a cambio de eliminar la deuda de replicar toda la vertical por cada tipo nuevo.
 
-### 3.3 Perfiles — *creado*
+### 3.3 Diario de pases (relecturas / re-visionados) — *creado*
+Tabla `diary_entries` (muchas filas por `library_entry`):
+- `library_entry_id` → FK al ítem de la estantería (borrado en cascada).
+- `started_on`, `finished_on` (fecha del pase), `rating` (de ese pase), `review` (reseña de ese pase).
+- Permite registrar leer/ver el mismo ítem varias veces con sus propias fechas y valoraciones (estilo diario de Letterboxd).
+- Separación clave: `library_entries` = **estado actual** del ítem; `diary_entries` = **historial de pases**. Añadir el diario después con datos reales habría sido una migración dolorosa, por eso se modela desde el MVP.
+- RLS: mismo modelo que `library_entries` (dueño escribe; lectura pública si el perfil lo es).
+
+### 3.4 Perfiles — *creado*
 Tabla `profiles`:
 - `user_id` (FK a `auth.users`, PK)
 - `username` (único, `^[a-z0-9_]{3,30}$`, usado en la URL pública; **modificable** después, con unicidad garantizada)
@@ -64,8 +72,9 @@ Tabla `profiles`:
 
 ### 4.3 Gestión de la colección personal
 - Listado de "mi colección" con filtros por tipo (libro/película/serie) y por estado.
-- Editar progreso: cambiar estado, rating, página/episodio actual, fechas, notas.
-- Eliminar un ítem de tu colección (no borra el catálogo compartido, solo tu fila de progreso).
+- Editar el estado del ítem: estado, rating actual, página/episodio actual (`position`), notas.
+- **Registrar un pase en el diario**: al terminar (o re-leer/re-ver) un ítem, se crea una entrada de diario con fecha, rating y reseña propios. Un ítem puede acumular varios pases.
+- Eliminar un ítem de tu colección (no borra el catálogo compartido, solo tu fila de estantería y sus entradas de diario).
 
 ### 4.4 Perfil público
 - Página `/u/[username]` mostrando la colección del usuario (si `is_public`), agrupada/filtrable por tipo y estado.
@@ -78,6 +87,10 @@ Tabla `profiles`:
 
 ### 4.6 Estética visual
 - Grids de portadas grandes, estilo Letterboxd/Goodreads — el contenido visual (portada) es el protagonista de las listas, no tablas de texto.
+
+### 4.7 Internacionalización (i18n)
+- Toda la UI pasa por un sistema de traducción desde el primer componente (nada de textos hardcodeados).
+- Idioma inicial: español. La arquitectura permite añadir inglés u otros después sin refactor.
 
 ## 5. Explícitamente fuera de alcance del MVP
 
@@ -95,6 +108,8 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 
 - [x] Migración: crear tabla `profiles` (con `username` único, `is_public`).
 - [x] Migración: modelo de progreso unificado `library_entries` con RLS de lectura pública según `profiles.is_public`.
+- [x] Migración: `diary_entries` para relecturas/re-visionados.
+- [ ] Elegir e integrar librería de i18n para App Router (p. ej. `next-intl`) al construir las primeras pantallas.
 - [ ] Definir clave de TMDB API (Google Books no requiere key para uso básico; TMDB sí — pendiente de generar y guardar como variable de entorno, nunca en el repo).
 - [ ] Diseñar el service worker / estrategia de cache para el modo offline de solo lectura.
 - [ ] Definir flujo de onboarding (elección de `username` tras el primer login).
@@ -117,6 +132,8 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 | 2026-07-07 | `username` modificable (no fijo), con unicidad garantizada | Flexibilidad para el usuario; el coste de validar unicidad en cada cambio es bajo |
 | 2026-07-07 | Perfiles públicos legibles también por visitantes sin cuenta | Coherente con la idea de "ver bibliotecas de otros" sin obligar a registrarse para mirar |
 | 2026-07-07 | "Añadir manualmente" un ítem es must del MVP | Desacopla la app de que la API externa tenga o no el título; coste bajo al estar el esquema listo |
+| 2026-07-07 | Diario de pases (`diary_entries`) desde el MVP, separado del estado del ítem | Soporta relecturas/re-visionados (estilo Letterboxd); modelarlo después sobre datos reales sería una migración dolorosa |
+| 2026-07-07 | i18n cableado desde el inicio (idioma inicial: español) | Evita el refactor tedioso de extraer textos hardcodeados más adelante para soportar otros idiomas |
 | 2026-07-07 | Catálogo compartido entre usuarios, progreso privado por usuario | Evita duplicar metadatos al buscar el mismo libro/película varias veces |
 | 2026-07-07 | Perfiles públicos por defecto, con opción de hacerlos privados | Habilita la función social mínima (ver bibliotecas de otros) sin construir todo el sistema social completo |
 | 2026-07-07 | Offline MVP = cache de solo lectura, no offline-first completo | Reduce complejidad de sincronización manteniendo el beneficio principal de una PWA instalable |

@@ -56,10 +56,53 @@ export type Database = {
         }
         Relationships: []
       }
+      diary_entries: {
+        Row: {
+          created_at: string
+          finished_on: string
+          id: string
+          library_entry_id: string
+          rating: number | null
+          review: string | null
+          started_on: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          finished_on?: string
+          id?: string
+          library_entry_id: string
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          finished_on?: string
+          id?: string
+          library_entry_id?: string
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diary_entries_library_entry_id_fkey"
+            columns: ["library_entry_id"]
+            isOneToOne: false
+            referencedRelation: "library_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_entries: {
         Row: {
           created_at: string
-          finished_at: string | null
           id: string
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
@@ -73,7 +116,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          finished_at?: string | null
           id?: string
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
@@ -87,7 +129,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          finished_at?: string | null
           id?: string
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
