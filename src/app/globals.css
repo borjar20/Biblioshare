@@ -7,7 +7,7 @@
 /* Buttons swap: each mode's accent is the *other* mode's page background,
    and accent-foreground is always its own mode's page background. */
 :root {
-  --background: #ffacfd;
+  --background: #ffe9fc;
   --surface: #fffbfe;
   --surface-muted: #ffe9fc;
   --foreground: #1f1420;
@@ -15,7 +15,7 @@
   --border: rgba(31, 20, 32, 0.14);
 
   --accent: #2c002b;
-  --accent-foreground: #ffacfd;
+  --accent-foreground: #ffe9fc;
   --accent-hover: #451044;
 
   --status-planned: #a1a1aa;
@@ -32,7 +32,7 @@
   --muted-foreground: #c9a0c8;
   --border: rgba(255, 233, 252, 0.14);
 
-  --accent: #ffacfd;
+  --accent: #ffe9fc;
   --accent-foreground: #2c002b;
   --accent-hover: #ff8ff9;
 
@@ -51,7 +51,7 @@
     --muted-foreground: #c9a0c8;
     --border: rgba(255, 233, 252, 0.14);
 
-    --accent: #ffacfd;
+    --accent: #ffe9fc;
     --accent-foreground: #2c002b;
     --accent-hover: #ff8ff9;
 
