@@ -17,6 +17,11 @@ export async function searchBooks(query: string): Promise<SearchResult[]> {
   url.searchParams.set("q", query);
   url.searchParams.set("maxResults", "20");
 
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+  if (apiKey) {
+    url.searchParams.set("key", apiKey);
+  }
+
   const res = await fetch(url, { next: { revalidate: 3600 } });
   if (!res.ok) return [];
 
