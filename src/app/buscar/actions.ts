@@ -43,6 +43,8 @@ async function findOrCreateCatalogItem(
           author: result.subtitle,
           cover_url: result.coverUrl,
           published_year: result.year,
+          publisher: result.publisher,
+          total_pages: result.pageCount,
         }
       : {
           tmdb_id: Number(result.externalId),

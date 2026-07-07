@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import type { LibraryItem } from "@/lib/library/types";
-import { formatPosition } from "@/lib/library/position";
+import { formatPosition, BOOK_FORMATS } from "@/lib/library/position";
 import { updateProgress, type UpdateProgressState } from "./actions";
 
 const initialState: UpdateProgressState = {};
@@ -62,16 +62,34 @@ export function ProgressPanel({ item }: { item: LibraryItem }) {
           </Field>
 
           {item.itemType === "book" && (
-            <Field label={t("page")} htmlFor={`progress-page-${item.entryId}`}>
-              <Input
-                id={`progress-page-${item.entryId}`}
-                name="page"
-                type="number"
-                min={0}
-                defaultValue={"page" in item.position ? item.position.page : ""}
-                className="text-xs"
-              />
-            </Field>
+            <>
+              <Field label={t("page")} htmlFor={`progress-page-${item.entryId}`}>
+                <Input
+                  id={`progress-page-${item.entryId}`}
+                  name="page"
+                  type="number"
+                  min={0}
+                  defaultValue={"page" in item.position ? item.position.page : ""}
+                  className="text-xs"
+                />
+              </Field>
+
+              <Field label={t("format")} htmlFor={`progress-format-${item.entryId}`}>
+                <select
+                  id={`progress-format-${item.entryId}`}
+                  name="format"
+                  defaultValue={"format" in item.position ? item.position.format : ""}
+                  className="rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-foreground"
+                >
+                  <option value="">{t("formatNone")}</option>
+                  {BOOK_FORMATS.map((format) => (
+                    <option key={format} value={format}>
+                      {t(`formats.${format}`)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </>
           )}
 
           {item.itemType === "series" && (

@@ -44,6 +44,8 @@ export async function searchMovies(query: string): Promise<SearchResult[]> {
       subtitle: null,
       coverUrl: r.poster_path ? `${TMDB_IMAGE_BASE}${r.poster_path}` : null,
       year: r.release_date ? Number(r.release_date.slice(0, 4)) || null : null,
+      publisher: null,
+      pageCount: null,
     }));
 }
 
@@ -60,5 +62,7 @@ export async function searchSeries(query: string): Promise<SearchResult[]> {
       year: r.first_air_date
         ? Number(r.first_air_date.slice(0, 4)) || null
         : null,
+      publisher: null,
+      pageCount: null,
     }));
 }

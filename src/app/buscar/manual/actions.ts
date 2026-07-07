@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 
 export type AddManualItemState = {
-  error?: "titleRequired" | "generic";
+  error?: "titleRequired" | "invalidPageCount" | "generic";
 };
 
 const TABLE_BY_TYPE = {
@@ -33,10 +33,28 @@ export async function addManualItem(
   const year = yearRaw ? Number(yearRaw) : null;
   const coverUrl = String(formData.get("coverUrl") ?? "").trim() || null;
 
+  let pageCount: number | null = null;
+  if (itemType === "book") {
+    const pageCountRaw = String(formData.get("pageCount") ?? "").trim();
+    if (pageCountRaw) {
+      pageCount = Number(pageCountRaw);
+      if (!Number.isInteger(pageCount) || pageCount < 0) {
+        return { error: "invalidPageCount" };
+      }
+    }
+  }
+
   const table = TABLE_BY_TYPE[itemType];
   const payload =
     itemType === "book"
-      ? { title, author: creator, published_year: year, cover_url: coverUrl }
+      ? {
+          title,
+          author: creator,
+          published_year: year,
+          cover_url: coverUrl,
+          publisher: String(formData.get("publisher") ?? "").trim() || null,
+          total_pages: pageCount,
+        }
       : itemType === "movie"
         ? { title, director: creator, release_year: year, cover_url: coverUrl }
         : { title, creator, release_year: year, cover_url: coverUrl };

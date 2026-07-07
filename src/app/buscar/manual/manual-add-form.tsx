@@ -32,6 +32,18 @@ export function ManualAddForm({ itemType }: { itemType: ItemType }) {
         <Input id="year" name="year" type="number" />
       </Field>
 
+      {itemType === "book" && (
+        <>
+          <Field label={t("publisher")} htmlFor="publisher">
+            <Input id="publisher" name="publisher" type="text" />
+          </Field>
+
+          <Field label={t("pageCount")} htmlFor="pageCount">
+            <Input id="pageCount" name="pageCount" type="number" min={0} />
+          </Field>
+        </>
+      )}
+
       <Field label={t("coverUrl")} htmlFor="coverUrl" hint={t("coverUrlHint")}>
         <Input id="coverUrl" name="coverUrl" type="url" />
       </Field>

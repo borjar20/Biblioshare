@@ -13,4 +13,7 @@ export type LibraryItem = {
   title: string;
   coverUrl: string | null;
   subtitle: string | null;
+  // Book-only metadata (null for movies/series). See docs/REQUIREMENTS.md §7.1.
+  publisher: string | null;
+  pageCount: number | null;
 };

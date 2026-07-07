@@ -7,4 +7,7 @@ export type SearchResult = {
   subtitle: string | null;
   coverUrl: string | null;
   year: number | null;
+  // Book-only metadata (null for movies/series). See docs/REQUIREMENTS.md §7.1.
+  publisher: string | null;
+  pageCount: number | null;
 };

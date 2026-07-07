@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import type { Position } from "@/lib/library/position";
+import { BOOK_FORMATS, type BookFormat, type Position } from "@/lib/library/position";
 
 export async function updateStatus(entryId: string, status: MediaStatus) {
   const supabase = await createClient();
@@ -54,11 +54,23 @@ export async function updateProgress(
   let position: Position = {};
   if (itemType === "book") {
     const pageRaw = String(formData.get("page") ?? "").trim();
+    const formatRaw = String(formData.get("format") ?? "").trim();
+
+    let page: number | undefined;
     if (pageRaw) {
-      const page = Number(pageRaw);
+      page = Number(pageRaw);
       if (!Number.isInteger(page) || page < 0) return { error: "invalidPosition" };
-      position = { page };
     }
+
+    let format: BookFormat | undefined;
+    if (formatRaw) {
+      if (!BOOK_FORMATS.includes(formatRaw as BookFormat)) {
+        return { error: "invalidPosition" };
+      }
+      format = formatRaw as BookFormat;
+    }
+
+    position = { ...(page !== undefined && { page }), ...(format && { format }) };
   } else if (itemType === "series") {
     const seasonRaw = String(formData.get("season") ?? "").trim();
     const episodeRaw = String(formData.get("episode") ?? "").trim();

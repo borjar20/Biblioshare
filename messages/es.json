@@ -72,12 +72,15 @@
         "series": "Creador"
       },
       "year": "Año",
+      "publisher": "Editorial",
+      "pageCount": "Nº de páginas",
       "coverUrl": "URL de la portada",
       "coverUrlHint": "Opcional. Enlace directo a una imagen.",
       "submit": "Añadir a mi biblioteca",
       "submitting": "Añadiendo...",
       "errors": {
         "titleRequired": "El título es obligatorio.",
+        "invalidPageCount": "El número de páginas no es válido.",
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
     }
@@ -134,6 +137,13 @@
       "hide": "Ocultar",
       "rating": "Valoración (1-10)",
       "page": "Página actual",
+      "format": "Encuadernación",
+      "formatNone": "Sin especificar",
+      "formats": {
+        "paperback": "Bolsillo",
+        "softcover": "Tapa blanda",
+        "hardcover": "Tapa dura"
+      },
       "season": "Temporada",
       "episode": "Episodio",
       "notes": "Notas",

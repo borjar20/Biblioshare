@@ -122,10 +122,11 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 
 Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromisos firmes**: no hay fecha ni orden asignado salvo que se diga explícitamente. Se marcan `[x]` solo cuando se implementan de verdad.
 
-### 7.1 Metadatos de libro más ricos
-- [ ] Añadir editorial, nº de páginas y encuadernación/formato a la ficha de libro.
-  - Editorial y nº de páginas (ya existe `total_pages`) son propiedades de la *obra* → tabla `books` (catálogo compartido).
-  - La **encuadernación es propiedad de *tu ejemplar***, no de la obra: dos usuarios pueden tener el mismo libro en formatos distintos. Debe vivir por usuario (en `library_entries`, p. ej. dentro de `position` o un campo nuevo), **no** en `books`.
+### 7.1 Metadatos de libro más ricos — *hecho*
+- [x] Editorial y nº de páginas en la ficha de libro (`books.publisher`, `books.total_pages`) — capturados automáticamente al buscar (Google Books) o al añadir manualmente; mostrados en resultados de búsqueda y en "Mi biblioteca".
+  - Editorial y nº de páginas son propiedades de la *obra* → tabla `books` (catálogo compartido).
+- [x] Encuadernación/formato (bolsillo, tapa blanda, tapa dura) — editable desde "Editar progreso" en "Mi biblioteca".
+  - Es propiedad de **tu ejemplar**, no de la obra: vive en `library_entries.position` (tipado en `src/lib/library/position.ts`), no en `books` — consistente con cómo `position` ya modela lo que varía por usuario y por tipo.
 
 ### 7.2 Búsqueda de libros por ISBN
 - [ ] Permitir buscar un libro por **ISBN** además de por título. Google Books lo soporta nativamente con `q=isbn:...`.

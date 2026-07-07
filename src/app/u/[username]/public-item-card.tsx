@@ -33,6 +33,13 @@ export async function PublicItemCard({ item }: { item: LibraryItem }) {
             {item.subtitle}
           </span>
         )}
+        {(item.publisher || item.pageCount) && (
+          <span className="line-clamp-1 text-xs text-muted-foreground">
+            {[item.publisher, item.pageCount ? `${item.pageCount} págs.` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        )}
         <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
       </div>
     </div>

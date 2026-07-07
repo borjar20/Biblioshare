@@ -9,6 +9,8 @@ type CatalogMeta = {
   title: string;
   coverUrl: string | null;
   subtitle: string | null;
+  publisher: string | null;
+  pageCount: number | null;
 };
 
 export async function getLibraryItems(
@@ -44,7 +46,7 @@ export async function getLibraryItems(
     idsByType.book.length
       ? supabase
           .from("books")
-          .select("id, title, author, cover_url")
+          .select("id, title, author, cover_url, publisher, total_pages")
           .in("id", idsByType.book)
       : Promise.resolve({ data: [] }),
     idsByType.movie.length
@@ -66,6 +68,8 @@ export async function getLibraryItems(
       title: row.title,
       coverUrl: row.cover_url,
       subtitle: row.author,
+      publisher: row.publisher,
+      pageCount: row.total_pages,
     });
   }
   for (const row of movies.data ?? []) {
@@ -73,6 +77,8 @@ export async function getLibraryItems(
       title: row.title,
       coverUrl: row.cover_url,
       subtitle: null,
+      publisher: null,
+      pageCount: null,
     });
   }
   for (const row of series.data ?? []) {
@@ -80,6 +86,8 @@ export async function getLibraryItems(
       title: row.title,
       coverUrl: row.cover_url,
       subtitle: null,
+      publisher: null,
+      pageCount: null,
     });
   }
 
@@ -97,6 +105,8 @@ export async function getLibraryItems(
         title: meta.title,
         coverUrl: meta.coverUrl,
         subtitle: meta.subtitle,
+        publisher: meta.publisher,
+        pageCount: meta.pageCount,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);

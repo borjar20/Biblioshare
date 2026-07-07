@@ -20,6 +20,8 @@ export const MOCK_BOOKS: SearchResult[] = [
     subtitle: "Gabriel García Márquez",
     coverUrl: cover("6366f1", "Cien años"),
     year: 1967,
+    publisher: "Editorial Sudamericana",
+    pageCount: 471,
   },
   {
     itemType: "book",
@@ -28,6 +30,8 @@ export const MOCK_BOOKS: SearchResult[] = [
     subtitle: "Miguel de Cervantes",
     coverUrl: cover("f59e0b", "El Quijote"),
     year: 1605,
+    publisher: "Francisco de Robles",
+    pageCount: 863,
   },
   {
     itemType: "book",
@@ -36,6 +40,8 @@ export const MOCK_BOOKS: SearchResult[] = [
     subtitle: "J. K. Rowling",
     coverUrl: cover("10b981", "Harry Potter"),
     year: 1997,
+    publisher: "Bloomsbury",
+    pageCount: 223,
   },
   {
     itemType: "book",
@@ -44,6 +50,8 @@ export const MOCK_BOOKS: SearchResult[] = [
     subtitle: "George Orwell",
     coverUrl: cover("ef4444", "1984"),
     year: 1949,
+    publisher: "Secker & Warburg",
+    pageCount: 328,
   },
   {
     itemType: "book",
@@ -52,6 +60,8 @@ export const MOCK_BOOKS: SearchResult[] = [
     subtitle: "Ray Bradbury",
     coverUrl: cover("f97316", "Fahrenheit 451"),
     year: 1953,
+    publisher: "Ballantine Books",
+    pageCount: 194,
   },
 ];
 
@@ -63,6 +73,8 @@ export const MOCK_MOVIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("18181b", "Matrix"),
     year: 1999,
+    publisher: null,
+    pageCount: null,
   },
   {
     itemType: "movie",
@@ -71,6 +83,8 @@ export const MOCK_MOVIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("0ea5e9", "Origen"),
     year: 2010,
+    publisher: null,
+    pageCount: null,
   },
   {
     itemType: "movie",
@@ -79,6 +93,8 @@ export const MOCK_MOVIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("6366f1", "Interestelar"),
     year: 2014,
+    publisher: null,
+    pageCount: null,
   },
   {
     itemType: "movie",
@@ -87,6 +103,8 @@ export const MOCK_MOVIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("eab308", "Star Wars"),
     year: 1977,
+    publisher: null,
+    pageCount: null,
   },
 ];
 
@@ -98,6 +116,8 @@ export const MOCK_SERIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("22c55e", "Breaking Bad"),
     year: 2008,
+    publisher: null,
+    pageCount: null,
   },
   {
     itemType: "series",
@@ -106,6 +126,8 @@ export const MOCK_SERIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("ec4899", "Squid Game"),
     year: 2021,
+    publisher: null,
+    pageCount: null,
   },
   {
     itemType: "series",
@@ -114,5 +136,7 @@ export const MOCK_SERIES: SearchResult[] = [
     subtitle: null,
     coverUrl: cover("dc2626", "Stranger Things"),
     year: 2016,
+    publisher: null,
+    pageCount: null,
   },
 ];

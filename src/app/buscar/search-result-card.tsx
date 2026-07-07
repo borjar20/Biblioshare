@@ -29,6 +29,13 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
             {[result.subtitle, result.year].filter(Boolean).join(" · ")}
           </span>
         )}
+        {(result.publisher || result.pageCount) && (
+          <span className="line-clamp-1 text-xs text-muted-foreground">
+            {[result.publisher, result.pageCount ? `${result.pageCount} págs.` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        )}
       </div>
       <AddToLibraryButton result={result} />
     </div>

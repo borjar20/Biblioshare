@@ -8,6 +8,8 @@ type GoogleBooksResponse = {
       authors?: string[];
       imageLinks?: { thumbnail?: string; smallThumbnail?: string };
       publishedDate?: string;
+      publisher?: string;
+      pageCount?: number;
     };
   }>;
 };
@@ -42,5 +44,7 @@ export async function searchBooks(query: string): Promise<SearchResult[]> {
       year: item.volumeInfo.publishedDate
         ? Number(item.volumeInfo.publishedDate.slice(0, 4)) || null
         : null,
+      publisher: item.volumeInfo.publisher ?? null,
+      pageCount: item.volumeInfo.pageCount ?? null,
     }));
 }
