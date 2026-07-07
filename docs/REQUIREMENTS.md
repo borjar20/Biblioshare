@@ -1,6 +1,6 @@
 # Biblioshare — Requisitos y alcance
 
-Última actualización: 2026-07-07
+Última actualización: 2026-07-08
 
 ## 1. Visión
 
@@ -118,89 +118,93 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 - [x] UI del diario de pases (relecturas/re-visionados) en "Mi biblioteca".
 - [x] Flujo de "añadir ítem manualmente" (`/buscar/manual`) sin depender de la API externa — cierra §4.2.
 
-## 7. Backlog / ideas para v2 (no comprometidas)
+## 7. Tareas pendientes (v2)
+
+Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromisos firmes**: no hay fecha ni orden asignado salvo que se diga explícitamente. Se marcan `[x]` solo cuando se implementan de verdad.
 
 ### 7.1 Metadatos de libro más ricos
-- Ampliar la ficha del libro con: **editorial**, **nº de páginas** (ya existe `total_pages`) y **encuadernación/formato** (bolsillo, tapa blanda, tapa dura).
-- **Decisión de modelo a resolver**: editorial y nº de páginas son propiedades de la *obra* → van en la tabla `books` (catálogo compartido). Pero la **encuadernación es propiedad de *tu ejemplar***, no de la obra: dos usuarios pueden tener el mismo libro en formatos distintos, e incluso un usuario puede tener dos ediciones. Debe vivir por usuario (en `library_entries`, p. ej. dentro de `position` o un campo nuevo), **no** en `books`.
+- [ ] Añadir editorial, nº de páginas y encuadernación/formato a la ficha de libro.
+  - Editorial y nº de páginas (ya existe `total_pages`) son propiedades de la *obra* → tabla `books` (catálogo compartido).
+  - La **encuadernación es propiedad de *tu ejemplar***, no de la obra: dos usuarios pueden tener el mismo libro en formatos distintos. Debe vivir por usuario (en `library_entries`, p. ej. dentro de `position` o un campo nuevo), **no** en `books`.
 
 ### 7.2 Búsqueda de libros por ISBN
-- Permitir buscar un libro por **ISBN** además de por título. Google Books lo soporta nativamente con `q=isbn:...`.
-- UX propuesta: **autodetectar** cuando la query tiene forma de ISBN (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10) y enrutarla como `isbn:` — sin modo aparte; si no, buscar por título como ahora.
-- Aprovechar para **capturar el ISBN en el catálogo** (`books.isbn`, hoy sin rellenar) leyendo `industryIdentifiers` de la respuesta — enlaza con 7.1.
-- Añadir un ISBN a los datos mock para poder probarlo con `MOCK_EXTERNAL_APIS=true`.
+- [ ] Permitir buscar un libro por **ISBN** además de por título. Google Books lo soporta nativamente con `q=isbn:...`.
+  - UX propuesta: **autodetectar** cuando la query tiene forma de ISBN (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10) y enrutarla como `isbn:` — sin modo aparte; si no, buscar por título como ahora.
+  - Aprovechar para **capturar el ISBN en el catálogo** (`books.isbn`, hoy sin rellenar) leyendo `industryIdentifiers` de la respuesta — enlaza con 7.1.
+  - Añadir un ISBN a los datos mock para poder probarlo con `MOCK_EXTERNAL_APIS=true`.
 
 ### 7.3 Escanear código de barras para añadir por ISBN
-- En móvil (PWA con cámara), escanear el código de barras (ISBN) de la contraportada de un libro físico y añadirlo directamente, sin teclear nada.
-- Técnicamente: API web `BarcodeDetector` para leer el código + reutilizar la búsqueda por ISBN de 7.2 con el valor leído.
-- **Riesgo a investigar**: soporte de `BarcodeDetector` es desigual entre navegadores (bien en Chrome/Edge Android, históricamente ausente/parcial en Safari/iOS) — habría que validar cobertura real o prever una librería JS de fallback (p. ej. basada en `getUserMedia` + decodificación en JS) antes de comprometerlo.
+- [ ] En móvil (PWA con cámara), escanear el código de barras (ISBN) de la contraportada de un libro físico y añadirlo directamente, sin teclear nada.
+  - Técnicamente: API web `BarcodeDetector` para leer el código + reutilizar la búsqueda por ISBN de 7.2 con el valor leído.
+  - **Riesgo a investigar**: soporte de `BarcodeDetector` es desigual entre navegadores (bien en Chrome/Edge Android, históricamente ausente/parcial en Safari/iOS) — habría que validar cobertura real o prever una librería JS de fallback (p. ej. basada en `getUserMedia` + decodificación en JS) antes de comprometerlo.
 
 ### 7.4 Sagas y colecciones (gestionadas por separado)
-- Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
-- **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario. Se solapa con "listas curadas" (7.14).
-- Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
+- [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
+  - **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario.
+  - Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
 
 ### 7.5 Etiquetas + estadísticas por etiqueta
-- Etiquetas libres por usuario sobre sus ítems, y un panel de **estadísticas agrupadas por etiqueta**.
-- Requiere primero el sistema de etiquetas (tabla + RLS + UI); las estadísticas van encima.
+- [ ] Etiquetas libres por usuario sobre sus ítems.
+- [ ] Panel de estadísticas agrupadas por etiqueta (depende de lo anterior).
 
 ### 7.6 Seguir editoriales y ver sus novedades
-- Seguir editoriales y recibir sus **novedades / próximos lanzamientos**.
-- Depende de capturar la **editorial** en el catálogo (7.1). Riesgo técnico a investigar: las APIs actuales (Google Books) no exponen un feed fiable de "novedades por editorial" — habría que evaluar la fuente de datos antes de comprometerlo.
+- [ ] Seguir editoriales y recibir sus **novedades / próximos lanzamientos**.
+  - Depende de capturar la **editorial** en el catálogo (7.1).
+  - **Riesgo técnico a investigar**: las APIs actuales (Google Books) no exponen un feed fiable de "novedades por editorial" — evaluar la fuente de datos antes de comprometerlo.
 
 ### 7.7 Importar biblioteca desde Goodreads / Letterboxd (CSV)
-- Subir el CSV exportado de Goodreads o Letterboxd e importar de golpe libros/películas ya leídos/vistos, con su rating y fecha.
-- **Por qué importa**: resuelve el arranque en frío — una biblioteca vacía desanima a un usuario nuevo; poder traer su historial de años en un paso es la palanca de adopción más grande que se puede construir aquí.
-- Reutiliza el flujo `findOrCreateCatalogItem` ya existente (`src/app/buscar/actions.ts`) para cada fila.
-- Encaja con datos que ya modelamos: columnas de Goodreads como *Publisher*/*Binding*/*ISBN* alimentan 7.1/7.2; "Date Read" repetido (relecturas) mapea directo a `diary_entries`.
-- A definir: qué pasa si una fila no matchea nada en la API (fallback a "añadir manualmente", ver 7.15) y cómo se reporta al usuario qué filas se importaron/fallaron.
+- [ ] Subir el CSV exportado de Goodreads o Letterboxd e importar de golpe libros/películas ya leídos/vistos, con su rating y fecha.
+  - **Por qué importa**: resuelve el arranque en frío — una biblioteca vacía desanima a un usuario nuevo; poder traer su historial de años en un paso es la palanca de adopción más grande que se puede construir aquí.
+  - Reutiliza el flujo `findOrCreateCatalogItem` ya existente (`src/app/buscar/actions.ts`) para cada fila.
+  - Encaja con datos que ya modelamos: columnas de Goodreads como *Publisher*/*Binding*/*ISBN* alimentan 7.1/7.2; "Date Read" repetido (relecturas) mapea directo a `diary_entries`.
+  - A definir: qué pasa si una fila no matchea nada en la API (fallback a `/buscar/manual`) y cómo se reporta al usuario qué filas se importaron/fallaron.
 
 ### 7.8 Páginas de detalle por ítem (`/libro/[id]`, `/pelicula/[id]`, `/serie/[id]`)
-- Página propia por libro/película/serie mostrando la ficha completa (sinopsis, autor/director/creador, géneros, año, páginas/duración/temporadas) y el botón de añadir a biblioteca — hoy nada de eso se muestra en ningún sitio.
-- **Ya tenemos los datos**: `books`, `movies` y `series` ya guardan `synopsis`, `genres`, `director`/`creator`, `duration_minutes`, `total_pages`, `total_seasons`/`total_episodes` — se rellenan al buscar pero ninguna pantalla los renderiza hoy. Esta página es principalmente UI, no requiere migración.
-- El catálogo es compartido, así que el ítem solo existe en `books`/`movies`/`series` (y por tanto la página solo es accesible) una vez alguien lo ha añadido al menos una vez vía búsqueda — coherente con el diseño actual.
-- Los resultados de búsqueda (`SearchResultCard`) y las tarjetas de biblioteca/perfil (`CoverCard`, ya construido pero sin usar) enlazarían aquí.
-- A definir: convención de ruta (`/libro/[id]` por tipo vs. `/item/[type]/[id]` unificado) y si se muestra el estado/progreso del usuario actual cuando ya está en su biblioteca.
+- [ ] Página propia por libro/película/serie con la ficha completa (sinopsis, autor/director/creador, géneros, año, páginas/duración/temporadas) y el botón de añadir a biblioteca — hoy nada de eso se muestra en ningún sitio.
+  - **Ya tenemos los datos**: `books`, `movies` y `series` ya guardan `synopsis`, `genres`, `director`/`creator`, `duration_minutes`, `total_pages`, `total_seasons`/`total_episodes` — se rellenan al buscar pero ninguna pantalla los renderiza hoy. Esta página es principalmente UI, no requiere migración.
+  - El catálogo es compartido, así que el ítem solo existe en `books`/`movies`/`series` (y por tanto la página solo es accesible) una vez alguien lo ha añadido al menos una vez vía búsqueda — coherente con el diseño actual.
+  - Los resultados de búsqueda (`SearchResultCard`) y las tarjetas de biblioteca/perfil (`CoverCard`, ya construido pero sin usar) enlazarían aquí.
+  - A definir: convención de ruta (`/libro/[id]` por tipo vs. `/item/[type]/[id]` unificado) y si se muestra el estado/progreso del usuario actual cuando ya está en su biblioteca.
 
 ### 7.9 Favoritos fijados + imagen para compartir el perfil
-- Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd), y generar una **imagen Open Graph** bonita del perfil para cuando se comparte el link.
-- La imagen OG es casi gratis: ya se genera contenido con `next/og` para los iconos PWA (`src/app/icon.tsx`, `src/lib/app-icon.tsx`) — mismo patrón aplicado a `app/u/[username]/opengraph-image.tsx`.
-- Favoritos fijados requiere un cambio pequeño de esquema (marcar N filas de `library_entries` como destacadas, p. ej. un campo `pinned_order`), mismo RLS que ya existe.
+- [ ] Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd).
+  - Requiere un cambio pequeño de esquema (marcar N filas de `library_entries` como destacadas, p. ej. un campo `pinned_order`), mismo RLS que ya existe.
+- [ ] Generar una **imagen Open Graph** del perfil para cuando se comparte el link.
+  - Casi gratis: ya se genera contenido con `next/og` para los iconos PWA (`src/app/icon.tsx`, `src/lib/app-icon.tsx`) — mismo patrón aplicado a `app/u/[username]/opengraph-image.tsx`.
 
 ### 7.10 Retos de lectura/visionado anuales
-- Objetivo tipo "50 libros en 2026" con barra de progreso, calculado sobre `diary_entries`/`library_entries` que ya se registran.
+- [ ] Objetivo tipo "50 libros en 2026" con barra de progreso, calculado sobre `diary_entries`/`library_entries` que ya se registran.
 
 ### 7.11 Estantería "Ahora mismo"
-- Acceso rápido a los ítems en estado `in_progress`, mostrando la página/episodio actual (`position`, ya modelado). Pensado como atajo al bucle de uso diario, posiblemente en el home.
+- [ ] Acceso rápido a los ítems en estado `in_progress`, mostrando la página/episodio actual (`position`, ya modelado). Pensado como atajo al bucle de uso diario, posiblemente en el home.
 
 ### 7.12 Buscar y ordenar dentro de tu propia biblioteca
-- Hoy "Mi biblioteca" filtra por tipo/estado pero no permite buscar por texto ni ordenar por rating/fecha/título — se nota en cuanto la biblioteca crece.
+- [ ] Buscar por texto y ordenar por rating/fecha/título en "Mi biblioteca" (hoy solo filtra por tipo/estado) — se nota en cuanto la biblioteca crece.
 
 ### 7.13 Recuento de relecturas visible
-- Mostrar en la tarjeta de cada ítem "leído/visto N veces", contando `diary_entries` — dato que ya se registra, falta solo mostrarlo.
+- [ ] Mostrar en la tarjeta de cada ítem "leído/visto N veces", contando `diary_entries` — dato que ya se registra, falta solo mostrarlo.
 
-### 7.14 Otras ideas ya registradas
-- "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
-- Comparar bibliotecas entre dos perfiles (solape de ítems) — vía social ligera sin construir seguidores completos.
-- Guardar citas/frases favoritas de un libro.
-- Sistema de seguidores + feed de actividad.
-- Estadísticas y gráficos de hábitos generales (ítems por tipo/estado, actividad del diario por mes).
-- Offline-first completo (edición sin conexión + sincronización posterior).
-- Listas curadas y colecciones temáticas (ver 7.4).
-- Integración con más fuentes (videojuegos vía IGDB, música, etc.) — encaja con la idea original de "biblioteca de tus hobbies".
-
-### 7.16 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
+### 7.14 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
 Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales.
 
-- **Gap de modelo real, no solo de UI**: hoy no existe forma de saber "¿qué avancé el martes?". `library_entries.position` solo guarda el punto *actual* (ej. página 240, sin historial), y `diary_entries` solo registra el *pase completo* (fecha inicio/fin de una relectura entera). Ninguno de los dos permite reconstruir actividad día a día. Hace falta una tabla nueva, algo como `progress_sessions`: `library_entry_id`, `date`, delta de progreso (páginas leídas / episodios avanzados ese día), y opcionalmente minutos dedicados. Es la pieza fundacional; las 4 pantallas de abajo son vistas sobre estos datos.
-- **Estadísticas diarias**: tira de días de la semana (con indicador de actividad por día) + objetivo diario configurable (ej. "30 min") con progreso circular, y detalle del día: rango de páginas leídas, minutos, páginas/minuto. Implica añadir un objetivo diario a `profiles` o una tabla de settings, y decidir si el tiempo se **introduce a mano** (como parece en la captura, "Has leído 5 min") o con un cronómetro en la app — la primera es mucho más barata.
-- **Calendario mensual**: grid de días del mes con la portada del ítem en los días que tuvo actividad — lectura directa de `progress_sessions` agrupada por día.
-- **Rachas**: racha actual y mejor racha (días consecutivos con al menos una sesión de progreso en cualquier ítem), con su propio calendario de resaltado. Cálculo derivado (días consecutivos con `progress_sessions`), no necesita tabla propia más allá de la sesión diaria.
-- **Estadísticas anuales**: gráfico de barras de libros/ítems completados por mes + objetivo anual (ej. "30 libros") con progreso circular. El objetivo anual es otro campo de configuración por usuario; el conteo por mes puede salir de `diary_entries.finished_on` (pases completados) sin necesitar `progress_sessions`.
-- **A definir cuando se aborde**: si esto aplica solo a libros o también a películas/series (para video, "página" no tiene sentido pero "minutos vistos" o "episodios avanzados" sí); si el objetivo diario/anual es un único valor global o por tipo de ítem; UX de introducir el progreso diario (¿un botón rápido "+X páginas hoy" sobre el `ProgressPanel` ya existente, o un flujo dedicado?).
+- [ ] Modelar `progress_sessions` (base fundacional): `library_entry_id`, `date`, delta de progreso (páginas leídas / episodios avanzados ese día), opcionalmente minutos dedicados.
+  - **Gap de modelo real, no solo de UI**: hoy no existe forma de saber "¿qué avancé el martes?". `library_entries.position` solo guarda el punto *actual* (sin historial), y `diary_entries` solo registra el *pase completo* (fecha inicio/fin de una relectura entera). Ninguno de los dos permite reconstruir actividad día a día.
+- [ ] Estadísticas diarias: tira de días de la semana con indicador de actividad + objetivo diario configurable (ej. "30 min") con progreso circular, y detalle del día (páginas leídas, minutos, páginas/minuto).
+  - Implica añadir un objetivo diario a `profiles` o una tabla de settings, y decidir si el tiempo se **introduce a mano** (como parece en la captura, "Has leído 5 min") o con un cronómetro en la app — la primera es mucho más barata.
+- [ ] Calendario mensual: grid de días del mes con la portada del ítem en los días que tuvo actividad — lectura directa de `progress_sessions` agrupada por día.
+- [ ] Rachas: racha actual y mejor racha (días consecutivos con al menos una sesión de progreso en cualquier ítem), con su propio calendario de resaltado. Cálculo derivado, no necesita tabla propia más allá de la sesión diaria.
+- [ ] Estadísticas anuales: gráfico de barras de ítems completados por mes + objetivo anual (ej. "30 libros") con progreso circular. El conteo por mes puede salir de `diary_entries.finished_on` sin necesitar `progress_sessions`.
+- A definir cuando se aborde: si esto aplica solo a libros o también a películas/series (para video, "página" no tiene sentido pero "minutos vistos" o "episodios avanzados" sí); si el objetivo diario/anual es un único valor global o por tipo de ítem; UX de introducir el progreso diario (¿un botón rápido "+X páginas hoy" sobre el `ProgressPanel` ya existente, o un flujo dedicado?).
 
-### 7.17 Deuda del MVP pendiente
-- ~~Añadir un ítem manualmente~~ — **hecho**: `/buscar/manual`, ver §4.2 y §6.
+### 7.15 Otras ideas sin desarrollar todavía
+- [ ] "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
+- [ ] Comparar bibliotecas entre dos perfiles (solape de ítems) — vía social ligera sin construir seguidores completos.
+- [ ] Guardar citas/frases favoritas de un libro.
+- [ ] Sistema de seguidores + feed de actividad.
+- [ ] Estadísticas y gráficos de hábitos generales (ítems por tipo/estado, actividad del diario por mes).
+- [ ] Offline-first completo (edición sin conexión + sincronización posterior).
+- [ ] Listas curadas y colecciones temáticas (ver 7.4).
+- [ ] Integración con más fuentes (videojuegos vía IGDB, música, etc.) — encaja con la idea original de "biblioteca de tus hobbies".
 
 ## 8. Decisiones registradas
 
@@ -216,3 +220,18 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 | 2026-07-07 | Catálogo compartido entre usuarios, progreso privado por usuario | Evita duplicar metadatos al buscar el mismo libro/película varias veces |
 | 2026-07-07 | Perfiles públicos por defecto, con opción de hacerlos privados | Habilita la función social mínima (ver bibliotecas de otros) sin construir todo el sistema social completo |
 | 2026-07-07 | Offline MVP = cache de solo lectura, no offline-first completo | Reduce complejidad de sincronización manteniendo el beneficio principal de una PWA instalable |
+| 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §9 |
+
+## 9. Historial de versiones
+
+### v1.0 — 2026-07-08 — MVP completo
+Todas las funcionalidades de §4 implementadas y verificadas manualmente (navegador + limpieza de datos de prueba):
+- Autenticación (registro, login, onboarding de `username`).
+- Añadir ítems: búsqueda (Google Books + TMDB, con modo mock para desarrollo) **y** añadido manual (`/buscar/manual`).
+- Gestión de la colección: estado, rating, progreso (`position` tipado por tipo de ítem), notas, diario de pases.
+- Perfil público `/u/[username]` con toggle de visibilidad.
+- PWA instalable con cache de solo lectura offline.
+- i18n cableado desde el inicio (español).
+- Estética visual con grids de portadas.
+
+A partir de aquí, el desarrollo continúa sobre el backlog de tareas pendientes en §7.
