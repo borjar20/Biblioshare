@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(\\(Get-Command node\\).Source; \\(Get-Command npm\\).Source)"
+    ]
+  }
+}
