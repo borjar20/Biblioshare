@@ -109,6 +109,22 @@
       "completed": "Completado",
       "dropped": "Abandonado"
     },
-    "remove": "Quitar"
+    "remove": "Quitar",
+    "progress": {
+      "show": "Editar progreso",
+      "hide": "Ocultar",
+      "rating": "Valoración (1-10)",
+      "page": "Página actual",
+      "season": "Temporada",
+      "episode": "Episodio",
+      "notes": "Notas",
+      "submit": "Guardar",
+      "submitting": "Guardando...",
+      "errors": {
+        "invalidRating": "La valoración debe ser un número entre 1 y 10.",
+        "invalidPosition": "El progreso introducido no es válido.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    }
   }
 }

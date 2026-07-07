@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import type { LibraryItem, MediaStatus } from "@/lib/library/types";
 import { updateStatus, removeFromLibrary } from "./actions";
 import { DiaryPanel } from "./diary-panel";
+import { ProgressPanel } from "./progress-panel";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -72,6 +73,7 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
         {t("remove")}
       </button>
 
+      <ProgressPanel item={item} />
       <DiaryPanel libraryEntryId={item.entryId} />
     </div>
   );

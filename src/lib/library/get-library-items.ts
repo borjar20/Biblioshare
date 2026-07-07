@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { parsePosition } from "./position";
 import type { LibraryItem, MediaStatus } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -17,7 +18,7 @@ export async function getLibraryItems(
 ): Promise<LibraryItem[]> {
   let query = supabase
     .from("library_entries")
-    .select("id, item_type, item_id, status, rating")
+    .select("id, item_type, item_id, status, rating, position, notes")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -91,6 +92,8 @@ export async function getLibraryItems(
         itemType: entry.item_type,
         status: entry.status,
         rating: entry.rating,
+        position: parsePosition(entry.item_type, entry.position),
+        notes: entry.notes,
         title: meta.title,
         coverUrl: meta.coverUrl,
         subtitle: meta.subtitle,
