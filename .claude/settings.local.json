@@ -8,7 +8,8 @@
       "mcp__supabase__get_advisors",
       "mcp__supabase__list_tables",
       "mcp__supabase__generate_typescript_types",
-      "mcp__mcp-registry__list_connectors"
+      "mcp__mcp-registry__list_connectors",
+      "mcp__github__create_pull_request"
     ]
   }
 }

@@ -1,0 +1,51 @@
+{
+  "common": {
+    "appName": "Biblioshare",
+    "loading": "Cargando..."
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Entrar",
+      "submitting": "Entrando...",
+      "noAccount": "¿No tienes cuenta?",
+      "signupLink": "Regístrate"
+    },
+    "signup": {
+      "title": "Crear cuenta",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta...",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "loginLink": "Inicia sesión",
+      "checkEmail": "Revisa tu correo para confirmar la cuenta antes de iniciar sesión."
+    },
+    "errors": {
+      "invalidCredentials": "Correo o contraseña incorrectos.",
+      "emailInUse": "Ya existe una cuenta con ese correo.",
+      "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "logout": "Cerrar sesión"
+  },
+  "onboarding": {
+    "title": "Elige tu nombre de usuario",
+    "description": "Este será tu identificador público en Biblioshare (ej: biblioshare.app/u/tu-usuario).",
+    "username": "Nombre de usuario",
+    "usernameHint": "Solo minúsculas, números y guiones bajos. Entre 3 y 30 caracteres.",
+    "submit": "Continuar",
+    "submitting": "Guardando...",
+    "errors": {
+      "usernameTaken": "Ese nombre de usuario ya está en uso.",
+      "usernameInvalid": "El nombre de usuario no es válido.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "home": {
+    "tagline": "Tu biblioteca de libros, películas y series en un solo lugar.",
+    "cta": "Empezar"
+  }
+}
