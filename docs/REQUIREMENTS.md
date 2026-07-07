@@ -119,11 +119,77 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 
 ## 7. Backlog / ideas para v2 (no comprometidas)
 
+### 7.1 Metadatos de libro más ricos
+- Ampliar la ficha del libro con: **editorial**, **nº de páginas** (ya existe `total_pages`) y **encuadernación/formato** (bolsillo, tapa blanda, tapa dura).
+- **Decisión de modelo a resolver**: editorial y nº de páginas son propiedades de la *obra* → van en la tabla `books` (catálogo compartido). Pero la **encuadernación es propiedad de *tu ejemplar***, no de la obra: dos usuarios pueden tener el mismo libro en formatos distintos, e incluso un usuario puede tener dos ediciones. Debe vivir por usuario (en `library_entries`, p. ej. dentro de `position` o un campo nuevo), **no** en `books`.
+
+### 7.2 Búsqueda de libros por ISBN
+- Permitir buscar un libro por **ISBN** además de por título. Google Books lo soporta nativamente con `q=isbn:...`.
+- UX propuesta: **autodetectar** cuando la query tiene forma de ISBN (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10) y enrutarla como `isbn:` — sin modo aparte; si no, buscar por título como ahora.
+- Aprovechar para **capturar el ISBN en el catálogo** (`books.isbn`, hoy sin rellenar) leyendo `industryIdentifiers` de la respuesta — enlaza con 7.1.
+- Añadir un ISBN a los datos mock para poder probarlo con `MOCK_EXTERNAL_APIS=true`.
+
+### 7.3 Escanear código de barras para añadir por ISBN
+- En móvil (PWA con cámara), escanear el código de barras (ISBN) de la contraportada de un libro físico y añadirlo directamente, sin teclear nada.
+- Técnicamente: API web `BarcodeDetector` para leer el código + reutilizar la búsqueda por ISBN de 7.2 con el valor leído.
+- **Riesgo a investigar**: soporte de `BarcodeDetector` es desigual entre navegadores (bien en Chrome/Edge Android, históricamente ausente/parcial en Safari/iOS) — habría que validar cobertura real o prever una librería JS de fallback (p. ej. basada en `getUserMedia` + decodificación en JS) antes de comprometerlo.
+
+### 7.4 Sagas y colecciones (gestionadas por separado)
+- Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
+- **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario. Se solapa con "listas curadas" (7.14).
+- Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
+
+### 7.5 Etiquetas + estadísticas por etiqueta
+- Etiquetas libres por usuario sobre sus ítems, y un panel de **estadísticas agrupadas por etiqueta**.
+- Requiere primero el sistema de etiquetas (tabla + RLS + UI); las estadísticas van encima.
+
+### 7.6 Seguir editoriales y ver sus novedades
+- Seguir editoriales y recibir sus **novedades / próximos lanzamientos**.
+- Depende de capturar la **editorial** en el catálogo (7.1). Riesgo técnico a investigar: las APIs actuales (Google Books) no exponen un feed fiable de "novedades por editorial" — habría que evaluar la fuente de datos antes de comprometerlo.
+
+### 7.7 Importar biblioteca desde Goodreads / Letterboxd (CSV)
+- Subir el CSV exportado de Goodreads o Letterboxd e importar de golpe libros/películas ya leídos/vistos, con su rating y fecha.
+- **Por qué importa**: resuelve el arranque en frío — una biblioteca vacía desanima a un usuario nuevo; poder traer su historial de años en un paso es la palanca de adopción más grande que se puede construir aquí.
+- Reutiliza el flujo `findOrCreateCatalogItem` ya existente (`src/app/buscar/actions.ts`) para cada fila.
+- Encaja con datos que ya modelamos: columnas de Goodreads como *Publisher*/*Binding*/*ISBN* alimentan 7.1/7.2; "Date Read" repetido (relecturas) mapea directo a `diary_entries`.
+- A definir: qué pasa si una fila no matchea nada en la API (fallback a "añadir manualmente", ver 7.15) y cómo se reporta al usuario qué filas se importaron/fallaron.
+
+### 7.8 Páginas de detalle por ítem (`/libro/[id]`, `/pelicula/[id]`, `/serie/[id]`)
+- Página propia por libro/película/serie mostrando la ficha completa (sinopsis, autor/director/creador, géneros, año, páginas/duración/temporadas) y el botón de añadir a biblioteca — hoy nada de eso se muestra en ningún sitio.
+- **Ya tenemos los datos**: `books`, `movies` y `series` ya guardan `synopsis`, `genres`, `director`/`creator`, `duration_minutes`, `total_pages`, `total_seasons`/`total_episodes` — se rellenan al buscar pero ninguna pantalla los renderiza hoy. Esta página es principalmente UI, no requiere migración.
+- El catálogo es compartido, así que el ítem solo existe en `books`/`movies`/`series` (y por tanto la página solo es accesible) una vez alguien lo ha añadido al menos una vez vía búsqueda — coherente con el diseño actual.
+- Los resultados de búsqueda (`SearchResultCard`) y las tarjetas de biblioteca/perfil (`CoverCard`, ya construido pero sin usar) enlazarían aquí.
+- A definir: convención de ruta (`/libro/[id]` por tipo vs. `/item/[type]/[id]` unificado) y si se muestra el estado/progreso del usuario actual cuando ya está en su biblioteca.
+
+### 7.9 Favoritos fijados + imagen para compartir el perfil
+- Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd), y generar una **imagen Open Graph** bonita del perfil para cuando se comparte el link.
+- La imagen OG es casi gratis: ya se genera contenido con `next/og` para los iconos PWA (`src/app/icon.tsx`, `src/lib/app-icon.tsx`) — mismo patrón aplicado a `app/u/[username]/opengraph-image.tsx`.
+- Favoritos fijados requiere un cambio pequeño de esquema (marcar N filas de `library_entries` como destacadas, p. ej. un campo `pinned_order`), mismo RLS que ya existe.
+
+### 7.10 Retos de lectura/visionado anuales
+- Objetivo tipo "50 libros en 2026" con barra de progreso, calculado sobre `diary_entries`/`library_entries` que ya se registran.
+
+### 7.11 Estantería "Ahora mismo"
+- Acceso rápido a los ítems en estado `in_progress`, mostrando la página/episodio actual (`position`, ya modelado). Pensado como atajo al bucle de uso diario, posiblemente en el home.
+
+### 7.12 Buscar y ordenar dentro de tu propia biblioteca
+- Hoy "Mi biblioteca" filtra por tipo/estado pero no permite buscar por texto ni ordenar por rating/fecha/título — se nota en cuanto la biblioteca crece.
+
+### 7.13 Recuento de relecturas visible
+- Mostrar en la tarjeta de cada ítem "leído/visto N veces", contando `diary_entries` — dato que ya se registra, falta solo mostrarlo.
+
+### 7.14 Otras ideas ya registradas
+- "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
+- Comparar bibliotecas entre dos perfiles (solape de ítems) — vía social ligera sin construir seguidores completos.
+- Guardar citas/frases favoritas de un libro.
 - Sistema de seguidores + feed de actividad.
-- Estadísticas y gráficos de hábitos.
-- Offline-first completo.
-- Listas curadas y colecciones temáticas.
+- Estadísticas y gráficos de hábitos generales (ítems por tipo/estado, actividad del diario por mes).
+- Offline-first completo (edición sin conexión + sincronización posterior).
+- Listas curadas y colecciones temáticas (ver 7.4).
 - Integración con más fuentes (videojuegos vía IGDB, música, etc.) — encaja con la idea original de "biblioteca de tus hobbies".
+
+### 7.15 Deuda del MVP pendiente
+- **Añadir un ítem manualmente** (§4.2): comprometido como *must del MVP* en el registro de decisiones, pero aún sin implementar — hoy solo se puede añadir vía búsqueda en la API.
 
 ## 8. Decisiones registradas
 
