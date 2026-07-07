@@ -188,7 +188,17 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 - Listas curadas y colecciones temáticas (ver 7.4).
 - Integración con más fuentes (videojuegos vía IGDB, música, etc.) — encaja con la idea original de "biblioteca de tus hobbies".
 
-### 7.15 Deuda del MVP pendiente
+### 7.16 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
+Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales.
+
+- **Gap de modelo real, no solo de UI**: hoy no existe forma de saber "¿qué avancé el martes?". `library_entries.position` solo guarda el punto *actual* (ej. página 240, sin historial), y `diary_entries` solo registra el *pase completo* (fecha inicio/fin de una relectura entera). Ninguno de los dos permite reconstruir actividad día a día. Hace falta una tabla nueva, algo como `progress_sessions`: `library_entry_id`, `date`, delta de progreso (páginas leídas / episodios avanzados ese día), y opcionalmente minutos dedicados. Es la pieza fundacional; las 4 pantallas de abajo son vistas sobre estos datos.
+- **Estadísticas diarias**: tira de días de la semana (con indicador de actividad por día) + objetivo diario configurable (ej. "30 min") con progreso circular, y detalle del día: rango de páginas leídas, minutos, páginas/minuto. Implica añadir un objetivo diario a `profiles` o una tabla de settings, y decidir si el tiempo se **introduce a mano** (como parece en la captura, "Has leído 5 min") o con un cronómetro en la app — la primera es mucho más barata.
+- **Calendario mensual**: grid de días del mes con la portada del ítem en los días que tuvo actividad — lectura directa de `progress_sessions` agrupada por día.
+- **Rachas**: racha actual y mejor racha (días consecutivos con al menos una sesión de progreso en cualquier ítem), con su propio calendario de resaltado. Cálculo derivado (días consecutivos con `progress_sessions`), no necesita tabla propia más allá de la sesión diaria.
+- **Estadísticas anuales**: gráfico de barras de libros/ítems completados por mes + objetivo anual (ej. "30 libros") con progreso circular. El objetivo anual es otro campo de configuración por usuario; el conteo por mes puede salir de `diary_entries.finished_on` (pases completados) sin necesitar `progress_sessions`.
+- **A definir cuando se aborde**: si esto aplica solo a libros o también a películas/series (para video, "página" no tiene sentido pero "minutos vistos" o "episodios avanzados" sí); si el objetivo diario/anual es un único valor global o por tipo de ítem; UX de introducir el progreso diario (¿un botón rápido "+X páginas hoy" sobre el `ProgressPanel` ya existente, o un flujo dedicado?).
+
+### 7.17 Deuda del MVP pendiente
 - **Añadir un ítem manualmente** (§4.2): comprometido como *must del MVP* en el registro de decisiones, pero aún sin implementar — hoy solo se puede añadir vía búsqueda en la API.
 
 ## 8. Decisiones registradas
