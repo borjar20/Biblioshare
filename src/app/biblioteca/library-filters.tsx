@@ -22,9 +22,11 @@ function pillClass(active: boolean) {
 export async function LibraryFilters({
   itemType,
   status,
+  basePath = "/biblioteca",
 }: {
   itemType?: ItemType;
   status?: MediaStatus;
+  basePath?: string;
 }) {
   const t = await getTranslations();
 
@@ -35,7 +37,7 @@ export async function LibraryFilters({
     if (nextType) params.set("type", nextType);
     if (nextStatus) params.set("status", nextStatus);
     const qs = params.toString();
-    return `/biblioteca${qs ? `?${qs}` : ""}`;
+    return `${basePath}${qs ? `?${qs}` : ""}`;
   }
 
   return (

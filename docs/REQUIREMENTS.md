@@ -109,11 +109,13 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 - [x] Migración: crear tabla `profiles` (con `username` único, `is_public`).
 - [x] Migración: modelo de progreso unificado `library_entries` con RLS de lectura pública según `profiles.is_public`.
 - [x] Migración: `diary_entries` para relecturas/re-visionados.
-- [ ] Elegir e integrar librería de i18n para App Router (p. ej. `next-intl`) al construir las primeras pantallas.
-- [ ] Definir clave de TMDB API (Google Books no requiere key para uso básico; TMDB sí — pendiente de generar y guardar como variable de entorno, nunca en el repo).
-- [ ] Diseñar el service worker / estrategia de cache para el modo offline de solo lectura.
-- [ ] Definir flujo de onboarding (elección de `username` tras el primer login).
+- [x] Elegir e integrar librería de i18n para App Router (`next-intl`).
+- [x] Definir clave de TMDB API (variable de entorno, no comprometida en el repo).
+- [x] Diseñar el service worker / estrategia de cache para el modo offline de solo lectura.
+- [x] Definir flujo de onboarding (elección de `username` tras el primer login).
+- [x] Página de perfil público `/u/[username]` con toggle de visibilidad público/privado.
 - [ ] Definir helpers/tipos de la capa de dominio para `position` (JSONB) por tipo de ítem.
+- [ ] UI del diario de pases (relecturas/re-visionados) — el esquema ya existe.
 
 ## 7. Backlog / ideas para v2 (no comprometidas)
 

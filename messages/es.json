@@ -63,6 +63,16 @@
     "empty": "Escribe algo para buscar.",
     "noResults": "No se encontraron resultados."
   },
+  "profile": {
+    "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
+    "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",
+    "visibilityPrivate": "Tu perfil es privado. Solo tú puedes verla.",
+    "makePublic": "Hacer público",
+    "makePrivate": "Hacer privado",
+    "notFoundTitle": "Perfil no encontrado",
+    "notFoundDescription": "Este perfil no existe o es privado.",
+    "backHome": "Ir al inicio"
+  },
   "offline": {
     "title": "Sin conexión",
     "description": "No se pudo cargar esta página porque no tienes conexión. Podrás verla en cuanto vuelvas a estar en línea; mientras tanto puedes seguir navegando lo que ya cargaste antes.",

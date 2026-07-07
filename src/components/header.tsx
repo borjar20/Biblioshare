@@ -10,6 +10,16 @@ export async function Header() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let username: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    username = profile?.username ?? null;
+  }
+
   return (
     <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
       <div className="flex items-center gap-6">
@@ -24,6 +34,11 @@ export async function Header() {
             <Link href="/biblioteca" className="hover:text-foreground">
               {t("library.title")}
             </Link>
+            {username && (
+              <Link href={`/u/${username}`} className="hover:text-foreground">
+                @{username}
+              </Link>
+            )}
           </nav>
         )}
       </div>
