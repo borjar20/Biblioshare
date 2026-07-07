@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(\\(Get-Command node\\).Source; \\(Get-Command npm\\).Source)"
+      "PowerShell(\\(Get-Command node\\).Source; \\(Get-Command npm\\).Source)",
+      "mcp__mcp-registry__search_mcp_registry"
     ]
   }
 }
