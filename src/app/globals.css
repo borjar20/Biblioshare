@@ -4,6 +4,8 @@
    system preference. Set by the inline theme script + ThemeToggle. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Buttons swap: each mode's accent is the *other* mode's page background,
+   and accent-foreground is always its own mode's page background. */
 :root {
   --background: #ffacfd;
   --surface: #fffbfe;
@@ -12,9 +14,9 @@
   --muted-foreground: #7a5f78;
   --border: rgba(31, 20, 32, 0.14);
 
-  --accent: #6366f1;
-  --accent-foreground: #ffffff;
-  --accent-hover: #4f46e5;
+  --accent: #2c002b;
+  --accent-foreground: #ffacfd;
+  --accent-hover: #451044;
 
   --status-planned: #a1a1aa;
   --status-in-progress: #6366f1;
@@ -23,18 +25,18 @@
 }
 
 .dark {
-  --background: #09090b;
-  --surface: #18181b;
-  --surface-muted: #131316;
-  --foreground: #fafafa;
-  --muted-foreground: #a1a1aa;
-  --border: #27272a;
+  --background: #2c002b;
+  --surface: #3d0a3c;
+  --surface-muted: #240021;
+  --foreground: #fbe9fb;
+  --muted-foreground: #c9a0c8;
+  --border: rgba(255, 233, 252, 0.14);
 
-  --accent: #818cf8;
-  --accent-foreground: #09090b;
-  --accent-hover: #a5b4fc;
+  --accent: #ffacfd;
+  --accent-foreground: #2c002b;
+  --accent-hover: #ff8ff9;
 
-  --status-planned: #71717a;
+  --status-planned: #9c7f9b;
   --status-in-progress: #818cf8;
   --status-completed: #34d399;
   --status-dropped: #fb7185;
@@ -42,18 +44,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
-    --background: #09090b;
-    --surface: #18181b;
-    --surface-muted: #131316;
-    --foreground: #fafafa;
-    --muted-foreground: #a1a1aa;
-    --border: #27272a;
+    --background: #2c002b;
+    --surface: #3d0a3c;
+    --surface-muted: #240021;
+    --foreground: #fbe9fb;
+    --muted-foreground: #c9a0c8;
+    --border: rgba(255, 233, 252, 0.14);
 
-    --accent: #818cf8;
-    --accent-foreground: #09090b;
-    --accent-hover: #a5b4fc;
+    --accent: #ffacfd;
+    --accent-foreground: #2c002b;
+    --accent-hover: #ff8ff9;
 
-    --status-planned: #71717a;
+    --status-planned: #9c7f9b;
     --status-in-progress: #818cf8;
     --status-completed: #34d399;
     --status-dropped: #fb7185;
