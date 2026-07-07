@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { LibraryItem, MediaStatus } from "@/lib/library/types";
 import { updateStatus, removeFromLibrary } from "./actions";
+import { DiaryPanel } from "./diary-panel";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -70,6 +71,8 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
       >
         {t("remove")}
       </button>
+
+      <DiaryPanel libraryEntryId={item.entryId} />
     </div>
   );
 }

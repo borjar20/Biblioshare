@@ -115,7 +115,7 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 - [x] Definir flujo de onboarding (elección de `username` tras el primer login).
 - [x] Página de perfil público `/u/[username]` con toggle de visibilidad público/privado.
 - [ ] Definir helpers/tipos de la capa de dominio para `position` (JSONB) por tipo de ítem.
-- [ ] UI del diario de pases (relecturas/re-visionados) — el esquema ya existe.
+- [x] UI del diario de pases (relecturas/re-visionados) en "Mi biblioteca".
 
 ## 7. Backlog / ideas para v2 (no comprometidas)
 

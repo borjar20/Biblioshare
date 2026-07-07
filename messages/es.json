@@ -63,6 +63,22 @@
     "empty": "Escribe algo para buscar.",
     "noResults": "No se encontraron resultados."
   },
+  "diary": {
+    "show": "Ver diario",
+    "hide": "Ocultar diario",
+    "loading": "Cargando...",
+    "empty": "Todavía no hay pases registrados.",
+    "finishedOn": "Fecha",
+    "rating": "Valoración (1-10)",
+    "review": "Reseña",
+    "submit": "Registrar pase",
+    "submitting": "Guardando...",
+    "delete": "Eliminar",
+    "errors": {
+      "invalidRating": "La valoración debe ser un número entre 1 y 10.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
   "profile": {
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
     "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",
