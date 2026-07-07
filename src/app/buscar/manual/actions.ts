@@ -1,0 +1,63 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import type { ItemType } from "@/lib/catalog/types";
+
+export type AddManualItemState = {
+  error?: "titleRequired" | "generic";
+};
+
+const TABLE_BY_TYPE = {
+  book: "books",
+  movie: "movies",
+  series: "series",
+} as const;
+
+export async function addManualItem(
+  itemType: ItemType,
+  _prevState: AddManualItemState,
+  formData: FormData
+): Promise<AddManualItemState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { error: "titleRequired" };
+
+  const creator = String(formData.get("creator") ?? "").trim() || null;
+  const yearRaw = String(formData.get("year") ?? "").trim();
+  const year = yearRaw ? Number(yearRaw) : null;
+  const coverUrl = String(formData.get("coverUrl") ?? "").trim() || null;
+
+  const table = TABLE_BY_TYPE[itemType];
+  const payload =
+    itemType === "book"
+      ? { title, author: creator, published_year: year, cover_url: coverUrl }
+      : itemType === "movie"
+        ? { title, director: creator, release_year: year, cover_url: coverUrl }
+        : { title, creator, release_year: year, cover_url: coverUrl };
+
+  // Insert shape differs per item type (picked above); same reconciliation
+  // pattern as findOrCreateCatalogItem in ../actions.ts.
+  const { data: inserted, error } = await supabase
+    .from(table)
+    .insert(payload as never)
+    .select("id")
+    .single();
+
+  if (error) return { error: "generic" };
+
+  const { error: libraryError } = await supabase.from("library_entries").insert({
+    user_id: user.id,
+    item_type: itemType,
+    item_id: inserted.id,
+  });
+
+  if (libraryError) return { error: "generic" };
+
+  redirect("/biblioteca");
+}

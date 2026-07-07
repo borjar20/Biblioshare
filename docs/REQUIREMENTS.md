@@ -116,6 +116,7 @@ Estas ideas se guardan para una v2, no se implementan ahora:
 - [x] Página de perfil público `/u/[username]` con toggle de visibilidad público/privado.
 - [x] Definir helpers/tipos de la capa de dominio para `position` (JSONB) por tipo de ítem, con UI de edición de rating/progreso/notas en "Mi biblioteca".
 - [x] UI del diario de pases (relecturas/re-visionados) en "Mi biblioteca".
+- [x] Flujo de "añadir ítem manualmente" (`/buscar/manual`) sin depender de la API externa — cierra §4.2.
 
 ## 7. Backlog / ideas para v2 (no comprometidas)
 
@@ -199,7 +200,7 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 - **A definir cuando se aborde**: si esto aplica solo a libros o también a películas/series (para video, "página" no tiene sentido pero "minutos vistos" o "episodios avanzados" sí); si el objetivo diario/anual es un único valor global o por tipo de ítem; UX de introducir el progreso diario (¿un botón rápido "+X páginas hoy" sobre el `ProgressPanel` ya existente, o un flujo dedicado?).
 
 ### 7.17 Deuda del MVP pendiente
-- **Añadir un ítem manualmente** (§4.2): comprometido como *must del MVP* en el registro de decisiones, pero aún sin implementar — hoy solo se puede añadir vía búsqueda en la API.
+- ~~Añadir un ítem manualmente~~ — **hecho**: `/buscar/manual`, ver §4.2 y §6.
 
 ## 8. Decisiones registradas
 

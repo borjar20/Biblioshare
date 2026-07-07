@@ -61,7 +61,26 @@
     "adding": "Añadiendo...",
     "added": "En tu biblioteca",
     "empty": "Escribe algo para buscar.",
-    "noResults": "No se encontraron resultados."
+    "noResults": "No se encontraron resultados.",
+    "manual": {
+      "link": "¿No lo encuentras? Añádelo manualmente",
+      "title": "Añadir manualmente",
+      "titleField": "Título",
+      "creator": {
+        "book": "Autor",
+        "movie": "Director",
+        "series": "Creador"
+      },
+      "year": "Año",
+      "coverUrl": "URL de la portada",
+      "coverUrlHint": "Opcional. Enlace directo a una imagen.",
+      "submit": "Añadir a mi biblioteca",
+      "submitting": "Añadiendo...",
+      "errors": {
+        "titleRequired": "El título es obligatorio.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    }
   },
   "diary": {
     "show": "Ver diario",

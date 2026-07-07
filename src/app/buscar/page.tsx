@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { searchCatalog } from "@/lib/catalog/search";
 import type { ItemType } from "@/lib/catalog/types";
@@ -49,6 +50,13 @@ export default async function SearchPage({
           ))}
         </div>
       )}
+
+      <Link
+        href={`/buscar/manual?type=${itemType}`}
+        className="self-start text-sm text-muted-foreground underline hover:text-foreground"
+      >
+        {t("manual.link")}
+      </Link>
     </div>
   );
 }
