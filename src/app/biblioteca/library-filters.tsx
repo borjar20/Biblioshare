@@ -23,15 +23,19 @@ export async function LibraryFilters({
   itemType,
   status,
   basePath = "/biblioteca",
+  showTypeFilter = true,
+  extraParams,
 }: {
   itemType?: ItemType;
   status?: MediaStatus;
   basePath?: string;
+  showTypeFilter?: boolean;
+  extraParams?: Record<string, string>;
 }) {
   const t = await getTranslations();
 
   function buildHref(next: { type?: ItemType; status?: MediaStatus }) {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(extraParams);
     const nextType = "type" in next ? next.type : itemType;
     const nextStatus = "status" in next ? next.status : status;
     if (nextType) params.set("type", nextType);
@@ -42,20 +46,22 @@ export async function LibraryFilters({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
-        <Link href={buildHref({ type: undefined })} className={pillClass(!itemType)}>
-          {t("library.filters.allTypes")}
-        </Link>
-        {TYPES.map((type) => (
-          <Link
-            key={type}
-            href={buildHref({ type })}
-            className={pillClass(itemType === type)}
-          >
-            {t(`search.types.${type}`)}
+      {showTypeFilter && (
+        <div className="flex flex-wrap gap-2">
+          <Link href={buildHref({ type: undefined })} className={pillClass(!itemType)}>
+            {t("library.filters.allTypes")}
           </Link>
-        ))}
-      </div>
+          {TYPES.map((type) => (
+            <Link
+              key={type}
+              href={buildHref({ type })}
+              className={pillClass(itemType === type)}
+            >
+              {t(`search.types.${type}`)}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Link

@@ -65,8 +65,6 @@
     "noResults": "No se encontraron resultados.",
     "scan": {
       "button": "Escanear código de barras",
-      "close": "Cancelar",
-      "unsupported": "Tu navegador no soporta el escaneo de códigos de barras. Escribe el ISBN manualmente.",
       "cameraDenied": "No se pudo acceder a la cámara. Comprueba los permisos o escribe el ISBN manualmente."
     },
     "manual": {
@@ -118,7 +116,35 @@
     "makePrivate": "Hacer privado",
     "notFoundTitle": "Perfil no encontrado",
     "notFoundDescription": "Este perfil no existe o es privado.",
-    "backHome": "Ir al inicio"
+    "backHome": "Ir al inicio",
+    "statsBooks": "{count, plural, =0 {0 libros} one {1 libro} other {# libros}}",
+    "statsSeries": "{count, plural, =0 {0 series} one {1 serie} other {# series}}",
+    "statsFilms": "{count, plural, =0 {0 películas} one {1 película} other {# películas}}",
+    "memberSince": "Desde {year}",
+    "nowConsuming": "Ahora mismo",
+    "activityTitle": "Actividad",
+    "activityEmpty": "Todavía no hay pases registrados en el diario.",
+    "typeBooks": "Libros",
+    "typeSeries": "Series",
+    "typeFilms": "Películas",
+    "recentlyUpdated": "Actualizado recientemente",
+    "editProfile": "Editar perfil",
+    "displayName": "Nombre",
+    "avatarUrl": "URL del avatar",
+    "avatarUrlHint": "Opcional. Enlace directo a una imagen.",
+    "bio": "Biografía",
+    "editSubmit": "Guardar",
+    "editSubmitting": "Guardando...",
+    "editCancel": "Cancelar",
+    "errors": {
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "tabs": {
+      "overview": "General",
+      "book": "Libros",
+      "movie": "Películas",
+      "series": "Series"
+    }
   },
   "item": {
     "pages": "págs.",
@@ -139,6 +165,7 @@
     "title": "Mi biblioteca",
     "empty": "Aún no has añadido nada a tu biblioteca.",
     "emptyCta": "Buscar algo",
+    "recentlyUpdated": "Actualizado recientemente",
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados"

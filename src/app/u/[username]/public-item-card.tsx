@@ -3,10 +3,13 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { LibraryItem } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { getProgress } from "@/lib/library/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 export async function PublicItemCard({ item }: { item: LibraryItem }) {
   const t = await getTranslations("library");
+  const progress = getProgress(item);
 
   return (
     <div className="flex flex-col gap-2">
@@ -25,6 +28,9 @@ export async function PublicItemCard({ item }: { item: LibraryItem }) {
               {item.title}
             </div>
           )}
+          <div className="absolute right-1.5 top-1.5">
+            <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
+          </div>
         </div>
 
         <span className="line-clamp-2 text-sm font-medium text-foreground">
@@ -45,7 +51,7 @@ export async function PublicItemCard({ item }: { item: LibraryItem }) {
               .join(" · ")}
           </span>
         )}
-        <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
+        {progress && <ProgressBar current={progress.current} total={progress.total} label={progress.label} />}
       </div>
     </div>
   );

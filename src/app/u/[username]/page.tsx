@@ -4,13 +4,19 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileByUsername } from "@/lib/profile/get-profile-by-username";
 import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getLibraryStats } from "@/lib/library/get-library-stats";
+import { getMonthlyActivity } from "@/lib/diary/get-monthly-activity";
 import { LibraryFilters } from "@/app/biblioteca/library-filters";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
+import { ProfileHeader } from "@/components/profile-header";
+import { SectionTabs, type SectionTab } from "@/components/section-tabs";
+import { NowConsuming } from "@/components/now-consuming";
+import { ActivityChart } from "@/components/activity-chart";
 import { PublicItemCard } from "./public-item-card";
 import { VisibilityToggle } from "./visibility-toggle";
 
-const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
+const VALID_TABS: SectionTab[] = ["overview", "book", "movie", "series"];
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
   "in_progress",
@@ -32,13 +38,13 @@ export default async function PublicProfilePage({
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ type?: string; status?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string }>;
 }) {
   const { username } = await params;
   const parsedParams = await searchParams;
-  const itemType = VALID_TYPES.includes(parsedParams.type as ItemType)
-    ? (parsedParams.type as ItemType)
-    : undefined;
+  const tab: SectionTab = VALID_TABS.includes(parsedParams.tab as SectionTab)
+    ? (parsedParams.tab as SectionTab)
+    : "overview";
   const status = VALID_STATUSES.includes(parsedParams.status as MediaStatus)
     ? (parsedParams.status as MediaStatus)
     : undefined;
@@ -56,37 +62,64 @@ export default async function PublicProfilePage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.userId;
-  const items = await getLibraryItems(supabase, profile.userId, {
-    itemType,
-    status,
-  });
+  const basePath = `/u/${profile.username}`;
+  const itemType: ItemType | undefined = tab === "overview" ? undefined : tab;
+
+  const [items, stats, inProgress, months] = await Promise.all([
+    tab === "overview"
+      ? getLibraryItems(supabase, profile.userId, {})
+      : getLibraryItems(supabase, profile.userId, { itemType, status }),
+    getLibraryStats(supabase, profile.userId),
+    tab === "overview"
+      ? getLibraryItems(supabase, profile.userId, { status: "in_progress" })
+      : Promise.resolve([]),
+    tab === "overview"
+      ? getMonthlyActivity(supabase, profile.userId)
+      : Promise.resolve([]),
+  ]);
+
+  const gridItems = tab === "overview" ? items.slice(0, 6) : items;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          @{profile.username}
-        </h1>
-        {isOwner && (
-          <VisibilityToggle username={profile.username} isPublic={profile.isPublic} />
-        )}
-      </div>
+      <ProfileHeader profile={profile} stats={stats} isOwner={isOwner} />
 
-      <LibraryFilters
-        itemType={itemType}
-        status={status}
-        basePath={`/u/${profile.username}`}
-      />
-
-      {items.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+      {isOwner && (
+        <VisibilityToggle username={profile.username} isPublic={profile.isPublic} />
       )}
 
-      {items.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {items.map((item) => (
-            <PublicItemCard key={item.entryId} item={item} />
-          ))}
+      <SectionTabs active={tab} basePath={basePath} />
+
+      {tab === "overview" && (
+        <>
+          <NowConsuming items={inProgress} />
+          <ActivityChart months={months} />
+        </>
+      )}
+
+      {tab !== "overview" && (
+        <LibraryFilters
+          status={status}
+          basePath={basePath}
+          showTypeFilter={false}
+          extraParams={{ tab }}
+        />
+      )}
+
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {tab === "overview" && (
+            <h2 className="text-lg font-semibold tracking-tight">
+              {t("recentlyUpdated")}
+            </h2>
+          )}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {gridItems.map((item) => (
+              <PublicItemCard key={item.entryId} item={item} />
+            ))}
+          </div>
         </div>
       )}
     </div>

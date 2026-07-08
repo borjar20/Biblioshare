@@ -17,4 +17,6 @@ export type LibraryItem = {
   // Book-only metadata (null for movies/series). See docs/REQUIREMENTS.md §7.1.
   publisher: string | null;
   pageCount: number | null;
+  // Series-only metadata (null otherwise): total episode count, for progress bars.
+  totalEpisodes: number | null;
 };

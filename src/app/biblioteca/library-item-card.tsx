@@ -6,6 +6,9 @@ import { useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { LibraryItem, MediaStatus } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { getProgress } from "@/lib/library/progress";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { updateStatus, removeFromLibrary } from "./actions";
 import { DiaryPanel } from "./diary-panel";
 import { ProgressPanel } from "./progress-panel";
@@ -20,6 +23,7 @@ const STATUSES: MediaStatus[] = [
 export function LibraryItemCard({ item }: { item: LibraryItem }) {
   const t = useTranslations("library");
   const [isPending, startTransition] = useTransition();
+  const progress = getProgress(item);
 
   return (
     <div className="flex flex-col gap-2">
@@ -38,6 +42,9 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
               {item.title}
             </div>
           )}
+          <div className="absolute right-1.5 top-1.5">
+            <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
+          </div>
         </div>
 
         <span className="line-clamp-2 text-sm font-medium text-foreground">
@@ -45,7 +52,7 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
         </span>
       </Link>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-1">
         {item.subtitle && (
           <span className="line-clamp-1 text-xs text-muted-foreground">
             {item.subtitle}
@@ -58,6 +65,7 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
               .join(" · ")}
           </span>
         )}
+        {progress && <ProgressBar current={progress.current} total={progress.total} label={progress.label} />}
       </div>
 
       <select
