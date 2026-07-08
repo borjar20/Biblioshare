@@ -195,6 +195,35 @@
       "generic": "Algo salió mal. Inténtalo de nuevo."
     }
   },
+  "stats": {
+    "navLabel": "Estadísticas",
+    "title": "Tus estadísticas",
+    "weeklyTitle": "Esta semana",
+    "minutesCount": "{count} min",
+    "todayGoal": "Hoy · objetivo {goal} min",
+    "todayNoGoal": "Hoy",
+    "streakTitle": "Rachas",
+    "currentStreak": "{count, plural, =1 {día seguido} other {días seguidos}}",
+    "bestStreak": "Mejor racha ({count, plural, =1 {1 día} other {# días}})",
+    "calendarTitle": "Calendario",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "annualTitle": "Completados en {year}",
+    "completedCount": "{count, plural, =1 {1 completado} other {# completados}}",
+    "annualGoal": "de {goal} este año",
+    "annualTotal": "completados este año",
+    "goalsTitle": "Objetivos",
+    "dailyGoal": "Objetivo diario (min)",
+    "dailyGoalHint": "Minutos de lectura/visionado al día. Vacío = sin objetivo.",
+    "annualGoalField": "Objetivo anual (ítems)",
+    "annualGoalHint": "Ítems completados en el año. Vacío = sin objetivo.",
+    "saveGoals": "Guardar objetivos",
+    "savingGoals": "Guardando...",
+    "errors": {
+      "invalidGoal": "Los objetivos deben ser números enteros positivos.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
   "offline": {
     "title": "Sin conexión",
     "description": "No se pudo cargar esta página porque no tienes conexión. Podrás verla en cuanto vuelvas a estar en línea; mientras tanto puedes seguir navegando lo que ya cargaste antes.",

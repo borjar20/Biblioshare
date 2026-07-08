@@ -10,10 +10,13 @@ export type Profile = {
   avatarUrl: string | null;
   bio: string | null;
   createdAt: string;
+  // Optional stats goals (docs/REQUIREMENTS.md §7.14).
+  dailyGoalMinutes: number | null;
+  annualGoalItems: number | null;
 };
 
 const PROFILE_COLUMNS =
-  "user_id, username, is_public, display_name, avatar_url, bio, created_at";
+  "user_id, username, is_public, display_name, avatar_url, bio, created_at, daily_goal_minutes, annual_goal_items";
 
 function toProfile(data: {
   user_id: string;
@@ -23,6 +26,8 @@ function toProfile(data: {
   avatar_url: string | null;
   bio: string | null;
   created_at: string;
+  daily_goal_minutes: number | null;
+  annual_goal_items: number | null;
 }): Profile {
   return {
     userId: data.user_id,
@@ -32,6 +37,8 @@ function toProfile(data: {
     avatarUrl: data.avatar_url,
     bio: data.bio,
     createdAt: data.created_at,
+    dailyGoalMinutes: data.daily_goal_minutes,
+    annualGoalItems: data.annual_goal_items,
   };
 }
 

@@ -189,9 +189,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          annual_goal_items: number | null
           avatar_url: string | null
           bio: string | null
           created_at: string
+          daily_goal_minutes: number | null
           display_name: string | null
           is_public: boolean
           updated_at: string
@@ -199,9 +201,11 @@ export type Database = {
           username: string
         }
         Insert: {
+          annual_goal_items?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          daily_goal_minutes?: number | null
           display_name?: string | null
           is_public?: boolean
           updated_at?: string
@@ -209,9 +213,11 @@ export type Database = {
           username: string
         }
         Update: {
+          annual_goal_items?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          daily_goal_minutes?: number | null
           display_name?: string | null
           is_public?: boolean
           updated_at?: string

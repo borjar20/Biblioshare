@@ -37,3 +37,46 @@ export async function updateProfile(
   revalidatePath(`/u/${username}`);
   return {};
 }
+
+export type UpdateGoalsState = {
+  error?: "invalidGoal" | "generic";
+};
+
+// Optional stats goals (§7.14): empty input clears the goal (NULL).
+function parseGoal(raw: string): number | null | "invalid" {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const value = Number(trimmed);
+  if (!Number.isInteger(value) || value < 0) return "invalid";
+  return value;
+}
+
+export async function updateGoals(
+  _prevState: UpdateGoalsState,
+  formData: FormData
+): Promise<UpdateGoalsState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const dailyGoal = parseGoal(String(formData.get("dailyGoalMinutes") ?? ""));
+  const annualGoal = parseGoal(String(formData.get("annualGoalItems") ?? ""));
+  if (dailyGoal === "invalid" || annualGoal === "invalid") {
+    return { error: "invalidGoal" };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      daily_goal_minutes: dailyGoal,
+      annual_goal_items: annualGoal,
+    })
+    .eq("user_id", user.id);
+
+  if (error) return { error: "generic" };
+
+  revalidatePath("/estadisticas");
+  return {};
+}

@@ -31,6 +31,9 @@ export async function Header() {
             <Link href="/buscar" className="hover:text-foreground">
               {t("search.title")}
             </Link>
+            <Link href="/estadisticas" className="hover:text-foreground">
+              {t("stats.navLabel")}
+            </Link>
             {username && (
               <Link href={`/u/${username}`} className="hover:text-foreground">
                 @{username}
