@@ -1,0 +1,159 @@
+{
+  "common": {
+    "appName": "Biblioshare",
+    "loading": "Cargando..."
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Entrar",
+      "submitting": "Entrando...",
+      "noAccount": "¿No tienes cuenta?",
+      "signupLink": "Regístrate"
+    },
+    "signup": {
+      "title": "Crear cuenta",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta...",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "loginLink": "Inicia sesión",
+      "checkEmail": "Revisa tu correo para confirmar la cuenta antes de iniciar sesión."
+    },
+    "errors": {
+      "invalidCredentials": "Correo o contraseña incorrectos.",
+      "emailInUse": "Ya existe una cuenta con ese correo.",
+      "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "logout": "Cerrar sesión"
+  },
+  "onboarding": {
+    "title": "Elige tu nombre de usuario",
+    "description": "Este será tu identificador público en Biblioshare (ej: biblioshare.app/u/tu-usuario).",
+    "username": "Nombre de usuario",
+    "usernameHint": "Solo minúsculas, números y guiones bajos. Entre 3 y 30 caracteres.",
+    "submit": "Continuar",
+    "submitting": "Guardando...",
+    "errors": {
+      "usernameTaken": "Ese nombre de usuario ya está en uso.",
+      "usernameInvalid": "El nombre de usuario no es válido.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "home": {
+    "tagline": "Tu biblioteca de libros, películas y series en un solo lugar.",
+    "cta": "Empezar"
+  },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Busca un título...",
+    "submit": "Buscar",
+    "types": {
+      "book": "Libros",
+      "movie": "Películas",
+      "series": "Series"
+    },
+    "add": "Añadir",
+    "adding": "Añadiendo...",
+    "added": "En tu biblioteca",
+    "empty": "Escribe algo para buscar.",
+    "noResults": "No se encontraron resultados.",
+    "manual": {
+      "link": "¿No lo encuentras? Añádelo manualmente",
+      "title": "Añadir manualmente",
+      "titleField": "Título",
+      "creator": {
+        "book": "Autor",
+        "movie": "Director",
+        "series": "Creador"
+      },
+      "year": "Año",
+      "publisher": "Editorial",
+      "pageCount": "Nº de páginas",
+      "coverUrl": "URL de la portada",
+      "coverUrlHint": "Opcional. Enlace directo a una imagen.",
+      "submit": "Añadir a mi biblioteca",
+      "submitting": "Añadiendo...",
+      "errors": {
+        "titleRequired": "El título es obligatorio.",
+        "invalidPageCount": "El número de páginas no es válido.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    }
+  },
+  "diary": {
+    "show": "Ver diario",
+    "hide": "Ocultar diario",
+    "loading": "Cargando...",
+    "empty": "Todavía no hay pases registrados.",
+    "finishedOn": "Fecha",
+    "rating": "Valoración (1-10)",
+    "review": "Reseña",
+    "submit": "Registrar pase",
+    "submitting": "Guardando...",
+    "delete": "Eliminar",
+    "errors": {
+      "invalidRating": "La valoración debe ser un número entre 1 y 10.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "profile": {
+    "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
+    "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",
+    "visibilityPrivate": "Tu perfil es privado. Solo tú puedes verla.",
+    "makePublic": "Hacer público",
+    "makePrivate": "Hacer privado",
+    "notFoundTitle": "Perfil no encontrado",
+    "notFoundDescription": "Este perfil no existe o es privado.",
+    "backHome": "Ir al inicio"
+  },
+  "offline": {
+    "title": "Sin conexión",
+    "description": "No se pudo cargar esta página porque no tienes conexión. Podrás verla en cuanto vuelvas a estar en línea; mientras tanto puedes seguir navegando lo que ya cargaste antes.",
+    "retry": "Reintentar",
+    "backHome": "Ir al inicio"
+  },
+  "library": {
+    "title": "Mi biblioteca",
+    "empty": "Aún no has añadido nada a tu biblioteca.",
+    "emptyCta": "Buscar algo",
+    "filters": {
+      "allTypes": "Todo",
+      "allStatuses": "Todos los estados"
+    },
+    "status": {
+      "planned": "Pendiente",
+      "in_progress": "En curso",
+      "completed": "Completado",
+      "dropped": "Abandonado"
+    },
+    "remove": "Quitar",
+    "progress": {
+      "show": "Editar progreso",
+      "hide": "Ocultar",
+      "rating": "Valoración (1-10)",
+      "page": "Página actual",
+      "format": "Encuadernación",
+      "formatNone": "Sin especificar",
+      "formats": {
+        "paperback": "Bolsillo",
+        "softcover": "Tapa blanda",
+        "hardcover": "Tapa dura"
+      },
+      "season": "Temporada",
+      "episode": "Episodio",
+      "notes": "Notas",
+      "submit": "Guardar",
+      "submitting": "Guardando...",
+      "errors": {
+        "invalidRating": "La valoración debe ser un número entre 1 y 10.",
+        "invalidPosition": "El progreso introducido no es válido.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    }
+  }
+}

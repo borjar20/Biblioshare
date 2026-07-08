@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const AUTH_PATHS = ["/login", "/signup"];
+const ONBOARDING_PATH = "/onboarding";
+const PROTECTED_PATHS = ["/biblioteca"];
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -26,7 +30,39 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refreshes the auth token if expired; required for Server Components to read a valid session.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  if (!user) {
+    if (pathname === ONBOARDING_PATH || PROTECTED_PATHS.includes(pathname)) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return response;
+  }
+
+  // Logged in: figure out whether onboarding (username selection) is done.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const hasProfile = profile !== null;
+
+  if (!hasProfile && pathname !== ONBOARDING_PATH) {
+    return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
+  }
+
+  if (hasProfile && pathname === ONBOARDING_PATH) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (hasProfile && AUTH_PATHS.includes(pathname)) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   return response;
 }

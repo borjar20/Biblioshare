@@ -24,6 +24,7 @@ export type Database = {
           id: string
           isbn: string | null
           published_year: number | null
+          publisher: string | null
           synopsis: string | null
           title: string
           total_pages: number | null
@@ -37,6 +38,7 @@ export type Database = {
           id?: string
           isbn?: string | null
           published_year?: number | null
+          publisher?: string | null
           synopsis?: string | null
           title: string
           total_pages?: number | null
@@ -50,6 +52,7 @@ export type Database = {
           id?: string
           isbn?: string | null
           published_year?: number | null
+          publisher?: string | null
           synopsis?: string | null
           title?: string
           total_pages?: number | null
