@@ -11,6 +11,7 @@ type CatalogMeta = {
   subtitle: string | null;
   publisher: string | null;
   pageCount: number | null;
+  totalEpisodes: number | null;
 };
 
 export async function getLibraryItems(
@@ -58,7 +59,7 @@ export async function getLibraryItems(
     idsByType.series.length
       ? supabase
           .from("series")
-          .select("id, title, cover_url")
+          .select("id, title, cover_url, total_episodes")
           .in("id", idsByType.series)
       : Promise.resolve({ data: [] }),
   ]);
@@ -70,6 +71,7 @@ export async function getLibraryItems(
       subtitle: row.author,
       publisher: row.publisher,
       pageCount: row.total_pages,
+      totalEpisodes: null,
     });
   }
   for (const row of movies.data ?? []) {
@@ -79,6 +81,7 @@ export async function getLibraryItems(
       subtitle: null,
       publisher: null,
       pageCount: null,
+      totalEpisodes: null,
     });
   }
   for (const row of series.data ?? []) {
@@ -88,6 +91,7 @@ export async function getLibraryItems(
       subtitle: null,
       publisher: null,
       pageCount: null,
+      totalEpisodes: row.total_episodes,
     });
   }
 
@@ -108,6 +112,7 @@ export async function getLibraryItems(
         subtitle: meta.subtitle,
         publisher: meta.publisher,
         pageCount: meta.pageCount,
+        totalEpisodes: meta.totalEpisodes,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);

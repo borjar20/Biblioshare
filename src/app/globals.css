@@ -22,6 +22,10 @@
   --status-in-progress: #6366f1;
   --status-completed: #10b981;
   --status-dropped: #f43f5e;
+
+  --type-book: #b45309;
+  --type-movie: #0369a1;
+  --type-series: #7c3aed;
 }
 
 .dark {
@@ -40,6 +44,10 @@
   --status-in-progress: #818cf8;
   --status-completed: #34d399;
   --status-dropped: #fb7185;
+
+  --type-book: #fbbf24;
+  --type-movie: #38bdf8;
+  --type-series: #a78bfa;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,6 +67,10 @@
     --status-in-progress: #818cf8;
     --status-completed: #34d399;
     --status-dropped: #fb7185;
+
+    --type-book: #fbbf24;
+    --type-movie: #38bdf8;
+    --type-series: #a78bfa;
   }
 }
 
@@ -78,6 +90,10 @@
   --color-status-in-progress: var(--status-in-progress);
   --color-status-completed: var(--status-completed);
   --color-status-dropped: var(--status-dropped);
+
+  --color-type-book: var(--type-book);
+  --color-type-movie: var(--type-movie);
+  --color-type-series: var(--type-series);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
