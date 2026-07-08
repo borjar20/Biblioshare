@@ -132,12 +132,12 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [x] Buscar un libro por **ISBN** además de por título: autodetección en `src/lib/catalog/isbn.ts` (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10), enrutada como `q=isbn:...` en Google Books.
 - [x] ISBN capturado en el catálogo (`books.isbn`) leyendo `industryIdentifiers` de la respuesta, y también disponible en "añadir manualmente" con su propia validación.
 - [x] Datos mock actualizados (`MOCK_EXTERNAL_APIS=true` soporta búsqueda por ISBN también).
+- [x] **Búsqueda inversa para datos incompletos**: un hit directo por ISBN a veces viene sin portada o sin sinopsis (ediciones "delgadas" de Google Books). `src/lib/catalog/google-books.ts` detecta esto (`isIncomplete`: falta `coverUrl` o `synopsis`) y hace una segunda búsqueda por título+autor, rellenando solo los campos que faltaban — conserva el ISBN/identidad del hit original, no lo sustituye por otra edición. Verificado en producción con datos reales (Google Books devuelve intermitentemente `503`, manejado como "sin resultados" en vez de error).
 
-### 7.3 Escanear código de barras para añadir por ISBN — *hecho (versión web)*
-- [x] Botón "Escanear código de barras" en la búsqueda de libros (`src/app/buscar/barcode-scanner.tsx`): abre la cámara, decodifica con `BarcodeDetector` (`ean_13`/`ean_8`) y navega a `/buscar?type=book&q=<isbn>`, reutilizando la autodetección de ISBN de 7.2 sin cambios.
-  - Fallback explícito si el navegador no soporta `BarcodeDetector` o se deniega el permiso de cámara — probado en este entorno (sin `BarcodeDetector`), el mensaje de "no soportado" se muestra correctamente.
-  - **Sigue pendiente**: verificar con cámara real en un dispositivo (este sandbox no tiene una). El riesgo de cobertura desigual entre navegadores (documentado antes) se mantiene — Safari/iOS es el caso dudoso.
-  - **Mejora futura vía 7.31 (Capacitor)**: una vez compilable el proyecto Android, sustituir o complementar esto por un plugin nativo de escaneo (más fiable que `BarcodeDetector` web) sin cambiar el flujo de búsqueda por ISBN ya existente.
+### 7.3 Escanear código de barras para añadir por ISBN — *hecho (versión nativa)*
+- [x] Botón de cámara en la búsqueda de libros (`src/app/buscar/barcode-scanner.tsx`), visible **solo dentro del wrapper nativo de Capacitor** (`Capacitor.isNativePlatform()`) — nunca en la PWA web, porque no hay una vía web fiable de escaneo (ver 8-F). Usa `@capacitor-mlkit/barcode-scanning` (`scan()`, formatos `Ean13`/`Ean8`) y navega a `/buscar?type=book&q=<isbn>`, reutilizando la autodetección de ISBN de 7.2 sin cambios.
+  - Reemplaza la primera versión (web, `BarcodeDetector`) construida antes de decidir adoptar Capacitor (8-F) — se descartó por completo en vez de mantenerla como fallback, ya que la cobertura de `BarcodeDetector` era el motivo original para considerar ir nativo.
+  - **Sigue pendiente**: verificar con cámara real en un dispositivo — este sandbox no tiene Android SDK/emulador instalado (ver §7.31/`docs/TESTING.md`). Solo se ha podido comprobar que el botón no aparece en web (comportamiento esperado) y que `tsc`/`eslint` pasan.
 
 ### 7.4 Sagas y colecciones (gestionadas por separado)
 - [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
@@ -284,19 +284,26 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
   - Comparte necesidad con 7.20 (clubs), 7.21 (comparador) y 7.24 (notas ancladas): un mecanismo genérico de "ocultar contenido según el progreso/estado del usuario" — ver §8. Construir esta utilidad una sola vez cuando se aborde la primera de las cuatro, en vez de resolver el spoiler-hiding cuatro veces distintas.
 
 ### 7.31 Adoptar Capacitor (wrapper nativo) — *en curso*
-- [ ] Instalar `@capacitor/core` + `@capacitor/cli`, `capacitor.config.ts` apuntando `server.url` a la app desplegada (sin tocar el código Next.js existente — SSR y Server Actions siguen funcionando igual).
-- [ ] Scaffolding de la plataforma **Android** (viable en este entorno Windows con Android Studio + JDK).
+- [x] Instalar `@capacitor/core` + `@capacitor/cli` + `@capacitor/android`, `capacitor.config.ts` apuntando `server.url` a la app desplegada en Vercel (sin tocar el código Next.js existente — SSR y Server Actions siguen funcionando igual).
+- [x] Scaffolding de la plataforma **Android** (proyecto Gradle generado y comiteado). Plugin `@capacitor-mlkit/barcode-scanning` instalado y sincronizado (usado por 7.3).
 - [ ] Plataforma **iOS**: solo se puede compilar/probar desde macOS (Xcode) o un runner de CI en la nube — no alcanzable desde Windows. Queda pendiente hasta disponer de esa vía.
+- [ ] **Compilar y probar en un dispositivo/emulador Android real** — sigue bloqueado por falta de Android Studio/JDK en esta máquina (ver `docs/TESTING.md`). Todo lo anterior es configuración verificada por `tsc`/`eslint`, no ejecución real en el wrapper nativo.
 - Decidido en §8-F como prerrequisito de 7.17 (notificaciones) — ver ahí el razonamiento completo.
 
-### 7.32 Resumen de priorización sugerida
+### 7.32 Búsqueda "local primero" con persistencia automática al catálogo — *hecho*
+- [x] Cada búsqueda consulta primero el catálogo propio (`books`/`movies`/`series`) antes de llamar a la API externa — `src/lib/catalog/local-search.ts`. Para libros, si la query es un **ISBN exacto** ya cacheado, se devuelve directamente desde la base de datos y **se salta la llamada a Google Books por completo** (caso más claro de "evitar llamadas repetidas"; también beneficia directamente a 7.3, ya que cada escaneo de un libro ya visto no vuelve a llamar a la API).
+- [x] Para búsquedas por título (sin ISBN exacto), se consulta catálogo local y API externa en paralelo; los resultados de la API que no coinciden con algo que ya tenemos (por id externo o ISBN) se **insertan en el catálogo antes de devolver la respuesta** (`src/lib/catalog/find-or-create.ts`, reutilizado tanto por la búsqueda como por "añadir a biblioteca") — así, sin esperar a que el usuario añada nada, la próxima búsqueda de ese mismo título ya lo encuentra localmente. Verificado: una búsqueda repetida no crea filas duplicadas en el catálogo.
+- [x] `SearchResult` gana un campo `catalogId` opcional: lo llevan tanto los resultados locales como los recién persistidos, y "añadir a biblioteca" lo usa directamente en vez de repetir el find-or-create (excepto en modo mock, donde no hay catálogo real de por medio).
+- [x] Captura de `synopsis`/`genres` añadida a Google Books (`description`/`categories`) y TMDB (`overview` + `genre_ids` resueltos contra `/genre/{kind}/list`, cacheado en memoria por proceso) — antes estas columnas existían en el esquema pero ningún código las rellenaba nunca; ahora alimentan directamente las páginas de detalle (7.8).
+- Verificado en producción con datos reales: búsqueda por título trae y persiste 20 libros con sinopsis/géneros; repetir la búsqueda no duplica filas; búsqueda por el ISBN ya cacheado devuelve un único resultado sin tocar la API (confirmado por tiempos de respuesta); "añadir a biblioteca" usa el `catalogId` cacheado correctamente. Datos de prueba limpiados después.
+
+### 7.33 Resumen de priorización sugerida
 
 No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, para decidir por dónde seguir. Todo lo marcado `[x]` en las secciones de arriba queda fuera de esta tabla (ya hecho).
 
 | Idea | Esfuerzo | Depende de | Por qué este orden |
 |---|---|---|---|
-| **7.31 Adoptar Capacitor** | **S-M** | **§8-F (decidido)** | **En curso — decidido explícitamente, antes que 7.17** |
-| 7.3 Escanear ISBN por cámara | S-M | 7.2 (hecho) | Cierre natural del flujo de ISBN, alto valor percibido en móvil |
+| **7.31 Adoptar Capacitor** | **S-M** | **§8-F (decidido)** | **En curso — falta compilar/probar en Android real; scaffolding y 7.3/7.32 ya construidos sobre esta base** |
 | 7.8 Páginas de detalle por ítem | M | — | Datos ya existen sin usar; desbloquea 7.25 y da un lugar natural a 7.9/7.27 |
 | 7.25 "¿Dónde lo veo?" | S | 7.8 | Casi gratis vía TMDB, encaja directo en 7.8 |
 | 7.12 Buscar/ordenar en tu biblioteca | S | — | Barato, se nota en cuanto la biblioteca crece |

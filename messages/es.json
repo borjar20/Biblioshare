@@ -65,8 +65,6 @@
     "noResults": "No se encontraron resultados.",
     "scan": {
       "button": "Escanear código de barras",
-      "close": "Cancelar",
-      "unsupported": "Tu navegador no soporta el escaneo de códigos de barras. Escribe el ISBN manualmente.",
       "cameraDenied": "No se pudo acceder a la cámara. Comprueba los permisos o escribe el ISBN manualmente."
     },
     "manual": {

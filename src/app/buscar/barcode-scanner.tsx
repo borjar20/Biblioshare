@@ -1,120 +1,79 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { Capacitor } from "@capacitor/core";
 
-// BarcodeDetector isn't in TypeScript's bundled DOM types yet (still an
-// experimental web API). See docs/REQUIREMENTS.md §7.3 for browser support
-// caveats (solid on Chrome/Edge Android, historically absent on Safari/iOS).
-declare global {
-  interface Window {
-    BarcodeDetector?: new (options?: { formats: string[] }) => {
-      detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
-    };
-  }
-}
-
+// Only rendered inside the Capacitor native wrapper (Android/iOS) — there is
+// no reliable web camera-scanning path, so this is native-only rather than
+// a web fallback. See docs/REQUIREMENTS.md §7.3 and §8-F.
 export function BarcodeScanner() {
   const t = useTranslations("search.scan");
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [isNative, setIsNative] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const frameRef = useRef<number>(0);
-
-  function stopStream() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    cancelAnimationFrame(frameRef.current);
-  }
-
-  function close() {
-    stopStream();
-    setOpen(false);
-    setError(null);
-  }
 
   useEffect(() => {
-    if (!open || !window.BarcodeDetector) return;
+    // Checking an external platform API on mount, not deriving from props/state
+    // — server always renders `false` (no hydration mismatch), client flips to
+    // the real value right after. Same justified pattern as theme-toggle.tsx.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
-    let cancelled = false;
-    const detector = new window.BarcodeDetector({ formats: ["ean_13", "ean_8"] });
+  if (!isNative) return null;
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
+  async function handleScan() {
+    setError(null);
+    const { BarcodeScanner: NativeBarcodeScanner, BarcodeFormat } = await import(
+      "@capacitor-mlkit/barcode-scanning"
+    );
 
-        async function scan() {
-          if (cancelled || !videoRef.current) return;
-          try {
-            const codes = await detector.detect(videoRef.current);
-            if (codes.length > 0) {
-              const isbn = codes[0].rawValue;
-              stopStream();
-              setOpen(false);
-              router.push(`/buscar?type=book&q=${encodeURIComponent(isbn)}`);
-              return;
-            }
-          } catch {
-            // Transient decode errors are expected between frames; keep scanning.
-          }
-          frameRef.current = requestAnimationFrame(scan);
-        }
-        scan();
-      })
-      .catch(() => {
-        if (!cancelled) setError(t("cameraDenied"));
+    const { camera } = await NativeBarcodeScanner.requestPermissions();
+    if (camera !== "granted" && camera !== "limited") {
+      setError(t("cameraDenied"));
+      return;
+    }
+
+    try {
+      const { barcodes } = await NativeBarcodeScanner.scan({
+        formats: [BarcodeFormat.Ean13, BarcodeFormat.Ean8],
       });
-
-    return () => {
-      cancelled = true;
-      stopStream();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-running on every `t`/`router` identity change would restart the camera stream unnecessarily
-  }, [open]);
+      const code = barcodes[0]?.rawValue ?? barcodes[0]?.displayValue;
+      if (code) {
+        router.push(`/buscar?type=book&q=${encodeURIComponent(code)}`);
+      }
+    } catch {
+      setError(t("cameraDenied"));
+    }
+  }
 
   return (
-    <>
+    <div className="flex flex-col gap-1 self-start">
       <button
         type="button"
-        onClick={() => {
-          setOpen(true);
-          setError(window.BarcodeDetector ? null : t("unsupported"));
-        }}
-        className="self-start text-sm text-muted-foreground underline hover:text-foreground"
+        onClick={handleScan}
+        aria-label={t("button")}
+        title={t("button")}
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground hover:bg-surface-muted"
       >
-        {t("button")}
+        <svg
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
       </button>
-
-      {open && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/90 p-4">
-          {error ? (
-            <p className="max-w-sm text-center text-sm text-white">{error}</p>
-          ) : (
-            <video
-              ref={videoRef}
-              muted
-              playsInline
-              className="max-h-[70vh] w-full max-w-md rounded-lg object-cover"
-            />
-          )}
-          <Button type="button" variant="secondary" onClick={close}>
-            {t("close")}
-          </Button>
-        </div>
-      )}
-    </>
+      {error && <p className="text-xs text-status-dropped">{error}</p>}
+    </div>
   );
 }
