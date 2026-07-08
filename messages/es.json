@@ -120,6 +120,15 @@
     "notFoundDescription": "Este perfil no existe o es privado.",
     "backHome": "Ir al inicio"
   },
+  "item": {
+    "pages": "págs.",
+    "minutes": "min",
+    "seasons": "temporadas",
+    "episodes": "episodios",
+    "notFoundTitle": "No encontrado",
+    "notFoundDescription": "Este título no existe en el catálogo.",
+    "backHome": "Ir al inicio"
+  },
   "offline": {
     "title": "Sin conexión",
     "description": "No se pudo cargar esta página porque no tienes conexión. Podrás verla en cuanto vuelvas a estar en línea; mientras tanto puedes seguir navegando lo que ya cargaste antes.",

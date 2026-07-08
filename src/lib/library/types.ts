@@ -5,6 +5,7 @@ export type MediaStatus = "planned" | "in_progress" | "completed" | "dropped";
 
 export type LibraryItem = {
   entryId: string;
+  itemId: string;
   itemType: ItemType;
   status: MediaStatus;
   rating: number | null;
