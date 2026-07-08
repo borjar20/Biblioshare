@@ -39,3 +39,28 @@ Ver `.claude/agents/`:
 Al ser subagentes independientes, se pueden lanzar en paralelo mientras se
 sigue trabajando en el hilo principal (p. ej. verificar la feature A mientras
 se implementa la B).
+
+## Wrapper nativo (Capacitor) — estado
+
+Ver `docs/REQUIREMENTS.md` §8-F / §7.31 para el porqué. Estado actual:
+
+- `capacitor.config.ts` ya existe, con `server.url` apuntando a
+  `http://10.0.2.2:3000` (alias de loopback del emulador Android hacia el
+  `localhost` de esta máquina) — es un valor de **desarrollo local**, no de
+  producción. Antes de distribuir la app de verdad hay que cambiarlo a la URL
+  del despliegue real (aún no existe: este proyecto solo ha corrido en local
+  hasta ahora).
+- Carpeta `android/` generada y comiteada (proyecto Gradle nativo estándar de
+  Capacitor). **No se ha podido compilar ni probar todavía en esta máquina**:
+  no hay JDK ni Android SDK instalados en este entorno Windows.
+  - Para poder compilar/ejecutar: instalar Android Studio (incluye JDK y
+    SDK) o al menos un JDK 17+ y el Android SDK con `ANDROID_HOME` apuntando
+    a él, y un emulador o dispositivo conectado.
+  - Con eso instalado: `npx cap sync android` tras cualquier cambio en
+    `capacitor.config.ts` o en las dependencias de Capacitor, y
+    `npx cap open android` para abrir el proyecto en Android Studio.
+- **iOS no es viable en este entorno**: Xcode solo corre en macOS. Compilar
+  y probar la plataforma iOS requiere una Mac o un runner de CI en la nube
+  (Codemagic, GitHub Actions con runner `macos-latest`, etc.). No hay
+  plataforma iOS generada todavía (`npx cap add ios` — pendiente hasta tener
+  acceso a alguna de esas vías).
