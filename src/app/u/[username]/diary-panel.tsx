@@ -74,34 +74,48 @@ export function DiaryPanel({ libraryEntryId }: { libraryEntryId: string }) {
 
           {entries !== null && entries.length > 0 && (
             <ul className="flex flex-col gap-2">
-              {entries.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="flex flex-col gap-1 border-b border-border pb-2 last:border-0 last:pb-0"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-foreground">
-                      {entry.finishedOn}
-                      {entry.rating ? ` · ${entry.rating}/10` : ""}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        startTransition(async () => {
-                          await deleteDiaryEntry(entry.id);
-                          refresh();
-                        })
-                      }
-                      className="text-muted-foreground underline hover:text-status-dropped"
-                    >
-                      {t("delete")}
-                    </button>
-                  </div>
-                  {entry.review && (
-                    <p className="text-muted-foreground">{entry.review}</p>
-                  )}
-                </li>
-              ))}
+              {entries.map((entry, i) => {
+                // Entries are ordered most-recent-first, so the previous
+                // pass is the next one in the array. See docs/REQUIREMENTS.md §7.13.
+                const previous = entries[i + 1];
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex flex-col gap-1 border-b border-border pb-2 last:border-0 last:pb-0"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-foreground">
+                        {entry.finishedOn}
+                        {entry.rating ? ` · ${entry.rating}/10` : ""}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          startTransition(async () => {
+                            await deleteDiaryEntry(entry.id);
+                            refresh();
+                          })
+                        }
+                        className="text-muted-foreground underline hover:text-status-dropped"
+                      >
+                        {t("delete")}
+                      </button>
+                    </div>
+                    {entry.rating != null && previous?.rating != null && (
+                      <p className="text-muted-foreground">
+                        {t("comparison", {
+                          previousYear: previous.finishedOn.slice(0, 4),
+                          previousRating: previous.rating,
+                          currentRating: entry.rating,
+                        })}
+                      </p>
+                    )}
+                    {entry.review && (
+                      <p className="text-muted-foreground">{entry.review}</p>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 

@@ -179,15 +179,15 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 ### 7.10 Retos de lectura/visionado anuales
 - [ ] Objetivo tipo "50 libros en 2026" con barra de progreso, calculado sobre `diary_entries`/`library_entries` que ya se registran.
 
-### 7.11 Estantería "Ahora mismo"
-- [ ] Acceso rápido a los ítems en estado `in_progress`, mostrando la página/episodio actual (`position`, ya modelado). Pensado como atajo al bucle de uso diario, posiblemente en el home.
+### 7.11 Estantería "Ahora mismo" — *hecho*
+- [x] El home (`src/app/page.tsx`) ahora consulta los ítems `in_progress` del usuario autenticado y reutiliza el componente `NowConsuming` ya existente (antes solo en la pestaña "resumen" de `/u/[username]`) — sin componente nuevo. Verificado mostrando "El Quijote" con su barra de progreso en el home.
 
-### 7.12 Buscar y ordenar dentro de tu propia biblioteca
-- [ ] Buscar por texto y ordenar por rating/fecha/título en "Mi biblioteca" (hoy solo filtra por tipo/estado) — se nota en cuanto la biblioteca crece.
+### 7.12 Buscar y ordenar dentro de tu propia biblioteca — *hecho*
+- [x] Caja de búsqueda por texto y tres opciones de orden (recientes/mejor valorados/título A-Z) en `src/app/u/[username]/library-filters.tsx`, cableadas vía nuevos parámetros `search`/`sort` de `getLibraryItems()` (`src/lib/library/get-library-items.ts`) — búsqueda y orden por título se aplican en JS tras el merge (el título vive en `books`/`movies`/`series`, no en `library_entries`); orden por rating y el de "recientes" (por defecto) también, por consistencia. Nuevo tipo `LibrarySort` en `src/lib/library/types.ts`. Verificado: buscar "quijote" filtra correctamente y los filtros de orden/estado preservan la búsqueda entre clics.
 
-### 7.13 Recuento de relecturas visible y comparativa entre pases
-- [ ] Mostrar en la tarjeta de cada ítem "leído/visto N veces", contando `diary_entries` — dato que ya se registra, falta solo mostrarlo.
-- [ ] En el panel de diario, mostrar la **comparativa entre pases** ("en 2020 le diste 3★, ahora 5★") — mismo dato (`diary_entries.rating` por fecha), solo falta la UI que los liste ordenados y resalte el cambio.
+### 7.13 Recuento de relecturas visible y comparativa entre pases — *hecho*
+- [x] `rereadCount` añadido a `LibraryItem`, calculado con una única query agrupada contra `diary_entries` (no una consulta por entrada) en `get-library-items.ts`. Mostrado en `library-item-card.tsx` como "Leído N veces" / "Vista N veces" (según tipo de ítem, solo si N > 0).
+- [x] En `diary-panel.tsx`, cada entrada de diario muestra ahora una línea comparativa contra el pase anterior cuando ambos tienen rating: "{año}: {rating}★ → ahora {rating}★" — verificado con datos reales (2020: 3★ → ahora 5★).
 
 ### 7.14 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
 Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales. Esta es la idea de "modo racha (streaks)" — ya cubierta aquí en detalle, no se duplica en otra sección.
@@ -258,10 +258,8 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
   - Distinto de `notes` (campo único de texto libre que ya existe en `library_entries`) y de `diary_entries.review` (una reseña por pase): esto es **una lista de notas con timestamp/punto de progreso propio** — necesitaría su propia tabla si se construye (`entry_notes`: `library_entry_id`, `progress_point` jsonb, `body`, `created_at`), no encaja en los campos actuales sin perder la ordenación.
   - Comparte con 7.20/7.21/7.30 la necesidad de una utilidad genérica de "spoiler-safe" — ver §8.
 
-### 7.25 "¿Dónde lo veo?" (disponibilidad en streaming)
-- [ ] En películas/series, mostrar en qué plataforma de streaming está disponible.
-  - **Más barato de lo que parece**: TMDB (que ya integramos) expone `/movie/{id}/watch/providers` y `/tv/{id}/watch/providers` con exactamente este dato por región (es la misma fuente que JustWatch, bajo acuerdo de licencia) — no hace falta una integración nueva con JustWatch.
-  - Encaja de forma natural en 7.8 (páginas de detalle por ítem) — mejor construirla ahí directamente que como feature aislada.
+### 7.25 "¿Dónde lo veo?" (disponibilidad en streaming) — *hecho*
+- [x] `getWatchProviders(kind, tmdbId)` en `src/lib/catalog/tmdb.ts`, consultando `/movie/{id}/watch/providers` y `/tv/{id}/watch/providers` de TMDB (región `ES`). Componente compartido `src/components/watch-providers.tsx`, integrado en `/pelicula/[id]` y `/serie/[id]` (ambos seleccionan ahora también `tmdb_id`). Muestra los proveedores de tipo flatrate (suscripción) con logo, enlaza a la página de TMDB, con atribución "Datos de disponibilidad por JustWatch, vía TMDB". Verificado en producción con una película real (Matrix Revolutions), mostrando Movistar Plus+ y HBO Max.
 
 ### 7.26 Listas colaborativas
 - [ ] Listas editables entre varios usuarios (ej. "películas para el maratón de Halloween").
@@ -307,11 +305,7 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 |---|---|---|---|
 | **7.31 Adoptar Capacitor** | **S-M** | **§8-F (decidido)** | **En curso — falta compilar/probar en Android real; scaffolding y 7.3/7.32 ya construidos sobre esta base** |
 | 7.8 Páginas de detalle por ítem | M | — | Datos ya existen sin usar; desbloquea 7.25 y da un lugar natural a 7.9/7.27 |
-| 7.25 "¿Dónde lo veo?" | S | 7.8 | Casi gratis vía TMDB, encaja directo en 7.8 |
-| 7.12 Buscar/ordenar en tu biblioteca | S | — | Barato, se nota en cuanto la biblioteca crece |
-| 7.13 Recuento de relecturas + comparativa | S | — | Dato ya registrado, falta solo UI |
 | 7.28 Random picker | S | 7.1/7.8 (metadatos) | Autocontenido, divertido, barato |
-| 7.11 Estantería "Ahora mismo" | S | — | Atajo de uso diario, sin esquema nuevo |
 | 7.7 Importar CSV (Goodreads/Letterboxd) | M | 7.1/7.2/§4.2 manual | Mayor palanca de adopción de todo el backlog |
 | 7.9 Favoritos/vitrina + OG image | S-M | — | Barato, mejora directa de compartibilidad del perfil |
 | 7.16 Modo "en pausa" | S-M | §8-A (resuelto) | Cierra un hueco real del modelo de estados, ya sin decisión pendiente |

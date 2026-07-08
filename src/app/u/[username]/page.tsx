@@ -10,7 +10,7 @@ import { getMonthlyActivity } from "@/lib/diary/get-monthly-activity";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "./library-filters";
 import type { ItemType } from "@/lib/catalog/types";
-import type { MediaStatus } from "@/lib/library/types";
+import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import { NowConsuming } from "@/components/now-consuming";
@@ -25,6 +25,7 @@ const VALID_STATUSES: MediaStatus[] = [
   "completed",
   "dropped",
 ];
+const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 export async function generateMetadata({
   params,
@@ -40,7 +41,7 @@ export default async function PublicProfilePage({
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ tab?: string; status?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; q?: string; sort?: string }>;
 }) {
   const { username } = await params;
   const parsedParams = await searchParams;
@@ -50,6 +51,10 @@ export default async function PublicProfilePage({
   const status = VALID_STATUSES.includes(parsedParams.status as MediaStatus)
     ? (parsedParams.status as MediaStatus)
     : undefined;
+  const search = parsedParams.q?.trim() || undefined;
+  const sort: LibrarySort = VALID_SORTS.includes(parsedParams.sort as LibrarySort)
+    ? (parsedParams.sort as LibrarySort)
+    : "recent";
 
   const t = await getTranslations("profile");
   const tLibrary = await getTranslations("library");
@@ -71,7 +76,7 @@ export default async function PublicProfilePage({
   const [items, stats, inProgress, months] = await Promise.all([
     tab === "overview"
       ? getLibraryItems(supabase, profile.userId, {})
-      : getLibraryItems(supabase, profile.userId, { itemType, status }),
+      : getLibraryItems(supabase, profile.userId, { itemType, status, search, sort }),
     getLibraryStats(supabase, profile.userId),
     tab === "overview"
       ? getLibraryItems(supabase, profile.userId, { status: "in_progress" })
@@ -103,6 +108,8 @@ export default async function PublicProfilePage({
       {tab !== "overview" && (
         <LibraryFilters
           status={status}
+          search={search}
+          sort={sort}
           basePath={basePath}
           showTypeFilter={false}
           extraParams={{ tab }}

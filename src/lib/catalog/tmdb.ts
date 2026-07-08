@@ -1,6 +1,8 @@
 import type { SearchResult } from "./types";
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
+const TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
+const WATCH_PROVIDERS_REGION = "ES";
 
 type TmdbSearchResponse = {
   results?: Array<{
@@ -88,6 +90,64 @@ export async function searchMovies(query: string): Promise<SearchResult[]> {
         isbn: null,
       }))
   );
+}
+
+export type WatchProvider = {
+  id: number;
+  name: string;
+  logoUrl: string;
+};
+
+export type WatchProviders = {
+  // TMDB's own watch page for this title/region — required attribution
+  // link when displaying this data (see docs/REQUIREMENTS.md §7.25).
+  tmdbLink: string;
+  flatrate: WatchProvider[];
+};
+
+type TmdbWatchProvidersResponse = {
+  results?: Record<
+    string,
+    {
+      link?: string;
+      flatrate?: Array<{ provider_id: number; provider_name: string; logo_path: string }>;
+    }
+  >;
+};
+
+// TMDB's /watch/providers endpoint surfaces the same regional streaming
+// availability data as JustWatch (TMDB has a data-sharing agreement with
+// them) — no separate JustWatch integration needed. See docs/REQUIREMENTS.md
+// §7.25.
+export async function getWatchProviders(
+  kind: "movie" | "tv",
+  tmdbId: number
+): Promise<WatchProviders | null> {
+  const accessToken = process.env.TMDB_API_KEY;
+  if (!accessToken) return null;
+
+  const res = await fetch(
+    `https://api.themoviedb.org/3/${kind}/${tmdbId}/watch/providers`,
+    { headers: { Authorization: `Bearer ${accessToken}` }, next: { revalidate: 86400 } }
+  );
+  if (!res.ok) return null;
+
+  const data: TmdbWatchProvidersResponse = await res.json();
+  const region = data.results?.[WATCH_PROVIDERS_REGION];
+  if (!region) return null;
+
+  const flatrate = (region.flatrate ?? []).map((p) => ({
+    id: p.provider_id,
+    name: p.provider_name,
+    logoUrl: `${TMDB_LOGO_BASE}${p.logo_path}`,
+  }));
+
+  if (flatrate.length === 0 && !region.link) return null;
+
+  return {
+    tmdbLink: region.link ?? `https://www.themoviedb.org/${kind}/${tmdbId}/watch`,
+    flatrate,
+  };
 }
 
 export async function searchSeries(query: string): Promise<SearchResult[]> {

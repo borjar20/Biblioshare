@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "./position";
-import type { LibraryItem, MediaStatus } from "./types";
+import type { LibraryItem, LibrarySort, MediaStatus } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -17,7 +17,12 @@ type CatalogMeta = {
 export async function getLibraryItems(
   supabase: SupabaseServerClient,
   userId: string,
-  filters: { itemType?: ItemType; status?: MediaStatus }
+  filters: {
+    itemType?: ItemType;
+    status?: MediaStatus;
+    search?: string;
+    sort?: LibrarySort;
+  }
 ): Promise<LibraryItem[]> {
   let query = supabase
     .from("library_entries")
@@ -95,7 +100,25 @@ export async function getLibraryItems(
     });
   }
 
-  return entries
+  // One extra query, batched — cheaper than one count query per entry.
+  // See docs/REQUIREMENTS.md §7.13.
+  const { data: diaryRows } = await supabase
+    .from("diary_entries")
+    .select("library_entry_id")
+    .in(
+      "library_entry_id",
+      entries.map((entry) => entry.id)
+    );
+
+  const rereadCountByEntry = new Map<string, number>();
+  for (const row of diaryRows ?? []) {
+    rereadCountByEntry.set(
+      row.library_entry_id,
+      (rereadCountByEntry.get(row.library_entry_id) ?? 0) + 1
+    );
+  }
+
+  let items = entries
     .map((entry) => {
       const meta = catalogByKey.get(`${entry.item_type}:${entry.item_id}`);
       if (!meta) return null;
@@ -113,7 +136,25 @@ export async function getLibraryItems(
         publisher: meta.publisher,
         pageCount: meta.pageCount,
         totalEpisodes: meta.totalEpisodes,
+        rereadCount: rereadCountByEntry.get(entry.id) ?? 0,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);
+
+  // Title lives in books/movies/series, not library_entries, so search and
+  // title-sort can't happen in the SQL query above — applied here instead,
+  // after the two are merged. See docs/REQUIREMENTS.md §7.12.
+  if (filters.search) {
+    const needle = filters.search.toLowerCase();
+    items = items.filter((item) => item.title.toLowerCase().includes(needle));
+  }
+
+  if (filters.sort === "rating") {
+    items = items.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+  } else if (filters.sort === "title") {
+    items = items.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  // "recent" (default) keeps the query's own `updated_at desc` order.
+
+  return items;
 }

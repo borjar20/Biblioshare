@@ -103,6 +103,7 @@
     "submit": "Registrar pase",
     "submitting": "Guardando...",
     "delete": "Eliminar",
+    "comparison": "{previousYear}: {previousRating}★ → ahora {currentRating}★",
     "errors": {
       "invalidRating": "La valoración debe ser un número entre 1 y 10.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
@@ -153,7 +154,12 @@
     "episodes": "episodios",
     "notFoundTitle": "No encontrado",
     "notFoundDescription": "Este título no existe en el catálogo.",
-    "backHome": "Ir al inicio"
+    "backHome": "Ir al inicio",
+    "watchProviders": {
+      "title": "Dónde verlo",
+      "none": "No disponible en streaming por suscripción ahora mismo.",
+      "attribution": "Datos de disponibilidad por JustWatch, vía TMDB"
+    }
   },
   "offline": {
     "title": "Sin conexión",
@@ -168,6 +174,20 @@
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados"
+    },
+    "search": {
+      "placeholder": "Buscar en tu biblioteca...",
+      "submit": "Buscar"
+    },
+    "sort": {
+      "recent": "Recientes",
+      "rating": "Mejor valorados",
+      "title": "Título (A-Z)"
+    },
+    "rereadCount": {
+      "book": "Leído {count, plural, =1 {una vez} other {# veces}}",
+      "movie": "Vista {count, plural, =1 {una vez} other {# veces}}",
+      "series": "Vista {count, plural, =1 {una vez} other {# veces}}"
     },
     "status": {
       "planned": "Pendiente",

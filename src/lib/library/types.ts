@@ -2,6 +2,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { Position } from "./position";
 
 export type MediaStatus = "planned" | "in_progress" | "completed" | "dropped";
+export type LibrarySort = "recent" | "rating" | "title";
 
 export type LibraryItem = {
   entryId: string;
@@ -19,4 +20,6 @@ export type LibraryItem = {
   pageCount: number | null;
   // Series-only metadata (null otherwise): total episode count, for progress bars.
   totalEpisodes: number | null;
+  // Count of diary_entries for this library entry. See docs/REQUIREMENTS.md §7.13.
+  rereadCount: number;
 };

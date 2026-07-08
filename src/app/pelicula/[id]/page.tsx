@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ItemLibraryButton } from "@/components/item-library-button";
+import { WatchProviders } from "@/components/watch-providers";
+import { getWatchProviders } from "@/lib/catalog/tmdb";
 
 export async function generateMetadata({
   params,
@@ -34,7 +36,7 @@ export default async function MovieDetailPage({
     supabase
       .from("movies")
       .select(
-        "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres"
+        "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -42,6 +44,10 @@ export default async function MovieDetailPage({
   ]);
 
   if (!movie) notFound();
+
+  const watchProviders = movie.tmdb_id
+    ? await getWatchProviders("movie", movie.tmdb_id)
+    : null;
 
   let alreadyAdded = false;
   if (user) {
@@ -91,6 +97,8 @@ export default async function MovieDetailPage({
         {movie.synopsis && (
           <p className="text-sm text-foreground">{movie.synopsis}</p>
         )}
+
+        {watchProviders && <WatchProviders data={watchProviders} />}
 
         <div>
           <ItemLibraryButton

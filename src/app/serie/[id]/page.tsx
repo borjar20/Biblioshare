@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ItemLibraryButton } from "@/components/item-library-button";
+import { WatchProviders } from "@/components/watch-providers";
+import { getWatchProviders } from "@/lib/catalog/tmdb";
 
 export async function generateMetadata({
   params,
@@ -34,7 +36,7 @@ export default async function SeriesDetailPage({
     supabase
       .from("series")
       .select(
-        "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres"
+        "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -42,6 +44,10 @@ export default async function SeriesDetailPage({
   ]);
 
   if (!series) notFound();
+
+  const watchProviders = series.tmdb_id
+    ? await getWatchProviders("tv", series.tmdb_id)
+    : null;
 
   let alreadyAdded = false;
   if (user) {
@@ -96,6 +102,8 @@ export default async function SeriesDetailPage({
         {series.synopsis && (
           <p className="text-sm text-foreground">{series.synopsis}</p>
         )}
+
+        {watchProviders && <WatchProviders data={watchProviders} />}
 
         <div>
           <ItemLibraryButton

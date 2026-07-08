@@ -74,6 +74,11 @@ export function LibraryItemCard({
           </span>
         )}
         {progress && <ProgressBar current={progress.current} total={progress.total} label={progress.label} />}
+        {item.rereadCount > 0 && (
+          <span className="line-clamp-1 text-xs text-muted-foreground">
+            {t(`rereadCount.${item.itemType}`, { count: item.rereadCount })}
+          </span>
+        )}
       </div>
 
       {isOwner && (
