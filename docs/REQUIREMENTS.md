@@ -22,7 +22,7 @@ Arquitectura elegida: **"columna vertebral compartida"**. El metadata (que varí
 tipo) vive en tablas separadas y tipadas; el progreso del usuario (casi idéntico entre tipos)
 vive en una única tabla `library_entries`. Así, **añadir un hobby nuevo = 1 tabla de metadata +
 su integración de API**, reutilizando el mismo RLS, la misma query de "mi biblioteca" y la misma
-UI de progreso. Ver §8 (decisiones) para el razonamiento.
+UI de progreso. Ver §9 (decisiones) para el razonamiento.
 
 ### 3.1 Catálogo (compartido entre usuarios) — *creado*
 Tablas `books`, `movies`, `series`.
@@ -143,8 +143,8 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario.
   - Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
 
-### 7.5 Etiquetas + estadísticas por etiqueta
-- [ ] Etiquetas libres por usuario sobre sus ítems.
+### 7.5 Etiquetas privadas + estadísticas por etiqueta
+- [ ] Etiquetas libres y **privadas** por usuario sobre sus ítems (ej. "para regalar", "recomendado por mamá", "confort") — no son públicas ni compartidas entre usuarios, a diferencia del catálogo.
 - [ ] Panel de estadísticas agrupadas por etiqueta (depende de lo anterior).
 
 ### 7.6 Seguir editoriales y ver sus novedades
@@ -158,6 +158,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - Reutiliza el flujo `findOrCreateCatalogItem` ya existente (`src/app/buscar/actions.ts`) para cada fila.
   - Encaja con datos que ya modelamos: columnas de Goodreads como *Publisher*/*Binding*/*ISBN* alimentan 7.1/7.2; "Date Read" repetido (relecturas) mapea directo a `diary_entries`.
   - A definir: qué pasa si una fila no matchea nada en la API (fallback a `/buscar/manual`) y cómo se reporta al usuario qué filas se importaron/fallaron.
+- **Trakt es un caso aparte, no un CSV más**: Trakt.tv (series/películas) no exporta CSV, tiene una API REST con OAuth y sincronización continua (no un volcado de una vez). Es una integración de otra naturaleza — mantenerla como idea independiente en vez de meterla en esta tarea; solo abordarla si algún día interesa sync continuo, no solo import inicial.
 
 ### 7.8 Páginas de detalle por ítem (`/libro/[id]`, `/pelicula/[id]`, `/serie/[id]`)
 - [ ] Página propia por libro/película/serie con la ficha completa (sinopsis, autor/director/creador, géneros, año, páginas/duración/temporadas) y el botón de añadir a biblioteca — hoy nada de eso se muestra en ningún sitio.
@@ -166,9 +167,10 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - Los resultados de búsqueda (`SearchResultCard`) y las tarjetas de biblioteca/perfil (`CoverCard`, ya construido pero sin usar) enlazarían aquí.
   - A definir: convención de ruta (`/libro/[id]` por tipo vs. `/item/[type]/[id]` unificado) y si se muestra el estado/progreso del usuario actual cuando ya está en su biblioteca.
 
-### 7.9 Favoritos fijados + imagen para compartir el perfil
+### 7.9 Perfil público personalizable: favoritos fijados, estanterías y OG image
 - [ ] Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd).
   - Requiere un cambio pequeño de esquema (marcar N filas de `library_entries` como destacadas, p. ej. un campo `pinned_order`), mismo RLS que ya existe.
+- [ ] **Ampliación**: no solo "favoritos", sino varias **estanterías/vitrinas nombradas** por el usuario (p. ej. "Mis pósters", "Lo mejor de 2026") — mismo mecanismo de `pinned_order` pero con una etiqueta de grupo en vez de una sola lista fija. Empezar por la versión simple (una sola fila de favoritos) y solo ampliar a estanterías múltiples si hay demanda real; evita construir de más de entrada.
 - [ ] Generar una **imagen Open Graph** del perfil para cuando se comparte el link.
   - Casi gratis: ya se genera contenido con `next/og` para los iconos PWA (`src/app/icon.tsx`, `src/lib/app-icon.tsx`) — mismo patrón aplicado a `app/u/[username]/opengraph-image.tsx`.
 
@@ -181,11 +183,12 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 ### 7.12 Buscar y ordenar dentro de tu propia biblioteca
 - [ ] Buscar por texto y ordenar por rating/fecha/título en "Mi biblioteca" (hoy solo filtra por tipo/estado) — se nota en cuanto la biblioteca crece.
 
-### 7.13 Recuento de relecturas visible
+### 7.13 Recuento de relecturas visible y comparativa entre pases
 - [ ] Mostrar en la tarjeta de cada ítem "leído/visto N veces", contando `diary_entries` — dato que ya se registra, falta solo mostrarlo.
+- [ ] En el panel de diario, mostrar la **comparativa entre pases** ("en 2020 le diste 3★, ahora 5★") — mismo dato (`diary_entries.rating` por fecha), solo falta la UI que los liste ordenados y resalte el cambio.
 
 ### 7.14 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
-Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales.
+Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales. Esta es la idea de "modo racha (streaks)" — ya cubierta aquí en detalle, no se duplica en otra sección.
 
 - [ ] Modelar `progress_sessions` (base fundacional): `library_entry_id`, `date`, delta de progreso (páginas leídas / episodios avanzados ese día), opcionalmente minutos dedicados.
   - **Gap de modelo real, no solo de UI**: hoy no existe forma de saber "¿qué avancé el martes?". `library_entries.position` solo guarda el punto *actual* (sin historial), y `diary_entries` solo registra el *pase completo* (fecha inicio/fin de una relectura entera). Ninguno de los dos permite reconstruir actividad día a día.
@@ -199,14 +202,146 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 ### 7.15 Otras ideas sin desarrollar todavía
 - [ ] "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
 - [ ] Comparar bibliotecas entre dos perfiles (solape de ítems) — vía social ligera sin construir seguidores completos.
-- [ ] Guardar citas/frases favoritas de un libro.
 - [ ] Sistema de seguidores + feed de actividad.
 - [ ] Estadísticas y gráficos de hábitos generales (ítems por tipo/estado, actividad del diario por mes).
 - [ ] Offline-first completo (edición sin conexión + sincronización posterior).
-- [ ] Listas curadas y colecciones temáticas (ver 7.4).
+- [ ] Listas curadas y colecciones temáticas — ver 7.4 (sagas/colecciones personales) y 7.26 (versión colaborativa/multi-usuario).
 - [ ] Integración con más fuentes (videojuegos vía IGDB, música, etc.) — encaja con la idea original de "biblioteca de tus hobbies".
 
-## 8. Decisiones registradas
+### 7.16 Modo "en pausa"
+- [ ] Estado intermedio entre "en curso" y "abandonado", con recordatorio configurable (ej. a los 30/60/90 días) para retomar o cerrar. Ver también 7.17 (infraestructura de notificaciones, compartida).
+  - **Decisión de semántica pendiente** (ver también §8, Decisiones de arquitectura): ¿"pausado" es un **estado explícito** nuevo en `media_status` (`planned | in_progress | paused | completed | dropped`), o se **infiere** de un `in_progress` cuya `position`/`updated_at` lleva mucho tiempo sin cambiar? Un estado explícito es más simple de consultar y mostrar, pero exige que el usuario lo marque a mano; inferirlo es automático pero menos fiable y más caro de calcular. Recomendación: estado explícito — es una `ALTER TYPE ... ADD VALUE` barata en Postgres, y evita heurísticas frágiles.
+  - Al pausar, guardar opcionalmente el punto de progreso (ya existe vía `position`) — no hace falta un campo nuevo, solo el estado.
+  - Transición a "abandonado" conserva el histórico (ya es así: nunca se borra `position`/`diary_entries` al cambiar de estado).
+
+### 7.17 Recordatorios (pausas antiguas y estrenos que sigues)
+- [ ] Notificación cuando: (a) un ítem lleva mucho en "pausa" (7.16) sin retomarse, o (b) sale la nueva temporada de una serie que sigues, o la adaptación de un libro que leíste.
+  - **Primera pieza de infraestructura de notificaciones del proyecto** — no existe hoy nada de esto (ni email, ni push, ni jobs programados). Ver §8 (Decisiones de arquitectura) antes de empezar cualquiera de las dos, porque comparten la misma base y solo tiene sentido construirla una vez.
+  - "Estrenos que sigues" necesita además saber si una serie/libro sigue activo (temporada en emisión, secuela anunciada) — dato que ni TMDB ni Google Books garantizan de forma fiable; evaluar viabilidad antes de comprometer esta parte.
+
+### 7.18 Diario emocional/contextual
+- [ ] Campos opcionales al registrar un pase en el diario: estado de ánimo (selector cerrado de 6–10 opciones, no texto libre — para poder agregarlo en estadísticas), compañía (solo/pareja/amigos/familia/otro), ubicación libre, nota.
+  - Extiende `diary_entries` (ya tiene `rating`, `review`) con estos campos nuevos — encaja de forma natural, es la misma tabla y el mismo momento de registro.
+  - **Privados por defecto**, con toggle explícito para hacerlos públicos — mismo patrón de `profiles.is_public` ya establecido, pero a nivel de campo/pase en vez de perfil completo.
+  - Alimenta "Tu año en Biblioshare" (7.15) con datos más ricos (mood dominante, compañía más frecuente) — construir esto antes ayuda a que esa retrospectiva sea mejor desde el principio.
+
+### 7.19 Recomendaciones cruzadas entre formatos
+- [ ] "Si te gustó la serie X, lee el libro Y" — recomendaciones basadas en atributos compartidos (género, temas, tono), con explicación visible y opción de descartar.
+  - Esfuerzo alto (XL) y depende de tener géneros/temas normalizados entre fuentes — ver §8 (normalización de géneros). Sin eso, no hay señal fiable de qué es "similar".
+  - **MVP realista de esta idea**: tabla curada a mano de equivalencias famosas (adaptaciones conocidas) en vez de un motor de embeddings desde el día uno. Solo merece la pena automatizarlo con más usuarios y más datos de consumo.
+
+### 7.20 Clubs de lectura/visionado con hitos anti-spoiler
+- [ ] Grupos con checkpoints ("hasta el capítulo 10") cuyos hilos de discusión se desbloquean según el progreso registrado de cada miembro, con opción manual de "ya llegué aquí".
+  - Necesita funcionalidad social real (grupos, roles, moderación) que hoy no existe — de las ideas nuevas, la que más se apoya en tener ya una base de usuarios activa para tener sentido.
+  - Reutiliza el sistema de progreso existente (`position`) y comparte con 7.24/7.21/7.30 la necesidad de un mecanismo genérico de "ocultar contenido hasta que el progreso lo permita" (ver §8).
+
+### 7.21 Comparador de adaptaciones (libro ↔ película/serie)
+- [ ] Ficha comparativa entre una obra y su adaptación: portadas, ratings medios lado a lado, y voto de la comunidad ("¿cuál es mejor?") habilitado solo para quien terminó ambos.
+  - **Requiere un tipo de dato que hoy no existe**: relación entre ítems de catálogo de *tipos distintos* (`books` ↔ `movies`/`series`). Ver §8 — mejor decidir ahora la forma genérica (tabla de relaciones) que ad-hoc por feature, porque 7.19 (recomendaciones) también se beneficiaría del mismo mecanismo.
+  - Las APIs actuales no siempre exponen esta relación de forma fiable (Wikidata es mejor fuente que TMDB/Google Books para esto) — contribución comunitaria editable, con cola de revisión, es probablemente necesaria tarde o temprano.
+
+### 7.22 Cola priorizada con tiempo estimado
+- [ ] Reordenar la lista de "pendientes" por prioridad (drag & drop) y ver cuánto tardarías en completarla al ritmo actual ("~8 meses"), con estimación por ítem individual.
+  - Ya tenemos buena parte de los datos necesarios: `total_pages`/`duration_minutes`/`total_episodes` existen en el catálogo (algunos sin poblar aún, ver 7.8). Falta calcular el "ritmo personal" (páginas/día, horas/semana) a partir del historial — se puede derivar de `diary_entries` sin tabla nueva.
+  - Mostrar la fórmula de cálculo al usuario (transparencia) en vez de un modelo opaco — más barato y genera más confianza.
+
+### 7.23 Retos personalizables (ampliación de 7.10)
+- [ ] Más allá del objetivo simple anual (7.10): retos con **filtros** (género, autor/director, país, etiqueta, periodo), progreso automático al registrar ítems que cumplen el filtro, retos públicos clonables por otros usuarios, y tarjeta de progreso exportable.
+  - Reutilizaría el mismo motor de filtros que "Mi biblioteca" (7.12) y las etiquetas (7.5) en vez de construir uno nuevo — buen momento para diseñar ambos pensando en que un tercer consumidor (retos) también los va a necesitar.
+  - Criterios como "autoras" o "nacionalidad del autor/a" no los da ninguna API — requeriría etiquetado manual/comunitario, no asumirlo como dato disponible.
+
+### 7.24 Notas ancladas al punto de progreso
+- [ ] Notas privadas mientras consumes un ítem, ancladas al capítulo/minuto/episodio actual, con vista de "línea de tiempo" al terminar (para ver cómo evolucionaron tus teorías) y opción de publicar una nota suelta como reseña con aviso de spoiler.
+  - Distinto de `notes` (campo único de texto libre que ya existe en `library_entries`) y de `diary_entries.review` (una reseña por pase): esto es **una lista de notas con timestamp/punto de progreso propio** — necesitaría su propia tabla si se construye (`entry_notes`: `library_entry_id`, `progress_point` jsonb, `body`, `created_at`), no encaja en los campos actuales sin perder la ordenación.
+  - Comparte con 7.20/7.21/7.30 la necesidad de una utilidad genérica de "spoiler-safe" — ver §8.
+
+### 7.25 "¿Dónde lo veo?" (disponibilidad en streaming)
+- [ ] En películas/series, mostrar en qué plataforma de streaming está disponible.
+  - **Más barato de lo que parece**: TMDB (que ya integramos) expone `/movie/{id}/watch/providers` y `/tv/{id}/watch/providers` con exactamente este dato por región (es la misma fuente que JustWatch, bajo acuerdo de licencia) — no hace falta una integración nueva con JustWatch.
+  - Encaja de forma natural en 7.8 (páginas de detalle por ítem) — mejor construirla ahí directamente que como feature aislada.
+
+### 7.26 Listas colaborativas
+- [ ] Listas editables entre varios usuarios (ej. "películas para el maratón de Halloween").
+  - Amplía la idea ya registrada de "listas curadas" (7.15) al caso multi-usuario — requiere modelo de permisos (quién puede añadir/quitar) que hoy no existe en ningún sitio del proyecto. Construir primero la versión de un solo dueño (7.15/7.4) y solo dar el salto a colaborativa si hay demanda, es más barato que empezar directamente por la versión multi-usuario.
+
+### 7.27 Citas y frases destacadas
+- [ ] Guardar citas/frases de un libro ancladas al ítem, con opción de foto+OCR y exportables como tarjetas visuales para compartir.
+  - Versión ampliada de la idea ya apuntada en el backlog general — el OCR y la exportación como imagen son lo nuevo; el guardado simple de texto es barato, OCR es una pieza aparte (servicio externo o librería cliente) a evaluar aparte si se llega a esta idea.
+
+### 7.28 Random picker ("no sé qué ver/leer")
+- [ ] Botón que elige al azar un ítem de tu lista de pendientes, con filtros opcionales (ej. "tengo 2 horas" usando `duration_minutes`/`total_pages`/ritmo personal de 7.22).
+  - Idea barata y autocontenida: no requiere esquema nuevo, solo una query aleatoria sobre `library_entries` con status `planned` filtrada por los metadatos que ya existen (o existirán tras 7.8/7.1).
+
+### 7.29 Método de adquisición y "dinero ahorrado"
+- [ ] Marcar cómo obtuviste cada ítem (comprado / biblioteca / prestado / regalo) y, si se compró, su precio — para poder mostrar una estadística de "dinero ahorrado" con préstamos/biblioteca.
+  - Mismo patrón que la encuadernación de 7.1: es un dato **por ejemplar/copia**, no de la obra → va en `library_entries`, no en el catálogo. Ver §8 antes de construir esto: si se van acumulando varios campos de este tipo (formato, adquisición, precio...) en `position`, puede convenir separarlos de la lógica de "progreso" en un campo propio en vez de seguir sobrecargando `position`.
+
+### 7.30 Modo sin spoilers global
+- [ ] Difuminar sinopsis, duración de episodios restantes y temporadas pendientes de lo que estás viendo/leyendo actualmente.
+  - Comparte necesidad con 7.20 (clubs), 7.21 (comparador) y 7.24 (notas ancladas): un mecanismo genérico de "ocultar contenido según el progreso/estado del usuario" — ver §8. Construir esta utilidad una sola vez cuando se aborde la primera de las cuatro, en vez de resolver el spoiler-hiding cuatro veces distintas.
+
+### 7.31 Resumen de priorización sugerida
+
+No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, para decidir por dónde seguir. Todo lo marcado `[x]` en las secciones de arriba queda fuera de esta tabla (ya hecho).
+
+| Idea | Esfuerzo | Depende de | Por qué este orden |
+|---|---|---|---|
+| 7.3 Escanear ISBN por cámara | S-M | 7.2 (hecho) | Cierre natural del flujo de ISBN, alto valor percibido en móvil |
+| 7.8 Páginas de detalle por ítem | M | — | Datos ya existen sin usar; desbloquea 7.25 y da un lugar natural a 7.9/7.27 |
+| 7.25 "¿Dónde lo veo?" | S | 7.8 | Casi gratis vía TMDB, encaja directo en 7.8 |
+| 7.12 Buscar/ordenar en tu biblioteca | S | — | Barato, se nota en cuanto la biblioteca crece |
+| 7.13 Recuento de relecturas + comparativa | S | — | Dato ya registrado, falta solo UI |
+| 7.28 Random picker | S | 7.1/7.8 (metadatos) | Autocontenido, divertido, barato |
+| 7.11 Estantería "Ahora mismo" | S | — | Atajo de uso diario, sin esquema nuevo |
+| 7.7 Importar CSV (Goodreads/Letterboxd) | M | 7.1/7.2/§4.2 manual | Mayor palanca de adopción de todo el backlog |
+| 7.9 Favoritos/vitrina + OG image | S-M | — | Barato, mejora directa de compartibilidad del perfil |
+| 7.16 Modo "en pausa" | S-M | Decisión §8-A | Cierra un hueco real del modelo de estados |
+| 7.5 Etiquetas privadas | M | — | Base para 7.23 (retos) y estadísticas por etiqueta |
+| 7.22 Cola priorizada con tiempo estimado | M | 7.1/7.8 | Usa datos que ya existirán tras 7.1/7.8 |
+| 7.4 Sagas y colecciones | M | Decisión §8-B (opcional) | Bien acotado si no se mezcla con listas colaborativas todavía |
+| 7.14 Sesiones de progreso diarias (rachas) | L | — | Alto valor de retención, pero requiere tabla nueva y bastante UI |
+| 7.29 Método de adquisición / dinero ahorrado | S-M | Decisión §8-C | Barato si se decide antes la forma de `position` vs. campo propio |
+| 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
+| 7.17 Recordatorios (pausas/estrenos) | M-L | Decisión §8-D (infra notificaciones) | Construir la infraestructura una vez, no dos |
+| 7.18 Diario emocional/contextual | M | — | Enriquece 7.15 ("Tu año en Biblioshare") antes de construir esa retrospectiva |
+| 7.27 Citas y frases destacadas | S (texto) / M (OCR) | — | Empezar por texto simple; OCR es una fase aparte |
+| 7.23 Retos personalizables | L | 7.5, 7.12 | Motor de filtros compartido — construir después de esos dos |
+| 7.30 Modo sin spoilers global | M | Decisión §8-E | Vale la pena como utilidad compartida, no antes de tener 1–2 consumidores reales |
+| 7.21 Comparador de adaptaciones | M-L | Decisión §8-B | Diferenciador fuerte, pero necesita el modelo de relaciones entre ítems |
+| 7.26 Listas colaborativas | M | 7.4/7.15, modelo de permisos | Construir primero la versión de un solo dueño |
+| 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, Decisión §8-E | Necesita masa crítica para tener sentido |
+| 7.24 Notas ancladas al progreso | M | Decisión §8-E | Tabla nueva; valor real pero no urgente |
+| 7.19 Recomendaciones cruzadas | XL | Decisión §8-B (normalización géneros) | El más caro; empezar solo con tabla curada a mano si se aborda |
+
+## 8. Decisiones de arquitectura pendientes (evaluar antes de construir más)
+
+Estas no son features — son decisiones de forma que, si se toman tarde (después de que ya haya datos o UI construida encima), cuestan un refactor. Revisar esta lista antes de empezar cualquier idea de §7 que las mencione como dependencia.
+
+### 8-A. ¿"Pausado" es un estado explícito o inferido?
+Relevante para 7.16. Recomendación: añadir `paused` a `media_status` (enum) — es una migración barata en Postgres (`ALTER TYPE ... ADD VALUE`) y evita heurísticas de "inactividad" que serían más caras de mantener y menos fiables. Decidirlo ahora evita re-modelar el filtro de estados (`LibraryFilters`, `ProgressPanel`, `PublicItemCard`) dos veces.
+
+### 8-B. Relaciones entre ítems de catálogo (adaptaciones, recomendaciones)
+Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel de datos. 7.21 (comparador de adaptaciones) y 7.19 (recomendaciones cruzadas) necesitan ambas alguna forma de vincular un libro con su adaptación. Siguiendo el mismo espíritu que llevó a unificar `library_entries` (una tabla genérica en vez de una por tipo), la recomendación es: si se aborda cualquiera de las dos, diseñar una tabla genérica de relaciones (`item_type_a/item_id_a`, `item_type_b/item_id_b`, `relation_type`) en vez de una columna ad-hoc (`adaptation_of_book_id` en `movies`, etc.) — así ambas features comparten el mismo mecanismo y añadir una tercera relación en el futuro no exige otra migración por tipo.
+
+**Relacionado — normalización de géneros**: `books.genres`, `movies.genres` y `series.genres` existen en el esquema pero **hoy no se rellenan desde ningún sitio** (ni Google Books ni TMDB los capturan todavía en el código). Es el momento barato de decidir la taxonomía (¿guardar el género tal cual da cada API y normalizar en lectura, o normalizar al guardar contra un catálogo cerrado propio?) — antes de que empiece a haber datos reales con vocabularios distintos que habría que migrar después. Solo urge si se empieza a poblar `genres` (p. ej. al abordar 7.8) o si 7.19 se vuelve prioridad real.
+
+### 8-C. `library_entries.position` se está usando para más que "progreso"
+`position` nació como "el único detalle que varía por tipo" para *progreso de lectura/visionado* (página, temporada+episodio). En 7.1 ya se le añadió `format` (encuadernación), que no es progreso sino metadato del ejemplar. Si además se añade 7.29 (método de adquisición, precio) al mismo campo, `position` empieza a mezclar dos responsabilidades distintas (progreso vs. metadatos del ejemplar) bajo un nombre que ya no describe bien su contenido.
+**A decidir antes de añadir más campos de este tipo**: mantenerlo todo junto en `position` (más simple, ya funciona así) vs. separar en dos campos JSONB — `position` (progreso) y `copy_details` (formato, adquisición, precio, y lo que surja) — con una migración de datos trivial (mover `format` de uno a otro) si se hace pronto, y mucho más costosa cuantos más campos se acumulen antes de decidirlo.
+
+### 8-D. Infraestructura de notificaciones (compartida por 7.17 y futuras)
+El proyecto no tiene hoy ningún mecanismo de: trabajos programados (cron/queue), envío de email, ni push notifications. 7.17 (recordatorios de pausa/estrenos) es la primera feature que lo necesita, pero EPIC-05 (clubs) también lo pediría más adelante. Antes de construir 7.17: decidir una vez la pieza compartida en vez de resolverla feature a feature.
+- **Dato a favor de Web Push**: ya existe un service worker registrado (`public/sw.js`, para el cache offline de la PWA) — añadir Web Push (con claves VAPID) es una extensión natural de algo que ya está en su sitio, en vez de infraestructura nueva desde cero.
+- Para jobs programados, Supabase soporta `pg_cron` de forma nativa (sin servicio externo) — evaluarlo primero antes de introducir un runner de colas aparte.
+- No comprometer esta decisión hasta que 7.17 sea la tarea activa; no construir infraestructura de notificaciones "por si acaso".
+
+### 8-E. Spoiler-safe: utilidad compartida, no cuatro implementaciones distintas
+7.20 (clubs), 7.21 (comparador), 7.24 (notas ancladas) y 7.30 (modo sin spoilers) necesitan las cuatro alguna forma de "ocultar contenido hasta que el progreso/estado del usuario lo permita". Cuando se aborde la primera de las cuatro, construirla como una utilidad genérica (componente/helper reutilizable, no lógica ad-hoc dentro de esa feature) para que las siguientes tres la reutilicen en vez de reinventarla.
+
+### 8-F. El widget de pantalla de inicio no es viable como PWA pura
+La idea de "widget de pantalla de inicio" (progreso o racha sin abrir la app) **contradice la decisión ya registrada de PWA-only, sin apps nativas** (§9, 2026-07-07): los widgets de Android (App Widgets) e iOS (WidgetKit) requieren una app nativa o un wrapper nativo — no son alcanzables desde una PWA con las APIs web actuales. Se deja fuera del backlog de §7 en vez de añadirse como si fuera construible; si en algún momento se reconsidera ir más allá de PWA-only, habría que revisar primero esa decisión de fondo, no tratar el widget como una feature aislada.
+
+## 9. Decisiones registradas
 
 | Fecha | Decisión | Motivo |
 |-------|----------|--------|
@@ -220,9 +355,9 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 | 2026-07-07 | Catálogo compartido entre usuarios, progreso privado por usuario | Evita duplicar metadatos al buscar el mismo libro/película varias veces |
 | 2026-07-07 | Perfiles públicos por defecto, con opción de hacerlos privados | Habilita la función social mínima (ver bibliotecas de otros) sin construir todo el sistema social completo |
 | 2026-07-07 | Offline MVP = cache de solo lectura, no offline-first completo | Reduce complejidad de sincronización manteniendo el beneficio principal de una PWA instalable |
-| 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §9 |
+| 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §10 |
 
-## 9. Historial de versiones
+## 10. Historial de versiones
 
 ### v1.0 — 2026-07-08 — MVP completo
 Todas las funcionalidades de §4 implementadas y verificadas manualmente (navegador + limpieza de datos de prueba):
