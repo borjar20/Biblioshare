@@ -22,7 +22,7 @@ Arquitectura elegida: **"columna vertebral compartida"**. El metadata (que varí
 tipo) vive en tablas separadas y tipadas; el progreso del usuario (casi idéntico entre tipos)
 vive en una única tabla `library_entries`. Así, **añadir un hobby nuevo = 1 tabla de metadata +
 su integración de API**, reutilizando el mismo RLS, la misma query de "mi biblioteca" y la misma
-UI de progreso. Ver §8 (decisiones) para el razonamiento.
+UI de progreso. Ver §9 (decisiones) para el razonamiento.
 
 ### 3.1 Catálogo (compartido entre usuarios) — *creado*
 Tablas `books`, `movies`, `series`.
@@ -142,9 +142,10 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
   - **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario.
   - Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
+  - **Reutiliza 8-B**: una saga es, en el fondo, una relación libro↔libro de "mismo universo" — la tabla genérica de relaciones decidida en 8-B (ampliada explícitamente a "mismo universo", no solo adaptaciones) puede modelar esto sin un mecanismo aparte. Evaluar antes de construir una tabla `sagas` dedicada.
 
-### 7.5 Etiquetas + estadísticas por etiqueta
-- [ ] Etiquetas libres por usuario sobre sus ítems.
+### 7.5 Etiquetas privadas + estadísticas por etiqueta
+- [ ] Etiquetas libres y **privadas** por usuario sobre sus ítems (ej. "para regalar", "recomendado por mamá", "confort") — no son públicas ni compartidas entre usuarios, a diferencia del catálogo.
 - [ ] Panel de estadísticas agrupadas por etiqueta (depende de lo anterior).
 
 ### 7.6 Seguir editoriales y ver sus novedades
@@ -158,6 +159,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - Reutiliza el flujo `findOrCreateCatalogItem` ya existente (`src/app/buscar/actions.ts`) para cada fila.
   - Encaja con datos que ya modelamos: columnas de Goodreads como *Publisher*/*Binding*/*ISBN* alimentan 7.1/7.2; "Date Read" repetido (relecturas) mapea directo a `diary_entries`.
   - A definir: qué pasa si una fila no matchea nada en la API (fallback a `/buscar/manual`) y cómo se reporta al usuario qué filas se importaron/fallaron.
+- **Trakt es un caso aparte, no un CSV más**: Trakt.tv (series/películas) no exporta CSV, tiene una API REST con OAuth y sincronización continua (no un volcado de una vez). Es una integración de otra naturaleza — mantenerla como idea independiente en vez de meterla en esta tarea; solo abordarla si algún día interesa sync continuo, no solo import inicial.
 
 ### 7.8 Páginas de detalle por ítem (`/libro/[id]`, `/pelicula/[id]`, `/serie/[id]`)
 - [ ] Página propia por libro/película/serie con la ficha completa (sinopsis, autor/director/creador, géneros, año, páginas/duración/temporadas) y el botón de añadir a biblioteca — hoy nada de eso se muestra en ningún sitio.
@@ -166,9 +168,10 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - Los resultados de búsqueda (`SearchResultCard`) y las tarjetas de biblioteca/perfil (`CoverCard`, ya construido pero sin usar) enlazarían aquí.
   - A definir: convención de ruta (`/libro/[id]` por tipo vs. `/item/[type]/[id]` unificado) y si se muestra el estado/progreso del usuario actual cuando ya está en su biblioteca.
 
-### 7.9 Favoritos fijados + imagen para compartir el perfil
+### 7.9 Perfil público personalizable: favoritos fijados, estanterías y OG image
 - [ ] Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd).
   - Requiere un cambio pequeño de esquema (marcar N filas de `library_entries` como destacadas, p. ej. un campo `pinned_order`), mismo RLS que ya existe.
+- [ ] **Ampliación**: no solo "favoritos", sino varias **estanterías/vitrinas nombradas** por el usuario (p. ej. "Mis pósters", "Lo mejor de 2026") — mismo mecanismo de `pinned_order` pero con una etiqueta de grupo en vez de una sola lista fija. Empezar por la versión simple (una sola fila de favoritos) y solo ampliar a estanterías múltiples si hay demanda real; evita construir de más de entrada.
 - [ ] Generar una **imagen Open Graph** del perfil para cuando se comparte el link.
   - Casi gratis: ya se genera contenido con `next/og` para los iconos PWA (`src/app/icon.tsx`, `src/lib/app-icon.tsx`) — mismo patrón aplicado a `app/u/[username]/opengraph-image.tsx`.
 
@@ -181,11 +184,12 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 ### 7.12 Buscar y ordenar dentro de tu propia biblioteca
 - [ ] Buscar por texto y ordenar por rating/fecha/título en "Mi biblioteca" (hoy solo filtra por tipo/estado) — se nota en cuanto la biblioteca crece.
 
-### 7.13 Recuento de relecturas visible
+### 7.13 Recuento de relecturas visible y comparativa entre pases
 - [ ] Mostrar en la tarjeta de cada ítem "leído/visto N veces", contando `diary_entries` — dato que ya se registra, falta solo mostrarlo.
+- [ ] En el panel de diario, mostrar la **comparativa entre pases** ("en 2020 le diste 3★, ahora 5★") — mismo dato (`diary_entries.rating` por fecha), solo falta la UI que los liste ordenados y resalte el cambio.
 
 ### 7.14 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
-Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales.
+Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales. Esta es la idea de "modo racha (streaks)" — ya cubierta aquí en detalle, no se duplica en otra sección.
 
 - [ ] Modelar `progress_sessions` (base fundacional): `library_entry_id`, `date`, delta de progreso (páginas leídas / episodios avanzados ese día), opcionalmente minutos dedicados.
   - **Gap de modelo real, no solo de UI**: hoy no existe forma de saber "¿qué avancé el martes?". `library_entries.position` solo guarda el punto *actual* (sin historial), y `diary_entries` solo registra el *pase completo* (fecha inicio/fin de una relectura entera). Ninguno de los dos permite reconstruir actividad día a día.
@@ -199,14 +203,182 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 ### 7.15 Otras ideas sin desarrollar todavía
 - [ ] "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
 - [ ] Comparar bibliotecas entre dos perfiles (solape de ítems) — vía social ligera sin construir seguidores completos.
-- [ ] Guardar citas/frases favoritas de un libro.
 - [ ] Sistema de seguidores + feed de actividad.
 - [ ] Estadísticas y gráficos de hábitos generales (ítems por tipo/estado, actividad del diario por mes).
 - [ ] Offline-first completo (edición sin conexión + sincronización posterior).
-- [ ] Listas curadas y colecciones temáticas (ver 7.4).
+- [ ] Listas curadas y colecciones temáticas — ver 7.4 (sagas/colecciones personales) y 7.26 (versión colaborativa/multi-usuario).
 - [ ] Integración con más fuentes (videojuegos vía IGDB, música, etc.) — encaja con la idea original de "biblioteca de tus hobbies".
 
-## 8. Decisiones registradas
+### 7.16 Modo "en pausa"
+- [ ] Estado intermedio entre "en curso" y "abandonado", con recordatorio configurable (ej. a los 30/60/90 días) para retomar o cerrar. Ver también 7.17 (infraestructura de notificaciones, compartida).
+  - **Decidido** (ver §8-A): `paused` es un estado explícito nuevo en `media_status` (`planned | in_progress | paused | completed | dropped`) — barato de migrar (`ALTER TYPE ... ADD VALUE`), evita heurísticas frágiles de inactividad. La señal de inactividad (vía 7.14) se usa solo para **sugerir** el cambio como una notificación (7.17), nunca para aplicarlo sola.
+  - Al pausar, guardar opcionalmente el punto de progreso (ya existe vía `position`) — no hace falta un campo nuevo, solo el estado.
+  - Transición a "abandonado" conserva el histórico (ya es así: nunca se borra `position`/`diary_entries` al cambiar de estado).
+
+### 7.17 Recordatorios (pausas antiguas y estrenos que sigues)
+- [ ] Notificación cuando: (a) un ítem lleva mucho en "pausa" (7.16) sin retomarse, o (b) sale la nueva temporada de una serie que sigues, o la adaptación de un libro que leíste.
+  - **Primera pieza de infraestructura de notificaciones del proyecto** — no existe hoy nada de esto (ni email, ni push, ni jobs programados). Ver §8 (Decisiones de arquitectura) antes de empezar cualquiera de las dos, porque comparten la misma base y solo tiene sentido construirla una vez.
+  - **Depende de 7.31** (adopción de Capacitor, en curso): push nativo (APNs) para usuarios iOS en la UE, donde Web Push no funciona (ver §8-F); Web Push normal para Android/desktop.
+  - "Estrenos que sigues" necesita además saber si una serie/libro sigue activo (temporada en emisión, secuela anunciada) — dato que ni TMDB ni Google Books garantizan de forma fiable; evaluar viabilidad antes de comprometer esta parte.
+
+### 7.18 Diario emocional/contextual
+- [ ] Campos opcionales al registrar un pase en el diario: estado de ánimo (selector cerrado de 6–10 opciones, no texto libre — para poder agregarlo en estadísticas), compañía (solo/pareja/amigos/familia/otro), ubicación libre, nota.
+  - Extiende `diary_entries` (ya tiene `rating`, `review`) con estos campos nuevos — encaja de forma natural, es la misma tabla y el mismo momento de registro.
+  - **Privados por defecto**, con toggle explícito para hacerlos públicos — mismo patrón de `profiles.is_public` ya establecido, pero a nivel de campo/pase en vez de perfil completo.
+  - Alimenta "Tu año en Biblioshare" (7.15) con datos más ricos (mood dominante, compañía más frecuente) — construir esto antes ayuda a que esa retrospectiva sea mejor desde el principio.
+
+### 7.19 Recomendaciones cruzadas entre formatos
+- [ ] "Si te gustó la serie X, lee el libro Y" — recomendaciones basadas en atributos compartidos (género, temas, tono), con explicación visible y opción de descartar.
+  - Esfuerzo alto (XL) y depende de tener géneros/temas normalizados entre fuentes — ver §8 (normalización de géneros). Sin eso, no hay señal fiable de qué es "similar".
+  - **MVP realista de esta idea**: tabla curada a mano de equivalencias famosas (adaptaciones conocidas) en vez de un motor de embeddings desde el día uno. Solo merece la pena automatizarlo con más usuarios y más datos de consumo.
+
+### 7.20 Clubs de lectura/visionado con hitos anti-spoiler
+- [ ] Grupos con checkpoints ("hasta el capítulo 10") cuyos hilos de discusión se desbloquean según el progreso registrado de cada miembro, con opción manual de "ya llegué aquí".
+  - Necesita funcionalidad social real (grupos, roles, moderación) que hoy no existe — de las ideas nuevas, la que más se apoya en tener ya una base de usuarios activa para tener sentido.
+  - Reutiliza el sistema de progreso existente (`position`) y comparte con 7.24/7.21/7.30 la necesidad de un mecanismo genérico de "ocultar contenido hasta que el progreso lo permita" (ver §8).
+
+### 7.21 Comparador de adaptaciones (libro ↔ película/serie)
+- [ ] Ficha comparativa entre una obra y su adaptación: portadas, ratings medios lado a lado, y voto de la comunidad ("¿cuál es mejor?") habilitado solo para quien terminó ambos.
+  - **Requiere un tipo de dato que hoy no existe**: relación entre ítems de catálogo de *tipos distintos* (`books` ↔ `movies`/`series`). **Decidido** (ver §8-B): tabla genérica de relaciones, curada manualmente/por la comunidad — no inferida automáticamente de las APIs. 7.19 (recomendaciones) comparte el mismo mecanismo.
+  - Las APIs actuales no siempre exponen esta relación de forma fiable (Wikidata es mejor fuente que TMDB/Google Books para esto) — contribución comunitaria editable, con cola de revisión, es probablemente necesaria tarde o temprano.
+
+### 7.22 Cola priorizada con tiempo estimado
+- [ ] Reordenar la lista de "pendientes" por prioridad (drag & drop) y ver cuánto tardarías en completarla al ritmo actual ("~8 meses"), con estimación por ítem individual.
+  - Ya tenemos buena parte de los datos necesarios: `total_pages`/`duration_minutes`/`total_episodes` existen en el catálogo (algunos sin poblar aún, ver 7.8). Falta calcular el "ritmo personal" (páginas/día, horas/semana) a partir del historial — se puede derivar de `diary_entries` sin tabla nueva.
+  - Mostrar la fórmula de cálculo al usuario (transparencia) en vez de un modelo opaco — más barato y genera más confianza.
+
+### 7.23 Retos personalizables (ampliación de 7.10)
+- [ ] Más allá del objetivo simple anual (7.10): retos con **filtros** (género, autor/director, país, etiqueta, periodo), progreso automático al registrar ítems que cumplen el filtro, retos públicos clonables por otros usuarios, y tarjeta de progreso exportable.
+  - Reutilizaría el mismo motor de filtros que "Mi biblioteca" (7.12) y las etiquetas (7.5) en vez de construir uno nuevo — buen momento para diseñar ambos pensando en que un tercer consumidor (retos) también los va a necesitar.
+  - Criterios como "autoras" o "nacionalidad del autor/a" no los da ninguna API — requeriría etiquetado manual/comunitario, no asumirlo como dato disponible.
+
+### 7.24 Notas ancladas al punto de progreso
+- [ ] Notas privadas mientras consumes un ítem, ancladas al capítulo/minuto/episodio actual, con vista de "línea de tiempo" al terminar (para ver cómo evolucionaron tus teorías) y opción de publicar una nota suelta como reseña con aviso de spoiler.
+  - Distinto de `notes` (campo único de texto libre que ya existe en `library_entries`) y de `diary_entries.review` (una reseña por pase): esto es **una lista de notas con timestamp/punto de progreso propio** — necesitaría su propia tabla si se construye (`entry_notes`: `library_entry_id`, `progress_point` jsonb, `body`, `created_at`), no encaja en los campos actuales sin perder la ordenación.
+  - Comparte con 7.20/7.21/7.30 la necesidad de una utilidad genérica de "spoiler-safe" — ver §8.
+
+### 7.25 "¿Dónde lo veo?" (disponibilidad en streaming)
+- [ ] En películas/series, mostrar en qué plataforma de streaming está disponible.
+  - **Más barato de lo que parece**: TMDB (que ya integramos) expone `/movie/{id}/watch/providers` y `/tv/{id}/watch/providers` con exactamente este dato por región (es la misma fuente que JustWatch, bajo acuerdo de licencia) — no hace falta una integración nueva con JustWatch.
+  - Encaja de forma natural en 7.8 (páginas de detalle por ítem) — mejor construirla ahí directamente que como feature aislada.
+
+### 7.26 Listas colaborativas
+- [ ] Listas editables entre varios usuarios (ej. "películas para el maratón de Halloween").
+  - Amplía la idea ya registrada de "listas curadas" (7.15) al caso multi-usuario — requiere modelo de permisos (quién puede añadir/quitar) que hoy no existe en ningún sitio del proyecto. Construir primero la versión de un solo dueño (7.15/7.4) y solo dar el salto a colaborativa si hay demanda, es más barato que empezar directamente por la versión multi-usuario.
+
+### 7.27 Citas y frases destacadas
+- [ ] Guardar citas/frases de un libro ancladas al ítem, con opción de foto+OCR y exportables como tarjetas visuales para compartir.
+  - Versión ampliada de la idea ya apuntada en el backlog general — el OCR y la exportación como imagen son lo nuevo; el guardado simple de texto es barato, OCR es una pieza aparte (servicio externo o librería cliente) a evaluar aparte si se llega a esta idea.
+
+### 7.28 Random picker ("no sé qué ver/leer")
+- [ ] Botón que elige al azar un ítem de tu lista de pendientes, con filtros opcionales (ej. "tengo 2 horas" usando `duration_minutes`/`total_pages`/ritmo personal de 7.22).
+  - Idea barata y autocontenida: no requiere esquema nuevo, solo una query aleatoria sobre `library_entries` con status `planned` filtrada por los metadatos que ya existen (o existirán tras 7.8/7.1).
+
+### 7.29 Método de adquisición y "dinero ahorrado"
+- [ ] Marcar cómo obtuviste cada ítem (comprado / biblioteca / prestado / regalo) y, si se compró, su precio — para poder mostrar una estadística de "dinero ahorrado" con préstamos/biblioteca.
+  - Mismo patrón que la encuadernación de 7.1: es un dato **de Ejemplar**, no de Obra ni de Progreso (ver §8-C, decidido) → va en `library_entries.copy_details` (JSONB propio, separado de `position`), no en el catálogo ni mezclado con el progreso.
+
+### 7.30 Modo sin spoilers global
+- [ ] Difuminar sinopsis, duración de episodios restantes y temporadas pendientes de lo que estás viendo/leyendo actualmente.
+  - Comparte necesidad con 7.20 (clubs), 7.21 (comparador) y 7.24 (notas ancladas): un mecanismo genérico de "ocultar contenido según el progreso/estado del usuario" — ver §8. Construir esta utilidad una sola vez cuando se aborde la primera de las cuatro, en vez de resolver el spoiler-hiding cuatro veces distintas.
+
+### 7.31 Adoptar Capacitor (wrapper nativo) — *en curso*
+- [ ] Instalar `@capacitor/core` + `@capacitor/cli`, `capacitor.config.ts` apuntando `server.url` a la app desplegada (sin tocar el código Next.js existente — SSR y Server Actions siguen funcionando igual).
+- [ ] Scaffolding de la plataforma **Android** (viable en este entorno Windows con Android Studio + JDK).
+- [ ] Plataforma **iOS**: solo se puede compilar/probar desde macOS (Xcode) o un runner de CI en la nube — no alcanzable desde Windows. Queda pendiente hasta disponer de esa vía.
+- Decidido en §8-F como prerrequisito de 7.17 (notificaciones) — ver ahí el razonamiento completo.
+
+### 7.32 Resumen de priorización sugerida
+
+No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, para decidir por dónde seguir. Todo lo marcado `[x]` en las secciones de arriba queda fuera de esta tabla (ya hecho).
+
+| Idea | Esfuerzo | Depende de | Por qué este orden |
+|---|---|---|---|
+| **7.31 Adoptar Capacitor** | **S-M** | **§8-F (decidido)** | **En curso — decidido explícitamente, antes que 7.17** |
+| 7.3 Escanear ISBN por cámara | S-M | 7.2 (hecho) | Cierre natural del flujo de ISBN, alto valor percibido en móvil |
+| 7.8 Páginas de detalle por ítem | M | — | Datos ya existen sin usar; desbloquea 7.25 y da un lugar natural a 7.9/7.27 |
+| 7.25 "¿Dónde lo veo?" | S | 7.8 | Casi gratis vía TMDB, encaja directo en 7.8 |
+| 7.12 Buscar/ordenar en tu biblioteca | S | — | Barato, se nota en cuanto la biblioteca crece |
+| 7.13 Recuento de relecturas + comparativa | S | — | Dato ya registrado, falta solo UI |
+| 7.28 Random picker | S | 7.1/7.8 (metadatos) | Autocontenido, divertido, barato |
+| 7.11 Estantería "Ahora mismo" | S | — | Atajo de uso diario, sin esquema nuevo |
+| 7.7 Importar CSV (Goodreads/Letterboxd) | M | 7.1/7.2/§4.2 manual | Mayor palanca de adopción de todo el backlog |
+| 7.9 Favoritos/vitrina + OG image | S-M | — | Barato, mejora directa de compartibilidad del perfil |
+| 7.16 Modo "en pausa" | S-M | §8-A (resuelto) | Cierra un hueco real del modelo de estados, ya sin decisión pendiente |
+| 7.5 Etiquetas privadas | M | — | Base para 7.23 (retos) y estadísticas por etiqueta |
+| 7.22 Cola priorizada con tiempo estimado | M | 7.1/7.8 | Usa datos que ya existirán tras 7.1/7.8 |
+| 7.4 Sagas y colecciones | M | §8-B (resuelto) | Puede reutilizar la tabla de relaciones "mismo universo" en vez de mecanismo propio |
+| 7.14 Sesiones de progreso diarias (rachas) | L | — | Alto valor de retención, pero requiere tabla nueva y bastante UI |
+| 7.29 Método de adquisición / dinero ahorrado | S-M | §8-C (resuelto) | Ya decidido: va en `copy_details`, separado de `position` |
+| 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
+| 7.17 Recordatorios (pausas/estrenos) | M-L | 7.31 (Capacitor) + §8-D | Push nativo vía Capacitor para iOS+UE; Web Push + pg_cron para el resto |
+| 7.18 Diario emocional/contextual | M | — | Enriquece 7.15 ("Tu año en Biblioshare") antes de construir esa retrospectiva |
+| 7.27 Citas y frases destacadas | S (texto) / M (OCR) | — | Empezar por texto simple; OCR es una fase aparte |
+| 7.23 Retos personalizables | L | 7.5, 7.12 | Motor de filtros compartido — construir después de esos dos |
+| 7.30 Modo sin spoilers global | M | §8-E (enfoque confirmado) | Vale la pena como utilidad compartida, no antes de tener 1–2 consumidores reales |
+| 7.21 Comparador de adaptaciones | M-L | §8-B (resuelto) | Diferenciador fuerte; ya tiene modelo de relaciones definido |
+| 7.26 Listas colaborativas | M | 7.4/7.15, modelo de permisos | Construir primero la versión de un solo dueño |
+| 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, §8-E | Necesita masa crítica para tener sentido |
+| 7.24 Notas ancladas al progreso | M | §8-E | Tabla nueva; valor real pero no urgente |
+| 7.19 Recomendaciones cruzadas | XL | §8-B (resuelto) + normalización géneros (abierta) | El más caro; empezar solo con tabla curada a mano si se aborda |
+
+## 8. Decisiones de arquitectura (evaluadas antes de construir más)
+
+Estas no son features — son decisiones de forma que, si se toman tarde (después de que ya haya datos o UI construida encima), cuestan un refactor. La mayoría ya se resolvió (8-A, 8-B, 8-C) o se confirmó el enfoque (8-D, 8-E) al revisar este backlog; quedan abiertas la normalización de géneros (nota dentro de 8-B) y 8-F (PWA-only vs. nativo), que es una decisión de producto, no técnica.
+
+### 8-A. ¿"Pausado" es un estado explícito o inferido? — *decidido*
+**Decidido**: `paused` es un **estado explícito** en `media_status` (enum) — migración barata (`ALTER TYPE ... ADD VALUE`), evita heurísticas de inactividad frágiles, y evita re-modelar el filtro de estados (`LibraryFilters`, `ProgressPanel`, `PublicItemCard`) dos veces.
+**Añadido**: aunque el estado es manual, cuando exista 7.14 (`progress_sessions`) se puede usar esa señal para **sugerir** el cambio, no para aplicarlo solo — p. ej. "no registras avance en *Fahrenheit 451* desde hace 45 días, ¿lo marcamos como pausado?" como una notificación más dentro de 7.17, no un job que cambie el estado por su cuenta. Mantiene la separación clara: el usuario decide el estado, el sistema solo detecta la señal y avisa.
+
+### 8-B. Relaciones entre ítems de catálogo (adaptaciones, mismo universo, recomendaciones) — *decidido*
+Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel de datos. **Decidido**: si se aborda 7.21 o 7.19, usar una tabla genérica de relaciones (`item_type_a/item_id_a`, `item_type_b/item_id_b`, `relation_type`) en vez de columnas ad-hoc por tipo (`adaptation_of_book_id` en `movies`, etc.) — mismo espíritu que unificar `library_entries`: un mecanismo, no uno por combinación de tipos.
+- **Alcance ampliado**: no solo "adaptación de", también relaciones de **mismo universo/franquicia** (secuela, spin-off, misma saga) — el `relation_type` debe ser un enum abierto a esto desde el diseño, no solo `adaptation_of`.
+- **Curación manual, no automática**: las relaciones se crean/editan por el usuario o la comunidad, no se infieren automáticamente de las APIs (que no las dan de forma fiable). Contribución editable con cola de revisión, igual que se apuntaba en 7.21.
+
+**Relacionado — normalización de géneros**: `books.genres`, `movies.genres` y `series.genres` existen en el esquema pero **hoy no se rellenan desde ningún sitio**. Sigue como decisión pendiente (no resuelta en esta ronda): definir taxonomía antes de empezar a poblarlos, solo urge si se aborda 7.8 o 7.19.
+
+**Relacionado — normalización de géneros**: `books.genres`, `movies.genres` y `series.genres` existen en el esquema pero **hoy no se rellenan desde ningún sitio** (ni Google Books ni TMDB los capturan todavía en el código). Es el momento barato de decidir la taxonomía (¿guardar el género tal cual da cada API y normalizar en lectura, o normalizar al guardar contra un catálogo cerrado propio?) — antes de que empiece a haber datos reales con vocabularios distintos que habría que migrar después. Solo urge si se empieza a poblar `genres` (p. ej. al abordar 7.8) o si 7.19 se vuelve prioridad real.
+
+### 8-C. Separar Obra / Ejemplar / Progreso — *decidido*
+`position` nació como "el único detalle que varía por tipo" para *progreso*, pero en 7.1 ya se le coló `format` (encuadernación), que no es progreso sino metadato del ejemplar — el campo empieza a mezclar responsabilidades bajo un nombre que ya no describe bien su contenido.
+
+**Decidido**: separar el modelo conceptualmente en tres capas, no dos:
+- **Obra** (`books`/`movies`/`series`, ya existe): metadato compartido de la obra en sí — título, autor/director, sinopsis, editorial, nº de páginas...
+- **Ejemplar**: metadato de *tu copia concreta* — encuadernación (7.1, hoy mal ubicado en `position`), método de adquisición y precio (7.29), y cualquier otro dato "de esta copia" que surja después. Vive en un campo JSONB propio en `library_entries` — **`copy_details`** — separado de `position`.
+- **Progreso**: punto actual (`position`: página / temporada+episodio, sin cambios), historial de pases (`diary_entries`, ya existe) y futuras sesiones diarias (`progress_sessions`, 7.14).
+
+**Migración cuando se retome 7.1/7.29**: mover `format` de `position` a `copy_details` — trivial ahora (poca o ninguna fila real con ese campo todavía), mucho más cara cuanto más se tarde en decidirlo. No se ejecuta esta migración todavía (no hay una tarea activa que la necesite hoy); queda documentada para hacerse en cuanto se toque 7.1 (ampliación) o 7.29.
+
+### 8-D. Infraestructura de notificaciones (compartida por 7.17 y futuras) — *enfoque confirmado*
+El proyecto no tiene hoy ningún mecanismo de: trabajos programados (cron/queue), envío de email, ni push notifications. 7.17 (recordatorios de pausa/estrenos) es la primera feature que lo necesita, pero EPIC-05 (clubs) también lo pediría más adelante. Antes de construir 7.17: decidir una vez la pieza compartida en vez de resolverla feature a feature.
+- **Dato a favor de Web Push**: ya existe un service worker registrado (`public/sw.js`, para el cache offline de la PWA) — añadir Web Push (con claves VAPID) es una extensión natural de algo que ya está en su sitio, en vez de infraestructura nueva desde cero.
+- **Matiz importante (ver 8-F)**: Web Push **no funciona en iOS para usuarios en la UE** (Apple lo desactivó por cumplimiento de la DMA, marzo 2024) — la app se abre como pestaña normal de Safari, sin push. Esto no invalida Web Push como base para Android/desktop, pero significa que "Web Push cubre notificaciones" no es cierto para todos los usuarios; si la fiabilidad en iOS+UE importa, la única vía es push nativo (APNs) dentro de un wrapper (Capacitor, 8-F), no algo que se resuelva solo con más código web.
+- Para jobs programados, Supabase soporta `pg_cron` de forma nativa (sin servicio externo) — evaluarlo primero antes de introducir un runner de colas aparte.
+- No comprometer esta decisión hasta que 7.17 sea la tarea activa; no construir infraestructura de notificaciones "por si acaso".
+
+### 8-E. Spoiler-safe: utilidad compartida, no cuatro implementaciones distintas — *enfoque confirmado*
+7.20 (clubs), 7.21 (comparador), 7.24 (notas ancladas) y 7.30 (modo sin spoilers) necesitan las cuatro alguna forma de "ocultar contenido hasta que el progreso/estado del usuario lo permita". Cuando se aborde la primera de las cuatro, construirla como una utilidad genérica (componente/helper reutilizable, no lógica ad-hoc dentro de esa feature) para que las siguientes tres la reutilicen en vez de reinventarla.
+
+### 8-F. ¿Sigue siendo PWA-only la decisión correcta? — *decidido: adoptar Capacitor*
+
+Investigación (julio 2026) sobre el estado real de las tres cosas que "ir nativo" resolvería, para no decidir a ciegas:
+
+**Hallazgo 1 — el widget de pantalla de inicio sigue sin ser alcanzable desde la web, en ninguna plataforma.** Ni Android ni iOS exponen una API web para esto hoy; solo existe una propuesta experimental de Microsoft Edge (PWA-driven widgets), limitada a Windows. No ha cambiado desde que se registró la decisión original — si se quiere el widget, no hay atajo: requiere código nativo (Swift/Kotlin) sí o sí, independientemente de qué se decida en los otros dos puntos.
+
+**Hallazgo 2 — envolver *esta* app concreta en un wrapper nativo (Capacitor) es más barato de lo que parecía.** Capacitor soporta apuntar el wrapper a una URL remota (config `server.url`) en vez de empaquetar assets estáticos — es decir, el wrapper nativo carga la app Next.js *desplegada* tal cual, con SSR y Server Actions funcionando exactamente igual que hoy. No es una reescritura: es un shell nativo delgado alrededor de lo que ya existe, aditivo, sin tocar el código actual.
+
+**Hallazgo 3 — el motivo real para no esperar: Web Push está roto en iOS para usuarios en la UE.** Desde marzo 2024, por la DMA europea, Apple desactivó el modo standalone y las notificaciones push para PWAs instaladas en la Unión Europea — la PWA se abre como pestaña normal de Safari, sin push, sin importar lo que construyamos en 8-D. Como el desarrollo y previsiblemente buena parte de los usuarios están en España, esto **invalida el plan de 8-D (Web Push) para ese segmento en iOS específicamente** — no es un matiz menor, es una limitación de plataforma fuera de nuestro control. Android no tiene esta restricción.
+
+**Conclusión — son tres decisiones, no una:**
+1. ¿Presencia en tiendas de apps + acceso a plugins nativos (cámara para 7.3, etc.)? → **Barato** vía Capacitor `server.url`, aditivo, sin abandonar la base actual.
+2. ¿Push fiable en iOS? → Solo se consigue con push nativo (APNs) dentro de un wrapper — Web Push (8-D) seguirá sin funcionar en iOS+UE decidamos lo que decidamos sobre el resto.
+3. ¿Widget de pantalla de inicio? → Requiere código nativo real, coste aparte, no depende de las otras dos.
+
+**Decidido (2026-07-08)**: adoptar Capacitor **antes** de construir 7.17 (notificaciones), precisamente porque Web Push no cubre iOS+UE de todas formas — no tiene sentido construir la infraestructura de 8-D asumiendo una cobertura que no existe. El widget de pantalla de inicio (punto 3) **no** se compromete todavía — sigue siendo código nativo aparte, a valorar solo si se llega a esa idea concreta.
+
+**Restricción de entorno a tener en cuenta**: compilar el proyecto **iOS** de Capacitor requiere Xcode, que solo corre en macOS — no es posible desde un entorno Windows. La parte **Android** sí es viable en Windows (Android Studio + JDK). El trabajo de configuración de Capacitor (paquetes, `capacitor.config.ts`, scaffolding) es multiplataforma; compilar y probar en un dispositivo/emulador iOS necesitará una Mac o un runner de CI en la nube (p. ej. Codemagic, GitHub Actions con runner macOS) en algún momento.
+
+## 9. Decisiones registradas
 
 | Fecha | Decisión | Motivo |
 |-------|----------|--------|
@@ -220,9 +392,10 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 | 2026-07-07 | Catálogo compartido entre usuarios, progreso privado por usuario | Evita duplicar metadatos al buscar el mismo libro/película varias veces |
 | 2026-07-07 | Perfiles públicos por defecto, con opción de hacerlos privados | Habilita la función social mínima (ver bibliotecas de otros) sin construir todo el sistema social completo |
 | 2026-07-07 | Offline MVP = cache de solo lectura, no offline-first completo | Reduce complejidad de sincronización manteniendo el beneficio principal de una PWA instalable |
-| 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §9 |
+| 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §10 |
+| 2026-07-08 | Adoptar **Capacitor** (wrapper nativo vía `server.url`) antes de construir 7.17; se abandona el PWA-only estricto de la decisión anterior | Investigación confirmó que Web Push no funciona en iOS+UE (bloqueo de Apple por la DMA, no arreglable en web) — no tiene sentido construir 8-D asumiendo una cobertura que no existe. El widget de pantalla de inicio sigue sin comprometerse (requiere código nativo aparte) |
 
-## 9. Historial de versiones
+## 10. Historial de versiones
 
 ### v1.0 — 2026-07-08 — MVP completo
 Todas las funcionalidades de §4 implementadas y verificadas manualmente (navegador + limpieza de datos de prueba):
