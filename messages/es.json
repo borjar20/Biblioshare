@@ -123,6 +123,7 @@
     "statsFilms": "{count, plural, =0 {0 películas} one {1 película} other {# películas}}",
     "memberSince": "Desde {year}",
     "nowConsuming": "Ahora mismo",
+    "favorites": "Favoritos",
     "activityTitle": "Actividad",
     "activityEmpty": "Todavía no hay pases registrados en el diario.",
     "typeBooks": "Libros",
@@ -196,6 +197,9 @@
       "dropped": "Abandonado"
     },
     "remove": "Quitar",
+    "pin": "Fijar en el perfil",
+    "unpin": "Quitar de fijados",
+    "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
     "progress": {
       "show": "Editar progreso",
       "hide": "Ocultar",

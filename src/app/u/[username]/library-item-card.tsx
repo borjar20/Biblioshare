@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { LibraryItem, MediaStatus } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getProgress } from "@/lib/library/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { updateStatus, removeFromLibrary } from "./actions";
+import { updateStatus, removeFromLibrary, toggleFavorite } from "./actions";
 import { DiaryPanel } from "./diary-panel";
 import { ProgressPanel } from "./progress-panel";
 
@@ -29,6 +29,7 @@ export function LibraryItemCard({
 }) {
   const t = useTranslations("library");
   const [isPending, startTransition] = useTransition();
+  const [favoriteError, setFavoriteError] = useState<string | null>(null);
   const progress = getProgress(item);
 
   return (
@@ -107,6 +108,24 @@ export function LibraryItemCard({
           >
             {t("remove")}
           </button>
+
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() =>
+              startTransition(async () => {
+                setFavoriteError(null);
+                const result = await toggleFavorite(item.entryId);
+                if (result.error) setFavoriteError(t(`pinError`));
+              })
+            }
+            className="text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
+          >
+            {item.pinnedOrder !== null ? t("unpin") : t("pin")}
+          </button>
+          {favoriteError && (
+            <p className="text-xs text-status-dropped">{favoriteError}</p>
+          )}
 
           <ProgressPanel item={item} />
           <DiaryPanel libraryEntryId={item.entryId} />

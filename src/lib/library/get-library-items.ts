@@ -22,13 +22,19 @@ export async function getLibraryItems(
     status?: MediaStatus;
     search?: string;
     sort?: LibrarySort;
+    favoritesOnly?: boolean;
   }
 ): Promise<LibraryItem[]> {
   let query = supabase
     .from("library_entries")
-    .select("id, item_type, item_id, status, rating, position, notes")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false });
+    .select("id, item_type, item_id, status, rating, position, notes, pinned_order")
+    .eq("user_id", userId);
+
+  if (filters.favoritesOnly) {
+    query = query.not("pinned_order", "is", null).order("pinned_order", { ascending: true });
+  } else {
+    query = query.order("updated_at", { ascending: false });
+  }
 
   if (filters.itemType) query = query.eq("item_type", filters.itemType);
   if (filters.status) query = query.eq("status", filters.status);
@@ -137,6 +143,7 @@ export async function getLibraryItems(
         pageCount: meta.pageCount,
         totalEpisodes: meta.totalEpisodes,
         rereadCount: rereadCountByEntry.get(entry.id) ?? 0,
+        pinnedOrder: entry.pinned_order,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);

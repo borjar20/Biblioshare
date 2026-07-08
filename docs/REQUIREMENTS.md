@@ -169,12 +169,10 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - `not-found.tsx` propio por ruta para IDs inexistentes (probado con un UUID inventado).
   - Los resultados de búsqueda (`SearchResultCard`) **no** enlazan aquí todavía — un resultado de búsqueda aún no tiene fila de catálogo hasta que se añade, así que no hay id al que enlazar en ese punto del flujo.
 
-### 7.9 Perfil público personalizable: favoritos fijados, estanterías y OG image
-- [ ] Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd).
-  - Requiere un cambio pequeño de esquema (marcar N filas de `library_entries` como destacadas, p. ej. un campo `pinned_order`), mismo RLS que ya existe.
-- [ ] **Ampliación**: no solo "favoritos", sino varias **estanterías/vitrinas nombradas** por el usuario (p. ej. "Mis pósters", "Lo mejor de 2026") — mismo mecanismo de `pinned_order` pero con una etiqueta de grupo en vez de una sola lista fija. Empezar por la versión simple (una sola fila de favoritos) y solo ampliar a estanterías múltiples si hay demanda real; evita construir de más de entrada.
-- [ ] Generar una **imagen Open Graph** del perfil para cuando se comparte el link.
-  - Casi gratis: ya se genera contenido con `next/og` para los iconos PWA (`src/app/icon.tsx`, `src/lib/app-icon.tsx`) — mismo patrón aplicado a `app/u/[username]/opengraph-image.tsx`.
+### 7.9 Perfil público personalizable: favoritos fijados, estanterías y OG image — *hecho (versión simple)*
+- [x] Fijar hasta 6 ítems favoritos arriba del perfil público (estilo Letterboxd): columna `pinned_order` (integer, nullable) añadida a `library_entries` vía migración — `NULL` = no fijado, entero positivo = orden de aparición, asignado incrementalmente con `MAX(pinned_order)+1` y limitado a 6 por código de aplicación (sin constraint ni índice nuevos en BD; el RLS existente de "actualizar tus propias filas" ya lo cubre sin cambios). `getLibraryItems()` (`src/lib/library/get-library-items.ts`) gana la opción `favoritesOnly`, y `LibraryItem` el campo `pinnedOrder: number | null`. Server action `toggleFavorite(entryId)` en `src/app/u/[username]/actions.ts` (fija/desfija, devuelve `{ error: "maxReached" }` al superar el límite). Botón de fijar/desfijar (solo para el dueño) en `library-item-card.tsx`, con aviso inline al alcanzar el máximo. Nuevo componente `src/components/favorites-shelf.tsx` — estantería "Favoritos" mostrada en `/u/[username]` justo tras `ProfileHeader`, visible en cualquier pestaña (a diferencia de `NowConsuming`/`ActivityChart`, que son solo de "resumen"); no renderiza nada si no hay favoritos. Verificado en el navegador: fijar "El Quijote" hace aparecer la estantería con la portada correcta; desfijar la hace desaparecer.
+- **Diferido, no construido todavía**: la ampliación a varias **estanterías/vitrinas nombradas** (p. ej. "Mis pósters", "Lo mejor de 2026") sigue siendo solo una idea a considerar más adelante, tal como ya apuntaba este mismo apartado — se mantiene fuera de alcance salvo que surja demanda real; no es una tarea pendiente de esta iteración.
+- [x] Generar una **imagen Open Graph** del perfil para cuando se comparte el link: `src/app/u/[username]/opengraph-image.tsx` con `next/og`'s `ImageResponse` (mismo patrón que `src/app/icon.tsx`), 1200x630, con nombre visible, `@username` y la línea de estadísticas (libros/películas/series), con la paleta morado oscuro/crema de la app. Verificado visitando `/u/devtest/opengraph-image` directamente.
 
 ### 7.10 Retos de lectura/visionado anuales
 - [ ] Objetivo tipo "50 libros en 2026" con barra de progreso, calculado sobre `diary_entries`/`library_entries` que ya se registran.
@@ -305,9 +303,7 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 |---|---|---|---|
 | **7.31 Adoptar Capacitor** | **S-M** | **§8-F (decidido)** | **En curso — falta compilar/probar en Android real; scaffolding y 7.3/7.32 ya construidos sobre esta base** |
 | 7.8 Páginas de detalle por ítem | M | — | Datos ya existen sin usar; desbloquea 7.25 y da un lugar natural a 7.9/7.27 |
-| 7.28 Random picker | S | 7.1/7.8 (metadatos) | Autocontenido, divertido, barato |
 | 7.7 Importar CSV (Goodreads/Letterboxd) | M | 7.1/7.2/§4.2 manual | Mayor palanca de adopción de todo el backlog |
-| 7.9 Favoritos/vitrina + OG image | S-M | — | Barato, mejora directa de compartibilidad del perfil |
 | 7.16 Modo "en pausa" | S-M | §8-A (resuelto) | Cierra un hueco real del modelo de estados, ya sin decisión pendiente |
 | 7.5 Etiquetas privadas | M | — | Base para 7.23 (retos) y estadísticas por etiqueta |
 | 7.22 Cola priorizada con tiempo estimado | M | 7.1/7.8 | Usa datos que ya existirán tras 7.1/7.8 |
@@ -325,6 +321,7 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, §8-E | Necesita masa crítica para tener sentido |
 | 7.24 Notas ancladas al progreso | M | §8-E | Tabla nueva; valor real pero no urgente |
 | 7.19 Recomendaciones cruzadas | XL | §8-B (resuelto) + normalización géneros (abierta) | El más caro; empezar solo con tabla curada a mano si se aborda |
+| 7.28 Random picker | S | 7.1/7.8 (metadatos) | Barato y autocontenido, pero aplazado a propósito para el final — decisión explícita, no por dependencias |
 
 ## 8. Decisiones de arquitectura (evaluadas antes de construir más)
 

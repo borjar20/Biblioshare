@@ -22,4 +22,6 @@ export type LibraryItem = {
   totalEpisodes: number | null;
   // Count of diary_entries for this library entry. See docs/REQUIREMENTS.md §7.13.
   rereadCount: number;
+  // NULL = not pinned to the public profile. See docs/REQUIREMENTS.md §7.9.
+  pinnedOrder: number | null;
 };

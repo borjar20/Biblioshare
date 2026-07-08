@@ -14,6 +14,7 @@ import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import { NowConsuming } from "@/components/now-consuming";
+import { FavoritesShelf } from "@/components/favorites-shelf";
 import { ActivityChart } from "@/components/activity-chart";
 import { LibraryItemCard } from "./library-item-card";
 import { VisibilityToggle } from "./visibility-toggle";
@@ -73,7 +74,7 @@ export default async function PublicProfilePage({
   const basePath = `/u/${profile.username}`;
   const itemType: ItemType | undefined = tab === "overview" ? undefined : tab;
 
-  const [items, stats, inProgress, months] = await Promise.all([
+  const [items, stats, inProgress, months, favorites] = await Promise.all([
     tab === "overview"
       ? getLibraryItems(supabase, profile.userId, {})
       : getLibraryItems(supabase, profile.userId, { itemType, status, search, sort }),
@@ -84,6 +85,7 @@ export default async function PublicProfilePage({
     tab === "overview"
       ? getMonthlyActivity(supabase, profile.userId)
       : Promise.resolve([]),
+    getLibraryItems(supabase, profile.userId, { favoritesOnly: true }),
   ]);
 
   const gridItems = tab === "overview" ? items.slice(0, 6) : items;
@@ -91,6 +93,8 @@ export default async function PublicProfilePage({
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
       <ProfileHeader profile={profile} stats={stats} isOwner={isOwner} />
+
+      <FavoritesShelf items={favorites} />
 
       {isOwner && (
         <VisibilityToggle username={profile.username} isPublic={profile.isPublic} />

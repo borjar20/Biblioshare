@@ -110,6 +110,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           notes: string | null
+          pinned_order: number | null
           position: Json
           rating: number | null
           started_at: string | null
@@ -123,6 +124,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           notes?: string | null
+          pinned_order?: number | null
           position?: Json
           rating?: number | null
           started_at?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           notes?: string | null
+          pinned_order?: number | null
           position?: Json
           rating?: number | null
           started_at?: string | null
