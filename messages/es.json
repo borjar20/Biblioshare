@@ -51,6 +51,7 @@
   "search": {
     "title": "Buscar",
     "placeholder": "Busca un título...",
+    "placeholderBook": "Busca un título o ISBN...",
     "submit": "Buscar",
     "types": {
       "book": "Libros",
@@ -74,6 +75,7 @@
       "year": "Año",
       "publisher": "Editorial",
       "pageCount": "Nº de páginas",
+      "isbn": "ISBN",
       "coverUrl": "URL de la portada",
       "coverUrlHint": "Opcional. Enlace directo a una imagen.",
       "submit": "Añadir a mi biblioteca",
@@ -81,6 +83,7 @@
       "errors": {
         "titleRequired": "El título es obligatorio.",
         "invalidPageCount": "El número de páginas no es válido.",
+        "invalidIsbn": "El ISBN no es válido (debe tener 10 o 13 dígitos).",
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
     }

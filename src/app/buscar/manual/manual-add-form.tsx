@@ -41,6 +41,10 @@ export function ManualAddForm({ itemType }: { itemType: ItemType }) {
           <Field label={t("pageCount")} htmlFor="pageCount">
             <Input id="pageCount" name="pageCount" type="number" min={0} />
           </Field>
+
+          <Field label={t("isbn")} htmlFor="isbn">
+            <Input id="isbn" name="isbn" type="text" />
+          </Field>
         </>
       )}
 

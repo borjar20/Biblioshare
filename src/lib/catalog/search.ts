@@ -1,6 +1,7 @@
 import { searchBooks } from "./google-books";
 import { searchMovies, searchSeries } from "./tmdb";
 import { MOCK_BOOKS, MOCK_MOVIES, MOCK_SERIES } from "./mock-data";
+import { normalizeIsbn } from "./isbn";
 import type { ItemType, SearchResult } from "./types";
 
 export async function searchCatalog(
@@ -30,6 +31,11 @@ function searchMockData(itemType: ItemType, query: string): SearchResult[] {
       : itemType === "movie"
         ? MOCK_MOVIES
         : MOCK_SERIES;
+
+  if (itemType === "book") {
+    const isbn = normalizeIsbn(query);
+    if (isbn) return pool.filter((item) => item.isbn === isbn);
+  }
 
   const needle = query.trim().toLowerCase();
   return pool.filter(

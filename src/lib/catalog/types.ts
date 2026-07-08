@@ -10,4 +10,6 @@ export type SearchResult = {
   // Book-only metadata (null for movies/series). See docs/REQUIREMENTS.md §7.1.
   publisher: string | null;
   pageCount: number | null;
+  // Book-only. See docs/REQUIREMENTS.md §7.2.
+  isbn: string | null;
 };

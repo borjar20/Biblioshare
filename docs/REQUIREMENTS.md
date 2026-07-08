@@ -128,11 +128,10 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [x] Encuadernación/formato (bolsillo, tapa blanda, tapa dura) — editable desde "Editar progreso" en "Mi biblioteca".
   - Es propiedad de **tu ejemplar**, no de la obra: vive en `library_entries.position` (tipado en `src/lib/library/position.ts`), no en `books` — consistente con cómo `position` ya modela lo que varía por usuario y por tipo.
 
-### 7.2 Búsqueda de libros por ISBN
-- [ ] Permitir buscar un libro por **ISBN** además de por título. Google Books lo soporta nativamente con `q=isbn:...`.
-  - UX propuesta: **autodetectar** cuando la query tiene forma de ISBN (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10) y enrutarla como `isbn:` — sin modo aparte; si no, buscar por título como ahora.
-  - Aprovechar para **capturar el ISBN en el catálogo** (`books.isbn`, hoy sin rellenar) leyendo `industryIdentifiers` de la respuesta — enlaza con 7.1.
-  - Añadir un ISBN a los datos mock para poder probarlo con `MOCK_EXTERNAL_APIS=true`.
+### 7.2 Búsqueda de libros por ISBN — *hecho*
+- [x] Buscar un libro por **ISBN** además de por título: autodetección en `src/lib/catalog/isbn.ts` (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10), enrutada como `q=isbn:...` en Google Books.
+- [x] ISBN capturado en el catálogo (`books.isbn`) leyendo `industryIdentifiers` de la respuesta, y también disponible en "añadir manualmente" con su propia validación.
+- [x] Datos mock actualizados (`MOCK_EXTERNAL_APIS=true` soporta búsqueda por ISBN también).
 
 ### 7.3 Escanear código de barras para añadir por ISBN
 - [ ] En móvil (PWA con cámara), escanear el código de barras (ISBN) de la contraportada de un libro físico y añadirlo directamente, sin teclear nada.

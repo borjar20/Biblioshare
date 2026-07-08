@@ -39,7 +39,7 @@ export async function SearchForm({
           name="q"
           type="search"
           defaultValue={query}
-          placeholder={t("placeholder")}
+          placeholder={t(itemType === "book" ? "placeholderBook" : "placeholder")}
           className="flex-1"
         />
         <button type="submit" className={buttonVariants("primary")}>

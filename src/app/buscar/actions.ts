@@ -45,6 +45,7 @@ async function findOrCreateCatalogItem(
           published_year: result.year,
           publisher: result.publisher,
           total_pages: result.pageCount,
+          isbn: result.isbn,
         }
       : {
           tmdb_id: Number(result.externalId),
