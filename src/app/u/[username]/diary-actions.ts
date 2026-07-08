@@ -50,7 +50,7 @@ export async function addDiaryEntry(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/biblioteca");
+  revalidatePath("/u/[username]", "page");
   return {};
 }
 
@@ -68,5 +68,5 @@ export async function deleteDiaryEntry(entryId: string) {
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/biblioteca");
+  revalidatePath("/u/[username]", "page");
 }

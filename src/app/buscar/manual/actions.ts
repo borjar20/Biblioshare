@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import type { ItemType } from "@/lib/catalog/types";
 import { normalizeIsbn } from "@/lib/catalog/isbn";
 
@@ -86,5 +87,6 @@ export async function addManualItem(
 
   if (libraryError) return { error: "generic" };
 
-  redirect("/biblioteca");
+  const profile = await getOwnProfile(supabase, user.id);
+  redirect(profile ? `/u/${profile.username}` : "/");
 }

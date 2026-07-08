@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -6,14 +7,15 @@ import { getProfileByUsername } from "@/lib/profile/get-profile-by-username";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import { getLibraryStats } from "@/lib/library/get-library-stats";
 import { getMonthlyActivity } from "@/lib/diary/get-monthly-activity";
-import { LibraryFilters } from "@/app/biblioteca/library-filters";
+import { buttonVariants } from "@/components/ui/button";
+import { LibraryFilters } from "./library-filters";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import { NowConsuming } from "@/components/now-consuming";
 import { ActivityChart } from "@/components/activity-chart";
-import { PublicItemCard } from "./public-item-card";
+import { LibraryItemCard } from "./library-item-card";
 import { VisibilityToggle } from "./visibility-toggle";
 
 const VALID_TABS: SectionTab[] = ["overview", "book", "movie", "series"];
@@ -50,6 +52,7 @@ export default async function PublicProfilePage({
     : undefined;
 
   const t = await getTranslations("profile");
+  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [profile, {
@@ -107,7 +110,16 @@ export default async function PublicProfilePage({
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        isOwner ? (
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-muted-foreground">{tLibrary("empty")}</p>
+            <Link href="/buscar" className={buttonVariants("primary")}>
+              {tLibrary("emptyCta")}
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        )
       ) : (
         <div className="flex flex-col gap-3">
           {tab === "overview" && (
@@ -117,7 +129,7 @@ export default async function PublicProfilePage({
           )}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {gridItems.map((item) => (
-              <PublicItemCard key={item.entryId} item={item} />
+              <LibraryItemCard key={item.entryId} item={item} isOwner={isOwner} />
             ))}
           </div>
         </div>

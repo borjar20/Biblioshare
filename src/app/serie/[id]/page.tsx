@@ -68,7 +68,7 @@ export default async function SeriesDetailPage({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:px-6">
-      <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg bg-surface-muted sm:w-56">
+      <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
         {series.cover_url ? (
           <Image
             src={series.cover_url}

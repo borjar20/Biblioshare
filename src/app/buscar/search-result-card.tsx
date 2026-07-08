@@ -5,7 +5,7 @@ import { AddToLibraryButton } from "./add-to-library-button";
 export function SearchResultCard({ result }: { result: SearchResult }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface-muted">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
         {result.coverUrl ? (
           <Image
             src={result.coverUrl}

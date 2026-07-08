@@ -34,7 +34,6 @@ export async function updateProfile(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/biblioteca");
   revalidatePath(`/u/${username}`);
   return {};
 }

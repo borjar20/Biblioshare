@@ -20,7 +20,13 @@ const STATUSES: MediaStatus[] = [
   "dropped",
 ];
 
-export function LibraryItemCard({ item }: { item: LibraryItem }) {
+export function LibraryItemCard({
+  item,
+  isOwner,
+}: {
+  item: LibraryItem;
+  isOwner: boolean;
+}) {
   const t = useTranslations("library");
   const [isPending, startTransition] = useTransition();
   const progress = getProgress(item);
@@ -28,7 +34,7 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
   return (
     <div className="flex flex-col gap-2">
       <Link href={itemHref(item.itemType, item.itemId)} className="group flex flex-col gap-2">
-        <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface-muted">
+        <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
           {item.coverUrl ? (
             <Image
               src={item.coverUrl}
@@ -42,9 +48,11 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
               {item.title}
             </div>
           )}
-          <div className="absolute right-1.5 top-1.5">
-            <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
-          </div>
+          {!isOwner && (
+            <div className="absolute right-1.5 top-1.5">
+              <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
+            </div>
+          )}
         </div>
 
         <span className="line-clamp-2 text-sm font-medium text-foreground">
@@ -68,33 +76,37 @@ export function LibraryItemCard({ item }: { item: LibraryItem }) {
         {progress && <ProgressBar current={progress.current} total={progress.total} label={progress.label} />}
       </div>
 
-      <select
-        value={item.status}
-        disabled={isPending}
-        onChange={(event) => {
-          const status = event.target.value as MediaStatus;
-          startTransition(() => updateStatus(item.entryId, status));
-        }}
-        className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground disabled:opacity-60"
-      >
-        {STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {t(`status.${status}`)}
-          </option>
-        ))}
-      </select>
+      {isOwner && (
+        <>
+          <select
+            value={item.status}
+            disabled={isPending}
+            onChange={(event) => {
+              const status = event.target.value as MediaStatus;
+              startTransition(() => updateStatus(item.entryId, status));
+            }}
+            className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground disabled:opacity-60"
+          >
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {t(`status.${status}`)}
+              </option>
+            ))}
+          </select>
 
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => startTransition(() => removeFromLibrary(item.entryId))}
-        className="text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
-      >
-        {t("remove")}
-      </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => startTransition(() => removeFromLibrary(item.entryId))}
+            className="text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
+          >
+            {t("remove")}
+          </button>
 
-      <ProgressPanel item={item} />
-      <DiaryPanel libraryEntryId={item.entryId} />
+          <ProgressPanel item={item} />
+          <DiaryPanel libraryEntryId={item.entryId} />
+        </>
+      )}
     </div>
   );
 }

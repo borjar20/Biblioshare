@@ -22,13 +22,13 @@ function pillClass(active: boolean) {
 export async function LibraryFilters({
   itemType,
   status,
-  basePath = "/biblioteca",
+  basePath,
   showTypeFilter = true,
   extraParams,
 }: {
   itemType?: ItemType;
   status?: MediaStatus;
-  basePath?: string;
+  basePath: string;
   showTypeFilter?: boolean;
   extraParams?: Record<string, string>;
 }) {

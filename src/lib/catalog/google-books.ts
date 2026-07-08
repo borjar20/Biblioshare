@@ -74,6 +74,23 @@ function isIncomplete(result: SearchResult): boolean {
   return !result.coverUrl || !result.synopsis;
 }
 
+// Loose title match so the fallback search doesn't backfill data from an
+// unrelated book that happens to share a few words with the real title.
+function normalizeTitle(title: string): string {
+  return title
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isSameBook(a: SearchResult, b: SearchResult): boolean {
+  const normA = normalizeTitle(a.title);
+  const normB = normalizeTitle(b.title);
+  return normA === normB || normA.includes(normB) || normB.includes(normA);
+}
+
 export async function searchBooks(query: string): Promise<SearchResult[]> {
   const isbn = normalizeIsbn(query);
   const results = await rawSearchBooks(isbn ? `isbn:${isbn}` : query);
@@ -83,7 +100,9 @@ export async function searchBooks(query: string): Promise<SearchResult[]> {
     const fallbackQuery = [primary.title, primary.subtitle].filter(Boolean).join(" ");
     if (fallbackQuery) {
       const fallbackResults = await rawSearchBooks(fallbackQuery);
-      const better = fallbackResults.find((r) => !isIncomplete(r));
+      const better = fallbackResults.find(
+        (r) => isSameBook(primary, r) && !isIncomplete(r)
+      );
       if (better) {
         results[0] = {
           ...primary,

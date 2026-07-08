@@ -162,7 +162,6 @@
     "backHome": "Ir al inicio"
   },
   "library": {
-    "title": "Mi biblioteca",
     "empty": "Aún no has añadido nada a tu biblioteca.",
     "emptyCta": "Buscar algo",
     "recentlyUpdated": "Actualizado recientemente",
