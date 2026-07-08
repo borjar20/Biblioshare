@@ -133,10 +133,11 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [x] ISBN capturado en el catálogo (`books.isbn`) leyendo `industryIdentifiers` de la respuesta, y también disponible en "añadir manualmente" con su propia validación.
 - [x] Datos mock actualizados (`MOCK_EXTERNAL_APIS=true` soporta búsqueda por ISBN también).
 
-### 7.3 Escanear código de barras para añadir por ISBN
-- [ ] En móvil (PWA con cámara), escanear el código de barras (ISBN) de la contraportada de un libro físico y añadirlo directamente, sin teclear nada.
-  - Técnicamente: API web `BarcodeDetector` para leer el código + reutilizar la búsqueda por ISBN de 7.2 con el valor leído.
-  - **Riesgo a investigar**: soporte de `BarcodeDetector` es desigual entre navegadores (bien en Chrome/Edge Android, históricamente ausente/parcial en Safari/iOS) — habría que validar cobertura real o prever una librería JS de fallback (p. ej. basada en `getUserMedia` + decodificación en JS) antes de comprometerlo.
+### 7.3 Escanear código de barras para añadir por ISBN — *hecho (versión web)*
+- [x] Botón "Escanear código de barras" en la búsqueda de libros (`src/app/buscar/barcode-scanner.tsx`): abre la cámara, decodifica con `BarcodeDetector` (`ean_13`/`ean_8`) y navega a `/buscar?type=book&q=<isbn>`, reutilizando la autodetección de ISBN de 7.2 sin cambios.
+  - Fallback explícito si el navegador no soporta `BarcodeDetector` o se deniega el permiso de cámara — probado en este entorno (sin `BarcodeDetector`), el mensaje de "no soportado" se muestra correctamente.
+  - **Sigue pendiente**: verificar con cámara real en un dispositivo (este sandbox no tiene una). El riesgo de cobertura desigual entre navegadores (documentado antes) se mantiene — Safari/iOS es el caso dudoso.
+  - **Mejora futura vía 7.31 (Capacitor)**: una vez compilable el proyecto Android, sustituir o complementar esto por un plugin nativo de escaneo (más fiable que `BarcodeDetector` web) sin cambiar el flujo de búsqueda por ISBN ya existente.
 
 ### 7.4 Sagas y colecciones (gestionadas por separado)
 - [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
