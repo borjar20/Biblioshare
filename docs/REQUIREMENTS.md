@@ -218,6 +218,7 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 ### 7.17 Recordatorios (pausas antiguas y estrenos que sigues)
 - [ ] Notificación cuando: (a) un ítem lleva mucho en "pausa" (7.16) sin retomarse, o (b) sale la nueva temporada de una serie que sigues, o la adaptación de un libro que leíste.
   - **Primera pieza de infraestructura de notificaciones del proyecto** — no existe hoy nada de esto (ni email, ni push, ni jobs programados). Ver §8 (Decisiones de arquitectura) antes de empezar cualquiera de las dos, porque comparten la misma base y solo tiene sentido construirla una vez.
+  - **Depende de 7.31** (adopción de Capacitor, en curso): push nativo (APNs) para usuarios iOS en la UE, donde Web Push no funciona (ver §8-F); Web Push normal para Android/desktop.
   - "Estrenos que sigues" necesita además saber si una serie/libro sigue activo (temporada en emisión, secuela anunciada) — dato que ni TMDB ni Google Books garantizan de forma fiable; evaluar viabilidad antes de comprometer esta parte.
 
 ### 7.18 Diario emocional/contextual
@@ -281,12 +282,19 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 - [ ] Difuminar sinopsis, duración de episodios restantes y temporadas pendientes de lo que estás viendo/leyendo actualmente.
   - Comparte necesidad con 7.20 (clubs), 7.21 (comparador) y 7.24 (notas ancladas): un mecanismo genérico de "ocultar contenido según el progreso/estado del usuario" — ver §8. Construir esta utilidad una sola vez cuando se aborde la primera de las cuatro, en vez de resolver el spoiler-hiding cuatro veces distintas.
 
-### 7.31 Resumen de priorización sugerida
+### 7.31 Adoptar Capacitor (wrapper nativo) — *en curso*
+- [ ] Instalar `@capacitor/core` + `@capacitor/cli`, `capacitor.config.ts` apuntando `server.url` a la app desplegada (sin tocar el código Next.js existente — SSR y Server Actions siguen funcionando igual).
+- [ ] Scaffolding de la plataforma **Android** (viable en este entorno Windows con Android Studio + JDK).
+- [ ] Plataforma **iOS**: solo se puede compilar/probar desde macOS (Xcode) o un runner de CI en la nube — no alcanzable desde Windows. Queda pendiente hasta disponer de esa vía.
+- Decidido en §8-F como prerrequisito de 7.17 (notificaciones) — ver ahí el razonamiento completo.
+
+### 7.32 Resumen de priorización sugerida
 
 No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, para decidir por dónde seguir. Todo lo marcado `[x]` en las secciones de arriba queda fuera de esta tabla (ya hecho).
 
 | Idea | Esfuerzo | Depende de | Por qué este orden |
 |---|---|---|---|
+| **7.31 Adoptar Capacitor** | **S-M** | **§8-F (decidido)** | **En curso — decidido explícitamente, antes que 7.17** |
 | 7.3 Escanear ISBN por cámara | S-M | 7.2 (hecho) | Cierre natural del flujo de ISBN, alto valor percibido en móvil |
 | 7.8 Páginas de detalle por ítem | M | — | Datos ya existen sin usar; desbloquea 7.25 y da un lugar natural a 7.9/7.27 |
 | 7.25 "¿Dónde lo veo?" | S | 7.8 | Casi gratis vía TMDB, encaja directo en 7.8 |
@@ -303,7 +311,7 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.14 Sesiones de progreso diarias (rachas) | L | — | Alto valor de retención, pero requiere tabla nueva y bastante UI |
 | 7.29 Método de adquisición / dinero ahorrado | S-M | §8-C (resuelto) | Ya decidido: va en `copy_details`, separado de `position` |
 | 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
-| 7.17 Recordatorios (pausas/estrenos) | M-L | §8-D (enfoque confirmado) | Construir sobre Web Push + pg_cron cuando se aborde, no dos infra distintas |
+| 7.17 Recordatorios (pausas/estrenos) | M-L | 7.31 (Capacitor) + §8-D | Push nativo vía Capacitor para iOS+UE; Web Push + pg_cron para el resto |
 | 7.18 Diario emocional/contextual | M | — | Enriquece 7.15 ("Tu año en Biblioshare") antes de construir esa retrospectiva |
 | 7.27 Citas y frases destacadas | S (texto) / M (OCR) | — | Empezar por texto simple; OCR es una fase aparte |
 | 7.23 Retos personalizables | L | 7.5, 7.12 | Motor de filtros compartido — construir después de esos dos |
@@ -344,20 +352,31 @@ Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel d
 ### 8-D. Infraestructura de notificaciones (compartida por 7.17 y futuras) — *enfoque confirmado*
 El proyecto no tiene hoy ningún mecanismo de: trabajos programados (cron/queue), envío de email, ni push notifications. 7.17 (recordatorios de pausa/estrenos) es la primera feature que lo necesita, pero EPIC-05 (clubs) también lo pediría más adelante. Antes de construir 7.17: decidir una vez la pieza compartida en vez de resolverla feature a feature.
 - **Dato a favor de Web Push**: ya existe un service worker registrado (`public/sw.js`, para el cache offline de la PWA) — añadir Web Push (con claves VAPID) es una extensión natural de algo que ya está en su sitio, en vez de infraestructura nueva desde cero.
+- **Matiz importante (ver 8-F)**: Web Push **no funciona en iOS para usuarios en la UE** (Apple lo desactivó por cumplimiento de la DMA, marzo 2024) — la app se abre como pestaña normal de Safari, sin push. Esto no invalida Web Push como base para Android/desktop, pero significa que "Web Push cubre notificaciones" no es cierto para todos los usuarios; si la fiabilidad en iOS+UE importa, la única vía es push nativo (APNs) dentro de un wrapper (Capacitor, 8-F), no algo que se resuelva solo con más código web.
 - Para jobs programados, Supabase soporta `pg_cron` de forma nativa (sin servicio externo) — evaluarlo primero antes de introducir un runner de colas aparte.
 - No comprometer esta decisión hasta que 7.17 sea la tarea activa; no construir infraestructura de notificaciones "por si acaso".
 
 ### 8-E. Spoiler-safe: utilidad compartida, no cuatro implementaciones distintas — *enfoque confirmado*
 7.20 (clubs), 7.21 (comparador), 7.24 (notas ancladas) y 7.30 (modo sin spoilers) necesitan las cuatro alguna forma de "ocultar contenido hasta que el progreso/estado del usuario lo permita". Cuando se aborde la primera de las cuatro, construirla como una utilidad genérica (componente/helper reutilizable, no lógica ad-hoc dentro de esa feature) para que las siguientes tres la reutilicen en vez de reinventarla.
 
-### 8-F. ¿Sigue siendo PWA-only la decisión correcta? — *evaluación pendiente, no cerrada*
-El widget de pantalla de inicio (progreso/racha sin abrir la app) es el disparador de esta pregunta: **no es alcanzable desde una PWA** con las APIs web actuales (los App Widgets de Android y WidgetKit de iOS requieren una app nativa o un wrapper nativo), lo que choca con la decisión ya registrada de PWA-only (§9, 2026-07-07). Pero en vez de descartar el widget y seguir, la decisión de fondo a **valorar explícitamente, antes de que sea costoso dar marcha atrás**, es si PWA-only sigue siendo la apuesta correcta para todo el proyecto, dado lo que ya hay en el backlog:
+### 8-F. ¿Sigue siendo PWA-only la decisión correcta? — *decidido: adoptar Capacitor*
 
-- **A favor de seguir PWA-only**: un solo codebase, sin revisión de tiendas, iteración más rápida (ya validado durante el MVP); Web Push (8-D) cubre notificaciones sin necesitar nativo; la mayoría del backlog (§7) no depende de capacidades nativas.
-- **En contra / lo que se pierde**: widget de pantalla de inicio (este punto), fiabilidad de push en iOS (Safari tiene soporte más limitado/reciente que Android), presencia en App Store/Play Store (descubribilidad), posible mejor rendimiento de cámara para 7.3 (escaneo de código de barras) vía APIs nativas en vez de `BarcodeDetector` web.
-- **Camino intermedio a considerar**: un wrapper nativo fino (Capacitor/Tauri-mobile u otro) sobre el mismo código web, en vez de una reescritura nativa completa — reduce el coste de "ir nativo" sin abandonar la base PWA actual.
+Investigación (julio 2026) sobre el estado real de las tres cosas que "ir nativo" resolvería, para no decidir a ciegas:
 
-**No se resuelve en este documento** — es una decisión de producto/negocio (coste de mantener dos objetivos de build, tiempo de desarrollo disponible, cuánto importan de verdad el widget/tiendas de apps) más que técnica. Queda marcada como pendiente de decidir explícitamente, no como cerrada; el widget de pantalla de inicio no se añade a §7 como tarea hasta que esta decisión se tome.
+**Hallazgo 1 — el widget de pantalla de inicio sigue sin ser alcanzable desde la web, en ninguna plataforma.** Ni Android ni iOS exponen una API web para esto hoy; solo existe una propuesta experimental de Microsoft Edge (PWA-driven widgets), limitada a Windows. No ha cambiado desde que se registró la decisión original — si se quiere el widget, no hay atajo: requiere código nativo (Swift/Kotlin) sí o sí, independientemente de qué se decida en los otros dos puntos.
+
+**Hallazgo 2 — envolver *esta* app concreta en un wrapper nativo (Capacitor) es más barato de lo que parecía.** Capacitor soporta apuntar el wrapper a una URL remota (config `server.url`) en vez de empaquetar assets estáticos — es decir, el wrapper nativo carga la app Next.js *desplegada* tal cual, con SSR y Server Actions funcionando exactamente igual que hoy. No es una reescritura: es un shell nativo delgado alrededor de lo que ya existe, aditivo, sin tocar el código actual.
+
+**Hallazgo 3 — el motivo real para no esperar: Web Push está roto en iOS para usuarios en la UE.** Desde marzo 2024, por la DMA europea, Apple desactivó el modo standalone y las notificaciones push para PWAs instaladas en la Unión Europea — la PWA se abre como pestaña normal de Safari, sin push, sin importar lo que construyamos en 8-D. Como el desarrollo y previsiblemente buena parte de los usuarios están en España, esto **invalida el plan de 8-D (Web Push) para ese segmento en iOS específicamente** — no es un matiz menor, es una limitación de plataforma fuera de nuestro control. Android no tiene esta restricción.
+
+**Conclusión — son tres decisiones, no una:**
+1. ¿Presencia en tiendas de apps + acceso a plugins nativos (cámara para 7.3, etc.)? → **Barato** vía Capacitor `server.url`, aditivo, sin abandonar la base actual.
+2. ¿Push fiable en iOS? → Solo se consigue con push nativo (APNs) dentro de un wrapper — Web Push (8-D) seguirá sin funcionar en iOS+UE decidamos lo que decidamos sobre el resto.
+3. ¿Widget de pantalla de inicio? → Requiere código nativo real, coste aparte, no depende de las otras dos.
+
+**Decidido (2026-07-08)**: adoptar Capacitor **antes** de construir 7.17 (notificaciones), precisamente porque Web Push no cubre iOS+UE de todas formas — no tiene sentido construir la infraestructura de 8-D asumiendo una cobertura que no existe. El widget de pantalla de inicio (punto 3) **no** se compromete todavía — sigue siendo código nativo aparte, a valorar solo si se llega a esa idea concreta.
+
+**Restricción de entorno a tener en cuenta**: compilar el proyecto **iOS** de Capacitor requiere Xcode, que solo corre en macOS — no es posible desde un entorno Windows. La parte **Android** sí es viable en Windows (Android Studio + JDK). El trabajo de configuración de Capacitor (paquetes, `capacitor.config.ts`, scaffolding) es multiplataforma; compilar y probar en un dispositivo/emulador iOS necesitará una Mac o un runner de CI en la nube (p. ej. Codemagic, GitHub Actions con runner macOS) en algún momento.
 
 ## 9. Decisiones registradas
 
@@ -374,6 +393,7 @@ El widget de pantalla de inicio (progreso/racha sin abrir la app) es el disparad
 | 2026-07-07 | Perfiles públicos por defecto, con opción de hacerlos privados | Habilita la función social mínima (ver bibliotecas de otros) sin construir todo el sistema social completo |
 | 2026-07-07 | Offline MVP = cache de solo lectura, no offline-first completo | Reduce complejidad de sincronización manteniendo el beneficio principal de una PWA instalable |
 | 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §10 |
+| 2026-07-08 | Adoptar **Capacitor** (wrapper nativo vía `server.url`) antes de construir 7.17; se abandona el PWA-only estricto de la decisión anterior | Investigación confirmó que Web Push no funciona en iOS+UE (bloqueo de Apple por la DMA, no arreglable en web) — no tiene sentido construir 8-D asumiendo una cobertura que no existe. El widget de pantalla de inicio sigue sin comprometerse (requiere código nativo aparte) |
 
 ## 10. Historial de versiones
 
