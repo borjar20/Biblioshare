@@ -142,6 +142,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
   - **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario.
   - Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
+  - **Reutiliza 8-B**: una saga es, en el fondo, una relación libro↔libro de "mismo universo" — la tabla genérica de relaciones decidida en 8-B (ampliada explícitamente a "mismo universo", no solo adaptaciones) puede modelar esto sin un mecanismo aparte. Evaluar antes de construir una tabla `sagas` dedicada.
 
 ### 7.5 Etiquetas privadas + estadísticas por etiqueta
 - [ ] Etiquetas libres y **privadas** por usuario sobre sus ítems (ej. "para regalar", "recomendado por mamá", "confort") — no son públicas ni compartidas entre usuarios, a diferencia del catálogo.
@@ -210,7 +211,7 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 
 ### 7.16 Modo "en pausa"
 - [ ] Estado intermedio entre "en curso" y "abandonado", con recordatorio configurable (ej. a los 30/60/90 días) para retomar o cerrar. Ver también 7.17 (infraestructura de notificaciones, compartida).
-  - **Decisión de semántica pendiente** (ver también §8, Decisiones de arquitectura): ¿"pausado" es un **estado explícito** nuevo en `media_status` (`planned | in_progress | paused | completed | dropped`), o se **infiere** de un `in_progress` cuya `position`/`updated_at` lleva mucho tiempo sin cambiar? Un estado explícito es más simple de consultar y mostrar, pero exige que el usuario lo marque a mano; inferirlo es automático pero menos fiable y más caro de calcular. Recomendación: estado explícito — es una `ALTER TYPE ... ADD VALUE` barata en Postgres, y evita heurísticas frágiles.
+  - **Decidido** (ver §8-A): `paused` es un estado explícito nuevo en `media_status` (`planned | in_progress | paused | completed | dropped`) — barato de migrar (`ALTER TYPE ... ADD VALUE`), evita heurísticas frágiles de inactividad. La señal de inactividad (vía 7.14) se usa solo para **sugerir** el cambio como una notificación (7.17), nunca para aplicarlo sola.
   - Al pausar, guardar opcionalmente el punto de progreso (ya existe vía `position`) — no hace falta un campo nuevo, solo el estado.
   - Transición a "abandonado" conserva el histórico (ya es así: nunca se borra `position`/`diary_entries` al cambiar de estado).
 
@@ -237,7 +238,7 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 
 ### 7.21 Comparador de adaptaciones (libro ↔ película/serie)
 - [ ] Ficha comparativa entre una obra y su adaptación: portadas, ratings medios lado a lado, y voto de la comunidad ("¿cuál es mejor?") habilitado solo para quien terminó ambos.
-  - **Requiere un tipo de dato que hoy no existe**: relación entre ítems de catálogo de *tipos distintos* (`books` ↔ `movies`/`series`). Ver §8 — mejor decidir ahora la forma genérica (tabla de relaciones) que ad-hoc por feature, porque 7.19 (recomendaciones) también se beneficiaría del mismo mecanismo.
+  - **Requiere un tipo de dato que hoy no existe**: relación entre ítems de catálogo de *tipos distintos* (`books` ↔ `movies`/`series`). **Decidido** (ver §8-B): tabla genérica de relaciones, curada manualmente/por la comunidad — no inferida automáticamente de las APIs. 7.19 (recomendaciones) comparte el mismo mecanismo.
   - Las APIs actuales no siempre exponen esta relación de forma fiable (Wikidata es mejor fuente que TMDB/Google Books para esto) — contribución comunitaria editable, con cola de revisión, es probablemente necesaria tarde o temprano.
 
 ### 7.22 Cola priorizada con tiempo estimado
@@ -274,7 +275,7 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 
 ### 7.29 Método de adquisición y "dinero ahorrado"
 - [ ] Marcar cómo obtuviste cada ítem (comprado / biblioteca / prestado / regalo) y, si se compró, su precio — para poder mostrar una estadística de "dinero ahorrado" con préstamos/biblioteca.
-  - Mismo patrón que la encuadernación de 7.1: es un dato **por ejemplar/copia**, no de la obra → va en `library_entries`, no en el catálogo. Ver §8 antes de construir esto: si se van acumulando varios campos de este tipo (formato, adquisición, precio...) en `position`, puede convenir separarlos de la lógica de "progreso" en un campo propio en vez de seguir sobrecargando `position`.
+  - Mismo patrón que la encuadernación de 7.1: es un dato **de Ejemplar**, no de Obra ni de Progreso (ver §8-C, decidido) → va en `library_entries.copy_details` (JSONB propio, separado de `position`), no en el catálogo ni mezclado con el progreso.
 
 ### 7.30 Modo sin spoilers global
 - [ ] Difuminar sinopsis, duración de episodios restantes y temporadas pendientes de lo que estás viendo/leyendo actualmente.
@@ -295,51 +296,68 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.11 Estantería "Ahora mismo" | S | — | Atajo de uso diario, sin esquema nuevo |
 | 7.7 Importar CSV (Goodreads/Letterboxd) | M | 7.1/7.2/§4.2 manual | Mayor palanca de adopción de todo el backlog |
 | 7.9 Favoritos/vitrina + OG image | S-M | — | Barato, mejora directa de compartibilidad del perfil |
-| 7.16 Modo "en pausa" | S-M | Decisión §8-A | Cierra un hueco real del modelo de estados |
+| 7.16 Modo "en pausa" | S-M | §8-A (resuelto) | Cierra un hueco real del modelo de estados, ya sin decisión pendiente |
 | 7.5 Etiquetas privadas | M | — | Base para 7.23 (retos) y estadísticas por etiqueta |
 | 7.22 Cola priorizada con tiempo estimado | M | 7.1/7.8 | Usa datos que ya existirán tras 7.1/7.8 |
-| 7.4 Sagas y colecciones | M | Decisión §8-B (opcional) | Bien acotado si no se mezcla con listas colaborativas todavía |
+| 7.4 Sagas y colecciones | M | §8-B (resuelto) | Puede reutilizar la tabla de relaciones "mismo universo" en vez de mecanismo propio |
 | 7.14 Sesiones de progreso diarias (rachas) | L | — | Alto valor de retención, pero requiere tabla nueva y bastante UI |
-| 7.29 Método de adquisición / dinero ahorrado | S-M | Decisión §8-C | Barato si se decide antes la forma de `position` vs. campo propio |
+| 7.29 Método de adquisición / dinero ahorrado | S-M | §8-C (resuelto) | Ya decidido: va en `copy_details`, separado de `position` |
 | 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
-| 7.17 Recordatorios (pausas/estrenos) | M-L | Decisión §8-D (infra notificaciones) | Construir la infraestructura una vez, no dos |
+| 7.17 Recordatorios (pausas/estrenos) | M-L | §8-D (enfoque confirmado) | Construir sobre Web Push + pg_cron cuando se aborde, no dos infra distintas |
 | 7.18 Diario emocional/contextual | M | — | Enriquece 7.15 ("Tu año en Biblioshare") antes de construir esa retrospectiva |
 | 7.27 Citas y frases destacadas | S (texto) / M (OCR) | — | Empezar por texto simple; OCR es una fase aparte |
 | 7.23 Retos personalizables | L | 7.5, 7.12 | Motor de filtros compartido — construir después de esos dos |
-| 7.30 Modo sin spoilers global | M | Decisión §8-E | Vale la pena como utilidad compartida, no antes de tener 1–2 consumidores reales |
-| 7.21 Comparador de adaptaciones | M-L | Decisión §8-B | Diferenciador fuerte, pero necesita el modelo de relaciones entre ítems |
+| 7.30 Modo sin spoilers global | M | §8-E (enfoque confirmado) | Vale la pena como utilidad compartida, no antes de tener 1–2 consumidores reales |
+| 7.21 Comparador de adaptaciones | M-L | §8-B (resuelto) | Diferenciador fuerte; ya tiene modelo de relaciones definido |
 | 7.26 Listas colaborativas | M | 7.4/7.15, modelo de permisos | Construir primero la versión de un solo dueño |
-| 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, Decisión §8-E | Necesita masa crítica para tener sentido |
-| 7.24 Notas ancladas al progreso | M | Decisión §8-E | Tabla nueva; valor real pero no urgente |
-| 7.19 Recomendaciones cruzadas | XL | Decisión §8-B (normalización géneros) | El más caro; empezar solo con tabla curada a mano si se aborda |
+| 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, §8-E | Necesita masa crítica para tener sentido |
+| 7.24 Notas ancladas al progreso | M | §8-E | Tabla nueva; valor real pero no urgente |
+| 7.19 Recomendaciones cruzadas | XL | §8-B (resuelto) + normalización géneros (abierta) | El más caro; empezar solo con tabla curada a mano si se aborda |
 
-## 8. Decisiones de arquitectura pendientes (evaluar antes de construir más)
+## 8. Decisiones de arquitectura (evaluadas antes de construir más)
 
-Estas no son features — son decisiones de forma que, si se toman tarde (después de que ya haya datos o UI construida encima), cuestan un refactor. Revisar esta lista antes de empezar cualquier idea de §7 que las mencione como dependencia.
+Estas no son features — son decisiones de forma que, si se toman tarde (después de que ya haya datos o UI construida encima), cuestan un refactor. La mayoría ya se resolvió (8-A, 8-B, 8-C) o se confirmó el enfoque (8-D, 8-E) al revisar este backlog; quedan abiertas la normalización de géneros (nota dentro de 8-B) y 8-F (PWA-only vs. nativo), que es una decisión de producto, no técnica.
 
-### 8-A. ¿"Pausado" es un estado explícito o inferido?
-Relevante para 7.16. Recomendación: añadir `paused` a `media_status` (enum) — es una migración barata en Postgres (`ALTER TYPE ... ADD VALUE`) y evita heurísticas de "inactividad" que serían más caras de mantener y menos fiables. Decidirlo ahora evita re-modelar el filtro de estados (`LibraryFilters`, `ProgressPanel`, `PublicItemCard`) dos veces.
+### 8-A. ¿"Pausado" es un estado explícito o inferido? — *decidido*
+**Decidido**: `paused` es un **estado explícito** en `media_status` (enum) — migración barata (`ALTER TYPE ... ADD VALUE`), evita heurísticas de inactividad frágiles, y evita re-modelar el filtro de estados (`LibraryFilters`, `ProgressPanel`, `PublicItemCard`) dos veces.
+**Añadido**: aunque el estado es manual, cuando exista 7.14 (`progress_sessions`) se puede usar esa señal para **sugerir** el cambio, no para aplicarlo solo — p. ej. "no registras avance en *Fahrenheit 451* desde hace 45 días, ¿lo marcamos como pausado?" como una notificación más dentro de 7.17, no un job que cambie el estado por su cuenta. Mantiene la separación clara: el usuario decide el estado, el sistema solo detecta la señal y avisa.
 
-### 8-B. Relaciones entre ítems de catálogo (adaptaciones, recomendaciones)
-Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel de datos. 7.21 (comparador de adaptaciones) y 7.19 (recomendaciones cruzadas) necesitan ambas alguna forma de vincular un libro con su adaptación. Siguiendo el mismo espíritu que llevó a unificar `library_entries` (una tabla genérica en vez de una por tipo), la recomendación es: si se aborda cualquiera de las dos, diseñar una tabla genérica de relaciones (`item_type_a/item_id_a`, `item_type_b/item_id_b`, `relation_type`) en vez de una columna ad-hoc (`adaptation_of_book_id` en `movies`, etc.) — así ambas features comparten el mismo mecanismo y añadir una tercera relación en el futuro no exige otra migración por tipo.
+### 8-B. Relaciones entre ítems de catálogo (adaptaciones, mismo universo, recomendaciones) — *decidido*
+Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel de datos. **Decidido**: si se aborda 7.21 o 7.19, usar una tabla genérica de relaciones (`item_type_a/item_id_a`, `item_type_b/item_id_b`, `relation_type`) en vez de columnas ad-hoc por tipo (`adaptation_of_book_id` en `movies`, etc.) — mismo espíritu que unificar `library_entries`: un mecanismo, no uno por combinación de tipos.
+- **Alcance ampliado**: no solo "adaptación de", también relaciones de **mismo universo/franquicia** (secuela, spin-off, misma saga) — el `relation_type` debe ser un enum abierto a esto desde el diseño, no solo `adaptation_of`.
+- **Curación manual, no automática**: las relaciones se crean/editan por el usuario o la comunidad, no se infieren automáticamente de las APIs (que no las dan de forma fiable). Contribución editable con cola de revisión, igual que se apuntaba en 7.21.
+
+**Relacionado — normalización de géneros**: `books.genres`, `movies.genres` y `series.genres` existen en el esquema pero **hoy no se rellenan desde ningún sitio**. Sigue como decisión pendiente (no resuelta en esta ronda): definir taxonomía antes de empezar a poblarlos, solo urge si se aborda 7.8 o 7.19.
 
 **Relacionado — normalización de géneros**: `books.genres`, `movies.genres` y `series.genres` existen en el esquema pero **hoy no se rellenan desde ningún sitio** (ni Google Books ni TMDB los capturan todavía en el código). Es el momento barato de decidir la taxonomía (¿guardar el género tal cual da cada API y normalizar en lectura, o normalizar al guardar contra un catálogo cerrado propio?) — antes de que empiece a haber datos reales con vocabularios distintos que habría que migrar después. Solo urge si se empieza a poblar `genres` (p. ej. al abordar 7.8) o si 7.19 se vuelve prioridad real.
 
-### 8-C. `library_entries.position` se está usando para más que "progreso"
-`position` nació como "el único detalle que varía por tipo" para *progreso de lectura/visionado* (página, temporada+episodio). En 7.1 ya se le añadió `format` (encuadernación), que no es progreso sino metadato del ejemplar. Si además se añade 7.29 (método de adquisición, precio) al mismo campo, `position` empieza a mezclar dos responsabilidades distintas (progreso vs. metadatos del ejemplar) bajo un nombre que ya no describe bien su contenido.
-**A decidir antes de añadir más campos de este tipo**: mantenerlo todo junto en `position` (más simple, ya funciona así) vs. separar en dos campos JSONB — `position` (progreso) y `copy_details` (formato, adquisición, precio, y lo que surja) — con una migración de datos trivial (mover `format` de uno a otro) si se hace pronto, y mucho más costosa cuantos más campos se acumulen antes de decidirlo.
+### 8-C. Separar Obra / Ejemplar / Progreso — *decidido*
+`position` nació como "el único detalle que varía por tipo" para *progreso*, pero en 7.1 ya se le coló `format` (encuadernación), que no es progreso sino metadato del ejemplar — el campo empieza a mezclar responsabilidades bajo un nombre que ya no describe bien su contenido.
 
-### 8-D. Infraestructura de notificaciones (compartida por 7.17 y futuras)
+**Decidido**: separar el modelo conceptualmente en tres capas, no dos:
+- **Obra** (`books`/`movies`/`series`, ya existe): metadato compartido de la obra en sí — título, autor/director, sinopsis, editorial, nº de páginas...
+- **Ejemplar**: metadato de *tu copia concreta* — encuadernación (7.1, hoy mal ubicado en `position`), método de adquisición y precio (7.29), y cualquier otro dato "de esta copia" que surja después. Vive en un campo JSONB propio en `library_entries` — **`copy_details`** — separado de `position`.
+- **Progreso**: punto actual (`position`: página / temporada+episodio, sin cambios), historial de pases (`diary_entries`, ya existe) y futuras sesiones diarias (`progress_sessions`, 7.14).
+
+**Migración cuando se retome 7.1/7.29**: mover `format` de `position` a `copy_details` — trivial ahora (poca o ninguna fila real con ese campo todavía), mucho más cara cuanto más se tarde en decidirlo. No se ejecuta esta migración todavía (no hay una tarea activa que la necesite hoy); queda documentada para hacerse en cuanto se toque 7.1 (ampliación) o 7.29.
+
+### 8-D. Infraestructura de notificaciones (compartida por 7.17 y futuras) — *enfoque confirmado*
 El proyecto no tiene hoy ningún mecanismo de: trabajos programados (cron/queue), envío de email, ni push notifications. 7.17 (recordatorios de pausa/estrenos) es la primera feature que lo necesita, pero EPIC-05 (clubs) también lo pediría más adelante. Antes de construir 7.17: decidir una vez la pieza compartida en vez de resolverla feature a feature.
 - **Dato a favor de Web Push**: ya existe un service worker registrado (`public/sw.js`, para el cache offline de la PWA) — añadir Web Push (con claves VAPID) es una extensión natural de algo que ya está en su sitio, en vez de infraestructura nueva desde cero.
 - Para jobs programados, Supabase soporta `pg_cron` de forma nativa (sin servicio externo) — evaluarlo primero antes de introducir un runner de colas aparte.
 - No comprometer esta decisión hasta que 7.17 sea la tarea activa; no construir infraestructura de notificaciones "por si acaso".
 
-### 8-E. Spoiler-safe: utilidad compartida, no cuatro implementaciones distintas
+### 8-E. Spoiler-safe: utilidad compartida, no cuatro implementaciones distintas — *enfoque confirmado*
 7.20 (clubs), 7.21 (comparador), 7.24 (notas ancladas) y 7.30 (modo sin spoilers) necesitan las cuatro alguna forma de "ocultar contenido hasta que el progreso/estado del usuario lo permita". Cuando se aborde la primera de las cuatro, construirla como una utilidad genérica (componente/helper reutilizable, no lógica ad-hoc dentro de esa feature) para que las siguientes tres la reutilicen en vez de reinventarla.
 
-### 8-F. El widget de pantalla de inicio no es viable como PWA pura
-La idea de "widget de pantalla de inicio" (progreso o racha sin abrir la app) **contradice la decisión ya registrada de PWA-only, sin apps nativas** (§9, 2026-07-07): los widgets de Android (App Widgets) e iOS (WidgetKit) requieren una app nativa o un wrapper nativo — no son alcanzables desde una PWA con las APIs web actuales. Se deja fuera del backlog de §7 en vez de añadirse como si fuera construible; si en algún momento se reconsidera ir más allá de PWA-only, habría que revisar primero esa decisión de fondo, no tratar el widget como una feature aislada.
+### 8-F. ¿Sigue siendo PWA-only la decisión correcta? — *evaluación pendiente, no cerrada*
+El widget de pantalla de inicio (progreso/racha sin abrir la app) es el disparador de esta pregunta: **no es alcanzable desde una PWA** con las APIs web actuales (los App Widgets de Android y WidgetKit de iOS requieren una app nativa o un wrapper nativo), lo que choca con la decisión ya registrada de PWA-only (§9, 2026-07-07). Pero en vez de descartar el widget y seguir, la decisión de fondo a **valorar explícitamente, antes de que sea costoso dar marcha atrás**, es si PWA-only sigue siendo la apuesta correcta para todo el proyecto, dado lo que ya hay en el backlog:
+
+- **A favor de seguir PWA-only**: un solo codebase, sin revisión de tiendas, iteración más rápida (ya validado durante el MVP); Web Push (8-D) cubre notificaciones sin necesitar nativo; la mayoría del backlog (§7) no depende de capacidades nativas.
+- **En contra / lo que se pierde**: widget de pantalla de inicio (este punto), fiabilidad de push en iOS (Safari tiene soporte más limitado/reciente que Android), presencia en App Store/Play Store (descubribilidad), posible mejor rendimiento de cámara para 7.3 (escaneo de código de barras) vía APIs nativas en vez de `BarcodeDetector` web.
+- **Camino intermedio a considerar**: un wrapper nativo fino (Capacitor/Tauri-mobile u otro) sobre el mismo código web, en vez de una reescritura nativa completa — reduce el coste de "ir nativo" sin abandonar la base PWA actual.
+
+**No se resuelve en este documento** — es una decisión de producto/negocio (coste de mantener dos objetivos de build, tiempo de desarrollo disponible, cuánto importan de verdad el widget/tiendas de apps) más que técnica. Queda marcada como pendiente de decidir explícitamente, no como cerrada; el widget de pantalla de inicio no se añade a §7 como tarea hasta que esta decisión se tome.
 
 ## 9. Decisiones registradas
 
