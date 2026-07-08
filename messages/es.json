@@ -190,7 +190,7 @@
     "submit": "Guardar sesión",
     "submitting": "Guardando...",
     "errors": {
-      "invalidPosition": "La posición introducida no es válida.",
+      "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     }

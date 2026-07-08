@@ -41,7 +41,10 @@ export function SessionForm({
   const tLibrary = useTranslations("library");
 
   const boundAddSession = addSession.bind(null, entryId, itemType, itemId);
-  const [state, formAction, pending] = useActionState(boundAddSession, initialState);
+  const [state, formAction, pending] = useActionState(
+    boundAddSession,
+    initialState,
+  );
 
   // Opening a session on a "planned" item means you're starting it now.
   const defaultStatus = status === "planned" ? "in_progress" : status;
@@ -49,10 +52,20 @@ export function SessionForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <Field label={t("date")} htmlFor="session-date">
-        <Input id="session-date" name="sessionDate" type="date" required defaultValue={todayISO()} />
+        <Input
+          id="session-date"
+          name="sessionDate"
+          type="date"
+          required
+          defaultValue={todayISO()}
+        />
       </Field>
 
-      <Field label={t("duration")} htmlFor="session-duration" hint={t("durationHint")}>
+      <Field
+        label={t("duration")}
+        htmlFor="session-duration"
+        hint={t("durationHint")}
+      >
         <Input
           id="session-duration"
           name="durationMinutes"
@@ -74,7 +87,12 @@ export function SessionForm({
             name="page"
             type="number"
             min={0}
-            defaultValue={"page" in position && position.page !== undefined ? position.page : ""}
+            max={total ?? undefined}
+            defaultValue={
+              "page" in position && position.page !== undefined
+                ? position.page
+                : ""
+            }
           />
         </Field>
       ) : (
@@ -94,6 +112,7 @@ export function SessionForm({
               name="episode"
               type="number"
               min={0}
+              max={total ?? undefined}
               defaultValue={"episode" in position ? position.episode : ""}
             />
           </Field>
@@ -125,7 +144,9 @@ export function SessionForm({
       </Field>
 
       {state.error && (
-        <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
+        <p className="text-sm text-status-dropped">
+          {t(`errors.${state.error}`)}
+        </p>
       )}
 
       <Button type="submit" disabled={pending}>

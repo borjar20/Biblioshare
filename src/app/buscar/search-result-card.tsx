@@ -1,11 +1,17 @@
+import Link from "next/link";
 import Image from "next/image";
 import type { SearchResult } from "@/lib/catalog/types";
-import { AddToLibraryButton } from "./add-to-library-button";
+import { itemHref } from "@/lib/catalog/item-href";
 
 export function SearchResultCard({ result }: { result: SearchResult }) {
+  const href = itemHref(result.itemType, result.catalogId ?? result.externalId);
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
+    <Link
+      href={href}
+      className="group flex flex-col gap-2 rounded-lg transition hover:-translate-y-0.5"
+    >
+      <div className="relative aspect-2/3 w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
         {result.coverUrl ? (
           <Image
             src={result.coverUrl}
@@ -31,13 +37,15 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
         )}
         {(result.publisher || result.pageCount) && (
           <span className="line-clamp-1 text-xs text-muted-foreground">
-            {[result.publisher, result.pageCount ? `${result.pageCount} págs.` : null]
+            {[
+              result.publisher,
+              result.pageCount ? `${result.pageCount} págs.` : null,
+            ]
               .filter(Boolean)
               .join(" · ")}
           </span>
         )}
       </div>
-      <AddToLibraryButton result={result} />
-    </div>
+    </Link>
   );
 }

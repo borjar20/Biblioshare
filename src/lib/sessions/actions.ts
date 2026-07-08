@@ -66,6 +66,23 @@ export async function addSession(
 
   const note = String(formData.get("note") ?? "").trim();
 
+  let maxPosition: number | null = null;
+  if (itemType === "book") {
+    const { data: book } = await supabase
+      .from("books")
+      .select("total_pages")
+      .eq("id", itemId)
+      .maybeSingle();
+    maxPosition = book?.total_pages ?? null;
+  } else if (itemType === "series") {
+    const { data: series } = await supabase
+      .from("series")
+      .select("total_episodes")
+      .eq("id", itemId)
+      .maybeSingle();
+    maxPosition = series?.total_episodes ?? null;
+  }
+
   // Position reached in this session. Optional: a time-only session (no
   // position entered) is valid and doesn't move the entry's position.
   let sessionPosition: Position = {};
@@ -74,6 +91,7 @@ export async function addSession(
     if (pageRaw) {
       const page = Number(pageRaw);
       if (!Number.isInteger(page) || page < 0) return { error: "invalidPosition" };
+      if (maxPosition !== null && page > maxPosition) return { error: "invalidPosition" };
       sessionPosition = { page };
     }
   } else if (itemType === "series") {
@@ -88,6 +106,9 @@ export async function addSession(
         season < 0 ||
         episode < 0
       ) {
+        return { error: "invalidPosition" };
+      }
+      if (maxPosition !== null && episode > maxPosition) {
         return { error: "invalidPosition" };
       }
       sessionPosition = { season, episode };

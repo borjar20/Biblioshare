@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { searchBooks } from "./google-books";
+import { searchBooks } from "./open-library";
 import { searchMovies, searchSeries } from "./tmdb";
 import { MOCK_BOOKS, MOCK_MOVIES, MOCK_SERIES } from "./mock-data";
 import { normalizeIsbn } from "./isbn";
