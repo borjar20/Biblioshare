@@ -3,9 +3,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { normalizeIsbn } from "@/lib/catalog/isbn";
 
 export type AddManualItemState = {
-  error?: "titleRequired" | "invalidPageCount" | "generic";
+  error?: "titleRequired" | "invalidPageCount" | "invalidIsbn" | "generic";
 };
 
 const TABLE_BY_TYPE = {
@@ -34,6 +35,7 @@ export async function addManualItem(
   const coverUrl = String(formData.get("coverUrl") ?? "").trim() || null;
 
   let pageCount: number | null = null;
+  let isbn: string | null = null;
   if (itemType === "book") {
     const pageCountRaw = String(formData.get("pageCount") ?? "").trim();
     if (pageCountRaw) {
@@ -41,6 +43,12 @@ export async function addManualItem(
       if (!Number.isInteger(pageCount) || pageCount < 0) {
         return { error: "invalidPageCount" };
       }
+    }
+
+    const isbnRaw = String(formData.get("isbn") ?? "").trim();
+    if (isbnRaw) {
+      isbn = normalizeIsbn(isbnRaw);
+      if (!isbn) return { error: "invalidIsbn" };
     }
   }
 
@@ -54,6 +62,7 @@ export async function addManualItem(
           cover_url: coverUrl,
           publisher: String(formData.get("publisher") ?? "").trim() || null,
           total_pages: pageCount,
+          isbn,
         }
       : itemType === "movie"
         ? { title, director: creator, release_year: year, cover_url: coverUrl }

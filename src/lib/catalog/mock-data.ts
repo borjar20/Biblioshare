@@ -22,6 +22,7 @@ export const MOCK_BOOKS: SearchResult[] = [
     year: 1967,
     publisher: "Editorial Sudamericana",
     pageCount: 471,
+    isbn: null,
   },
   {
     itemType: "book",
@@ -32,6 +33,7 @@ export const MOCK_BOOKS: SearchResult[] = [
     year: 1605,
     publisher: "Francisco de Robles",
     pageCount: 863,
+    isbn: null,
   },
   {
     itemType: "book",
@@ -42,6 +44,7 @@ export const MOCK_BOOKS: SearchResult[] = [
     year: 1997,
     publisher: "Bloomsbury",
     pageCount: 223,
+    isbn: null,
   },
   {
     itemType: "book",
@@ -52,6 +55,7 @@ export const MOCK_BOOKS: SearchResult[] = [
     year: 1949,
     publisher: "Secker & Warburg",
     pageCount: 328,
+    isbn: "9780451524935",
   },
   {
     itemType: "book",
@@ -62,6 +66,7 @@ export const MOCK_BOOKS: SearchResult[] = [
     year: 1953,
     publisher: "Ballantine Books",
     pageCount: 194,
+    isbn: null,
   },
 ];
 
@@ -75,6 +80,7 @@ export const MOCK_MOVIES: SearchResult[] = [
     year: 1999,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
   {
     itemType: "movie",
@@ -85,6 +91,7 @@ export const MOCK_MOVIES: SearchResult[] = [
     year: 2010,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
   {
     itemType: "movie",
@@ -95,6 +102,7 @@ export const MOCK_MOVIES: SearchResult[] = [
     year: 2014,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
   {
     itemType: "movie",
@@ -105,6 +113,7 @@ export const MOCK_MOVIES: SearchResult[] = [
     year: 1977,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
 ];
 
@@ -118,6 +127,7 @@ export const MOCK_SERIES: SearchResult[] = [
     year: 2008,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
   {
     itemType: "series",
@@ -128,6 +138,7 @@ export const MOCK_SERIES: SearchResult[] = [
     year: 2021,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
   {
     itemType: "series",
@@ -138,5 +149,6 @@ export const MOCK_SERIES: SearchResult[] = [
     year: 2016,
     publisher: null,
     pageCount: null,
+    isbn: null,
   },
 ];

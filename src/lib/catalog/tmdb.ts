@@ -46,6 +46,7 @@ export async function searchMovies(query: string): Promise<SearchResult[]> {
       year: r.release_date ? Number(r.release_date.slice(0, 4)) || null : null,
       publisher: null,
       pageCount: null,
+      isbn: null,
     }));
 }
 
@@ -64,5 +65,6 @@ export async function searchSeries(query: string): Promise<SearchResult[]> {
         : null,
       publisher: null,
       pageCount: null,
+      isbn: null,
     }));
 }
