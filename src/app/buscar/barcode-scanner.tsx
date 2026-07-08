@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Capacitor } from "@capacitor/core";
 
@@ -10,7 +9,6 @@ import { Capacitor } from "@capacitor/core";
 // a web fallback. See docs/REQUIREMENTS.md §7.3 and §8-F.
 export function BarcodeScanner() {
   const t = useTranslations("search.scan");
-  const router = useRouter();
   const [isNative, setIsNative] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +40,12 @@ export function BarcodeScanner() {
       });
       const code = barcodes[0]?.rawValue ?? barcodes[0]?.displayValue;
       if (code) {
-        router.push(`/buscar?type=book&q=${encodeURIComponent(code)}`);
+        // A hard navigation, not router.push: returning from the native
+        // scanner activity pauses/resumes MainActivity, and the React
+        // router context doesn't reliably survive that round-trip in the
+        // WebView — router.push silently no-ops. window.location.href
+        // forces a real navigation regardless of that lifecycle jump.
+        window.location.href = `/buscar?type=book&q=${encodeURIComponent(code)}`;
       }
     } catch {
       setError(t("cameraDenied"));
