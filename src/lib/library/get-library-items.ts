@@ -97,6 +97,7 @@ export async function getLibraryItems(
       if (!meta) return null;
       return {
         entryId: entry.id,
+        itemId: entry.item_id,
         itemType: entry.item_type,
         status: entry.status,
         rating: entry.rating,

@@ -133,10 +133,11 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [x] ISBN capturado en el catálogo (`books.isbn`) leyendo `industryIdentifiers` de la respuesta, y también disponible en "añadir manualmente" con su propia validación.
 - [x] Datos mock actualizados (`MOCK_EXTERNAL_APIS=true` soporta búsqueda por ISBN también).
 
-### 7.3 Escanear código de barras para añadir por ISBN
-- [ ] En móvil (PWA con cámara), escanear el código de barras (ISBN) de la contraportada de un libro físico y añadirlo directamente, sin teclear nada.
-  - Técnicamente: API web `BarcodeDetector` para leer el código + reutilizar la búsqueda por ISBN de 7.2 con el valor leído.
-  - **Riesgo a investigar**: soporte de `BarcodeDetector` es desigual entre navegadores (bien en Chrome/Edge Android, históricamente ausente/parcial en Safari/iOS) — habría que validar cobertura real o prever una librería JS de fallback (p. ej. basada en `getUserMedia` + decodificación en JS) antes de comprometerlo.
+### 7.3 Escanear código de barras para añadir por ISBN — *hecho (versión web)*
+- [x] Botón "Escanear código de barras" en la búsqueda de libros (`src/app/buscar/barcode-scanner.tsx`): abre la cámara, decodifica con `BarcodeDetector` (`ean_13`/`ean_8`) y navega a `/buscar?type=book&q=<isbn>`, reutilizando la autodetección de ISBN de 7.2 sin cambios.
+  - Fallback explícito si el navegador no soporta `BarcodeDetector` o se deniega el permiso de cámara — probado en este entorno (sin `BarcodeDetector`), el mensaje de "no soportado" se muestra correctamente.
+  - **Sigue pendiente**: verificar con cámara real en un dispositivo (este sandbox no tiene una). El riesgo de cobertura desigual entre navegadores (documentado antes) se mantiene — Safari/iOS es el caso dudoso.
+  - **Mejora futura vía 7.31 (Capacitor)**: una vez compilable el proyecto Android, sustituir o complementar esto por un plugin nativo de escaneo (más fiable que `BarcodeDetector` web) sin cambiar el flujo de búsqueda por ISBN ya existente.
 
 ### 7.4 Sagas y colecciones (gestionadas por separado)
 - [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
@@ -161,12 +162,12 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - A definir: qué pasa si una fila no matchea nada en la API (fallback a `/buscar/manual`) y cómo se reporta al usuario qué filas se importaron/fallaron.
 - **Trakt es un caso aparte, no un CSV más**: Trakt.tv (series/películas) no exporta CSV, tiene una API REST con OAuth y sincronización continua (no un volcado de una vez). Es una integración de otra naturaleza — mantenerla como idea independiente en vez de meterla en esta tarea; solo abordarla si algún día interesa sync continuo, no solo import inicial.
 
-### 7.8 Páginas de detalle por ítem (`/libro/[id]`, `/pelicula/[id]`, `/serie/[id]`)
-- [ ] Página propia por libro/película/serie con la ficha completa (sinopsis, autor/director/creador, géneros, año, páginas/duración/temporadas) y el botón de añadir a biblioteca — hoy nada de eso se muestra en ningún sitio.
-  - **Ya tenemos los datos**: `books`, `movies` y `series` ya guardan `synopsis`, `genres`, `director`/`creator`, `duration_minutes`, `total_pages`, `total_seasons`/`total_episodes` — se rellenan al buscar pero ninguna pantalla los renderiza hoy. Esta página es principalmente UI, no requiere migración.
-  - El catálogo es compartido, así que el ítem solo existe en `books`/`movies`/`series` (y por tanto la página solo es accesible) una vez alguien lo ha añadido al menos una vez vía búsqueda — coherente con el diseño actual.
-  - Los resultados de búsqueda (`SearchResultCard`) y las tarjetas de biblioteca/perfil (`CoverCard`, ya construido pero sin usar) enlazarían aquí.
-  - A definir: convención de ruta (`/libro/[id]` por tipo vs. `/item/[type]/[id]` unificado) y si se muestra el estado/progreso del usuario actual cuando ya está en su biblioteca.
+### 7.8 Páginas de detalle por ítem (`/libro/[id]`, `/pelicula/[id]`, `/serie/[id]`) — *hecho*
+- [x] Página propia por libro/película/serie: portada grande, título, metadatos condicionales (autor/director/creador + año, editorial+páginas / duración / temporadas+episodios, ISBN, géneros), sinopsis, y botón de añadir a biblioteca que ya reconoce si el ítem está en la tuya (`ItemLibraryButton`, `addExistingItemToLibrary` — inserta directo en `library_entries` sin pasar por `findOrCreateCatalogItem`, porque el ítem ya tiene fila de catálogo).
+  - Convención de ruta decidida: tres carpetas por tipo (`/libro`, `/pelicula`, `/serie`), no una ruta unificada `/item/[type]/[id]` — consistente con el resto de rutas en español del proyecto (`/buscar`, `/biblioteca`). Helper `itemHref(itemType, id)` en `src/lib/catalog/item-href.ts` centraliza la construcción de la URL.
+  - `LibraryItemCard` y `PublicItemCard` ahora enlazan la portada+título a la ficha; se añadió `itemId` a `LibraryItem` (antes solo tenía `entryId`) para poder construir el enlace.
+  - `not-found.tsx` propio por ruta para IDs inexistentes (probado con un UUID inventado).
+  - Los resultados de búsqueda (`SearchResultCard`) **no** enlazan aquí todavía — un resultado de búsqueda aún no tiene fila de catálogo hasta que se añade, así que no hay id al que enlazar en ese punto del flujo.
 
 ### 7.9 Perfil público personalizable: favoritos fijados, estanterías y OG image
 - [ ] Fijar hasta N ítems favoritos arriba del perfil público (estilo Letterboxd).

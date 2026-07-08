@@ -63,6 +63,12 @@
     "added": "En tu biblioteca",
     "empty": "Escribe algo para buscar.",
     "noResults": "No se encontraron resultados.",
+    "scan": {
+      "button": "Escanear código de barras",
+      "close": "Cancelar",
+      "unsupported": "Tu navegador no soporta el escaneo de códigos de barras. Escribe el ISBN manualmente.",
+      "cameraDenied": "No se pudo acceder a la cámara. Comprueba los permisos o escribe el ISBN manualmente."
+    },
     "manual": {
       "link": "¿No lo encuentras? Añádelo manualmente",
       "title": "Añadir manualmente",
@@ -112,6 +118,15 @@
     "makePrivate": "Hacer privado",
     "notFoundTitle": "Perfil no encontrado",
     "notFoundDescription": "Este perfil no existe o es privado.",
+    "backHome": "Ir al inicio"
+  },
+  "item": {
+    "pages": "págs.",
+    "minutes": "min",
+    "seasons": "temporadas",
+    "episodes": "episodios",
+    "notFoundTitle": "No encontrado",
+    "notFoundDescription": "Este título no existe en el catálogo.",
     "backHome": "Ir al inicio"
   },
   "offline": {

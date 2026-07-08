@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import type { ItemType } from "@/lib/catalog/types";
+import { BarcodeScanner } from "./barcode-scanner";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 
@@ -46,6 +47,8 @@ export async function SearchForm({
           {t("submit")}
         </button>
       </form>
+
+      {itemType === "book" && <BarcodeScanner />}
     </div>
   );
 }

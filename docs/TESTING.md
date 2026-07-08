@@ -40,16 +40,21 @@ Al ser subagentes independientes, se pueden lanzar en paralelo mientras se
 sigue trabajando en el hilo principal (p. ej. verificar la feature A mientras
 se implementa la B).
 
+## Despliegue (Vercel)
+
+- Proyecto: `borjar20s-projects/biblioshare`, vinculado localmente vía `.vercel/project.json` (gitignorado).
+- URL de producción: **https://biblioshare-nine.vercel.app**
+- Conexión automática con el repo de GitHub no se completó (requiere autorizar la GitHub App de Vercel desde GitHub — paso manual, no forzado). Sin esa conexión, los despliegues no son automáticos en cada push; hay que correr `npx vercel deploy --prod` a mano cuando toque desplegar cambios.
+- **Variables de entorno pendientes de configurar en el dashboard de Vercel** (Project Settings → Environment Variables) — no se han introducido por CLI a propósito, para no pegar API keys en un comando: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `TMDB_API_KEY`, `GOOGLE_BOOKS_API_KEY` (mismos valores que en `.env.local`). Dejar `MOCK_EXTERNAL_APIS` sin definir en producción (solo se usa en local). Hasta que se configuren, la producción responde 500 en todas las rutas (esperado: la app necesita Supabase para casi todo).
+
 ## Wrapper nativo (Capacitor) — estado
 
 Ver `docs/REQUIREMENTS.md` §8-F / §7.31 para el porqué. Estado actual:
 
-- `capacitor.config.ts` ya existe, con `server.url` apuntando a
-  `http://10.0.2.2:3000` (alias de loopback del emulador Android hacia el
-  `localhost` de esta máquina) — es un valor de **desarrollo local**, no de
-  producción. Antes de distribuir la app de verdad hay que cambiarlo a la URL
-  del despliegue real (aún no existe: este proyecto solo ha corrido en local
-  hasta ahora).
+- `capacitor.config.ts` apunta `server.url` a la URL de producción de Vercel
+  de arriba. Para probar contra el servidor de desarrollo local en su lugar,
+  cambiar temporalmente a `http://10.0.2.2:3000` (alias de loopback del
+  emulador Android hacia el `localhost` de esta máquina) + `cleartext: true`.
 - Carpeta `android/` generada y comiteada (proyecto Gradle nativo estándar de
   Capacitor). **No se ha podido compilar ni probar todavía en esta máquina**:
   no hay JDK ni Android SDK instalados en este entorno Windows.
