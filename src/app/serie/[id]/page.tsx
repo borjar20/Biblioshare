@@ -3,9 +3,13 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemLibraryButton } from "@/components/item-library-button";
+import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { parsePosition } from "@/lib/library/position";
+import { getSessions } from "@/lib/sessions/get-sessions";
+import type { ProgressSession } from "@/lib/sessions/types";
+import type { MediaStatus } from "@/lib/library/types";
 
 export async function generateMetadata({
   params,
@@ -49,16 +53,26 @@ export default async function SeriesDetailPage({
     ? await getWatchProviders("tv", series.tmdb_id)
     : null;
 
-  let alreadyAdded = false;
+  let entry: ManagedEntry | null = null;
+  let sessions: ProgressSession[] = [];
   if (user) {
-    const { data: entry } = await supabase
+    const { data: row } = await supabase
       .from("library_entries")
-      .select("id")
+      .select("id, status, rating, position, notes")
       .eq("user_id", user.id)
       .eq("item_type", "series")
       .eq("item_id", series.id)
       .maybeSingle();
-    alreadyAdded = entry !== null;
+    if (row) {
+      entry = {
+        entryId: row.id,
+        status: row.status as MediaStatus,
+        rating: row.rating,
+        position: parsePosition("series", row.position),
+        notes: row.notes,
+      };
+      sessions = await getSessions(supabase, row.id, "series");
+    }
   }
 
   const metaLines = [
@@ -105,13 +119,12 @@ export default async function SeriesDetailPage({
 
         {watchProviders && <WatchProviders data={watchProviders} />}
 
-        <div>
-          <ItemLibraryButton
-            itemType="series"
-            itemId={series.id}
-            initiallyAdded={alreadyAdded}
-          />
-        </div>
+        <ItemManagePanel
+          itemType="series"
+          itemId={series.id}
+          entry={entry}
+          sessions={sessions}
+        />
       </div>
     </div>
   );

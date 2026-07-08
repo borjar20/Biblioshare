@@ -3,9 +3,11 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemLibraryButton } from "@/components/item-library-button";
+import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { parsePosition } from "@/lib/library/position";
+import type { MediaStatus } from "@/lib/library/types";
 
 export async function generateMetadata({
   params,
@@ -49,16 +51,24 @@ export default async function MovieDetailPage({
     ? await getWatchProviders("movie", movie.tmdb_id)
     : null;
 
-  let alreadyAdded = false;
+  let entry: ManagedEntry | null = null;
   if (user) {
-    const { data: entry } = await supabase
+    const { data: row } = await supabase
       .from("library_entries")
-      .select("id")
+      .select("id, status, rating, position, notes")
       .eq("user_id", user.id)
       .eq("item_type", "movie")
       .eq("item_id", movie.id)
       .maybeSingle();
-    alreadyAdded = entry !== null;
+    if (row) {
+      entry = {
+        entryId: row.id,
+        status: row.status as MediaStatus,
+        rating: row.rating,
+        position: parsePosition("movie", row.position),
+        notes: row.notes,
+      };
+    }
   }
 
   const metaLines = [
@@ -100,13 +110,12 @@ export default async function MovieDetailPage({
 
         {watchProviders && <WatchProviders data={watchProviders} />}
 
-        <div>
-          <ItemLibraryButton
-            itemType="movie"
-            itemId={movie.id}
-            initiallyAdded={alreadyAdded}
-          />
-        </div>
+        <ItemManagePanel
+          itemType="movie"
+          itemId={movie.id}
+          entry={entry}
+          sessions={[]}
+        />
       </div>
     </div>
   );

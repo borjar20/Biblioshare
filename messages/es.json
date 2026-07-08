@@ -156,10 +156,43 @@
     "notFoundTitle": "No encontrado",
     "notFoundDescription": "Este título no existe en el catálogo.",
     "backHome": "Ir al inicio",
+    "follow": "Seguir",
+    "following": "Añadiendo...",
+    "unfollow": "Dejar de seguir",
+    "status": "Estado",
+    "manage": "Gestionar",
     "watchProviders": {
       "title": "Dónde verlo",
       "none": "No disponible en streaming por suscripción ahora mismo.",
       "attribution": "Datos de disponibilidad por JustWatch, vía TMDB"
+    },
+    "sessions": {
+      "title": "Sesiones",
+      "add": "Registrar sesión",
+      "empty": "Todavía no has registrado ninguna sesión.",
+      "delete": "Eliminar",
+      "duration": "{count} min"
+    }
+  },
+  "session": {
+    "titleBook": "Guardar sesión de lectura",
+    "titleSeries": "Guardar sesión de visionado",
+    "date": "Fecha",
+    "duration": "Tiempo de la sesión",
+    "durationHint": "En minutos. Opcional.",
+    "page": "Página alcanzada",
+    "pageOf": "de {total}",
+    "season": "Temporada",
+    "episode": "Episodio",
+    "note": "Nota o cita destacada",
+    "noteHint": "Opcional.",
+    "status": "Estado",
+    "submit": "Guardar sesión",
+    "submitting": "Guardando...",
+    "errors": {
+      "invalidPosition": "La posición introducida no es válida.",
+      "invalidDuration": "El tiempo debe ser un número de minutos válido.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
     }
   },
   "offline": {
@@ -172,6 +205,7 @@
     "empty": "Aún no has añadido nada a tu biblioteca.",
     "emptyCta": "Buscar algo",
     "recentlyUpdated": "Actualizado recientemente",
+    "diaryTitle": "Revisionados",
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados"

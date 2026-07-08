@@ -53,7 +53,7 @@ export default async function Home() {
 
       {inProgress.length > 0 && (
         <div className="w-full text-left">
-          <NowConsuming items={inProgress} />
+          <NowConsuming items={inProgress} linkToSession />
         </div>
       )}
     </div>

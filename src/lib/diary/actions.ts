@@ -3,8 +3,16 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getDiaryEntries } from "@/lib/diary/get-diary-entries";
-import type { DiaryEntry } from "@/lib/diary/types";
+import type { ItemType } from "@/lib/catalog/types";
+import { itemHref } from "@/lib/catalog/item-href";
+import { getDiaryEntries } from "./get-diary-entries";
+import type { DiaryEntry } from "./types";
+
+function revalidateItemViews(itemType: ItemType, itemId: string) {
+  revalidatePath(itemHref(itemType, itemId));
+  revalidatePath("/u/[username]", "page");
+  revalidatePath("/");
+}
 
 export async function listDiaryEntries(
   libraryEntryId: string
@@ -19,6 +27,8 @@ export type AddDiaryEntryState = {
 
 export async function addDiaryEntry(
   libraryEntryId: string,
+  itemType: ItemType,
+  itemId: string,
   _prevState: AddDiaryEntryState,
   formData: FormData
 ): Promise<AddDiaryEntryState> {
@@ -50,11 +60,15 @@ export async function addDiaryEntry(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/u/[username]", "page");
+  revalidateItemViews(itemType, itemId);
   return {};
 }
 
-export async function deleteDiaryEntry(entryId: string) {
+export async function deleteDiaryEntry(
+  entryId: string,
+  itemType: ItemType,
+  itemId: string
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -68,5 +82,5 @@ export async function deleteDiaryEntry(entryId: string) {
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/u/[username]", "page");
+  revalidateItemViews(itemType, itemId);
 }

@@ -104,7 +104,7 @@ export default async function PublicProfilePage({
 
       {tab === "overview" && (
         <>
-          <NowConsuming items={inProgress} />
+          <NowConsuming items={inProgress} linkToSession={isOwner} />
           <ActivityChart months={months} />
         </>
       )}

@@ -3,7 +3,11 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemLibraryButton } from "@/components/item-library-button";
+import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
+import { parsePosition } from "@/lib/library/position";
+import { getSessions } from "@/lib/sessions/get-sessions";
+import type { ProgressSession } from "@/lib/sessions/types";
+import type { MediaStatus } from "@/lib/library/types";
 
 export async function generateMetadata({
   params,
@@ -43,16 +47,26 @@ export default async function BookDetailPage({
 
   if (!book) notFound();
 
-  let alreadyAdded = false;
+  let entry: ManagedEntry | null = null;
+  let sessions: ProgressSession[] = [];
   if (user) {
-    const { data: entry } = await supabase
+    const { data: row } = await supabase
       .from("library_entries")
-      .select("id")
+      .select("id, status, rating, position, notes")
       .eq("user_id", user.id)
       .eq("item_type", "book")
       .eq("item_id", book.id)
       .maybeSingle();
-    alreadyAdded = entry !== null;
+    if (row) {
+      entry = {
+        entryId: row.id,
+        status: row.status as MediaStatus,
+        rating: row.rating,
+        position: parsePosition("book", row.position),
+        notes: row.notes,
+      };
+      sessions = await getSessions(supabase, row.id, "book");
+    }
   }
 
   const metaLines = [
@@ -95,13 +109,12 @@ export default async function BookDetailPage({
           <p className="text-sm text-foreground">{book.synopsis}</p>
         )}
 
-        <div>
-          <ItemLibraryButton
-            itemType="book"
-            itemId={book.id}
-            initiallyAdded={alreadyAdded}
-          />
-        </div>
+        <ItemManagePanel
+          itemType="book"
+          itemId={book.id}
+          entry={entry}
+          sessions={sessions}
+        />
       </div>
     </div>
   );

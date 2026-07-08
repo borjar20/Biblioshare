@@ -5,13 +5,14 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import type { ItemType } from "@/lib/catalog/types";
 import type { DiaryEntry } from "@/lib/diary/types";
 import {
   listDiaryEntries,
   addDiaryEntry,
   deleteDiaryEntry,
   type AddDiaryEntryState,
-} from "./diary-actions";
+} from "@/lib/diary/actions";
 
 const initialState: AddDiaryEntryState = {};
 
@@ -19,14 +20,22 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function DiaryPanel({ libraryEntryId }: { libraryEntryId: string }) {
+export function DiaryPanel({
+  libraryEntryId,
+  itemType,
+  itemId,
+}: {
+  libraryEntryId: string;
+  itemType: ItemType;
+  itemId: string;
+}) {
   const t = useTranslations("diary");
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<DiaryEntry[] | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
-  const boundAddDiaryEntry = addDiaryEntry.bind(null, libraryEntryId);
+  const boundAddDiaryEntry = addDiaryEntry.bind(null, libraryEntryId, itemType, itemId);
   const [state, formAction, formPending] = useActionState(
     boundAddDiaryEntry,
     initialState
@@ -92,7 +101,7 @@ export function DiaryPanel({ libraryEntryId }: { libraryEntryId: string }) {
                         type="button"
                         onClick={() =>
                           startTransition(async () => {
-                            await deleteDiaryEntry(entry.id);
+                            await deleteDiaryEntry(entry.id, itemType, itemId);
                             refresh();
                           })
                         }

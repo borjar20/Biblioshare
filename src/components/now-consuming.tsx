@@ -8,7 +8,17 @@ import { getProgress } from "@/lib/library/progress";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-export async function NowConsuming({ items }: { items: LibraryItem[] }) {
+// `linkToSession` (owner-only surfaces: home and own profile): books/series
+// jump straight to the session-logging screen, the daily-loop shortcut
+// (§7.14). Movies have no sessions, so they always link to their detail
+// page. Visitors on someone else's profile always get the detail link.
+export async function NowConsuming({
+  items,
+  linkToSession = false,
+}: {
+  items: LibraryItem[];
+  linkToSession?: boolean;
+}) {
   const t = await getTranslations("profile");
   const tLibrary = await getTranslations("library");
 
@@ -21,6 +31,11 @@ export async function NowConsuming({ items }: { items: LibraryItem[] }) {
 
   if (featured.length === 0) return null;
 
+  const hrefFor = (item: LibraryItem) =>
+    linkToSession && item.itemType !== "movie"
+      ? `/sesion/${item.entryId}`
+      : itemHref(item.itemType, item.itemId);
+
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold tracking-tight">{t("nowConsuming")}</h2>
@@ -30,7 +45,7 @@ export async function NowConsuming({ items }: { items: LibraryItem[] }) {
           return (
             <Link
               key={item.entryId}
-              href={itemHref(item.itemType, item.itemId)}
+              href={hrefFor(item)}
               className="flex gap-3 rounded-lg border border-border bg-surface p-3"
             >
               <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-md bg-surface-muted">

@@ -4,21 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import type { LibraryItem, MediaStatus } from "@/lib/library/types";
+import type { LibraryItem } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getProgress } from "@/lib/library/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { updateStatus, removeFromLibrary, toggleFavorite } from "./actions";
-import { DiaryPanel } from "./diary-panel";
-import { ProgressPanel } from "./progress-panel";
-
-const STATUSES: MediaStatus[] = [
-  "planned",
-  "in_progress",
-  "completed",
-  "dropped",
-];
+import { toggleFavorite } from "./actions";
 
 export function LibraryItemCard({
   item,
@@ -49,11 +40,9 @@ export function LibraryItemCard({
               {item.title}
             </div>
           )}
-          {!isOwner && (
-            <div className="absolute right-1.5 top-1.5">
-              <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
-            </div>
-          )}
+          <div className="absolute right-1.5 top-1.5">
+            <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
+          </div>
         </div>
 
         <span className="line-clamp-2 text-sm font-medium text-foreground">
@@ -84,31 +73,6 @@ export function LibraryItemCard({
 
       {isOwner && (
         <>
-          <select
-            value={item.status}
-            disabled={isPending}
-            onChange={(event) => {
-              const status = event.target.value as MediaStatus;
-              startTransition(() => updateStatus(item.entryId, status));
-            }}
-            className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground disabled:opacity-60"
-          >
-            {STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {t(`status.${status}`)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => startTransition(() => removeFromLibrary(item.entryId))}
-            className="text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
-          >
-            {t("remove")}
-          </button>
-
           <button
             type="button"
             disabled={isPending}
@@ -126,9 +90,6 @@ export function LibraryItemCard({
           {favoriteError && (
             <p className="text-xs text-status-dropped">{favoriteError}</p>
           )}
-
-          <ProgressPanel item={item} />
-          <DiaryPanel libraryEntryId={item.entryId} />
         </>
       )}
     </div>

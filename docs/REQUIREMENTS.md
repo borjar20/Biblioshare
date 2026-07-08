@@ -1,6 +1,6 @@
 # Biblioshare — Requisitos y alcance
 
-Última actualización: 2026-07-08
+Última actualización: 2026-07-09
 
 ## 1. Visión
 
@@ -190,14 +190,21 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 ### 7.14 Sesiones de progreso diarias (base de rachas, calendario y estadísticas)
 Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales. Esta es la idea de "modo racha (streaks)" — ya cubierta aquí en detalle, no se duplica en otra sección.
 
-- [ ] Modelar `progress_sessions` (base fundacional): `library_entry_id`, `date`, delta de progreso (páginas leídas / episodios avanzados ese día), opcionalmente minutos dedicados.
-  - **Gap de modelo real, no solo de UI**: hoy no existe forma de saber "¿qué avancé el martes?". `library_entries.position` solo guarda el punto *actual* (sin historial), y `diary_entries` solo registra el *pase completo* (fecha inicio/fin de una relectura entera). Ninguno de los dos permite reconstruir actividad día a día.
+**Estado**: la **base del modelo** (tabla `progress_sessions` + pantalla de registro `/sesion/[entryId]`) está construida y verificada; las piezas de estadísticas diarias, calendario mensual, rachas y objetivos anuales siguen **pendientes** (ver checklist).
+
+- [x] Modelar `progress_sessions` (base fundacional): tabla nueva (migración aplicada) con `id`, `library_entry_id` (FK cascada), `user_id` (FK cascada), `session_date` (default hoy), `duration_minutes` (nullable, minutos introducidos a mano), `position` jsonb (el punto *alcanzado* ese día: `{page}` en libros, `{season,episode}` en series), `note` (nullable, para una nota o cita destacada) y `created_at`; índice sobre `library_entry_id`; RLS idéntico a `diary_entries` (dueño inserta/edita/borra; select "público u propio" según el `is_public` del perfil dueño). Cierra el "gap de modelo real": ahora sí se puede saber "¿qué avancé el martes?" (antes `library_entries.position` solo guardaba el punto *actual*, sin historial, y `diary_entries` solo el *pase completo*).
+  - **Separación conceptual explícita**: `diary_entries` = pases completos (relectura/re-visionado, con rating + reseña); `progress_sessions` = progreso incremental diario (posición alcanzada + minutos opcionales a mano + nota/cita opcional). `library_entries.position` sigue siendo solo el punto *actual*. Ver §8-G.
+  - **Alcance**: las sesiones solo aplican a **libros y series** (página / temporada+episodio); las películas mantienen solo estado + revisionados (no tienen sesión incremental natural).
+  - **Tiempo a mano, no cronómetro**: la duración es un campo de minutos; el cronómetro en vivo queda como extensión futura sobre este mismo modelo.
+  - **Capa de dominio** `src/lib/sessions/` (`types.ts`, `get-sessions.ts`, `actions.ts`): `addSession` registra la sesión Y adelanta la `position` + `status` del ítem (el formulario de sesión es la vía del bucle diario para actualizar el progreso); `deleteSession` la elimina.
+  - **Pantalla nueva** `/sesion/[entryId]` (`src/app/sesion/[entryId]/`): formulario "Guardar sesión de lectura/visionado" (fecha, duración, posición prellenada desde la actual, nota, estado prellenado — planned→in_progress); guardas: solo el dueño, y un ítem de película redirige a su ficha. Al guardar → redirige a la ficha del ítem. Se llega desde la estantería "Ahora mismo" (home + perfil propio): al pulsar un libro/serie salta directo a `/sesion/[entryId]` (las películas → ficha), vía la nueva prop `linkToSession` de `NowConsuming` (solo en superficies del dueño).
 - [ ] Estadísticas diarias: tira de días de la semana con indicador de actividad + objetivo diario configurable (ej. "30 min") con progreso circular, y detalle del día (páginas leídas, minutos, páginas/minuto).
   - Implica añadir un objetivo diario a `profiles` o una tabla de settings, y decidir si el tiempo se **introduce a mano** (como parece en la captura, "Has leído 5 min") o con un cronómetro en la app — la primera es mucho más barata.
 - [ ] Calendario mensual: grid de días del mes con la portada del ítem en los días que tuvo actividad — lectura directa de `progress_sessions` agrupada por día.
 - [ ] Rachas: racha actual y mejor racha (días consecutivos con al menos una sesión de progreso en cualquier ítem), con su propio calendario de resaltado. Cálculo derivado, no necesita tabla propia más allá de la sesión diaria.
 - [ ] Estadísticas anuales: gráfico de barras de ítems completados por mes + objetivo anual (ej. "30 libros") con progreso circular. El conteo por mes puede salir de `diary_entries.finished_on` sin necesitar `progress_sessions`.
-- A definir cuando se aborde: si esto aplica solo a libros o también a películas/series (para video, "página" no tiene sentido pero "minutos vistos" o "episodios avanzados" sí); si el objetivo diario/anual es un único valor global o por tipo de ítem; UX de introducir el progreso diario (¿un botón rápido "+X páginas hoy" sobre el `ProgressPanel` ya existente, o un flujo dedicado?).
+- **Resuelto al construir la base**: aplica a **libros y series**, no a películas; el tiempo se introduce **a mano** (campo de minutos), no con cronómetro; la UX de registro es un **flujo dedicado** (`/sesion/[entryId]`), no un botón rápido "+X páginas hoy" sobre el `ProgressPanel`.
+- A definir cuando se aborden las piezas restantes (stats diarias / calendario / rachas / objetivos): si el objetivo diario/anual es un único valor global o por tipo de ítem.
 
 ### 7.15 Otras ideas sin desarrollar todavía
 - [ ] "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
@@ -308,7 +315,7 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.5 Etiquetas privadas | M | — | Base para 7.23 (retos) y estadísticas por etiqueta |
 | 7.22 Cola priorizada con tiempo estimado | M | 7.1/7.8 | Usa datos que ya existirán tras 7.1/7.8 |
 | 7.4 Sagas y colecciones | M | §8-B (resuelto) | Puede reutilizar la tabla de relaciones "mismo universo" en vez de mecanismo propio |
-| 7.14 Sesiones de progreso diarias (rachas) | L | — | Alto valor de retención, pero requiere tabla nueva y bastante UI |
+| 7.14 Sesiones de progreso diarias (rachas) | L (parcial) | — | Base de sesiones hecha (`progress_sessions` + registro en `/sesion/[entryId]`); faltan stats diarias / calendario / rachas / objetivos |
 | 7.29 Método de adquisición / dinero ahorrado | S-M | §8-C (resuelto) | Ya decidido: va en `copy_details`, separado de `position` |
 | 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
 | 7.17 Recordatorios (pausas/estrenos) | M-L | 7.31 (Capacitor) + §8-D | Push nativo vía Capacitor para iOS+UE; Web Push + pg_cron para el resto |
@@ -379,6 +386,13 @@ Investigación (julio 2026) sobre el estado real de las tres cosas que "ir nativ
 
 **Restricción de entorno a tener en cuenta**: compilar el proyecto **iOS** de Capacitor requiere Xcode, que solo corre en macOS — no es posible desde un entorno Windows. La parte **Android** sí es viable en Windows (Android Studio + JDK). El trabajo de configuración de Capacitor (paquetes, `capacitor.config.ts`, scaffolding) es multiplataforma; compilar y probar en un dispositivo/emulador iOS necesitará una Mac o un runner de CI en la nube (p. ej. Codemagic, GitHub Actions con runner macOS) en algún momento.
 
+### 8-G. Diario vs. sesiones, y "gestión en la ficha / tarjetas de solo lectura" — *decidido (construido con la base de 7.14)*
+Dos decisiones de forma tomadas al construir la base de 7.14, registradas porque cambian la responsabilidad de tablas y pantallas ya existentes:
+
+- **`diary_entries` y `progress_sessions` son hermanas, no rivales**: `diary_entries` se queda **tal cual** (pases completos: relectura/re-visionado con rating + reseña); `progress_sessions` es la tabla **nueva** para el progreso *incremental* diario (posición alcanzada + minutos a mano + nota/cita). No se fusionan ni se sustituye una por otra — son dos ejes distintos ("terminé una vuelta entera" vs. "hoy avancé hasta aquí"), y `library_entries.position` sigue siendo solo el punto actual. Alcance: sesiones solo para libros y series (ver 7.14).
+
+- **La gestión vive en la ficha del ítem; las tarjetas del perfil son solo vista**: las páginas de detalle (`/libro|pelicula|serie/[id]`) pasan a ser el **hub de gestión** (nuevo `src/components/item-manage-panel.tsx`: Seguir / estado / editar progreso / revisionados / sesiones / Dejar de seguir), y "no seguido" = ausencia de fila en `library_entries` (Seguir / Dejar de seguir; los 4 estados no cambian). Las tarjetas de `/u/[username]` se adelgazan a **vista + acciones rápidas** (portada/enlace, título, metadatos, barra de progreso, recuento de relecturas, badge de estado también para el dueño, fijar/desfijar favorito) — se les quita el select de estado, "Quitar", `ProgressPanel` y `DiaryPanel`. Consecuencia estructural: las server actions compartidas salen de la ruta de perfil a `src/lib/library/manage-actions.ts` (firma `(entryId, itemType, itemId, ...)`, revalidando ficha + perfil + home) y a `src/lib/diary/actions.ts`, y `ProgressPanel`/`DiaryPanel` a `src/components/`; `src/app/u/[username]/actions.ts` queda solo con `updateProfileVisibility` + `toggleFavorite`. Se eliminó `ItemLibraryButton` (reemplazado por el panel de gestión).
+
 ## 9. Decisiones registradas
 
 | Fecha | Decisión | Motivo |
@@ -395,6 +409,7 @@ Investigación (julio 2026) sobre el estado real de las tres cosas que "ir nativ
 | 2026-07-07 | Offline MVP = cache de solo lectura, no offline-first completo | Reduce complejidad de sincronización manteniendo el beneficio principal de una PWA instalable |
 | 2026-07-08 | MVP cerrado como **v1.0**; §6 completo al 100% | Todas las funcionalidades comprometidas en §4 están construidas y verificadas; ver §10 |
 | 2026-07-08 | Adoptar **Capacitor** (wrapper nativo vía `server.url`) antes de construir 7.17; se abandona el PWA-only estricto de la decisión anterior | Investigación confirmó que Web Push no funciona en iOS+UE (bloqueo de Apple por la DMA, no arreglable en web) — no tiene sentido construir 8-D asumiendo una cobertura que no existe. El widget de pantalla de inicio sigue sin comprometerse (requiere código nativo aparte) |
+| 2026-07-09 | Nueva tabla `progress_sessions` (hermana de `diary_entries`) para el progreso incremental diario; la gestión del ítem se mueve a la ficha `/libro\|pelicula\|serie/[id]` y las tarjetas de perfil quedan de solo lectura | Base de 7.14 (rachas/estadísticas): sin ella no se podía reconstruir la actividad día a día; separar "pase completo" de "avance diario" evita sobrecargar `diary_entries`/`position`. Ver §8-G |
 
 ## 10. Historial de versiones
 

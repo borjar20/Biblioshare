@@ -220,6 +220,47 @@ export type Database = {
         }
         Relationships: []
       }
+      progress_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          library_entry_id: string
+          note: string | null
+          position: Json
+          session_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          library_entry_id: string
+          note?: string | null
+          position?: Json
+          session_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          library_entry_id?: string
+          note?: string | null
+          position?: Json
+          session_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progress_sessions_library_entry_id_fkey"
+            columns: ["library_entry_id"]
+            isOneToOne: false
+            referencedRelation: "library_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       series: {
         Row: {
           cover_url: string | null
