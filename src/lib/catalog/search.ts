@@ -35,32 +35,22 @@ export async function searchCatalog(
     }
   }
 
-  const [localResults, apiResults] = await Promise.all([
-    searchLocalCatalog(supabase, itemType, trimmed),
-    searchExternal(itemType, trimmed),
-  ]);
+  // Local catalog wins outright if it has anything for this title — running
+  // local and API in parallel would still call the API on every single
+  // search regardless of what's cached, which defeats the point. The
+  // trade-off (accepted): once a title has any local match, a repeat search
+  // won't discover further/newer API results for it — `/buscar/manual` or a
+  // more specific query (e.g. ISBN) remain the way to find something else.
+  const localResults = await searchLocalCatalog(supabase, itemType, trimmed);
+  if (localResults.length > 0) return localResults;
 
-  const localKeys = new Set<string>();
-  for (const r of localResults) for (const key of resultKeys(r)) localKeys.add(key);
-
-  const newApiResults = apiResults.filter(
-    (r) => ![...resultKeys(r)].some((key) => localKeys.has(key))
-  );
-
-  const persisted = await Promise.all(
-    newApiResults.map(async (r) => ({
+  const apiResults = await searchExternal(itemType, trimmed);
+  return Promise.all(
+    apiResults.map(async (r) => ({
       ...r,
       catalogId: await findOrCreateCatalogItem(supabase, r),
     }))
   );
-
-  return [...localResults, ...persisted];
-}
-
-function resultKeys(result: SearchResult): string[] {
-  const keys = [`ext:${result.itemType}:${result.externalId}`];
-  if (result.itemType === "book" && result.isbn) keys.push(`isbn:${result.isbn}`);
-  return keys;
 }
 
 function searchExternal(itemType: ItemType, query: string): Promise<SearchResult[]> {
