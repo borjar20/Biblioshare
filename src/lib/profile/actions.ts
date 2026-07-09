@@ -77,6 +77,6 @@ export async function updateGoals(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/estadisticas");
+  revalidatePath("/");
   return {};
 }

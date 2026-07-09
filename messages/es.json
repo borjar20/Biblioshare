@@ -45,6 +45,7 @@
     }
   },
   "home": {
+    "welcome": "Bienvenido a Biblioshare",
     "tagline": "Tu biblioteca de libros, películas y series en un solo lugar.",
     "cta": "Empezar"
   },

@@ -1,61 +1,101 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
+import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
+import { getStreaks } from "@/lib/stats/get-streaks";
+import { getMonthCalendar } from "@/lib/stats/get-month-calendar";
+import { getAnnualCompleted } from "@/lib/stats/get-annual-completed";
 import { NowConsuming } from "@/components/now-consuming";
-import { logout } from "./(auth)/actions";
+import { WeeklyStrip } from "@/components/stats/weekly-strip";
+import { StreakCard } from "@/components/stats/streak-card";
+import { MonthCalendar } from "@/components/stats/month-calendar";
+import { AnnualStats } from "@/components/stats/annual-stats";
+import { GoalsForm } from "@/components/stats/goals-form";
 
-export default async function Home() {
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const { month: monthParam } = await searchParams;
   const t = await getTranslations();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let username: string | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    username = profile?.username ?? null;
-  }
-
-  const inProgress = user
-    ? await getLibraryItems(supabase, user.id, { status: "in_progress" })
-    : [];
-
-  return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-4 py-8 text-center">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        {t("common.appName")}
-      </h1>
-      <p className="max-w-md text-lg text-muted-foreground">
-        {t("home.tagline")}
-      </p>
-
-      {username ? (
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">@{username}</span>
-          <form action={logout}>
-            <Button type="submit" variant="secondary">
-              {t("auth.logout")}
-            </Button>
-          </form>
-        </div>
-      ) : (
+  if (!user) {
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-4 py-8 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {t("common.appName")}
+        </h1>
+        <p className="max-w-md text-lg text-muted-foreground">
+          {t("home.tagline")}
+        </p>
         <Link href="/signup" className={buttonVariants("primary", "px-6")}>
           {t("home.cta")}
         </Link>
-      )}
+      </div>
+    );
+  }
 
-      {inProgress.length > 0 && (
-        <div className="w-full text-left">
-          <NowConsuming items={inProgress} linkToSession />
+  const [profile, inProgress, weekly, streaks, calendar, annual] =
+    await Promise.all([
+      getOwnProfile(supabase, user.id),
+      getLibraryItems(supabase, user.id, { status: "in_progress" }),
+      getWeeklyActivity(supabase, user.id),
+      getStreaks(supabase, user.id),
+      getMonthCalendar(
+        supabase,
+        user.id,
+        MONTH_RE.test(monthParam ?? "")
+          ? (monthParam as string)
+          : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
+      ),
+      getAnnualCompleted(supabase, user.id, new Date().getFullYear()),
+    ]);
+
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {t("home.welcome")}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              @{profile?.username}
+            </p>
+          </div>
         </div>
-      )}
+      </div>
+
+      <div className="w-full text-left">
+        <NowConsuming items={inProgress} linkToSession />
+      </div>
+
+      <div className="grid gap-8">
+        <WeeklyStrip
+          days={weekly}
+          dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+        />
+        <StreakCard streaks={streaks} />
+        <MonthCalendar calendar={calendar} basePath="/" />
+        <AnnualStats
+          annual={annual}
+          annualGoalItems={profile?.annualGoalItems ?? null}
+        />
+        <GoalsForm
+          dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+          annualGoalItems={profile?.annualGoalItems ?? null}
+        />
+      </div>
     </div>
   );
 }

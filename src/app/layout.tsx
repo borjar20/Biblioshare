@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { Header } from "@/components/header";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import ClientErrorListener from "@/components/client-error-listener";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,6 +50,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <ServiceWorkerRegister />
+        <ClientErrorListener />
         <NextIntlClientProvider>
           <Header />
           <div className="flex flex-1 flex-col">{children}</div>

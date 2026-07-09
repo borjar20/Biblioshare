@@ -18,6 +18,7 @@ import { FavoritesShelf } from "@/components/favorites-shelf";
 import { ActivityChart } from "@/components/activity-chart";
 import { LibraryItemCard } from "./library-item-card";
 import { VisibilityToggle } from "./visibility-toggle";
+import { logout } from "@/app/(auth)/actions";
 
 const VALID_TABS: SectionTab[] = ["overview", "book", "movie", "series"];
 const VALID_STATUSES: MediaStatus[] = [
@@ -42,7 +43,12 @@ export default async function PublicProfilePage({
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ tab?: string; status?: string; q?: string; sort?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    status?: string;
+    q?: string;
+    sort?: string;
+  }>;
 }) {
   const { username } = await params;
   const parsedParams = await searchParams;
@@ -53,7 +59,9 @@ export default async function PublicProfilePage({
     ? (parsedParams.status as MediaStatus)
     : undefined;
   const search = parsedParams.q?.trim() || undefined;
-  const sort: LibrarySort = VALID_SORTS.includes(parsedParams.sort as LibrarySort)
+  const sort: LibrarySort = VALID_SORTS.includes(
+    parsedParams.sort as LibrarySort,
+  )
     ? (parsedParams.sort as LibrarySort)
     : "recent";
 
@@ -61,9 +69,12 @@ export default async function PublicProfilePage({
   const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
-  const [profile, {
-    data: { user },
-  }] = await Promise.all([
+  const [
+    profile,
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
     getProfileByUsername(supabase, username),
     supabase.auth.getUser(),
   ]);
@@ -77,7 +88,12 @@ export default async function PublicProfilePage({
   const [items, stats, inProgress, months, favorites] = await Promise.all([
     tab === "overview"
       ? getLibraryItems(supabase, profile.userId, {})
-      : getLibraryItems(supabase, profile.userId, { itemType, status, search, sort }),
+      : getLibraryItems(supabase, profile.userId, {
+          itemType,
+          status,
+          search,
+          sort,
+        }),
     getLibraryStats(supabase, profile.userId),
     tab === "overview"
       ? getLibraryItems(supabase, profile.userId, { status: "in_progress" })
@@ -97,7 +113,20 @@ export default async function PublicProfilePage({
       <FavoritesShelf items={favorites} />
 
       {isOwner && (
-        <VisibilityToggle username={profile.username} isPublic={profile.isPublic} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <VisibilityToggle
+            username={profile.username}
+            isPublic={profile.isPublic}
+          />
+          <form action={logout} className="self-start">
+            <button
+              type="submit"
+              className={buttonVariants("secondary", "px-4")}
+            >
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
       )}
 
       <SectionTabs active={tab} basePath={basePath} />
@@ -140,7 +169,11 @@ export default async function PublicProfilePage({
           )}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {gridItems.map((item) => (
-              <LibraryItemCard key={item.entryId} item={item} isOwner={isOwner} />
+              <LibraryItemCard
+                key={item.entryId}
+                item={item}
+                isOwner={isOwner}
+              />
             ))}
           </div>
         </div>
