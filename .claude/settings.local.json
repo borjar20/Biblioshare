@@ -11,7 +11,15 @@
       "mcp__mcp-registry__list_connectors",
       "mcp__github__create_pull_request",
       "Bash(PATH='/c/Program Files/nodejs:__TRACKED_VAR__' npx eslint src)",
-      "Bash(PATH='/c/Program Files/nodejs:__TRACKED_VAR__' npx tsc --noEmit)"
+      "Bash(PATH='/c/Program Files/nodejs:__TRACKED_VAR__' npx tsc --noEmit)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(gh pr *)",
+      "mcp__github__list_pull_requests",
+      "Bash(awk 'NR==132,NR==153' docs/REQUIREMENTS.md)",
+      "mcp__github__get_pull_request_status",
+      "mcp__github__merge_pull_request"
     ]
   }
 }
