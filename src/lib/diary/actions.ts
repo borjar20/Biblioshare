@@ -38,6 +38,17 @@ export async function addDiaryEntry(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // La entrada debe ser del propio usuario (mismo check que addSession); el
+  // FK compuesto (library_entry_id, user_id) ya lo garantiza en BD.
+  const { data: entry, error: entryError } = await supabase
+    .from("library_entries")
+    .select("id")
+    .eq("id", libraryEntryId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (entryError || !entry) return { error: "generic" };
+
   const finishedOn = String(formData.get("finishedOn") ?? "");
   const ratingRaw = String(formData.get("rating") ?? "").trim();
   const review = String(formData.get("review") ?? "").trim();

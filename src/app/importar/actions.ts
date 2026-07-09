@@ -76,6 +76,10 @@ export async function commitImportBatch(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Mismo tope que el parseo: cada fila puede disparar llamadas a APIs
+  // externas, así que un cliente no debe poder enviar lotes arbitrarios.
+  if (rows.length > MAX_ROWS) return [];
+
   const results: ImportRowResult[] = [];
   for (let i = 0; i < rows.length; i += BATCH_CONCURRENCY) {
     const chunk = rows.slice(i, i + BATCH_CONCURRENCY);

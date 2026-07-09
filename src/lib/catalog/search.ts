@@ -46,10 +46,16 @@ export async function searchCatalog(
 
   const apiResults = await searchExternal(itemType, trimmed);
   return Promise.all(
-    apiResults.map(async (r) => ({
-      ...r,
-      catalogId: await findOrCreateCatalogItem(supabase, r),
-    }))
+    apiResults.map(async (r) => {
+      // La persistencia es cache oportunista: si el insert falla (p. ej. un
+      // visitante anónimo, cuya sesión no puede escribir en el catálogo por
+      // RLS), se devuelve el resultado igualmente, solo que sin catalogId.
+      try {
+        return { ...r, catalogId: await findOrCreateCatalogItem(supabase, r) };
+      } catch {
+        return r;
+      }
+    })
   );
 }
 
