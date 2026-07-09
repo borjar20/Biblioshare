@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
+import { SagaAssignForm } from "@/components/saga-assign-form";
+import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
+import { personHref, sagaHref } from "@/lib/catalog/item-href";
+import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import { getItemCredits } from "@/lib/people/get-item-credits";
+import { getItemSaga } from "@/lib/sagas/get-item-saga";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
@@ -47,6 +54,15 @@ export default async function BookDetailPage({
 
   if (!book) notFound();
 
+  await ensureItemEnriched(supabase, "book", { id: book.id, author: book.author });
+
+  const [credits, saga] = await Promise.all([
+    getItemCredits(supabase, "book", book.id),
+    getItemSaga(supabase, "book", book.id),
+  ]);
+  // Autores como enlaces a su ficha; si no se pudo enriquecer, texto plano.
+  const authorCredits = credits.crew.filter((c) => c.role === "author");
+
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
   if (user) {
@@ -69,8 +85,15 @@ export default async function BookDetailPage({
     }
   }
 
+  // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
+  const canContribute = user
+    ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
+    : false;
+
+  // El autor se muestra como enlace(s) a su ficha (abajo); aquí quedan el resto
+  // de metadatos de la obra.
   const metaLines = [
-    [book.author, book.published_year].filter(Boolean).join(" · "),
+    book.published_year ? String(book.published_year) : null,
     [book.publisher, book.total_pages ? `${book.total_pages} ${t("pages")}` : null]
       .filter(Boolean)
       .join(" · "),
@@ -99,11 +122,42 @@ export default async function BookDetailPage({
       <div className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{book.title}</h1>
 
+        {authorCredits.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {authorCredits.map((author, i) => (
+              <span key={author.id}>
+                {i > 0 && ", "}
+                <Link
+                  href={personHref(author.id)}
+                  className="text-foreground underline-offset-2 hover:underline"
+                >
+                  {author.name}
+                </Link>
+              </span>
+            ))}
+          </p>
+        ) : (
+          book.author && (
+            <p className="text-sm text-muted-foreground">{book.author}</p>
+          )
+        )}
+
         {metaLines.map((line, i) => (
           <p key={i} className="text-sm text-muted-foreground">
             {line}
           </p>
         ))}
+
+        {saga && (
+          <Link
+            href={sagaHref(saga.sagaId)}
+            className="inline-flex w-fit items-center rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-surface-muted"
+          >
+            {saga.position
+              ? t("sagaPart", { name: saga.name, number: saga.position })
+              : t("sagaLabel", { name: saga.name })}
+          </Link>
+        )}
 
         {book.synopsis && (
           <p className="text-sm text-foreground">{book.synopsis}</p>
@@ -115,6 +169,14 @@ export default async function BookDetailPage({
           entry={entry}
           sessions={sessions}
         />
+
+        {canContribute && (
+          <SagaAssignForm
+            itemType="book"
+            itemId={book.id}
+            currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
+          />
+        )}
       </div>
     </div>
   );

@@ -5,7 +5,10 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
+import { CreditsSection } from "@/components/credits-section";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import { getItemCredits } from "@/lib/people/get-item-credits";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
@@ -49,9 +52,12 @@ export default async function SeriesDetailPage({
 
   if (!series) notFound();
 
-  const watchProviders = series.tmdb_id
-    ? await getWatchProviders("tv", series.tmdb_id)
-    : null;
+  await ensureItemEnriched(supabase, "series", { id: series.id, tmdbId: series.tmdb_id });
+
+  const [watchProviders, credits] = await Promise.all([
+    series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
+    getItemCredits(supabase, "series", series.id),
+  ]);
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
@@ -75,8 +81,10 @@ export default async function SeriesDetailPage({
     }
   }
 
+  // El creador se muestra ahora con enlace en CreditsSection; aquí quedan solo
+  // los metadatos sin ficha propia (año, temporadas/episodios, géneros).
   const metaLines = [
-    [series.creator, series.release_year].filter(Boolean).join(" · "),
+    series.release_year ? String(series.release_year) : null,
     [
       series.total_seasons ? `${series.total_seasons} ${t("seasons")}` : null,
       series.total_episodes ? `${series.total_episodes} ${t("episodes")}` : null,
@@ -116,6 +124,8 @@ export default async function SeriesDetailPage({
         {series.synopsis && (
           <p className="text-sm text-foreground">{series.synopsis}</p>
         )}
+
+        <CreditsSection credits={credits} />
 
         {watchProviders && <WatchProviders data={watchProviders} />}
 

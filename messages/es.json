@@ -88,6 +88,7 @@
         "titleRequired": "El título es obligatorio.",
         "invalidPageCount": "El número de páginas no es válido.",
         "invalidIsbn": "El ISBN no es válido (debe tener 10 o 13 dígitos).",
+        "forbidden": "No tienes permiso para añadir ítems manualmente.",
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
     }
@@ -161,6 +162,30 @@
     "unfollow": "Dejar de seguir",
     "status": "Estado",
     "manage": "Gestionar",
+    "creditsTitle": "Reparto y equipo",
+    "roles": {
+      "director": "Dirección",
+      "writer": "Guion",
+      "creator": "Creación",
+      "author": "Autoría",
+      "cast": "Reparto"
+    },
+    "sagaLabel": "Saga: {name}",
+    "sagaPart": "{name} · nº {number}",
+    "sagaForm": {
+      "title": "Saga",
+      "current": "En la saga:",
+      "namePlaceholder": "Nombre de la saga",
+      "positionPlaceholder": "Nº",
+      "submit": "Guardar saga",
+      "submitting": "Guardando...",
+      "remove": "Quitar",
+      "errors": {
+        "nameRequired": "Escribe el nombre de la saga.",
+        "forbidden": "No tienes permiso para gestionar sagas.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    },
     "watchProviders": {
       "title": "Dónde verlo",
       "none": "No disponible en streaming por suscripción ahora mismo.",
@@ -173,6 +198,22 @@
       "delete": "Eliminar",
       "duration": "{count} min"
     }
+  },
+  "person": {
+    "notFoundTitle": "Persona no encontrada",
+    "notFoundDescription": "Esta persona no existe en el catálogo.",
+    "backHome": "Ir al inicio",
+    "worksTitle": "Su obra",
+    "born": "Nacimiento: {date}",
+    "died": "Fallecimiento: {date}",
+    "noBio": "Sin biografía disponible."
+  },
+  "saga": {
+    "notFoundTitle": "Saga no encontrada",
+    "notFoundDescription": "Esta saga no existe.",
+    "backHome": "Ir al inicio",
+    "itemsTitle": "Títulos de la saga",
+    "count": "{count, plural, =1 {1 título} other {# títulos}}"
   },
   "session": {
     "titleBook": "Guardar sesión de lectura",
@@ -223,6 +264,23 @@
       "invalidGoal": "Los objetivos deben ser números enteros positivos.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     }
+  },
+  "admin": {
+    "navLabel": "Admin",
+    "title": "Gestión de usuarios",
+    "description": "Cambia el rol de cada usuario. Los cambios son inmediatos.",
+    "colUser": "Usuario",
+    "colRole": "Rol",
+    "colSince": "Desde",
+    "roles": {
+      "user": "Usuario",
+      "collaborator": "Colaborador",
+      "admin": "Administrador"
+    },
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "saved": "Guardado",
+    "error": "No se pudo cambiar el rol."
   },
   "offline": {
     "title": "Sin conexión",

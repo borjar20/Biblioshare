@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
+import { CreditsSection } from "@/components/credits-section";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { sagaHref } from "@/lib/catalog/item-href";
+import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import { getItemCredits } from "@/lib/people/get-item-credits";
+import { getItemSaga } from "@/lib/sagas/get-item-saga";
 import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 
@@ -47,9 +53,13 @@ export default async function MovieDetailPage({
 
   if (!movie) notFound();
 
-  const watchProviders = movie.tmdb_id
-    ? await getWatchProviders("movie", movie.tmdb_id)
-    : null;
+  await ensureItemEnriched(supabase, "movie", { id: movie.id, tmdbId: movie.tmdb_id });
+
+  const [watchProviders, credits, saga] = await Promise.all([
+    movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
+    getItemCredits(supabase, "movie", movie.id),
+    getItemSaga(supabase, "movie", movie.id),
+  ]);
 
   let entry: ManagedEntry | null = null;
   if (user) {
@@ -71,8 +81,10 @@ export default async function MovieDetailPage({
     }
   }
 
+  // El director/creador se muestra ahora con enlace en CreditsSection; aquí
+  // quedan solo los metadatos sin ficha propia (año, duración, géneros).
   const metaLines = [
-    [movie.director, movie.release_year].filter(Boolean).join(" · "),
+    movie.release_year ? String(movie.release_year) : null,
     movie.duration_minutes ? `${movie.duration_minutes} ${t("minutes")}` : null,
     movie.genres && movie.genres.length > 0 ? movie.genres.join(", ") : null,
   ].filter(Boolean);
@@ -104,9 +116,22 @@ export default async function MovieDetailPage({
           </p>
         ))}
 
+        {saga && (
+          <Link
+            href={sagaHref(saga.sagaId)}
+            className="inline-flex w-fit items-center rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-surface-muted"
+          >
+            {saga.position
+              ? t("sagaPart", { name: saga.name, number: saga.position })
+              : t("sagaLabel", { name: saga.name })}
+          </Link>
+        )}
+
         {movie.synopsis && (
           <p className="text-sm text-foreground">{movie.synopsis}</p>
         )}
+
+        <CreditsSection credits={credits} />
 
         {watchProviders && <WatchProviders data={watchProviders} />}
 

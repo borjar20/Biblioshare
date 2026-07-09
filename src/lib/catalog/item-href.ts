@@ -9,3 +9,11 @@ const BASE_PATH: Record<ItemType, string> = {
 export function itemHref(itemType: ItemType, id: string): string {
   return `${BASE_PATH[itemType]}/${id}`;
 }
+
+export function personHref(id: string): string {
+  return `/persona/${id}`;
+}
+
+export function sagaHref(id: string): string {
+  return `/saga/${id}`;
+}

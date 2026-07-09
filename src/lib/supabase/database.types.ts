@@ -59,6 +59,47 @@ export type Database = {
         }
         Relationships: []
       }
+      credits: {
+        Row: {
+          billing_order: number | null
+          character: string | null
+          created_at: string
+          id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          person_id: string
+          role: string
+        }
+        Insert: {
+          billing_order?: number | null
+          character?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          person_id: string
+          role: string
+        }
+        Update: {
+          billing_order?: number | null
+          character?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          person_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credits_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diary_entries: {
         Row: {
           created_at: string
@@ -187,6 +228,48 @@ export type Database = {
         }
         Relationships: []
       }
+      people: {
+        Row: {
+          bio: string | null
+          birth_date: string | null
+          created_at: string
+          death_date: string | null
+          id: string
+          known_for: string | null
+          name: string
+          openlibrary_key: string | null
+          photo_url: string | null
+          place_of_birth: string | null
+          tmdb_id: number | null
+        }
+        Insert: {
+          bio?: string | null
+          birth_date?: string | null
+          created_at?: string
+          death_date?: string | null
+          id?: string
+          known_for?: string | null
+          name: string
+          openlibrary_key?: string | null
+          photo_url?: string | null
+          place_of_birth?: string | null
+          tmdb_id?: number | null
+        }
+        Update: {
+          bio?: string | null
+          birth_date?: string | null
+          created_at?: string
+          death_date?: string | null
+          id?: string
+          known_for?: string | null
+          name?: string
+          openlibrary_key?: string | null
+          photo_url?: string | null
+          place_of_birth?: string | null
+          tmdb_id?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           annual_goal_items: number | null
@@ -196,6 +279,7 @@ export type Database = {
           daily_goal_minutes: number | null
           display_name: string | null
           is_public: boolean
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
           username: string
@@ -208,6 +292,7 @@ export type Database = {
           daily_goal_minutes?: number | null
           display_name?: string | null
           is_public?: boolean
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
           username: string
@@ -220,6 +305,7 @@ export type Database = {
           daily_goal_minutes?: number | null
           display_name?: string | null
           is_public?: boolean
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
           username?: string
@@ -266,6 +352,71 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saga_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number | null
+          saga_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position?: number | null
+          saga_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          position?: number | null
+          saga_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_items_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sagas: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          id: string
+          name: string
+          overview: string | null
+          source: string
+          tmdb_collection_id: number | null
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          overview?: string | null
+          source?: string
+          tmdb_collection_id?: number | null
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          overview?: string | null
+          source?: string
+          tmdb_collection_id?: number | null
+        }
+        Relationships: []
       }
       series: {
         Row: {
@@ -314,11 +465,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_min_role: {
+        Args: { min: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
     }
     Enums: {
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
+      user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -448,6 +607,7 @@ export const Constants = {
     Enums: {
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
+      user_role: ["user", "collaborator", "admin"],
     },
   },
 } as const

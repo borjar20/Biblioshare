@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import type { UserRole } from "@/lib/auth/roles";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -13,10 +14,12 @@ export type Profile = {
   // Optional stats goals (docs/REQUIREMENTS.md §7.14).
   dailyGoalMinutes: number | null;
   annualGoalItems: number | null;
+  // RBAC role (docs/REQUIREMENTS.md §7.35).
+  role: UserRole;
 };
 
 const PROFILE_COLUMNS =
-  "user_id, username, is_public, display_name, avatar_url, bio, created_at, daily_goal_minutes, annual_goal_items";
+  "user_id, username, is_public, display_name, avatar_url, bio, created_at, daily_goal_minutes, annual_goal_items, role";
 
 function toProfile(data: {
   user_id: string;
@@ -28,6 +31,7 @@ function toProfile(data: {
   created_at: string;
   daily_goal_minutes: number | null;
   annual_goal_items: number | null;
+  role: UserRole;
 }): Profile {
   return {
     userId: data.user_id,
@@ -39,6 +43,7 @@ function toProfile(data: {
     createdAt: data.created_at,
     dailyGoalMinutes: data.daily_goal_minutes,
     annualGoalItems: data.annual_goal_items,
+    role: data.role,
   };
 }
 

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { searchCatalog } from "@/lib/catalog/search";
 import type { ItemType } from "@/lib/catalog/types";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { SearchForm } from "./search-form";
 import { SearchResultCard } from "./search-result-card";
 
@@ -24,7 +26,13 @@ export default async function SearchPage({
     : "book";
 
   const t = await getTranslations("search");
-  const results = query ? await searchCatalog(itemType, query) : [];
+  const supabase = await createClient();
+  const [results, role] = await Promise.all([
+    query ? searchCatalog(itemType, query) : Promise.resolve([]),
+    getCurrentUserRole(supabase),
+  ]);
+  // Añadir manualmente es contribución curada → solo colaborador+ (§7.35).
+  const canContribute = hasMinRole(role, "collaborator");
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
@@ -51,12 +59,14 @@ export default async function SearchPage({
         </div>
       )}
 
-      <Link
-        href={`/buscar/manual?type=${itemType}`}
-        className="self-start text-sm text-muted-foreground underline hover:text-foreground"
-      >
-        {t("manual.link")}
-      </Link>
+      {canContribute && (
+        <Link
+          href={`/buscar/manual?type=${itemType}`}
+          className="self-start text-sm text-muted-foreground underline hover:text-foreground"
+        >
+          {t("manual.link")}
+        </Link>
+      )}
     </div>
   );
 }

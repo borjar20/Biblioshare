@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { ManualAddForm } from "./manual-add-form";
 
 export const metadata: Metadata = {
@@ -19,6 +22,13 @@ export default async function ManualAddPage({
   const itemType: ItemType = TYPES.includes(params.type as ItemType)
     ? (params.type as ItemType)
     : "book";
+
+  // Contribución curada → colaborador+ (§7.35). Guard a nivel de página además
+  // del check en la server action.
+  const supabase = await createClient();
+  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+    redirect("/buscar");
+  }
 
   const t = await getTranslations("search");
 

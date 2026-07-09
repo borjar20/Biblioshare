@@ -11,13 +11,15 @@ export async function Header() {
   } = await supabase.auth.getUser();
 
   let username: string | null = null;
+  let isAdmin = false;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username")
+      .select("username, role")
       .eq("user_id", user.id)
       .maybeSingle();
     username = profile?.username ?? null;
+    isAdmin = profile?.role === "admin";
   }
 
   return (
@@ -34,6 +36,11 @@ export async function Header() {
             <Link href="/estadisticas" className="hover:text-foreground">
               {t("stats.navLabel")}
             </Link>
+            {isAdmin && (
+              <Link href="/admin" className="hover:text-foreground">
+                {t("admin.navLabel")}
+              </Link>
+            )}
             {username && (
               <Link href={`/u/${username}`} className="hover:text-foreground">
                 @{username}

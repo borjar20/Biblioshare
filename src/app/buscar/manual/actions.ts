@@ -3,11 +3,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
+import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { normalizeIsbn } from "@/lib/catalog/isbn";
 
 export type AddManualItemState = {
-  error?: "titleRequired" | "invalidPageCount" | "invalidIsbn" | "generic";
+  error?: "titleRequired" | "invalidPageCount" | "invalidIsbn" | "forbidden" | "generic";
 };
 
 const TABLE_BY_TYPE = {
@@ -26,6 +27,10 @@ export async function addManualItem(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Crear ítems a mano es contribución curada → colaborador+ (§7.35).
+  const role = await getCurrentUserRole(supabase);
+  if (!hasMinRole(role, "collaborator")) return { error: "forbidden" };
 
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return { error: "titleRequired" };

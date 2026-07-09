@@ -139,11 +139,11 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - Reemplaza la primera versión (web, `BarcodeDetector`) construida antes de decidir adoptar Capacitor (8-F) — se descartó por completo en vez de mantenerla como fallback, ya que la cobertura de `BarcodeDetector` era el motivo original para considerar ir nativo.
   - **Sigue pendiente**: verificar con cámara real en un dispositivo — este sandbox no tiene Android SDK/emulador instalado (ver §7.31/`docs/TESTING.md`). Solo se ha podido comprobar que el botón no aparece en web (comportamiento esperado) y que `tsc`/`eslint` pasan.
 
-### 7.4 Sagas y colecciones (gestionadas por separado)
-- [ ] Agrupar libros que pertenecen a una **saga/serie literaria** (p. ej. una trilogía) y a **colecciones**, gestionadas por separado.
-  - **Distinción a definir**: una *saga* es metadato intrínseco de la obra (compartido, idealmente viene de la fuente de datos) vs. una *colección/lista* es una agrupación **curada por el usuario** (privada). Probablemente son dos features distintas: saga en catálogo, colección por usuario.
-  - Cuidado con el nombre: "series" ya significa "series de TV" en el modelo actual; usar **"saga"** para libros evita la colisión.
-  - **Reutiliza 8-B**: una saga es, en el fondo, una relación libro↔libro de "mismo universo" — la tabla genérica de relaciones decidida en 8-B (ampliada explícitamente a "mismo universo", no solo adaptaciones) puede modelar esto sin un mecanismo aparte. Evaluar antes de construir una tabla `sagas` dedicada.
+### 7.4 Sagas y colecciones (gestionadas por separado) — *saga: hecho; colección: pendiente*
+- [x] **Sagas** implementadas en 7.34: tabla `sagas` + `saga_items` (catálogo compartido), autopobladas para cine desde TMDB `belongs_to_collection` y asignables a mano para libros, con vista propia `/saga/[id]`. Ver 7.34 para el detalle.
+  - Se optó por una **tabla `sagas` dedicada** (agrupación 1→N con vista propia) en vez de reutilizar la tabla genérica par-a-par de 8-B, precisamente porque el objetivo pedido era una *vista de saga* (agrupar+ordenar sobre relaciones par-a-par es más costoso de consultar). 8-B sigue vigente para relaciones *entre tipos distintos* (adaptación libro↔película), que es un caso diferente.
+  - "series" ya significa "series de TV"; se usa **"saga"** para la agrupación, evitando la colisión.
+- [ ] **Colecciones/listas curadas por el usuario** (privadas): siguen pendientes — son una feature distinta de las sagas (metadato de catálogo). Ver 7.15/7.26 para la versión de listas por usuario/colaborativa.
 
 ### 7.5 Etiquetas privadas + estadísticas por etiqueta
 - [ ] Etiquetas libres y **privadas** por usuario sobre sus ítems (ej. "para regalar", "recomendado por mamá", "confort") — no son públicas ni compartidas entre usuarios, a diferencia del catálogo.
@@ -315,7 +315,7 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.16 Modo "en pausa" | S-M | §8-A (resuelto) | Cierra un hueco real del modelo de estados, ya sin decisión pendiente |
 | 7.5 Etiquetas privadas | M | — | Base para 7.23 (retos) y estadísticas por etiqueta |
 | 7.22 Cola priorizada con tiempo estimado | M | 7.1/7.8 | Usa datos que ya existirán tras 7.1/7.8 |
-| 7.4 Sagas y colecciones | M | §8-B (resuelto) | Puede reutilizar la tabla de relaciones "mismo universo" en vez de mecanismo propio |
+| 7.4 Colecciones curadas por usuario | S-M | 7.15/7.26 | La parte de **sagas** ya está hecha (7.34, tabla dedicada); queda solo la colección/lista privada del usuario |
 | 7.29 Método de adquisición / dinero ahorrado | S-M | §8-C (resuelto) | Ya decidido: va en `copy_details`, separado de `position` |
 | 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
 | 7.17 Recordatorios (pausas/estrenos) | M-L | 7.31 (Capacitor) + §8-D | Push nativo vía Capacitor para iOS+UE; Web Push + pg_cron para el resto |
@@ -330,6 +330,57 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.19 Recomendaciones cruzadas | XL | §8-B (resuelto) + normalización géneros (abierta) | El más caro; empezar solo con tabla curada a mano si se aborda |
 | 7.28 Random picker | S | 7.1/7.8 (metadatos) | Barato y autocontenido, pero aplazado a propósito para el final — decisión explícita, no por dependencias |
 
+### 7.34 Personas (autores/reparto/equipo) y sagas — *hecho*
+Información más rica de los ítems: fichas de persona con su obra, reparto/equipo en cine y series, y pertenencia a saga con vista propia. Cierra la parte de sagas de 7.4.
+
+- [x] **Modelo nuevo** (migración `add_people_credits_sagas`): cuatro tablas de catálogo compartido con el mismo RLS que `books`/`movies`/`series` (SELECT abierto; INSERT/UPDATE autenticado):
+  - `people` — entidad de persona (`tmdb_id` para cine/series, `openlibrary_key` para autores; `name`, `photo_url`, `bio`, `birth_date`, `death_date`, `place_of_birth`). Índices únicos parciales sobre `tmdb_id` y `openlibrary_key`.
+  - `credits` — relación persona↔ítem **polimórfica** (`item_type` + `item_id`, sin FK cruzada, como `library_entries`), con `role` (`cast|director|writer|creator|author`), `character` y `billing_order`. UNIQUE `(item_type,item_id,person_id,role)`.
+  - `sagas` — entidad de saga con página propia (`name`, `overview`, `cover_url`, `tmdb_collection_id`, `source` `tmdb|manual`).
+  - `saga_items` — miembros de la saga (polimórfico + `position`). UNIQUE `(saga_id,item_type,item_id)`.
+- [x] **Cine/series (TMDB)**: `getMovieDetails`/`getSeriesDetails`/`getPersonDetails`/`getCollection` en `src/lib/catalog/tmdb.ts`. Reparto top ~10 + equipo clave (dirección/guion/creación). La bio/foto/fechas de la persona se enriquecen de forma **perezosa** al abrir su ficha (`getPersonDetails`, con fallback `en-US` si la bio en español viene vacía).
+- [x] **Autores de libro (Open Library)**: `resolveOpenLibraryAuthor` en `src/lib/catalog/open-library.ts` (search/authors + /authors) aporta bio/foto/fechas del autor; si no hay match, la ficha degrada con elegancia a versión ligera (solo nombre + su obra del catálogo), nunca rompe.
+- [x] **Caché "cache-as-you-go"** (§7.32): `src/lib/people/enrich-item.ts` (`ensureItemEnriched`) trae y persiste créditos (y, en películas, la saga desde `belongs_to_collection`) la **primera** vez que se abre la ficha; las siguientes visitas leen solo de la BD. Guard sobre la existencia de créditos; envuelto en try/catch para que un fallo de API externa no rompa la ficha.
+- [x] **Dominio**: `src/lib/people/` (`find-or-create-person.ts` con alta por lotes de personas TMDB e idempotencia de autores; `get-item-credits.ts`; `get-person.ts` con "su obra" resuelta desde `credits`) y `src/lib/sagas/` (`persist-collection.ts`, `get-item-saga.ts`, `get-saga.ts` que **completa perezosamente** las partes de una colección TMDB reconstruyendo `saga_items` de forma determinista para garantizar el orden por año, `manage-saga-actions.ts` para asignación manual).
+- [x] **UI**: fichas `/persona/[id]` (foto, fechas, bio, "Su obra") y `/saga/[id]` (portada, overview, títulos ordenados) — rutas en español como el resto. Sección "Reparto y equipo" (`src/components/credits-section.tsx`) en cine/series; autor/dirección/creación enlazados a su ficha; chip de saga en la ficha; formulario de asignación manual de saga (`src/components/saga-assign-form.tsx`) para libros. Helpers `personHref`/`sagaHref`. i18n `person`/`saga` + claves nuevas en `item`.
+- **Verificado en navegador con datos reales** (limpiados después): Matrix → reparto con fotos (Keanu Reeves como Neo, etc.), dirección/guion Wachowski enlazados, chip "Matrix - Colección", y `/saga` con las 4 películas en orden cronológico (1999→2021); El Quijote → autor Cervantes enlazado a su ficha con bio/foto de Open Library y "Su obra"; asignación manual de saga a un libro con su posición. Segunda visita no vuelve a llamar a la API (créditos/saga ya en BD).
+- **Resuelto al construir**: el primer render de una ficha dispara enriquecimientos **concurrentes** (varias inserciones a la vez) → el alta de personas maneja el `23505` de carrera re-seleccionando; el orden de una colección TMDB se garantiza reconstruyendo `saga_items` (borrar+reinsertar) en cada visita de la saga, porque `upsert` sobre el índice único no actualizaba la posición de filas ya existentes.
+- **A mejorar a futuro — bio de autor en español**: Open Library solo ofrece la biografía de autor **en inglés** (a diferencia de TMDB, que sí se resuelve en `es-ES` para personas de cine/series). Para tener bios de autor en español habría que añadir **Wikidata/Wikipedia** como fuente adicional (resolver el autor por nombre → QID de Wikidata → extracto de Wikipedia en español), como capa de enriquecimiento sobre la ficha ligera. No bloqueante; queda como mejora.
+
+### 7.35 RBAC: roles usuario / colaborador / administrador — *hecho*
+Control de acceso por roles con tres grados jerárquicos (`user < collaborator < admin`).
+
+- [x] **Modelo** (migración `add_rbac_roles`): enum `user_role` (orden de declaración = jerarquía),
+  columna `profiles.role` (default `'user'`). Funciones `SECURITY DEFINER` `current_user_role()` y
+  `has_min_role(min)` para usar en RLS **sin recursión** (bypassan la RLS de `profiles`).
+- [x] **Protección anti-escalada** (crítica): trigger `BEFORE UPDATE` `enforce_role_change_admin_only`
+  que impide cambiar `role` salvo que el actor sea admin. Refinado (migración
+  `rbac_bootstrap_trigger_guard`) para permitir el cambio cuando `auth.uid()` es null (service_role
+  / SQL directo, ya privilegiados) → así se puede **bootstrapear el primer admin** por SQL, mientras
+  los usuarios finales autenticados no pueden auto-promoverse. Políticas RLS nuevas: "admins select
+  all profiles" y "admins update any profile".
+- [x] **Colaborador = solo contribución manual/curada.** Los flujos **automáticos**
+  (`findOrCreateCatalogItem` en búsqueda→catálogo, y el auto-enriquecimiento de §7.34) **no se
+  tocan** — siguen abiertos a todos. El gateo se aplica en las **server actions** manuales
+  (`addManualItem`, `assignItemToSaga`/`removeItemFromSaga`, con `hasMinRole(...,'collaborator')`) y
+  ocultando la UI (enlace "Añádelo manualmente" en `/buscar`, `SagaAssignForm` en la ficha de libro),
+  además de guardar la página `/buscar/manual`. Capa de dominio: `src/lib/auth/roles.ts`
+  (`UserRole`, `hasMinRole`, `getCurrentUserRole`); `Profile`/`PROFILE_COLUMNS` extendidos con `role`.
+- [x] **Admin**: página `/admin` (guardada con redirect si no es admin) que lista usuarios y cambia
+  su rol (`src/app/admin/`: `page.tsx`, `actions.ts` con `updateUserRole`, `role-select.tsx`); el
+  admin no se cambia su propio rol (fila deshabilitada). Enlace "Admin" en el Header solo para
+  admins. i18n `admin` + claves `forbidden`.
+- **Bootstrap**: el primer admin se pone a mano por SQL
+  (`update profiles set role='admin' where username='<owner>'`); luego se gestiona desde `/admin`.
+  (Owner del proyecto = `borjar20`, ya admin.)
+- **Verificado en navegador (flipando el rol en BD y recargando)**: como `user` → sin enlace manual,
+  `/buscar/manual` redirige, sin formulario de saga, `/admin` redirige, sin enlace Admin, pero la
+  búsqueda+añadir a biblioteca sigue funcionando; como `collaborator` → aparecen y funcionan las
+  superficies manuales, sin Admin; como `admin` → enlace Admin, `/admin` lista usuarios y cambia el
+  rol de otro (confirmado en BD). **Anti-escalada probada a nivel BD**: un usuario final autenticado
+  no-admin recibe `ERROR: Only an admin can change a user role` al intentar cambiar un rol, mientras
+  que editar el resto del perfil (bio/visibilidad/objetivos) sí funciona.
+
 ## 8. Decisiones de arquitectura (evaluadas antes de construir más)
 
 Estas no son features — son decisiones de forma que, si se toman tarde (después de que ya haya datos o UI construida encima), cuestan un refactor. La mayoría ya se resolvió (8-A, 8-B, 8-C) o se confirmó el enfoque (8-D, 8-E) al revisar este backlog; quedan abiertas la normalización de géneros (nota dentro de 8-B) y 8-F (PWA-only vs. nativo), que es una decisión de producto, no técnica.
@@ -342,6 +393,7 @@ Estas no son features — son decisiones de forma que, si se toman tarde (despu�
 Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel de datos. **Decidido**: si se aborda 7.21 o 7.19, usar una tabla genérica de relaciones (`item_type_a/item_id_a`, `item_type_b/item_id_b`, `relation_type`) en vez de columnas ad-hoc por tipo (`adaptation_of_book_id` en `movies`, etc.) — mismo espíritu que unificar `library_entries`: un mecanismo, no uno por combinación de tipos.
 - **Alcance ampliado**: no solo "adaptación de", también relaciones de **mismo universo/franquicia** (secuela, spin-off, misma saga) — el `relation_type` debe ser un enum abierto a esto desde el diseño, no solo `adaptation_of`.
 - **Curación manual, no automática**: las relaciones se crean/editan por el usuario o la comunidad, no se infieren automáticamente de las APIs (que no las dan de forma fiable). Contribución editable con cola de revisión, igual que se apuntaba en 7.21.
+- **Matiz tras 7.34**: la **misma saga** ya NO se modela con esta tabla par-a-par, sino con `sagas`/`saga_items` (agrupación 1→N con vista propia, ver 7.34) — se decidió así porque el objetivo era una vista de saga. 8-B queda para relaciones **entre tipos distintos** (adaptación libro↔película/serie), que sigue sin construirse.
 
 **Relacionado — normalización de géneros**: `books.genres`, `movies.genres` y `series.genres` existen en el esquema pero **hoy no se rellenan desde ningún sitio**. Sigue como decisión pendiente (no resuelta en esta ronda): definir taxonomía antes de empezar a poblarlos, solo urge si se aborda 7.8 o 7.19.
 
@@ -395,6 +447,20 @@ Dos decisiones de forma tomadas al construir la base de 7.14, registradas porque
 
 - **El dashboard de estadísticas es privado / solo del dueño**: las cuatro pantallas de estadísticas de 7.14 (tira semanal, calendario mensual, rachas, stats anuales) viven en `/estadisticas` y **no** se muestran en el perfil público — son seguimiento personal, no vitrina. Los objetivos diario/anual son un único valor global por usuario en `profiles` (`daily_goal_minutes`, `annual_goal_items`), no una tabla de settings aparte. El recap anual compartible tipo "Wrapped" sigue siendo una idea distinta y aparte (7.15).
 
+### 8-H. RBAC: dónde se aplica el permiso (RLS vs. capa de app) — *decidido (construido en §7.35)*
+Los flujos **automáticos** (búsqueda→catálogo, auto-enriquecimiento de §7.34) y los **manuales**
+(añadir ítem, sagas) escriben en las **mismas** tablas compartidas, y la RLS no puede distinguir
+"auto" de "manual" del mismo usuario autenticado. **Decidido**: mantener la RLS de esas tablas
+**permisiva** (INSERT para autenticado, como estaba) y aplicar el gateo de **colaborador** en la
+**capa de aplicación** (server actions que respaldan las UIs manuales) + ocultando la UI. Lo que sí
+se blinda a nivel de datos es el **`role`** en `profiles`: trigger anti-escalada + políticas RLS de
+admin.
+- **Trade-off**: un usuario técnico podría insertar en el catálogo saltándose la UI (bajo riesgo
+  para este proyecto; el catálogo es compartido y poco sensible). El **endurecimiento duro** =
+  enrutar los flujos automáticos por un cliente **service_role** y bloquear la RLS de escritura a
+  colaborador+ — queda anotado como **mejora futura**, no se construye ahora (decisión "menos
+  disruptivo": el usuario normal debe seguir pudiendo añadir a su biblioteca lo que encuentra).
+
 ## 9. Decisiones registradas
 
 | Fecha | Decisión | Motivo |
@@ -413,6 +479,8 @@ Dos decisiones de forma tomadas al construir la base de 7.14, registradas porque
 | 2026-07-08 | Adoptar **Capacitor** (wrapper nativo vía `server.url`) antes de construir 7.17; se abandona el PWA-only estricto de la decisión anterior | Investigación confirmó que Web Push no funciona en iOS+UE (bloqueo de Apple por la DMA, no arreglable en web) — no tiene sentido construir 8-D asumiendo una cobertura que no existe. El widget de pantalla de inicio sigue sin comprometerse (requiere código nativo aparte) |
 | 2026-07-09 | Nueva tabla `progress_sessions` (hermana de `diary_entries`) para el progreso incremental diario; la gestión del ítem se mueve a la ficha `/libro\|pelicula\|serie/[id]` y las tarjetas de perfil quedan de solo lectura | Base de 7.14 (rachas/estadísticas): sin ella no se podía reconstruir la actividad día a día; separar "pase completo" de "avance diario" evita sobrecargar `diary_entries`/`position`. Ver §8-G |
 | 2026-07-09 | Dashboard de estadísticas **privado** `/estadisticas` (tira semanal, calendario mensual, rachas, stats anuales) + objetivos configurables en `profiles` (`daily_goal_minutes`, `annual_goal_items`) | Cierra 7.14 al completo: las cuatro piezas de estadísticas sobre `progress_sessions`/`diary_entries`; privado por ser seguimiento personal, no vitrina del perfil público. Ver §8-G |
+| 2026-07-09 | Modelo `people`/`credits` (personas de catálogo + créditos polimórficos) y **tabla `sagas` dedicada** (`sagas`/`saga_items`), no la tabla par-a-par de 8-B, para sagas | 7.34: fichas de persona (autores vía Open Library, reparto/equipo vía TMDB) y sagas con vista propia. Se eligió tabla dedicada porque el objetivo era una *vista de saga* (1→N, ordenada); 8-B queda para relaciones entre tipos distintos. Enriquecimiento perezoso (cache-as-you-go, §7.32) para no reescribir la búsqueda |
+| 2026-07-09 | **RBAC** con `profiles.role` (`user`<`collaborator`<`admin`), helpers `SECURITY DEFINER` en RLS y trigger anti-escalada; gateo de colaborador en la **capa de app** (RLS de tablas compartidas permisiva) | 7.35: colaborador contribuye info manual (ítems, sagas), admin gestiona roles vía `/admin`. La RLS no puede separar escritura auto vs. manual en tablas compartidas → gateo en server actions; el `role` sí se blinda en BD (trigger + RLS admin). Endurecimiento vía service_role, futuro. Ver §8-H |
 
 ## 10. Historial de versiones
 
