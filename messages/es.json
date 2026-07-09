@@ -132,6 +132,7 @@
     "typeSeries": "Series",
     "typeFilms": "Películas",
     "recentlyUpdated": "Actualizado recientemente",
+    "importLibrary": "Importar biblioteca",
     "editProfile": "Editar perfil",
     "displayName": "Nombre",
     "avatarUrl": "URL del avatar",
@@ -377,5 +378,46 @@
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
     }
+  },
+  "import": {
+    "title": "Importar biblioteca",
+    "description": "Sube un export de Goodreads, Letterboxd o Bookmory para volcar tu historial en Biblioshare.",
+    "help": {
+      "goodreads": "Goodreads: exporta tu biblioteca (library_export.csv) desde Configuración → Exportar biblioteca.",
+      "letterboxd": "Letterboxd: sube el archivo diary.csv del export (no watched.csv ni ratings.csv) — es el único con fecha por visionado.",
+      "bookmory": "Bookmory: sube el .xlsx exportado. Solo se lee la hoja \"Libros\"; las notas por libro no se importan todavía."
+    },
+    "upload": "Subir archivo",
+    "uploading": "Analizando...",
+    "errors": {
+      "noFile": "Selecciona un archivo para continuar.",
+      "unrecognizedFormat": "No se reconoce el formato del archivo. Comprueba que sea un export de Goodreads, Letterboxd o Bookmory.",
+      "tooManyRows": "El archivo tiene demasiadas filas para importar de una vez."
+    },
+    "processing": "Procesando fila {processed} de {total}...",
+    "summary": {
+      "imported": "Importados",
+      "duplicate": "Ya en tu biblioteca",
+      "unmatched": "Sin match",
+      "errored": "Con error"
+    },
+    "unmatchedTitle": "Filas sin coincidencia",
+    "unmatchedResolved": "añadido",
+    "unmatchedSkipped": "omitido",
+    "unmatchedForm": {
+      "title": "Título",
+      "author": "Autor",
+      "year": "Año",
+      "submit": "Añadir a mi biblioteca",
+      "submitting": "Añadiendo...",
+      "skip": "Omitir",
+      "errors": {
+        "titleRequired": "El título es obligatorio.",
+        "forbidden": "No tienes permiso para añadir ítems manualmente.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    },
+    "unknownStatusTitle": "Estados no reconocidos (importados como \"Pendiente\")",
+    "erroredTitle": "Filas con error"
   }
 }

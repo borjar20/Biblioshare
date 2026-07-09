@@ -1,5 +1,6 @@
 import type { SearchResult } from "./types";
 import { normalizeIsbn } from "./isbn";
+import { isSameTitle } from "./title-match";
 
 type OpenLibrarySearchDoc = {
   key?: string;
@@ -135,21 +136,6 @@ function isIncomplete(result: SearchResult): boolean {
   return !result.coverUrl || !result.synopsis;
 }
 
-function normalizeTitle(title: string): string {
-  return title
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function isSameBook(a: SearchResult, b: SearchResult): boolean {
-  const normA = normalizeTitle(a.title);
-  const normB = normalizeTitle(b.title);
-  return normA === normB || normA.includes(normB) || normB.includes(normA);
-}
-
 export async function searchBooks(query: string): Promise<SearchResult[]> {
   const isbn = normalizeIsbn(query);
   const results = await rawSearchBooks(isbn ? isbn : query);
@@ -159,7 +145,9 @@ export async function searchBooks(query: string): Promise<SearchResult[]> {
     const fallbackQuery = [primary.title, primary.subtitle].filter(Boolean).join(" ");
     if (fallbackQuery) {
       const fallbackResults = await rawSearchBooks(fallbackQuery);
-      const better = fallbackResults.find((result) => isSameBook(primary, result) && !isIncomplete(result));
+      const better = fallbackResults.find(
+        (result) => isSameTitle(primary.title, result.title) && !isIncomplete(result)
+      );
       if (better) {
         results[0] = {
           ...primary,

@@ -4,6 +4,13 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // Goodreads exports include free-text reviews; a few hundred rows can
+      // exceed the 1MB default. See docs/REQUIREMENTS.md §7.7.
+      bodySizeLimit: "5mb",
+    },
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "books.google.com" },
