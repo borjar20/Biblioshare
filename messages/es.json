@@ -11,7 +11,24 @@
       "submit": "Entrar",
       "submitting": "Entrando...",
       "noAccount": "¿No tienes cuenta?",
-      "signupLink": "Regístrate"
+      "signupLink": "Regístrate",
+      "forgotPassword": "¿Olvidaste tu contraseña?"
+    },
+    "reset": {
+      "title": "Recuperar contraseña",
+      "description": "Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.",
+      "email": "Correo electrónico",
+      "submit": "Enviar enlace",
+      "submitting": "Enviando...",
+      "checkEmail": "Si existe una cuenta con ese correo, recibirás un enlace en unos minutos. Revisa también el spam.",
+      "backToLogin": "Volver a iniciar sesión"
+    },
+    "newPassword": {
+      "title": "Nueva contraseña",
+      "description": "Elige la nueva contraseña de tu cuenta.",
+      "password": "Nueva contraseña",
+      "submit": "Guardar contraseña",
+      "submitting": "Guardando..."
     },
     "signup": {
       "title": "Crear cuenta",

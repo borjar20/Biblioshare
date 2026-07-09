@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const AUTH_PATHS = ["/login", "/signup"];
+const AUTH_PATHS = ["/login", "/signup", "/recuperar"];
 const ONBOARDING_PATH = "/onboarding";
+// Rutas del flujo de recuperación de contraseña: accesibles con sesión de
+// recuperación aunque el usuario no haya completado el onboarding todavía.
+const RECOVERY_PATHS = ["/auth/confirm", "/cuenta/contrasena"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -51,7 +54,11 @@ export async function updateSession(request: NextRequest) {
 
   const hasProfile = profile !== null;
 
-  if (!hasProfile && pathname !== ONBOARDING_PATH) {
+  if (
+    !hasProfile &&
+    pathname !== ONBOARDING_PATH &&
+    !RECOVERY_PATHS.includes(pathname)
+  ) {
     return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
   }
 

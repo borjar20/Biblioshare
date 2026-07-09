@@ -41,6 +41,12 @@ export function LoginForm() {
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
+        <Link href="/recuperar" className="font-medium text-accent underline">
+          {t("login.forgotPassword")}
+        </Link>
+      </p>
+
+      <p className="text-center text-sm text-muted-foreground">
         {t("login.noAccount")}{" "}
         <Link href="/signup" className="font-medium text-accent underline">
           {t("login.signupLink")}
