@@ -43,3 +43,5 @@ next-env.d.ts
 
 .vercel
 .env*
+
+.claude/settings.local.json
