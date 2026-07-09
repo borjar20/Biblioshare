@@ -142,11 +142,13 @@ export async function addSession(
     : undefined;
 
   if (nextPosition || status) {
+    // Same queue_order cleanup as updateStatus (§7.22) — a session can also
+    // roll status out of "planned".
     const { error: updateError } = await supabase
       .from("library_entries")
       .update({
         ...(nextPosition && { position: nextPosition }),
-        ...(status && { status }),
+        ...(status && { status, ...(status !== "planned" && { queue_order: null }) }),
       })
       .eq("id", entryId)
       .eq("user_id", user.id);

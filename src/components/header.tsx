@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "./theme-toggle";
-import { AppLogoIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
+import { AppLogoIcon, GripVerticalIcon, SearchIcon, UserIcon } from "@/components/ui/icons";
 
 export async function Header() {
   const t = await getTranslations();
@@ -42,6 +42,14 @@ export async function Header() {
             >
               <SearchIcon className="h-4 w-4" />
               <span className="hidden sm:inline">{t("search.title")}</span>
+            </Link>
+            <Link
+              href="/cola"
+              aria-label={t("queue.title")}
+              className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
+            >
+              <GripVerticalIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("queue.title")}</span>
             </Link>
             {isAdmin && (
               <Link

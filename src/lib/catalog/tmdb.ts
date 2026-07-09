@@ -202,6 +202,11 @@ export type ScreenCollection = {
 export type ScreenDetails = {
   collection: ScreenCollection | null;
   credits: CreditPerson[];
+  // Size data for time-to-complete estimates (§7.22). Movie-only/series-only
+  // fields are null on the other type.
+  runtimeMinutes: number | null;
+  numberOfEpisodes: number | null;
+  numberOfSeasons: number | null;
 };
 
 function profileUrl(path: string | null | undefined): string | null {
@@ -288,6 +293,7 @@ export async function getMovieDetails(
       poster_path: string | null;
     } | null;
     credits?: TmdbCreditsPayload;
+    runtime?: number | null;
   }>(`/movie/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
 
@@ -301,6 +307,9 @@ export async function getMovieDetails(
         }
       : null,
     credits: mapScreenCredits(data.credits),
+    runtimeMinutes: typeof data.runtime === "number" && data.runtime > 0 ? data.runtime : null,
+    numberOfEpisodes: null,
+    numberOfSeasons: null,
   };
 }
 
@@ -310,12 +319,23 @@ export async function getSeriesDetails(
   const data = await tmdbGet<{
     created_by?: Array<{ id: number; name: string; profile_path: string | null }>;
     credits?: TmdbCreditsPayload;
+    number_of_episodes?: number | null;
+    number_of_seasons?: number | null;
   }>(`/tv/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
 
   return {
     collection: null, // las series de TMDB no usan belongs_to_collection
     credits: mapScreenCredits(data.credits, data.created_by ?? []),
+    runtimeMinutes: null,
+    numberOfEpisodes:
+      typeof data.number_of_episodes === "number" && data.number_of_episodes > 0
+        ? data.number_of_episodes
+        : null,
+    numberOfSeasons:
+      typeof data.number_of_seasons === "number" && data.number_of_seasons > 0
+        ? data.number_of_seasons
+        : null,
   };
 }
 

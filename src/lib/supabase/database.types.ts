@@ -153,6 +153,7 @@ export type Database = {
           notes: string | null
           pinned_order: number | null
           position: Json
+          queue_order: number | null
           rating: number | null
           started_at: string | null
           status: Database["public"]["Enums"]["media_status"]
@@ -167,6 +168,7 @@ export type Database = {
           notes?: string | null
           pinned_order?: number | null
           position?: Json
+          queue_order?: number | null
           rating?: number | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["media_status"]
@@ -181,6 +183,7 @@ export type Database = {
           notes?: string | null
           pinned_order?: number | null
           position?: Json
+          queue_order?: number | null
           rating?: number | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["media_status"]

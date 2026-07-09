@@ -419,5 +419,12 @@
     },
     "unknownStatusTitle": "Estados no reconocidos (importados como \"Pendiente\")",
     "erroredTitle": "Filas con error"
+  },
+  "queue": {
+    "title": "Tu cola",
+    "description": "Arrastra tus pendientes para priorizarlos y mira cuánto tardarías en completarlos a tu ritmo actual.",
+    "empty": "Todavía no tienes nada pendiente que priorizar.",
+    "dragHandle": "Arrastrar para reordenar",
+    "unresolved": "{count, plural, =1 {1 ítem sin estimación suficiente} other {# ítems sin estimación suficiente}}"
   }
 }

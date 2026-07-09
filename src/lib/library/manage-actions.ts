@@ -29,9 +29,12 @@ export async function updateStatus(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // An item leaving "planned" shouldn't keep a stale queue position — it
+  // would otherwise resurface at an old spot if it's re-planned later.
+  // See docs/REQUIREMENTS.md §7.22.
   const { error } = await supabase
     .from("library_entries")
-    .update({ status })
+    .update({ status, ...(status !== "planned" && { queue_order: null }) })
     .eq("id", entryId)
     .eq("user_id", user.id);
 
