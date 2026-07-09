@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -10,11 +8,23 @@ import {
 } from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
+import { ItemHero } from "@/components/detail/item-hero";
+import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
+import { InfoPanel } from "@/components/detail/info-panel";
+import {
+  MetadataSidebar,
+  type MetaRow,
+} from "@/components/detail/metadata-sidebar";
+import { CommunityPanel } from "@/components/detail/community-panel";
+import { SagaStrip } from "@/components/detail/saga-strip";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
-import { sagaHref } from "@/lib/catalog/item-href";
+import { getMockCommunity } from "@/lib/catalog/mock-community";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
+import { getSaga } from "@/lib/sagas/get-saga";
+import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 
@@ -41,6 +51,9 @@ export default async function MovieDetailPage({
 }) {
   const { id } = await params;
   const t = await getTranslations("item");
+  const tDetail = await getTranslations("detail");
+  const tMeta = await getTranslations("detail.meta");
+  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [
@@ -92,67 +105,110 @@ export default async function MovieDetailPage({
     }
   }
 
-  // El director/creador se muestra ahora con enlace en CreditsSection; aquí
-  // quedan solo los metadatos sin ficha propia (año, duración, géneros).
-  const metaLines = [
-    movie.release_year ? String(movie.release_year) : null,
-    movie.duration_minutes ? `${movie.duration_minutes} ${t("minutes")}` : null,
-    movie.genres && movie.genres.length > 0 ? movie.genres.join(", ") : null,
-  ].filter(Boolean);
+  const byline =
+    [
+      movie.director || null,
+      movie.release_year ? String(movie.release_year) : null,
+      movie.duration_minutes
+        ? `${movie.duration_minutes} ${t("minutes")}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
+
+  const metaRows: MetaRow[] = [];
+  if (movie.director)
+    metaRows.push({ label: tMeta("director"), value: movie.director });
+  if (movie.release_year)
+    metaRows.push({ label: tMeta("year"), value: String(movie.release_year) });
+  if (movie.duration_minutes)
+    metaRows.push({
+      label: tMeta("runtime"),
+      value: `${movie.duration_minutes} ${t("minutes")}`,
+    });
+
+  const genres = movie.genres ?? [];
+  const community = getMockCommunity(movie.id);
+
+  let sagaMembers: SagaMember[] = [];
+  if (saga) {
+    const full = await getSaga(supabase, saga.sagaId);
+    sagaMembers = full?.members ?? [];
+  }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-start sm:px-6">
-      <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
-        {movie.cover_url ? (
-          <Image
-            src={movie.cover_url}
-            alt={movie.title}
-            fill
-            sizes="(max-width: 768px) 80vw, 224px"
-            className="object-cover"
+    <div className="flex flex-col">
+      <ItemHero
+        itemType="movie"
+        mediaLabel={tDetail("mediaLabel.movie")}
+        title={movie.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={movie.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={
+          entry ? (
+            <StatusBadge
+              status={entry.status}
+              label={tLibrary(`status.${entry.status}`)}
+            />
+          ) : null
+        }
+      />
+
+      <ItemDetailTabs
+        itemType="movie"
+        labels={{
+          info: tDetail("tabInfo"),
+          community: tDetail("tabCommunity"),
+          log: tDetail("tabLog"),
+        }}
+        info={
+          <InfoPanel
+            aboutLabel={tDetail("about")}
+            synopsis={movie.synopsis}
+            noSynopsisLabel={tDetail("noSynopsis")}
+            sidebar={
+              <MetadataSidebar
+                rows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              />
+            }
+            extra={
+              <>
+                <CreditsSection credits={credits} />
+                {watchProviders && <WatchProviders data={watchProviders} />}
+              </>
+            }
           />
-        ) : (
-          <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
-            {movie.title}
+        }
+        community={
+          <div className="flex flex-col gap-10">
+            {saga && sagaMembers.length >= 2 && (
+              <SagaStrip
+                members={sagaMembers}
+                currentType="movie"
+                currentId={movie.id}
+                sagaName={saga.name}
+                label={tDetail("saga")}
+              />
+            )}
+            <CommunityPanel itemType="movie" community={community} />
           </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{movie.title}</h1>
-
-        {metaLines.map((line, i) => (
-          <p key={i} className="text-sm text-muted-foreground">
-            {line}
-          </p>
-        ))}
-
-        {saga && (
-          <Link
-            href={sagaHref(saga.sagaId)}
-            className="inline-flex w-fit items-center rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-surface-muted"
-          >
-            {saga.position
-              ? t("sagaPart", { name: saga.name, number: saga.position })
-              : t("sagaLabel", { name: saga.name })}
-          </Link>
-        )}
-
-        {movie.synopsis && (
-          <p className="text-sm text-foreground">{movie.synopsis}</p>
-        )}
-
-        <CreditsSection credits={credits} />
-
-        {watchProviders && <WatchProviders data={watchProviders} />}
-
-        <ItemManagePanel
-          itemType="movie"
-          itemId={movie.id}
-          entry={entry}
-          sessions={[]}
-        />
-      </div>
+        }
+        log={
+          <ItemManagePanel
+            itemType="movie"
+            itemId={movie.id}
+            entry={entry}
+            sessions={[]}
+          />
+        }
+      />
     </div>
   );
 }

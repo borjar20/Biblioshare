@@ -5,7 +5,7 @@ export function CircularProgress({
   total,
   label,
   caption,
-  size = 96,
+  size = 84,
 }: {
   value: number;
   total: number;
@@ -20,7 +20,7 @@ export function CircularProgress({
   const offset = circumference * (1 - ratio);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex shrink-0 items-center gap-3">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
           <circle
@@ -47,7 +47,9 @@ export function CircularProgress({
           {label}
         </div>
       </div>
-      <span className="text-sm text-muted-foreground">{caption}</span>
+      <span className="max-w-[6rem] text-sm leading-tight text-muted-foreground">
+        {caption}
+      </span>
     </div>
   );
 }

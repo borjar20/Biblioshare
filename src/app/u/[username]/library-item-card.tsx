@@ -9,7 +9,9 @@ import { itemHref } from "@/lib/catalog/item-href";
 import { getProgress } from "@/lib/library/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { toggleFavorite } from "./actions";
+import { SparklesIcon } from "@/components/ui/icons";
 
 export function LibraryItemCard({
   item,
@@ -22,11 +24,17 @@ export function LibraryItemCard({
   const [isPending, startTransition] = useTransition();
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
   const progress = getProgress(item);
+  const accent = MEDIA_ACCENT[item.itemType];
 
   return (
     <div className="flex flex-col gap-2">
-      <Link href={itemHref(item.itemType, item.itemId)} className="group flex flex-col gap-2">
-        <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
+      <Link
+        href={itemHref(item.itemType, item.itemId)}
+        className="group flex flex-col gap-2"
+      >
+        <div
+          className={`relative aspect-[2/3] w-full overflow-hidden rounded-lg border ${accent.borderSoft} bg-surface-muted`}
+        >
           {item.coverUrl ? (
             <Image
               src={item.coverUrl}
@@ -41,7 +49,10 @@ export function LibraryItemCard({
             </div>
           )}
           <div className="absolute right-1.5 top-1.5">
-            <StatusBadge status={item.status} label={t(`status.${item.status}`)} />
+            <StatusBadge
+              status={item.status}
+              label={t(`status.${item.status}`)}
+            />
           </div>
         </div>
 
@@ -63,7 +74,13 @@ export function LibraryItemCard({
               .join(" · ")}
           </span>
         )}
-        {progress && <ProgressBar current={progress.current} total={progress.total} label={progress.label} />}
+        {progress && (
+          <ProgressBar
+            current={progress.current}
+            total={progress.total}
+            label={progress.label}
+          />
+        )}
         {item.rereadCount > 0 && (
           <span className="line-clamp-1 text-xs text-muted-foreground">
             {t(`rereadCount.${item.itemType}`, { count: item.rereadCount })}
@@ -83,8 +100,9 @@ export function LibraryItemCard({
                 if (result.error) setFavoriteError(t(`pinError`));
               })
             }
-            className="text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
+            className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
           >
+            <SparklesIcon className="h-3.5 w-3.5" />
             {item.pinnedOrder !== null ? t("unpin") : t("pin")}
           </button>
           {favoriteError && (

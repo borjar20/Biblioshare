@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -9,9 +8,23 @@ import {
 } from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
+import { ItemHero } from "@/components/detail/item-hero";
+import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
+import { InfoPanel } from "@/components/detail/info-panel";
+import {
+  MetadataSidebar,
+  type MetaRow,
+} from "@/components/detail/metadata-sidebar";
+import { CommunityPanel } from "@/components/detail/community-panel";
+import { SagaStrip } from "@/components/detail/saga-strip";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { getMockCommunity } from "@/lib/catalog/mock-community";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
+import { getItemSaga } from "@/lib/sagas/get-item-saga";
+import { getSaga } from "@/lib/sagas/get-saga";
+import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
@@ -40,6 +53,9 @@ export default async function SeriesDetailPage({
 }) {
   const { id } = await params;
   const t = await getTranslations("item");
+  const tDetail = await getTranslations("detail");
+  const tMeta = await getTranslations("detail.meta");
+  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [
@@ -65,9 +81,10 @@ export default async function SeriesDetailPage({
     tmdbId: series.tmdb_id,
   });
 
-  const [watchProviders, credits] = await Promise.all([
+  const [watchProviders, credits, saga] = await Promise.all([
     series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
     getItemCredits(supabase, "series", series.id),
+    getItemSaga(supabase, "series", series.id),
   ]);
 
   let entry: ManagedEntry | null = null;
@@ -92,65 +109,112 @@ export default async function SeriesDetailPage({
     }
   }
 
-  // El creador se muestra ahora con enlace en CreditsSection; aquí quedan solo
-  // los metadatos sin ficha propia (año, temporadas/episodios, géneros).
-  const metaLines = [
-    series.release_year ? String(series.release_year) : null,
+  const byline =
     [
-      series.total_seasons ? `${series.total_seasons} ${t("seasons")}` : null,
-      series.total_episodes
-        ? `${series.total_episodes} ${t("episodes")}`
-        : null,
+      series.creator || null,
+      series.release_year ? String(series.release_year) : null,
     ]
       .filter(Boolean)
-      .join(" · "),
-    series.genres && series.genres.length > 0 ? series.genres.join(", ") : null,
-  ].filter(Boolean);
+      .join(" · ") || null;
+
+  const metaRows: MetaRow[] = [];
+  if (series.creator)
+    metaRows.push({ label: tMeta("creator"), value: series.creator });
+  if (series.release_year)
+    metaRows.push({ label: tMeta("year"), value: String(series.release_year) });
+  if (series.total_seasons)
+    metaRows.push({
+      label: tMeta("seasons"),
+      value: `${series.total_seasons} ${t("seasons")}`,
+    });
+  if (series.total_episodes)
+    metaRows.push({
+      label: tMeta("episodes"),
+      value: `${series.total_episodes} ${t("episodes")}`,
+    });
+
+  const genres = series.genres ?? [];
+  const community = getMockCommunity(series.id);
+
+  let sagaMembers: SagaMember[] = [];
+  if (saga) {
+    const full = await getSaga(supabase, saga.sagaId);
+    sagaMembers = full?.members ?? [];
+  }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-start sm:px-6">
-      <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
-        {series.cover_url ? (
-          <Image
-            src={series.cover_url}
-            alt={series.title}
-            fill
-            sizes="(max-width: 768px) 80vw, 224px"
-            className="object-cover"
+    <div className="flex flex-col">
+      <ItemHero
+        itemType="series"
+        mediaLabel={tDetail("mediaLabel.series")}
+        title={series.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={series.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={
+          entry ? (
+            <StatusBadge
+              status={entry.status}
+              label={tLibrary(`status.${entry.status}`)}
+            />
+          ) : null
+        }
+      />
+
+      <ItemDetailTabs
+        itemType="series"
+        labels={{
+          info: tDetail("tabInfo"),
+          community: tDetail("tabCommunity"),
+          log: tDetail("tabLog"),
+        }}
+        info={
+          <InfoPanel
+            aboutLabel={tDetail("about")}
+            synopsis={series.synopsis}
+            noSynopsisLabel={tDetail("noSynopsis")}
+            sidebar={
+              <MetadataSidebar
+                rows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              />
+            }
+            extra={
+              <>
+                <CreditsSection credits={credits} />
+                {watchProviders && <WatchProviders data={watchProviders} />}
+              </>
+            }
           />
-        ) : (
-          <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
-            {series.title}
+        }
+        community={
+          <div className="flex flex-col gap-10">
+            {saga && sagaMembers.length >= 2 && (
+              <SagaStrip
+                members={sagaMembers}
+                currentType="series"
+                currentId={series.id}
+                sagaName={saga.name}
+                label={tDetail("saga")}
+              />
+            )}
+            <CommunityPanel itemType="series" community={community} />
           </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {series.title}
-        </h1>
-
-        {metaLines.map((line, i) => (
-          <p key={i} className="text-sm text-muted-foreground">
-            {line}
-          </p>
-        ))}
-
-        {series.synopsis && (
-          <p className="text-sm text-foreground">{series.synopsis}</p>
-        )}
-
-        <CreditsSection credits={credits} />
-
-        {watchProviders && <WatchProviders data={watchProviders} />}
-
-        <ItemManagePanel
-          itemType="series"
-          itemId={series.id}
-          entry={entry}
-          sessions={sessions}
-        />
-      </div>
+        }
+        log={
+          <ItemManagePanel
+            itemType="series"
+            itemId={series.id}
+            entry={entry}
+            sessions={sessions}
+          />
+        }
+      />
     </div>
   );
 }

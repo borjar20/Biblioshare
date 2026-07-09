@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -9,11 +7,23 @@ import {
   type ManagedEntry,
 } from "@/components/item-manage-panel";
 import { SagaAssignForm } from "@/components/saga-assign-form";
+import { ItemHero } from "@/components/detail/item-hero";
+import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
+import { InfoPanel } from "@/components/detail/info-panel";
+import {
+  MetadataSidebar,
+  type MetaRow,
+} from "@/components/detail/metadata-sidebar";
+import { CommunityPanel } from "@/components/detail/community-panel";
+import { SagaStrip } from "@/components/detail/saga-strip";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { personHref, sagaHref } from "@/lib/catalog/item-href";
+import { getMockCommunity } from "@/lib/catalog/mock-community";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
+import { getSaga } from "@/lib/sagas/get-saga";
+import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
@@ -42,6 +52,9 @@ export default async function BookDetailPage({
 }) {
   const { id } = await params;
   const t = await getTranslations("item");
+  const tDetail = await getTranslations("detail");
+  const tMeta = await getTranslations("detail.meta");
+  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [
@@ -101,97 +114,123 @@ export default async function BookDetailPage({
     ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
     : false;
 
-  // El autor se muestra como enlace(s) a su ficha (abajo); aquí quedan el resto
-  // de metadatos de la obra.
-  const metaLines = [
-    book.published_year ? String(book.published_year) : null,
+  const authorNames =
+    authorCredits.length > 0
+      ? authorCredits.map((a) => a.name)
+      : book.author
+        ? [book.author]
+        : [];
+
+  const byline =
     [
-      book.publisher,
-      book.total_pages ? `${book.total_pages} ${t("pages")}` : null,
+      authorNames.join(", ") || null,
+      book.published_year ? String(book.published_year) : null,
     ]
       .filter(Boolean)
-      .join(" · "),
-    book.isbn ? `ISBN ${book.isbn}` : null,
-    book.genres && book.genres.length > 0 ? book.genres.join(", ") : null,
-  ].filter(Boolean);
+      .join(" · ") || null;
+
+  const metaRows: MetaRow[] = [];
+  if (authorNames.length > 0)
+    metaRows.push({ label: tMeta("author"), value: authorNames.join(", ") });
+  if (book.publisher)
+    metaRows.push({ label: tMeta("publisher"), value: book.publisher });
+  if (book.published_year)
+    metaRows.push({
+      label: tMeta("published"),
+      value: String(book.published_year),
+    });
+  if (book.total_pages)
+    metaRows.push({
+      label: tMeta("pages"),
+      value: `${book.total_pages} ${t("pages")}`,
+    });
+  if (book.isbn) metaRows.push({ label: tMeta("isbn"), value: book.isbn });
+
+  const genres = book.genres ?? [];
+  const community = getMockCommunity(book.id);
+
+  let sagaMembers: SagaMember[] = [];
+  if (saga) {
+    const full = await getSaga(supabase, saga.sagaId);
+    sagaMembers = full?.members ?? [];
+  }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-start sm:px-6">
-      <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
-        {book.cover_url ? (
-          <Image
-            src={book.cover_url}
-            alt={book.title}
-            fill
-            sizes="(max-width: 768px) 80vw, 224px"
-            className="object-cover"
+    <div className="flex flex-col">
+      <ItemHero
+        itemType="book"
+        mediaLabel={tDetail("mediaLabel.book")}
+        title={book.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={book.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={
+          entry ? (
+            <StatusBadge
+              status={entry.status}
+              label={tLibrary(`status.${entry.status}`)}
+            />
+          ) : null
+        }
+      />
+
+      <ItemDetailTabs
+        itemType="book"
+        labels={{
+          info: tDetail("tabInfo"),
+          community: tDetail("tabCommunity"),
+          log: tDetail("tabLog"),
+        }}
+        info={
+          <InfoPanel
+            aboutLabel={tDetail("about")}
+            synopsis={book.synopsis}
+            noSynopsisLabel={tDetail("noSynopsis")}
+            sidebar={
+              <MetadataSidebar
+                rows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              />
+            }
           />
-        ) : (
-          <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
-            {book.title}
+        }
+        community={
+          <div className="flex flex-col gap-10">
+            {saga && sagaMembers.length >= 2 && (
+              <SagaStrip
+                members={sagaMembers}
+                currentType="book"
+                currentId={book.id}
+                sagaName={saga.name}
+                label={tDetail("saga")}
+              />
+            )}
+            <CommunityPanel itemType="book" community={community} />
           </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{book.title}</h1>
-
-        {authorCredits.length > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {authorCredits.map((author, i) => (
-              <span key={author.id}>
-                {i > 0 && ", "}
-                <Link
-                  href={personHref(author.id)}
-                  className="text-foreground underline-offset-2 hover:underline"
-                >
-                  {author.name}
-                </Link>
-              </span>
-            ))}
-          </p>
-        ) : (
-          book.author && (
-            <p className="text-sm text-muted-foreground">{book.author}</p>
-          )
-        )}
-
-        {metaLines.map((line, i) => (
-          <p key={i} className="text-sm text-muted-foreground">
-            {line}
-          </p>
-        ))}
-
-        {saga && (
-          <Link
-            href={sagaHref(saga.sagaId)}
-            className="inline-flex w-fit items-center rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-surface-muted"
-          >
-            {saga.position
-              ? t("sagaPart", { name: saga.name, number: saga.position })
-              : t("sagaLabel", { name: saga.name })}
-          </Link>
-        )}
-
-        {book.synopsis && (
-          <p className="text-sm text-foreground">{book.synopsis}</p>
-        )}
-
-        <ItemManagePanel
-          itemType="book"
-          itemId={book.id}
-          entry={entry}
-          sessions={sessions}
-        />
-
-        {canContribute && (
-          <SagaAssignForm
-            itemType="book"
-            itemId={book.id}
-            currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
-          />
-        )}
-      </div>
+        }
+        log={
+          <div className="flex flex-col gap-4">
+            <ItemManagePanel
+              itemType="book"
+              itemId={book.id}
+              entry={entry}
+              sessions={sessions}
+            />
+            {canContribute && (
+              <SagaAssignForm
+                itemType="book"
+                itemId={book.id}
+                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
+              />
+            )}
+          </div>
+        }
+      />
     </div>
   );
 }

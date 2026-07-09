@@ -200,6 +200,38 @@
       "duration": "{count} min"
     }
   },
+  "detail": {
+    "back": "Volver",
+    "ratings": "valoraciones",
+    "tabInfo": "Información",
+    "tabCommunity": "Comunidad",
+    "tabLog": "Mi registro",
+    "about": "Sinopsis",
+    "genres": "Géneros",
+    "saga": "Parte de una saga",
+    "communityRatings": "Valoraciones de la comunidad",
+    "reviews": "Reseñas",
+    "noSynopsis": "Sin sinopsis disponible.",
+    "mockNotice": "Datos de muestra",
+    "mediaLabel": {
+      "book": "Libro",
+      "movie": "Película",
+      "series": "Serie"
+    },
+    "meta": {
+      "author": "Autor",
+      "publisher": "Editorial",
+      "isbn": "ISBN",
+      "pages": "Páginas",
+      "published": "Publicación",
+      "year": "Año",
+      "director": "Dirección",
+      "creator": "Creación",
+      "runtime": "Duración",
+      "seasons": "Temporadas",
+      "episodes": "Episodios"
+    }
+  },
   "person": {
     "notFoundTitle": "Persona no encontrada",
     "notFoundDescription": "Esta persona no existe en el catálogo.",

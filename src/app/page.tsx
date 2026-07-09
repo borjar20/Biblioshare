@@ -14,6 +14,7 @@ import { StreakCard } from "@/components/stats/streak-card";
 import { MonthCalendar } from "@/components/stats/month-calendar";
 import { AnnualStats } from "@/components/stats/annual-stats";
 import { GoalsForm } from "@/components/stats/goals-form";
+import { AppLogoIcon, SparklesIcon } from "@/components/ui/icons";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
@@ -31,8 +32,14 @@ export default async function Home({
 
   if (!user) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-4 py-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-4 py-12 text-center">
+        <div className="relative">
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-border bg-surface shadow-sm">
+            <AppLogoIcon className="h-10 w-10 text-accent" />
+          </div>
+          <SparklesIcon className="absolute -right-2 -top-2 h-6 w-6 text-accent" />
+        </div>
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {t("common.appName")}
         </h1>
         <p className="max-w-md text-lg text-muted-foreground">
@@ -63,38 +70,54 @@ export default async function Home({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {t("home.welcome")}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              @{profile?.username}
-            </p>
-          </div>
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="h-10 w-1 shrink-0 rounded-full bg-accent"
+        />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {t("home.welcome")}
+          </h1>
+          <p className="text-sm text-muted-foreground">@{profile?.username}</p>
         </div>
       </div>
 
-      <div className="w-full text-left">
-        <NowConsuming items={inProgress} linkToSession />
-      </div>
-
       <div className="grid gap-8">
-        <WeeklyStrip
-          days={weekly}
-          dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
-        />
-        <StreakCard streaks={streaks} />
-        <MonthCalendar calendar={calendar} basePath="/" />
-        <AnnualStats
-          annual={annual}
-          annualGoalItems={profile?.annualGoalItems ?? null}
-        />
-        <GoalsForm
-          dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
-          annualGoalItems={profile?.annualGoalItems ?? null}
-        />
+        <div className="grid gap-4 rounded-lg border border-border bg-surface p-4">
+          <NowConsuming items={inProgress} linkToSession />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <WeeklyStrip
+              days={weekly}
+              dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+            />
+          </div>
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <StreakCard streaks={streaks} />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <MonthCalendar initialCalendar={calendar} basePath="/" />
+          </div>
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <AnnualStats
+              annual={annual}
+              annualGoalItems={profile?.annualGoalItems ?? null}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <GoalsForm
+            dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+            annualGoalItems={profile?.annualGoalItems ?? null}
+          />
+        </div>
       </div>
     </div>
   );

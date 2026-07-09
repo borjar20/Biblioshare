@@ -16,6 +16,7 @@ import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import { NowConsuming } from "@/components/now-consuming";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { ActivityChart } from "@/components/activity-chart";
+import { ProfileStatCards } from "@/components/profile-stat-cards";
 import { LibraryItemCard } from "./library-item-card";
 import { VisibilityToggle } from "./visibility-toggle";
 import { logout } from "@/app/(auth)/actions";
@@ -135,6 +136,7 @@ export default async function PublicProfilePage({
         <>
           <NowConsuming items={inProgress} linkToSession={isOwner} />
           <ActivityChart months={months} />
+          <ProfileStatCards stats={stats} />
         </>
       )}
 

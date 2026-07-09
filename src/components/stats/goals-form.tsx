@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { updateGoals, type UpdateGoalsState } from "@/lib/profile/actions";
+import { TargetIcon } from "@/components/ui/icons";
 
 const initialState: UpdateGoalsState = {};
 
@@ -17,17 +18,27 @@ export function GoalsForm({
   annualGoalItems: number | null;
 }) {
   const t = useTranslations("stats");
-  const [state, formAction, pending] = useActionState(updateGoals, initialState);
+  const [state, formAction, pending] = useActionState(
+    updateGoals,
+    initialState,
+  );
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">{t("goalsTitle")}</h2>
+      <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+        <TargetIcon className="h-5 w-5 text-accent" />
+        {t("goalsTitle")}
+      </div>
       <form
         action={formAction}
         className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
       >
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Field label={t("dailyGoal")} htmlFor="daily-goal" hint={t("dailyGoalHint")}>
+          <Field
+            label={t("dailyGoal")}
+            htmlFor="daily-goal"
+            hint={t("dailyGoalHint")}
+          >
             <Input
               id="daily-goal"
               name="dailyGoalMinutes"
@@ -36,7 +47,11 @@ export function GoalsForm({
               defaultValue={dailyGoalMinutes ?? ""}
             />
           </Field>
-          <Field label={t("annualGoalField")} htmlFor="annual-goal" hint={t("annualGoalHint")}>
+          <Field
+            label={t("annualGoalField")}
+            htmlFor="annual-goal"
+            hint={t("annualGoalHint")}
+          >
             <Input
               id="annual-goal"
               name="annualGoalItems"
@@ -48,7 +63,9 @@ export function GoalsForm({
         </div>
 
         {state.error && (
-          <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
+          <p className="text-sm text-status-dropped">
+            {t(`errors.${state.error}`)}
+          </p>
         )}
 
         <Button type="submit" disabled={pending} variant="secondary">

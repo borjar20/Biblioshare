@@ -105,6 +105,28 @@ body {
   color: var(--foreground);
 }
 
+/* Decorative ambient glow: two soft accent-tinted radial washes anchored to
+   opposite corners. Fixed + pointer-events:none so it never scrolls or blocks
+   interaction, and color-mix keeps it subtle in both light and dark themes. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42rem 32rem at 100% -5%,
+      color-mix(in oklab, var(--accent-hover) 12%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      38rem 30rem at -5% 105%,
+      color-mix(in oklab, var(--accent-hover) 9%, transparent),
+      transparent 70%
+    );
+}
+
 h1,
 h2,
 h3 {

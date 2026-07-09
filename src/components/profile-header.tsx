@@ -2,6 +2,12 @@ import { getTranslations } from "next-intl/server";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
 import { EditProfileForm } from "./edit-profile-form";
+import {
+  BookIcon,
+  FilmIcon,
+  SeriesIcon,
+  UserIcon,
+} from "@/components/ui/icons";
 
 function initials(name: string) {
   return name
@@ -46,10 +52,14 @@ export async function ProfileHeader({
           <div className="flex flex-col gap-1 pt-1">
             <div className="flex flex-wrap items-baseline gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
-              <span className="text-sm text-muted-foreground">@{profile.username}</span>
+              <span className="text-sm text-muted-foreground">
+                @{profile.username}
+              </span>
             </div>
             {profile.bio && (
-              <p className="max-w-prose text-sm text-muted-foreground">{profile.bio}</p>
+              <p className="max-w-prose text-sm text-muted-foreground">
+                {profile.bio}
+              </p>
             )}
           </div>
         </div>
@@ -58,16 +68,20 @@ export async function ProfileHeader({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <span className="rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
+        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
+          <BookIcon className="h-3.5 w-3.5 text-type-book" />
           {t("statsBooks", { count: stats.book })}
         </span>
-        <span className="rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
+        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
+          <SeriesIcon className="h-3.5 w-3.5 text-type-series" />
           {t("statsSeries", { count: stats.series })}
         </span>
-        <span className="rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
+        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
+          <FilmIcon className="h-3.5 w-3.5 text-type-movie" />
           {t("statsFilms", { count: stats.movie })}
         </span>
-        <span className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs text-muted-foreground">
+          <UserIcon className="h-3.5 w-3.5" />
           {t("memberSince", { year: memberSinceYear })}
         </span>
       </div>

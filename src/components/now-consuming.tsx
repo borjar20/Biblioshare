@@ -7,6 +7,7 @@ import { itemHref } from "@/lib/catalog/item-href";
 import { getProgress } from "@/lib/library/progress";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 
 // `linkToSession` (owner-only surfaces: home and own profile): books/series
 // jump straight to the session-logging screen, the daily-loop shortcut
@@ -38,16 +39,23 @@ export async function NowConsuming({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">{t("nowConsuming")}</h2>
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+          {t("nowConsuming")}
+        </span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {featured.map((item) => {
           const progress = getProgress(item);
+          const accent = MEDIA_ACCENT[item.itemType];
           return (
             <Link
               key={item.entryId}
               href={hrefFor(item)}
-              className="flex gap-3 rounded-lg border border-border bg-surface p-3"
+              className={`flex gap-3 rounded-lg border ${accent.borderSoft} bg-surface p-3 transition-colors`}
             >
+              <span className={`w-0.5 shrink-0 self-stretch rounded-full ${accent.bg}`} />
               <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-md bg-surface-muted">
                 {item.coverUrl && (
                   <Image
@@ -71,9 +79,16 @@ export async function NowConsuming({
                   )}
                 </div>
                 {progress ? (
-                  <ProgressBar current={progress.current} total={progress.total} label={progress.label} />
+                  <ProgressBar
+                    current={progress.current}
+                    total={progress.total}
+                    label={progress.label}
+                  />
                 ) : (
-                  <StatusBadge status={item.status} label={tLibrary(`status.${item.status}`)} />
+                  <StatusBadge
+                    status={item.status}
+                    label={tLibrary(`status.${item.status}`)}
+                  />
                 )}
               </div>
             </Link>
