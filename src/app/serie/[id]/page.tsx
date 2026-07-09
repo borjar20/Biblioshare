@@ -3,7 +3,10 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
+import {
+  ItemManagePanel,
+  type ManagedEntry,
+} from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
@@ -39,11 +42,16 @@ export default async function SeriesDetailPage({
   const t = await getTranslations("item");
   const supabase = await createClient();
 
-  const [{ data: series }, { data: { user } }] = await Promise.all([
+  const [
+    { data: series },
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
     supabase
       .from("series")
       .select(
-        "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id"
+        "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -52,7 +60,10 @@ export default async function SeriesDetailPage({
 
   if (!series) notFound();
 
-  await ensureItemEnriched(supabase, "series", { id: series.id, tmdbId: series.tmdb_id });
+  await ensureItemEnriched(supabase, "series", {
+    id: series.id,
+    tmdbId: series.tmdb_id,
+  });
 
   const [watchProviders, credits] = await Promise.all([
     series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
@@ -87,7 +98,9 @@ export default async function SeriesDetailPage({
     series.release_year ? String(series.release_year) : null,
     [
       series.total_seasons ? `${series.total_seasons} ${t("seasons")}` : null,
-      series.total_episodes ? `${series.total_episodes} ${t("episodes")}` : null,
+      series.total_episodes
+        ? `${series.total_episodes} ${t("episodes")}`
+        : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -95,7 +108,7 @@ export default async function SeriesDetailPage({
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:px-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-start sm:px-6">
       <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
         {series.cover_url ? (
           <Image
@@ -113,7 +126,9 @@ export default async function SeriesDetailPage({
       </div>
 
       <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{series.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {series.title}
+        </h1>
 
         {metaLines.map((line, i) => (
           <p key={i} className="text-sm text-muted-foreground">

@@ -4,7 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
+import {
+  ItemManagePanel,
+  type ManagedEntry,
+} from "@/components/item-manage-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
@@ -40,11 +43,16 @@ export default async function MovieDetailPage({
   const t = await getTranslations("item");
   const supabase = await createClient();
 
-  const [{ data: movie }, { data: { user } }] = await Promise.all([
+  const [
+    { data: movie },
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
     supabase
       .from("movies")
       .select(
-        "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id"
+        "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -53,7 +61,10 @@ export default async function MovieDetailPage({
 
   if (!movie) notFound();
 
-  await ensureItemEnriched(supabase, "movie", { id: movie.id, tmdbId: movie.tmdb_id });
+  await ensureItemEnriched(supabase, "movie", {
+    id: movie.id,
+    tmdbId: movie.tmdb_id,
+  });
 
   const [watchProviders, credits, saga] = await Promise.all([
     movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
@@ -90,7 +101,7 @@ export default async function MovieDetailPage({
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:px-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-start sm:px-6">
       <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
         {movie.cover_url ? (
           <Image

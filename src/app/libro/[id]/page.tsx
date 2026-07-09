@@ -4,7 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemManagePanel, type ManagedEntry } from "@/components/item-manage-panel";
+import {
+  ItemManagePanel,
+  type ManagedEntry,
+} from "@/components/item-manage-panel";
 import { SagaAssignForm } from "@/components/saga-assign-form";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { personHref, sagaHref } from "@/lib/catalog/item-href";
@@ -41,11 +44,16 @@ export default async function BookDetailPage({
   const t = await getTranslations("item");
   const supabase = await createClient();
 
-  const [{ data: book }, { data: { user } }] = await Promise.all([
+  const [
+    { data: book },
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
     supabase
       .from("books")
       .select(
-        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres"
+        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -54,7 +62,10 @@ export default async function BookDetailPage({
 
   if (!book) notFound();
 
-  await ensureItemEnriched(supabase, "book", { id: book.id, author: book.author });
+  await ensureItemEnriched(supabase, "book", {
+    id: book.id,
+    author: book.author,
+  });
 
   const [credits, saga] = await Promise.all([
     getItemCredits(supabase, "book", book.id),
@@ -94,7 +105,10 @@ export default async function BookDetailPage({
   // de metadatos de la obra.
   const metaLines = [
     book.published_year ? String(book.published_year) : null,
-    [book.publisher, book.total_pages ? `${book.total_pages} ${t("pages")}` : null]
+    [
+      book.publisher,
+      book.total_pages ? `${book.total_pages} ${t("pages")}` : null,
+    ]
       .filter(Boolean)
       .join(" · "),
     book.isbn ? `ISBN ${book.isbn}` : null,
@@ -102,7 +116,7 @@ export default async function BookDetailPage({
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:px-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-start sm:px-6">
       <div className="relative aspect-[2/3] w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-border bg-surface-muted sm:w-56">
         {book.cover_url ? (
           <Image
