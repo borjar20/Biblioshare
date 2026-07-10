@@ -29,12 +29,15 @@ export async function updateStatus(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // An item leaving "planned" shouldn't keep a stale queue position — it
-  // would otherwise resurface at an old spot if it's re-planned later.
-  // See docs/REQUIREMENTS.md §7.22.
+  // An item leaving "planned" shouldn't keep a stale queue membership or
+  // position — it would otherwise resurface in its old queue at an old spot if
+  // it's re-planned later. See docs/REQUIREMENTS.md §7.22.
   const { error } = await supabase
     .from("library_entries")
-    .update({ status, ...(status !== "planned" && { queue_order: null }) })
+    .update({
+      status,
+      ...(status !== "planned" && { queue_id: null, queue_order: null }),
+    })
     .eq("id", entryId)
     .eq("user_id", user.id);
 
@@ -139,4 +142,32 @@ export async function removeFromLibrary(
 
   if (error) throw error;
   revalidateItemViews(itemType, itemId);
+}
+
+// Moves a planned item into a named queue (or the "Sin cola" bucket when
+// queueId is null) from the item detail page (§7.22). queue_order is reset to
+// null so ensureQueueOrder appends it to the end of the target queue on the
+// next /cola visit. A foreign queue id is rejected by the FK + queues RLS.
+export async function moveEntryToQueue(
+  entryId: string,
+  itemType: ItemType,
+  itemId: string,
+  queueId: string | null
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("library_entries")
+    .update({ queue_id: queueId, queue_order: null })
+    .eq("id", entryId)
+    .eq("user_id", user.id)
+    .eq("status", "planned");
+
+  if (error) throw error;
+  revalidateItemViews(itemType, itemId);
+  revalidatePath("/cola");
 }

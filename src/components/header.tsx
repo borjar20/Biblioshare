@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "./theme-toggle";
-import { AppLogoIcon, GripVerticalIcon, SearchIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
+import { AppLogoIcon, GripVerticalIcon, SearchIcon, TrophyIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
 
 export async function Header() {
   const t = await getTranslations();
@@ -50,6 +50,14 @@ export async function Header() {
             >
               <GripVerticalIcon className="h-4 w-4" />
               <span className="hidden sm:inline">{t("queue.title")}</span>
+            </Link>
+            <Link
+              href="/retos"
+              aria-label={t("challenges.navLabel")}
+              className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
+            >
+              <TrophyIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("challenges.navLabel")}</span>
             </Link>
             <Link
               href="/usuarios"

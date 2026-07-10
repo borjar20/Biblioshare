@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      challenges: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          criteria: Json
+          end_date: string
+          id: string
+          item_type: Database["public"]["Enums"]["item_type"] | null
+          name: string
+          start_date: string
+          target_count: number
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          criteria?: Json
+          end_date: string
+          id?: string
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          name: string
+          start_date: string
+          target_count: number
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          criteria?: Json
+          end_date?: string
+          id?: string
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          name?: string
+          start_date?: string
+          target_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       books: {
         Row: {
           author: string | null
@@ -151,6 +190,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           notes: string | null
+          queue_id: string | null
           pinned_order: number | null
           position: Json
           queue_order: number | null
@@ -166,6 +206,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           notes?: string | null
+          queue_id?: string | null
           pinned_order?: number | null
           position?: Json
           queue_order?: number | null
@@ -181,6 +222,7 @@ export type Database = {
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           notes?: string | null
+          queue_id?: string | null
           pinned_order?: number | null
           position?: Json
           queue_order?: number | null
@@ -308,7 +350,9 @@ export type Database = {
       }
       profiles: {
         Row: {
-          annual_goal_items: number | null
+          annual_goal_books: number | null
+          annual_goal_movies: number | null
+          annual_goal_series: number | null
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -321,7 +365,9 @@ export type Database = {
           username: string
         }
         Insert: {
-          annual_goal_items?: number | null
+          annual_goal_books?: number | null
+          annual_goal_movies?: number | null
+          annual_goal_series?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -334,7 +380,9 @@ export type Database = {
           username: string
         }
         Update: {
-          annual_goal_items?: number | null
+          annual_goal_books?: number | null
+          annual_goal_movies?: number | null
+          annual_goal_series?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -454,11 +502,36 @@ export type Database = {
         }
         Relationships: []
       }
+      queues: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       series: {
         Row: {
           cover_url: string | null
           created_at: string
           creator: string | null
+          episode_runtime_minutes: number | null
           genres: string[] | null
           id: string
           release_year: number | null
@@ -472,6 +545,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           creator?: string | null
+          episode_runtime_minutes?: number | null
           genres?: string[] | null
           id?: string
           release_year?: number | null
@@ -485,6 +559,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           creator?: string | null
+          episode_runtime_minutes?: number | null
           genres?: string[] | null
           id?: string
           release_year?: number | null
@@ -509,7 +584,10 @@ export type Database = {
         Args: { min: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
-      reorder_queue: { Args: { entry_ids: string[] }; Returns: undefined }
+      reorder_queue: {
+        Args: { target_queue: string | null; entry_ids: string[] }
+        Returns: undefined
+      }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined

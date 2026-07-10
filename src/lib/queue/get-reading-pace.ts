@@ -33,7 +33,6 @@ function groupByEntry(rows: SessionRow[]): Map<string, SessionRow[]> {
 }
 
 export type BookPace = { pagesPerMinute: number; sampleCount: number } | null;
-export type SeriesPace = { minutesPerEpisode: number; sampleCount: number } | null;
 
 // Pages/minute rate derived from the user's own progress_sessions: each
 // session that logs both a duration and a page reached, with a known prior
@@ -79,51 +78,4 @@ export async function getBookPace(
 
   const result = mostRecentAverage(samples);
   return result ? { pagesPerMinute: result.rate, sampleCount: result.sampleCount } : null;
-}
-
-// Same idea for series, but an episode delta is only meaningful within the
-// same season (per-season episode counts aren't tracked, so a season jump
-// can't be normalized into "N episodes") — samples only come from
-// same-season session pairs. See docs/REQUIREMENTS.md §7.22.
-export async function getSeriesPace(
-  supabase: SupabaseServerClient,
-  userId: string
-): Promise<SeriesPace> {
-  const { data, error } = await supabase
-    .from("progress_sessions")
-    .select("library_entry_id, session_date, duration_minutes, position, library_entries!inner(item_type)")
-    .eq("user_id", userId)
-    .eq("library_entries.item_type", "series")
-    .order("session_date", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (error) throw error;
-
-  const samples: Sample[] = [];
-  for (const sessions of groupByEntry((data ?? []) as SessionRow[]).values()) {
-    let lastKnown: { season: number; episode: number } | null = null;
-    for (const session of sessions) {
-      const position = parsePosition("series", session.position);
-      const hasPosition = "season" in position;
-
-      if (
-        hasPosition &&
-        lastKnown &&
-        position.season === lastKnown.season &&
-        position.episode > lastKnown.episode &&
-        session.duration_minutes &&
-        session.duration_minutes > 0
-      ) {
-        const episodeDelta = position.episode - lastKnown.episode;
-        samples.push({
-          value: session.duration_minutes / episodeDelta,
-          date: session.session_date,
-        });
-      }
-      if (hasPosition) lastKnown = { season: position.season, episode: position.episode };
-    }
-  }
-
-  const result = mostRecentAverage(samples);
-  return result ? { minutesPerEpisode: result.rate, sampleCount: result.sampleCount } : null;
 }

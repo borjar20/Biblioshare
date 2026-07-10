@@ -8,13 +8,13 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // later visit. See docs/REQUIREMENTS.md §7.22.
 const MAX_BACKFILL_PER_LOAD = 10;
 
-// Lazily backfills movies.duration_minutes / series.total_episodes+seasons
-// by reusing the TMDB *details* call already made for credits/saga
-// (src/lib/people/enrich-item.ts) — that response already includes runtime/
-// episode counts, just not previously extracted. Independent guard from
-// that function's creditsExist check: only acts on rows still missing their
-// own size field. Never throws — an API failure here shouldn't break the
-// queue page.
+// Lazily backfills movies.duration_minutes / series.total_episodes+seasons+
+// episode_runtime_minutes by reusing the TMDB *details* call already made for
+// credits/saga (src/lib/people/enrich-item.ts) — that response already
+// includes runtime/episode counts, just not previously extracted. Independent
+// guard from that function's creditsExist check: only acts on rows still
+// missing their own size field. Never throws — an API failure here shouldn't
+// break the queue page.
 export async function backfillQueueSizes(
   supabase: SupabaseServerClient,
   movies: Array<{ id: string; tmdbId: number | null }>,
@@ -40,14 +40,23 @@ export async function backfillQueueSizes(
     ...seriesToFill.map(async (item) => {
       try {
         const details = await getSeriesDetails(item.tmdbId!);
-        if (!details?.numberOfEpisodes) return;
-        const { error } = await supabase
-          .from("series")
-          .update({
+        if (!details) return;
+
+        // Recuento y duración de episodio son independientes: TMDB puede traer
+        // uno sin el otro, y la estimación de la cola necesita ambos. Se
+        // escribe lo que haya en vez de descartar la respuesta entera.
+        const patch = {
+          ...(details.numberOfEpisodes && {
             total_episodes: details.numberOfEpisodes,
             total_seasons: details.numberOfSeasons,
-          })
-          .eq("id", item.id);
+          }),
+          ...(details.episodeRuntimeMinutes && {
+            episode_runtime_minutes: details.episodeRuntimeMinutes,
+          }),
+        };
+        if (Object.keys(patch).length === 0) return;
+
+        const { error } = await supabase.from("series").update(patch).eq("id", item.id);
         if (error) console.error("backfillQueueSizes: series update failed", { id: item.id, error });
       } catch (error) {
         console.error("backfillQueueSizes: series failed", { id: item.id, error });

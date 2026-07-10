@@ -107,7 +107,9 @@ export default async function Home({
           <div className="rounded-lg border border-border bg-surface p-4">
             <AnnualStats
               annual={annual}
-              annualGoalItems={profile?.annualGoalItems ?? null}
+              annualGoals={
+                profile?.annualGoals ?? { book: null, movie: null, series: null }
+              }
             />
           </div>
         </div>
@@ -115,7 +117,9 @@ export default async function Home({
         <div className="rounded-lg border border-border bg-surface p-4">
           <GoalsForm
             dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
-            annualGoalItems={profile?.annualGoalItems ?? null}
+            annualGoals={
+              profile?.annualGoals ?? { book: null, movie: null, series: null }
+            }
           />
         </div>
       </div>

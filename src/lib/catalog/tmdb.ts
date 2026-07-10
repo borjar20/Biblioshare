@@ -207,6 +207,7 @@ export type ScreenDetails = {
   runtimeMinutes: number | null;
   numberOfEpisodes: number | null;
   numberOfSeasons: number | null;
+  episodeRuntimeMinutes: number | null;
 };
 
 function profileUrl(path: string | null | undefined): string | null {
@@ -310,7 +311,23 @@ export async function getMovieDetails(
     runtimeMinutes: typeof data.runtime === "number" && data.runtime > 0 ? data.runtime : null,
     numberOfEpisodes: null,
     numberOfSeasons: null,
+    episodeRuntimeMinutes: null,
   };
+}
+
+// `episode_run_time` es un array (una entrada por duración habitual de la
+// serie) y viene vacío en muchas series modernas de duración variable. En ese
+// caso TMDB sí trae la duración del último episodio emitido en la misma
+// respuesta, que es una aproximación razonable. Ver §7.22.
+function pickEpisodeRuntime(
+  runtimes: number[] | undefined,
+  lastEpisodeRuntime: number | null | undefined
+): number | null {
+  const first = (runtimes ?? []).find((minutes) => minutes > 0);
+  if (first) return first;
+  return typeof lastEpisodeRuntime === "number" && lastEpisodeRuntime > 0
+    ? lastEpisodeRuntime
+    : null;
 }
 
 export async function getSeriesDetails(
@@ -321,6 +338,8 @@ export async function getSeriesDetails(
     credits?: TmdbCreditsPayload;
     number_of_episodes?: number | null;
     number_of_seasons?: number | null;
+    episode_run_time?: number[];
+    last_episode_to_air?: { runtime?: number | null } | null;
   }>(`/tv/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
 
@@ -336,6 +355,10 @@ export async function getSeriesDetails(
       typeof data.number_of_seasons === "number" && data.number_of_seasons > 0
         ? data.number_of_seasons
         : null,
+    episodeRuntimeMinutes: pickEpisodeRuntime(
+      data.episode_run_time,
+      data.last_episode_to_air?.runtime
+    ),
   };
 }
 

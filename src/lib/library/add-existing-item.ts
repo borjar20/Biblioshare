@@ -8,7 +8,12 @@ import { itemHref } from "@/lib/catalog/item-href";
 
 // Unlike addToLibrary in src/app/buscar/actions.ts, the item here already has
 // a catalog row (we're on its detail page) — no findOrCreate step needed.
-export async function addExistingItemToLibrary(itemType: ItemType, itemId: string) {
+// queueId optionally drops it straight into a named queue (§7.22).
+export async function addExistingItemToLibrary(
+  itemType: ItemType,
+  itemId: string,
+  queueId?: string | null
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,6 +24,7 @@ export async function addExistingItemToLibrary(itemType: ItemType, itemId: strin
     user_id: user.id,
     item_type: itemType,
     item_id: itemId,
+    ...(queueId && { queue_id: queueId }),
   });
 
   // Ignore "already in your library" conflicts; anything else is a real error.

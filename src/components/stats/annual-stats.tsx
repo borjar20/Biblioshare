@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
+import type { ItemType } from "@/lib/catalog/types";
 import type { AnnualCompleted } from "@/lib/stats/types";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { CircularProgress } from "./circular-progress";
 import { TargetIcon } from "@/components/ui/icons";
 
@@ -18,14 +20,17 @@ const MONTH_INITIALS = [
   "D",
 ];
 
+const ITEM_TYPES: ItemType[] = ["book", "movie", "series"];
+
 export async function AnnualStats({
   annual,
-  annualGoalItems,
+  annualGoals,
 }: {
   annual: AnnualCompleted;
-  annualGoalItems: number | null;
+  annualGoals: Record<ItemType, number | null>;
 }) {
   const t = await getTranslations("stats");
+  const tTypes = await getTranslations("search.types");
   const max = Math.max(1, ...annual.months.map((m) => m.count));
 
   return (
@@ -34,8 +39,8 @@ export async function AnnualStats({
         <TargetIcon className="h-5 w-5 text-accent" />
         {t("annualTitle", { year: annual.year })}
       </div>
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-1 items-end gap-1.5 sm:gap-2">
+      <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+        <div className="flex min-w-0 items-end gap-1.5 sm:gap-2">
           {annual.months.map((m, i) => {
             const heightPercent = m.count > 0 ? (m.count / max) * 100 : 0;
             const monthActive = m.count > 0;
@@ -63,23 +68,36 @@ export async function AnnualStats({
           })}
         </div>
 
-        {annualGoalItems ? (
-          <CircularProgress
-            value={annual.total}
-            total={annualGoalItems}
-            label={`${annual.total}`}
-            caption={t("annualGoal", { goal: annualGoalItems })}
-          />
-        ) : (
-          <div className="flex flex-col">
-            <span className="text-2xl font-semibold text-foreground">
-              {annual.total}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {t("annualTotal")}
-            </span>
-          </div>
-        )}
+        {/* Un objetivo anual por tipo (§7.14). Un tipo sin objetivo sigue
+            mostrando su recuento: la cifra es útil aunque no haya meta. */}
+        <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+          {ITEM_TYPES.map((type) => {
+            const completed = annual.byType[type];
+            const goal = annualGoals[type];
+            const accent = MEDIA_ACCENT[type];
+
+            return goal ? (
+              <CircularProgress
+                key={type}
+                value={completed}
+                total={goal}
+                size={64}
+                color={`var(${accent.varName})`}
+                label={`${completed}`}
+                caption={`${tTypes(type)} · ${t("annualGoal", { goal })}`}
+              />
+            ) : (
+              <div key={type} className="flex flex-col">
+                <span className={`text-2xl font-semibold ${accent.text}`}>
+                  {completed}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {tTypes(type)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

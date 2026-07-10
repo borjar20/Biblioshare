@@ -110,7 +110,10 @@
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
     },
-    "editions": "{count, plural, one {# edición} other {# ediciones}}"
+    "editions": "{count, plural, one {# edición} other {# ediciones}}",
+    "addToQueue": "Añadir a cola",
+    "chooseQueue": "¿En qué cola?",
+    "noQueueOption": "Sin cola"
   },
   "diary": {
     "show": "Ver diario",
@@ -295,9 +298,9 @@
   "stats": {
     "navLabel": "Estadísticas",
     "title": "Tus estadísticas",
-    "weeklyTitle": "Esta semana",
+    "weeklyTitle": "Lectura esta semana",
     "minutesCount": "{count} min",
-    "todayGoal": "Hoy · objetivo {goal} min",
+    "todayGoal": "Hoy · objetivo {goal} min de lectura",
     "todayNoGoal": "Hoy",
     "streakTitle": "Rachas",
     "currentStreak": "{count, plural, =1 {día seguido} other {días seguidos}}",
@@ -310,16 +313,16 @@
     "annualGoal": "de {goal} este año",
     "annualTotal": "completados este año",
     "goalsTitle": "Objetivos",
-    "dailyGoal": "Objetivo diario (min)",
-    "dailyGoalHint": "Minutos de lectura/visionado al día. Vacío = sin objetivo.",
-    "annualGoalField": "Objetivo anual (ítems)",
-    "annualGoalHint": "Ítems completados en el año. Vacío = sin objetivo.",
+    "dailyGoal": "Objetivo diario de lectura (min)",
+    "dailyGoalHint": "Minutos de lectura al día. Vacío = sin objetivo.",
+    "annualGoalHint": "Ítems completados en el año, por tipo. Vacío = sin objetivo.",
     "saveGoals": "Guardar objetivos",
     "savingGoals": "Guardando...",
     "errors": {
       "invalidGoal": "Los objetivos deben ser números enteros positivos.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
+    },
+    "annualGoalsTitle": "Objetivos anuales"
   },
   "admin": {
     "navLabel": "Admin",
@@ -463,11 +466,25 @@
     }
   },
   "queue": {
-    "title": "Tu cola",
-    "description": "Arrastra tus pendientes para priorizarlos y mira cuánto tardarías en completarlos a tu ritmo actual.",
+    "title": "Tus colas",
+    "description": "Organiza tus pendientes en colas y priorízalos. Cada cola estima cuánto tardarías a tu ritmo actual.",
     "empty": "Todavía no tienes nada pendiente que priorizar.",
     "dragHandle": "Arrastrar para reordenar",
-    "unresolved": "{count, plural, =1 {1 ítem sin estimación suficiente} other {# ítems sin estimación suficiente}}"
+    "unresolved": "{count, plural, =1 {1 ítem sin estimación suficiente} other {# ítems sin estimación suficiente}}",
+    "noQueue": "Sin cola",
+    "newQueue": "Nueva cola",
+    "newQueueLabel": "Nombre de la nueva cola",
+    "newQueuePlaceholder": "p. ej. Verano, Clásicos pendientes...",
+    "renameLabel": "Nombre de la cola",
+    "create": "Crear",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "saving": "Guardando...",
+    "errors": {
+      "invalidName": "El nombre no puede estar vacío (máx. 60 caracteres).",
+      "duplicateName": "Ya tienes una cola con ese nombre.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
   },
   "users": {
     "navLabel": "Usuarios",
@@ -476,5 +493,44 @@
     "placeholder": "Nombre o @usuario...",
     "submit": "Buscar",
     "noResults": "No se encontró ningún usuario."
+  },
+  "challenges": {
+    "navLabel": "Retos",
+    "title": "Tus retos",
+    "description": "Ponte objetivos con nombre y fecha: por tipo, por género o por saga.",
+    "empty": "Todavía no tienes retos. Crea el primero.",
+    "active": "Activos",
+    "archived": "Archivados",
+    "showArchived": "Ver archivados",
+    "hideArchived": "Ocultar archivados",
+    "newChallenge": "Nuevo reto",
+    "create": "Crear reto",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "edit": "Editar",
+    "cancel": "Cancelar",
+    "archive": "Archivar",
+    "unarchive": "Reactivar",
+    "delete": "Eliminar",
+    "progress": "{completed} de {target}",
+    "completed": "¡Completado!",
+    "dateRange": "{start} – {end}",
+    "anyType": "Cualquier tipo",
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "p. ej. 50 libros en 2026",
+      "type": "Tipo",
+      "target": "Objetivo (número de ítems)",
+      "genre": "Género (opcional)",
+      "genrePlaceholder": "p. ej. Ciencia ficción",
+      "start": "Desde",
+      "end": "Hasta"
+    },
+    "errors": {
+      "invalidName": "El nombre no puede estar vacío (máx. 80 caracteres).",
+      "invalidTarget": "El objetivo debe ser un número entero mayor que 0.",
+      "invalidDates": "Revisa las fechas: la de fin no puede ser anterior a la de inicio.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
   }
 }

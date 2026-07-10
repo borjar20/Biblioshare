@@ -1,17 +1,21 @@
-// Server component: an SVG progress ring. Used for the daily-minutes and
-// annual-items goals (docs/REQUIREMENTS.md §7.14). Colors via CSS vars.
+// Server component: an SVG progress ring. Used for the daily-minutes goal and
+// the per-type annual goals (docs/REQUIREMENTS.md §7.14). Colors via CSS vars —
+// `color` takes a var() expression so each annual ring can wear its media
+// type's accent (MEDIA_ACCENT.varName, src/lib/catalog/media-accent.ts).
 export function CircularProgress({
   value,
   total,
   label,
   caption,
   size = 84,
+  color = "var(--accent)",
 }: {
   value: number;
   total: number;
   label: string;
   caption: string;
   size?: number;
+  color?: string;
 }) {
   const stroke = 8;
   const radius = (size - stroke) / 2;
@@ -36,7 +40,7 @@ export function CircularProgress({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="var(--accent)"
+            stroke={color}
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}

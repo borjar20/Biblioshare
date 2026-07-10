@@ -55,7 +55,13 @@ export async function addSession(
 
   const sessionDate = String(formData.get("sessionDate") ?? "").trim();
 
-  const durationRaw = String(formData.get("durationMinutes") ?? "").trim();
+  // Los minutos son solo de lectura (§7.14): una sesión de serie registra qué
+  // episodio alcanzaste, no cuánto tardaste — la duración de una serie es una
+  // propiedad del ítem (series.episode_runtime_minutes), no del usuario. El
+  // formulario ya no pinta el campo para series, pero una server action es un
+  // endpoint POST público: hay que ignorarlo aquí, no confiar en la UI.
+  const durationRaw =
+    itemType === "book" ? String(formData.get("durationMinutes") ?? "").trim() : "";
   let durationMinutes: number | null = null;
   if (durationRaw) {
     durationMinutes = Number(durationRaw);
@@ -142,13 +148,16 @@ export async function addSession(
     : undefined;
 
   if (nextPosition || status) {
-    // Same queue_order cleanup as updateStatus (§7.22) — a session can also
-    // roll status out of "planned".
+    // Same queue cleanup as updateStatus (§7.22) — a session can also roll
+    // status out of "planned", which should drop the queue membership+order.
     const { error: updateError } = await supabase
       .from("library_entries")
       .update({
         ...(nextPosition && { position: nextPosition }),
-        ...(status && { status, ...(status !== "planned" && { queue_order: null }) }),
+        ...(status && {
+          status,
+          ...(status !== "planned" && { queue_id: null, queue_order: null }),
+        }),
       })
       .eq("id", entryId)
       .eq("user_id", user.id);

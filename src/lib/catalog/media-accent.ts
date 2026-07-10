@@ -17,7 +17,13 @@ export type MediaAccent = {
   borderSoft: string;
   /** ring-type-* (focused / current markers) */
   ring: string;
-  /** inline CSS var, for gradients / arbitrary values */
+  /**
+   * Raw CSS custom property, for gradients / SVG strokes / arbitrary values.
+   * Deliberately `--type-*` and not Tailwind's `--color-type-*`: globals.css
+   * declares the theme with `@theme inline`, which inlines those names into
+   * utilities instead of emitting them, so `var(--color-type-book)` resolves
+   * to nothing at runtime.
+   */
   varName: string;
 };
 
@@ -29,7 +35,7 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     border: "border-type-book",
     borderSoft: "border-type-book/30",
     ring: "ring-type-book",
-    varName: "--color-type-book",
+    varName: "--type-book",
   },
   movie: {
     text: "text-type-movie",
@@ -38,7 +44,7 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     border: "border-type-movie",
     borderSoft: "border-type-movie/30",
     ring: "ring-type-movie",
-    varName: "--color-type-movie",
+    varName: "--type-movie",
   },
   series: {
     text: "text-type-series",
@@ -47,6 +53,6 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     border: "border-type-series",
     borderSoft: "border-type-series/30",
     ring: "ring-type-series",
-    varName: "--color-type-series",
+    varName: "--type-series",
   },
 };

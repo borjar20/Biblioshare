@@ -21,9 +21,11 @@ import { reorderQueue } from "./actions";
 import { QueueItemRow } from "./queue-item-row";
 
 export function QueueList({
+  queueId,
   items,
   estimates,
 }: {
+  queueId: string | null;
   items: QueueItem[];
   estimates: Record<string, ItemEstimate>;
 }) {
@@ -51,7 +53,7 @@ export function QueueList({
     setOrderedItems(next);
 
     startTransition(async () => {
-      const result = await reorderQueue(next.map((item) => item.entryId));
+      const result = await reorderQueue(queueId, next.map((item) => item.entryId));
       if (result.error) setOrderedItems(previous);
     });
   }
