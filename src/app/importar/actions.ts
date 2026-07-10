@@ -1,15 +1,23 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
+import type { Json } from "@/lib/supabase/database.types";
 import { detectFormat } from "@/lib/import/detect-format";
 import { parseGoodreads } from "@/lib/import/parse-goodreads";
 import { parseLetterboxd } from "@/lib/import/parse-letterboxd";
 import { parseBookmory } from "@/lib/import/parse-bookmory";
 import { commitImportRow, commitManualImportRow } from "@/lib/import/commit-row";
 import type { ImportFormat, ImportRow, ImportRowResult } from "@/lib/import/types";
+
+const CATALOG_TABLE_BY_TYPE = {
+  book: "books",
+  movie: "movies",
+  series: "series",
+} as const;
 
 // Worst-case-time guard, independent of the request body size limit below.
 const MAX_ROWS = 3000;
@@ -126,4 +134,114 @@ export async function resolveUnmatchedImportRow(
   });
   if (result.outcome === "error") return { error: "generic" };
   return { result };
+}
+
+export type SaveForReviewState = {
+  saved?: boolean;
+  error?: "generic";
+};
+
+// Un usuario normal cuya fila no tuvo match la guarda para que un colaborador
+// la resuelva más tarde (§7.7). La entrada de biblioteca no se crea todavía:
+// se creará —a nombre de este usuario— cuando el colaborador resuelva la fila.
+export async function saveUnmatchedForReview(
+  itemType: ItemType,
+  row: ImportRow,
+  _prevState: SaveForReviewState
+): Promise<SaveForReviewState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.from("pending_import_rows").insert({
+    user_id: user.id,
+    item_type: itemType,
+    payload: row as unknown as Json,
+  });
+
+  if (error) return { error: "generic" };
+  return { saved: true };
+}
+
+export type ResolvePendingState = {
+  error?: "titleRequired" | "forbidden" | "generic";
+  done?: boolean;
+};
+
+// Cola de revisión (colaborador): crea el ítem de catálogo con los datos que
+// introduce el revisor y luego llama a resolve_pending_import, que crea la
+// entrada de biblioteca y los pases PARA EL DUEÑO de la fila (no el revisor).
+export async function resolvePendingRow(
+  pendingId: string,
+  itemType: ItemType,
+  row: ImportRow,
+  _prevState: ResolvePendingState,
+  formData: FormData
+): Promise<ResolvePendingState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+    return { error: "forbidden" };
+  }
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { error: "titleRequired" };
+  const author = String(formData.get("author") ?? "").trim() || null;
+  const yearRaw = String(formData.get("year") ?? "").trim();
+  const year = yearRaw ? Number(yearRaw) : null;
+
+  // Alta del ítem de catálogo (misma forma por tipo que commitManualImportRow).
+  const table = CATALOG_TABLE_BY_TYPE[itemType];
+  const payload =
+    itemType === "book"
+      ? {
+          title,
+          author,
+          published_year: year,
+          publisher: row.publisher,
+          total_pages: row.pageCount,
+          isbn: row.isbn,
+        }
+      : itemType === "movie"
+        ? { title, director: author, release_year: year }
+        : { title, creator: author, release_year: year };
+
+  const { data: inserted, error: insertError } = await supabase
+    .from(table)
+    .insert(payload as never)
+    .select("id")
+    .single();
+  if (insertError) return { error: "generic" };
+
+  const { error: rpcError } = await supabase.rpc("resolve_pending_import", {
+    p_pending_id: pendingId,
+    p_catalog_item_id: inserted.id,
+  });
+  if (rpcError) return { error: "generic" };
+
+  revalidatePath("/importar/pendientes");
+  return { done: true };
+}
+
+// El dueño descarta una de sus filas pendientes (o resueltas) — DELETE propio.
+export async function dismissPendingRow(pendingId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("pending_import_rows")
+    .delete()
+    .eq("id", pendingId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/importar/pendientes");
 }

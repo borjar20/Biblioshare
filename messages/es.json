@@ -437,7 +437,27 @@
       }
     },
     "unknownStatusTitle": "Estados no reconocidos (importados como \"Pendiente\")",
-    "erroredTitle": "Filas con error"
+    "erroredTitle": "Filas con error",
+    "unmatchedSavedForReview": "guardado para revisión",
+    "unmatchedReviewHint": "No podemos crear el ítem automáticamente. Puedes dejarlo en la cola para que un colaborador lo añada a tu biblioteca.",
+    "saveForReview": "Guardar para revisión",
+    "saveForReviewSubmitting": "Guardando...",
+    "pendingLink": "Ver filas pendientes de revisión",
+    "pendingLinkCount": "Tienes {count} fila(s) pendientes de revisión",
+    "pendingTitle": "Import pendiente de revisión",
+    "pendingDescription": "Filas que no tuvieron coincidencia automática. Un colaborador las revisará y las añadirá a tu biblioteca.",
+    "backToImport": "← Volver a importar",
+    "myPending": "Tus filas pendientes",
+    "noPending": "No tienes filas pendientes.",
+    "dismiss": "Descartar",
+    "reviewQueue": "Cola de revisión (colaborador)",
+    "emptyQueue": "No hay filas pendientes de revisar.",
+    "resolveForOwner": "Añadir a la biblioteca del usuario",
+    "pendingStatus": {
+      "pending": "Pendiente",
+      "resolved": "Resuelta",
+      "dismissed": "Descartada"
+    }
   },
   "queue": {
     "title": "Tu cola",

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
+import { countMyPending } from "@/lib/import/pending";
 import { ImportForm } from "./import-form";
 
 export const metadata: Metadata = {
@@ -26,6 +28,8 @@ export default async function ImportPage() {
   // same trust level as /buscar/manual, so gated the same way (§7.35).
   const canResolveManually = hasMinRole(role, "collaborator");
 
+  const pendingCount = await countMyPending(supabase, user.id);
+
   const t = await getTranslations("import");
 
   return (
@@ -33,6 +37,11 @@ export default async function ImportPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
+        <Link href="/importar/pendientes" className="text-sm text-accent underline">
+          {pendingCount > 0
+            ? t("pendingLinkCount", { count: pendingCount })
+            : t("pendingLink")}
+        </Link>
       </div>
       <ImportForm canResolveManually={canResolveManually} />
     </div>

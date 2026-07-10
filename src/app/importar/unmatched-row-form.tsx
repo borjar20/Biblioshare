@@ -7,9 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import type { ItemType } from "@/lib/catalog/types";
 import type { ImportRow } from "@/lib/import/types";
-import { resolveUnmatchedImportRow, type ResolveUnmatchedState } from "./actions";
+import {
+  resolveUnmatchedImportRow,
+  saveUnmatchedForReview,
+  type ResolveUnmatchedState,
+  type SaveForReviewState,
+} from "./actions";
 
 const initialState: ResolveUnmatchedState = {};
+const initialSaveState: SaveForReviewState = {};
 
 export function UnmatchedRowForm({
   itemType,
@@ -24,11 +30,21 @@ export function UnmatchedRowForm({
   const [skipped, setSkipped] = useState(false);
   const boundResolve = resolveUnmatchedImportRow.bind(null, itemType, row);
   const [state, formAction, pending] = useActionState(boundResolve, initialState);
+  const boundSave = saveUnmatchedForReview.bind(null, itemType, row);
+  const [saveState, saveAction, savePending] = useActionState(
+    boundSave,
+    initialSaveState
+  );
 
-  if (skipped || state.result) {
+  if (skipped || state.result || saveState.saved) {
+    const label = state.result
+      ? t("unmatchedResolved")
+      : saveState.saved
+        ? t("unmatchedSavedForReview")
+        : t("unmatchedSkipped");
     return (
       <p className="text-sm text-muted-foreground">
-        {row.title} — {state.result ? t("unmatchedResolved") : t("unmatchedSkipped")}
+        {row.title} — {label}
       </p>
     );
   }
@@ -79,9 +95,24 @@ export function UnmatchedRowForm({
           </div>
         </form>
       ) : (
-        <Button type="button" variant="ghost" onClick={() => setSkipped(true)}>
-          {t("unmatchedForm.skip")}
-        </Button>
+        // Usuario normal: no puede crear catálogo, pero sí dejar la fila en la
+        // cola de revisión para que un colaborador la resuelva a su nombre.
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">{t("unmatchedReviewHint")}</p>
+          <form action={saveAction} className="flex gap-2">
+            <Button type="submit" variant="secondary" disabled={savePending}>
+              {savePending ? t("saveForReviewSubmitting") : t("saveForReview")}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setSkipped(true)}>
+              {t("unmatchedForm.skip")}
+            </Button>
+          </form>
+          {saveState.error && (
+            <p className="text-sm text-status-dropped">
+              {t("unmatchedForm.errors.generic")}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

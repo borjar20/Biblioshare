@@ -231,6 +231,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_import_rows: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          payload: Json
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["pending_import_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          payload: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["pending_import_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          payload?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["pending_import_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       people: {
         Row: {
           bio: string | null
@@ -476,10 +509,15 @@ export type Database = {
         Args: { min: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      resolve_pending_import: {
+        Args: { p_catalog_item_id: string; p_pending_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
+      pending_import_status: "pending" | "resolved" | "dismissed"
       user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
