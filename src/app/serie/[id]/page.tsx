@@ -19,7 +19,7 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
-import { getMockCommunity } from "@/lib/catalog/mock-community";
+import { getCommunity } from "@/lib/community/get-community";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -134,7 +134,7 @@ export default async function SeriesDetailPage({
     });
 
   const genres = series.genres ?? [];
-  const community = getMockCommunity(series.id);
+  const community = await getCommunity(supabase, "series", series.id);
 
   let sagaMembers: SagaMember[] = [];
   if (saga) {

@@ -18,7 +18,7 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { getMockCommunity } from "@/lib/catalog/mock-community";
+import { getCommunity } from "@/lib/community/get-community";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -147,7 +147,7 @@ export default async function BookDetailPage({
   if (book.isbn) metaRows.push({ label: tMeta("isbn"), value: book.isbn });
 
   const genres = book.genres ?? [];
-  const community = getMockCommunity(book.id);
+  const community = await getCommunity(supabase, "book", book.id);
 
   let sagaMembers: SagaMember[] = [];
   if (saga) {

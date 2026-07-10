@@ -36,7 +36,8 @@ export function ItemHero({
   byline: string | null;
   genres: string[];
   coverUrl: string | null;
-  avgRating: number;
+  /** Nota media 1–10 (agregado real de la comunidad) o null si nadie ha puntuado. */
+  avgRating: number | null;
   ratingCount: number;
   ratingsLabel: string;
   backLabel: string;
@@ -103,19 +104,21 @@ export function ItemHero({
               <p className="font-mono text-xs text-muted-foreground">{byline}</p>
             )}
 
-            <div className="flex items-center gap-3">
-              <span
-                className={`font-serif text-3xl leading-none font-bold ${accent.text}`}
-              >
-                {avgRating.toFixed(1)}
-              </span>
-              <div className="flex flex-col gap-1">
-                <RatingDots value={avgRating} fillClassName={accent.bg} />
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {ratingCount.toLocaleString("es")} {ratingsLabel}
+            {avgRating !== null && (
+              <div className="flex items-center gap-3">
+                <span
+                  className={`font-serif text-3xl leading-none font-bold ${accent.text}`}
+                >
+                  {avgRating.toFixed(1)}
                 </span>
+                <div className="flex flex-col gap-1">
+                  <RatingDots value={avgRating / 2} fillClassName={accent.bg} />
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {ratingCount.toLocaleString("es")} {ratingsLabel}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {statusSlot && (
               <div className="flex flex-wrap items-center gap-2 pt-1">

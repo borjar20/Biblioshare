@@ -230,7 +230,8 @@
     "communityRatings": "Valoraciones de la comunidad",
     "reviews": "Reseñas",
     "noSynopsis": "Sin sinopsis disponible.",
-    "mockNotice": "Datos de muestra",
+    "noRatings": "Todavía nadie ha puntuado este título. Sé el primero desde tu biblioteca.",
+    "noReviews": "Todavía no hay reseñas. Escribe una al registrar un pase en tu diario.",
     "mediaLabel": {
       "book": "Libro",
       "movie": "Película",
