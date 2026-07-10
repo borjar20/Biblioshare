@@ -5,9 +5,10 @@ insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
-create policy "avatars publicly readable" on storage.objects
-  for select to anon, authenticated
-  using (bucket_id = 'avatars');
+-- Nota: un bucket público sirve sus objetos por URL pública SIN necesidad de
+-- una política SELECT sobre storage.objects. No se añade una política SELECT
+-- amplia a propósito: permitiría LISTAR el bucket (enumerar {user_id}/…), una
+-- fuga menor de información. Solo se conceden escrituras a la carpeta propia.
 
 create policy "avatars insert own folder" on storage.objects
   for insert to authenticated
