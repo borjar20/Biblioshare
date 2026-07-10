@@ -18,29 +18,14 @@ export async function reorderQueue(orderedEntryIds: string[]): Promise<ReorderQu
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Defensive re-validation against a stale client (an id whose status
-  // changed away from "planned" mid-session shouldn't get a queue_order).
-  const { count, error: countError } = await supabase
-    .from("library_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "planned")
-    .in("id", orderedEntryIds);
+  // Renumerado atómico en un solo statement (unnest ... with ordinality en la
+  // RPC). Ignora ids que ya no son "planned"/propios en lugar de fallar el
+  // lote entero — un cliente obsoleto no bloquea la reordenación del resto.
+  const { error } = await supabase.rpc("reorder_queue", {
+    entry_ids: orderedEntryIds,
+  });
 
-  if (countError) return { error: "generic" };
-  if ((count ?? 0) !== orderedEntryIds.length) return { error: "generic" };
-
-  const results = await Promise.all(
-    orderedEntryIds.map((id, index) =>
-      supabase
-        .from("library_entries")
-        .update({ queue_order: index })
-        .eq("id", id)
-        .eq("user_id", user.id)
-    )
-  );
-
-  if (results.some((r) => r.error)) return { error: "generic" };
+  if (error) return { error: "generic" };
 
   revalidatePath("/cola");
   return {};

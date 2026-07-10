@@ -7,6 +7,12 @@ const ONBOARDING_PATH = "/onboarding";
 // recuperación aunque el usuario no haya completado el onboarding todavía.
 const RECOVERY_PATHS = ["/auth/confirm", "/cuenta/contrasena"];
 
+// Cookie que cachea "este usuario ya completó el onboarding", para ahorrar la
+// consulta a `profiles` en cada navegación. Guarda el user id (no un simple
+// booleano) para que un usuario distinto —o uno sin perfil— no herede el
+// "onboarded" de otra sesión: solo se salta la consulta si el id coincide.
+const ONBOARDED_COOKIE = "bs_onb";
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -46,13 +52,27 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Logged in: figure out whether onboarding (username selection) is done.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const hasProfile = profile !== null;
+  // Fast path: la cookie confirma el onboarding de ESTE usuario → sin consulta.
+  // Solo se cachea el estado positivo; el "sin perfil" siempre re-consulta,
+  // así que completar el onboarding surte efecto en la siguiente navegación.
+  let hasProfile: boolean;
+  if (request.cookies.get(ONBOARDED_COOKIE)?.value === user.id) {
+    hasProfile = true;
+  } else {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    hasProfile = profile !== null;
+    if (hasProfile) {
+      response.cookies.set(ONBOARDED_COOKIE, user.id, {
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+    }
+  }
 
   if (
     !hasProfile &&

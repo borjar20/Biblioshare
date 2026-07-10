@@ -509,6 +509,7 @@ export type Database = {
         Args: { min: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      reorder_queue: { Args: { entry_ids: string[] }; Returns: undefined }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
