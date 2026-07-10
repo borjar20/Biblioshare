@@ -71,6 +71,14 @@ export async function ProfileHeader({
             <Link href="/importar" className={buttonVariants("secondary")}>
               {t("importLibrary")}
             </Link>
+            {/* Descarga directa: <a download>, no navegación de router. */}
+            <a
+              href="/api/export"
+              download
+              className={buttonVariants("secondary")}
+            >
+              {t("exportLibrary")}
+            </a>
             <EditProfileForm profile={profile} />
           </div>
         )}

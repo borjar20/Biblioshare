@@ -150,6 +150,7 @@
     "typeFilms": "Películas",
     "recentlyUpdated": "Actualizado recientemente",
     "importLibrary": "Importar biblioteca",
+    "exportLibrary": "Exportar CSV",
     "editProfile": "Editar perfil",
     "displayName": "Nombre",
     "avatarUrl": "URL del avatar",
