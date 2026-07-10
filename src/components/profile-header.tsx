@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
@@ -10,6 +11,13 @@ import {
   SeriesIcon,
   UserIcon,
 } from "@/components/ui/icons";
+
+// Los avatares subidos viven en el bucket público de Supabase Storage (en
+// remotePatterns → next/image). Las URLs externas antiguas se renderizan con
+// <img> por compatibilidad.
+function isSupabaseAvatar(url: string): boolean {
+  return /\.supabase\.co\/storage\/v1\/object\/public\//.test(url);
+}
 
 function initials(name: string) {
   return name
@@ -39,12 +47,23 @@ export async function ProfileHeader({
         <div className="flex items-start gap-4">
           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-surface-muted">
             {profile.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-supplied URL, not in next/image remotePatterns
-              <img
-                src={profile.avatarUrl}
-                alt={name}
-                className="h-full w-full object-cover"
-              />
+              isSupabaseAvatar(profile.avatarUrl) ? (
+                <Image
+                  src={profile.avatarUrl}
+                  alt={name}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              ) : (
+                // URL externa legado (previa a Storage), fuera de remotePatterns.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatarUrl}
+                  alt={name}
+                  className="h-full w-full object-cover"
+                />
+              )
             ) : (
               <div className="flex h-full w-full items-center justify-center text-lg font-medium text-muted-foreground">
                 {initials(name)}

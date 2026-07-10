@@ -153,8 +153,6 @@
     "exportLibrary": "Exportar CSV",
     "editProfile": "Editar perfil",
     "displayName": "Nombre",
-    "avatarUrl": "URL del avatar",
-    "avatarUrlHint": "Opcional. Enlace directo a una imagen.",
     "bio": "Biografía",
     "editSubmit": "Guardar",
     "editSubmitting": "Guardando...",
@@ -167,7 +165,11 @@
       "book": "Libros",
       "movie": "Películas",
       "series": "Series"
-    }
+    },
+    "avatar": "Avatar",
+    "avatarChoose": "Elegir imagen",
+    "avatarUploading": "Subiendo...",
+    "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo."
   },
   "item": {
     "pages": "págs.",

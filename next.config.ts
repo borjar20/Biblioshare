@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "books.googleusercontent.com" },
       { protocol: "https", hostname: "image.tmdb.org" },
       { protocol: "https", hostname: "covers.openlibrary.org" },
+      // Avatares en Supabase Storage (bucket público). Un solo patrón de
+      // subdominio cubre los proyectos dev y prod.
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
 };

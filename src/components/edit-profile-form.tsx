@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
 import { updateProfile, type UpdateProfileState } from "@/lib/profile/actions";
+import { AvatarUpload } from "./avatar-upload";
 
 const initialState: UpdateProfileState = {};
 
@@ -44,13 +45,7 @@ export function EditProfileForm({ profile }: { profile: Profile }) {
           defaultValue={profile.displayName ?? ""}
         />
       </Field>
-      <Field label={t("avatarUrl")} htmlFor="edit-profile-avatar-url" hint={t("avatarUrlHint")}>
-        <Input
-          id="edit-profile-avatar-url"
-          name="avatarUrl"
-          defaultValue={profile.avatarUrl ?? ""}
-        />
-      </Field>
+      <AvatarUpload userId={profile.userId} initialUrl={profile.avatarUrl} />
       <Field label={t("bio")} htmlFor="edit-profile-bio">
         <textarea
           id="edit-profile-bio"
