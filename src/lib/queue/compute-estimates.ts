@@ -1,5 +1,5 @@
 import type { QueueItem, ItemEstimate, QueueEstimates } from "./types";
-import type { BookPace, SeriesPace } from "./get-reading-pace";
+import type { BookPace } from "./get-reading-pace";
 import type { MoviePace } from "./get-movie-cadence";
 import { formatDuration } from "./format-duration";
 
@@ -7,10 +7,13 @@ import { formatDuration } from "./format-duration";
 // numeric estimate (docs/REQUIREMENTS.md §7.22: show the calculation, don't
 // hide it behind a model). Items without enough data are excluded from the
 // total but counted separately, never silently dropped.
+//
+// Only books need a measured pace: their speed is personal (páginas/min). A
+// movie's and a series' duration are properties of the item itself, taken from
+// TMDB — so both are deterministic and need no session history.
 export function computeQueueEstimates(
   items: QueueItem[],
   bookPace: BookPace,
-  seriesPace: SeriesPace,
   moviePace: MoviePace
 ): QueueEstimates {
   const perItem: Record<string, ItemEstimate> = {};
@@ -18,7 +21,7 @@ export function computeQueueEstimates(
   let unresolvedCount = 0;
 
   for (const item of items) {
-    const estimate = estimateItem(item, bookPace, seriesPace);
+    const estimate = estimateItem(item, bookPace);
     perItem[item.entryId] = estimate;
     if (estimate.minutes !== null) totalMinutes += estimate.minutes;
     else unresolvedCount += 1;
@@ -38,7 +41,7 @@ export function computeQueueEstimates(
   };
 }
 
-function estimateItem(item: QueueItem, bookPace: BookPace, seriesPace: SeriesPace): ItemEstimate {
+function estimateItem(item: QueueItem, bookPace: BookPace): ItemEstimate {
   if (item.itemType === "book") {
     if (!item.totalPages) return { minutes: null, formulaText: "Nº de páginas desconocido" };
     if (!bookPace) return { minutes: null, formulaText: "Sin datos suficientes de ritmo todavía" };
@@ -52,12 +55,14 @@ function estimateItem(item: QueueItem, bookPace: BookPace, seriesPace: SeriesPac
 
   if (item.itemType === "series") {
     if (!item.totalEpisodes) return { minutes: null, formulaText: "Nº de episodios desconocido" };
-    if (!seriesPace) return { minutes: null, formulaText: "Sin datos suficientes de ritmo todavía" };
+    if (!item.episodeRuntimeMinutes) {
+      return { minutes: null, formulaText: "Duración de episodio desconocida" };
+    }
 
-    const minutes = item.totalEpisodes * seriesPace.minutesPerEpisode;
+    const minutes = item.totalEpisodes * item.episodeRuntimeMinutes;
     return {
       minutes,
-      formulaText: `${item.totalEpisodes} episodios × ${seriesPace.minutesPerEpisode.toFixed(1)} min/episodio (últimas ${seriesPace.sampleCount} sesiones) ≈ ${formatDuration(minutes)}`,
+      formulaText: `${item.totalEpisodes} episodios × ${item.episodeRuntimeMinutes} min/episodio ≈ ${formatDuration(minutes)}`,
     };
   }
 

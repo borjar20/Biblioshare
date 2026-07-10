@@ -6,7 +6,12 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const DAYS = 7;
 
-// Last 7 days (oldest → today) with total session minutes per day.
+// Last 7 days (oldest → today) with total *reading* minutes per day.
+//
+// Only book sessions carry minutes (§7.14): movies never had sessions, and
+// series sessions no longer record a duration. The !inner join on item_type —
+// the same one getBookPace uses — also keeps pre-change series rows, which
+// still hold a duration_minutes, out of the total.
 export async function getWeeklyActivity(
   supabase: SupabaseServerClient,
   userId: string
@@ -21,8 +26,9 @@ export async function getWeeklyActivity(
 
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("session_date, duration_minutes")
+    .select("session_date, duration_minutes, library_entries!inner(item_type)")
     .eq("user_id", userId)
+    .eq("library_entries.item_type", "book")
     .gte("session_date", rangeStart)
     .lte("session_date", todayISO());
 

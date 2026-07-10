@@ -34,3 +34,64 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   await page.goto(`/u/${USERNAME}`);
   await expect(page.getByText(`@${USERNAME}`).first()).toBeVisible();
 });
+
+// Colas múltiples (§7.22): crear una cola nombrada y borrarla. Auto-limpiante
+// (nombre único por ejecución) para no dejar residuo en el proyecto dev.
+test("crear y borrar una cola nombrada", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.goto("/login");
+  await page.fill('input[name="email"]', EMAIL);
+  await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+
+  const queueName = `e2e-${Date.now()}`;
+
+  await page.goto("/cola");
+  await page.getByRole("button", { name: /nueva cola/i }).click();
+  await page.getByLabel(/nombre de la nueva cola/i).fill(queueName);
+  await page.getByRole("button", { name: /^crear$/i }).click();
+
+  // La cola nueva aparece como pestaña.
+  const tab = page.getByRole("link", { name: queueName });
+  await expect(tab).toBeVisible();
+
+  // Seleccionarla y borrarla; la pestaña desaparece.
+  await tab.click();
+  await expect(page.getByRole("textbox", { name: /nombre de la cola/i })).toHaveValue(queueName);
+  await page.getByRole("button", { name: /^eliminar$/i }).click();
+  await expect(page.getByRole("link", { name: queueName })).toHaveCount(0);
+});
+
+// Retos (§7.10): crear un reto con criterio de tipo y verificar que rinde
+// progreso. Auto-limpiante.
+test("crear y borrar un reto", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.goto("/login");
+  await page.fill('input[name="email"]', EMAIL);
+  await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+
+  const name = `e2e reto ${Date.now()}`;
+
+  await page.goto("/retos");
+  await page.getByRole("button", { name: /nuevo reto/i }).click();
+  await page.getByLabel(/^nombre$/i).fill(name);
+  await page.getByLabel(/objetivo/i).fill("10");
+  await page.getByLabel(/desde/i).fill("2026-01-01");
+  await page.getByLabel(/hasta/i).fill("2026-12-31");
+  await page.getByRole("button", { name: /crear reto/i }).click();
+
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+  // La tarjeta es el div `rounded-lg` que contiene el nombre del reto.
+  const card = page.locator("div.rounded-lg").filter({ hasText: name });
+  // Muestra "N de 10".
+  await expect(card.getByText(/de 10/)).toBeVisible();
+
+  // Limpieza.
+  await card.getByRole("button", { name: /eliminar/i }).click();
+  await expect(page.getByRole("heading", { name })).toHaveCount(0);
+});

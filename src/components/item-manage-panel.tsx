@@ -8,7 +8,12 @@ import type { MediaStatus } from "@/lib/library/types";
 import type { Position } from "@/lib/library/position";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { addExistingItemToLibrary } from "@/lib/library/add-existing-item";
-import { updateStatus, removeFromLibrary } from "@/lib/library/manage-actions";
+import {
+  updateStatus,
+  removeFromLibrary,
+  moveEntryToQueue,
+} from "@/lib/library/manage-actions";
+import type { Queue } from "@/lib/queue/types";
 import { ProgressPanel } from "./progress-panel";
 import { DiaryPanel } from "./diary-panel";
 import { SessionList } from "./session-list";
@@ -26,6 +31,7 @@ export type ManagedEntry = {
   rating: number | null;
   position: Position;
   notes: string | null;
+  queueId: string | null;
 };
 
 export function ItemManagePanel({
@@ -33,11 +39,13 @@ export function ItemManagePanel({
   itemId,
   entry,
   sessions,
+  queues,
 }: {
   itemType: ItemType;
   itemId: string;
   entry: ManagedEntry | null;
   sessions: ProgressSession[];
+  queues: Queue[];
 }) {
   const t = useTranslations("item");
   const [isPending, startTransition] = useTransition();
@@ -62,6 +70,7 @@ export function ItemManagePanel({
       itemId={itemId}
       entry={entry}
       sessions={sessions}
+      queues={queues}
     />
   );
 }
@@ -71,16 +80,20 @@ function ManagedControls({
   itemId,
   entry,
   sessions,
+  queues,
 }: {
   itemType: ItemType;
   itemId: string;
   entry: ManagedEntry;
   sessions: ProgressSession[];
+  queues: Queue[];
 }) {
   const t = useTranslations("item");
   const tLibrary = useTranslations("library");
+  const tQueue = useTranslations("queue");
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(entry.status);
+  const [queueId, setQueueId] = useState(entry.queueId);
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
@@ -109,6 +122,39 @@ function ManagedControls({
           ))}
         </select>
       </div>
+
+      {/* Elegir cola: solo tiene sentido mientras el ítem está planificado
+          (§7.22). Al salir de "planned" el server limpia queue_id. */}
+      {status === "planned" && queues.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor={`manage-queue-${entry.entryId}`}
+            className="text-sm font-medium"
+          >
+            {tQueue("title")}
+          </label>
+          <select
+            id={`manage-queue-${entry.entryId}`}
+            value={queueId ?? ""}
+            disabled={isPending}
+            onChange={(event) => {
+              const next = event.target.value || null;
+              setQueueId(next);
+              startTransition(() =>
+                moveEntryToQueue(entry.entryId, itemType, itemId, next)
+              );
+            }}
+            className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground disabled:opacity-60"
+          >
+            <option value="">{tQueue("noQueue")}</option>
+            {queues.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <ProgressPanel
         entryId={entry.entryId}

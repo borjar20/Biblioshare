@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { getQueues } from "@/lib/queue/get-queues";
+import type { Queue } from "@/lib/queue/types";
 import {
   ItemManagePanel,
   type ManagedEntry,
@@ -89,10 +91,11 @@ export default async function BookDetailPage({
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
+  let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
       .from("library_entries")
-      .select("id, status, rating, position, notes")
+      .select("id, status, rating, position, notes, queue_id")
       .eq("user_id", user.id)
       .eq("item_type", "book")
       .eq("item_id", book.id)
@@ -104,9 +107,11 @@ export default async function BookDetailPage({
         rating: row.rating,
         position: parsePosition("book", row.position),
         notes: row.notes,
+        queueId: row.queue_id,
       };
       sessions = await getSessions(supabase, row.id, "book");
     }
+    queues = await getQueues(supabase, user.id);
   }
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
@@ -220,6 +225,7 @@ export default async function BookDetailPage({
               itemId={book.id}
               entry={entry}
               sessions={sessions}
+              queues={queues}
             />
             {canContribute && (
               <SagaAssignForm

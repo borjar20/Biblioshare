@@ -61,20 +61,24 @@ export function SessionForm({
         />
       </Field>
 
-      <Field
-        label={t("duration")}
-        htmlFor="session-duration"
-        hint={t("durationHint")}
-      >
-        <Input
-          id="session-duration"
-          name="durationMinutes"
-          type="number"
-          min={0}
-          inputMode="numeric"
-          placeholder="0"
-        />
-      </Field>
+      {/* Solo lectura registra minutos (§7.14): una serie se mide por
+          episodios alcanzados, y su duración sale del catálogo. */}
+      {itemType === "book" && (
+        <Field
+          label={t("duration")}
+          htmlFor="session-duration"
+          hint={t("durationHint")}
+        >
+          <Input
+            id="session-duration"
+            name="durationMinutes"
+            type="number"
+            min={0}
+            inputMode="numeric"
+            placeholder="0"
+          />
+        </Field>
+      )}
 
       {itemType === "book" ? (
         <Field

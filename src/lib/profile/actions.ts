@@ -61,17 +61,24 @@ export async function updateGoals(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Un objetivo anual por tipo de ítem; el diario es solo de lectura (§7.14).
   const dailyGoal = parseGoal(String(formData.get("dailyGoalMinutes") ?? ""));
-  const annualGoal = parseGoal(String(formData.get("annualGoalItems") ?? ""));
-  if (dailyGoal === "invalid" || annualGoal === "invalid") {
+  const annualBooks = parseGoal(String(formData.get("annualGoalBooks") ?? ""));
+  const annualMovies = parseGoal(String(formData.get("annualGoalMovies") ?? ""));
+  const annualSeries = parseGoal(String(formData.get("annualGoalSeries") ?? ""));
+
+  const parsed = [dailyGoal, annualBooks, annualMovies, annualSeries];
+  if (parsed.some((goal) => goal === "invalid")) {
     return { error: "invalidGoal" };
   }
 
   const { error } = await supabase
     .from("profiles")
     .update({
-      daily_goal_minutes: dailyGoal,
-      annual_goal_items: annualGoal,
+      daily_goal_minutes: dailyGoal as number | null,
+      annual_goal_books: annualBooks as number | null,
+      annual_goal_movies: annualMovies as number | null,
+      annual_goal_series: annualSeries as number | null,
     })
     .eq("user_id", user.id);
 

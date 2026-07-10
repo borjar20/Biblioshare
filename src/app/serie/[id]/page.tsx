@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { getQueues } from "@/lib/queue/get-queues";
+import type { Queue } from "@/lib/queue/types";
 import {
   ItemManagePanel,
   type ManagedEntry,
@@ -89,10 +91,11 @@ export default async function SeriesDetailPage({
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
+  let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
       .from("library_entries")
-      .select("id, status, rating, position, notes")
+      .select("id, status, rating, position, notes, queue_id")
       .eq("user_id", user.id)
       .eq("item_type", "series")
       .eq("item_id", series.id)
@@ -104,9 +107,11 @@ export default async function SeriesDetailPage({
         rating: row.rating,
         position: parsePosition("series", row.position),
         notes: row.notes,
+        queueId: row.queue_id,
       };
       sessions = await getSessions(supabase, row.id, "series");
     }
+    queues = await getQueues(supabase, user.id);
   }
 
   const byline =
@@ -212,6 +217,7 @@ export default async function SeriesDetailPage({
             itemId={series.id}
             entry={entry}
             sessions={sessions}
+            queues={queues}
           />
         }
       />

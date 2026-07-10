@@ -4,21 +4,30 @@ import type { QueueItem } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-type CatalogMeta = Omit<QueueItem, "entryId" | "itemId" | "itemType" | "queueOrder">;
+type CatalogMeta = Omit<
+  QueueItem,
+  "entryId" | "itemId" | "itemType" | "queueId" | "queueOrder"
+>;
 
 // Assumes ensureQueueOrder(supabase, userId) already ran this request — a
-// dense, gap-free queue_order per "planned" item. See docs/REQUIREMENTS.md
-// §7.22.
+// dense, gap-free queue_order per "planned" item, within each queue. Pass a
+// queueId to fetch one named queue, or null for the "Sin cola" bucket
+// (planned items with no queue). See docs/REQUIREMENTS.md §7.22.
 export async function getQueueItems(
   supabase: SupabaseServerClient,
-  userId: string
+  userId: string,
+  queueId: string | null
 ): Promise<QueueItem[]> {
-  const { data: entries, error } = await supabase
+  let query = supabase
     .from("library_entries")
-    .select("id, item_type, item_id, queue_order")
+    .select("id, item_type, item_id, queue_id, queue_order")
     .eq("user_id", userId)
-    .eq("status", "planned")
-    .order("queue_order", { ascending: true });
+    .eq("status", "planned");
+
+  // Postgres treats `= NULL` as never-true, so the empty bucket needs `is`.
+  query = queueId === null ? query.is("queue_id", null) : query.eq("queue_id", queueId);
+
+  const { data: entries, error } = await query.order("queue_order", { ascending: true });
 
   if (error) throw error;
   if (!entries || entries.length === 0) return [];
@@ -39,7 +48,7 @@ export async function getQueueItems(
     idsByType.series.length
       ? supabase
           .from("series")
-          .select("id, title, cover_url, total_episodes, tmdb_id")
+          .select("id, title, cover_url, total_episodes, episode_runtime_minutes, tmdb_id")
           .in("id", idsByType.series)
       : Promise.resolve({ data: [] }),
   ]);
@@ -53,6 +62,7 @@ export async function getQueueItems(
       totalPages: row.total_pages,
       durationMinutes: null,
       totalEpisodes: null,
+      episodeRuntimeMinutes: null,
       tmdbId: null,
     });
   }
@@ -64,6 +74,7 @@ export async function getQueueItems(
       totalPages: null,
       durationMinutes: row.duration_minutes,
       totalEpisodes: null,
+      episodeRuntimeMinutes: null,
       tmdbId: row.tmdb_id,
     });
   }
@@ -75,6 +86,7 @@ export async function getQueueItems(
       totalPages: null,
       durationMinutes: null,
       totalEpisodes: row.total_episodes,
+      episodeRuntimeMinutes: row.episode_runtime_minutes,
       tmdbId: row.tmdb_id,
     });
   }
@@ -87,6 +99,7 @@ export async function getQueueItems(
         entryId: entry.id,
         itemId: entry.item_id,
         itemType: entry.item_type,
+        queueId: entry.queue_id,
         queueOrder: entry.queue_order ?? 0,
         ...meta,
       } satisfies QueueItem;

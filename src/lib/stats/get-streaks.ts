@@ -4,20 +4,28 @@ import type { Streaks } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-// Current and best run of consecutive days with at least one session.
-// Fetches only the date column (cheap) and computes in JS.
+// Current and best run of consecutive days with at least one activity.
+//
+// "Activity" is deliberately broader than the weekly strip's reading minutes
+// (§7.14): a day counts if you logged a session of ANY type, or finished an
+// item. Otherwise a movie night — which records a diary entry and no session —
+// would break a streak. Fetches only the date columns (cheap), computes in JS.
 export async function getStreaks(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<Streaks> {
-  const { data, error } = await supabase
-    .from("progress_sessions")
-    .select("session_date")
-    .eq("user_id", userId);
+  const [sessions, finished] = await Promise.all([
+    supabase.from("progress_sessions").select("session_date").eq("user_id", userId),
+    supabase.from("diary_entries").select("finished_on").eq("user_id", userId),
+  ]);
 
-  if (error) throw error;
+  if (sessions.error) throw sessions.error;
+  if (finished.error) throw finished.error;
 
-  const activeDays = new Set((data ?? []).map((row) => row.session_date));
+  const activeDays = new Set([
+    ...(sessions.data ?? []).map((row) => row.session_date),
+    ...(finished.data ?? []).map((row) => row.finished_on),
+  ]);
   if (activeDays.size === 0) return { current: 0, best: 0 };
 
   // Sorted unique days, ascending.
