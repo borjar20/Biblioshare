@@ -54,7 +54,7 @@ export async function parseImportFile(
 
   const rows =
     detected.format === "bookmory"
-      ? parseBookmory(buffer)
+      ? await parseBookmory(buffer)
       : detected.format === "goodreads"
         ? parseGoodreads(new TextDecoder("utf-8").decode(buffer))
         : parseLetterboxd(new TextDecoder("utf-8").decode(buffer));

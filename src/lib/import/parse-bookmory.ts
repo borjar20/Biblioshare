@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { normalizeIsbn } from "@/lib/catalog/isbn";
 import type { ImportRow } from "./types";
 
@@ -13,10 +13,23 @@ const STATUS_MAP: Record<string, ImportRow["status"]> = {
   Abandonado: "dropped",
 };
 
-function cell(row: unknown[], index: number): string {
-  if (index < 0) return "";
-  const value = row[index];
-  return value === undefined || value === null ? "" : String(value).trim();
+// A cell value in exceljs can be a primitive, a Date, or a wrapper object
+// (rich text, hyperlink, or formula result). Flatten any of them to trimmed
+// text so the parsing logic below stays value-shape-agnostic.
+function cellText(row: ExcelJS.Row, index: number): string {
+  if (index < 1) return "";
+  const value = row.getCell(index).value;
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") {
+    if (value instanceof Date) return value.toISOString();
+    if ("text" in value && value.text != null) return String(value.text).trim();
+    if ("result" in value && value.result != null) return String(value.result).trim();
+    if ("richText" in value && Array.isArray(value.richText)) {
+      return value.richText.map((t) => t.text).join("").trim();
+    }
+    if ("hyperlink" in value && "text" in value) return String(value.text).trim();
+  }
+  return String(value).trim();
 }
 
 function parsePages(raw: string): number | null {
@@ -53,22 +66,23 @@ function parseRating(raw: string): number | null {
 // Reads only the "Libros" sheet (or the first sheet, if renamed) — the
 // per-book "Notas (Título)" sheets aren't imported in v1. Row 1 is a partial
 // group-header row ("Información del libro", "Registro de lectura 1", …),
-// row 2 is the real header, data starts at row 3.
-export function parseBookmory(buffer: ArrayBuffer): ImportRow[] {
-  const workbook = XLSX.read(new Uint8Array(buffer), { type: "array" });
-  const sheetName = workbook.SheetNames.includes("Libros")
-    ? "Libros"
-    : workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
+// row 2 is the real header, data starts at row 3. Async because exceljs
+// parses the workbook asynchronously (unlike the old sync xlsx reader).
+export async function parseBookmory(buffer: ArrayBuffer): Promise<ImportRow[]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const sheet =
+    workbook.getWorksheet("Libros") ?? workbook.worksheets[0] ?? null;
   if (!sheet) return [];
 
-  const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: "",
+  // Row 2 is the real header — map column name → 1-based column index.
+  const headerIndex = new Map<string, number>();
+  sheet.getRow(2).eachCell((cell, colNumber) => {
+    const name = String(cell.value ?? "").trim();
+    if (name) headerIndex.set(name, colNumber);
   });
-
-  const header = (grid[1] ?? []).map((h) => String(h).trim());
-  const col = (name: string) => header.indexOf(name);
+  const col = (name: string) => headerIndex.get(name) ?? -1;
 
   const iTitle = col("Título");
   const iAuthor = col("Autores/as");
@@ -80,27 +94,26 @@ export function parseBookmory(buffer: ArrayBuffer): ImportRow[] {
   const iRating = col("Calificaciones de estrellas");
 
   const rows: ImportRow[] = [];
-  for (let r = 2; r < grid.length; r++) {
-    const raw = grid[r];
-    if (!raw) continue;
+  for (let r = 3; r <= sheet.rowCount; r++) {
+    const raw = sheet.getRow(r);
 
-    const title = cell(raw, iTitle);
+    const title = cellText(raw, iTitle);
     if (!title) continue;
 
-    const period = parseReadingPeriod(cell(raw, iPeriod));
-    const rawStatus = cell(raw, iStatus);
+    const period = parseReadingPeriod(cellText(raw, iPeriod));
+    const rawStatus = cellText(raw, iStatus);
     const mappedStatus = STATUS_MAP[rawStatus];
 
     rows.push({
-      rowNumber: r + 1, // grid is 0-indexed; excel row = index + 1
+      rowNumber: r, // exceljs rows are already 1-based (= excel row)
       title,
-      author: cell(raw, iAuthor) || null,
-      isbn: normalizeIsbn(cell(raw, iIsbn)),
-      publisher: cell(raw, iPublisher) || null,
-      pageCount: parsePages(cell(raw, iPages)),
+      author: cellText(raw, iAuthor) || null,
+      isbn: normalizeIsbn(cellText(raw, iIsbn)),
+      publisher: cellText(raw, iPublisher) || null,
+      pageCount: parsePages(cellText(raw, iPages)),
       year: null,
       status: mappedStatus ?? "planned",
-      rating: parseRating(cell(raw, iRating)),
+      rating: parseRating(cellText(raw, iRating)),
       bookFormat: null,
       diaryDates: period ? [period] : [],
       unknownStatusLabel: rawStatus && !mappedStatus ? rawStatus : null,
