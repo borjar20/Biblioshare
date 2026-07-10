@@ -66,7 +66,8 @@ export async function WeeklyStrip({
             value={today.minutes}
             total={dailyGoalMinutes}
             label={`${today.minutes}`}
-            caption={`${dailyGoalMinutes}`}
+            label2={`${dailyGoalMinutes}`}
+            caption={`${t("dailyGoal")}`}
           />
         ) : (
           <div className="flex flex-col">

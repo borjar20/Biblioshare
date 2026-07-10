@@ -1,11 +1,13 @@
 // Server component: an SVG progress ring. Used for the daily-minutes goal and
 // the per-type annual goals (docs/REQUIREMENTS.md §7.14). Colors via CSS vars —
 // `color` takes a var() expression so each annual ring can wear its media
+
 // type's accent (MEDIA_ACCENT.varName, src/lib/catalog/media-accent.ts).
 export function CircularProgress({
   value,
   total,
   label,
+  label2,
   caption,
   size = 84,
   color = "var(--accent)",
@@ -14,7 +16,8 @@ export function CircularProgress({
   value: number;
   total: number;
   label: string;
-  caption: string;
+  label2: string;
+  caption?: string;
   size?: number;
   color?: string;
   textColor?: string;
@@ -51,8 +54,9 @@ export function CircularProgress({
         </svg>
         <div
           className={`absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground ${textColor}`}
+          title={`${caption}`}
         >
-          {label}/{caption}
+          {label}/{label2}
         </div>
       </div>
     </div>

@@ -84,7 +84,8 @@ export async function AnnualStats({
                 size={64}
                 color={`var(${accent.varName})`}
                 label={`${completed}`}
-                caption={`${goal}`}
+                label2={`${goal}`}
+                caption={`${tTypes(type)}`}
                 textColor={accent.text}
               />
             ) : (
