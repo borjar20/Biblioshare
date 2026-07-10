@@ -9,6 +9,7 @@ export function CircularProgress({
   caption,
   size = 84,
   color = "var(--accent)",
+  textColor = "var(--foreground)",
 }: {
   value: number;
   total: number;
@@ -16,6 +17,7 @@ export function CircularProgress({
   caption: string;
   size?: number;
   color?: string;
+  textColor?: string;
 }) {
   const stroke = 8;
   const radius = (size - stroke) / 2;
@@ -47,13 +49,12 @@ export function CircularProgress({
             strokeDashoffset={offset}
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground">
-          {label}
+        <div
+          className={`absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground ${textColor}`}
+        >
+          {label}/{caption}
         </div>
       </div>
-      <span className="max-w-[6rem] text-sm leading-tight text-muted-foreground">
-        {caption}
-      </span>
     </div>
   );
 }

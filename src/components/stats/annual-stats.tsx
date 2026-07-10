@@ -84,7 +84,8 @@ export async function AnnualStats({
                 size={64}
                 color={`var(${accent.varName})`}
                 label={`${completed}`}
-                caption={`${tTypes(type)} · ${t("annualGoal", { goal })}`}
+                caption={`${goal}`}
+                textColor={accent.text}
               />
             ) : (
               <div key={type} className="flex flex-col">

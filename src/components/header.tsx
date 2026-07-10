@@ -2,7 +2,14 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "./theme-toggle";
-import { AppLogoIcon, GripVerticalIcon, SearchIcon, TrophyIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
+import {
+  AppLogoIcon,
+  GripVerticalIcon,
+  SearchIcon,
+  UserIcon,
+  UsersIcon,
+  TrophyIcon,
+} from "@/components/ui/icons";
 
 export async function Header() {
   const t = await getTranslations();
@@ -57,7 +64,9 @@ export async function Header() {
               className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
             >
               <TrophyIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("challenges.navLabel")}</span>
+              <span className="hidden sm:inline">
+                {t("challenges.navLabel")}
+              </span>
             </Link>
             <Link
               href="/usuarios"
@@ -68,10 +77,7 @@ export async function Header() {
               <span className="hidden sm:inline">{t("users.navLabel")}</span>
             </Link>
             {isAdmin && (
-              <Link
-                href="/admin"
-                className="shrink-0 hover:text-foreground"
-              >
+              <Link href="/admin" className="shrink-0 hover:text-foreground">
                 {t("admin.navLabel")}
               </Link>
             )}
@@ -79,9 +85,9 @@ export async function Header() {
               <Link
                 href={`/u/${username}`}
                 aria-label={`@${username}`}
-                className="inline-flex min-w-0 items-center gap-2 hover:text-foreground"
+                className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
               >
-                <UserIcon className="h-4 w-4 shrink-0" />
+                <UserIcon className="h-4 w-4" />
                 <span className="hidden truncate sm:inline">@{username}</span>
               </Link>
             )}
