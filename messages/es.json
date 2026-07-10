@@ -467,5 +467,13 @@
     "empty": "Todavía no tienes nada pendiente que priorizar.",
     "dragHandle": "Arrastrar para reordenar",
     "unresolved": "{count, plural, =1 {1 ítem sin estimación suficiente} other {# ítems sin estimación suficiente}}"
+  },
+  "users": {
+    "navLabel": "Usuarios",
+    "title": "Descubrir usuarios",
+    "description": "Busca a otras personas por su nombre o @usuario y explora sus bibliotecas públicas.",
+    "placeholder": "Nombre o @usuario...",
+    "submit": "Buscar",
+    "noResults": "No se encontró ningún usuario."
   }
 }

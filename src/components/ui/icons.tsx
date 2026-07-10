@@ -107,6 +107,17 @@ export function UserIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function UsersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M9 11a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 9 11Z" />
+      <path d="M3 19a6 6 0 0 1 12 0" />
+      <path d="M16 3.5a3.5 3.5 0 0 1 0 7" />
+      <path d="M18 13a6 6 0 0 1 3 6" />
+    </Icon>
+  );
+}
+
 export function SparklesIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
