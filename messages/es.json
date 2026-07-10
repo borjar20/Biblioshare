@@ -156,6 +156,7 @@
     "importLibrary": "Importar biblioteca",
     "exportLibrary": "Exportar CSV",
     "editProfile": "Editar perfil",
+    "logout": "Cerrar sesión",
     "displayName": "Nombre",
     "bio": "Biografía",
     "editSubmit": "Guardar",

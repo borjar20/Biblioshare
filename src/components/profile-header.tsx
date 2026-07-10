@@ -1,10 +1,8 @@
-import Link from "next/link";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
 import { EditProfileForm } from "./edit-profile-form";
-import { buttonVariants } from "@/components/ui/button";
 import {
   BookIcon,
   FilmIcon,
@@ -85,22 +83,7 @@ export async function ProfileHeader({
           </div>
         </div>
 
-        {isOwner && (
-          <div className="flex flex-wrap items-start gap-2">
-            <Link href="/importar" className={buttonVariants("secondary")}>
-              {t("importLibrary")}
-            </Link>
-            {/* Descarga directa: <a download>, no navegación de router. */}
-            <a
-              href="/api/export"
-              download
-              className={buttonVariants("secondary")}
-            >
-              {t("exportLibrary")}
-            </a>
-            <EditProfileForm profile={profile} />
-          </div>
-        )}
+        {isOwner && <EditProfileForm profile={profile} />}
       </div>
 
       <div className="flex flex-wrap gap-2">

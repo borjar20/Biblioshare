@@ -20,6 +20,7 @@ import {
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
@@ -29,6 +30,7 @@ import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
+import { SagaAssignForm } from "@/components/saga-assign-form";
 
 export async function generateMetadata({
   params,
@@ -121,6 +123,10 @@ export default async function MovieDetailPage({
       .filter(Boolean)
       .join(" · ") || null;
 
+  const canContribute = user
+    ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
+    : false;
+
   const metaRows: MetaRow[] = [];
   if (movie.director)
     metaRows.push({ label: tMeta("director"), value: movie.director });
@@ -172,36 +178,46 @@ export default async function MovieDetailPage({
           log: tDetail("tabLog"),
         }}
         info={
-          <InfoPanel
-            aboutLabel={tDetail("about")}
-            synopsis={movie.synopsis}
-            noSynopsisLabel={tDetail("noSynopsis")}
-            sidebar={
-              <MetadataSidebar
-                rows={metaRows}
-                genres={genres}
-                genresLabel={tDetail("genres")}
-              />
-            }
-            extra={
-              <>
-                <CreditsSection credits={credits} />
-                {watchProviders && <WatchProviders data={watchProviders} />}
-              </>
-            }
-          />
-        }
-        community={
           <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 2 && (
+            {saga && sagaMembers.length >= 1 && (
               <SagaStrip
                 members={sagaMembers}
                 currentType="movie"
                 currentId={movie.id}
+                sagaId={saga.sagaId}
                 sagaName={saga.name}
                 label={tDetail("saga")}
               />
             )}
+            <InfoPanel
+              aboutLabel={tDetail("about")}
+              synopsis={movie.synopsis}
+              noSynopsisLabel={tDetail("noSynopsis")}
+              sidebar={
+                <MetadataSidebar
+                  rows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                />
+              }
+              extra={
+                <>
+                  <CreditsSection credits={credits} />
+                  {watchProviders && <WatchProviders data={watchProviders} />}
+                </>
+              }
+            />
+            {canContribute && (
+              <SagaAssignForm
+                itemType="movie"
+                itemId={movie.id}
+                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
+              />
+            )}
+          </div>
+        }
+        community={
+          <div className="flex flex-col gap-10">
             <CommunityPanel itemType="movie" community={community} />
           </div>
         }

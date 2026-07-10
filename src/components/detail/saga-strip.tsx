@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaMember } from "@/lib/sagas/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
+import { sagaHref } from "@/lib/catalog/item-href";
 import { EyeIcon } from "@/components/ui/icons";
 
 // Horizontal saga rail (reel+shelf structure): the current item is ringed with
@@ -11,16 +12,18 @@ export function SagaStrip({
   members,
   currentType,
   currentId,
+  sagaId,
   sagaName,
   label,
 }: {
   members: SagaMember[];
   currentType: ItemType;
   currentId: string;
+  sagaId: string;
   sagaName: string;
   label: string;
 }) {
-  if (members.length < 2) return null;
+  if (members.length < 1) return null;
   const accent = MEDIA_ACCENT[currentType];
 
   return (
@@ -32,7 +35,12 @@ export function SagaStrip({
         >
           {label}
         </span>
-        <span className="text-sm text-foreground italic">{sagaName}</span>
+        <Link
+          href={sagaHref(sagaId)}
+          className="text-sm text-foreground italic underline-offset-2 hover:underline"
+        >
+          {sagaName}
+        </Link>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2">
@@ -41,7 +49,7 @@ export function SagaStrip({
             m.itemType === currentType && m.itemId === currentId;
           const inner = (
             <>
-              <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface-muted">
+              <div className="relative aspect-2/3 w-full overflow-hidden bg-surface-muted">
                 {m.coverUrl ? (
                   <Image
                     src={m.coverUrl}

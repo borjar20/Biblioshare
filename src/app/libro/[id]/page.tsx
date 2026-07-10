@@ -191,33 +191,39 @@ export default async function BookDetailPage({
           log: tDetail("tabLog"),
         }}
         info={
-          <InfoPanel
-            aboutLabel={tDetail("about")}
-            synopsis={book.synopsis}
-            noSynopsisLabel={tDetail("noSynopsis")}
-            sidebar={
-              <MetadataSidebar
-                rows={metaRows}
-                genres={genres}
-                genresLabel={tDetail("genres")}
-              />
-            }
-          />
-        }
-        community={
           <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 2 && (
+            {saga && sagaMembers.length >= 1 && (
               <SagaStrip
                 members={sagaMembers}
                 currentType="book"
                 currentId={book.id}
+                sagaId={saga.sagaId}
                 sagaName={saga.name}
                 label={tDetail("saga")}
               />
             )}
-            <CommunityPanel itemType="book" community={community} />
+            <InfoPanel
+              aboutLabel={tDetail("about")}
+              synopsis={book.synopsis}
+              noSynopsisLabel={tDetail("noSynopsis")}
+              sidebar={
+                <MetadataSidebar
+                  rows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                />
+              }
+            />
+            {canContribute && (
+              <SagaAssignForm
+                itemType="book"
+                itemId={book.id}
+                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
+              />
+            )}
           </div>
         }
+        community={<CommunityPanel itemType="book" community={community} />}
         log={
           <div className="flex flex-col gap-4">
             <ItemManagePanel
@@ -227,13 +233,6 @@ export default async function BookDetailPage({
               sessions={sessions}
               queues={queues}
             />
-            {canContribute && (
-              <SagaAssignForm
-                itemType="book"
-                itemId={book.id}
-                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
-              />
-            )}
           </div>
         }
       />

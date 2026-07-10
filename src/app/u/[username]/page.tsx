@@ -19,7 +19,6 @@ import { ActivityChart } from "@/components/activity-chart";
 import { ProfileStatCards } from "@/components/profile-stat-cards";
 import { LibraryItemCard } from "./library-item-card";
 import { VisibilityToggle } from "./visibility-toggle";
-import { logout } from "@/app/(auth)/actions";
 
 const VALID_TABS: SectionTab[] = ["overview", "book", "movie", "series"];
 const VALID_STATUSES: MediaStatus[] = [
@@ -119,14 +118,6 @@ export default async function PublicProfilePage({
             username={profile.username}
             isPublic={profile.isPublic}
           />
-          <form action={logout} className="self-start">
-            <button
-              type="submit"
-              className={buttonVariants("secondary", "px-4")}
-            >
-              Cerrar sesión
-            </button>
-          </form>
         </div>
       )}
 
