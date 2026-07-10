@@ -183,6 +183,53 @@ export type Database = {
           },
         ]
       }
+      episode_watches: {
+        Row: {
+          created_at: string
+          episode_number: number
+          id: string
+          rating: number | null
+          review: string | null
+          season_number: number
+          series_id: string
+          updated_at: string
+          user_id: string
+          watched_on: string
+        }
+        Insert: {
+          created_at?: string
+          episode_number: number
+          id?: string
+          rating?: number | null
+          review?: string | null
+          season_number: number
+          series_id: string
+          updated_at?: string
+          user_id: string
+          watched_on?: string
+        }
+        Update: {
+          created_at?: string
+          episode_number?: number
+          id?: string
+          rating?: number | null
+          review?: string | null
+          season_number?: number
+          series_id?: string
+          updated_at?: string
+          user_id?: string
+          watched_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episode_watches_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_entries: {
         Row: {
           created_at: string
@@ -570,6 +617,53 @@ export type Database = {
           total_seasons?: number | null
         }
         Relationships: []
+      }
+      series_episodes: {
+        Row: {
+          air_date: string | null
+          created_at: string
+          episode_number: number
+          id: string
+          runtime_minutes: number | null
+          season_number: number
+          series_id: string
+          still_url: string | null
+          synopsis: string | null
+          title: string | null
+        }
+        Insert: {
+          air_date?: string | null
+          created_at?: string
+          episode_number: number
+          id?: string
+          runtime_minutes?: number | null
+          season_number: number
+          series_id: string
+          still_url?: string | null
+          synopsis?: string | null
+          title?: string | null
+        }
+        Update: {
+          air_date?: string | null
+          created_at?: string
+          episode_number?: number
+          id?: string
+          runtime_minutes?: number | null
+          season_number?: number
+          series_id?: string
+          still_url?: string | null
+          synopsis?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "series_episodes_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "series"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

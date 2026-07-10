@@ -1,17 +1,22 @@
 import { getTranslations, getFormatter } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Community } from "@/lib/community/get-community";
+import type { EpisodeReview } from "@/lib/series/get-episode-reviews";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { RatingDots } from "@/components/ui/rating-dots";
 
 // "Comunidad" tab body: agregados reales de library_entries (notas) y
 // diary_entries (reseñas), calculados en src/lib/community/get-community.ts.
+// Para series, las reseñas son por episodio (§7.x): se pasa `episodeReviews` y
+// la sección de reseñas muestra esas en vez de las de diary_entries.
 export async function CommunityPanel({
   itemType,
   community,
+  episodeReviews,
 }: {
   itemType: ItemType;
   community: Community;
+  episodeReviews?: EpisodeReview[];
 }) {
   const t = await getTranslations("detail");
   const format = await getFormatter();
@@ -65,7 +70,55 @@ export async function CommunityPanel({
 
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold tracking-tight">{t("reviews")}</h2>
-        {community.reviews.length === 0 ? (
+        {episodeReviews !== undefined ? (
+          episodeReviews.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noReviews")}</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {episodeReviews.map((review) => (
+                <article
+                  key={review.id}
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${accent.bgSoft} font-mono text-[11px] font-medium ${accent.text}`}
+                    >
+                      {review.initials}
+                    </span>
+                    <div className="flex flex-1 flex-col gap-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {review.author}
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {format.dateTime(new Date(review.watchedOn), {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <span className={`font-mono text-[10px] ${accent.text}`}>
+                        {`S${review.season}E${review.episode}`}
+                        {review.episodeTitle ? ` · ${review.episodeTitle}` : ""}
+                      </span>
+                      {review.rating !== null && (
+                        <RatingDots
+                          value={review.rating / 2}
+                          fillClassName={accent.bg}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {review.text}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )
+        ) : community.reviews.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("noReviews")}</p>
         ) : (
           <div className="flex flex-col gap-3">

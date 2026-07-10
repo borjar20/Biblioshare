@@ -746,3 +746,75 @@ drop index public.idx_diary_entries_user;
 revoke execute on function public.current_user_role() from public;
 revoke execute on function public.has_min_role(public.user_role) from public;
 revoke execute on function public.enforce_role_change_admin_only() from public;
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260710 series_episodes (Información y puntuación por episodio de series)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Catálogo de episodios (cache-as-you-go desde TMDB). Mismo modelo de acceso
+-- que el resto del catálogo: lectura pública, escritura de cualquier
+-- autenticado (enriquecimiento perezoso).
+create table public.series_episodes (
+  id uuid primary key default gen_random_uuid(),
+  series_id uuid not null references public.series(id) on delete cascade,
+  season_number integer not null,
+  episode_number integer not null,
+  title text,
+  synopsis text,
+  still_url text,
+  air_date date,
+  runtime_minutes integer,
+  created_at timestamptz not null default now(),
+  unique (series_id, season_number, episode_number)
+);
+
+create index idx_series_episodes_lookup
+  on public.series_episodes (series_id, season_number, episode_number);
+
+alter table public.series_episodes enable row level security;
+
+create policy "series_episodes readable by all" on public.series_episodes
+  for select to anon, authenticated using (true);
+create policy "series_episodes insertable" on public.series_episodes
+  for insert to authenticated with check (true);
+create policy "series_episodes updatable" on public.series_episodes
+  for update to authenticated using (true) with check (true);
+
+-- Visto por usuario + nota/reseña opcional. Contenido de perfil público, mismo
+-- modelo que diary_entries.
+create table public.episode_watches (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  series_id uuid not null references public.series(id) on delete cascade,
+  season_number integer not null,
+  episode_number integer not null,
+  rating integer check (rating between 1 and 10),
+  review text,
+  watched_on date not null default current_date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, series_id, season_number, episode_number)
+);
+
+create index idx_episode_watches_aggregate
+  on public.episode_watches (series_id, season_number, episode_number);
+
+alter table public.episode_watches enable row level security;
+
+create policy "episode_watches select public or own" on public.episode_watches
+  for select to anon, authenticated
+  using (
+    ((select auth.uid()) = user_id)
+    or exists (
+      select 1 from public.profiles p
+      where p.user_id = episode_watches.user_id and p.is_public = true
+    )
+  );
+create policy "episode_watches insert own" on public.episode_watches
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "episode_watches update own" on public.episode_watches
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+create policy "episode_watches delete own" on public.episode_watches
+  for delete to authenticated using ((select auth.uid()) = user_id);

@@ -41,3 +41,24 @@ Tabla `profiles`:
 - `is_public` (boolean, default `true`)
 - `created_at`, `updated_at`
 - RLS: perfiles públicos legibles por cualquiera (incl. anónimo); el dueño siempre ve el suyo. Solo el dueño inserta/edita.
+
+## 3.5 Episodios de serie (catálogo + visionado por episodio) — *creado*
+Capa por episodio para series (§7.36), **aditiva**: convive con la nota global de serie
+(`library_entries.rating`) sin alterar comunidad/stats/retos, que la siguen usando.
+
+- **`series_episodes`** (catálogo compartido): `series_id` (FK a `series`, cascada),
+  `season_number`, `episode_number`, `title`, `synopsis`, `still_url`, `air_date`,
+  `runtime_minutes`. UNIQUE `(series_id, season_number, episode_number)`. Se rellena
+  **cache-as-you-go** desde TMDB (`/tv/{id}/season/{n}`) la primera vez que se abre la ficha,
+  igual que `credits`/sagas (§7.34); mismo RLS que el resto del catálogo (SELECT abierto,
+  INSERT/UPDATE autenticado).
+- **`episode_watches`** (contenido de perfil, público como `diary_entries`): `user_id`,
+  `series_id`, `season_number`, `episode_number`, `rating` (1–10, **nullable** = visto sin
+  nota), `review` (nullable), `watched_on`. UNIQUE `(user_id, series_id, season, episode)`.
+  **La existencia de la fila = episodio visto.** RLS idéntico a `diary_entries`: el dueño
+  siempre; cualquiera si el perfil es público; escritura solo el dueño.
+- **Semántica**: marcar un episodio visto adelanta `library_entries.position` de la serie al
+  episodio visto más avanzado (mismo "roll forward" que `addSession`, §7.14) y saca la serie
+  de `planned`. La rejilla comunidad (temporada × episodio) y las reseñas por episodio se
+  **agregan al vuelo** desde `episode_watches` (RLS filtra a públicos + propios), no hay tabla
+  de agregados.

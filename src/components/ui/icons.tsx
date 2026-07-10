@@ -195,3 +195,20 @@ export function EyeIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+export function CheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m5 12 5 5L20 7" />
+    </Icon>
+  );
+}
+
+export function NoteIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
+      <path d="M14 3v5h5M8 13h6M8 17h4" />
+    </Icon>
+  );
+}

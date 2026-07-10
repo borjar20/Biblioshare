@@ -230,6 +230,7 @@
     "back": "Volver",
     "ratings": "valoraciones",
     "tabInfo": "Información",
+    "tabEpisodes": "Episodios",
     "tabCommunity": "Comunidad",
     "tabLog": "Mi registro",
     "about": "Sinopsis",
@@ -257,7 +258,48 @@
       "runtime": "Duración",
       "seasons": "Temporadas",
       "episodes": "Episodios"
+    },
+    "grid": {
+      "title": "Puntuación por episodio",
+      "empty": "Todavía no hay episodios catalogados para esta serie.",
+      "noVotesYet": "Aún nadie de la comunidad ha puntuado episodios. Sé el primero desde la lista.",
+      "seasonShort": "S{n}",
+      "episodeShort": "E{n}",
+      "avg": "Media",
+      "votes": "{count, plural, =1 {1 voto} other {# votos}}",
+      "noVotes": "Sin votos",
+      "legend": {
+        "awesome": "Genial",
+        "great": "Muy buena",
+        "good": "Buena",
+        "regular": "Regular",
+        "bad": "Mala",
+        "garbage": "Horrible"
+      }
     }
+  },
+  "episode": {
+    "season": "Temporada {n}",
+    "seasonShort": "S{n}",
+    "episodeShort": "E{n}",
+    "code": "T{s}E{e}",
+    "untitled": "Sin título",
+    "watched": "Visto",
+    "details": "Detalles",
+    "reviewPlaceholder": "Escribe una reseña de este episodio (opcional)",
+    "save": "Guardar",
+    "avgShort": "media {value}",
+    "hasNote": "Reseñado",
+    "hoverHint": "Pasa el ratón por un episodio para ver sus detalles",
+    "runtime": "{n} min",
+    "communityCount": "{count, plural, =0 {sin votos} =1 {1 voto} other {# votos}}",
+    "episodeCount": "{count, plural, =1 {1 episodio} other {# episodios}}",
+    "watchedCount": "{watched}/{total} vistos",
+    "watchedProgress": "{watched} / {total} episodios vistos",
+    "sourceMine": "Mis notas",
+    "sourceCommunity": "Comunidad",
+    "viewGrid": "Rejilla",
+    "viewList": "Lista"
   },
   "person": {
     "notFoundTitle": "Persona no encontrada",

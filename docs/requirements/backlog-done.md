@@ -172,3 +172,57 @@ Control de acceso por roles con tres grados jerárquicos (`user < collaborator <
   rol de otro (confirmado en BD). **Anti-escalada probada a nivel BD**: un usuario final autenticado
   no-admin recibe `ERROR: Only an admin can change a user role` al intentar cambiar un rol, mientras
   que editar el resto del perfil (bio/visibilidad/objetivos) sí funciona.
+
+## 7.36 Información y puntuación por episodio de series — *hecho*
+Referencia: captura de un competidor (Ss de The Boys) con una rejilla temporada × episodio de
+notas coloreadas por tramo. La ficha de serie **sigue siendo única** (no hay página por
+episodio); gana una capa por episodio para listar temporadas/episodios, marcar vistos, puntuar
+y reseñar, más una rejilla de la nota agregada de la comunidad.
+
+- [x] **Modelo nuevo** (migración `series_episodes`): dos tablas (ver [data-model §3.5](./data-model.md#35-episodios-de-serie-catálogo--visionado-por-episodio--creado)). `series_episodes`
+  (catálogo, mismo RLS que `series`) + `episode_watches` (visto + nota/reseña por usuario, RLS
+  como `diary_entries`). **Aditivo**: la nota global de serie (`library_entries.rating`) y lo
+  que la consume (comunidad, stats anuales §7.14, retos §7.10) quedan intactos — ambas capas
+  conviven, decisión de producto para no tratar las series como caso especial en todo el resto.
+- [x] **Rejilla = solo comunidad Biblioshare** (decisión de producto): la rejilla muestra la
+  nota agregada de `episode_watches` de perfiles visibles, **no** el `vote_average` de TMDB.
+  TMDB solo cataloga los episodios (título/sinopsis/fecha/imagen), no puntúa. Está vacía hasta
+  que hay votos.
+- [x] **Registro = marcar visto + nota/reseña opcional**: cada episodio tiene checkbox "Visto"
+  y, opcional, nota (1–10) + reseña. Marcar visto **adelanta la posición** de la serie al
+  episodio más avanzado (reutiliza el "roll forward" de `addSession`, §7.14) y saca de `planned`;
+  si no seguías la serie, la sigue en `in_progress`.
+- [x] **TMDB** `getSeriesEpisodes(tmdbId, totalSeasons)` (`src/lib/catalog/tmdb.ts`, endpoint
+  `/tv/{id}/season/{n}`, temporada 0 "especiales" omitida) + **cache-as-you-go**
+  `ensureSeriesEpisodes` (`src/lib/library/ensure-series-episodes.ts`), mismo patrón que
+  `ensureItemEnriched` (guard de existencia, nunca lanza, ignora `23505`).
+- [x] **Dominio**: `src/lib/series/` — `get-episode-data.ts` (`aggregateEpisodeData` puro +
+  `getEpisodeData`: rejilla comunidad + lista por temporada con el estado del propio usuario),
+  `get-episode-reviews.ts` (reseñas por episodio etiquetadas `SxEy`, patrón de
+  `get-community.ts`), `episode-actions.ts` (`setEpisodeWatched`/`rateEpisode`). Test unitario
+  de la agregación en `get-episode-data.test.ts` (medias a un decimal, celdas sin voto, rejilla
+  con episodios inexistentes, medias por temporada).
+- [x] **UI**: pestaña **Episodios** solo para series (`ItemDetailTabs` gana un slot opcional).
+  Orquestador `episode-panel.tsx` (client) con contador de vistos y dos conmutadores:
+  **Rejilla/Lista** y **Mis notas/Comunidad** (este último como el selector "Public Ratings" de
+  la referencia). `episode-grid.tsx`: rejilla con **temporadas en filas y episodios en
+  columnas**, panel de detalle al pasar el ratón, media por temporada, escala de 6 tramos
+  (`src/lib/series/rating-scale.ts`), celda con la nota o el nº de episodio si no hay dato, dot
+  de "tiene nota", `overflow-x-auto`. `episode-list.tsx`: temporadas **colapsables** con
+  cabecera (episodios · vistos · media), fila con checkmark de visto, valoración por **dots con
+  precisión de medio punto** (`episode-rating.tsx`, escala 1–10 estilo Letterboxd) y reseña
+  expandible con sinopsis; iconos SVG `CheckIcon`/`NoteIcon`/`ChevronDownIcon`. El conmutador de
+  fuente alterna la vista interactiva del propio usuario y la agregada de la comunidad (solo
+  lectura). Las reseñas de la pestaña Comunidad pasan a ser **por episodio** para series
+  (`CommunityPanel` acepta `episodeReviews`). i18n `detail.grid.legend` + sección `episode`.
+- **Descubierto y corregido durante la verificación** — hueco de datos análogo al de §7.22: una
+  serie recién creada por la búsqueda llega **sin `total_seasons`** (se rellena con backfill
+  perezoso más tarde), así que `ensureSeriesEpisodes` no cacheaba nada y la pestaña no aparecía.
+  Corregido resolviendo el nº de temporadas desde TMDB (`getSeriesDetails`) cuando el catálogo
+  aún no lo tiene → funciona en la **primera** visita.
+- **Verificado en navegador de extremo a extremo (dev, Playwright)**: login → buscar "the boys"
+  → ficha → pestaña Episodios → la rejilla renderiza (S1–S5 × E1–E8) → marcar T1E1 visto +
+  nota 9 → la celda y la fila `MEDIA` muestran `9.0` (la agregación cuenta la nota propia vía
+  RLS) → desmarcar la limpia. La serie pasa a "En curso" al marcar el primer visto. Migración
+  aplicada a dev y prod; advisors sin regresiones nuevas (los avisos de `series_episodes`
+  replican el patrón de catálogo ya aceptado; `episode_watches` no genera ninguno).

@@ -4,27 +4,32 @@ import { useState, type ReactNode } from "react";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 
-type TabId = "info" | "community" | "log";
+type TabId = "info" | "episodes" | "community" | "log";
 
 // Client tab switcher for the item detail page. Slots are server-rendered on
 // the page and handed in as props, so data fetching stays on the server.
+// `episodes` es opcional: solo las series lo pasan (§7.x).
 export function ItemDetailTabs({
   itemType,
   labels,
   info,
+  episodes,
   community,
   log,
 }: {
   itemType: ItemType;
-  labels: Record<TabId, string>;
+  labels: Partial<Record<TabId, string>>;
   info: ReactNode;
+  episodes?: ReactNode;
   community: ReactNode;
   log: ReactNode;
 }) {
   const [tab, setTab] = useState<TabId>("info");
   const accent = MEDIA_ACCENT[itemType];
-  const order: TabId[] = ["info", "community", "log"];
-  const slots: Record<TabId, ReactNode> = { info, community, log };
+  const order: TabId[] = episodes
+    ? ["info", "episodes", "community", "log"]
+    : ["info", "community", "log"];
+  const slots: Record<TabId, ReactNode> = { info, episodes, community, log };
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">

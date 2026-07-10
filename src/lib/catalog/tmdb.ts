@@ -4,6 +4,7 @@ import type { SearchResult } from "./types";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
 const TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
 const TMDB_PROFILE_BASE = "https://image.tmdb.org/t/p/w185";
+const TMDB_STILL_BASE = "https://image.tmdb.org/t/p/w300";
 const WATCH_PROVIDERS_REGION = "ES";
 
 type TmdbSearchResponse = {
@@ -360,6 +361,65 @@ export async function getSeriesDetails(
       data.last_episode_to_air?.runtime
     ),
   };
+}
+
+// Un episodio del catálogo, tal como se persiste en series_episodes (§7.x).
+export type SeriesEpisode = {
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string | null;
+  synopsis: string | null;
+  stillUrl: string | null;
+  airDate: string | null; // ISO date
+  runtimeMinutes: number | null;
+};
+
+type TmdbSeasonResponse = {
+  episodes?: Array<{
+    season_number?: number;
+    episode_number?: number;
+    name?: string | null;
+    overview?: string | null;
+    still_path?: string | null;
+    air_date?: string | null;
+    runtime?: number | null;
+  }>;
+};
+
+// Trae todos los episodios de una serie recorriendo sus temporadas
+// (`/tv/{id}/season/{n}`). TMDB numera las temporadas desde 1; la 0 son
+// "especiales" y se omite. Alimenta el cache-as-you-go de series_episodes;
+// nunca lanza (las temporadas que fallen se descartan). Ver §7.x.
+export async function getSeriesEpisodes(
+  tmdbId: number,
+  totalSeasons: number
+): Promise<SeriesEpisode[]> {
+  const seasons = Array.from({ length: Math.max(0, totalSeasons) }, (_, i) => i + 1);
+  const perSeason = await Promise.all(
+    seasons.map((n) =>
+      tmdbGet<TmdbSeasonResponse>(`/tv/${tmdbId}/season/${n}?language=es-ES`)
+    )
+  );
+
+  const out: SeriesEpisode[] = [];
+  for (const season of perSeason) {
+    for (const ep of season?.episodes ?? []) {
+      if (typeof ep.season_number !== "number" || typeof ep.episode_number !== "number") {
+        continue;
+      }
+      out.push({
+        seasonNumber: ep.season_number,
+        episodeNumber: ep.episode_number,
+        title: ep.name?.trim() || null,
+        synopsis: ep.overview?.trim() || null,
+        stillUrl: ep.still_path ? `${TMDB_STILL_BASE}${ep.still_path}` : null,
+        airDate: ep.air_date || null,
+        runtimeMinutes:
+          typeof ep.runtime === "number" && ep.runtime > 0 ? ep.runtime : null,
+      });
+    }
+  }
+  return out;
 }
 
 export type PersonDetails = {

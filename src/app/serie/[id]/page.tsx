@@ -18,11 +18,15 @@ import {
   type MetaRow,
 } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
+import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
+import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
+import { getEpisodeData } from "@/lib/series/get-episode-data";
+import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -83,6 +87,11 @@ export default async function SeriesDetailPage({
   await ensureItemEnriched(supabase, "series", {
     id: series.id,
     tmdbId: series.tmdb_id,
+  });
+  await ensureSeriesEpisodes(supabase, {
+    id: series.id,
+    tmdbId: series.tmdb_id,
+    totalSeasons: series.total_seasons,
   });
 
   const [watchProviders, credits, saga] = await Promise.all([
@@ -145,7 +154,19 @@ export default async function SeriesDetailPage({
     });
 
   const genres = series.genres ?? [];
-  const community = await getCommunity(supabase, "series", series.id);
+  const [community, episodeData, episodeReviews] = await Promise.all([
+    getCommunity(supabase, "series", series.id),
+    getEpisodeData(supabase, series.id, user?.id ?? null),
+    getEpisodeReviews(supabase, series.id),
+  ]);
+
+  // La rejilla y la lista comparten datos; la lista necesita un array
+  // serializable (el Map de EpisodeData no cruza el límite RSC).
+  const seasonGroups = episodeData.seasons.map((season) => ({
+    season,
+    episodes: episodeData.bySeasons.get(season) ?? [],
+  }));
+  const hasEpisodes = episodeData.seasons.length > 0;
 
   let sagaMembers: SagaMember[] = [];
   if (saga) {
@@ -180,6 +201,7 @@ export default async function SeriesDetailPage({
         itemType="series"
         labels={{
           info: tDetail("tabInfo"),
+          ...(hasEpisodes && { episodes: tDetail("tabEpisodes") }),
           community: tDetail("tabCommunity"),
           log: tDetail("tabLog"),
         }}
@@ -222,9 +244,22 @@ export default async function SeriesDetailPage({
             )}
           </div>
         }
+        episodes={
+          hasEpisodes ? (
+            <EpisodePanel
+              seriesId={series.id}
+              seasons={seasonGroups}
+              isLoggedIn={Boolean(user)}
+            />
+          ) : undefined
+        }
         community={
           <div className="flex flex-col gap-10">
-            <CommunityPanel itemType="series" community={community} />
+            <CommunityPanel
+              itemType="series"
+              community={community}
+              episodeReviews={episodeReviews}
+            />
           </div>
         }
         log={
