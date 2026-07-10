@@ -18,4 +18,8 @@ export type SearchResult = {
   pageCount: number | null;
   // Book-only. See docs/REQUIREMENTS.md §7.2.
   isbn: string | null;
+  // Book-only: nº de ediciones agrupadas bajo este resultado representativo
+  // (>1 solo cuando la búsqueda encontró varias ediciones de la misma obra).
+  // Ver docs/REQUIREMENTS.md §7.2 (agrupado de ediciones).
+  editionCount?: number;
 };

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getTranslations } from "next-intl/server";
 import type { SearchResult } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 
-export function SearchResultCard({ result }: { result: SearchResult }) {
+export async function SearchResultCard({ result }: { result: SearchResult }) {
   const href = itemHref(result.itemType, result.catalogId ?? result.externalId);
+  const t = await getTranslations("search");
+  const editionCount = result.editionCount ?? 1;
 
   return (
     <Link
@@ -24,6 +27,11 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
           <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
             {result.title}
           </div>
+        )}
+        {editionCount > 1 && (
+          <span className="absolute right-1.5 top-1.5 rounded-full bg-surface/90 px-2 py-0.5 font-mono text-[10px] font-medium text-foreground backdrop-blur">
+            {t("editions", { count: editionCount })}
+          </span>
         )}
       </div>
       <div className="flex flex-col">

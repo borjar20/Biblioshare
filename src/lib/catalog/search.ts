@@ -5,13 +5,24 @@ import { MOCK_BOOKS, MOCK_MOVIES, MOCK_SERIES } from "./mock-data";
 import { normalizeIsbn } from "./isbn";
 import { searchLocalCatalog, findLocalBookByIsbn } from "./local-search";
 import { findOrCreateCatalogItem } from "./find-or-create";
+import { groupBookEditions } from "./group-editions";
 import type { ItemType, SearchResult } from "./types";
 
 // See docs/REQUIREMENTS.md §7.32: search checks our own catalog first (free,
 // and already has richer data for anything we've seen before), only calls
 // the external API for what's missing, and persists newly-seen API results
 // right away so the next search for the same item is a local hit.
+// Book results are additionally collapsed by work (§7.2) so a shelf of
+// near-identical editions shows as one card.
 export async function searchCatalog(
+  itemType: ItemType,
+  query: string
+): Promise<SearchResult[]> {
+  const results = await searchCatalogRaw(itemType, query);
+  return itemType === "book" ? groupBookEditions(results) : results;
+}
+
+async function searchCatalogRaw(
   itemType: ItemType,
   query: string
 ): Promise<SearchResult[]> {

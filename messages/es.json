@@ -109,7 +109,8 @@
         "forbidden": "No tienes permiso para añadir ítems manualmente.",
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
-    }
+    },
+    "editions": "{count, plural, one {# edición} other {# ediciones}}"
   },
   "diary": {
     "show": "Ver diario",
