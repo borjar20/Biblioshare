@@ -223,7 +223,13 @@ export default async function BookDetailPage({
             )}
           </div>
         }
-        community={<CommunityPanel itemType="book" community={community} />}
+        community={
+          <CommunityPanel
+            itemType="book"
+            community={community}
+            viewerLoggedIn={Boolean(user)}
+          />
+        }
         log={
           <div className="flex flex-col gap-4">
             <ItemManagePanel

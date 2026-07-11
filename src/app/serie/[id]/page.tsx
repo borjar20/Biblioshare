@@ -259,6 +259,7 @@ export default async function SeriesDetailPage({
               itemType="series"
               community={community}
               episodeReviews={episodeReviews}
+              viewerLoggedIn={Boolean(user)}
             />
           </div>
         }

@@ -218,7 +218,11 @@ export default async function MovieDetailPage({
         }
         community={
           <div className="flex flex-col gap-10">
-            <CommunityPanel itemType="movie" community={community} />
+            <CommunityPanel
+              itemType="movie"
+              community={community}
+              viewerLoggedIn={Boolean(user)}
+            />
           </div>
         }
         log={

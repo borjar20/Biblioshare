@@ -4,6 +4,7 @@ import type { Community } from "@/lib/community/get-community";
 import type { EpisodeReview } from "@/lib/series/get-episode-reviews";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { RatingDots } from "@/components/ui/rating-dots";
+import { ReviewInteractions } from "@/components/social/review-interactions";
 
 // "Comunidad" tab body: agregados reales de library_entries (notas) y
 // diary_entries (reseñas), calculados en src/lib/community/get-community.ts.
@@ -13,10 +14,12 @@ export async function CommunityPanel({
   itemType,
   community,
   episodeReviews,
+  viewerLoggedIn,
 }: {
   itemType: ItemType;
   community: Community;
   episodeReviews?: EpisodeReview[];
+  viewerLoggedIn: boolean;
 }) {
   const t = await getTranslations("detail");
   const format = await getFormatter();
@@ -114,6 +117,15 @@ export async function CommunityPanel({
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     {review.text}
                   </p>
+                  <ReviewInteractions
+                    targetType="episode_watch"
+                    targetId={review.id}
+                    reactionCount={review.reactionCount}
+                    viewerReacted={review.viewerReacted}
+                    commentCount={review.commentCount}
+                    comments={review.comments}
+                    viewerLoggedIn={viewerLoggedIn}
+                  />
                 </article>
               ))}
             </div>
@@ -157,6 +169,15 @@ export async function CommunityPanel({
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {review.text}
                 </p>
+                <ReviewInteractions
+                  targetType="diary_entry"
+                  targetId={review.id}
+                  reactionCount={review.reactionCount}
+                  viewerReacted={review.viewerReacted}
+                  commentCount={review.commentCount}
+                  comments={review.comments}
+                  viewerLoggedIn={viewerLoggedIn}
+                />
               </article>
             ))}
           </div>
