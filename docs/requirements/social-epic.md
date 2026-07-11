@@ -268,36 +268,36 @@ Cada bloque agrupa tareas cohesionadas. Esfuerzo: **S** < **M** < **L** < **XL**
   auto-notificación y enlace profundo a la reseña vía `itemHref(...)?tab=community`.
 
 ### Bloque C — Feed de actividad personal  ·  *esfuerzo M-L*  ·  *dep: A (y B para interacción)*
-> **Estado (2026-07-11): código completo y revisado, dev — E2E en navegador PENDIENTE.**
-> Sin migración (SD-1, on-read puro sobre las cuatro tablas fuente ya existentes, RLS
-> reutilizada de `can_view_profile`/`can_view_target`, cero tabla nueva). `tsc`/`eslint`
-> limpios y cada tarea pasó su revisión de código (spec + calidad). **La verificación
-> manual en navegador (Task 8 del plan de implementación) no pudo completarse en esta
-> sesión por falta de una herramienta de navegador disponible** — queda pendiente antes de
-> aplicar a prod: renderizado de los 6 verbos, reacciones/comentarios inline, filtros
-> (tipo de ítem + "solo reseñas"), paginación "Cargar más", y estado vacío. Ver
-> `docs/superpowers/plans/2026-07-11-epic05-bloque-c-activity-feed.md` Task 8 para el
-> checklist exacto a ejecutar antes de cerrar el bloque. Decisión de implementación:
-> filtros server-side vía query params (no cliente-side como sugería el boceto original),
-> para seguir el patrón ya establecido por `library-filters.tsx` (7.12).
+> **Estado (2026-07-12): completo, verificado en dev.** Sin migración (SD-1, on-read
+> puro sobre las cuatro tablas fuente ya existentes, RLS reutilizada de
+> `can_view_profile`/`can_view_target`, cero tabla nueva). `tsc`/`eslint` limpios y cada
+> tarea pasó su revisión de código (spec + calidad). La revisión final de rama completa
+> encontró dos bugs de integración (los filtros no actualizaban la lista visible; las
+> reacciones/comentarios inline no se reflejaban sin recargar — ambos con la misma causa
+> raíz en `FeedList`), corregidos en el commit `34f2b9a`. **Verificación manual en
+> navegador ejecutada por el usuario** siguiendo
+> `docs/superpowers/plans/2026-07-11-epic05-bloque-c-manual-test.md` (checklist que
+> sustituyó la verificación automática con subagente/navegador tras decisión explícita del
+> usuario de cambiar a testing manual) — confirmado funcional, incluidos ambos bugs
+> corregidos. Decisión de implementación: filtros server-side vía query params (no
+> cliente-side como sugería el boceto original), para seguir el patrón ya establecido por
+> `library-filters.tsx` (7.12).
 - [x] **E5.C1** Dominio `src/lib/social/feed.ts` (SD-1, on-read): une actividad reciente de
   los seguidos aceptados desde las cuatro tablas fuente, normaliza a `FeedEvent` (verbo:
   terminó / valoró / reseñó / avanzó / marcó episodio / añadió a biblioteca — "el más
   específico gana": reseñó > valoró > verbo suelo, simétrico en `diary_entries` y
-  `episode_watches`), ordena por fecha, pagina con cursor. *(Verificación de código
-  completa; E2E en navegador pendiente — ver nota de estado arriba.)*
+  `episode_watches`), ordena por fecha, pagina con cursor.
 - [x] **E5.C2** UI: el home gana una pestaña "Siguiendo" (`HomeTabs`, mismo mecanismo
   `?tab=` que `item-detail-tabs.tsx` de Bloque B) junto al dashboard ya existente —
   fetching condicional por pestaña, no ambos datasets a la vez. `FeedCard` por tipo de
   evento, reutilizando portadas y enlaces a ficha; `ReviewInteractions` de Bloque B inline
   en cualquier evento con origen en `diary_entries`/`episode_watches` (no solo los
   "reseñó" — cualquiera de sus tres verbos tiene un target real). `FeedList` acumula
-  páginas vía "Cargar más". *(Verificación de código completa; E2E en navegador
-  pendiente.)*
+  páginas vía "Cargar más".
 - [x] **E5.C3** Filtro por tipo de ítem y toggle "Solo reseñas" — **server-side vía query
   params** (`FeedFilters`, mismo patrón `<Link>` de `library-filters.tsx`/7.12; decisión
   revisada durante la planificación de implementación, difiere del boceto cliente-side
-  original del backlog). *(Verificación de código completa; E2E en navegador pendiente.)*
+  original del backlog).
 
 ### Bloque D — Notificaciones in-app  ·  *esfuerzo M*  ·  *transversal, dep: A*
 > **Estado (2026-07-11): completo, dev + prod.** Migración `20260711_notifications.sql`
