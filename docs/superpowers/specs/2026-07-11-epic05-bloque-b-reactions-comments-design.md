@@ -80,7 +80,7 @@ Sigue el patrón lectura/escritura ya establecido (`follows.ts`+`actions.ts`,
 - **`src/lib/social/interactions.ts`** (lectura): `getInteractionSummary(supabase, targets)`
   — dos queries batch (`reactions`/`comments` con `target_id IN (...)`), agrupadas en un mapa
   `${target_type}:${target_id}` → `{ reactionCount, viewerReacted, commentCount, comments }`.
-  Comentarios acotados a los últimos ~20 por target (hilo esperado corto; sin paginación en
+  Comentarios acotados a los últimos 20 por target (hilo esperado corto; sin paginación en
   este MVP).
 - **`src/lib/social/interaction-actions.ts`** (`"use server"`): `toggleReaction(targetType,
   targetId)` (borra si existe, si no inserta; `revalidatePath` de la página actual),
@@ -123,7 +123,8 @@ y cada clic de pestaña actualiza la URL vía `router.replace` (shallow, sin scr
 - Nuevos valores del enum `notification_type`: `review_liked`, `review_commented`.
 - `toggleReaction`/`addComment` llaman a `notify()` (ya existente) tras un alta exitosa
   (nunca al quitar el "me gusta" ni al borrar comentario), con `target_type`/`target_id`
-  iguales a los de la fila de reacción/comentario — reutilizando columnas de `notifications`
+  iguales al **target de la reacción/comentario** (la reseña/episodio comentado — no el id
+  de la propia fila de `reactions`/`comments`) — reutilizando columnas de `notifications`
   que existían sin uso desde Bloque D.
 - Guarda de auto-notificación: si `actorId === ownerId` (reaccionar/comentar tu propia
   reseña) no se llama a `notify()` — el `CHECK (user_id <> actor_id)` de la tabla fallaría
