@@ -60,8 +60,11 @@ interacción inline (sin `target_kind` válido).
 
 ## 3. Dominio
 
-**`src/lib/social/feed.ts`** — una función, `getFeed(supabase, viewerId, cursor?, pageSize
-= 20)`:
+**`src/lib/social/feed.ts`** — una función, `getFeed(supabase, viewerId, options?)` donde
+`options: { cursor?: string; pageSize?: number; itemType?: ItemType; reviewsOnly?: boolean
+}` (todos opcionales, `pageSize` por defecto 20). Los filtros `itemType`/`reviewsOnly` se
+aplican como parte de las cuatro queries del paso 2 — ver §5 para el detalle exacto de
+cómo se traducen a condiciones SQL por fuente:
 
 1. Resuelve seguidos aceptados (`select followee_id from follows where follower_id =
    viewerId and status = 'accepted'`). Vacío → `{ events: [], nextCursor: null }`
@@ -115,20 +118,38 @@ mensaje + CTA a `/usuarios` (descubrimiento, ya existente per E5.A5).
 
 ## 5. Filtros (E5.C3)
 
-Dos filtros independientes, estado cliente por query param sobre la pestaña Siguiendo (no
-disparan queries nuevas por cambio de filtro — son predicados sobre los eventos ya
-cargados, mismo espíritu que el patrón de filtros de 7.12):
-- **Por tipo de ítem**: Todos/Libro/Película/Serie (chips, mismo patrón que 7.12).
-- **Toggle "Solo reseñas"** (`verb === "reviewed"`) en vez de una matriz completa por
-  verbo — cubre el único caso de valor claro que menciona el backlog ("feed de reseñas de
-  tu gente"); una matriz completa queda para si se pide después.
+**Decisión revisada durante la planificación de implementación**: filtros **server-side**
+vía query params, no predicados cliente — `library-filters.tsx` (7.12) ya establece este
+patrón (`<Link>` con query params, refetch completo por cambio de filtro) y es más
+consistente seguirlo que introducir un segundo patrón de filtrado en el mismo código base.
+Esto también elimina de raíz la aspereza de UX que tenía la versión cliente-side (el
+"Cargar más" podía tardar en mostrar resultados bajo un filtro activo porque agotaba el
+buffer sin refrescar del servidor) — con filtros server-side cada cambio es un refetch
+limpio, igual que en la página de biblioteca hoy.
 
-**Matiz de paginación con filtro activo**: como el filtro es cliente-side sobre páginas ya
-cargadas, "Cargar más" con un filtro activo debe seguir pidiendo páginas **sin filtrar** al
-servidor (el filtro solo oculta/muestra en cliente) para no agotar el buffer acumulado solo
-porque los eventos más recientes no calzan el filtro — aceptado como aspereza de UX menor
-en v1 (el botón puede necesitar varios clics para mostrar resultados nuevos bajo un filtro
-activo).
+`getFeed(supabase, viewerId, { cursor?, pageSize, itemType?, reviewsOnly? })` aplica los
+filtros como parte de las cuatro queries del §3:
+- **Por tipo de ítem** (`itemType`): añade `.eq("item_type", itemType)` en la query de
+  `library_entries` (directo) y, para `diary_entries`/`progress_sessions` (que llegan a
+  `item_type` vía el join a `library_entries`), filtra tras el join — o, más simple y
+  barato, primero resuelve el subconjunto de `library_entries.id` que cumple el
+  `item_type` pedido (una query extra sobre `library_entries` con `user_id IN (seguidos)
+  AND item_type = X`) y usa esos ids para acotar `diary_entries.library_entry_id`/
+  `progress_sessions.library_entry_id` vía `.in(...)`. `episode_watches` no necesita este
+  filtro (siempre es `series`; si `itemType` es `book`/`movie`, la query de episodios se
+  omite directamente).
+- **Toggle "Solo reseñas"** (`reviewsOnly`): cuando está activo, las queries de
+  `library_entries` y `progress_sessions` se omiten por completo (esos verbos nunca son
+  `reviewed`), y `diary_entries`/`episode_watches` añaden `.not("review", "is", null")`.
+- **Por tipo de ítem** UI: chips Todos/Libro/Película/Serie (mismo patrón visual que
+  `library-filters.tsx`, componente server con `<Link>` construyendo el query string).
+- **Toggle "Solo reseñas"** UI: mismo estilo de pill/chip, alterna `?reviewsOnly=1` en la
+  URL.
+
+Cambiar cualquier filtro resetea el cursor/buffer de la pestaña Siguiendo (nueva
+navegación completa a `?tab=following&itemType=...&reviewsOnly=...`, sin estado
+acumulado previo que arrastrar) — consistente con cómo cualquier cambio de filtro en la
+biblioteca también empieza una lista nueva.
 
 ## 6. i18n
 
