@@ -284,6 +284,60 @@ export type Database = {
         }
         Relationships: []
       }
+      reactions: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["target_kind"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["target_kind"]
+        }
+        Relationships: []
+      }
       library_entries: {
         Row: {
           created_at: string
@@ -776,7 +830,8 @@ export type Database = {
     }
     Enums: {
       follow_status: "pending" | "accepted"
-      notification_type: "follow_request" | "new_follower" | "follow_accepted"
+      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented"
+      target_kind: "diary_entry" | "episode_watch"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       pending_import_status: "pending" | "resolved" | "dismissed"
@@ -909,7 +964,8 @@ export const Constants = {
   public: {
     Enums: {
       follow_status: ["pending", "accepted"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented"],
+      target_kind: ["diary_entry", "episode_watch"],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
       user_role: ["user", "collaborator", "admin"],
