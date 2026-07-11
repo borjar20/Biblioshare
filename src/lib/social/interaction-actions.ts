@@ -67,15 +67,19 @@ export async function toggleReaction(
     });
     if (error) throw error;
 
-    const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
-    if (ownerId && ownerId !== user.id) {
-      await notify(supabase, {
-        userId: ownerId,
-        actorId: user.id,
-        type: "review_liked",
-        targetType,
-        targetId,
-      });
+    try {
+      const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
+      if (ownerId && ownerId !== user.id) {
+        await notify(supabase, {
+          userId: ownerId,
+          actorId: user.id,
+          type: "review_liked",
+          targetType,
+          targetId,
+        });
+      }
+    } catch (error) {
+      console.error(error);
     }
   }
   revalidateItemPages();
@@ -103,15 +107,19 @@ export async function addComment(
   });
   if (error) throw error;
 
-  const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
-  if (ownerId && ownerId !== user.id) {
-    await notify(supabase, {
-      userId: ownerId,
-      actorId: user.id,
-      type: "review_commented",
-      targetType,
-      targetId,
-    });
+  try {
+    const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
+    if (ownerId && ownerId !== user.id) {
+      await notify(supabase, {
+        userId: ownerId,
+        actorId: user.id,
+        type: "review_commented",
+        targetType,
+        targetId,
+      });
+    }
+  } catch (error) {
+    console.error(error);
   }
   revalidateItemPages();
 }

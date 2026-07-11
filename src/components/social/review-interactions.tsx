@@ -61,6 +61,8 @@ export function ReviewInteractions({
         <button
           type="button"
           disabled={isPending}
+          aria-label={t("like")}
+          aria-pressed={viewerReacted}
           onClick={() => startTransition(() => toggleReaction(targetType, targetId))}
           className={`flex items-center gap-1.5 transition-colors ${
             viewerReacted
