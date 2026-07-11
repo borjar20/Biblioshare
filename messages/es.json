@@ -193,7 +193,12 @@
     "requestsTitle": "Solicitudes de seguimiento",
     "accept": "Aceptar",
     "reject": "Rechazar",
-    "backToProfile": "Volver al perfil"
+    "backToProfile": "Volver al perfil",
+    "like": "Me gusta",
+    "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
+    "writeComment": "Escribe un comentario…",
+    "postComment": "Comentar",
+    "deleteComment": "Borrar"
   },
   "notifications": {
     "title": "Notificaciones",

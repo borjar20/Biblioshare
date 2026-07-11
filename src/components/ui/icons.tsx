@@ -230,3 +230,11 @@ export function BellIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+export function CommentIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5h16v11H8l-4 4V5Z" />
+    </Icon>
+  );
+}
