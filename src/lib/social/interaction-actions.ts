@@ -15,6 +15,10 @@ function revalidateItemPages() {
   revalidatePath("/libro/[id]", "page");
   revalidatePath("/pelicula/[id]", "page");
   revalidatePath("/serie/[id]", "page");
+  // EPIC-05 Bloque C: el feed también puede mostrar esta reacción/comentario
+  // inline (ReviewInteractions reutilizado en FeedCard) — sin esto, un
+  // like/comentario hecho desde el feed no se reflejaría hasta recargar.
+  revalidatePath("/", "page");
 }
 
 async function resolveTargetOwner(

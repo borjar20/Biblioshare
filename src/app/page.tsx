@@ -149,6 +149,7 @@ export default async function Home({
       <div className="flex flex-col gap-4">
         <FeedFilters itemType={itemType} reviewsOnly={reviewsOnly} />
         <FeedList
+          key={`${itemType ?? "all"}:${reviewsOnly ? 1 : 0}`}
           initialEvents={feedPage.events}
           initialCursor={feedPage.nextCursor}
           itemType={itemType}

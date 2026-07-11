@@ -229,14 +229,17 @@ export async function getFeed(
   const [books, movies, series] = await Promise.all([
     idsByType.book.size
       ? supabase.from("books").select("id, title, cover_url").in("id", [...idsByType.book])
-      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
+      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
     idsByType.movie.size
       ? supabase.from("movies").select("id, title, cover_url").in("id", [...idsByType.movie])
-      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
+      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
     idsByType.series.size
       ? supabase.from("series").select("id, title, cover_url").in("id", [...idsByType.series])
-      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
+      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
   ]);
+  if (books.error) throw books.error;
+  if (movies.error) throw movies.error;
+  if (series.error) throw series.error;
   const catalogByKey = new Map<string, { title: string; coverUrl: string | null }>();
   for (const r of books.data ?? [])
     catalogByKey.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url });
@@ -248,12 +251,13 @@ export async function getFeed(
   // Título de episodio, best-effort (si no está en series_episodes aún, se
   // omite sin romper el evento).
   const episodeSeriesIds = [...new Set(episodeRows.map((r) => r.series_id))];
-  const { data: episodeTitles } = episodeSeriesIds.length
+  const { data: episodeTitles, error: episodeTitlesError } = episodeSeriesIds.length
     ? await supabase
         .from("series_episodes")
         .select("series_id, season_number, episode_number, title")
         .in("series_id", episodeSeriesIds)
-    : { data: [] as { series_id: string; season_number: number; episode_number: number; title: string | null }[] };
+    : { data: [] as { series_id: string; season_number: number; episode_number: number; title: string | null }[], error: null };
+  if (episodeTitlesError) throw episodeTitlesError;
   const titleByEpisode = new Map(
     (episodeTitles ?? []).map((e) => [
       `${e.series_id}:${e.season_number}:${e.episode_number}`,
@@ -270,12 +274,13 @@ export async function getFeed(
       ...episodeRows.map((r) => r.user_id),
     ]),
   ];
-  const { data: actors } = actorIds.length
+  const { data: actors, error: actorsError } = actorIds.length
     ? await supabase
         .from("profile_identities")
         .select("user_id, username, display_name, avatar_url")
         .in("user_id", actorIds)
-    : { data: [] as { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null }[] };
+    : { data: [] as { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null }[], error: null };
+  if (actorsError) throw actorsError;
   const actorById = new Map(
     (actors ?? [])
       .filter(

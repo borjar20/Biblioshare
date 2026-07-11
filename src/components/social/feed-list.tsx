@@ -8,10 +8,16 @@ import type { ItemType } from "@/lib/catalog/types";
 import { loadMoreFeed } from "@/lib/social/feed-actions";
 import { FeedCard } from "./feed-card";
 
-// Lista del feed con paginación "Cargar más" (EPIC-05, Bloque C). Mantiene
-// el cursor y los eventos acumulados en estado cliente; cada clic pide la
-// siguiente página al servidor con los mismos filtros ya aplicados por la
-// navegación inicial (itemType/reviewsOnly viven en la URL, no aquí).
+// Lista del feed con paginación "Cargar más" (EPIC-05, Bloque C). Los eventos
+// de la primera página llegan siempre frescos vía `initialEvents` (Next.js
+// refresca el árbol de Server Components de la ruta actual tras cualquier
+// Server Action, incluida una reacción/comentario dentro de un FeedCard) — el
+// estado cliente solo acumula los eventos cargados con "Cargar más"
+// (`extraEvents`), nunca los iniciales, para que interactuar con un evento de
+// la primera página se refleje sin recargar. `itemType`/`reviewsOnly` viven
+// en la URL (aplicados server-side por FeedFilters); page.tsx da a este
+// componente una `key` derivada de esos filtros para que un cambio de filtro
+// lo remonte por completo en vez de arrastrar estado obsoleto.
 export function FeedList({
   initialEvents,
   initialCursor,
@@ -26,14 +32,16 @@ export function FeedList({
   viewerLoggedIn: boolean;
 }) {
   const t = useTranslations("feed");
-  const [events, setEvents] = useState(initialEvents);
+  const [extraEvents, setExtraEvents] = useState<FeedEvent[]>([]);
   const [cursor, setCursor] = useState(initialCursor);
   const [isPending, startTransition] = useTransition();
+
+  const events = [...initialEvents, ...extraEvents];
 
   function loadMore() {
     startTransition(async () => {
       const page = await loadMoreFeed(cursor, itemType, reviewsOnly);
-      setEvents((prev) => [...prev, ...page.events]);
+      setExtraEvents((prev) => [...prev, ...page.events]);
       setCursor(page.nextCursor);
     });
   }
