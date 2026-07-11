@@ -213,7 +213,10 @@
       "reviewed": "reseñó",
       "watchedEpisode": "marcó un episodio de"
     },
-    "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}"
+    "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
+    "filters": {
+      "reviewsOnly": "Solo reseñas"
+    }
   },
   "notifications": {
     "title": "Notificaciones",
