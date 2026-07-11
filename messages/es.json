@@ -204,6 +204,17 @@
     "postComment": "Comentar",
     "deleteComment": "Borrar"
   },
+  "feed": {
+    "verbs": {
+      "added": "añadió a su biblioteca",
+      "progressed": "avanzó en",
+      "finished": "terminó",
+      "rated": "valoró",
+      "reviewed": "reseñó",
+      "watchedEpisode": "marcó un episodio de"
+    },
+    "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}"
+  },
   "notifications": {
     "title": "Notificaciones",
     "empty": "Todavía no tienes notificaciones.",
