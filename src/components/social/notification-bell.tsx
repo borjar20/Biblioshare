@@ -12,6 +12,8 @@ const TYPE_KEY: Record<Notification["type"], string> = {
   follow_request: "followRequest",
   new_follower: "newFollower",
   follow_accepted: "followAccepted",
+  review_liked: "reviewLiked",
+  review_commented: "reviewCommented",
 };
 
 function timeAgo(iso: string, t: (key: string, values?: Record<string, number>) => string): string {
@@ -87,7 +89,7 @@ export function NotificationBell({
               {initialNotifications.map((n) => (
                 <li key={n.id}>
                   <Link
-                    href={`/u/${n.actorUsername}`}
+                    href={n.href}
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-surface-muted"
                   >

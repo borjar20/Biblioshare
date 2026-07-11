@@ -201,6 +201,8 @@
     "followRequest": "{name} quiere seguirte",
     "newFollower": "{name} ha empezado a seguirte",
     "followAccepted": "{name} ha aceptado tu solicitud de seguimiento",
+    "reviewLiked": "{name} le gustó tu reseña",
+    "reviewCommented": "{name} comentó tu reseña",
     "justNow": "ahora mismo",
     "minutesAgo": "hace {count, plural, one {1 minuto} other {# minutos}}",
     "hoursAgo": "hace {count, plural, one {1 hora} other {# horas}}",
