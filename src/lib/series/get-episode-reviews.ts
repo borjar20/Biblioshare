@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -13,6 +14,10 @@ export type EpisodeReview = {
   watchedOn: string; // ISO date
   rating: number | null; // 1–10
   text: string;
+  reactionCount: number;
+  viewerReacted: boolean;
+  commentCount: number;
+  comments: InteractionComment[];
 };
 
 const MAX_REVIEWS = 20;
@@ -63,7 +68,7 @@ export async function getEpisodeReviews(
     (episodes ?? []).map((e) => [`${e.season_number}:${e.episode_number}`, e.title])
   );
 
-  return withText.map((r) => {
+  const reviews = withText.map((r) => {
     const author = nameByUser.get(r.user_id) ?? "—";
     return {
       id: r.id,
@@ -75,6 +80,17 @@ export async function getEpisodeReviews(
       watchedOn: r.watched_on,
       rating: r.rating,
       text: (r.review ?? "").trim(),
+      reactionCount: 0,
+      viewerReacted: false,
+      commentCount: 0,
+      comments: [],
     };
   });
+
+  const summaries = await getInteractionSummary(
+    supabase,
+    "episode_watch",
+    reviews.map((r) => r.id),
+  );
+  return reviews.map((r) => ({ ...r, ...summaries.get(r.id) }));
 }

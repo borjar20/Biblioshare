@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -10,6 +11,10 @@ export type CommunityReview = {
   finishedOn: string; // ISO date
   rating: number | null; // 1–10
   text: string;
+  reactionCount: number;
+  viewerReacted: boolean;
+  commentCount: number;
+  comments: InteractionComment[];
 };
 
 export type Community = {
@@ -98,8 +103,19 @@ export async function getCommunity(
           finishedOn: r.finished_on,
           rating: r.rating,
           text: (r.review ?? "").trim(),
+          reactionCount: 0,
+          viewerReacted: false,
+          commentCount: 0,
+          comments: [],
         };
       });
+
+      const summaries = await getInteractionSummary(
+        supabase,
+        "diary_entry",
+        reviews.map((r) => r.id),
+      );
+      reviews = reviews.map((r) => ({ ...r, ...summaries.get(r.id) }));
     }
   }
 
