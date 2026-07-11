@@ -216,7 +216,10 @@
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
     "filters": {
       "reviewsOnly": "Solo reseñas"
-    }
+    },
+    "empty": "Todavía no hay actividad de las cuentas que sigues.",
+    "emptyCta": "Buscar gente a quien seguir",
+    "loadMore": "Cargar más"
   },
   "notifications": {
     "title": "Notificaciones",
