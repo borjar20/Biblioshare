@@ -240,15 +240,32 @@ Cada bloque agrupa tareas cohesionadas. Esfuerzo: **S** < **M** < **L** < **XL**
   trabajo adicional.
 
 ### Bloque B — Reacciones y comentarios en reseñas  ·  *esfuerzo M*  ·  *dep: A*
-- [ ] **E5.B1** Migración `reactions` + `comments` polimórficas (SD-3), con RLS apoyada en
-  `can_view_profile()`.
-- [ ] **E5.B2** Dominio `src/lib/social/reactions.ts` + `comments.ts`: toggle de reacción
-  (idempotente sobre el UNIQUE), alta/borrado de comentario, conteos agregados por target.
-- [ ] **E5.B3** UI: fila de "me gusta" + hilo de comentarios bajo cada reseña en el panel
-  de comunidad de la ficha (`get-community.ts` gana los conteos y el estado del viewer) y
-  en las reseñas por episodio (§7.36).
-- [ ] **E5.B4** Enganche a notificaciones (E5.D): reaccionar/comentar la reseña de otro
-  genera notificación al autor.
+> **Estado (2026-07-11): completo, dev + prod.** Migración
+> `20260711_review_interactions.sql` (tablas `reactions`/`comments`, enum `target_kind`,
+> helper `can_view_target()`) aplicada a **dev y prod**; RLS verificada con batería de
+> impersonación (8 casos: extraño/seguidor-aceptado/pending sobre privado, anon,
+> insert-spoofing, delete-solo-propio). Flujo E2E completo verificado en navegador con dos
+> usuarios reales (like toggle + persistencia, comentar/borrar, ciclo de notificación
+> `review_liked`/`review_commented`, deep link `?tab=community` aterrizando en la pestaña
+> correcta, vista de solo-lectura para no logueados). `schema-baseline.sql` y
+> `database.types.ts` actualizados. Sin edición de comentarios ni borrado por el dueño del
+> contenido en este MVP (decisiones explícitas del diseño, ver
+> `docs/superpowers/specs/2026-07-11-epic05-bloque-b-reactions-comments-design.md`).
+- [x] **E5.B1** Migración `reactions` + `comments` polimórficas (SD-3), con RLS apoyada en
+  un nuevo helper `can_view_target()` que delega en `can_view_profile()`.
+- [x] **E5.B2** Dominio: `src/lib/social/interactions.ts` (lectura batch,
+  `getInteractionSummary`) + `src/lib/social/interaction-actions.ts` (`toggleReaction`
+  idempotente sobre el UNIQUE, alta/borrado de comentario). *(Nombres reales difieren del
+  boceto original `reactions.ts`/`comments.ts` — unificados en un par lectura/escritura
+  porque todo call site necesita ambos tipos de interacción a la vez, decisión tomada en el
+  diseño.)*
+- [x] **E5.B3** UI: `ReviewInteractions` (fila de "me gusta" + hilo de comentarios
+  colapsable) bajo cada reseña en el panel de comunidad de la ficha (`get-community.ts` y
+  `get-episode-reviews.ts` ganan los conteos y el estado del viewer) y en las reseñas por
+  episodio (§7.36). `item-detail-tabs.tsx` gana un parámetro `?tab=` para deep-linking.
+- [x] **E5.B4** Enganche a notificaciones (E5.D): reaccionar/comentar la reseña de otro
+  genera notificación al autor (`review_liked`/`review_commented`), con guarda de
+  auto-notificación y enlace profundo a la reseña vía `itemHref(...)?tab=community`.
 
 ### Bloque C — Feed de actividad personal  ·  *esfuerzo M-L*  ·  *dep: A (y B para interacción)*
 - [ ] **E5.C1** Dominio `src/lib/social/feed.ts` (SD-1, on-read): unir actividad reciente
