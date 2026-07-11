@@ -72,6 +72,44 @@ export async function getProfileByUsername(
   return toProfile(data);
 }
 
+// Identidad de un perfil (incl. PRIVADOS) para el stub de solicitar-seguir
+// (EPIC-05, modelo Instagram). Lee la vista profile_identities, que expone solo
+// identidad (nunca objetivos/rol) de cualquier perfil. Devuelve null si el
+// username no existe.
+export type ProfileIdentity = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  isPublic: boolean;
+};
+
+export async function getProfileIdentity(
+  supabase: SupabaseServerClient,
+  username: string
+): Promise<ProfileIdentity | null> {
+  const { data, error } = await supabase
+    .from("profile_identities")
+    .select("user_id, username, display_name, avatar_url, bio, is_public")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (error) throw error;
+  // La vista profile_identities tipa sus columnas como nullable (es una vista),
+  // pero user_id/username nunca lo son en una fila de perfil real.
+  if (!data || data.user_id == null || data.username == null) return null;
+
+  return {
+    userId: data.user_id,
+    username: data.username,
+    displayName: data.display_name,
+    avatarUrl: data.avatar_url,
+    bio: data.bio,
+    isPublic: data.is_public ?? false,
+  };
+}
+
 export async function getOwnProfile(
   supabase: SupabaseServerClient,
   userId: string

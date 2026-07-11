@@ -176,6 +176,36 @@
     "avatarUploading": "Subiendo...",
     "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo."
   },
+  "social": {
+    "follow": "Seguir",
+    "requestFollow": "Solicitar seguir",
+    "requested": "Solicitado",
+    "following": "Siguiendo",
+    "unfollow": "Dejar de seguir",
+    "followersLabel": "{count, plural, one {seguidor} other {seguidores}}",
+    "followingLabel": "siguiendo",
+    "followersTitle": "Seguidores",
+    "followingTitle": "Siguiendo",
+    "emptyFollowers": "Todavía no tiene seguidores.",
+    "emptyFollowing": "Todavía no sigue a nadie.",
+    "privateTitle": "Cuenta privada",
+    "privateDescription": "Sigue esta cuenta para ver su biblioteca y su actividad.",
+    "requestsTitle": "Solicitudes de seguimiento",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "backToProfile": "Volver al perfil"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "Todavía no tienes notificaciones.",
+    "followRequest": "{name} quiere seguirte",
+    "newFollower": "{name} ha empezado a seguirte",
+    "followAccepted": "{name} ha aceptado tu solicitud de seguimiento",
+    "justNow": "ahora mismo",
+    "minutesAgo": "hace {count, plural, one {1 minuto} other {# minutos}}",
+    "hoursAgo": "hace {count, plural, one {1 hora} other {# horas}}",
+    "daysAgo": "hace {count, plural, one {1 día} other {# días}}"
+  },
   "item": {
     "pages": "págs.",
     "minutes": "min",

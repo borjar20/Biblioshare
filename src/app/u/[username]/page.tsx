@@ -3,7 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getProfileByUsername } from "@/lib/profile/get-profile-by-username";
+import {
+  getProfileByUsername,
+  getProfileIdentity,
+} from "@/lib/profile/get-profile-by-username";
+import {
+  getFollowCounts,
+  getFollowState,
+  getPendingRequests,
+} from "@/lib/social/follows";
+import { FollowButton } from "@/components/social/follow-button";
+import { FollowRequests } from "@/components/social/follow-requests";
+import { PrivateProfileStub } from "@/components/social/private-profile-stub";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import { getLibraryStats } from "@/lib/library/get-library-stats";
 import { getMonthlyActivity } from "@/lib/diary/get-monthly-activity";
@@ -79,11 +90,36 @@ export default async function PublicProfilePage({
     supabase.auth.getUser(),
   ]);
 
-  if (!profile) notFound();
+  // Perfil privado no visible para este visitante (ni dueño ni seguidor
+  // aceptado): stub de identidad + solicitar-seguir (modelo Instagram, EPIC-05).
+  if (!profile) {
+    const identity = await getProfileIdentity(supabase, username);
+    if (!identity) notFound();
+    const followState = await getFollowState(
+      supabase,
+      user?.id ?? null,
+      identity.userId,
+    );
+    return (
+      <PrivateProfileStub
+        identity={identity}
+        followState={followState}
+        viewerLoggedIn={!!user}
+      />
+    );
+  }
 
   const isOwner = user?.id === profile.userId;
   const basePath = `/u/${profile.username}`;
   const itemType: ItemType | undefined = tab === "overview" ? undefined : tab;
+
+  const [counts, followState, pendingRequests] = await Promise.all([
+    getFollowCounts(supabase, profile.userId),
+    getFollowState(supabase, user?.id ?? null, profile.userId),
+    isOwner
+      ? getPendingRequests(supabase, profile.userId)
+      : Promise.resolve([]),
+  ]);
 
   const [items, stats, inProgress, months, favorites] = await Promise.all([
     tab === "overview"
@@ -108,7 +144,24 @@ export default async function PublicProfilePage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <ProfileHeader profile={profile} stats={stats} isOwner={isOwner} />
+      <ProfileHeader
+        profile={profile}
+        stats={stats}
+        isOwner={isOwner}
+        counts={counts}
+        followButton={
+          !isOwner ? (
+            <FollowButton
+              targetUserId={profile.userId}
+              targetIsPublic={profile.isPublic}
+              state={followState}
+              viewerLoggedIn={!!user}
+            />
+          ) : undefined
+        }
+      />
+
+      {isOwner && <FollowRequests requests={pendingRequests} />}
 
       <FavoritesShelf items={favorites} />
 

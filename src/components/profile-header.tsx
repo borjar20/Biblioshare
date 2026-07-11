@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
+import type { FollowCounts } from "@/lib/social/follows";
 import { EditProfileForm } from "./edit-profile-form";
 import {
   BookIcon,
@@ -30,14 +33,20 @@ export async function ProfileHeader({
   profile,
   stats,
   isOwner,
+  counts,
+  followButton,
 }: {
   profile: Profile;
   stats: LibraryStats;
   isOwner: boolean;
+  counts: FollowCounts;
+  followButton?: ReactNode;
 }) {
   const t = await getTranslations("profile");
+  const tSocial = await getTranslations("social");
   const name = profile.displayName || profile.username;
   const memberSinceYear = new Date(profile.createdAt).getFullYear();
+  const basePath = `/u/${profile.username}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -83,7 +92,31 @@ export async function ProfileHeader({
           </div>
         </div>
 
-        {isOwner && <EditProfileForm profile={profile} />}
+        <div className="flex items-center gap-2">
+          {followButton}
+          {isOwner && <EditProfileForm profile={profile} />}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <Link
+          href={`${basePath}/seguidores`}
+          className="text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <span className="font-semibold text-foreground">
+            {counts.followers}
+          </span>{" "}
+          {tSocial("followersLabel", { count: counts.followers })}
+        </Link>
+        <Link
+          href={`${basePath}/siguiendo`}
+          className="text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <span className="font-semibold text-foreground">
+            {counts.following}
+          </span>{" "}
+          {tSocial("followingLabel")}
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">

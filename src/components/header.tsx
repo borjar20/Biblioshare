@@ -2,6 +2,11 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "@/components/social/notification-bell";
+import {
+  getUnreadCount,
+  listNotifications,
+} from "@/lib/social/notifications";
 import {
   AppLogoIcon,
   GripVerticalIcon,
@@ -20,14 +25,22 @@ export async function Header() {
 
   let username: string | null = null;
   let isAdmin = false;
+  let unreadCount = 0;
+  let notifications: Awaited<ReturnType<typeof listNotifications>> = [];
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("username, role")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const [{ data: profile }, count, list] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("username, role")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      getUnreadCount(supabase, user.id),
+      listNotifications(supabase, user.id),
+    ]);
     username = profile?.username ?? null;
     isAdmin = profile?.role === "admin";
+    unreadCount = count;
+    notifications = list;
   }
 
   return (
@@ -94,7 +107,15 @@ export async function Header() {
           </nav>
         )}
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-1">
+        {user && (
+          <NotificationBell
+            initialUnreadCount={unreadCount}
+            initialNotifications={notifications}
+          />
+        )}
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

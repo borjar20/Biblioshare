@@ -16,7 +16,7 @@
 ## 7.15 Otras ideas sin desarrollar todavía
 - [ ] "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
 - [ ] Comparar bibliotecas entre dos perfiles (solape de ítems) — vía social ligera sin construir seguidores completos.
-- [ ] Sistema de seguidores + feed de actividad.
+- [ ] Sistema de seguidores + feed de actividad. → **absorbido por [EPIC-05 (social)](./social-epic.md)** (Bloques A y C).
 - [ ] Estadísticas y gráficos de hábitos generales (ítems por tipo/estado, actividad del diario por mes).
 - [ ] Offline-first completo (edición sin conexión + sincronización posterior).
 - [ ] Listas curadas y colecciones temáticas — ver 7.4 (sagas/colecciones personales) y 7.26 (versión colaborativa/multi-usuario).
@@ -46,6 +46,7 @@
   - **MVP realista de esta idea**: tabla curada a mano de equivalencias famosas (adaptaciones conocidas) en vez de un motor de embeddings desde el día uno. Solo merece la pena automatizarlo con más usuarios y más datos de consumo.
 
 ## 7.20 Clubs de lectura/visionado con hitos anti-spoiler
+> **Absorbido por [EPIC-05 (social)](./social-epic.md)** — Bloque H (lecturas conjuntas con hitos anti-spoiler), sobre la base de clubes del Bloque E.
 - [ ] Grupos con checkpoints ("hasta el capítulo 10") cuyos hilos de discusión se desbloquean según el progreso registrado de cada miembro, con opción manual de "ya llegué aquí".
   - Necesita funcionalidad social real (grupos, roles, moderación) que hoy no existe — de las ideas nuevas, la que más se apoya en tener ya una base de usuarios activa para tener sentido.
   - Reutiliza el sistema de progreso existente (`position`) y comparte con 7.24/7.21/7.30 la necesidad de un mecanismo genérico de "ocultar contenido hasta que el progreso lo permita" (ver §8).
@@ -66,6 +67,7 @@
   - Comparte con 7.20/7.21/7.30 la necesidad de una utilidad genérica de "spoiler-safe" — ver §8.
 
 ## 7.26 Listas colaborativas
+> **Absorbido por [EPIC-05 (social)](./social-epic.md)** — Bloque I (listas colaborativas de club), que ya aporta el modelo de permisos que faltaba.
 - [ ] Listas editables entre varios usuarios (ej. "películas para el maratón de Halloween").
   - Amplía la idea ya registrada de "listas curadas" (7.15) al caso multi-usuario — requiere modelo de permisos (quién puede añadir/quitar) que hoy no existe en ningún sitio del proyecto. Construir primero la versión de un solo dueño (7.15/7.4) y solo dar el salto a colaborativa si hay demanda, es más barato que empezar directamente por la versión multi-usuario.
 

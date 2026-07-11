@@ -230,6 +230,60 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          followee_id: string
+          follower_id: string
+          status: Database["public"]["Enums"]["follow_status"]
+        }
+        Insert: {
+          created_at?: string
+          followee_id: string
+          follower_id: string
+          status?: Database["public"]["Enums"]["follow_status"]
+        }
+        Update: {
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+          status?: Database["public"]["Enums"]["follow_status"]
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          target_id: string | null
+          target_type: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       library_entries: {
         Row: {
           created_at: string
@@ -667,7 +721,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_identities: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          is_public: boolean | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          is_public?: boolean | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          is_public?: boolean | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_user_role: {
@@ -676,6 +759,10 @@ export type Database = {
       }
       has_min_role: {
         Args: { min: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
+      profile_is_public: {
+        Args: { target_user_id: string }
         Returns: boolean
       }
       reorder_queue: {
@@ -688,6 +775,8 @@ export type Database = {
       }
     }
     Enums: {
+      follow_status: "pending" | "accepted"
+      notification_type: "follow_request" | "new_follower" | "follow_accepted"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       pending_import_status: "pending" | "resolved" | "dismissed"
@@ -819,6 +908,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      follow_status: ["pending", "accepted"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted"],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
       user_role: ["user", "collaborator", "admin"],
