@@ -76,9 +76,13 @@ interacción inline (sin `target_kind` válido).
      (`series_id` directo, sin join)
 3. Merge-sort de los cuatro arrays normalizados por `eventDate` descendente, corta a
    `pageSize`. `nextCursor` = la fecha más antigua de la página resultante, o `null` si
-   ninguna fuente devolvió una página completa (todas se agotaron) — chequeo estándar de
-   paginación multi-fuente: solo avanza el cursor con seguridad cuando cada fuente o bien
-   se agotó o bien devolvió una página llena.
+   ninguna de las cuatro queries del paso 2 devolvió `pageSize` filas **en su fetch bruto**
+   (es decir, todas las fuentes se agotaron antes del merge/corte del paso 3) — chequeo
+   estándar de paginación multi-fuente. Importante: esta comprobación se hace sobre el
+   recuento crudo de cada query del paso 2, no sobre cuántas filas de cada fuente
+   sobrevivieron el corte a `pageSize` del paso 3 (una fuente puede haber devuelto una
+   página llena y aun así perder casi todas sus filas en el merge si las otras fuentes
+   tenían eventos más recientes).
 4. Resolución batch: identidades de actor (`profile_identities`, una query), ítems de
    catálogo (`books`/`movies`/`series` agrupados por tipo, reutilizando el patrón ya
    inline en `get-library-items.ts`), y resúmenes de interacción (`getInteractionSummary`
