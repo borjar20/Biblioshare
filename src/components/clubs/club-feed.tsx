@@ -64,6 +64,11 @@ export function ClubFeed({
               viewerLoggedIn
               canDelete={canDelete(post)}
               onDeleted={() => setPosts((prev) => prev.filter((p) => p.id !== post.id))}
+              onVoted={() => {
+                startTransition(async () => {
+                  refresh(await listClubPosts(clubId));
+                });
+              }}
             />
           ))}
         </div>

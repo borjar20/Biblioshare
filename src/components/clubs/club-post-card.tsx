@@ -14,28 +14,44 @@ export function ClubPostCard({
   viewerLoggedIn,
   canDelete,
   onDeleted,
+  onVoted,
 }: {
   post: ClubPost;
   viewerLoggedIn: boolean;
   canDelete: boolean;
   onDeleted: () => void;
+  onVoted: () => void;
 }) {
   const t = useTranslations("clubPost");
   const [selectedOption, setSelectedOption] = useState(post.poll?.viewerOptionId ?? null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleVote(optionId: string) {
+    const previous = selectedOption;
     setSelectedOption(optionId);
+    setError(null);
     startTransition(async () => {
-      await votePoll(post.id, optionId);
+      try {
+        await votePoll(post.id, optionId);
+        onVoted();
+      } catch {
+        setSelectedOption(previous);
+        setError(t("postError"));
+      }
     });
   }
 
   function handleDelete() {
     if (!confirm(t("deleteConfirm"))) return;
+    setError(null);
     startTransition(async () => {
-      await deletePost(post.id);
-      onDeleted();
+      try {
+        await deletePost(post.id);
+        onDeleted();
+      } catch {
+        setError(t("postError"));
+      }
     });
   }
 
@@ -51,6 +67,8 @@ export function ClubPostCard({
           </Button>
         )}
       </div>
+
+      {error && <p className="text-xs text-status-dropped">{error}</p>}
 
       <p className="whitespace-pre-wrap text-sm text-foreground">{post.body}</p>
 
