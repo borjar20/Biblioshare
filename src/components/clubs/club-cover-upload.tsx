@@ -7,20 +7,23 @@ import { toSquareWebp } from "@/lib/image/to-square-webp";
 
 const MAX_DIMENSION = 512;
 
-// Sube el avatar al bucket de Storage y sincroniza un input oculto (avatarUrl)
-// con la URL pública, para que el submit del formulario la persista vía la
-// server action existente. Path estable {uid}/avatar.webp con upsert; un
-// parámetro de cache-busting fuerza el refresco de la imagen mostrada.
-export function AvatarUpload({
+// Portada de club (EPIC-05 Bloque E): reutiliza el bucket "avatars" y sus
+// políticas existentes (own-folder-only), NO un bucket/prefijo nuevo -- la
+// política exige que el primer segmento de la ruta sea auth.uid(), así que
+// el path es {userId}/club-cover-{timestamp}.webp, no clubs/{clubId}/...
+// (que además no resolvería el problema de subir portada antes de que el
+// club exista, en el formulario de creación).
+export function ClubCoverUpload({
   userId,
   initialUrl,
+  onUploaded,
 }: {
   userId: string;
   initialUrl: string | null;
+  onUploaded: (url: string) => void;
 }) {
-  const t = useTranslations("profile");
+  const t = useTranslations("club");
   const [preview, setPreview] = useState<string | null>(initialUrl);
-  const [url, setUrl] = useState<string>(initialUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,7 +34,7 @@ export function AvatarUpload({
     try {
       const webp = await toSquareWebp(file, MAX_DIMENSION);
       const supabase = createClient();
-      const path = `${userId}/avatar.webp`;
+      const path = `${userId}/club-cover-${Date.now()}.webp`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(path, webp, { upsert: true, contentType: "image/webp" });
@@ -40,9 +43,8 @@ export function AvatarUpload({
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(path);
-      const busted = `${publicUrl}?v=${Date.now()}`;
-      setUrl(busted);
-      setPreview(busted);
+      setPreview(publicUrl);
+      onUploaded(publicUrl);
     } catch {
       setError(true);
     } finally {
@@ -52,9 +54,9 @@ export function AvatarUpload({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground">{t("avatar")}</span>
+      <span className="text-sm font-medium text-foreground">{t("cover")}</span>
       <div className="flex items-center gap-3">
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-surface-muted">
+        <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-md bg-surface-muted">
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element -- preview local/remota antes de persistir
             <img src={preview} alt="" className="h-full w-full object-cover" />
@@ -66,7 +68,7 @@ export function AvatarUpload({
           disabled={uploading}
           className="rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted disabled:opacity-60"
         >
-          {uploading ? t("avatarUploading") : t("avatarChoose")}
+          {uploading ? t("coverUploading") : t("coverChoose")}
         </button>
       </div>
       <input
@@ -79,9 +81,7 @@ export function AvatarUpload({
           if (file) handleFile(file);
         }}
       />
-      {error && <p className="text-xs text-status-dropped">{t("avatarError")}</p>}
-      {/* La server action updateProfile lee este campo tal cual. */}
-      <input type="hidden" name="avatarUrl" value={url} />
+      {error && <p className="text-xs text-status-dropped">{t("coverError")}</p>}
     </div>
   );
 }
