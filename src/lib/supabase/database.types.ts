@@ -308,6 +308,63 @@ export type Database = {
         }
         Relationships: []
       }
+      clubs: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          slug: string
+          visibility: Database["public"]["Enums"]["club_visibility"]
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          slug: string
+          visibility?: Database["public"]["Enums"]["club_visibility"]
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          slug?: string
+          visibility?: Database["public"]["Enums"]["club_visibility"]
+        }
+        Relationships: []
+      }
+      club_members: {
+        Row: {
+          club_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["club_role"]
+          status: Database["public"]["Enums"]["club_member_status"]
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["club_role"]
+          status?: Database["public"]["Enums"]["club_member_status"]
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["club_role"]
+          status?: Database["public"]["Enums"]["club_member_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           created_at: string
@@ -851,16 +908,44 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
+      create_club: {
+        Args: {
+          p_slug: string
+          p_name: string
+          p_description: string
+          p_visibility: Database["public"]["Enums"]["club_visibility"]
+          p_cover_url: string
+        }
+        Returns: Database["public"]["Tables"]["clubs"]["Row"]
+      }
+      set_club_member_role: {
+        Args: {
+          p_club_id: string
+          p_user_id: string
+          p_role: Database["public"]["Enums"]["club_role"]
+        }
+        Returns: undefined
+      }
+      transfer_club_ownership: {
+        Args: {
+          p_club_id: string
+          p_new_owner_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       follow_status: "pending" | "accepted"
-      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented"
+      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted"
       push_channel: "web"
       target_kind: "diary_entry" | "episode_watch"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       pending_import_status: "pending" | "resolved" | "dismissed"
       user_role: "user" | "collaborator" | "admin"
+      club_member_status: "invited" | "active"
+      club_role: "member" | "moderator" | "owner"
+      club_visibility: "public" | "private"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -989,12 +1074,15 @@ export const Constants = {
   public: {
     Enums: {
       follow_status: ["pending", "accepted"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted"],
       push_channel: ["web"],
       target_kind: ["diary_entry", "episode_watch"],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
       user_role: ["user", "collaborator", "admin"],
+      club_member_status: ["invited", "active"],
+      club_role: ["member", "moderator", "owner"],
+      club_visibility: ["public", "private"],
     },
   },
 } as const
