@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "@/components/social/notification-bell";
+import { MobileNav } from "@/components/mobile-nav";
 import {
   getUnreadCount,
   listNotifications,
@@ -54,40 +55,34 @@ export async function Header() {
           Biblioshare
         </Link>
         {user && (
-          <nav className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground sm:gap-4">
+          <nav className="hidden min-w-0 items-center gap-3 text-sm text-muted-foreground sm:flex sm:gap-4">
             <Link
               href="/buscar"
-              aria-label={t("search.title")}
               className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
             >
               <SearchIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("search.title")}</span>
+              {t("search.title")}
             </Link>
             <Link
               href="/cola"
-              aria-label={t("queue.title")}
               className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
             >
               <GripVerticalIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("queue.title")}</span>
+              {t("queue.title")}
             </Link>
             <Link
               href="/retos"
-              aria-label={t("challenges.navLabel")}
               className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
             >
               <TrophyIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {t("challenges.navLabel")}
-              </span>
+              {t("challenges.navLabel")}
             </Link>
             <Link
               href="/usuarios"
-              aria-label={t("users.navLabel")}
               className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
             >
               <UsersIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("users.navLabel")}</span>
+              {t("users.navLabel")}
             </Link>
             {isAdmin && (
               <Link href="/admin" className="shrink-0 hover:text-foreground">
@@ -97,11 +92,10 @@ export async function Header() {
             {username && (
               <Link
                 href={`/u/${username}`}
-                aria-label={`@${username}`}
-                className="inline-flex shrink-0 items-center gap-2 hover:text-foreground"
+                className="inline-flex min-w-0 shrink-0 items-center gap-2 hover:text-foreground"
               >
                 <UserIcon className="h-4 w-4" />
-                <span className="hidden truncate sm:inline">@{username}</span>
+                <span className="truncate">@{username}</span>
               </Link>
             )}
           </nav>
@@ -109,10 +103,13 @@ export async function Header() {
       </div>
       <div className="flex items-center gap-1">
         {user && (
-          <NotificationBell
-            initialUnreadCount={unreadCount}
-            initialNotifications={notifications}
-          />
+          <>
+            <NotificationBell
+              initialUnreadCount={unreadCount}
+              initialNotifications={notifications}
+            />
+            <MobileNav username={username} isAdmin={isAdmin} />
+          </>
         )}
         <ThemeToggle />
       </div>

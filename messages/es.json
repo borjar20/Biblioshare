@@ -3,6 +3,10 @@
     "appName": "Biblioshare",
     "loading": "Cargando..."
   },
+  "nav": {
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
+  },
   "auth": {
     "login": {
       "title": "Iniciar sesión",
