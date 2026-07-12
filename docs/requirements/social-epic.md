@@ -331,21 +331,46 @@ Cada bloque agrupa tareas cohesionadas. Esfuerzo: **S** < **M** < **L** < **XL**
   alcance.
 
 ### Bloque E — Clubes: creación, membresía y roles  ·  *esfuerzo L*  ·  *dep: A, D*
-- [ ] **E5.E1** Migración `clubs` (`slug` único, `name`, `description`, `cover_url`,
+> **Estado (2026-07-12): código completo, migración aplicada a dev + prod; verificación
+> manual en navegador pendiente de ejecutar.** Diseño corregido a mitad de implementación: unirse a un club privado es
+> **solo por invitación** (sin autoservicio "solicitar unirse") — la fila de un club privado
+> es enteramente invisible a no-miembros (SD-4), así que un no-miembro no podría ni comprobar
+> que el club existe para solicitar unirse; `club_member_status` se quedó en solo
+> `invited`/`active` (sin `pending`), y `approveMember` no existe. Batería de impersonación
+> RLS (19 checks) sobre `clubs`/`club_members`, con 6 rondas de fixes reales encontrados
+> durante su propia implementación: recursión estructural 42P17 entre políticas de `clubs`/
+> `club_members` (resuelto con el helper `club_member_row_exists()`), el gate
+> SELECT-antes-de-UPDATE de Postgres bloqueando que un invitado viera/aceptara su propia
+> invitación, una escalada de privilegio vía `club_members accept invite` (un invitado podía
+> colar `role='owner'` en el mismo UPDATE que acepta), un conflicto BEFORE DELETE/cascade al
+> borrar el último miembro de un club, y una regresión de ese mismo fix (el guard
+> `pg_trigger_depth() > 1` en `enforce_club_owner_change_authorized()`) que rompía la
+> promoción normal de un nuevo owner. Checklist de verificación manual escrito y listo
+> (`docs/superpowers/plans/2026-07-12-epic05-bloque-e-clubs-manual-test.md`), per convención
+> `docs/TESTING.md`, pendiente de que el usuario lo ejecute en navegador con dos cuentas
+> reales antes de dar el bloque por verificado end-to-end. Feed del club (Bloque F)
+> explícitamente fuera de alcance de este bloque.
+- [x] **E5.E1** Migración `clubs` (`slug` único, `name`, `description`, `cover_url`,
   `visibility` enum, `owner_id`, `created_at`) + `club_members` (SD-4, con `role`/`status`)
   + enums `club_role`/`club_member_status`. Helpers `SECURITY DEFINER` `is_club_member`,
   `club_role`, `has_min_club_role`. RLS de `clubs`: la **fila del club** (metadatos de
   descubrimiento) es legible por cualquiera si `visibility=public`, y solo por miembros si
   `private`; **todo el contenido del club es solo-miembros en ambos casos** (SD-4).
-- [ ] **E5.E2** Dominio `src/lib/clubs/`: `createClub`, `updateClub`, `joinClub`
-  (público→active / privado→pending), `leaveClub`, `approveMember`/`removeMember`,
-  `setMemberRole`, `getClub`, `listMyClubs`, `discoverPublicClubs`.
-- [ ] **E5.E3** UI: ruta `/club/[slug]` (cabecera, descripción, miembros, botón
-  unirse/solicitar/salir), `/clubes` (mis clubes + descubrir públicos), formulario de
-  creación/edición (solo owner/mod). Storage de portada reutilizando el bucket de avatares
-  (`20260710_avatars_storage.sql`) o uno análogo. i18n `club.*`.
-- [ ] **E5.E4** Gestión de miembros: aprobar solicitudes, promover a moderador, expulsar
-  (gateado con `has_min_club_role`).
+- [x] **E5.E2** Dominio `src/lib/clubs/`: `createClub`, `updateClub`, `joinClub` (solo clubes
+  públicos, activo inmediato), `leaveClub` (bloquea al owner con otros miembros activos hasta
+  que transfiera), `inviteMember`/`acceptInvite`/`declineInvite` (invitación directa,
+  moderator+), `removeMember`, `setMemberRole`/`transferOwnership` (RPCs `SECURITY DEFINER`,
+  nunca UPDATE de cliente), `getClub`, `listMyClubs`, `discoverPublicClubs`, `listMembers`,
+  `resolveUsername`.
+- [x] **E5.E3** UI: ruta `/club/[slug]` (cabecera con portada/descripción, botón según estado
+  del viewer: unirse/aceptar-rechazar invitación/salir, edición in-line para moderator+),
+  `/clubes` (mis clubes + descubrir públicos + crear in-line). Storage de portada
+  reutilizando el bucket de avatares (`20260710_avatars_storage.sql`), helper compartido
+  `toSquareWebp` extraído de `avatar-upload.tsx`. i18n `club.*`.
+- [x] **E5.E4** Gestión de miembros (`ManageMembers`, moderator+): invitar por username,
+  promover/degradar moderador (owner-only), transferir propiedad (owner-only), expulsar
+  (gateado con `has_min_club_role`, un moderator no puede expulsar a otro moderator ni al
+  owner). Sin "aprobar solicitudes" — no existe ese flujo (ver nota de diseño arriba).
 
 ### Bloque F — Feed del club  ·  *esfuerzo M-L*  ·  *dep: E, B, D*
 - [ ] **E5.F1** Migración `club_posts(id, club_id, author_id, kind, body, ref jsonb,
