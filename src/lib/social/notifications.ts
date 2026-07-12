@@ -90,7 +90,7 @@ async function deliverPush(
     url: href,
   };
 
-  await sendPushToUser(supabase, params.userId, payload);
+  await sendPushToUser(params.userId, payload);
 }
 
 export async function getUnreadCount(

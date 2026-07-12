@@ -1,11 +1,16 @@
 import webpush from "web-push";
-import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 // Entrega de push (E5.D4), canal-agnóstica: hoy solo implementa "web"; un
 // canal nativo futuro (ios_native, vía Capacitor/APNs) se añadiría como una
 // rama más en el bucle de sendPushToUser, sin tocar la firma pública.
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+//
+// Usa un cliente service_role en vez del cliente de la request: notify() se
+// llama con el cliente del actor (quien sigue/reacciona/comenta), y la
+// política RLS de push_subscriptions es self-only (auth.uid() = user_id) —
+// el actor no tiene permiso para leer ni borrar las suscripciones del
+// destinatario. Sin esto, la consulta no da error (RLS filtra en silencio),
+// simplemente no devuelve filas y el push nunca se envía.
 
 type WebCredentials = { endpoint: string; keys: { p256dh: string; auth: string } };
 
@@ -59,12 +64,12 @@ async function sendWebPush(
 }
 
 export async function sendPushToUser(
-  supabase: SupabaseServerClient,
   userId: string,
   payload: PushPayload,
 ): Promise<void> {
   if (!ensureVapidConfigured()) return;
 
+  const supabase = createServiceRoleClient();
   const { data: subs, error } = await supabase
     .from("push_subscriptions")
     .select("id, channel, credentials")
