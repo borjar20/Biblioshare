@@ -93,9 +93,14 @@ export function NotificationBell({
                     />
                     <div className="flex min-w-0 flex-col">
                       <span className="text-sm text-foreground">
-                        {t(NOTIFICATION_TYPE_KEY[n.type], {
-                          name: n.actorDisplayName || n.actorUsername,
-                        })}
+                        {n.extraActorsCount
+                          ? t("reviewLikedGrouped", {
+                              name: n.actorDisplayName || n.actorUsername,
+                              count: n.extraActorsCount,
+                            })
+                          : t(NOTIFICATION_TYPE_KEY[n.type], {
+                              name: n.actorDisplayName || n.actorUsername,
+                            })}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {timeAgo(n.createdAt, t)}

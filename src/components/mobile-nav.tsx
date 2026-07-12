@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { ThemeToggle } from "./theme-toggle";
 import {
   MenuIcon,
   XIcon,
@@ -110,6 +111,9 @@ export function MobileNav({
                 <UserIcon className="h-4 w-4" />@{username}
               </Link>
             )}
+            <div className="mt-auto border-t border-border pt-2">
+              <ThemeToggle asRow />
+            </div>
           </div>
         </div>
       )}

@@ -22,6 +22,10 @@ export type Notification = {
   href: string;
   readAt: string | null;
   createdAt: string;
+  // Cuántos otros actores dispararon el mismo tipo de notificación sobre el
+  // mismo target (p. ej. varios likes sobre la misma reseña) — se agrupan en
+  // una sola fila al listar, mostrando el actor más reciente + este contador.
+  extraActorsCount?: number;
 };
 
 export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {

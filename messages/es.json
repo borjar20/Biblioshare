@@ -5,7 +5,9 @@
   },
   "nav": {
     "openMenu": "Abrir menú",
-    "closeMenu": "Cerrar menú"
+    "closeMenu": "Cerrar menú",
+    "themeToLight": "Modo claro",
+    "themeToDark": "Modo oscuro"
   },
   "auth": {
     "login": {
@@ -232,6 +234,7 @@
     "newFollower": "{name} ha empezado a seguirte",
     "followAccepted": "{name} ha aceptado tu solicitud de seguimiento",
     "reviewLiked": "{name} le gustó tu reseña",
+    "reviewLikedGrouped": "{name} y {count, plural, one {# persona} other {# personas}} más le dieron like a tu reseña",
     "reviewCommented": "{name} comentó tu reseña",
     "justNow": "ahora mismo",
     "minutesAgo": "hace {count, plural, one {1 minuto} other {# minutos}}",

@@ -1190,3 +1190,14 @@ create policy "push_subscriptions insert own" on public.push_subscriptions
 
 create policy "push_subscriptions delete own" on public.push_subscriptions
   for delete to authenticated using ((select auth.uid()) = user_id);
+
+
+-- ============================================================
+-- 20260712_notifications_delete_policy.sql
+-- ============================================================
+-- Política DELETE en notifications, requerida por la limpieza perezosa de
+-- notificaciones leídas (listNotifications borra las que llevan >5 min
+-- marcadas como leídas, sin cron).
+
+create policy "notifications delete own" on public.notifications
+  for delete to authenticated using ((select auth.uid()) = user_id);

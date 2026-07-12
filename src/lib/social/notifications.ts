@@ -172,6 +172,8 @@ async function resolveReviewHrefs(
   return hrefByKey;
 }
 
+const READ_EXPIRY_MS = 5 * 60 * 1000;
+
 // notifications.actor_id apunta a auth.users, no a profiles → sin embedding de
 // PostgREST; se resuelve la identidad del actor en un segundo paso (mismo
 // patrón que resolveUsers en follows.ts). Se usa profile_identities (no
@@ -180,6 +182,20 @@ export async function listNotifications(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<Notification[]> {
+  // Limpieza perezosa, sin cron (mismo espíritu que la limpieza de
+  // suscripciones push caducadas): las notificaciones ya leídas se borran
+  // 5 minutos después de marcarse como leídas, en cada carga de la campana,
+  // en vez de acumularse indefinidamente en la tabla.
+  const { error: cleanupError } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", userId)
+    .not("read_at", "is", null)
+    .lt("read_at", new Date(Date.now() - READ_EXPIRY_MS).toISOString());
+  if (cleanupError) {
+    console.error("listNotifications: cleanup failed", cleanupError);
+  }
+
   const { data, error } = await supabase
     .from("notifications")
     .select("id, type, actor_id, target_type, target_id, read_at, created_at")
@@ -190,7 +206,29 @@ export async function listNotifications(
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
-  const actorIds = [...new Set(data.map((n) => n.actor_id))];
+  // Agrupa varias reacciones del mismo tipo sobre el mismo target (p. ej.
+  // varios likes en la misma reseña) en una sola fila representativa — data
+  // ya viene ordenado por created_at desc, así que la primera fila vista de
+  // cada grupo es automáticamente la más reciente.
+  const groups = new Map<string, { row: (typeof data)[number]; extraActorsCount: number }>();
+  const groupOrder: string[] = [];
+  for (const row of data) {
+    const key =
+      row.type === "review_liked" && row.target_type && row.target_id
+        ? `${row.type}:${row.target_type}:${row.target_id}`
+        : `solo:${row.id}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.extraActorsCount += 1;
+    } else {
+      groups.set(key, { row, extraActorsCount: 0 });
+      groupOrder.push(key);
+    }
+  }
+  const grouped = groupOrder.map((key) => groups.get(key)!);
+  const representativeRows = grouped.map((g) => g.row);
+
+  const actorIds = [...new Set(representativeRows.map((n) => n.actor_id))];
   const { data: actors, error: actorsError } = await supabase
     .from("profile_identities")
     .select("user_id, username, display_name, avatar_url")
@@ -207,7 +245,7 @@ export async function listNotifications(
       .map((a) => [a.user_id, a]),
   );
 
-  const reviewTargets = data
+  const reviewTargets = representativeRows
     .filter(
       (n): n is typeof n & { target_type: string; target_id: string } =>
         n.target_type != null && n.target_id != null,
@@ -217,8 +255,8 @@ export async function listNotifications(
 
   // Si el actor ya no es resoluble (cuenta borrada, RLS), se descarta la fila:
   // no hay a quién enlazar ni qué nombre mostrar.
-  return data
-    .map((n): Notification | null => {
+  return grouped
+    .map(({ row: n, extraActorsCount }): Notification | null => {
       const actor = byId.get(n.actor_id);
       if (!actor) return null;
       const href =
@@ -236,6 +274,7 @@ export async function listNotifications(
         href,
         readAt: n.read_at,
         createdAt: n.created_at,
+        extraActorsCount: extraActorsCount > 0 ? extraActorsCount : undefined,
       };
     })
     .filter((n): n is Notification => n !== null);
