@@ -23,22 +23,49 @@ navegador, usa la cuenta ya creada y con onboarding completo:
 - Deja `devtest.is_public = true` al terminar (es su estado por defecto);
   si una prueba lo cambia a privado, reviértelo antes de acabar.
 
+## Verificación de UI: checklist manual (por defecto desde 2026-07-12)
+
+**Cambio de metodología**: verificar una feature de UI con un agente
+conduciendo el navegador automáticamente (`qa-verifier`, o cualquier subagente
+usando Playwright/Preview MCP) dejó de ser el camino por defecto. Las tandas
+de verificación automática habían crecido en tamaño y se volvían frágiles —
+herramientas de navegador desconectándose a media sesión, fricción de
+entorno repetida. En su lugar, **tras implementar algo con UI, genera un
+documento markdown con un checklist paso a paso** para que lo ejecute el
+usuario manualmente en su propio navegador:
+
+- Guárdalo junto al plan/spec de la feature si existe uno (p. ej.
+  `docs/superpowers/plans/<fecha>-<feature>-manual-test.md`), o en un sitio
+  igual de visible si no hay un plan formal.
+- Cada punto: qué hacer (clic, campo a rellenar, URL a visitar) y qué
+  resultado esperar. Si el checklist cubre una corrección de un bug
+  específico, dilo explícitamente ("antes de la corrección pasaba X, ahora
+  debería pasar Y") para que el usuario sepa qué mirar.
+- Incluye los pasos de preparación de datos que hagan falta (a qué usuario
+  loguearse, qué actividad/relaciones necesita tener sembradas) para que el
+  usuario pueda ejecutar el checklist sin fricción añadida.
+- Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
+  archivos) la sigue haciendo el agente directamente — el cambio es
+  específicamente sobre *conducir la interfaz*, no sobre toda verificación.
+
+`qa-verifier` (ver abajo) sigue existiendo y funciona si el usuario lo pide
+explícitamente por nombre, pero ya no se invoca de forma proactiva.
+
 ## Agentes disponibles
 
 Ver `.claude/agents/`:
 
 - **qa-verifier**: verifica una funcionalidad en el navegador de principio a
   fin (login con `devtest`, ejercitar el flujo, revisar consola/red, limpiar
-  datos) y reporta si pasa o no. Úsalo después de implementar algo con UI en
-  vez de hacer la verificación a mano en el hilo principal.
+  datos) y reporta si pasa o no. **Ya no es el camino por defecto** (ver
+  sección de arriba) — solo se usa si el usuario lo pide explícitamente.
 - **supabase-schema**: migraciones, RLS, advisors y regeneración de tipos de
   Supabase.
 - **backlog-scribe**: mantiene `docs/REQUIREMENTS.md` al día (checklists,
   numeración, log de decisiones) tras cerrar una tarea.
 
 Al ser subagentes independientes, se pueden lanzar en paralelo mientras se
-sigue trabajando en el hilo principal (p. ej. verificar la feature A mientras
-se implementa la B).
+sigue trabajando en el hilo principal.
 
 ## Despliegue (Vercel)
 

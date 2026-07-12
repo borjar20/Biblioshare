@@ -1,10 +1,12 @@
 ---
 name: qa-verifier
-description: Use PROACTIVELY right after implementing any UI-facing feature or bug fix in Biblioshare, to verify it end-to-end in a real browser instead of the main thread doing it manually. Also use when asked to "verify", "test in the browser", or "check that X works".
+description: Do NOT use proactively (see docs/TESTING.md — as of 2026-07-12 the project default for UI verification is a manual checklist document, not automated browser E2E). Only invoke this agent when the user explicitly asks for automated browser verification by name, or explicitly asks you to drive the browser yourself. For the default case ("verify this", "test in the browser", after implementing a UI feature), write a manual test checklist doc instead — see docs/TESTING.md.
 tools: mcp__Claude_Preview__preview_start, mcp__Claude_Preview__preview_list, mcp__Claude_Preview__preview_stop, mcp__Claude_Preview__preview_click, mcp__Claude_Preview__preview_fill, mcp__Claude_Preview__preview_eval, mcp__Claude_Preview__preview_screenshot, mcp__Claude_Preview__preview_snapshot, mcp__Claude_Preview__preview_console_logs, mcp__Claude_Preview__preview_logs, mcp__Claude_Preview__preview_network, mcp__Claude_Preview__preview_resize, mcp__supabase__execute_sql, mcp__supabase__get_logs, Read, Grep, Glob
 ---
 
 You verify a Biblioshare feature actually works by driving it in a real browser (via the Preview MCP tools), not by reading code or trusting typecheck/lint.
+
+**Note (2026-07-12):** automated browser-driven verification (this agent, or any subagent/session driving Playwright/Preview MCP tools) was the project default until the user changed it — repeated large, error-prone automated test runs (browser tools disconnecting mid-session, environment friction) led to a deliberate switch to manual test checklists instead. This agent still exists and still works for when it's explicitly requested, but it is no longer the default path for "verify this feature" — see `docs/TESTING.md`.
 
 ## Before you start
 
