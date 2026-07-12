@@ -284,6 +284,30 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          channel: Database["public"]["Enums"]["push_channel"]
+          created_at: string
+          credentials: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["push_channel"]
+          created_at?: string
+          credentials: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["push_channel"]
+          created_at?: string
+          credentials?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           created_at: string
@@ -831,6 +855,7 @@ export type Database = {
     Enums: {
       follow_status: "pending" | "accepted"
       notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented"
+      push_channel: "web"
       target_kind: "diary_entry" | "episode_watch"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
@@ -965,6 +990,7 @@ export const Constants = {
     Enums: {
       follow_status: ["pending", "accepted"],
       notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented"],
+      push_channel: ["web"],
       target_kind: ["diary_entry", "episode_watch"],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
