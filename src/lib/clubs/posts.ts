@@ -1,0 +1,277 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { notify } from "@/lib/social/notifications";
+import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
+import type { FeedEvent } from "@/lib/social/feed";
+
+async function requireUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  return { supabase, userId: user.id };
+}
+
+export type ClubPollOption = {
+  id: string;
+  label: string;
+  voteCount: number | null; // null mientras los resultados siguen ocultos
+};
+
+export type ClubPoll = {
+  endsAt: string;
+  isClosed: boolean;
+  viewerOptionId: string | null;
+  resultsVisible: boolean;
+  options: ClubPollOption[];
+};
+
+export type ClubPost = {
+  id: string;
+  clubId: string;
+  authorId: string;
+  authorUsername: string;
+  authorDisplayName: string | null;
+  authorAvatarUrl: string | null;
+  kind: "text" | "activity_share" | "poll";
+  body: string;
+  createdAt: string;
+  sharedActivity: FeedEvent | null; // solo kind='activity_share'; null también si la fila origen ya no existe
+  poll: ClubPoll | null; // solo kind='poll'
+  reactionCount: number;
+  viewerReacted: boolean;
+  commentCount: number;
+  comments: InteractionComment[];
+};
+
+export type ClubPostsPage = {
+  posts: ClubPost[];
+  nextCursor: string | null;
+};
+
+const PAGE_SIZE = 20;
+
+// Bucle de fan-out sobre los miembros activos, excepto el autor -- sin
+// mecanismo de fan-out nuevo, mismo notify() best-effort de siempre (EPIC-05
+// Bloque F, decisión de sesión: se acepta el ruido temporal, silenciar-club
+// queda diferido a E5.J).
+async function notifyNewPost(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clubId: string,
+  authorId: string,
+): Promise<void> {
+  try {
+    const { data: members } = await supabase
+      .from("club_members")
+      .select("user_id")
+      .eq("club_id", clubId)
+      .eq("status", "active")
+      .neq("user_id", authorId);
+    await Promise.all(
+      (members ?? []).map((m) =>
+        notify(supabase, {
+          userId: m.user_id,
+          actorId: authorId,
+          type: "club_post",
+          targetType: "club",
+          targetId: clubId,
+        }),
+      ),
+    );
+  } catch (error) {
+    console.error("notifyNewPost failed", error);
+  }
+}
+
+export async function createTextPost(clubId: string, body: string): Promise<void> {
+  const { supabase, userId } = await requireUser();
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("body_required");
+
+  const { error } = await supabase
+    .from("club_posts")
+    .insert({ club_id: clubId, author_id: userId, kind: "text", body: trimmed });
+  if (error) throw error;
+
+  await notifyNewPost(supabase, clubId, userId);
+}
+
+export async function createShareActivityPost(
+  clubId: string,
+  body: string,
+  ref: ShareRef,
+): Promise<void> {
+  const { supabase, userId } = await requireUser();
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("body_required");
+
+  const { error } = await supabase
+    .from("club_posts")
+    .insert({ club_id: clubId, author_id: userId, kind: "activity_share", body: trimmed, ref });
+  if (error) throw error;
+
+  await notifyNewPost(supabase, clubId, userId);
+}
+
+export async function createPoll(
+  clubId: string,
+  question: string,
+  options: string[],
+  endsAt: string,
+): Promise<void> {
+  const { supabase, userId } = await requireUser();
+  const trimmedQuestion = question.trim();
+  const trimmedOptions = options.map((o) => o.trim()).filter(Boolean);
+  if (!trimmedQuestion) throw new Error("question_required");
+  if (trimmedOptions.length < 2) throw new Error("at_least_two_options_required");
+
+  const { error } = await supabase.rpc("create_club_poll", {
+    p_club_id: clubId,
+    p_question: trimmedQuestion,
+    p_options: trimmedOptions,
+    p_ends_at: endsAt,
+  });
+  if (error) throw error;
+
+  await notifyNewPost(supabase, clubId, userId);
+}
+
+export async function votePoll(postId: string, optionId: string): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("vote_club_poll", { p_post_id: postId, p_option_id: optionId });
+  if (error) throw error;
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("club_posts").delete().eq("id", postId);
+  if (error) throw error;
+}
+
+export async function listClubPosts(clubId: string, cursor?: string): Promise<ClubPostsPage> {
+  const { supabase, userId } = await requireUser();
+
+  let query = supabase
+    .from("club_posts")
+    .select("id, club_id, author_id, kind, body, ref, poll_ends_at, created_at")
+    .eq("club_id", clubId)
+    .order("created_at", { ascending: false })
+    .limit(PAGE_SIZE);
+  if (cursor) query = query.lt("created_at", cursor);
+
+  const { data: rows, error } = await query;
+  if (error) throw error;
+  if (!rows || rows.length === 0) return { posts: [], nextCursor: null };
+
+  const authorIds = [...new Set(rows.map((r) => r.author_id))];
+  const { data: authors } = await supabase
+    .from("profile_identities")
+    .select("user_id, username, display_name, avatar_url")
+    .in("user_id", authorIds);
+  const authorById = new Map(
+    (authors ?? [])
+      .filter((a): a is typeof a & { user_id: string; username: string } => a.user_id != null && a.username != null)
+      .map((a) => [a.user_id, a]),
+  );
+
+  // activity_share: resuelto fila a fila (no batcheado) -- una página de
+  // feed de club es pequeña (PAGE_SIZE=20) y solo una fracción suele ser
+  // activity_share; batchear por las 4 tablas fuente heterogéneas
+  // duplicaría buena parte de getFeed()'s complejidad para un ahorro
+  // marginal en este contexto.
+  const shareableRows = rows.filter((r) => r.kind === "activity_share" && r.ref);
+  const sharedByPostId = new Map<string, FeedEvent | null>(
+    await Promise.all(
+      shareableRows.map(
+        async (r): Promise<[string, FeedEvent | null]> => [
+          r.id,
+          await resolveSharedActivity(supabase, r.ref as unknown as ShareRef),
+        ],
+      ),
+    ),
+  );
+
+  // poll: opciones + votos batcheados por post.
+  const pollPostIds = rows.filter((r) => r.kind === "poll").map((r) => r.id);
+  const [optionsResult, votesResult] = await Promise.all([
+    pollPostIds.length
+      ? supabase.from("club_poll_options").select("id, post_id, label, position").in("post_id", pollPostIds)
+      : Promise.resolve({ data: [] as { id: string; post_id: string; label: string; position: number }[] }),
+    pollPostIds.length
+      ? supabase.from("club_poll_votes").select("post_id, user_id, option_id").in("post_id", pollPostIds)
+      : Promise.resolve({ data: [] as { post_id: string; user_id: string; option_id: string }[] }),
+  ]);
+  const optionsByPost = new Map<string, { id: string; label: string; position: number }[]>();
+  for (const o of optionsResult.data ?? []) {
+    const list = optionsByPost.get(o.post_id) ?? [];
+    list.push({ id: o.id, label: o.label, position: o.position });
+    optionsByPost.set(o.post_id, list);
+  }
+  const votesByPost = new Map<string, { userId: string; optionId: string }[]>();
+  for (const v of votesResult.data ?? []) {
+    const list = votesByPost.get(v.post_id) ?? [];
+    list.push({ userId: v.user_id, optionId: v.option_id });
+    votesByPost.set(v.post_id, list);
+  }
+
+  // Interacciones (Bloque B, target_type='club_post') batcheadas para toda
+  // la página.
+  const summaries = await getInteractionSummary(
+    supabase,
+    "club_post",
+    rows.map((r) => r.id),
+  );
+
+  const posts: ClubPost[] = rows
+    .map((r): ClubPost | null => {
+      const author = authorById.get(r.author_id);
+      if (!author) return null;
+      const summary = summaries.get(r.id);
+
+      let poll: ClubPoll | null = null;
+      if (r.kind === "poll" && r.poll_ends_at) {
+        const isClosed = new Date(r.poll_ends_at) <= new Date();
+        const votes = votesByPost.get(r.id) ?? [];
+        const viewerVote = votes.find((v) => v.userId === userId);
+        const resultsVisible = isClosed || viewerVote != null;
+        const options = (optionsByPost.get(r.id) ?? []).sort((a, b) => a.position - b.position);
+        poll = {
+          endsAt: r.poll_ends_at,
+          isClosed,
+          viewerOptionId: viewerVote?.optionId ?? null,
+          resultsVisible,
+          options: options.map((o) => ({
+            id: o.id,
+            label: o.label,
+            voteCount: resultsVisible ? votes.filter((v) => v.optionId === o.id).length : null,
+          })),
+        };
+      }
+
+      return {
+        id: r.id,
+        clubId: r.club_id,
+        authorId: r.author_id,
+        authorUsername: author.username,
+        authorDisplayName: author.display_name,
+        authorAvatarUrl: author.avatar_url,
+        kind: r.kind,
+        body: r.body,
+        createdAt: r.created_at,
+        sharedActivity: sharedByPostId.get(r.id) ?? null,
+        poll,
+        reactionCount: summary?.reactionCount ?? 0,
+        viewerReacted: summary?.viewerReacted ?? false,
+        commentCount: summary?.commentCount ?? 0,
+        comments: summary?.comments ?? [],
+      };
+    })
+    .filter((p): p is ClubPost => p !== null);
+
+  const nextCursor = rows.length === PAGE_SIZE ? rows[rows.length - 1].created_at : null;
+  return { posts, nextCursor };
+}
