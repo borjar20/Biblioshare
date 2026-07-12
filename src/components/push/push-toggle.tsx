@@ -76,15 +76,19 @@ export function PushToggle() {
   }
 
   if (state === "unsupported") {
-    return <p className="text-sm text-muted-foreground">{t("unsupported")}</p>;
+    return (
+      <p className="px-4 py-3 text-xs text-muted-foreground">{t("unsupported")}</p>
+    );
   }
 
   if (state === "denied") {
-    return <p className="text-sm text-muted-foreground">{t("deniedHint")}</p>;
+    return (
+      <p className="px-4 py-3 text-xs text-muted-foreground">{t("deniedHint")}</p>
+    );
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4">
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-medium">{t("toggleLabel")}</span>
         <span className="text-xs text-muted-foreground">{t("toggleHint")}</span>
@@ -102,7 +106,11 @@ export function PushToggle() {
       >
         <span
           className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            subscribed ? "translate-x-5" : "translate-x-0.5"
+            // w-11 track (44px) minus w-5 knob (20px) minus the 2px inset used
+            // on every other edge (top-0.5) leaves 22px for the "on" position
+            // — translate-x-5 (20px) undershot that by 2px, so the knob never
+            // reached a symmetric right inset.
+            subscribed ? "translate-x-[1.375rem]" : "translate-x-0.5"
           }`}
         />
       </button>

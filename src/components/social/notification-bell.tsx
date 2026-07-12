@@ -7,6 +7,7 @@ import { markAllNotificationsRead } from "@/lib/social/notification-actions";
 import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notification-types";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
+import { PushToggle } from "@/components/push/push-toggle";
 
 function timeAgo(iso: string, t: (key: string, values?: Record<string, number>) => string): string {
   const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -105,6 +106,9 @@ export function NotificationBell({
               ))}
             </ul>
           )}
+          <div className="border-t border-border">
+            <PushToggle />
+          </div>
         </div>
       )}
     </div>

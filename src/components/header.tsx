@@ -89,9 +89,6 @@ export async function Header() {
               <UsersIcon className="h-4 w-4" />
               <span className="hidden sm:inline">{t("users.navLabel")}</span>
             </Link>
-            <Link href="/cuenta" className="shrink-0 hover:text-foreground">
-              {t("cuenta.navLabel")}
-            </Link>
             {isAdmin && (
               <Link href="/admin" className="shrink-0 hover:text-foreground">
                 {t("admin.navLabel")}
