@@ -40,6 +40,14 @@
 
 **Third correction, also found by the Task 1 implementer's own RLS battery:** the second fix's broadened `clubs select public or member` policy replaced its `is_club_member()` function call with a raw `exists(select ... from club_members ...)` subquery (needed, since `is_club_member()` deliberately excludes `invited` rows). But `club_members insert self or invite` already directly references `clubs` in its own `WITH CHECK`. With both tables now referencing each other via raw subqueries (not function calls), Postgres's RLS planner statically rejects the whole thing as a structural cycle (`42P17: infinite recursion detected`) — this check happens at plan time based purely on which tables are mentioned in policy clauses, independent of `SECURITY DEFINER` bypass or whether the runtime logic would actually recurse. Fixed with a new helper, `club_member_row_exists(uuid)`, wrapping the raw subquery in a function-call boundary — exactly why `is_club_member()`/`club_role()`/`has_min_club_role()` are already functions rather than inline subqueries elsewhere in this same migration.
 
+**Fourth correction (statement ordering), applied directly by the implementer without escalating** (all four prior rounds fully resolved SQL-level design bugs found via the battery — this one, and the two below, were caught by the *task reviewer* reading the resulting SQL): `transfer_club_ownership()` originally demoted the outgoing owner's `club_members.role` before updating `clubs.owner_id`, so `trg_enforce_club_owner_change` (which re-derives "is the caller currently owner" from `club_members` state) rejected its own legitimate caller. Fixed by updating `clubs.owner_id` first, while the caller still holds `role='owner'`.
+
+**Fifth and sixth corrections, found by the task reviewer reading the round-4 SQL (not caught by the 16-check battery, since nothing exercised these specific paths):**
+- `club_members accept invite`'s `WITH CHECK (status = 'active')` never constrained `role` — an invited member could smuggle `role='owner'` into the same UPDATE that accepts their invite, becoming a second owner without ever going through `create_club()`/`transfer_club_ownership()`. Fixed: `with check (status = 'active' and role = 'member')`. Added Test 14 to the battery to cover this specific attack, since it was previously untested.
+- `reassign_club_ownership()`'s "sole member leaves → delete the club" branch ran as a `BEFORE DELETE` trigger, which cascades `clubs`'s deletion back into `club_members` — including the very row the outer statement is currently deleting — a classic Postgres "tuple already modified by an operation triggered by the current command" conflict. Fixed by changing the trigger to `AFTER DELETE` (the other branch, promoting the next owner, is unaffected either way since it never touches the row being deleted). Added Test 15 to the battery, since this branch was previously never exercised.
+
+Also noted by the reviewer as a real but lower-severity, accepted gap: a club owner *could* bypass `transfer_club_ownership()` by issuing a raw `update clubs set owner_id = ...` directly — `trg_enforce_club_owner_change` would allow it (caller is owner, target is an active member) but leave `club_members.role` out of sync with the new `owner_id`. Left unfixed deliberately: only an already-fully-privileged owner can trigger it against themselves (not a privilege escalation from a lower role), the real app code never constructs this call (`updateClub`'s TypeScript signature never exposes `ownerId` as settable), and closing it fully would mean duplicating `transfer_club_ownership()`'s role-sync logic into the trigger itself — the same class of "RLS is permissive here, the app layer is trusted not to misuse its own access" tradeoff this codebase already makes explicitly for `notifications insert as actor`.
+
 - [ ] **Step 1: Write the migration file**
 
 ```sql
@@ -164,6 +172,18 @@ comment on function public.club_member_row_exists(uuid) is 'True si el usuario a
 -- por leaveClub (tras su propia guarda, ver Dominio) o por un futuro cascade
 -- desde auth.users (borrado de cuenta — no existe todavía, pero este trigger
 -- no depende de que un futuro feature recuerde gestionarlo).
+--
+-- AFTER DELETE, no BEFORE: la rama "sin miembros restantes" borra la fila de
+-- clubs, que en cascada (club_members.club_id on delete cascade) intenta
+-- volver a borrar filas de club_members del mismo club -- incluida la que
+-- este trigger está procesando ahora mismo. Si el trigger fuera BEFORE
+-- DELETE, esa fila SEGUIRÍA sin borrarse todavía en el momento en que el
+-- cascade la alcanza, y Postgres lo rechaza ("tuple to be deleted was
+-- already modified by an operation triggered by the current command").
+-- Con AFTER DELETE, cuando el trigger corre la fila original YA ha sido
+-- eliminada por la sentencia externa, así que el cascade no encuentra nada
+-- que la vuelva a tocar. La otra rama (promocionar al siguiente owner) no
+-- se ve afectada por este cambio: nunca toca la fila que se está borrando.
 create or replace function public.reassign_club_ownership()
 returns trigger
 language plpgsql
@@ -174,7 +194,7 @@ declare
   v_next_user uuid;
 begin
   if old.role <> 'owner' then
-    return old;
+    return null;
   end if;
 
   select user_id into v_next_user
@@ -191,12 +211,12 @@ begin
     update public.clubs set owner_id = v_next_user where id = old.club_id;
   end if;
 
-  return old;
+  return null;
 end;
 $$;
 
 create trigger trg_reassign_club_ownership
-  before delete on public.club_members
+  after delete on public.club_members
   for each row execute function public.reassign_club_ownership();
 
 -- ── Guarda de cambio de owner_id: solo el owner actual, y solo hacia un
@@ -309,11 +329,12 @@ as $$
 declare
   v_current_owner uuid;
 begin
+  -- Un solo mensaje 'forbidden' para "no existe" y "no eres el owner" --
+  -- distinguirlos daría un oráculo de existencia para probar UUIDs de club
+  -- privados arbitrarios (SD-4 los quiere indescubribles). Mismo patrón que
+  -- set_club_member_role() de arriba.
   select owner_id into v_current_owner from public.clubs where id = p_club_id;
-  if v_current_owner is null then
-    raise exception 'club not found';
-  end if;
-  if v_current_owner <> auth.uid() then
+  if v_current_owner is null or v_current_owner <> auth.uid() then
     raise exception 'forbidden';
   end if;
   if p_new_owner_id = v_current_owner then
@@ -417,13 +438,15 @@ create policy "club_members insert self or invite" on public.club_members
 
 -- Auto-servicio únicamente: aceptar tu propia invitación. No hay rama de
 -- moderación aquí -- sin 'pending', no hay solicitudes que un moderator+
--- tenga que aprobar. with check (status = 'active') cierra la
--- auto-promoción a owner de un moderator (ver spec §RLS): ni siquiera esta
--- única rama puede tocar role.
+-- tenga que aprobar. with check exige status='active' Y role='member': sin
+-- el "and role = 'member'", un invitado podría colar role='owner' en la
+-- MISMA llamada que acepta su invitación (with check solo valida la fila
+-- NUEVA propuesta, no compara contra la fila vieja) -- se convertiría en
+-- owner sin pasar nunca por create_club()/transfer_club_ownership().
 create policy "club_members accept invite" on public.club_members
   for update to authenticated
   using (user_id = (select auth.uid()) and status = 'invited')
-  with check (status = 'active');
+  with check (status = 'active' and role = 'member');
 
 -- Auto-servicio (salir/rechazar tu propia fila) o moderación: un moderator+
 -- puede expulsar a alguien de rol estrictamente inferior al suyo — no a otro
@@ -597,6 +620,39 @@ reset role;
 set local role anon;
 select set_config('app.test13', (select count(*)::text from public.clubs where slug = 'rlstest-club'), false);
 
+-- Test 14: B (owner tras la transferencia) invita a C de nuevo; C intenta
+-- aceptar colando role='owner' en la MISMA llamada -> debe fallar (with
+-- check de "club_members accept invite" exige role='member').
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+insert into public.club_members (club_id, user_id, status)
+  values ((select id from public.clubs where slug = 'rlstest-club'), '33333333-3333-3333-3333-333333333333', 'invited');
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+do $$
+begin
+  update public.club_members set status = 'active', role = 'owner'
+    where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '33333333-3333-3333-3333-333333333333';
+  perform set_config('app.test14', 'FAILED_no_error_raised', false);
+exception when others then
+  perform set_config('app.test14', 'ok_rejected: ' || sqlerrm, false);
+end $$;
+
+-- Test 15: A crea un tercer club sin invitar a nadie, luego se borra a sí
+-- mismo (único miembro) -> el trigger debe borrar también la fila de clubs,
+-- SIN lanzar "tuple to be deleted was already modified" (ver AFTER DELETE
+-- en reassign_club_ownership).
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+select public.create_club('rlstest-club-solo', 'RLS Test Solo', 'desc', 'public', null);
+do $$
+begin
+  delete from public.club_members
+    where club_id = (select id from public.clubs where slug = 'rlstest-club-solo') and user_id = '11111111-1111-1111-1111-111111111111';
+  perform set_config('app.test15', 'ok_no_error: club_rows=' || (select count(*)::text from public.clubs where slug = 'rlstest-club-solo'), false);
+exception when others then
+  perform set_config('app.test15', 'FAILED_error: ' || sqlerrm, false);
+end $$;
+
 reset role;
 select
   current_setting('app.test1', true) as test1_create_club_priv_owner_is_a,
@@ -613,12 +669,14 @@ select
   current_setting('app.test10', true) as test10_self_role_change_rejected,
   current_setting('app.test11', true) as test11_transfer_ownership,
   current_setting('app.test12', true) as test12_leave_after_transfer_expect_1,
-  current_setting('app.test13', true) as test13_anon_sees_private_club_expect_0;
+  current_setting('app.test13', true) as test13_anon_sees_private_club_expect_0,
+  current_setting('app.test14', true) as test14_accept_invite_role_escalation_rejected,
+  current_setting('app.test15', true) as test15_sole_member_leaves_deletes_club;
 
 rollback;
 ```
 
-Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.club_member_row_exists, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
+Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`, test14 = `ok_rejected: ...`, test15 = `ok_no_error: club_rows=0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.club_member_row_exists, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
 
 - [ ] **Step 4: Commit**
 
