@@ -32,11 +32,13 @@
 - Create: `supabase/migrations/20260712_clubs.sql`
 
 **Interfaces:**
-- Produces: enums `public.club_visibility`, `public.club_role`, `public.club_member_status`; tables `public.clubs`, `public.club_members`; functions `public.is_club_member(uuid)`, `public.club_role(uuid)`, `public.has_min_club_role(uuid, club_role)`, `public.create_club(text,text,text,club_visibility,text) returns clubs`, `public.set_club_member_role(uuid,uuid,club_role)`, `public.transfer_club_ownership(uuid,uuid)`; extends `public.notification_type` with `club_invite`, `club_invite_accepted`. Consumed by Task 2 (types), Task 3/4 (domain layer).
+- Produces: enums `public.club_visibility`, `public.club_role`, `public.club_member_status`; tables `public.clubs`, `public.club_members`; functions `public.is_club_member(uuid)`, `public.club_role(uuid)`, `public.has_min_club_role(uuid, club_role)`, `public.club_member_row_exists(uuid)`, `public.create_club(text,text,text,club_visibility,text) returns clubs`, `public.set_club_member_role(uuid,uuid,club_role)`, `public.transfer_club_ownership(uuid,uuid)`; extends `public.notification_type` with `club_invite`, `club_invite_accepted`. Consumed by Task 2 (types), Task 3/4 (domain layer). `club_member_row_exists` is an internal RLS-plumbing helper, not expected to be called from application code — Task 2 doesn't need a TypeScript `Functions` entry for it (unlike `create_club`/`set_club_member_role`/`transfer_club_ownership`, which the domain layer calls via `.rpc()`).
 
 **Design correction from the original brainstorming pass:** joining a private club is invite-only — there is no self-service "solicitar unirse" request flow. A private club's row is genuinely invisible to non-members (per SD-4), and a self-request flow is impossible to implement consistently with that (the requester would need to read a row RLS hides from them just to prove the club is private). `club_member_status` therefore has only two non-active states collapsed into one (`invited`), not two (`pending`+`invited`) — see the enum below.
 
 **Second correction, found by the Task 1 implementer's own RLS battery:** an invited (not-yet-`active`) user could never see their own invitation row, because Postgres requires a row to pass a table's `SELECT` policy before any `UPDATE`/`DELETE` policy can touch it — and `is_club_member()` (used by both the `clubs` and `club_members` `SELECT` policies) intentionally requires `status='active'`. This blocked both accepting an invite (the `UPDATE` always affected 0 rows) and viewing the private club's basic info before accepting (would 404). Fixed by broadening both `SELECT` policies to also grant self-only visibility regardless of status — see the RLS section below; both fixes are already reflected in the SQL.
+
+**Third correction, also found by the Task 1 implementer's own RLS battery:** the second fix's broadened `clubs select public or member` policy replaced its `is_club_member()` function call with a raw `exists(select ... from club_members ...)` subquery (needed, since `is_club_member()` deliberately excludes `invited` rows). But `club_members insert self or invite` already directly references `clubs` in its own `WITH CHECK`. With both tables now referencing each other via raw subqueries (not function calls), Postgres's RLS planner statically rejects the whole thing as a structural cycle (`42P17: infinite recursion detected`) — this check happens at plan time based purely on which tables are mentioned in policy clauses, independent of `SECURITY DEFINER` bypass or whether the runtime logic would actually recurse. Fixed with a new helper, `club_member_row_exists(uuid)`, wrapping the raw subquery in a function-call boundary — exactly why `is_club_member()`/`club_role()`/`has_min_club_role()` are already functions rather than inline subqueries elsewhere in this same migration.
 
 - [ ] **Step 1: Write the migration file**
 
@@ -128,6 +130,34 @@ $$;
 comment on function public.is_club_member(uuid) is 'True si el usuario actual es miembro ACTIVO del club (EPIC-05 Bloque E).';
 comment on function public.club_role(uuid) is 'Rol del usuario actual en el club, o null si no es miembro activo.';
 comment on function public.has_min_club_role(uuid, public.club_role) is 'True si el rol del usuario actual en el club es >= min en la jerarquía member<moderator<owner.';
+
+-- club_member_row_exists: a diferencia de is_club_member() (exige
+-- status='active' a propósito), esto cuenta CUALQUIER fila (invited o
+-- active) -- lo usa la política SELECT de clubs para que un invitado vea el
+-- club antes de aceptar. Tiene que ser una función SECURITY DEFINER y no un
+-- exists(...) inline dentro de la política: Postgres detecta como recursión
+-- estructural (error 42P17) cualquier par de tablas cuyas políticas se
+-- referencien directamente entre sí sin un límite de función por medio --
+-- club_members ya referencia clubs directamente en su política INSERT
+-- (visibilidad de 'public'), así que clubs no puede referenciar
+-- club_members directamente también, aunque en runtime nunca recursionaría
+-- de verdad. Este es exactamente el motivo de que is_club_member()/
+-- club_role()/has_min_club_role() ya sean funciones en vez de subqueries
+-- inline.
+create or replace function public.club_member_row_exists(p_club_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.club_members
+    where club_id = p_club_id and user_id = auth.uid()
+  );
+$$;
+
+comment on function public.club_member_row_exists(uuid) is 'True si el usuario actual tiene cualquier fila en club_members para este club (invited o active). Rompe la referencia cruzada directa entre las políticas de clubs y club_members que Postgres rechaza como recursión estructural (42P17) -- ver comentario arriba.';
 
 -- ── Invariante de propiedad: un club con miembros siempre tiene owner ───────
 -- Se dispara al borrar CUALQUIER fila de club_members con role='owner', sea
@@ -318,14 +348,16 @@ alter table public.clubs enable row level security;
 -- si acepta, antes de ser miembro real. Postgres además exige que una fila
 -- sea visible por SELECT antes de que cualquier política UPDATE/DELETE
 -- pueda tocarla -- ver la política de club_members más abajo, mismo motivo.
+-- Usa club_member_row_exists() (función) en vez de un exists(...) inline a
+-- club_members: club_members ya referencia clubs directamente en su
+-- política INSERT, y con AMBAS direcciones como subquery inline Postgres
+-- rechaza el plan como recursión estructural (42P17) -- ver el comentario
+-- de club_member_row_exists() más arriba.
 create policy "clubs select public or member" on public.clubs
   for select to anon, authenticated
   using (
     visibility = 'public'
-    or exists (
-      select 1 from public.club_members
-      where club_id = clubs.id and user_id = (select auth.uid())
-    )
+    or public.club_member_row_exists(id)
   );
 
 -- Sin política INSERT a propósito: create_club() es el único camino (bypassa
@@ -586,7 +618,7 @@ select
 rollback;
 ```
 
-Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
+Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.club_member_row_exists, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
 
 - [ ] **Step 4: Commit**
 
