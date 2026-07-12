@@ -234,6 +234,12 @@
     "hoursAgo": "hace {count, plural, one {1 hora} other {# horas}}",
     "daysAgo": "hace {count, plural, one {1 día} other {# días}}"
   },
+  "push": {
+    "toggleLabel": "Notificaciones push",
+    "toggleHint": "Recibe un aviso del sistema cuando alguien te siga, reaccione o comente.",
+    "unsupported": "Tu navegador no soporta notificaciones push.",
+    "deniedHint": "Has bloqueado los avisos para este sitio. Actívalos desde los ajustes de notificaciones de tu navegador para poder recibirlos."
+  },
   "item": {
     "pages": "págs.",
     "minutes": "min",
