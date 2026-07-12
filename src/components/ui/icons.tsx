@@ -17,8 +17,9 @@ function Icon(props: SVGProps<SVGSVGElement>) {
 export function AppLogoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M4 19V5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
-      <path d="M4 7h14M8 11h8M8 15h6" />
+      <rect width="8" height="18" x="3" y="3" rx="1" />
+      <path d="M7 3v18" />
+      <path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z" />
     </Icon>
   );
 }
@@ -26,8 +27,8 @@ export function AppLogoIcon(props: SVGProps<SVGSVGElement>) {
 export function SearchIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <circle cx="11" cy="11" r="6" />
-      <path d="m16.5 16.5 4 4" />
+      <path d="m21 21-4.34-4.34" />
+      <circle cx="11" cy="11" r="8" />
     </Icon>
   );
 }
@@ -35,8 +36,12 @@ export function SearchIcon(props: SVGProps<SVGSVGElement>) {
 export function BookIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M6 4h12v16H6z" />
-      <path d="M6 8h12" />
+      <path d="M12 7v14" />
+      <path d="M16 12h2" />
+      <path d="M16 8h2" />
+      <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+      <path d="M6 12h2" />
+      <path d="M6 8h2" />
     </Icon>
   );
 }
@@ -44,9 +49,14 @@ export function BookIcon(props: SVGProps<SVGSVGElement>) {
 export function FilmIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <rect x="4" y="5" width="16" height="14" rx="2" />
-      <path d="M4 9h16M4 15h16" />
-      <path d="M8 5v14M16 5v14" />
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M7 3v18" />
+      <path d="M3 7.5h4" />
+      <path d="M3 12h18" />
+      <path d="M3 16.5h4" />
+      <path d="M17 3v18" />
+      <path d="M17 7.5h4" />
+      <path d="M17 16.5h4" />
     </Icon>
   );
 }
@@ -54,8 +64,9 @@ export function FilmIcon(props: SVGProps<SVGSVGElement>) {
 export function SeriesIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M4 7h16v10H4z" />
-      <path d="M8 7v10M16 7v10M4 11h16" />
+      <path d="M15.033 9.44a.647.647 0 0 1 0 1.12l-4.065 2.352a.645.645 0 0 1-.968-.56V7.648a.645.645 0 0 1 .967-.56z" />
+      <path d="M7 21h10" />
+      <rect width="20" height="14" x="2" y="3" rx="2" />
     </Icon>
   );
 }
@@ -63,8 +74,7 @@ export function SeriesIcon(props: SVGProps<SVGSVGElement>) {
 export function FireIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M12 4.5C10 7 7 8 7 11a5 5 0 0 0 10 0c0-3-3-4-3-6.5-2 2-2 1.5-2 0Z" />
-      <path d="M12 20a7 7 0 0 1-7-7c0-4.5 4-6.2 7-11 3 4.8 7 6.5 7 11a7 7 0 0 1-7 7Z" />
+      <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
     </Icon>
   );
 }
@@ -72,8 +82,16 @@ export function FireIcon(props: SVGProps<SVGSVGElement>) {
 export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M16 3v4M8 3v4M3 11h18" />
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 14h.01" />
+      <path d="M12 14h.01" />
+      <path d="M16 14h.01" />
+      <path d="M8 18h.01" />
+      <path d="M12 18h.01" />
+      <path d="M16 18h.01" />
     </Icon>
   );
 }
@@ -81,9 +99,12 @@ export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
 export function TrophyIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M8 21h8M10 21V17h4v4" />
-      <path d="M6 5h12v4a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V5Z" />
-      <path d="M4 7h2v4a3 3 0 0 1-2-2.45V7Zm16 0h-2v4a3 3 0 0 0 2-2.45V7Z" />
+      <path d="M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978" />
+      <path d="M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978" />
+      <path d="M18 9h1.5a1 1 0 0 0 0-5H18" />
+      <path d="M4 22h16" />
+      <path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" />
+      <path d="M6 9H4.5a1 1 0 0 1 0-5H6" />
     </Icon>
   );
 }
@@ -91,9 +112,9 @@ export function TrophyIcon(props: SVGProps<SVGSVGElement>) {
 export function TargetIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 4v2M12 18v2M4 12h2M18 12h2" />
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
     </Icon>
   );
 }
@@ -101,8 +122,8 @@ export function TargetIcon(props: SVGProps<SVGSVGElement>) {
 export function UserIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
-      <path d="M6 20a6 6 0 0 1 12 0" />
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </Icon>
   );
 }
@@ -110,10 +131,10 @@ export function UserIcon(props: SVGProps<SVGSVGElement>) {
 export function UsersIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M9 11a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 9 11Z" />
-      <path d="M3 19a6 6 0 0 1 12 0" />
-      <path d="M16 3.5a3.5 3.5 0 0 1 0 7" />
-      <path d="M18 13a6 6 0 0 1 3 6" />
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <path d="M16 3.128a4 4 0 0 1 0 7.744" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <circle cx="9" cy="7" r="4" />
     </Icon>
   );
 }
@@ -121,7 +142,10 @@ export function UsersIcon(props: SVGProps<SVGSVGElement>) {
 export function SparklesIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
+      <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+      <path d="M20 2v4" />
+      <path d="M22 4h-4" />
+      <circle cx="4" cy="20" r="2" />
     </Icon>
   );
 }
@@ -129,7 +153,8 @@ export function SparklesIcon(props: SVGProps<SVGSVGElement>) {
 export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M19 12H5M12 19l-7-7 7-7" />
+      <path d="M6 8L2 12L6 16" />
+      <path d="M2 12H22" />
     </Icon>
   );
 }
@@ -137,7 +162,7 @@ export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
 export function HeartIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M12 20s-7-4.35-9.5-8.5C1 8.5 2.5 5 6 5c2 0 3.2 1.2 4 2.3C10.8 6.2 12 5 14 5c3.5 0 5 3.5 3.5 6.5C19 15.65 12 20 12 20Z" />
+      <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
     </Icon>
   );
 }
@@ -145,7 +170,9 @@ export function HeartIcon(props: SVGProps<SVGSVGElement>) {
 export function PlusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M12 5v14M5 12h14" />
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M8 12h8" />
+      <path d="M12 8v8" />
     </Icon>
   );
 }
@@ -153,7 +180,7 @@ export function PlusIcon(props: SVGProps<SVGSVGElement>) {
 export function StarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.79L12 17.77l-5.2 2.73.99-5.79-4.21-4.1 5.82-.85L12 3.5Z" />
+      <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" />
     </Icon>
   );
 }
@@ -161,7 +188,7 @@ export function StarIcon(props: SVGProps<SVGSVGElement>) {
 export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="m9 6 6 6-6 6" />
+      <path d="m9 18 6-6-6-6" />
     </Icon>
   );
 }
@@ -177,12 +204,12 @@ export function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
 export function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <circle cx="9" cy="6" r="1" />
       <circle cx="9" cy="12" r="1" />
-      <circle cx="9" cy="18" r="1" />
-      <circle cx="15" cy="6" r="1" />
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="19" r="1" />
       <circle cx="15" cy="12" r="1" />
-      <circle cx="15" cy="18" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="19" r="1" />
     </Icon>
   );
 }
@@ -190,7 +217,7 @@ export function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
 export function EyeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
       <circle cx="12" cy="12" r="3" />
     </Icon>
   );
@@ -207,8 +234,12 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>) {
 export function NoteIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
-      <path d="M14 3v5h5M8 13h6M8 17h4" />
+      <path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" />
+      <path d="M2 6h4" />
+      <path d="M2 10h4" />
+      <path d="M2 14h4" />
+      <path d="M2 18h4" />
+      <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
     </Icon>
   );
 }
@@ -216,8 +247,8 @@ export function NoteIcon(props: SVGProps<SVGSVGElement>) {
 export function LockIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <rect x="4" y="11" width="16" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </Icon>
   );
 }
@@ -225,8 +256,8 @@ export function LockIcon(props: SVGProps<SVGSVGElement>) {
 export function BellIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z" />
-      <path d="M10 21a2 2 0 0 0 4 0" />
+      <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+      <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
     </Icon>
   );
 }
@@ -234,7 +265,7 @@ export function BellIcon(props: SVGProps<SVGSVGElement>) {
 export function CommentIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M4 5h16v11H8l-4 4V5Z" />
+      <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
     </Icon>
   );
 }
