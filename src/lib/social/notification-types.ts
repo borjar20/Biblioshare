@@ -8,9 +8,11 @@ export type NotificationType =
   | "new_follower"
   | "follow_accepted"
   | "review_liked"
-  | "review_commented";
+  | "review_commented"
+  | "club_invite"
+  | "club_invite_accepted";
 
-export type ReviewTargetType = "diary_entry" | "episode_watch";
+export type ReviewTargetType = "diary_entry" | "episode_watch" | "club";
 
 export type Notification = {
   id: string;
@@ -34,4 +36,6 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   follow_accepted: "followAccepted",
   review_liked: "reviewLiked",
   review_commented: "reviewCommented",
+  club_invite: "clubInvite",
+  club_invite_accepted: "clubInviteAccepted",
 };

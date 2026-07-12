@@ -73,7 +73,14 @@ async function deliverPush(
   if (!actor?.username) return;
 
   let href = `/u/${actor.username}`;
-  if (params.targetType && params.targetId) {
+  if (params.targetType === "club" && params.targetId) {
+    const { data: club } = await supabase
+      .from("clubs")
+      .select("slug")
+      .eq("id", params.targetId)
+      .maybeSingle();
+    if (club) href = `/club/${club.slug}`;
+  } else if (params.targetType && params.targetId) {
     const hrefByKey = await resolveReviewHrefs(supabase, [
       { targetType: params.targetType, targetId: params.targetId },
     ]);
@@ -248,10 +255,23 @@ export async function listNotifications(
   const reviewTargets = representativeRows
     .filter(
       (n): n is typeof n & { target_type: string; target_id: string } =>
-        n.target_type != null && n.target_id != null,
+        n.target_type != null && n.target_id != null && n.target_type !== "club",
     )
     .map((n) => ({ targetType: n.target_type, targetId: n.target_id }));
   const hrefByKey = await resolveReviewHrefs(supabase, reviewTargets);
+
+  const clubTargetIds = representativeRows
+    .filter((n) => n.target_type === "club" && n.target_id != null)
+    .map((n) => n.target_id!);
+  if (clubTargetIds.length > 0) {
+    const { data: clubRows } = await supabase
+      .from("clubs")
+      .select("id, slug")
+      .in("id", clubTargetIds);
+    for (const c of clubRows ?? []) {
+      hrefByKey.set(`club:${c.id}`, `/club/${c.slug}`);
+    }
+  }
 
   // Si el actor ya no es resoluble (cuenta borrada, RLS), se descarta la fila:
   // no hay a quién enlazar ni qué nombre mostrar.
