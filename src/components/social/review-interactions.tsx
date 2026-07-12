@@ -97,16 +97,30 @@ export function ReviewInteractions({
                 <span className="font-medium">{c.author}</span>{" "}
                 <span className="text-muted-foreground">{c.body}</span>
               </p>
-              {c.isOwn && (
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={() => startTransition(() => deleteComment(c.id))}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  aria-pressed={c.viewerReacted}
+                  onClick={() => startTransition(() => toggleReaction("comment", c.id))}
+                  className={`flex items-center gap-1 ${
+                    c.viewerReacted ? "text-accent" : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  {t("deleteComment")}
+                  <HeartIcon className="h-3 w-3" fill={c.viewerReacted ? "currentColor" : "none"} />
+                  {c.reactionCount > 0 && c.reactionCount}
                 </button>
-              )}
+                {c.isOwn && (
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => startTransition(() => deleteComment(c.id))}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {t("deleteComment")}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
           <form
