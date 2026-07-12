@@ -261,6 +261,7 @@
     "formSaveCreate": "Crear",
     "formSaveEdit": "Guardar cambios",
     "formCancel": "Cancelar",
+    "editToggle": "Editar",
     "formError": "Algo falló. Inténtalo de nuevo.",
     "empty": "Todavía no tienes clubes.",
     "emptyDiscover": "No se encontraron clubes.",

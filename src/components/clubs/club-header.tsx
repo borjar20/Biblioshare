@@ -90,7 +90,7 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
           )}
           {canEdit && (
             <Button type="button" variant="ghost" onClick={() => setEditing((v) => !v)}>
-              {t("formSaveEdit")}
+              {t("editToggle")}
             </Button>
           )}
         </div>
