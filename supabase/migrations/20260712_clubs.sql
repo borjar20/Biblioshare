@@ -129,8 +129,12 @@ comment on function public.club_member_row_exists(uuid) is 'True si el usuario a
 -- already modified by an operation triggered by the current command").
 -- Con AFTER DELETE, cuando el trigger corre la fila original YA ha sido
 -- eliminada por la sentencia externa, así que el cascade no encuentra nada
--- que la vuelva a tocar. La otra rama (promocionar al siguiente owner) no
--- se ve afectada por este cambio: nunca toca la fila que se está borrando.
+-- que la vuelva a tocar. La otra rama (promocionar al siguiente owner) SÍ
+-- se ve afectada por este cambio de forma indirecta: su UPDATE a
+-- clubs.owner_id dispara enforce_club_owner_change_authorized(), que
+-- comprobaría la autoridad del owner SALIENTE -- cuya fila en club_members
+-- ya no existe en este punto (AFTER DELETE). Por eso esa función tiene su
+-- propia excepción vía pg_trigger_depth() -- ver su comentario.
 create or replace function public.reassign_club_ownership()
 returns trigger
 language plpgsql
@@ -172,6 +176,19 @@ create trigger trg_reassign_club_ownership
 -- necesita esto igualmente para el caso "no toca club_members", así que no es
 -- redundante con la política RLS de clubs (que no puede validar "es miembro
 -- activo" sin este trigger).
+--
+-- Excepción: pg_trigger_depth() > 1 significa que este UPDATE se disparó
+-- desde DENTRO de otro trigger -- en esta migración, solo puede ser
+-- reassign_club_ownership() reasignando tras el DELETE de la fila del owner
+-- saliente (transfer_club_ownership() es una función normal, no un trigger,
+-- así que llamarla NO añade profundidad; un cliente que se salte la app
+-- tampoco). En ese caso concreto, has_min_club_role(old.id,'owner') SIEMPRE
+-- daría false -- la fila del owner saliente ya no existe, se acaba de
+-- borrar -- aunque la reasignación sea perfectamente legítima; y
+-- reassign_club_ownership() ya garantiza por su cuenta que v_next_user es
+-- miembro activo (su propia query solo selecciona status='active'), así que
+-- repetir ambas comprobaciones aquí no solo es redundante sino que rompe la
+-- reasignación real.
 create or replace function public.enforce_club_owner_change_authorized()
 returns trigger
 language plpgsql
@@ -180,6 +197,9 @@ set search_path = public
 as $$
 begin
   if new.owner_id is distinct from old.owner_id then
+    if pg_trigger_depth() > 1 then
+      return new;
+    end if;
     if not public.has_min_club_role(old.id, 'owner') then
       raise exception 'Only the current owner can change club ownership';
     end if;
