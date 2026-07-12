@@ -1832,6 +1832,7 @@ Place it near `feed`/`social`/`notifications` for discoverability:
     "formSaveEdit": "Guardar cambios",
     "formCancel": "Cancelar",
     "formError": "Algo falló. Inténtalo de nuevo.",
+    "editToggle": "Editar",
     "empty": "Todavía no tienes clubes.",
     "emptyDiscover": "No se encontraron clubes.",
     "members": "miembros",
@@ -2205,7 +2206,7 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
           )}
           {canEdit && (
             <Button type="button" variant="ghost" onClick={() => setEditing((v) => !v)}>
-              {t("formSaveEdit")}
+              {t("editToggle")}
             </Button>
           )}
         </div>
