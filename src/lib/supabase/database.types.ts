@@ -365,6 +365,81 @@ export type Database = {
         }
         Relationships: []
       }
+      club_posts: {
+        Row: {
+          author_id: string
+          body: string
+          club_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["club_post_kind"]
+          poll_ends_at: string | null
+          ref: Json | null
+        }
+        Insert: {
+          author_id: string
+          body: string
+          club_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["club_post_kind"]
+          poll_ends_at?: string | null
+          ref?: Json | null
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["club_post_kind"]
+          poll_ends_at?: string | null
+          ref?: Json | null
+        }
+        Relationships: []
+      }
+      club_poll_options: {
+        Row: {
+          id: string
+          label: string
+          position: number
+          post_id: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          position: number
+          post_id: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          position?: number
+          post_id?: string
+        }
+        Relationships: []
+      }
+      club_poll_votes: {
+        Row: {
+          option_id: string
+          post_id: string
+          user_id: string
+          voted_at: string
+        }
+        Insert: {
+          option_id: string
+          post_id: string
+          user_id: string
+          voted_at?: string
+        }
+        Update: {
+          option_id?: string
+          post_id?: string
+          user_id?: string
+          voted_at?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           created_at: string
@@ -933,12 +1008,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_club_poll: {
+        Args: {
+          p_club_id: string
+          p_question: string
+          p_options: string[]
+          p_ends_at: string
+        }
+        Returns: undefined
+      }
+      vote_club_poll: {
+        Args: {
+          p_post_id: string
+          p_option_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       follow_status: "pending" | "accepted"
-      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted"
+      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked"
       push_channel: "web"
-      target_kind: "diary_entry" | "episode_watch"
+      target_kind: "diary_entry" | "episode_watch" | "club_post" | "comment"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       pending_import_status: "pending" | "resolved" | "dismissed"
@@ -946,6 +1037,7 @@ export type Database = {
       club_member_status: "invited" | "active"
       club_role: "member" | "moderator" | "owner"
       club_visibility: "public" | "private"
+      club_post_kind: "text" | "activity_share" | "poll"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1074,15 +1166,16 @@ export const Constants = {
   public: {
     Enums: {
       follow_status: ["pending", "accepted"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked"],
       push_channel: ["web"],
-      target_kind: ["diary_entry", "episode_watch"],
+      target_kind: ["diary_entry", "episode_watch", "club_post", "comment"],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
       user_role: ["user", "collaborator", "admin"],
       club_member_status: ["invited", "active"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
+      club_post_kind: ["text", "activity_share", "poll"],
     },
   },
 } as const
