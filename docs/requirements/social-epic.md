@@ -316,8 +316,19 @@ Cada bloque agrupa tareas cohesionadas. Esfuerzo: **S** < **M** < **L** < **XL**
   enlace al actor. i18n `notifications.*`. *(Enlace profundo al target concreto queda para
   cuando existan targets no-follow en Bloque B/F — hoy las 3 notificaciones apuntan al
   perfil del actor, que ya es el destino correcto.)*
-- [ ] **E5.D4** *(futuro, dep §8-D + 7.31)* Entrega push encima de la misma tabla — **no**
-  en el alcance del núcleo del epic; documentado como continuación.
+- [x] **E5.D4** *(2026-07-12, dev — Web Push)* Entrega push encima de la misma tabla
+  `notifications`, canal Web Push únicamente. Tabla `push_subscriptions` channel-agnóstica
+  (`channel` enum + `credentials jsonb`), lista para un futuro canal nativo (`ios_native` vía
+  Capacitor/APNs, cuando 7.31 llegue a un estado desplegable) sin rediseño. `notify()` extendido
+  con `deliverPush()` best-effort, reutiliza el mismo copy i18n que la campana in-app vía
+  `NOTIFICATION_TYPE_KEY` exportado. Opt-in explícito en `/cuenta` (`PushToggle`), nunca prompt
+  automático. Service worker (`public/sw.js`) con listeners `push`/`notificationclick`,
+  puramente aditivos sobre la cache offline existente. RLS verificada (self-only, sin política
+  UPDATE — resuscripción es delete+insert a nivel app). Verificado en dev vía checklist manual
+  (`docs/superpowers/plans/2026-07-12-push-notifications-manual-test.md`), per convención
+  `docs/TESTING.md`. Migración aplicada a prod; claves VAPID pendientes de configurar en Vercel
+  antes de que esto llegue a producción real. Push nativo (APNs) sigue explícitamente fuera de
+  alcance.
 
 ### Bloque E — Clubes: creación, membresía y roles  ·  *esfuerzo L*  ·  *dep: A, D*
 - [ ] **E5.E1** Migración `clubs` (`slug` único, `name`, `description`, `cover_url`,
