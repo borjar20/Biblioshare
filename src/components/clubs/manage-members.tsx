@@ -43,8 +43,12 @@ export function ManageMembers({
 
   function handleRemove(userId: string) {
     startTransition(async () => {
-      await removeMember(clubId, userId);
-      refresh();
+      try {
+        await removeMember(clubId, userId);
+        refresh();
+      } catch {
+        setError(t("formError"));
+      }
     });
   }
 
@@ -69,15 +73,23 @@ export function ManageMembers({
 
   function handlePromote(userId: string, role: "member" | "moderator") {
     startTransition(async () => {
-      await setMemberRole(clubId, userId, role);
-      refresh();
+      try {
+        await setMemberRole(clubId, userId, role);
+        refresh();
+      } catch {
+        setError(t("formError"));
+      }
     });
   }
 
   function handleTransfer(userId: string) {
     startTransition(async () => {
-      await transferOwnership(clubId, userId);
-      refresh();
+      try {
+        await transferOwnership(clubId, userId);
+        refresh();
+      } catch {
+        setError(t("formError"));
+      }
     });
   }
 

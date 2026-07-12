@@ -25,7 +25,7 @@
   - [ ] Ensure visibility is set to **public** (not checked)
   - [ ] Upload a cover image
 - [ ] Submit the form
-- [ ] Verify redirect to club page
+- [ ] Verify the create form closes and the new club appears in "Mis clubes" on `/clubes` (no redirect — the page stays on `/clubes`)
 - [ ] Confirm club appears in `/clubes` list for Account A
 - [ ] Verify `/club/test-public-club` renders with the cover image
 - [ ] Confirm Account A does **not** see an "Unirse" button (already owner)
@@ -44,7 +44,7 @@
   - [ ] **Check the visibility checkbox to make it private**
   - [ ] Upload a cover image
 - [ ] Submit the form
-- [ ] Verify redirect to club page
+- [ ] Verify the create form closes and the new club appears in "Mis clubes" on `/clubes` (no redirect — the page stays on `/clubes`)
 - [ ] Confirm club appears in Account A's "Mis clubes"
 - [ ] Log in as Account B
 - [ ] Navigate to `/clubes` → "Descubrir" tab

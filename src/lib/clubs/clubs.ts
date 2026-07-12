@@ -251,7 +251,7 @@ export async function listMembers(clubId: string): Promise<ClubMember[]> {
 export async function resolveUsername(username: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("profiles")
+    .from("profile_identities")
     .select("user_id")
     .eq("username", username)
     .maybeSingle();
