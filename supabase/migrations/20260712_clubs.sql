@@ -119,6 +119,18 @@ comment on function public.club_member_row_exists(uuid) is 'True si el usuario a
 -- por leaveClub (tras su propia guarda, ver Dominio) o por un futuro cascade
 -- desde auth.users (borrado de cuenta — no existe todavía, pero este trigger
 -- no depende de que un futuro feature recuerde gestionarlo).
+--
+-- AFTER DELETE, no BEFORE: la rama "sin miembros restantes" borra la fila de
+-- clubs, que en cascada (club_members.club_id on delete cascade) intenta
+-- volver a borrar filas de club_members del mismo club -- incluida la que
+-- este trigger está procesando ahora mismo. Si el trigger fuera BEFORE
+-- DELETE, esa fila SEGUIRÍA sin borrarse todavía en el momento en que el
+-- cascade la alcanza, y Postgres lo rechaza ("tuple to be deleted was
+-- already modified by an operation triggered by the current command").
+-- Con AFTER DELETE, cuando el trigger corre la fila original YA ha sido
+-- eliminada por la sentencia externa, así que el cascade no encuentra nada
+-- que la vuelva a tocar. La otra rama (promocionar al siguiente owner) no
+-- se ve afectada por este cambio: nunca toca la fila que se está borrando.
 create or replace function public.reassign_club_ownership()
 returns trigger
 language plpgsql
@@ -129,7 +141,7 @@ declare
   v_next_user uuid;
 begin
   if old.role <> 'owner' then
-    return old;
+    return null;
   end if;
 
   select user_id into v_next_user
@@ -146,12 +158,12 @@ begin
     update public.clubs set owner_id = v_next_user where id = old.club_id;
   end if;
 
-  return old;
+  return null;
 end;
 $$;
 
 create trigger trg_reassign_club_ownership
-  before delete on public.club_members
+  after delete on public.club_members
   for each row execute function public.reassign_club_ownership();
 
 -- ── Guarda de cambio de owner_id: solo el owner actual, y solo hacia un
@@ -264,11 +276,12 @@ as $$
 declare
   v_current_owner uuid;
 begin
+  -- Un solo mensaje 'forbidden' para "no existe" y "no eres el owner" --
+  -- distinguirlos daría un oráculo de existencia para probar UUIDs de club
+  -- privados arbitrarios (SD-4 los quiere indescubribles). Mismo patrón que
+  -- set_club_member_role() de arriba.
   select owner_id into v_current_owner from public.clubs where id = p_club_id;
-  if v_current_owner is null then
-    raise exception 'club not found';
-  end if;
-  if v_current_owner <> auth.uid() then
+  if v_current_owner is null or v_current_owner <> auth.uid() then
     raise exception 'forbidden';
   end if;
   if p_new_owner_id = v_current_owner then
@@ -382,13 +395,15 @@ create policy "club_members insert self or invite" on public.club_members
 
 -- Auto-servicio únicamente: aceptar tu propia invitación. No hay rama de
 -- moderación aquí -- sin 'pending', no hay solicitudes que un moderator+
--- tenga que aprobar. with check (status = 'active') cierra la
--- auto-promoción a owner de un moderator (ver spec §RLS): ni siquiera esta
--- única rama puede tocar role.
+-- tenga que aprobar. with check exige status='active' Y role='member': sin
+-- el "and role = 'member'", un invitado podría colar role='owner' en la
+-- MISMA llamada que acepta su invitación (with check solo valida la fila
+-- NUEVA propuesta, no compara contra la fila vieja) -- se convertiría en
+-- owner sin pasar nunca por create_club()/transfer_club_ownership().
 create policy "club_members accept invite" on public.club_members
   for update to authenticated
   using (user_id = (select auth.uid()) and status = 'invited')
-  with check (status = 'active');
+  with check (status = 'active' and role = 'member');
 
 -- Auto-servicio (salir/rechazar tu propia fila) o moderación: un moderator+
 -- puede expulsar a alguien de rol estrictamente inferior al suyo — no a otro
