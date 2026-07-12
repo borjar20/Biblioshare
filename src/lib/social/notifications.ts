@@ -73,15 +73,8 @@ async function deliverPush(
   if (!actor?.username) return;
 
   let href = `/u/${actor.username}`;
-  if (params.targetType === "club" && params.targetId) {
-    const { data: club } = await supabase
-      .from("clubs")
-      .select("slug")
-      .eq("id", params.targetId)
-      .maybeSingle();
-    if (club) href = `/club/${club.slug}`;
-  } else if (params.targetType && params.targetId) {
-    const hrefByKey = await resolveReviewHrefs(supabase, [
+  if (params.targetType && params.targetId) {
+    const hrefByKey = await resolveTargetHrefs(supabase, [
       { targetType: params.targetType, targetId: params.targetId },
     ]);
     href = hrefByKey.get(`${params.targetType}:${params.targetId}`) ?? href;
@@ -114,20 +107,24 @@ export async function getUnreadCount(
   return count ?? 0;
 }
 
-// Resuelve el enlace de las notificaciones de reseña en batch (una query por
-// tabla fuente, no una por notificación). diary_entry pasa por library_entries
+// Resuelve el enlace de una notificación en batch (una query por tabla
+// fuente, no una por notificación). diary_entry pasa por library_entries
 // para saber item_type/item_id; episode_watch ya guarda series_id directo.
-async function resolveReviewHrefs(
+// club/club_post/comment se resuelven aquí también ahora (EPIC-05 Bloque F)
+// -- antes 'club' vivía como un caso especial duplicado en deliverPush() y
+// listNotifications(); se unifica en una sola función para no triplicar la
+// resolución de club_post/comment (más compleja que el 'club' original) en
+// dos sitios.
+async function resolveTargetHrefs(
   supabase: SupabaseServerClient,
   targets: { targetType: string; targetId: string }[],
 ): Promise<Map<string, string>> {
   const hrefByKey = new Map<string, string>();
-  const diaryIds = targets
-    .filter((t) => t.targetType === "diary_entry")
-    .map((t) => t.targetId);
-  const episodeIds = targets
-    .filter((t) => t.targetType === "episode_watch")
-    .map((t) => t.targetId);
+  const diaryIds = targets.filter((t) => t.targetType === "diary_entry").map((t) => t.targetId);
+  const episodeIds = targets.filter((t) => t.targetType === "episode_watch").map((t) => t.targetId);
+  const clubIds = targets.filter((t) => t.targetType === "club").map((t) => t.targetId);
+  const clubPostIds = targets.filter((t) => t.targetType === "club_post").map((t) => t.targetId);
+  const commentIds = targets.filter((t) => t.targetType === "comment").map((t) => t.targetId);
 
   if (diaryIds.length > 0) {
     const { data: diaryRows, error } = await supabase
@@ -173,6 +170,46 @@ async function resolveReviewHrefs(
         `episode_watch:${e.id}`,
         `${itemHref("series", e.series_id)}?tab=community`,
       );
+    }
+  }
+
+  if (clubIds.length > 0) {
+    const { data: clubRows } = await supabase.from("clubs").select("id, slug").in("id", clubIds);
+    for (const c of clubRows ?? []) hrefByKey.set(`club:${c.id}`, `/club/${c.slug}`);
+  }
+
+  if (clubPostIds.length > 0) {
+    const { data: postRows } = await supabase
+      .from("club_posts")
+      .select("id, club_id")
+      .in("id", clubPostIds);
+    const clubIdsForPosts = [...new Set((postRows ?? []).map((p) => p.club_id))];
+    const { data: clubRows } = clubIdsForPosts.length
+      ? await supabase.from("clubs").select("id, slug").in("id", clubIdsForPosts)
+      : { data: [] as { id: string; slug: string }[] };
+    const slugByClub = new Map((clubRows ?? []).map((c) => [c.id, c.slug]));
+    for (const p of postRows ?? []) {
+      const slug = slugByClub.get(p.club_id);
+      if (slug) hrefByKey.set(`club_post:${p.id}`, `/club/${slug}`);
+    }
+  }
+
+  if (commentIds.length > 0) {
+    const { data: commentRows } = await supabase
+      .from("comments")
+      .select("id, target_type, target_id")
+      .in("id", commentIds);
+    const parentTargets = (commentRows ?? []).map((c) => ({
+      targetType: c.target_type,
+      targetId: c.target_id,
+    }));
+    // Recursión de un solo nivel: comments_no_nesting (Task 1) garantiza que
+    // el target de un comentario nunca es 'comment', así que esta llamada
+    // recursiva termina siempre en su segunda pasada.
+    const parentHrefByKey = await resolveTargetHrefs(supabase, parentTargets);
+    for (const c of commentRows ?? []) {
+      const parentHref = parentHrefByKey.get(`${c.target_type}:${c.target_id}`);
+      if (parentHref) hrefByKey.set(`comment:${c.id}`, parentHref);
     }
   }
 
@@ -252,26 +289,13 @@ export async function listNotifications(
       .map((a) => [a.user_id, a]),
   );
 
-  const reviewTargets = representativeRows
+  const targets = representativeRows
     .filter(
       (n): n is typeof n & { target_type: string; target_id: string } =>
-        n.target_type != null && n.target_id != null && n.target_type !== "club",
+        n.target_type != null && n.target_id != null,
     )
     .map((n) => ({ targetType: n.target_type, targetId: n.target_id }));
-  const hrefByKey = await resolveReviewHrefs(supabase, reviewTargets);
-
-  const clubTargetIds = representativeRows
-    .filter((n) => n.target_type === "club" && n.target_id != null)
-    .map((n) => n.target_id!);
-  if (clubTargetIds.length > 0) {
-    const { data: clubRows } = await supabase
-      .from("clubs")
-      .select("id, slug")
-      .in("id", clubTargetIds);
-    for (const c of clubRows ?? []) {
-      hrefByKey.set(`club:${c.id}`, `/club/${c.slug}`);
-    }
-  }
+  const hrefByKey = await resolveTargetHrefs(supabase, targets);
 
   // Si el actor ya no es resoluble (cuenta borrada, RLS), se descarta la fila:
   // no hay a quién enlazar ni qué nombre mostrar.
