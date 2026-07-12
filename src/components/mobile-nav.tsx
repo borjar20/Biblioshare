@@ -97,6 +97,9 @@ export function MobileNav({
               <UsersIcon className="h-4 w-4" />
               {t("users.navLabel")}
             </Link>
+            <Link href="/clubes" onClick={close} className={linkClassName}>
+              {t("club.navLabel")}
+            </Link>
             {isAdmin && (
               <Link href="/admin" onClick={close} className={linkClassName}>
                 {t("admin.navLabel")}

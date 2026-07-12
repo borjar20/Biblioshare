@@ -84,6 +84,9 @@ export async function Header() {
               <UsersIcon className="h-4 w-4" />
               {t("users.navLabel")}
             </Link>
+            <Link href="/clubes" className="shrink-0 hover:text-foreground">
+              {t("club.navLabel")}
+            </Link>
             {isAdmin && (
               <Link href="/admin" className="shrink-0 hover:text-foreground">
                 {t("admin.navLabel")}
