@@ -191,3 +191,69 @@ export async function discoverPublicClubs(
 
   return clubs.map((c) => ({ ...c, viewerStatus: statusByClub.get(c.id) ?? "none" }));
 }
+
+export type ClubMember = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: "member" | "moderator" | "owner";
+  status: "invited" | "active";
+  joinedAt: string;
+};
+
+// Solo miembros ven el roster (RLS: club_members select gateado por
+// is_club_member). Incluye 'invited' para que la sección de gestión pueda
+// mostrar quién tiene una invitación pendiente de aceptar.
+export async function listMembers(clubId: string): Promise<ClubMember[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("club_members")
+    .select("user_id, role, status, joined_at")
+    .eq("club_id", clubId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const { data: identities, error: identitiesError } = await supabase
+    .from("profile_identities")
+    .select("user_id, username, display_name, avatar_url")
+    .in("user_id", data.map((m) => m.user_id));
+  if (identitiesError) throw identitiesError;
+
+  const byId = new Map(
+    (identities ?? [])
+      .filter((i): i is typeof i & { user_id: string; username: string } => i.user_id != null && i.username != null)
+      .map((i) => [i.user_id, i]),
+  );
+
+  return data
+    .map((m): ClubMember | null => {
+      const identity = byId.get(m.user_id);
+      if (!identity) return null;
+      return {
+        userId: m.user_id,
+        username: identity.username,
+        displayName: identity.display_name,
+        avatarUrl: identity.avatar_url,
+        role: m.role,
+        status: m.status,
+        joinedAt: m.joined_at,
+      };
+    })
+    .filter((m): m is ClubMember => m !== null);
+}
+
+// Resuelve un username a user_id para el formulario de invitar (manage-members.tsx) --
+// server-side, en vez de una query de cliente ad-hoc, para mantener el mismo
+// patrón de dominio del resto del fichero.
+export async function resolveUsername(username: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("username", username)
+    .maybeSingle();
+  return data?.user_id ?? null;
+}
