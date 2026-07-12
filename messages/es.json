@@ -240,6 +240,10 @@
     "unsupported": "Tu navegador no soporta notificaciones push.",
     "deniedHint": "Has bloqueado los avisos para este sitio. Actívalos desde los ajustes de notificaciones de tu navegador para poder recibirlos."
   },
+  "cuenta": {
+    "title": "Cuenta",
+    "navLabel": "Cuenta"
+  },
   "item": {
     "pages": "págs.",
     "minutes": "min",
