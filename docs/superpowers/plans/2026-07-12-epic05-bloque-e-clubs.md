@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver E5.E1–E5.E4 of the social epic backlog: club creation, membership (join/leave/invite/approve), roles (member/moderator/owner), and the `/club/[slug]` + `/clubes` UI. Club feed (posts/activities) is Bloque F, explicitly out of scope.
+**Goal:** Deliver E5.E1–E5.E4 of the social epic backlog: club creation, membership (join/leave/invite), roles (member/moderator/owner), and the `/club/[slug]` + `/clubes` UI. Club feed (posts/activities) is Bloque F, explicitly out of scope.
 
 **Architecture:** Two new tables (`clubs`, `club_members`) with a `SECURITY DEFINER` helper trio (`is_club_member`/`club_role`/`has_min_club_role`) replicating the existing RBAC pattern (`has_min_role`). Role-changing operations (`create_club`, `set_club_member_role`, `transfer_club_ownership`) are `SECURITY DEFINER` RPC functions rather than raw client updates, so privilege escalation can never happen through a crafted direct request — plain RLS only ever needs to allow status transitions, never `role`/`owner_id` changes. A `BEFORE DELETE` trigger on `club_members` keeps every club with members owned by someone, regardless of which code path removes the owner's row.
 
@@ -14,6 +14,7 @@
 - Club creation is open to any authenticated user, no role gating.
 - The owner cannot leave a club with other members without transferring ownership first; if they're the sole member, leaving deletes the club.
 - Club content (including the member roster) is always members-only, regardless of `visibility` — `visibility` only governs discoverability and how you join.
+- Joining a private club is invite-only — there is no self-service "request to join" flow. A private club's row is genuinely invisible to non-members (not just its content), which makes a self-request flow impossible to implement consistently (the requester would need to read a row RLS hides from them just to prove the club is private). `club_member_status` therefore has only `invited`/`active`, no `pending`. This was corrected mid-implementation after Task 1's original brief (which did include a `pending` self-request branch) turned out to be internally contradictory — see Task 1's design-correction note.
 - `slug` is fixed at creation, never editable.
 - Cover images reuse the existing `avatars` Storage bucket and its existing RLS policies (own-folder-only) — path convention `{uploaderUserId}/club-cover-{timestamp}.webp`, **not** `clubs/{club_id}/...` (that would violate the bucket's existing `(storage.foldername(name))[1] = auth.uid()` policy and doesn't solve the chicken-and-egg problem of uploading a cover before a club exists).
 - Direct invites are in scope from the start, gated to moderator+.
@@ -31,7 +32,9 @@
 - Create: `supabase/migrations/20260712_clubs.sql`
 
 **Interfaces:**
-- Produces: enums `public.club_visibility`, `public.club_role`, `public.club_member_status`; tables `public.clubs`, `public.club_members`; functions `public.is_club_member(uuid)`, `public.club_role(uuid)`, `public.has_min_club_role(uuid, club_role)`, `public.create_club(text,text,text,club_visibility,text) returns clubs`, `public.set_club_member_role(uuid,uuid,club_role)`, `public.transfer_club_ownership(uuid,uuid)`; extends `public.notification_type` with `club_join_request`, `club_join_approved`, `club_invite`, `club_invite_accepted`. Consumed by Task 2 (types), Task 3/4 (domain layer).
+- Produces: enums `public.club_visibility`, `public.club_role`, `public.club_member_status`; tables `public.clubs`, `public.club_members`; functions `public.is_club_member(uuid)`, `public.club_role(uuid)`, `public.has_min_club_role(uuid, club_role)`, `public.create_club(text,text,text,club_visibility,text) returns clubs`, `public.set_club_member_role(uuid,uuid,club_role)`, `public.transfer_club_ownership(uuid,uuid)`; extends `public.notification_type` with `club_invite`, `club_invite_accepted`. Consumed by Task 2 (types), Task 3/4 (domain layer).
+
+**Design correction from the original brainstorming pass:** joining a private club is invite-only — there is no self-service "solicitar unirse" request flow. A private club's row is genuinely invisible to non-members (per SD-4), and a self-request flow is impossible to implement consistently with that (the requester would need to read a row RLS hides from them just to prove the club is private). `club_member_status` therefore has only two non-active states collapsed into one (`invited`), not two (`pending`+`invited`) — see the enum below.
 
 - [ ] **Step 1: Write the migration file**
 
@@ -49,9 +52,12 @@ create type public.club_visibility as enum ('public', 'private');
 -- va primero para que has_min_club_role()/las comparaciones de rol funcionen.
 create type public.club_role as enum ('member', 'moderator', 'owner');
 
--- pending: el usuario pidió unirse a un club privado, espera aprobación.
--- invited: un moderator+ le invitó, espera que ÉL acepte o rechace.
-create type public.club_member_status as enum ('pending', 'invited', 'active');
+-- invited: un moderator+ le invitó, espera que ÉL acepte o rechace. No hay
+-- 'pending' (solicitud propia) -- unirse a un club privado es SOLO por
+-- invitación; un club privado es invisible a no-miembros (SD-4), así que un
+-- no-miembro no podría siquiera comprobar que el club existe para solicitar
+-- unirse, y una solicitud a un club público no tiene sentido (se une directo).
+create type public.club_member_status as enum ('invited', 'active');
 
 create table public.clubs (
   id uuid primary key default gen_random_uuid(),
@@ -77,12 +83,12 @@ create index idx_club_members_club on public.club_members (club_id, status);
 create index idx_club_members_user on public.club_members (user_id, status);
 
 comment on table public.clubs is 'Clubes de EPIC-05 Bloque E. visibility gobierna descubrimiento/cómo unirse, nunca quién ve el contenido (SD-4) — eso lo decide is_club_member().';
-comment on table public.club_members is 'Membresía y rol por club. status=pending (solicitud propia) / invited (invitación de un moderator+) / active. role solo cambia vía create_club/set_club_member_role/transfer_club_ownership (funciones SECURITY DEFINER), nunca por UPDATE de cliente.';
+comment on table public.club_members is 'Membresía y rol por club. status=invited (invitación de un moderator+, pendiente de aceptar) / active. Unirse a un club privado es solo por invitación -- no hay solicitud propia. role solo cambia vía create_club/set_club_member_role/transfer_club_ownership (funciones SECURITY DEFINER), nunca por UPDATE de cliente.';
 
 -- ── Helpers SECURITY DEFINER (mismo patrón que has_min_role/current_user_role,
 -- §7.35) — evitan RLS recursiva sobre club_members. Solo cuentan filas
--- status='active': una fila pending/invited ya tiene un role (default
--- 'member'), pero no es membresía real todavía.
+-- status='active': una fila invited ya tiene un role (default 'member'),
+-- pero no es membresía real todavía.
 create or replace function public.is_club_member(p_club_id uuid)
 returns boolean
 language sql
@@ -326,6 +332,13 @@ create policy "club_members select member" on public.club_members
 -- create_club() (bypass RLS), los ascensos van por set_club_member_role().
 -- Sin esto, un self-insert o una invitación podrían intentar colarse como
 -- role='owner' o cualquier otro valor.
+--
+-- Solo dos formas de entrar: auto-unirse a un club PÚBLICO (status=active
+-- directo) o ser invitado por un moderator+ (status=invited, cualquier
+-- visibilidad). No existe un self-insert 'pending' para clubes privados: la
+-- fila de un club privado es invisible a no-miembros (SD-4), así que quien
+-- quisiera solicitar unirse no podría ni comprobar que el club existe —
+-- unirse a un privado es solo por invitación.
 create policy "club_members insert self or invite" on public.club_members
   for insert to authenticated
   with check (
@@ -333,13 +346,9 @@ create policy "club_members insert self or invite" on public.club_members
     and (
       (
         user_id = (select auth.uid())
-        and (
-          (status = 'active' and exists (
-            select 1 from public.clubs c where c.id = club_id and c.visibility = 'public'
-          ))
-          or (status = 'pending' and exists (
-            select 1 from public.clubs c where c.id = club_id and c.visibility = 'private'
-          ))
+        and status = 'active'
+        and exists (
+          select 1 from public.clubs c where c.id = club_id and c.visibility = 'public'
         )
       )
       or (
@@ -350,15 +359,14 @@ create policy "club_members insert self or invite" on public.club_members
     )
   );
 
--- Ninguna rama toca role: with check (status = 'active') en ambas fija el
--- único cambio posible por esta vía, cerrando la auto-promoción a owner de un
--- moderator (ver spec §RLS).
-create policy "club_members approve or accept" on public.club_members
+-- Auto-servicio únicamente: aceptar tu propia invitación. No hay rama de
+-- moderación aquí -- sin 'pending', no hay solicitudes que un moderator+
+-- tenga que aprobar. with check (status = 'active') cierra la
+-- auto-promoción a owner de un moderator (ver spec §RLS): ni siquiera esta
+-- única rama puede tocar role.
+create policy "club_members accept invite" on public.club_members
   for update to authenticated
-  using (
-    (user_id = (select auth.uid()) and status = 'invited')
-    or (public.has_min_club_role(club_id, 'moderator') and status = 'pending')
-  )
+  using (user_id = (select auth.uid()) and status = 'invited')
   with check (status = 'active');
 
 -- Auto-servicio (salir/rechazar tu propia fila) o moderación: un moderator+
@@ -372,10 +380,10 @@ create policy "club_members delete self or moderate" on public.club_members
   );
 
 -- ── Notificaciones de club (EPIC-05 Bloque E), mismo patrón simétrico que
--- follow_request/follow_accepted. notifications.target_type es texto suelto
--- (no el enum target_kind de reactions/comments) — se usa el literal 'club'.
-alter type public.notification_type add value 'club_join_request';
-alter type public.notification_type add value 'club_join_approved';
+-- follow_request/follow_accepted. Solo 2 tipos -- sin solicitud de unión
+-- propia (ver arriba), no hace falta club_join_request/club_join_approved.
+-- notifications.target_type es texto suelto (no el enum target_kind de
+-- reactions/comments) — se usa el literal 'club'.
 alter type public.notification_type add value 'club_invite';
 alter type public.notification_type add value 'club_invite_accepted';
 ```
@@ -414,14 +422,18 @@ insert into public.profiles (user_id, username, is_public) values
   ('33333333-3333-3333-3333-333333333333', 'rlstest_member', true),
   ('44444444-4444-4444-4444-444444444444', 'rlstest_outsider', true);
 
--- Test 1: A crea un club privado vía create_club() -> OK, owner_id = A.
+-- Test 1: A crea un club PRIVADO vía create_club() -> OK, owner_id = A.
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 select public.create_club('rlstest-club', 'RLS Test Club', 'desc', 'private', null);
 select set_config('app.test1', (select owner_id::text from public.clubs where slug = 'rlstest-club'), false);
 
--- Test 2: B (outsider) intenta insertar su propia fila como role=owner ->
--- debe fallar (RLS: role='member' obligatorio).
+-- Test 1b: A crea también un club PÚBLICO, para probar el auto-join directo.
+select public.create_club('rlstest-club-pub', 'RLS Test Club Pub', 'desc', 'public', null);
+select set_config('app.test1b', (select owner_id::text from public.clubs where slug = 'rlstest-club-pub'), false);
+
+-- Test 2: D (outsider) intenta insertar su propia fila como role=owner en el
+-- club privado -> debe fallar (RLS: role='member' obligatorio).
 select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}', true);
 do $$
 begin
@@ -432,34 +444,43 @@ exception when others then
   perform set_config('app.test2', 'ok_rejected: ' || sqlerrm, false);
 end $$;
 
--- Test 3: B solicita unirse (club privado) -> OK, status=pending.
+-- Test 3: D intenta insertar status='pending' -> debe fallar con un error de
+-- ENUM inválido (confirma que 'pending' ya no existe como valor válido; unirse
+-- a un privado es solo por invitación).
+do $$
+begin
+  insert into public.club_members (club_id, user_id, status)
+    values ((select id from public.clubs where slug = 'rlstest-club'), '44444444-4444-4444-4444-444444444444', 'pending');
+  perform set_config('app.test3', 'FAILED_no_error_raised', false);
+exception when others then
+  perform set_config('app.test3', 'ok_rejected: ' || sqlerrm, false);
+end $$;
+
+-- Test 4: D se auto-une directo al club PÚBLICO (status=active) -> OK, 1 fila.
 insert into public.club_members (club_id, user_id, status)
-  values ((select id from public.clubs where slug = 'rlstest-club'), '44444444-4444-4444-4444-444444444444', 'pending');
-select set_config('app.test3', (select status::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '44444444-4444-4444-4444-444444444444'), false);
+  values ((select id from public.clubs where slug = 'rlstest-club-pub'), '44444444-4444-4444-4444-444444444444', 'active');
+select set_config('app.test4', (select status::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club-pub') and user_id = '44444444-4444-4444-4444-444444444444'), false);
 
--- Test 4: B (no moderator) intenta aprobarse a sí mismo -> debe fallar (0 filas).
-with updated as (
-  update public.club_members set status = 'active'
-    where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '44444444-4444-4444-4444-444444444444'
-    returning user_id
-)
-select set_config('app.test4', (select count(*)::text from updated), false);
-
--- Test 5: A (owner) aprueba a B -> OK.
+-- Test 5: A invita a B al club PRIVADO -> OK, status=invited.
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+insert into public.club_members (club_id, user_id, status)
+  values ((select id from public.clubs where slug = 'rlstest-club'), '22222222-2222-2222-2222-222222222222', 'invited');
+select set_config('app.test5', (select status::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '22222222-2222-2222-2222-222222222222'), false);
+
+-- Test 6: B acepta su propia invitación -> OK.
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
 with updated as (
   update public.club_members set status = 'active'
-    where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '44444444-4444-4444-4444-444444444444'
+    where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '22222222-2222-2222-2222-222222222222'
     returning user_id
 )
-select set_config('app.test5', (select count(*)::text from updated), false);
+select set_config('app.test6', (select count(*)::text from updated), false);
 
--- Test 6: A invita a C (moderator+ inviting someone else) -> OK, status=invited.
+-- Test 7: A invita a C al club PRIVADO, C acepta -> OK (usado para el test de
+-- expulsión de Test 9).
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 insert into public.club_members (club_id, user_id, status)
   values ((select id from public.clubs where slug = 'rlstest-club'), '33333333-3333-3333-3333-333333333333', 'invited');
-select set_config('app.test6', (select status::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '33333333-3333-3333-3333-333333333333'), false);
-
--- Test 7: C acepta su propia invitación -> OK.
 select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
 with updated as (
   update public.club_members set status = 'active'
@@ -470,12 +491,11 @@ select set_config('app.test7', (select count(*)::text from updated), false);
 
 -- Test 8: A promueve a B a moderator vía set_club_member_role() -> OK.
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
-select public.set_club_member_role((select id from public.clubs where slug = 'rlstest-club'), '44444444-4444-4444-4444-444444444444', 'moderator');
-select set_config('app.test8', (select role::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '44444444-4444-4444-4444-444444444444'), false);
+select public.set_club_member_role((select id from public.clubs where slug = 'rlstest-club'), '22222222-2222-2222-2222-222222222222', 'moderator');
+select set_config('app.test8', (select role::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '22222222-2222-2222-2222-222222222222'), false);
 
--- Test 9: B (ahora moderator) intenta expulsar a otro moderator... no hay
--- otro, prueba con C (member) -> OK, 1 fila.
-select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}', true);
+-- Test 9: B (ahora moderator) expulsa a C (member) -> OK, 1 fila.
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
 with deleted as (
   delete from public.club_members
     where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '33333333-3333-3333-3333-333333333333'
@@ -484,10 +504,10 @@ with deleted as (
 select set_config('app.test9', (select count(*)::text from deleted), false);
 
 -- Test 10: B (moderator) intenta cambiar su PROPIO rol vía set_club_member_role
--- -> debe fallar (no es owner, y ademas no puedes auto-cambiarte).
+-- -> debe fallar (no es owner, y además no puedes auto-cambiarte).
 do $$
 begin
-  perform public.set_club_member_role((select id from public.clubs where slug = 'rlstest-club'), '44444444-4444-4444-4444-444444444444', 'owner');
+  perform public.set_club_member_role((select id from public.clubs where slug = 'rlstest-club'), '22222222-2222-2222-2222-222222222222', 'owner');
   perform set_config('app.test10', 'FAILED_no_error_raised', false);
 exception when others then
   perform set_config('app.test10', 'ok_rejected: ' || sqlerrm, false);
@@ -495,7 +515,7 @@ end $$;
 
 -- Test 11: A transfiere la propiedad a B (moderator activo) -> OK.
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
-select public.transfer_club_ownership((select id from public.clubs where slug = 'rlstest-club'), '44444444-4444-4444-4444-444444444444');
+select public.transfer_club_ownership((select id from public.clubs where slug = 'rlstest-club'), '22222222-2222-2222-2222-222222222222');
 select set_config('app.test11', (select owner_id::text from public.clubs where slug = 'rlstest-club') || ' role=' || (select role::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '11111111-1111-1111-1111-111111111111'), false);
 
 -- Test 12: A (ya no owner, ahora moderator) intenta leaveClub-equivalent
@@ -510,21 +530,21 @@ with deleted as (
 )
 select set_config('app.test12', (select count(*)::text from deleted), false);
 
--- Test 13: anon no ve el club privado (ya no es owner ni member -> A fue
--- borrado en test12, pero el club sigue siendo privado y A ya no es viewer).
+-- Test 13: anon no ve el club privado.
 reset role;
 set local role anon;
 select set_config('app.test13', (select count(*)::text from public.clubs where slug = 'rlstest-club'), false);
 
 reset role;
 select
-  current_setting('app.test1', true) as test1_create_club_owner_is_a,
+  current_setting('app.test1', true) as test1_create_club_priv_owner_is_a,
+  current_setting('app.test1b', true) as test1b_create_club_pub_owner_is_a,
   current_setting('app.test2', true) as test2_outsider_self_insert_as_owner,
-  current_setting('app.test3', true) as test3_join_request_pending,
-  current_setting('app.test4', true) as test4_self_approve_expect_0,
-  current_setting('app.test5', true) as test5_owner_approves_expect_1,
-  current_setting('app.test6', true) as test6_invite_status,
-  current_setting('app.test7', true) as test7_accept_invite_expect_1,
+  current_setting('app.test3', true) as test3_pending_status_no_longer_valid,
+  current_setting('app.test4', true) as test4_self_join_public_club,
+  current_setting('app.test5', true) as test5_invite_status,
+  current_setting('app.test6', true) as test6_accept_invite_expect_1,
+  current_setting('app.test7', true) as test7_second_invite_accept_expect_1,
   current_setting('app.test8', true) as test8_promote_to_moderator,
   current_setting('app.test9', true) as test9_moderator_removes_member_expect_1,
   current_setting('app.test10', true) as test10_self_role_change_rejected,
@@ -535,7 +555,7 @@ select
 rollback;
 ```
 
-Confirm: test1 = A's id, test2 = `ok_rejected: ...`, test3 = `pending`, test4 = `0`, test5 = `1`, test6 = `invited`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
+Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
 
 - [ ] **Step 4: Commit**
 
@@ -636,15 +656,15 @@ Find the end of the `push_subscriptions` block in the `Tables` section (ends rig
 Find the `Enums: {` block (alongside `notification_type`/`push_channel`/`target_kind`) and add, keeping alphabetical-ish grouping consistent with the file's existing order:
 
 ```ts
-      club_member_status: "pending" | "invited" | "active"
+      club_member_status: "invited" | "active"
       club_role: "member" | "moderator" | "owner"
       club_visibility: "public" | "private"
 ```
 
-Also update the existing `notification_type` line to add the four new values:
+Also update the existing `notification_type` line to add the two new values:
 
 ```ts
-      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted"
+      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted"
 ```
 
 - [ ] **Step 4: Patch `database.types.ts` — add the `Functions` block entries**
@@ -684,7 +704,7 @@ Find `Functions: {` inside `Database["public"]` (if it doesn't exist yet, add it
 Find `export const Constants = { public: { Enums: {` and add, matching Step 3's additions:
 
 ```ts
-      club_member_status: ["pending", "invited", "active"],
+      club_member_status: ["invited", "active"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
 ```
@@ -692,7 +712,7 @@ Find `export const Constants = { public: { Enums: {` and add, matching Step 3's 
 And update the existing `notification_type` array line:
 
 ```ts
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted"],
 ```
 
 - [ ] **Step 6: Verify TypeScript**
@@ -719,7 +739,7 @@ git commit -m "chore: sync schema-baseline and generated types for clubs"
 
 **Interfaces:**
 - Consumes: `Database["public"]["Tables"]["clubs"]`, `Database["public"]["Functions"]["create_club"]` (Task 2).
-- Produces: `type Club`, `type ClubMembershipStatus = "none" | "pending" | "invited" | "active"`, `createClub(input: { name: string; slug: string; description?: string; visibility: "public"|"private"; coverUrl?: string }): Promise<Club>`, `updateClub(clubId: string, input: { name?: string; description?: string; visibility?: "public"|"private"; coverUrl?: string }): Promise<void>`, `getClub(slug: string): Promise<(Club & { viewerStatus: ClubMembershipStatus; viewerRole: "member"|"moderator"|"owner"|null }) | null>`, `listMyClubs(): Promise<Club[]>`, `discoverPublicClubs(query?: string): Promise<(Club & { viewerStatus: ClubMembershipStatus })[]>`. Consumed by Task 4 (membership functions reference `Club`), Task 6+ (UI).
+- Produces: `type Club`, `type ClubMembershipStatus = "none" | "invited" | "active"` (no `"pending"` — joining a private club is invite-only, see Task 1's design correction), `createClub(input: { name: string; slug: string; description?: string; visibility: "public"|"private"; coverUrl?: string }): Promise<Club>`, `updateClub(clubId: string, input: { name?: string; description?: string; visibility?: "public"|"private"; coverUrl?: string }): Promise<void>`, `getClub(slug: string): Promise<(Club & { viewerStatus: ClubMembershipStatus; viewerRole: "member"|"moderator"|"owner"|null }) | null>`, `listMyClubs(): Promise<Club[]>`, `discoverPublicClubs(query?: string): Promise<(Club & { viewerStatus: ClubMembershipStatus })[]>`. Consumed by Task 4 (membership functions reference `Club`), Task 6+ (UI).
 
 - [ ] **Step 1: Write `src/lib/clubs/clubs.ts`**
 
@@ -740,7 +760,7 @@ export type Club = {
   createdAt: string;
 };
 
-export type ClubMembershipStatus = "none" | "pending" | "invited" | "active";
+export type ClubMembershipStatus = "none" | "invited" | "active";
 
 function mapClub(row: {
   id: string;
@@ -933,7 +953,9 @@ git commit -m "feat: add club CRUD domain functions"
 
 **Interfaces:**
 - Consumes: `Database["public"]["Functions"]["set_club_member_role"|"transfer_club_ownership"]` (Task 2), `notify()` from `src/lib/social/notifications.ts`.
-- Produces: `joinClub(clubId: string): Promise<void>`, `leaveClub(clubId: string): Promise<void>`, `approveMember(clubId: string, userId: string): Promise<void>`, `removeMember(clubId: string, userId: string): Promise<void>`, `inviteMember(clubId: string, userId: string): Promise<void>`, `acceptInvite(clubId: string): Promise<void>`, `declineInvite(clubId: string): Promise<void>`, `setMemberRole(clubId: string, userId: string, role: "member"|"moderator"): Promise<void>`, `transferOwnership(clubId: string, newOwnerId: string): Promise<void>`. Consumed by Task 9 (manage-members UI), Task 8 (club-header UI).
+- Produces: `joinClub(clubId: string): Promise<void>`, `leaveClub(clubId: string): Promise<void>`, `removeMember(clubId: string, userId: string): Promise<void>`, `inviteMember(clubId: string, userId: string): Promise<void>`, `acceptInvite(clubId: string): Promise<void>`, `declineInvite(clubId: string): Promise<void>`, `setMemberRole(clubId: string, userId: string, role: "member"|"moderator"): Promise<void>`, `transferOwnership(clubId: string, newOwnerId: string): Promise<void>`. Consumed by Task 9 (manage-members UI), Task 8 (club-header UI).
+
+No `approveMember` — per Task 1's design correction, joining a private club is invite-only (no self-request flow to approve).
 
 - [ ] **Step 1: Extend `NotificationType` and `NOTIFICATION_TYPE_KEY` in `src/lib/social/notification-types.ts`**
 
@@ -957,8 +979,6 @@ export type NotificationType =
   | "follow_accepted"
   | "review_liked"
   | "review_commented"
-  | "club_join_request"
-  | "club_join_approved"
   | "club_invite"
   | "club_invite_accepted";
 ```
@@ -984,8 +1004,6 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   follow_accepted: "followAccepted",
   review_liked: "reviewLiked",
   review_commented: "reviewCommented",
-  club_join_request: "clubJoinRequest",
-  club_join_approved: "clubJoinApproved",
   club_invite: "clubInvite",
   club_invite_accepted: "clubInviteAccepted",
 };
@@ -1077,7 +1095,7 @@ Replace with:
 
 - [ ] **Step 4: Add `NOTIFICATION_TYPE_KEY` fallback in `notification-bell.tsx` for the club keys** — no change needed
 
-`notification-bell.tsx` already does `t(NOTIFICATION_TYPE_KEY[n.type], { name: ... })` generically — the four new keys resolve through the same map added in Step 1. Skip to Step 5.
+`notification-bell.tsx` already does `t(NOTIFICATION_TYPE_KEY[n.type], { name: ... })` generically — the two new keys resolve through the same map added in Step 1. Skip to Step 5.
 
 - [ ] **Step 5: Write `src/lib/clubs/membership.ts`**
 
@@ -1097,35 +1115,29 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
+// Solo clubes públicos -- unirse a uno privado es exclusivamente por
+// invitación (ver Task 1). Si clubId corresponde a un club privado, la
+// SELECT ya devuelve 0 filas para un no-miembro (RLS: SD-4), así que esto
+// falla igualmente sin necesitar un chequeo aparte -- el error explícito
+// aquí es solo para un mensaje más claro si algo en la UI llegara a
+// ofrecer este botón por error.
 export async function joinClub(clubId: string): Promise<void> {
   const { supabase, userId } = await requireUser();
 
   const { data: club, error: clubError } = await supabase
     .from("clubs")
-    .select("visibility, owner_id")
+    .select("visibility")
     .eq("id", clubId)
     .single();
   if (clubError) throw clubError;
+  if (club.visibility !== "public") {
+    throw new Error("private_clubs_require_invitation");
+  }
 
-  const status = club.visibility === "public" ? "active" : "pending";
   const { error } = await supabase
     .from("club_members")
-    .insert({ club_id: clubId, user_id: userId, status });
+    .insert({ club_id: clubId, user_id: userId, status: "active" });
   if (error) throw error;
-
-  if (status === "pending") {
-    try {
-      await notify(supabase, {
-        userId: club.owner_id,
-        actorId: userId,
-        type: "club_join_request",
-        targetType: "club",
-        targetId: clubId,
-      });
-    } catch (notifyError) {
-      console.error("joinClub notify failed", notifyError);
-    }
-  }
 }
 
 // Rechaza si el actor es owner y hay otros miembros activos -- debe
@@ -1167,33 +1179,10 @@ export async function leaveClub(clubId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function approveMember(clubId: string, userId: string): Promise<void> {
-  const { supabase, userId: actorId } = await requireUser();
-
-  const { error } = await supabase
-    .from("club_members")
-    .update({ status: "active" })
-    .eq("club_id", clubId)
-    .eq("user_id", userId)
-    .eq("status", "pending");
-  if (error) throw error;
-
-  try {
-    await notify(supabase, {
-      userId,
-      actorId,
-      type: "club_join_approved",
-      targetType: "club",
-      targetId: clubId,
-    });
-  } catch (notifyError) {
-    console.error("approveMember notify failed", notifyError);
-  }
-}
-
 // moderator+ solo puede invitar; role siempre queda 'member' (promociones
-// posteriores van por setMemberRole). Si ya hay una fila 'pending' del
-// mismo usuario, invitar equivale a aprobarla directamente.
+// posteriores van por setMemberRole). No-op si ya existe una fila para ese
+// usuario (ya invitado o ya activo) -- no hay un estado 'pending' que
+// aprobar directamente (ver Task 1).
 export async function inviteMember(clubId: string, userId: string): Promise<void> {
   const { supabase, userId: actorId } = await requireUser();
 
@@ -1203,11 +1192,6 @@ export async function inviteMember(clubId: string, userId: string): Promise<void
     .eq("club_id", clubId)
     .eq("user_id", userId)
     .maybeSingle();
-
-  if (existing?.status === "pending") {
-    await approveMember(clubId, userId);
-    return;
-  }
   if (existing) return;
 
   const { error } = await supabase
@@ -1310,11 +1294,9 @@ export async function transferOwnership(clubId: string, newOwnerId: string): Pro
 
 - [ ] **Step 6: Add the `club.*` notification copy to `messages/es.json`**
 
-In `messages/es.json`, find the `notifications` namespace and add four keys alongside the existing ones (after `reviewCommented`):
+In `messages/es.json`, find the `notifications` namespace and add two keys alongside the existing ones (after `reviewCommented`):
 
 ```json
-    "clubJoinRequest": "{name} solicita unirse a tu club",
-    "clubJoinApproved": "Tu solicitud para unirte a un club fue aprobada",
     "clubInvite": "{name} te invitó a un club",
     "clubInviteAccepted": "{name} aceptó tu invitación al club",
 ```
@@ -1679,7 +1661,7 @@ Place it near `feed`/`social`/`notifications` for discoverability:
     "coverChoose": "Elegir imagen",
     "coverUploading": "Subiendo...",
     "coverError": "No se pudo subir la portada.",
-    "visibilityPrivate": "Club privado (unirse requiere aprobación)",
+    "visibilityPrivate": "Club privado (solo se entra por invitación)",
     "formSubmitting": "Guardando...",
     "formSaveCreate": "Crear",
     "formSaveEdit": "Guardar cambios",
@@ -1689,14 +1671,10 @@ Place it near `feed`/`social`/`notifications` for discoverability:
     "emptyDiscover": "No se encontraron clubes.",
     "members": "miembros",
     "join": "Unirse",
-    "requestJoin": "Solicitar unirse",
     "leave": "Salir",
     "acceptInvite": "Aceptar invitación",
     "declineInvite": "Rechazar",
-    "pendingRequest": "Solicitud enviada",
     "manageMembers": "Gestionar miembros",
-    "pendingRequests": "Solicitudes pendientes",
-    "approve": "Aprobar",
     "invite": "Invitar",
     "invitePlaceholder": "Buscar usuario a invitar...",
     "promote": "Ascender a moderador",
@@ -1752,6 +1730,10 @@ import type { Club, ClubMembershipStatus } from "@/lib/clubs/clubs";
 import { joinClub } from "@/lib/clubs/membership";
 import { Button } from "@/components/ui/button";
 
+// discoverPublicClubs solo devuelve clubes visibility='public' (filtrado en
+// la query), así que viewerStatus aquí solo es realmente "none" o "active"
+// -- un club privado nunca aparece en esta lista (unirse a uno es solo por
+// invitación, ver Task 1/4), así que no hace falta un botón de "solicitar".
 export function ClubCard({ club }: { club: Club & { viewerStatus: ClubMembershipStatus } }) {
   const t = useTranslations("club");
   const [status, setStatus] = useState(club.viewerStatus);
@@ -1760,7 +1742,7 @@ export function ClubCard({ club }: { club: Club & { viewerStatus: ClubMembership
   function handleJoin() {
     startTransition(async () => {
       await joinClub(club.id);
-      setStatus(club.visibility === "public" ? "active" : "pending");
+      setStatus("active");
     });
   }
 
@@ -1774,11 +1756,8 @@ export function ClubCard({ club }: { club: Club & { viewerStatus: ClubMembership
       </Link>
       {status === "none" && (
         <Button type="button" variant="secondary" disabled={isPending} onClick={handleJoin}>
-          {club.visibility === "public" ? t("join") : t("requestJoin")}
+          {t("join")}
         </Button>
-      )}
-      {status === "pending" && (
-        <span className="shrink-0 text-xs text-muted-foreground">{t("pendingRequest")}</span>
       )}
     </div>
   );
@@ -1990,7 +1969,7 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
   function handleJoin() {
     startTransition(async () => {
       await joinClub(club.id);
-      setStatus(club.visibility === "public" ? "active" : "pending");
+      setStatus("active");
     });
   }
 
@@ -2021,6 +2000,10 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
 
   const canEdit = club.viewerRole === "moderator" || club.viewerRole === "owner";
 
+  // status === "none" solo puede ocurrir aquí para un club PÚBLICO: getClub()
+  // devuelve null (404, ver page.tsx) para un club privado visto por un
+  // no-miembro, así que ClubHeader nunca llega a renderizar en ese caso -- no
+  // hace falta distinguir público/privado en el botón de unirse.
   return (
     <div className="flex flex-col gap-4">
       {club.coverUrl && (
@@ -2037,11 +2020,8 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
         <div className="flex shrink-0 items-center gap-2">
           {status === "none" && (
             <Button type="button" disabled={isPending} onClick={handleJoin}>
-              {club.visibility === "public" ? t("join") : t("requestJoin")}
+              {t("join")}
             </Button>
-          )}
-          {status === "pending" && (
-            <span className="text-xs text-muted-foreground">{t("pendingRequest")}</span>
           )}
           {status === "invited" && (
             <>
@@ -2142,14 +2122,14 @@ git commit -m "feat: add /club/[slug] page with join/leave/invite actions"
 
 ---
 
-### Task 9: `ManageMembers` — moderator+ roster, approvals, invites
+### Task 9: `ManageMembers` — moderator+ roster and invites
 
 **Files:**
 - Create: `src/components/clubs/manage-members.tsx`
 - Modify: `src/app/club/[slug]/page.tsx`
 
 **Interfaces:**
-- Consumes: `approveMember`, `removeMember`, `inviteMember`, `setMemberRole`, `transferOwnership` from `src/lib/clubs/membership.ts` (Task 4).
+- Consumes: `removeMember`, `inviteMember`, `setMemberRole`, `transferOwnership` from `src/lib/clubs/membership.ts` (Task 4).
 - Produces: `listMembers(clubId: string): Promise<ClubMember[]>`, `resolveUsername(username: string): Promise<string | null>` (both added to `src/lib/clubs/clubs.ts`), `<ManageMembers clubId={string} viewerRole={"moderator"|"owner"} viewerId={string} />`. Consumed by `src/app/club/[slug]/page.tsx`.
 
 - [ ] **Step 1: Add a `listMembers` function to `src/lib/clubs/clubs.ts`**
@@ -2164,13 +2144,13 @@ export type ClubMember = {
   displayName: string | null;
   avatarUrl: string | null;
   role: "member" | "moderator" | "owner";
-  status: "pending" | "invited" | "active";
+  status: "invited" | "active";
   joinedAt: string;
 };
 
 // Solo miembros ven el roster (RLS: club_members select gateado por
-// is_club_member). Incluye pending/invited para que la sección de gestión
-// pueda listar solicitudes/invitaciones pendientes en la misma consulta.
+// is_club_member). Incluye 'invited' para que la sección de gestión pueda
+// mostrar quién tiene una invitación pendiente de aceptar.
 export async function listMembers(clubId: string): Promise<ClubMember[]> {
   const supabase = await createClient();
 
@@ -2234,7 +2214,6 @@ import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { listMembers, resolveUsername, type ClubMember } from "@/lib/clubs/clubs";
 import {
-  approveMember,
   removeMember,
   inviteMember,
   setMemberRole,
@@ -2270,15 +2249,7 @@ export function ManageMembers({
 
   useEffect(refresh, [clubId]);
 
-  const pending = members.filter((m) => m.status === "pending");
   const active = members.filter((m) => m.status === "active");
-
-  function handleApprove(userId: string) {
-    startTransition(async () => {
-      await approveMember(clubId, userId);
-      refresh();
-    });
-  }
 
   function handleRemove(userId: string) {
     startTransition(async () => {
@@ -2335,20 +2306,6 @@ export function ManageMembers({
         </Button>
       </form>
       {error && <p className="text-xs text-status-dropped">{error}</p>}
-
-      {pending.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground">{t("pendingRequests")}</h3>
-          {pending.map((m) => (
-            <div key={m.userId} className="flex items-center justify-between gap-2 text-sm">
-              <span>{m.displayName || m.username}</span>
-              <Button type="button" variant="secondary" disabled={isPending} onClick={() => handleApprove(m.userId)}>
-                {t("approve")}
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="flex flex-col gap-2">
         {active.map((m) => (
@@ -2446,7 +2403,7 @@ Expected: both clean.
 
 ```bash
 git add src/lib/clubs/clubs.ts src/components/clubs/manage-members.tsx "src/app/club/[slug]/page.tsx"
-git commit -m "feat: add ManageMembers section (approve, invite, roles, transfer)"
+git commit -m "feat: add ManageMembers section (invite, roles, transfer)"
 ```
 
 ---
@@ -2462,11 +2419,11 @@ Per `docs/TESTING.md`, this replaces automated browser verification. Write a mar
 
 1. **Setup**: `npm run dev`, log in as A.
 2. **Create (public)**: `/clubes` → "Crear club", fill name/slug/description, leave visibility public, upload a cover, submit. Confirm redirect/list shows the new club, `/club/[slug]` renders with the cover, no "Unirse" button for A (already owner), "Editar" visible.
-3. **Create (private)**: repeat as a private club (checkbox checked). Confirm `/clubes` → "Descubrir" still lists it (public metadata rule doesn't apply here — wait, it's private, so confirm it does NOT show up in "Descubrir" for account B, and B visiting `/club/[private-slug]` directly gets a 404, not a stub with "Solicitar unirse" — since SD-4 makes even the club row invisible to non-members for private clubs).
+3. **Create (private)**: repeat as a private club (checkbox checked). Confirm `/clubes` → "Descubrir" does NOT list it for account B (private clubs never appear in discovery), and B visiting `/club/[private-slug]` directly (paste the URL) gets a 404 — a private club's row is entirely invisible to non-members (SD-4), so there is no join-request stub of any kind. Joining a private club is invite-only; there is no self-service request flow.
 4. **Join public club (B)**: as B, `/clubes` → "Descubrir", find A's public club, click "Unirse". Confirm B is immediately active (no approval step), club appears in B's "Mis clubes".
-5. **Request + approve private club (B)**: as B, get the private club's `/club/[slug]` URL directly from A (since it won't appear in discovery) — confirm "Solicitar unirse" shows, click it, confirm status flips to "Solicitud enviada". As A, confirm a notification appears ("solicita unirse a tu club"), open `/club/[slug]`, confirm B appears under "Solicitudes pendientes" in "Gestionar miembros", click "Aprobar". As B, confirm a notification arrives ("aprobada") and refreshing `/club/[slug]` shows B as an active member with "Salir" instead of the join button.
-6. **Invite (A invites a third scenario, or reuse B on the public club)**: as A (moderator+ on the public club), in "Gestionar miembros" type B's username into the invite field, submit. As B, confirm a "te invitó a un club" notification, visit `/club/[slug]`, confirm "Aceptar invitación"/"Rechazar" show instead of a join button. Click "Aceptar". Confirm A gets a "aceptó tu invitación" notification.
-7. **Roles**: as A (owner), in "Gestionar miembros" promote B to moderator ("Ascender a moderador"). Confirm B's role label updates to "Moderador". As B, confirm B can now see "Gestionar miembros" too (moderator+) but does NOT see "Ascender/Bajar/Transferir propiedad" options for A (owner-only actions, B is only moderator).
+5. **Invite to private club (B)**: as A (owner of the private club), open /club/[private-slug] -> "Gestionar miembros", type B's username into the invite field, submit. As B, confirm a "te invito a un club" notification arrives, and that B can now reach /club/[private-slug] directly (previously 404) showing "Aceptar invitacion"/"Rechazar" instead of nothing. Click "Aceptar". Confirm A gets a "acepto tu invitacion" notification, and B now appears as an active member in "Gestionar miembros".
+6. **Decline an invite**: repeat step 5 with a fresh invite (remove B first if still a member), but click "Rechazar" instead. Confirm B no longer has access to /club/[private-slug] (back to 404) and does not appear in the member list.
+7. **Roles**: re-invite B and accept again, then as A (owner), in "Gestionar miembros" promote B to moderator ("Ascender a moderador"). Confirm B's role label updates to "Moderador". As B, confirm B can now see "Gestionar miembros" too (moderator+) but does NOT see "Ascender/Bajar/Transferir propiedad" options for A (owner-only actions, B is only moderator).
 8. **Leave-blocked-as-owner**: as A (owner) on a club where B is also an active member, try clicking a way to leave (there shouldn't be a visible "Salir" button for the owner in `club-header.tsx` per the plan — confirm that's the case; the block is enforced by hiding the button, not just server-side).
 9. **Transfer ownership**: as A, "Transferir propiedad" on B. Confirm A's role becomes "Moderador" and B's becomes "Owner" (check both accounts' views). Confirm A can now see a "Salir" button (no longer owner) and B cannot (now owner).
 10. **Remove member**: as B (now owner), expel A from the club via "Expulsar". Confirm A no longer sees the club in "Mis clubes" and can't access `/club/[slug]` content restricted to members (for a private club) or sees the join button again (for a public club).
@@ -2502,7 +2459,7 @@ Mark `E5.E1`–`E5.E4` as done (`- [x]`) and add a status note matching the styl
 
 - [ ] **Step 4: Update `docs/REQUIREMENTS.md`**
 
-Add a dated row to the §9 decision table documenting: the `SECURITY DEFINER` RPC pattern for role-changing operations (`create_club`/`set_club_member_role`/`transfer_club_ownership`) instead of raw client updates, the ownership-reassignment trigger as a database-level safety net independent of any future account-deletion feature, and the enum-declaration-order gotcha (ascending authority order required for `>=` comparisons to work, same pattern as `user_role`).
+Add a dated row to the §9 decision table documenting: the `SECURITY DEFINER` RPC pattern for role-changing operations (`create_club`/`set_club_member_role`/`transfer_club_ownership`) instead of raw client updates, the ownership-reassignment trigger as a database-level safety net independent of any future account-deletion feature, the enum-declaration-order gotcha (ascending authority order required for `>=` comparisons to work, same pattern as `user_role`), and the mid-implementation correction to invite-only private-club joining (no self-service "solicitar unirse" — a private club's row is genuinely invisible to non-members per SD-4, which makes a self-request flow impossible to implement consistently; discovered when Task 1's original RLS battery hit a real circular-visibility bug).
 
 - [ ] **Step 5: Commit**
 
