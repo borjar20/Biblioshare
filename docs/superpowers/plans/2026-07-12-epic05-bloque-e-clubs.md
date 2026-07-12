@@ -36,6 +36,8 @@
 
 **Design correction from the original brainstorming pass:** joining a private club is invite-only — there is no self-service "solicitar unirse" request flow. A private club's row is genuinely invisible to non-members (per SD-4), and a self-request flow is impossible to implement consistently with that (the requester would need to read a row RLS hides from them just to prove the club is private). `club_member_status` therefore has only two non-active states collapsed into one (`invited`), not two (`pending`+`invited`) — see the enum below.
 
+**Second correction, found by the Task 1 implementer's own RLS battery:** an invited (not-yet-`active`) user could never see their own invitation row, because Postgres requires a row to pass a table's `SELECT` policy before any `UPDATE`/`DELETE` policy can touch it — and `is_club_member()` (used by both the `clubs` and `club_members` `SELECT` policies) intentionally requires `status='active'`. This blocked both accepting an invite (the `UPDATE` always affected 0 rows) and viewing the private club's basic info before accepting (would 404). Fixed by broadening both `SELECT` policies to also grant self-only visibility regardless of status — see the RLS section below; both fixes are already reflected in the SQL.
+
 - [ ] **Step 1: Write the migration file**
 
 ```sql
@@ -309,10 +311,22 @@ grant execute on function public.transfer_club_ownership(uuid, uuid) to authenti
 alter table public.clubs enable row level security;
 
 -- La fila ENTERA (incl. description) de un club privado es invisible a
--- no-miembros, no solo su contenido (SD-4).
+-- no-miembros, no solo su contenido (SD-4). "member" aquí incluye status
+-- 'invited', no solo 'active' -- is_club_member() exige 'active' a
+-- propósito (ver su comentario), así que NO se usa aquí: alguien invitado a
+-- un club privado necesita ver su nombre/descripción/portada para decidir
+-- si acepta, antes de ser miembro real. Postgres además exige que una fila
+-- sea visible por SELECT antes de que cualquier política UPDATE/DELETE
+-- pueda tocarla -- ver la política de club_members más abajo, mismo motivo.
 create policy "clubs select public or member" on public.clubs
   for select to anon, authenticated
-  using (visibility = 'public' or public.is_club_member(id));
+  using (
+    visibility = 'public'
+    or exists (
+      select 1 from public.club_members
+      where club_id = clubs.id and user_id = (select auth.uid())
+    )
+  );
 
 -- Sin política INSERT a propósito: create_club() es el único camino (bypassa
 -- RLS vía SECURITY DEFINER). Esto evita tener que replicar en RLS la lógica
@@ -324,9 +338,19 @@ create policy "clubs update moderator+" on public.clubs
 
 alter table public.club_members enable row level security;
 
+-- Roster completo solo para miembros ACTIVOS (is_club_member). Además, CUALQUIERA
+-- ve su PROPIA fila sin importar el status -- necesario para que un invitado
+-- pueda ver (y por tanto aceptar) su propia invitación: Postgres exige que una
+-- fila pase la política SELECT antes de que UPDATE/DELETE puedan tocarla,
+-- incluso si su propia política USING ya lo permitiría. Sin esto, "club_members
+-- accept invite" nunca afectaría ninguna fila (0 resultados siempre), porque
+-- is_club_member() exige status='active' y un invitado todavía no lo es.
 create policy "club_members select member" on public.club_members
   for select to authenticated
-  using (public.is_club_member(club_id));
+  using (
+    public.is_club_member(club_id)
+    or user_id = (select auth.uid())
+  );
 
 -- role='member' siempre en esta política — la fila de owner la crea
 -- create_club() (bypass RLS), los ascensos van por set_club_member_role().
@@ -467,8 +491,14 @@ insert into public.club_members (club_id, user_id, status)
   values ((select id from public.clubs where slug = 'rlstest-club'), '22222222-2222-2222-2222-222222222222', 'invited');
 select set_config('app.test5', (select status::text from public.club_members where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '22222222-2222-2222-2222-222222222222'), false);
 
--- Test 6: B acepta su propia invitación -> OK.
+-- Test 5b: B (todavía invited, no active) puede ver la fila del club privado
+-- -- necesario para que /club/[slug] no dé 404 antes de aceptar. Sin la rama
+-- "exists club_members para mí" en la política SELECT de clubs, esto
+-- devolvería 0 (is_club_member exige status='active').
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+select set_config('app.test5b', (select count(*)::text from public.clubs where slug = 'rlstest-club'), false);
+
+-- Test 6: B acepta su propia invitación -> OK.
 with updated as (
   update public.club_members set status = 'active'
     where club_id = (select id from public.clubs where slug = 'rlstest-club') and user_id = '22222222-2222-2222-2222-222222222222'
@@ -543,6 +573,7 @@ select
   current_setting('app.test3', true) as test3_pending_status_no_longer_valid,
   current_setting('app.test4', true) as test4_self_join_public_club,
   current_setting('app.test5', true) as test5_invite_status,
+  current_setting('app.test5b', true) as test5b_invited_user_sees_club_expect_1,
   current_setting('app.test6', true) as test6_accept_invite_expect_1,
   current_setting('app.test7', true) as test7_second_invite_accept_expect_1,
   current_setting('app.test8', true) as test8_promote_to_moderator,
@@ -555,7 +586,7 @@ select
 rollback;
 ```
 
-Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
+Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
 
 - [ ] **Step 4: Commit**
 
