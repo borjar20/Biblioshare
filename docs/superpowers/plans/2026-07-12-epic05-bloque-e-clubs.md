@@ -182,8 +182,12 @@ comment on function public.club_member_row_exists(uuid) is 'True si el usuario a
 -- already modified by an operation triggered by the current command").
 -- Con AFTER DELETE, cuando el trigger corre la fila original YA ha sido
 -- eliminada por la sentencia externa, así que el cascade no encuentra nada
--- que la vuelva a tocar. La otra rama (promocionar al siguiente owner) no
--- se ve afectada por este cambio: nunca toca la fila que se está borrando.
+-- que la vuelva a tocar. La otra rama (promocionar al siguiente owner) SÍ
+-- se ve afectada por este cambio de forma indirecta: su UPDATE a
+-- clubs.owner_id dispara enforce_club_owner_change_authorized(), que
+-- comprobaría la autoridad del owner SALIENTE -- cuya fila en club_members
+-- ya no existe en este punto (AFTER DELETE). Por eso esa función tiene su
+-- propia excepción vía pg_trigger_depth() -- ver su comentario.
 create or replace function public.reassign_club_ownership()
 returns trigger
 language plpgsql
@@ -225,6 +229,19 @@ create trigger trg_reassign_club_ownership
 -- necesita esto igualmente para el caso "no toca club_members", así que no es
 -- redundante con la política RLS de clubs (que no puede validar "es miembro
 -- activo" sin este trigger).
+--
+-- Excepción: pg_trigger_depth() > 1 significa que este UPDATE se disparó
+-- desde DENTRO de otro trigger -- en esta migración, solo puede ser
+-- reassign_club_ownership() reasignando tras el DELETE de la fila del owner
+-- saliente (transfer_club_ownership() es una función normal, no un trigger,
+-- así que llamarla NO añade profundidad; un cliente que se salte la app
+-- tampoco). En ese caso concreto, has_min_club_role(old.id,'owner') SIEMPRE
+-- daría false -- la fila del owner saliente ya no existe, se acaba de
+-- borrar -- aunque la reasignación sea perfectamente legítima; y
+-- reassign_club_ownership() ya garantiza por su cuenta que v_next_user es
+-- miembro activo (su propia query solo selecciona status='active'), así que
+-- repetir ambas comprobaciones aquí no solo es redundante sino que rompe la
+-- reasignación real.
 create or replace function public.enforce_club_owner_change_authorized()
 returns trigger
 language plpgsql
@@ -233,6 +250,9 @@ set search_path = public
 as $$
 begin
   if new.owner_id is distinct from old.owner_id then
+    if pg_trigger_depth() > 1 then
+      return new;
+    end if;
     if not public.has_min_club_role(old.id, 'owner') then
       raise exception 'Only the current owner can change club ownership';
     end if;
@@ -653,6 +673,29 @@ exception when others then
   perform set_config('app.test15', 'FAILED_error: ' || sqlerrm, false);
 end $$;
 
+-- Test 16: A crea un cuarto club, invita a B, B acepta; A (owner) se borra a
+-- sí mismo con B todavía activo -> debe promocionar a B a owner SIN error
+-- (regresión del fix de Test 15/AFTER DELETE: la rama "promote next owner"
+-- del trigger dispara enforce_club_owner_change_authorized(), que debe
+-- reconocer vía pg_trigger_depth() > 1 que es una reasignación interna de
+-- confianza y no exigir que la fila de A siga existiendo).
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+select public.create_club('rlstest-club-promo', 'RLS Test Promo', 'desc', 'public', null);
+insert into public.club_members (club_id, user_id, status)
+  values ((select id from public.clubs where slug = 'rlstest-club-promo'), '22222222-2222-2222-2222-222222222222', 'invited');
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+update public.club_members set status = 'active'
+  where club_id = (select id from public.clubs where slug = 'rlstest-club-promo') and user_id = '22222222-2222-2222-2222-222222222222';
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+do $$
+begin
+  delete from public.club_members
+    where club_id = (select id from public.clubs where slug = 'rlstest-club-promo') and user_id = '11111111-1111-1111-1111-111111111111';
+  perform set_config('app.test16', 'ok_no_error: new_owner=' || (select owner_id::text from public.clubs where slug = 'rlstest-club-promo'), false);
+exception when others then
+  perform set_config('app.test16', 'FAILED_error: ' || sqlerrm, false);
+end $$;
+
 reset role;
 select
   current_setting('app.test1', true) as test1_create_club_priv_owner_is_a,
@@ -671,12 +714,13 @@ select
   current_setting('app.test12', true) as test12_leave_after_transfer_expect_1,
   current_setting('app.test13', true) as test13_anon_sees_private_club_expect_0,
   current_setting('app.test14', true) as test14_accept_invite_role_escalation_rejected,
-  current_setting('app.test15', true) as test15_sole_member_leaves_deletes_club;
+  current_setting('app.test15', true) as test15_sole_member_leaves_deletes_club,
+  current_setting('app.test16', true) as test16_promote_after_owner_leaves;
 
 rollback;
 ```
 
-Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`, test14 = `ok_rejected: ...`, test15 = `ok_no_error: club_rows=0`. If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.club_member_row_exists, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
+Confirm: test1 = A's id, test1b = A's id, test2 = `ok_rejected: ...`, test3 = `ok_rejected: ...` (must mention `invalid input value for enum`), test4 = `active`, test5 = `invited`, test5b = `1`, test6 = `1`, test7 = `1`, test8 = `moderator`, test9 = `1`, test10 = `ok_rejected: ...`, test11 = `<B's id> role=moderator`, test12 = `1`, test13 = `0`, test14 = `ok_rejected: ...`, test15 = `ok_no_error: club_rows=0`, test16 = `ok_no_error: new_owner=<B's id>` (B = `22222222-2222-2222-2222-222222222222`). If any test doesn't match, fix the migration and re-run Steps 2–3 (drop-and-retry: `drop table if exists public.club_members, public.clubs cascade; drop type if exists public.club_visibility, public.club_role, public.club_member_status cascade; drop function if exists public.is_club_member, public.club_role, public.has_min_club_role, public.club_member_row_exists, public.reassign_club_ownership, public.enforce_club_owner_change_authorized, public.create_club, public.set_club_member_role, public.transfer_club_ownership cascade;` — the `alter type notification_type add value` statements can't be rolled back by dropping, but re-running the migration is idempotent for those since a repeat `add value` on an already-present value errors harmlessly and can be commented out on retry if needed).
 
 - [ ] **Step 4: Commit**
 
