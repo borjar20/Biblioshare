@@ -183,19 +183,18 @@
 
 ## Summary
 
-All 12 test scenarios have been verified:
-1. ✓ Setup
-2. ✓ Create public club
-3. ✓ Create private club
-4. ✓ Join public club (Account B)
-5. ✓ Invite to private club (Account B)
-6. ✓ Decline an invite
-7. ✓ Roles (moderator promotion)
-8. ✓ Leave-blocked-as-owner
-9. ✓ Transfer ownership
-10. ✓ Remove member
-11. ✓ No console errors
-12. ✓ Cleanup
+- [ ] 1. Setup
+- [ ] 2. Create public club
+- [ ] 3. Create private club
+- [ ] 4. Join public club (Account B)
+- [ ] 5. Invite to private club (Account B)
+- [ ] 6. Decline an invite
+- [ ] 7. Roles (moderator promotion)
+- [ ] 8. Leave-blocked-as-owner
+- [ ] 9. Transfer ownership
+- [ ] 10. Remove member
+- [ ] 11. No console errors
+- [ ] 12. Cleanup
 
 **Tester:** _________________  
 **Date Completed:** _________________  
