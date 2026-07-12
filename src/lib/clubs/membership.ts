@@ -120,24 +120,29 @@ export async function acceptInvite(clubId: string): Promise<void> {
     .single();
   if (clubError) throw clubError;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("club_members")
     .update({ status: "active" })
     .eq("club_id", clubId)
     .eq("user_id", userId)
-    .eq("status", "invited");
+    .eq("status", "invited")
+    .select("club_id");
   if (error) throw error;
 
-  try {
-    await notify(supabase, {
-      userId: club.owner_id,
-      actorId: userId,
-      type: "club_invite_accepted",
-      targetType: "club",
-      targetId: clubId,
-    });
-  } catch (notifyError) {
-    console.error("acceptInvite notify failed", notifyError);
+  // Solo notifica si de verdad había una invitación pendiente que aceptar
+  // (evita notificar dos veces con un doble clic).
+  if (data && data.length > 0) {
+    try {
+      await notify(supabase, {
+        userId: club.owner_id,
+        actorId: userId,
+        type: "club_invite_accepted",
+        targetType: "club",
+        targetId: clubId,
+      });
+    } catch (notifyError) {
+      console.error("acceptInvite notify failed", notifyError);
+    }
   }
 }
 
@@ -153,8 +158,15 @@ export async function declineInvite(clubId: string): Promise<void> {
   if (error) throw error;
 }
 
+// No permite auto-eliminarse por esta vía -- el RLS de borrado permite
+// self-delete incondicional (cualquier rol), lo que saltaría el chequeo de
+// transferencia de propiedad de leaveClub. Quien quiera salir debe usar
+// leaveClub.
 export async function removeMember(clubId: string, userId: string): Promise<void> {
-  const { supabase } = await requireUser();
+  const { supabase, userId: actorId } = await requireUser();
+  if (userId === actorId) {
+    throw new Error("use_leave_club_to_remove_yourself");
+  }
 
   const { error } = await supabase
     .from("club_members")
