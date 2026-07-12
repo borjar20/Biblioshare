@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "./notifications";
-import type { TargetType } from "./interactions";
+import type { NotificationType } from "./notification-types";
+import type { ReactableTargetType, TargetType } from "./interactions";
 
 // Mutaciones de reacciones/comentarios (EPIC-05, Bloque B, SD-3). Sin edición
 // de comentarios ni borrado por el dueño del contenido en este MVP (decisión
@@ -21,23 +22,55 @@ function revalidateItemPages() {
   revalidatePath("/", "page");
 }
 
+// Dueño del target -- a quién notificar. club_post/comment usan author_id en
+// vez de user_id (mismas columnas que sus tablas ya declaran).
 async function resolveTargetOwner(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  targetType: TargetType,
+  targetType: ReactableTargetType,
   targetId: string,
 ): Promise<string | null> {
-  const table = targetType === "diary_entry" ? "diary_entries" : "episode_watches";
+  if (targetType === "diary_entry" || targetType === "episode_watch") {
+    const table = targetType === "diary_entry" ? "diary_entries" : "episode_watches";
+    const { data, error } = await supabase.from(table).select("user_id").eq("id", targetId).maybeSingle();
+    if (error) throw error;
+    return data?.user_id ?? null;
+  }
+  if (targetType === "club_post") {
+    const { data, error } = await supabase
+      .from("club_posts")
+      .select("author_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.author_id ?? null;
+  }
   const { data, error } = await supabase
-    .from(table)
-    .select("user_id")
+    .from("comments")
+    .select("author_id")
     .eq("id", targetId)
     .maybeSingle();
   if (error) throw error;
-  return data?.user_id ?? null;
+  return data?.author_id ?? null;
 }
 
+// Reaccionar (like) notifica con un tipo distinto según qué se está
+// reaccionando -- paridad completa con review_liked (EPIC-05 Bloque F,
+// decisión de sesión). Comentar solo aplica a diary_entry/episode_watch/
+// club_post (nunca a un comentario -- sin anidación).
+const LIKE_NOTIFICATION_TYPE: Record<ReactableTargetType, NotificationType> = {
+  diary_entry: "review_liked",
+  episode_watch: "review_liked",
+  club_post: "club_post_liked",
+  comment: "comment_liked",
+};
+const COMMENT_NOTIFICATION_TYPE: Record<TargetType, NotificationType> = {
+  diary_entry: "review_commented",
+  episode_watch: "review_commented",
+  club_post: "club_post_commented",
+};
+
 export async function toggleReaction(
-  targetType: TargetType,
+  targetType: ReactableTargetType,
   targetId: string,
 ): Promise<void> {
   const supabase = await createClient();
@@ -77,7 +110,7 @@ export async function toggleReaction(
         await notify(supabase, {
           userId: ownerId,
           actorId: user.id,
-          type: "review_liked",
+          type: LIKE_NOTIFICATION_TYPE[targetType],
           targetType,
           targetId,
         });
@@ -117,7 +150,7 @@ export async function addComment(
       await notify(supabase, {
         userId: ownerId,
         actorId: user.id,
-        type: "review_commented",
+        type: COMMENT_NOTIFICATION_TYPE[targetType],
         targetType,
         targetId,
       });

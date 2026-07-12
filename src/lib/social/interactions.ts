@@ -9,7 +9,8 @@ import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-export type TargetType = "diary_entry" | "episode_watch";
+export type TargetType = "diary_entry" | "episode_watch" | "club_post";
+export type ReactableTargetType = TargetType | "comment";
 
 export type InteractionComment = {
   id: string;
@@ -19,6 +20,8 @@ export type InteractionComment = {
   body: string;
   createdAt: string;
   isOwn: boolean;
+  reactionCount: number;
+  viewerReacted: boolean;
 };
 
 export type InteractionSummary = {
@@ -125,7 +128,37 @@ export async function getInteractionSummary(
       body: c.body,
       createdAt: c.created_at,
       isOwn: user?.id === c.author_id,
+      reactionCount: 0,
+      viewerReacted: false,
     });
+  }
+
+  // Reacciones sobre los propios comentarios (like en comentario, EPIC-05
+  // Bloque F) -- segunda query batch, los ids de comentario no se conocen
+  // hasta después de la query de arriba. commentById indexa por id sobre
+  // TODOS los comentarios devueltos (no solo los de la página de
+  // COMMENT_PREFETCH_LIMIT que ya están en s.comments) para no complicar el
+  // filtrado -- reacciones de comentarios fuera de la página prefetch
+  // simplemente no encuentran destino en el bucle de abajo y se ignoran.
+  const allCommentIds = commentRows.map((c) => c.id);
+  if (allCommentIds.length > 0) {
+    const { data: commentReactions, error: commentReactionsError } = await supabase
+      .from("reactions")
+      .select("target_id, user_id")
+      .eq("target_type", "comment")
+      .in("target_id", allCommentIds);
+    if (commentReactionsError) throw commentReactionsError;
+
+    const commentById = new Map<string, InteractionComment>();
+    for (const s of summaries.values()) {
+      for (const c of s.comments) commentById.set(c.id, c);
+    }
+    for (const r of commentReactions ?? []) {
+      const c = commentById.get(r.target_id);
+      if (!c) continue;
+      c.reactionCount += 1;
+      if (user && r.user_id === user.id) c.viewerReacted = true;
+    }
   }
 
   return summaries;
