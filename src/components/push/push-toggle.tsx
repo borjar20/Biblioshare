@@ -100,7 +100,7 @@ export function PushToggle() {
         aria-label={t("toggleLabel")}
         disabled={isPending}
         onClick={subscribed ? disable : enable}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+        className={`relative h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors disabled:opacity-50 ${
           subscribed ? "bg-accent" : "bg-surface-muted"
         }`}
       >
