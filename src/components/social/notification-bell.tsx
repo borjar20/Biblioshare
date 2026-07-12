@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { markAllNotificationsRead } from "@/lib/social/notification-actions";
-import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notifications";
+import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notification-types";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
 

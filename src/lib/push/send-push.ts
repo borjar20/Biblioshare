@@ -15,11 +15,26 @@ export type PushPayload = {
   url: string;
 };
 
-webpush.setVapidDetails(
-  "mailto:borjar20@gmail.com",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+let vapidConfigured = false;
+
+// Configuración perezosa: si esto corriera a nivel de módulo, el side effect
+// se ejecutaría en cuanto Next.js importe este fichero — incluido durante la
+// recolección de datos de página en `next build`, mucho antes de que exista
+// una petición real. Con claves VAPID ausentes (build sin las env vars, un
+// segundo desarrollador sin configurarlas localmente, etc.) eso tira todo el
+// build abajo por una feature que es best-effort por diseño.
+function ensureVapidConfigured(): boolean {
+  if (vapidConfigured) return true;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) {
+    console.error("sendPushToUser: VAPID keys not configured, skipping push delivery");
+    return false;
+  }
+  webpush.setVapidDetails("mailto:borjar20@gmail.com", publicKey, privateKey);
+  vapidConfigured = true;
+  return true;
+}
 
 async function sendWebPush(
   credentials: WebCredentials,
@@ -48,6 +63,8 @@ export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
 ): Promise<void> {
+  if (!ensureVapidConfigured()) return;
+
   const { data: subs, error } = await supabase
     .from("push_subscriptions")
     .select("id, channel, credentials")

@@ -3,6 +3,15 @@ import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import { sendPushToUser, type PushPayload } from "@/lib/push/send-push";
+import {
+  NOTIFICATION_TYPE_KEY,
+  type Notification,
+  type NotificationType,
+  type ReviewTargetType,
+} from "./notification-types";
+
+export type { NotificationType, ReviewTargetType, Notification };
+export { NOTIFICATION_TYPE_KEY };
 
 // Notificaciones in-app (EPIC-05, Bloque D, SD-5). Sin push/email/cron: se lee
 // al cargar la app (campana). notify() es un efecto secundario best-effort
@@ -10,35 +19,6 @@ import { sendPushToUser, type PushPayload } from "@/lib/push/send-push";
 // fallo aquí no debe romper la acción real que lo dispara.
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-export type NotificationType =
-  | "follow_request"
-  | "new_follower"
-  | "follow_accepted"
-  | "review_liked"
-  | "review_commented";
-
-export type ReviewTargetType = "diary_entry" | "episode_watch";
-
-export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
-  follow_request: "followRequest",
-  new_follower: "newFollower",
-  follow_accepted: "followAccepted",
-  review_liked: "reviewLiked",
-  review_commented: "reviewCommented",
-};
-
-export type Notification = {
-  id: string;
-  type: NotificationType;
-  actorId: string;
-  actorUsername: string;
-  actorDisplayName: string | null;
-  actorAvatarUrl: string | null;
-  href: string;
-  readAt: string | null;
-  createdAt: string;
-};
 
 const LIST_LIMIT = 20;
 
