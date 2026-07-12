@@ -63,7 +63,15 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  const data = event.data?.json() ?? {};
+  // .json() throws on a non-JSON payload (e.g. DevTools' synthetic "Push"
+  // test button sends plain text) — fall back to treating it as the body
+  // rather than letting the whole handler throw before showNotification.
+  let data = {};
+  try {
+    data = event.data?.json() ?? {};
+  } catch {
+    data = { body: event.data?.text() };
+  }
   event.waitUntil(
     self.registration.showNotification(data.title ?? "Biblioshare", {
       body: data.body,
