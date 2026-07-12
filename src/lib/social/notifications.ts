@@ -1,6 +1,8 @@
+import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
+import { sendPushToUser, type PushPayload } from "@/lib/push/send-push";
 
 // Notificaciones in-app (EPIC-05, Bloque D, SD-5). Sin push/email/cron: se lee
 // al cargar la app (campana). notify() es un efecto secundario best-effort
@@ -17,6 +19,14 @@ export type NotificationType =
   | "review_commented";
 
 export type ReviewTargetType = "diary_entry" | "episode_watch";
+
+export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
+  follow_request: "followRequest",
+  new_follower: "newFollower",
+  follow_accepted: "followAccepted",
+  review_liked: "reviewLiked",
+  review_commented: "reviewCommented",
+};
 
 export type Notification = {
   id: string;
@@ -51,7 +61,56 @@ export async function notify(
   });
   // Best-effort: no se propaga. Una notificación fallida no debe deshacer la
   // acción real (follow/accept/reacción/comentario) que ya se confirmó.
-  if (error) console.error("notify() failed", error);
+  if (error) {
+    console.error("notify() failed", error);
+    return;
+  }
+
+  // Entrega push (E5.D4), también best-effort — nunca debe afectar a la
+  // notificación in-app, que ya se insertó arriba con éxito.
+  try {
+    await deliverPush(supabase, params);
+  } catch (pushError) {
+    console.error("notify() push delivery failed", pushError);
+  }
+}
+
+async function deliverPush(
+  supabase: SupabaseServerClient,
+  params: {
+    userId: string;
+    actorId: string;
+    type: NotificationType;
+    targetType?: ReviewTargetType;
+    targetId?: string;
+  },
+): Promise<void> {
+  const { data: actor } = await supabase
+    .from("profile_identities")
+    .select("username, display_name")
+    .eq("user_id", params.actorId)
+    .maybeSingle();
+  if (!actor?.username) return;
+
+  let href = `/u/${actor.username}`;
+  if (params.targetType && params.targetId) {
+    const hrefByKey = await resolveReviewHrefs(supabase, [
+      { targetType: params.targetType, targetId: params.targetId },
+    ]);
+    href = hrefByKey.get(`${params.targetType}:${params.targetId}`) ?? href;
+  }
+
+  const t = await getTranslations("notifications");
+  const tCommon = await getTranslations("common");
+  const name = actor.display_name || actor.username;
+
+  const payload: PushPayload = {
+    title: tCommon("appName"),
+    body: t(NOTIFICATION_TYPE_KEY[params.type], { name }),
+    url: href,
+  };
+
+  await sendPushToUser(supabase, params.userId, payload);
 }
 
 export async function getUnreadCount(

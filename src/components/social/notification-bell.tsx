@@ -4,17 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { markAllNotificationsRead } from "@/lib/social/notification-actions";
-import type { Notification } from "@/lib/social/notifications";
+import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notifications";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
-
-const TYPE_KEY: Record<Notification["type"], string> = {
-  follow_request: "followRequest",
-  new_follower: "newFollower",
-  follow_accepted: "followAccepted",
-  review_liked: "reviewLiked",
-  review_commented: "reviewCommented",
-};
 
 function timeAgo(iso: string, t: (key: string, values?: Record<string, number>) => string): string {
   const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -100,7 +92,7 @@ export function NotificationBell({
                     />
                     <div className="flex min-w-0 flex-col">
                       <span className="text-sm text-foreground">
-                        {t(TYPE_KEY[n.type], {
+                        {t(NOTIFICATION_TYPE_KEY[n.type], {
                           name: n.actorDisplayName || n.actorUsername,
                         })}
                       </span>
