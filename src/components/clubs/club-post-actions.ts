@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
+import { listClubPosts, type ClubPostsPage } from "@/lib/clubs/posts";
 import type { FeedEvent } from "@/lib/social/feed";
 
 const RECENT_LIMIT = 10;
@@ -72,4 +73,8 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
     refs.slice(0, RECENT_LIMIT).map((r) => resolveSharedActivity(supabase, r.ref)),
   );
   return events.filter((e): e is FeedEvent => e !== null);
+}
+
+export async function loadMoreClubPosts(clubId: string, cursor: string): Promise<ClubPostsPage> {
+  return listClubPosts(clubId, cursor);
 }
