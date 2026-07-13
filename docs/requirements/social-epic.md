@@ -373,16 +373,48 @@ Cada bloque agrupa tareas cohesionadas. Esfuerzo: **S** < **M** < **L** < **XL**
   owner). Sin "aprobar solicitudes" — no existe ese flujo (ver nota de diseño arriba).
 
 ### Bloque F — Feed del club  ·  *esfuerzo M-L*  ·  *dep: E, B, D*
-- [ ] **E5.F1** Migración `club_posts(id, club_id, author_id, kind, body, ref jsonb,
-  created_at)` — `kind ∈ {text, activity_share, poll?}`; `ref` apunta a un ítem/actividad
-  compartida (polimórfico). RLS con `is_club_member()`.
-- [ ] **E5.F2** Dominio `src/lib/clubs/posts.ts`: crear post de texto, **compartir una
-  actividad propia** al club (envuelve un `diary_entry`/ítem en un post
-  `activity_share`), listar el feed paginado, borrar (autor o mod).
-- [ ] **E5.F3** UI: feed en `/club/[slug]`, composer (texto + adjuntar ítem de tu
-  biblioteca), tarjetas de post con reacciones/comentarios (Bloque B, targets
-  `club_post`/`comment`). Notificación a miembros en post nuevo (con preferencia para
-  silenciar el club, ver E5.J).
+> **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
+> manual en navegador pendiente de ejecutar.** `kind` incluye las tres variantes desde el
+> inicio (`text`/`activity_share`/`poll`, sin diferir la encuesta pese a la interrogación
+> original del backlog). `activity_share` reutiliza el modelo `FeedEvent` unificado de
+> Bloque C (no solo reseñas) — el post guarda una **referencia viva**
+> (`{sourceTable, rowId}`, mismo vocabulario que `FeedEvent.id`), re-derivada en cada
+> lectura vía un resolver de una sola fila (`src/lib/social/shared-activity.ts`), nunca un
+> snapshot; si la fila origen se borra, el post muestra un estado "ya no disponible" en vez
+> de romperse. Compartir a un club **anula la privacidad de perfil normal para los
+> compañeros de ese club** — un nuevo helper angosto, `is_visible_via_club_share()`, se
+> añade como un `OR` extra a las políticas `SELECT` ya existentes de `diary_entries`/
+> `episode_watches` (Bloque A), sin tocar `can_view_profile()` (deliberado, para no
+> arriesgar el helper transversal ya verificado desde Bloque A). Encuestas de elección
+> única, con cierre obligatorio revalidado server-side (RPC + RLS, no solo UI), y
+> **resultados ocultos hasta que votas** aplicado a nivel de RLS (tu propio voto siempre
+> visible; los de los demás solo si ya votaste o la encuesta cerró) — así no se puede
+> saltar el ocultamiento consultando la tabla directamente vía PostgREST. **Ampliación de
+> alcance decidida en brainstorming, no en el backlog original**: el "me gusta" en
+> comentarios pasa a estar disponible en toda la app (reseñas y posts de club), no solo en
+> clubes, al reutilizar el mismo `target_kind` polimórfico de Bloque B. `resolveReviewHrefs`
+> se renombró/unificó a `resolveTargetHrefs`, plegando el caso especial de `club` (antes
+> duplicado en `deliverPush()` y `listNotifications()`) en una sola función compartida.
+> Verificación manual en navegador pendiente de ejecutar por el usuario (checklist en
+> `docs/superpowers/plans/2026-07-12-epic05-bloque-f-club-feed-manual-test.md`), per
+> convención `docs/TESTING.md`. Motor genérico de actividades de club (Bloque G)
+> explícitamente fuera de alcance de este bloque.
+- [x] **E5.F1** Migración `club_posts(id, club_id, author_id, kind, body, ref jsonb,
+  poll_ends_at, created_at)` + `club_poll_options`/`club_poll_votes` — `kind ∈ {text,
+  activity_share, poll}`; `ref` apunta a un ítem/actividad compartida (polimórfico). RLS
+  con `is_club_member()`/`has_min_club_role()`. `target_kind` (Bloque B) ampliado con
+  `club_post`/`comment`; CHECK `comments_no_nesting` hace la anidación de comentarios
+  irrepresentable en el esquema (protege la rama recursiva de `can_view_target()`).
+- [x] **E5.F2** Dominio `src/lib/clubs/posts.ts`: crear post de texto, **compartir una
+  actividad propia** al club (cualquier `FeedEvent` reciente, no solo reseñas), crear
+  encuesta, votar, listar el feed paginado, borrar (autor o mod).
+- [x] **E5.F3** UI: feed en `/club/[slug]`, composer (texto / compartir actividad / crear
+  encuesta), tarjetas de post con reacciones/comentarios (Bloque B, targets
+  `club_post`/`comment`, con like en comentarios ahora también en reseñas). Notificación a
+  todos los miembros activos en post nuevo (sin preferencia de silenciar-club — E5.J queda
+  explícitamente diferido, se acepta el ruido temporal). Paridad completa de notificaciones
+  para like/comentario en post de club y like en comentario (4 tipos nuevos de
+  `notification_type`).
 
 ### Bloque G — Actividades de club: motor genérico  ·  *esfuerzo L*  ·  *dep: E, D; base de todos los tipos (SD-8)*
 Los tres ejemplos del usuario (lectura conjunta, tierlist, reto por lista) son **tipos**
