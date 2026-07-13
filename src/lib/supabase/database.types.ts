@@ -440,6 +440,126 @@ export type Database = {
         }
         Relationships: []
       }
+      club_activities: {
+        Row: {
+          club_id: string
+          config: Json | null
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_on: string | null
+          id: string
+          kind: Database["public"]["Enums"]["activity_kind"]
+          starts_on: string | null
+          status: Database["public"]["Enums"]["activity_status"]
+          title: string
+        }
+        Insert: {
+          club_id: string
+          config?: Json | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_on?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["activity_kind"]
+          starts_on?: string | null
+          status?: Database["public"]["Enums"]["activity_status"]
+          title: string
+        }
+        Update: {
+          club_id?: string
+          config?: Json | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_on?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["activity_kind"]
+          starts_on?: string | null
+          status?: Database["public"]["Enums"]["activity_status"]
+          title?: string
+        }
+        Relationships: []
+      }
+      club_activity_participants: {
+        Row: {
+          activity_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      club_activity_items: {
+        Row: {
+          activity_id: string
+          added_by: string
+          created_at: string
+          id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+        }
+        Insert: {
+          activity_id: string
+          added_by: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+        }
+        Update: {
+          activity_id?: string
+          added_by?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          position?: number
+        }
+        Relationships: []
+      }
+      club_activity_opinions: {
+        Row: {
+          activity_id: string
+          comment: string | null
+          created_at: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          rating: number | null
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          comment?: string | null
+          created_at?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          rating?: number | null
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          comment?: string | null
+          created_at?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          rating?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           created_at: string
@@ -1024,10 +1144,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      activate_club_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
+      finish_club_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
+      archive_club_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      activity_kind: "buddy_read" | "tierlist" | "list_challenge" | "criteria_challenge"
+      activity_status: "proposed" | "active" | "finished" | "archived"
       follow_status: "pending" | "accepted"
-      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked"
+      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated"
       push_channel: "web"
       target_kind: "diary_entry" | "episode_watch" | "club_post" | "comment"
       item_type: "book" | "movie" | "series"
@@ -1165,8 +1299,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_kind: ["buddy_read", "tierlist", "list_challenge", "criteria_challenge"],
+      activity_status: ["proposed", "active", "finished", "archived"],
       follow_status: ["pending", "accepted"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated"],
       push_channel: ["web"],
       target_kind: ["diary_entry", "episode_watch", "club_post", "comment"],
       item_type: ["book", "movie", "series"],
