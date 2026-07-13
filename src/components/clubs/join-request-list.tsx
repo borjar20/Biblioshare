@@ -69,6 +69,8 @@ export function JoinRequestList({
               <div className="flex shrink-0 gap-2">
                 <Button
                   type="button"
+                  variant="green"
+                  className="px-3.5 py-1.5 text-xs"
                   disabled={pendingId === request.userId}
                   onClick={() => decide(request.userId, "approve")}
                 >
@@ -77,6 +79,7 @@ export function JoinRequestList({
                 <Button
                   type="button"
                   variant="secondary"
+                  className="px-3.5 py-1.5 text-xs"
                   disabled={pendingId === request.userId}
                   onClick={() => decide(request.userId, "reject")}
                 >
