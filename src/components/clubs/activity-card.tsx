@@ -17,17 +17,27 @@ export function ActivityCard({
   activity,
   clubSlug,
   actions,
+  muted = false,
+  tint,
 }: {
   activity: ClubActivity;
   clubSlug: string;
   /** Aprobar / rechazar, en las propuestas que esperan moderación. */
   actions?: ReactNode;
+  /** Atenúa la tarjeta (finalizadas/archivadas). */
+  muted?: boolean;
+  /** Tinte dorado del handoff para las propuestas pendientes. */
+  tint?: "gold";
 }) {
   const t = useTranslations("activity");
   const accent = ACTIVITY_ACCENT[activity.kind];
 
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
+    <div
+      className={`flex flex-col gap-3 rounded-card border p-4 shadow-card ${
+        tint === "gold" ? "border-gold/40 bg-gold/5" : "border-border bg-surface"
+      } ${muted ? "opacity-75" : ""}`}
+    >
       <Link
         href={`/club/${clubSlug}/actividad/${activity.id}`}
         className="flex items-center gap-3 hover:opacity-80"
