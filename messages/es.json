@@ -265,7 +265,9 @@
     "justNow": "ahora mismo",
     "minutesAgo": "hace {count, plural, one {1 minuto} other {# minutos}}",
     "hoursAgo": "hace {count, plural, one {1 hora} other {# horas}}",
-    "daysAgo": "hace {count, plural, one {1 día} other {# días}}"
+    "daysAgo": "hace {count, plural, one {1 día} other {# días}}",
+    "clubJoinRequest": "{name} quiere unirse a tu club",
+    "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club"
   },
   "club": {
     "navLabel": "Clubes",
@@ -309,7 +311,16 @@
       "actividades": "Actividades",
       "gestion": "Gestión"
     },
-    "memberCount": "{count, plural, one {1 miembro} other {# miembros}}"
+    "memberCount": "{count, plural, one {1 miembro} other {# miembros}}",
+    "unreadCount": "{count, plural, one {1 novedad} other {# novedades}}",
+    "requestJoin": "Solicitar unirse",
+    "requestPending": "Solicitud enviada",
+    "requestPendingHint": "Un moderador tiene que aprobarla. Puedes retirarla pulsando otra vez.",
+    "privateDescription": "Este club es privado. Puedes ver que existe, pero su contenido es solo para sus miembros.",
+    "joinRequests": "Solicitudes de entrada · {count}",
+    "wantsToJoin": "quiere unirse",
+    "approveRequest": "Aceptar",
+    "rejectRequest": "Rechazar"
   },
   "clubPost": {
     "composerPlaceholderText": "¿Qué quieres compartir con el club?",

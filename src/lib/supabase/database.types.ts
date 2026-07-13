@@ -143,6 +143,13 @@ export type Database = {
             foreignKeyName: "club_activities_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "club_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_activities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
             referencedRelation: "club_stats"
             referencedColumns: ["club_id"]
           },
@@ -389,6 +396,13 @@ export type Database = {
             foreignKeyName: "club_members_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "club_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
             referencedRelation: "club_stats"
             referencedColumns: ["club_id"]
           },
@@ -502,11 +516,58 @@ export type Database = {
             foreignKeyName: "club_posts_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "club_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_posts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
             referencedRelation: "club_stats"
             referencedColumns: ["club_id"]
           },
           {
             foreignKeyName: "club_posts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_reads: {
+        Row: {
+          club_id: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_reads_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_reads_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_stats"
+            referencedColumns: ["club_id"]
+          },
+          {
+            foreignKeyName: "club_reads_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
@@ -1256,6 +1317,33 @@ export type Database = {
       }
     }
     Views: {
+      club_identities: {
+        Row: {
+          cover_url: string | null
+          description: string | null
+          id: string | null
+          name: string | null
+          slug: string | null
+          visibility: Database["public"]["Enums"]["club_visibility"] | null
+        }
+        Insert: {
+          cover_url?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          slug?: string | null
+          visibility?: Database["public"]["Enums"]["club_visibility"] | null
+        }
+        Update: {
+          cover_url?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          slug?: string | null
+          visibility?: Database["public"]["Enums"]["club_visibility"] | null
+        }
+        Relationships: []
+      }
       club_stats: {
         Row: {
           club_id: string | null
@@ -1314,6 +1402,10 @@ export type Database = {
           window_start: string
         }[]
       }
+      approve_club_join_request: {
+        Args: { p_club_id: string; p_user_id: string }
+        Returns: undefined
+      }
       archive_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined
@@ -1326,10 +1418,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      club_is_private: { Args: { p_club_id: string }; Returns: boolean }
       club_member_row_exists: { Args: { p_club_id: string }; Returns: boolean }
       club_role: {
         Args: { p_club_id: string }
         Returns: Database["public"]["Enums"]["club_role"]
+      }
+      club_unread_counts: {
+        Args: never
+        Returns: {
+          club_id: string
+          unread: number
+        }[]
       }
       confirm_checkpoint: {
         Args: { p_checkpoint_id: string }
@@ -1420,6 +1520,10 @@ export type Database = {
         Args: { p_row_id: string; p_source_table: string }
         Returns: boolean
       }
+      notify_club_join_request: {
+        Args: { p_club_id: string }
+        Returns: undefined
+      }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
@@ -1461,7 +1565,7 @@ export type Database = {
         | "list_challenge"
         | "criteria_challenge"
       activity_status: "proposed" | "active" | "finished" | "archived"
-      club_member_status: "invited" | "active"
+      club_member_status: "invited" | "active" | "requested"
       club_post_kind: "text" | "activity_share" | "poll"
       club_role: "member" | "moderator" | "owner"
       club_visibility: "public" | "private"
@@ -1627,7 +1731,7 @@ export const Constants = {
         "criteria_challenge",
       ],
       activity_status: ["proposed", "active", "finished", "archived"],
-      club_member_status: ["invited", "active"],
+      club_member_status: ["invited", "active", "requested"],
       club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],

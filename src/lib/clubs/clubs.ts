@@ -14,7 +14,13 @@ export type Club = {
   createdAt: string;
 };
 
-export type ClubMembershipStatus = "none" | "invited" | "active";
+// 'requested' = has pedido entrar en un club privado y esperas moderación. NO es
+// membresía: is_club_member() solo cuenta 'active', así que no da acceso a nada.
+export type ClubMembershipStatus =
+  | "none"
+  | "requested"
+  | "invited"
+  | "active";
 
 /** Un club con su recuento de miembros (viene de la vista club_stats). */
 export type ClubWithCount = Club & { memberCount: number };
@@ -238,6 +244,10 @@ export type ClubMember = {
 // Solo miembros ven el roster (RLS: club_members select gateado por
 // is_club_member). Incluye 'invited' para que la sección de gestión pueda
 // mostrar quién tiene una invitación pendiente de aceptar.
+//
+// EXCLUYE 'requested' a propósito: quien ha pedido entrar no es del club
+// todavía, y mezclarlo con el roster lo haría parecer miembro. Su sitio es el
+// bloque de solicitudes (listJoinRequests), donde se aprueba o se rechaza.
 export async function listMembers(clubId: string): Promise<ClubMember[]> {
   const supabase = await createClient();
 
@@ -245,6 +255,7 @@ export async function listMembers(clubId: string): Promise<ClubMember[]> {
     .from("club_members")
     .select("user_id, role, status, joined_at")
     .eq("club_id", clubId)
+    .in("status", ["invited", "active"])
     .order("joined_at", { ascending: true });
   if (error) throw error;
   if (!data || data.length === 0) return [];
@@ -265,6 +276,9 @@ export async function listMembers(clubId: string): Promise<ClubMember[]> {
     .map((m): ClubMember | null => {
       const identity = byId.get(m.user_id);
       if (!identity) return null;
+      // El .in(["invited","active"]) de la query ya excluye 'requested', pero el
+      // tipo generado no lo sabe: sigue siendo el enum entero.
+      if (m.status === "requested") return null;
       return {
         userId: m.user_id,
         username: identity.username,
