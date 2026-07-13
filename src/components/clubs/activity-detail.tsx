@@ -110,7 +110,7 @@ export function ActivityDetailView({
           <Button
             type="button"
             disabled={isPending}
-            onClick={() => run(() => joinActivity(activity.id), () => setIsParticipant(true))}
+            onClick={() => run(() => joinActivity(activity.id), refreshActivity)}
           >
             {t("join")}
           </Button>
@@ -120,7 +120,7 @@ export function ActivityDetailView({
             type="button"
             variant="ghost"
             disabled={isPending}
-            onClick={() => run(() => leaveActivity(activity.id), () => setIsParticipant(false))}
+            onClick={() => run(() => leaveActivity(activity.id), refreshActivity)}
           >
             {t("leave")}
           </Button>
