@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 
 function isCurrentlyDark() {
   return document.documentElement.classList.contains("dark");
 }
 
-// `asRow` renders a labeled row (icon + text) matching MobileNav's link
-// style, for use inside the mobile drawer -- the default is the compact
-// icon-only button used in the header's always-visible icon row.
-export function ThemeToggle({ asRow = false }: { asRow?: boolean }) {
-  const t = useTranslations("nav");
+export function ThemeToggle() {
   const [isDark, setIsDark] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -36,19 +31,6 @@ export function ThemeToggle({ asRow = false }: { asRow?: boolean }) {
     ) : (
       <MoonIcon className="h-4 w-4" />
     );
-
-  if (asRow) {
-    return (
-      <button
-        type="button"
-        onClick={toggle}
-        className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-foreground hover:bg-surface-muted"
-      >
-        {icon}
-        {isDark ? t("themeToLight") : t("themeToDark")}
-      </button>
-    );
-  }
 
   return (
     <button

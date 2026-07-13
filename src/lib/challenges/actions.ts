@@ -81,7 +81,7 @@ export async function createChallenge(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/retos");
+  revalidatePath("/u/[username]", "page");
   return {};
 }
 
@@ -107,7 +107,7 @@ export async function updateChallenge(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/retos");
+  revalidatePath("/u/[username]", "page");
   return {};
 }
 
@@ -130,7 +130,7 @@ export async function setChallengeArchived(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/retos");
+  revalidatePath("/u/[username]", "page");
 }
 
 export async function deleteChallenge(challengeId: string): Promise<void> {
@@ -147,5 +147,5 @@ export async function deleteChallenge(challengeId: string): Promise<void> {
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/retos");
+  revalidatePath("/u/[username]", "page");
 }

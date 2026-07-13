@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { Header } from "@/components/header";
+import { AppShell } from "@/components/nav/app-shell";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
@@ -52,8 +52,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <ServiceWorkerRegister />
         <NextIntlClientProvider>
-          <Header />
-          <div className="flex flex-1 flex-col">{children}</div>
+          <AppShell>{children}</AppShell>
         </NextIntlClientProvider>
       </body>
     </html>

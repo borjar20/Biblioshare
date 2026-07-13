@@ -24,6 +24,29 @@ export function AppLogoIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function HomeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M3 10.2 12 3l9 7.2" />
+      <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+      <path d="M9.5 21v-6h5v6" />
+    </Icon>
+  );
+}
+
+// Estantería: las filas de la colección (no un libro suelto — la colección
+// mezcla libros, películas y series).
+export function LibraryIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect width="18" height="6" x="3" y="3" rx="1" />
+      <rect width="18" height="6" x="3" y="12" rx="1" />
+      <path d="M7 9v3" />
+      <path d="M17 18v3" />
+    </Icon>
+  );
+}
+
 export function SearchIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

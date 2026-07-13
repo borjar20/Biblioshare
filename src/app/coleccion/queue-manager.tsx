@@ -60,7 +60,7 @@ export function QueueManager({ activeQueue }: { activeQueue: Queue | null }) {
               onClick={() =>
                 startDelete(async () => {
                   await deleteQueue(activeQueue.id);
-                  router.push("/cola");
+                  router.push("/coleccion?tab=colas");
                 })
               }
             >

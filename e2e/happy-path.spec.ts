@@ -17,8 +17,13 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   await page.click('button[type="submit"]');
   await page.waitForURL("/");
 
-  // Home autenticada (dashboard de estadísticas)
-  await expect(page.getByText(`@${USERNAME}`).first()).toBeVisible();
+  // Home autenticada: el feed (el dashboard se mudó a Perfil › Panel).
+  await expect(
+    page.getByRole("heading", { name: /novedades/i }),
+  ).toBeVisible();
+
+  // La nav lleva a las 5 secciones.
+  await expect(page.getByRole("link", { name: /^colección$/i }).first()).toBeVisible();
 
   // Buscar un libro y ver resultados
   await page.goto("/buscar?q=rayuela&type=book");
@@ -48,7 +53,8 @@ test("crear y borrar una cola nombrada", async ({ page }) => {
 
   const queueName = `e2e-${Date.now()}`;
 
-  await page.goto("/cola");
+  // Las colas viven dentro de Colección desde el rediseño Paper.
+  await page.goto("/coleccion?tab=colas");
   await page.getByRole("button", { name: /nueva cola/i }).click();
   await page.getByLabel(/nombre de la nueva cola/i).fill(queueName);
   await page.getByRole("button", { name: /^crear$/i }).click();
@@ -77,10 +83,13 @@ test("crear y borrar un reto", async ({ page }) => {
 
   const name = `e2e reto ${Date.now()}`;
 
-  await page.goto("/retos");
+  // Los retos viven en Perfil › Panel desde el rediseño Paper.
+  await page.goto(`/u/${USERNAME}?tab=panel`);
   await page.getByRole("button", { name: /nuevo reto/i }).click();
   await page.getByLabel(/^nombre$/i).fill(name);
-  await page.getByLabel(/objetivo/i).fill("10");
+  // El Panel también tiene "Objetivo diario de lectura" (GoalsForm), así que
+  // hay que apuntar al del reto y no a cualquier /objetivo/.
+  await page.getByLabel(/objetivo \(número/i).fill("9999");
   await page.getByLabel(/desde/i).fill("2026-01-01");
   await page.getByLabel(/hasta/i).fill("2026-12-31");
   await page.getByRole("button", { name: /crear reto/i }).click();
@@ -88,8 +97,11 @@ test("crear y borrar un reto", async ({ page }) => {
   await expect(page.getByRole("heading", { name })).toBeVisible();
   // La tarjeta es el div `rounded-lg` que contiene el nombre del reto.
   const card = page.locator("div.rounded-lg").filter({ hasText: name });
-  // Muestra "N de 10".
-  await expect(card.getByText(/de 10/)).toBeVisible();
+  // Muestra "N de 9999". El objetivo es deliberadamente inalcanzable: con un
+  // objetivo bajo (10) el reto nace ya cumplido en cuanto la cuenta de prueba
+  // acumula ítems completados en el año, y la tarjeta pasa a decir
+  // "¡Completado!" en vez del progreso.
+  await expect(card.getByText(/de 9999/)).toBeVisible();
 
   // Limpieza.
   await card.getByRole("button", { name: /eliminar/i }).click();

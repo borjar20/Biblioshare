@@ -31,7 +31,7 @@ export async function reorderQueue(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/cola");
+  revalidatePath("/coleccion");
   return {};
 }
 
@@ -80,7 +80,7 @@ export async function createQueue(
   // 23505 = unique (user_id, name): the user already has a queue by this name.
   if (error) return { error: error.code === "23505" ? "duplicateName" : "generic" };
 
-  revalidatePath("/cola");
+  revalidatePath("/coleccion");
   return {};
 }
 
@@ -106,7 +106,7 @@ export async function renameQueue(
 
   if (error) return { error: error.code === "23505" ? "duplicateName" : "generic" };
 
-  revalidatePath("/cola");
+  revalidatePath("/coleccion");
   return {};
 }
 
@@ -126,5 +126,5 @@ export async function deleteQueue(queueId: string): Promise<void> {
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/cola");
+  revalidatePath("/coleccion");
 }

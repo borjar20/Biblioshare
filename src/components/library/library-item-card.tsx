@@ -10,7 +10,7 @@ import { getProgress } from "@/lib/library/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { toggleFavorite } from "./actions";
+import { toggleFavorite } from "@/lib/library/favorite-actions";
 import { SparklesIcon } from "@/components/ui/icons";
 
 export function LibraryItemCard({
