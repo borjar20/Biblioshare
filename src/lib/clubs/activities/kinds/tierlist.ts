@@ -5,4 +5,5 @@ export const tierlistKind: ActivityKindDefinition = {
   kind: "tierlist",
   allowedItemTypes: "all",
   maxItems: null,
+  itemCuration: "participants",
 };

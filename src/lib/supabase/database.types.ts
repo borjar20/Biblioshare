@@ -1293,6 +1293,15 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      get_list_challenge_progress: {
+        Args: { p_activity_id: string }
+        Returns: {
+          completed_on: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          user_id: string
+        }[]
+      }
       has_min_club_role: {
         Args: {
           min: Database["public"]["Enums"]["club_role"]
@@ -1317,6 +1326,13 @@ export type Database = {
       is_visible_via_club_share: {
         Args: { p_row_id: string; p_source_table: string }
         Returns: boolean
+      }
+      list_challenge_window: {
+        Args: { p_activity_id: string }
+        Returns: {
+          window_end: string
+          window_start: string
+        }[]
       }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
       reorder_activity_checkpoints: {

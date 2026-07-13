@@ -130,14 +130,25 @@ export function ActivityDetailView({
         )}
       </div>
 
+      {/* Aviso antes de unirse (cierra Q5 y Q8 del backlog): unirse añade los
+          ítems del pool a tu biblioteca como pendientes y comparte tu progreso
+          con los participantes, aunque tu perfil sea privado fuera. */}
+      {status === "active" && !isParticipant && activity.items.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t("joinDisclosure", { count: activity.items.length })}
+        </p>
+      )}
+
       <ActivityItemPool
         activityId={activity.id}
         items={activity.items}
         viewerId={viewerId}
         isParticipant={isParticipant}
+        isCreator={isCreator}
         canModerate={isModerator}
         allowedItemTypes={kindDefinition.allowedItemTypes}
         maxItems={kindDefinition.maxItems}
+        itemCuration={kindDefinition.itemCuration}
         onChanged={refreshActivity}
       />
 
