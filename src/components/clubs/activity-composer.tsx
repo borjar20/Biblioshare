@@ -3,10 +3,9 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { proposeActivity, type ActivityKind } from "@/lib/clubs/activities/core";
+import { ACTIVITY_KIND_ORDER } from "@/lib/clubs/activities/kinds/registry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const KINDS: ActivityKind[] = ["buddy_read", "tierlist", "list_challenge", "criteria_challenge"];
 
 export function ActivityComposer({
   clubId,
@@ -64,7 +63,7 @@ export function ActivityComposer({
           onChange={(e) => setKind(e.target.value as ActivityKind)}
           className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         >
-          {KINDS.map((k) => (
+          {ACTIVITY_KIND_ORDER.map((k) => (
             <option key={k} value={k}>
               {t(`kind_${k}`)}
             </option>

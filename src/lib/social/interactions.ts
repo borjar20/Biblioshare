@@ -9,7 +9,7 @@ import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-export type TargetType = "diary_entry" | "episode_watch" | "club_post";
+export type TargetType = "diary_entry" | "episode_watch" | "club_post" | "activity_checkpoint";
 export type ReactableTargetType = TargetType | "comment";
 
 export type InteractionComment = {

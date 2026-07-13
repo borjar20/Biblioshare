@@ -44,29 +44,38 @@ async function resolveTargetOwner(
     if (error) throw error;
     return data?.author_id ?? null;
   }
-  const { data, error } = await supabase
-    .from("comments")
-    .select("author_id")
-    .eq("id", targetId)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.author_id ?? null;
+  if (targetType === "comment") {
+    const { data, error } = await supabase
+      .from("comments")
+      .select("author_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.author_id ?? null;
+  }
+  // activity_checkpoint: sin notificación (ver mapas de abajo) -- no hace
+  // falta resolver un "dueño", un checkpoint no tiene autor en ese sentido.
+  return null;
 }
 
 // Reaccionar (like) notifica con un tipo distinto según qué se está
 // reaccionando -- paridad completa con review_liked (EPIC-05 Bloque F,
 // decisión de sesión). Comentar solo aplica a diary_entry/episode_watch/
-// club_post (nunca a un comentario -- sin anidación).
-const LIKE_NOTIFICATION_TYPE: Record<ReactableTargetType, NotificationType> = {
+// club_post (nunca a un comentario -- sin anidación). `activity_checkpoint`
+// (EPIC-05 Bloque H1) queda deliberadamente sin notificación en este MVP
+// (decisión de diseño) -- `null` corta el flujo antes de notificar.
+const LIKE_NOTIFICATION_TYPE: Record<ReactableTargetType, NotificationType | null> = {
   diary_entry: "review_liked",
   episode_watch: "review_liked",
   club_post: "club_post_liked",
   comment: "comment_liked",
+  activity_checkpoint: null,
 };
-const COMMENT_NOTIFICATION_TYPE: Record<TargetType, NotificationType> = {
+const COMMENT_NOTIFICATION_TYPE: Record<TargetType, NotificationType | null> = {
   diary_entry: "review_commented",
   episode_watch: "review_commented",
   club_post: "club_post_commented",
+  activity_checkpoint: null,
 };
 
 export async function toggleReaction(
@@ -104,19 +113,22 @@ export async function toggleReaction(
     });
     if (error) throw error;
 
-    try {
-      const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
-      if (ownerId && ownerId !== user.id) {
-        await notify(supabase, {
-          userId: ownerId,
-          actorId: user.id,
-          type: LIKE_NOTIFICATION_TYPE[targetType],
-          targetType,
-          targetId,
-        });
+    const notificationType = LIKE_NOTIFICATION_TYPE[targetType];
+    if (notificationType && targetType !== "activity_checkpoint") {
+      try {
+        const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
+        if (ownerId && ownerId !== user.id) {
+          await notify(supabase, {
+            userId: ownerId,
+            actorId: user.id,
+            type: notificationType,
+            targetType,
+            targetId,
+          });
+        }
+      } catch (error) {
+        console.error(error);
       }
-    } catch (error) {
-      console.error(error);
     }
   }
   revalidateItemPages();
@@ -144,19 +156,22 @@ export async function addComment(
   });
   if (error) throw error;
 
-  try {
-    const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
-    if (ownerId && ownerId !== user.id) {
-      await notify(supabase, {
-        userId: ownerId,
-        actorId: user.id,
-        type: COMMENT_NOTIFICATION_TYPE[targetType],
-        targetType,
-        targetId,
-      });
+  const notificationType = COMMENT_NOTIFICATION_TYPE[targetType];
+  if (notificationType && targetType !== "activity_checkpoint") {
+    try {
+      const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
+      if (ownerId && ownerId !== user.id) {
+        await notify(supabase, {
+          userId: ownerId,
+          actorId: user.id,
+          type: notificationType,
+          targetType,
+          targetId,
+        });
+      }
+    } catch (error) {
+      console.error(error);
     }
-  } catch (error) {
-    console.error(error);
   }
   revalidateItemPages();
 }
