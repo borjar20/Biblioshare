@@ -40,7 +40,7 @@ export function LibraryItemPicker({
   }, [search, itemType]);
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
       <span className="text-sm font-medium text-foreground">{t("pickItem")}</span>
       {allowedItemTypes !== "all" && allowedItemTypes.length > 1 && (
         <div className="flex gap-2">

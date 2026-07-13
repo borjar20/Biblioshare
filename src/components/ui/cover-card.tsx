@@ -17,7 +17,7 @@ export function CoverCard({
 }) {
   return (
     <Link href={href} className="group flex flex-col gap-2">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover">
         {coverUrl ? (
           <Image
             src={coverUrl}

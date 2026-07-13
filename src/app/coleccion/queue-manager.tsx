@@ -38,7 +38,7 @@ export function QueueManager({ activeQueue }: { activeQueue: Queue | null }) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
       {/* Rename / delete the active queue. Hidden on the "Sin cola" bucket,
           which isn't a real queue. */}
       {activeQueue && renameBound && (

@@ -48,7 +48,16 @@ export function UserAvatar({
           />
         )
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-sm font-medium text-muted-foreground">
+        // Iniciales sobre degradado cálido (verde social → azul de película),
+        // en Fraunces: es el avatar de las maquetas, no un círculo gris.
+        <div
+          className="flex h-full w-full items-center justify-center font-serif font-semibold text-accent-foreground"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--green), var(--type-movie))",
+            fontSize: Math.round(size * 0.4),
+          }}
+        >
           {initials(name)}
         </div>
       )}

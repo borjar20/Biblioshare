@@ -32,7 +32,7 @@ export async function CollectionSummary({
   const present = STATUSES.filter((s) => summary.byStatus[s] > 0);
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
+    <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-baseline gap-2">
         <span className="font-serif text-3xl leading-none font-semibold text-foreground">
           {summary.total}

@@ -94,7 +94,7 @@ export function ManageMembers({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
       <h2 className="text-sm font-semibold text-foreground">{t("manageMembers")}</h2>
 
       <form onSubmit={handleInvite} className="flex items-center gap-2">

@@ -95,8 +95,9 @@ test("crear y borrar un reto", async ({ page }) => {
   await page.getByRole("button", { name: /crear reto/i }).click();
 
   await expect(page.getByRole("heading", { name })).toBeVisible();
-  // La tarjeta es el div `rounded-lg` que contiene el nombre del reto.
-  const card = page.locator("div.rounded-lg").filter({ hasText: name });
+  const card = page
+    .getByTestId("challenge-card")
+    .filter({ hasText: name });
   // Muestra "N de 9999". El objetivo es deliberadamente inalcanzable: con un
   // objetivo bajo (10) el reto nace ya cumplido en cuanto la cuenta de prueba
   // acumula ítems completados en el año, y la tarjeta pasa a decir

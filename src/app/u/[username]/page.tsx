@@ -310,34 +310,34 @@ async function OwnerPanel({
         {privateNote}
       </p>
 
-      <div className="grid gap-4 rounded-lg border border-border bg-surface p-4">
+      <div className="grid gap-4 rounded-card border border-border bg-surface shadow-card p-4">
         <NowConsuming items={inProgress} linkToSession />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-card border border-border bg-surface shadow-card p-4">
           <WeeklyStrip
             days={weekly}
             dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
           />
         </div>
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-card border border-border bg-surface shadow-card p-4">
           <StreakCard streaks={streaks} />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-card border border-border bg-surface shadow-card p-4">
           {/* basePath es la base de la API (`${basePath}api/month-calendar`),
               no una ruta de página — se queda en "/". */}
           <MonthCalendar initialCalendar={calendar} basePath="/" />
         </div>
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-card border border-border bg-surface shadow-card p-4">
           <AnnualStats annual={annual} annualGoals={annualGoals} />
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="rounded-card border border-border bg-surface shadow-card p-4">
         <GoalsForm
           dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
           annualGoals={annualGoals}

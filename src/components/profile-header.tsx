@@ -1,33 +1,17 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
 import type { FollowCounts } from "@/lib/social/follows";
 import { EditProfileForm } from "./edit-profile-form";
+import { UserAvatar } from "@/components/social/user-avatar";
 import {
   BookIcon,
   FilmIcon,
   SeriesIcon,
   UserIcon,
 } from "@/components/ui/icons";
-
-// Los avatares subidos viven en el bucket público de Supabase Storage (en
-// remotePatterns → next/image). Las URLs externas antiguas se renderizan con
-// <img> por compatibilidad.
-function isSupabaseAvatar(url: string): boolean {
-  return /\.supabase\.co\/storage\/v1\/object\/public\//.test(url);
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
 
 export async function ProfileHeader({
   profile,
@@ -52,35 +36,11 @@ export async function ProfileHeader({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-surface-muted">
-            {profile.avatarUrl ? (
-              isSupabaseAvatar(profile.avatarUrl) ? (
-                <Image
-                  src={profile.avatarUrl}
-                  alt={name}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              ) : (
-                // URL externa legado (previa a Storage), fuera de remotePatterns.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.avatarUrl}
-                  alt={name}
-                  className="h-full w-full object-cover"
-                />
-              )
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-lg font-medium text-muted-foreground">
-                {initials(name)}
-              </div>
-            )}
-          </div>
+          <UserAvatar name={name} avatarUrl={profile.avatarUrl} size={64} />
           <div className="flex flex-col gap-1 pt-1">
             <div className="flex flex-wrap items-baseline gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
-              <span className="text-sm text-muted-foreground">
+              <span className="font-mono text-xs text-muted-foreground">
                 @{profile.username}
               </span>
             </div>

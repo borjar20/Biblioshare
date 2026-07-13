@@ -38,7 +38,7 @@ export function ChallengeForm({
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
+      className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4"
     >
       <Field label={t("fields.name")} htmlFor="challenge-name">
         <Input

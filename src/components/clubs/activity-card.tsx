@@ -16,7 +16,7 @@ export function ActivityCard({ activity, clubSlug }: { activity: ClubActivity; c
   return (
     <Link
       href={`/club/${clubSlug}/actividad/${activity.id}`}
-      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4 hover:bg-surface-muted"
+      className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface shadow-card p-4 hover:bg-surface-muted"
     >
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate text-sm font-medium text-foreground">{activity.title}</span>

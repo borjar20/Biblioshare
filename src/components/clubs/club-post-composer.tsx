@@ -82,7 +82,7 @@ export function ClubPostComposer({
 
   if (mode === "closed") {
     return (
-      <div className="flex gap-2 rounded-lg border border-border bg-surface p-3">
+      <div className="flex gap-2 rounded-card border border-border bg-surface shadow-card p-3">
         <Button type="button" variant="secondary" onClick={() => setMode("text")}>
           {t("postText")}
         </Button>
@@ -98,7 +98,7 @@ export function ClubPostComposer({
 
   if (mode === "text") {
     return (
-      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+      <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -133,7 +133,7 @@ export function ClubPostComposer({
 
   if (mode === "share_activity") {
     return (
-      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+      <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
         <span className="text-sm text-foreground">{pickedActivity?.itemTitle}</span>
         <textarea
           value={shareCaption}
@@ -157,7 +157,7 @@ export function ClubPostComposer({
 
   // mode === "poll"
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
       <Input
         value={pollQuestion}
         onChange={(e) => setPollQuestion(e.target.value)}

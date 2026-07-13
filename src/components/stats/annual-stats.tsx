@@ -39,7 +39,7 @@ export async function AnnualStats({
         <TargetIcon className="h-5 w-5 text-accent" />
         {t("annualTitle", { year: annual.year })}
       </div>
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+      <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
         <div className="flex min-w-0 items-end gap-1.5 sm:gap-2">
           {annual.months.map((m, i) => {
             const heightPercent = m.count > 0 ? (m.count / max) * 100 : 0;

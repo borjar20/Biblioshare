@@ -138,7 +138,7 @@ export function EpisodeGrid({
         )}
       </div>
       {/* Panel de detalle (hover/tap) */}
-      <div className="min-h-[3.75rem] rounded-lg border border-border bg-surface px-4 py-3">
+      <div className="min-h-[3.75rem] rounded-card border border-border bg-surface shadow-card px-4 py-3">
         {hover ? (
           <HoverDetail episode={hover} source={source} />
         ) : (
