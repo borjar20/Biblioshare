@@ -314,6 +314,44 @@ export type Database = {
           },
         ]
       }
+      club_activity_placements: {
+        Row: {
+          activity_id: string
+          created_at: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+          tier: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          position?: number
+          tier?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activity_placements_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_members: {
         Row: {
           club_id: string

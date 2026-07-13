@@ -405,7 +405,18 @@
     "criteriaNoConfig": "Este reto todavía no tiene criterio definido.",
     "criteriaMyProgress": "Tu progreso: {done} de {total}",
     "criteriaClubProgress": "Entre todos: {done} de {total}",
-    "criteriaRule": "Cuenta lo que termines entre {start} y {end}: el progreso sale de tu diario, no hay nada que marcar aquí."
+    "criteriaRule": "Cuenta lo que termines entre {start} y {end}: el progreso sale de tu diario, no hay nada que marcar aquí.",
+    "tierlistTiers": "Tiers",
+    "tierlistTiersPlaceholder": "S, A, B, C, D",
+    "tierlistTiersHint": "Sepáralos por comas. No se podrán cambiar una vez activada la tierlist.",
+    "tierlistTitle": "Tierlist",
+    "tierlistJoinToSee": "Únete a la actividad para hacer tu tierlist y ver las de los demás.",
+    "tierlistNoConfig": "Esta tierlist todavía no tiene tiers definidos.",
+    "tierlistMine": "La mía",
+    "tierlistUnplacedShort": "—",
+    "tierlistSelectItem": "Toca una portada para colocarla.",
+    "tierlistPickTier": "Elige el tier:",
+    "tierlistUnplace": "Quitar"
   },
   "sagaPicker": {
     "placeholder": "Buscar una saga…",
