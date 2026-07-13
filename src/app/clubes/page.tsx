@@ -44,11 +44,23 @@ export default function ClubesPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t("navLabel")}</h1>
+        <h1 className="font-serif text-2xl font-semibold text-foreground">
+          {t("navLabel")}
+        </h1>
         <Button type="button" onClick={() => setCreating((v) => !v)}>
           {t("create")}
         </Button>
       </div>
+
+      {/* El buscador va antes que nada, como en el handoff: buscar un club es
+          la acción más frecuente de quien llega aquí sin uno concreto en mente. */}
+      <Input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t("searchPlaceholder")}
+        className="w-full"
+      />
 
       {creating && (
         <ClubForm
@@ -63,12 +75,14 @@ export default function ClubesPage() {
         />
       )}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">{t("myClubs")}</h2>
+      <section className="flex flex-col gap-3">
+        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("myClubs")}
+        </h2>
         {myClubs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3.5">
             {myClubs.map((club) => (
               <ClubCard
                 key={club.id}
@@ -80,18 +94,14 @@ export default function ClubesPage() {
         )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">{t("discover")}</h2>
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("searchPlaceholder")}
-        />
+      <section className="flex flex-col gap-3">
+        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("discover")}
+        </h2>
         {discovered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3.5">
             {discovered.map((club) => (
               <ClubCard key={club.id} club={club} />
             ))}
