@@ -70,13 +70,14 @@ export function NotificationBell({
 
       {open && (
         <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface shadow-lg">
-          <div className="border-b border-border px-4 py-2 text-sm font-semibold text-foreground">
+          <div className="border-b border-border px-4 py-2 font-serif text-sm font-semibold text-foreground">
             {t("title")}
           </div>
           {initialNotifications.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {t("empty")}
-            </p>
+            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+              <BellIcon className="h-6 w-6 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{t("empty")}</p>
+            </div>
           ) : (
             <ul className="flex max-h-96 flex-col overflow-y-auto">
               {initialNotifications.map((n) => (
@@ -91,7 +92,7 @@ export function NotificationBell({
                       avatarUrl={n.actorAvatarUrl}
                       size={32}
                     />
-                    <div className="flex min-w-0 flex-col">
+                    <div className="flex min-w-0 flex-1 flex-col">
                       <span className="text-sm text-foreground">
                         {n.extraActorsCount
                           ? t("reviewLikedGrouped", {
@@ -102,10 +103,21 @@ export function NotificationBell({
                               name: n.actorDisplayName || n.actorUsername,
                             })}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="font-mono text-[10px] text-muted-foreground">
                         {timeAgo(n.createdAt, t)}
                       </span>
                     </div>
+
+                    {/* Punto de no leída. Se calcula sobre `initialNotifications`,
+                        que es el estado del servidor al renderizar: abrir la
+                        campana marca todo como leído, pero las que llegaron sin
+                        leer siguen señaladas hasta el próximo refresco. */}
+                    {!n.readAt && (
+                      <span
+                        aria-hidden
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                      />
+                    )}
                   </Link>
                 </li>
               ))}

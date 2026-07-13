@@ -6,6 +6,9 @@ import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
 import type { ItemType } from "@/lib/catalog/types";
 import { loadMoreFeed } from "@/lib/social/feed-actions";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonVariants } from "@/components/ui/button";
+import { UsersIcon } from "@/components/ui/icons";
 import { FeedCard } from "./feed-card";
 
 // Lista del feed con paginación "Cargar más" (EPIC-05, Bloque C). Los eventos
@@ -48,12 +51,27 @@ export function FeedList({
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface p-8 text-center">
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-        <Link href="/buscar?modo=personas" className="text-sm font-medium text-accent hover:underline">
-          {t("emptyCta")}
-        </Link>
-      </div>
+      <EmptyState
+        glyph={<UsersIcon className="h-7 w-7" />}
+        title={t("emptyTitle")}
+        message={t("empty")}
+        action={
+          <Link
+            href="/buscar?modo=personas"
+            className={buttonVariants("primary")}
+          >
+            {t("emptyCta")}
+          </Link>
+        }
+        secondary={
+          <Link
+            href="/clubes"
+            className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            {t("emptyClubs")}
+          </Link>
+        }
+      />
     );
   }
 

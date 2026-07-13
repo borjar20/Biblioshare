@@ -21,40 +21,41 @@ export async function PrivateProfileStub({
   const t = await getTranslations("social");
   const name = identity.displayName || identity.username;
 
+  // Centrado, no cabecera: aquí no hay contenido debajo que encabezar — la
+  // identidad ES la pantalla (Paper - Estados.html, frame 1).
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-        <div className="flex items-start gap-4">
-          <UserAvatar name={name} avatarUrl={identity.avatarUrl} size={64} />
-          <div className="flex flex-col gap-1 pt-1">
-            <div className="flex flex-wrap items-baseline gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
-              <span className="text-sm text-muted-foreground">
-                @{identity.username}
-              </span>
-            </div>
-            {identity.bio && (
-              <p className="max-w-prose text-sm text-muted-foreground">
-                {identity.bio}
-              </p>
-            )}
-          </div>
-        </div>
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-1.5 px-6 py-16 text-center">
+      <UserAvatar name={name} avatarUrl={identity.avatarUrl} size={76} />
 
+      <h1 className="mt-3 font-serif text-2xl font-semibold tracking-tight">
+        {name}
+      </h1>
+      <span className="font-mono text-xs text-muted-foreground">
+        @{identity.username}
+      </span>
+
+      {identity.bio && (
+        <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+          {identity.bio}
+        </p>
+      )}
+
+      <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-muted px-3.5 py-1.5 text-xs text-muted-foreground">
+        <LockIcon className="h-3.5 w-3.5" />
+        {t("privateTitle")}
+      </span>
+
+      <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+        {t("privateDescription")}
+      </p>
+
+      <div className="mt-5">
         <FollowButton
           targetUserId={identity.userId}
           targetIsPublic={false}
           state={followState}
           viewerLoggedIn={viewerLoggedIn}
         />
-      </div>
-
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-surface px-4 py-10 text-center">
-        <LockIcon className="h-6 w-6 text-muted-foreground" />
-        <p className="text-sm font-medium text-foreground">{t("privateTitle")}</p>
-        <p className="max-w-xs text-sm text-muted-foreground">
-          {t("privateDescription")}
-        </p>
       </div>
     </div>
   );
