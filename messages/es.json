@@ -126,7 +126,8 @@
     "modes": {
       "titles": "Títulos",
       "people": "Personas"
-    }
+    },
+    "noResultsTitle": "Nada coincide"
   },
   "diary": {
     "show": "Ver diario",
@@ -187,7 +188,8 @@
     "avatarChoose": "Elegir imagen",
     "avatarUploading": "Subiendo...",
     "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo.",
-    "panelPrivateNote": "Solo tú ves este panel. Tu colección y tu actividad son públicas."
+    "panelPrivateNote": "Solo tú ves este panel. Tu colección y tu actividad son públicas.",
+    "emptyTitle": "Colección vacía"
   },
   "social": {
     "follow": "Seguir",
@@ -226,9 +228,11 @@
     "filters": {
       "reviewsOnly": "Solo reseñas"
     },
-    "empty": "Todavía no hay actividad de las cuentas que sigues.",
-    "emptyCta": "Buscar gente a quien seguir",
-    "loadMore": "Cargar más"
+    "empty": "Cuando sigas a otras personas, sus reseñas y avances aparecerán aquí.",
+    "emptyCta": "Descubrir usuarios",
+    "loadMore": "Cargar más",
+    "emptyTitle": "Tu feed está tranquilo",
+    "emptyClubs": "Explorar clubes"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -700,7 +704,8 @@
         "invalidPosition": "El progreso introducido no es válido.",
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
-    }
+    },
+    "emptyTitle": "Tu colección está vacía"
   },
   "import": {
     "title": "Importar biblioteca",
@@ -835,6 +840,16 @@
       "movie": "Películas",
       "series": "Series",
       "colas": "Colas"
+    },
+    "continue": "Continuar",
+    "inProgress": "En curso",
+    "summary": {
+      "total": "ítems en total"
     }
+  },
+  "errors": {
+    "loadTitle": "No se pudo cargar",
+    "loadMessage": "Algo falló al cargar esta página. Puede ser cosa de un momento.",
+    "retry": "Reintentar"
   }
 }

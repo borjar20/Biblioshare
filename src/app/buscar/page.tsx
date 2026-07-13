@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SearchIcon } from "@/components/ui/icons";
 import { SearchForm } from "./search-form";
 import { SearchResultCard } from "./search-result-card";
@@ -63,27 +64,45 @@ export default async function SearchPage({
           {!query && <p className="text-sm text-muted-foreground">{t("empty")}</p>}
 
           {query && results.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("noResults")}</p>
+            <EmptyState
+              glyph={<SearchIcon className="h-7 w-7" />}
+              title={t("noResultsTitle")}
+              message={t("noResults")}
+              action={
+                // Nada coincide: el camino de salida es el alta manual, si el
+                // usuario tiene permiso para contribuir.
+                canContribute ? (
+                  <Link
+                    href={`/buscar/manual?type=${itemType}`}
+                    className={buttonVariants("primary")}
+                  >
+                    {t("manual.link")}
+                  </Link>
+                ) : undefined
+              }
+            />
           )}
 
           {results.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {results.map((result) => (
-                <SearchResultCard
-                  key={`${result.itemType}-${result.externalId}`}
-                  result={result}
-                />
-              ))}
-            </div>
-          )}
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {results.map((result) => (
+                  <SearchResultCard
+                    key={`${result.itemType}-${result.externalId}`}
+                    result={result}
+                  />
+                ))}
+              </div>
 
-          {canContribute && (
-            <Link
-              href={`/buscar/manual?type=${itemType}`}
-              className="self-start text-sm text-muted-foreground underline hover:text-foreground"
-            >
-              {t("manual.link")}
-            </Link>
+              {canContribute && (
+                <Link
+                  href={`/buscar/manual?type=${itemType}`}
+                  className="self-start text-sm text-muted-foreground underline hover:text-foreground"
+                >
+                  {t("manual.link")}
+                </Link>
+              )}
+            </>
           )}
         </>
       )}

@@ -32,7 +32,8 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
-import { LockIcon } from "@/components/ui/icons";
+import { LockIcon, InboxIcon } from "@/components/ui/icons";
+import { EmptyState } from "@/components/ui/empty-state";
 import { NowConsuming } from "@/components/now-consuming";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { ActivityChart } from "@/components/activity-chart";
@@ -232,8 +233,10 @@ export default async function PublicProfilePage({
           status={status}
           search={search}
           sort={sort}
+          emptyOwnTitle={tLibrary("emptyTitle")}
           emptyOwn={tLibrary("empty")}
           emptyOwnCta={tLibrary("emptyCta")}
+          emptyOtherTitle={t("emptyTitle")}
           emptyOther={t("empty")}
         />
       )}
@@ -379,8 +382,10 @@ async function CollectionTab({
   status,
   search,
   sort,
+  emptyOwnTitle,
   emptyOwn,
   emptyOwnCta,
+  emptyOtherTitle,
   emptyOther,
 }: {
   userId: string;
@@ -390,8 +395,10 @@ async function CollectionTab({
   status?: MediaStatus;
   search?: string;
   sort: LibrarySort;
+  emptyOwnTitle: string;
   emptyOwn: string;
   emptyOwnCta: string;
+  emptyOtherTitle: string;
   emptyOther: string;
 }) {
   const supabase = await createClient();
@@ -414,16 +421,18 @@ async function CollectionTab({
       />
 
       {items.length === 0 ? (
-        isOwner ? (
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-muted-foreground">{emptyOwn}</p>
-            <Link href="/buscar" className={buttonVariants("primary")}>
-              {emptyOwnCta}
-            </Link>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{emptyOther}</p>
-        )
+        <EmptyState
+          glyph={<InboxIcon className="h-7 w-7" />}
+          title={isOwner ? emptyOwnTitle : emptyOtherTitle}
+          message={isOwner ? emptyOwn : emptyOther}
+          action={
+            isOwner ? (
+              <Link href="/buscar" className={buttonVariants("primary")}>
+                {emptyOwnCta}
+              </Link>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {items.map((item) => (

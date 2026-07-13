@@ -47,6 +47,41 @@ export function LibraryIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Glifos de los estados vacíos / de error (Paper - Estados.html).
+export function OfflineIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M5.6 9.6a10 10 0 0 1 3.4-2.1" />
+      <path d="M2 6.5a15 15 0 0 1 4.2-2.7" />
+      <path d="M14.5 7.6A10 10 0 0 1 18.4 9.6" />
+      <path d="M17.8 3.8A15 15 0 0 1 22 6.5" />
+      <path d="M8.8 13a6 6 0 0 1 2-1.2" />
+      <path d="M13.2 11.8A6 6 0 0 1 15.2 13" />
+      <path d="M12 19h.01" />
+    </Icon>
+  );
+}
+
+export function InboxIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M3 12h4l2 3h6l2-3h4" />
+      <path d="M5.4 5.4h13.2a1 1 0 0 1 .96.73L21 12v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6l1.44-5.87a1 1 0 0 1 .96-.73Z" />
+    </Icon>
+  );
+}
+
+export function AlertIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5" />
+      <path d="M12 16.5h.01" />
+    </Icon>
+  );
+}
+
 export function SearchIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

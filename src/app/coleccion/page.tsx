@@ -7,6 +7,8 @@ import { getLibraryItems } from "@/lib/library/get-library-items";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InboxIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import {
@@ -15,6 +17,9 @@ import {
   type CollectionTab,
 } from "./collection-tabs";
 import { QueuesPanel } from "./queues-panel";
+import { ContinueStrip } from "./continue-strip";
+import { CollectionSummary } from "./collection-summary";
+import { getLibrarySummary } from "@/lib/library/get-library-summary";
 
 export const metadata: Metadata = {
   title: "Tu colección — Biblioshare",
@@ -70,6 +75,13 @@ export default async function CollectionPage({
 
       <CollectionTabs active={tab} />
 
+      {/* En General y sin filtros aplicados: lo que tienes a medias, fijado
+          arriba, y el resumen de la colección. Con un filtro activo se ocultan
+          — contradirían lo que la rejilla está mostrando. */}
+      {tab === "general" && !status && !search && (
+        <GeneralOverview userId={user.id} />
+      )}
+
       {tab === "colas" ? (
         <QueuesPanel userId={user.id} activeParam={params.cola} />
       ) : (
@@ -80,11 +92,27 @@ export default async function CollectionPage({
           status={status}
           search={search}
           sort={sort}
+          emptyTitle={tLibrary("emptyTitle")}
           emptyLabel={tLibrary("empty")}
           emptyCta={tLibrary("emptyCta")}
         />
       )}
     </div>
+  );
+}
+
+async function GeneralOverview({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const [inProgress, summary] = await Promise.all([
+    getLibraryItems(supabase, userId, { status: "in_progress" }),
+    getLibrarySummary(supabase, userId),
+  ]);
+
+  return (
+    <>
+      <ContinueStrip items={inProgress} />
+      <CollectionSummary summary={summary} />
+    </>
   );
 }
 
@@ -95,6 +123,7 @@ async function LibraryGrid({
   status,
   search,
   sort,
+  emptyTitle,
   emptyLabel,
   emptyCta,
 }: {
@@ -104,6 +133,7 @@ async function LibraryGrid({
   status?: MediaStatus;
   search?: string;
   sort: LibrarySort;
+  emptyTitle: string;
   emptyLabel: string;
   emptyCta: string;
 }) {
@@ -127,12 +157,16 @@ async function LibraryGrid({
       />
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-          <Link href="/buscar" className={buttonVariants("primary")}>
-            {emptyCta}
-          </Link>
-        </div>
+        <EmptyState
+          glyph={<InboxIcon className="h-7 w-7" />}
+          title={emptyTitle}
+          message={emptyLabel}
+          action={
+            <Link href="/buscar" className={buttonVariants("primary")}>
+              {emptyCta}
+            </Link>
+          }
+        />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {items.map((item) => (
