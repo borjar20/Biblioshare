@@ -24,6 +24,7 @@ export function ReviewInteractions({
   commentCount,
   comments,
   viewerLoggedIn,
+  showTargetReaction = true,
 }: {
   targetType: TargetType;
   targetId: string;
@@ -32,6 +33,10 @@ export function ReviewInteractions({
   commentCount: number;
   comments: InteractionComment[];
   viewerLoggedIn: boolean;
+  // false para targets sin sentido de "me gusta" propio (p.ej. un checkpoint
+  // de buddy_read, EPIC-05 Bloque H1) -- el like en comentarios individuales
+  // no se ve afectado, es un target distinto ("comment").
+  showTargetReaction?: boolean;
 }) {
   const t = useTranslations("social");
   const [isPending, startTransition] = useTransition();
@@ -41,9 +46,11 @@ export function ReviewInteractions({
   if (!viewerLoggedIn) {
     return (
       <div className="flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <HeartIcon className="h-4 w-4" /> {reactionCount}
-        </span>
+        {showTargetReaction && (
+          <span className="flex items-center gap-1.5">
+            <HeartIcon className="h-4 w-4" /> {reactionCount}
+          </span>
+        )}
         <Link
           href="/login"
           className="flex items-center gap-1.5 hover:text-foreground"
@@ -58,24 +65,26 @@ export function ReviewInteractions({
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-3">
       <div className="flex items-center gap-4 text-xs">
-        <button
-          type="button"
-          disabled={isPending}
-          aria-label={t("like")}
-          aria-pressed={viewerReacted}
-          onClick={() => startTransition(() => toggleReaction(targetType, targetId))}
-          className={`flex items-center gap-1.5 transition-colors ${
-            viewerReacted
-              ? "text-accent"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <HeartIcon
-            className="h-4 w-4"
-            fill={viewerReacted ? "currentColor" : "none"}
-          />
-          {reactionCount}
-        </button>
+        {showTargetReaction && (
+          <button
+            type="button"
+            disabled={isPending}
+            aria-label={t("like")}
+            aria-pressed={viewerReacted}
+            onClick={() => startTransition(() => toggleReaction(targetType, targetId))}
+            className={`flex items-center gap-1.5 transition-colors ${
+              viewerReacted
+                ? "text-accent"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <HeartIcon
+              className="h-4 w-4"
+              fill={viewerReacted ? "currentColor" : "none"}
+            />
+            {reactionCount}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}

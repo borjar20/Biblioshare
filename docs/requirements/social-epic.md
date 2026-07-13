@@ -449,18 +449,51 @@ Cada tipo se enchufa en el motor de G aportando su config y su UI; se pueden con
 forma incremental (uno por uno).
 
 **H1 — Lectura/visionado conjunto (`buddy_read`) con hitos + chat por checkpoint** *(ejemplo 1; era 7.20; dep: SD-7, §8-E)*
-- [ ] **E5.H1a** Actividad ligada a **un ítem** (`club_activity_items` con una fila) con
+> **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
+> manual en navegador pendiente de ejecutar.** Al construir el primer tipo real sobre el
+> motor de G se confirmó que el "registro por kind (dispatcher)" que el backlog de G daba
+> por hecho (E5.G2) **no existía en el código** — este bloque lo construye de raíz
+> (`src/lib/clubs/activities/kinds/`, `ActivityKindDefinition` con `allowedItemTypes`/
+> `maxItems`/`DetailExtension`), con `buddy_read` como primera implementación real y stubs
+> mínimos para `tierlist`/`list_challenge`/`criteria_challenge` para que H2/H3/H4 se
+> enchufen ahí sin tocar el núcleo. Decisiones de diseño cerradas en brainstorming: los
+> checkpoints se definen **solo tras activar**, por moderator+ (no por quien propone), y
+> son editables mientras la actividad esté `active`; el marcado es **híbrido**
+  (`autosugerido` comparando `library_entries.position` del participante contra la
+  posición objetivo + **confirmación manual explícita**, revalidada en servidor por la RPC
+  `confirm_checkpoint`); confirmar el checkpoint N **autoconfirma** 1..N-1 en cascada;
+  `buddy_read` queda restringido a ítems **libro/serie** (nunca película) y a
+  **exactamente un ítem** por actividad (trigger `enforce_buddy_read_item_rules` sobre
+  `club_activity_items`, sin afectar a otros kinds); la **lista** de checkpoints es visible
+  a todo el club (ayuda a decidir si unirse) pero el **chat** de cada uno solo a
+  participantes que lo alcanzaron; el progreso individual (`club_activity_checkpoint_reads`)
+  es visible **entre todos los participantes** (tablero de grupo) más un indicador agregado
+  de **"hito colectivo seguro"** (mínimo del último checkpoint confirmado entre
+  participantes, calculado en la capa de app); y **sin notificaciones nuevas** por
+  comentario en el chat de checkpoint en este MVP. Batería de impersonación RLS (21 casos:
+  visibilidad de checkpoints por rol, escritura moderator+/solo-activa, spoofing de
+  `created_by`, escritura directa bloqueada en `checkpoint_reads` fuera de la RPC, cascada
+  de confirmación, rechazo por no-alcanzado, tablero de progreso entre participantes,
+  gateo de chat por checkpoint individual, y el trigger de restricción de ítems) verificada
+  contra dev, todos los casos correctos. `schema-baseline.sql` y `database.types.ts`
+  actualizados. Checklist de verificación manual escrito
+  (`docs/superpowers/plans/2026-07-13-epic05-bloque-h1-buddy-read-manual-test.md`), per
+  convención `docs/TESTING.md`, pendiente de que el usuario lo ejecute en navegador con
+  varias cuentas reales antes de dar el bloque por verificado end-to-end. H2/H3/H4
+  explícitamente fuera de alcance de este bloque (siguen los stubs del registro).
+- [x] **E5.H1a** Actividad ligada a **un ítem** (`club_activity_items` con una fila) con
   **checkpoints** marcables: migración `club_activity_checkpoints(activity_id, label,
   position jsonb, order)` (ej. `{"page":200}`, `{"season":1,"episode":12}`) +
   `club_activity_checkpoint_reads(checkpoint_id, user_id, reached_at)` — la fila = "ya
   llegué aquí" (marca manual explícita, no inferida, como pidió el usuario; opcionalmente
-  se puede autosugerir desde `library_entries.position`).
-- [ ] **E5.H1b** **Chat por checkpoint gateado por progreso**: un hilo de discusión por
+  se puede autosugerir desde `library_entries.position`). *(Implementado el híbrido
+  autosugerido+confirmación descrito arriba, ampliando la nota original del backlog.)*
+- [x] **E5.H1b** **Chat por checkpoint gateado por progreso**: un hilo de discusión por
   checkpoint que **solo ven los participantes que ya lo han alcanzado** — "comentar cosas
   hasta ese punto" sin spoilers de más allá. Implementado con `comments` (SD-3) sobre
   target `activity_checkpoint`, con RLS apoyada en el helper `has_reached_checkpoint()`
   (SD-7). Es el **primer consumidor** de la utilidad spoiler-safe genérica de §8-E.
-- [ ] **E5.H1c** UI: lista de checkpoints con estado (alcanzado/bloqueado), botón "Ya
+- [x] **E5.H1c** UI: lista de checkpoints con estado (alcanzado/bloqueado), botón "Ya
   llegué aquí", y el chat desbloqueándose por checkpoint. *(Realtime en vivo vía Supabase
   Realtime = mejora posterior; MVP recarga el hilo.)*
 

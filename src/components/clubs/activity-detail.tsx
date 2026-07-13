@@ -14,6 +14,7 @@ import {
 } from "@/lib/clubs/activities/core";
 import { ActivityItemPool } from "./activity-item-pool";
 import { ActivityOpinions } from "./activity-opinions";
+import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { Button } from "@/components/ui/button";
 
 export function ActivityDetailView({
@@ -36,6 +37,8 @@ export function ActivityDetailView({
 
   const isModerator = viewerRole === "moderator" || viewerRole === "owner";
   const isCreator = activity.createdBy === viewerId;
+  const kindDefinition = getActivityKindDefinition(activity.kind);
+  const DetailExtension = kindDefinition.DetailExtension;
 
   function refreshActivity() {
     startTransition(async () => {
@@ -133,6 +136,8 @@ export function ActivityDetailView({
         viewerId={viewerId}
         isParticipant={isParticipant}
         canModerate={isModerator}
+        allowedItemTypes={kindDefinition.allowedItemTypes}
+        maxItems={kindDefinition.maxItems}
         onChanged={refreshActivity}
       />
 
@@ -142,6 +147,15 @@ export function ActivityDetailView({
         isParticipant={isParticipant}
         onChanged={refreshActivity}
       />
+
+      {DetailExtension && (
+        <DetailExtension
+          activity={activity}
+          viewerId={viewerId}
+          isModerator={isModerator}
+          onChanged={refreshActivity}
+        />
+      )}
     </div>
   );
 }

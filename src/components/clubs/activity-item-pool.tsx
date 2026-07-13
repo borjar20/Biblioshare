@@ -7,6 +7,7 @@ import { addActivityItem, removeActivityItem, type ActivityItem } from "@/lib/cl
 import { LibraryItemPicker } from "./library-item-picker";
 import { itemHref } from "@/lib/catalog/item-href";
 import { Button } from "@/components/ui/button";
+import type { ItemType } from "@/lib/catalog/types";
 
 export function ActivityItemPool({
   activityId,
@@ -14,6 +15,8 @@ export function ActivityItemPool({
   viewerId,
   isParticipant,
   canModerate,
+  allowedItemTypes,
+  maxItems,
   onChanged,
 }: {
   activityId: string;
@@ -21,6 +24,10 @@ export function ActivityItemPool({
   viewerId: string;
   isParticipant: boolean;
   canModerate: boolean;
+  // Restricción por kind (registro de EPIC-05 Bloque H1) -- "all"/null = sin
+  // restricción, comportamiento original de Bloque G.
+  allowedItemTypes: ItemType[] | "all";
+  maxItems: number | null;
   onChanged: () => void;
 }) {
   const t = useTranslations("activity");
@@ -69,8 +76,10 @@ export function ActivityItemPool({
       </div>
 
       {isParticipant &&
+        (maxItems == null || items.length < maxItems) &&
         (picking ? (
           <LibraryItemPicker
+            allowedItemTypes={allowedItemTypes}
             onPick={(libraryItem) => {
               setError(null);
               startTransition(async () => {

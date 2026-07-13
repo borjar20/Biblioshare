@@ -14,45 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      challenges: {
-        Row: {
-          archived_at: string | null
-          created_at: string
-          criteria: Json
-          end_date: string
-          id: string
-          item_type: Database["public"]["Enums"]["item_type"] | null
-          name: string
-          start_date: string
-          target_count: number
-          user_id: string
-        }
-        Insert: {
-          archived_at?: string | null
-          created_at?: string
-          criteria?: Json
-          end_date: string
-          id?: string
-          item_type?: Database["public"]["Enums"]["item_type"] | null
-          name: string
-          start_date: string
-          target_count: number
-          user_id: string
-        }
-        Update: {
-          archived_at?: string | null
-          created_at?: string
-          criteria?: Json
-          end_date?: string
-          id?: string
-          item_type?: Database["public"]["Enums"]["item_type"] | null
-          name?: string
-          start_date?: string
-          target_count?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
       books: {
         Row: {
           author: string | null
@@ -95,6 +56,459 @@ export type Database = {
           synopsis?: string | null
           title?: string
           total_pages?: number | null
+        }
+        Relationships: []
+      }
+      challenges: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          criteria: Json
+          end_date: string
+          id: string
+          item_type: Database["public"]["Enums"]["item_type"] | null
+          name: string
+          start_date: string
+          target_count: number
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          criteria?: Json
+          end_date: string
+          id?: string
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          name: string
+          start_date: string
+          target_count: number
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          criteria?: Json
+          end_date?: string
+          id?: string
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          name?: string
+          start_date?: string
+          target_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      club_activities: {
+        Row: {
+          club_id: string
+          config: Json | null
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_on: string | null
+          id: string
+          kind: Database["public"]["Enums"]["activity_kind"]
+          starts_on: string | null
+          status: Database["public"]["Enums"]["activity_status"]
+          title: string
+        }
+        Insert: {
+          club_id: string
+          config?: Json | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_on?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["activity_kind"]
+          starts_on?: string | null
+          status?: Database["public"]["Enums"]["activity_status"]
+          title: string
+        }
+        Update: {
+          club_id?: string
+          config?: Json | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_on?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["activity_kind"]
+          starts_on?: string | null
+          status?: Database["public"]["Enums"]["activity_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_activity_checkpoint_reads: {
+        Row: {
+          checkpoint_id: string
+          reached_at: string
+          user_id: string
+        }
+        Insert: {
+          checkpoint_id: string
+          reached_at?: string
+          user_id: string
+        }
+        Update: {
+          checkpoint_id?: string
+          reached_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activity_checkpoint_reads_checkpoint_id_fkey"
+            columns: ["checkpoint_id"]
+            isOneToOne: false
+            referencedRelation: "club_activity_checkpoints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_activity_checkpoints: {
+        Row: {
+          activity_id: string
+          created_at: string
+          created_by: string
+          id: string
+          label: string
+          order: number
+          position: Json
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          label: string
+          order: number
+          position: Json
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string
+          order?: number
+          position?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activity_checkpoints_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_activity_items: {
+        Row: {
+          activity_id: string
+          added_by: string
+          created_at: string
+          id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+        }
+        Insert: {
+          activity_id: string
+          added_by: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+        }
+        Update: {
+          activity_id?: string
+          added_by?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activity_items_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_activity_opinions: {
+        Row: {
+          activity_id: string
+          comment: string | null
+          created_at: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          rating: number | null
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          comment?: string | null
+          created_at?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          rating?: number | null
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          comment?: string | null
+          created_at?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          rating?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activity_opinions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_activity_participants: {
+        Row: {
+          activity_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_activity_participants_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_members: {
+        Row: {
+          club_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["club_role"]
+          status: Database["public"]["Enums"]["club_member_status"]
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["club_role"]
+          status?: Database["public"]["Enums"]["club_member_status"]
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["club_role"]
+          status?: Database["public"]["Enums"]["club_member_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_poll_options: {
+        Row: {
+          id: string
+          label: string
+          position: number
+          post_id: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          position: number
+          post_id: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          position?: number
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_poll_options_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "club_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_poll_votes: {
+        Row: {
+          option_id: string
+          post_id: string
+          user_id: string
+          voted_at: string
+        }
+        Insert: {
+          option_id: string
+          post_id: string
+          user_id: string
+          voted_at?: string
+        }
+        Update: {
+          option_id?: string
+          post_id?: string
+          user_id?: string
+          voted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "club_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_poll_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "club_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_posts: {
+        Row: {
+          author_id: string
+          body: string
+          club_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["club_post_kind"]
+          poll_ends_at: string | null
+          ref: Json | null
+        }
+        Insert: {
+          author_id: string
+          body: string
+          club_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["club_post_kind"]
+          poll_ends_at?: string | null
+          ref?: Json | null
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["club_post_kind"]
+          poll_ends_at?: string | null
+          ref?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_posts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          slug: string
+          visibility: Database["public"]["Enums"]["club_visibility"]
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          slug: string
+          visibility?: Database["public"]["Enums"]["club_visibility"]
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          slug?: string
+          visibility?: Database["public"]["Enums"]["club_visibility"]
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["target_kind"]
         }
         Relationships: []
       }
@@ -175,11 +589,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "diary_entries_library_entry_id_fkey"
-            columns: ["library_entry_id"]
+            foreignKeyName: "diary_entries_entry_owner_fkey"
+            columns: ["library_entry_id", "user_id"]
             isOneToOne: false
             referencedRelation: "library_entries"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
@@ -251,369 +665,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notifications: {
-        Row: {
-          actor_id: string
-          created_at: string
-          id: string
-          read_at: string | null
-          target_id: string | null
-          target_type: string | null
-          type: Database["public"]["Enums"]["notification_type"]
-          user_id: string
-        }
-        Insert: {
-          actor_id: string
-          created_at?: string
-          id?: string
-          read_at?: string | null
-          target_id?: string | null
-          target_type?: string | null
-          type: Database["public"]["Enums"]["notification_type"]
-          user_id: string
-        }
-        Update: {
-          actor_id?: string
-          created_at?: string
-          id?: string
-          read_at?: string | null
-          target_id?: string | null
-          target_type?: string | null
-          type?: Database["public"]["Enums"]["notification_type"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          channel: Database["public"]["Enums"]["push_channel"]
-          created_at: string
-          credentials: Json
-          id: string
-          user_id: string
-        }
-        Insert: {
-          channel?: Database["public"]["Enums"]["push_channel"]
-          created_at?: string
-          credentials: Json
-          id?: string
-          user_id: string
-        }
-        Update: {
-          channel?: Database["public"]["Enums"]["push_channel"]
-          created_at?: string
-          credentials?: Json
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      clubs: {
-        Row: {
-          cover_url: string | null
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          owner_id: string
-          slug: string
-          visibility: Database["public"]["Enums"]["club_visibility"]
-        }
-        Insert: {
-          cover_url?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          owner_id: string
-          slug: string
-          visibility?: Database["public"]["Enums"]["club_visibility"]
-        }
-        Update: {
-          cover_url?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          owner_id?: string
-          slug?: string
-          visibility?: Database["public"]["Enums"]["club_visibility"]
-        }
-        Relationships: []
-      }
-      club_members: {
-        Row: {
-          club_id: string
-          joined_at: string
-          role: Database["public"]["Enums"]["club_role"]
-          status: Database["public"]["Enums"]["club_member_status"]
-          user_id: string
-        }
-        Insert: {
-          club_id: string
-          joined_at?: string
-          role?: Database["public"]["Enums"]["club_role"]
-          status?: Database["public"]["Enums"]["club_member_status"]
-          user_id: string
-        }
-        Update: {
-          club_id?: string
-          joined_at?: string
-          role?: Database["public"]["Enums"]["club_role"]
-          status?: Database["public"]["Enums"]["club_member_status"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      club_posts: {
-        Row: {
-          author_id: string
-          body: string
-          club_id: string
-          created_at: string
-          id: string
-          kind: Database["public"]["Enums"]["club_post_kind"]
-          poll_ends_at: string | null
-          ref: Json | null
-        }
-        Insert: {
-          author_id: string
-          body: string
-          club_id: string
-          created_at?: string
-          id?: string
-          kind: Database["public"]["Enums"]["club_post_kind"]
-          poll_ends_at?: string | null
-          ref?: Json | null
-        }
-        Update: {
-          author_id?: string
-          body?: string
-          club_id?: string
-          created_at?: string
-          id?: string
-          kind?: Database["public"]["Enums"]["club_post_kind"]
-          poll_ends_at?: string | null
-          ref?: Json | null
-        }
-        Relationships: []
-      }
-      club_poll_options: {
-        Row: {
-          id: string
-          label: string
-          position: number
-          post_id: string
-        }
-        Insert: {
-          id?: string
-          label: string
-          position: number
-          post_id: string
-        }
-        Update: {
-          id?: string
-          label?: string
-          position?: number
-          post_id?: string
-        }
-        Relationships: []
-      }
-      club_poll_votes: {
-        Row: {
-          option_id: string
-          post_id: string
-          user_id: string
-          voted_at: string
-        }
-        Insert: {
-          option_id: string
-          post_id: string
-          user_id: string
-          voted_at?: string
-        }
-        Update: {
-          option_id?: string
-          post_id?: string
-          user_id?: string
-          voted_at?: string
-        }
-        Relationships: []
-      }
-      club_activities: {
-        Row: {
-          club_id: string
-          config: Json | null
-          created_at: string
-          created_by: string
-          description: string | null
-          ends_on: string | null
-          id: string
-          kind: Database["public"]["Enums"]["activity_kind"]
-          starts_on: string | null
-          status: Database["public"]["Enums"]["activity_status"]
-          title: string
-        }
-        Insert: {
-          club_id: string
-          config?: Json | null
-          created_at?: string
-          created_by: string
-          description?: string | null
-          ends_on?: string | null
-          id?: string
-          kind: Database["public"]["Enums"]["activity_kind"]
-          starts_on?: string | null
-          status?: Database["public"]["Enums"]["activity_status"]
-          title: string
-        }
-        Update: {
-          club_id?: string
-          config?: Json | null
-          created_at?: string
-          created_by?: string
-          description?: string | null
-          ends_on?: string | null
-          id?: string
-          kind?: Database["public"]["Enums"]["activity_kind"]
-          starts_on?: string | null
-          status?: Database["public"]["Enums"]["activity_status"]
-          title?: string
-        }
-        Relationships: []
-      }
-      club_activity_participants: {
-        Row: {
-          activity_id: string
-          joined_at: string
-          user_id: string
-        }
-        Insert: {
-          activity_id: string
-          joined_at?: string
-          user_id: string
-        }
-        Update: {
-          activity_id?: string
-          joined_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      club_activity_items: {
-        Row: {
-          activity_id: string
-          added_by: string
-          created_at: string
-          id: string
-          item_id: string
-          item_type: Database["public"]["Enums"]["item_type"]
-          position: number
-        }
-        Insert: {
-          activity_id: string
-          added_by: string
-          created_at?: string
-          id?: string
-          item_id: string
-          item_type: Database["public"]["Enums"]["item_type"]
-          position: number
-        }
-        Update: {
-          activity_id?: string
-          added_by?: string
-          created_at?: string
-          id?: string
-          item_id?: string
-          item_type?: Database["public"]["Enums"]["item_type"]
-          position?: number
-        }
-        Relationships: []
-      }
-      club_activity_opinions: {
-        Row: {
-          activity_id: string
-          comment: string | null
-          created_at: string
-          item_id: string
-          item_type: Database["public"]["Enums"]["item_type"]
-          rating: number | null
-          user_id: string
-        }
-        Insert: {
-          activity_id: string
-          comment?: string | null
-          created_at?: string
-          item_id: string
-          item_type: Database["public"]["Enums"]["item_type"]
-          rating?: number | null
-          user_id: string
-        }
-        Update: {
-          activity_id?: string
-          comment?: string | null
-          created_at?: string
-          item_id?: string
-          item_type?: Database["public"]["Enums"]["item_type"]
-          rating?: number | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      reactions: {
-        Row: {
-          created_at: string
-          id: string
-          kind: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          kind?: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          kind?: string
-          target_id?: string
-          target_type?: Database["public"]["Enums"]["target_kind"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      comments: {
-        Row: {
-          author_id: string
-          body: string
-          created_at: string
-          id: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
-        }
-        Insert: {
-          author_id: string
-          body: string
-          created_at?: string
-          id?: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
-        }
-        Update: {
-          author_id?: string
-          body?: string
-          created_at?: string
-          id?: string
-          target_id?: string
-          target_type?: Database["public"]["Enums"]["target_kind"]
-        }
-        Relationships: []
-      }
       library_entries: {
         Row: {
           created_at: string
@@ -621,9 +672,9 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           notes: string | null
-          queue_id: string | null
           pinned_order: number | null
           position: Json
+          queue_id: string | null
           queue_order: number | null
           rating: number | null
           started_at: string | null
@@ -637,9 +688,9 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           notes?: string | null
-          queue_id?: string | null
           pinned_order?: number | null
           position?: Json
+          queue_id?: string | null
           queue_order?: number | null
           rating?: number | null
           started_at?: string | null
@@ -653,9 +704,9 @@ export type Database = {
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           notes?: string | null
-          queue_id?: string | null
           pinned_order?: number | null
           position?: Json
+          queue_id?: string | null
           queue_order?: number | null
           rating?: number | null
           started_at?: string | null
@@ -663,7 +714,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "library_entries_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "queues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       movies: {
         Row: {
@@ -701,6 +760,39 @@ export type Database = {
           synopsis?: string | null
           title?: string
           tmdb_id?: number | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          target_id: string | null
+          target_type: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -860,13 +952,88 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "progress_sessions_library_entry_id_fkey"
-            columns: ["library_entry_id"]
+            foreignKeyName: "progress_sessions_entry_owner_fkey"
+            columns: ["library_entry_id", "user_id"]
             isOneToOne: false
             referencedRelation: "library_entries"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          channel: Database["public"]["Enums"]["push_channel"]
+          created_at: string
+          credentials: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["push_channel"]
+          created_at?: string
+          credentials: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["push_channel"]
+          created_at?: string
+          credentials?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      queues: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reactions: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["target_kind"]
+          user_id?: string
+        }
+        Relationships: []
       }
       saga_items: {
         Row: {
@@ -930,30 +1097,6 @@ export type Database = {
           overview?: string | null
           source?: string
           tmdb_collection_id?: number | null
-        }
-        Relationships: []
-      }
-      queues: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          position: number
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          position?: number
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          position?: number
-          user_id?: string
         }
         Relationships: []
       }
@@ -1083,72 +1226,7 @@ export type Database = {
       }
     }
     Functions: {
-      current_user_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
-      has_min_role: {
-        Args: { min: Database["public"]["Enums"]["user_role"] }
-        Returns: boolean
-      }
-      profile_is_public: {
-        Args: { target_user_id: string }
-        Returns: boolean
-      }
-      reorder_queue: {
-        Args: { target_queue: string | null; entry_ids: string[] }
-        Returns: undefined
-      }
-      resolve_pending_import: {
-        Args: { p_catalog_item_id: string; p_pending_id: string }
-        Returns: undefined
-      }
-      create_club: {
-        Args: {
-          p_slug: string
-          p_name: string
-          p_description: string
-          p_visibility: Database["public"]["Enums"]["club_visibility"]
-          p_cover_url: string
-        }
-        Returns: Database["public"]["Tables"]["clubs"]["Row"]
-      }
-      set_club_member_role: {
-        Args: {
-          p_club_id: string
-          p_user_id: string
-          p_role: Database["public"]["Enums"]["club_role"]
-        }
-        Returns: undefined
-      }
-      transfer_club_ownership: {
-        Args: {
-          p_club_id: string
-          p_new_owner_id: string
-        }
-        Returns: undefined
-      }
-      create_club_poll: {
-        Args: {
-          p_club_id: string
-          p_question: string
-          p_options: string[]
-          p_ends_at: string
-        }
-        Returns: undefined
-      }
-      vote_club_poll: {
-        Args: {
-          p_post_id: string
-          p_option_id: string
-        }
-        Returns: undefined
-      }
       activate_club_activity: {
-        Args: { p_activity_id: string }
-        Returns: undefined
-      }
-      finish_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined
       }
@@ -1156,22 +1234,159 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
+      can_view_target: {
+        Args: {
+          p_target_id: string
+          p_target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Returns: boolean
+      }
+      club_member_row_exists: { Args: { p_club_id: string }; Returns: boolean }
+      club_role: {
+        Args: { p_club_id: string }
+        Returns: Database["public"]["Enums"]["club_role"]
+      }
+      confirm_checkpoint: {
+        Args: { p_checkpoint_id: string }
+        Returns: undefined
+      }
+      create_club: {
+        Args: {
+          p_cover_url: string
+          p_description: string
+          p_name: string
+          p_slug: string
+          p_visibility: Database["public"]["Enums"]["club_visibility"]
+        }
+        Returns: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          slug: string
+          visibility: Database["public"]["Enums"]["club_visibility"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clubs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_club_poll: {
+        Args: {
+          p_club_id: string
+          p_ends_at: string
+          p_options: string[]
+          p_question: string
+        }
+        Returns: undefined
+      }
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      finish_club_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
+      has_min_club_role: {
+        Args: {
+          min: Database["public"]["Enums"]["club_role"]
+          p_club_id: string
+        }
+        Returns: boolean
+      }
+      has_min_role: {
+        Args: { min: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
+      has_reached_checkpoint: {
+        Args: { p_checkpoint_id: string }
+        Returns: boolean
+      }
+      has_voted_in_club_poll: { Args: { p_post_id: string }; Returns: boolean }
+      is_activity_participant: {
+        Args: { p_activity_id: string }
+        Returns: boolean
+      }
+      is_club_member: { Args: { p_club_id: string }; Returns: boolean }
+      is_visible_via_club_share: {
+        Args: { p_row_id: string; p_source_table: string }
+        Returns: boolean
+      }
+      profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
+      reorder_activity_checkpoints: {
+        Args: { p_activity_id: string; p_checkpoint_ids: string[] }
+        Returns: undefined
+      }
+      reorder_queue: {
+        Args: { entry_ids: string[]; target_queue: string | null }
+        Returns: undefined
+      }
+      resolve_pending_import: {
+        Args: { p_catalog_item_id: string; p_pending_id: string }
+        Returns: undefined
+      }
+      set_club_member_role: {
+        Args: {
+          p_club_id: string
+          p_role: Database["public"]["Enums"]["club_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      transfer_club_ownership: {
+        Args: { p_club_id: string; p_new_owner_id: string }
+        Returns: undefined
+      }
+      vote_club_poll: {
+        Args: { p_option_id: string; p_post_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      activity_kind: "buddy_read" | "tierlist" | "list_challenge" | "criteria_challenge"
+      activity_kind:
+        | "buddy_read"
+        | "tierlist"
+        | "list_challenge"
+        | "criteria_challenge"
       activity_status: "proposed" | "active" | "finished" | "archived"
-      follow_status: "pending" | "accepted"
-      notification_type: "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated"
-      push_channel: "web"
-      target_kind: "diary_entry" | "episode_watch" | "club_post" | "comment"
-      item_type: "book" | "movie" | "series"
-      media_status: "planned" | "in_progress" | "completed" | "dropped"
-      pending_import_status: "pending" | "resolved" | "dismissed"
-      user_role: "user" | "collaborator" | "admin"
       club_member_status: "invited" | "active"
+      club_post_kind: "text" | "activity_share" | "poll"
       club_role: "member" | "moderator" | "owner"
       club_visibility: "public" | "private"
-      club_post_kind: "text" | "activity_share" | "poll"
+      follow_status: "pending" | "accepted"
+      item_type: "book" | "movie" | "series"
+      media_status: "planned" | "in_progress" | "completed" | "dropped"
+      notification_type:
+        | "follow_request"
+        | "new_follower"
+        | "follow_accepted"
+        | "review_liked"
+        | "review_commented"
+        | "club_join_request"
+        | "club_join_approved"
+        | "club_invite"
+        | "club_invite_accepted"
+        | "club_post"
+        | "club_post_liked"
+        | "club_post_commented"
+        | "comment_liked"
+        | "club_activity_proposed"
+        | "club_activity_activated"
+      pending_import_status: "pending" | "resolved" | "dismissed"
+      push_channel: "web"
+      target_kind:
+        | "diary_entry"
+        | "episode_watch"
+        | "club_post"
+        | "comment"
+        | "activity_checkpoint"
+      user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1299,19 +1514,47 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      activity_kind: ["buddy_read", "tierlist", "list_challenge", "criteria_challenge"],
+      activity_kind: [
+        "buddy_read",
+        "tierlist",
+        "list_challenge",
+        "criteria_challenge",
+      ],
       activity_status: ["proposed", "active", "finished", "archived"],
-      follow_status: ["pending", "accepted"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated"],
-      push_channel: ["web"],
-      target_kind: ["diary_entry", "episode_watch", "club_post", "comment"],
-      item_type: ["book", "movie", "series"],
-      media_status: ["planned", "in_progress", "completed", "dropped"],
-      user_role: ["user", "collaborator", "admin"],
       club_member_status: ["invited", "active"],
+      club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
-      club_post_kind: ["text", "activity_share", "poll"],
+      follow_status: ["pending", "accepted"],
+      item_type: ["book", "movie", "series"],
+      media_status: ["planned", "in_progress", "completed", "dropped"],
+      notification_type: [
+        "follow_request",
+        "new_follower",
+        "follow_accepted",
+        "review_liked",
+        "review_commented",
+        "club_join_request",
+        "club_join_approved",
+        "club_invite",
+        "club_invite_accepted",
+        "club_post",
+        "club_post_liked",
+        "club_post_commented",
+        "comment_liked",
+        "club_activity_proposed",
+        "club_activity_activated",
+      ],
+      pending_import_status: ["pending", "resolved", "dismissed"],
+      push_channel: ["web"],
+      target_kind: [
+        "diary_entry",
+        "episode_watch",
+        "club_post",
+        "comment",
+        "activity_checkpoint",
+      ],
+      user_role: ["user", "collaborator", "admin"],
     },
   },
 } as const
