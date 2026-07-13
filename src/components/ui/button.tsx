@@ -1,6 +1,6 @@
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "green";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
@@ -8,6 +8,10 @@ const VARIANT_CLASSES: Record<Variant, string> = {
   secondary:
     "border border-border text-foreground hover:bg-surface-muted disabled:opacity-60",
   ghost: "text-foreground hover:bg-surface-muted disabled:opacity-60",
+  // Verde = lo social en Paper: unirse a un club, aprobar, aceptar. No hay
+  // token --green-hover, así que el hover atenúa en vez de inventar uno.
+  green:
+    "bg-green text-accent-foreground hover:opacity-90 disabled:opacity-60",
 };
 
 // Shared with any element that should look like a button (e.g. next/link),

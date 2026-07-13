@@ -24,6 +24,8 @@ export type ActivityAccent = {
   text: string;
   bgSoft: string;
   borderSoft: string;
+  /** Relleno sólido: barras de progreso y marcadores del chip. */
+  bar: string;
 };
 
 export const ACTIVITY_ACCENT: Record<ActivityKind, ActivityAccent> = {
@@ -32,23 +34,27 @@ export const ACTIVITY_ACCENT: Record<ActivityKind, ActivityAccent> = {
     text: "text-accent",
     bgSoft: "bg-accent/10",
     borderSoft: "border-accent/30",
+    bar: "bg-accent",
   },
   tierlist: {
     Icon: TiersIcon,
     text: "text-gold",
     bgSoft: "bg-gold/10",
     borderSoft: "border-gold/30",
+    bar: "bg-gold",
   },
   list_challenge: {
     Icon: ListCheckIcon,
     text: "text-type-movie",
     bgSoft: "bg-type-movie/10",
     borderSoft: "border-type-movie/30",
+    bar: "bg-type-movie",
   },
   criteria_challenge: {
     Icon: TargetIcon,
     text: "text-green",
     bgSoft: "bg-green/10",
     borderSoft: "border-green/30",
+    bar: "bg-green",
   },
 };
