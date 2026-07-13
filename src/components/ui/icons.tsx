@@ -290,6 +290,14 @@ export function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function ChevronUpIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m18 15-6-6-6 6" />
+    </Icon>
+  );
+}
+
 export function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

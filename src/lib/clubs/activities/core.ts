@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { notifyClub } from "./notify-club";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
 import type { ItemType } from "@/lib/catalog/types";
@@ -63,38 +64,6 @@ export type ActivityDetail = ClubActivity & {
   items: ActivityItem[];
   opinions: ActivityOpinion[]; // vacío si el viewer no es participante -- RLS ya lo filtra
 };
-
-// Bucle de fan-out sobre miembros activos, excepto el actor -- mismo patrón best-effort que
-// notifyNewPost en src/lib/clubs/posts.ts (Bloque F), sin mecanismo de fan-out nuevo.
-async function notifyClub(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  clubId: string,
-  actorId: string,
-  type: "club_activity_proposed" | "club_activity_activated",
-  activityId: string,
-): Promise<void> {
-  try {
-    const { data: members } = await supabase
-      .from("club_members")
-      .select("user_id")
-      .eq("club_id", clubId)
-      .eq("status", "active")
-      .neq("user_id", actorId);
-    await Promise.all(
-      (members ?? []).map((m) =>
-        notify(supabase, {
-          userId: m.user_id,
-          actorId,
-          type,
-          targetType: "club_activity",
-          targetId: activityId,
-        }),
-      ),
-    );
-  } catch (error) {
-    console.error("notifyClub failed", error);
-  }
-}
 
 export async function proposeActivity(
   clubId: string,

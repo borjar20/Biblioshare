@@ -10,23 +10,71 @@ import type { Json } from "@/lib/supabase/database.types";
 // Los tiers viven en club_activities.config (jsonb, opaco a SQL/RLS): segundo consumidor de
 // ese campo tras el criterio de H4.
 
-export const DEFAULT_TIERS = ["S", "A", "B", "C", "D"];
-
-export type TierlistConfig = {
-  tiers: string[];
+// Un nivel: su etiqueta y su color.
+//
+// OJO con la etiqueta: es la CLAVE. Las colocaciones (club_activity_tierlist)
+// guardan el tier como texto, así que renombrar un nivel de una tierlist con
+// ítems ya colocados los deja huérfanos. El color, en cambio, es puro adorno y
+// se puede cambiar sin consecuencias.
+export type TierSpec = {
+  label: string;
+  /** Color del nivel. null = sin color, se pinta con el token neutro. */
+  color: string | null;
 };
 
-// config es jsonb sin validar en BD -- esta es la única puerta de entrada tipada. Devuelve
-// null si no hay tiers utilizables, y el tablero muestra "sin configurar" en vez de romperse.
+// Paleta de niveles: de "lo mejor" a "lo peor", reutilizando los tokens que ya
+// existen en vez de inventar una paleta nueva.
+export const DEFAULT_TIERS: TierSpec[] = [
+  { label: "S", color: "var(--status-dropped)" },
+  { label: "A", color: "var(--gold)" },
+  { label: "B", color: "var(--status-completed)" },
+  { label: "C", color: "var(--type-movie)" },
+  { label: "D", color: "var(--muted-foreground)" },
+];
+
+export const TIER_COLORS: string[] = [
+  "var(--status-dropped)",
+  "var(--gold)",
+  "var(--status-completed)",
+  "var(--type-movie)",
+  "var(--type-series)",
+  "var(--muted-foreground)",
+];
+
+export type TierlistConfig = {
+  tiers: TierSpec[];
+};
+
+// config es jsonb sin validar en BD -- esta es la única puerta de entrada
+// tipada. Devuelve null si no hay tiers utilizables, y el tablero muestra "sin
+// configurar" en vez de romperse.
+//
+// Acepta DOS formatos, y eso no es por gusto: las tierlists creadas antes de que
+// los niveles tuvieran color guardaron `tiers: ["S","A",...]` en su config. Si
+// dejáramos de entenderlo, esas tierlists dejarían de renderizar y sus
+// colocaciones quedarían inaccesibles.
 export function parseTierlistConfig(raw: Json | null): TierlistConfig | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const value = (raw as Record<string, unknown>).tiers;
   if (!Array.isArray(value)) return null;
 
-  const tiers = value
-    .filter((tier): tier is string => typeof tier === "string")
-    .map((tier) => tier.trim())
-    .filter(Boolean);
+  const tiers: TierSpec[] = [];
+  for (const entry of value) {
+    // Formato antiguo: un string suelto.
+    if (typeof entry === "string") {
+      const label = entry.trim();
+      if (label) tiers.push({ label, color: null });
+      continue;
+    }
+    // Formato actual: { label, color }.
+    if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+      const record = entry as Record<string, unknown>;
+      const label =
+        typeof record.label === "string" ? record.label.trim() : "";
+      const color = typeof record.color === "string" ? record.color : null;
+      if (label) tiers.push({ label, color });
+    }
+  }
 
   return tiers.length > 0 ? { tiers } : null;
 }
@@ -44,6 +92,6 @@ export type ParticipantBoard = {
 };
 
 export type TierlistView = {
-  tiers: string[];
+  tiers: TierSpec[];
   boards: ParticipantBoard[]; // roster COMPLETO, viewer primero
 };

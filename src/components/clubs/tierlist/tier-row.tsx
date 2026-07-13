@@ -9,6 +9,7 @@ import { TierlistItem } from "./tierlist-item";
 export function TierRow({
   id,
   label,
+  color,
   items,
   editable,
   selectedKey,
@@ -16,6 +17,8 @@ export function TierRow({
 }: {
   id: string;
   label: string;
+  /** Color del nivel. null = neutro (la bandeja de "sin clasificar"). */
+  color?: string | null;
   items: ActivityItem[];
   editable: boolean;
   selectedKey: string | null;
@@ -25,8 +28,15 @@ export function TierRow({
 
   return (
     <div className="flex items-stretch gap-2">
-      <div className="flex w-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface-muted text-sm font-semibold text-foreground">
-        {label}
+      <div
+        className="flex w-10 shrink-0 items-center justify-center rounded-chip border border-border font-serif text-sm font-semibold"
+        style={
+          color
+            ? { background: color, color: "var(--tier-foreground)" }
+            : undefined
+        }
+      >
+        <span className={color ? "" : "text-foreground"}>{label}</span>
       </div>
       <div
         ref={setNodeRef}
