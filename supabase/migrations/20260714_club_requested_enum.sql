@@ -1,0 +1,11 @@
+-- Estado 'requested' en la membresía de club (solicitudes de entrada, Paper p3).
+--
+-- Va SOLO en esta migración, sin usarlo: Postgres no deja usar un valor de enum
+-- en la misma transacción en la que se añade. La migración que lo consume
+-- (20260714_club_join_requests.sql) va después.
+--
+-- El modelo original decía explícitamente "unirse a un club privado es solo por
+-- invitación -- no hay solicitud propia". Esto lo cambia: un club privado pasa a
+-- ser VISIBLE pero no LEGIBLE (identidad sí, contenido no), igual que un perfil
+-- privado, y desde ahí se puede solicitar entrada.
+alter type public.club_member_status add value 'requested';

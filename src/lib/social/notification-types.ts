@@ -11,6 +11,10 @@ export type NotificationType =
   | "review_commented"
   | "club_invite"
   | "club_invite_accepted"
+  // Solicitudes de entrada a un club privado. Los dos valores ya existían en el
+  // enum de la BD, reservados desde el principio y sin usar hasta ahora.
+  | "club_join_request"
+  | "club_join_approved"
   | "club_post"
   | "club_post_liked"
   | "club_post_commented"
@@ -44,6 +48,8 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   review_commented: "reviewCommented",
   club_invite: "clubInvite",
   club_invite_accepted: "clubInviteAccepted",
+  club_join_request: "clubJoinRequest",
+  club_join_approved: "clubJoinApproved",
   club_post: "clubPost",
   club_post_liked: "clubPostLiked",
   club_post_commented: "clubPostCommented",

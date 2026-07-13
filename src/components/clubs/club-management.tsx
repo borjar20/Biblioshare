@@ -5,7 +5,9 @@ import {
   listClubActivities,
   type ClubActivity,
 } from "@/lib/clubs/activities/core";
+import type { JoinRequest } from "@/lib/clubs/join-requests";
 import { ProposalModeration } from "./proposal-moderation";
+import { JoinRequestList } from "./join-request-list";
 import { ManageMembers } from "./manage-members";
 
 // La pestaña Gestión: lo que un moderador viene a resolver. Las propuestas
@@ -16,12 +18,14 @@ export function ClubManagement({
   viewerId,
   viewerRole,
   initialActivities,
+  initialJoinRequests,
 }: {
   clubId: string;
   clubSlug: string;
   viewerId: string;
   viewerRole: "moderator" | "owner";
   initialActivities: ClubActivity[];
+  initialJoinRequests: JoinRequest[];
 }) {
   const [activities, setActivities] = useState(initialActivities);
   const [, startTransition] = useTransition();
@@ -42,6 +46,8 @@ export function ClubManagement({
         canModerate
         onChanged={refresh}
       />
+
+      <JoinRequestList clubId={clubId} initialRequests={initialJoinRequests} />
 
       <ManageMembers
         clubId={clubId}

@@ -5,24 +5,37 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { ClubWithCount, ClubMembershipStatus } from "@/lib/clubs/clubs";
 import { joinClub } from "@/lib/clubs/membership";
+import { requestJoinClub } from "@/lib/clubs/join-requests";
 import { Button } from "@/components/ui/button";
 import { UsersIcon, LockIcon } from "@/components/ui/icons";
 
-// discoverPublicClubs solo devuelve clubes visibility='public' (filtrado en
-// la query), así que viewerStatus aquí solo es realmente "none" o "active"
-// -- un club privado nunca aparece en esta lista (unirse a uno es solo por
-// invitación, ver Task 1/4), así que no hace falta un botón de "solicitar".
+// La tarjeta sirve para "Mis clubes" y para "Descubrir". Un club privado puede
+// aparecer aquí (te lo pasaron por enlace, o ya eres miembro), así que sí hace
+// falta distinguir unirse (público, inmediato) de solicitar (privado, pendiente
+// de moderación).
 export function ClubCard({
   club,
+  unread = 0,
 }: {
   club: ClubWithCount & { viewerStatus: ClubMembershipStatus };
+  /** Posts y actividades ajenos desde tu última visita. */
+  unread?: number;
 }) {
   const t = useTranslations("club");
   const [status, setStatus] = useState(club.viewerStatus);
   const [isPending, startTransition] = useTransition();
 
+  // Unirse a un club público es inmediato. A uno privado se SOLICITA, y queda
+  // esperando a que un moderador lo resuelva.
+  const isPrivate = club.visibility === "private";
+
   function handleJoin() {
     startTransition(async () => {
+      if (isPrivate) {
+        await requestJoinClub(club.id);
+        setStatus("requested");
+        return;
+      }
       await joinClub(club.id);
       setStatus("active");
     });
@@ -61,13 +74,32 @@ export function ClubCard({
           )}
           <span className="font-mono text-[10px] text-muted-foreground">
             {t("memberCount", { count: club.memberCount })}
+            {unread > 0 && (
+              <>
+                {" · "}
+                <span className="text-accent">
+                  {t("unreadCount", { count: unread })}
+                </span>
+              </>
+            )}
           </span>
         </span>
       </Link>
+
       {status === "none" && (
-        <Button type="button" variant="secondary" disabled={isPending} onClick={handleJoin}>
-          {t("join")}
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isPending}
+          onClick={handleJoin}
+        >
+          {isPrivate ? t("requestJoin") : t("join")}
         </Button>
+      )}
+      {status === "requested" && (
+        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+          {t("requestPending")}
+        </span>
       )}
     </div>
   );

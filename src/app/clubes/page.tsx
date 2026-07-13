@@ -9,6 +9,7 @@ import {
   type ClubWithCount,
   type ClubMembershipStatus,
 } from "@/lib/clubs/clubs";
+import { getClubUnreadCounts } from "@/lib/clubs/unread";
 import { ClubCard } from "@/components/clubs/club-card";
 import { ClubForm } from "@/components/clubs/club-form";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function ClubesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [myClubs, setMyClubs] = useState<ClubWithCount[]>([]);
   const [discovered, setDiscovered] = useState<(ClubWithCount & { viewerStatus: ClubMembershipStatus })[]>([]);
+  const [unread, setUnread] = useState<Map<string, number>>(new Map());
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -26,6 +28,7 @@ export default function ClubesPage() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
     listMyClubs().then(setMyClubs);
+    getClubUnreadCounts().then(setUnread);
     discoverPublicClubs().then(setDiscovered);
   }, []);
 
@@ -67,7 +70,11 @@ export default function ClubesPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {myClubs.map((club) => (
-              <ClubCard key={club.id} club={{ ...club, viewerStatus: "active" }} />
+              <ClubCard
+                key={club.id}
+                club={{ ...club, viewerStatus: "active" }}
+                unread={unread.get(club.id) ?? 0}
+              />
             ))}
           </div>
         )}
