@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { navItems, isNavItemActive } from "./nav-items";
-import { AppLogoIcon } from "@/components/ui/icons";
+import { Wordmark } from "@/components/ui/wordmark";
 
 // Nav lateral (sm+). Mismas entradas que la barra inferior — los mockups solo
 // cubren móvil, así que en escritorio se presenta como columna en vez de
@@ -18,10 +18,9 @@ export function SideNav({ username }: { username: string }) {
     <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col gap-1 border-r border-border px-3 py-4 sm:flex lg:w-60">
       <Link
         href="/"
-        className="mb-4 inline-flex items-center gap-2 px-2 text-sm font-semibold tracking-tight"
+        className="mb-4 px-2"
       >
-        <AppLogoIcon className="h-5 w-5 text-accent" />
-        Biblioshare
+        <Wordmark />
       </Link>
 
       {items.map((item) => {

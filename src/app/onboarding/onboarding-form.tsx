@@ -9,7 +9,13 @@ import { completeOnboarding, type OnboardingActionState } from "./actions";
 
 const initialState: OnboardingActionState = {};
 
-export function OnboardingForm() {
+export function OnboardingForm({
+  nameWasTaken = false,
+}: {
+  /** El @usuario que elegiste al registrarte lo cogió otra persona mientras
+      confirmabas el email. Hay que elegir otro. */
+  nameWasTaken?: boolean;
+}) {
   const t = useTranslations("onboarding");
   const [state, formAction, pending] = useActionState(
     completeOnboarding,
@@ -18,8 +24,10 @@ export function OnboardingForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{t("title")}</h1>
-      <p className="text-sm text-muted-foreground">{t("description")}</p>
+      <h1 className="font-serif text-xl font-semibold">{t("title")}</h1>
+      <p className="text-sm text-muted-foreground">
+        {nameWasTaken ? t("nameWasTaken") : t("description")}
+      </p>
 
       <Field label={t("username")} htmlFor="username" hint={t("usernameHint")}>
         <Input

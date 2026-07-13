@@ -14,13 +14,19 @@ function Icon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// La marca: tres lomos de distinta altura en los colores de tipo de medio
+// (libro · película · serie). Una mini estantería que dice, sin palabras, "aquí
+// cabe todo" — y reutiliza el mismo sistema de color que organiza la interfaz.
+//
+// No usa el wrapper `Icon`: es multicolor, así que no puede heredar
+// `currentColor` como el resto del set.
 export function AppLogoIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <Icon {...props}>
-      <rect width="8" height="18" x="3" y="3" rx="1" />
-      <path d="M7 3v18" />
-      <path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z" />
-    </Icon>
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <rect x="1.5" y="7.3" width="5.5" height="15.7" rx="2" fill="var(--type-book)" />
+      <rect x="9.25" y="1" width="5.5" height="22" rx="2" fill="var(--type-movie)" />
+      <rect x="17" y="11.2" width="5.5" height="11.8" rx="2" fill="var(--type-series)" />
+    </svg>
   );
 }
 

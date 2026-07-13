@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "@/components/social/notification-bell";
 import type { listNotifications } from "@/lib/social/notifications";
-import { AppLogoIcon } from "@/components/ui/icons";
+import { Wordmark } from "@/components/ui/wordmark";
 
 // Topbar. Desde el rediseño Paper NO navega: las entradas viven en BottomNav
 // (móvil) y SideNav (sm+). Aquí solo quedan la marca (que en sm+ ya la pone
@@ -20,10 +20,9 @@ export function Header({
     <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:px-6">
       <Link
         href="/"
-        className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight sm:invisible"
+        className="shrink-0 sm:invisible"
       >
-        <AppLogoIcon className="h-5 w-5 text-accent" />
-        Biblioshare
+        <Wordmark />
       </Link>
 
       <div className="flex items-center gap-1">
