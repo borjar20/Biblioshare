@@ -22,13 +22,13 @@ export function SagaPicker({
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<{ id: string; name: string }[]>([]);
 
+  // El vaciado al borrar la búsqueda se hace en el onChange del input, no aquí: llamar a
+  // setState directamente en el cuerpo de un efecto es un error de lint (y un render de más).
   useEffect(() => {
-    if (!search.trim()) {
-      setResults([]);
-      return;
-    }
+    const query = search.trim();
+    if (!query) return;
     const handle = setTimeout(() => {
-      searchSagas(search).then(setResults);
+      searchSagas(query).then(setResults);
     }, 300);
     return () => clearTimeout(handle);
   }, [search]);
@@ -53,7 +53,10 @@ export function SagaPicker({
       <input
         type="search"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          if (!e.target.value.trim()) setResults([]);
+        }}
         placeholder={t("placeholder")}
         className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       />
