@@ -49,3 +49,11 @@ next-env.d.ts
 .env*
 
 .claude/settings.local.json
+
+# design-sync (see .design-sync/config.json and NOTES.md)
+/.ds-sync/
+/ds-bundle/
+/.design-sync/.cache/
+/.design-sync/learnings/
+/.design-sync/node_modules
+
