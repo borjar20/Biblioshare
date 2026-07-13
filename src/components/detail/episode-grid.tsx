@@ -83,7 +83,10 @@ export function EpisodeGrid({
                           onClick={() => setHover(ep)}
                           style={
                             color
-                              ? { backgroundColor: color, color: "#fff" }
+                              ? {
+                                  backgroundColor: color,
+                                  color: "var(--tier-foreground)",
+                                }
                               : undefined
                           }
                           className={`relative flex h-9 w-full items-center justify-center rounded-md font-mono text-xs font-semibold transition-transform hover:scale-105 ${
@@ -97,7 +100,9 @@ export function EpisodeGrid({
                         >
                           {rating !== null ? rating.toFixed(1) : epNum}
                           {hasNote && (
-                            <span className="absolute bottom-1 h-1 w-1 rounded-full bg-white/80" />
+                            // bg-current: hereda el color de texto de la celda,
+                            // que ya contrasta con su fondo tenga tramo o no.
+                            <span className="absolute bottom-1 h-1 w-1 rounded-full bg-current opacity-80" />
                           )}
                         </button>
                       </td>

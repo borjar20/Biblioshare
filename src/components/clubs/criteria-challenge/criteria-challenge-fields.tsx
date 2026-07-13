@@ -11,6 +11,7 @@ import {
 } from "@/lib/clubs/activities/criteria-challenge-types";
 import { SagaPicker } from "@/components/saga-picker";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 const ITEM_TYPES: ItemType[] = ["book", "movie", "series"];
 
@@ -53,26 +54,24 @@ export function CriteriaChallengeFields({
     <div className="flex flex-col gap-2 rounded-md border border-border p-2">
       <label className="flex flex-col gap-1 text-xs text-muted-foreground">
         {t("criteriaMode")}
-        <select
+        <Select
           value={mode}
           onChange={(e) => setMode(e.target.value as CriteriaMode)}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         >
           {CRITERIA_MODES.map((m) => (
             <option key={m} value={m}>
               {t(`criteriaMode_${m}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <div className="flex gap-2">
         <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
           {t("criteriaItemType")}
-          <select
+          <Select
             value={itemType}
             onChange={(e) => setItemType((e.target.value || "") as ItemType | "")}
-            className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value="">{t("criteriaAnyType")}</option>
             {ITEM_TYPES.map((type) => (
@@ -80,7 +79,7 @@ export function CriteriaChallengeFields({
                 {tTypes(type)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">

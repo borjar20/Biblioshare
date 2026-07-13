@@ -13,7 +13,7 @@ export async function StreakCard({ streaks }: { streaks: Streaks }) {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
-          <span className="text-3xl font-semibold text-foreground">
+          <span className="font-serif text-3xl font-semibold text-foreground">
             {streaks.current}
           </span>
           <span className="text-sm text-muted-foreground">
@@ -21,7 +21,7 @@ export async function StreakCard({ streaks }: { streaks: Streaks }) {
           </span>
         </div>
         <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
-          <span className="text-3xl font-semibold text-foreground">
+          <span className="font-serif text-3xl font-semibold text-foreground">
             {streaks.best}
           </span>
           <span className="text-sm text-muted-foreground">

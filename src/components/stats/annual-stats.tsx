@@ -90,7 +90,7 @@ export async function AnnualStats({
               />
             ) : (
               <div key={type} className="flex flex-col">
-                <span className={`text-2xl font-semibold ${accent.text}`}>
+                <span className={`font-serif text-2xl font-semibold ${accent.text}`}>
                   {completed}
                 </span>
                 <span className="text-sm text-muted-foreground">

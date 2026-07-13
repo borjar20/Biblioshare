@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 
 const initialState: ChallengeFormState = {};
 const ITEM_TYPES: ItemType[] = ["book", "movie", "series"];
@@ -51,11 +52,10 @@ export function ChallengeForm({
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Field label={t("fields.type")} htmlFor="challenge-type">
-          <select
+          <Select
             id="challenge-type"
             name="itemType"
             defaultValue={challenge?.itemType ?? ""}
-            className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground"
           >
             <option value="">{t("anyType")}</option>
             {ITEM_TYPES.map((type) => (
@@ -63,7 +63,7 @@ export function ChallengeForm({
                 {tTypes(type)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label={t("fields.target")} htmlFor="challenge-target">

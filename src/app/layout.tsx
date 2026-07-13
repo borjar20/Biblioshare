@@ -26,10 +26,12 @@ export const metadata: Metadata = {
   description: "Tu biblioteca de libros, películas y series en un solo lugar.",
 };
 
+// Espejo manual de --background (claro/oscuro) de globals.css: aquí no hay
+// CSS vars. Si cambia el token, cambia esto.
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffe9fc" },
-    { media: "(prefers-color-scheme: dark)", color: "#2c002b" },
+    { media: "(prefers-color-scheme: light)", color: "#f3ece1" },
+    { media: "(prefers-color-scheme: dark)", color: "#1f1a16" },
   ],
 };
 

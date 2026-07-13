@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import type { Position } from "@/lib/library/position";
@@ -104,7 +105,7 @@ function ManagedControls({
         >
           {t("status")}
         </label>
-        <select
+        <Select
           id={`manage-status-${entry.entryId}`}
           value={status}
           disabled={isPending}
@@ -113,14 +114,13 @@ function ManagedControls({
             setStatus(next);
             startTransition(() => updateStatus(entry.entryId, itemType, itemId, next));
           }}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground disabled:opacity-60"
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {tLibrary(`status.${s}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* Elegir cola: solo tiene sentido mientras el ítem está planificado
@@ -133,7 +133,7 @@ function ManagedControls({
           >
             {tQueue("title")}
           </label>
-          <select
+          <Select
             id={`manage-queue-${entry.entryId}`}
             value={queueId ?? ""}
             disabled={isPending}
@@ -144,7 +144,6 @@ function ManagedControls({
                 moveEntryToQueue(entry.entryId, itemType, itemId, next)
               );
             }}
-            className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground disabled:opacity-60"
           >
             <option value="">{tQueue("noQueue")}</option>
             {queues.map((q) => (
@@ -152,7 +151,7 @@ function ManagedControls({
                 {q.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 

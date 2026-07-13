@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { Select } from "@/components/ui/select";
 import { updateUserRole } from "./actions";
 import type { UserRole } from "@/lib/auth/roles";
 
@@ -39,18 +40,18 @@ export function RoleSelect({
 
   return (
     <div className="flex items-center gap-2">
-      <select
+      <Select
+        size="sm"
         value={role}
         disabled={disabled || pending}
         onChange={(e) => onChange(e.target.value as UserRole)}
-        className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-60"
       >
         {ROLES.map((r) => (
           <option key={r} value={r}>
             {t(`roles.${r}`)}
           </option>
         ))}
-      </select>
+      </Select>
       {pending && <span className="text-xs text-muted-foreground">{t("saving")}</span>}
       {error && <span className="text-xs text-status-dropped">{t("error")}</span>}
     </div>
