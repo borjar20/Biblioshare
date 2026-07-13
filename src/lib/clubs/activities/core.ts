@@ -60,9 +60,18 @@ export type ActivityOpinion = {
   createdAt: string;
 };
 
+export type ActivityParticipant = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
 export type ActivityDetail = ClubActivity & {
   items: ActivityItem[];
   opinions: ActivityOpinion[]; // vacío si el viewer no es participante -- RLS ya lo filtra
+  /** Muestra para el stack de avatares (máx. 4); el total está en participantCount. */
+  participants: ActivityParticipant[];
 };
 
 export async function proposeActivity(
@@ -264,6 +273,32 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
   const participantCount = participantRows?.length ?? 0;
   const viewerIsParticipant = (participantRows ?? []).some((p) => p.user_id === userId);
 
+  // Muestra de identidades para el stack de avatares. Mismo criterio que los
+  // autores de opiniones más abajo: profile_identities es legible por diseño,
+  // el gate real es poder ver la actividad (pertenencia al club).
+  const sampleIds = (participantRows ?? []).slice(0, 4).map((p) => p.user_id);
+  const { data: sampleIdentities } = sampleIds.length
+    ? await supabase
+        .from("profile_identities")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", sampleIds)
+    : {
+        data: [] as {
+          user_id: string | null;
+          username: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+        }[],
+      };
+  const participants: ActivityParticipant[] = (sampleIdentities ?? [])
+    .filter((p): p is typeof p & { user_id: string; username: string } => p.user_id != null && p.username != null)
+    .map((p) => ({
+      userId: p.user_id,
+      username: p.username,
+      displayName: p.display_name,
+      avatarUrl: p.avatar_url,
+    }));
+
   const { data: itemRows } = await supabase
     .from("club_activity_items")
     .select("id, item_type, item_id, added_by, position")
@@ -365,5 +400,6 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     participantCount,
     items,
     opinions,
+    participants,
   };
 }
