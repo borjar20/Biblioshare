@@ -419,16 +419,28 @@ Cada bloque agrupa tareas cohesionadas. Esfuerzo: **S** < **M** < **L** < **XL**
 ### Bloque G — Actividades de club: motor genérico  ·  *esfuerzo L*  ·  *dep: E, D; base de todos los tipos (SD-8)*
 Los tres ejemplos del usuario (lectura conjunta, tierlist, reto por lista) son **tipos**
 sobre este motor común — construirlo una vez.
-- [ ] **E5.G1** Migración del núcleo `club_activities` + sub-tablas compartidas
+> **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
+> manual en navegador pendiente de ejecutar.** El ciclo de vida completo
+> (`proposed → active → finished`, o `proposed`/`active → archived`) se expone ya en este
+> bloque en vez de diferirse a Bloque H — mismo orden de construcción por capas ya usado
+> para clubes antes del feed de club (Bloque E antes de F). `archiveActivity` generaliza
+> "rechazar una propuesta" y "cancelar una activa" en una sola RPC, alcanzable desde
+> `proposed` o `active`. Las opiniones (`club_activity_opinions`) son **visibles solo para
+> participantes** de la actividad, no basta con ser miembro del club — confirma la lectura
+> de **SD-8**, aplicado a nivel de RLS (no solo ocultado en la UI) igual que el patrón de
+> resultados-ocultos-hasta-que-votas de Bloque F. `config jsonb` y el comportamiento
+> específico por `kind` quedan **explícitamente diferidos a Bloque H** — este bloque no lo
+> lee ni lo escribe en ningún punto de su propio código.
+- [x] **E5.G1** Migración del núcleo `club_activities` + sub-tablas compartidas
   (`club_activity_participants`, `club_activity_items`, `club_activity_opinions`) + enum
   `activity_kind` + enum `activity_status`, según **SD-8**. Helper `SECURITY DEFINER`
   `is_activity_participant(activity_id)`. RLS de todo con `is_club_member()` /
   `is_activity_participant()`.
-- [ ] **E5.G2** Dominio `src/lib/clubs/activities/`: `proposeActivity`, `activateActivity`
+- [x] **E5.G2** Dominio `src/lib/clubs/activities/`: `proposeActivity`, `activateActivity`
   (gateado `moderator+`), `finishActivity`, `joinActivity`/`leaveActivity` (participación
   opt-in), `getActivity`, `listClubActivities`. Registro por `kind` (dispatcher) para que
   cada tipo aporte su config/estado sin tocar el núcleo.
-- [ ] **E5.G3** UI: sección "Actividades" en `/club/[slug]` (lista con estado y tipo),
+- [x] **E5.G3** UI: sección "Actividades" en `/club/[slug]` (lista con estado y tipo),
   ruta `/club/[slug]/actividad/[id]`, flujo de proponer → (mod) activar, botón unirse a la
   actividad. Composer que elige `kind`. i18n `activity.*`.
 
