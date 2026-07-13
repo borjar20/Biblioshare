@@ -169,5 +169,5 @@ export async function moveEntryToQueue(
 
   if (error) throw error;
   revalidateItemViews(itemType, itemId);
-  revalidatePath("/cola");
+  revalidatePath("/coleccion");
 }

@@ -50,7 +50,7 @@ export function FeedList({
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface p-8 text-center">
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
-        <Link href="/usuarios" className="text-sm font-medium text-accent hover:underline">
+        <Link href="/buscar?modo=personas" className="text-sm font-medium text-accent hover:underline">
           {t("emptyCta")}
         </Link>
       </div>

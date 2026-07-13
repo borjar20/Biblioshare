@@ -1,4 +1,4 @@
-const CACHE_NAME = "biblioshare-v1";
+const CACHE_NAME = "biblioshare-v2";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {

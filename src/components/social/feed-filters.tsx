@@ -23,12 +23,12 @@ export async function FeedFilters({
 
   function buildHref(next: { type?: ItemType; reviewsOnly?: boolean }) {
     const params = new URLSearchParams();
-    params.set("tab", "following");
     const nextType = "type" in next ? next.type : itemType;
     const nextReviewsOnly = "reviewsOnly" in next ? next.reviewsOnly : reviewsOnly;
     if (nextType) params.set("itemType", nextType);
     if (nextReviewsOnly) params.set("reviewsOnly", "1");
-    return `/?${params.toString()}`;
+    const qs = params.toString();
+    return qs ? `/?${qs}` : "/";
   }
 
   return (

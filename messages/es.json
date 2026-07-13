@@ -4,10 +4,13 @@
     "loading": "Cargando..."
   },
   "nav": {
-    "openMenu": "Abrir menú",
-    "closeMenu": "Cerrar menú",
-    "themeToLight": "Modo claro",
-    "themeToDark": "Modo oscuro"
+    "items": {
+      "home": "Inicio",
+      "collection": "Colección",
+      "search": "Buscar",
+      "clubs": "Clubes",
+      "profile": "Perfil"
+    }
   },
   "auth": {
     "login": {
@@ -68,13 +71,9 @@
     }
   },
   "home": {
-    "welcome": "Bienvenido a Biblioshare",
     "tagline": "Tu biblioteca de libros, películas y series en un solo lugar.",
     "cta": "Empezar",
-    "tabs": {
-      "panel": "Panel",
-      "following": "Siguiendo"
-    }
+    "feedTitle": "Novedades"
   },
   "search": {
     "title": "Buscar",
@@ -123,7 +122,11 @@
     "editions": "{count, plural, one {# edición} other {# ediciones}}",
     "addToQueue": "Añadir a cola",
     "chooseQueue": "¿En qué cola?",
-    "noQueueOption": "Sin cola"
+    "noQueueOption": "Sin cola",
+    "modes": {
+      "titles": "Títulos",
+      "people": "Personas"
+    }
   },
   "diary": {
     "show": "Ver diario",
@@ -176,15 +179,15 @@
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
     "tabs": {
-      "overview": "General",
-      "book": "Libros",
-      "movie": "Películas",
-      "series": "Series"
+      "panel": "Panel",
+      "coleccion": "Colección",
+      "actividad": "Actividad"
     },
     "avatar": "Avatar",
     "avatarChoose": "Elegir imagen",
     "avatarUploading": "Subiendo...",
-    "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo."
+    "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo.",
+    "panelPrivateNote": "Solo tú ves este panel. Tu colección y tu actividad son públicas."
   },
   "social": {
     "follow": "Seguir",
@@ -782,17 +785,13 @@
     }
   },
   "users": {
-    "navLabel": "Usuarios",
-    "title": "Descubrir usuarios",
     "description": "Busca a otras personas por su nombre o @usuario y explora sus bibliotecas públicas.",
     "placeholder": "Nombre o @usuario...",
     "submit": "Buscar",
     "noResults": "No se encontró ningún usuario."
   },
   "challenges": {
-    "navLabel": "Retos",
     "title": "Tus retos",
-    "description": "Ponte objetivos con nombre y fecha: por tipo, por género o por saga.",
     "empty": "Todavía no tienes retos. Crea el primero.",
     "active": "Activos",
     "archived": "Archivados",
@@ -826,6 +825,16 @@
       "invalidTarget": "El objetivo debe ser un número entero mayor que 0.",
       "invalidDates": "Revisa las fechas: la de fin no puede ser anterior a la de inicio.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "collection": {
+    "title": "Tu colección",
+    "tabs": {
+      "general": "General",
+      "book": "Libros",
+      "movie": "Películas",
+      "series": "Series",
+      "colas": "Colas"
     }
   }
 }
