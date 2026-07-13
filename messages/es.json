@@ -301,8 +301,6 @@
     "removeOption": "Quitar",
     "pollEndsAt": "Cierra el",
     "pollSubmit": "Crear encuesta",
-    "pollVote": "Votar",
-    "pollChangeVote": "Cambiar voto",
     "pollResultsHidden": "Vota para ver los resultados",
     "pollClosed": "Encuesta cerrada",
     "pollVotes": "{count, plural, one {# voto} other {# votos}}",
@@ -310,6 +308,7 @@
     "deleteConfirm": "¿Borrar esta publicación?",
     "loadMore": "Cargar más",
     "empty": "Todavía no hay publicaciones en este club.",
+    "noActivityToShare": "No tienes actividad reciente para compartir.",
     "noLongerAvailable": "Esta actividad ya no está disponible.",
     "postError": "Algo falló. Inténtalo de nuevo."
   },

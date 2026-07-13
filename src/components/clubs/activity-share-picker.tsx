@@ -32,7 +32,7 @@ export function ActivitySharePicker({
       <span className="text-sm font-medium text-foreground">{t("pickActivity")}</span>
       {loading && <p className="text-xs text-muted-foreground">…</p>}
       {!loading && events.length === 0 && (
-        <p className="text-xs text-muted-foreground">{t("empty")}</p>
+        <p className="text-xs text-muted-foreground">{t("noActivityToShare")}</p>
       )}
       <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
         {events.map((e) => (
