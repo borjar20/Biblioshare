@@ -16,6 +16,9 @@ export type Club = {
 
 export type ClubMembershipStatus = "none" | "invited" | "active";
 
+/** Un club con su recuento de miembros (viene de la vista club_stats). */
+export type ClubWithCount = Club & { memberCount: number };
+
 function mapClub(row: {
   id: string;
   slug: string;
@@ -126,7 +129,26 @@ export async function getClub(slug: string): Promise<
   return { ...mapClub(clubRow), viewerStatus, viewerRole };
 }
 
-export async function listMyClubs(): Promise<Club[]> {
+
+// Recuento de miembros por club, vía la vista club_stats: club_members no se
+// puede leer si no eres miembro (RLS), así que en "Descubrir" no habría número.
+// La vista solo expone el agregado, nunca quiénes.
+async function memberCountsFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clubIds: string[],
+): Promise<Map<string, number>> {
+  if (clubIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("club_stats")
+    .select("club_id, member_count")
+    .in("club_id", clubIds);
+  if (error) throw error;
+  return new Map(
+    (data ?? []).map((row) => [row.club_id as string, row.member_count as number]),
+  );
+}
+
+export async function listMyClubs(): Promise<ClubWithCount[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -153,15 +175,18 @@ export async function listMyClubs(): Promise<Club[]> {
     } | null;
   };
 
-  return (data as unknown as ClubMemberRow[] ?? [])
+  const clubs = ((data as unknown as ClubMemberRow[]) ?? [])
     .map((row) => row.clubs)
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .map(mapClub);
+
+  const counts = await memberCountsFor(supabase, clubs.map((c) => c.id));
+  return clubs.map((c) => ({ ...c, memberCount: counts.get(c.id) ?? 0 }));
 }
 
 export async function discoverPublicClubs(
   query?: string,
-): Promise<(Club & { viewerStatus: ClubMembershipStatus })[]> {
+): Promise<(ClubWithCount & { viewerStatus: ClubMembershipStatus })[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -178,18 +203,26 @@ export async function discoverPublicClubs(
   const { data, error } = await request;
   if (error) throw error;
   const clubs = (data ?? []).map(mapClub);
-  if (!user || clubs.length === 0) {
-    return clubs.map((c) => ({ ...c, viewerStatus: "none" as const }));
+  const counts = await memberCountsFor(supabase, clubs.map((c) => c.id));
+  const withCount = clubs.map((c) => ({
+    ...c,
+    memberCount: counts.get(c.id) ?? 0,
+  }));
+  if (!user || withCount.length === 0) {
+    return withCount.map((c) => ({ ...c, viewerStatus: "none" as const }));
   }
 
   const { data: memberships } = await supabase
     .from("club_members")
     .select("club_id, status")
     .eq("user_id", user.id)
-    .in("club_id", clubs.map((c) => c.id));
+    .in("club_id", withCount.map((c) => c.id));
   const statusByClub = new Map((memberships ?? []).map((m) => [m.club_id, m.status]));
 
-  return clubs.map((c) => ({ ...c, viewerStatus: statusByClub.get(c.id) ?? "none" }));
+  return withCount.map((c) => ({
+    ...c,
+    viewerStatus: statusByClub.get(c.id) ?? "none",
+  }));
 }
 
 export type ClubMember = {

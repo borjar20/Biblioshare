@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
-import { listMyClubs, discoverPublicClubs, type Club, type ClubMembershipStatus } from "@/lib/clubs/clubs";
+import {
+  listMyClubs,
+  discoverPublicClubs,
+  type ClubWithCount,
+  type ClubMembershipStatus,
+} from "@/lib/clubs/clubs";
 import { ClubCard } from "@/components/clubs/club-card";
 import { ClubForm } from "@/components/clubs/club-form";
 import { Button } from "@/components/ui/button";
@@ -12,8 +17,8 @@ import { Input } from "@/components/ui/input";
 export default function ClubesPage() {
   const t = useTranslations("club");
   const [userId, setUserId] = useState<string | null>(null);
-  const [myClubs, setMyClubs] = useState<Club[]>([]);
-  const [discovered, setDiscovered] = useState<(Club & { viewerStatus: ClubMembershipStatus })[]>([]);
+  const [myClubs, setMyClubs] = useState<ClubWithCount[]>([]);
+  const [discovered, setDiscovered] = useState<(ClubWithCount & { viewerStatus: ClubMembershipStatus })[]>([]);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -47,7 +52,8 @@ export default function ClubesPage() {
           userId={userId}
           mode="create"
           onCreated={(club) => {
-            setMyClubs((prev) => [club, ...prev]);
+            // Acabas de crearlo: eres su único miembro.
+            setMyClubs((prev) => [{ ...club, memberCount: 1 }, ...prev]);
             setCreating(false);
           }}
           onCancel={() => setCreating(false)}

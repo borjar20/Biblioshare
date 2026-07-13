@@ -3,16 +3,20 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import type { Club, ClubMembershipStatus } from "@/lib/clubs/clubs";
+import type { ClubWithCount, ClubMembershipStatus } from "@/lib/clubs/clubs";
 import { joinClub } from "@/lib/clubs/membership";
 import { Button } from "@/components/ui/button";
-import { UsersIcon } from "@/components/ui/icons";
+import { UsersIcon, LockIcon } from "@/components/ui/icons";
 
 // discoverPublicClubs solo devuelve clubes visibility='public' (filtrado en
 // la query), así que viewerStatus aquí solo es realmente "none" o "active"
 // -- un club privado nunca aparece en esta lista (unirse a uno es solo por
 // invitación, ver Task 1/4), así que no hace falta un botón de "solicitar".
-export function ClubCard({ club }: { club: Club & { viewerStatus: ClubMembershipStatus } }) {
+export function ClubCard({
+  club,
+}: {
+  club: ClubWithCount & { viewerStatus: ClubMembershipStatus };
+}) {
   const t = useTranslations("club");
   const [status, setStatus] = useState(club.viewerStatus);
   const [isPending, startTransition] = useTransition();
@@ -39,14 +43,25 @@ export function ClubCard({ club }: { club: Club & { viewerStatus: ClubMembership
           <UsersIcon className="h-4 w-4" />
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate font-serif text-sm font-semibold text-foreground">
-            {club.name}
+          <span className="flex min-w-0 items-center gap-1.5">
+            {club.visibility === "private" && (
+              <LockIcon
+                aria-hidden
+                className="h-3 w-3 shrink-0 text-muted-foreground"
+              />
+            )}
+            <span className="truncate font-serif text-sm font-semibold text-foreground">
+              {club.name}
+            </span>
           </span>
           {club.description && (
             <span className="truncate text-xs text-muted-foreground">
               {club.description}
             </span>
           )}
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {t("memberCount", { count: club.memberCount })}
+          </span>
         </span>
       </Link>
       {status === "none" && (
