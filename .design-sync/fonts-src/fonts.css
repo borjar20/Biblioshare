@@ -1,0 +1,39 @@
+/* Google Fonts (OFL license), fetched at sync time to match the app's
+   next/font/google usage in src/app/layout.tsx (Fraunces, Geist, Geist Mono).
+   Local files so the bundle self-hosts them instead of depending on network
+   access to fonts.gstatic.com at design-render time. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(./fraunces-600.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(./fraunces-700.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./geist-400.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(./geist-500.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./geistmono-400.woff2) format("woff2");
+}

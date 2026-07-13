@@ -1,0 +1,37 @@
+{
+  "pkg": "biblioshare",
+  "globalName": "Biblioshare",
+  "projectId": "7502da71-ca8d-43a6-be76-50571a11e187",
+  "shape": "package",
+  "entry": "./src/design-sync-shims/entry.ts",
+  "srcDir": "src/components",
+  "tsconfig": "tsconfig.json",
+  "buildCmd": "npx --yes @tailwindcss/cli@4.3.2 -i src/app/globals.css -o .design-sync/.cache/compiled-tailwind.css && node -e \"require('fs').appendFileSync('.design-sync/.cache/compiled-tailwind.css', '\\n:root{--font-fraunces:\\'Fraunces\\',serif;--font-geist-sans:\\'Geist\\',sans-serif;--font-geist-mono:\\'Geist Mono\\',monospace;}\\n')\"",
+  "cssEntry": ".design-sync/.cache/compiled-tailwind.css",
+  "extraFonts": [".design-sync/fonts-src/fonts.css"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "provider": {
+    "component": "PreviewProvider"
+  },
+  "extraEntries": ["./src/design-sync-shims/process-shim.ts", "./src/design-sync-shims/preview-provider.tsx"],
+  "componentSrcMap": {
+    "Button": "src/components/ui/button.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "Field": "src/components/ui/field.tsx",
+    "CoverCard": "src/components/ui/cover-card.tsx",
+    "GenreTag": "src/components/ui/genre-tag.tsx",
+    "ProgressBar": "src/components/ui/progress-bar.tsx",
+    "RatingDots": "src/components/ui/rating-dots.tsx",
+    "StatusBadge": "src/components/ui/status-badge.tsx",
+    "ActivityCard": "src/components/clubs/activity-card.tsx",
+    "UserCard": "src/components/social/user-card.tsx",
+    "UserAvatar": "src/components/social/user-avatar.tsx",
+    "CircularProgress": "src/components/stats/circular-progress.tsx",
+    "MonthCalendar": "src/components/stats/month-calendar.tsx",
+    "ItemHero": "src/components/detail/item-hero.tsx",
+    "MetadataSidebar": "src/components/detail/metadata-sidebar.tsx",
+    "EpisodeRating": "src/components/detail/episode-rating.tsx",
+    "SagaStrip": "src/components/detail/saga-strip.tsx",
+    "BackButton": "src/components/detail/back-button.tsx"
+  }
+}
