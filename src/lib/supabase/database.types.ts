@@ -1230,6 +1230,13 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      activity_window: {
+        Args: { p_activity_id: string }
+        Returns: {
+          window_end: string
+          window_start: string
+        }[]
+      }
       archive_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined
@@ -1293,6 +1300,15 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      get_activity_diary_passes: {
+        Args: { p_activity_id: string }
+        Returns: {
+          finished_on: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          user_id: string
+        }[]
+      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
@@ -1327,13 +1343,6 @@ export type Database = {
         Args: { p_row_id: string; p_source_table: string }
         Returns: boolean
       }
-      list_challenge_window: {
-        Args: { p_activity_id: string }
-        Returns: {
-          window_end: string
-          window_start: string
-        }[]
-      }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
@@ -1357,6 +1366,10 @@ export type Database = {
       }
       transfer_club_ownership: {
         Args: { p_club_id: string; p_new_owner_id: string }
+        Returns: undefined
+      }
+      update_activity_config: {
+        Args: { p_activity_id: string; p_config: Json }
         Returns: undefined
       }
       vote_club_poll: {
