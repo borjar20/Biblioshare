@@ -3,9 +3,20 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import {
+  USERNAME_PATTERN,
+  isUsernameAvailable,
+  normalizeUsername,
+} from "@/lib/profile/username";
 
 export type AuthActionState = {
-  error?: "invalidCredentials" | "emailInUse" | "weakPassword" | "generic";
+  error?:
+    | "invalidCredentials"
+    | "emailInUse"
+    | "weakPassword"
+    | "usernameTaken"
+    | "usernameInvalid"
+    | "generic";
   checkEmail?: boolean;
 };
 
@@ -29,15 +40,34 @@ export async function login(
   redirect("/");
 }
 
+// El @usuario se elige aquí, en el registro (antes era un paso aparte en
+// /onboarding). Con confirmación de email por medio, signUp NO devuelve sesión,
+// y sin sesión la RLS no deja insertar el perfil — así que el nombre viaja en
+// `user_metadata` y el perfil se crea en cuanto hay sesión: aquí mismo si no
+// hay confirmación, o en /onboarding (que ya no pregunta nada) tras confirmar.
 export async function signup(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
+  const username = normalizeUsername(String(formData.get("username") ?? ""));
+
+  if (!USERNAME_PATTERN.test(username)) {
+    return { error: "usernameInvalid" };
+  }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  if (!(await isUsernameAvailable(supabase, username))) {
+    return { error: "usernameTaken" };
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { username } },
+  });
 
   if (error) {
     if (error.code === "user_already_exists") {
@@ -49,12 +79,57 @@ export async function signup(
     return { error: "generic" };
   }
 
-  // If email confirmation is required, there is no session yet.
+  // Sin sesión = hace falta confirmar el email. El perfil se creará al volver.
   if (!data.session) {
     return { checkEmail: true };
   }
 
-  redirect("/onboarding");
+  const created = await createProfileFromMetadata(supabase);
+  if (created === "usernameTaken") return { error: "usernameTaken" };
+  if (created === "generic") return { error: "generic" };
+
+  redirect("/");
+}
+
+// Crea el perfil del usuario con sesión a partir del @usuario que guardó el
+// registro en `user_metadata`. Devuelve "missing" si no hay nombre que usar
+// (cuentas anteriores a este flujo) — ahí /onboarding sí pregunta.
+export async function createProfileFromMetadata(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<"ok" | "missing" | "usernameTaken" | "generic"> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "generic";
+
+  // Idempotente a propósito: /onboarding llama a esto durante el render (un
+  // GET), y ese render puede repetirse — prefetch, doble render en dev. Sin
+  // esta comprobación, el segundo intento chocaría con el índice único y
+  // diríamos "el nombre está cogido" cuando el nombre es tuyo.
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existing) return "ok";
+
+  const username = normalizeUsername(
+    String(user.user_metadata?.username ?? "")
+  );
+  if (!USERNAME_PATTERN.test(username)) return "missing";
+
+  const { error } = await supabase
+    .from("profiles")
+    .insert({ user_id: user.id, username });
+
+  if (error) {
+    // Índice único: alguien se quedó el nombre entre el registro y la
+    // confirmación del email. Es la garantía real, no la comprobación previa.
+    if (error.code === "23505") return "usernameTaken";
+    return "generic";
+  }
+
+  return "ok";
 }
 
 export async function logout() {

@@ -5,7 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { getFeed } from "@/lib/social/feed";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
-import { AppLogoIcon, SparklesIcon } from "@/components/ui/icons";
+// Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
+// los brillitos — fuera el SparklesIcon que decoraba la landing.
+import { AppLogoIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 
 const ITEM_TYPES: readonly string[] = ["book", "movie", "series"];
@@ -32,14 +34,9 @@ export default async function Home({
   if (!user) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-4 py-12 text-center">
-        <div className="relative">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-border bg-surface shadow-sm">
-            <AppLogoIcon className="h-10 w-10 text-accent" />
-          </div>
-          <SparklesIcon className="absolute -right-2 -top-2 h-6 w-6 text-accent" />
-        </div>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          {t("common.appName")}
+        <AppLogoIcon className="h-16 w-16" />
+        <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
+          Biblio<span className="text-accent">share</span>
         </h1>
         <p className="max-w-md text-lg text-muted-foreground">
           {t("home.tagline")}

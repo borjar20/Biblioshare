@@ -16,7 +16,12 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{t("login.title")}</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="font-serif text-xl font-semibold">{t("login.title")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("login.description")}
+        </p>
+      </div>
 
       <Field label={t("login.email")} htmlFor="email">
         <Input id="email" name="email" type="email" required autoComplete="email" />

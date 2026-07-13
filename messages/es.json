@@ -14,14 +14,15 @@
   },
   "auth": {
     "login": {
-      "title": "Iniciar sesión",
+      "title": "Bienvenido de vuelta",
       "email": "Correo electrónico",
       "password": "Contraseña",
       "submit": "Entrar",
       "submitting": "Entrando...",
       "noAccount": "¿No tienes cuenta?",
       "signupLink": "Regístrate",
-      "forgotPassword": "¿Olvidaste tu contraseña?"
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "description": "Tus libros, películas y series te esperan."
     },
     "reset": {
       "title": "Recuperar contraseña",
@@ -40,20 +41,29 @@
       "submitting": "Guardando..."
     },
     "signup": {
-      "title": "Crear cuenta",
+      "title": "Empieza tu estantería",
       "email": "Correo electrónico",
       "password": "Contraseña",
       "submit": "Crear cuenta",
       "submitting": "Creando cuenta...",
       "hasAccount": "¿Ya tienes cuenta?",
       "loginLink": "Inicia sesión",
-      "checkEmail": "Revisa tu correo para confirmar la cuenta antes de iniciar sesión."
+      "checkEmail": "Revisa tu correo para confirmar la cuenta. Tu usuario queda reservado.",
+      "description": "Colecciona, puntúa y comparte con tu gente.",
+      "username": "Usuario",
+      "usernameHint": "Solo minúsculas, números y guiones bajos. Entre 3 y 30 caracteres.",
+      "usernameAvailable": "Disponible",
+      "usernameTaken": "No disponible",
+      "usernameChecking": "Comprobando...",
+      "passwordHint": "Mínimo 6 caracteres."
     },
     "errors": {
       "invalidCredentials": "Correo o contraseña incorrectos.",
       "emailInUse": "Ya existe una cuenta con ese correo.",
       "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "usernameTaken": "Ese nombre de usuario ya está en uso.",
+      "usernameInvalid": "El nombre de usuario no es válido."
     },
     "logout": "Cerrar sesión"
   },
@@ -68,11 +78,12 @@
       "usernameTaken": "Ese nombre de usuario ya está en uso.",
       "usernameInvalid": "El nombre de usuario no es válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
+    },
+    "nameWasTaken": "El usuario que elegiste lo cogió otra persona mientras confirmabas el correo. Elige otro."
   },
   "home": {
-    "tagline": "Tu biblioteca de libros, películas y series en un solo lugar.",
-    "cta": "Empezar",
+    "tagline": "Tu biblioteca de todo, compartida.",
+    "cta": "Empieza tu estantería",
     "feedTitle": "Novedades"
   },
   "search": {
