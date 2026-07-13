@@ -64,6 +64,23 @@
   - [ ] Confirm the shared activity is not visible on A's private profile to non-follower C
   - [ ] Log in as Account A and revert the profile privacy toggle to restore original state
 
+- [ ] **Step 5b: Shared Library/Progress Activity Visibility**
+  - [ ] Follow-up fix for a gap found in the final whole-branch review: the original RLS override only covered `diary_entries`/`episode_watches` shares, not `library_entries`/`progress_sessions` — this step exercises the two source tables the earlier Step 5 didn't touch, and would have caught the original bug
+  - [ ] Log in as Account A
+  - [ ] Make Account A's profile private (via `/cuenta` or profile settings), if not already
+  - [ ] Add a book or movie to your library (a plain library add, no rating/review needed) in your own library, outside the club
+  - [ ] Register a progress session (e.g. pages read / episode watched) against an item in your library, outside the club
+  - [ ] Navigate to the club
+  - [ ] Use "Compartir actividad" in the club composer and share the library-add activity; add a required caption and submit
+  - [ ] Repeat "Compartir actividad" for the progress-session activity; add a caption and submit
+  - [ ] Log in as Account B (club member who does NOT follow Account A)
+  - [ ] Navigate to the club feed
+  - [ ] Confirm B can see the full shared library-add post's details (title/cover), not "Esta actividad ya no está disponible"
+  - [ ] Confirm B can see the full shared progress-session post's details, not "Esta actividad ya no está disponible"
+  - [ ] Log in as Account C (not a member of this club)
+  - [ ] Attempt to access this club's `/club/[slug]` page and confirm the shared library-add/progress-session posts are not visible
+  - [ ] Log in as Account A and revert the profile privacy toggle to restore original state
+
 ---
 
 ## Polls
