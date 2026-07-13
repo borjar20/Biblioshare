@@ -58,7 +58,7 @@ export function ClubForm(props: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-sm">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4 text-sm">
       <Field label={t("name")} htmlFor="club-form-name">
         <Input id="club-form-name" value={name} onChange={(e) => setName(e.target.value)} required />
       </Field>

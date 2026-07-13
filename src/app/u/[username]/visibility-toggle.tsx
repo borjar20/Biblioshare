@@ -16,7 +16,7 @@ export function VisibilityToggle({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+    <div className="flex items-center gap-3 rounded-card border border-border bg-surface shadow-card px-4 py-3 text-sm">
       <span className="text-muted-foreground">
         {isPublic ? t("visibilityPublic") : t("visibilityPrivate")}
       </span>

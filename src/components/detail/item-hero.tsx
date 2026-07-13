@@ -66,7 +66,7 @@ export function ItemHero({
 
         <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-end">
           <div
-            className={`relative aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg border-2 ${accent.borderSoft} bg-surface-muted shadow-xl sm:w-40`}
+            className={`relative aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-cover border-2 ${accent.borderSoft} bg-surface-muted shadow-cover sm:w-40`}
           >
             {coverUrl ? (
               <Image
@@ -86,7 +86,7 @@ export function ItemHero({
           <div className="flex min-w-0 flex-1 flex-col gap-3 pb-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span
-                className={`inline-flex items-center gap-1 rounded border ${accent.borderSoft} ${accent.bgSoft} px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${accent.text} uppercase`}
+                className={`inline-flex items-center gap-1 rounded-chip border ${accent.borderSoft} ${accent.bgSoft} px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${accent.text} uppercase`}
               >
                 <Icon className="h-3 w-3" />
                 {mediaLabel}
@@ -112,7 +112,7 @@ export function ItemHero({
                   {avgRating.toFixed(1)}
                 </span>
                 <div className="flex flex-col gap-1">
-                  <RatingDots value={avgRating / 2} fillClassName={accent.bg} />
+                  <RatingDots value={avgRating / 2} />
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {ratingCount.toLocaleString("es")} {ratingsLabel}
                   </span>

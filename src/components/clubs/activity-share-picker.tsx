@@ -28,7 +28,7 @@ export function ActivitySharePicker({
   }, []);
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
       <span className="text-sm font-medium text-foreground">{t("pickActivity")}</span>
       {loading && <p className="text-xs text-muted-foreground">…</p>}
       {!loading && events.length === 0 && (

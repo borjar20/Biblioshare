@@ -14,7 +14,7 @@ export function UserCard({
 }) {
   const name = user.displayName || user.username;
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+    <div className="flex items-center gap-3 rounded-card border border-border bg-surface shadow-card px-4 py-3">
       <Link
         href={`/u/${user.username}`}
         className="flex min-w-0 flex-1 items-center gap-3"

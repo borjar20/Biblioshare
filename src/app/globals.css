@@ -138,6 +138,15 @@
 
   --color-tier-foreground: var(--tier-foreground);
 
+  /* Escala de forma de Paper. Los radios no son libres: cada uno tiene un
+     sitio (guía de estilo → "Forma y elevación"). */
+  --radius-chip: 6px;
+  --radius-cover: 10px;
+  --radius-card: 14px;
+
+  --shadow-card: 0 6px 16px -12px rgba(60, 35, 15, 0.4);
+  --shadow-cover: 0 8px 18px -8px rgba(60, 35, 15, 0.5);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-fraunces);
@@ -148,26 +157,8 @@ body {
   color: var(--foreground);
 }
 
-/* Paper is flat: a barely-there warm wash where the old theme had an ambient
-   glow. Fixed + pointer-events:none so it never scrolls or blocks interaction. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      42rem 32rem at 100% -5%,
-      color-mix(in oklab, var(--accent) 7%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      38rem 30rem at -5% 105%,
-      color-mix(in oklab, var(--accent) 5%, transparent),
-      transparent 70%
-    );
-}
+/* Paper es liso: papel, sin el glow ambiental del tema morado (el handoff lo
+   da por prescindible y a estos valores era imperceptible de todos modos). */
 
 h1,
 h2,

@@ -56,7 +56,7 @@ export function ClubPostCard({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-foreground">
           {post.authorDisplayName || post.authorUsername}

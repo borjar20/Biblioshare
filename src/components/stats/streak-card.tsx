@@ -12,7 +12,7 @@ export async function StreakCard({ streaks }: { streaks: Streaks }) {
         {t("streakTitle")}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
+        <div className="flex flex-col gap-1 rounded-card border border-border bg-surface shadow-card p-4">
           <span className="font-serif text-3xl font-semibold text-foreground">
             {streaks.current}
           </span>
@@ -20,7 +20,7 @@ export async function StreakCard({ streaks }: { streaks: Streaks }) {
             {t("currentStreak", { count: streaks.current })}
           </span>
         </div>
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
+        <div className="flex flex-col gap-1 rounded-card border border-border bg-surface shadow-card p-4">
           <span className="font-serif text-3xl font-semibold text-foreground">
             {streaks.best}
           </span>

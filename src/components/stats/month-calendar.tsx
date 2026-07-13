@@ -115,7 +115,7 @@ export function MonthCalendar({
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="rounded-card border border-border bg-surface shadow-card p-4">
         <div className="mb-2 grid grid-cols-7 gap-1.5">
           {WEEKDAY_HEADERS.map((label, i) => (
             <span

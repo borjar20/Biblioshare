@@ -31,7 +31,7 @@ export function SagaAssignForm({
   const [state, formAction, pending] = useActionState(assignAction, initialState);
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
       <h2 className="text-sm font-semibold text-foreground">{t("title")}</h2>
 
       {currentSaga && (

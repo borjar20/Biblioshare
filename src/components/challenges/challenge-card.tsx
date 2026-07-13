@@ -31,7 +31,10 @@ export function ChallengeCard({ progress }: { progress: ChallengeProgress }) {
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 ${
+      // El e2e ancla aquí. Antes se agarraba a `div.rounded-lg`, y se rompía
+      // cada vez que cambiaba el estilo de la tarjeta.
+      data-testid="challenge-card"
+      className={`flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4 ${
         isArchived ? "opacity-60" : ""
       }`}
     >

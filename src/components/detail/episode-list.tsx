@@ -73,7 +73,7 @@ function SeasonSection({
   }, [group.episodes, source]);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-surface">
+    <section className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

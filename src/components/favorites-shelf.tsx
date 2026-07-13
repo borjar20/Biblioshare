@@ -19,7 +19,7 @@ export async function FavoritesShelf({ items }: { items: LibraryItem[] }) {
             href={itemHref(item.itemType, item.itemId)}
             className="group flex flex-col gap-1"
           >
-            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover">
               {item.coverUrl ? (
                 <Image
                   src={item.coverUrl}

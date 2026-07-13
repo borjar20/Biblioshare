@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import type { Club, ClubMembershipStatus } from "@/lib/clubs/clubs";
 import { joinClub } from "@/lib/clubs/membership";
 import { Button } from "@/components/ui/button";
+import { UsersIcon } from "@/components/ui/icons";
 
 // discoverPublicClubs solo devuelve clubes visibility='public' (filtrado en
 // la query), así que viewerStatus aquí solo es realmente "none" o "active"
@@ -24,12 +25,29 @@ export function ClubCard({ club }: { club: Club & { viewerStatus: ClubMembership
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4">
-      <Link href={`/club/${club.slug}`} className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-sm font-medium text-foreground">{club.name}</span>
-        {club.description && (
-          <span className="truncate text-xs text-muted-foreground">{club.description}</span>
-        )}
+    <div className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
+      <Link
+        href={`/club/${club.slug}`}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
+        {/* Lo social es verde en Paper: el club se identifica por este marcador,
+            no por el acento terracota (que es de acción). */}
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-green/15 text-green"
+        >
+          <UsersIcon className="h-4 w-4" />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate font-serif text-sm font-semibold text-foreground">
+            {club.name}
+          </span>
+          {club.description && (
+            <span className="truncate text-xs text-muted-foreground">
+              {club.description}
+            </span>
+          )}
+        </span>
       </Link>
       {status === "none" && (
         <Button type="button" variant="secondary" disabled={isPending} onClick={handleJoin}>

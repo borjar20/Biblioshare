@@ -28,7 +28,7 @@ export async function WeeklyStrip({
         {t("weeklyTitle")}
       </div>
 
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 items-end gap-1.5 sm:gap-2">
           {days.map((day) => {
             const heightPercent =

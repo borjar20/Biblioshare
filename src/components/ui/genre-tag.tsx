@@ -8,7 +8,7 @@ export function GenreTag({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded border border-border bg-surface-muted px-2 py-0.5 font-mono text-[10px] tracking-wide whitespace-nowrap text-muted-foreground uppercase ${className}`}
+      className={`inline-flex items-center rounded-chip border border-border bg-surface-muted px-2 py-0.5 font-mono text-[10px] tracking-wide whitespace-nowrap text-muted-foreground uppercase ${className}`}
     >
       {label}
     </span>

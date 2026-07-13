@@ -16,7 +16,7 @@ export function MetadataSidebar({
   if (rows.length === 0 && (!genres || genres.length === 0)) return null;
 
   return (
-    <aside className="flex h-fit flex-col gap-3.5 rounded-xl border border-border bg-surface p-5">
+    <aside className="flex h-fit flex-col gap-3.5 rounded-card border border-border bg-surface shadow-card p-5">
       {rows.map((row, i) => (
         <div
           key={row.label}

@@ -42,7 +42,7 @@ export function GoalsForm({
       </div>
       <form
         action={formAction}
-        className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4"
+        className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4"
       >
         {/* El objetivo diario es de lectura: solo los libros registran minutos
             (§7.14). El anual es de ítems completados, uno por tipo. */}

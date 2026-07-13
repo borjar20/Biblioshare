@@ -33,7 +33,7 @@ export function LibraryItemCard({
         className="group flex flex-col gap-2"
       >
         <div
-          className={`relative aspect-[2/3] w-full overflow-hidden rounded-lg border ${accent.borderSoft} bg-surface-muted`}
+          className={`relative aspect-[2/3] w-full overflow-hidden rounded-cover border ${accent.borderSoft} bg-surface-muted shadow-cover`}
         >
           {item.coverUrl ? (
             <Image

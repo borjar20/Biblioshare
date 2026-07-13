@@ -44,7 +44,7 @@ export function EditProfileForm({ profile }: { profile: Profile }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-sm">
+    <div className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/importar" className={buttonVariants("secondary", "px-4")}>
           {t("importLibrary")}

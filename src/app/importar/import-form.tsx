@@ -54,7 +54,7 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
   if (phase === "upload") {
     return (
       <form action={parseAction} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground">
+        <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4 text-sm text-muted-foreground">
           <p>{t("help.goodreads")}</p>
           <p>{t("help.letterboxd")}</p>
           <p>{t("help.bookmory")}</p>
@@ -165,7 +165,7 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
 
 function SummaryStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-3">
+    <div className="rounded-card border border-border bg-surface shadow-card p-3">
       <p className="text-2xl font-semibold tracking-tight">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>

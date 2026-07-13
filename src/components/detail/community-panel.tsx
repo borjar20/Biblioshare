@@ -36,12 +36,12 @@ export async function CommunityPanel({
         {community.avgRating === null ? (
           <p className="text-sm text-muted-foreground">{t("noRatings")}</p>
         ) : (
-          <div className="flex max-w-md items-center gap-6 rounded-xl border border-border bg-surface p-6">
+          <div className="flex max-w-md items-center gap-6 rounded-card border border-border bg-surface shadow-card p-6">
             <div className="flex shrink-0 flex-col items-center gap-1.5">
               <span className={`font-serif text-4xl leading-none font-bold ${accent.text}`}>
                 {community.avgRating.toFixed(1)}
               </span>
-              <RatingDots value={community.avgRating / 2} fillClassName={accent.bg} />
+              <RatingDots value={community.avgRating / 2} />
               <span className="font-mono text-[10px] text-muted-foreground">
                 {community.ratingCount.toLocaleString("es")} {t("ratings")}
               </span>
@@ -54,7 +54,7 @@ export async function CommunityPanel({
                   </span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
                     <div
-                      className={`h-full rounded-full ${accent.bg}`}
+                      className="h-full rounded-full bg-gold"
                       style={{
                         width: `${(pct / maxPct) * 100}%`,
                         opacity: 0.45 + 0.55 * (pct / maxPct),
@@ -81,7 +81,7 @@ export async function CommunityPanel({
               {episodeReviews.map((review) => (
                 <article
                   key={review.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+                  className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4"
                 >
                   <div className="flex items-start gap-3">
                     <span
@@ -109,7 +109,7 @@ export async function CommunityPanel({
                       {review.rating !== null && (
                         <RatingDots
                           value={review.rating / 2}
-                          fillClassName={accent.bg}
+                         
                         />
                       )}
                     </div>
@@ -137,7 +137,7 @@ export async function CommunityPanel({
             {community.reviews.map((review) => (
               <article
                 key={review.id}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+                className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4"
               >
                 <div className="flex items-start gap-3">
                   <span
@@ -161,7 +161,7 @@ export async function CommunityPanel({
                     {review.rating !== null && (
                       <RatingDots
                         value={review.rating / 2}
-                        fillClassName={accent.bg}
+                       
                       />
                     )}
                   </div>

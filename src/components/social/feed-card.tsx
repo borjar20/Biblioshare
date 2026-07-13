@@ -22,7 +22,7 @@ export function FeedCard({
   const accent = MEDIA_ACCENT[event.itemType];
 
   return (
-    <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+    <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-start gap-3">
         <UserAvatar
           name={event.actorDisplayName || event.actorUsername}
@@ -51,7 +51,7 @@ export function FeedCard({
 
           <Link
             href={itemHref(event.itemType, event.itemId)}
-            className="flex items-center gap-3 rounded-lg border border-border bg-surface-muted p-2 transition-colors hover:border-accent"
+            className="flex items-center gap-3 rounded-card border border-border bg-surface-muted p-2 transition-colors hover:border-accent"
           >
             {event.itemCoverUrl && (
               <Image
@@ -79,7 +79,7 @@ export function FeedCard({
           </Link>
 
           {event.rating !== null && (
-            <RatingDots value={event.rating / 2} fillClassName={accent.bg} />
+            <RatingDots value={event.rating / 2} />
           )}
           {event.reviewExcerpt && (
             <p className="text-sm leading-relaxed text-muted-foreground">

@@ -5,7 +5,9 @@ import { useState } from "react";
 // Cinco puntos que representan la nota 1–10 (cada punto = 2 puntos de la
 // escala; medio punto = nota impar), estilo Letterboxd. Modo lectura o, si se
 // pasa `onRate`, interactivo con precisión de medio punto (§7.36).
-const FILL = "var(--type-series)";
+// Oro, no el acento de serie: en Paper la valoración es oro en todas partes y
+// el color de tipo solo identifica el medio.
+const FILL = "var(--gold)";
 const EMPTY = "var(--border)";
 
 function dotBackground(rating: number, index: number): string {
