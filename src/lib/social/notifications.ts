@@ -125,6 +125,7 @@ async function resolveTargetHrefs(
   const clubIds = targets.filter((t) => t.targetType === "club").map((t) => t.targetId);
   const clubPostIds = targets.filter((t) => t.targetType === "club_post").map((t) => t.targetId);
   const commentIds = targets.filter((t) => t.targetType === "comment").map((t) => t.targetId);
+  const clubActivityIds = targets.filter((t) => t.targetType === "club_activity").map((t) => t.targetId);
 
   if (diaryIds.length > 0) {
     const { data: diaryRows, error } = await supabase
@@ -191,6 +192,22 @@ async function resolveTargetHrefs(
     for (const p of postRows ?? []) {
       const slug = slugByClub.get(p.club_id);
       if (slug) hrefByKey.set(`club_post:${p.id}`, `/club/${slug}`);
+    }
+  }
+
+  if (clubActivityIds.length > 0) {
+    const { data: activityRows } = await supabase
+      .from("club_activities")
+      .select("id, club_id")
+      .in("id", clubActivityIds);
+    const clubIdsForActivities = [...new Set((activityRows ?? []).map((a) => a.club_id))];
+    const { data: clubRows } = clubIdsForActivities.length
+      ? await supabase.from("clubs").select("id, slug").in("id", clubIdsForActivities)
+      : { data: [] as { id: string; slug: string }[] };
+    const slugByClub = new Map((clubRows ?? []).map((c) => [c.id, c.slug]));
+    for (const a of activityRows ?? []) {
+      const slug = slugByClub.get(a.club_id);
+      if (slug) hrefByKey.set(`club_activity:${a.id}`, `/club/${slug}/actividad/${a.id}`);
     }
   }
 

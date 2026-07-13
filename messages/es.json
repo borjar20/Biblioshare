@@ -242,6 +242,8 @@
     "clubPostLiked": "A {name} le gustó tu publicación",
     "clubPostCommented": "{name} comentó tu publicación",
     "commentLiked": "A {name} le gustó tu comentario",
+    "clubActivityProposed": "{name} propuso una actividad en el club",
+    "clubActivityActivated": "{name} activó una actividad en el club",
     "justNow": "ahora mismo",
     "minutesAgo": "hace {count, plural, one {1 minuto} other {# minutos}}",
     "hoursAgo": "hace {count, plural, one {1 hora} other {# horas}}",

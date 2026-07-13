@@ -14,9 +14,11 @@ export type NotificationType =
   | "club_post"
   | "club_post_liked"
   | "club_post_commented"
-  | "comment_liked";
+  | "comment_liked"
+  | "club_activity_proposed"
+  | "club_activity_activated";
 
-export type ReviewTargetType = "diary_entry" | "episode_watch" | "club" | "club_post" | "comment";
+export type ReviewTargetType = "diary_entry" | "episode_watch" | "club" | "club_post" | "comment" | "club_activity";
 
 export type Notification = {
   id: string;
@@ -46,4 +48,6 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_post_liked: "clubPostLiked",
   club_post_commented: "clubPostCommented",
   comment_liked: "commentLiked",
+  club_activity_proposed: "clubActivityProposed",
+  club_activity_activated: "clubActivityActivated",
 };
