@@ -15,5 +15,6 @@ export const listChallengeKind: ActivityKindDefinition = {
   allowedItemTypes: "all",
   maxItems: null,
   itemCuration: "curators",
+  usesItemPool: true,
   DetailExtension: ListChallengeBoard,
 };

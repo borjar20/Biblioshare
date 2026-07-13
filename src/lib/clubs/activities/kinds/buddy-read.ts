@@ -9,5 +9,6 @@ export const buddyReadKind: ActivityKindDefinition = {
   allowedItemTypes: ["book", "series"],
   maxItems: 1,
   itemCuration: "participants",
+  usesItemPool: true,
   DetailExtension: BuddyReadCheckpoints,
 };
