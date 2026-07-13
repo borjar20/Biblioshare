@@ -320,7 +320,11 @@
     "joinRequests": "Solicitudes de entrada · {count}",
     "wantsToJoin": "quiere unirse",
     "approveRequest": "Aceptar",
-    "rejectRequest": "Rechazar"
+    "rejectRequest": "Rechazar",
+    "chipPublic": "Público",
+    "chipPrivate": "Privado",
+    "open": "Abrir",
+    "membersCount": "Miembros · {count}"
   },
   "clubPost": {
     "composerPlaceholderText": "¿Qué quieres compartir con el club?",
@@ -451,8 +455,10 @@
     "tierlistPickTier": "Elige el tier:",
     "tierlistUnplace": "Quitar",
     "groupActive": "Activas · {count}",
-    "groupProposed": "Propuestas · esperan moderación",
+    "groupProposed": "Propuestas · esperan moderación · {count}",
     "groupFinished": "Finalizadas",
+    "participate": "{count, plural, one {# participa} other {# participan}}",
+    "untilDate": "hasta {date}",
     "approve": "Aprobar",
     "reject": "Rechazar",
     "summaryActive": "Actividades activas",

@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { addOpinion, type ActivityDetail } from "@/lib/clubs/activities/core";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { UserAvatar } from "@/components/social/user-avatar";
 
 export function ActivityOpinions({
   activity,
@@ -21,7 +23,9 @@ export function ActivityOpinions({
   if (!isParticipant) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-foreground">{t("opinions")}</h2>
+        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("opinions")}
+        </h2>
         <p className="text-xs text-muted-foreground">{t("opinionsLocked")}</p>
       </div>
     );
@@ -29,7 +33,9 @@ export function ActivityOpinions({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-foreground">{t("opinions")}</h2>
+      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {t("opinions")}
+      </h2>
       {activity.items.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("noOpinionsYet")}</p>
       ) : (
@@ -92,40 +98,58 @@ function OpinionItemSection({
     });
   }
 
+  const others = opinions.filter((o) => o.userId !== viewerId);
+
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-      <span className="text-sm font-medium text-foreground">{itemTitle}</span>
-      <div className="flex flex-col gap-1">
-        {opinions
-          .filter((o) => o.userId !== viewerId)
-          .map((o) => (
-            <p key={o.userId} className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{o.displayName || o.username}</span>
-              {o.rating != null && <> · {o.rating}/10</>}
-              {o.comment && <> — {o.comment}</>}
-            </p>
+    <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
+      <span className="font-serif text-sm font-semibold text-foreground">{itemTitle}</span>
+
+      {others.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {others.map((o) => (
+            <div key={o.userId} className="flex items-start gap-2">
+              <UserAvatar
+                name={o.displayName || o.username}
+                avatarUrl={o.avatarUrl}
+                size={24}
+              />
+              <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+                <span className="font-medium text-foreground">{o.displayName || o.username}</span>
+                {o.rating != null && (
+                  <span className="font-mono"> · {o.rating}/10</span>
+                )}
+                {o.comment && <> — {o.comment}</>}
+              </p>
+            </div>
           ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        </div>
+      )}
+
+      <div className="flex items-end gap-2">
+        <label className="flex flex-col gap-1 font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
           {t("opinionRating")}
-          <input
+          <Input
             type="number"
             min={1}
             max={10}
             value={rating}
             onChange={(e) => setRating(e.target.value)}
-            className="w-16 rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-16"
           />
         </label>
-        <input
+        <Input
           type="text"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder={t("opinionCommentPlaceholder")}
-          className="flex-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          className="min-w-0 flex-1"
         />
-        <Button type="button" disabled={isPending || (!rating && !comment.trim())} onClick={submit}>
+        <Button
+          type="button"
+          className="px-3.5 py-1.5 text-xs whitespace-nowrap"
+          disabled={isPending || (!rating && !comment.trim())}
+          onClick={submit}
+        >
           {t("opinionSubmit")}
         </Button>
       </div>

@@ -18,8 +18,8 @@ export function ActivityComposer({
 
   if (!open) {
     return (
-      <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
-        {t("propose")}
+      <Button type="button" className="w-full" onClick={() => setOpen(true)}>
+        + {t("propose")}
       </Button>
     );
   }

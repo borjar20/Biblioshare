@@ -27,6 +27,19 @@ function formatDue(dueOn: string): { day: string; month: string } {
   return { day, month: MONTHS[Number(month) - 1] ?? "" };
 }
 
+// % de tiempo transcurrido entre las fechas de la actividad. Es una barra
+// orientativa (el progreso real por hitos costaría una query por actividad);
+// aquí Date.parse sobre el date de Postgres vale: un desfase de horas no se ve
+// en una barra. Solo se evalúa en servidor — este componente no se hidrata.
+function timeProgress(startsOn: string | null, endsOn: string | null): number | null {
+  if (!startsOn || !endsOn) return null;
+  const start = Date.parse(startsOn);
+  const end = Date.parse(endsOn);
+  if (!Number.isFinite(start) || !(end > start)) return null;
+  const ratio = (Date.now() - start) / (end - start);
+  return Math.min(100, Math.max(0, Math.round(ratio * 100)));
+}
+
 // Lo primero que ve un miembro al entrar al club: qué hay en marcha y qué toca
 // pronto. Sin esto, el feed abre directamente en la conversación y las
 // actividades quedan enterradas en otra pestaña.
@@ -45,36 +58,55 @@ export async function ClubSummary({
   if (active.length === 0 && upcoming.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 rounded-card border border-border bg-surface p-4 shadow-card">
+    <div className="flex flex-col gap-5">
       {active.length > 0 && (
         <section className="flex flex-col gap-2.5">
           <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
             {t("summaryActive")}
           </h2>
 
-          <div className="flex flex-col gap-2">
+          {/* Strip horizontal, como en el handoff: las actividades en marcha
+              se hojean de lado, no empujan el feed hacia abajo. */}
+          <div className="flex gap-3 overflow-x-auto pb-1">
             {active.map((activity) => {
               const accent = ACTIVITY_ACCENT[activity.kind];
+              const progress = timeProgress(activity.startsOn, activity.endsOn);
               return (
                 <Link
                   key={activity.id}
                   href={`/club/${clubSlug}/actividad/${activity.id}`}
-                  className="flex items-center gap-2.5 hover:opacity-80"
+                  className="flex w-52 shrink-0 flex-col gap-2 rounded-card border border-border bg-surface p-3 shadow-card hover:opacity-80"
                 >
                   <span
-                    aria-hidden
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-chip border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
+                    className={`inline-flex w-fit items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
                   >
-                    <accent.Icon className="h-3.5 w-3.5" />
+                    <span aria-hidden className={`h-1.5 w-1.5 rounded-[2px] ${accent.bar}`} />
+                    {t(`kind_${activity.kind}`)}
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-serif text-sm font-semibold text-foreground">
-                      {activity.title}
+
+                  <span className="truncate font-serif text-sm font-semibold text-foreground">
+                    {activity.title}
+                  </span>
+
+                  {progress !== null && (
+                    <span className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                      <span
+                        className={`block h-full rounded-full ${accent.bar}`}
+                        style={{ width: `${progress}%` }}
+                      />
                     </span>
-                    <span className="truncate font-mono text-[10px] text-muted-foreground">
-                      {t(`kind_${activity.kind}`)} ·{" "}
-                      {t("participants", { count: activity.participantCount })}
-                    </span>
+                  )}
+
+                  <span className="truncate font-mono text-[9.5px] text-muted-foreground">
+                    {t("participate", { count: activity.participantCount })}
+                    {activity.endsOn && (
+                      <>
+                        {" · "}
+                        {t("untilDate", {
+                          date: `${formatDue(activity.endsOn).day} ${formatDue(activity.endsOn).month}`,
+                        })}
+                      </>
+                    )}
                   </span>
                 </Link>
               );
@@ -84,36 +116,36 @@ export async function ClubSummary({
       )}
 
       {upcoming.length > 0 && (
-        <section className="flex flex-col gap-2.5 border-t border-border pt-4">
+        <section className="flex flex-col gap-2.5">
           <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
             {t("summaryUpcoming")}
           </h2>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-2.5 overflow-x-auto pb-1">
             {upcoming.map((checkpoint) => {
               const { day, month } = formatDue(checkpoint.dueOn);
               return (
                 <Link
                   key={checkpoint.id}
                   href={`/club/${clubSlug}/actividad/${checkpoint.activityId}`}
-                  className="flex items-center gap-3 hover:opacity-80"
+                  className="flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2 hover:opacity-80"
                 >
                   <span
                     aria-hidden
-                    className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-chip bg-surface-muted font-mono leading-none"
+                    className="flex shrink-0 flex-col items-center leading-none"
                   >
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="font-serif text-lg font-semibold text-foreground">
                       {day}
                     </span>
-                    <span className="text-[9px] text-muted-foreground uppercase">
+                    <span className="font-mono text-[8.5px] text-muted-foreground uppercase">
                       {month}
                     </span>
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm text-foreground">
+                  <span className="flex max-w-44 min-w-0 flex-col text-xs leading-tight">
+                    <span className="truncate text-foreground">
                       {checkpoint.label}
                     </span>
-                    <span className="truncate font-mono text-[10px] text-muted-foreground">
+                    <span className="truncate text-muted-foreground">
                       {checkpoint.activityTitle}
                     </span>
                   </span>

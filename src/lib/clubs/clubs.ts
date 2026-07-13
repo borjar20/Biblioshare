@@ -102,7 +102,7 @@ export async function updateClub(
 }
 
 export async function getClub(slug: string): Promise<
-  (Club & { viewerStatus: ClubMembershipStatus; viewerRole: "member" | "moderator" | "owner" | null }) | null
+  (ClubWithCount & { viewerStatus: ClubMembershipStatus; viewerRole: "member" | "moderator" | "owner" | null }) | null
 > {
   const supabase = await createClient();
   const {
@@ -132,7 +132,14 @@ export async function getClub(slug: string): Promise<
     }
   }
 
-  return { ...mapClub(clubRow), viewerStatus, viewerRole };
+  const counts = await memberCountsFor(supabase, [clubRow.id]);
+
+  return {
+    ...mapClub(clubRow),
+    viewerStatus,
+    viewerRole,
+    memberCount: counts.get(clubRow.id) ?? 0,
+  };
 }
 
 

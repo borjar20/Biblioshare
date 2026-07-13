@@ -55,11 +55,14 @@ export function ProposalModeration({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            tint="gold"
             actions={
               canModerate ? (
                 <>
                   <Button
                     type="button"
+                    variant="green"
+                    className="px-3.5 py-1.5 text-xs"
                     disabled={pendingId === activity.id}
                     onClick={() => moderate(activity.id, "approve")}
                   >
@@ -68,6 +71,7 @@ export function ProposalModeration({
                   <Button
                     type="button"
                     variant="secondary"
+                    className="px-3.5 py-1.5 text-xs"
                     disabled={pendingId === activity.id}
                     onClick={() => moderate(activity.id, "reject")}
                   >

@@ -72,6 +72,7 @@ export function ActivityList({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            muted
           />
         ))}
       </Group>

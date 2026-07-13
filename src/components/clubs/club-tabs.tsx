@@ -42,6 +42,12 @@ export async function ClubTabs({
                 {activityCount}
               </span>
             ) : null}
+            {/* La marca del handoff para lo que solo ven moderadores. */}
+            {tab === "gestion" && (
+              <span aria-hidden className="text-[8px] text-muted-foreground">
+                ◈
+              </span>
+            )}
           </Link>
         );
       })}
