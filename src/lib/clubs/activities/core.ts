@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
 import type { ItemType } from "@/lib/catalog/types";
+import type { Json } from "@/lib/supabase/database.types";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -24,6 +25,10 @@ export type ClubActivity = {
   title: string;
   description: string | null;
   status: ActivityStatus;
+  // Configuración específica del kind (SD-8). Opaca a SQL/RLS -- la interpreta cada kind en
+  // la capa de app. criteria_challenge (Bloque H4) es su primer consumidor real: ahí vive el
+  // criterio del reto (modo, tipo, meta, género, saga).
+  config: Json | null;
   createdBy: string;
   startsOn: string | null;
   endsOn: string | null;
@@ -98,11 +103,14 @@ export async function proposeActivity(
   description?: string,
   startsOn?: string,
   endsOn?: string,
+  config?: Json,
 ): Promise<void> {
   const { supabase, userId } = await requireUser();
   const trimmedTitle = title.trim();
   if (!trimmedTitle) throw new Error("title_required");
 
+  // config va en el propio INSERT -- la política "club_activities insert member" ya gatea
+  // (miembro del club, created_by = auth.uid(), status forzado a 'proposed').
   const { data, error } = await supabase
     .from("club_activities")
     .insert({
@@ -110,6 +118,7 @@ export async function proposeActivity(
       kind,
       title: trimmedTitle,
       description: description?.trim() || null,
+      config: config ?? null,
       created_by: userId,
       starts_on: startsOn || null,
       ends_on: endsOn || null,
@@ -119,6 +128,19 @@ export async function proposeActivity(
   if (error) throw error;
 
   await notifyClub(supabase, clubId, userId, "club_activity_proposed", data.id);
+}
+
+// Editar la config de una actividad (EPIC-05 Bloque H4). Va por RPC porque Bloque G no dejó
+// política UPDATE de cliente sobre club_activities: la RPC revalida en servidor que el
+// llamante sea creador o moderator+ Y que la actividad siga en 'proposed' -- el criterio se
+// congela al activar, o el progreso de todos se movería bajo sus pies a mitad de reto.
+export async function updateActivityConfig(activityId: string, config: Json): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("update_activity_config", {
+    p_activity_id: activityId,
+    p_config: config,
+  });
+  if (error) throw error;
 }
 
 export async function activateActivity(activityId: string): Promise<void> {
@@ -220,7 +242,7 @@ export async function listClubActivities(clubId: string): Promise<ClubActivity[]
   const { supabase, userId } = await requireUser();
   const { data: rows, error } = await supabase
     .from("club_activities")
-    .select("id, club_id, kind, title, description, status, created_by, starts_on, ends_on, created_at")
+    .select("id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at")
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -245,6 +267,7 @@ export async function listClubActivities(clubId: string): Promise<ClubActivity[]
     title: r.title,
     description: r.description,
     status: r.status,
+    config: r.config,
     createdBy: r.created_by,
     startsOn: r.starts_on,
     endsOn: r.ends_on,
@@ -259,7 +282,7 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
 
   const { data: row, error } = await supabase
     .from("club_activities")
-    .select("id, club_id, kind, title, description, status, created_by, starts_on, ends_on, created_at")
+    .select("id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at")
     .eq("id", activityId)
     .maybeSingle();
   if (error) throw error;
@@ -364,6 +387,7 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     title: row.title,
     description: row.description,
     status: row.status,
+    config: row.config,
     createdBy: row.created_by,
     startsOn: row.starts_on,
     endsOn: row.ends_on,
