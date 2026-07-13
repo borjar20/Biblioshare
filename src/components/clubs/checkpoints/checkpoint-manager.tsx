@@ -39,6 +39,7 @@ export function CheckpointManager({
   const [page, setPage] = useState("");
   const [season, setSeason] = useState("");
   const [episode, setEpisode] = useState("");
+  const [dueOn, setDueOn] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -48,6 +49,7 @@ export function CheckpointManager({
     setPage("");
     setSeason("");
     setEpisode("");
+    setDueOn("");
   }
 
   function startEdit(c: CheckpointViewModel) {
@@ -56,6 +58,7 @@ export function CheckpointManager({
     setPage("page" in c.position && c.position.page !== undefined ? String(c.position.page) : "");
     setSeason("season" in c.position ? String(c.position.season) : "");
     setEpisode("episode" in c.position ? String(c.position.episode) : "");
+    setDueOn(c.dueOn ?? "");
     setError(null);
   }
 
@@ -80,9 +83,9 @@ export function CheckpointManager({
     startTransition(async () => {
       try {
         if (editingId) {
-          await updateCheckpoint(editingId, { label: trimmed, position });
+          await updateCheckpoint(editingId, { label: trimmed, position, dueOn });
         } else {
-          await createCheckpoint(activityId, trimmed, position);
+          await createCheckpoint(activityId, trimmed, position, dueOn);
         }
         resetForm();
         onChanged();
@@ -205,6 +208,17 @@ export function CheckpointManager({
             />
           </div>
         )}
+        {/* La posición dice DÓNDE está el hito en la obra; la fecha, CUÁNDO se
+            espera llegar. Opcional: una lectura puede ir a ritmo libre, sin
+            calendario. Las que sí la tienen alimentan "Próximos hitos". */}
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t("checkpointDueOn")}
+          <Input
+            type="date"
+            value={dueOn}
+            onChange={(e) => setDueOn(e.target.value)}
+          />
+        </label>
         <div className="flex gap-2">
           <Button type="button" variant="secondary" disabled={isPending || !label.trim()} onClick={handleSubmit}>
             {editingId ? t("editCheckpoint") : t("addCheckpoint")}

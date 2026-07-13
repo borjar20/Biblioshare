@@ -78,6 +78,31 @@ export function InboxIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Niveles apilados: la tierlist.
+export function TiersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="4.5" rx="1.5" />
+      <rect x="3" y="10" width="13" height="4.5" rx="1.5" />
+      <rect x="3" y="16" width="8" height="4.5" rx="1.5" />
+    </Icon>
+  );
+}
+
+// Lista con marcas: el reto de lista.
+export function ListCheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m3 6 1.6 1.6L7.6 4.6" />
+      <path d="m3 12.5 1.6 1.6 3-3" />
+      <path d="m3 19 1.6 1.6 3-3" />
+      <path d="M11 6.5h10" />
+      <path d="M11 13h10" />
+      <path d="M11 19.5h10" />
+    </Icon>
+  );
+}
+
 export function AlertIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

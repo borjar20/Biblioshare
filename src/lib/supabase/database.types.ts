@@ -143,6 +143,13 @@ export type Database = {
             foreignKeyName: "club_activities_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "club_stats"
+            referencedColumns: ["club_id"]
+          },
+          {
+            foreignKeyName: "club_activities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
@@ -179,6 +186,7 @@ export type Database = {
           activity_id: string
           created_at: string
           created_by: string
+          due_on: string | null
           id: string
           label: string
           order: number
@@ -188,6 +196,7 @@ export type Database = {
           activity_id: string
           created_at?: string
           created_by: string
+          due_on?: string | null
           id?: string
           label: string
           order: number
@@ -197,6 +206,7 @@ export type Database = {
           activity_id?: string
           created_at?: string
           created_by?: string
+          due_on?: string | null
           id?: string
           label?: string
           order?: number
@@ -379,6 +389,13 @@ export type Database = {
             foreignKeyName: "club_members_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "club_stats"
+            referencedColumns: ["club_id"]
+          },
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
@@ -481,6 +498,13 @@ export type Database = {
           ref?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "club_posts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_stats"
+            referencedColumns: ["club_id"]
+          },
           {
             foreignKeyName: "club_posts_club_id_fkey"
             columns: ["club_id"]
@@ -1232,6 +1256,21 @@ export type Database = {
       }
     }
     Views: {
+      club_stats: {
+        Row: {
+          club_id: string | null
+          member_count: number | null
+        }
+        Insert: {
+          club_id?: string | null
+          member_count?: never
+        }
+        Update: {
+          club_id?: string | null
+          member_count?: never
+        }
+        Relationships: []
+      }
       profile_identities: {
         Row: {
           avatar_url: string | null

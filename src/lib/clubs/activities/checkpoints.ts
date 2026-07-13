@@ -30,6 +30,8 @@ export type CheckpointViewModel = {
   id: string;
   label: string;
   position: Position;
+  /** Fecha en la que se espera llegar. null = lectura a ritmo libre. */
+  dueOn: string | null;
   order: number;
   status: CheckpointStatus;
   reachedByCount: number;
@@ -66,7 +68,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
 
   const { data: checkpointRows, error: checkpointsError } = await supabase
     .from("club_activity_checkpoints")
-    .select("id, label, position, order")
+    .select("id, label, position, order, due_on")
     .eq("activity_id", activityId)
     .order("order", { ascending: true });
   if (checkpointsError) throw checkpointsError;
@@ -137,6 +139,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
       id: c.id,
       label: c.label,
       position: parsePosition(itemType ?? "book", c.position),
+      dueOn: c.due_on,
       order,
       status,
       reachedByCount: reachedCountByCheckpoint.get(c.id) ?? 0,
@@ -152,6 +155,7 @@ export async function createCheckpoint(
   activityId: string,
   label: string,
   position: Position,
+  dueOn?: string | null,
 ): Promise<void> {
   const { supabase, userId } = await requireUser();
   const trimmed = label.trim();
@@ -166,6 +170,7 @@ export async function createCheckpoint(
     activity_id: activityId,
     label: trimmed,
     position,
+    due_on: dueOn || null,
     order: count ?? 0,
     created_by: userId,
   });
@@ -174,17 +179,20 @@ export async function createCheckpoint(
 
 export async function updateCheckpoint(
   checkpointId: string,
-  patch: { label?: string; position?: Position },
+  patch: { label?: string; position?: Position; dueOn?: string | null },
 ): Promise<void> {
   const { supabase } = await requireUser();
-  const update: { label?: string; position?: Position } = {};
+  const update: { label?: string; position?: Position; due_on?: string | null } =
+    {};
   if (patch.label !== undefined) {
     const trimmed = patch.label.trim();
     if (!trimmed) throw new Error("label_required");
     update.label = trimmed;
   }
   if (patch.position !== undefined) update.position = patch.position;
-  if (update.label === undefined && update.position === undefined) return;
+  // Cadena vacía = "quitar la fecha", no "no tocarla": el formulario manda "".
+  if (patch.dueOn !== undefined) update.due_on = patch.dueOn || null;
+  if (Object.keys(update).length === 0) return;
 
   const { error } = await supabase.from("club_activity_checkpoints").update(update).eq("id", checkpointId);
   if (error) throw error;

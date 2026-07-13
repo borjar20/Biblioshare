@@ -289,7 +289,6 @@
     "formError": "Algo falló. Inténtalo de nuevo.",
     "empty": "Todavía no tienes clubes.",
     "emptyDiscover": "No se encontraron clubes.",
-    "members": "miembros",
     "join": "Unirse",
     "leave": "Salir",
     "acceptInvite": "Aceptar invitación",
@@ -304,7 +303,13 @@
     "roleOwner": "Owner",
     "roleModerator": "Moderador",
     "roleMember": "Miembro",
-    "leaveOwnerError": "Transfiere la propiedad antes de salir del club."
+    "leaveOwnerError": "Transfiere la propiedad antes de salir del club.",
+    "tabs": {
+      "feed": "Feed",
+      "actividades": "Actividades",
+      "gestion": "Gestión"
+    },
+    "memberCount": "{count, plural, one {1 miembro} other {# miembros}}"
   },
   "clubPost": {
     "composerPlaceholderText": "¿Qué quieres compartir con el club?",
@@ -434,7 +439,15 @@
     "tierlistUnplacedShort": "—",
     "tierlistSelectItem": "Toca una portada para colocarla.",
     "tierlistPickTier": "Elige el tier:",
-    "tierlistUnplace": "Quitar"
+    "tierlistUnplace": "Quitar",
+    "groupActive": "Activas · {count}",
+    "groupProposed": "Propuestas · esperan moderación",
+    "groupFinished": "Finalizadas",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "summaryActive": "Actividades activas",
+    "summaryUpcoming": "Próximos hitos",
+    "checkpointDueOn": "Fecha (opcional)"
   },
   "sagaPicker": {
     "placeholder": "Buscar una saga…",
