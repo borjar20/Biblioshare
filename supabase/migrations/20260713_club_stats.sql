@@ -24,4 +24,24 @@ create view public.club_stats as
 comment on view public.club_stats is
   'Recuento de miembros activos por club. Bypassa la RLS de club_members al no ser security_invoker; por eso SOLO expone el agregado (cuántos), nunca la identidad de los miembros (quiénes). Lo necesita "Descubrir": un no-miembro no puede leer club_members, pero sí debe ver cuánta gente hay en un club público.';
 
+-- ── IMPRESCINDIBLE: revoke ANTES del grant. ────────────────────────────────
+--
+-- Los default privileges del esquema public de Supabase conceden ALL a
+-- anon/authenticated sobre cualquier relación nueva. Un `grant select` a secas
+-- NO quita nada: se suma. Sin este revoke, anon se queda además con
+-- INSERT/UPDATE/DELETE/TRUNCATE sobre la vista.
+--
+-- Y eso no es cosmético: club_stats es una vista AUTO-ACTUALIZABLE sobre
+-- `clubs` (information_schema.views → is_updatable = YES). Como no es
+-- security_invoker, una escritura a través de ella correría con los privilegios
+-- de su dueño (postgres), y `clubs` tiene RLS activada pero NO forzada — el
+-- dueño de una tabla se salta su propia RLS. Es decir: anon podría escribir en
+-- `clubs` a través de la vista.
+--
+-- La vista existe para leer un número. No se le da nada más.
+revoke all on public.club_stats from anon, authenticated;
 grant select on public.club_stats to anon, authenticated;
+
+-- Cinturón y tirantes: la deja explícitamente de solo lectura, para que un
+-- grant accidental futuro no vuelva a abrir la puerta.
+alter view public.club_stats set (security_barrier = true);
