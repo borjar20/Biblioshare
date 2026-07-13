@@ -448,6 +448,25 @@ sobre este motor común — construirlo una vez.
 Cada tipo se enchufa en el motor de G aportando su config y su UI; se pueden construir de
 forma incremental (uno por uno).
 
+> **BLOQUE COMPLETO (2026-07-13)**: los cuatro tipos construidos (H1 `buddy_read`, H3
+> `list_challenge`, H4 `criteria_challenge`, H2 `tierlist`), en el orden H1 → H3 → H4 → H2.
+> El **registro por `kind`** que se construyó en H1 (y que el backlog de G daba por hecho sin
+> que existiera) demostró ser la abstracción correcta: al llegar H2, enchufar un tipo nuevo fue
+> **un solo fichero** — `activity-detail.tsx` y `activity-composer.tsx` no se tocaron. Fue
+> creciendo con lo que cada tipo pedía de verdad: `itemCuration` (H3), `ConfigFields` y
+> `usesItemPool` (H4).
+>
+> **Dos patrones transversales que salieron de aquí y conviene recordar**:
+> 1. **"La RPC *es* la política de lectura"** (H3, reutilizado en H4): cualquier tablero
+>    comparativo entre participantes **no** puede leerse con el cliente normal — la RLS de
+>    `diary_entries`/`library_entries` pasa por `can_view_profile()`, así que un participante con
+>    perfil privado sale vacío **sin avisar**. La solución es una función `SECURITY DEFINER` que
+>    reimplementa la autorización (`is_activity_participant`), materializando **Q5** en la BD.
+>    H2 es el único tipo que **no** lo necesita, por tener tabla propia.
+> 2. **Un trigger solo puede rechazar, nunca relajar** (H3): el gate de curación tuvo que ser una
+>    reescritura de política RLS, no un trigger — y de paso arregló un bug latente de Bloque G
+>    (quien proponía una actividad no podía curar su propio pool hasta que se la activaran).
+
 **H1 — Lectura/visionado conjunto (`buddy_read`) con hitos + chat por checkpoint** *(ejemplo 1; era 7.20; dep: SD-7, §8-E)*
 > **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
 > manual en navegador pendiente de ejecutar.** Al construir el primer tipo real sobre el
@@ -498,14 +517,49 @@ forma incremental (uno por uno).
   Realtime = mejora posterior; MVP recarga el hilo.)*
 
 **H2 — Tierlist (`tierlist`)** *(ejemplo 2)*
-- [ ] **E5.H2a** Pool de ítems a ordenar en `club_activity_items`; tiers definidos en
-  `config` (`{"tiers":["S","A","B","C","D"]}`). Migración `club_activity_placements(
-  activity_id, user_id, item_type, item_id, tier, order)` — la colocación **de cada
-  participante**. UNIQUE `(activity_id, user_id, item_type, item_id)`.
-- [ ] **E5.H2b** Dominio: guardar/mover una colocación; **tierlist agregada del club**
-  (consenso: tier medio de cada ítem entre participantes) calculada al vuelo.
-- [ ] **E5.H2c** UI: tablero de tiers con drag & drop (reutiliza `@dnd-kit`, ya en el
-  proyecto por 7.22) para la propia; conmutador "mi tierlist / consenso del club".
+> **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación manual
+> en navegador pendiente de ejecutar.** Cuarto y último tipo: **cierra el Bloque H**.
+>
+> **Única tabla nueva del Bloque H** (`club_activity_placements`) — y precisamente por eso, el
+> **único tipo sin ninguna función `SECURITY DEFINER`**. H3 y H4 la necesitaron porque leían
+> `diary_entries`/`library_entries`, cuya RLS pasa por `can_view_profile()` (un participante de
+> perfil privado habría salido vacío para sus compañeros). Aquí la colocación vive en tabla
+> propia, así que basta acotar su RLS con `is_activity_participant()`: el patrón exacto de
+> `club_activity_opinions` (Bloque G).
+>
+> **Segundo consumidor de `config`** (los tiers viven ahí, tras el criterio de H4), reutilizando
+> la RPC `update_activity_config` **sin cambios** — buena validación de que el `ConfigFields` del
+> registro era la abstracción correcta. Y **primer tipo con mutaciones** en su capa de dominio:
+> H3 y H4 eran de solo lectura porque su progreso es derivado; aquí la colocación *es* el dato.
+>
+> **El gate de curación se extiende a `tierlist`** (`itemCuration: "curators"`): el pool es el
+> enunciado de la tierlist, y si crece a mitad, las tierlists ya hechas quedan incompletas. Eso
+> obligó a **reescribir la política RLS kind-scoped** que dejó H3 — de ahí que la batería incluya
+> una regresión de H3 (y otra de Q8: unirse a una tierlist sigue sin tocar la biblioteca).
+>
+> Batería de impersonación RLS (14 casos) verificada contra dev, incluido el caso de riesgo del
+> bloque (colar el `user_id` de otro en una colocación → denegado). Advisors: **cero hallazgos**
+> (este bloque no añade funciones). `schema-baseline.sql` y `database.types.ts` actualizados.
+> Checklist manual en `docs/superpowers/plans/2026-07-13-epic05-bloque-h2-tierlist-manual-test.md`,
+> per convención `docs/TESTING.md`, pendiente de ejecutar por el usuario.
+- [x] **E5.H2a** Pool de ítems a ordenar en `club_activity_items` (**curado solo por el creador +
+  `moderator+`**, como el reto por lista); tiers definidos en `config`
+  (`{"tiers":["S","A","B","C","D"]}`), editables al proponer y **congelados al activar**.
+  Migración `club_activity_placements(activity_id, user_id, item_type, item_id, tier, position)` —
+  la colocación **de cada participante**. La PK compuesta `(activity_id, user_id, item_type,
+  item_id)` *es* la unicidad que pedía este punto.
+- [x] **E5.H2b** Dominio: guardar/mover/quitar una colocación (`setPlacement`/`clearPlacement`).
+  **La tierlist agregada de consenso queda FUERA DE ALCANCE por decisión de diseño**, no
+  pendiente: promediar los tiers **aplana justo el desacuerdo**, que es el punto de una tierlist —
+  un ítem que unos aman y otros odian acabaría en un tier tibio que no representa a nadie. La
+  gracia es que cada cual haga la suya, la comparta y se discuta. Las colocaciones están todas
+  guardadas, así que si algún día se echa en falta es un cálculo al vuelo.
+- [x] **E5.H2c** UI: tablero de tiers con **drag & drop** (`@dnd-kit`, ya en el proyecto por
+  7.22) **y botones de tier** por ítem — estos últimos no son un plan B: en móvil son la vía
+  principal (arrastrar entre contenedores compite con el scroll) y el camino accesible por
+  teclado. Conmutador **"mi tierlist / la de cada participante"** (no de consenso), con las
+  ajenas en solo lectura. Del precedente de la cola se reutilizó el `id` fijo del `DndContext`
+  (el contador incremental por defecto rompe la hidratación) y el patrón optimista con rollback.
 
 **H3 — Reto por lista de ítems (`list_challenge`)** *(ejemplo 3)*
 > **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
@@ -669,7 +723,7 @@ forma incremental (uno por uno).
 | `club_activities` (+ `_participants`, `_items`, `_opinions`) | G | **motor genérico** (SD-8), `kind` enchufable |
 | `is_activity_participant()` / `has_reached_checkpoint()` | G/H | `SECURITY DEFINER`, gatean chat y comparativas |
 | `club_activity_checkpoints` / `_checkpoint_reads` | H1 | solo `buddy_read`; chat anti-spoiler §8-E/SD-7 |
-| `club_activity_placements` | H2 | solo `tierlist` |
+| `club_activity_placements` | H2 | solo `tierlist`. **Única tabla nueva del Bloque H**, y por eso el único tipo **sin `SECURITY DEFINER`**: al no leer contenido de perfil, le basta una RLS acotada con `is_activity_participant()` (participante ve todas, cada cual escribe la suya) |
 | *(reto por lista/criterio)* | H3/H4 | **sin tablas nuevas** (confirmado en H3): pool en `club_activity_items` + progreso derivado de **`diary_entries` dentro de la ventana del reto** (no del status de `library_entries`) |
 | `autoadd_library_on_activity_join` / `_item` (Q8) | H3 | triggers `SECURITY DEFINER`: auto-añaden los ítems del pool a la biblioteca como `planned`, nunca pisan una fila existente; no actúan en `tierlist` |
 | `activity_window()` / `get_list_challenge_progress()` | H3 | ventana `coalesce` (renombrada en H4: ya no es específica de un kind); la RPC de progreso es `SECURITY DEFINER` y **es** la política de lectura del tablero (perfiles privados visibles a sus compañeros de actividad, Q5) |
