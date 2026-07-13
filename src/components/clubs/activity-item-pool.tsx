@@ -14,26 +14,36 @@ export function ActivityItemPool({
   items,
   viewerId,
   isParticipant,
+  isCreator,
   canModerate,
   allowedItemTypes,
   maxItems,
+  itemCuration,
   onChanged,
 }: {
   activityId: string;
   items: ActivityItem[];
   viewerId: string;
   isParticipant: boolean;
+  isCreator: boolean;
   canModerate: boolean;
   // Restricción por kind (registro de EPIC-05 Bloque H1) -- "all"/null = sin
   // restricción, comportamiento original de Bloque G.
   allowedItemTypes: ItemType[] | "all";
   maxItems: number | null;
+  // Quién cura el pool (EPIC-05 Bloque H3). Espejo en UI de la política RLS
+  // "club_activity_items insert participant or curator" -- la RLS sigue siendo
+  // la autoridad, esto solo evita ofrecer un botón que fallaría.
+  itemCuration: "participants" | "curators";
   onChanged: () => void;
 }) {
   const t = useTranslations("activity");
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const canCurate =
+    itemCuration === "curators" ? isCreator || canModerate : isParticipant;
 
   function handleRemove(itemId: string) {
     setError(null);
@@ -66,7 +76,11 @@ export function ActivityItemPool({
               )}
               <span className="min-w-0 flex-1 truncate">{item.itemTitle}</span>
             </Link>
-            {(item.addedBy === viewerId || canModerate) && (
+            {/* Espejo de la política DELETE: quien lo añadió, moderator+, o el
+                creador cuando el kind es de curadores (su propia lista). */}
+            {(item.addedBy === viewerId ||
+              canModerate ||
+              (itemCuration === "curators" && isCreator)) && (
               <Button type="button" variant="ghost" disabled={isPending} onClick={() => handleRemove(item.id)}>
                 {t("removeItem")}
               </Button>
@@ -75,7 +89,7 @@ export function ActivityItemPool({
         ))}
       </div>
 
-      {isParticipant &&
+      {canCurate &&
         (maxItems == null || items.length < maxItems) &&
         (picking ? (
           <LibraryItemPicker
@@ -99,6 +113,12 @@ export function ActivityItemPool({
             {t("addItem")}
           </Button>
         ))}
+
+      {/* Sin esto, un participante de un reto por lista no entendería por qué
+          no puede tocar la lista. */}
+      {itemCuration === "curators" && !canCurate && (
+        <p className="text-xs text-muted-foreground">{t("listChallengeCuratorsOnly")}</p>
+      )}
     </div>
   );
 }

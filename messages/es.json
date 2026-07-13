@@ -377,7 +377,20 @@
     "checkpointError": "Algo falló. Inténtalo de nuevo.",
     "checkpointsEmpty": "Todavía no hay checkpoints en esta lectura conjunta.",
     "checkpointReachedBy": "{reached}/{total} ya han llegado aquí",
-    "groupSafeCheckpoint": "Todo el grupo ha llegado hasta: {label}"
+    "groupSafeCheckpoint": "Todo el grupo ha llegado hasta: {label}",
+    "listChallengeProgress": "Progreso del reto",
+    "listChallengeEmptyList": "Todavía no hay ítems en la lista del reto.",
+    "listChallengeJoinToSee": "Únete al reto para ver el progreso de los participantes.",
+    "listChallengeCuratorsOnly": "Solo quien propuso el reto y los moderadores pueden cambiar la lista.",
+    "listChallengeMyProgress": "Tu progreso: {done} de {total}",
+    "listChallengeClubProgress": "Progreso del club: {done} de {total}",
+    "listChallengeItemProgress": "{done}/{total}",
+    "listChallengeDone": "completado",
+    "listChallengePending": "pendiente",
+    "listChallengeCompletedOn": "Completado el {date}",
+    "listChallengeCellLabel": "{user} · {item} · {state}",
+    "listChallengeRule": "Un ítem se marca solo cuando registres un pase terminado entre {start} y {end}. Si ya lo habías terminado antes, cuenta una relectura.",
+    "joinDisclosure": "Al unirte, los {count} ítems de la lista se añadirán a tu biblioteca como pendientes (los que ya tengas no se tocan) y tu progreso será visible para el resto de participantes."
   },
   "push": {
     "toggleLabel": "Notificaciones push",

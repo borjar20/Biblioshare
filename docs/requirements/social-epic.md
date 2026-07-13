@@ -508,15 +508,57 @@ forma incremental (uno por uno).
   proyecto por 7.22) para la propia; conmutador "mi tierlist / consenso del club".
 
 **H3 — Reto por lista de ítems (`list_challenge`)** *(ejemplo 3)*
-- [ ] **E5.H3a** Lista **específica** de ítems en `club_activity_items` (curada por quien
-  propone / `moderator+`). Progreso = ¿cada participante ha completado cada ítem? — derivado
-  al vuelo de `library_entries`/`diary_entries` (status `completed`), **sin** columna de
-  progreso nueva.
-- [ ] **E5.H3b** **Avance del club** (cuántos ítems de la lista ha completado el club /
-  cada miembro) + **opinión por ítem de cada participante** vía `club_activity_opinions`
-  (rating + comentario local a la actividad, ejemplo 3). Distinto de la reseña de diario.
-- [ ] **E5.H3c** UI: rejilla lista × participantes (quién lleva qué), barra de avance del
-  club, y las opiniones por ítem. Notificación al completar un ítem de la lista.
+> **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
+> manual en navegador pendiente de ejecutar.** Segundo tipo real sobre el registro por `kind`
+> de H1. **Cero tablas nuevas** (confirma SD-8 y la fila de §5): la lista vive en
+> `club_activity_items`, las opiniones por ítem ya estaban completas desde Bloque G
+> (`club_activity_opinions` + `ActivityOpinions` — **E5.H3b no necesitó código nuevo**), y el
+> progreso es **100% derivado**, sin persistirse. Lo genuinamente nuevo: el tablero de
+> progreso, el gate de curación, y por fin **Q8** (ver abajo).
+>
+> **Decisión que supersede el texto original de E5.H3a**: el progreso NO se deriva del status
+> `completed` de `library_entries` sino de un **pase de diario terminado dentro de la ventana
+> del reto** (`coalesce(starts_on, created_at)` … `coalesce(ends_on, hoy)` — ambas columnas son
+> nullable, de ahí el coalesce). Consecuencia querida por el usuario: quien ya se leyó el libro
+> el año pasado **no** obtiene un tick gratis, registra una **relectura** durante el reto; su
+> biblioteca nunca se muta (el status sigue `completed`, solo suma un pase más). Es el mismo
+> mecanismo que el motor de `challenges` (§7.10), expresado en SQL porque debe correr
+> cross-user.
+>
+> **Hallazgo (bug latente de Bloque G, arreglado aquí)**: la política INSERT de
+> `club_activity_items` exigía `is_activity_participant()`, y solo se puede uno unir a una
+> actividad ya `active` — es decir, **quien proponía una actividad no podía curar su propia
+> lista** hasta que un moderador se la activara y él se uniera. El gate de curación
+> (creador + `moderator+`, acotado a `list_challenge`) **sustituye** esa condición en vez de
+> añadirse a ella, lo que además arregla el agujero: se cura ya en `proposed`. Por eso es una
+> reescritura de política RLS y **no** un trigger (un trigger solo puede rechazar lo que la RLS
+> ya dejó pasar, nunca relajar — deliberadamente distinto del idiom de H1).
+>
+> **Consecuencia de privacidad**: el progreso no se puede leer con el cliente normal — la RLS
+> de `diary_entries`/`library_entries` pasa por `can_view_profile()`, así que un participante
+> con **perfil privado** sería invisible al resto y su fila del tablero saldría vacía (falso
+> negativo silencioso). La RPC `get_list_challenge_progress` es `SECURITY DEFINER` y **es la
+> política de lectura del tablero**, materializando en BD la promesa de **Q5**.
+>
+> Sin notificaciones al completar un ítem (diferido: una lista de 20 ítems × 5 participantes
+> serían hasta 100 notificaciones; misma decisión que el chat de checkpoint de H1) — ningún
+> valor nuevo en `notification_type`. Batería de impersonación RLS (29 casos) verificada contra
+> dev. `schema-baseline.sql` y `database.types.ts` actualizados. Checklist de verificación
+> manual en `docs/superpowers/plans/2026-07-13-epic05-bloque-h3-list-challenge-manual-test.md`,
+> per convención `docs/TESTING.md`, pendiente de ejecutar por el usuario.
+- [x] **E5.H3a** Lista **específica** de ítems en `club_activity_items`, **curada solo por
+  quien propone + `moderator+`** (gate en RLS, acotado a `kind='list_challenge'`; el resto de
+  kinds mantiene el comportamiento genérico de G). Progreso = ¿cada participante ha completado
+  cada ítem? — derivado al vuelo de **`diary_entries` con `finished_on` dentro de la ventana
+  del reto** (*no* del status `completed`, ver nota de estado arriba), **sin** columna ni tabla
+  de progreso nueva.
+- [x] **E5.H3b** **Avance del club** (barra propia + barra del club sobre el total de celdas
+  ítems × participantes) + **opinión por ítem de cada participante** vía
+  `club_activity_opinions` — *esto último ya estaba completo desde Bloque G, no hizo falta
+  código nuevo*.
+- [x] **E5.H3c** UI: rejilla lista × participantes (filas = ítems, columnas = participantes;
+  scroll horizontal contenido, primera columna sticky), barras de avance, y las opiniones por
+  ítem. *(Notificación al completar un ítem: **diferida**, ver nota de estado.)*
 
 **H4 — Reto por criterio comparativo (`criteria_challenge`)** *(el "reto comparativo" original; reutiliza `challenges`)*
 - [ ] **E5.H4a** Reto con **criterio** (no lista fija): tipo+conteo+filtro, misma forma que
@@ -584,7 +626,9 @@ forma incremental (uno por uno).
 | `is_activity_participant()` / `has_reached_checkpoint()` | G/H | `SECURITY DEFINER`, gatean chat y comparativas |
 | `club_activity_checkpoints` / `_checkpoint_reads` | H1 | solo `buddy_read`; chat anti-spoiler §8-E/SD-7 |
 | `club_activity_placements` | H2 | solo `tierlist` |
-| *(reto por lista/criterio)* | H3/H4 | **sin tablas nuevas**: pool en `club_activity_items` + progreso derivado de `library_entries`/`diary_entries` |
+| *(reto por lista/criterio)* | H3/H4 | **sin tablas nuevas** (confirmado en H3): pool en `club_activity_items` + progreso derivado de **`diary_entries` dentro de la ventana del reto** (no del status de `library_entries`) |
+| `autoadd_library_on_activity_join` / `_item` (Q8) | H3 | triggers `SECURITY DEFINER`: auto-añaden los ítems del pool a la biblioteca como `planned`, nunca pisan una fila existente; no actúan en `tierlist` |
+| `list_challenge_window()` / `get_list_challenge_progress()` | H3 | ventana `coalesce`; la RPC de progreso es `SECURITY DEFINER` y **es** la política de lectura del tablero (perfiles privados visibles a sus compañeros de actividad, Q5) |
 | `user_blocks` / `reports` | J | seguridad/moderación |
 
 ---
@@ -635,10 +679,20 @@ No vinculante. Optimiza dependencias y entrega valor pronto sin bloquear en push
 - **Q7 — "Chat" del checkpoint: hilo o tiempo real** — *resuelta (2026-07-11)*: **hilo de
   comentarios estilo Reddit**, no chat en vivo. Se modela con `comments` (SD-3) gateado por
   progreso; Realtime queda descartado para este alcance (no es el objetivo).
-- **Q8 — Ítems fuera de tu biblioteca en una actividad** — *resuelta (2026-07-11)*: al
-  unirte a una actividad de un ítem que **no** tienes en tu biblioteca, se **añade
-  automáticamente como `planned`**. Así H1/H3 derivan el progreso de `library_entries`/
-  `diary_entries` de forma uniforme para todos los participantes.
+- **Q8 — Ítems fuera de tu biblioteca en una actividad** — *resuelta (2026-07-11),
+  **implementada (2026-07-13, Bloque H3)***: al unirte a una actividad, los ítems de su pool
+  que **no** tengas en tu biblioteca se **añaden automáticamente como `planned`**; y si el pool
+  crece después (un curador añade un ítem a mitad de reto), se hace **backfill** a los
+  participantes que ya estaban. Implementado con dos triggers `SECURITY DEFINER`
+  (`autoadd_library_on_activity_join` / `autoadd_library_on_activity_item`, migración
+  `20260713_list_challenge.sql`) y no en la capa de app, porque el backfill escribe filas de
+  `library_entries` **de otros usuarios** y su RLS es self-only. **Invariante:
+  `on conflict (user_id, item_type, item_id) do nothing`** — si ya tienes el ítem en cualquier
+  estado (incluido `completed`, con su valoración) la fila queda **intacta**; es un
+  *insert-if-missing* puro, garantizado por el UNIQUE, no por lógica de app. Salir de una
+  actividad **no borra nada** (no destructivo). **`tierlist` queda excluida** (decisión del
+  usuario, 2026-07-13): ordenar ítems que ya conoces no es una lista de pendientes y no debe
+  ensuciar la biblioteca.
 - **Q6 — Moderación mínima viable**: ¿basta con borrado por dueño/mod/admin + bloqueo para
   el lanzamiento, dejando la cola de `reports` para después? Propuesta: sí, pero con el
   esquema de `reports` ya migrado para no retrofitear.

@@ -6,4 +6,5 @@ export const criteriaChallengeKind: ActivityKindDefinition = {
   kind: "criteria_challenge",
   allowedItemTypes: "all",
   maxItems: null,
+  itemCuration: "participants",
 };
