@@ -39,7 +39,7 @@ export async function getListChallengeProgress(
   const { supabase, userId } = await requireUser();
 
   const [windowResult, progressResult, participantResult] = await Promise.all([
-    supabase.rpc("list_challenge_window", { p_activity_id: activityId }),
+    supabase.rpc("activity_window", { p_activity_id: activityId }),
     supabase.rpc("get_list_challenge_progress", { p_activity_id: activityId }),
     supabase.from("club_activity_participants").select("user_id").eq("activity_id", activityId),
   ]);

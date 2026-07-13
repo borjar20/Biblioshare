@@ -6,4 +6,5 @@ export const tierlistKind: ActivityKindDefinition = {
   allowedItemTypes: "all",
   maxItems: null,
   itemCuration: "participants",
+  usesItemPool: true,
 };

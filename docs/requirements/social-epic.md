@@ -561,14 +561,58 @@ forma incremental (uno por uno).
   ítem. *(Notificación al completar un ítem: **diferida**, ver nota de estado.)*
 
 **H4 — Reto por criterio comparativo (`criteria_challenge`)** *(el "reto comparativo" original; reutiliza `challenges`)*
-- [ ] **E5.H4a** Reto con **criterio** (no lista fija): tipo+conteo+filtro, misma forma que
-  `challenges` §7.10 pero a nivel de club — guardado en `config`. Progreso **por miembro**
-  contando al vuelo `diary_entries` que casan criterio+fechas (reutiliza el motor de
-  conteo de `challenges`), produciendo una **clasificación** (leaderboard).
-- [ ] **E5.H4b** UI: barra propia + tabla comparativa ordenada (avatar, progreso, %);
-  badge al completar; notificación de hitos ("te han adelantado", "reto por terminar").
-- [ ] **E5.H4c** *(idea)* Modo **cooperativo** (`config.mode = cooperative`): meta colectiva
-  sumada entre miembros ("entre todos, 100 pelis este verano") — mismo tipo, otro `mode`.
+> **Estado (2026-07-13): código completo, migración aplicada a dev + prod; verificación
+> manual en navegador pendiente de ejecutar.** El "reto comparativo" que dio origen al epic, y
+> **primer consumidor real de `config jsonb`** — el campo que SD-8 reservó en Bloque G y que ni
+> H1 ni H3 llegaron a tocar. **Cero tablas nuevas** (como H3): el progreso es 100% derivado de
+> `diary_entries`.
+>
+> **Un solo motor de conteo**: `countForChallenge` (§7.10, `src/lib/challenges/match.ts`) se
+> reutiliza **sin duplicarse** — un `criteria_challenge` es literalmente un reto personal
+> evaluado sobre varias personas, así que se construye un `Challenge` sintético desde `config`
+> + la ventana y se llama al matcher ya testeado. Para que eso fuera posible, la RPC
+> `get_activity_diary_passes` es **deliberadamente tonta**: solo **lee** los pases crudos de
+> los participantes, no cuenta. `loadGenres`/`loadSagaIds` se extrajeron de
+> `get-challenge-progress.ts` a `load-catalog-facets.ts` para compartirlos (DRY).
+>
+> **Privacidad (mismo patrón que H3)**: esa RPC es `SECURITY DEFINER` porque la RLS de
+> `diary_entries`/`library_entries` pasa por `can_view_profile()` — sin ella, un participante
+> con **perfil privado** saldría en 0 en el leaderboard sin avisar. **La RPC *es* la política
+> de lectura del tablero**, materializando Q5.
+>
+> **El criterio se congela al activar**: editable por creador + `moderator+` solo mientras la
+> actividad esté en `proposed`. Como Bloque G **no dejó ninguna política UPDATE de cliente**
+> sobre `club_activities` (las transiciones son RPC-only), esto exigió una RPC nueva
+> (`update_activity_config`), no un UPDATE gateado por RLS.
+>
+> **El registro de kinds gana dos extensiones**: `ConfigFields` (campos del criterio en el
+> composer — el hueco que SD-8 anticipaba) y `usesItemPool` (H4 no tiene pool, y sin ítems
+> tampoco hay opiniones por ítem que mostrar). `list_challenge_window` se renombró a
+> `activity_window` (ya no es específica de un kind; H3 la sigue usando). Se construyó además
+> un **`SagaPicker` reutilizable**: no existía ningún selector de sagas, y el reto personal
+> podrá usarlo cuando quiera exponer el filtro de saga que su motor ya soporta.
+>
+> Batería de impersonación RLS (13 casos) verificada contra dev, incluida la **regresión de H3**
+> tras el renombre. `schema-baseline.sql` y `database.types.ts` actualizados. Checklist manual
+> en `docs/superpowers/plans/2026-07-13-epic05-bloque-h4-criteria-challenge-manual-test.md`,
+> per convención `docs/TESTING.md`, pendiente de ejecutar por el usuario. **Con H4 cerrado, del
+> Bloque H solo queda H2 (tierlist).**
+- [x] **E5.H4a** Reto con **criterio** (no lista fija): modo+tipo+meta+género+saga, misma forma
+  que `challenges` §7.10 más el modo — guardado en `config`. Progreso **por miembro** contando
+  al vuelo los pases de `diary_entries` que casan criterio+ventana (**reutiliza literalmente el
+  motor de conteo de `challenges`**, sin duplicarlo), produciendo una **clasificación**
+  (leaderboard).
+- [x] **E5.H4b** UI: barra propia + tabla comparativa ordenada (posición, nombre, barra, X/N,
+  %), con la fila del viewer destacada. *(**Notificaciones diferidas**, y no solo por alcance:
+  **"te han adelantado" no tiene un momento en el que dispararse** — el progreso es derivado, se
+  recalcula al leer, así que no existe ningún evento de escritura que diga "X superó a Y".
+  Implementarlo exigiría persistir un snapshot del ranking o un cron, lo que contradice
+  frontalmente el principio de progreso 100% derivado sobre el que se apoyan H3 y H4. Se difiere
+  en coherencia con H1 y H3, que también difirieron las suyas. Sin valores nuevos en
+  `notification_type`.)*
+- [x] **E5.H4c** Modo **cooperativo** (`config.mode = cooperative`): meta colectiva sumada entre
+  participantes — una sola barra (`Σ / meta`), sin posiciones ni porcentajes, porque no es un
+  ranking. Mismo conteo por participante, distinta agregación.
 
 ### Bloque I — Listas colaborativas de club  ·  *esfuerzo M*  ·  *dep: E; absorbe 7.26*
 > Una lista colaborativa es esencialmente una actividad ligera sin progreso ni comparación;
@@ -628,7 +672,8 @@ forma incremental (uno por uno).
 | `club_activity_placements` | H2 | solo `tierlist` |
 | *(reto por lista/criterio)* | H3/H4 | **sin tablas nuevas** (confirmado en H3): pool en `club_activity_items` + progreso derivado de **`diary_entries` dentro de la ventana del reto** (no del status de `library_entries`) |
 | `autoadd_library_on_activity_join` / `_item` (Q8) | H3 | triggers `SECURITY DEFINER`: auto-añaden los ítems del pool a la biblioteca como `planned`, nunca pisan una fila existente; no actúan en `tierlist` |
-| `list_challenge_window()` / `get_list_challenge_progress()` | H3 | ventana `coalesce`; la RPC de progreso es `SECURITY DEFINER` y **es** la política de lectura del tablero (perfiles privados visibles a sus compañeros de actividad, Q5) |
+| `activity_window()` / `get_list_challenge_progress()` | H3 | ventana `coalesce` (renombrada en H4: ya no es específica de un kind); la RPC de progreso es `SECURITY DEFINER` y **es** la política de lectura del tablero (perfiles privados visibles a sus compañeros de actividad, Q5) |
+| `get_activity_diary_passes()` / `update_activity_config()` | H4 | la primera **solo lee** (los pases crudos de los participantes) para que el conteo se quede en `countForChallenge`, y es `SECURITY DEFINER` por el mismo motivo de privacidad; la segunda escribe `config` (creador o `moderator+`, solo en `proposed` — el criterio se congela al activar), y es RPC porque G no dejó política UPDATE de cliente sobre `club_activities` |
 | `user_blocks` / `reports` | J | seguridad/moderación |
 
 ---

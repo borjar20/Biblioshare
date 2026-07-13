@@ -390,7 +390,26 @@
     "listChallengeCompletedOn": "Completado el {date}",
     "listChallengeCellLabel": "{user} · {item} · {state}",
     "listChallengeRule": "Un ítem se marca solo cuando registres un pase terminado entre {start} y {end}. Si ya lo habías terminado antes, cuenta una relectura.",
-    "joinDisclosure": "Al unirte, los {count} ítems de la lista se añadirán a tu biblioteca como pendientes (los que ya tengas no se tocan) y tu progreso será visible para el resto de participantes."
+    "joinDisclosure": "Al unirte, los {count} ítems de la lista se añadirán a tu biblioteca como pendientes (los que ya tengas no se tocan) y tu progreso será visible para el resto de participantes.",
+    "criteriaMode": "Modo",
+    "criteriaMode_competitive": "Competitivo (clasificación)",
+    "criteriaMode_cooperative": "Cooperativo (meta común)",
+    "criteriaItemType": "Tipo",
+    "criteriaAnyType": "Cualquiera",
+    "criteriaTarget": "Meta",
+    "criteriaGenre": "Género (opcional)",
+    "criteriaGenrePlaceholder": "Terror, ciencia ficción…",
+    "criteriaSaga": "Saga (opcional)",
+    "criteriaProgress": "Progreso del reto",
+    "criteriaJoinToSee": "Únete al reto para ver el progreso de los participantes.",
+    "criteriaNoConfig": "Este reto todavía no tiene criterio definido.",
+    "criteriaMyProgress": "Tu progreso: {done} de {total}",
+    "criteriaClubProgress": "Entre todos: {done} de {total}",
+    "criteriaRule": "Cuenta lo que termines entre {start} y {end}: el progreso sale de tu diario, no hay nada que marcar aquí."
+  },
+  "sagaPicker": {
+    "placeholder": "Buscar una saga…",
+    "clear": "Quitar"
   },
   "push": {
     "toggleLabel": "Notificaciones push",

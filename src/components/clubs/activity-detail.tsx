@@ -139,25 +139,31 @@ export function ActivityDetailView({
         </p>
       )}
 
-      <ActivityItemPool
-        activityId={activity.id}
-        items={activity.items}
-        viewerId={viewerId}
-        isParticipant={isParticipant}
-        isCreator={isCreator}
-        canModerate={isModerator}
-        allowedItemTypes={kindDefinition.allowedItemTypes}
-        maxItems={kindDefinition.maxItems}
-        itemCuration={kindDefinition.itemCuration}
-        onChanged={refreshActivity}
-      />
+      {/* criteria_challenge (H4) no tiene pool: su reto se describe por criterio, no se
+          enumera -- y sin ítems tampoco hay opiniones por ítem que mostrar. */}
+      {kindDefinition.usesItemPool && (
+        <>
+          <ActivityItemPool
+            activityId={activity.id}
+            items={activity.items}
+            viewerId={viewerId}
+            isParticipant={isParticipant}
+            isCreator={isCreator}
+            canModerate={isModerator}
+            allowedItemTypes={kindDefinition.allowedItemTypes}
+            maxItems={kindDefinition.maxItems}
+            itemCuration={kindDefinition.itemCuration}
+            onChanged={refreshActivity}
+          />
 
-      <ActivityOpinions
-        activity={activity}
-        viewerId={viewerId}
-        isParticipant={isParticipant}
-        onChanged={refreshActivity}
-      />
+          <ActivityOpinions
+            activity={activity}
+            viewerId={viewerId}
+            isParticipant={isParticipant}
+            onChanged={refreshActivity}
+          />
+        </>
+      )}
 
       {DetailExtension && (
         <DetailExtension
