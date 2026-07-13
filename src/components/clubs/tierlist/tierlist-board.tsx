@@ -168,10 +168,11 @@ export function TierlistBoard({
         <div className="flex flex-col gap-2">
           {view.tiers.map((tier) => (
             <TierRow
-              key={tier}
-              id={tier}
-              label={tier}
-              items={itemsOf(board.itemKeysByTier[tier] ?? [])}
+              key={tier.label}
+              id={tier.label}
+              label={tier.label}
+              color={tier.color}
+              items={itemsOf(board.itemKeysByTier[tier.label] ?? [])}
               editable={editable}
               selectedKey={selectedKey}
               onSelect={setSelectedKey}
@@ -198,13 +199,20 @@ export function TierlistBoard({
           <div className="flex flex-wrap gap-1">
             {view.tiers.map((tier) => (
               <button
-                key={tier}
+                key={tier.label}
                 type="button"
                 disabled={!selectedKey}
-                onClick={() => selectedKey && move(selectedKey, tier)}
-                className="rounded-md border border-border px-3 py-1 text-xs text-foreground hover:bg-surface-muted disabled:opacity-40"
+                onClick={() => selectedKey && move(selectedKey, tier.label)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs text-foreground hover:bg-surface-muted disabled:opacity-40"
               >
-                {tier}
+                {tier.color && (
+                  <span
+                    aria-hidden
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: tier.color }}
+                  />
+                )}
+                {tier.label}
               </button>
             ))}
             <button

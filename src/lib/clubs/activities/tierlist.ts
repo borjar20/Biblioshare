@@ -76,7 +76,9 @@ export async function getTierlists(activityId: string): Promise<TierlistView | n
   const poolKeySet = new Set(poolKeys);
   const placedByUser = new Map<string, Record<string, string[]>>();
   for (const placement of placementResult.data ?? []) {
-    if (!config.tiers.includes(placement.tier)) continue;
+    // La colocación guarda la ETIQUETA del nivel; si el nivel ya no existe
+    // (lo borraron de la config), la colocación se ignora.
+    if (!config.tiers.some((tier) => tier.label === placement.tier)) continue;
     const key = itemKey(placement.item_type, placement.item_id);
     if (!poolKeySet.has(key)) continue;
     const byTier = placedByUser.get(placement.user_id) ?? {};
@@ -91,7 +93,8 @@ export async function getTierlists(activityId: string): Promise<TierlistView | n
 
       const itemKeysByTier: Record<string, string[]> = {};
       const placed = placedByUser.get(id) ?? {};
-      for (const tier of config.tiers) itemKeysByTier[tier] = placed[tier] ?? [];
+      for (const tier of config.tiers)
+        itemKeysByTier[tier.label] = placed[tier.label] ?? [];
 
       const placedKeys = new Set(Object.values(itemKeysByTier).flat());
       return {
