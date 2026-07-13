@@ -7,14 +7,17 @@ import {
   activateActivity,
   archiveActivity,
   finishActivity,
+  getActivity,
   joinActivity,
   leaveActivity,
   type ActivityDetail,
 } from "@/lib/clubs/activities/core";
+import { ActivityItemPool } from "./activity-item-pool";
+import { ActivityOpinions } from "./activity-opinions";
 import { Button } from "@/components/ui/button";
 
 export function ActivityDetailView({
-  activity,
+  activity: initialActivity,
   viewerId,
   viewerRole,
   clubSlug,
@@ -25,6 +28,7 @@ export function ActivityDetailView({
   clubSlug: string;
 }) {
   const t = useTranslations("activity");
+  const [activity, setActivity] = useState(initialActivity);
   const [status, setStatus] = useState(activity.status);
   const [isParticipant, setIsParticipant] = useState(activity.viewerIsParticipant);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +36,17 @@ export function ActivityDetailView({
 
   const isModerator = viewerRole === "moderator" || viewerRole === "owner";
   const isCreator = activity.createdBy === viewerId;
+
+  function refreshActivity() {
+    startTransition(async () => {
+      const fresh = await getActivity(activity.id);
+      if (fresh) {
+        setActivity(fresh);
+        setStatus(fresh.status);
+        setIsParticipant(fresh.viewerIsParticipant);
+      }
+    });
+  }
 
   function run(action: () => Promise<void>, onSuccess: () => void) {
     setError(null);
@@ -111,6 +126,22 @@ export function ActivityDetailView({
           </Button>
         )}
       </div>
+
+      <ActivityItemPool
+        activityId={activity.id}
+        items={activity.items}
+        viewerId={viewerId}
+        isParticipant={isParticipant}
+        canModerate={isModerator}
+        onChanged={refreshActivity}
+      />
+
+      <ActivityOpinions
+        activity={activity}
+        viewerId={viewerId}
+        isParticipant={isParticipant}
+        onChanged={refreshActivity}
+      />
     </div>
   );
 }
