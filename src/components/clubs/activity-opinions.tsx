@@ -71,18 +71,24 @@ function OpinionItemSection({
   const own = opinions.find((o) => o.userId === viewerId);
   const [rating, setRating] = useState(own?.rating?.toString() ?? "");
   const [comment, setComment] = useState(own?.comment ?? "");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submit() {
+    setError(null);
     startTransition(async () => {
-      await addOpinion(
-        activityId,
-        itemType,
-        itemId,
-        rating ? Number(rating) : undefined,
-        comment || undefined,
-      );
-      onChanged();
+      try {
+        await addOpinion(
+          activityId,
+          itemType,
+          itemId,
+          rating ? Number(rating) : undefined,
+          comment || undefined,
+        );
+        onChanged();
+      } catch {
+        setError(t("opinionError"));
+      }
     });
   }
 
@@ -123,6 +129,7 @@ function OpinionItemSection({
           {t("opinionSubmit")}
         </Button>
       </div>
+      {error && <p className="text-xs text-status-dropped">{error}</p>}
     </div>
   );
 }

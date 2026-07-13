@@ -348,10 +348,12 @@
     "addItem": "Añadir ítem",
     "removeItem": "Quitar",
     "itemPool": "Ítems",
+    "itemPoolError": "Algo falló. Inténtalo de nuevo.",
     "opinions": "Opiniones",
     "opinionRating": "Valoración (1-10)",
     "opinionCommentPlaceholder": "Comentario (opcional)",
     "opinionSubmit": "Guardar opinión",
+    "opinionError": "Algo falló. Inténtalo de nuevo.",
     "opinionsLocked": "Únete a la actividad para ver y añadir opiniones.",
     "noOpinionsYet": "Todavía no hay opiniones."
   },

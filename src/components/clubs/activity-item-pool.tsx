@@ -25,18 +25,26 @@ export function ActivityItemPool({
 }) {
   const t = useTranslations("activity");
   const [picking, setPicking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleRemove(itemId: string) {
+    setError(null);
     startTransition(async () => {
-      await removeActivityItem(itemId);
-      onChanged();
+      try {
+        await removeActivityItem(itemId);
+        onChanged();
+      } catch {
+        setError(t("itemPoolError"));
+      }
     });
   }
 
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold text-foreground">{t("itemPool")}</h2>
+
+      {error && <p className="text-xs text-status-dropped">{error}</p>}
 
       <div className="flex flex-col gap-1">
         {items.map((item) => (
@@ -64,10 +72,15 @@ export function ActivityItemPool({
         (picking ? (
           <LibraryItemPicker
             onPick={(libraryItem) => {
+              setError(null);
               startTransition(async () => {
-                await addActivityItem(activityId, libraryItem.itemType, libraryItem.itemId);
-                setPicking(false);
-                onChanged();
+                try {
+                  await addActivityItem(activityId, libraryItem.itemType, libraryItem.itemId);
+                  setPicking(false);
+                  onChanged();
+                } catch {
+                  setError(t("itemPoolError"));
+                }
               });
             }}
             onCancel={() => setPicking(false)}
