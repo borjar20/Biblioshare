@@ -7,8 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Tu biblioteca de libros, películas y series en un solo lugar.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffe9fc",
-    theme_color: "#2c002b",
+    // Espejo manual de --background y --accent (modo claro) de globals.css.
+    background_color: "#f3ece1",
+    theme_color: "#b0542f",
     icons: [
       {
         src: "/icon-192",

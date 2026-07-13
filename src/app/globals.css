@@ -4,73 +4,110 @@
    system preference. Set by the inline theme script + ThemeToggle. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Buttons swap: each mode's accent is the *other* mode's page background,
-   and accent-foreground is always its own mode's page background. */
+/* Paper: warm editorial system. Terracotta on paper, espresso in the dark. */
 :root {
-  --background: #ffe9fc;
-  --surface: #fffbfe;
-  --surface-muted: #ffe9fc;
-  --foreground: #1f1420;
-  --muted-foreground: #7a5f78;
-  --border: rgba(31, 20, 32, 0.14);
+  --background: #f3ece1;
+  --surface: #fffdf8;
+  --surface-muted: #ece3d4;
+  --foreground: #2c2620;
+  --muted-foreground: #877e70;
+  --border: rgba(44, 20, 32, 0.14);
+  --scrim: rgba(44, 38, 32, 0.45);
 
-  --accent: #2c002b;
-  --accent-foreground: #ffe9fc;
-  --accent-hover: #451044;
+  --accent: #b0542f;
+  --accent-foreground: #fff5ef;
+  --accent-hover: #9a4526;
 
-  --status-planned: #a1a1aa;
-  --status-in-progress: #6366f1;
-  --status-completed: #10b981;
-  --status-dropped: #f43f5e;
+  --gold: #c98a2b;
+  --green: #5c7052;
 
-  --type-book: #b45309;
-  --type-movie: #0369a1;
-  --type-series: #7c3aed;
+  --status-planned: #b3a894;
+  --status-in-progress: #c98a2b;
+  --status-completed: #5c7052;
+  --status-dropped: #b0492f;
+
+  --type-book: #a15a34;
+  --type-movie: #3f6b6e;
+  --type-series: #7a5676;
+
+  /* Episode rating scale (§7.36). Data colours, but themed: they must stay
+     legible against --tier-foreground in both modes. */
+  --tier-awesome: #46663c;
+  --tier-great: #6a8a4a;
+  --tier-good: #92893a;
+  --tier-regular: #b07a2e;
+  --tier-bad: #a6432f;
+  --tier-garbage: #6f5570;
+  --tier-foreground: #fff5ef;
 }
 
 .dark {
-  --background: #2c002b;
-  --surface: #3d0a3c;
-  --surface-muted: #240021;
-  --foreground: #fbe9fb;
-  --muted-foreground: #c9a0c8;
-  --border: rgba(255, 233, 252, 0.14);
+  --background: #1f1a16;
+  --surface: #2a231d;
+  --surface-muted: #332b23;
+  --foreground: #f0e8db;
+  --muted-foreground: #a99e8c;
+  --border: rgba(240, 232, 219, 0.12);
+  --scrim: rgba(12, 9, 7, 0.6);
 
-  --accent: #ffe9fc;
-  --accent-foreground: #2c002b;
-  --accent-hover: #ff8ff9;
+  --accent: #d98a5c;
+  --accent-foreground: #1f1409;
+  --accent-hover: #e5a074;
 
-  --status-planned: #9c7f9b;
-  --status-in-progress: #818cf8;
-  --status-completed: #34d399;
-  --status-dropped: #fb7185;
+  --gold: #e0a94a;
+  --green: #8ba57b;
 
-  --type-book: #fbbf24;
-  --type-movie: #38bdf8;
-  --type-series: #a78bfa;
+  --status-planned: #8a8072;
+  --status-in-progress: #e0a94a;
+  --status-completed: #8ba57b;
+  --status-dropped: #d97a63;
+
+  --type-book: #cf8a54;
+  --type-movie: #6bb0b4;
+  --type-series: #b592bd;
+
+  --tier-awesome: #7fa86a;
+  --tier-great: #9dbf7a;
+  --tier-good: #c9b95e;
+  --tier-regular: #e0a94a;
+  --tier-bad: #d97a63;
+  --tier-garbage: #b592bd;
+  --tier-foreground: #1f1409;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
-    --background: #2c002b;
-    --surface: #3d0a3c;
-    --surface-muted: #240021;
-    --foreground: #fbe9fb;
-    --muted-foreground: #c9a0c8;
-    --border: rgba(255, 233, 252, 0.14);
+    --background: #1f1a16;
+    --surface: #2a231d;
+    --surface-muted: #332b23;
+    --foreground: #f0e8db;
+    --muted-foreground: #a99e8c;
+    --border: rgba(240, 232, 219, 0.12);
+    --scrim: rgba(12, 9, 7, 0.6);
 
-    --accent: #ffe9fc;
-    --accent-foreground: #2c002b;
-    --accent-hover: #ff8ff9;
+    --accent: #d98a5c;
+    --accent-foreground: #1f1409;
+    --accent-hover: #e5a074;
 
-    --status-planned: #9c7f9b;
-    --status-in-progress: #818cf8;
-    --status-completed: #34d399;
-    --status-dropped: #fb7185;
+    --gold: #e0a94a;
+    --green: #8ba57b;
 
-    --type-book: #fbbf24;
-    --type-movie: #38bdf8;
-    --type-series: #a78bfa;
+    --status-planned: #8a8072;
+    --status-in-progress: #e0a94a;
+    --status-completed: #8ba57b;
+    --status-dropped: #d97a63;
+
+    --type-book: #cf8a54;
+    --type-movie: #6bb0b4;
+    --type-series: #b592bd;
+
+    --tier-awesome: #7fa86a;
+    --tier-great: #9dbf7a;
+    --tier-good: #c9b95e;
+    --tier-regular: #e0a94a;
+    --tier-bad: #d97a63;
+    --tier-garbage: #b592bd;
+    --tier-foreground: #1f1409;
   }
 }
 
@@ -81,10 +118,14 @@
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-scrim: var(--scrim);
 
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-hover: var(--accent-hover);
+
+  --color-gold: var(--gold);
+  --color-green: var(--green);
 
   --color-status-planned: var(--status-planned);
   --color-status-in-progress: var(--status-in-progress);
@@ -94,6 +135,8 @@
   --color-type-book: var(--type-book);
   --color-type-movie: var(--type-movie);
   --color-type-series: var(--type-series);
+
+  --color-tier-foreground: var(--tier-foreground);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -105,9 +148,8 @@ body {
   color: var(--foreground);
 }
 
-/* Decorative ambient glow: two soft accent-tinted radial washes anchored to
-   opposite corners. Fixed + pointer-events:none so it never scrolls or blocks
-   interaction, and color-mix keeps it subtle in both light and dark themes. */
+/* Paper is flat: a barely-there warm wash where the old theme had an ambient
+   glow. Fixed + pointer-events:none so it never scrolls or blocks interaction. */
 body::before {
   content: "";
   position: fixed;
@@ -117,12 +159,12 @@ body::before {
   background:
     radial-gradient(
       42rem 32rem at 100% -5%,
-      color-mix(in oklab, var(--accent-hover) 12%, transparent),
+      color-mix(in oklab, var(--accent) 7%, transparent),
       transparent 70%
     ),
     radial-gradient(
       38rem 30rem at -5% 105%,
-      color-mix(in oklab, var(--accent-hover) 9%, transparent),
+      color-mix(in oklab, var(--accent) 5%, transparent),
       transparent 70%
     );
 }

@@ -7,8 +7,10 @@ export function AppIconMark({ size }: { size: number }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#2c002b",
-        color: "#ffe9fc",
+        // Satori no resuelve CSS vars: espejo manual de --accent /
+        // --accent-foreground (modo claro) de globals.css.
+        background: "#b0542f",
+        color: "#fff5ef",
         fontFamily: "serif",
         fontSize: size * 0.58,
         fontWeight: 600,

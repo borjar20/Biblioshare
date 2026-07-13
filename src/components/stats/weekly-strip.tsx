@@ -71,7 +71,7 @@ export async function WeeklyStrip({
           />
         ) : (
           <div className="flex flex-col">
-            <span className="text-2xl font-semibold text-foreground">
+            <span className="font-serif text-2xl font-semibold text-foreground">
               {t("minutesCount", { count: today.minutes })}
             </span>
             <span className="text-sm text-muted-foreground">

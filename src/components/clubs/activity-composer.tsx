@@ -10,6 +10,7 @@ import {
 import type { Json } from "@/lib/supabase/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 export function ActivityComposer({
   clubId,
@@ -76,20 +77,19 @@ export function ActivityComposer({
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
       <label className="flex flex-col gap-1 text-xs text-muted-foreground">
         {t("kind")}
-        <select
+        <Select
           value={kind}
           onChange={(e) => {
             setKind(e.target.value as ActivityKind);
             setConfig(null); // el config de un kind no vale para otro
           }}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         >
           {ACTIVITY_KIND_ORDER.map((k) => (
             <option key={k} value={k}>
               {t(`kind_${k}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("titlePlaceholder")} />
       <textarea

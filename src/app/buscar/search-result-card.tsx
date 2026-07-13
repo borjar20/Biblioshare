@@ -35,7 +35,7 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
         )}
       </div>
       <div className="flex flex-col">
-        <span className="line-clamp-2 text-sm font-medium text-foreground">
+        <span className="line-clamp-2 font-serif text-sm font-semibold text-foreground">
           {result.title}
         </span>
         {(result.subtitle || result.year) && (

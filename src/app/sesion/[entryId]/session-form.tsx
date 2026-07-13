@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import type { MediaStatus } from "@/lib/library/types";
 import type { Position } from "@/lib/library/position";
 import { addSession, type AddSessionState } from "@/lib/sessions/actions";
@@ -133,18 +134,13 @@ export function SessionForm({
       </Field>
 
       <Field label={t("status")} htmlFor="session-status">
-        <select
-          id="session-status"
-          name="status"
-          defaultValue={defaultStatus}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground"
-        >
+        <Select id="session-status" name="status" defaultValue={defaultStatus}>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {tLibrary(`status.${s}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       {state.error && (

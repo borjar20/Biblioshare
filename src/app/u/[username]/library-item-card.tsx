@@ -56,14 +56,14 @@ export function LibraryItemCard({
           </div>
         </div>
 
-        <span className="line-clamp-2 text-sm font-medium text-foreground">
+        <span className="line-clamp-2 font-serif text-sm font-semibold text-foreground">
           {item.title}
         </span>
       </Link>
 
       <div className="flex flex-col gap-1">
         {item.subtitle && (
-          <span className="line-clamp-1 text-xs text-muted-foreground">
+          <span className="line-clamp-1 font-serif text-xs italic text-muted-foreground">
             {item.subtitle}
           </span>
         )}

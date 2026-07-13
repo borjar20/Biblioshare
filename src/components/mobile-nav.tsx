@@ -61,7 +61,7 @@ export function MobileNav({
       {open && (
         <div className="fixed inset-0 z-30">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-scrim"
             onClick={close}
             aria-hidden="true"
           />

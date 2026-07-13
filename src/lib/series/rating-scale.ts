@@ -1,15 +1,17 @@
 // Escala discreta de 6 tramos para la nota de episodio (1–10), compartida por
-// la rejilla y la leyenda (§7.36). Colores de dato (no tokens de tema):
-// saturados y oscuros para leer con texto blanco en claro y oscuro.
+// la rejilla y la leyenda (§7.36). Son colores de dato, pero tematizados: cada
+// tramo tiene variante clara y oscura en globals.css, y todos se leen contra
+// --tier-foreground. Ojo: `var(--tier-*)`, no `var(--color-tier-*)` — @theme
+// inline no emite las variables (misma trampa que en catalog/media-accent.ts).
 export type RatingTier = { min: number; color: string; key: string };
 
 export const RATING_TIERS: RatingTier[] = [
-  { min: 9, color: "#166534", key: "awesome" },
-  { min: 8, color: "#16a34a", key: "great" },
-  { min: 7, color: "#4d7c0f", key: "good" },
-  { min: 6, color: "#b45309", key: "regular" },
-  { min: 4, color: "#b91c1c", key: "bad" },
-  { min: 0, color: "#6d28d9", key: "garbage" },
+  { min: 9, color: "var(--tier-awesome)", key: "awesome" },
+  { min: 8, color: "var(--tier-great)", key: "great" },
+  { min: 7, color: "var(--tier-good)", key: "good" },
+  { min: 6, color: "var(--tier-regular)", key: "regular" },
+  { min: 4, color: "var(--tier-bad)", key: "bad" },
+  { min: 0, color: "var(--tier-garbage)", key: "garbage" },
 ];
 
 export function tierFor(rating: number): RatingTier {

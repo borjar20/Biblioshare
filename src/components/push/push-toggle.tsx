@@ -105,7 +105,14 @@ export function PushToggle() {
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          className={`absolute top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+            // El knob se apoya en dos fondos distintos, así que su color va con
+            // el estado: sobre bg-accent contrasta accent-foreground; sobre
+            // bg-surface-muted haría falta algo más oscuro en modo oscuro.
+            subscribed
+              ? "bg-accent-foreground"
+              : "bg-muted-foreground"
+          } ${
             // w-11 track (44px) minus w-5 knob (20px) minus the 2px inset used
             // on every other edge (top-0.5) leaves 22px for the "on" position
             // — translate-x-5 (20px) undershot that by 2px, so the knob never

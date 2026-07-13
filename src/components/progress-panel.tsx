@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import type { ItemType } from "@/lib/catalog/types";
 import {
   formatPosition,
@@ -92,11 +93,11 @@ export function ProgressPanel({
               </Field>
 
               <Field label={t("format")} htmlFor={`progress-format-${entryId}`}>
-                <select
+                <Select
+                  size="xs"
                   id={`progress-format-${entryId}`}
                   name="format"
                   defaultValue={"format" in position ? position.format : ""}
-                  className="rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-foreground"
                 >
                   <option value="">{t("formatNone")}</option>
                   {BOOK_FORMATS.map((format) => (
@@ -104,7 +105,7 @@ export function ProgressPanel({
                       {t(`formats.${format}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
             </>
           )}

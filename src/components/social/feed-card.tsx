@@ -63,7 +63,7 @@ export function FeedCard({
               />
             )}
             <div className="flex flex-col">
-              <span className={`text-sm font-medium ${accent.text}`}>{event.itemTitle}</span>
+              <span className={`font-serif text-sm font-semibold ${accent.text}`}>{event.itemTitle}</span>
               {event.episode && (
                 <span className="font-mono text-[10px] text-muted-foreground">
                   {`S${event.episode.season}E${event.episode.episode}`}

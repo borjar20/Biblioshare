@@ -110,7 +110,7 @@ export function MonthCalendar({
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-500 bg-red-950/10 p-3 text-sm text-red-300">
+        <div className="rounded-lg border border-status-dropped bg-status-dropped/10 p-3 text-sm text-status-dropped">
           {error}
         </div>
       ) : null}

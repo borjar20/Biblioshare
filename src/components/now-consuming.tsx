@@ -69,7 +69,7 @@ export async function NowConsuming({
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5">
                 <div className="flex flex-col gap-0.5">
-                  <span className="line-clamp-1 text-sm font-medium text-foreground">
+                  <span className="line-clamp-1 font-serif text-sm font-semibold text-foreground">
                     {item.title}
                   </span>
                   {item.subtitle && (

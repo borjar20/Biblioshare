@@ -30,8 +30,10 @@ export default async function Image({
           justifyContent: "center",
           gap: 24,
           padding: 80,
-          background: "#2c002b",
-          color: "#ffe9fc",
+          // Satori no resuelve CSS vars: espejo manual de --background /
+          // --foreground (modo oscuro) de globals.css.
+          background: "#1f1a16",
+          color: "#f0e8db",
           fontFamily: "serif",
         }}
       >
