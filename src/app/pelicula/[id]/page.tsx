@@ -190,6 +190,9 @@ export default async function MovieDetailPage({
                 label={tDetail("saga")}
               />
             )}
+            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+                entre la tira de ediciones y el panel de metadatos, y así los
+                dos comparten el estado de "qué edición miro". */}
             <EditionsSection
               itemType="movie"
               itemId={movie.id}
@@ -199,18 +202,19 @@ export default async function MovieDetailPage({
               workRows={metaRows}
               genres={genres}
               genresLabel={tDetail("genres")}
-            />
-            <InfoPanel
-              aboutLabel={tDetail("about")}
-              synopsis={movie.synopsis}
-              noSynopsisLabel={tDetail("noSynopsis")}
-              extra={
-                <>
-                  <CreditsSection credits={credits} />
-                  {watchProviders && <WatchProviders data={watchProviders} />}
-                </>
-              }
-            />
+            >
+              <InfoPanel
+                aboutLabel={tDetail("about")}
+                synopsis={movie.synopsis}
+                noSynopsisLabel={tDetail("noSynopsis")}
+                extra={
+                  <>
+                    <CreditsSection credits={credits} />
+                    {watchProviders && <WatchProviders data={watchProviders} />}
+                  </>
+                }
+              />
+            </EditionsSection>
             {canContribute && (
               <SagaAssignForm
                 itemType="movie"

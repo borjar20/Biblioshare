@@ -210,6 +210,9 @@ export default async function BookDetailPage({
                 label={tDetail("saga")}
               />
             )}
+            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+                entre la tira de ediciones y el panel de metadatos, y así los
+                dos comparten el estado de "qué edición miro". */}
             <EditionsSection
               itemType="book"
               itemId={book.id}
@@ -219,12 +222,13 @@ export default async function BookDetailPage({
               workRows={metaRows}
               genres={genres}
               genresLabel={tDetail("genres")}
-            />
-            <InfoPanel
-              aboutLabel={tDetail("about")}
-              synopsis={book.synopsis}
-              noSynopsisLabel={tDetail("noSynopsis")}
-            />
+            >
+              <InfoPanel
+                aboutLabel={tDetail("about")}
+                synopsis={book.synopsis}
+                noSynopsisLabel={tDetail("noSynopsis")}
+              />
+            </EditionsSection>
             {canContribute && (
               <SagaAssignForm
                 itemType="book"

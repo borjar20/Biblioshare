@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
@@ -51,9 +51,7 @@ export function EditionDetails({
   // obra de siempre, sin cambios.
   if (!viewing) {
     return (
-      <div className="sm:max-w-xs">
-        <MetadataSidebar rows={workRows} genres={genres} genresLabel={genresLabel} />
-      </div>
+      <MetadataSidebar rows={workRows} genres={genres} genresLabel={genresLabel} />
     );
   }
 
@@ -84,7 +82,7 @@ export function EditionDetails({
   }
 
   return (
-    <aside className="flex h-fit flex-col gap-3.5 rounded-card border border-border bg-surface p-5 shadow-card sm:max-w-xs">
+    <aside className="flex h-fit flex-col gap-3.5 rounded-card border border-border bg-surface p-5 shadow-card">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
           {tDetail("editionInfo")}
@@ -131,10 +129,15 @@ export function EditionDetails({
 // Contenedor cliente que une tira + panel: comparten `viewingId` (mirar, no
 // adoptar), así que necesitan un padre común. El servidor no sabe nada de
 // esa selección, solo le pasa `selectedEditionId` (la del pase) y las
-// ediciones. Ocupa el hueco donde antes iba <EditionStrip> sola; el panel de
-// metadatos de la obra que antes vivía en el sidebar de InfoPanel se pinta
-// ahora aquí debajo (vía EditionDetails con viewingId null), así que
-// libro/película ya no pasan un sidebar propio a InfoPanel.
+// ediciones.
+//
+// El orden vertical lo manda el mockup (Paper, Ficha de título · Info):
+// saga → tira de ediciones → SINOPSIS → panel de metadatos. La sinopsis va
+// EN MEDIO de los dos, así que entra como `children` (el <InfoPanel> que
+// pinta la página) en vez de renderizarse fuera: así tira y panel siguen
+// bajo el mismo useState sin tener que sincronizar dos ramas separadas del
+// árbol. Por eso libro/película ya no pasan `sidebar` a InfoPanel: esa caja
+// de metadatos es justamente lo que EditionDetails pinta aquí debajo.
 export function EditionsSection({
   itemType,
   itemId,
@@ -144,6 +147,7 @@ export function EditionsSection({
   workRows,
   genres,
   genresLabel,
+  children,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -154,11 +158,13 @@ export function EditionsSection({
   workRows: MetaRow[];
   genres: string[];
   genresLabel: string;
+  /** La sinopsis (<InfoPanel>), que va entre la tira y el panel de metadatos. */
+  children: ReactNode;
 }) {
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-10">
       <EditionStrip
         itemType={itemType}
         itemId={itemId}
@@ -168,6 +174,7 @@ export function EditionsSection({
         onSelect={setViewingId}
         canContribute={canContribute}
       />
+      {children}
       <EditionDetails
         itemType={itemType}
         editions={editions}
