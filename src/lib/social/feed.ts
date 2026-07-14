@@ -191,6 +191,9 @@ export async function getFeed(
             .from("diary_entries")
             .select("id, user_id, library_entry_id, finished_on, rating, review")
             .in("user_id", followedIds)
+            // Un pase abierto no es actividad terminada: no aparece en el
+            // feed social de gente a la que sigues.
+            .not("finished_on", "is", null)
             .order("finished_on", { ascending: false })
             .limit(pageSize);
           if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);
@@ -415,6 +418,10 @@ export async function getFeed(
     if (!actor || !it) continue;
     const catalog = catalogByKey.get(`${it.itemType}:${it.itemId}`);
     if (!catalog) continue;
+    // El filtro .not("finished_on", "is", null) de la query ya garantiza
+    // esto en runtime; la comprobación es solo para que el compilador vea
+    // el tipo correcto (Supabase no lo infiere de la query).
+    if (r.finished_on === null) continue;
     events.push({
       id: `diary_entries:${r.id}`,
       actorId: r.user_id,

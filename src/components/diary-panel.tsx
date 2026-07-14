@@ -110,7 +110,11 @@ export function DiaryPanel({
                         {t("delete")}
                       </button>
                     </div>
-                    {entry.rating != null && previous?.rating != null && (
+                    {entry.rating != null &&
+                      previous?.rating != null &&
+                      // El pase anterior puede seguir abierto (sin terminar);
+                      // en ese caso no hay año que comparar.
+                      previous.finishedOn != null && (
                       <p className="text-muted-foreground">
                         {t("comparison", {
                           previousYear: previous.finishedOn.slice(0, 4),

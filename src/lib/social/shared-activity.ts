@@ -156,8 +156,13 @@ export async function resolveSharedActivity(
       .from("diary_entries")
       .select("id, user_id, library_entry_id, finished_on, rating, review")
       .eq("id", ref.rowId)
+      // Un pase abierto no es actividad terminada: si es lo único que hay
+      // que resolver, se trata igual que "la fila ya no existe" (null).
+      .not("finished_on", "is", null)
       .maybeSingle();
-    if (!row) return null;
+    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+    // porque Supabase no infiere el tipo a partir de la query.
+    if (!row || row.finished_on === null) return null;
     const item = await resolveLibraryEntryItem(supabase, row.library_entry_id);
     if (!item) return null;
     const [actor, catalog] = await Promise.all([

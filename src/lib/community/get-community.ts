@@ -78,10 +78,18 @@ export async function getCommunity(
       .select("id, user_id, finished_on, rating, review")
       .in("library_entry_id", entryIds)
       .not("review", "is", null)
+      // Un pase abierto no es una reseña: todavía no ha terminado, así que
+      // no debe verlo la comunidad.
+      .not("finished_on", "is", null)
       .order("finished_on", { ascending: false })
       .limit(MAX_REVIEWS);
 
-    const rows = (diaryRows ?? []).filter((r) => (r.review ?? "").trim() !== "");
+    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+    // porque Supabase no infiere el tipo a partir de la query.
+    const rows = (diaryRows ?? []).filter(
+      (r): r is typeof r & { finished_on: string } =>
+        r.finished_on !== null && (r.review ?? "").trim() !== ""
+    );
 
     if (rows.length > 0) {
       const userIds = [...new Set(rows.map((r) => r.user_id))];

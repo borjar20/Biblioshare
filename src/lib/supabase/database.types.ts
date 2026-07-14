@@ -732,8 +732,10 @@ export type Database = {
       diary_entries: {
         Row: {
           created_at: string
-          finished_on: string
+          edition_id: string | null
+          finished_on: string | null
           id: string
+          is_public: boolean
           library_entry_id: string
           rating: number | null
           review: string | null
@@ -743,8 +745,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          finished_on?: string
+          edition_id?: string | null
+          finished_on?: string | null
           id?: string
+          is_public?: boolean
           library_entry_id: string
           rating?: number | null
           review?: string | null
@@ -754,8 +758,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          finished_on?: string
+          edition_id?: string | null
+          finished_on?: string | null
           id?: string
+          is_public?: boolean
           library_entry_id?: string
           rating?: number | null
           review?: string | null
@@ -1143,6 +1149,7 @@ export type Database = {
           id: string
           library_entry_id: string
           note: string | null
+          pass_id: string | null
           position: Json
           session_date: string
           user_id: string
@@ -1153,6 +1160,7 @@ export type Database = {
           id?: string
           library_entry_id: string
           note?: string | null
+          pass_id?: string | null
           position?: Json
           session_date?: string
           user_id: string
@@ -1163,6 +1171,7 @@ export type Database = {
           id?: string
           library_entry_id?: string
           note?: string | null
+          pass_id?: string | null
           position?: Json
           session_date?: string
           user_id?: string
@@ -1174,6 +1183,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "library_entries"
             referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "progress_sessions_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1647,8 +1663,7 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
-      sane_pages: { Args: { p: number }; Returns: number }
-      sane_year: { Args: { y: number }; Returns: number }
+      sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
       set_club_member_role: {
         Args: {
           p_club_id: string

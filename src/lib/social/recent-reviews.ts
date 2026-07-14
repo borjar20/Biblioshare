@@ -30,6 +30,8 @@ export async function getRecentReviews(
       .select("id, user_id, library_entry_id, finished_on, rating, review")
       .eq("user_id", userId)
       .not("review", "is", null)
+      // Un pase abierto no es una reseña: todavía no ha terminado.
+      .not("finished_on", "is", null)
       .order("finished_on", { ascending: false })
       .limit(limit),
     supabase
@@ -54,7 +56,11 @@ export async function getRecentReviews(
   const actor = actorResult.data;
   if (!actor?.username) return [];
 
-  const diaryRows = diaryResult.data ?? [];
+  // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+  // porque Supabase no infiere el tipo a partir de la query.
+  const diaryRows = (diaryResult.data ?? []).filter(
+    (r): r is typeof r & { finished_on: string } => r.finished_on !== null
+  );
   const episodeRows = episodeResult.data ?? [];
 
   // library_entries de las entradas de diario → item_type/item_id.
