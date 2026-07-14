@@ -128,7 +128,9 @@ export function CheckpointManager({
 
   return (
     <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
-      <span className="text-sm font-medium text-foreground">{t("checkpoints")}</span>
+      <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {t("checkpoints")}
+      </span>
 
       {checkpoints.length > 0 && (
         <div className="flex flex-col gap-2">

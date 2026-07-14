@@ -46,6 +46,9 @@ export type ActivityCheckpointsView = {
   // "terreno seguro" del grupo (decisión 8 del diseño); null si nadie lo es o
   // si aún no hay participantes.
   groupSafeOrder: number | null;
+  // Posición del viewer en la obra según su diario (ya se consultaba para
+  // derivar el status "suggested"); null si no la tiene en la biblioteca.
+  viewerPosition: Position | null;
 };
 
 const EMPTY_SUMMARY: InteractionSummary = {
@@ -75,7 +78,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
 
   const checkpoints = checkpointRows ?? [];
   if (checkpoints.length === 0) {
-    return { itemType, checkpoints: [], groupSafeOrder: null };
+    return { itemType, checkpoints: [], groupSafeOrder: null, viewerPosition: null };
   }
 
   const checkpointIds = checkpoints.map((c) => c.id);
@@ -148,7 +151,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
     };
   });
 
-  return { itemType, checkpoints: view, groupSafeOrder };
+  return { itemType, checkpoints: view, groupSafeOrder, viewerPosition };
 }
 
 export async function createCheckpoint(
