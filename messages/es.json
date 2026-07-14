@@ -157,6 +157,29 @@
       "generic": "Algo salió mal. Inténtalo de nuevo."
     }
   },
+  "passes": {
+    "diaryTitle": "Diario",
+    "empty": "Todavía no has registrado ningún pase.",
+    "open": "En curso",
+    "pass": "{n}º pase",
+    "closeTitle": "¿Qué te ha parecido?",
+    "finishedOn": "Fecha",
+    "rating": "Tu nota",
+    "review": "Reseña",
+    "reviewPlaceholder": "Qué te ha parecido…",
+    "isPublic": "Visible para la comunidad",
+    "skip": "Ahora no",
+    "submit": "Guardar",
+    "submitting": "Guardando…",
+    "delta": "▲ {delta} vs. anterior",
+    "deltaDown": "▼ {delta} vs. anterior",
+    "delete": "Borrar pase",
+    "errors": {
+      "invalidDate": "La fecha no es válida.",
+      "invalidRating": "La nota va de media estrella a cinco.",
+      "generic": "No se pudo guardar."
+    }
+  },
   "profile": {
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
     "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",

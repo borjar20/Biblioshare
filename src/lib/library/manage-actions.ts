@@ -5,8 +5,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { passEffect } from "@/lib/passes/transitions";
 import type { MediaStatus } from "./types";
 import { BOOK_FORMATS, type BookFormat, type Position } from "./position";
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 // These actions are shared between the item detail pages (the management
 // hub since §7.14) and any other surface, so they revalidate every view
@@ -29,6 +34,26 @@ export async function updateStatus(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // El estado y el pase abierto actuales deciden qué efecto tiene el cambio
+  // de estado sobre el diario (ver passEffect en lib/passes/transitions.ts):
+  // el pase es el dueño de la nota y la reseña, no library_entries.
+  const { data: entry } = await supabase
+    .from("library_entries")
+    .select("id, status")
+    .eq("id", entryId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!entry) redirect("/login");
+
+  const { data: openPass } = await supabase
+    .from("diary_entries")
+    .select("id")
+    .eq("library_entry_id", entryId)
+    .is("finished_on", null)
+    .maybeSingle();
+
+  const effect = passEffect(entry.status as MediaStatus, status, Boolean(openPass));
+
   // An item leaving "planned" shouldn't keep a stale queue membership or
   // position — it would otherwise resurface in its old queue at an old spot if
   // it's re-planned later. See docs/REQUIREMENTS.md §7.22.
@@ -42,6 +67,29 @@ export async function updateStatus(
     .eq("user_id", user.id);
 
   if (error) throw error;
+
+  if (effect.kind === "open" || effect.kind === "openAndClose") {
+    const opensToday = today();
+    const { error: passError } = await supabase.from("diary_entries").insert({
+      library_entry_id: entryId,
+      user_id: user.id,
+      started_on: opensToday,
+      finished_on: effect.kind === "openAndClose" ? opensToday : null,
+      is_public: true,
+    });
+    // Un pase abierto choca con el índice único parcial si ya había uno (dos
+    // pestañas en paralelo, por ejemplo): eso es justo lo que queríamos, no
+    // un error que deba explotar.
+    if (passError && passError.code !== "23505") throw passError;
+  } else if (effect.kind === "close" && openPass) {
+    const { error: passError } = await supabase
+      .from("diary_entries")
+      .update({ finished_on: today() })
+      .eq("id", openPass.id)
+      .eq("user_id", user.id);
+    if (passError) throw passError;
+  }
+
   revalidateItemViews(itemType, itemId);
 }
 
