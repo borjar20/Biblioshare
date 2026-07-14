@@ -46,8 +46,13 @@ function parseYear(value: string | undefined): number | null {
   return match ? Number(match[1]) : null;
 }
 
-function buildCoverUrl(coverId?: number | null): string | null {
-  return coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : null;
+// Tamaños disponibles en el CDN de portadas de OpenLibrary: S (miniatura),
+// M (por defecto, listados de búsqueda), L (ficha/detalle, más resolución).
+export function buildCoverUrl(
+  coverId?: number | null,
+  size: "S" | "M" | "L" = "M"
+): string | null {
+  return coverId ? `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg` : null;
 }
 
 function extractPublisher(value: OpenLibrarySearchDoc["publisher"]): string | null {
