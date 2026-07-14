@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { addActivityItem, removeActivityItem, type ActivityItem } from "@/lib/clubs/activities/core";
-import { LibraryItemPicker } from "./library-item-picker";
+import { ItemPicker } from "./item-picker";
 import { itemHref } from "@/lib/catalog/item-href";
 import { Button } from "@/components/ui/button";
 import type { ItemType } from "@/lib/catalog/types";
@@ -59,7 +59,9 @@ export function ActivityItemPool({
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold text-foreground">{t("itemPool")}</h2>
+      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {t("itemPool")}
+      </h2>
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
@@ -92,13 +94,13 @@ export function ActivityItemPool({
       {canCurate &&
         (maxItems == null || items.length < maxItems) &&
         (picking ? (
-          <LibraryItemPicker
+          <ItemPicker
             allowedItemTypes={allowedItemTypes}
-            onPick={(libraryItem) => {
+            onPick={(picked) => {
               setError(null);
               startTransition(async () => {
                 try {
-                  await addActivityItem(activityId, libraryItem.itemType, libraryItem.itemId);
+                  await addActivityItem(activityId, picked.itemType, picked.itemId);
                   setPicking(false);
                   onChanged();
                 } catch {

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { Json } from "@/lib/supabase/database.types";
-import type { LibraryItem } from "@/lib/library/types";
 import type { ItemType } from "@/lib/catalog/types";
 import type { ActivityKind } from "@/lib/clubs/activities/core";
 import {
@@ -20,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { XIcon } from "@/components/ui/icons";
-import { LibraryItemPicker } from "../library-item-picker";
+import { ItemPicker, type PickedItem } from "../item-picker";
 import {
   CheckpointDraftEditor,
   toProposedCheckpoints,
@@ -53,7 +52,7 @@ export function ProposeWizard({
   const [endsOn, setEndsOn] = useState("");
 
   const [config, setConfig] = useState<Json | null>(null);
-  const [items, setItems] = useState<LibraryItem[]>([]);
+  const [items, setItems] = useState<PickedItem[]>([]);
   const [picking, setPicking] = useState(false);
   const [checkpoints, setCheckpoints] = useState<CheckpointDraft[]>([]);
 
@@ -235,7 +234,7 @@ export function ProposeWizard({
           )}
 
           {picking ? (
-            <LibraryItemPicker
+            <ItemPicker
               allowedItemTypes={definition.allowedItemTypes}
               onPick={(item) => {
                 setItems((prev) =>

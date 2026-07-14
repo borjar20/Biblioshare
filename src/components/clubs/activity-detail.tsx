@@ -13,7 +13,7 @@ import {
   type ActivityDetail,
 } from "@/lib/clubs/activities/core";
 import { ActivityItemPool } from "./activity-item-pool";
-import { ActivityOpinions } from "./activity-opinions";
+import { ActivityItemList } from "./activity-item-list";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export function ActivityDetailView({
   const [activity, setActivity] = useState(initialActivity);
   const [status, setStatus] = useState(activity.status);
   const [isParticipant, setIsParticipant] = useState(activity.viewerIsParticipant);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -42,6 +43,10 @@ export function ActivityDetailView({
   const kindDefinition = getActivityKindDefinition(activity.kind);
   const DetailExtension = kindDefinition.DetailExtension;
   const accent = ACTIVITY_ACCENT[activity.kind];
+  // Mismo espejo de la RLS que usa el pool: quién puede curar los ítems.
+  const canCurate =
+    kindDefinition.usesItemPool &&
+    (kindDefinition.itemCuration === "curators" ? isCreator || isModerator : isParticipant);
 
   function refreshActivity() {
     startTransition(async () => {
@@ -68,6 +73,42 @@ export function ActivityDetailView({
 
   const compact = "px-3.5 py-1.5 text-xs";
   const overflow = activity.participantCount - activity.participants.length;
+
+  // Vista "Modificar actividad" (misma página, patrón del ClubForm de editar
+  // club): aquí y solo aquí vive la curación del pool (añadir/quitar ítems).
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-4">
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="self-start font-mono text-xs text-muted-foreground hover:text-foreground"
+        >
+          {t("backToActivity")}
+        </button>
+
+        <div className="flex flex-col gap-1">
+          <h1 className="font-serif text-[23px] leading-tight font-semibold text-foreground">
+            {t("editActivity")}
+          </h1>
+          <p className="text-[13px] text-muted-foreground">{activity.title}</p>
+        </div>
+
+        <ActivityItemPool
+          activityId={activity.id}
+          items={activity.items}
+          viewerId={viewerId}
+          isParticipant={isParticipant}
+          isCreator={isCreator}
+          canModerate={isModerator}
+          allowedItemTypes={kindDefinition.allowedItemTypes}
+          maxItems={kindDefinition.maxItems}
+          itemCuration={kindDefinition.itemCuration}
+          onChanged={refreshActivity}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -214,29 +255,36 @@ export function ActivityDetailView({
       )}
 
       {/* criteria_challenge (H4) no tiene pool: su reto se describe por criterio, no se
-          enumera -- y sin ítems tampoco hay opiniones por ítem que mostrar. */}
+          enumera -- y sin ítems tampoco hay opiniones por ítem que mostrar.
+          La lista es de solo lectura; la curación vive en "Modificar actividad". */}
       {kindDefinition.usesItemPool && (
-        <>
-          <ActivityItemPool
-            activityId={activity.id}
-            items={activity.items}
-            viewerId={viewerId}
-            isParticipant={isParticipant}
-            isCreator={isCreator}
-            canModerate={isModerator}
-            allowedItemTypes={kindDefinition.allowedItemTypes}
-            maxItems={kindDefinition.maxItems}
-            itemCuration={kindDefinition.itemCuration}
-            onChanged={refreshActivity}
-          />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              {t("itemPool")}
+            </h2>
+            {canCurate && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase hover:text-foreground"
+              >
+                {t("editActivity")}
+              </button>
+            )}
+          </div>
 
-          <ActivityOpinions
+          <ActivityItemList
             activity={activity}
             viewerId={viewerId}
             isParticipant={isParticipant}
             onChanged={refreshActivity}
           />
-        </>
+
+          {activity.items.length === 0 && (
+            <p className="text-xs text-muted-foreground">{t("itemPoolEmpty")}</p>
+          )}
+        </div>
       )}
 
       {DetailExtension && (
