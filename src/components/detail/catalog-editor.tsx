@@ -14,6 +14,7 @@ import {
   uploadCover,
   updateEdition,
   deleteEdition,
+  resyncEditions,
   type EditItemState,
   type DeleteEditionState,
 } from "@/lib/catalog/edit-actions";
@@ -201,6 +202,21 @@ function CatalogEditorForm({
     createEditionAction,
     initialCreateState
   );
+
+  // Resincronizar ediciones (Tarea 12): solo libros, las versiones de
+  // película no vienen de OpenLibrary. resyncEditions no tiene la firma
+  // (prevState, formData) de una server action de formulario -- se llama
+  // directamente desde una transición, igual que el borrado de edición.
+  const [resyncPending, startResyncTransition] = useTransition();
+  const [resyncError, setResyncError] = useState(false);
+
+  function handleResync() {
+    setResyncError(false);
+    startResyncTransition(async () => {
+      const result = await resyncEditions(itemId);
+      if (result.error) setResyncError(true);
+    });
+  }
 
   return (
     <>
@@ -413,9 +429,27 @@ function CatalogEditorForm({
             episodios, no hay tabla de ediciones para ellas). */}
         {itemType !== "series" && (
           <div className="flex flex-col gap-3">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-              {isMovie ? tEditions("titleMovie") : tEditions("titleBook")}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                {isMovie ? tEditions("titleMovie") : tEditions("titleBook")}
+              </span>
+              {/* Solo libros: útil porque el filtro de OpenLibrary (Tarea 5)
+                  va a cambiar con el tiempo, y esto deja repetir la búsqueda
+                  sin tocar la base de datos a mano. */}
+              {itemType === "book" && (
+                <button
+                  type="button"
+                  disabled={resyncPending}
+                  onClick={handleResync}
+                  className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase hover:text-foreground disabled:opacity-60"
+                >
+                  {resyncPending ? t("resyncing") : t("resync")}
+                </button>
+              )}
+            </div>
+            {resyncError && (
+              <p className="text-sm text-status-dropped">{t("errors.generic")}</p>
+            )}
 
             <div className="flex flex-col gap-2">
               {editions.map((edition) => (
