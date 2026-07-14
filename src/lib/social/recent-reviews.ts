@@ -32,6 +32,11 @@ export async function getRecentReviews(
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado.
       .not("finished_on", "is", null)
+      // Una reseña privada es de su autor y de nadie más: esta función
+      // alimenta la pestaña Actividad del perfil PÚBLICO (la ve cualquier
+      // visitante), así que las reseñas migradas con is_public = false
+      // (antiguas notas privadas) no deben aparecer aquí.
+      .eq("is_public", true)
       .order("finished_on", { ascending: false })
       .limit(limit),
     supabase

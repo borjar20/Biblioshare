@@ -159,6 +159,11 @@ export async function resolveSharedActivity(
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
       .not("finished_on", "is", null)
+      // Una reseña privada es de su autor y de nadie más: esto resuelve
+      // posts compartidos en clubes, que puede ver cualquier miembro (no
+      // solo el autor), así que una nota migrada con is_public = false se
+      // trata igual que "la fila ya no existe" (null) más abajo.
+      .eq("is_public", true)
       .maybeSingle();
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
     // porque Supabase no infiere el tipo a partir de la query.

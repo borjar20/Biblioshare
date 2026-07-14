@@ -194,6 +194,10 @@ export async function getFeed(
             // Un pase abierto no es actividad terminada: no aparece en el
             // feed social de gente a la que sigues.
             .not("finished_on", "is", null)
+            // Una reseña privada es de su autor y de nadie más: sin este
+            // filtro, las notas migradas de library_entries.notes
+            // (is_public = false) se colarían en el feed de los seguidores.
+            .eq("is_public", true)
             .order("finished_on", { ascending: false })
             .limit(pageSize);
           if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);

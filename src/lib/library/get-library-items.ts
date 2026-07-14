@@ -114,7 +114,11 @@ export async function getLibraryItems(
     .in(
       "library_entry_id",
       entries.map((entry) => entry.id)
-    );
+    )
+    // Un pase abierto ("lo estoy leyendo ahora") todavía no es una lectura
+    // terminada: no debe sumar a "Leído {count} veces" (colección, perfiles
+    // públicos y export CSV comparten este contador).
+    .not("finished_on", "is", null);
 
   const rereadCountByEntry = new Map<string, number>();
   for (const row of diaryRows ?? []) {

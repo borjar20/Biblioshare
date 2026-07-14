@@ -67,6 +67,15 @@ export async function addDiaryEntry(
     finished_on: finishedOn || undefined,
     rating,
     review: review || null,
+    // is_public por defecto es false (pensada para las notas privadas
+    // migradas de library_entries.notes, ver 20260714_passes.sql). Este
+    // formulario es el mismo que antes de esa migración alimentaba
+    // directamente la pestaña Comunidad sin distinción de privacidad, así
+    // que un pase nuevo registrado aquí sigue siendo público por defecto —
+    // sin esto, ninguna reseña nueva volvería a aparecer en Comunidad/feed
+    // tras el filtro de is_public. Todavía no hay UI para marcar un pase
+    // como privado; cuando exista, este valor deberá venir del formulario.
+    is_public: true,
   });
 
   if (error) return { error: "generic" };

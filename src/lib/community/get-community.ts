@@ -81,6 +81,12 @@ export async function getCommunity(
       // Un pase abierto no es una reseña: todavía no ha terminado, así que
       // no debe verlo la comunidad.
       .not("finished_on", "is", null)
+      // Una reseña privada es de su autor y de nadie más: la migración
+      // 20260714_passes.sql convirtió las notas privadas de
+      // library_entries.notes en pases con is_public = false, y ninguna
+      // consulta las filtraba — se estaban publicando en la pestaña
+      // Comunidad. Este filtro es el arreglo.
+      .eq("is_public", true)
       .order("finished_on", { ascending: false })
       .limit(MAX_REVIEWS);
 
