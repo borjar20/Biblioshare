@@ -40,7 +40,7 @@ export function TierlistItem({
       onClick={editable ? onSelect : undefined}
       aria-pressed={selected}
       title={item.itemTitle}
-      className={`relative h-16 w-11 shrink-0 overflow-hidden rounded border bg-surface-muted ${
+      className={`relative h-[51px] w-[34px] shrink-0 overflow-hidden rounded-[4px] border bg-surface-muted shadow-cover ${
         selected ? "border-accent ring-1 ring-accent" : "border-border"
       } ${isDragging ? "opacity-60" : ""} ${
         editable ? "cursor-grab touch-none active:cursor-grabbing" : "cursor-default"
@@ -51,7 +51,7 @@ export function TierlistItem({
           src={item.itemCoverUrl}
           alt={item.itemTitle}
           fill
-          sizes="44px"
+          sizes="34px"
           className="object-cover"
         />
       )}
