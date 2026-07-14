@@ -12,7 +12,12 @@ export function InfoPanel({
   aboutLabel: string;
   synopsis: string | null;
   noSynopsisLabel: string;
-  sidebar: ReactNode;
+  /**
+   * Ausente en libro/película: su metadata ahora vive en EditionsSection
+   * (arriba de este panel), no aquí al lado de la sinopsis. Sigue en uso
+   * tal cual en serie (MetadataSidebar).
+   */
+  sidebar?: ReactNode;
   extra?: ReactNode;
 }) {
   const paragraphs = synopsis
@@ -20,7 +25,9 @@ export function InfoPanel({
     : [];
 
   return (
-    <div className="grid items-start gap-8 md:grid-cols-[1fr_260px]">
+    <div
+      className={`grid items-start gap-8 ${sidebar ? "md:grid-cols-[1fr_260px]" : ""}`}
+    >
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold tracking-tight">{aboutLabel}</h2>
         {paragraphs.length > 0 ? (

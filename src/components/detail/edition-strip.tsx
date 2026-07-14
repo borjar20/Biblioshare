@@ -17,11 +17,19 @@ const initialState: CreateEditionState = {};
 // SagaStrip): cada tarjeta muestra la etiqueta, el nombre y el resumen de
 // formatEdition; la del pase abierto (selectedEditionId, Tarea 12) lleva ✓ y
 // el acento de tipo de medio. El alta inline solo se pinta a colaborador+.
+//
+// OJO: selectedEditionId (✓ + "La tuya") es la edición del PASE — solo
+// cambia desde el Registro. viewingId (borde de acento) es la que se está
+// MIRANDO en la ficha ahora mismo, y cambia al pulsar una tarjeta. Son dos
+// conceptos distintos que pueden no coincidir: pulsar para mirar no adopta
+// la edición del pase.
 export function EditionStrip({
   itemType,
   itemId,
   editions,
   selectedEditionId,
+  viewingId,
+  onSelect,
   canContribute,
 }: {
   itemType: ItemType;
@@ -29,6 +37,9 @@ export function EditionStrip({
   editions: Edition[];
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
+  /** La edición que se está mirando en el panel ahora mismo (no adoptada). */
+  viewingId: string | null;
+  onSelect: (id: string | null) => void;
   canContribute: boolean;
 }) {
   const t = useTranslations("editions");
@@ -73,6 +84,7 @@ export function EditionStrip({
       <div className="flex gap-2.5 overflow-x-auto pb-2">
         {editions.map((edition) => {
           const isSelected = edition.id === selectedEditionId;
+          const isViewing = edition.id === viewingId;
           // Solo pintamos el nombre en semibold si aporta algo distinto de la
           // etiqueta de arriba: en película publisher siempre es null, así
           // que sin este guard el nombre repetía la misma etiqueta dos veces.
@@ -88,10 +100,13 @@ export function EditionStrip({
             : formatEdition(edition, itemType);
 
           return (
-            <div
+            <button
               key={edition.id}
-              className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 ${
-                isSelected ? `${accent.border} ${accent.bgSoft}` : "border-border"
+              type="button"
+              onClick={() => onSelect(edition.id)}
+              aria-pressed={isViewing}
+              className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 text-left ${
+                isViewing ? `${accent.border} ${accent.bgSoft}` : "border-border"
               }`}
             >
               {isSelected && (
@@ -127,7 +142,7 @@ export function EditionStrip({
                   {meta}
                 </p>
               )}
-            </div>
+            </button>
           );
         })}
 

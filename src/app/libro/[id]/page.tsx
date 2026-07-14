@@ -12,13 +12,10 @@ import { SagaAssignForm } from "@/components/saga-assign-form";
 import { ItemHero } from "@/components/detail/item-hero";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
-import {
-  MetadataSidebar,
-  type MetaRow,
-} from "@/components/detail/metadata-sidebar";
+import { type MetaRow } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
-import { EditionStrip } from "@/components/detail/edition-strip";
+import { EditionsSection } from "@/components/detail/edition-details";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
@@ -213,24 +210,20 @@ export default async function BookDetailPage({
                 label={tDetail("saga")}
               />
             )}
-            <EditionStrip
+            <EditionsSection
               itemType="book"
               itemId={book.id}
               editions={editions}
               selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
               canContribute={canContribute}
+              workRows={metaRows}
+              genres={genres}
+              genresLabel={tDetail("genres")}
             />
             <InfoPanel
               aboutLabel={tDetail("about")}
               synopsis={book.synopsis}
               noSynopsisLabel={tDetail("noSynopsis")}
-              sidebar={
-                <MetadataSidebar
-                  rows={metaRows}
-                  genres={genres}
-                  genresLabel={tDetail("genres")}
-                />
-              }
             />
             {canContribute && (
               <SagaAssignForm
