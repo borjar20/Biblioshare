@@ -21,7 +21,8 @@ export async function addToLibrary(result: SearchResult, queueId?: string | null
   // results into the catalog, so `catalogId` is normally already set here.
   // findOrCreateCatalogItem is only a fallback (mock mode, or results that
   // otherwise arrived without it).
-  const itemId = result.catalogId ?? (await findOrCreateCatalogItem(supabase, result));
+  const itemId =
+    result.catalogId ?? (await findOrCreateCatalogItem(supabase, result, user.id));
 
   const { error } = await supabase.from("library_entries").insert({
     user_id: user.id,
