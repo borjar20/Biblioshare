@@ -120,8 +120,13 @@ export default async function BookDetailPage({
       // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
       // va primero: getSessions necesita saber cuál es el pase abierto.
       passes = await getPasses(supabase, row.id);
-      const openPassId = passes.find((p) => p.finishedOn === null)?.id ?? null;
-      sessions = await getSessions(supabase, openPassId, "book");
+      // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
+      // segundo caso, la lista de sesiones de un libro leído se quedaría vacía
+      // para siempre: getPasses ordena el abierto primero y luego los cerrados
+      // de más reciente a más antiguo, así que passes[0] es el que toca.
+      const currentPassId =
+        passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
+      sessions = await getSessions(supabase, currentPassId, "book");
     }
     queues = await getQueues(supabase, user.id);
   }

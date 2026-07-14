@@ -256,10 +256,14 @@ export async function getFeed(
   // "Se agotaron todas las fuentes" se mide sobre el fetch bruto de cada
   // query de arriba (antes del merge/corte de más abajo), no sobre cuántas
   // filas de cada fuente sobreviven al corte a pageSize.
+  // OJO: `diaryRowsRaw`, no `diaryRows`. Si se mide sobre las filas ya
+  // filtradas por "solo reseñas", casi nunca llegan a pageSize (los pases sin
+  // texto caen), el feed se da por agotado y la paginación muere en la primera
+  // tanda: las reseñas antiguas no se cargarían nunca.
   const allExhausted =
     addedRows.length < pageSize &&
     progressedRows.length < pageSize &&
-    diaryRows.length < pageSize &&
+    diaryRowsRaw.length < pageSize &&
     episodeRows.length < pageSize;
 
   // library_entries de progress_sessions/diary_entries → item_type/item_id.
