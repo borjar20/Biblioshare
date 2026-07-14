@@ -10,6 +10,8 @@ import type { MediaStatus } from "@/lib/library/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import { getEditions } from "@/lib/editions/get-editions";
 import { primaryEdition } from "@/lib/editions/edition-label";
+import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
+import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { SessionForm } from "./session-form";
 
 export const metadata: Metadata = {
@@ -59,7 +61,9 @@ export default async function SessionPage({
     itemType === "series"
       ? supabase
           .from("series")
-          .select("title, creator, cover_url, total_episodes")
+          .select(
+            "title, creator, cover_url, total_episodes, total_seasons, tmdb_id",
+          )
           .eq("id", entry.item_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -69,6 +73,28 @@ export default async function SessionPage({
   const title = book?.title ?? series?.title ?? "";
   const coverUrl = book?.cover_url ?? series?.cover_url ?? null;
   const author = book?.author ?? series?.creator ?? null;
+
+  // Temporadas + episodios pulsables (Tarea 15): salen de series_episodes,
+  // nunca inventados en el cliente. Cache-as-you-go igual que la ficha de
+  // serie — por si el usuario llega aquí sin haber abierto antes la ficha.
+  let seriesEpisodes:
+    | { season: number; episodes: { episode: number; watched: boolean }[] }[]
+    | undefined;
+  if (itemType === "series" && series) {
+    await ensureSeriesEpisodes(supabase, {
+      id: entry.item_id,
+      tmdbId: series.tmdb_id,
+      totalSeasons: series.total_seasons,
+    });
+    const episodeData = await getEpisodeData(supabase, entry.item_id, user.id);
+    seriesEpisodes = episodeData.seasons.map((season) => ({
+      season,
+      episodes: (episodeData.bySeasons.get(season) ?? []).map((e) => ({
+        episode: e.episode,
+        watched: e.own.watched,
+      })),
+    }));
+  }
 
   // El total contra el que se mide el progreso sale de la EDICIÓN del pase
   // abierto (o de la primaria si el pase no tiene ninguna asignada), no de
@@ -123,6 +149,7 @@ export default async function SessionPage({
         position={parsePosition(itemType, entry.position)}
         status={entry.status as MediaStatus}
         total={total}
+        seriesEpisodes={seriesEpisodes}
       />
     </div>
   );

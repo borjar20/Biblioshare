@@ -11,6 +11,10 @@ import { getPasses } from "@/lib/passes/get-passes";
 import { openPass } from "@/lib/passes/actions";
 import { getEditions } from "@/lib/editions/get-editions";
 import { primaryEdition } from "@/lib/editions/edition-label";
+import {
+  markEpisodeWatched,
+  rollSeriesProgress,
+} from "@/lib/series/episode-watch-store";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -91,7 +95,10 @@ export async function addSession(
   // El total contra el que se valida la página sale de la EDICIÓN del pase
   // (o de la primaria si el pase no tiene ninguna asignada), no de
   // books.total_pages: la de bolsillo y la de tapa dura no tienen las mismas
-  // páginas, así que "hasta la 240" solo es válido contra tu edición.
+  // páginas, así que "hasta la 240" solo es válido contra tu edición. Las
+  // series no necesitan este total: los episodios marcados se validan contra
+  // series_episodes dentro de markEpisodeWatched (mismo guard que la pestaña
+  // Episodios), no aquí.
   let maxPosition: number | null = null;
   if (itemType === "book") {
     const editions = await getEditions(supabase, "book", itemId);
@@ -107,18 +114,18 @@ export async function addSession(
         .maybeSingle();
       maxPosition = book?.total_pages ?? null;
     }
-  } else if (itemType === "series") {
-    const { data: series } = await supabase
-      .from("series")
-      .select("total_episodes")
-      .eq("id", itemId)
-      .maybeSingle();
-    maxPosition = series?.total_episodes ?? null;
   }
 
   // Position reached in this session. Optional: a time-only session (no
   // position entered) is valid and doesn't move the entry's position.
+  //
+  // Serie: el formulario manda `season` + varios `episodes` (chips
+  // pulsables, uno por valor repetido). `episodesToMark` es lo que se marca
+  // como visto abajo; `sessionPosition` aquí solo alimenta el HISTÓRICO de la
+  // sesión (progress_sessions.position) — la posición real de la entrada la
+  // deriva rollSeriesProgress a partir de episode_watches, nunca este valor.
   let sessionPosition: Position = {};
+  let episodesToMark: { season: number; episode: number }[] = [];
   if (itemType === "book") {
     const pageRaw = String(formData.get("page") ?? "").trim();
     if (pageRaw) {
@@ -129,22 +136,16 @@ export async function addSession(
     }
   } else if (itemType === "series") {
     const seasonRaw = String(formData.get("season") ?? "").trim();
-    const episodeRaw = String(formData.get("episode") ?? "").trim();
-    if (seasonRaw || episodeRaw) {
+    const episodeNumbers = formData
+      .getAll("episodes")
+      .map((v) => Number(String(v).trim()))
+      .filter((n) => Number.isInteger(n) && n > 0);
+
+    if (episodeNumbers.length > 0) {
       const season = Number(seasonRaw);
-      const episode = Number(episodeRaw);
-      if (
-        !Number.isInteger(season) ||
-        !Number.isInteger(episode) ||
-        season < 0 ||
-        episode < 0
-      ) {
-        return { error: "invalidPosition" };
-      }
-      if (maxPosition !== null && episode > maxPosition) {
-        return { error: "invalidPosition" };
-      }
-      sessionPosition = { season, episode };
+      if (!Number.isInteger(season) || season < 0) return { error: "invalidPosition" };
+      episodesToMark = episodeNumbers.map((episode) => ({ season, episode }));
+      sessionPosition = { season, episode: Math.max(...episodeNumbers) };
     }
   }
 
@@ -165,15 +166,28 @@ export async function addSession(
 
   if (insertError) return { error: "generic" };
 
+  // Serie: marca cada episodio reutilizando la MISMA escritura que la
+  // pestaña Episodios (episode-watch-store.ts) y deja que rollSeriesProgress
+  // recalcule la posición una sola vez — toma el episodio más avanzado de
+  // TODO lo marcado, así que registrar aquí un episodio antiguo nunca hace
+  // retroceder el progreso (§Tarea 15).
+  if (itemType === "series" && episodesToMark.length > 0) {
+    for (const { season, episode } of episodesToMark) {
+      await markEpisodeWatched(supabase, user.id, itemId, season, episode);
+    }
+    await rollSeriesProgress(supabase, user.id, itemId);
+  }
+
   // Roll the entry's current position forward. For books, merge so the
   // copy's `format` (part of the same JSONB) isn't lost by a page update.
+  // Para series NO se escribe aquí: rollSeriesProgress ya dejó la posición
+  // derivada de episode_watches.
   const hasSessionPosition = Object.keys(sessionPosition).length > 0;
   const currentPosition = parsePosition(itemType, entry.position);
-  const nextPosition = hasSessionPosition
-    ? itemType === "book"
+  const nextPosition =
+    itemType === "book" && hasSessionPosition
       ? { ...currentPosition, ...sessionPosition }
-      : sessionPosition
-    : undefined;
+      : undefined;
 
   if (nextPosition || status) {
     // Same queue cleanup as updateStatus (§7.22) — a session can also roll

@@ -25,6 +25,14 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Temporada del catálogo con sus episodios (número + si ya está visto por el
+// usuario). Sale de series_episodes + episode_watches (Tarea 15): las
+// temporadas y episodios nunca se inventan en el cliente.
+type SeriesSeasonEpisodes = {
+  season: number;
+  episodes: { episode: number; watched: boolean }[];
+};
+
 export function SessionForm({
   entryId,
   itemType,
@@ -32,6 +40,7 @@ export function SessionForm({
   position,
   status,
   total,
+  seriesEpisodes,
 }: {
   entryId: string;
   itemType: "book" | "series";
@@ -39,9 +48,11 @@ export function SessionForm({
   position: Position;
   status: MediaStatus;
   total: number | null;
+  seriesEpisodes?: SeriesSeasonEpisodes[];
 }) {
   const t = useTranslations("session");
   const tLibrary = useTranslations("library");
+  const tEpisode = useTranslations("episode");
 
   const boundAddSession = addSession.bind(null, entryId, itemType, itemId);
   const [state, formAction, pending] = useActionState(
@@ -90,6 +101,60 @@ export function SessionForm({
     setManualMinutes(String(minutes));
     setDurationMode("manual");
   }
+
+  // Serie (§Tarea 15): temporadas + episodios pulsables. `watchedSetFor`
+  // busca los ya vistos de una temporada dentro de `seriesEpisodes` (prop
+  // del servidor, nunca inventado en el cliente).
+  function watchedSetFor(season: number): Set<number> {
+    const group = seriesEpisodes?.find((s) => s.season === season);
+    return new Set(
+      (group?.episodes ?? []).filter((e) => e.watched).map((e) => e.episode)
+    );
+  }
+
+  const defaultSeason = (() => {
+    if (!seriesEpisodes || seriesEpisodes.length === 0) return 1;
+    if ("season" in position && seriesEpisodes.some((s) => s.season === position.season)) {
+      return position.season;
+    }
+    return seriesEpisodes[seriesEpisodes.length - 1].season;
+  })();
+
+  const [season, setSeason] = useState(defaultSeason);
+  // `initialWatched` es la foto de "ya visto" al cargar el formulario (no
+  // cambia con los clics): sirve de referencia para que el delta cuente solo
+  // lo marcado EN esta sesión, no lo ya visto antes.
+  const [initialWatched, setInitialWatched] = useState<Set<number>>(() =>
+    watchedSetFor(defaultSeason)
+  );
+  const [selectedEpisodes, setSelectedEpisodes] = useState<Set<number>>(() =>
+    watchedSetFor(defaultSeason)
+  );
+
+  // Cambiar de temporada resetea la selección a lo ya visto de la NUEVA
+  // temporada — no arrastra chips marcados de la temporada anterior. Es un
+  // manejador de evento (onChange), no un efecto: nada de setState en useEffect.
+  function handleSeasonChange(nextSeason: number) {
+    setSeason(nextSeason);
+    const watched = watchedSetFor(nextSeason);
+    setInitialWatched(watched);
+    setSelectedEpisodes(watched);
+  }
+
+  function toggleEpisode(episode: number) {
+    setSelectedEpisodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(episode)) next.delete(episode);
+      else next.add(episode);
+      return next;
+    });
+  }
+
+  const currentSeasonEpisodes =
+    seriesEpisodes?.find((s) => s.season === season)?.episodes ?? [];
+  const newlyMarked = [...selectedEpisodes].filter((e) => !initialWatched.has(e));
+  const maxSelectedEpisode =
+    selectedEpisodes.size > 0 ? Math.max(...selectedEpisodes) : null;
 
   // Al guardar con el cronómetro activo, limpia su localStorage: el valor ya
   // viaja en el FormData a través del input oculto de SessionTimer, así que
@@ -209,26 +274,66 @@ export function SessionForm({
           )}
         </div>
       ) : (
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3">
           <Field label={t("season")} htmlFor="session-season">
-            <Input
+            <Select
               id="session-season"
               name="season"
-              type="number"
-              min={0}
-              defaultValue={"season" in position ? position.season : ""}
-            />
+              value={String(season)}
+              onChange={(e) => handleSeasonChange(Number(e.target.value))}
+            >
+              {(seriesEpisodes ?? []).map((s) => (
+                <option key={s.season} value={s.season}>
+                  {tEpisode("season", { n: s.season })}
+                </option>
+              ))}
+            </Select>
           </Field>
-          <Field label={t("episode")} htmlFor="session-episode">
-            <Input
-              id="session-episode"
-              name="episode"
-              type="number"
-              min={0}
-              max={total ?? undefined}
-              defaultValue={"episode" in position ? position.episode : ""}
-            />
-          </Field>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">{t("episodesLabel")}</span>
+            {currentSeasonEpisodes.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {currentSeasonEpisodes.map(({ episode }) => {
+                  const on = selectedEpisodes.has(episode);
+                  return (
+                    <button
+                      key={episode}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggleEpisode(episode)}
+                      className={`rounded-md border px-2.5 py-2 font-mono text-[11px] font-semibold transition-colors ${
+                        on
+                          ? "border-type-series bg-type-series/10 text-type-series"
+                          : "border-border bg-surface text-muted-foreground hover:border-type-series/50"
+                      }`}
+                    >
+                      {tEpisode("episodeShort", { n: episode })}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t("episodesEmpty")}</p>
+            )}
+
+            {/* Los hidden inputs viajan como valores repetidos de "episodes";
+                addSession los lee con formData.getAll y marca cada uno
+                reutilizando la misma escritura que la pestaña Episodios. */}
+            {[...selectedEpisodes].map((ep) => (
+              <input key={ep} type="hidden" name="episodes" value={ep} />
+            ))}
+
+            {newlyMarked.length > 0 && maxSelectedEpisode !== null && (
+              <span className="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-md border border-green/25 bg-green/10 px-2.5 py-1.5 font-mono text-[11px] text-green">
+                {t("episodesDelta", {
+                  count: newlyMarked.length,
+                  season,
+                  episode: maxSelectedEpisode,
+                })}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
