@@ -637,6 +637,19 @@
       "movie": "Película",
       "series": "Serie"
     },
+    "statusSegments": {
+      "groupLabel": "Tu estado",
+      "inProgress": {
+        "book": "Leyendo",
+        "movie": "Viendo",
+        "series": "Viendo"
+      },
+      "completed": {
+        "book": "Leído",
+        "movie": "Vista",
+        "series": "Vista"
+      }
+    },
     "meta": {
       "author": "Autor",
       "publisher": "Editorial",
