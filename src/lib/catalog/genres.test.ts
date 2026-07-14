@@ -68,4 +68,60 @@ describe("mapSubjectsToGenres", () => {
     expect(mapSubjectsToGenres(null)).toEqual([]);
     expect(mapSubjectsToGenres([])).toEqual([]);
   });
+
+  // Los casos de abajo son subjects REALES de OpenLibrary, y cada uno es un
+  // falso positivo que se coló en la primera versión del mapeo. Un tema no es un
+  // género, y una palabra dentro de otra palabra no es una coincidencia.
+  describe("falsos positivos vistos en datos reales", () => {
+    it("'thoughtcrime' (1984) no es novela negra", () => {
+      expect(mapSubjectsToGenres(["thoughtcrime"])).toEqual([]);
+      // Pero "crime" a principio de palabra sí cuenta.
+      expect(mapSubjectsToGenres(["Crime fiction"])).toEqual(["Novela negra"]);
+    });
+
+    it("la psicología como TEMA no hace del libro un libro de Psicología", () => {
+      expect(mapSubjectsToGenres(["Psychological fiction"])).toEqual([]);
+      expect(mapSubjectsToGenres(["loss (psychology)"])).toEqual([]);
+      // El subject que ES el género, sí.
+      expect(mapSubjectsToGenres(["Psychology"])).toEqual(["Psicología"]);
+    });
+
+    it("'voyages and travels' no es un libro de viajes", () => {
+      expect(mapSubjectsToGenres(["voyages and travels"])).toEqual([]);
+      expect(mapSubjectsToGenres(["Travel"])).toEqual(["Viajes"]);
+    });
+
+    it("'History and criticism' es crítica literaria, no Historia", () => {
+      expect(mapSubjectsToGenres(["History and criticism"])).toEqual([]);
+      expect(mapSubjectsToGenres(["History"])).toEqual(["Historia"]);
+    });
+
+    it("'Homeless children' es un tema, no literatura infantil", () => {
+      expect(mapSubjectsToGenres(["Homeless children"])).toEqual([]);
+      expect(mapSubjectsToGenres(["Juvenile fiction"])).toEqual(["Infantil"]);
+    });
+
+    it("descarta las etiquetas con prefijo de fuente (nyt:, award:)", () => {
+      expect(
+        mapSubjectsToGenres([
+          "nyt:mass-market-monthly=2021-11-07",
+          "award:nebula_award=novel",
+        ])
+      ).toEqual([]);
+    });
+
+    it("los subjects reales de 1984 dan géneros creíbles", () => {
+      expect(
+        mapSubjectsToGenres([
+          "thoughtcrime",
+          "English science fiction",
+          "FICTION CLASSICS",
+          "Political fiction",
+          "Dystopias",
+          "Psychological fiction",
+          "History and criticism",
+        ])
+      ).toEqual(["Ciencia ficción", "Clásicos", "Política", "Distopía"]);
+    });
+  });
 });
