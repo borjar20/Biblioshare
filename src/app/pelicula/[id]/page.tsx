@@ -134,16 +134,13 @@ export default async function MovieDetailPage({
     ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
     : false;
 
+  // La duración es de la VERSIÓN (movie_versions), no de la obra: se ve en
+  // el panel de la edición (EditionDetails), no aquí.
   const metaRows: MetaRow[] = [];
   if (movie.director)
     metaRows.push({ label: tMeta("director"), value: movie.director });
   if (movie.release_year)
     metaRows.push({ label: tMeta("year"), value: String(movie.release_year) });
-  if (movie.duration_minutes)
-    metaRows.push({
-      label: tMeta("runtime"),
-      value: `${movie.duration_minutes} ${t("minutes")}`,
-    });
 
   const genres = movie.genres ?? [];
   const community = await getCommunity(supabase, "movie", movie.id);

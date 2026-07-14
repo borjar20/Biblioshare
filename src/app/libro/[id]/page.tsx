@@ -57,7 +57,6 @@ export default async function BookDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const t = await getTranslations("item");
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -151,22 +150,17 @@ export default async function BookDetailPage({
       .filter(Boolean)
       .join(" · ") || null;
 
+  // Editorial, páginas e ISBN son datos de la EDICIÓN (tirada concreta), no
+  // de la obra: se muestran en el panel de la edición (EditionDetails), no
+  // aquí. El año que se queda en la obra es el de primera publicación.
   const metaRows: MetaRow[] = [];
   if (authorNames.length > 0)
     metaRows.push({ label: tMeta("author"), value: authorNames.join(", ") });
-  if (book.publisher)
-    metaRows.push({ label: tMeta("publisher"), value: book.publisher });
   if (book.published_year)
     metaRows.push({
-      label: tMeta("published"),
+      label: tMeta("firstPublished"),
       value: String(book.published_year),
     });
-  if (book.total_pages)
-    metaRows.push({
-      label: tMeta("pages"),
-      value: `${book.total_pages} ${t("pages")}`,
-    });
-  if (book.isbn) metaRows.push({ label: tMeta("isbn"), value: book.isbn });
 
   const genres = book.genres ?? [];
   const community = await getCommunity(supabase, "book", book.id);
