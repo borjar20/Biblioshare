@@ -60,7 +60,7 @@ where
     d.is_public
     and (
       public.can_view_profile(d.user_id)
-      or public.is_visible_via_club_share('diary_entries', d.id)
+      or public.is_visible_via_club_share('diary_entries', d.id, d.user_id)
     )
   );
 

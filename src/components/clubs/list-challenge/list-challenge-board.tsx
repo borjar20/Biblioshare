@@ -7,6 +7,7 @@ import type { ActivityDetail } from "@/lib/clubs/activities/core";
 import { getListChallengeProgress } from "@/lib/clubs/activities/list-challenge";
 import {
   itemKey,
+  readCompletionMode,
   type ListChallengeProgressView,
 } from "@/lib/clubs/activities/list-challenge-types";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -81,6 +82,7 @@ export function ListChallengeBoard({
       (a.username ?? "").localeCompare(b.username ?? ""),
   );
   const viewerRank = ranked.findIndex((p) => p.isViewer) + 1;
+  const completionMode = readCompletionMode(activity.config);
 
   return (
     <div className="flex flex-col gap-3">
@@ -161,9 +163,12 @@ export function ListChallengeBoard({
       </details>
 
       {/* Esta línea es lo que hace legible la regla del reto: el progreso es
-          DERIVADO, no se marca a mano. Sin ella, la rejilla es un misterio. */}
+          DERIVADO, no se marca a mano -- y qué lo deriva depende de la modalidad
+          (H3b). Sin ella, la rejilla es un misterio. */}
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        {t("listChallengeRule", { start: view.windowStart, end: view.windowEnd })}
+        {completionMode === "any"
+          ? t("listChallengeRuleOpen")
+          : t("listChallengeRule", { start: view.windowStart, end: view.windowEnd })}
       </p>
     </div>
   );

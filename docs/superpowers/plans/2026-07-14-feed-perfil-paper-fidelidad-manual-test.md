@@ -64,8 +64,11 @@ perfil público con reseñas y favoritos.
       objetivo → cifra grande + "completados este año").
 - [ ] Card **"Objetivos {año}"**: fila por tipo con punto de color + "36/50"
       en mono + mini barra teñida por tipo (sin meta: solo el recuento y la
-      barra vacía). Debajo del divisor, el formulario de objetivos; **guardar
-      sigue funcionando** y refresca las filas.
+      barra vacía).
+- [ ] Bajo el divisor el formulario va **plegado**: se ve el objetivo diario
+      en estático ("10 min" o "Sin objetivo") + botón **Editar**. Editar
+      despliega los inputs (diario + anuales); **Guardar funciona** y
+      refresca las filas; **Cancelar** repliega sin guardar.
 - [ ] Ya **no hay gráfico anual en el Panel** (vive en Actividad).
 - [ ] Card **"Calendario"**: nav mono "‹ julio 2026 ›"; días con actividad en
       **fondo terracota tenue** (miniatura de portada si la hay), **hoy con

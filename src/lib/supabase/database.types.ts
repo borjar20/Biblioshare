@@ -1681,7 +1681,7 @@ export type Database = {
       }
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
       is_visible_via_club_share: {
-        Args: { p_row_id: string; p_source_table: string }
+        Args: { p_owner_id: string; p_row_id: string; p_source_table: string }
         Returns: boolean
       }
       notify_club_join_request: {
@@ -1763,8 +1763,6 @@ export type Database = {
         | "follow_accepted"
         | "review_liked"
         | "review_commented"
-        | "club_join_request"
-        | "club_join_approved"
         | "club_invite"
         | "club_invite_accepted"
         | "club_post"
@@ -1773,6 +1771,8 @@ export type Database = {
         | "comment_liked"
         | "club_activity_proposed"
         | "club_activity_activated"
+        | "club_join_request"
+        | "club_join_approved"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       target_kind:
@@ -1929,8 +1929,6 @@ export const Constants = {
         "follow_accepted",
         "review_liked",
         "review_commented",
-        "club_join_request",
-        "club_join_approved",
         "club_invite",
         "club_invite_accepted",
         "club_post",
@@ -1939,6 +1937,8 @@ export const Constants = {
         "comment_liked",
         "club_activity_proposed",
         "club_activity_activated",
+        "club_join_request",
+        "club_join_approved",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
