@@ -1619,6 +1619,18 @@ export type Database = {
         Returns: undefined
       }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
+      register_book_edition: {
+        Args: {
+          p_book_id: string
+          p_cover_url?: string
+          p_isbn: string
+          p_label?: string
+          p_pages?: number
+          p_publisher?: string
+          p_year?: number
+        }
+        Returns: string
+      }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
         Returns: undefined
@@ -1635,6 +1647,8 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
+      sane_pages: { Args: { p: number }; Returns: number }
+      sane_year: { Args: { y: number }; Returns: number }
       set_club_member_role: {
         Args: {
           p_club_id: string

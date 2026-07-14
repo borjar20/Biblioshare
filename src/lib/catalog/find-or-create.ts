@@ -107,10 +107,19 @@ export async function findOrCreateCatalogItem(
 // para la tarjeta de búsqueda) y group-editions se queda solo con la más
 // completa como representante, perdiendo el resto.
 //
-// Idempotente (upsert manual: comprobar y luego insertar, tragando 23505 si
-// pierde la carrera contra otro request) y no debe romper el alta del libro:
-// cualquier fallo aquí se traga entero, registrar la edición es una mejora,
-// no un requisito para añadir el libro a la biblioteca.
+// El insert directo a book_editions ya no es una opción: dejaba a cualquier
+// autenticado escribir editorial/portada/páginas inventadas en cualquier
+// libro con solo poner algo de 10-20 caracteres en isbn, sin ser colaborador
+// (ver supabase/migrations/20260714_editions_hardening.sql). Pasamos por la
+// función register_book_edition, que valida el ISBN de verdad (dígito de
+// control incluido), sanea año/páginas fuera de rango y firma created_by con
+// auth.uid() del lado del servidor — no del userId que le pasemos aquí.
+//
+// La función ya es idempotente (upsert vía on conflict do nothing) y ya no
+// debe romper el alta del libro: un ISBN inválido es ahora un error legítimo
+// y esperable (viene tal cual de Google Books), así que cualquier fallo aquí
+// se traga entero — registrar la edición es una mejora, no un requisito para
+// añadir el libro a la biblioteca.
 async function ensureBookEdition(
   supabase: SupabaseServerClient,
   bookId: string,
@@ -118,36 +127,25 @@ async function ensureBookEdition(
   userId?: string | null
 ): Promise<void> {
   const isbn = result.isbn;
-  // La política RLS exige isbn no nulo de 10 a 20 caracteres; sin eso el
-  // insert lo rechazaría igualmente, así que ni lo intentamos.
-  if (!isbn || isbn.length < 10 || isbn.length > 20) return;
+  // register_book_edition exige auth.uid() no nulo (raise exception si no
+  // hay sesión) y lo usa para firmar created_by; sin isbn o sin usuario
+  // autenticado la llamada está condenada a fallar, así que ni la intentamos
+  // (los flujos de cache oportunista sin usuario, ver comentario de arriba,
+  // simplemente no registran edición).
+  if (!isbn || !userId) return;
 
   try {
-    const { data: existing } = await supabase
-      .from("book_editions")
-      .select("id")
-      .eq("book_id", bookId)
-      .eq("isbn", isbn)
-      .maybeSingle();
-    if (existing) return;
+    const { error } = await supabase.rpc("register_book_edition", {
+      p_book_id: bookId,
+      p_isbn: isbn,
+      p_publisher: result.publisher ?? undefined,
+      p_year: result.year ?? undefined,
+      p_pages: result.pageCount ?? undefined,
+      p_cover_url: result.coverUrl ?? undefined,
+    });
 
-    const { error } = await supabase.from("book_editions").insert({
-      book_id: bookId,
-      // Nombre neutro: no sabemos si es tapa dura, bolsillo, etc. — solo que
-      // es la edición de este ISBN concreto.
-      label: "Edición",
-      publisher: result.publisher,
-      published_year: result.year,
-      total_pages: result.pageCount,
-      isbn,
-      cover_url: result.coverUrl,
-      created_by: userId ?? null,
-    } as never);
-
-    // 23505: otro request insertó el mismo (book_id, isbn) primero — ya
-    // existe, éxito igualmente (índice único parcial de la migración).
-    if (error && error.code !== "23505") {
-      console.error("ensureBookEdition insert failed", { bookId, isbn, error });
+    if (error) {
+      console.error("ensureBookEdition rpc failed", { bookId, isbn, error });
     }
   } catch (error) {
     console.error("ensureBookEdition failed", { bookId, isbn, error });
