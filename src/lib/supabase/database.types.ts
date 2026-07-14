@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_editions: {
+        Row: {
+          book_id: string
+          cover_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_primary: boolean
+          isbn: string | null
+          label: string
+          language: string | null
+          published_year: number | null
+          publisher: string | null
+          total_pages: number | null
+        }
+        Insert: {
+          book_id: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          isbn?: string | null
+          label: string
+          language?: string | null
+          published_year?: number | null
+          publisher?: string | null
+          total_pages?: number | null
+        }
+        Update: {
+          book_id?: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          isbn?: string | null
+          label?: string
+          language?: string | null
+          published_year?: number | null
+          publisher?: string | null
+          total_pages?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_editions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author: string | null
@@ -847,6 +900,47 @@ export type Database = {
           },
         ]
       }
+      movie_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          id: string
+          is_primary: boolean
+          label: string
+          movie_id: string
+          release_year: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_primary?: boolean
+          label: string
+          movie_id: string
+          release_year?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_primary?: boolean
+          label?: string
+          movie_id?: string
+          release_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_versions_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movies: {
         Row: {
           cover_url: string | null
@@ -1530,6 +1624,10 @@ export type Database = {
         Returns: undefined
       }
       reorder_queue: {
+        // Ajuste a mano, NO lo generado: target_queue acepta null (reordenar
+        // el bucket "Sin cola", §7.22). Postgres no declara la nulabilidad de
+        // los argumentos, así que el generador la pierde. Repón este `| null`
+        // cada vez que regeneres este fichero.
         Args: { entry_ids: string[]; target_queue: string | null }
         Returns: undefined
       }
