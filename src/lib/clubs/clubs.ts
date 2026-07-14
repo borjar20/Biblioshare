@@ -47,6 +47,11 @@ function mapClub(row: {
   };
 }
 
+// Espejo de los CHECKs de BD (clubs_slug_format / clubs_name_len,
+// 20260715_text_length_limits.sql): la sanitización del formulario es solo
+// cliente, así que el formato se revalida aquí antes del RPC.
+const CLUB_SLUG_RE = /^[a-z0-9-]{3,40}$/;
+
 // Sin política INSERT en clubs (ver migración 20260712_clubs.sql) — create_club
 // es el único camino, inserta clubs + la fila de owner en club_members
 // atómicamente vía SECURITY DEFINER.
@@ -63,9 +68,13 @@ export async function createClub(input: {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const name = input.name.trim();
+  if (!name || name.length > 80) throw new Error("invalid_name");
+  if (!CLUB_SLUG_RE.test(input.slug)) throw new Error("invalid_slug");
+
   const { data, error } = await supabase.rpc("create_club", {
     p_slug: input.slug,
-    p_name: input.name,
+    p_name: name,
     p_description: input.description ?? "",
     p_visibility: input.visibility,
     p_cover_url: input.coverUrl ?? "",

@@ -46,6 +46,7 @@ export type FeedPage = {
 };
 
 export type FeedOptions = {
+  /** Cursor keyset opaco: `${eventDate}~${eventId}` del último evento servido. */
   cursor?: string;
   pageSize?: number;
   itemType?: ItemType;
@@ -54,6 +55,46 @@ export type FeedOptions = {
 
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_EXCERPT_LENGTH = 200;
+
+// ── Cursor keyset (fecha, id) ────────────────────────────────────────────────
+// Las 4 fuentes mezclan granularidades: library_entries pagina por timestamptz
+// y las otras tres por date. El cursor antiguo era solo la fecha y filtraba con
+// `lt`, así que al paginar se PERDÍAN todos los demás eventos del mismo día
+// (p. ej. dos pases de diario con el mismo finished_on). Ahora: se consulta con
+// `lte` (inclusivo) y el par (fecha, id) desempata en cliente — el mismo orden
+// total (fecha desc, id desc, comparación de strings) que usa el sort de abajo,
+// de modo que "estrictamente después del cursor" está bien definido aunque se
+// mezclen '2026-07-13' y '2026-07-13T15:00:00+00:00'.
+
+const CURSOR_SEPARATOR = "~"; // no aparece ni en fechas ISO ni en los event ids
+
+function parseCursor(cursor: string): { date: string; id: string } {
+  const sep = cursor.indexOf(CURSOR_SEPARATOR);
+  // Cursor legado (solo fecha, de una sesión anterior al cambio de formato):
+  // id vacío ordena antes que cualquier id real, así que degrada al
+  // comportamiento antiguo sin romper.
+  if (sep === -1) return { date: cursor, id: "" };
+  return { date: cursor.slice(0, sep), id: cursor.slice(sep + 1) };
+}
+
+// Cota superior INCLUSIVA para una columna date a partir de la fecha del cursor.
+function dateUpperBound(cursorDate: string): string {
+  return cursorDate.slice(0, 10);
+}
+
+// Cota superior INCLUSIVA para una columna timestamptz: si el cursor viene de
+// un evento date-only, cualquier timestamp de ese mismo día debe entrar en el
+// fetch (el filtro de cliente decide después).
+function timestampUpperBound(cursorDate: string): string {
+  return cursorDate.includes("T") ? cursorDate : `${cursorDate}T23:59:59.999+00:00`;
+}
+
+// ¿Va `event` estrictamente DESPUÉS del cursor en el orden total (fecha desc,
+// id desc)? Los ya servidos (incluido el propio evento del cursor) quedan fuera.
+function isAfterCursor(event: { eventDate: string; id: string }, cursor: { date: string; id: string }): boolean {
+  if (event.eventDate !== cursor.date) return event.eventDate < cursor.date;
+  return event.id < cursor.id;
+}
 
 function excerpt(text: string | null): string | null {
   if (!text) return null;
@@ -74,6 +115,7 @@ export async function getFeed(
   options: FeedOptions = {},
 ): Promise<FeedPage> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  const cursor = options.cursor ? parseCursor(options.cursor) : null;
 
   const { data: followRows, error: followError } = await supabase
     .from("follows")
@@ -120,7 +162,7 @@ export async function getFeed(
             .order("created_at", { ascending: false })
             .limit(pageSize);
           if (options.itemType) q = q.eq("item_type", options.itemType);
-          if (options.cursor) q = q.lt("created_at", options.cursor);
+          if (cursor) q = q.lte("created_at", timestampUpperBound(cursor.date));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -133,7 +175,7 @@ export async function getFeed(
             .order("session_date", { ascending: false })
             .limit(pageSize);
           if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);
-          if (options.cursor) q = q.lt("session_date", options.cursor);
+          if (cursor) q = q.lte("session_date", dateUpperBound(cursor.date));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -147,7 +189,7 @@ export async function getFeed(
             .limit(pageSize);
           if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);
           if (options.reviewsOnly) q = q.not("review", "is", null);
-          if (options.cursor) q = q.lt("finished_on", options.cursor);
+          if (cursor) q = q.lte("finished_on", dateUpperBound(cursor.date));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -162,7 +204,7 @@ export async function getFeed(
             .order("watched_on", { ascending: false })
             .limit(pageSize);
           if (options.reviewsOnly) q = q.not("review", "is", null);
-          if (options.cursor) q = q.lt("watched_on", options.cursor);
+          if (cursor) q = q.lte("watched_on", dateUpperBound(cursor.date));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -413,8 +455,16 @@ export async function getFeed(
     });
   }
 
-  events.sort((a, b) => (a.eventDate < b.eventDate ? 1 : a.eventDate > b.eventDate ? -1 : 0));
-  const page = events.slice(0, pageSize);
+  // Orden total (fecha desc, id desc) — el desempate por id hace la paginación
+  // determinista entre eventos con la misma fecha, en pareja con isAfterCursor.
+  events.sort((a, b) => {
+    if (a.eventDate !== b.eventDate) return a.eventDate < b.eventDate ? 1 : -1;
+    return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+  });
+  // Las queries usan `lte` (inclusivo), así que aquí se descarta lo ya servido
+  // en páginas anteriores — incluido el propio evento del cursor.
+  const fresh = cursor ? events.filter((e) => isAfterCursor(e, cursor)) : events;
+  const page = fresh.slice(0, pageSize);
 
   // Interacciones de Bloque B, batch por tipo, solo para los eventos de esta
   // página que tienen target real.
@@ -441,11 +491,10 @@ export async function getFeed(
     }
   }
 
-  const nextCursor = allExhausted
+  const last = page[page.length - 1];
+  const nextCursor = allExhausted || !last
     ? null
-    : page.length > 0
-      ? page[page.length - 1].eventDate
-      : null;
+    : `${last.eventDate}${CURSOR_SEPARATOR}${last.id}`;
 
   return { events: page, nextCursor };
 }

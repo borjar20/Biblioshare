@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
-import { sendPushToUser, type PushPayload } from "@/lib/push/send-push";
+import { sendPushToUser, sendPushToUsers, type PushPayload } from "@/lib/push/send-push";
 import {
   NOTIFICATION_TYPE_KEY,
   type Notification,
@@ -55,22 +55,26 @@ export async function notify(
   }
 }
 
-async function deliverPush(
+// Construye el payload push (identidad del actor + href del target +
+// traducciones) UNA vez — compartido entre la entrega individual (deliverPush)
+// y el fan-out en lote (notifyMany), donde el payload es idéntico para todos
+// los destinatarios y repetir esta resolución por miembro era el grueso del
+// coste.
+async function buildPushPayload(
   supabase: SupabaseServerClient,
   params: {
-    userId: string;
     actorId: string;
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
   },
-): Promise<void> {
+): Promise<PushPayload | null> {
   const { data: actor } = await supabase
     .from("profile_identities")
     .select("username, display_name")
     .eq("user_id", params.actorId)
     .maybeSingle();
-  if (!actor?.username) return;
+  if (!actor?.username) return null;
 
   let href = `/u/${actor.username}`;
   if (params.targetType && params.targetId) {
@@ -84,13 +88,66 @@ async function deliverPush(
   const tCommon = await getTranslations("common");
   const name = actor.display_name || actor.username;
 
-  const payload: PushPayload = {
+  return {
     title: tCommon("appName"),
     body: t(NOTIFICATION_TYPE_KEY[params.type], { name }),
     url: href,
   };
+}
 
+async function deliverPush(
+  supabase: SupabaseServerClient,
+  params: {
+    userId: string;
+    actorId: string;
+    type: NotificationType;
+    targetType?: ReviewTargetType;
+    targetId?: string;
+  },
+): Promise<void> {
+  const payload = await buildPushPayload(supabase, params);
+  if (!payload) return;
   await sendPushToUser(params.userId, payload);
+}
+
+// Fan-out a varios destinatarios (post/actividad de club): UNA inserción
+// multi-fila para las notificaciones in-app y UNA entrega push en lote, en vez
+// de notify() por miembro (que costaba ~5 queries + envíos secuenciales por
+// cabeza y bloqueaba la server action del autor en clubes grandes). Mismo
+// contrato best-effort que notify(): nunca lanza.
+export async function notifyMany(
+  supabase: SupabaseServerClient,
+  params: {
+    userIds: string[];
+    actorId: string;
+    type: NotificationType;
+    targetType?: ReviewTargetType;
+    targetId?: string;
+  },
+): Promise<void> {
+  const userIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
+  if (userIds.length === 0) return;
+
+  const { error } = await supabase.from("notifications").insert(
+    userIds.map((userId) => ({
+      user_id: userId,
+      actor_id: params.actorId,
+      type: params.type,
+      target_type: params.targetType ?? null,
+      target_id: params.targetId ?? null,
+    })),
+  );
+  if (error) {
+    console.error("notifyMany() failed", error);
+    return;
+  }
+
+  try {
+    const payload = await buildPushPayload(supabase, params);
+    if (payload) await sendPushToUsers(userIds, payload);
+  } catch (pushError) {
+    console.error("notifyMany() push delivery failed", pushError);
+  }
 }
 
 export async function getUnreadCount(
@@ -234,6 +291,10 @@ async function resolveTargetHrefs(
 }
 
 const READ_EXPIRY_MS = 5 * 60 * 1000;
+// Las notificaciones que nunca se marcan como leídas no las tocaba ninguna
+// limpieza — crecían sin límite. Se purgan por edad, muy por encima de lo que
+// la campana llega a mostrar (LIST_LIMIT).
+const AGE_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;
 
 // notifications.actor_id apunta a auth.users, no a profiles → sin embedding de
 // PostgREST; se resuelve la identidad del actor en un segundo paso (mismo
@@ -247,12 +308,13 @@ export async function listNotifications(
   // suscripciones push caducadas): las notificaciones ya leídas se borran
   // 5 minutos después de marcarse como leídas, en cada carga de la campana,
   // en vez de acumularse indefinidamente en la tabla.
+  const readCutoff = new Date(Date.now() - READ_EXPIRY_MS).toISOString();
+  const ageCutoff = new Date(Date.now() - AGE_EXPIRY_MS).toISOString();
   const { error: cleanupError } = await supabase
     .from("notifications")
     .delete()
     .eq("user_id", userId)
-    .not("read_at", "is", null)
-    .lt("read_at", new Date(Date.now() - READ_EXPIRY_MS).toISOString());
+    .or(`and(read_at.not.is.null,read_at.lt."${readCutoff}"),created_at.lt."${ageCutoff}"`);
   if (cleanupError) {
     console.error("listNotifications: cleanup failed", cleanupError);
   }
