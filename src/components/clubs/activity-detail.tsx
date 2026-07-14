@@ -14,6 +14,7 @@ import {
 } from "@/lib/clubs/activities/core";
 import { ActivityItemPool } from "./activity-item-pool";
 import { ActivityItemList } from "./activity-item-list";
+import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,9 @@ export function ActivityDetailView({
   const canCurate =
     kindDefinition.usesItemPool &&
     (kindDefinition.itemCuration === "curators" ? isCreator || isModerator : isParticipant);
+  // Los moderadores entran a editar aunque no participen: ya podían quitar
+  // ítems ajenos y gestionar los hitos de la lectura conjunta.
+  const canEdit = canCurate || isModerator;
 
   function refreshActivity() {
     startTransition(async () => {
@@ -106,6 +110,12 @@ export function ActivityDetailView({
           itemCuration={kindDefinition.itemCuration}
           onChanged={refreshActivity}
         />
+
+        {/* Los hitos de la lectura conjunta también se gestionan aquí: el
+            board del detalle solo los lista. */}
+        {activity.kind === "buddy_read" && isModerator && (
+          <BuddyReadCheckpointEditor activityId={activity.id} status={status} />
+        )}
       </div>
     );
   }
@@ -254,8 +264,19 @@ export function ActivityDetailView({
         </p>
       )}
 
-      {/* criteria_challenge (H4) no tiene pool: su reto se describe por criterio, no se
-          enumera -- y sin ítems tampoco hay opiniones por ítem que mostrar.
+      {DetailExtension && (
+        <DetailExtension
+          activity={activity}
+          viewerId={viewerId}
+          isModerator={isModerator}
+          onChanged={refreshActivity}
+        />
+      )}
+
+      {/* La lista de ítems cierra la página: el tablero del kind es el
+          protagonista y aquí abajo se opina, ítem a ítem.
+          criteria_challenge (H4) no tiene pool: su reto se describe por
+          criterio, no se enumera -- y sin ítems tampoco hay opiniones.
           La lista es de solo lectura; la curación vive en "Modificar actividad". */}
       {kindDefinition.usesItemPool && (
         <div className="flex flex-col gap-2">
@@ -263,7 +284,7 @@ export function ActivityDetailView({
             <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
               {t("itemPool")}
             </h2>
-            {canCurate && (
+            {canEdit && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -285,15 +306,6 @@ export function ActivityDetailView({
             <p className="text-xs text-muted-foreground">{t("itemPoolEmpty")}</p>
           )}
         </div>
-      )}
-
-      {DetailExtension && (
-        <DetailExtension
-          activity={activity}
-          viewerId={viewerId}
-          isModerator={isModerator}
-          onChanged={refreshActivity}
-        />
       )}
     </div>
   );
