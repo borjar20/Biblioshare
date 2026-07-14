@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { updateGoals, type UpdateGoalsState } from "@/lib/profile/actions";
-import { TargetIcon } from "@/components/ui/icons";
 
 const initialState: UpdateGoalsState = {};
 
@@ -34,16 +33,10 @@ export function GoalsForm({
     initialState,
   );
 
+  // Formulario pelado: vive dentro de la card "Objetivos {año}" del panel
+  // (GoalRows pone el título; el panel, la card y el divisor).
   return (
-    <div className="flex flex-col gap-3">
-      <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-        <TargetIcon className="h-5 w-5 text-accent" />
-        {t("goalsTitle")}
-      </div>
-      <form
-        action={formAction}
-        className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4"
-      >
+    <form action={formAction} className="flex flex-col gap-4">
         {/* El objetivo diario es de lectura: solo los libros registran minutos
             (§7.14). El anual es de ítems completados, uno por tipo. */}
         <Field
@@ -94,6 +87,5 @@ export function GoalsForm({
           {pending ? t("savingGoals") : t("saveGoals")}
         </Button>
       </form>
-    </div>
   );
 }

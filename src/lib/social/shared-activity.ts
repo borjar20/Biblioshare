@@ -42,9 +42,17 @@ async function resolveActor(supabase: SupabaseServerClient, userId: string) {
 }
 
 async function resolveCatalog(supabase: SupabaseServerClient, itemType: ItemType, itemId: string) {
-  const table = itemType === "book" ? "books" : itemType === "movie" ? "movies" : "series";
+  if (itemType === "book") {
+    const { data } = await supabase
+      .from("books")
+      .select("title, author, cover_url")
+      .eq("id", itemId)
+      .maybeSingle();
+    return data ? { title: data.title, cover_url: data.cover_url, subtitle: data.author } : null;
+  }
+  const table = itemType === "movie" ? "movies" : "series";
   const { data } = await supabase.from(table).select("title, cover_url").eq("id", itemId).maybeSingle();
-  return data;
+  return data ? { title: data.title, cover_url: data.cover_url, subtitle: null } : null;
 }
 
 async function resolveLibraryEntryItem(supabase: SupabaseServerClient, libraryEntryId: string) {
@@ -68,7 +76,7 @@ export async function resolveSharedActivity(
   if (ref.sourceTable === "library_entries") {
     const { data: row } = await supabase
       .from("library_entries")
-      .select("id, user_id, item_type, item_id, created_at")
+      .select("id, user_id, item_type, item_id, status, created_at")
       .eq("id", ref.rowId)
       .maybeSingle();
     if (!row) return null;
@@ -88,6 +96,8 @@ export async function resolveSharedActivity(
       itemId: row.item_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.cover_url,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: row.status,
       eventDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
@@ -126,6 +136,8 @@ export async function resolveSharedActivity(
       itemId: item.itemId,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.cover_url,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: null,
       eventDate: row.session_date,
       rating: null,
       reviewExcerpt: null,
@@ -164,6 +176,8 @@ export async function resolveSharedActivity(
       itemId: item.itemId,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.cover_url,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: null,
       eventDate: row.finished_on,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
@@ -208,6 +222,8 @@ export async function resolveSharedActivity(
     itemId: row.series_id,
     itemTitle: catalog.title,
     itemCoverUrl: catalog.cover_url,
+    itemSubtitle: catalog.subtitle,
+    entryStatus: null,
     eventDate: row.watched_on,
     rating: row.rating,
     reviewExcerpt: excerpt(row.review),

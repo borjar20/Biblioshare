@@ -5,18 +5,10 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { markAllNotificationsRead } from "@/lib/social/notification-actions";
 import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notification-types";
+import { timeAgo } from "@/lib/relative-time";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
 import { PushToggle } from "@/components/push/push-toggle";
-
-function timeAgo(iso: string, t: (key: string, values?: Record<string, number>) => string): string {
-  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (minutes < 1) return t("justNow");
-  if (minutes < 60) return t("minutesAgo", { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("hoursAgo", { count: hours });
-  return t("daysAgo", { count: Math.floor(hours / 24) });
-}
 
 // Campana con contador de no leídas + dropdown (EPIC-05, Bloque D, SD-5). Al
 // abrir, marca todo como leído (sin selección fila a fila, mismo espíritu
@@ -29,6 +21,7 @@ export function NotificationBell({
   initialNotifications: Notification[];
 }) {
   const t = useTranslations("notifications");
+  const tTime = useTranslations("time");
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [, startTransition] = useTransition();
@@ -103,8 +96,11 @@ export function NotificationBell({
                               name: n.actorDisplayName || n.actorUsername,
                             })}
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {timeAgo(n.createdAt, t)}
+                      <span
+                        suppressHydrationWarning
+                        className="font-mono text-[10px] text-muted-foreground"
+                      >
+                        {timeAgo(n.createdAt, tTime)}
                       </span>
                     </div>
 

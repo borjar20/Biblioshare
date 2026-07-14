@@ -13,7 +13,9 @@ export async function ActivityChart({ months }: { months: MonthlyActivity[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">{t("activityTitle")}</h2>
+      <h2 className="font-serif text-sm font-semibold tracking-normal text-foreground">
+        {t("activityYearTitle")}
+      </h2>
 
       {!hasActivity ? (
         <p className="text-sm text-muted-foreground">{t("activityEmpty")}</p>
