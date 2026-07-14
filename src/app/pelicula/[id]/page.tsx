@@ -13,13 +13,10 @@ import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
-import {
-  MetadataSidebar,
-  type MetaRow,
-} from "@/components/detail/metadata-sidebar";
+import { type MetaRow } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
-import { EditionStrip } from "@/components/detail/edition-strip";
+import { EditionsSection } from "@/components/detail/edition-details";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
@@ -34,7 +31,7 @@ import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
-import { SagaAssignForm } from "@/components/saga-assign-form";
+import { CatalogEditor, EditFichaButton } from "@/components/detail/catalog-editor";
 
 export async function generateMetadata({
   params,
@@ -58,7 +55,6 @@ export default async function MovieDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const t = await getTranslations("item");
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -119,14 +115,10 @@ export default async function MovieDetailPage({
     queues = await getQueues(supabase, user.id);
   }
 
+  // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
+  // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
   const byline =
-    [
-      movie.director || null,
-      movie.release_year ? String(movie.release_year) : null,
-      movie.duration_minutes
-        ? `${movie.duration_minutes} ${t("minutes")}`
-        : null,
-    ]
+    [movie.director || null, movie.release_year ? String(movie.release_year) : null]
       .filter(Boolean)
       .join(" · ") || null;
 
@@ -139,11 +131,6 @@ export default async function MovieDetailPage({
     metaRows.push({ label: tMeta("director"), value: movie.director });
   if (movie.release_year)
     metaRows.push({ label: tMeta("year"), value: String(movie.release_year) });
-  if (movie.duration_minutes)
-    metaRows.push({
-      label: tMeta("runtime"),
-      value: `${movie.duration_minutes} ${t("minutes")}`,
-    });
 
   const genres = movie.genres ?? [];
   const community = await getCommunity(supabase, "movie", movie.id);
@@ -185,50 +172,60 @@ export default async function MovieDetailPage({
           log: tDetail("tabLog"),
         }}
         info={
-          <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 1 && (
-              <SagaStrip
-                members={sagaMembers}
-                currentType="movie"
-                currentId={movie.id}
-                sagaId={saga.sagaId}
-                sagaName={saga.name}
-                label={tDetail("saga")}
-              />
-            )}
-            <EditionStrip
-              itemType="movie"
-              itemId={movie.id}
-              editions={editions}
-              selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
-              canContribute={canContribute}
-            />
-            <InfoPanel
-              aboutLabel={tDetail("about")}
-              synopsis={movie.synopsis}
-              noSynopsisLabel={tDetail("noSynopsis")}
-              sidebar={
-                <MetadataSidebar
-                  rows={metaRows}
-                  genres={genres}
-                  genresLabel={tDetail("genres")}
+          <CatalogEditor
+            itemType="movie"
+            itemId={movie.id}
+            item={{
+              title: movie.title,
+              author: movie.director,
+              synopsis: movie.synopsis,
+              genres,
+              year: movie.release_year,
+              coverUrl: movie.cover_url,
+            }}
+            editions={editions}
+            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+            canContribute={canContribute}
+          >
+            <div className="flex flex-col gap-10">
+              {saga && sagaMembers.length >= 1 && (
+                <SagaStrip
+                  members={sagaMembers}
+                  currentType="movie"
+                  currentId={movie.id}
+                  sagaId={saga.sagaId}
+                  sagaName={saga.name}
+                  label={tDetail("saga")}
                 />
-              }
-              extra={
-                <>
-                  <CreditsSection credits={credits} />
-                  {watchProviders && <WatchProviders data={watchProviders} />}
-                </>
-              }
-            />
-            {canContribute && (
-              <SagaAssignForm
+              )}
+              {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+                  entre la tira de ediciones y el panel de metadatos, y así los
+                  dos comparten el estado de "qué edición miro". */}
+              <EditionsSection
                 itemType="movie"
                 itemId={movie.id}
-                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
-              />
-            )}
-          </div>
+                editions={editions}
+                selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
+                canContribute={canContribute}
+                workRows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              >
+                <InfoPanel
+                  aboutLabel={tDetail("about")}
+                  synopsis={movie.synopsis}
+                  noSynopsisLabel={tDetail("noSynopsis")}
+                  actions={<EditFichaButton />}
+                  extra={
+                    <>
+                      <CreditsSection credits={credits} />
+                      {watchProviders && <WatchProviders data={watchProviders} />}
+                    </>
+                  }
+                />
+              </EditionsSection>
+            </div>
+          </CatalogEditor>
         }
         community={
           <div className="flex flex-col gap-10">

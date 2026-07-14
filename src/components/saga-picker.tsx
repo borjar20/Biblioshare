@@ -9,8 +9,8 @@ import { searchSagas } from "@/lib/sagas/search-sagas";
 //
 // Vive en src/components/ (no bajo clubs/) porque es reutilizable: el reto personal (§7.10)
 // soporta el filtro por saga en su motor pero no lo expone en su formulario precisamente
-// porque no existía ningún selector -- este lo es. Ojo: saga-assign-form.tsx NO sirve para
-// esto, usa texto libre y CREA la saga por nombre.
+// porque no existía ningún selector -- este lo es. Ojo: la sección "Sagas" del editor de
+// ficha (catalog-editor.tsx) NO sirve para esto, usa texto libre y CREA la saga por nombre.
 export function SagaPicker({
   value,
   onChange,

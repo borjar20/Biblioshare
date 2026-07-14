@@ -16,3 +16,29 @@ export function normalizeIsbn(query: string): string | null {
   }
   return null;
 }
+
+// Valida el dígito de control de un ISBN ya normalizado (ver normalizeIsbn
+// arriba). Sirve para descartar ISBN con formato correcto pero dígitos
+// inventados o mal transcritos (p. ej. al filtrar ediciones de OpenLibrary).
+export function isValidIsbnCheckDigit(isbn: string): boolean {
+  if (/^\d{13}$/.test(isbn)) {
+    let sum = 0;
+    for (let i = 0; i < 13; i++) {
+      const digit = Number(isbn[i]);
+      sum += i % 2 === 0 ? digit : digit * 3;
+    }
+    return sum % 10 === 0;
+  }
+
+  if (/^\d{9}[\dX]$/.test(isbn)) {
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += Number(isbn[i]) * (10 - i);
+    }
+    const last = isbn[9] === "X" ? 10 : Number(isbn[9]);
+    sum += last;
+    return sum % 11 === 0;
+  }
+
+  return false;
+}

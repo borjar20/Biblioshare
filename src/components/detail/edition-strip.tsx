@@ -1,14 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
 import { formatEdition, formatEditionMeta } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { createEdition, type CreateEditionState } from "@/lib/editions/actions";
+import { EditionFields } from "./edition-fields";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CheckIcon, PlusIcon } from "@/components/ui/icons";
 
 const initialState: CreateEditionState = {};
@@ -17,11 +17,19 @@ const initialState: CreateEditionState = {};
 // SagaStrip): cada tarjeta muestra la etiqueta, el nombre y el resumen de
 // formatEdition; la del pase abierto (selectedEditionId, Tarea 12) lleva ✓ y
 // el acento de tipo de medio. El alta inline solo se pinta a colaborador+.
+//
+// OJO: selectedEditionId (✓ + "La tuya") es la edición del PASE — solo
+// cambia desde el Registro. viewingId (borde de acento) es la que se está
+// MIRANDO en la ficha ahora mismo, y cambia al pulsar una tarjeta. Son dos
+// conceptos distintos que pueden no coincidir: pulsar para mirar no adopta
+// la edición del pase.
 export function EditionStrip({
   itemType,
   itemId,
   editions,
   selectedEditionId,
+  viewingId,
+  onSelect,
   canContribute,
 }: {
   itemType: ItemType;
@@ -29,6 +37,9 @@ export function EditionStrip({
   editions: Edition[];
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
+  /** La edición que se está mirando en el panel ahora mismo (no adoptada). */
+  viewingId: string | null;
+  onSelect: (id: string | null) => void;
   canContribute: boolean;
 }) {
   const t = useTranslations("editions");
@@ -50,6 +61,19 @@ export function EditionStrip({
     setPrevState(state);
     if (!state.error) setAdding(false);
   }
+
+  // La tarjeta de la edición del pase (selectedEditionId, "La tuya") debe
+  // verse sin que el usuario tenga que buscarla: con muchas ediciones (hasta
+  // 20 tras la sincronización con OpenLibrary, Tarea 6) puede caer fuera del
+  // scroll horizontal inicial de la tira.
+  const selectedRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    // Llamada imperativa al DOM (no un setState), por eso vive en un efecto:
+    // centra la tarjeta seleccionada dentro del scroll horizontal al montar.
+    // Deliberadamente solo al montar — no debe reajustar el scroll cada vez
+    // que cambia viewingId (mirar una edición) o se añade una nueva.
+    selectedRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, []);
 
   if (editions.length === 0 && !canContribute) return null;
 
@@ -73,6 +97,7 @@ export function EditionStrip({
       <div className="flex gap-2.5 overflow-x-auto pb-2">
         {editions.map((edition) => {
           const isSelected = edition.id === selectedEditionId;
+          const isViewing = edition.id === viewingId;
           // Solo pintamos el nombre en semibold si aporta algo distinto de la
           // etiqueta de arriba: en película publisher siempre es null, así
           // que sin este guard el nombre repetía la misma etiqueta dos veces.
@@ -88,10 +113,14 @@ export function EditionStrip({
             : formatEdition(edition, itemType);
 
           return (
-            <div
+            <button
               key={edition.id}
-              className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 ${
-                isSelected ? `${accent.border} ${accent.bgSoft}` : "border-border"
+              ref={isSelected ? selectedRef : undefined}
+              type="button"
+              onClick={() => onSelect(edition.id)}
+              aria-pressed={isViewing}
+              className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 text-left ${
+                isViewing ? `${accent.border} ${accent.bgSoft}` : "border-border"
               }`}
             >
               {isSelected && (
@@ -127,7 +156,7 @@ export function EditionStrip({
                   {meta}
                 </p>
               )}
-            </div>
+            </button>
           );
         })}
 
@@ -148,50 +177,7 @@ export function EditionStrip({
           action={formAction}
           className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3.5 shadow-card"
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("label")}
-              </span>
-              <Input name="label" placeholder={t("labelHint")} required maxLength={60} />
-            </label>
-            {!isMovie && (
-              <label className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("publisher")}
-                </span>
-                <Input name="publisher" />
-              </label>
-            )}
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("year")}
-              </span>
-              <Input name="year" type="number" inputMode="numeric" />
-            </label>
-            {!isMovie && (
-              <label className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("language")}
-                </span>
-                <Input name="language" />
-              </label>
-            )}
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {isMovie ? t("duration") : t("pages")}
-              </span>
-              <Input name="totalUnits" type="number" inputMode="numeric" />
-            </label>
-            {!isMovie && (
-              <label className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("isbn")}
-                </span>
-                <Input name="isbn" />
-              </label>
-            )}
-          </div>
+          <EditionFields isMovie={isMovie} />
 
           <Button
             type="submit"

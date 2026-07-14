@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -26,6 +26,45 @@ import {
 } from "@/lib/library/manage-actions";
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
 import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
+import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
+import { editionChoiceStorageKey } from "@/lib/passes/edition-choice";
+
+// Guarda la edición elegida AL SEGUIR (Hallazgo 3): se llama solo desde un
+// manejador de clic (FollowButton.follow), nunca durante el render, así que
+// escribir en localStorage aquí no viola la regla de pureza de render. Se
+// aplicará sola con setPassEdition en cuanto se abra el primer pase del
+// ítem (ver el efecto en ProgressBlock más abajo).
+function writeEditionChoice(itemId: string, editionId: string) {
+  try {
+    window.localStorage.setItem(editionChoiceStorageKey(itemId), editionId);
+  } catch {
+    // Cuota llena o almacenamiento inaccesible (modo privado): la elección se
+    // pierde y se volverá a preguntar al empezar a leer, pero no rompe nada.
+  }
+}
+
+// Lee si a este pase ya se le preguntó "¿qué edición estás leyendo?" y el
+// usuario contestó "No lo sé". Se llama solo desde el inicializador de
+// useState de ProgressBlock (nunca en un efecto ni durante el cuerpo del
+// render): así el primer pintado ya sabe si la pregunta debe mostrarse, sin
+// lecturas impuras en render (mismo patrón que session-timer.tsx).
+function readEditionAsked(passId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(editionAskedStorageKey(passId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeEditionAsked(passId: string) {
+  try {
+    window.localStorage.setItem(editionAskedStorageKey(passId), "1");
+  } catch {
+    // Cuota llena o almacenamiento inaccesible (modo privado): la pregunta
+    // podrá volver a aparecer tras recargar, pero no rompe nada más.
+  }
+}
 
 // Mismo tipo que el panel de gestión que este componente jubila: lo
 // exportamos ahora desde aquí porque este es el nuevo punto de entrada de la
@@ -60,21 +99,8 @@ export function LogPanel({
   editions: Edition[];
   queues: Queue[];
 }) {
-  const t = useTranslations("item");
-  const [isPending, startTransition] = useTransition();
-
   if (!entry) {
-    return (
-      <Button
-        type="button"
-        disabled={isPending}
-        onClick={() =>
-          startTransition(() => addExistingItemToLibrary(itemType, itemId))
-        }
-      >
-        {isPending ? t("following") : t("follow")}
-      </Button>
-    );
+    return <FollowButton itemType={itemType} itemId={itemId} editions={editions} />;
   }
 
   return (
@@ -87,6 +113,78 @@ export function LogPanel({
       editions={editions}
       queues={queues}
     />
+  );
+}
+
+// Botón de "Seguir" cuando el ítem todavía no está en la biblioteca (Tarea
+// 3, Paso 1). Con más de una edición, primero pregunta cuál tienes — con una
+// sola (o ninguna) se añade directo, como antes. "No lo sé" es una salida
+// legítima, no un error: no fija edición y el progreso se mide contra la
+// primaria (se puede volver a preguntar más tarde, al empezar a leer).
+function FollowButton({
+  itemType,
+  itemId,
+  editions,
+}: {
+  itemType: ItemType;
+  itemId: string;
+  editions: Edition[];
+}) {
+  const t = useTranslations("item");
+  const tEditions = useTranslations("editions");
+  const [isPending, startTransition] = useTransition();
+  const [choosingEdition, setChoosingEdition] = useState(false);
+
+  function follow(editionId: string | null) {
+    // "No lo sé" (editionId null) no guarda nada: se comporta como hoy, el
+    // progreso se mide contra la primaria. Con una edición elegida de
+    // verdad, se guarda ANTES de disparar la transición — sigue siendo un
+    // manejador de clic, no el cuerpo del render.
+    if (editionId) writeEditionChoice(itemId, editionId);
+    startTransition(() => addExistingItemToLibrary(itemType, itemId));
+  }
+
+  if (!choosingEdition) {
+    return (
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={() => {
+          if (editions.length > 1) setChoosingEdition(true);
+          else follow(null);
+        }}
+      >
+        {isPending ? t("following") : t("follow")}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface p-3 shadow-card">
+      <span className="text-sm font-medium">{tEditions("whichEdition")}</span>
+      <div className="flex flex-col gap-1.5">
+        {editions.map((edition) => (
+          <button
+            key={edition.id}
+            type="button"
+            disabled={isPending}
+            onClick={() => follow(edition.id)}
+            className="rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-60"
+          >
+            {formatEdition(edition, itemType)}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => follow(null)}
+          className="rounded-md border border-dashed border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
+        >
+          {tEditions("unknownEdition")}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">{tEditions("unknownEditionHint")}</p>
+    </div>
   );
 }
 
@@ -206,7 +304,13 @@ function ManagedLog({
       )}
 
       {openPass && (
+        // key={openPass.id}: fuerza un remount cuando cambia de pase (p. ej.
+        // una relectura), para que el inicializador de useState que lee
+        // localStorage (readEditionAsked) se ejecute de nuevo con la clave
+        // del pase nuevo, sin tener que releer localStorage durante el
+        // render.
         <ProgressBlock
+          key={openPass.id}
           itemType={itemType}
           itemId={itemId}
           entry={entry}
@@ -282,6 +386,7 @@ function ProgressBlock({
   const t = useTranslations("detail.log");
   const tPasses = useTranslations("passes");
   const tSessions = useTranslations("item.sessions");
+  const tEditions = useTranslations("editions");
   const [isPending, startTransition] = useTransition();
   const [rating, setRating] = useState(openPass.rating);
 
@@ -292,6 +397,53 @@ function ProgressBlock({
     setPrevOpenPass(openPass);
     if (openPass.rating !== rating) setRating(openPass.rating);
   }
+
+  // Pregunta pendiente "¿qué edición estás leyendo?" (Tarea 3, Paso 2): solo
+  // tiene sentido si hay más de una edición entre las que elegir y el pase
+  // abierto todavía no tiene una asignada. Elegir una edición de verdad la
+  // hace desaparecer sola (openPass.editionId deja de ser null). La salida
+  // "No lo sé" no fija edición, así que sin recordarla se repetiría en cada
+  // recarga: se guarda en localStorage bajo una clave por passId (no por
+  // ítem, ver src/lib/passes/edition-asked.ts), para que una relectura (pase
+  // nuevo) vuelva a preguntar. El componente está keyed por openPass.id (ver
+  // ManagedLog), así este inicializador se ejecuta de nuevo con cada pase
+  // distinto sin releer localStorage durante el render.
+  const [answered, setAnswered] = useState(() => readEditionAsked(openPass.id));
+  const pendingEditionQuestion =
+    itemType !== "series" &&
+    editions.length > 1 &&
+    openPass.editionId === null &&
+    !answered;
+
+  // Aplica la elección de edición guardada AL SEGUIR (Hallazgo 3 de la
+  // revisión final): si en localStorage hay una edición elegida para este
+  // ítem y este pase recién abierto todavía no tiene una propia, se aplica
+  // aquí con setPassEdition y se olvida la elección — el usuario ya la
+  // contestó al seguir, no debe volver a verla. No sincroniza ningún estado
+  // local (no llama a ningún setState de este componente): solo dispara una
+  // escritura de servidor, así que vive en un efecto imperativo, no en el
+  // ajuste "durante el render" de más arriba (mismo criterio que el
+  // scrollIntoView de EditionStrip). Deliberadamente solo al montar: el
+  // componente está keyed por openPass.id (ver ManagedLog), así que un pase
+  // nuevo (p. ej. una relectura) vuelve a montar este efecto y lee de nuevo.
+  useEffect(() => {
+    if (openPass.editionId !== null) return;
+    let choice: string | null = null;
+    try {
+      choice = window.localStorage.getItem(editionChoiceStorageKey(itemId));
+    } catch {
+      return;
+    }
+    if (!choice) return;
+    try {
+      window.localStorage.removeItem(editionChoiceStorageKey(itemId));
+    } catch {
+      // Si no se puede borrar, en el peor caso se reintenta en la próxima
+      // recarga: no rompe nada más.
+    }
+    startTransition(() => setPassEdition(openPass.id, itemType, itemId, choice));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   let page: number | undefined;
   if (itemType === "book" && "page" in entry.position && entry.position.page !== undefined) {
@@ -304,6 +456,52 @@ function ProgressBlock({
       <span className="text-xs font-semibold text-foreground">
         {t("progressTitle")}
       </span>
+
+      {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
+          contestar (incluida la salida "No lo sé", que además se recuerda en
+          localStorage para no repetirse en cada recarga). */}
+      {pendingEditionQuestion && (
+        <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
+          <span className="text-xs font-semibold text-foreground">
+            {tEditions("whichEditionReading")}
+          </span>
+          <div className="flex flex-col gap-1">
+            {editions.map((edition) => (
+              <button
+                key={edition.id}
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setAnswered(true);
+                  startTransition(() =>
+                    setPassEdition(openPass.id, itemType, itemId, edition.id)
+                  );
+                }}
+                className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
+              >
+                {formatEdition(edition, itemType)}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                // "No lo sé" no fija edición: se recuerda por passId para
+                // que no vuelva a preguntar en cada recarga (sí volverá a
+                // preguntar si se abre un pase nuevo, p. ej. una relectura).
+                writeEditionAsked(openPass.id);
+                setAnswered(true);
+              }}
+              className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
+            >
+              {tEditions("unknownEdition")}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {tEditions("unknownEditionHint")}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
@@ -325,8 +523,10 @@ function ProgressBlock({
         </p>
       )}
 
-      {/* Las series no tienen ediciones: sin selector para ellas. */}
-      {itemType !== "series" && editions.length > 0 && (
+      {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
+          pregunta pendiente de arriba está sin contestar, no repetimos el
+          mismo selector aquí abajo. */}
+      {itemType !== "series" && editions.length > 0 && !pendingEditionQuestion && (
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
             {t("edition")}

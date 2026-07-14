@@ -9,6 +9,16 @@ import { itemHref } from "@/lib/catalog/item-href";
 // Unlike addToLibrary in src/app/buscar/actions.ts, the item here already has
 // a catalog row (we're on its detail page) — no findOrCreate step needed.
 // queueId optionally drops it straight into a named queue (§7.22).
+//
+// La edición elegida AL SEGUIR (Tarea 3) YA NO viaja por aquí (Hallazgo 3 de
+// la revisión final): "seguir" siempre crea la entrada en "planned", nunca
+// abre un pase de entrada, así que un parámetro editionId en esta acción no
+// tendría ninguna rama donde aplicarse — era código muerto que hacía creer al
+// usuario que su elección se guardaba cuando en realidad se tiraba. La
+// elección real se guarda en localStorage (ver FollowButton en
+// log-panel.tsx / editionChoiceStorageKey en
+// src/lib/passes/edition-choice.ts) y se aplica sola con setPassEdition en
+// cuanto se abre el primer pase del ítem.
 export async function addExistingItemToLibrary(
   itemType: ItemType,
   itemId: string,
