@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
+import { ensureBookEditions } from "@/lib/editions/sync-editions";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -68,7 +69,7 @@ export default async function BookDetailPage({
     supabase
       .from("books")
       .select(
-        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres",
+        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -77,10 +78,22 @@ export default async function BookDetailPage({
 
   if (!book) notFound();
 
-  await ensureItemEnriched(supabase, "book", {
-    id: book.id,
-    author: book.author,
-  });
+  // Créditos (autor) y ediciones se sincronizan a la vez, EN PARALELO: ambos
+  // son cache-as-you-go independientes entre sí, así que lanzarlos con
+  // Promise.all no añade una espera nueva en serie sobre el enriquecimiento
+  // que la ficha ya esperaba.
+  await Promise.all([
+    ensureItemEnriched(supabase, "book", {
+      id: book.id,
+      author: book.author,
+    }),
+    ensureBookEditions(supabase, {
+      id: book.id,
+      openlibrary_work_key: book.openlibrary_work_key,
+      isbn: book.isbn,
+      editions_synced_at: book.editions_synced_at,
+    }),
+  ]);
 
   const [credits, saga, editions] = await Promise.all([
     getItemCredits(supabase, "book", book.id),

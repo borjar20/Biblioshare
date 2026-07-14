@@ -48,6 +48,14 @@ export async function findOrCreateCatalogItem(
     result.itemType === "book"
       ? {
           google_books_id: result.externalId,
+          // google_books_id se queda tal cual por compatibilidad (es el que
+          // usa el índice/lookup de arriba), pero cuando el externalId YA es
+          // una work key de OpenLibrary (búsqueda actual, no import viejo de
+          // Google Books) se guarda también en su columna honesta: así el
+          // libro nace ya sincronizable sin tener que resolverla por ISBN.
+          openlibrary_work_key: result.externalId.startsWith("/works/")
+            ? result.externalId
+            : null,
           title: result.title,
           author: result.subtitle,
           cover_url: result.coverUrl,
