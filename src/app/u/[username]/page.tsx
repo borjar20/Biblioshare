@@ -28,6 +28,9 @@ import { getChallengeProgress } from "@/lib/challenges/get-challenge-progress";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
+import { ContinueStrip } from "@/components/library/continue-strip";
+import { CollectionSummary } from "@/components/library/collection-summary";
+import { getLibrarySummary } from "@/lib/library/get-library-summary";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { ProfileHeader } from "@/components/profile-header";
@@ -37,12 +40,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { NowConsuming } from "@/components/now-consuming";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { ActivityChart } from "@/components/activity-chart";
-import { ProfileStatCards } from "@/components/profile-stat-cards";
+import { FeedCard } from "@/components/social/feed-card";
+import { getRecentReviews } from "@/lib/social/recent-reviews";
 import { WeeklyStrip } from "@/components/stats/weekly-strip";
 import { StreakCard } from "@/components/stats/streak-card";
+import { BookGoalCard } from "@/components/stats/book-goal-card";
+import { GoalRows } from "@/components/stats/goal-rows";
 import { MonthCalendar } from "@/components/stats/month-calendar";
-import { AnnualStats } from "@/components/stats/annual-stats";
 import { GoalsForm } from "@/components/stats/goals-form";
+import { todayISO } from "@/lib/stats/dates";
 import { ChallengeCard } from "@/components/challenges/challenge-card";
 import { NewChallenge } from "@/components/challenges/new-challenge";
 import { VisibilityToggle } from "./visibility-toggle";
@@ -244,9 +250,8 @@ export default async function PublicProfilePage({
       {tab === "actividad" && (
         <ActivityTab
           userId={profile.userId}
-          isOwner={isOwner}
           favorites={favorites}
-          stats={stats}
+          viewerLoggedIn={!!user}
         />
       )}
     </div>
@@ -305,42 +310,49 @@ async function OwnerPanel({
   };
 
   return (
-    <div className="grid gap-8">
-      <p className="inline-flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 font-mono text-xs text-muted-foreground">
+    <div className="grid gap-6">
+      <p className="inline-flex items-center gap-2 rounded-lg border border-border bg-accent/5 px-3 py-2 text-[11px] text-muted-foreground">
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
         {privateNote}
       </p>
 
-      <div className="grid gap-4 rounded-card border border-border bg-surface shadow-card p-4">
-        <NowConsuming items={inProgress} linkToSession />
+      <NowConsuming items={inProgress} linkToSession variant="strip" />
+
+      <div className="rounded-card border border-border bg-surface shadow-card p-4">
+        <WeeklyStrip
+          days={weekly}
+          dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          <WeeklyStrip
-            days={weekly}
-            dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
-          />
-        </div>
         <div className="rounded-card border border-border bg-surface shadow-card p-4">
           <StreakCard streaks={streaks} />
         </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          {/* basePath es la base de la API (`${basePath}api/month-calendar`),
-              no una ruta de página — se queda en "/". */}
-          <MonthCalendar initialCalendar={calendar} basePath="/" />
-        </div>
-        <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          <AnnualStats annual={annual} annualGoals={annualGoals} />
+          <BookGoalCard
+            completed={annual.byType.book}
+            goal={annualGoals.book}
+          />
         </div>
       </div>
 
-      <div className="rounded-card border border-border bg-surface shadow-card p-4">
+      <div className="grid gap-4 rounded-card border border-border bg-surface shadow-card p-4">
+        <GoalRows annual={annual} annualGoals={annualGoals} />
+        <div className="border-t border-border" />
         <GoalsForm
           dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
           annualGoals={annualGoals}
+        />
+      </div>
+
+      <div className="rounded-card border border-border bg-surface shadow-card p-4">
+        {/* basePath es la base de la API (`${basePath}api/month-calendar`),
+            no una ruta de página — se queda en "/". */}
+        <MonthCalendar
+          initialCalendar={calendar}
+          basePath="/"
+          todayKey={todayISO()}
         />
       </div>
 
@@ -402,15 +414,32 @@ async function CollectionTab({
   emptyOther: string;
 }) {
   const supabase = await createClient();
-  const items = await getLibraryItems(supabase, userId, {
-    itemType,
-    status,
-    search,
-    sort,
-  });
+  // Sin filtros activos: "en curso" fijado + resumen encima de la rejilla,
+  // como en /coleccion (mockup C). Con un filtro se ocultan — contradirían lo
+  // que la rejilla está mostrando.
+  const showOverview = !itemType && !status && !search;
+  const [items, inProgress, summary] = await Promise.all([
+    getLibraryItems(supabase, userId, {
+      itemType,
+      status,
+      search,
+      sort,
+    }),
+    showOverview
+      ? getLibraryItems(supabase, userId, { status: "in_progress" })
+      : Promise.resolve([]),
+    showOverview ? getLibrarySummary(supabase, userId) : Promise.resolve(null),
+  ]);
 
   return (
     <>
+      {showOverview && (
+        <>
+          <ContinueStrip items={inProgress} />
+          {summary && <CollectionSummary summary={summary} />}
+        </>
+      )}
+
       <LibraryFilters
         itemType={itemType}
         status={status}
@@ -451,27 +480,44 @@ async function CollectionTab({
 // Actividad: la cara pública del perfil.
 async function ActivityTab({
   userId,
-  isOwner,
   favorites,
-  stats,
+  viewerLoggedIn,
 }: {
   userId: string;
-  isOwner: boolean;
   favorites: Awaited<ReturnType<typeof getLibraryItems>>;
-  stats: Awaited<ReturnType<typeof getLibraryStats>>;
+  viewerLoggedIn: boolean;
 }) {
   const supabase = await createClient();
-  const [inProgress, months] = await Promise.all([
-    getLibraryItems(supabase, userId, { status: "in_progress" }),
+  const t = await getTranslations("profile");
+  const [months, recentReviews] = await Promise.all([
     getMonthlyActivity(supabase, userId),
+    getRecentReviews(supabase, userId),
   ]);
 
+  // Orden del mockup (frame D): gráfico anual → destacados → reseñas
+  // recientes. "En curso" vive en Colección y los recuentos por tipo en los
+  // chips de la cabecera — aquí ya no se repiten.
   return (
     <>
-      <NowConsuming items={inProgress} linkToSession={isOwner} />
+      <div className="rounded-card border border-border bg-surface shadow-card p-4">
+        <ActivityChart months={months} />
+      </div>
       <FavoritesShelf items={favorites} />
-      <ActivityChart months={months} />
-      <ProfileStatCards stats={stats} />
+      {recentReviews.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("recentReviews")}
+          </h2>
+          {recentReviews.map((event) => (
+            <FeedCard
+              key={event.id}
+              event={event}
+              viewerLoggedIn={viewerLoggedIn}
+              hideActor
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 }

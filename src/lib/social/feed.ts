@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import type { MediaStatus } from "@/lib/library/types";
 import { getInteractionSummary, type InteractionComment } from "./interactions";
 
 // Feed de actividad personal (EPIC-05, Bloque C, SD-1). On-read fan-out sobre
@@ -28,6 +29,11 @@ export type FeedEvent = {
   itemId: string;
   itemTitle: string;
   itemCoverUrl: string | null;
+  // Autor del catálogo — solo los libros lo tienen; películas/series no
+  // guardan creador, así que queda null.
+  itemSubtitle: string | null;
+  // Estado de la entrada de biblioteca; solo informa el verbo "added".
+  entryStatus: MediaStatus | null;
   eventDate: string;
   rating: number | null;
   reviewExcerpt: string | null;
@@ -157,7 +163,7 @@ export async function getFeed(
       ? (() => {
           let q = supabase
             .from("library_entries")
-            .select("id, user_id, item_type, item_id, created_at")
+            .select("id, user_id, item_type, item_id, status, created_at")
             .in("user_id", followedIds)
             .order("created_at", { ascending: false })
             .limit(pageSize);
@@ -270,8 +276,8 @@ export async function getFeed(
 
   const [books, movies, series] = await Promise.all([
     idsByType.book.size
-      ? supabase.from("books").select("id, title, cover_url").in("id", [...idsByType.book])
-      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
+      ? supabase.from("books").select("id, title, author, cover_url").in("id", [...idsByType.book])
+      : Promise.resolve({ data: [] as { id: string; title: string; author: string | null; cover_url: string | null }[], error: null }),
     idsByType.movie.size
       ? supabase.from("movies").select("id, title, cover_url").in("id", [...idsByType.movie])
       : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
@@ -282,13 +288,20 @@ export async function getFeed(
   if (books.error) throw books.error;
   if (movies.error) throw movies.error;
   if (series.error) throw series.error;
-  const catalogByKey = new Map<string, { title: string; coverUrl: string | null }>();
+  const catalogByKey = new Map<
+    string,
+    { title: string; coverUrl: string | null; subtitle: string | null }
+  >();
   for (const r of books.data ?? [])
-    catalogByKey.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+    catalogByKey.set(`book:${r.id}`, {
+      title: r.title,
+      coverUrl: r.cover_url,
+      subtitle: r.author,
+    });
   for (const r of movies.data ?? [])
-    catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+    catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
   for (const r of series.data ?? [])
-    catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+    catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
 
   // Título de episodio, best-effort (si no está en series_episodes aún, se
   // omite sin romper el evento).
@@ -349,6 +362,8 @@ export async function getFeed(
       itemId: r.item_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.coverUrl,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: r.status,
       eventDate: r.created_at,
       rating: null,
       reviewExcerpt: null,
@@ -379,6 +394,8 @@ export async function getFeed(
       itemId: it.itemId,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.coverUrl,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: null,
       eventDate: r.session_date,
       rating: null,
       reviewExcerpt: null,
@@ -409,6 +426,8 @@ export async function getFeed(
       itemId: it.itemId,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.coverUrl,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: null,
       eventDate: r.finished_on,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
@@ -437,6 +456,8 @@ export async function getFeed(
       itemId: r.series_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.coverUrl,
+      itemSubtitle: catalog.subtitle,
+      entryStatus: null,
       eventDate: r.watched_on,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),

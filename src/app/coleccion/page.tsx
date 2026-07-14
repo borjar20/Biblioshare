@@ -17,8 +17,8 @@ import {
   type CollectionTab,
 } from "./collection-tabs";
 import { QueuesPanel } from "./queues-panel";
-import { ContinueStrip } from "./continue-strip";
-import { CollectionSummary } from "./collection-summary";
+import { ContinueStrip } from "@/components/library/continue-strip";
+import { CollectionSummary } from "@/components/library/collection-summary";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
 
 export const metadata: Metadata = {

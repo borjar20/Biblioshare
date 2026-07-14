@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { MonthCalendar as MonthCalendarData } from "@/lib/stats/types";
-import { CalendarIcon } from "@/components/ui/icons";
 
 const WEEKDAY_HEADERS = ["L", "M", "X", "J", "V", "S", "D"];
 const MONTH_NAMES = [
@@ -28,12 +27,16 @@ function mondayIndex(iso: string): number {
   return (new Date(y, m - 1, d).getDay() + 6) % 7;
 }
 
+// `todayKey` (fecha ISO "YYYY-MM-DD") llega del server: calcular "hoy" con
+// new Date() en el render de un client component rompe react-hooks/purity.
 export function MonthCalendar({
   initialCalendar,
   basePath,
+  todayKey,
 }: {
   initialCalendar: MonthCalendarData;
   basePath: string;
+  todayKey?: string;
 }) {
   const t = useTranslations("stats");
   const [calendar, setCalendar] = useState<MonthCalendarData>(initialCalendar);
@@ -74,29 +77,28 @@ export function MonthCalendar({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-        <CalendarIcon className="h-5 w-5 text-accent" />
+      <h3 className="font-serif text-sm font-semibold text-foreground">
         {t("calendarTitle")}
-      </div>
+      </h3>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2.5 font-mono text-xs text-muted-foreground">
           <button
             type="button"
             onClick={() => loadMonth(calendar.prevMonth)}
             disabled={loading}
-            className="text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={t("prevMonth")}
           >
             ‹
           </button>
-          <span className="font-medium text-foreground">
+          <span className="font-semibold text-foreground">
             {MONTH_NAMES[month - 1]} {year}
           </span>
           <button
             type="button"
             onClick={() => loadMonth(calendar.nextMonth)}
             disabled={loading}
-            className="text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={t("nextMonth")}
           >
             ›
@@ -115,12 +117,12 @@ export function MonthCalendar({
         </div>
       ) : null}
 
-      <div className="rounded-card border border-border bg-surface shadow-card p-4">
+      <div>
         <div className="mb-2 grid grid-cols-7 gap-1.5">
           {WEEKDAY_HEADERS.map((label, i) => (
             <span
               key={i}
-              className="text-center text-[11px] text-muted-foreground"
+              className="text-center font-mono text-[10px] text-muted-foreground"
             >
               {label}
             </span>
@@ -132,14 +134,15 @@ export function MonthCalendar({
           ))}
           {calendar.days.map((day) => {
             const dayNum = Number(day.date.slice(8, 10));
+            const isToday = day.date === todayKey;
             return (
               <div
                 key={day.date}
-                className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-md border text-xs ${
+                className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-md text-xs ${
                   day.active
-                    ? "border-accent text-foreground"
-                    : "border-border text-muted-foreground"
-                }`}
+                    ? "bg-accent/15 font-semibold text-foreground"
+                    : "text-muted-foreground"
+                } ${isToday ? "ring-1 ring-accent ring-inset" : ""}`}
               >
                 {day.active && day.coverUrl ? (
                   <>

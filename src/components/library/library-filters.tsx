@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = [
@@ -90,8 +91,13 @@ export async function LibraryFilters({
             <Link
               key={type}
               href={buildHref({ type })}
-              className={pillClass(itemType === type)}
+              className={`inline-flex items-center gap-1.5 ${pillClass(itemType === type)}`}
             >
+              {/* Punto de color del tipo (mockup .pill i). */}
+              <span
+                aria-hidden
+                className={`h-1.5 w-1.5 rounded-full ${itemType === type ? "bg-accent-foreground" : MEDIA_ACCENT[type].bg}`}
+              />
               {t(`search.types.${type}`)}
             </Link>
           ))}

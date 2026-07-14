@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { getFeed } from "@/lib/social/feed";
+import { getFollowCounts } from "@/lib/social/follows";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
@@ -53,17 +54,25 @@ export default async function Home({
     : undefined;
   const reviewsOnly = reviewsOnlyParam === "1";
 
-  const feedPage = await getFeed(supabase, user.id, {
-    itemType,
-    reviewsOnly,
-    pageSize: 20,
-  });
+  const [feedPage, counts] = await Promise.all([
+    getFeed(supabase, user.id, {
+      itemType,
+      reviewsOnly,
+      pageSize: 20,
+    }),
+    getFollowCounts(supabase, user.id),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {t("home.feedTitle")}
-      </h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t("home.feedTitle")}
+        </h1>
+        <span className="font-mono text-[11px] text-muted-foreground">
+          {t("feed.followingCount", { count: counts.following })}
+        </span>
+      </div>
 
       <FeedFilters itemType={itemType} reviewsOnly={reviewsOnly} />
 

@@ -1,34 +1,22 @@
 import { getTranslations } from "next-intl/server";
 import type { Streaks } from "@/lib/stats/types";
-import { TrophyIcon } from "@/components/ui/icons";
 
+// Card "Racha" del mockup: bignum serif en accent + "días · mejor N". El
+// wrapper card lo pone el panel.
 export async function StreakCard({ streaks }: { streaks: Streaks }) {
   const t = await getTranslations("stats");
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-        <TrophyIcon className="h-5 w-5 text-accent" />
+    <div className="flex flex-col gap-2">
+      <h3 className="font-serif text-sm font-semibold text-foreground">
         {t("streakTitle")}
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1 rounded-card border border-border bg-surface shadow-card p-4">
-          <span className="font-serif text-3xl font-semibold text-foreground">
-            {streaks.current}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {t("currentStreak", { count: streaks.current })}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1 rounded-card border border-border bg-surface shadow-card p-4">
-          <span className="font-serif text-3xl font-semibold text-foreground">
-            {streaks.best}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {t("bestStreak", { count: streaks.best })}
-          </span>
-        </div>
-      </div>
+      </h3>
+      <span className="font-serif text-4xl leading-none font-semibold text-accent">
+        {streaks.current}
+      </span>
+      <span className="text-sm text-muted-foreground">
+        {t("streakSummary", { count: streaks.current, best: streaks.best })}
+      </span>
     </div>
   );
 }

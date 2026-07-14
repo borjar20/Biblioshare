@@ -52,6 +52,7 @@ export function LibraryItemCard({
             <StatusBadge
               status={item.status}
               label={t(`status.${item.status}`)}
+              dotOnly
             />
           </div>
         </div>

@@ -4,11 +4,13 @@ import type { ItemType } from "@/lib/catalog/types";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 
+// Chips mono del mockup "IA nueva": el filtro activo se tiñe de accent en
+// texto y borde en vez de rellenarse.
 function pillClass(active: boolean) {
-  return `rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+  return `rounded-chip border px-3 py-1.5 font-mono text-[10.5px] font-medium tracking-wider uppercase transition-colors ${
     active
-      ? "bg-accent text-accent-foreground"
-      : "bg-surface-muted text-muted-foreground hover:text-foreground"
+      ? "border-accent bg-accent/10 text-accent"
+      : "border-border bg-surface text-muted-foreground hover:text-foreground"
   }`;
 }
 

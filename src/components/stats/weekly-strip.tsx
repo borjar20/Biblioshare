@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { DayActivity } from "@/lib/stats/types";
 import { CircularProgress } from "./circular-progress";
-import { FireIcon } from "../ui/icons";
 
 const WEEKDAY_LABELS = ["D", "L", "M", "X", "J", "V", "S"];
 
@@ -10,6 +9,9 @@ function weekday(iso: string): string {
   return WEEKDAY_LABELS[new Date(y, m - 1, d).getDay()];
 }
 
+// Card "Lectura esta semana" del mockup: título serif con el total semanal en
+// mono a la derecha. El wrapper card lo pone el panel — este componente solo
+// pinta contenido.
 export async function WeeklyStrip({
   days,
   dailyGoalMinutes,
@@ -20,15 +22,27 @@ export async function WeeklyStrip({
   const t = await getTranslations("stats");
   const today = days[days.length - 1];
   const maxMinutes = Math.max(1, ...days.map((d) => d.minutes));
+  const totalMinutes = days.reduce((sum, d) => sum + d.minutes, 0);
+  const totalLabel =
+    totalMinutes >= 60
+      ? t("weekTotal", {
+          hours: Math.floor(totalMinutes / 60),
+          minutes: totalMinutes % 60,
+        })
+      : t("minutesCount", { count: totalMinutes });
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-        <FireIcon className="h-5 w-5 text-accent" />
-        {t("weeklyTitle")}
+    <div className="flex flex-col gap-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-serif text-sm font-semibold text-foreground">
+          {t("weeklyTitle")}
+        </h3>
+        <span className="font-mono text-[11px] text-muted-foreground">
+          {totalLabel}
+        </span>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 items-end gap-1.5 sm:gap-2">
           {days.map((day) => {
             const heightPercent =
@@ -53,7 +67,7 @@ export async function WeeklyStrip({
                     }
                   />
                 </div>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   {weekday(day.date)}
                 </span>
               </div>

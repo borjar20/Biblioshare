@@ -6,13 +6,9 @@ import type { LibraryStats } from "@/lib/library/get-library-stats";
 import type { FollowCounts } from "@/lib/social/follows";
 import { EditProfileForm } from "./edit-profile-form";
 import { UserAvatar } from "@/components/social/user-avatar";
-import {
-  BookIcon,
-  FilmIcon,
-  SeriesIcon,
-  UserIcon,
-} from "@/components/ui/icons";
 
+// Cabecera compacta del mockup "IA nueva": (avatar + nombre/@user + acción) →
+// counts → bio → chips con punto de color por tipo.
 export async function ProfileHeader({
   profile,
   stats,
@@ -33,32 +29,26 @@ export async function ProfileHeader({
   const basePath = `/u/${profile.username}`;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-        <div className="flex items-start gap-4">
-          <UserAvatar name={name} avatarUrl={profile.avatarUrl} size={64} />
-          <div className="flex flex-col gap-1 pt-1">
-            <div className="flex flex-wrap items-baseline gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
-              <span className="font-mono text-xs text-muted-foreground">
-                @{profile.username}
-              </span>
-            </div>
-            {profile.bio && (
-              <p className="max-w-prose text-sm text-muted-foreground">
-                {profile.bio}
-              </p>
-            )}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-4">
+        <UserAvatar name={name} avatarUrl={profile.avatarUrl} size={60} />
+        <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col">
+            <h1 className="font-serif text-[22px] leading-tight font-semibold">
+              {name}
+            </h1>
+            <span className="mt-1 font-mono text-[12.5px] text-muted-foreground">
+              @{profile.username}
+            </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {followButton}
-          {isOwner && <EditProfileForm profile={profile} />}
+          <div className="flex shrink-0 items-center gap-2">
+            {followButton}
+            {isOwner && <EditProfileForm profile={profile} />}
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <Link
           href={`${basePath}/seguidores`}
           className="text-muted-foreground transition-colors hover:text-foreground"
@@ -68,6 +58,9 @@ export async function ProfileHeader({
           </span>{" "}
           {tSocial("followersLabel", { count: counts.followers })}
         </Link>
+        <span aria-hidden className="text-muted-foreground">
+          ·
+        </span>
         <Link
           href={`${basePath}/siguiendo`}
           className="text-muted-foreground transition-colors hover:text-foreground"
@@ -79,21 +72,32 @@ export async function ProfileHeader({
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
-          <BookIcon className="h-3.5 w-3.5 text-type-book" />
+      {profile.bio && (
+        <p className="max-w-prose text-sm text-muted-foreground">
+          {profile.bio}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-1.5">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-type-book" />
           {t("statsBooks", { count: stats.book })}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
-          <SeriesIcon className="h-3.5 w-3.5 text-type-series" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-type-series"
+          />
           {t("statsSeries", { count: stats.series })}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground">
-          <FilmIcon className="h-3.5 w-3.5 text-type-movie" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-type-movie"
+          />
           {t("statsFilms", { count: stats.movie })}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-1.5 text-xs text-muted-foreground">
-          <UserIcon className="h-3.5 w-3.5" />
+        <span className="inline-flex items-center rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
           {t("memberSince", { year: memberSinceYear })}
         </span>
       </div>

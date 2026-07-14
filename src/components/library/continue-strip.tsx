@@ -12,6 +12,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 // biblioteca: lo que tienes a medias.
 export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
   const t = await getTranslations("collection");
+  const tTypes = await getTranslations("search.types");
 
   if (items.length === 0) return null;
 
@@ -30,8 +31,13 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
             <Link
               key={item.entryId}
               href={itemHref(item.itemType, item.itemId)}
-              className={`group flex gap-3 rounded-xl border ${accent.borderSoft} bg-surface p-3 transition-colors hover:bg-surface-muted`}
+              className="group flex gap-3 overflow-hidden rounded-card border border-border bg-surface p-3 shadow-card transition-colors hover:bg-surface-muted"
             >
+              {/* Banda de acento izquierda por tipo (mockup .cont::before). */}
+              <span
+                aria-hidden
+                className={`-my-3 -ml-3 w-1 shrink-0 self-stretch ${accent.bg}`}
+              />
               <div
                 className={`relative h-24 w-16 shrink-0 overflow-hidden rounded-lg border ${accent.borderSoft} bg-surface-muted`}
               >
@@ -46,7 +52,12 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
                 ) : null}
               </div>
 
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span
+                  className={`font-mono text-[9px] tracking-widest uppercase ${accent.text}`}
+                >
+                  {tTypes(item.itemType)}
+                </span>
                 <span className="line-clamp-2 font-serif text-sm font-semibold text-foreground">
                   {item.title}
                 </span>
@@ -56,18 +67,25 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
                   </span>
                 )}
 
-                <div className="mt-auto">
-                  {progress ? (
-                    <ProgressBar
-                      current={progress.current}
-                      total={progress.total}
-                      label={progress.label}
-                    />
-                  ) : (
-                    <span className={`font-mono text-[10px] ${accent.text}`}>
-                      {t("inProgress")}
-                    </span>
-                  )}
+                <div className="mt-auto flex items-end justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {progress ? (
+                      <ProgressBar
+                        current={progress.current}
+                        total={progress.total}
+                        label={progress.label}
+                      />
+                    ) : (
+                      <span className={`font-mono text-[10px] ${accent.text}`}>
+                        {t("inProgress")}
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`shrink-0 text-[11px] font-semibold ${accent.text}`}
+                  >
+                    {t("continueCta")}
+                  </span>
                 </div>
               </div>
             </Link>

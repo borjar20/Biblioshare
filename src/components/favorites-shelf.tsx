@@ -11,7 +11,9 @@ export async function FavoritesShelf({ items }: { items: LibraryItem[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">{t("favorites")}</h2>
+      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {t("highlights")}
+      </h2>
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
         {items.map((item) => (
           <Link
