@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import type { ActivityDetail } from "@/lib/clubs/activities/core";
 import { getActivityCheckpoints, type ActivityCheckpointsView } from "@/lib/clubs/activities/checkpoints";
 import { formatPosition } from "@/lib/library/position";
-import { CheckpointManager } from "./checkpoint-manager";
 import { CheckpointList } from "./checkpoint-list";
 
 // DetailExtension de buddy_read (registro de kinds, EPIC-05 Bloque H1) --
@@ -13,11 +12,9 @@ import { CheckpointList } from "./checkpoint-list";
 // (decisión 7 del diseño: la lista de checkpoints ayuda a decidir si
 // unirse). Estado propio con su propio refresh: los cambios de checkpoints
 // no requieren refrescar el resto de la ficha de actividad (items/opiniones)
-// que gestiona ActivityDetailView.
-export function BuddyReadCheckpoints({
-  activity,
-  isModerator,
-}: {
+// que gestiona ActivityDetailView. Solo lectura: el alta/edición de hitos vive
+// en "Modificar actividad" (BuddyReadCheckpointEditor).
+export function BuddyReadCheckpoints({ activity }: {
   activity: ActivityDetail;
   viewerId: string;
   isModerator: boolean;
@@ -83,15 +80,6 @@ export function BuddyReadCheckpoints({
             </div>
           </div>
         </div>
-      )}
-      {isModerator && (
-        <CheckpointManager
-          activityId={activity.id}
-          itemType={view.itemType}
-          checkpoints={view.checkpoints}
-          disabled={activity.status !== "active"}
-          onChanged={refresh}
-        />
       )}
       <CheckpointList
         itemType={view.itemType}
