@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "./position";
+import { keepLatestClosedPass } from "@/lib/community/latest-rating";
 import type { LibraryItem, LibrarySort, MediaStatus } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -25,9 +26,12 @@ export async function getLibraryItems(
     favoritesOnly?: boolean;
   }
 ): Promise<LibraryItem[]> {
+  // rating/notes YA NO se leen de aquí: quedaron huérfanas cuando el pase se
+  // convirtió en el dueño de la nota y la reseña (20260714_passes.sql). Se
+  // recalculan más abajo a partir del último pase cerrado de cada entrada.
   let query = supabase
     .from("library_entries")
-    .select("id, item_type, item_id, status, rating, position, notes, pinned_order")
+    .select("id, item_type, item_id, status, position, pinned_order")
     .eq("user_id", userId);
 
   if (filters.favoritesOnly) {
@@ -106,27 +110,60 @@ export async function getLibraryItems(
     });
   }
 
-  // One extra query, batched — cheaper than one count query per entry.
-  // See docs/REQUIREMENTS.md §7.13.
-  const { data: diaryRows } = await supabase
+  // Un pase por fila, batched — cheaper than one query per entry. See
+  // docs/REQUIREMENTS.md §7.13. `rating` sale de diary_entries directamente:
+  // la RLS de la tabla ya decide qué filas se ven (perfil propio o público
+  // visible) y esa columna es legible siempre, cuente o no la reseña como
+  // pública — la nota nunca fue lo que is_public escondía.
+  const { data: closedPassRows } = await supabase
     .from("diary_entries")
-    .select("library_entry_id")
+    .select("id, library_entry_id, finished_on, rating")
     .in(
       "library_entry_id",
       entries.map((entry) => entry.id)
     )
     // Un pase abierto ("lo estoy leyendo ahora") todavía no es una lectura
     // terminada: no debe sumar a "Leído {count} veces" (colección, perfiles
-    // públicos y export CSV comparten este contador).
+    // públicos y export CSV comparten este contador) ni aportar nota/reseña.
     .not("finished_on", "is", null);
 
   const rereadCountByEntry = new Map<string, number>();
-  for (const row of diaryRows ?? []) {
+  for (const row of closedPassRows ?? []) {
     rereadCountByEntry.set(
       row.library_entry_id,
       (rereadCountByEntry.get(row.library_entry_id) ?? 0) + 1
     );
   }
+
+  // Nota (estrellas) y "notas" (texto) visibles de cada entrada: las del
+  // último pase cerrado, mismo criterio de desempate que la media de
+  // comunidad (latest-rating.ts), agrupado aquí por entrada en vez de por
+  // usuario porque toda esta colección es de un único usuario.
+  const latestClosedPasses = keepLatestClosedPass(
+    (closedPassRows ?? []).map((r) => ({
+      id: r.id,
+      libraryEntryId: r.library_entry_id,
+      finishedOn: r.finished_on as string,
+      rating: r.rating,
+    }))
+  );
+  const ratingByEntry = new Map(
+    latestClosedPasses.map((p) => [p.libraryEntryId, p.rating])
+  );
+
+  // El texto de la reseña ("notas") vive en pass_reviews: es la única vía de
+  // lectura del texto (diary_entries.review ya no es una columna legible
+  // desde el cliente), y de paso trae la privacidad ya aplicada — si el pase
+  // ganador es una reseña privada de OTRO usuario, esta consulta simplemente
+  // no devuelve esa fila y el texto se muestra en blanco, no un error.
+  const latestPassIds = latestClosedPasses.map((p) => p.id);
+  const { data: reviewRows } = latestPassIds.length
+    ? await supabase.from("pass_reviews").select("id, review").in("id", latestPassIds)
+    : { data: [] as { id: string | null; review: string | null }[] };
+  const reviewByPassId = new Map((reviewRows ?? []).map((r) => [r.id, r.review]));
+  const notesByEntry = new Map(
+    latestClosedPasses.map((p) => [p.libraryEntryId, reviewByPassId.get(p.id) ?? null])
+  );
 
   let items = entries
     .map((entry) => {
@@ -137,9 +174,9 @@ export async function getLibraryItems(
         itemId: entry.item_id,
         itemType: entry.item_type,
         status: entry.status,
-        rating: entry.rating,
+        rating: ratingByEntry.get(entry.id) ?? null,
         position: parsePosition(entry.item_type, entry.position),
-        notes: entry.notes,
+        notes: notesByEntry.get(entry.id) ?? null,
         title: meta.title,
         coverUrl: meta.coverUrl,
         subtitle: meta.subtitle,

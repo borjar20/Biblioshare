@@ -1191,6 +1191,13 @@ export type Database = {
             referencedRelation: "diary_entries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "progress_sessions_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
+          },
         ]
       }
       push_subscriptions: {
@@ -1469,6 +1476,53 @@ export type Database = {
         }
         Relationships: []
       }
+      pass_reviews: {
+        Row: {
+          created_at: string | null
+          edition_id: string | null
+          finished_on: string | null
+          id: string | null
+          is_public: boolean | null
+          library_entry_id: string | null
+          rating: number | null
+          review: string | null
+          started_on: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          edition_id?: string | null
+          finished_on?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          library_entry_id?: string | null
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          edition_id?: string | null
+          finished_on?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          library_entry_id?: string | null
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diary_entries_entry_owner_fkey"
+            columns: ["library_entry_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "library_entries"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       profile_identities: {
         Row: {
           avatar_url: string | null
@@ -1664,6 +1718,10 @@ export type Database = {
         Returns: undefined
       }
       sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
+      set_activity_completion_mode: {
+        Args: { p_activity_id: string; p_mode: string }
+        Returns: undefined
+      }
       set_club_member_role: {
         Args: {
           p_club_id: string

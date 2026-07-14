@@ -172,28 +172,34 @@ export async function getCommunity(
   const entryIds = (entries ?? []).map((e) => e.id);
   let reviews: CommunityReview[] = [];
   if (entryIds.length > 0) {
+    // review ya no es una columna legible de diary_entries: se lee de la
+    // vista pass_reviews (privacidad ya aplicada — ver
+    // 20260714_passes_review_privacy.sql). El .eq("is_public", true) de abajo
+    // es ahora redundante con lo que ya filtra la vista, pero se deja como
+    // defensa en profundidad y para dejar la intención explícita.
     const { data: diaryRows } = await supabase
-      .from("diary_entries")
+      .from("pass_reviews")
       .select("id, user_id, finished_on, rating, review, edition_id")
       .in("library_entry_id", entryIds)
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado, así que
       // no debe verlo la comunidad.
       .not("finished_on", "is", null)
-      // Una reseña privada es de su autor y de nadie más: la migración
-      // 20260714_passes.sql convirtió las notas privadas de
-      // library_entries.notes en pases con is_public = false, y ninguna
-      // consulta las filtraba — se estaban publicando en la pestaña
-      // Comunidad. Este filtro es el arreglo.
+      // Una reseña privada es de su autor y de nadie más.
       .eq("is_public", true)
       .order("finished_on", { ascending: false })
       .limit(MAX_REVIEWS);
 
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
-    // porque Supabase no infiere el tipo a partir de la query.
+    // porque Supabase no infiere el tipo a partir de la query. pass_reviews
+    // tipa TODAS sus columnas como nullable (es una vista), así que también
+    // se narrowan id/user_id — nunca vienen null en la práctica.
     const rows = (diaryRows ?? []).filter(
-      (r): r is typeof r & { finished_on: string } =>
-        r.finished_on !== null && (r.review ?? "").trim() !== ""
+      (r): r is typeof r & { id: string; user_id: string; finished_on: string } =>
+        r.id !== null &&
+        r.user_id !== null &&
+        r.finished_on !== null &&
+        (r.review ?? "").trim() !== ""
     );
 
     if (rows.length > 0) {

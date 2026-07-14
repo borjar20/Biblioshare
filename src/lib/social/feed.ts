@@ -187,21 +187,22 @@ export async function getFeed(
       : Promise.resolve({ data: [], error: null }),
     includeDiary
       ? (() => {
+          // is_public es SOLO si el texto de la reseña es visible, no si el
+          // evento "terminó X" lo es: que alguien acabó un libro no es
+          // secreto, así que aquí no se filtra por is_public (Hallazgo 3).
+          // review tampoco se selecciona: ya no es una columna legible de
+          // diary_entries: el texto (si lo hay y es visible) se resuelve
+          // después vía pass_reviews.
           let q = supabase
             .from("diary_entries")
-            .select("id, user_id, library_entry_id, finished_on, rating, review")
+            .select("id, user_id, library_entry_id, finished_on, rating")
             .in("user_id", followedIds)
             // Un pase abierto no es actividad terminada: no aparece en el
             // feed social de gente a la que sigues.
             .not("finished_on", "is", null)
-            // Una reseña privada es de su autor y de nadie más: sin este
-            // filtro, las notas migradas de library_entries.notes
-            // (is_public = false) se colarían en el feed de los seguidores.
-            .eq("is_public", true)
             .order("finished_on", { ascending: false })
             .limit(pageSize);
           if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);
-          if (options.reviewsOnly) q = q.not("review", "is", null);
           if (cursor) q = q.lte("finished_on", dateUpperBound(cursor.date));
           return q;
         })()
@@ -230,8 +231,27 @@ export async function getFeed(
 
   const addedRows = addedResult.data ?? [];
   const progressedRows = progressedResult.data ?? [];
-  const diaryRows = diaryResult.data ?? [];
+  const diaryRowsRaw = diaryResult.data ?? [];
   const episodeRows = episodeResult.data ?? [];
+
+  // El texto de la reseña vive en pass_reviews (privacidad ya aplicada): una
+  // fila que no vuelva aquí es, a efectos del feed, "sin reseña visible" — da
+  // igual si es porque no escribió nada o porque la escribió en privado. El
+  // evento en sí (arriba) no se filtró por is_public, así que este mapa es la
+  // única pieza que decide si se ve el TEXTO.
+  const diaryIds = diaryRowsRaw.map((r) => r.id);
+  const { data: reviewRows, error: reviewError } = diaryIds.length
+    ? await supabase.from("pass_reviews").select("id, review").in("id", diaryIds)
+    : { data: [] as { id: string | null; review: string | null }[], error: null };
+  if (reviewError) throw reviewError;
+  const reviewById = new Map((reviewRows ?? []).map((r) => [r.id, r.review]));
+
+  // "Solo reseñas" ya no puede filtrarse en la query (review no es una
+  // columna filtrable desde diary_entries): se aplica aquí, sobre el texto
+  // ya resuelto con privacidad.
+  const diaryRows = options.reviewsOnly
+    ? diaryRowsRaw.filter((r) => (reviewById.get(r.id) ?? "").trim() !== "")
+    : diaryRowsRaw;
 
   // "Se agotaron todas las fuentes" se mide sobre el fetch bruto de cada
   // query de arriba (antes del merge/corte de más abajo), no sobre cuántas
@@ -426,13 +446,16 @@ export async function getFeed(
     // esto en runtime; la comprobación es solo para que el compilador vea
     // el tipo correcto (Supabase no lo infiere de la query).
     if (r.finished_on === null) continue;
+    // undefined (no vino de pass_reviews) y null (vino pero sin texto) se
+    // tratan igual: sin reseña visible. Reviews privadas de otros caen aquí.
+    const reviewText = reviewById.get(r.id) ?? null;
     events.push({
       id: `diary_entries:${r.id}`,
       actorId: r.user_id,
       actorUsername: actor.username,
       actorDisplayName: actor.display_name,
       actorAvatarUrl: actor.avatar_url,
-      verb: verbForReviewable(r.rating, r.review, "finished"),
+      verb: verbForReviewable(r.rating, reviewText, "finished"),
       itemType: it.itemType,
       itemId: it.itemId,
       itemTitle: catalog.title,
@@ -441,7 +464,7 @@ export async function getFeed(
       entryStatus: null,
       eventDate: r.finished_on,
       rating: r.rating,
-      reviewExcerpt: excerpt(r.review),
+      reviewExcerpt: excerpt(reviewText),
       episode: null,
       progress: null,
       interactionTarget: { targetType: "diary_entry", targetId: r.id },

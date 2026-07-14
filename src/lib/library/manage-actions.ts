@@ -86,7 +86,12 @@ export async function updateStatus(
       .update({ finished_on: today() })
       .eq("id", openPass.id)
       .eq("user_id", user.id);
-    if (passError) throw passError;
+    // Un índice único impide cerrar dos pases del mismo ítem el mismo día:
+    // si ya cerraste otro pase de esta entrada hoy, este update choca con él
+    // (23505). Es el mismo caso que la rama "open" de arriba, no un error que
+    // deba explotar — como mucho, terminar algo el mismo día en que ya
+    // cerraste otra cosa del mismo ítem no hace nada, en vez de un 500.
+    if (passError && passError.code !== "23505") throw passError;
   }
 
   revalidateItemViews(itemType, itemId);

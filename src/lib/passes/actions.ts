@@ -110,7 +110,10 @@ export async function openPass(
     user_id: user.id,
     started_on: today(),
     finished_on: null,
-    is_public: false,
+    // is_public solo dice si el TEXTO de la reseña es visible, no si el
+    // pase existe: por defecto true, igual que updateStatus, para que
+    // quien escriba una reseña sin tocar nada la publique (Hallazgo 3).
+    is_public: true,
     edition_id: editionId,
   });
 

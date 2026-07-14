@@ -115,10 +115,13 @@ export default async function BookDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
-      [sessions, passes] = await Promise.all([
-        getSessions(supabase, row.id, "book"),
-        getPasses(supabase, row.id),
-      ]);
+      // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo
+      // 4): en una relectura, las sesiones de la lectura anterior no deben
+      // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
+      // va primero: getSessions necesita saber cuál es el pase abierto.
+      passes = await getPasses(supabase, row.id);
+      const openPassId = passes.find((p) => p.finishedOn === null)?.id ?? null;
+      sessions = await getSessions(supabase, openPassId, "book");
     }
     queues = await getQueues(supabase, user.id);
   }
