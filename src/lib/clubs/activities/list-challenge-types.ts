@@ -28,3 +28,25 @@ export type ListChallengeProgressView = {
 export function itemKey(itemType: string, itemId: string): string {
   return `${itemType}:${itemId}`;
 }
+
+// Modalidad de compleción del reto (EPIC-05, Bloque H3b). Vive en
+// club_activities.config->>'completionMode'.
+//
+//   "window" -- (default) un ítem cuenta si tienes un pase de diario terminado
+//              dentro de la ventana del reto. Si ya lo leíste, toca relectura.
+//   "any"    -- basta con tenerlo en la biblioteca como 'completed', sin
+//              importar cuándo. Es la modalidad "sin revisionado".
+export const COMPLETION_MODES = ["window", "any"] as const;
+export type CompletionMode = (typeof COMPLETION_MODES)[number];
+
+// La fuente de verdad de la regla es el SQL (get_list_challenge_progress lee el
+// config por su cuenta). Esto es SOLO para pintar: qué opción sale marcada en el
+// selector y qué línea de regla se muestra al pie del tablero. De ahí que
+// cualquier valor inesperado (config nulo, clave ausente, basura) caiga en
+// "window" -- el mismo default que el coalesce de la migración.
+export function readCompletionMode(config: unknown): CompletionMode {
+  if (config && typeof config === "object" && !Array.isArray(config)) {
+    if ((config as Record<string, unknown>).completionMode === "any") return "any";
+  }
+  return "window";
+}
