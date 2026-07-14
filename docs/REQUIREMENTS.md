@@ -149,6 +149,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 ### 7.1 Metadatos de libro más ricos — *hecho*
 - [x] Editorial y nº de páginas en la ficha de libro (`books.publisher`, `books.total_pages`) — capturados automáticamente al buscar (Google Books) o al añadir manualmente; mostrados en resultados de búsqueda y en "Mi biblioteca".
   - Editorial y nº de páginas son propiedades de la *obra* → tabla `books` (catálogo compartido).
+  - **Desactualizado (2026-07-14, ver §7.38)**: en la **ficha** (`/libro/[id]`, `/pelicula/[id]`), el panel de metadatos **ya no pinta** editorial, ISBN, páginas ni idioma de `books`/`movies` — son datos de la *edición*, no de la obra, y mostrarlos ahí era directamente falso para quien tiene una tirada distinta a la primaria. El panel se queda con autoría, año de primera publicación y géneros; editorial/ISBN/páginas se ven pulsando una tarjeta de la tira de ediciones (§7.38, Fase A). Las columnas `books.publisher`/`.isbn`/`.total_pages` **no se borran** (las sigue usando el importador y los triggers de alta de edición primaria), solo dejan de pintarse en la ficha. **Deuda sin cerrar**: `library-item-card.tsx` y `search-result-card.tsx` (tarjetas de "Mi biblioteca" y de resultado de búsqueda) siguen pintando `publisher`/`pageCount` de `books` tal cual — fuera del alcance de §7.38, que solo tocó la ficha de detalle.
 - [x] Encuadernación/formato (bolsillo, tapa blanda, tapa dura) — editable desde "Editar progreso" en "Mi biblioteca".
   - Es propiedad de **tu ejemplar**, no de la obra: vive en `library_entries.position` (tipado en `src/lib/library/position.ts`), no en `books` — consistente con cómo `position` ya modela lo que varía por usuario y por tipo.
   - **Desactualizado (2026-07-14, ver §7.37)**: el formato del ejemplar lo dice ahora la **edición** (`book_editions`/`movie_versions`) del pase, no un campo suelto de progreso — "tapa dura" o "bolsillo" son dos ediciones distintas del mismo libro, cada una con su propia paginación. `position.format` se conserva en el tipo por compatibilidad de lectura (datos antiguos, `session-list.tsx`, checkpoints de club) pero **ya no se escribe**: no existe "Editar progreso" como pantalla — el panel murió junto con `item-manage-panel.tsx`/`progress-panel.tsx`. Elegir edición se hace desde el panel Progreso de la pestaña Registro (§7.37).
@@ -386,6 +387,7 @@ Información más rica de los ítems: fichas de persona con su obra, reparto/equ
 - [x] **Caché "cache-as-you-go"** (§7.32): `src/lib/people/enrich-item.ts` (`ensureItemEnriched`) trae y persiste créditos (y, en películas, la saga desde `belongs_to_collection`) la **primera** vez que se abre la ficha; las siguientes visitas leen solo de la BD. Guard sobre la existencia de créditos; envuelto en try/catch para que un fallo de API externa no rompa la ficha.
 - [x] **Dominio**: `src/lib/people/` (`find-or-create-person.ts` con alta por lotes de personas TMDB e idempotencia de autores; `get-item-credits.ts`; `get-person.ts` con "su obra" resuelta desde `credits`) y `src/lib/sagas/` (`persist-collection.ts`, `get-item-saga.ts`, `get-saga.ts` que **completa perezosamente** las partes de una colección TMDB reconstruyendo `saga_items` de forma determinista para garantizar el orden por año, `manage-saga-actions.ts` para asignación manual).
 - [x] **UI**: fichas `/persona/[id]` (foto, fechas, bio, "Su obra") y `/saga/[id]` (portada, overview, títulos ordenados) — rutas en español como el resto. Sección "Reparto y equipo" (`src/components/credits-section.tsx`) en cine/series; autor/dirección/creación enlazados a su ficha; chip de saga en la ficha; formulario de asignación manual de saga (`src/components/saga-assign-form.tsx`) para libros. Helpers `personHref`/`sagaHref`. i18n `person`/`saga` + claves nuevas en `item`.
+  - **Desactualizado (2026-07-14, ver §7.38)**: `saga-assign-form.tsx` se **absorbió y se borró** al construir el editor de ficha oficial — la asignación de saga se hace ahora desde ahí (`src/components/detail/catalog-editor.tsx`), junto al resto de la edición del catálogo, no como un formulario aparte en la ficha de lectura.
 - **Verificado en navegador con datos reales** (limpiados después): Matrix → reparto con fotos (Keanu Reeves como Neo, etc.), dirección/guion Wachowski enlazados, chip "Matrix - Colección", y `/saga` con las 4 películas en orden cronológico (1999→2021); El Quijote → autor Cervantes enlazado a su ficha con bio/foto de Open Library y "Su obra"; asignación manual de saga a un libro con su posición. Segunda visita no vuelve a llamar a la API (créditos/saga ya en BD).
 - **Resuelto al construir**: el primer render de una ficha dispara enriquecimientos **concurrentes** (varias inserciones a la vez) → el alta de personas maneja el `23505` de carrera re-seleccionando; el orden de una colección TMDB se garantiza reconstruyendo `saga_items` (borrar+reinsertar) en cada visita de la saga, porque `upsert` sobre el índice único no actualizaba la posición de filas ya existentes.
 - **A mejorar a futuro — bio de autor en español**: Open Library solo ofrece la biografía de autor **en inglés** (a diferencia de TMDB, que sí se resuelve en `es-ES` para personas de cine/series). Para tener bios de autor en español habría que añadir **Wikidata/Wikipedia** como fuente adicional (resolver el autor por nombre → QID de Wikidata → extracto de Wikipedia en español), como capa de enriquecimiento sobre la ficha ligera. No bloqueante; queda como mejora.
@@ -406,8 +408,9 @@ Control de acceso por roles con tres grados jerárquicos (`user < collaborator <
   (`findOrCreateCatalogItem` en búsqueda→catálogo, y el auto-enriquecimiento de §7.34) **no se
   tocan** — siguen abiertos a todos. El gateo se aplica en las **server actions** manuales
   (`addManualItem`, `assignItemToSaga`/`removeItemFromSaga`, con `hasMinRole(...,'collaborator')`) y
-  ocultando la UI (enlace "Añádelo manualmente" en `/buscar`, `SagaAssignForm` en la ficha de libro),
-  además de guardar la página `/buscar/manual`. Capa de dominio: `src/lib/auth/roles.ts`
+  ocultando la UI (enlace "Añádelo manualmente" en `/buscar`, y —desde §7.38— el botón "Editar
+  ficha" que da acceso a sagas/ediciones/portada, antes era `SagaAssignForm` suelto en la ficha de
+  libro), además de guardar la página `/buscar/manual`. Capa de dominio: `src/lib/auth/roles.ts`
   (`UserRole`, `hasMinRole`, `getCurrentUserRole`); `Profile`/`PROFILE_COLUMNS` extendidos con `role`.
 - [x] **Admin**: página `/admin` (guardada con redirect si no es admin) que lista usuarios y cambia
   su rol (`src/app/admin/`: `page.tsx`, `actions.ts` con `updateUserRole`, `role-select.tsx`); el
@@ -592,10 +595,164 @@ completo en `docs/superpowers/specs/2026-07-14-registro-pases-ediciones-design.m
   propias): sagas múltiples con selector, editor de ficha oficial del moderador, reparto y
   plataformas, filtro de reseñas por edición, y la limpieza final de `library_entries.rating`/
   `notes` y de las columnas de edición duplicadas en `books`/`movies`.
+  - **Hecho (2026-07-14, ver §7.38)**: el editor de ficha oficial del moderador (colaborador+) ya
+    está construido. Las demás candidatas (sagas múltiples con selector, reparto/plataformas,
+    filtro de reseñas por edición, limpieza de columnas duplicadas) siguen sin abordarse.
 - **Verificado**: checklist manual en
   `docs/superpowers/plans/2026-07-14-registro-pases-ediciones-manual-test.md` (el proyecto no usa
   E2E automático, ver `docs/TESTING.md`); consultas de control contra dev confirmando que la media
   de comunidad no se mueve tras la migración salvo en el caso esperado documentado arriba.
+
+### 7.38 Ediciones en la ficha y editor de ficha oficial — *hecho*
+Continúa §7.37 (donde nacieron `book_editions`/`movie_versions`, pero solo se registraba UNA
+edición por libro —la del ISBN elegido al añadir— y la ficha seguía pintando datos de tirada como
+si fueran de la obra). Tres problemas del mismo origen, resueltos en tres fases entregables por
+separado. Diseño completo en
+`docs/superpowers/specs/2026-07-14-ediciones-ficha-y-editor-design.md`.
+
+- [x] **Fase A — la ficha muestra la edición que estás mirando.** El panel de metadatos deja de
+  pintar editorial/ISBN/páginas/idioma de `books`/`movies` como si fueran de la obra; se queda con
+  autoría, año de primera publicación y géneros (ver también §7.1, corregido). La tira de
+  ediciones (`src/components/detail/edition-strip.tsx`) pasa a ser clicable: pulsar una tarjeta
+  pinta sus propios datos —editorial, año de la tirada, idioma, páginas, ISBN, portada propia si
+  la tiene— en el panel bajo la sinopsis (`EditionsSection`/`EditionDetails`,
+  `src/components/detail/edition-details.tsx`), en el mismo hueco visual que antes ocupaba
+  `MetadataSidebar`; "volver a la obra" restaura el panel de la obra.
+  - **Mirar no es adoptar**: dos ids deliberadamente distintos en `EditionStrip`/`EditionDetails` —
+    `viewingId` (qué se está mirando ahora mismo en el panel, cambia libremente) y
+    `selectedEditionId` (la edición del PASE abierto, marcada con ✓ y "La tuya" en la tira).
+    Curiosear otras ediciones nunca toca el registro personal; adoptar una es un gesto aparte, en
+    el Registro.
+  - **Elegir tu edición se pregunta en dos momentos**, siempre con salida "No lo sé": al pulsar
+    "Seguir" (si el libro/película tiene más de una edición, `FollowButton` en
+    `src/components/detail/log-panel.tsx`) y, si no se contestó entonces, en el panel Progreso al
+    empezar a leer (`ProgressBlock`, mismo componente). La respuesta —incluida "No lo sé"— se
+    recuerda en `localStorage` por `passId`, no por ítem (`src/lib/passes/edition-asked.ts`): una
+    relectura abre un pase nuevo y la pregunta vuelve a aparecer para ese pase.
+  - **Decisión: la edición vive en el PASE, no en la entrada de biblioteca.** No existe
+    `library_entries.preferred_edition_id`. "Seguir" siempre crea la entrada con estado `planned`
+    (nunca abre un pase de una), así que si eliges edición al pulsar "Seguir" pero el alta queda en
+    Pendiente, la elección **se descarta sin más** — no hay pase todavía donde guardarla, y se
+    vuelve a preguntar cuando de verdad se empiece a leer y se abra uno. Alternativa descartada:
+    guardar la elección en la entrada "por si acaso" habría resucitado exactamente la duplicidad de
+    "dónde vive la edición" que §7.37 vino a eliminar. Ver el comentario de
+    `addExistingItemToLibrary` en `src/lib/library/add-existing-item.ts`.
+  - **Deuda heredada sin cerrar** (ya anotada al planificar, no un descubrimiento de última hora):
+    `library-item-card.tsx` y `search-result-card.tsx` siguen pintando `publisher`/`pageCount` de
+    `books` en las tarjetas de "Mi biblioteca" y de resultado de búsqueda, como si fueran de la
+    obra — fuera del alcance de esta fase, que solo tocó la ficha de detalle (ver §7.1).
+- [x] **Fase B — traer las ediciones reales de OpenLibrary** (migraciones
+  `20260714_editions_sync.sql`, `20260714_editions_sync_rls.sql`). Al **abrir la ficha** de un
+  libro, y solo con **sesión iniciada**, se piden sus ediciones a
+  `https://openlibrary.org/works/<WORK_KEY>/editions.json` y se registran vía la RPC
+  `register_book_edition` que ya existía (§7.37) — mismo cache-as-you-go que ya enriquece autores.
+  - **Columnas nuevas**: `books.openlibrary_work_key` (antes se guardaba a medias en
+    `books.google_books_id`, una columna cuyo nombre miente desde que el proyecto migró de Google
+    Books a OpenLibrary) y `books.editions_synced_at`. Backfill de las 80 filas de prod que ya
+    tenían la work key en la columna vieja; el resto la resuelve `resolveWorkKey()` por ISBN la
+    primera vez que se abre su ficha.
+  - **La marca de sincronización se pone incluso si no se importa nada**: una obra oscura sin
+    ediciones en OpenLibrary, o sin work key resoluble, se marca `editions_synced_at` igual — una
+    obra sin ediciones no puede pagar una llamada externa en cada visita a su ficha. Si algún día
+    OpenLibrary la cataloga, no hay forma automática de enterarse; se acepta ese caso raro a cambio
+    de no repetir la llamada en la inmensa mayoría de obras que nunca tendrán ediciones ahí. Un
+    colaborador puede forzar la resincronización desde el editor (`resyncEditions`, Fase C).
+  - **Solo con sesión** (`src/app/libro/[id]/page.tsx`): un visitante anónimo no puede escribir ni
+    la RPC (exige `auth.uid()`) ni la marca de sincronización (el grant es de `authenticated`) —
+    sin este guardia, cada visita anónima a una ficha sin sincronizar pagaría hasta cinco llamadas
+    a OpenLibrary y veinte RPC para tirarlo todo a la basura, una y otra vez.
+  - **El filtro que decide si el selector sirve de algo** (`src/lib/catalog/openlibrary-editions.ts`,
+    función pura `pickEditions`, testeada): descarta lo que no tiene **ISBN válido** (mismo dígito
+    de control que `register_book_edition`), deduplica por ISBN, descarta una **lista negra de
+    editoriales de impresión bajo demanda** (Independently Published, CreateSpace, Lulu,
+    BiblioBazaar, Nabu Press, Kessinger, Books on Demand...) —reimpresiones automáticas sin curar,
+    casi siempre de dominio público, que en los clásicos inundan las primeras páginas de resultados
+    desplazando a las ediciones reales—, prioriza **español e inglés**, y corta en **20** por obra
+    (de más reciente a más antigua, con más peso a las que traen portada y páginas/editorial
+    conocidas). Sin el tope y la lista negra, El Quijote mostraba solo 20 tiradas POD en inglés
+    casi idénticas; con el filtro, 20 ediciones españolas reales (Planeta, Vicens Vives, Susaeta,
+    Siruela...). Es la parte que decide si el selector de edición es útil o inservible, y se probó
+    con obras reales, no con un caso de laboratorio.
+  - **Paginación en paralelo solo si hace falta**: la primera página de `editions.json` ya trae el
+    total real de ediciones de la obra; si son 100 o menos (la inmensa mayoría de libros) no se pide
+    nada más. Solo para obras muy reeditadas se piden hasta 4 páginas adicionales (5 en total, 500
+    ediciones), todas EN PARALELO (`Promise.allSettled`) para no multiplicar por 5 el tiempo de la
+    primera visita a la ficha, tolerando que alguna falle sin dejar la ficha sin ediciones.
+  - **Errores nunca bloquean el render**: `fetchWorkEditions`/`resolveWorkKey` no lanzan nunca —un
+    fallo de red, un timeout (5s) o una respuesta inesperada se tratan como "esta llamada no aportó
+    nada", nunca como excepción que tumbe la ficha.
+  - **Bug de RLS encontrado y corregido**: `books` tenía RLS activado pero **sin ninguna política de
+    `UPDATE`** (el `GRANT` de columna de `20260714_editions_sync.sql` no basta sin una `POLICY` —
+    Postgres filtra la fila a actualizar a cero silenciosamente, sin lanzar error). El síntoma:
+    `editions_synced_at` se quedaba en `null` para siempre y cada visita a la ficha repetía la
+    llamada a OpenLibrary, justo lo que esta fase quería evitar. De paso se cerró un grant heredado
+    más amplio de lo previsto (`books` tenía `UPDATE` concedido en TODAS sus columnas a `anon` y
+    `authenticated`, un hueco que nunca recibió el revoke+grant acotado por columnas que sí
+    aplicaron `movies`/`series` — `books` no existía todavía en esa migración). Corregido en
+    `20260714_editions_sync_rls.sql`: `revoke update` general + `grant` acotado a las dos columnas
+    + política `using(true) with check(true)` (mismo criterio de permisividad que el resto del
+    catálogo compartido).
+- [x] **Fase C — editor de ficha oficial** (migraciones `20260714_covers_bucket.sql`,
+  `20260714_edition_delete_guard.sql`, `20260714_catalog_edit_grants.sql`;
+  `src/components/detail/catalog-editor.tsx`). Colaborador+ (mismo nivel que crear ediciones o
+  asignar sagas, §7.35) puede, en las **tres** fichas: corregir título, autoría/dirección/creación,
+  sinopsis, géneros y año; subir una portada nueva; crear, **editar y borrar** ediciones/versiones
+  (antes solo se podían crear); asignar sagas (absorbe y jubila `saga-assign-form.tsx`, ver §7.34);
+  y volver a pedir las ediciones a OpenLibrary (`resyncEditions`, pone `editions_synced_at` a
+  `null` y deja que la sincronización de la Fase B actúe como si fuera la primera visita). Entra
+  desde un botón "Editar ficha" en la pestaña Info (solo colaborador+), que conmuta la ficha a
+  formulario en la misma página (patrón `ClubForm`) con barra fija de Guardar/Cancelar.
+  - **Decisión: la restricción de colaborador+ va en un TRIGGER, no (solo) en una policy RLS.**
+    Una política RLS filtra **filas**, no columnas. `books`/`movies`/`series` ya tenían una política
+    `UPDATE` permisiva (`using(true)`) para que cualquier `authenticated` pudiera seguir escribiendo
+    sus columnas de sincronización de siempre (`openlibrary_work_key`, `duration_minutes`,
+    backfill de temporadas/episodios...). Si el `GRANT` de columna se ampliara con
+    título/sinopsis/géneros/año/portada bajo ESA misma política, cualquier autenticado —no solo
+    colaborador+— podría reescribirlos vía REST directo, porque las políticas permisivas se
+    combinan con OR y ninguna sabe qué columnas trae el `UPDATE` concreto. Por eso la restricción
+    de rol para estos campos va en `enforce_catalog_edit_collaborator_only()` (trigger
+    `BEFORE UPDATE`, mismo patrón que `enforce_people_enrich_only`): compara `OLD`/`NEW` columna a
+    columna y solo lanza si alguna de las protegidas cambió y el actor no es colaborador+ (o
+    `auth.uid()` es `null`, contexto service_role/SQL ya privilegiado).
+  - **Decisión: borrar una edición en uso se IMPIDE, no se reasigna a la primaria.** Trigger
+    `block_edition_delete_if_used` (`BEFORE DELETE` en `book_editions`/`movie_versions`): cuenta los
+    pases (`diary_entries.edition_id`) que apuntan a la fila y lanza `edition_in_use` si hay
+    alguno. `edition_id` es polimórfico (apunta a una tabla u otra según el tipo de ítem), así que
+    no admite clave ajena con `on delete restrict` — la protección tiene que ir en un trigger, que
+    además cubre cualquier vía de borrado futura, no solo la de hoy. Reasignar en silencio a la
+    edición primaria se descartó explícitamente: falsearía el progreso de alguien que no ha pedido
+    nada ("voy por la página 240 de 662" se convertiría en "de 880" sin que su dueño se entere). El
+    editor explica cuántos pases usan la edición (`deleteEdition` en `src/lib/catalog/edit-actions.ts`,
+    error `inUse`) y dejar que el colaborador decida, no la aplicación.
+  - **Portada**: subida real al bucket nuevo `covers` de Supabase Storage (público de lectura),
+    replicando el patrón del bucket de avatares con una diferencia que importa: en avatares la
+    puerta es la *carpeta* (cada usuario escribe en la suya); en portadas la puerta es el *rol*
+    (colaborador+), porque la portada es del catálogo compartido, no de nadie. Validación de tipo
+    (`jpeg`/`png`/`webp`) y tamaño (2 MB) en cliente (feedback inmediato) y en servidor (la que
+    manda de verdad); un fichero que la excede da un error legible y revierte la preview optimista
+    en vez de dejar el overlay de "subiendo…" colgado (bug real encontrado y corregido: una promesa
+    rechazada —red caída, timeout, el `bodySizeLimit` de `next.config.ts`— dejaba
+    `coverUploading` en `true` para siempre sin el `try/catch` que ahora lo envuelve).
+  - **Sin historial ni deshacer**: con colaborador+ el riesgo es asumible (gente de confianza,
+    `created_by` deja rastro en las ediciones); si algún día se abre la edición a cualquier
+    usuario, un historial de cambios pasa a ser el primer requisito, no un extra.
+  - **CRÍTICO encontrado y corregido durante la construcción**: pasar el contenido ya renderizado
+    de la ficha como `children` de `CatalogEditor` funcionaba, pero un intento intermedio de
+    pasarlo como función (para que `EditFichaButton` pudiera insertarse "donde tocara") reventaba
+    las **tres** fichas con 500 en cada visita, incluso para un visitante anónimo (`Functions are
+    not valid as a child of Client Components` — una función no se puede serializar a través de la
+    frontera servidor→cliente). Corregido con un contexto de React
+    (`CatalogEditorContext`/`EditFichaButton`) que deja al servidor seguir componiendo solo
+    `ReactNode`s, verificado con las tres rutas devolviendo 200 tras el arreglo.
+- **Fases entregables por separado**: tras la A, la ficha ya no miente y las ediciones se pueden
+  explorar; tras la B, hay ediciones de verdad que explorar; la C abre el catálogo a colaboradores.
+  Se aplicó y se pudo verificar cada una antes de seguir con la siguiente.
+- **Migraciones aplicadas en dev, prod pendiente**: `20260714_editions_sync.sql`,
+  `20260714_editions_sync_rls.sql`, `20260714_covers_bucket.sql`, `20260714_edition_delete_guard.sql`,
+  `20260714_catalog_edit_grants.sql`.
+- **Verificado**: checklist manual en
+  `docs/superpowers/plans/2026-07-14-ediciones-ficha-y-editor-manual-test.md` (el proyecto no usa
+  E2E automático, ver `docs/TESTING.md`).
 
 ## 8. Decisiones de arquitectura (evaluadas antes de construir más)
 
@@ -714,6 +871,7 @@ admin.
 | 2026-07-13 | **EPIC-05 Bloque F** (feed de club: posts, compartir actividad, encuestas) construido, migración aplicada a **dev + prod**, verificación manual en navegador pendiente — tablas `club_posts`/`club_poll_options`/`club_poll_votes`; `target_kind` (Bloque B) ampliado con `club_post`/`comment` y CHECK `comments_no_nesting` que hace la anidación de comentarios irrepresentable en el esquema (necesario para que la nueva rama recursiva de `can_view_target()` termine de forma demostrable); helper `SECURITY DEFINER` **nuevo y angosto** `is_visible_via_club_share()` añadido como un `OR` extra a las políticas `SELECT` ya existentes de `diary_entries`/`episode_watches` (Bloque A) — deliberadamente **no** integrado en `can_view_profile()`, que es un helper transversal usado por todo el contenido de perfil desde Bloque A y ya verificado, para no arriesgarlo por esta feature concreta; política `SELECT` de `club_poll_votes` que hace cumplir "resultados de encuesta ocultos hasta que votas" a nivel de RLS (tu propio voto siempre visible, los de los demás solo si ya votaste o la encuesta cerró) en vez de solo a nivel de aplicación, para que no pueda saltarse consultando la tabla directamente vía PostgREST; `resolveReviewHrefs()` (Bloque D) renombrado y unificado a `resolveTargetHrefs()`, plegando el caso especial de `target_type='club'` (antes duplicado por separado en `deliverPush()` y `listNotifications()`) en una sola función compartida que ahora también resuelve `club_post`/`comment` | Cierra E5.F1–E5.F3 de `docs/requirements/social-epic.md` (dep: E, B, D): **ampliación de alcance decidida en brainstorming, no en el backlog original** — el "me gusta" en comentarios pasa a estar disponible en toda la app (reseñas y posts de club), no solo en clubes, porque comparte el mismo `target_kind` polimórfico que las reseñas y no tenía sentido que un comentario fuera "gustable" solo en un contexto. `activity_share` comparte cualquier `FeedEvent` reciente propio (Bloque C: diario, episodios, altas de biblioteca), no solo reseñas, guardando una **referencia viva** (`{sourceTable, rowId}`, mismo vocabulario que `FeedEvent.id`) en vez de un snapshot — re-derivada en cada lectura vía un resolver de una sola fila (`src/lib/social/shared-activity.ts`), con degradación elegante ("ya no disponible") si la fila origen se borra. Compartir a un club **anula la privacidad de perfil normal para los compañeros de ese club** — decisión explícita de sesión: compartir es una elección de audiencia deliberada que prevalece sobre la visibilidad de seguidor/perfil, solo dentro de ese club, nunca más allá. Encuestas de elección única con cierre obligatorio, incluidas desde el inicio pese a la interrogación del backlog original. Notificación a todos los miembros activos en post nuevo, sin preferencia de silenciar-club (E5.J, todavía no construido, queda explícitamente diferido — se acepta el ruido temporal). El implementador de la Task 1 encontró y corrigió dos bugs Postgres reales más allá del SQL dado en el plan, ambos mecánicos y sin ambigüedad de producto: un `commit;` a mitad de migración (Postgres exige que un valor nuevo de enum esté confirmado antes de poder referenciarse como literal, error 55P04, y el CHECK/`can_view_target()` lo hacían inmediatamente); y un nuevo helper `has_voted_in_club_poll()` rompiendo una recursión estructural (42P17) en la política `SELECT` de `club_poll_votes`, que se auto-referenciaba vía una subquery inline — mismo patrón que `club_member_row_exists()` de Bloque E. Batería de 20 checks (incluyendo fuga entre clubes y "resultados ocultos hasta votar") y revisión independiente sin hallazgos Critical/Important. Verificación manual en navegador pendiente de ejecutar por el usuario (checklist en `docs/superpowers/plans/2026-07-12-epic05-bloque-f-club-feed-manual-test.md`). Motor genérico de actividades de club (Bloque G) explícitamente fuera de alcance |
 | 2026-07-13 | **EPIC-05 Bloque G** (motor genérico de actividades de club) construido, migración aplicada a **dev + prod**, verificación manual en navegador pendiente — tablas `club_activities`/`club_activity_participants`/`club_activity_items`/`club_activity_opinions`, enums `activity_kind` (abierto: `buddy_read`/`tierlist`/`list_challenge`/`criteria_challenge`, ampliable después vía `ALTER TYPE ADD VALUE`) y `activity_status` (`proposed`/`active`/`finished`/`archived`); transiciones de estado como tres RPCs `SECURITY DEFINER` (`activate_club_activity`/`finish_club_activity`/`archive_club_activity`), nunca `UPDATE`s de cliente — `club_activities` no tiene política `UPDATE` en absoluto; helper `SECURITY DEFINER` `is_activity_participant()` gatea escritura del pool de ítems y lectura+escritura de opiniones | Cierra E5.G1–E5.G3 de `docs/requirements/social-epic.md` (SD-8, dep: E, D): decisión de sesión de **exponer el ciclo de vida completo ya en este bloque** (`proposed → active → finished`, o `proposed`/`active → archived`) en vez de diferirlo a Bloque H — mismo orden de construcción por capas ya usado para clubes antes del feed de club (Bloque E antes de F): construir primero el motor genérico completo, después los tipos concretos que lo consumen. `archiveActivity` generaliza deliberadamente "rechazar una propuesta" y "cancelar una activa" en una sola RPC, moderator+, alcanzable desde `proposed` o `active` — evita una cuarta RPC redundante para una distinción que el usuario final no necesita ver como dos acciones distintas. Las opiniones (`club_activity_opinions`) son **visibles solo para participantes** de la actividad, no basta con ser miembro del club — confirma literalmente la lectura de **SD-8**, aplicado a nivel de RLS (política `SELECT` que exige `is_activity_participant()`, no solo ocultado en la UI) para que no pueda saltarse consultando la tabla directamente vía PostgREST, mismo patrón que "resultados ocultos hasta que votas" de Bloque F. `config jsonb` y el comportamiento específico por `kind` quedan **explícitamente diferidos a Bloque H** — ninguna función de este bloque lee ni escribe esa columna. Batería de 20 checks de impersonación RLS/RPC (incluyendo el caso de mayor riesgo del bloque: un moderator+ miembro del club pero no participante de la actividad no puede ver las opiniones de otro participante hasta unirse él mismo) y revisión independiente de cada task sin hallazgos Critical; un hallazgo Important (tres nuevos manejadores de mutación —enviar opinión, quitar ítem, añadir ítem vía el picker— no mostraban error visible al usuario si la acción fallaba, inconsistente con el patrón `run()` ya establecido en el mismo componente) corregido y re-revisado antes de cerrar la task. Verificación manual en navegador pendiente de ejecutar por el usuario (checklist en `docs/superpowers/plans/2026-07-13-epic05-bloque-g-club-activities-manual-test.md`) |
 | 2026-07-14 | **Registro de pases y ediciones** (§7.37) construido, migraciones aplicadas en **dev** (prod pendiente) — `diary_entries` se redefine como el **pase** (una lectura/visionado; `finished_on` nullable = pase abierto), único dueño de nota y reseña, con `is_public`/`edition_id` nuevos; dos tablas de catálogo nuevas `book_editions`/`movie_versions` colgando de la obra (nunca de series); `progress_sessions` pasa a colgar del pase (`pass_id`), no directamente de la entrada; cronómetro persistente en `/sesion/[entryId]` (instante de arranque en `localStorage`, no un contador corriendo); la comunidad agrega desde el **último pase cerrado no abandonado** de cada usuario, no desde `library_entries.rating` (huérfana a propósito junto con `.notes`) | Cerraba el registro fragmentado (nota/reseña repartidas entre `library_entries.rating`, `diary_entries.rating` y hasta tres campos de texto) y habilitaba el caso motivador: dos pases de la misma obra contra ediciones distintas (versión teatral vs. extendida de una película, tapa dura vs. bolsillo de un libro), cada uno con su propia nota. Se mantuvo el nombre físico `diary_entries` — renombrarla habría obligado a tocar RLS, feed, notificaciones e interacciones de reseña sin ganar nada funcional — y se dejaron `library_entries.rating`/`.notes` en la BD sin uso, para poder revertir sin pérdida; su limpieza queda diferida a una spec propia. Dos invariantes se garantizaron en BD, no solo en la app, tras encontrar dos carreras reales en revisión de código: un doble clic en "Visto" insertaba dos pases (cerrado extendiendo el índice único a pases ya cerrados el mismo día, no solo al abierto) y un pase podía apuntar a la edición de otra obra (cerrado con un trigger, `check_pass_edition`). Una revisión posterior encontró además una fuga de privacidad (reseñas con `is_public = false` se mostraban igualmente en Comunidad/feed/perfil por falta de filtro) y un contador de relecturas que sumaba pases todavía abiertos; ambos corregidos. **Riesgo residual asumido** en `register_book_edition` (función `SECURITY DEFINER` con validación real de dígito de control de ISBN, sin cola de revisión): un usuario autenticado puede adjuntar una edición inventada con ISBN de checksum válido a un libro ajeno — firmado en `created_by`, reversible, no es escalada de privilegios. Ver `docs/superpowers/specs/2026-07-14-registro-pases-ediciones-design.md` y el checklist manual en `docs/superpowers/plans/2026-07-14-registro-pases-ediciones-manual-test.md` |
+| 2026-07-14 | **Ediciones en la ficha y editor de ficha oficial** (§7.38) construido en tres fases, migraciones aplicadas en **dev** (prod pendiente) — panel de metadatos deja de pintar editorial/ISBN/páginas/idioma de `books`/`movies` como si fueran de la obra (Fase A); ediciones reales importadas de OpenLibrary al abrir la ficha, con tope de 20 por obra y lista negra de editoriales de impresión bajo demanda (Fase B); editor de ficha oficial para colaborador+ con portada, ediciones editables/borrables y sagas (Fase C, absorbe y borra `saga-assign-form.tsx`) | La restricción de "solo colaborador+ edita la ficha" se implementó como **trigger** (`enforce_catalog_edit_collaborator_only`), no como policy RLS adicional, porque una policy filtra filas y no columnas: con el grant de columna ampliado bajo la policy `UPDATE` permisiva ya existente (necesaria para que cualquier autenticado siga escribiendo columnas de sincronización), cualquier autenticado habría podido reescribir título/sinopsis vía REST directo. Borrar una edición en uso se **impide** (trigger `block_edition_delete_if_used`) en vez de reasignarla a la primaria: reasignar en silencio falsearía el progreso de quien no ha pedido nada. La edición elegida al seguir un libro vive en el **pase**, no en la entrada (no hay `library_entries.preferred_edition_id`): como "seguir" siempre crea la entrada en Pendiente, la elección se descarta si no hay pase abierto donde guardarla, y se repregunta al empezar a leer. Bug real encontrado y corregido en Fase B: `books` tenía RLS activado sin ninguna policy de `UPDATE` (el grant de columna de `editions_synced_at` no bastaba), así que la marca de sincronización se filtraba a cero filas en silencio y cada visita repetía la llamada a OpenLibrary. Ver `docs/superpowers/specs/2026-07-14-ediciones-ficha-y-editor-design.md` y el checklist manual en `docs/superpowers/plans/2026-07-14-ediciones-ficha-y-editor-manual-test.md` |
 
 ## 10. Historial de versiones
 
