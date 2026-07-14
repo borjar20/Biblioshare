@@ -615,6 +615,33 @@
     "unknownEdition": "No lo sé",
     "unknownEditionHint": "Tu progreso se medirá contra la edición principal. Puedes cambiarlo cuando quieras."
   },
+  "catalogEdit": {
+    "edit": "Editar ficha",
+    "title": "Editando la ficha oficial",
+    "subtitle": "Los cambios se aplican para toda la comunidad",
+    "fieldTitle": "Título",
+    "fieldAuthor": "Autoría",
+    "fieldDirector": "Dirección",
+    "fieldCreator": "Creación",
+    "fieldSynopsis": "Sinopsis",
+    "fieldGenres": "Géneros",
+    "fieldYear": "Año de primera publicación",
+    "cover": "Portada",
+    "changeCover": "Cambiar",
+    "resync": "Volver a buscar ediciones",
+    "save": "Guardar cambios",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "saved": "Ficha actualizada",
+    "deleteEdition": "Borrar edición",
+    "errors": {
+      "forbidden": "Necesitas ser colaborador para editar la ficha.",
+      "invalidTitle": "El título no puede estar vacío.",
+      "invalidYear": "El año no es válido.",
+      "inUse": "No se puede borrar: hay lecturas registradas contra esta edición.",
+      "generic": "No se pudo guardar."
+    }
+  },
   "detail": {
     "back": "Volver",
     "ratings": "valoraciones",
