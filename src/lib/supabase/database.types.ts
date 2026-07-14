@@ -1537,6 +1537,10 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
+      set_activity_completion_mode: {
+        Args: { p_activity_id: string; p_mode: string }
+        Returns: undefined
+      }
       set_club_member_role: {
         Args: {
           p_club_id: string

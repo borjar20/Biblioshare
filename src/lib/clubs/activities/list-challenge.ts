@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { itemKey } from "./list-challenge-types";
 import type {
+  CompletionMode,
   ListChallengeParticipantProgress,
   ListChallengeProgressView,
 } from "./list-challenge-types";
@@ -11,12 +12,12 @@ import type {
 // Progreso de un reto por lista (EPIC-05, Bloque H3). Hermano de checkpoints.ts
 // (H1) -- misma forma "use server" plana, sin chequeos de rol en la app.
 //
-// Módulo de SOLO LECTURA, sin mutaciones: no hay nada que escribir. Es la
-// consecuencia más profunda de la decisión de diseño -- el progreso está 100%
-// derivado de los pases de diario (diary_entries) dentro de la ventana del
-// reto, así que "completar un ítem del reto" es simplemente llevar tu diario
-// como siempre. No existe un botón de "marcar como hecho" ni una tabla de
-// progreso que mantener.
+// El progreso no se escribe NUNCA: está 100% derivado (pases de diario, o el
+// status de tu biblioteca según la modalidad). "Completar un ítem del reto" es
+// simplemente llevar tu biblioteca como siempre -- no existe un botón de "marcar
+// como hecho" ni una tabla de progreso que mantener. La única mutación del
+// módulo (setCompletionMode, Bloque H3b) no escribe progreso: escribe la REGLA
+// con la que se lee.
 //
 // La autorización vive entera en la RPC get_list_challenge_progress
 // (SECURITY DEFINER): es ella la política de lectura del tablero, porque un
@@ -111,4 +112,22 @@ export async function getListChallengeProgress(
     windowEnd: windowRow.window_end,
     participants,
   };
+}
+
+// Cambia la modalidad de compleción del reto (EPIC-05, Bloque H3b).
+//
+// Sin chequeo de rol en la app, como el resto del módulo: la autorización vive
+// entera en la RPC (creador o moderator+, y solo sobre un list_challenge). A
+// diferencia de updateActivityConfig, esta se puede llamar con el reto ya
+// 'active' -- deliberado, ver la migración.
+export async function setCompletionMode(
+  activityId: string,
+  mode: CompletionMode,
+): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("set_activity_completion_mode", {
+    p_activity_id: activityId,
+    p_mode: mode,
+  });
+  if (error) throw error;
 }
