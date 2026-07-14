@@ -65,9 +65,9 @@ La palabra "pase" no aparece en la interfaz: el usuario ve estados y un diario.
 
 El selector pasa a medias estrellas (0,5–5) y todo lo visible es `/5`. La
 columna sigue siendo `smallint` 1–10, así que no hay migración de notas y no se
-pierde precisión. Conversión en un único módulo (`src/lib/rating/scale.ts`);
-`src/lib/series/rating-scale.ts` ya hace algo así para episodios y se absorbe
-ahí.
+pierde precisión. La conversión vive en un único módulo nuevo
+(`src/lib/rating/stars.ts`). No se toca `src/lib/series/rating-scale.ts`: eso
+son los colores por tramo de la rejilla de episodios, otra cosa.
 
 ### Lo que pierde `library_entries`
 
