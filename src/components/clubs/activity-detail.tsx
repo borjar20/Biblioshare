@@ -15,6 +15,7 @@ import {
 import { ActivityItemPool } from "./activity-item-pool";
 import { ActivityItemList } from "./activity-item-list";
 import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
+import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,17 @@ export function ActivityDetailView({
             board del detalle solo los lista. */}
         {activity.kind === "buddy_read" && isModerator && (
           <BuddyReadCheckpointEditor activityId={activity.id} status={status} />
+        )}
+
+        {/* La modalidad de compleción también se cambia aquí. Espejo de la RPC
+            set_activity_completion_mode: creador o moderador, en cualquier estado. */}
+        {activity.kind === "list_challenge" && (isCreator || isModerator) && (
+          <CompletionModeEditor
+            activityId={activity.id}
+            config={activity.config}
+            status={status}
+            onChanged={refreshActivity}
+          />
         )}
       </div>
     );
