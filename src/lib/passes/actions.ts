@@ -47,6 +47,12 @@ export type ClosePassState = {
   error?: "invalidDate" | "invalidRating" | "generic";
 };
 
+// Nota SIEMPRE entera 1-10 (misma regla que parseRating, pero aquí el valor
+// llega ya como number desde el cliente, no como FormDataEntryValue).
+function isValidRating(rating: number): boolean {
+  return Number.isInteger(rating) && rating >= 1 && rating <= 10;
+}
+
 // Compartido por closePass y updatePass: mismos campos (finishedOn, rating,
 // review, isPublic), la única diferencia entre las dos acciones es el gesto
 // que las dispara (cerrar un pase abierto vs. editar uno ya cerrado).
@@ -189,6 +195,11 @@ export async function ratePass(
   itemId: string,
   rating: number
 ): Promise<void> {
+  // Esta acción es un endpoint POST público: no podemos fiarnos de que el
+  // `rating` recibido venga del <StarRating> del cliente. Mismo rango que
+  // parseRating (entero 1-10); si no cumple, no escribimos nada y salimos.
+  if (!isValidRating(rating)) return;
+
   const supabase = await createClient();
   const {
     data: { user },

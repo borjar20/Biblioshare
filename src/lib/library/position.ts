@@ -1,8 +1,12 @@
 import type { ItemType } from "@/lib/catalog/types";
 
-// The physical/edition format of *your copy* of a book — not a property of
-// the work, so it lives here (per-user position) rather than in `books`
-// (shared catalog). See docs/REQUIREMENTS.md §7.1.
+// HEREDADO — el formato del ejemplar (bolsillo/tapa blanda/tapa dura) ahora
+// lo dice la EDICIÓN elegida en el pase (diary_entries.edition_id), no
+// position.format: elegir "Tapa dura · Plaza & Janés" en el selector de
+// edición ya dice qué ejemplar tienes. Este tipo y BOOK_FORMATS se conservan
+// solo para seguir leyendo `position.format` guardado antes de que existieran
+// las ediciones (lo pintan session-list.tsx y los checkpoints de clubes);
+// ningún flujo nuevo debe escribirlo. Ver Tarea 12.
 export type BookFormat = "paperback" | "softcover" | "hardcover";
 export const BOOK_FORMATS: BookFormat[] = ["paperback", "softcover", "hardcover"];
 

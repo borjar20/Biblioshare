@@ -140,23 +140,6 @@
     },
     "noResultsTitle": "Nada coincide"
   },
-  "diary": {
-    "show": "Ver diario",
-    "hide": "Ocultar diario",
-    "loading": "Cargando...",
-    "empty": "Todavía no hay pases registrados.",
-    "finishedOn": "Fecha",
-    "rating": "Valoración (1-10)",
-    "review": "Reseña",
-    "submit": "Registrar pase",
-    "submitting": "Guardando...",
-    "delete": "Eliminar",
-    "comparison": "{previousYear}: {previousRating}★ → ahora {currentRating}★",
-    "errors": {
-      "invalidRating": "La valoración debe ser un número entre 1 y 10.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
-  },
   "passes": {
     "diaryTitle": "Diario",
     "empty": "Todavía no has registrado ningún pase.",
@@ -835,29 +818,6 @@
     "pin": "Fijar en el perfil",
     "unpin": "Quitar de fijados",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
-    "progress": {
-      "show": "Editar progreso",
-      "hide": "Ocultar",
-      "rating": "Valoración (1-10)",
-      "page": "Página actual",
-      "format": "Encuadernación",
-      "formatNone": "Sin especificar",
-      "formats": {
-        "paperback": "Bolsillo",
-        "softcover": "Tapa blanda",
-        "hardcover": "Tapa dura"
-      },
-      "season": "Temporada",
-      "episode": "Episodio",
-      "notes": "Notas",
-      "submit": "Guardar",
-      "submitting": "Guardando...",
-      "errors": {
-        "invalidRating": "La valoración debe ser un número entre 1 y 10.",
-        "invalidPosition": "El progreso introducido no es válido.",
-        "generic": "Algo salió mal. Inténtalo de nuevo."
-      }
-    },
     "emptyTitle": "Tu colección está vacía"
   },
   "import": {
