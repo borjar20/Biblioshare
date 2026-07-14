@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
 import type { NotificationType } from "./notification-types";
 import type { ReactableTargetType, TargetType } from "./interactions";
@@ -10,17 +10,6 @@ import type { ReactableTargetType, TargetType } from "./interactions";
 // Mutaciones de reacciones/comentarios (EPIC-05, Bloque B, SD-3). Sin edición
 // de comentarios ni borrado por el dueño del contenido en este MVP (decisión
 // explícita del diseño) — solo alta y borrado de lo propio.
-
-// Revalida las tres páginas de ficha: la reseña puede vivir en cualquiera.
-function revalidateItemPages() {
-  revalidatePath("/libro/[id]", "page");
-  revalidatePath("/pelicula/[id]", "page");
-  revalidatePath("/serie/[id]", "page");
-  // EPIC-05 Bloque C: el feed también puede mostrar esta reacción/comentario
-  // inline (ReviewInteractions reutilizado en FeedCard) — sin esto, un
-  // like/comentario hecho desde el feed no se reflejaría hasta recargar.
-  revalidatePath("/", "page");
-}
 
 // Dueño del target -- a quién notificar. club_post/comment usan author_id en
 // vez de user_id (mismas columnas que sus tablas ya declaran).
@@ -131,7 +120,7 @@ export async function toggleReaction(
       }
     }
   }
-  revalidateItemPages();
+  revalidateInteraction();
 }
 
 export async function addComment(
@@ -175,7 +164,7 @@ export async function addComment(
       console.error(error);
     }
   }
-  revalidateItemPages();
+  revalidateInteraction();
 }
 
 export async function deleteComment(commentId: string): Promise<void> {
@@ -191,5 +180,5 @@ export async function deleteComment(commentId: string): Promise<void> {
     .eq("id", commentId)
     .eq("author_id", user.id);
   if (error) throw error;
-  revalidateItemPages();
+  revalidateInteraction();
 }
