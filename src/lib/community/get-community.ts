@@ -129,7 +129,7 @@ export async function getCommunity(
   // no expresa DISTINCT ON en su query builder.
   const { data: passRows } = await supabase
     .from("diary_entries")
-    .select("rating, finished_on, user_id, library_entries!inner(item_type, item_id, status)")
+    .select("id, rating, finished_on, user_id, library_entries!inner(item_type, item_id, status)")
     .eq("library_entries.item_type", itemType)
     .eq("library_entries.item_id", itemId)
     .not("finished_on", "is", null)
@@ -138,6 +138,7 @@ export async function getCommunity(
 
   const ratedRows = (passRows ?? []) as unknown as PassJoinRow[];
   const ratedPasses: RatedPass[] = ratedRows.map((r) => ({
+    id: r.id,
     userId: r.user_id,
     // finished_on y rating no son null por los .not(...) de arriba.
     finishedOn: r.finished_on as string,
