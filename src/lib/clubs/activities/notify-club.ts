@@ -1,8 +1,9 @@
 import type { createClient } from "@/lib/supabase/server";
-import { notify } from "@/lib/social/notifications";
+import { notifyMany } from "@/lib/social/notifications";
 
-// Fan-out a los miembros activos del club, excepto el actor. Best-effort: mismo
-// patrón que notifyNewPost (Bloque F).
+// Fan-out a los miembros activos del club, excepto el actor, vía notifyMany()
+// (un INSERT multi-fila + push en lote). Best-effort: mismo patrón que
+// notifyNewPost (Bloque F).
 //
 // Vive en su propio módulo PLANO (sin "use server") a propósito: lo usan
 // core.ts y propose.ts, ambos módulos de server actions, donde todo export debe
@@ -23,17 +24,13 @@ export async function notifyClub(
       .eq("status", "active")
       .neq("user_id", actorId);
 
-    await Promise.all(
-      (members ?? []).map((member) =>
-        notify(supabase, {
-          userId: member.user_id,
-          actorId,
-          type,
-          targetType: "club_activity",
-          targetId: activityId,
-        }),
-      ),
-    );
+    await notifyMany(supabase, {
+      userIds: (members ?? []).map((member) => member.user_id),
+      actorId,
+      type,
+      targetType: "club_activity",
+      targetId: activityId,
+    });
   } catch (error) {
     console.error("notifyClub failed", error);
   }

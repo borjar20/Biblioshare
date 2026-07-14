@@ -67,26 +67,43 @@ export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
 ): Promise<void> {
+  await sendPushToUsers([userId], payload);
+}
+
+// Entrega en lote a varios destinatarios con el MISMO payload (fan-out de
+// club, E5.F/G): una sola query de suscripciones para todos, envíos web-push
+// en paralelo, y una sola limpieza de suscripciones caducadas al final — en
+// vez de (query + envíos secuenciales + delete) por destinatario.
+export async function sendPushToUsers(
+  userIds: string[],
+  payload: PushPayload,
+): Promise<void> {
+  if (userIds.length === 0) return;
   if (!ensureVapidConfigured()) return;
 
   const supabase = createServiceRoleClient();
   const { data: subs, error } = await supabase
     .from("push_subscriptions")
     .select("id, channel, credentials")
-    .eq("user_id", userId);
+    .in("user_id", userIds);
 
   if (error) {
-    console.error("sendPushToUser: failed to load subscriptions", error);
+    console.error("sendPushToUsers: failed to load subscriptions", error);
     return;
   }
 
-  for (const sub of subs ?? []) {
-    if (sub.channel === "web") {
-      const { expired } = await sendWebPush(sub.credentials as WebCredentials, payload);
-      if (expired) {
-        await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+  const expiredIds: string[] = [];
+  await Promise.all(
+    (subs ?? []).map(async (sub) => {
+      if (sub.channel === "web") {
+        const { expired } = await sendWebPush(sub.credentials as WebCredentials, payload);
+        if (expired) expiredIds.push(sub.id);
       }
-    }
-    // futuro: else if (sub.channel === "ios_native") await sendNativePush(...)
+      // futuro: else if (sub.channel === "ios_native") await sendNativePush(...)
+    }),
+  );
+
+  if (expiredIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
   }
 }

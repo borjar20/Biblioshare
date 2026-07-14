@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { notify } from "@/lib/social/notifications";
+import { notifyMany } from "@/lib/social/notifications";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
 import type { FeedEvent } from "@/lib/social/feed";
@@ -55,10 +55,22 @@ export type ClubPostsPage = {
 
 const PAGE_SIZE = 20;
 
-// Bucle de fan-out sobre los miembros activos, excepto el autor -- sin
-// mecanismo de fan-out nuevo, mismo notify() best-effort de siempre (EPIC-05
-// Bloque F, decisión de sesión: se acepta el ruido temporal, silenciar-club
-// queda diferido a E5.J).
+// Espejo de los CHECKs de BD (20260715_text_length_limits.sql): la BD es la
+// garantía, esto da el error legible antes del roundtrip.
+const MAX_BODY_LENGTH = 5000;
+const MAX_OPTION_LENGTH = 120;
+
+const SHARE_SOURCE_TABLES: ReadonlySet<string> = new Set([
+  "library_entries",
+  "progress_sessions",
+  "diary_entries",
+  "episode_watches",
+]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Fan-out a los miembros activos, excepto el autor — vía notifyMany(): un solo
+// INSERT multi-fila + push en lote, en vez de notify() por miembro (EPIC-05
+// Bloque F; se acepta el ruido temporal, silenciar-club queda diferido a E5.J).
 async function notifyNewPost(
   supabase: Awaited<ReturnType<typeof createClient>>,
   clubId: string,
@@ -71,17 +83,13 @@ async function notifyNewPost(
       .eq("club_id", clubId)
       .eq("status", "active")
       .neq("user_id", authorId);
-    await Promise.all(
-      (members ?? []).map((m) =>
-        notify(supabase, {
-          userId: m.user_id,
-          actorId: authorId,
-          type: "club_post",
-          targetType: "club",
-          targetId: clubId,
-        }),
-      ),
-    );
+    await notifyMany(supabase, {
+      userIds: (members ?? []).map((m) => m.user_id),
+      actorId: authorId,
+      type: "club_post",
+      targetType: "club",
+      targetId: clubId,
+    });
   } catch (error) {
     console.error("notifyNewPost failed", error);
   }
@@ -91,6 +99,7 @@ export async function createTextPost(clubId: string, body: string): Promise<void
   const { supabase, userId } = await requireUser();
   const trimmed = body.trim();
   if (!trimmed) throw new Error("body_required");
+  if (trimmed.length > MAX_BODY_LENGTH) throw new Error("body_too_long");
 
   const { error } = await supabase
     .from("club_posts")
@@ -108,10 +117,19 @@ export async function createShareActivityPost(
   const { supabase, userId } = await requireUser();
   const trimmed = body.trim();
   if (!trimmed) throw new Error("body_required");
+  if (trimmed.length > MAX_BODY_LENGTH) throw new Error("body_too_long");
+  // Forma canónica del ref antes de tocar la BD. La garantía real (que la fila
+  // exista y sea DEL AUTOR) la revalida el trigger validate_club_post_ref y la
+  // política de lectura is_visible_via_club_share — esto solo corta basura
+  // evidente con un error claro.
+  if (!SHARE_SOURCE_TABLES.has(ref.sourceTable) || !UUID_RE.test(ref.rowId)) {
+    throw new Error("invalid_ref");
+  }
+  const cleanRef: ShareRef = { sourceTable: ref.sourceTable, rowId: ref.rowId };
 
   const { error } = await supabase
     .from("club_posts")
-    .insert({ club_id: clubId, author_id: userId, kind: "activity_share", body: trimmed, ref });
+    .insert({ club_id: clubId, author_id: userId, kind: "activity_share", body: trimmed, ref: cleanRef });
   if (error) throw error;
 
   await notifyNewPost(supabase, clubId, userId);
@@ -127,7 +145,9 @@ export async function createPoll(
   const trimmedQuestion = question.trim();
   const trimmedOptions = options.map((o) => o.trim()).filter(Boolean);
   if (!trimmedQuestion) throw new Error("question_required");
+  if (trimmedQuestion.length > MAX_BODY_LENGTH) throw new Error("body_too_long");
   if (trimmedOptions.length < 2) throw new Error("at_least_two_options_required");
+  if (trimmedOptions.some((o) => o.length > MAX_OPTION_LENGTH)) throw new Error("option_too_long");
 
   const { error } = await supabase.rpc("create_club_poll", {
     p_club_id: clubId,

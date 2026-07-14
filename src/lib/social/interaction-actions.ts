@@ -147,6 +147,8 @@ export async function addComment(
 
   const trimmed = body.trim();
   if (!trimmed) return;
+  // Espejo del CHECK comments_body_len (20260715_text_length_limits.sql).
+  if (trimmed.length > 2000) throw new Error("comment_too_long");
 
   const { error } = await supabase.from("comments").insert({
     target_type: targetType,

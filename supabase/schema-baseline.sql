@@ -4,6 +4,13 @@
 -- Uso: aplicar EN ORDEN en un proyecto Supabase limpio (SQL editor o psql)
 -- para replicar el esquema de producción (p. ej. el proyecto dev).
 -- No incluye datos. Tras aplicarlo, crear el usuario de prueba vía signup.
+-- NOTA (2026-07-14): faltaban aquí 15 migraciones ya aplicadas en prod (todo lo
+-- posterior a tierlist Y el bloque del 10-jul: colas/retos/import/avatars). Se
+-- anexan al final EN EL ORDEN DE APLICACIÓN REAL de prod — que no coincide con
+-- el orden de los ficheros de supabase/migrations (tierlist se aplicó ANTES que
+-- propose_with_setup; ver 20260715_consolidate_activity_items_policies.sql).
+-- Este fichero se mantiene a mano y ya se desincronizó una vez; ante la duda,
+-- regenerarlo con `pg_dump --schema-only` de prod.
 -- ============================================================================
 
 -- ──────────────────────────────────────────────────────────────────────────
@@ -3228,3 +3235,1321 @@ create policy "club_activity_items delete own or moderate or curator" on public.
         )
     )
   );
+
+
+-- ============================================================
+-- 20260710064504 pending_import_rows
+-- ============================================================
+
+-- Filas de import sin match automático, guardadas para revisión manual por un
+-- colaborador (§7.7/§7.35). El dueño de la fila conserva la propiedad: al
+-- resolverse, la entrada de biblioteca se crea para él, no para el revisor.
+create type public.pending_import_status as enum ('pending', 'resolved', 'dismissed');
+
+create table public.pending_import_rows (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_type public.item_type not null,
+  payload jsonb not null,           -- ImportRow serializado
+  status public.pending_import_status not null default 'pending',
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  resolved_by uuid references auth.users(id) on delete set null
+);
+
+create index pending_import_rows_user_idx on public.pending_import_rows (user_id);
+create index pending_import_rows_pending_idx on public.pending_import_rows (status) where status = 'pending';
+
+alter table public.pending_import_rows enable row level security;
+
+-- El dueño ve, crea y descarta sus propias filas.
+create policy "pending import select own or collaborator" on public.pending_import_rows
+  for select to authenticated
+  using ((select auth.uid()) = user_id or public.has_min_role('collaborator'));
+
+create policy "pending import insert own" on public.pending_import_rows
+  for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+
+create policy "pending import delete own" on public.pending_import_rows
+  for delete to authenticated
+  using ((select auth.uid()) = user_id);
+
+-- Los colaboradores pueden marcar resueltas/descartadas (cola de revisión).
+create policy "pending import update by collaborators" on public.pending_import_rows
+  for update to authenticated
+  using (public.has_min_role('collaborator'))
+  with check (public.has_min_role('collaborator'));
+
+-- Resuelve una fila pendiente creando la entrada de biblioteca (y los pases de
+-- diario) PARA EL DUEÑO de la fila, no para el revisor. SECURITY DEFINER porque
+-- inserta con un user_id distinto del de auth.uid() (lo que la RLS "insert own"
+-- de library_entries no permitiría). El colaborador crea antes el ítem de
+-- catálogo y pasa su id aquí.
+create or replace function public.resolve_pending_import(
+  p_pending_id uuid,
+  p_catalog_item_id uuid
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.pending_import_rows;
+  v_entry_id uuid;
+  v_position jsonb;
+  v_date jsonb;
+begin
+  if not public.has_min_role('collaborator') then
+    raise exception 'forbidden';
+  end if;
+
+  select * into v_row from public.pending_import_rows
+    where id = p_pending_id and status = 'pending';
+  if not found then
+    raise exception 'pending row not found';
+  end if;
+
+  v_position := case
+    when v_row.payload->>'bookFormat' is not null
+      then jsonb_build_object('format', v_row.payload->>'bookFormat')
+    else '{}'::jsonb
+  end;
+
+  insert into public.library_entries (user_id, item_type, item_id, status, rating, position)
+  values (
+    v_row.user_id,
+    v_row.item_type,
+    p_catalog_item_id,
+    coalesce(nullif(v_row.payload->>'status','')::media_status, 'planned'),
+    nullif(v_row.payload->>'rating','')::smallint,
+    v_position
+  )
+  on conflict (user_id, item_type, item_id) do update set item_id = excluded.item_id
+  returning id into v_entry_id;
+
+  for v_date in
+    select * from jsonb_array_elements(coalesce(v_row.payload->'diaryDates', '[]'::jsonb))
+  loop
+    insert into public.diary_entries (library_entry_id, user_id, started_on, finished_on, rating)
+    values (
+      v_entry_id,
+      v_row.user_id,
+      nullif(v_date->>'startedOn','')::date,
+      (v_date->>'finishedOn')::date,
+      nullif(v_row.payload->>'rating','')::smallint
+    );
+  end loop;
+
+  update public.pending_import_rows
+    set status = 'resolved', resolved_at = now(), resolved_by = auth.uid()
+    where id = p_pending_id;
+end;
+$$;
+
+revoke execute on function public.resolve_pending_import(uuid, uuid) from public, anon;
+grant execute on function public.resolve_pending_import(uuid, uuid) to authenticated;
+
+-- ============================================================
+-- 20260710080927+084009 avatars_storage (el fichero del repo ya refleja el estado final, sin política LIST amplia)
+-- ============================================================
+
+-- Avatares alojados en Supabase Storage (§7.9): elimina las URLs externas
+-- (mixed content / tracking-pixel) del render de perfil. Bucket público de
+-- lectura; cada usuario solo puede escribir en su propia carpeta {uid}/.
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+-- Nota: un bucket público sirve sus objetos por URL pública SIN necesidad de
+-- una política SELECT sobre storage.objects. No se añade una política SELECT
+-- amplia a propósito: permitiría LISTAR el bucket (enumerar {user_id}/…), una
+-- fuga menor de información. Solo se conceden escrituras a la carpeta propia.
+
+create policy "avatars insert own folder" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "avatars update own folder" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "avatars delete own folder" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+-- ============================================================
+-- 20260710083225 reorder_queue_rpc
+-- ============================================================
+
+-- Reordenación atómica de la cola (§7.22): un solo UPDATE con unnest ... with
+-- ordinality en vez de N updates en paralelo sin transacción (que podían dejar
+-- la cola a medias). SECURITY INVOKER: corre con los permisos del usuario, así
+-- que la RLS "library entries update own" aplica; además se filtra por
+-- user_id = auth.uid() y status = 'planned' para ignorar ids obsoletos.
+create or replace function public.reorder_queue(entry_ids uuid[])
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.library_entries le
+  set queue_order = t.ord - 1
+  from unnest(entry_ids) with ordinality as t(id, ord)
+  where le.id = t.id
+    and le.user_id = auth.uid()
+    and le.status = 'planned';
+end;
+$$;
+
+revoke execute on function public.reorder_queue(uuid[]) from public, anon;
+grant execute on function public.reorder_queue(uuid[]) to authenticated;
+
+-- ============================================================
+-- 20260710165351 typed_annual_goals_and_series_runtime
+-- ============================================================
+
+-- Objetivos anuales por tipo de ítem + duración de episodio en el catálogo.
+--
+-- Contexto (§7.14 revisado): el objetivo anual era un único escalar global
+-- (`annual_goal_items`), que mezclaba libros, películas y series. Se segrega en
+-- tres, uno por tipo. Se mantienen como columnas de `profiles` —y no como una
+-- tabla `user_goals` aparte— por coherencia con la decisión ya documentada en
+-- §8-G: los objetivos son escalares del perfil, cubiertos por la RLS de
+-- "editar tu perfil".
+--
+-- El objetivo DIARIO (`daily_goal_minutes`) no se segrega: pasa a significar
+-- explícitamente minutos de LECTURA. Las películas no registran sesiones y las
+-- series dejan de registrar minutos (ver más abajo), así que un objetivo de
+-- minutos solo es medible sobre libros.
+
+alter table public.profiles
+  add column annual_goal_books integer,
+  add column annual_goal_movies integer,
+  add column annual_goal_series integer;
+
+-- El valor global existente contaba ítems de cualquier tipo. No hay forma de
+-- repartirlo entre los tres tipos, así que se conserva sobre libros (el caso de
+-- uso dominante de la app) y los otros dos quedan sin objetivo. Es una
+-- migración con pérdida de intención, no de datos: el usuario reajusta desde
+-- /  (formulario de objetivos) si su meta era otra.
+update public.profiles
+  set annual_goal_books = annual_goal_items
+  where annual_goal_items is not null;
+
+alter table public.profiles drop column annual_goal_items;
+
+comment on column public.profiles.daily_goal_minutes is 'Objetivo diario en minutos de LECTURA (solo sesiones de libro; §7.14). NULL = sin objetivo.';
+comment on column public.profiles.annual_goal_books is 'Objetivo anual de libros completados (§7.14). NULL = sin objetivo.';
+comment on column public.profiles.annual_goal_movies is 'Objetivo anual de películas completadas (§7.14). NULL = sin objetivo.';
+comment on column public.profiles.annual_goal_series is 'Objetivo anual de series completadas (§7.14). NULL = sin objetivo.';
+
+-- Duración media de episodio, de TMDB (`episode_run_time`). Sustituye a la
+-- estimación de ritmo por sesiones para series (§7.22): las sesiones de serie
+-- dejan de registrar minutos, así que la estimación de la cola pasa a ser
+-- determinista —episodios × duración de episodio— igual que ya lo era la de
+-- películas con `duration_minutes`. Se rellena con el mismo backfill perezoso
+-- que `total_episodes` (src/lib/queue/backfill-queue-sizes.ts).
+alter table public.series add column episode_runtime_minutes integer;
+
+comment on column public.series.episode_runtime_minutes is 'Duración media de un episodio en minutos, de TMDB (episode_run_time). NULL = desconocida; se rellena con backfill perezoso al entrar en una cola.';
+
+-- ============================================================
+-- 20260710165412 multiple_queues
+-- ============================================================
+
+-- Colas múltiples nombradas (§7.22 ampliado).
+--
+-- Contexto: la cola era implícita —"todo lo planificado", ordenado por
+-- library_entries.queue_order—. Ahora el usuario puede tener varias colas
+-- nombradas y decidir en cuál guarda cada ítem. Modelo elegido: una cola por
+-- ítem (columna FK), no una tabla M:N. Un ítem planificado con queue_id NULL es
+-- legítimo: "planificado, sin cola asignada" (bucket "Sin cola" en la UI).
+
+create table public.queues (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  position integer not null default 0,
+  created_at timestamptz not null default now(),
+  unique (user_id, name)
+);
+
+create index idx_queues_user on public.queues (user_id, position);
+
+comment on table public.queues is 'Colas de prioridad nombradas por usuario (§7.22). Un library_entry planificado apunta a una vía queue_id (o a ninguna).';
+
+-- Organización personal: solo el dueño ve/gestiona sus colas. No forma parte
+-- de la vitrina pública del perfil, misma lógica que el dashboard de
+-- estadísticas privado (§8-G). Por eso NO se replica el patrón de tablas
+-- "públicas si is_public": una cola nunca es pública.
+alter table public.queues enable row level security;
+
+create policy "own queues select" on public.queues
+  for select to authenticated using ((select auth.uid()) = user_id);
+create policy "own queues insert" on public.queues
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "own queues update" on public.queues
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+create policy "own queues delete" on public.queues
+  for delete to authenticated using ((select auth.uid()) = user_id);
+
+-- Pertenencia. on delete set null: borrar una cola no borra los ítems, solo los
+-- devuelve al bucket "Sin cola".
+alter table public.library_entries
+  add column queue_id uuid references public.queues(id) on delete set null;
+
+comment on column public.library_entries.queue_id is 'Cola a la que pertenece este ítem planificado (§7.22). NULL = planificado sin cola. Solo tiene sentido con status=planned; se limpia junto a queue_order al salir de planned.';
+
+-- El orden ahora es denso 0..N-1 DENTRO de cada cola, no global. El índice
+-- parcial pasa a incluir queue_id.
+drop index if exists idx_library_entries_queue_order;
+create index idx_library_entries_queue_order
+  on public.library_entries (user_id, queue_id, queue_order)
+  where status = 'planned';
+
+-- Backfill: cada usuario con ítems planificados conserva su cola actual como
+-- una cola llamada "Mi cola". Los ítems planificados apuntan a ella.
+insert into public.queues (user_id, name, position)
+select distinct user_id, 'Mi cola', 0
+from public.library_entries
+where status = 'planned';
+
+update public.library_entries le
+set queue_id = q.id
+from public.queues q
+where q.user_id = le.user_id
+  and q.name = 'Mi cola'
+  and le.status = 'planned'
+  and le.queue_id is null;
+
+-- ============================================================
+-- 20260710165432 reorder_queue_into
+-- ============================================================
+
+-- Reordenación atómica AMPLIADA a colas múltiples (§7.22).
+--
+-- La versión previa (reorder_queue(uuid[])) renumeraba una única cola
+-- implícita. Con varias colas, arrastrar un ítem de una cola a otra debe (a)
+-- fijar su queue_id y (b) renumerar la cola destino, en la MISMA escritura
+-- atómica — si no, un fallo entre ambos pasos dejaría el ítem en una cola con
+-- un orden de la otra. Nueva firma con la cola destino como primer argumento.
+--
+-- Cambia la aridad, así que se elimina la sobrecarga anterior para no dejar una
+-- resolución ambigua.
+drop function if exists public.reorder_queue(uuid[]);
+
+-- target_queue puede ser NULL: reordenar el bucket "Sin cola" (planificados sin
+-- cola asignada). Cuando no es NULL, se valida que la cola pertenezca al
+-- usuario — una cola ajena no debe poder recibir ítems, ni siquiera con ids
+-- propios en el array. SECURITY INVOKER: la RLS "own queues"/"library entries
+-- update own" sigue aplicando; el filtro explícito por auth.uid() e ids
+-- obsoletos se mantiene.
+create or replace function public.reorder_queue(target_queue uuid, entry_ids uuid[])
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if target_queue is not null
+     and not exists (
+       select 1 from public.queues q
+       where q.id = target_queue and q.user_id = auth.uid()
+     ) then
+    raise exception 'Queue % does not belong to the current user', target_queue;
+  end if;
+
+  update public.library_entries le
+  set queue_order = t.ord - 1,
+      queue_id = target_queue
+  from unnest(entry_ids) with ordinality as t(id, ord)
+  where le.id = t.id
+    and le.user_id = auth.uid()
+    and le.status = 'planned';
+end;
+$$;
+
+revoke execute on function public.reorder_queue(uuid, uuid[]) from public, anon;
+grant execute on function public.reorder_queue(uuid, uuid[]) to authenticated;
+
+-- ============================================================
+-- 20260710165449 challenges
+-- ============================================================
+
+-- Retos de lectura/visionado (§7.10).
+--
+-- Un objetivo anual por tipo (profiles.annual_goal_*) cubre "50 libros este
+-- año". Un reto es la versión con nombre, ventana temporal y criterio libre:
+-- "reto de verano: 5 pelis", "10 libros de ciencia ficción", "toda la saga X".
+-- Entidad propia, no una fila más de profiles.
+
+create table public.challenges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  -- NULL = cualquier tipo cuenta para el reto.
+  item_type public.item_type,
+  target_count integer not null check (target_count > 0),
+  -- Filtro adicional aplicado en la capa de app (§7.10). v1: {"genre": "..."}
+  -- o {"saga_id": "..."}; {} = sin filtro. Jsonb en vez de columnas porque el
+  -- formato va a crecer y no se consulta en SQL, se aplica al contar.
+  criteria jsonb not null default '{}',
+  start_date date not null,
+  end_date date not null,
+  archived_at timestamptz,
+  created_at timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+
+create index idx_challenges_user on public.challenges (user_id, archived_at);
+
+comment on table public.challenges is 'Retos con nombre, ventana temporal y criterio (§7.10). El progreso se calcula al vuelo contando diary_entries que casan tipo+criterio+fechas.';
+
+-- Seguimiento personal: solo el dueño, como queues. No es parte de la vitrina
+-- pública del perfil (§8-G).
+alter table public.challenges enable row level security;
+
+create policy "own challenges select" on public.challenges
+  for select to authenticated using ((select auth.uid()) = user_id);
+create policy "own challenges insert" on public.challenges
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "own challenges update" on public.challenges
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+create policy "own challenges delete" on public.challenges
+  for delete to authenticated using ((select auth.uid()) = user_id);
+
+-- ============================================================
+-- 20260713212049 checkpoint_due_on
+-- ============================================================
+
+-- Fecha objetivo del hito (rediseño de clubes · Paper).
+--
+-- El feed del club muestra un calendario de "próximos hitos" con fecha ("18 jul
+-- · Hito 4 · pág 420"), y hasta ahora un hito solo tenía etiqueta y posición.
+-- La posición dice DÓNDE está el hito en la obra; la fecha dice CUÁNDO se
+-- espera llegar. Son cosas distintas y el club necesita las dos para
+-- calendarizar una lectura conjunta.
+--
+-- Nullable a propósito: los hitos que ya existen no tienen fecha, y una lectura
+-- sin calendario (a ritmo libre) sigue siendo válida.
+alter table public.club_activity_checkpoints
+  add column due_on date;
+
+comment on column public.club_activity_checkpoints.due_on is
+  'Fecha en la que se espera alcanzar el hito. Nullable: una lectura conjunta puede ir a ritmo libre, sin calendario. Alimenta el bloque "próximos hitos" del feed del club.';
+
+-- El feed pide los hitos con fecha más próximos de las actividades activas de
+-- un club: se filtra por due_on y se ordena por due_on.
+create index idx_checkpoints_due_on
+  on public.club_activity_checkpoints (activity_id, due_on)
+  where due_on is not null;
+
+-- ============================================================
+-- 20260713212115+212247 club_stats (incl. revoke_writes)
+-- ============================================================
+
+-- Recuento de miembros por club (rediseño de clubes · Paper).
+--
+-- El problema: la política "club_members select member" solo deja leer filas de
+-- club_members si YA eres miembro de ese club. Perfectamente correcto — la
+-- lista de miembros de un club es de sus miembros — pero significa que la
+-- pantalla "Descubrir" no puede decir "310 miembros" de un club al que no
+-- perteneces, que es justo donde ese dato ayuda a decidir si te unes.
+--
+-- La solución es la misma que ya usa el proyecto para los perfiles privados
+-- (profile_identities): una vista que NO es security_invoker, así que salta la
+-- RLS de la tabla base, y que por eso expone SOLO un agregado — un número. De
+-- la vista no se puede sacar QUIÉN está en el club, únicamente CUÁNTOS.
+create view public.club_stats as
+  select
+    c.id as club_id,
+    (
+      select count(*)
+      from public.club_members m
+      where m.club_id = c.id
+        and m.status = 'active'
+    )::int as member_count
+  from public.clubs c;
+
+comment on view public.club_stats is
+  'Recuento de miembros activos por club. Bypassa la RLS de club_members al no ser security_invoker; por eso SOLO expone el agregado (cuántos), nunca la identidad de los miembros (quiénes). Lo necesita "Descubrir": un no-miembro no puede leer club_members, pero sí debe ver cuánta gente hay en un club público.';
+
+-- ── IMPRESCINDIBLE: revoke ANTES del grant. ────────────────────────────────
+--
+-- Los default privileges del esquema public de Supabase conceden ALL a
+-- anon/authenticated sobre cualquier relación nueva. Un `grant select` a secas
+-- NO quita nada: se suma. Sin este revoke, anon se queda además con
+-- INSERT/UPDATE/DELETE/TRUNCATE sobre la vista.
+--
+-- Y eso no es cosmético: club_stats es una vista AUTO-ACTUALIZABLE sobre
+-- `clubs` (information_schema.views → is_updatable = YES). Como no es
+-- security_invoker, una escritura a través de ella correría con los privilegios
+-- de su dueño (postgres), y `clubs` tiene RLS activada pero NO forzada — el
+-- dueño de una tabla se salta su propia RLS. Es decir: anon podría escribir en
+-- `clubs` a través de la vista.
+--
+-- La vista existe para leer un número. No se le da nada más.
+revoke all on public.club_stats from anon, authenticated;
+grant select on public.club_stats to anon, authenticated;
+
+-- Cinturón y tirantes: la deja explícitamente de solo lectura, para que un
+-- grant accidental futuro no vuelva a abrir la puerta.
+alter view public.club_stats set (security_barrier = true);
+
+-- ============================================================
+-- 20260713212653 profile_identities_revoke_writes
+-- ============================================================
+
+-- SEGURIDAD: profile_identities era escribible por anon.
+--
+-- Encontrado el 2026-07-13 al aplicar club_stats, que reproducía sin querer el
+-- mismo patrón. La vista lleva en producción desde el 11 de julio.
+--
+-- La cadena completa:
+--
+--   1. Los default privileges del esquema `public` de Supabase conceden ALL a
+--      anon/authenticated sobre CUALQUIER relación nueva. El `grant select` de
+--      la migración original (20260711_profile_identities.sql) no quita nada:
+--      se SUMA. anon acabó con INSERT/UPDATE/DELETE/TRUNCATE sobre la vista.
+--
+--   2. profile_identities es una vista AUTO-ACTUALIZABLE sobre `profiles`
+--      (information_schema.views → is_updatable = YES, is_insertable_into =
+--      YES). No hace falta trigger INSTEAD OF: Postgres reescribe la escritura
+--      contra la tabla base.
+--
+--   3. La vista NO es security_invoker — y eso es deliberado, es lo que le
+--      permite leer la identidad de perfiles privados saltándose la RLS de
+--      `profiles`. Pero el mismo mecanismo aplica a las ESCRITURAS: se ejecutan
+--      con los privilegios del DUEÑO de la vista, que es `postgres`.
+--
+--   4. `profiles` tiene RLS activada pero NO forzada (relforcerowsecurity =
+--      false). El dueño de una tabla se salta su propia RLS salvo que se fuerce.
+--
+-- Resultado: un cliente ANÓNIMO podía UPDATE / DELETE / TRUNCATE filas de
+-- `profiles` a través de la vista, saltándose la RLS por completo.
+--
+-- El arreglo es el mismo que en club_stats: la vista existe para LEER identidad
+-- pública, así que se le quita todo lo demás. `revoke` antes del `grant`, que es
+-- lo que faltaba.
+revoke all on public.profile_identities from anon, authenticated;
+grant select on public.profile_identities to anon, authenticated;
+
+-- Cinturón y tirantes: la deja explícitamente de solo lectura, para que un
+-- grant accidental futuro no vuelva a abrir la puerta.
+alter view public.profile_identities set (security_barrier = true);
+
+-- ============================================================
+-- 20260713220944 propose_with_setup
+-- ============================================================
+
+-- Proponer una actividad YA MONTADA (asistente de "Proponer actividad", Paper).
+--
+-- El diseño quiere que al proponer una actividad elijas su ítem y definas sus
+-- hitos en el mismo formulario. Con la RLS actual eso es IMPOSIBLE:
+--
+--   · club_activity_items: exige is_activity_participant(). Quien propone una
+--     actividad recién creada NO es participante de ella todavía. (Salvo en
+--     list_challenge, donde el Bloque H3 ya abrió la rama del creador.)
+--
+--   · club_activity_checkpoints: exige status = 'active' Y moderator+. Una
+--     actividad recién propuesta está en 'proposed', así que el insert se
+--     deniega SIEMPRE, sin excepción.
+--
+-- Falta una regla que el modelo no tenía: mientras una actividad está
+-- 'proposed', es el BORRADOR de quien la propone. Nadie se ha unido, nadie tiene
+-- progreso, nadie la está usando — está esperando a que un moderador la apruebe.
+-- Que su autor la monte antes de mandarla no le quita nada a nadie.
+--
+-- Lo que esta migración NO toca, y es lo importante: la garantía de que a una
+-- actividad YA ACTIVA no se le muevan los hitos bajo los pies de quien va por la
+-- mitad. Esa sigue igual — 'active' sigue siendo territorio exclusivo de
+-- moderator+.
+
+-- ── 1. Ítems: el creador puede sembrar el pool de su propia propuesta ────────
+drop policy "club_activity_items insert participant or curator" on public.club_activity_items;
+
+create policy "club_activity_items insert participant or curator" on public.club_activity_items
+  for insert to authenticated
+  with check (
+    added_by = (select auth.uid())
+    and exists (
+      select 1 from public.club_activities ca
+      where ca.id = activity_id
+        and (
+          -- NUEVO: tu propia propuesta, mientras siga siendo un borrador.
+          (ca.created_by = (select auth.uid()) and ca.status = 'proposed')
+          or case
+            when ca.kind = 'list_challenge' then
+              ca.created_by = (select auth.uid())
+              or public.has_min_club_role(ca.club_id, 'moderator')
+            else public.is_activity_participant(ca.id)
+          end
+        )
+    )
+  );
+
+-- ── 2. Hitos: el creador puede definirlos al proponer ───────────────────────
+drop policy "club_activity_checkpoints insert moderator on active" on public.club_activity_checkpoints;
+
+create policy "club_activity_checkpoints insert creator on proposed or moderator on active"
+  on public.club_activity_checkpoints
+  for insert to authenticated
+  with check (
+    created_by = (select auth.uid())
+    and exists (
+      select 1 from public.club_activities ca
+      where ca.id = activity_id
+        and (
+          -- NUEVO: tu propia propuesta, mientras siga siendo un borrador.
+          (ca.created_by = (select auth.uid()) and ca.status = 'proposed')
+          -- Lo de antes, intacto: una actividad EN MARCHA solo la tocan los mods.
+          or (ca.status = 'active' and public.has_min_club_role(ca.club_id, 'moderator'))
+        )
+    )
+  );
+
+comment on table public.club_activity_checkpoints is
+  'Hitos de una lectura conjunta. Se pueden crear en dos momentos: por su autor mientras la actividad está en ''proposed'' (es su borrador, nadie la usa aún), o por un moderator+ una vez ''active''. Un participante normal nunca los crea, y a una actividad activa no se le mueven los hitos salvo por moderación — el progreso de quien va por la mitad depende de ellos.';
+
+-- ============================================================
+-- 20260713230111 club_requested_enum
+-- ============================================================
+
+-- Estado 'requested' en la membresía de club (solicitudes de entrada, Paper p3).
+--
+-- Va SOLO en esta migración, sin usarlo: Postgres no deja usar un valor de enum
+-- en la misma transacción en la que se añade. La migración que lo consume
+-- (20260714_club_join_requests.sql) va después.
+--
+-- El modelo original decía explícitamente "unirse a un club privado es solo por
+-- invitación -- no hay solicitud propia". Esto lo cambia: un club privado pasa a
+-- ser VISIBLE pero no LEGIBLE (identidad sí, contenido no), igual que un perfil
+-- privado, y desde ahí se puede solicitar entrada.
+alter type public.club_member_status add value 'requested';
+
+-- ============================================================
+-- 20260713230208 club_join_requests
+-- ============================================================
+
+-- Solicitudes de entrada a clubes privados + novedades por club (Paper p3).
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- 1 · IDENTIDAD DE CLUB: visible pero no legible
+-- ═════════════════════════════════════════════════════════════════════════════
+--
+-- Hoy `clubs select public or member` niega la fila entera de un club privado a
+-- quien no es miembro. Consecuencia: alguien con el enlace de un club privado
+-- recibe un 404 — no puede ni comprobar que existe, y mucho menos pedir entrar.
+--
+-- Se resuelve como ya se resolvió para los perfiles privados: una vista de
+-- IDENTIDAD. El club privado pasa a ser visible (nombre, descripción, portada)
+-- pero su contenido — posts, actividades, miembros — sigue siendo de sus
+-- miembros. Mismo modelo mental que Instagram, y el mismo que ya usa la app.
+--
+-- Ojo con los grants: los default privileges del esquema public conceden ALL
+-- sobre cualquier relación nueva, y `grant select` NO resta. Sin el `revoke`
+-- previo, esta vista quedaría escribible por anon — es exactamente el agujero
+-- que tuvimos con profile_identities y club_stats. Revoke ANTES del grant.
+create view public.club_identities as
+  select
+    c.id,
+    c.slug,
+    c.name,
+    c.description,
+    c.cover_url,
+    c.visibility
+  from public.clubs c;
+
+comment on view public.club_identities is
+  'Identidad pública de CUALQUIER club, incluidos los privados, para la pantalla de "solicitar entrada". Bypassa la RLS de clubs al no ser security_invoker; por eso SOLO contiene columnas de identidad — nunca owner_id ni nada que revele el interior del club. El contenido (posts, actividades, miembros) sigue gateado por is_club_member().';
+
+revoke all on public.club_identities from anon, authenticated;
+grant select on public.club_identities to anon, authenticated;
+alter view public.club_identities set (security_barrier = true);
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- 2 · SOLICITAR ENTRADA
+-- ═════════════════════════════════════════════════════════════════════════════
+--
+-- La política INSERT actual tiene dos ramas: auto-alta en club PÚBLICO
+-- (status='active'), o invitación de un moderator+ (status='invited'). Se añade
+-- una tercera: auto-solicitud en club PRIVADO (status='requested').
+--
+-- 'requested' NO es membresía: is_club_member() solo cuenta 'active', así que
+-- una solicitud pendiente no da acceso a nada. Es una fila en la sala de espera.
+drop policy "club_members insert self or invite" on public.club_members;
+
+create policy "club_members insert self, request or invite" on public.club_members
+  for insert to authenticated
+  with check (
+    role = 'member'
+    and (
+      -- Auto-alta en club público: inmediata.
+      (
+        user_id = (select auth.uid())
+        and status = 'active'
+        and exists (
+          select 1 from public.clubs c
+          where c.id = club_id and c.visibility = 'public'
+        )
+      )
+      -- NUEVO. Auto-solicitud en club privado: queda pendiente de moderación.
+      -- La condición de visibility='private' es deliberada: en un club público
+      -- no hay nada que solicitar, te unes y ya.
+      or (
+        user_id = (select auth.uid())
+        and status = 'requested'
+        and exists (
+          select 1 from public.clubs c
+          where c.id = club_id and c.visibility = 'private'
+        )
+      )
+      -- Invitación de un moderator+.
+      or (
+        user_id <> (select auth.uid())
+        and status = 'invited'
+        and public.has_min_club_role(club_id, 'moderator')
+      )
+    )
+  );
+
+-- La política UPDATE de auto-servicio sigue exigiendo status='invited' en su
+-- USING, así que quien tiene una solicitud pendiente NO puede auto-aprobarse.
+-- No hace falta tocarla — pero conviene dejarlo dicho, porque es la garantía.
+
+-- Aprobar es un cambio de estado que hace OTRA persona sobre TU fila, y no hay
+-- (ni queremos) una política UPDATE para moderadores sobre club_members: abriría
+-- la puerta a que un moderator+ reescribiera roles a mano. Va por RPC.
+create or replace function public.approve_club_join_request(
+  p_club_id uuid,
+  p_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.has_min_club_role(p_club_id, 'moderator') then
+    raise exception 'not_authorized';
+  end if;
+
+  -- Solo promueve filas que estén REALMENTE esperando. Sin este filtro, un
+  -- moderador podría "aprobar" a un invitado que aún no aceptó, saltándose su
+  -- consentimiento, o reactivar a alguien a quien se expulsó.
+  update public.club_members
+     set status = 'active'
+   where club_id = p_club_id
+     and user_id = p_user_id
+     and status = 'requested'
+     and role = 'member';
+
+  if not found then
+    raise exception 'no_pending_request';
+  end if;
+end;
+$$;
+
+revoke all on function public.approve_club_join_request(uuid, uuid) from public, anon;
+grant execute on function public.approve_club_join_request(uuid, uuid) to authenticated;
+
+comment on function public.approve_club_join_request is
+  'Aprueba una solicitud de entrada: requested -> active. SECURITY DEFINER porque no existe política UPDATE de moderador sobre club_members (a propósito: permitiría reescribir roles). Solo promueve filas en estado requested con role=member, así que no puede usarse para saltarse el consentimiento de un invitado ni para readmitir a un expulsado.';
+
+-- Rechazar una solicitud = borrar la fila. Ya lo cubre la política existente
+-- "club_members delete self or moderate": un moderator+ puede borrar filas de
+-- rol estrictamente inferior, y una solicitud siempre tiene role='member'.
+-- Y quien solicitó puede retirar su propia solicitud (rama user_id = auth.uid()).
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- 3 · NOVEDADES POR CLUB
+-- ═════════════════════════════════════════════════════════════════════════════
+--
+-- "3 novedades" en la tarjeta del club. Hace falta saber hasta dónde has leído.
+create table public.club_reads (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  last_read_at timestamptz not null default now(),
+  primary key (user_id, club_id)
+);
+
+comment on table public.club_reads is
+  'Hasta cuándo ha leído cada persona cada club. Alimenta el contador de novedades. Sin fila = no lo ha abierto nunca desde que se unió, y se cuenta desde joined_at.';
+
+alter table public.club_reads enable row level security;
+
+-- Es tuya y solo tuya: nadie más necesita saber cuándo abriste un club.
+create policy "club_reads select own" on public.club_reads
+  for select to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "club_reads upsert own" on public.club_reads
+  for insert to authenticated
+  with check (user_id = (select auth.uid()));
+
+create policy "club_reads update own" on public.club_reads
+  for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+-- Recuento de novedades de TODOS tus clubes de una vez.
+--
+-- security invoker: corre con TUS permisos, así que la RLS de club_posts y
+-- club_activities (ambas gateadas por is_club_member) sigue aplicando. No hace
+-- falta bypass: solo cuenta clubes de los que YA eres miembro.
+--
+-- Novedad = post o actividad creada DESPUÉS de tu última lectura y por OTRA
+-- persona. Lo tuyo propio no es novedad para ti.
+--
+-- Sin fila en club_reads se cuenta desde joined_at, no desde el principio de los
+-- tiempos: al entrar en un club de 3 años no quieres ver "412 novedades".
+create or replace function public.club_unread_counts()
+returns table (club_id uuid, unread integer)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    m.club_id,
+    (
+      (
+        select count(*)
+        from public.club_posts p
+        where p.club_id = m.club_id
+          and p.author_id <> (select auth.uid())
+          and p.created_at > coalesce(r.last_read_at, m.joined_at)
+      )
+      +
+      (
+        select count(*)
+        from public.club_activities a
+        where a.club_id = m.club_id
+          and a.created_by <> (select auth.uid())
+          and a.created_at > coalesce(r.last_read_at, m.joined_at)
+      )
+    )::integer as unread
+  from public.club_members m
+  left join public.club_reads r
+    on r.club_id = m.club_id
+   and r.user_id = m.user_id
+  where m.user_id = (select auth.uid())
+    and m.status = 'active';
+$$;
+
+revoke all on function public.club_unread_counts() from public, anon;
+grant execute on function public.club_unread_counts() to authenticated;
+
+comment on function public.club_unread_counts is
+  'Novedades (posts + actividades ajenas y posteriores a tu última lectura) de cada club del que eres miembro activo. security invoker: la RLS de club_posts/club_activities sigue aplicando. Sin fila en club_reads se cuenta desde joined_at, para que entrar en un club antiguo no muestre cientos de novedades.';
+
+-- ============================================================
+-- 20260713230254 club_is_private_helper
+-- ============================================================
+
+-- Arregla la política de solicitud de entrada, que no podía funcionar.
+--
+-- La política "club_members insert self, request or invite" comprueba que el
+-- club sea privado con un `exists (select 1 from clubs ...)`. Pero las subqueries
+-- de una política RLS corren con los permisos de QUIEN LLAMA, y la RLS de `clubs`
+-- ("clubs select public or member") NO deja a un no-miembro ver un club privado.
+--
+-- Resultado: el exists devolvía siempre falso y el insert se denegaba SIEMPRE.
+-- La solicitud de entrada era imposible — precisamente para el único caso en el
+-- que existe.
+--
+-- Es la misma trampa por la que el modelo original creó club_member_row_exists():
+-- cuando una política necesita mirar una tabla que el llamante no puede leer,
+-- hace falta un helper SECURITY DEFINER. Este expone lo mínimo: un booleano de
+-- visibilidad, nada más.
+create or replace function public.club_is_private(p_club_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.clubs c
+    where c.id = p_club_id
+      and c.visibility = 'private'
+  );
+$$;
+
+revoke all on function public.club_is_private(uuid) from public, anon;
+grant execute on function public.club_is_private(uuid) to authenticated;
+
+comment on function public.club_is_private is
+  '¿Es privado este club? SECURITY DEFINER porque la RLS de clubs niega la fila de un club privado a quien no es miembro, y la política de solicitud de entrada necesita justo eso. Expone un booleano y nada más.';
+
+drop policy "club_members insert self, request or invite" on public.club_members;
+
+create policy "club_members insert self, request or invite" on public.club_members
+  for insert to authenticated
+  with check (
+    role = 'member'
+    and (
+      -- Auto-alta en club público: inmediata.
+      (
+        user_id = (select auth.uid())
+        and status = 'active'
+        and exists (
+          select 1 from public.clubs c
+          where c.id = club_id and c.visibility = 'public'
+        )
+      )
+      -- Auto-solicitud en club privado: queda pendiente de moderación.
+      -- Vía helper, porque el llamante NO puede leer la fila del club privado.
+      or (
+        user_id = (select auth.uid())
+        and status = 'requested'
+        and public.club_is_private(club_id)
+      )
+      -- Invitación de un moderator+.
+      or (
+        user_id <> (select auth.uid())
+        and status = 'invited'
+        and public.has_min_club_role(club_id, 'moderator')
+      )
+    )
+  );
+
+-- ── Avisar a quien puede resolver la solicitud ───────────────────────────────
+--
+-- Mismo problema, otra cara: para notificar a los moderadores hay que SABER
+-- quiénes son, y "club_members select member" solo deja leer el roster si ya
+-- eres miembro. Quien solicita, por definición, no lo es — así que el fan-out
+-- desde el cliente leería 0 filas y la notificación se perdería en SILENCIO.
+--
+-- SECURITY DEFINER, y solo hace una cosa: insertar la notificación a los
+-- moderadores del club de la solicitud que ACABAS de hacer tú. No devuelve el
+-- roster ni nada que el llamante no debiera ver.
+create or replace function public.notify_club_join_request(p_club_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Solo puedes disparar el aviso de TU propia solicitud, y solo si existe.
+  if not exists (
+    select 1 from public.club_members m
+    where m.club_id = p_club_id
+      and m.user_id = (select auth.uid())
+      and m.status = 'requested'
+  ) then
+    raise exception 'no_pending_request';
+  end if;
+
+  insert into public.notifications (user_id, actor_id, type)
+  select m.user_id, (select auth.uid()), 'club_join_request'
+  from public.club_members m
+  where m.club_id = p_club_id
+    and m.status = 'active'
+    and m.role in ('moderator', 'owner');
+end;
+$$;
+
+revoke all on function public.notify_club_join_request(uuid) from public, anon;
+grant execute on function public.notify_club_join_request(uuid) to authenticated;
+
+comment on function public.notify_club_join_request is
+  'Avisa a los moderadores de un club de que has solicitado entrar. SECURITY DEFINER porque quien solicita no puede leer el roster (no es miembro) y el fan-out desde cliente se perdería en silencio. Exige que la solicitud exista y sea tuya.';
+
+-- ============================================================
+-- 20260714 consolidate_activity_items_policies
+-- ============================================================
+
+-- Consolida las políticas de club_activity_items (fix de drift, revisión 2026-07-14).
+--
+-- Historia del problema: la política INSERT se reescribió por drop+recreate en
+-- CUATRO migraciones (Bloque G -> H3 -> propose_with_setup -> H2 tierlist), y el
+-- orden de APLICACIÓN en producción no coincidió con el orden de los ficheros:
+-- tierlist (20260713180350) se aplicó ANTES que propose_with_setup
+-- (20260713220944), así que propose_with_setup — que partía del texto de H3 —
+-- machacó la rama de curador de tierlist. Estado resultante en prod: el pool de
+-- una tierlist ACTIVA lo podía ampliar cualquier participante (rama else),
+-- justo lo que H2 quería impedir. Y en el repo, 20260714_tierlist.sql no
+-- incluye la rama de borrador de propose_with_setup, así que un replay en orden
+-- de fichero rompería el asistente de proponer.
+--
+-- Esta migración deja la versión FINAL única con las tres ramas:
+--   1. Borrador: el creador siembra su propia propuesta mientras está en
+--      'proposed' (propose_with_setup).
+--   2. Curador: en list_challenge y tierlist, la lista/el pool es el enunciado
+--      — solo creador o moderator+ lo curan (H3 + H2).
+--   3. Participante: el resto de kinds conserva la semántica de G.
+--
+-- Lección de proceso: cuando dos ramas tocan la MISMA política, la última en
+-- aplicarse debe partir del texto vigente en prod, no del de su rama.
+
+drop policy if exists "club_activity_items insert participant or curator" on public.club_activity_items;
+
+create policy "club_activity_items insert participant or curator" on public.club_activity_items
+  for insert to authenticated
+  with check (
+    added_by = (select auth.uid())
+    and exists (
+      select 1 from public.club_activities ca
+      where ca.id = activity_id
+        and (
+          -- Rama 1: tu propia propuesta, mientras siga siendo un borrador.
+          (ca.created_by = (select auth.uid()) and ca.status = 'proposed')
+          or case
+            -- Rama 2: la lista/el pool es el enunciado -> solo curadores.
+            when ca.kind in ('list_challenge', 'tierlist') then
+              ca.created_by = (select auth.uid())
+              or public.has_min_club_role(ca.club_id, 'moderator')
+            -- Rama 3: el resto de kinds, semántica original de Bloque G.
+            else public.is_activity_participant(ca.id)
+          end
+        )
+    )
+  );
+
+-- DELETE: la versión de H2 (tierlist incluida en la rama de curador) ya es la
+-- vigente en prod, pero se recrea aquí para que la versión canónica viva en UNA
+-- migración y cualquier entorno rezagado converja.
+drop policy if exists "club_activity_items delete own or moderate or curator" on public.club_activity_items;
+
+create policy "club_activity_items delete own or moderate or curator" on public.club_activity_items
+  for delete to authenticated
+  using (
+    added_by = (select auth.uid())
+    or exists (
+      select 1 from public.club_activities ca
+      where ca.id = activity_id
+        and (
+          public.has_min_club_role(ca.club_id, 'moderator')
+          or (ca.kind in ('list_challenge', 'tierlist') and ca.created_by = (select auth.uid()))
+        )
+    )
+  );
+
+-- ============================================================
+-- 20260714 club_share_ownership
+-- ============================================================
+
+-- SEGURIDAD: compartir a un club solo concede visibilidad sobre filas PROPIAS
+-- (revisión 2026-07-14).
+--
+-- El agujero: is_visible_via_club_share() añade un OR a las políticas SELECT de
+-- diary_entries / episode_watches / library_entries / progress_sessions que
+-- concede lectura a cualquier miembro del club cuyo post activity_share
+-- referencie la fila — y el `ref` {sourceTable, rowId} lo escribía el CLIENTE
+-- sin validación alguna (createShareActivityPost inserta lo que llegue). Un
+-- usuario podía crear un club propio, insertar un post con el rowId de una fila
+-- privada AJENA, y leerla. La única mitigación era que los UUIDs no se adivinan
+-- — pero los ids circulan (FeedEvent.id lleva `sourceTable:rowId`).
+--
+-- El arreglo tiene dos capas:
+--
+--   1. La política es la garantía: is_visible_via_club_share() gana un tercer
+--      parámetro p_owner_id y exige cp.author_id = p_owner_id — un post solo
+--      puede dar visibilidad de club a filas DE SU PROPIO AUTOR. Es exactamente
+--      la semántica de diseño ("compartir a un club es una elección explícita
+--      de audiencia" — del dueño del contenido; el picker de la UI,
+--      loadOwnRecentActivity, solo ofrece actividad propia).
+--
+--   2. El trigger da el error claro: valida en el INSERT que el ref tenga la
+--      forma canónica y apunte a una fila del propio autor, en vez de aceptar
+--      basura que luego fallaría en silencio al renderizar.
+--
+-- En prod hay 0 posts activity_share, así que no hay datos que migrar.
+
+-- ── 1. Nueva firma de la función (owner-aware) ──────────────────────────────
+create or replace function public.is_visible_via_club_share(
+  p_source_table text,
+  p_row_id uuid,
+  p_owner_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.club_posts cp
+    where cp.kind = 'activity_share'
+      and cp.ref->>'sourceTable' = p_source_table
+      and cp.ref->>'rowId' = p_row_id::text
+      and cp.author_id = p_owner_id
+      and public.is_club_member(cp.club_id)
+  );
+$$;
+
+comment on function public.is_visible_via_club_share(text, uuid, uuid) is 'True si p_row_id de p_source_table fue compartido como activity_share en un club del que el usuario actual es miembro, Y el autor del post es el dueño de la fila (p_owner_id). El check de autor cierra el agujero de autoconcederse visibilidad sobre filas ajenas insertando un ref manipulado (revisión 2026-07-14).';
+
+revoke all on function public.is_visible_via_club_share(text, uuid, uuid) from public;
+grant execute on function public.is_visible_via_club_share(text, uuid, uuid) to anon, authenticated;
+
+-- ── 2. Recablear las 4 políticas a la firma nueva ───────────────────────────
+drop policy "diary entries select visible" on public.diary_entries;
+create policy "diary entries select visible" on public.diary_entries
+  for select to anon, authenticated
+  using (
+    public.can_view_profile(user_id)
+    or public.is_visible_via_club_share('diary_entries', id, user_id)
+  );
+
+drop policy "episode_watches select visible" on public.episode_watches;
+create policy "episode_watches select visible" on public.episode_watches
+  for select to anon, authenticated
+  using (
+    public.can_view_profile(user_id)
+    or public.is_visible_via_club_share('episode_watches', id, user_id)
+  );
+
+drop policy "library entries select visible" on public.library_entries;
+create policy "library entries select visible" on public.library_entries
+  for select to anon, authenticated
+  using (
+    public.can_view_profile(user_id)
+    or public.is_visible_via_club_share('library_entries', id, user_id)
+  );
+
+drop policy "progress sessions select visible" on public.progress_sessions;
+create policy "progress sessions select visible" on public.progress_sessions
+  for select to anon, authenticated
+  using (
+    public.can_view_profile(user_id)
+    or public.is_visible_via_club_share('progress_sessions', id, user_id)
+  );
+
+-- Sin dependientes ya: fuera la firma antigua (sin owner check).
+drop function public.is_visible_via_club_share(text, uuid);
+
+-- ── 3. Validación del ref en el INSERT ──────────────────────────────────────
+-- SECURITY INVOKER a propósito: el trigger lee la fila origen bajo la RLS del
+-- llamante, y una fila PROPIA siempre es visible para su dueño — si el exists
+-- falla es que la fila no existe o no es tuya, que es exactamente lo que hay
+-- que rechazar. La política INSERT de club_posts ya fuerza author_id = auth.uid().
+create or replace function public.validate_club_post_ref()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_source text;
+  v_row uuid;
+  v_owned boolean;
+begin
+  if new.kind <> 'activity_share' then
+    -- ref es exclusivo de activity_share; en el resto de kinds no significa
+    -- nada y dejarlo pasar solo invita a datos basura.
+    if new.ref is not null then
+      raise exception 'ref_only_for_activity_share';
+    end if;
+    return new;
+  end if;
+
+  if new.ref is null then
+    raise exception 'ref_required';
+  end if;
+
+  v_source := new.ref->>'sourceTable';
+  begin
+    v_row := (new.ref->>'rowId')::uuid;
+  exception when others then
+    raise exception 'invalid_ref';
+  end;
+
+  v_owned := case v_source
+    when 'diary_entries' then exists (
+      select 1 from public.diary_entries where id = v_row and user_id = new.author_id
+    )
+    when 'episode_watches' then exists (
+      select 1 from public.episode_watches where id = v_row and user_id = new.author_id
+    )
+    when 'library_entries' then exists (
+      select 1 from public.library_entries where id = v_row and user_id = new.author_id
+    )
+    when 'progress_sessions' then exists (
+      select 1 from public.progress_sessions where id = v_row and user_id = new.author_id
+    )
+    else null
+  end;
+
+  if v_owned is distinct from true then
+    raise exception 'invalid_ref';
+  end if;
+
+  -- Normaliza a la forma canónica: exactamente las dos claves, sin extras.
+  new.ref := jsonb_build_object('sourceTable', v_source, 'rowId', v_row::text);
+  return new;
+end;
+$$;
+
+comment on function public.validate_club_post_ref() is 'BEFORE INSERT en club_posts: para kind=activity_share exige que ref sea {sourceTable, rowId} válido y que la fila referenciada pertenezca al AUTOR del post; para el resto de kinds exige ref null. La garantía de lectura es is_visible_via_club_share (que revalida el autor); esto da el error claro en el alta (revisión 2026-07-14).';
+
+create trigger trg_validate_club_post_ref
+  before insert on public.club_posts
+  for each row execute function public.validate_club_post_ref();
+
+-- ── 4. El índice que sostiene el OR de las políticas ────────────────────────
+-- is_visible_via_club_share se evalúa POR FILA candidata en las 4 tablas más
+-- consultadas de la app, y club_posts no tenía ningún índice sobre ref -> seq
+-- scan por fila. Índice de expresión, parcial a los posts que importan.
+create index idx_club_posts_share_ref
+  on public.club_posts ((ref->>'sourceTable'), (ref->>'rowId'))
+  where kind = 'activity_share';
+
+-- ============================================================
+-- 20260714 text_length_limits
+-- ============================================================
+
+-- Límites de longitud en texto de usuario + formato de clubs.slug
+-- (revisión 2026-07-14).
+--
+-- Ningún campo de texto libre tenía tope: cualquier autenticado podía insertar
+-- megabytes por fila (y el feed / getInteractionSummary traen los cuerpos
+-- completos). Los CHECKs son la garantía; las server actions añaden su propia
+-- validación para dar errores legibles antes de llegar aquí.
+--
+-- Límites holgados a propósito (ninguna fila de prod se acerca; verificado con
+-- max(char_length()) antes de escribir esto): el objetivo es cortar el abuso,
+-- no acotar la escritura legítima.
+
+alter table public.comments
+  add constraint comments_body_len check (char_length(body) <= 2000);
+
+alter table public.club_posts
+  add constraint club_posts_body_len check (char_length(body) <= 5000);
+
+alter table public.diary_entries
+  add constraint diary_entries_review_len check (review is null or char_length(review) <= 10000);
+
+alter table public.episode_watches
+  add constraint episode_watches_review_len check (review is null or char_length(review) <= 10000);
+
+alter table public.profiles
+  add constraint profiles_bio_len check (bio is null or char_length(bio) <= 500),
+  add constraint profiles_display_name_len check (display_name is null or char_length(display_name) <= 80);
+
+alter table public.library_entries
+  add constraint library_entries_notes_len check (notes is null or char_length(notes) <= 2000);
+
+alter table public.progress_sessions
+  add constraint progress_sessions_note_len check (note is null or char_length(note) <= 2000);
+
+-- clubs.slug se usa como segmento de ruta /club/[slug] y solo se saneaba en el
+-- onChange del formulario (cliente). Mismo trato que profiles.username_format.
+alter table public.clubs
+  add constraint clubs_slug_format check (slug ~ '^[a-z0-9-]{3,40}$'),
+  add constraint clubs_name_len check (char_length(name) between 1 and 80),
+  add constraint clubs_description_len check (description is null or char_length(description) <= 2000);
+
+alter table public.club_activities
+  add constraint club_activities_title_len check (char_length(title) between 1 and 120),
+  add constraint club_activities_description_len check (description is null or char_length(description) <= 2000);
+
+alter table public.club_activity_checkpoints
+  add constraint club_activity_checkpoints_label_len check (char_length(label) between 1 and 120);
+
+alter table public.club_activity_opinions
+  add constraint club_activity_opinions_comment_len check (comment is null or char_length(comment) <= 2000);
+
+alter table public.club_poll_options
+  add constraint club_poll_options_label_len check (char_length(label) between 1 and 120);
+
+alter table public.challenges
+  add constraint challenges_name_len check (char_length(name) between 1 and 120);
+
+alter table public.queues
+  add constraint queues_name_len check (char_length(name) between 1 and 80);
+
+-- ============================================================
+-- 20260714 enrich_only_and_hardening
+-- ============================================================
+
+-- Endurecimiento del catálogo enriquecible + higiene de funciones e índices
+-- (revisión 2026-07-14).
+
+-- ── 1. series_episodes: fuera el UPDATE abierto ──────────────────────────────
+-- La política "series_episodes updatable" era using(true)/check(true) para
+-- cualquier autenticado — vandalismo trivial de títulos/sinopsis de episodios.
+-- La app NUNCA actualiza esta tabla (ensure-series-episodes solo INSERTa, el
+-- backfill de tamaños toca `series`, no `series_episodes`), así que el UPDATE
+-- sobra entero.
+drop policy "series_episodes updatable" on public.series_episodes;
+revoke update on public.series_episodes from anon, authenticated;
+
+-- ── 2. people: enriquecer es RELLENAR, no sobrescribir ───────────────────────
+-- El grant de columna (bio, photo_url, birth_date, death_date, place_of_birth)
+-- + la política using(true) dejaban a cualquier autenticado REESCRIBIR la bio
+-- de cualquier persona. El único UPDATE legítimo de la app (enrichTmdbBio en
+-- get-person.ts) solo corre cuando bio IS NULL — es decir, solo rellena campos
+-- vacíos. Este trigger convierte esa convención en regla: un valor no-NULL solo
+-- lo cambia un collaborator+.
+--
+-- auth.uid() IS NULL => contexto sin usuario (service_role / SQL del owner, que
+-- ya bypassan RLS) — se deja pasar, mismo idiom que enforce_role_change_admin_only.
+create or replace function public.enforce_people_enrich_only()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null or public.has_min_role('collaborator') then
+    return new;
+  end if;
+
+  if (old.bio is not null and new.bio is distinct from old.bio)
+     or (old.photo_url is not null and new.photo_url is distinct from old.photo_url)
+     or (old.birth_date is not null and new.birth_date is distinct from old.birth_date)
+     or (old.death_date is not null and new.death_date is distinct from old.death_date)
+     or (old.place_of_birth is not null and new.place_of_birth is distinct from old.place_of_birth)
+  then
+    raise exception 'people fields can only be filled in, not overwritten';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.enforce_people_enrich_only() is 'BEFORE UPDATE en people: el cache-as-you-go solo puede RELLENAR campos NULL (bio/foto/fechas); cambiar un valor existente exige collaborator+. Cierra el vector de vandalismo del grant de columna abierto (revisión 2026-07-14).';
+
+create trigger trg_enforce_people_enrich_only
+  before update on public.people
+  for each row execute function public.enforce_people_enrich_only();
+
+-- ── 3. Higiene: las funciones de trigger no son RPCs ─────────────────────────
+-- El grant implícito a PUBLIC las dejaba invocables vía /rest/v1/rpc/ (advisor
+-- anon_security_definer_function_executable). Ninguna es llamable fuera de su
+-- trigger (PostgREST fallaría con "trigger functions can only be called as
+-- triggers"), pero no hay razón para exponerlas.
+revoke execute on function public.autoadd_library_on_activity_join() from public, anon, authenticated;
+revoke execute on function public.autoadd_library_on_activity_item() from public, anon, authenticated;
+revoke execute on function public.enforce_buddy_read_item_rules() from public, anon, authenticated;
+revoke execute on function public.enforce_club_owner_change_authorized() from public, anon, authenticated;
+revoke execute on function public.reassign_club_ownership() from public, anon, authenticated;
+revoke execute on function public.set_updated_at() from public, anon, authenticated;
+revoke execute on function public.enforce_people_enrich_only() from public, anon, authenticated;
+revoke execute on function public.validate_club_post_ref() from public, anon, authenticated;
+
+-- ── 4. Índices para FKs calientes (advisor 0001) ─────────────────────────────
+-- Solo los dos con camino de borrado/consulta real: borrar una opción de
+-- encuesta (cascade desde club_poll_options) y borrar una cola (on delete set
+-- null sobre library_entries.queue_id — el índice parcial de la cola ordena por
+-- (user_id, queue_id, queue_order), que no cubre el lookup puro por queue_id).
+create index idx_club_poll_votes_option on public.club_poll_votes (option_id);
+create index idx_library_entries_queue on public.library_entries (queue_id) where queue_id is not null;

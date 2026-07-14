@@ -23,6 +23,15 @@ export async function updateProfile(
   const bio = String(formData.get("bio") ?? "").trim();
   const avatarUrl = String(formData.get("avatarUrl") ?? "").trim();
 
+  // Espejo de los CHECKs de BD (profiles_bio_len / profiles_display_name_len).
+  if (displayName.length > 80 || bio.length > 500) return { error: "generic" };
+
+  // El avatar se sirve desde el bucket propio de Storage (§7.9, avatar-upload.tsx
+  // construye la URL con getPublicUrl) — una URL externa arbitraria reabriría el
+  // mixed content / tracking pixel que ese bucket vino a eliminar.
+  const avatarPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/`;
+  if (avatarUrl && !avatarUrl.startsWith(avatarPrefix)) return { error: "generic" };
+
   const { error } = await supabase
     .from("profiles")
     .update({
