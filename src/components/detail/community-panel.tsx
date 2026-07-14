@@ -150,13 +150,22 @@ export async function CommunityPanel({
                       <span className="text-sm font-medium text-foreground">
                         {review.author}
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {format.dateTime(new Date(review.finishedOn), {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {review.editionLabel !== null && (
+                          <span
+                            className={`rounded-chip px-1.5 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
+                          >
+                            {review.editionLabel}
+                          </span>
+                        )}
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {format.dateTime(new Date(review.finishedOn), {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
                     </div>
                     {review.rating !== null && (
                       <RatingDots
