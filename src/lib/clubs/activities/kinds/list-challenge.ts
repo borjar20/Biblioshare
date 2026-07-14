@@ -1,4 +1,5 @@
 import { ListChallengeBoard } from "@/components/clubs/list-challenge/list-challenge-board";
+import { ListChallengeFields } from "@/components/clubs/list-challenge/list-challenge-fields";
 import type { ActivityKindDefinition } from "./types";
 
 // EPIC-05 Bloque H3 -- reto por lista de ítems. Una lista curada (libros, pelis
@@ -10,11 +11,15 @@ import type { ActivityKindDefinition } from "./types";
 // itemCuration "curators": la lista ES el enunciado del reto -- solo el creador
 // de la actividad y moderator+ la tocan (espejo de la política RLS
 // "club_activity_items insert participant or curator").
+//
+// ConfigFields (Bloque H3b): la modalidad de compleción -- si un ítem exige un
+// pase de diario dentro de la ventana o basta con tenerlo ya completado.
 export const listChallengeKind: ActivityKindDefinition = {
   kind: "list_challenge",
   allowedItemTypes: "all",
   maxItems: null,
   itemCuration: "curators",
   usesItemPool: true,
+  ConfigFields: ListChallengeFields,
   DetailExtension: ListChallengeBoard,
 };
