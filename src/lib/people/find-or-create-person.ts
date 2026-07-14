@@ -1,5 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
-import { resolveOpenLibraryAuthor } from "@/lib/catalog/open-library";
+import { resolveOpenLibraryAuthor } from "@/lib/catalog/openlibrary/authors";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 

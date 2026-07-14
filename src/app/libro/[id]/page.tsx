@@ -22,6 +22,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
 import { ensureBookEditions } from "@/lib/editions/sync-editions";
+import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -70,7 +71,7 @@ export default async function BookDetailPage({
     supabase
       .from("books")
       .select(
-        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at",
+        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -104,6 +105,14 @@ export default async function BookDetailPage({
   // `authenticated`). Sin este guardia, cada visita anónima a una ficha sin
   // sincronizar programaría en segundo plano hasta cinco llamadas a
   // OpenLibrary y veinte RPC para tirarlo todo a la basura, una y otra vez.
+  //
+  // La hidratación de la OBRA (sinopsis y géneros desde /works/<key>.json, el
+  // peldaño 2 de la escalera) viaja en el mismo after() y por los mismos dos
+  // motivos: es una API externa, y escribe. Lo normal es que la fila ya llegue
+  // hidratada —openCatalogItem hidrata al crearla, que es cuando el usuario pulsa
+  // un resultado de búsqueda—, así que esto es sobre todo el curador de las filas
+  // viejas: las que se cachearon sucias con el flujo antiguo (`hydrated_at` null)
+  // se arreglan solas la primera vez que alguien las abre.
   if (user) {
     after(() =>
       ensureBookEditions(supabase, {
@@ -111,6 +120,14 @@ export default async function BookDetailPage({
         openlibrary_work_key: book.openlibrary_work_key,
         isbn: book.isbn,
         editions_synced_at: book.editions_synced_at,
+      })
+    );
+    after(() =>
+      ensureBookHydrated(supabase, {
+        id: book.id,
+        openlibrary_work_key: book.openlibrary_work_key,
+        isbn: book.isbn,
+        hydrated_at: book.hydrated_at,
       })
     );
   }

@@ -1,28 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
-import { searchBooks } from "./open-library";
+import { searchWorks } from "./openlibrary/work-search";
+import { lookupIsbn } from "./openlibrary/isbn-lookup";
 import { searchMovies, searchSeries } from "./tmdb";
 import { MOCK_BOOKS, MOCK_MOVIES, MOCK_SERIES } from "./mock-data";
 import { normalizeIsbn } from "./isbn";
 import { searchLocalCatalog, findLocalBookByIsbn } from "./local-search";
-import { findOrCreateCatalogItem } from "./find-or-create";
-import { groupBookEditions } from "./group-editions";
+import { mergeByExternalId } from "./merge-results";
 import type { ItemType, SearchResult } from "./types";
 
-// See docs/REQUIREMENTS.md §7.32: search checks our own catalog first (free,
-// and already has richer data for anything we've seen before), only calls
-// the external API for what's missing, and persists newly-seen API results
-// right away so the next search for the same item is a local hit.
-// Book results are additionally collapsed by work (§7.2) so a shelf of
-// near-identical editions shows as one card.
+// PELDAÑO 1 de la escalera de hidratación (ver docs/REQUIREMENTS.md §7.32 y el
+// spec de 2026-07-14). Dos reglas, que sustituyen a las de antes:
+//
+// 1. LA BÚSQUEDA NO ESCRIBE EN LA BASE DE DATOS. Antes se persistía cada
+//    resultado de la API nada más verlo, lo que llenaba `books` de obras que
+//    nadie llegaba a mirar y con datos de edición inventados (las páginas eran
+//    la MEDIANA de todas las tiradas). La fila nace al ABRIR la ficha o al
+//    AÑADIR el libro, y nace hidratada.
+//
+// 2. EL ÚNICO ATAJO ES EL ISBN. Un ISBN es un lookup de una tirada concreta (el
+//    escáner de código de barras), así que si ya la tenemos cacheada no se llama
+//    a la API. Una búsqueda por TEXTO siempre pregunta a OpenLibrary y fusiona
+//    con lo local: cortocircuitarla con un hit local escondía el resto de obras
+//    ("dune" no enseñaba "Dune Messiah") y dejaba los registros sucios sin curar
+//    para siempre.
 export async function searchCatalog(
-  itemType: ItemType,
-  query: string
-): Promise<SearchResult[]> {
-  const results = await searchCatalogRaw(itemType, query);
-  return itemType === "book" ? groupBookEditions(results) : results;
-}
-
-async function searchCatalogRaw(
   itemType: ItemType,
   query: string
 ): Promise<SearchResult[]> {
@@ -35,63 +36,40 @@ async function searchCatalogRaw(
 
   const supabase = await createClient();
 
-  // Exact ISBN match: skip Google Books entirely if we already have this
-  // edition cached — the clearest "avoid a repeat API call" case, and what
-  // the barcode scanner (§7.3) hits on every re-scan of the same book.
   if (itemType === "book") {
     const isbn = normalizeIsbn(trimmed);
     if (isbn) {
       const cached = await findLocalBookByIsbn(supabase, isbn);
       if (cached) return [cached];
+
+      const found = await lookupIsbn(isbn);
+      return found ? [found] : [];
     }
+
+    const [local, api] = await Promise.all([
+      searchLocalCatalog(supabase, "book", trimmed),
+      searchWorks(trimmed),
+    ]);
+    return mergeByExternalId(local, api);
   }
 
-  // Local catalog wins outright if it has anything for this title — running
-  // local and API in parallel would still call the API on every single
-  // search regardless of what's cached, which defeats the point. The
-  // trade-off (accepted): once a title has any local match, a repeat search
-  // won't discover further/newer API results for it — `/buscar/manual` or a
-  // more specific query (e.g. ISBN) remain the way to find something else.
-  const localResults = await searchLocalCatalog(supabase, itemType, trimmed);
-  if (localResults.length > 0) return localResults;
-
-  const apiResults = await searchExternal(itemType, trimmed);
-  return Promise.all(
-    apiResults.map(async (r) => {
-      // La persistencia es cache oportunista: si el insert falla (p. ej. un
-      // visitante anónimo, cuya sesión no puede escribir en el catálogo por
-      // RLS), se devuelve el resultado igualmente, solo que sin catalogId.
-      try {
-        return { ...r, catalogId: await findOrCreateCatalogItem(supabase, r) };
-      } catch {
-        return r;
-      }
-    })
-  );
-}
-
-function searchExternal(itemType: ItemType, query: string): Promise<SearchResult[]> {
-  switch (itemType) {
-    case "book":
-      return searchBooks(query);
-    case "movie":
-      return searchMovies(query);
-    case "series":
-      return searchSeries(query);
-  }
+  // Películas y series: TMDB ya devuelve datos limpios y géneros de vocabulario
+  // cerrado, así que su búsqueda no cambia — solo se le aplica la misma fusión
+  // local + API, por el id de TMDB.
+  const [local, api] = await Promise.all([
+    searchLocalCatalog(supabase, itemType, trimmed),
+    itemType === "movie" ? searchMovies(trimmed) : searchSeries(trimmed),
+  ]);
+  return mergeByExternalId(local, api);
 }
 
 function searchMockData(itemType: ItemType, query: string): SearchResult[] {
   const pool =
-    itemType === "book"
-      ? MOCK_BOOKS
-      : itemType === "movie"
-        ? MOCK_MOVIES
-        : MOCK_SERIES;
+    itemType === "book" ? MOCK_BOOKS : itemType === "movie" ? MOCK_MOVIES : MOCK_SERIES;
 
   if (itemType === "book") {
     const isbn = normalizeIsbn(query);
-    if (isbn) return pool.filter((item) => item.isbn === isbn);
+    if (isbn) return pool.filter((item) => item.matchedIsbn === isbn);
   }
 
   const needle = query.toLowerCase();

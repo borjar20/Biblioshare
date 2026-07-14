@@ -23,9 +23,6 @@ export const MOCK_BOOKS: SearchResult[] = [
     synopsis:
       "La saga de la familia Buendía a lo largo de siete generaciones en el pueblo imaginario de Macondo.",
     genres: ["Realismo mágico", "Ficción"],
-    publisher: "Editorial Sudamericana",
-    pageCount: 471,
-    isbn: null,
   },
   {
     itemType: "book",
@@ -37,9 +34,6 @@ export const MOCK_BOOKS: SearchResult[] = [
     synopsis:
       "Las aventuras de un hidalgo que enloquece leyendo libros de caballerías y sale a recorrer España como caballero andante.",
     genres: ["Clásico", "Aventura"],
-    publisher: "Francisco de Robles",
-    pageCount: 863,
-    isbn: null,
   },
   {
     itemType: "book",
@@ -51,9 +45,6 @@ export const MOCK_BOOKS: SearchResult[] = [
     synopsis:
       "Un niño descubre en su undécimo cumpleaños que es un mago y comienza sus estudios en el colegio Hogwarts.",
     genres: ["Fantasía", "Juvenil"],
-    publisher: "Bloomsbury",
-    pageCount: 223,
-    isbn: null,
   },
   {
     itemType: "book",
@@ -65,9 +56,7 @@ export const MOCK_BOOKS: SearchResult[] = [
     synopsis:
       "En una sociedad totalitaria vigilada por el Gran Hermano, un funcionario empieza a cuestionar el régimen.",
     genres: ["Distopía", "Ciencia ficción"],
-    publisher: "Secker & Warburg",
-    pageCount: 328,
-    isbn: "9780451524935",
+    matchedIsbn: "9780451524935",
   },
   {
     itemType: "book",
@@ -79,9 +68,6 @@ export const MOCK_BOOKS: SearchResult[] = [
     synopsis:
       "En un futuro donde los libros están prohibidos, un bombero dedicado a quemarlos empieza a dudar de su misión.",
     genres: ["Distopía", "Ciencia ficción"],
-    publisher: "Ballantine Books",
-    pageCount: 194,
-    isbn: null,
   },
 ];
 
@@ -96,9 +82,6 @@ export const MOCK_MOVIES: SearchResult[] = [
     synopsis:
       "Un programador descubre que la realidad que conoce es una simulación creada por máquinas.",
     genres: ["Ciencia ficción", "Acción"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
   {
     itemType: "movie",
@@ -110,9 +93,6 @@ export const MOCK_MOVIES: SearchResult[] = [
     synopsis:
       "Un ladrón especializado en robar secretos a través de los sueños recibe el encargo inverso: plantar una idea.",
     genres: ["Ciencia ficción", "Thriller"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
   {
     itemType: "movie",
@@ -124,9 +104,6 @@ export const MOCK_MOVIES: SearchResult[] = [
     synopsis:
       "Un grupo de exploradores viaja a través de un agujero de gusano en busca de un nuevo hogar para la humanidad.",
     genres: ["Ciencia ficción", "Drama"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
   {
     itemType: "movie",
@@ -138,9 +115,6 @@ export const MOCK_MOVIES: SearchResult[] = [
     synopsis:
       "Un joven granjero se une a la rebelión para enfrentarse al Imperio Galáctico.",
     genres: ["Ciencia ficción", "Aventura"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
 ];
 
@@ -155,9 +129,6 @@ export const MOCK_SERIES: SearchResult[] = [
     synopsis:
       "Un profesor de química con cáncer terminal empieza a fabricar metanfetamina para asegurar el futuro de su familia.",
     genres: ["Drama", "Crimen"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
   {
     itemType: "series",
@@ -169,9 +140,6 @@ export const MOCK_SERIES: SearchResult[] = [
     synopsis:
       "Cientos de personas endeudadas compiten en juegos infantiles mortales por un premio millonario.",
     genres: ["Drama", "Suspense"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
   {
     itemType: "series",
@@ -183,8 +151,5 @@ export const MOCK_SERIES: SearchResult[] = [
     synopsis:
       "En un pequeño pueblo, la desaparición de un niño destapa experimentos secretos y una dimensión paralela.",
     genres: ["Ciencia ficción", "Terror"],
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   },
 ];

@@ -1,5 +1,5 @@
-import { normalizeIsbn, isValidIsbnCheckDigit } from "./isbn";
-import { buildCoverUrl } from "./open-library";
+import { normalizeIsbn, isValidIsbnCheckDigit } from "../isbn";
+import { buildCoverUrl } from "./covers";
 
 // Documento crudo de OpenLibrary tal como viene de
 // GET /works/<key>/editions.json (campo `entries`). Solo los campos que

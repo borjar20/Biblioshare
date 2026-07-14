@@ -3,17 +3,18 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { SearchResult } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { OpenResultButton } from "./open-result-button";
 
+// La tarjeta muestra portada, título, autoría y año — y nada más. Editorial y
+// páginas ya no salen: son de una tirada concreta, no de la obra, y la mediana
+// que se pintaba antes no era el número de páginas de ningún libro real. Ver el
+// spec de 2026-07-14 (escalera de hidratación, peldaño 1).
 export async function SearchResultCard({ result }: { result: SearchResult }) {
-  const href = itemHref(result.itemType, result.catalogId ?? result.externalId);
   const t = await getTranslations("search");
   const editionCount = result.editionCount ?? 1;
 
-  return (
-    <Link
-      href={href}
-      className="group flex flex-col gap-2 rounded-lg transition hover:-translate-y-0.5"
-    >
+  const content = (
+    <>
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-card border border-border bg-surface-muted">
         {result.coverUrl ? (
           <Image
@@ -43,17 +44,22 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
             {[result.subtitle, result.year].filter(Boolean).join(" · ")}
           </span>
         )}
-        {(result.publisher || result.pageCount) && (
-          <span className="line-clamp-1 text-xs text-muted-foreground">
-            {[
-              result.publisher,
-              result.pageCount ? `${result.pageCount} págs.` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-        )}
       </div>
+    </>
+  );
+
+  // Ya cacheado: enlace normal a su ficha. Todavía no: botón que la crea al
+  // pulsarlo (ver open-result-button.tsx).
+  if (!result.catalogId) {
+    return <OpenResultButton result={result}>{content}</OpenResultButton>;
+  }
+
+  return (
+    <Link
+      href={itemHref(result.itemType, result.catalogId)}
+      className="group flex flex-col gap-2 rounded-lg transition hover:-translate-y-0.5"
+    >
+      {content}
     </Link>
   );
 }

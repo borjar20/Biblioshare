@@ -6,13 +6,11 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 type BookRow = {
   id: string;
-  google_books_id: string | null;
+  openlibrary_work_key: string | null;
   title: string;
   author: string | null;
   cover_url: string | null;
   published_year: number | null;
-  publisher: string | null;
-  total_pages: number | null;
   isbn: string | null;
   synopsis: string | null;
   genres: string[] | null;
@@ -28,10 +26,18 @@ type ScreenRow = {
   genres: string[] | null;
 };
 
+// Sin `publisher` ni `total_pages`: son datos de la tirada, viven en
+// `book_editions` y una tarjeta de búsqueda no los muestra.
+const BOOK_COLUMNS =
+  "id, openlibrary_work_key, title, author, cover_url, published_year, isbn, synopsis, genres";
+
 function mapBookRow(row: BookRow): SearchResult {
   return {
     itemType: "book",
-    externalId: row.google_books_id ?? row.id,
+    // La work key es la clave de fusión con los resultados de la API
+    // (merge-results.ts). Un libro sin ella (alta manual, import antiguo) se
+    // queda con string vacío: no fusiona con nada, pero tampoco se pierde.
+    externalId: row.openlibrary_work_key ?? "",
     catalogId: row.id,
     title: row.title,
     subtitle: row.author,
@@ -39,16 +45,16 @@ function mapBookRow(row: BookRow): SearchResult {
     year: row.published_year,
     synopsis: row.synopsis,
     genres: row.genres,
-    publisher: row.publisher,
-    pageCount: row.total_pages,
-    isbn: row.isbn,
+    // `books.isbn` es el espejo de la edición primaria. Se conserva aquí para que
+    // el lookup por ISBN de un libro ya cacheado siga sabiendo qué tirada es.
+    ...(row.isbn ? { matchedIsbn: row.isbn } : {}),
   };
 }
 
 function mapScreenRow(itemType: "movie" | "series", row: ScreenRow): SearchResult {
   return {
     itemType,
-    externalId: row.tmdb_id !== null ? String(row.tmdb_id) : row.id,
+    externalId: row.tmdb_id !== null ? String(row.tmdb_id) : "",
     catalogId: row.id,
     title: row.title,
     subtitle: null,
@@ -56,32 +62,28 @@ function mapScreenRow(itemType: "movie" | "series", row: ScreenRow): SearchResul
     year: row.release_year,
     synopsis: row.synopsis,
     genres: row.genres,
-    publisher: null,
-    pageCount: null,
-    isbn: null,
   };
 }
 
-// Look up a book by exact ISBN in our own catalog — used to skip the
-// Google Books call entirely for a barcode scan / ISBN search we've already
-// cached. See docs/REQUIREMENTS.md §7.32.
+// Busca un libro por ISBN exacto en nuestro propio catálogo. Es el ÚNICO atajo
+// que salta la llamada a OpenLibrary: un ISBN identifica una tirada concreta (el
+// escáner de código de barras), así que si ya la tenemos, no hay nada que
+// preguntar. Ver docs/REQUIREMENTS.md §7.32.
 export async function findLocalBookByIsbn(
   supabase: SupabaseServerClient,
   isbn: string
 ): Promise<SearchResult | null> {
   const { data } = await supabase
     .from("books")
-    .select(
-      "id, google_books_id, title, author, cover_url, published_year, publisher, total_pages, isbn, synopsis, genres"
-    )
+    .select(BOOK_COLUMNS)
     .eq("isbn", isbn)
     .maybeSingle();
 
   return data ? mapBookRow(data) : null;
 }
 
-// Fuzzy title search over our own catalog, run alongside the external API
-// search so already-cached items don't need re-fetching/re-inserting.
+// Búsqueda difusa por título en nuestro catálogo. Ya no SUSTITUYE a la de la API:
+// corre en paralelo con ella y se fusionan por externalId (ver search.ts).
 export async function searchLocalCatalog(
   supabase: SupabaseServerClient,
   itemType: ItemType,
@@ -96,9 +98,7 @@ export async function searchLocalCatalog(
 
     const { data } = await supabase
       .from("books")
-      .select(
-        "id, google_books_id, title, author, cover_url, published_year, publisher, total_pages, isbn, synopsis, genres"
-      )
+      .select(BOOK_COLUMNS)
       .ilike("title", `%${query}%`)
       .limit(20);
     return (data ?? []).map(mapBookRow);
