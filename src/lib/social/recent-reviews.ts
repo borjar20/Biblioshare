@@ -25,11 +25,22 @@ export async function getRecentReviews(
   limit = 3,
 ): Promise<FeedEvent[]> {
   const [diaryResult, episodeResult, actorResult] = await Promise.all([
+    // review ya no es una columna legible de diary_entries: se lee de la
+    // vista pass_reviews (privacidad ya aplicada — ver
+    // 20260714_passes_review_privacy.sql). El .eq("is_public", true) de abajo
+    // se deja como defensa en profundidad y para dejar la intención
+    // explícita: esta función alimenta la pestaña Actividad del perfil
+    // PÚBLICO (la ve cualquier visitante), así que las reseñas privadas
+    // (incluso las propias, si el dueño mira su propio perfil) no deben
+    // aparecer aquí.
     supabase
-      .from("diary_entries")
+      .from("pass_reviews")
       .select("id, user_id, library_entry_id, finished_on, rating, review")
       .eq("user_id", userId)
       .not("review", "is", null)
+      // Un pase abierto no es una reseña: todavía no ha terminado.
+      .not("finished_on", "is", null)
+      .eq("is_public", true)
       .order("finished_on", { ascending: false })
       .limit(limit),
     supabase
@@ -54,7 +65,14 @@ export async function getRecentReviews(
   const actor = actorResult.data;
   if (!actor?.username) return [];
 
-  const diaryRows = diaryResult.data ?? [];
+  // El filtro anterior garantiza finished_on no nulo; se narrowa aquí porque
+  // Supabase no infiere el tipo a partir de la query. pass_reviews tipa TODAS
+  // sus columnas como nullable (es una vista), así que también se narrowan
+  // id/library_entry_id — nunca vienen null en la práctica.
+  const diaryRows = (diaryResult.data ?? []).filter(
+    (r): r is typeof r & { id: string; library_entry_id: string; finished_on: string } =>
+      r.id !== null && r.library_entry_id !== null && r.finished_on !== null
+  );
   const episodeRows = episodeResult.data ?? [];
 
   // library_entries de las entradas de diario → item_type/item_id.

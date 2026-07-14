@@ -1,6 +1,8 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import { formatEdition } from "@/lib/editions/edition-label";
+import { latestRatingPerUser, type RatedPass } from "./latest-rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -11,6 +13,7 @@ export type CommunityReview = {
   finishedOn: string; // ISO date
   rating: number | null; // 1–10
   text: string;
+  editionLabel: string | null;
   reactionCount: number;
   viewerReacted: boolean;
   commentCount: number;
@@ -35,24 +38,113 @@ function initials(name: string): string {
     .join("");
 }
 
-// Agregados reales de la comunidad para una ficha: notas desde
-// library_entries y reseñas desde diary_entries (con autor de profiles).
-// La visibilidad la resuelve RLS: solo se ven filas de perfiles públicos
-// (más las propias del que mira), así que aquí no hay filtro extra.
+// Fila de diary_entries con el join a library_entries que usan tanto la
+// consulta de notas como la de reseñas: Supabase tipa la relación embebida de
+// forma laxa, así que se castea una vez aquí en vez de en cada callsite.
+type PassJoinRow = {
+  rating: number | null;
+  finished_on: string | null;
+  user_id: string;
+  edition_id: string | null;
+  review: string | null;
+  id: string;
+  library_entries: { item_type: ItemType; item_id: string; status: string };
+};
+
+// Resuelve las etiquetas de edición de un lote de ids en UNA consulta (no una
+// por reseña). Las series no tienen tabla de ediciones.
+async function loadEditionLabels(
+  supabase: SupabaseServerClient,
+  itemType: ItemType,
+  editionIds: string[]
+): Promise<Map<string, string>> {
+  if (editionIds.length === 0 || itemType === "series") return new Map();
+
+  if (itemType === "book") {
+    const { data } = await supabase
+      .from("book_editions")
+      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url, is_primary")
+      .in("id", editionIds);
+    return new Map(
+      (data ?? []).map((r) => [
+        r.id,
+        formatEdition(
+          {
+            id: r.id,
+            label: r.label,
+            publisher: r.publisher,
+            year: r.published_year,
+            language: r.language,
+            totalUnits: r.total_pages,
+            isbn: r.isbn,
+            coverUrl: r.cover_url,
+            isPrimary: r.is_primary,
+          },
+          itemType
+        ),
+      ])
+    );
+  }
+
+  const { data } = await supabase
+    .from("movie_versions")
+    .select("id, label, release_year, duration_minutes, is_primary")
+    .in("id", editionIds);
+  return new Map(
+    (data ?? []).map((r) => [
+      r.id,
+      formatEdition(
+        {
+          id: r.id,
+          label: r.label,
+          publisher: null,
+          year: r.release_year,
+          language: null,
+          totalUnits: r.duration_minutes,
+          isbn: null,
+          coverUrl: null,
+          isPrimary: r.is_primary,
+        },
+        itemType
+      ),
+    ])
+  );
+}
+
+// Agregados reales de la comunidad para una ficha: la media y el histograma
+// salen de los pases (diary_entries), no de library_entries.rating — esa
+// columna se está jubilando y una entrada puede acumular varios pases
+// (relecturas, revisionados). Las reseñas también son pases: los que tienen
+// texto público. La visibilidad la resuelve RLS: solo se ven filas de
+// perfiles públicos (más las propias del que mira), así que aquí no hay
+// filtro extra.
 export async function getCommunity(
   supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string
 ): Promise<Community> {
-  const { data: entries } = await supabase
-    .from("library_entries")
-    .select("id, rating")
-    .eq("item_type", itemType)
-    .eq("item_id", itemId);
+  // Notas: un voto por usuario, el de su pase cerrado más reciente, sin
+  // contar las entradas abandonadas (dropped). latestRatingPerUser hace el
+  // "quédate con el último pase por user_id" en TypeScript porque Supabase
+  // no expresa DISTINCT ON en su query builder.
+  const { data: passRows } = await supabase
+    .from("diary_entries")
+    .select("id, rating, finished_on, user_id, library_entries!inner(item_type, item_id, status)")
+    .eq("library_entries.item_type", itemType)
+    .eq("library_entries.item_id", itemId)
+    .not("finished_on", "is", null)
+    .not("rating", "is", null)
+    .neq("library_entries.status", "dropped");
 
-  const ratings = (entries ?? [])
-    .map((e) => e.rating)
-    .filter((r): r is number => r !== null);
+  const ratedRows = (passRows ?? []) as unknown as PassJoinRow[];
+  const ratedPasses: RatedPass[] = ratedRows.map((r) => ({
+    id: r.id,
+    userId: r.user_id,
+    // finished_on y rating no son null por los .not(...) de arriba.
+    finishedOn: r.finished_on as string,
+    rating: r.rating as number,
+  }));
+  const ratings = latestRatingPerUser(ratedPasses).map((r) => r.rating);
 
   let avgRating: number | null = null;
   // Índice 0 = 5★ … índice 4 = 1★ (mismo orden que renderiza el panel).
@@ -69,26 +161,57 @@ export async function getCommunity(
     }
   }
 
-  // Reseñas: pases de diario con texto, de cualquier entrada de este ítem.
+  // Reseñas: pases con texto, de cualquier entrada de este ítem (incluidas
+  // las abandonadas — una reseña sigue siendo válida aunque el pase no vote).
+  const { data: entries } = await supabase
+    .from("library_entries")
+    .select("id")
+    .eq("item_type", itemType)
+    .eq("item_id", itemId);
+
   const entryIds = (entries ?? []).map((e) => e.id);
   let reviews: CommunityReview[] = [];
   if (entryIds.length > 0) {
+    // review ya no es una columna legible de diary_entries: se lee de la
+    // vista pass_reviews (privacidad ya aplicada — ver
+    // 20260714_passes_review_privacy.sql). El .eq("is_public", true) de abajo
+    // es ahora redundante con lo que ya filtra la vista, pero se deja como
+    // defensa en profundidad y para dejar la intención explícita.
     const { data: diaryRows } = await supabase
-      .from("diary_entries")
-      .select("id, user_id, finished_on, rating, review")
+      .from("pass_reviews")
+      .select("id, user_id, finished_on, rating, review, edition_id")
       .in("library_entry_id", entryIds)
       .not("review", "is", null)
+      // Un pase abierto no es una reseña: todavía no ha terminado, así que
+      // no debe verlo la comunidad.
+      .not("finished_on", "is", null)
+      // Una reseña privada es de su autor y de nadie más.
+      .eq("is_public", true)
       .order("finished_on", { ascending: false })
       .limit(MAX_REVIEWS);
 
-    const rows = (diaryRows ?? []).filter((r) => (r.review ?? "").trim() !== "");
+    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+    // porque Supabase no infiere el tipo a partir de la query. pass_reviews
+    // tipa TODAS sus columnas como nullable (es una vista), así que también
+    // se narrowan id/user_id — nunca vienen null en la práctica.
+    const rows = (diaryRows ?? []).filter(
+      (r): r is typeof r & { id: string; user_id: string; finished_on: string } =>
+        r.id !== null &&
+        r.user_id !== null &&
+        r.finished_on !== null &&
+        (r.review ?? "").trim() !== ""
+    );
 
     if (rows.length > 0) {
       const userIds = [...new Set(rows.map((r) => r.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name")
-        .in("user_id", userIds);
+      const editionIds = [
+        ...new Set(rows.map((r) => r.edition_id).filter((id): id is string => id !== null)),
+      ];
+
+      const [{ data: profiles }, editionLabelById] = await Promise.all([
+        supabase.from("profiles").select("user_id, username, display_name").in("user_id", userIds),
+        loadEditionLabels(supabase, itemType, editionIds),
+      ]);
 
       const nameByUser = new Map(
         (profiles ?? []).map((p) => [p.user_id, p.display_name || p.username])
@@ -103,6 +226,7 @@ export async function getCommunity(
           finishedOn: r.finished_on,
           rating: r.rating,
           text: (r.review ?? "").trim(),
+          editionLabel: r.edition_id ? (editionLabelById.get(r.edition_id) ?? null) : null,
           reactionCount: 0,
           viewerReacted: false,
           commentCount: 0,

@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
-  ItemManagePanel,
+  LogPanel,
   type ManagedEntry,
-} from "@/components/item-manage-panel";
+} from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
@@ -19,10 +19,12 @@ import {
 } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
+import { EditionStrip } from "@/components/detail/edition-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
+import { getEditions } from "@/lib/editions/get-editions";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -30,6 +32,8 @@ import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
+import { getPasses } from "@/lib/passes/get-passes";
+import type { Pass } from "@/lib/passes/types";
 import { SagaAssignForm } from "@/components/saga-assign-form";
 
 export async function generateMetadata({
@@ -83,13 +87,15 @@ export default async function MovieDetailPage({
     tmdbId: movie.tmdb_id,
   });
 
-  const [watchProviders, credits, saga] = await Promise.all([
+  const [watchProviders, credits, saga, editions] = await Promise.all([
     movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
     getItemCredits(supabase, "movie", movie.id),
     getItemSaga(supabase, "movie", movie.id),
+    getEditions(supabase, "movie", movie.id),
   ]);
 
   let entry: ManagedEntry | null = null;
+  let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
@@ -108,6 +114,7 @@ export default async function MovieDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
+      passes = await getPasses(supabase, row.id);
     }
     queues = await getQueues(supabase, user.id);
   }
@@ -189,6 +196,13 @@ export default async function MovieDetailPage({
                 label={tDetail("saga")}
               />
             )}
+            <EditionStrip
+              itemType="movie"
+              itemId={movie.id}
+              editions={editions}
+              selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
+              canContribute={canContribute}
+            />
             <InfoPanel
               aboutLabel={tDetail("about")}
               synopsis={movie.synopsis}
@@ -226,11 +240,13 @@ export default async function MovieDetailPage({
           </div>
         }
         log={
-          <ItemManagePanel
+          <LogPanel
             itemType="movie"
             itemId={movie.id}
             entry={entry}
+            passes={passes}
             sessions={[]}
+            editions={editions}
             queues={queues}
           />
         }

@@ -152,12 +152,35 @@ export async function resolveSharedActivity(
   }
 
   if (ref.sourceTable === "diary_entries") {
+    // review ya no es una columna legible de diary_entries: se lee de la
+    // vista pass_reviews (privacidad ya aplicada — ver
+    // 20260714_passes_review_privacy.sql). El .eq("is_public", true) de abajo
+    // se deja como defensa en profundidad y para dejar la intención
+    // explícita: esto resuelve posts compartidos en clubes, que puede ver
+    // cualquier miembro (no solo el autor), así que una reseña privada se
+    // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
-      .from("diary_entries")
+      .from("pass_reviews")
       .select("id, user_id, library_entry_id, finished_on, rating, review")
       .eq("id", ref.rowId)
+      // Un pase abierto no es actividad terminada: si es lo único que hay
+      // que resolver, se trata igual que "la fila ya no existe" (null).
+      .not("finished_on", "is", null)
+      .eq("is_public", true)
       .maybeSingle();
-    if (!row) return null;
+    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+    // porque Supabase no infiere el tipo a partir de la query. pass_reviews
+    // tipa TODAS sus columnas como nullable (es una vista), así que también
+    // se narrowan id/user_id/library_entry_id — nunca vienen null en la
+    // práctica.
+    if (
+      !row ||
+      row.id === null ||
+      row.user_id === null ||
+      row.library_entry_id === null ||
+      row.finished_on === null
+    )
+      return null;
     const item = await resolveLibraryEntryItem(supabase, row.library_entry_id);
     if (!item) return null;
     const [actor, catalog] = await Promise.all([

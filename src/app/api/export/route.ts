@@ -49,11 +49,20 @@ export async function GET() {
     .from("diary_entries")
     .select("library_entry_id, started_on, finished_on")
     .in("library_entry_id", items.map((item) => item.entryId))
+    // Un pase abierto todavía no ha terminado: no exportamos "lecturas en
+    // curso" como si fueran pases completados.
+    .not("finished_on", "is", null)
     .order("finished_on", { ascending: false });
   if (diaryError) throw diaryError;
 
+  // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+  // porque Supabase no infiere el tipo a partir de la query.
+  const finishedDiaryRows = (diaryRows ?? []).filter(
+    (d): d is typeof d & { finished_on: string } => d.finished_on !== null
+  );
+
   const passesByEntry = new Map<string, string[]>();
-  for (const d of diaryRows ?? []) {
+  for (const d of finishedDiaryRows) {
     const list = passesByEntry.get(d.library_entry_id) ?? [];
     list.push(d.started_on ? `${d.started_on}..${d.finished_on}` : d.finished_on);
     passesByEntry.set(d.library_entry_id, list);

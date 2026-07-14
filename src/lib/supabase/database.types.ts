@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_editions: {
+        Row: {
+          book_id: string
+          cover_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_primary: boolean
+          isbn: string | null
+          label: string
+          language: string | null
+          published_year: number | null
+          publisher: string | null
+          total_pages: number | null
+        }
+        Insert: {
+          book_id: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          isbn?: string | null
+          label: string
+          language?: string | null
+          published_year?: number | null
+          publisher?: string | null
+          total_pages?: number | null
+        }
+        Update: {
+          book_id?: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          isbn?: string | null
+          label?: string
+          language?: string | null
+          published_year?: number | null
+          publisher?: string | null
+          total_pages?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_editions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author: string | null
@@ -679,8 +732,10 @@ export type Database = {
       diary_entries: {
         Row: {
           created_at: string
-          finished_on: string
+          edition_id: string | null
+          finished_on: string | null
           id: string
+          is_public: boolean
           library_entry_id: string
           rating: number | null
           review: string | null
@@ -690,8 +745,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          finished_on?: string
+          edition_id?: string | null
+          finished_on?: string | null
           id?: string
+          is_public?: boolean
           library_entry_id: string
           rating?: number | null
           review?: string | null
@@ -701,8 +758,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          finished_on?: string
+          edition_id?: string | null
+          finished_on?: string | null
           id?: string
+          is_public?: boolean
           library_entry_id?: string
           rating?: number | null
           review?: string | null
@@ -843,6 +902,47 @@ export type Database = {
             columns: ["queue_id"]
             isOneToOne: false
             referencedRelation: "queues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movie_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          id: string
+          is_primary: boolean
+          label: string
+          movie_id: string
+          release_year: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_primary?: boolean
+          label: string
+          movie_id: string
+          release_year?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_primary?: boolean
+          label?: string
+          movie_id?: string
+          release_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_versions_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
             referencedColumns: ["id"]
           },
         ]
@@ -1049,6 +1149,7 @@ export type Database = {
           id: string
           library_entry_id: string
           note: string | null
+          pass_id: string | null
           position: Json
           session_date: string
           user_id: string
@@ -1059,6 +1160,7 @@ export type Database = {
           id?: string
           library_entry_id: string
           note?: string | null
+          pass_id?: string | null
           position?: Json
           session_date?: string
           user_id: string
@@ -1069,6 +1171,7 @@ export type Database = {
           id?: string
           library_entry_id?: string
           note?: string | null
+          pass_id?: string | null
           position?: Json
           session_date?: string
           user_id?: string
@@ -1080,6 +1183,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "library_entries"
             referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "progress_sessions_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progress_sessions_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1359,6 +1476,53 @@ export type Database = {
         }
         Relationships: []
       }
+      pass_reviews: {
+        Row: {
+          created_at: string | null
+          edition_id: string | null
+          finished_on: string | null
+          id: string | null
+          is_public: boolean | null
+          library_entry_id: string | null
+          rating: number | null
+          review: string | null
+          started_on: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          edition_id?: string | null
+          finished_on?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          library_entry_id?: string | null
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          edition_id?: string | null
+          finished_on?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          library_entry_id?: string | null
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diary_entries_entry_owner_fkey"
+            columns: ["library_entry_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "library_entries"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       profile_identities: {
         Row: {
           avatar_url: string | null
@@ -1517,7 +1681,7 @@ export type Database = {
       }
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
       is_visible_via_club_share: {
-        Args: { p_row_id: string; p_source_table: string }
+        Args: { p_owner_id: string; p_row_id: string; p_source_table: string }
         Returns: boolean
       }
       notify_club_join_request: {
@@ -1525,11 +1689,27 @@ export type Database = {
         Returns: undefined
       }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
+      register_book_edition: {
+        Args: {
+          p_book_id: string
+          p_cover_url?: string
+          p_isbn: string
+          p_label?: string
+          p_pages?: number
+          p_publisher?: string
+          p_year?: number
+        }
+        Returns: string
+      }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
         Returns: undefined
       }
       reorder_queue: {
+        // Ajuste a mano, NO lo generado: target_queue acepta null (reordenar
+        // el bucket "Sin cola", §7.22). Postgres no declara la nulabilidad de
+        // los argumentos, así que el generador la pierde. Repón este `| null`
+        // cada vez que regeneres este fichero.
         Args: { entry_ids: string[]; target_queue: string | null }
         Returns: undefined
       }
@@ -1537,6 +1717,7 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
+      sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
       set_activity_completion_mode: {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
@@ -1582,8 +1763,6 @@ export type Database = {
         | "follow_accepted"
         | "review_liked"
         | "review_commented"
-        | "club_join_request"
-        | "club_join_approved"
         | "club_invite"
         | "club_invite_accepted"
         | "club_post"
@@ -1592,6 +1771,8 @@ export type Database = {
         | "comment_liked"
         | "club_activity_proposed"
         | "club_activity_activated"
+        | "club_join_request"
+        | "club_join_approved"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       target_kind:
@@ -1748,8 +1929,6 @@ export const Constants = {
         "follow_accepted",
         "review_liked",
         "review_commented",
-        "club_join_request",
-        "club_join_approved",
         "club_invite",
         "club_invite_accepted",
         "club_post",
@@ -1758,6 +1937,8 @@ export const Constants = {
         "comment_liked",
         "club_activity_proposed",
         "club_activity_activated",
+        "club_join_request",
+        "club_join_approved",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],

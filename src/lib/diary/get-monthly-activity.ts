@@ -33,12 +33,21 @@ export async function getMonthlyActivity(
     .from("diary_entries")
     .select("finished_on, library_entries!inner(item_type, user_id)")
     .eq("library_entries.user_id", userId)
-    .gte("finished_on", rangeStart.toISOString().slice(0, 10));
+    .gte("finished_on", rangeStart.toISOString().slice(0, 10))
+    // Un pase abierto (sin finished_on) todavía no ha terminado nada: no
+    // cuenta como actividad del mes.
+    .not("finished_on", "is", null);
 
   if (error) throw error;
 
+  // El filtro anterior garantiza finished_on no nulo; el tipo generado sigue
+  // siendo `string | null` porque Supabase no lo infiere de la query.
+  const rows = (data ?? []).filter(
+    (row): row is typeof row & { finished_on: string } => row.finished_on !== null
+  );
+
   const byMonth = new Map(months.map((m) => [m.month, m]));
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const month = row.finished_on.slice(0, 7);
     const bucket = byMonth.get(month);
     const itemType = (

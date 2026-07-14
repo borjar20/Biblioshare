@@ -82,6 +82,10 @@ async function addMissingDiaryEntries(
       started_on: date.startedOn,
       finished_on: date.finishedOn,
       rating: row.rating,
+      // Mismo valor por defecto que abrir un pase a mano (Hallazgo 3): sin
+      // esto, el default de columna (false) dejaba el pase importado fuera
+      // del feed de quien te sigue.
+      is_public: true,
     });
   }
 }

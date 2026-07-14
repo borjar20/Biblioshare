@@ -39,6 +39,9 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
       .from("diary_entries")
       .select("id, finished_on")
       .eq("user_id", user.id)
+      // Un pase abierto no es actividad terminada: no aparece como algo
+      // que compartir con el club.
+      .not("finished_on", "is", null)
       .order("finished_on", { ascending: false })
       .limit(RECENT_LIMIT),
     supabase
@@ -58,10 +61,14 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
       ref: { sourceTable: "progress_sessions" as const, rowId: r.id },
       date: r.session_date,
     })),
-    ...(diary.data ?? []).map((r) => ({
-      ref: { sourceTable: "diary_entries" as const, rowId: r.id },
-      date: r.finished_on,
-    })),
+    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+    // porque Supabase no infiere el tipo a partir de la query.
+    ...(diary.data ?? [])
+      .filter((r): r is typeof r & { finished_on: string } => r.finished_on !== null)
+      .map((r) => ({
+        ref: { sourceTable: "diary_entries" as const, rowId: r.id },
+        date: r.finished_on,
+      })),
     ...(episodes.data ?? []).map((r) => ({
       ref: { sourceTable: "episode_watches" as const, rowId: r.id },
       date: r.watched_on,

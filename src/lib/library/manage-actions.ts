@@ -5,8 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { passEffect } from "@/lib/passes/transitions";
 import type { MediaStatus } from "./types";
-import { BOOK_FORMATS, type BookFormat, type Position } from "./position";
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 // These actions are shared between the item detail pages (the management
 // hub since §7.14) and any other surface, so they revalidate every view
@@ -29,6 +33,26 @@ export async function updateStatus(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // El estado y el pase abierto actuales deciden qué efecto tiene el cambio
+  // de estado sobre el diario (ver passEffect en lib/passes/transitions.ts):
+  // el pase es el dueño de la nota y la reseña, no library_entries.
+  const { data: entry } = await supabase
+    .from("library_entries")
+    .select("id, status")
+    .eq("id", entryId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!entry) redirect("/login");
+
+  const { data: openPass } = await supabase
+    .from("diary_entries")
+    .select("id")
+    .eq("library_entry_id", entryId)
+    .is("finished_on", null)
+    .maybeSingle();
+
+  const effect = passEffect(entry.status as MediaStatus, status, Boolean(openPass));
+
   // An item leaving "planned" shouldn't keep a stale queue membership or
   // position — it would otherwise resurface in its old queue at an old spot if
   // it's re-planned later. See docs/REQUIREMENTS.md §7.22.
@@ -42,85 +66,35 @@ export async function updateStatus(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
-}
 
-export type UpdateProgressState = {
-  error?: "invalidRating" | "invalidPosition" | "generic";
-};
-
-export async function updateProgress(
-  entryId: string,
-  itemType: ItemType,
-  itemId: string,
-  _prevState: UpdateProgressState,
-  formData: FormData
-): Promise<UpdateProgressState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const ratingRaw = String(formData.get("rating") ?? "").trim();
-  let rating: number | null = null;
-  if (ratingRaw) {
-    rating = Number(ratingRaw);
-    if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
-      return { error: "invalidRating" };
-    }
+  if (effect.kind === "open" || effect.kind === "openAndClose") {
+    const opensToday = today();
+    const { error: passError } = await supabase.from("diary_entries").insert({
+      library_entry_id: entryId,
+      user_id: user.id,
+      started_on: opensToday,
+      finished_on: effect.kind === "openAndClose" ? opensToday : null,
+      is_public: true,
+    });
+    // Un pase abierto choca con el índice único parcial si ya había uno (dos
+    // pestañas en paralelo, por ejemplo): eso es justo lo que queríamos, no
+    // un error que deba explotar.
+    if (passError && passError.code !== "23505") throw passError;
+  } else if (effect.kind === "close" && openPass) {
+    const { error: passError } = await supabase
+      .from("diary_entries")
+      .update({ finished_on: today() })
+      .eq("id", openPass.id)
+      .eq("user_id", user.id);
+    // Un índice único impide cerrar dos pases del mismo ítem el mismo día:
+    // si ya cerraste otro pase de esta entrada hoy, este update choca con él
+    // (23505). Es el mismo caso que la rama "open" de arriba, no un error que
+    // deba explotar — como mucho, terminar algo el mismo día en que ya
+    // cerraste otra cosa del mismo ítem no hace nada, en vez de un 500.
+    if (passError && passError.code !== "23505") throw passError;
   }
 
-  const notes = String(formData.get("notes") ?? "").trim();
-
-  let position: Position = {};
-  if (itemType === "book") {
-    const pageRaw = String(formData.get("page") ?? "").trim();
-    const formatRaw = String(formData.get("format") ?? "").trim();
-
-    let page: number | undefined;
-    if (pageRaw) {
-      page = Number(pageRaw);
-      if (!Number.isInteger(page) || page < 0) return { error: "invalidPosition" };
-    }
-
-    let format: BookFormat | undefined;
-    if (formatRaw) {
-      if (!BOOK_FORMATS.includes(formatRaw as BookFormat)) {
-        return { error: "invalidPosition" };
-      }
-      format = formatRaw as BookFormat;
-    }
-
-    position = { ...(page !== undefined && { page }), ...(format && { format }) };
-  } else if (itemType === "series") {
-    const seasonRaw = String(formData.get("season") ?? "").trim();
-    const episodeRaw = String(formData.get("episode") ?? "").trim();
-    if (seasonRaw || episodeRaw) {
-      const season = Number(seasonRaw);
-      const episode = Number(episodeRaw);
-      if (
-        !Number.isInteger(season) ||
-        !Number.isInteger(episode) ||
-        season < 0 ||
-        episode < 0
-      ) {
-        return { error: "invalidPosition" };
-      }
-      position = { season, episode };
-    }
-  }
-
-  const { error } = await supabase
-    .from("library_entries")
-    .update({ rating, position, notes: notes || null })
-    .eq("id", entryId)
-    .eq("user_id", user.id);
-
-  if (error) return { error: "generic" };
-
   revalidateItemViews(itemType, itemId);
-  return {};
 }
 
 export async function removeFromLibrary(

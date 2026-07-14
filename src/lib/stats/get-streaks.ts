@@ -16,7 +16,13 @@ export async function getStreaks(
 ): Promise<Streaks> {
   const [sessions, finished] = await Promise.all([
     supabase.from("progress_sessions").select("session_date").eq("user_id", userId),
-    supabase.from("diary_entries").select("finished_on").eq("user_id", userId),
+    // Un pase abierto todavía no ha terminado nada ese día: no cuenta para
+    // la racha.
+    supabase
+      .from("diary_entries")
+      .select("finished_on")
+      .eq("user_id", userId)
+      .not("finished_on", "is", null),
   ]);
 
   if (sessions.error) throw sessions.error;
@@ -24,7 +30,11 @@ export async function getStreaks(
 
   const activeDays = new Set([
     ...(sessions.data ?? []).map((row) => row.session_date),
-    ...(finished.data ?? []).map((row) => row.finished_on),
+    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
+    // porque Supabase no infiere el tipo a partir de la query.
+    ...(finished.data ?? [])
+      .filter((row): row is { finished_on: string } => row.finished_on !== null)
+      .map((row) => row.finished_on),
   ]);
   if (activeDays.size === 0) return { current: 0, best: 0 };
 

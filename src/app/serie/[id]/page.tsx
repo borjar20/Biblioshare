@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
-  ItemManagePanel,
+  LogPanel,
   type ManagedEntry,
-} from "@/components/item-manage-panel";
+} from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
@@ -35,6 +35,8 @@ import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
+import { getPasses } from "@/lib/passes/get-passes";
+import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { SagaAssignForm } from "@/components/saga-assign-form";
 
@@ -102,6 +104,7 @@ export default async function SeriesDetailPage({
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
+  let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
@@ -120,7 +123,18 @@ export default async function SeriesDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
-      sessions = await getSessions(supabase, row.id, "series");
+      // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo
+      // 4): en una relectura, las sesiones de la lectura anterior no deben
+      // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
+      // va primero: getSessions necesita saber cuál es el pase abierto.
+      passes = await getPasses(supabase, row.id);
+      // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
+      // segundo caso, la lista de sesiones de una serie vista se quedaría vacía
+      // para siempre: getPasses ordena el abierto primero y luego los cerrados
+      // de más reciente a más antiguo, así que passes[0] es el que toca.
+      const currentPassId =
+        passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
+      sessions = await getSessions(supabase, currentPassId, "series");
     }
     queues = await getQueues(supabase, user.id);
   }
@@ -264,11 +278,15 @@ export default async function SeriesDetailPage({
           </div>
         }
         log={
-          <ItemManagePanel
+          <LogPanel
             itemType="series"
             itemId={series.id}
             entry={entry}
+            passes={passes}
             sessions={sessions}
+            // Las series no tienen ediciones (getEditions ni siquiera
+            // consulta la BD para este tipo): no hace falta cargarlas.
+            editions={[]}
             queues={queues}
           />
         }

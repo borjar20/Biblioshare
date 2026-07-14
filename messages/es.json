@@ -140,21 +140,29 @@
     },
     "noResultsTitle": "Nada coincide"
   },
-  "diary": {
-    "show": "Ver diario",
-    "hide": "Ocultar diario",
-    "loading": "Cargando...",
-    "empty": "Todavía no hay pases registrados.",
+  "passes": {
+    "diaryTitle": "Diario",
+    "empty": "Todavía no has registrado ningún pase.",
+    "open": "En curso",
+    "pass": "{n}º pase",
+    "closeTitle": "¿Qué te ha parecido?",
     "finishedOn": "Fecha",
-    "rating": "Valoración (1-10)",
+    "rating": "Tu nota",
     "review": "Reseña",
-    "submit": "Registrar pase",
-    "submitting": "Guardando...",
-    "delete": "Eliminar",
-    "comparison": "{previousYear}: {previousRating}★ → ahora {currentRating}★",
+    "reviewPlaceholder": "Qué te ha parecido…",
+    "isPublic": "Visible para la comunidad",
+    "skip": "Ahora no",
+    "submit": "Guardar",
+    "submitting": "Guardando…",
+    "delta": "▲ {delta} vs. anterior",
+    "deltaDown": "▼ {delta} vs. anterior",
+    "delete": "Borrar pase",
+    "edit": "Editar",
+    "cancelEdit": "Cancelar",
     "errors": {
-      "invalidRating": "La valoración debe ser un número entre 1 y 10.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
+      "invalidDate": "La fecha no es válida.",
+      "invalidRating": "La nota va de media estrella a cinco.",
+      "generic": "No se pudo guardar."
     }
   },
   "profile": {
@@ -539,7 +547,7 @@
     "backHome": "Ir al inicio",
     "follow": "Seguir",
     "following": "Añadiendo...",
-    "unfollow": "Dejar de seguir",
+    "unfollow": "Quitar de mi biblioteca",
     "status": "Estado",
     "manage": "Gestionar",
     "creditsTitle": "Reparto y equipo",
@@ -576,7 +584,31 @@
       "add": "Registrar sesión",
       "empty": "Todavía no has registrado ninguna sesión.",
       "delete": "Eliminar",
-      "duration": "{count} min"
+      "duration": "{count} min",
+      "edition": "Edición: {label}"
+    }
+  },
+  "editions": {
+    "titleBook": "Ediciones",
+    "titleMovie": "Versiones",
+    "count": "{count} en esta ficha",
+    "add": "Añadir edición",
+    "addMovie": "Añadir versión",
+    "yours": "La tuya",
+    "label": "Nombre",
+    "labelHint": "p. ej. Tapa dura, Bolsillo, Extendida",
+    "publisher": "Editorial",
+    "year": "Año",
+    "language": "Idioma",
+    "pages": "Páginas",
+    "duration": "Duración (min)",
+    "isbn": "ISBN",
+    "submit": "Guardar edición",
+    "submitting": "Guardando…",
+    "errors": {
+      "forbidden": "Necesitas ser colaborador para añadir ediciones.",
+      "invalidLabel": "Pon un nombre a la edición.",
+      "generic": "No se pudo guardar la edición."
     }
   },
   "detail": {
@@ -598,6 +630,26 @@
       "book": "Libro",
       "movie": "Película",
       "series": "Serie"
+    },
+    "statusSegments": {
+      "groupLabel": "Tu estado",
+      "inProgress": {
+        "book": "Leyendo",
+        "movie": "Viendo",
+        "series": "Viendo"
+      },
+      "completed": {
+        "book": "Leído",
+        "movie": "Vista",
+        "series": "Vista"
+      }
+    },
+    "log": {
+      "progressTitle": "Progreso",
+      "page": "Voy por la página {page} de {total}",
+      "pageOnly": "Voy por la página {page}",
+      "edition": "Tu edición",
+      "noEdition": "Sin asignar"
     },
     "meta": {
       "author": "Autor",
@@ -674,12 +726,27 @@
     "titleBook": "Guardar sesión de lectura",
     "titleSeries": "Guardar sesión de visionado",
     "date": "Fecha",
-    "duration": "Tiempo de la sesión",
+    "duration": "Duración",
     "durationHint": "En minutos. Opcional.",
-    "page": "Página alcanzada",
-    "pageOf": "de {total}",
+    "durationManual": "A mano",
+    "durationTimer": "Cronómetro",
+    "timerRunning": "En marcha",
+    "timerPause": "Pausar",
+    "timerResume": "Reanudar",
+    "timerReset": "Reiniciar",
+    "timerHint": "Se registra como duración al guardar la sesión.",
+    "timerStale": "Parece que lo dejaste corriendo. Escribe los minutos a mano o descártalo.",
+    "timerDiscard": "Descartar cronómetro",
+    "pagesRange": "Páginas leídas",
+    "pageFrom": "desde",
+    "pageTo": "hasta",
+    "delta": "▲ {delta} páginas",
+    "remaining": "quedan {remaining}",
     "season": "Temporada",
     "episode": "Episodio",
+    "episodesLabel": "Episodios vistos",
+    "episodesEmpty": "Todavía no hay episodios en el catálogo de esta temporada.",
+    "episodesDelta": "▲ {count} episodios · vas por T{season}·E{episode}",
     "note": "Nota o cita destacada",
     "noteHint": "Opcional.",
     "status": "Estado",
@@ -777,29 +844,6 @@
     "pin": "Fijar en el perfil",
     "unpin": "Quitar de fijados",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
-    "progress": {
-      "show": "Editar progreso",
-      "hide": "Ocultar",
-      "rating": "Valoración (1-10)",
-      "page": "Página actual",
-      "format": "Encuadernación",
-      "formatNone": "Sin especificar",
-      "formats": {
-        "paperback": "Bolsillo",
-        "softcover": "Tapa blanda",
-        "hardcover": "Tapa dura"
-      },
-      "season": "Temporada",
-      "episode": "Episodio",
-      "notes": "Notas",
-      "submit": "Guardar",
-      "submitting": "Guardando...",
-      "errors": {
-        "invalidRating": "La valoración debe ser un número entre 1 y 10.",
-        "invalidPosition": "El progreso introducido no es válido.",
-        "generic": "Algo salió mal. Inténtalo de nuevo."
-      }
-    },
     "emptyTitle": "Tu colección está vacía"
   },
   "import": {
