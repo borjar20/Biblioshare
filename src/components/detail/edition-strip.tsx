@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
@@ -62,6 +62,19 @@ export function EditionStrip({
     if (!state.error) setAdding(false);
   }
 
+  // La tarjeta de la edición del pase (selectedEditionId, "La tuya") debe
+  // verse sin que el usuario tenga que buscarla: con muchas ediciones (hasta
+  // 20 tras la sincronización con OpenLibrary, Tarea 6) puede caer fuera del
+  // scroll horizontal inicial de la tira.
+  const selectedRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    // Llamada imperativa al DOM (no un setState), por eso vive en un efecto:
+    // centra la tarjeta seleccionada dentro del scroll horizontal al montar.
+    // Deliberadamente solo al montar — no debe reajustar el scroll cada vez
+    // que cambia viewingId (mirar una edición) o se añade una nueva.
+    selectedRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, []);
+
   if (editions.length === 0 && !canContribute) return null;
 
   const isMovie = itemType === "movie";
@@ -102,6 +115,7 @@ export function EditionStrip({
           return (
             <button
               key={edition.id}
+              ref={isSelected ? selectedRef : undefined}
               type="button"
               onClick={() => onSelect(edition.id)}
               aria-pressed={isViewing}
