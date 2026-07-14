@@ -1,5 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
-import { fetchWorkEditions, resolveWorkKey } from "@/lib/catalog/openlibrary-editions";
+import { fetchWorkEditions, resolveWorkKey } from "@/lib/catalog/openlibrary/editions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -60,7 +60,7 @@ export async function ensureBookEditions(
       return;
     }
 
-    // fetchWorkEditions nunca lanza (ver openlibrary-editions.ts): si la API
+    // fetchWorkEditions nunca lanza (ver openlibrary/editions.ts): si la API
     // falla o tarda, se degrada a lista vacía, no a excepción.
     const editions = await fetchWorkEditions(workKey);
 
@@ -83,7 +83,7 @@ export async function ensureBookEditions(
     // se pudo registrar no debe impedir que se registren las demás.
     //
     // EN PARALELO (Hallazgo 4 de la revisión final): hasta veinte ediciones
-    // (DEFAULT_LIMIT en openlibrary-editions.ts) no tienen ninguna
+    // (DEFAULT_LIMIT en openlibrary/editions.ts) no tienen ninguna
     // dependencia entre sí, así que encadenarlas una a una solo sumaba
     // veinte viajes de ida y vuelta a la base de datos sin ninguna razón.
     // Promise.allSettled (no Promise.all) porque el fallo de una no debe

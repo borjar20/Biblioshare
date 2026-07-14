@@ -25,14 +25,19 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   // La nav lleva a las 5 secciones.
   await expect(page.getByRole("link", { name: /^colección$/i }).first()).toBeVisible();
 
-  // Buscar un libro y ver resultados
+  // Buscar un libro y ver resultados. Una tarjeta de resultado es un ENLACE si
+  // la obra ya está en el catálogo, y un BOTÓN si todavía no (§7.39: la búsqueda
+  // no crea filas; la obra nace al pulsarla). Hay que aceptar las dos formas.
   await page.goto("/buscar?q=rayuela&type=book");
-  const firstResult = page.locator('a[href*="/libro/"]').first();
+  const firstResult = page
+    .locator('a[href*="/libro/"]')
+    .or(page.getByRole("button", { name: /rayuela/i }))
+    .first();
   await expect(firstResult).toBeVisible({ timeout: 15_000 });
 
   // Abrir la ficha del primer resultado
   await firstResult.click();
-  await page.waitForURL(/\/libro\//);
+  await page.waitForURL(/\/libro\//, { timeout: 30_000 });
   await expect(page.getByRole("tab", { name: /comunidad/i }).or(page.getByText(/comunidad/i)).first()).toBeVisible();
 
   // Perfil propio

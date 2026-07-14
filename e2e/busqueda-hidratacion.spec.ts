@@ -1,0 +1,154 @@
+import { test, expect } from "@playwright/test";
+
+const EMAIL = process.env.TEST_USER_EMAIL!;
+const PASSWORD = process.env.TEST_USER_PASSWORD!;
+
+// Verificación de la escalera de hidratación (§7.39): la búsqueda devuelve
+// OBRAS y no escribe en la base de datos; la obra nace y se hidrata al abrir su
+// ficha; y el ISBN sigue siendo un lookup. Contra OpenLibrary real
+// (MOCK_EXTERNAL_APIS=false) y el proyecto Supabase dev.
+async function login(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.fill('input[name="email"]', EMAIL);
+  await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+}
+
+test.describe("búsqueda e hidratación de libros", () => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+  test.setTimeout(90_000);
+
+  test("la búsqueda devuelve obras, no ediciones repetidas", async ({ page }) => {
+    await page.goto("/buscar?type=book&q=dune");
+
+    await expect(page.getByText("Dune", { exact: true }).first()).toBeVisible({
+      timeout: 20_000,
+    });
+
+    // Una tarjeta por obra: los títulos de la saga aparecen UNA vez cada uno, no
+    // repetidos como tiradas casi idénticas.
+    await expect(page.getByText("Dune Messiah", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Children of Dune", { exact: true })).toHaveCount(1);
+
+    // El contador es el edition_count real de OpenLibrary (Dune tiene >100).
+    await expect(page.getByText(/1\d\d ediciones/).first()).toBeVisible();
+
+    // La tarjeta NO pinta datos de edición: ni editorial ni páginas.
+    await expect(page.getByText(/págs\./)).toHaveCount(0);
+  });
+
+  test("abrir un resultado nuevo crea la obra y la hidrata", async ({ page }) => {
+    await login(page);
+
+    // Un título aún no visto: así la primera vez es garantizadamente un botón
+    // (obra sin crear). El detalle no importa; lo que se comprueba es que al
+    // pulsar nazca su ficha ya con sinopsis y géneros.
+    await page.goto("/buscar?type=book&q=hyperion+dan+simmons");
+    // Tarjeta = botón (sin crear) o enlace (ya cacheado de una corrida previa):
+    // se acepta cualquiera, porque lo que se verifica es la ficha resultante.
+    const firstCard = page
+      .getByRole("button", { name: /ediciones/ })
+      .or(page.locator('a[href*="/libro/"]'))
+      .first();
+    await expect(firstCard).toBeVisible({ timeout: 20_000 });
+
+    await firstCard.click();
+    await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
+
+    // Hidratada: la ficha tiene sinopsis (la de /works/<key>.json, que la
+    // búsqueda nunca traía). Se comprueba que el panel "Sobre" no muestra el
+    // texto de "sin sinopsis".
+    await expect(page.getByText(/sin sinopsis/i)).toHaveCount(0);
+    // Al menos un género del vocabulario canónico, y nada del volcado crudo.
+    await expect(
+      page
+        .getByText("Ciencia ficción")
+        .or(page.getByText("Fantasía"))
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Protected DAISY|bestseller|nyt:/i)).toHaveCount(0);
+  });
+
+  test("el panel de la obra no muestra datos de la edición", async ({ page }) => {
+    await login(page);
+    await page.goto("/buscar?type=book&q=dune");
+
+    const dune = page
+      .getByRole("button", { name: /^Dune \d+ ediciones/ })
+      .or(page.getByRole("link", { name: /^Dune \d+ ediciones/ }))
+      .first();
+    await dune.click();
+    await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
+
+    // §7.38: editorial, ISBN y páginas son de la tirada, no de la obra.
+    await expect(page.getByText(/^ISBN$/i)).toHaveCount(0);
+    await expect(page.getByText(/^Editorial$/i)).toHaveCount(0);
+  });
+
+  test("una obra ya cacheada aparece como enlace, con su contador, sin ocultar a las demás", async ({
+    page,
+  }) => {
+    await login(page);
+
+    // Asegurar que la obra "Dune" de Frank Herbert está en el catálogo: se pulsa
+    // su tarjeta si todavía era un botón (aún sin crear).
+    await page.goto("/buscar?type=book&q=dune");
+    const asButton = page
+      .getByRole("button", { name: /^Dune 1\d\d ediciones Dune Frank Herbert/ })
+      .first();
+    if (await asButton.isVisible().catch(() => false)) {
+      await asButton.click();
+      await page.waitForURL(/\/libro\//, { timeout: 30_000 });
+      await page.goto("/buscar?type=book&q=dune");
+    }
+
+    // Ya cacheada: es un ENLACE a su ficha, y CONSERVA su contador de ediciones
+    // (>100) — que solo lo sabe la API, no la fila local. Sin el fix de
+    // mergeByExternalId, aquí salía sin contador.
+    const cachedDune = page
+      .getByRole("link", { name: /^Dune 1\d\d ediciones Dune Frank Herbert/ })
+      .first();
+    await expect(cachedDune).toBeVisible({ timeout: 20_000 });
+
+    // Y el resto de obras de la búsqueda siguen presentes: un hit local ya NO
+    // cortocircuita la API (lo que antes hacía desaparecer a Dune Messiah).
+    await expect(page.getByText("Dune Messiah", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Children of Dune", { exact: true }).first()).toBeVisible();
+  });
+
+  test("un libro viejo sin hidratar se cura al abrirlo con sesión", async ({
+    page,
+  }) => {
+    await login(page);
+
+    // "La casa de los espíritus" tiene varias filas antiguas en dev, cacheadas
+    // con el flujo viejo (hydrated_at null). Salen como enlaces (ya tienen
+    // catalogId). Se abre la primera.
+    await page.goto("/buscar?type=book&q=la+casa+de+los+espiritus");
+    const cached = page.locator('a[href*="/libro/"]').first();
+    await expect(cached).toBeVisible({ timeout: 20_000 });
+    await cached.click();
+    await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
+
+    // La hidratación va en after() (tras pintar): se recarga una vez para verla
+    // ya aplicada. La ficha no debe decir "sin sinopsis" si OpenLibrary tenía
+    // datos para su work key.
+    await page.waitForTimeout(4000);
+    await page.reload();
+    // No verificamos un texto concreto (depende de qué fila salga primera y de
+    // si su work key resuelve), sino que la ficha sigue viva y no reventó por la
+    // hidratación — que es la garantía de "nunca bloquea el render".
+    await expect(
+      page.getByRole("heading", { name: /casa de los esp/i }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("el ISBN es un lookup y cae en la obra correcta", async ({ page }) => {
+    await page.goto("/buscar?type=book&q=9780451524935");
+
+    await expect(
+      page.getByText(/Nineteen Eighty-Four|1984/i).first(),
+    ).toBeVisible({ timeout: 20_000 });
+  });
+});

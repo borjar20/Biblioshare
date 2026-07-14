@@ -10,7 +10,7 @@ const TABLE_BY_TYPE = {
 } as const;
 
 const ID_COLUMN_BY_TYPE = {
-  book: "google_books_id",
+  book: "openlibrary_work_key",
   movie: "tmdb_id",
   series: "tmdb_id",
 } as const;
@@ -47,24 +47,15 @@ export async function findOrCreateCatalogItem(
   const payload =
     result.itemType === "book"
       ? {
-          google_books_id: result.externalId,
-          // google_books_id se queda tal cual por compatibilidad (es el que
-          // usa el índice/lookup de arriba), pero cuando el externalId YA es
-          // una work key de OpenLibrary (búsqueda actual, no import viejo de
-          // Google Books) se guarda también en su columna honesta: así el
-          // libro nace ya sincronizable sin tener que resolverla por ISBN.
-          openlibrary_work_key: result.externalId.startsWith("/works/")
-            ? result.externalId
-            : null,
+          openlibrary_work_key: result.externalId,
           title: result.title,
           author: result.subtitle,
           cover_url: result.coverUrl,
           published_year: result.year,
-          publisher: result.publisher,
-          total_pages: result.pageCount,
-          isbn: result.isbn,
-          synopsis: result.synopsis,
-          genres: result.genres,
+          // synopsis y genres NO se escriben aquí: la obra nace ligera y la
+          // hidrata ensureBookHydrated al abrir su ficha (peldaño 2). Editorial,
+          // ISBN y páginas tampoco: son de la tirada, y los pone el trigger
+          // desde la edición primaria. Ver el spec de 2026-07-14.
         }
       : {
           tmdb_id: Number(result.externalId),
@@ -108,47 +99,40 @@ export async function findOrCreateCatalogItem(
   return inserted.id;
 }
 
-// Registra el ISBN elegido en la búsqueda como edición de la obra (Tarea 4b,
-// ver supabase/migrations/20260714_editions_from_search.sql). Sin esto la
-// información de qué edición concreta escogió el usuario se tiraba: Google
-// Books devuelve varias ediciones por obra (group-editions.ts las agrupa
-// para la tarjeta de búsqueda) y group-editions se queda solo con la más
-// completa como representante, perdiendo el resto.
+// Registra la tirada que el usuario tiene EN LA MANO como edición de la obra.
+// Solo el lookup por ISBN (escáner de código de barras, importador de Goodreads)
+// sabe cuál es: una búsqueda por texto devuelve la obra y punto, y sus ediciones
+// las trae ensureBookEditions al abrir la ficha. De ahí que la única fuente aquí
+// sea `matchedIsbn`.
 //
-// El insert directo a book_editions ya no es una opción: dejaba a cualquier
-// autenticado escribir editorial/portada/páginas inventadas en cualquier
-// libro con solo poner algo de 10-20 caracteres en isbn, sin ser colaborador
-// (ver supabase/migrations/20260714_editions_hardening.sql). Pasamos por la
-// función register_book_edition, que valida el ISBN de verdad (dígito de
-// control incluido), sanea año/páginas fuera de rango y firma created_by con
-// auth.uid() del lado del servidor — no del userId que le pasemos aquí.
+// El insert directo a book_editions no es una opción: dejaba a cualquier
+// autenticado escribir editorial/portada/páginas inventadas en cualquier libro
+// sin ser colaborador. Pasamos por register_book_edition, que valida el ISBN de
+// verdad (dígito de control incluido), sanea rangos y firma created_by con
+// auth.uid() del lado del servidor — no con el userId que le pasemos aquí.
 //
-// La función ya es idempotente (upsert vía on conflict do nothing) y ya no
-// debe romper el alta del libro: un ISBN inválido es ahora un error legítimo
-// y esperable (viene tal cual de Google Books), así que cualquier fallo aquí
-// se traga entero — registrar la edición es una mejora, no un requisito para
-// añadir el libro a la biblioteca.
+// Es idempotente (on conflict do nothing) y no debe romper el alta del libro:
+// cualquier fallo se traga entero, porque registrar la edición es una mejora, no
+// un requisito para añadir el libro a la biblioteca.
 async function ensureBookEdition(
   supabase: SupabaseServerClient,
   bookId: string,
   result: SearchResult,
   userId?: string | null
 ): Promise<void> {
-  const isbn = result.isbn;
-  // register_book_edition exige auth.uid() no nulo (raise exception si no
-  // hay sesión) y lo usa para firmar created_by; sin isbn o sin usuario
-  // autenticado la llamada está condenada a fallar, así que ni la intentamos
-  // (los flujos de cache oportunista sin usuario, ver comentario de arriba,
-  // simplemente no registran edición).
+  const isbn = result.matchedIsbn;
+  // register_book_edition exige auth.uid() no nulo (raise exception si no hay
+  // sesión) y lo usa para firmar created_by; sin isbn o sin usuario autenticado
+  // la llamada está condenada a fallar, así que ni la intentamos.
   if (!isbn || !userId) return;
 
   try {
+    // Editorial, año y páginas de la tirada NO se pasan: no los tenemos (el
+    // resultado de búsqueda ya no los lleva) y los traerá el sync de ediciones
+    // desde OpenLibrary, que sí sabe de qué tirada son.
     const { error } = await supabase.rpc("register_book_edition", {
       p_book_id: bookId,
       p_isbn: isbn,
-      p_publisher: result.publisher ?? undefined,
-      p_year: result.year ?? undefined,
-      p_pages: result.pageCount ?? undefined,
       p_cover_url: result.coverUrl ?? undefined,
     });
 

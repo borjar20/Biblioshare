@@ -64,9 +64,6 @@ async function populateTmdbCollection(
         year: part.year,
         synopsis: part.synopsis,
         genres: null,
-        publisher: null,
-        pageCount: null,
-        isbn: null,
       });
       rows.push({ saga_id: saga.id, item_type: "movie", item_id: itemId, position: position++ });
     }

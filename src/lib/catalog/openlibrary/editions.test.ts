@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickEditions, type OpenLibraryEditionDoc } from "./openlibrary-editions";
+import { pickEditions, type OpenLibraryEditionDoc } from "./editions";
 
 function doc(over: Partial<OpenLibraryEditionDoc> = {}): OpenLibraryEditionDoc {
   return {

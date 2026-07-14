@@ -74,7 +74,7 @@ export type Database = {
           created_at: string
           editions_synced_at: string | null
           genres: string[] | null
-          google_books_id: string | null
+          hydrated_at: string | null
           id: string
           isbn: string | null
           openlibrary_work_key: string | null
@@ -90,7 +90,7 @@ export type Database = {
           created_at?: string
           editions_synced_at?: string | null
           genres?: string[] | null
-          google_books_id?: string | null
+          hydrated_at?: string | null
           id?: string
           isbn?: string | null
           openlibrary_work_key?: string | null
@@ -106,7 +106,7 @@ export type Database = {
           created_at?: string
           editions_synced_at?: string | null
           genres?: string[] | null
-          google_books_id?: string | null
+          hydrated_at?: string | null
           id?: string
           isbn?: string | null
           openlibrary_work_key?: string | null
@@ -1681,6 +1681,15 @@ export type Database = {
         Returns: boolean
       }
       has_voted_in_club_poll: { Args: { p_post_id: string }; Returns: boolean }
+      hydrate_book: {
+        Args: {
+          p_book_id: string
+          p_cover_url?: string
+          p_genres?: string[]
+          p_synopsis?: string
+        }
+        Returns: undefined
+      }
       is_activity_participant: {
         Args: { p_activity_id: string }
         Returns: boolean

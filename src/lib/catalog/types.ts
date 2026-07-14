@@ -1,25 +1,31 @@
 export type ItemType = "book" | "movie" | "series";
 
+// Lo que una TARJETA de resultado muestra, y nada más. Editorial, ISBN y páginas
+// son datos de una tirada concreta: viven en `book_editions` y se pintan al
+// pulsar una edición en la ficha, no aquí. Ver el spec
+// docs/superpowers/specs/2026-07-14-busqueda-e-hidratacion-de-libros-design.md
 export type SearchResult = {
   itemType: ItemType;
+  // Libros: work key de OpenLibrary ("/works/OL893415W").
+  // Películas/series: id de TMDB.
   externalId: string;
-  // Set when this result already has a row in books/movies/series — either
-  // found locally or just persisted after an API search. See
-  // docs/REQUIREMENTS.md §7.32 (DB-first search / cache-as-you-go).
+  // Puesto cuando el resultado ya tiene fila en books/movies/series (vino del
+  // catálogo local, o se fusionó con él por work key). LA BÚSQUEDA NO CREA
+  // FILAS: si no está puesto, el ítem se creará al añadirlo o al abrir su ficha.
+  // Ver docs/REQUIREMENTS.md §7.32.
   catalogId?: string;
   title: string;
-  subtitle: string | null;
+  subtitle: string | null; // libros: autoría
   coverUrl: string | null;
   year: number | null;
+  // Películas/series: TMDB los da ya en la búsqueda. Libros: SIEMPRE null — la
+  // obra se hidrata al abrir su ficha (ensureBookHydrated).
   synopsis: string | null;
   genres: string[] | null;
-  // Book-only metadata (null for movies/series). See docs/REQUIREMENTS.md §7.1.
-  publisher: string | null;
-  pageCount: number | null;
-  // Book-only. See docs/REQUIREMENTS.md §7.2.
-  isbn: string | null;
-  // Book-only: nº de ediciones agrupadas bajo este resultado representativo
-  // (>1 solo cuando la búsqueda encontró varias ediciones de la misma obra).
-  // Ver docs/REQUIREMENTS.md §7.2 (agrupado de ediciones).
+  // Libros: nº real de ediciones de la obra según OpenLibrary (`edition_count`).
+  // Ver docs/REQUIREMENTS.md §7.2.
   editionCount?: number;
+  // Libros, SOLO en el lookup por ISBN (escáner, importador): la tirada exacta
+  // que se escaneó, para registrarla como edición al añadir el libro.
+  matchedIsbn?: string;
 };
