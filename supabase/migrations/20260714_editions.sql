@@ -45,12 +45,25 @@ create index movie_versions_movie_id_idx on public.movie_versions (movie_id);
 -- Backfill: cada obra existente engendra su edición primaria con los datos que
 -- hoy lleva sueltos en la ficha. Las columnas viejas de books/movies siguen ahí
 -- como espejo hasta una limpieza posterior, para poder revertir sin pérdida.
+--
+-- SANEANDO al copiar, que esto no es paranoia: `books` no valida nada y estas
+-- tablas sí, y en producción hay 19 libros con total_pages = 0 (Google Books
+-- devuelve `pageCount: 0` a manta). Sin el saneo, el CHECK reventaría este
+-- INSERT y la migración entera se caería a medias. Cero páginas no es "cero
+-- páginas": es "no lo sé", o sea NULL.
 insert into public.book_editions (book_id, label, publisher, published_year, total_pages, isbn, cover_url, is_primary)
-select id, 'Edición principal', publisher, published_year, total_pages, isbn, cover_url, true
+select id, 'Edición principal', publisher,
+       case when published_year between 1400 and 2200 then published_year end,
+       case when total_pages between 1 and 20000 then total_pages end,
+       case when char_length(isbn) <= 20 then isbn end,
+       cover_url, true
 from public.books;
 
 insert into public.movie_versions (movie_id, label, release_year, duration_minutes, is_primary)
-select id, 'Versión principal', release_year, duration_minutes, true
+select id, 'Versión principal',
+       case when release_year between 1870 and 2200 then release_year end,
+       case when duration_minutes between 1 and 1200 then duration_minutes end,
+       true
 from public.movies;
 
 alter table public.book_editions enable row level security;
