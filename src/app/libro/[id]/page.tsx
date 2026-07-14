@@ -8,7 +8,7 @@ import {
   LogPanel,
   type ManagedEntry,
 } from "@/components/detail/log-panel";
-import { SagaAssignForm } from "@/components/saga-assign-form";
+import { CatalogEditor } from "@/components/detail/catalog-editor";
 import { ItemHero } from "@/components/detail/item-hero";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
@@ -220,44 +220,56 @@ export default async function BookDetailPage({
           log: tDetail("tabLog"),
         }}
         info={
-          <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 1 && (
-              <SagaStrip
-                members={sagaMembers}
-                currentType="book"
-                currentId={book.id}
-                sagaId={saga.sagaId}
-                sagaName={saga.name}
-                label={tDetail("saga")}
-              />
+          <CatalogEditor
+            itemType="book"
+            itemId={book.id}
+            item={{
+              title: book.title,
+              author: book.author,
+              synopsis: book.synopsis,
+              genres,
+              year: book.published_year,
+              coverUrl: book.cover_url,
+            }}
+            editions={editions}
+            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+            canContribute={canContribute}
+          >
+            {(editButton) => (
+              <div className="flex flex-col gap-10">
+                {saga && sagaMembers.length >= 1 && (
+                  <SagaStrip
+                    members={sagaMembers}
+                    currentType="book"
+                    currentId={book.id}
+                    sagaId={saga.sagaId}
+                    sagaName={saga.name}
+                    label={tDetail("saga")}
+                  />
+                )}
+                {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+                    entre la tira de ediciones y el panel de metadatos, y así los
+                    dos comparten el estado de "qué edición miro". */}
+                <EditionsSection
+                  itemType="book"
+                  itemId={book.id}
+                  editions={editions}
+                  selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
+                  canContribute={canContribute}
+                  workRows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                >
+                  <InfoPanel
+                    aboutLabel={tDetail("about")}
+                    synopsis={book.synopsis}
+                    noSynopsisLabel={tDetail("noSynopsis")}
+                    actions={editButton}
+                  />
+                </EditionsSection>
+              </div>
             )}
-            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
-                entre la tira de ediciones y el panel de metadatos, y así los
-                dos comparten el estado de "qué edición miro". */}
-            <EditionsSection
-              itemType="book"
-              itemId={book.id}
-              editions={editions}
-              selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
-              canContribute={canContribute}
-              workRows={metaRows}
-              genres={genres}
-              genresLabel={tDetail("genres")}
-            >
-              <InfoPanel
-                aboutLabel={tDetail("about")}
-                synopsis={book.synopsis}
-                noSynopsisLabel={tDetail("noSynopsis")}
-              />
-            </EditionsSection>
-            {canContribute && (
-              <SagaAssignForm
-                itemType="book"
-                itemId={book.id}
-                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
-              />
-            )}
-          </div>
+          </CatalogEditor>
         }
         community={
           <CommunityPanel

@@ -7,8 +7,8 @@ import type { Edition } from "@/lib/editions/types";
 import { formatEdition, formatEditionMeta } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { createEdition, type CreateEditionState } from "@/lib/editions/actions";
+import { EditionFields } from "./edition-fields";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CheckIcon, PlusIcon } from "@/components/ui/icons";
 
 const initialState: CreateEditionState = {};
@@ -177,50 +177,7 @@ export function EditionStrip({
           action={formAction}
           className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3.5 shadow-card"
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("label")}
-              </span>
-              <Input name="label" placeholder={t("labelHint")} required maxLength={60} />
-            </label>
-            {!isMovie && (
-              <label className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("publisher")}
-                </span>
-                <Input name="publisher" />
-              </label>
-            )}
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("year")}
-              </span>
-              <Input name="year" type="number" inputMode="numeric" />
-            </label>
-            {!isMovie && (
-              <label className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("language")}
-                </span>
-                <Input name="language" />
-              </label>
-            )}
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {isMovie ? t("duration") : t("pages")}
-              </span>
-              <Input name="totalUnits" type="number" inputMode="numeric" />
-            </label>
-            {!isMovie && (
-              <label className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("isbn")}
-                </span>
-                <Input name="isbn" />
-              </label>
-            )}
-          </div>
+          <EditionFields isMovie={isMovie} />
 
           <Button
             type="submit"

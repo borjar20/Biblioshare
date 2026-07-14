@@ -38,7 +38,7 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { SagaAssignForm } from "@/components/saga-assign-form";
+import { CatalogEditor } from "@/components/detail/catalog-editor";
 
 export async function generateMetadata({
   params,
@@ -220,43 +220,57 @@ export default async function SeriesDetailPage({
           log: tDetail("tabLog"),
         }}
         info={
-          <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 2 && (
-              <SagaStrip
-                members={sagaMembers}
-                currentType="series"
-                currentId={series.id}
-                sagaId={saga.sagaId}
-                sagaName={saga.name}
-                label={tDetail("saga")}
-              />
-            )}
-            <InfoPanel
-              aboutLabel={tDetail("about")}
-              synopsis={series.synopsis}
-              noSynopsisLabel={tDetail("noSynopsis")}
-              sidebar={
-                <MetadataSidebar
-                  rows={metaRows}
-                  genres={genres}
-                  genresLabel={tDetail("genres")}
+          <CatalogEditor
+            itemType="series"
+            itemId={series.id}
+            item={{
+              title: series.title,
+              author: series.creator,
+              synopsis: series.synopsis,
+              genres,
+              year: series.release_year,
+              coverUrl: series.cover_url,
+            }}
+            // Las series no tienen ediciones: CatalogEditor no pinta esa
+            // sección para este tipo, así que este array nunca se usa.
+            editions={[]}
+            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+            canContribute={canContribute}
+          >
+            {(editButton) => (
+              <div className="flex flex-col gap-10">
+                {saga && sagaMembers.length >= 2 && (
+                  <SagaStrip
+                    members={sagaMembers}
+                    currentType="series"
+                    currentId={series.id}
+                    sagaId={saga.sagaId}
+                    sagaName={saga.name}
+                    label={tDetail("saga")}
+                  />
+                )}
+                <InfoPanel
+                  aboutLabel={tDetail("about")}
+                  synopsis={series.synopsis}
+                  noSynopsisLabel={tDetail("noSynopsis")}
+                  actions={editButton}
+                  sidebar={
+                    <MetadataSidebar
+                      rows={metaRows}
+                      genres={genres}
+                      genresLabel={tDetail("genres")}
+                    />
+                  }
+                  extra={
+                    <>
+                      <CreditsSection credits={credits} />
+                      {watchProviders && <WatchProviders data={watchProviders} />}
+                    </>
+                  }
                 />
-              }
-              extra={
-                <>
-                  <CreditsSection credits={credits} />
-                  {watchProviders && <WatchProviders data={watchProviders} />}
-                </>
-              }
-            />
-            {canContribute && (
-              <SagaAssignForm
-                itemType="series"
-                itemId={series.id}
-                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
-              />
+              </div>
             )}
-          </div>
+          </CatalogEditor>
         }
         episodes={
           hasEpisodes ? (

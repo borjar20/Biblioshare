@@ -31,7 +31,7 @@ import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
-import { SagaAssignForm } from "@/components/saga-assign-form";
+import { CatalogEditor } from "@/components/detail/catalog-editor";
 
 export async function generateMetadata({
   params,
@@ -172,50 +172,62 @@ export default async function MovieDetailPage({
           log: tDetail("tabLog"),
         }}
         info={
-          <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 1 && (
-              <SagaStrip
-                members={sagaMembers}
-                currentType="movie"
-                currentId={movie.id}
-                sagaId={saga.sagaId}
-                sagaName={saga.name}
-                label={tDetail("saga")}
-              />
+          <CatalogEditor
+            itemType="movie"
+            itemId={movie.id}
+            item={{
+              title: movie.title,
+              author: movie.director,
+              synopsis: movie.synopsis,
+              genres,
+              year: movie.release_year,
+              coverUrl: movie.cover_url,
+            }}
+            editions={editions}
+            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+            canContribute={canContribute}
+          >
+            {(editButton) => (
+              <div className="flex flex-col gap-10">
+                {saga && sagaMembers.length >= 1 && (
+                  <SagaStrip
+                    members={sagaMembers}
+                    currentType="movie"
+                    currentId={movie.id}
+                    sagaId={saga.sagaId}
+                    sagaName={saga.name}
+                    label={tDetail("saga")}
+                  />
+                )}
+                {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+                    entre la tira de ediciones y el panel de metadatos, y así los
+                    dos comparten el estado de "qué edición miro". */}
+                <EditionsSection
+                  itemType="movie"
+                  itemId={movie.id}
+                  editions={editions}
+                  selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
+                  canContribute={canContribute}
+                  workRows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                >
+                  <InfoPanel
+                    aboutLabel={tDetail("about")}
+                    synopsis={movie.synopsis}
+                    noSynopsisLabel={tDetail("noSynopsis")}
+                    actions={editButton}
+                    extra={
+                      <>
+                        <CreditsSection credits={credits} />
+                        {watchProviders && <WatchProviders data={watchProviders} />}
+                      </>
+                    }
+                  />
+                </EditionsSection>
+              </div>
             )}
-            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
-                entre la tira de ediciones y el panel de metadatos, y así los
-                dos comparten el estado de "qué edición miro". */}
-            <EditionsSection
-              itemType="movie"
-              itemId={movie.id}
-              editions={editions}
-              selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
-              canContribute={canContribute}
-              workRows={metaRows}
-              genres={genres}
-              genresLabel={tDetail("genres")}
-            >
-              <InfoPanel
-                aboutLabel={tDetail("about")}
-                synopsis={movie.synopsis}
-                noSynopsisLabel={tDetail("noSynopsis")}
-                extra={
-                  <>
-                    <CreditsSection credits={credits} />
-                    {watchProviders && <WatchProviders data={watchProviders} />}
-                  </>
-                }
-              />
-            </EditionsSection>
-            {canContribute && (
-              <SagaAssignForm
-                itemType="movie"
-                itemId={movie.id}
-                currentSaga={saga ? { id: saga.sagaId, name: saga.name } : null}
-              />
-            )}
-          </div>
+          </CatalogEditor>
         }
         community={
           <div className="flex flex-col gap-10">
