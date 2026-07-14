@@ -53,6 +53,29 @@ describe("pickEditions", () => {
   it("no repite el mismo ISBN dos veces", () => {
     expect(pickEditions([doc(), doc()]).length).toBe(1);
   });
+
+  it("descarta las ediciones de Independently Published: son reimpresiones POD sin curar", () => {
+    const pod = doc({ publishers: ["Independently Published"] });
+    expect(pickEditions([pod])).toEqual([]);
+  });
+
+  it("descarta CreateSpace aunque el nombre completo traiga mas texto (coincide por 'contiene')", () => {
+    const pod = doc({ publishers: ["CreateSpace Independent Publishing Platform"] });
+    expect(pickEditions([pod])).toEqual([]);
+  });
+
+  it("entre dos ediciones por lo demas iguales, la que tiene portada va primero", () => {
+    const sinPortada = doc({ isbn_13: [VALID_ISBNS[0]], covers: undefined });
+    const conPortada = doc({ isbn_13: [VALID_ISBNS[1]], covers: [456] });
+    const orden = pickEditions([sinPortada, conPortada]).map((e) => e.isbn);
+    expect(orden).toEqual([VALID_ISBNS[1], VALID_ISBNS[0]]);
+  });
+
+  it("no descarta una editorial de verdad solo porque contenga 'press'", () => {
+    const cambridge = doc({ publishers: ["Cambridge University Press"] });
+    expect(pickEditions([cambridge])).toHaveLength(1);
+    expect(pickEditions([cambridge])[0].publisher).toBe("Cambridge University Press");
+  });
 });
 
 // ISBN-13 reales y validos, para no pelearnos con el digito de control en los tests.

@@ -111,6 +111,48 @@ function extractIsbn(doc: OpenLibraryEditionDoc): string | null {
   return isValidIsbnCheckDigit(normalized) ? normalized : null;
 }
 
+// Editoriales de impresión bajo demanda (POD): reimpresiones automáticas y sin
+// curar, casi siempre de dominio público subido en bloque. No las tiene nadie
+// "en la mano" y en obras muy reeditadas (los clásicos) inundan las primeras
+// páginas de resultados, desplazando a las ediciones reales. Se compara en
+// minúsculas y sin acentos, y por "contiene" (que ya cubre "empieza por"):
+// así "Independently Published" e "Independently published (self)" caen
+// igual. Aviso para quien retoque esto: "bod" es una entrada corta y por
+// tanto arriesgada (podría atrapar "Bodley Head" u otra editorial legítima
+// que empiece por esas letras); se acepta el riesgo porque "Books on Demand"
+// (la empresa alemana que firma así) es un emisor de ruido real y frecuente.
+const PRINT_ON_DEMAND_PUBLISHERS = [
+  "independently published",
+  "createspace",
+  "lulu",
+  "blurb",
+  "bibliobazaar",
+  "nabu press",
+  "kessinger",
+  "sagwan press",
+  "franklin classics",
+  "wentworth press",
+  "hansebooks",
+  "outlook verlag",
+  "bod",
+  "books on demand",
+];
+
+// Minúsculas y sin diacríticos, para que la lista negra no falle por un
+// acento o una mayúscula distintos entre ediciones.
+function normalizeForComparison(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function isPrintOnDemandPublisher(publisher: string | null): boolean {
+  if (!publisher) return false;
+  const normalized = normalizeForComparison(publisher);
+  return PRINT_ON_DEMAND_PUBLISHERS.some((needle) => normalized.includes(needle));
+}
+
 // El filtro que decide si el selector de ediciones sirve de algo o es ruido:
 // descarta lo que no se puede identificar (sin ISBN válido), deduplica, y
 // ordena para que lo más útil (idioma del usuario, datos completos, más
@@ -126,12 +168,18 @@ export function pickEditions(
     const isbn = extractIsbn(doc);
     if (!isbn) continue;
     if (seen.has(isbn)) continue;
+
+    // Ruido de impresión bajo demanda: se descarta antes de mapear, ni
+    // siquiera cuenta para el tope de `limit`.
+    const publisher = doc.publishers?.[0] ?? null;
+    if (isPrintOnDemandPublisher(publisher)) continue;
+
     seen.add(isbn);
 
     mapped.push({
       isbn,
       label: labelFromFormat(doc.physical_format),
-      publisher: doc.publishers?.[0] ?? null,
+      publisher,
       year: parseYear(doc.publish_date),
       language: extractLanguage(doc),
       totalPages: typeof doc.number_of_pages === "number" ? doc.number_of_pages : null,
@@ -142,6 +190,14 @@ export function pickEditions(
   mapped.sort((a, b) => {
     const langDiff = languagePriority(a.language) - languagePriority(b.language);
     if (langDiff !== 0) return langDiff;
+
+    // Portada: casi siempre es la diferencia entre una edición real y una
+    // reimpresión fantasma que se coló pese a tener editorial "normal". No
+    // se descarta la que no tiene (alguna edición legítima carece de ella),
+    // solo queda peor puntuada.
+    const aCover = a.coverUrl ? 0 : 1;
+    const bCover = b.coverUrl ? 0 : 1;
+    if (aCover !== bCover) return aCover - bCover;
 
     const aKnown = a.totalPages !== null || a.publisher !== null ? 0 : 1;
     const bKnown = b.totalPages !== null || b.publisher !== null ? 0 : 1;
@@ -155,22 +211,71 @@ export function pickEditions(
 
 type EditionsResponse = {
   entries?: OpenLibraryEditionDoc[];
+  size?: number; // total real de ediciones de la obra, lo traiga o no la propia página
 };
+
+const EDITIONS_PAGE_SIZE = 100;
+// Tope de páginas a pedir para obras muy reeditadas (los clásicos, que son
+// justo el caso que falla si solo se mira una página: las primeras 100
+// entradas de un work con miles de ediciones suelen ser reimpresiones POD
+// recientes, y las ediciones reales quedan mucho más atrás en el listado).
+// 5 páginas = 500 ediciones es el punto en el que ya aparecen ediciones
+// españolas reales del Quijote sin disparar el número de llamadas para el
+// resto de libros, que tienen muchas menos.
+const MAX_EDITIONS_PAGES = 5;
+const FETCH_TIMEOUT_MS = 5000;
+
+// Una sola página de editions.json. Nunca lanza: un fallo aquí (timeout, red,
+// respuesta no-ok) se trata como "esta página no aportó nada", no como un
+// fallo de toda la operación.
+async function fetchEditionsPage(key: string, offset: number): Promise<EditionsResponse | null> {
+  try {
+    const url = `https://openlibrary.org/works/${key}/editions.json?limit=${EDITIONS_PAGE_SIZE}&offset=${offset}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
 // Trae las ediciones reales de una obra desde OpenLibrary. Nunca lanza: si la
 // API falla, tarda más de 5s o devuelve algo inesperado, la ficha del libro
 // no puede caerse por ello, así que se degrada a lista vacía.
+//
+// Pagina cuando hace falta: la primera página ya trae `size` (el total real
+// de ediciones), así que si el libro tiene 100 ediciones o menos no se pide
+// nada más — es el caso de la inmensa mayoría de libros. Solo para obras muy
+// reeditadas se piden hasta 4 páginas adicionales, todas EN PARALELO
+// (Promise.allSettled) para no multiplicar por 5 el tiempo de la primera
+// visita a la ficha, y tolerando que alguna falle: un timeout parcial no deja
+// la ficha sin ediciones, simplemente se trabaja con lo que llegó a tiempo.
 export async function fetchWorkEditions(workKey: string): Promise<OpenLibraryEdition[]> {
   try {
     const key = workKey.replace(/^\/?works\//, "").replace(/^\//, "");
     if (!key) return [];
 
-    const url = `https://openlibrary.org/works/${key}/editions.json?limit=100`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return [];
+    const first = await fetchEditionsPage(key, 0);
+    if (!first) return [];
 
-    const data: EditionsResponse = await res.json();
-    const entries = Array.isArray(data.entries) ? data.entries : [];
+    const entries: OpenLibraryEditionDoc[] = Array.isArray(first.entries) ? [...first.entries] : [];
+    const total = typeof first.size === "number" ? first.size : entries.length;
+
+    if (total > EDITIONS_PAGE_SIZE) {
+      const pagesToFetch = Math.min(MAX_EDITIONS_PAGES, Math.ceil(total / EDITIONS_PAGE_SIZE)) - 1;
+      const offsets = Array.from({ length: pagesToFetch }, (_, i) => (i + 1) * EDITIONS_PAGE_SIZE);
+
+      const results = await Promise.allSettled(
+        offsets.map((offset) => fetchEditionsPage(key, offset))
+      );
+
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value?.entries) {
+          entries.push(...result.value.entries);
+        }
+      }
+    }
+
     return pickEditions(entries);
   } catch {
     return [];
