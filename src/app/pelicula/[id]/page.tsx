@@ -19,10 +19,12 @@ import {
 } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
+import { EditionStrip } from "@/components/detail/edition-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
+import { getEditions } from "@/lib/editions/get-editions";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -83,10 +85,11 @@ export default async function MovieDetailPage({
     tmdbId: movie.tmdb_id,
   });
 
-  const [watchProviders, credits, saga] = await Promise.all([
+  const [watchProviders, credits, saga, editions] = await Promise.all([
     movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
     getItemCredits(supabase, "movie", movie.id),
     getItemSaga(supabase, "movie", movie.id),
+    getEditions(supabase, "movie", movie.id),
   ]);
 
   let entry: ManagedEntry | null = null;
@@ -189,6 +192,13 @@ export default async function MovieDetailPage({
                 label={tDetail("saga")}
               />
             )}
+            <EditionStrip
+              itemType="movie"
+              itemId={movie.id}
+              editions={editions}
+              selectedEditionId={null}
+              canContribute={canContribute}
+            />
             <InfoPanel
               aboutLabel={tDetail("about")}
               synopsis={movie.synopsis}

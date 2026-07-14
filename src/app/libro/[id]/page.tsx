@@ -18,9 +18,11 @@ import {
 } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
+import { EditionStrip } from "@/components/detail/edition-strip";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
+import { getEditions } from "@/lib/editions/get-editions";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
@@ -82,9 +84,10 @@ export default async function BookDetailPage({
     author: book.author,
   });
 
-  const [credits, saga] = await Promise.all([
+  const [credits, saga, editions] = await Promise.all([
     getItemCredits(supabase, "book", book.id),
     getItemSaga(supabase, "book", book.id),
+    getEditions(supabase, "book", book.id),
   ]);
   // Autores como enlaces a su ficha; si no se pudo enriquecer, texto plano.
   const authorCredits = credits.crew.filter((c) => c.role === "author");
@@ -202,6 +205,13 @@ export default async function BookDetailPage({
                 label={tDetail("saga")}
               />
             )}
+            <EditionStrip
+              itemType="book"
+              itemId={book.id}
+              editions={editions}
+              selectedEditionId={null}
+              canContribute={canContribute}
+            />
             <InfoPanel
               aboutLabel={tDetail("about")}
               synopsis={book.synopsis}
