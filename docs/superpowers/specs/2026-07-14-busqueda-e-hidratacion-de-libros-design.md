@@ -123,9 +123,12 @@ Dos módulos nuevos fuera de esa carpeta:
 
 Se borran:
 
-- `group-editions.ts` y `title-match.ts` — agrupaban a mano lo que la API ya
-  agrupa. (Verificar que no queden otros usos antes de borrar.)
+- `group-editions.ts` — agrupaba a mano lo que la API ya agrupa.
 - `google-books.ts` — código muerto.
+
+**No** se borra `title-match.ts`: lo usa el importador de Goodreads
+(`src/lib/import/match-row.ts`) para comparar el título del CSV con el de la
+API, que es un uso legítimo y no tiene nada que ver con el agrupado.
 
 `search.ts` queda reducido a orquestar: lookup por ISBN, o `searchWorks` +
 búsqueda local fusionadas por work key.
@@ -144,14 +147,23 @@ las tres tablas de catálogo.
 ## Esquema
 
 Una migración, encima de las del diseño de ediciones (que siguen pendientes de
-subir a producción):
+subir a producción). Ojo: **`openlibrary_work_key` ya la añade y la rellena el
+diseño de ediciones** (`20260714_editions_d_sync.sql`, backfill desde
+`google_books_id where like '/works/%'`), así que aquí no hay rename que hacer.
+Queda:
 
-- `books.google_books_id` → **`books.openlibrary_work_key`** (rename limpio: las
-  10 filas existentes ya guardan work keys de Open Library).
-- **`books.hydrated_at timestamptz null`**.
+- **`books.hydrated_at timestamptz null`** — el guard del peldaño 2, hermano de
+  `editions_synced_at`.
+- **`drop column books.google_books_id`** — la columna legacy, ya vaciada de
+  sentido por el backfill anterior.
+- **`hydrate_book(...)`**, función `security definer` que rellena
+  `synopsis`/`genres`/`cover_url` **solo donde estaban vacíos**: son columnas
+  curadas (solo colaborador+ puede cambiarlas), y hidratar es rellenar un hueco,
+  no curar. Así un visitante autenticado cualquiera puede completar una obra
+  vacía abriendo su ficha, sin poder pisar nunca lo que un colaborador escribió.
 
 Las filas viejas quedan con `hydrated_at` a null, así que se rehidratan solas la
-primera vez que alguien abra su ficha. No se borra nada.
+primera vez que alguien abra su ficha. No se borra ninguna fila.
 
 ## Errores
 
