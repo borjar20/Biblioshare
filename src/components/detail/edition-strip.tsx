@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
-import { formatEdition } from "@/lib/editions/edition-label";
+import { formatEdition, formatEditionMeta } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { createEdition, type CreateEditionState } from "@/lib/editions/actions";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,18 @@ export function EditionStrip({
     initialState
   );
 
+  // Cerrar el panel de alta tras un envío correcto es un ajuste de estado en
+  // respuesta a un cambio de estado, no un efecto secundario: se hace durante
+  // el render (patrón ya usado en item-picker.tsx) en vez de en un
+  // useEffect, que aquí dispararía la regla de lint
+  // react-hooks/set-state-in-effect y además tardaría un ciclo extra en
+  // reflejarse (flash del formulario ya vacío antes de cerrarse).
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (!state.error) setAdding(false);
+  }
+
   if (editions.length === 0 && !canContribute) return null;
 
   const isMovie = itemType === "movie";
@@ -61,7 +73,19 @@ export function EditionStrip({
       <div className="flex gap-2.5 overflow-x-auto pb-2">
         {editions.map((edition) => {
           const isSelected = edition.id === selectedEditionId;
-          const name = edition.publisher ?? edition.label;
+          // Solo pintamos el nombre en semibold si aporta algo distinto de la
+          // etiqueta de arriba: en película publisher siempre es null, así
+          // que sin este guard el nombre repetía la misma etiqueta dos veces.
+          const name =
+            edition.publisher && edition.publisher !== edition.label
+              ? edition.publisher
+              : null;
+          // En película la línea de metadatos usa año y duración (sin
+          // repetir la etiqueta, que formatEdition antepone); en libro se
+          // mantiene el resumen completo etiqueta · editorial · páginas.
+          const meta = isMovie
+            ? formatEditionMeta(edition)
+            : formatEdition(edition, itemType);
 
           return (
             <div
@@ -93,12 +117,16 @@ export function EditionStrip({
                   </span>
                 )}
               </div>
-              <p className="line-clamp-2 text-xs font-semibold text-foreground">
-                {name}
-              </p>
-              <p className="mt-1 font-mono text-[9.5px] leading-relaxed text-muted-foreground">
-                {formatEdition(edition, itemType)}
-              </p>
+              {name && (
+                <p className="line-clamp-2 text-xs font-semibold text-foreground">
+                  {name}
+                </p>
+              )}
+              {meta && (
+                <p className="mt-1 font-mono text-[9.5px] leading-relaxed text-muted-foreground">
+                  {meta}
+                </p>
+              )}
             </div>
           );
         })}

@@ -17,6 +17,16 @@ export function formatEdition(edition: Edition, itemType: ItemType): string {
   return parts.join(" · ");
 }
 
+// Línea secundaria compacta para una tarjeta de versión de película: año y
+// duración, sin repetir la etiqueta (que ya se pinta como badge aparte). Los
+// libros siguen usando formatEdition, que sí antepone la etiqueta.
+export function formatEditionMeta(edition: Edition): string {
+  const parts: string[] = [];
+  if (edition.year !== null) parts.push(String(edition.year));
+  if (edition.totalUnits !== null) parts.push(runtime(edition.totalUnits));
+  return parts.join(" · ");
+}
+
 export function primaryEdition(editions: Edition[]): Edition | null {
   return editions.find((e) => e.isPrimary) ?? null;
 }
