@@ -4,7 +4,7 @@
 -- campos:
 --
 --   - books: solo tiene concedido `openlibrary_work_key` / `editions_synced_at`
---     (20260714_editions_sync_rls.sql, que además cerró un grant heredado
+--     (20260714_editions_e_sync_rls.sql, que además cerró un grant heredado
 --     mucho más amplio que nunca debió existir — ver su cabecera). Esta
 --     migración debe aplicarse DESPUÉS de esa: aquí solo se AÑADEN columnas al
 --     grant ya acotado, nunca se reabre desde cero.
@@ -89,7 +89,7 @@ end;
 $$;
 
 comment on function public.enforce_catalog_edit_collaborator_only() is
-  'BEFORE UPDATE en books/movies/series: título/autoría/sinopsis/géneros/año/portada solo los cambia collaborator+. Las columnas de sincronización (openlibrary_work_key, editions_synced_at, duration_minutes, total_seasons, total_episodes, episode_runtime_minutes) no se tocan aquí y siguen abiertas a cualquier authenticated (Tarea 6 / backfillQueueSizes). Ver cabecera de 20260714_catalog_edit_grants.sql.';
+  'BEFORE UPDATE en books/movies/series: título/autoría/sinopsis/géneros/año/portada solo los cambia collaborator+. Las columnas de sincronización (openlibrary_work_key, editions_synced_at, duration_minutes, total_seasons, total_episodes, episode_runtime_minutes) no se tocan aquí y siguen abiertas a cualquier authenticated (Tarea 6 / backfillQueueSizes). Ver cabecera de 20260714_editions_h_catalog_edit_grants.sql.';
 
 drop trigger if exists trg_enforce_books_edit_collaborator_only on public.books;
 create trigger trg_enforce_books_edit_collaborator_only

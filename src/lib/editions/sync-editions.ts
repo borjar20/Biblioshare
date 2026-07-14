@@ -81,17 +81,26 @@ export async function ensureBookEditions(
     // registrado (duplicado) devuelve null: es idempotente, no un fallo.
     // Cualquier otro error individual también se ignora — una edición que no
     // se pudo registrar no debe impedir que se registren las demás.
-    for (const edition of editions) {
-      await supabase.rpc("register_book_edition", {
-        p_book_id: book.id,
-        p_isbn: edition.isbn,
-        p_label: edition.label,
-        p_publisher: edition.publisher ?? undefined,
-        p_year: edition.year ?? undefined,
-        p_pages: edition.totalPages ?? undefined,
-        p_cover_url: edition.coverUrl ?? undefined,
-      });
-    }
+    //
+    // EN PARALELO (Hallazgo 4 de la revisión final): hasta veinte ediciones
+    // (DEFAULT_LIMIT en openlibrary-editions.ts) no tienen ninguna
+    // dependencia entre sí, así que encadenarlas una a una solo sumaba
+    // veinte viajes de ida y vuelta a la base de datos sin ninguna razón.
+    // Promise.allSettled (no Promise.all) porque el fallo de una no debe
+    // tirar las demás — mismo espíritu que el bucle secuencial que sustituye.
+    await Promise.allSettled(
+      editions.map((edition) =>
+        supabase.rpc("register_book_edition", {
+          p_book_id: book.id,
+          p_isbn: edition.isbn,
+          p_label: edition.label,
+          p_publisher: edition.publisher ?? undefined,
+          p_year: edition.year ?? undefined,
+          p_pages: edition.totalPages ?? undefined,
+          p_cover_url: edition.coverUrl ?? undefined,
+        })
+      )
+    );
 
     // 5. Hecho: no se vuelve a sincronizar este libro.
     await markSynced(supabase, book.id);

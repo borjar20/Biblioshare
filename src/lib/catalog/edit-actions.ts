@@ -321,7 +321,7 @@ export async function deleteEdition(
   // de perfiles públicos). NO es la protección real — un pase contra un
   // perfil privado no entra en este count, así que puede quedarse corto. La
   // protección de verdad es el trigger block_edition_delete_if_used
-  // (20260714_edition_delete_guard.sql), que ve TODOS los pases sin filtro de
+  // (20260714_editions_f_delete_guard.sql), que ve TODOS los pases sin filtro de
   // RLS y es lo único que de verdad impide el borrado.
   const { count } = await supabase
     .from("diary_entries")

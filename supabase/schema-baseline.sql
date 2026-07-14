@@ -4553,3 +4553,693 @@ revoke execute on function public.validate_club_post_ref() from public, anon, au
 -- (user_id, queue_id, queue_order), que no cubre el lookup puro por queue_id).
 create index idx_club_poll_votes_option on public.club_poll_votes (option_id);
 create index idx_library_entries_queue on public.library_entries (queue_id) where queue_id is not null;
+
+-- ============================================================
+-- 20260714_editions.sql
+-- ============================================================
+
+-- Ediciones de libro y versiones de película.
+--
+-- La obra sigue siendo books/movies (título, autoría, sinopsis, géneros); la
+-- edición aporta lo que varía entre tiradas: editorial, ISBN, idioma, páginas
+-- (o duración y corte, en película). Un pase apunta a una edición, así que
+-- "voy por la página 240 de 662" solo es cierto contra la edición que estás
+-- leyendo: la de bolsillo tiene 880. Las series no tienen ediciones — su
+-- unidad de progreso son los episodios.
+
+create table public.book_editions (
+  id uuid primary key default gen_random_uuid(),
+  book_id uuid not null references public.books(id) on delete cascade,
+  label text not null check (char_length(label) between 1 and 60),
+  publisher text check (char_length(publisher) <= 120),
+  published_year integer check (published_year between 1400 and 2200),
+  language text check (char_length(language) <= 10),
+  total_pages integer check (total_pages between 1 and 20000),
+  isbn text check (char_length(isbn) <= 20),
+  cover_url text,
+  is_primary boolean not null default false,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table public.movie_versions (
+  id uuid primary key default gen_random_uuid(),
+  movie_id uuid not null references public.movies(id) on delete cascade,
+  label text not null check (char_length(label) between 1 and 60),
+  release_year integer check (release_year between 1870 and 2200),
+  duration_minutes integer check (duration_minutes between 1 and 1200),
+  is_primary boolean not null default false,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- Una sola edición primaria por obra.
+create unique index book_editions_one_primary
+  on public.book_editions (book_id) where is_primary;
+create unique index movie_versions_one_primary
+  on public.movie_versions (movie_id) where is_primary;
+
+create index book_editions_book_id_idx on public.book_editions (book_id);
+create index movie_versions_movie_id_idx on public.movie_versions (movie_id);
+
+-- Backfill: cada obra existente engendra su edición primaria con los datos que
+-- hoy lleva sueltos en la ficha. Las columnas viejas de books/movies siguen ahí
+-- como espejo hasta una limpieza posterior, para poder revertir sin pérdida.
+--
+-- SANEANDO al copiar, que esto no es paranoia: `books` no valida nada y estas
+-- tablas sí, y en producción hay 19 libros con total_pages = 0 (Google Books
+-- devuelve `pageCount: 0` a manta). Sin el saneo, el CHECK reventaría este
+-- INSERT y la migración entera se caería a medias. Cero páginas no es "cero
+-- páginas": es "no lo sé", o sea NULL.
+insert into public.book_editions (book_id, label, publisher, published_year, total_pages, isbn, cover_url, is_primary)
+select id, 'Edición principal', publisher,
+       case when published_year between 1400 and 2200 then published_year end,
+       case when total_pages between 1 and 20000 then total_pages end,
+       case when char_length(isbn) <= 20 then isbn end,
+       cover_url, true
+from public.books;
+
+insert into public.movie_versions (movie_id, label, release_year, duration_minutes, is_primary)
+select id, 'Versión principal',
+       case when release_year between 1870 and 2200 then release_year end,
+       case when duration_minutes between 1 and 1200 then duration_minutes end,
+       true
+from public.movies;
+
+alter table public.book_editions enable row level security;
+alter table public.movie_versions enable row level security;
+
+-- Catálogo compartido: lectura pública; crear y editar es curación → colaborador+,
+-- igual que asignar sagas (§7.35).
+create policy "book_editions readable by all"
+  on public.book_editions for select using (true);
+create policy "book_editions insertable by collaborators"
+  on public.book_editions for insert to authenticated
+  with check (public.current_user_role() in ('collaborator', 'admin'));
+create policy "book_editions updatable by collaborators"
+  on public.book_editions for update to authenticated
+  using (public.current_user_role() in ('collaborator', 'admin'))
+  with check (public.current_user_role() in ('collaborator', 'admin'));
+
+create policy "movie_versions readable by all"
+  on public.movie_versions for select using (true);
+create policy "movie_versions insertable by collaborators"
+  on public.movie_versions for insert to authenticated
+  with check (public.current_user_role() in ('collaborator', 'admin'));
+create policy "movie_versions updatable by collaborators"
+  on public.movie_versions for update to authenticated
+  using (public.current_user_role() in ('collaborator', 'admin'))
+  with check (public.current_user_role() in ('collaborator', 'admin'));
+
+-- Grants por columna: nadie escribe is_primary ni created_at desde el cliente
+-- (la primaria la fija el backfill / una migración, no un usuario).
+grant select on public.book_editions to anon, authenticated;
+grant select on public.movie_versions to anon, authenticated;
+grant insert (book_id, label, publisher, published_year, language, total_pages, isbn, cover_url, created_by)
+  on public.book_editions to authenticated;
+grant update (label, publisher, published_year, language, total_pages, isbn, cover_url)
+  on public.book_editions to authenticated;
+grant insert (movie_id, label, release_year, duration_minutes, created_by)
+  on public.movie_versions to authenticated;
+grant update (label, release_year, duration_minutes)
+  on public.movie_versions to authenticated;
+
+-- ============================================================
+-- 20260714_editions_b_primary.sql
+-- ============================================================
+
+-- La edición primaria la fija la base de datos, no la app.
+--
+-- El backfill de 20260714_editions.sql solo cubrió las obras que YA existían.
+-- Una obra que entra nueva al catálogo (desde la búsqueda) se quedaría sin
+-- edición primaria, y una película nueva sin ninguna versión. La app no puede
+-- arreglarlo por su cuenta: `is_primary` está fuera de los grants por columna,
+-- precisamente para que un usuario no decida cuál es la edición canónica.
+--
+-- Ojo con el orden de estos ficheros: las migraciones se aplican en orden
+-- alfabético, así que el sufijo `_b_` no es decorativo — este fichero DEBE ir
+-- después de 20260714_editions.sql y antes de 20260714_editions_c_register.sql.
+
+-- Los datos vienen de APIs externas y llegan sucios: Google Books devuelve
+-- `pageCount: 0` a menudo, y 0 páginas no es "cero páginas", es "no lo sé".
+-- `books` no valida nada, pero `book_editions` sí, así que hay que sanear al
+-- copiar o el CHECK reventaría el alta de la obra.
+create or replace function public.sane_int(v integer, lo integer, hi integer)
+returns integer language sql immutable as $$
+  select case when v between lo and hi then v end;
+$$;
+
+create or replace function public.create_primary_book_edition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.book_editions
+    (book_id, label, publisher, published_year, total_pages, isbn, cover_url, is_primary)
+  values
+    (new.id, 'Edición principal', new.publisher,
+     public.sane_int(new.published_year, 1400, 2200),
+     public.sane_int(new.total_pages, 1, 20000),
+     case when char_length(coalesce(new.isbn, '')) <= 20 then new.isbn end,
+     new.cover_url, true)
+  on conflict do nothing;
+  return new;
+exception when others then
+  -- La obra manda: si su edición primaria no se puede crear, que nazca igual.
+  -- Sin esto, un libro con 0 páginas era imposible de añadir al catálogo: el
+  -- check_violation abortaba la transacción entera del INSERT en books.
+  raise warning 'edicion primaria omitida para el libro %: %', new.id, sqlerrm;
+  return new;
+end;
+$$;
+
+create or replace function public.create_primary_movie_version()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.movie_versions
+    (movie_id, label, release_year, duration_minutes, is_primary)
+  values
+    (new.id, 'Versión principal',
+     public.sane_int(new.release_year, 1870, 2200),
+     public.sane_int(new.duration_minutes, 1, 1200),
+     true)
+  on conflict do nothing;
+  return new;
+exception when others then
+  raise warning 'version primaria omitida para la pelicula %: %', new.id, sqlerrm;
+  return new;
+end;
+$$;
+
+-- Red de seguridad: si la obra todavía no tiene primaria, la edición que entre
+-- pasa a serlo. Va en un BEFORE INSERT porque escribe sobre la propia fila
+-- (NEW), y así esquiva limpiamente el grant por columna: el usuario no menciona
+-- `is_primary` en su INSERT, lo pone el trigger.
+create or replace function public.ensure_primary_book_edition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.book_editions where book_id = new.book_id and is_primary
+  ) then
+    new.is_primary := true;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.ensure_primary_movie_version()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.movie_versions where movie_id = new.movie_id and is_primary
+  ) then
+    new.is_primary := true;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists books_create_primary_edition on public.books;
+drop trigger if exists movies_create_primary_version on public.movies;
+drop trigger if exists book_editions_ensure_primary on public.book_editions;
+drop trigger if exists movie_versions_ensure_primary on public.movie_versions;
+
+create trigger books_create_primary_edition
+  after insert on public.books
+  for each row execute function public.create_primary_book_edition();
+
+create trigger movies_create_primary_version
+  after insert on public.movies
+  for each row execute function public.create_primary_movie_version();
+
+create trigger book_editions_ensure_primary
+  before insert on public.book_editions
+  for each row execute function public.ensure_primary_book_edition();
+
+create trigger movie_versions_ensure_primary
+  before insert on public.movie_versions
+  for each row execute function public.ensure_primary_movie_version();
+
+-- ============================================================
+-- 20260714_editions_c_register.sql
+-- ============================================================
+
+-- Alta de edición desde la búsqueda.
+--
+-- Crear una edición A MANO es curación y exige colaborador+ (20260714_editions.sql).
+-- Pero cuando alguien añade un libro desde la búsqueda ya ha elegido un ISBN
+-- concreto en Google Books: ese dato viene de una fuente de catálogo. Sin una
+-- vía para registrarlo, la edición que de verdad tiene el usuario en la mano
+-- nunca entraría en la ficha.
+--
+-- La vía NO es abrir el INSERT a cualquiera (se probó: dejaba escribir
+-- editorial, portada y páginas inventadas en cualquier libro con solo poner
+-- diez caracteres en `isbn`). Es esta función: valida el ISBN de verdad, sanea
+-- lo que venga fuera de rango, y firma quién la llamó. El INSERT directo sigue
+-- reservado a colaborador+.
+--
+-- Riesgo residual asumido: un usuario autenticado puede llamar a la RPC a mano
+-- con un ISBN de checksum válido y adjuntar una edición inventada a un libro
+-- ajeno. No es escalada de privilegios y queda firmado en `created_by`, así que
+-- es reversible; si algún día hay spam, se sube el listón (rate limit o cola de
+-- revisión). No merece más maquinaria hoy.
+
+-- Dos usuarios añadiendo el mismo ISBN a la vez no deben crear dos filas.
+create unique index book_editions_isbn_unique
+  on public.book_editions (book_id, isbn) where isbn is not null;
+
+create or replace function public.register_book_edition(
+  p_book_id uuid,
+  p_isbn text,
+  p_label text default 'Edición',
+  p_publisher text default null,
+  p_year integer default null,
+  p_pages integer default null,
+  p_cover_url text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_digits text;
+  v_id uuid;
+  v_sum integer := 0;
+  v_i integer;
+begin
+  if auth.uid() is null then
+    raise exception 'auth required';
+  end if;
+
+  v_digits := regexp_replace(coalesce(p_isbn, ''), '[^0-9Xx]', '', 'g');
+
+  -- Dígito de control: un ISBN mal formado no entra en el catálogo compartido.
+  if char_length(v_digits) = 13 then
+    for v_i in 1..12 loop
+      v_sum := v_sum + (substr(v_digits, v_i, 1))::integer
+                       * case when v_i % 2 = 0 then 3 else 1 end;
+    end loop;
+    if ((10 - (v_sum % 10)) % 10)::text <> substr(v_digits, 13, 1) then
+      raise exception 'invalid isbn13';
+    end if;
+  elsif char_length(v_digits) = 10 then
+    for v_i in 1..9 loop
+      v_sum := v_sum + (substr(v_digits, v_i, 1))::integer * (11 - v_i);
+    end loop;
+    v_sum := v_sum + case when upper(substr(v_digits, 10, 1)) = 'X' then 10
+                          else (substr(v_digits, 10, 1))::integer end;
+    if v_sum % 11 <> 0 then
+      raise exception 'invalid isbn10';
+    end if;
+  else
+    raise exception 'invalid isbn length';
+  end if;
+
+  insert into public.book_editions
+    (book_id, label, publisher, published_year, total_pages, isbn, cover_url, created_by)
+  values
+    (p_book_id, coalesce(nullif(trim(p_label), ''), 'Edición'), p_publisher,
+     public.sane_int(p_year, 1400, 2200), public.sane_int(p_pages, 1, 20000),
+     v_digits, p_cover_url, auth.uid())
+  on conflict do nothing
+  returning id into v_id;
+
+  return v_id;  -- null si ya existía: el alta es idempotente
+end;
+$$;
+
+revoke all on function public.register_book_edition(uuid, text, text, text, integer, integer, text) from public;
+grant execute on function public.register_book_edition(uuid, text, text, text, integer, integer, text) to authenticated;
+
+-- ============================================================
+-- 20260714_editions_d_sync.sql
+-- ============================================================
+
+-- La work key de OpenLibrary, que es lo que hace falta para pedir las ediciones
+-- de una obra (/works/OL...W/editions.json).
+--
+-- Hoy se guarda —a medias— en `books.google_books_id`, una columna cuyo nombre
+-- miente: el proyecto migró de Google Books a OpenLibrary y la columna se quedó
+-- con el nombre viejo. En producción hay 80 libros con una work key ahí dentro,
+-- 146 con IDs antiguos de Google Books y 10 sin nada. Así que se separa en una
+-- columna honesta y se hace backfill de los que ya la tienen; para el resto, la
+-- work key se resolverá por ISBN la primera vez que alguien abra su ficha.
+--
+-- `editions_synced_at` es la marca del cache-as-you-go: si está puesta, ya se
+-- preguntó por las ediciones de este libro y no se vuelve a preguntar — ni
+-- siquiera si la respuesta fue "no hay ninguna". Sin esa marca, una obra sin
+-- ediciones en OpenLibrary pagaría una llamada en cada visita a su ficha.
+alter table public.books
+  add column openlibrary_work_key text,
+  add column editions_synced_at timestamptz;
+
+update public.books
+   set openlibrary_work_key = google_books_id
+ where google_books_id like '/works/%';
+
+create index books_openlibrary_work_key_idx
+  on public.books (openlibrary_work_key) where openlibrary_work_key is not null;
+
+-- La app escribe ambas columnas al sincronizar (cache-as-you-go con la sesión
+-- del usuario que navega, como el resto del enriquecimiento de catálogo).
+grant update (openlibrary_work_key, editions_synced_at)
+  on public.books to authenticated;
+
+-- ============================================================
+-- 20260714_editions_e_sync_rls.sql
+-- ============================================================
+
+-- Falta una policy de UPDATE en `books` para que el cache-as-you-go de
+-- ediciones (Tarea 6, src/lib/editions/sync-editions.ts) pueda persistir.
+--
+-- 20260714_editions_d_sync.sql ya concedió el GRANT de columna
+-- (`openlibrary_work_key`, `editions_synced_at`) a `authenticated`, pero un
+-- GRANT no basta con RLS activado: sin una POLICY de UPDATE, Postgres filtra
+-- la fila a actualizar a cero silenciosamente (no lanza error). Verificado en
+-- dev: la RPC register_book_edition (security definer) SÍ inserta ediciones
+-- reales con normalidad, pero el UPDATE directo a `books` desde el cliente
+-- nunca toca ninguna fila — `editions_synced_at` se queda en null para
+-- siempre y cada visita a la ficha repite la llamada a OpenLibrary, que es
+-- justo lo que la Tarea 6 quería evitar.
+--
+-- De paso se cierra un grant más amplio de lo previsto: `books` tenía UPDATE
+-- concedido en TODAS sus columnas a `anon` y `authenticated` (nunca se le
+-- aplicó el revoke+grant acotado por columnas que sí recibieron movies/
+-- series/people en 20260709230750_fix_catalog_rls_policies — books no
+-- existía aún en esa migración). Sin una policy quedaba inerte igualmente,
+-- pero conviene cerrarlo ahora: mismo patrón que las otras tres tablas.
+revoke update on public.books from anon, authenticated;
+grant update (openlibrary_work_key, editions_synced_at)
+  on public.books to authenticated;
+
+create policy "books editions sync updatable" on public.books
+  for update to authenticated using (true) with check (true);
+
+-- ============================================================
+-- 20260714_editions_f_delete_guard.sql
+-- ============================================================
+
+-- No se puede borrar una edición que alguien está leyendo.
+--
+-- `diary_entries.edition_id` es polimórfico (apunta a book_editions O a
+-- movie_versions según el tipo del ítem), así que NO admite una clave ajena. La
+-- protección va en un trigger, que además vale para cualquier vía de borrado: la
+-- de hoy y las que vengan.
+--
+-- Y se IMPIDE, no se reasigna en silencio a la edición primaria: reasignar
+-- falsearía el progreso de alguien que no ha pedido nada ("voy por la página 240
+-- de 662" se convertiría en "de 880" sin que su dueño se entere). Que el editor
+-- lo explique y que el colaborador decida.
+create or replace function public.block_edition_delete_if_used()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pases integer;
+begin
+  select count(*) into v_pases
+  from public.diary_entries d
+  where d.edition_id = old.id;
+
+  if v_pases > 0 then
+    raise exception 'edition_in_use'
+      using hint = format('%s pases usan esta edicion', v_pases);
+  end if;
+
+  return old;
+end;
+$$;
+
+drop trigger if exists book_editions_block_delete on public.book_editions;
+create trigger book_editions_block_delete
+  before delete on public.book_editions
+  for each row execute function public.block_edition_delete_if_used();
+
+drop trigger if exists movie_versions_block_delete on public.movie_versions;
+create trigger movie_versions_block_delete
+  before delete on public.movie_versions
+  for each row execute function public.block_edition_delete_if_used();
+
+-- El trigger lo dispara Postgres, no lo invoca nadie a mano: conceder EXECUTE
+-- solo sería superficie de ataque y ruido en los advisors.
+revoke execute on function public.block_edition_delete_if_used() from public, anon, authenticated;
+
+-- Borrar una edición del catálogo es curación: colaborador+, igual que crearla.
+grant delete on public.book_editions to authenticated;
+grant delete on public.movie_versions to authenticated;
+
+create policy "book_editions deletable by collaborators"
+  on public.book_editions for delete to authenticated
+  using (public.current_user_role() in ('collaborator', 'admin'));
+
+create policy "movie_versions deletable by collaborators"
+  on public.movie_versions for delete to authenticated
+  using (public.current_user_role() in ('collaborator', 'admin'));
+
+-- Hallazgo 2 (revisión final 2026-07-14): borrar la primaria no debe dejar la
+-- obra sin denominador. El trigger de arriba (block_edition_delete_if_used)
+-- solo bloquea el borrado si algún PASE referencia la edición por id — pero
+-- los pases que contestaron "No lo sé" tienen edition_id = NULL y miden su
+-- progreso contra la PRIMARIA (ver openPassEdition en
+-- src/components/detail/log-panel.tsx / primaryEdition en
+-- src/lib/editions/edition-label.ts). Nada se opone entonces a borrar la
+-- primaria, y esos lectores pierden de golpe el "de 662 páginas" y se quedan
+-- con "voy por la página 240" a secas.
+--
+-- Por eso, tras borrar una edición que ERA la primaria, se promueve otra
+-- automáticamente: la más reciente que quede (año de publicación/estreno
+-- desc nulls last, created_at desc como desempate — mismo criterio que
+-- "más reciente" en el resto del editor). Si no queda ninguna edición, no se
+-- hace nada: el progreso cae al espejo de books.total_pages /
+-- movies.duration_minutes, que es el comportamiento de hoy y está bien (no
+-- hay denominador mejor que rescatar si la obra se queda sin ediciones).
+create or replace function public.promote_primary_edition_after_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Solo hay algo que arreglar si lo que se borró ERA la primaria: si no lo
+  -- era, la primaria de siempre sigue intacta y no hay nada que promover.
+  if not old.is_primary then
+    return old;
+  end if;
+
+  if TG_TABLE_NAME = 'book_editions' then
+    update public.book_editions
+       set is_primary = true
+     where id = (
+       select id
+         from public.book_editions
+        where book_id = old.book_id
+        order by published_year desc nulls last, created_at desc
+        limit 1
+     );
+  elsif TG_TABLE_NAME = 'movie_versions' then
+    update public.movie_versions
+       set is_primary = true
+     where id = (
+       select id
+         from public.movie_versions
+        where movie_id = old.movie_id
+        order by release_year desc nulls last, created_at desc
+        limit 1
+     );
+  end if;
+
+  return old;
+end;
+$$;
+
+drop trigger if exists book_editions_promote_primary_after_delete on public.book_editions;
+create trigger book_editions_promote_primary_after_delete
+  after delete on public.book_editions
+  for each row execute function public.promote_primary_edition_after_delete();
+
+drop trigger if exists movie_versions_promote_primary_after_delete on public.movie_versions;
+create trigger movie_versions_promote_primary_after_delete
+  after delete on public.movie_versions
+  for each row execute function public.promote_primary_edition_after_delete();
+
+-- Mismo idioma de higiene que block_edition_delete_if_used: lo dispara
+-- Postgres, no es una RPC.
+revoke execute on function public.promote_primary_edition_after_delete() from public, anon, authenticated;
+
+-- ============================================================
+-- 20260714_editions_g_covers_bucket.sql
+-- ============================================================
+
+-- Portadas alojadas en Supabase Storage, para que un colaborador pueda corregir
+-- la portada de una ficha (los datos de OpenLibrary llegan sucios y a veces sin
+-- portada, o con una que no es).
+--
+-- Mismo patrón que el bucket de avatares (20260710_avatars_storage.sql), con UNA
+-- diferencia que importa: en avatares la puerta es la CARPETA (cada usuario
+-- escribe en la suya, {uid}/). Aquí la portada es del CATÁLOGO COMPARTIDO: no es
+-- de nadie, así que la puerta es el ROL. Mismo criterio que crear ediciones o
+-- asignar sagas (§7.35): colaborador o superior.
+insert into storage.buckets (id, name, public)
+values ('covers', 'covers', true)
+on conflict (id) do nothing;
+
+-- Como en avatares, NO se añade una política SELECT amplia: el bucket es público
+-- y sirve sus objetos por URL, y una SELECT abierta permitiría LISTAR el bucket.
+
+create policy "covers insert by collaborators" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'covers'
+    and public.current_user_role() in ('collaborator', 'admin')
+  );
+
+create policy "covers update by collaborators" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'covers'
+    and public.current_user_role() in ('collaborator', 'admin')
+  )
+  with check (
+    bucket_id = 'covers'
+    and public.current_user_role() in ('collaborator', 'admin')
+  );
+
+create policy "covers delete by collaborators" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'covers'
+    and public.current_user_role() in ('collaborator', 'admin')
+  );
+
+-- ============================================================
+-- 20260714_editions_h_catalog_edit_grants.sql
+-- ============================================================
+
+-- Editor de ficha oficial (Tarea 9): colaborador+ puede corregir título,
+-- autoría/dirección/creación, sinopsis, géneros, año y portada de books/
+-- movies/series. Hoy `authenticated` NO puede escribir ninguno de esos
+-- campos:
+--
+--   - books: solo tiene concedido `openlibrary_work_key` / `editions_synced_at`
+--     (20260714_editions_e_sync_rls.sql, que además cerró un grant heredado
+--     mucho más amplio que nunca debió existir — ver su cabecera). Esta
+--     migración debe aplicarse DESPUÉS de esa: aquí solo se AÑADEN columnas al
+--     grant ya acotado, nunca se reabre desde cero.
+--   - movies / series: solo tienen concedido el backfill de tamaño
+--     (duration_minutes / total_seasons+total_episodes — verificado en vivo
+--     con information_schema.role_column_grants), que sigue intacto:
+--     cualquier autenticado necesita seguir pudiendo rellenarlo
+--     (backfillQueueSizes, src/lib/queue/backfill-queue-sizes.ts, corre para
+--     cualquier visitante de la cola, no solo colaboradores).
+--
+-- OJO — por qué esto NO es "grant ampliado + policy de colaborador" sin más:
+-- una policy RLS filtra FILAS, no columnas. Los tres UPDATE ya tienen una
+-- policy permisiva `using(true)` (para que cualquier autenticado pueda seguir
+-- escribiendo sus columnas de sincronización/backfill de siempre); si el
+-- grant de columna se ampliara con título/sinopsis/géneros/etc bajo ESA misma
+-- policy, cualquier autenticado (no solo colaborador+) podría reescribirlos
+-- vía REST directo, porque policies permisivas se combinan con OR y ninguna
+-- sabe qué columnas trae el UPDATE. Por eso la restricción de rol para estos
+-- campos va en un TRIGGER (que sí ve OLD y NEW por columna), exactamente el
+-- mismo patrón que enforce_people_enrich_only en
+-- 20260715_enrich_only_and_hardening.sql.
+
+-- ── 1. Grant ampliado (aditivo: no quita nada de lo que ya había) ───────────
+grant update (title, author, synopsis, genres, published_year, cover_url)
+  on public.books to authenticated;
+
+grant update (title, director, synopsis, genres, release_year, cover_url)
+  on public.movies to authenticated;
+
+grant update (title, creator, synopsis, genres, release_year, cover_url)
+  on public.series to authenticated;
+
+-- ── 2. Trigger: estos campos concretos solo los cambia colaborador+ ─────────
+-- auth.uid() IS NULL => contexto sin usuario (service_role / SQL del owner,
+-- que ya bypasan RLS) — se deja pasar, mismo idioma que
+-- enforce_people_enrich_only.
+create or replace function public.enforce_catalog_edit_collaborator_only()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null or public.has_min_role('collaborator') then
+    return new;
+  end if;
+
+  if TG_TABLE_NAME = 'books' then
+    if new.title is distinct from old.title
+      or new.author is distinct from old.author
+      or new.synopsis is distinct from old.synopsis
+      or new.genres is distinct from old.genres
+      or new.published_year is distinct from old.published_year
+      or new.cover_url is distinct from old.cover_url
+    then
+      raise exception 'catalog ficha fields can only be edited by collaborators';
+    end if;
+  elsif TG_TABLE_NAME = 'movies' then
+    if new.title is distinct from old.title
+      or new.director is distinct from old.director
+      or new.synopsis is distinct from old.synopsis
+      or new.genres is distinct from old.genres
+      or new.release_year is distinct from old.release_year
+      or new.cover_url is distinct from old.cover_url
+    then
+      raise exception 'catalog ficha fields can only be edited by collaborators';
+    end if;
+  elsif TG_TABLE_NAME = 'series' then
+    if new.title is distinct from old.title
+      or new.creator is distinct from old.creator
+      or new.synopsis is distinct from old.synopsis
+      or new.genres is distinct from old.genres
+      or new.release_year is distinct from old.release_year
+      or new.cover_url is distinct from old.cover_url
+    then
+      raise exception 'catalog ficha fields can only be edited by collaborators';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.enforce_catalog_edit_collaborator_only() is
+  'BEFORE UPDATE en books/movies/series: título/autoría/sinopsis/géneros/año/portada solo los cambia collaborator+. Las columnas de sincronización (openlibrary_work_key, editions_synced_at, duration_minutes, total_seasons, total_episodes, episode_runtime_minutes) no se tocan aquí y siguen abiertas a cualquier authenticated (Tarea 6 / backfillQueueSizes). Ver cabecera de 20260714_editions_h_catalog_edit_grants.sql.';
+
+drop trigger if exists trg_enforce_books_edit_collaborator_only on public.books;
+create trigger trg_enforce_books_edit_collaborator_only
+  before update on public.books
+  for each row execute function public.enforce_catalog_edit_collaborator_only();
+
+drop trigger if exists trg_enforce_movies_edit_collaborator_only on public.movies;
+create trigger trg_enforce_movies_edit_collaborator_only
+  before update on public.movies
+  for each row execute function public.enforce_catalog_edit_collaborator_only();
+
+drop trigger if exists trg_enforce_series_edit_collaborator_only on public.series;
+create trigger trg_enforce_series_edit_collaborator_only
+  before update on public.series
+  for each row execute function public.enforce_catalog_edit_collaborator_only();
+
+-- El trigger lo dispara Postgres, no es una RPC: mismo revoke de higiene que
+-- el resto de funciones de trigger del proyecto.
+revoke execute on function public.enforce_catalog_edit_collaborator_only() from public, anon, authenticated;

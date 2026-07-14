@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getQueues } from "@/lib/queue/get-queues";
@@ -78,30 +79,41 @@ export default async function BookDetailPage({
 
   if (!book) notFound();
 
-  // Créditos (autor) y ediciones se sincronizan a la vez, EN PARALELO: ambos
-  // son cache-as-you-go independientes entre sí, así que lanzarlos con
-  // Promise.all no añade una espera nueva en serie sobre el enriquecimiento
-  // que la ficha ya esperaba.
-  await Promise.all([
-    ensureItemEnriched(supabase, "book", {
-      id: book.id,
-      author: book.author,
-    }),
-    // Solo con sesión: un visitante anónimo no puede escribir ni las ediciones
-    // (la RPC exige auth.uid()) ni la marca de sincronización (el grant es de
-    // `authenticated`). Sin este guardia, cada visita anónima a una ficha sin
-    // sincronizar pagaría hasta cinco llamadas a OpenLibrary y veinte RPC para
-    // tirarlo todo a la basura, una y otra vez. La ficha se pinta igual con las
-    // ediciones que ya haya.
-    user
-      ? ensureBookEditions(supabase, {
-          id: book.id,
-          openlibrary_work_key: book.openlibrary_work_key,
-          isbn: book.isbn,
-          editions_synced_at: book.editions_synced_at,
-        })
-      : Promise.resolve(),
-  ]);
+  // Créditos (autor): backfill puntual de personas, no una API externa
+  // paginada, así que esperarlo no rompe el contrato de "la ficha no bloquea
+  // nunca" — y getItemCredits, más abajo, necesita que ya haya escrito.
+  await ensureItemEnriched(supabase, "book", {
+    id: book.id,
+    author: book.author,
+  });
+
+  // Ediciones reales de OpenLibrary (Hallazgo 4 de la revisión final): esto
+  // SÍ hay que sacarlo del camino bloqueante. La primera visita a un libro
+  // sin sincronizar podía tardar hasta 5s en la primera página de
+  // editions.json + otros 5s en las páginas 2-5 (en paralelo entre sí) + hasta
+  // veinte llamadas a la RPC register_book_edition — todo ANTES de pintar
+  // nada, violando el diseño explícito de que esto "no bloquee nunca" la
+  // ficha. after() (Next 16) pospone la sincronización a DESPUÉS de enviar la
+  // respuesta: la ficha se pinta al instante con las ediciones que YA
+  // hubiera: si esta es la primera visita sin sincronizar, esta carga no las
+  // ve — se verán en la SIGUIENTE visita. Ese es el precio explícito de no
+  // bloquear nunca, no un descuido.
+  //
+  // Solo con sesión: un visitante anónimo no puede escribir ni las ediciones
+  // (la RPC exige auth.uid()) ni la marca de sincronización (el grant es de
+  // `authenticated`). Sin este guardia, cada visita anónima a una ficha sin
+  // sincronizar programaría en segundo plano hasta cinco llamadas a
+  // OpenLibrary y veinte RPC para tirarlo todo a la basura, una y otra vez.
+  if (user) {
+    after(() =>
+      ensureBookEditions(supabase, {
+        id: book.id,
+        openlibrary_work_key: book.openlibrary_work_key,
+        isbn: book.isbn,
+        editions_synced_at: book.editions_synced_at,
+      })
+    );
+  }
 
   const [credits, saga, editions] = await Promise.all([
     getItemCredits(supabase, "book", book.id),

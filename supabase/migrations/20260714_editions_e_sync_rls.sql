@@ -1,7 +1,7 @@
 -- Falta una policy de UPDATE en `books` para que el cache-as-you-go de
 -- ediciones (Tarea 6, src/lib/editions/sync-editions.ts) pueda persistir.
 --
--- 20260714_editions_sync.sql ya concedió el GRANT de columna
+-- 20260714_editions_d_sync.sql ya concedió el GRANT de columna
 -- (`openlibrary_work_key`, `editions_synced_at`) a `authenticated`, pero un
 -- GRANT no basta con RLS activado: sin una POLICY de UPDATE, Postgres filtra
 -- la fila a actualizar a cero silenciosamente (no lanza error). Verificado en

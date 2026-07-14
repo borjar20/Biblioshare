@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -27,6 +27,21 @@ import {
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
 import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
 import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
+import { editionChoiceStorageKey } from "@/lib/passes/edition-choice";
+
+// Guarda la edición elegida AL SEGUIR (Hallazgo 3): se llama solo desde un
+// manejador de clic (FollowButton.follow), nunca durante el render, así que
+// escribir en localStorage aquí no viola la regla de pureza de render. Se
+// aplicará sola con setPassEdition en cuanto se abra el primer pase del
+// ítem (ver el efecto en ProgressBlock más abajo).
+function writeEditionChoice(itemId: string, editionId: string) {
+  try {
+    window.localStorage.setItem(editionChoiceStorageKey(itemId), editionId);
+  } catch {
+    // Cuota llena o almacenamiento inaccesible (modo privado): la elección se
+    // pierde y se volverá a preguntar al empezar a leer, pero no rompe nada.
+  }
+}
 
 // Lee si a este pase ya se le preguntó "¿qué edición estás leyendo?" y el
 // usuario contestó "No lo sé". Se llama solo desde el inicializador de
@@ -121,9 +136,12 @@ function FollowButton({
   const [choosingEdition, setChoosingEdition] = useState(false);
 
   function follow(editionId: string | null) {
-    startTransition(() =>
-      addExistingItemToLibrary(itemType, itemId, undefined, editionId)
-    );
+    // "No lo sé" (editionId null) no guarda nada: se comporta como hoy, el
+    // progreso se mide contra la primaria. Con una edición elegida de
+    // verdad, se guarda ANTES de disparar la transición — sigue siendo un
+    // manejador de clic, no el cuerpo del render.
+    if (editionId) writeEditionChoice(itemId, editionId);
+    startTransition(() => addExistingItemToLibrary(itemType, itemId));
   }
 
   if (!choosingEdition) {
@@ -396,6 +414,36 @@ function ProgressBlock({
     editions.length > 1 &&
     openPass.editionId === null &&
     !answered;
+
+  // Aplica la elección de edición guardada AL SEGUIR (Hallazgo 3 de la
+  // revisión final): si en localStorage hay una edición elegida para este
+  // ítem y este pase recién abierto todavía no tiene una propia, se aplica
+  // aquí con setPassEdition y se olvida la elección — el usuario ya la
+  // contestó al seguir, no debe volver a verla. No sincroniza ningún estado
+  // local (no llama a ningún setState de este componente): solo dispara una
+  // escritura de servidor, así que vive en un efecto imperativo, no en el
+  // ajuste "durante el render" de más arriba (mismo criterio que el
+  // scrollIntoView de EditionStrip). Deliberadamente solo al montar: el
+  // componente está keyed por openPass.id (ver ManagedLog), así que un pase
+  // nuevo (p. ej. una relectura) vuelve a montar este efecto y lee de nuevo.
+  useEffect(() => {
+    if (openPass.editionId !== null) return;
+    let choice: string | null = null;
+    try {
+      choice = window.localStorage.getItem(editionChoiceStorageKey(itemId));
+    } catch {
+      return;
+    }
+    if (!choice) return;
+    try {
+      window.localStorage.removeItem(editionChoiceStorageKey(itemId));
+    } catch {
+      // Si no se puede borrar, en el peor caso se reintenta en la próxima
+      // recarga: no rompe nada más.
+    }
+    startTransition(() => setPassEdition(openPass.id, itemType, itemId, choice));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   let page: number | undefined;
   if (itemType === "book" && "page" in entry.position && entry.position.page !== undefined) {
