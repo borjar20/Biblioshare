@@ -1,6 +1,6 @@
 # Biblioshare — Requisitos y alcance
 
-Última actualización: 2026-07-11
+Última actualización: 2026-07-14
 
 ## 1. Visión
 
@@ -37,7 +37,8 @@ Tabla única `library_entries` (una fila por `usuario` × `ítem de catálogo`):
 - `status`: `planned` | `in_progress` | `completed` | `dropped`.
 - `rating` 1–10, `started_at`, `finished_at`, `notes` — comunes y tipados.
 - `position` (JSONB): el único detalle que varía por tipo. Ej: `{"page": 42}` (libros), `{"season": 2, "episode": 5}` (series). La app valida su forma con los tipos de TypeScript.
-- **Semántica del rating** (aclaración): `library_entries.rating` es la **nota actual** del ítem (la que se muestra en el perfil y en los agregados de comunidad); `diary_entries.rating` (§3.3) es la nota **de cada pase concreto**, que puede variar entre relecturas. Al registrar un pase se puede poner una nota distinta sin alterar la nota actual; son campos independientes a propósito.
+- **Semántica del rating** (aclaración, *desactualizada, ver §7.37*): `library_entries.rating` es la **nota actual** del ítem (la que se muestra en el perfil y en los agregados de comunidad); `diary_entries.rating` (§3.3) es la nota **de cada pase concreto**, que puede variar entre relecturas. Al registrar un pase se puede poner una nota distinta sin alterar la nota actual; son campos independientes a propósito.
+  - **Ya no es así (2026-07-14)**: `library_entries.rating` y `library_entries.notes` quedaron **huérfanos a propósito** al construir el registro de pases (§7.37) — el pase (`diary_entries`) pasa a ser el único dueño de la nota y la reseña. La media de comunidad y "tu nota" salen del **último pase cerrado no abandonado**, no de esta columna. Ambas columnas se dejan en la base de datos sin escritura ni lectura, para poder revertir sin pérdida; su eliminación queda para una limpieza posterior fuera de esta spec.
 - RLS: el dueño ve/edita sus filas; cualquiera (incl. anónimo) puede **leer** las filas de un perfil público. Escritura solo el dueño.
 - Trade-off aceptado: los detalles finos de `position` no se validan a nivel de BD (viven en JSONB), a cambio de eliminar la deuda de replicar toda la vertical por cada tipo nuevo.
 
@@ -48,6 +49,7 @@ Tabla `diary_entries` (muchas filas por `library_entry`):
 - Permite registrar leer/ver el mismo ítem varias veces con sus propias fechas y valoraciones (estilo diario de Letterboxd).
 - Separación clave: `library_entries` = **estado actual** del ítem; `diary_entries` = **historial de pases**. Añadir el diario después con datos reales habría sido una migración dolorosa, por eso se modela desde el MVP.
 - RLS: mismo modelo que `library_entries` (dueño escribe; lectura pública si el perfil lo es).
+- **Actualización (2026-07-14, ver §7.37)**: esta tabla es ahora, literalmente, el **pase**. `finished_on` pasa a nullable (`null` = pase abierto, "lo estoy leyendo/viendo ahora"); ganó `is_public` (interruptor de visibilidad, antes solo existía a nivel de perfil) y `edition_id` (la edición contra la que se hizo el pase). Antes solo modelaba pases ya cerrados; ahora también el que está en curso. El nombre físico de la tabla no cambió — ver §7.37 para el porqué.
 
 ### 3.4 Perfiles — *creado*
 Tabla `profiles`:
@@ -149,6 +151,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
   - Editorial y nº de páginas son propiedades de la *obra* → tabla `books` (catálogo compartido).
 - [x] Encuadernación/formato (bolsillo, tapa blanda, tapa dura) — editable desde "Editar progreso" en "Mi biblioteca".
   - Es propiedad de **tu ejemplar**, no de la obra: vive en `library_entries.position` (tipado en `src/lib/library/position.ts`), no en `books` — consistente con cómo `position` ya modela lo que varía por usuario y por tipo.
+  - **Desactualizado (2026-07-14, ver §7.37)**: el formato del ejemplar lo dice ahora la **edición** (`book_editions`/`movie_versions`) del pase, no un campo suelto de progreso — "tapa dura" o "bolsillo" son dos ediciones distintas del mismo libro, cada una con su propia paginación. `position.format` se conserva en el tipo por compatibilidad de lectura (datos antiguos, `session-list.tsx`, checkpoints de club) pero **ya no se escribe**: no existe "Editar progreso" como pantalla — el panel murió junto con `item-manage-panel.tsx`/`progress-panel.tsx`. Elegir edición se hace desde el panel Progreso de la pestaña Registro (§7.37).
 
 ### 7.2 Búsqueda de libros por ISBN — *hecho*
 - [x] Buscar un libro por **ISBN** además de por título: autodetección en `src/lib/catalog/isbn.ts` (10 o 13 dígitos, tolerando guiones/espacios y la `X` final del ISBN-10), enrutada como `q=isbn:...` en Google Books.
@@ -215,6 +218,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 ### 7.13 Recuento de relecturas visible y comparativa entre pases — *hecho*
 - [x] `rereadCount` añadido a `LibraryItem`, calculado con una única query agrupada contra `diary_entries` (no una consulta por entrada) en `get-library-items.ts`. Mostrado en `library-item-card.tsx` como "Leído N veces" / "Vista N veces" (según tipo de ítem, solo si N > 0).
 - [x] En `diary-panel.tsx`, cada entrada de diario muestra ahora una línea comparativa contra el pase anterior cuando ambos tienen rating: "{año}: {rating}★ → ahora {rating}★" — verificado con datos reales (2020: 3★ → ahora 5★).
+- **Actualizado (2026-07-14, ver §7.37)**: `rereadCount` ahora **excluye el pase abierto** (solo cuenta pases con `finished_on` no nulo) — antes de la corrección, un pase en curso ya sumaba a "Leído N veces" sin haberse terminado. `diary-panel.tsx` fue jubilado junto con la pestaña Registro vieja; la comparativa contra el pase anterior vive ahora en `src/components/detail/pass-diary.tsx` como el delta "▲ +1★ vs. anterior" (en medias estrella, no en la escala entera 1–10).
 
 ### 7.14 Sesiones de progreso diarias (base de rachas, calendario y estadísticas) — *hecho*
 Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas diarias, calendario mensual de lectura, rachas, y estadísticas anuales. Esta es la idea de "modo racha (streaks)" — ya cubierta aquí en detalle, no se duplica en otra sección.
@@ -235,6 +239,7 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
   - Todo lo anterior vive en la página principal del usuario (home) — ya no existe una ruta dedicada `/estadisticas` (`src/app/estadisticas` eliminada) — NO en el perfil público.
 - **Resuelto al construir la base**: aplica a **libros y series**, no a películas; el tiempo se introduce **a mano** (campo de minutos), no con cronómetro; la UX de registro es un **flujo dedicado** (`/sesion/[entryId]`), no un botón rápido "+X páginas hoy" sobre el `ProgressPanel`.
 - **Resuelto al construir las estadísticas**: el objetivo diario (minutos) y el anual (ítems completados) son un **único valor global por usuario** en `profiles`, no por tipo de ítem.
+- **Actualizado (2026-07-14, ver §7.37)**: `progress_sessions` gana `pass_id` y pasa a colgar del **pase** (no directamente de `library_entries`) — hereda la edición del pase, que es lo que rotula "Edición: X" sobre la lista de sesiones. La página `/sesion/[entryId]` gana un **cronómetro** persistente además de la entrada a mano (el punto de arriba decía "el cronómetro en vivo queda como extensión futura" — esta es esa extensión), y en serie pasa a **marcar episodios** con chips en vez de un campo de posición suelto, reutilizando la misma escritura que la pestaña Episodios (§7.36). El "hub de gestión" descrito en §8-G (`item-manage-panel.tsx`) fue jubilado y sustituido por `log-panel.tsx` como pestaña Registro única.
 
 ### 7.15 Otras ideas sin desarrollar todavía
 - [ ] "Tu año en Biblioshare" — resumen anual compartible (estilo Spotify Wrapped), versión concreta de las estadísticas generales.
@@ -469,6 +474,129 @@ y reseñar, más una rejilla de la nota agregada de la comunidad.
   y la fila `MEDIA` muestran `9.0` → desmarcar la limpia; la serie pasa a "En curso". Migración
   aplicada a dev y prod; advisors sin regresiones nuevas.
 
+### 7.37 Registro de pases y ediciones — *hecho*
+Dos problemas resueltos juntos porque comparten modelo: el registro personal estaba fragmentado
+(nota y reseña repartidas entre `library_entries.rating`, `diary_entries.rating` y hasta tres
+campos de texto libre) y no había ediciones (una ficha de libro mezclaba la obra con una tirada
+concreta, así que "voy por la página 240 de 662" era falso para quien lee la de bolsillo). Diseño
+completo en `docs/superpowers/specs/2026-07-14-registro-pases-ediciones-design.md`.
+
+- [x] **Ediciones de catálogo** (migraciones `20260714_editions*.sql`): dos tablas nuevas,
+  `book_editions` (`label`, `publisher`, `published_year`, `language`, `total_pages`, `isbn`,
+  `cover_url`, `is_primary`, `created_by`) y `movie_versions` (`label`, `release_year`,
+  `duration_minutes`, `is_primary`, `created_by`), colgando de `books`/`movies` respectivamente
+  — la obra sigue siendo la obra (título, autoría, sinopsis); la edición es lo que varía entre
+  tiradas (editorial, ISBN, páginas) o cortes (versión teatral/extendida, duración). Índice único
+  parcial garantiza una sola `is_primary` por obra. **Las series no tienen ediciones**: su unidad
+  de progreso son los episodios (§7.36).
+  - Backfill: cada libro/película ya existente engendró su edición/versión primaria con los datos
+    que hoy llevaba sueltos en la ficha (`books.publisher`/`total_pages`/`isbn`,
+    `movies.duration_minutes`). Esas columnas se dejan en `books`/`movies` como espejo hasta una
+    limpieza posterior, fuera de esta spec.
+  - Alta automática para obras nuevas: triggers `books_create_primary_edition`/
+    `movies_create_primary_version` (`AFTER INSERT` en `books`/`movies`) crean la primaria al
+    nacer la obra; `book_editions_ensure_primary`/`movie_versions_ensure_primary`
+    (`BEFORE INSERT` en `book_editions`/`movie_versions`) promueven a primaria la primera edición
+    de una obra que aún no tuviera ninguna — para que un libro añadido desde la búsqueda (cuya
+    edición nace por la vía de abajo, no por el backfill) nunca se quede sin edición primaria.
+  - RLS: lectura pública; `INSERT`/`UPDATE` directo exige colaborador+ (mismo nivel que asignar
+    sagas, §7.35) — es catálogo compartido, la curación manual es cosa de colaborador+.
+  - **Alta desde la búsqueda, sin exigir colaborador**: al añadir un libro por ISBN, ese ISBN
+    concreto se registra como edición vía la función `register_book_edition` (`SECURITY DEFINER`,
+    ejecutable por cualquier autenticado) — valida el ISBN de verdad (10/13 dígitos con dígito de
+    control), sanea páginas/año fuera de rango, firma `created_by = auth.uid()` del lado del
+    servidor, e ignora en silencio si ya existía (`on conflict do nothing`, idempotente). No se
+    abrió el `INSERT` directo a cualquiera: se probó así primero y una revisión encontró que
+    dejaba escribir editorial/portada/páginas inventadas en cualquier libro con solo poner un
+    ISBN de 10–20 caracteres — la función validada es el endurecimiento posterior.
+    **Riesgo residual asumido**: un usuario autenticado puede llamar a la función a mano con un
+    ISBN de checksum válido y colgar una edición inventada de un libro ajeno. No es escalada de
+    privilegios, queda firmado en `created_by` y es reversible; se sube el listón (límite de tasa
+    o cola de revisión) solo si aparece spam real — no merece más maquinaria hoy.
+- [x] **El pase**: `diary_entries` pasa a ser el "pase" — una lectura o un visionado, dueño único
+  de la nota y la reseña. `finished_on` ahora nullable (`null` = pase abierto, "lo estoy
+  leyendo/viendo ahora mismo"). Columnas nuevas: `is_public` (interruptor "visible para la
+  comunidad") y `edition_id` (uuid nullable, la edición contra la que se hizo el pase). Nadie abre
+  un pase a mano en el flujo normal: lo hace el cambio de estado (`updateStatus`,
+  `src/lib/library/manage-actions.ts`, vía `passEffect` en `src/lib/passes/transitions.ts`):
+  - Libro/serie → `in_progress` abre un pase (si no había ya uno abierto).
+  - → `completed` cierra el pase abierto, o si no había ninguno (el ciclo natural de una
+    película: Pendiente → Vista sin pasar por "viendo"), abre y cierra uno en el mismo gesto.
+  - → `dropped` cierra el pase abierto (se abandonó ese día); un pase abandonado cuenta en el
+    diario pero no aporta nota a la comunidad.
+  - Releer/re-ver con todos los pases cerrados abre uno nuevo automáticamente.
+  - **La tabla física sigue llamándose `diary_entries`**: nada la referencia por FK, pero
+    renombrarla habría obligado a tocar RLS, feed, notificaciones e interacciones de reseña sin
+    ganar nada funcional. La capa de dominio (`src/lib/passes/`) y la interfaz sí hablan de
+    "pases" y de "diario" — la palabra "pase" no aparece en la UI que ve el usuario final.
+  - Dos invariantes garantizados en **base de datos**, no solo en la app (los cambios de estado
+    pueden llegar en paralelo desde dos pestañas): **un solo pase abierto por entrada** (índice
+    único parcial `library_entry_id where finished_on is null`) y **un solo pase cerrado por día
+    y por entrada** (índice único `(library_entry_id, finished_on) where finished_on is not
+    null`) — este segundo cierra una carrera real encontrada en revisión: un doble clic en
+    "Visto" insertaba dos pases, porque el primer índice solo protege pases *abiertos* y el gesto
+    Pendiente→Visto inserta uno que nace ya *cerrado*. Un trigger (`check_pass_edition`) impide
+    además que un pase apunte a la edición de otra obra (p. ej. colgar del pase de "Dune" una
+    edición de otro libro).
+- [x] **Nota: 1–10 en BD, 5 estrellas en pantalla**. La columna sigue siendo `smallint` 1–10 (sin
+  migración de datos, sin pérdida de precisión); el selector y toda la UI muestran medias
+  estrellas (0,5–5). Conversión centralizada en `src/lib/rating/stars.ts` (`toStars`/`fromStars`/
+  `formatStars`) — módulo nuevo, no confundir con `src/lib/series/rating-scale.ts` (los colores
+  por tramo de la rejilla de episodios, otra cosa distinta).
+- [x] **Lo que pierde `library_entries`**: `rating` y `notes` quedan huérfanos a propósito — el
+  pase es ahora el dueño de la nota y la reseña. Ambas columnas se quedan en la base de datos
+  (nadie las lee ya) para poder revertir sin pérdida; su eliminación queda para una limpieza
+  posterior, fuera de esta spec.
+- [x] **Comunidad agrega desde pases, no desde `library_entries.rating`**: la media/histograma de
+  un ítem sale ahora del **último pase cerrado no abandonado** de cada usuario
+  (`src/lib/community/get-community.ts`, `latestRatingPerUser`); las reseñas son los pases con
+  `is_public = true` y texto. Cada reseña luce un chip con su edición cuando el pase tiene una
+  asignada (`formatEdition`); deliberadamente sin filtro por edición (con pocas reseñas dejaría la
+  lista vacía). Verificado contra dev que la media no cambia tras la migración, salvo en el caso
+  esperado (un ítem con dos pases del mismo usuario en fechas distintas, donde ahora gana el pase
+  más reciente en vez del `library_entries.rating` desactualizado).
+- [x] **Privacidad de `is_public`**: una revisión encontró que ninguna consulta de consumo público
+  filtraba por esta columna — las notas privadas migradas desde `library_entries.notes`
+  (backfilleadas con `is_public = false`) se habrían mostrado como reseñas públicas. Corregido con
+  `.eq("is_public", true)` en las cuatro consultas de consumo público: pestaña Comunidad, pestaña
+  Actividad del perfil, feed de seguidores y resolución de posts compartidos en clubes.
+- [x] **Sesiones cuelgan del pase**: `progress_sessions` gana `pass_id` y hereda su edición (la
+  línea "Edición: X" que se pinta sobre la lista de sesiones). Página `/sesion/[entryId]`
+  repintada:
+  - **Libro**: tramo página desde→hasta con delta en vivo contra la edición del pase abierto
+    ("▲ 60 páginas · quedan 422"), y duración en dos modos, **a mano** o **cronómetro**.
+  - **Cronómetro persistente** (`src/lib/sessions/timer.ts`): guarda el instante de arranque en
+    `localStorage` (clave `biblioshare:timer:<entryId>`), no un contador corriendo — sobrevive a
+    recargar y a cerrar la app, y el tiempo transcurrido se calcula siempre por diferencia de
+    tiempo (`elapsedMs`), nunca acumulando ticks de un intervalo. Si al volver lleva más de 4
+    horas corriendo (`isStale`), se muestra en pausa con un aviso y dos salidas: escribir los
+    minutos a mano o descartarlo. No cruza de dispositivo a propósito (leer no suele repartirse
+    entre móvil y portátil, y llevarlo a la base de datos costaría tabla, acciones y resolución de
+    conflictos).
+  - **Serie**: selector de temporada + chips de episodio que marcan vistos, reutilizando la misma
+    escritura (`markEpisodeWatched`, extraída a `src/lib/series/episode-watch-store.ts`) que la
+    pestaña Episodios — sin duplicar la lógica. El progreso de la entrada se deriva siempre del
+    episodio más avanzado en `episode_watches` (`rollSeriesProgress`), nunca de lo que llegó en el
+    último envío, así que registrar un episodio antiguo nunca retrocede el progreso.
+- [x] **Interfaz de la pestaña Registro** (rehecha, `src/components/detail/log-panel.tsx`,
+  sustituye a `item-manage-panel.tsx`/`progress-panel.tsx`/`diary-panel.tsx`, los tres jubilados):
+  segmented control de estado con cuatro pastillas (`status-segments.tsx`), panel Progreso solo
+  con pase abierto (nota, "voy por la página X de Y" contra tu edición, selector de edición),
+  sesiones, diario de pases (`pass-diary.tsx`, con delta "▲ +1★ vs. anterior" contra el pase
+  anterior) y "Quitar de mi biblioteca" al pie. Al marcar Leído/Vista se abre la **hoja de cierre
+  de pase** (`close-pass-sheet.tsx`, diálogo modal nativo `<dialog>`): fecha de fin, estrellas,
+  reseña e interruptor "visible para la comunidad"; "Ahora no" no descarta nada (el pase ya quedó
+  cerrado por el cambio de estado), solo deja la nota pendiente de completar después desde el
+  diario.
+- **Fuera de alcance de esta spec** (documentado en el propio diseño, candidatas a specs
+  propias): sagas múltiples con selector, editor de ficha oficial del moderador, reparto y
+  plataformas, filtro de reseñas por edición, y la limpieza final de `library_entries.rating`/
+  `notes` y de las columnas de edición duplicadas en `books`/`movies`.
+- **Verificado**: checklist manual en
+  `docs/superpowers/plans/2026-07-14-registro-pases-ediciones-manual-test.md` (el proyecto no usa
+  E2E automático, ver `docs/TESTING.md`); consultas de control contra dev confirmando que la media
+  de comunidad no se mueve tras la migración salvo en el caso esperado documentado arriba.
+
 ## 8. Decisiones de arquitectura (evaluadas antes de construir más)
 
 Estas no son features — son decisiones de forma que, si se toman tarde (después de que ya haya datos o UI construida encima), cuestan un refactor. La mayoría ya se resolvió (8-A, 8-B, 8-C) o se confirmó el enfoque (8-D, 8-E) al revisar este backlog; quedan abiertas la normalización de géneros (nota dentro de 8-B) y 8-F (PWA-only vs. nativo), que es una decisión de producto, no técnica.
@@ -496,6 +624,8 @@ Hoy `books`, `movies` y `series` no tienen ninguna relación entre sí a nivel d
 - **Progreso**: punto actual (`position`: página / temporada+episodio, sin cambios), historial de pases (`diary_entries`, ya existe) y futuras sesiones diarias (`progress_sessions`, 7.14).
 
 **Migración cuando se retome 7.1/7.29**: mover `format` de `position` a `copy_details` — trivial ahora (poca o ninguna fila real con ese campo todavía), mucho más cara cuanto más se tarde en decidirlo. No se ejecuta esta migración todavía (no hay una tarea activa que la necesite hoy); queda documentada para hacerse en cuanto se toque 7.1 (ampliación) o 7.29.
+
+**Actualizado (2026-07-14, ver §7.37)**: la pregunta de `format` se resolvió distinto de lo previsto aquí — no migró a `copy_details`, quedó **sustituido** por la edición del pase (`book_editions`/`movie_versions`): "tapa dura" o "bolsillo" son ahora dos ediciones distintas de la misma obra, cada una con su propia paginación, no un atributo suelto del ejemplar. `position.format` se conserva solo para leer datos antiguos, sin escritura nueva. `copy_details` sigue sin construirse y sigue siendo la vía correcta para 7.29 (adquisición/precio), que no tiene relación con ediciones.
 
 ### 8-D. Infraestructura de notificaciones (compartida por 7.17 y futuras) — *enfoque confirmado*
 El proyecto no tiene hoy ningún mecanismo de: trabajos programados (cron/queue), envío de email, ni push notifications. 7.17 (recordatorios de pausa/estrenos) es la primera feature que lo necesita, pero EPIC-05 (clubs) también lo pediría más adelante. Antes de construir 7.17: decidir una vez la pieza compartida en vez de resolverla feature a feature.
@@ -536,6 +666,7 @@ Dos decisiones de forma tomadas al construir la base de 7.14, registradas porque
 - **La gestión vive en la ficha del ítem; las tarjetas del perfil son solo vista**: las páginas de detalle (`/libro|pelicula|serie/[id]`) pasan a ser el **hub de gestión** (nuevo `src/components/item-manage-panel.tsx`: Seguir / estado / editar progreso / revisionados / sesiones / Dejar de seguir), y "no seguido" = ausencia de fila en `library_entries` (Seguir / Dejar de seguir; los 4 estados no cambian). Las tarjetas de `/u/[username]` se adelgazan a **vista + acciones rápidas** (portada/enlace, título, metadatos, barra de progreso, recuento de relecturas, badge de estado también para el dueño, fijar/desfijar favorito) — se les quita el select de estado, "Quitar", `ProgressPanel` y `DiaryPanel`. Consecuencia estructural: las server actions compartidas salen de la ruta de perfil a `src/lib/library/manage-actions.ts` (firma `(entryId, itemType, itemId, ...)`, revalidando ficha + perfil + home) y a `src/lib/diary/actions.ts`, y `ProgressPanel`/`DiaryPanel` a `src/components/`; `src/app/u/[username]/actions.ts` queda solo con `updateProfileVisibility` + `toggleFavorite`. Se eliminó `ItemLibraryButton` (reemplazado por el panel de gestión).
 
   - **El dashboard de estadísticas es privado / solo del dueño**: las cuatro pantallas de estadísticas de 7.14 (tira semanal, calendario mensual, rachas, stats anuales) se muestran en la página principal privada del usuario (home) y **no** se muestran en el perfil público — son seguimiento personal, no vitrina. Los objetivos diario/anual son un único valor global por usuario en `profiles` (`daily_goal_minutes`, `annual_goal_items`), no una tabla de settings aparte. El recap anual compartible tipo "Wrapped" sigue siendo una idea distinta y aparte (7.15).
+  - **Superseded (2026-07-14, ver §7.37)**: `item-manage-panel.tsx`/`progress-panel.tsx`/`diary-panel.tsx` (los tres nombrados arriba) fueron jubilados y sustituidos por `src/components/detail/log-panel.tsx` al construir el registro de pases y ediciones — la pestaña Registro pasa a ser un único componente que orquesta estado, progreso del pase abierto, sesiones y diario de pases, en vez de tres paneles separados.
 
 ### 8-H. RBAC: dónde se aplica el permiso (RLS vs. capa de app) — *decidido (construido en §7.35)*
 Los flujos **automáticos** (búsqueda→catálogo, auto-enriquecimiento de §7.34) y los **manuales**
@@ -582,6 +713,7 @@ admin.
 | 2026-07-12 | **EPIC-05 Bloque E** (clubes: creación, membresía y roles) construido, migración aplicada a **dev + prod**, verificación manual en navegador pendiente — tablas `clubs`/`club_members` (enums `club_visibility`, `club_member_status` con solo `invited`/`active`, y `club_role` declarado en **orden ascendente de autoridad** `('member','moderator','owner')`, mismo gotcha que `user_role` de §7.35: Postgres compara enums por orden de declaración, así que el primero declarado debe ser el de menor autoridad para que `>=`/`>` funcionen); cambios de rol (`create_club`, `set_club_member_role`, `transfer_club_ownership`) implementados como funciones `SECURITY DEFINER` en vez de `UPDATE`s de cliente gateados por RLS, para que un `role` nunca pueda colarse por una política pensada solo para transiciones de `status` más simples; trigger `reassign_club_ownership` (`AFTER DELETE` en `club_members`) como red de seguridad a nivel de BD que reasigna la propiedad al miembro activo más antiguo (o borra el club si no queda nadie) **independientemente de la vía** por la que desaparezca la fila del owner — no depende de que un futuro feature de borrado de cuenta (que hoy no existe) recuerde gestionarlo | Cierra E5.E1–E5.E4 de `docs/requirements/social-epic.md` (SD-4): corrección de diseño a mitad de implementación — el boceto original de `joinClub` incluía un autoservicio "solicitar unirse" (`status='pending'`) a clubes privados, pero la propia batería de impersonación RLS de la Task 1 (subagent-driven-development) descubrió que era **circularmente imposible**: la fila de un club privado es invisible a no-miembros (SD-4), así que un no-miembro no podría ni comprobar que el club existe para solicitar unirse. Resuelto eliminando `pending` del todo — unirse a un privado es solo por invitación de un moderator+, nunca por solicitud propia. La implementación de la Task 1 (el trabajo más profundo de RLS/triggers del proyecto hasta la fecha) pasó por 6 rondas de bugs reales encontrados por su propia batería y por dos revisores independientes: recursión estructural 42P17 entre las políticas de `clubs`/`club_members` (resuelto con el helper `club_member_row_exists()`, mismo patrón anti-recursión que `can_view_profile()`/`is_club_member()`); el gate de Postgres "una fila debe pasar SELECT antes de que UPDATE/DELETE puedan tocarla" bloqueando que un invitado viera o aceptara su propia invitación; una escalada de privilegio vía `club_members accept invite` (`WITH CHECK` solo validaba `status`, no `role`, así que un invitado podía colar `role='owner'` en el mismo UPDATE que acepta su invitación); un conflicto `BEFORE DELETE`/cascade al borrar el último miembro de un club (resuelto pasando el trigger a `AFTER DELETE`); y una regresión de ese mismo fix — la rama "promocionar al siguiente owner" del trigger empezó a fallar porque la fila del owner saliente ya no existía cuando se revalidaba su autoridad, resuelto con un guard `pg_trigger_depth() > 1` que reconoce la reasignación interna de confianza sin re-verificarla. Verificación manual en navegador pendiente de ejecutar por el usuario (checklist en `docs/superpowers/plans/2026-07-12-epic05-bloque-e-clubs-manual-test.md`); código y RLS ya verificados vía la batería de 19 checks y tres rondas de revisión de subagente. Feed del club (Bloque F) explícitamente fuera de alcance |
 | 2026-07-13 | **EPIC-05 Bloque F** (feed de club: posts, compartir actividad, encuestas) construido, migración aplicada a **dev + prod**, verificación manual en navegador pendiente — tablas `club_posts`/`club_poll_options`/`club_poll_votes`; `target_kind` (Bloque B) ampliado con `club_post`/`comment` y CHECK `comments_no_nesting` que hace la anidación de comentarios irrepresentable en el esquema (necesario para que la nueva rama recursiva de `can_view_target()` termine de forma demostrable); helper `SECURITY DEFINER` **nuevo y angosto** `is_visible_via_club_share()` añadido como un `OR` extra a las políticas `SELECT` ya existentes de `diary_entries`/`episode_watches` (Bloque A) — deliberadamente **no** integrado en `can_view_profile()`, que es un helper transversal usado por todo el contenido de perfil desde Bloque A y ya verificado, para no arriesgarlo por esta feature concreta; política `SELECT` de `club_poll_votes` que hace cumplir "resultados de encuesta ocultos hasta que votas" a nivel de RLS (tu propio voto siempre visible, los de los demás solo si ya votaste o la encuesta cerró) en vez de solo a nivel de aplicación, para que no pueda saltarse consultando la tabla directamente vía PostgREST; `resolveReviewHrefs()` (Bloque D) renombrado y unificado a `resolveTargetHrefs()`, plegando el caso especial de `target_type='club'` (antes duplicado por separado en `deliverPush()` y `listNotifications()`) en una sola función compartida que ahora también resuelve `club_post`/`comment` | Cierra E5.F1–E5.F3 de `docs/requirements/social-epic.md` (dep: E, B, D): **ampliación de alcance decidida en brainstorming, no en el backlog original** — el "me gusta" en comentarios pasa a estar disponible en toda la app (reseñas y posts de club), no solo en clubes, porque comparte el mismo `target_kind` polimórfico que las reseñas y no tenía sentido que un comentario fuera "gustable" solo en un contexto. `activity_share` comparte cualquier `FeedEvent` reciente propio (Bloque C: diario, episodios, altas de biblioteca), no solo reseñas, guardando una **referencia viva** (`{sourceTable, rowId}`, mismo vocabulario que `FeedEvent.id`) en vez de un snapshot — re-derivada en cada lectura vía un resolver de una sola fila (`src/lib/social/shared-activity.ts`), con degradación elegante ("ya no disponible") si la fila origen se borra. Compartir a un club **anula la privacidad de perfil normal para los compañeros de ese club** — decisión explícita de sesión: compartir es una elección de audiencia deliberada que prevalece sobre la visibilidad de seguidor/perfil, solo dentro de ese club, nunca más allá. Encuestas de elección única con cierre obligatorio, incluidas desde el inicio pese a la interrogación del backlog original. Notificación a todos los miembros activos en post nuevo, sin preferencia de silenciar-club (E5.J, todavía no construido, queda explícitamente diferido — se acepta el ruido temporal). El implementador de la Task 1 encontró y corrigió dos bugs Postgres reales más allá del SQL dado en el plan, ambos mecánicos y sin ambigüedad de producto: un `commit;` a mitad de migración (Postgres exige que un valor nuevo de enum esté confirmado antes de poder referenciarse como literal, error 55P04, y el CHECK/`can_view_target()` lo hacían inmediatamente); y un nuevo helper `has_voted_in_club_poll()` rompiendo una recursión estructural (42P17) en la política `SELECT` de `club_poll_votes`, que se auto-referenciaba vía una subquery inline — mismo patrón que `club_member_row_exists()` de Bloque E. Batería de 20 checks (incluyendo fuga entre clubes y "resultados ocultos hasta votar") y revisión independiente sin hallazgos Critical/Important. Verificación manual en navegador pendiente de ejecutar por el usuario (checklist en `docs/superpowers/plans/2026-07-12-epic05-bloque-f-club-feed-manual-test.md`). Motor genérico de actividades de club (Bloque G) explícitamente fuera de alcance |
 | 2026-07-13 | **EPIC-05 Bloque G** (motor genérico de actividades de club) construido, migración aplicada a **dev + prod**, verificación manual en navegador pendiente — tablas `club_activities`/`club_activity_participants`/`club_activity_items`/`club_activity_opinions`, enums `activity_kind` (abierto: `buddy_read`/`tierlist`/`list_challenge`/`criteria_challenge`, ampliable después vía `ALTER TYPE ADD VALUE`) y `activity_status` (`proposed`/`active`/`finished`/`archived`); transiciones de estado como tres RPCs `SECURITY DEFINER` (`activate_club_activity`/`finish_club_activity`/`archive_club_activity`), nunca `UPDATE`s de cliente — `club_activities` no tiene política `UPDATE` en absoluto; helper `SECURITY DEFINER` `is_activity_participant()` gatea escritura del pool de ítems y lectura+escritura de opiniones | Cierra E5.G1–E5.G3 de `docs/requirements/social-epic.md` (SD-8, dep: E, D): decisión de sesión de **exponer el ciclo de vida completo ya en este bloque** (`proposed → active → finished`, o `proposed`/`active → archived`) en vez de diferirlo a Bloque H — mismo orden de construcción por capas ya usado para clubes antes del feed de club (Bloque E antes de F): construir primero el motor genérico completo, después los tipos concretos que lo consumen. `archiveActivity` generaliza deliberadamente "rechazar una propuesta" y "cancelar una activa" en una sola RPC, moderator+, alcanzable desde `proposed` o `active` — evita una cuarta RPC redundante para una distinción que el usuario final no necesita ver como dos acciones distintas. Las opiniones (`club_activity_opinions`) son **visibles solo para participantes** de la actividad, no basta con ser miembro del club — confirma literalmente la lectura de **SD-8**, aplicado a nivel de RLS (política `SELECT` que exige `is_activity_participant()`, no solo ocultado en la UI) para que no pueda saltarse consultando la tabla directamente vía PostgREST, mismo patrón que "resultados ocultos hasta que votas" de Bloque F. `config jsonb` y el comportamiento específico por `kind` quedan **explícitamente diferidos a Bloque H** — ninguna función de este bloque lee ni escribe esa columna. Batería de 20 checks de impersonación RLS/RPC (incluyendo el caso de mayor riesgo del bloque: un moderator+ miembro del club pero no participante de la actividad no puede ver las opiniones de otro participante hasta unirse él mismo) y revisión independiente de cada task sin hallazgos Critical; un hallazgo Important (tres nuevos manejadores de mutación —enviar opinión, quitar ítem, añadir ítem vía el picker— no mostraban error visible al usuario si la acción fallaba, inconsistente con el patrón `run()` ya establecido en el mismo componente) corregido y re-revisado antes de cerrar la task. Verificación manual en navegador pendiente de ejecutar por el usuario (checklist en `docs/superpowers/plans/2026-07-13-epic05-bloque-g-club-activities-manual-test.md`) |
+| 2026-07-14 | **Registro de pases y ediciones** (§7.37) construido, migraciones aplicadas en **dev** (prod pendiente) — `diary_entries` se redefine como el **pase** (una lectura/visionado; `finished_on` nullable = pase abierto), único dueño de nota y reseña, con `is_public`/`edition_id` nuevos; dos tablas de catálogo nuevas `book_editions`/`movie_versions` colgando de la obra (nunca de series); `progress_sessions` pasa a colgar del pase (`pass_id`), no directamente de la entrada; cronómetro persistente en `/sesion/[entryId]` (instante de arranque en `localStorage`, no un contador corriendo); la comunidad agrega desde el **último pase cerrado no abandonado** de cada usuario, no desde `library_entries.rating` (huérfana a propósito junto con `.notes`) | Cerraba el registro fragmentado (nota/reseña repartidas entre `library_entries.rating`, `diary_entries.rating` y hasta tres campos de texto) y habilitaba el caso motivador: dos pases de la misma obra contra ediciones distintas (versión teatral vs. extendida de una película, tapa dura vs. bolsillo de un libro), cada uno con su propia nota. Se mantuvo el nombre físico `diary_entries` — renombrarla habría obligado a tocar RLS, feed, notificaciones e interacciones de reseña sin ganar nada funcional — y se dejaron `library_entries.rating`/`.notes` en la BD sin uso, para poder revertir sin pérdida; su limpieza queda diferida a una spec propia. Dos invariantes se garantizaron en BD, no solo en la app, tras encontrar dos carreras reales en revisión de código: un doble clic en "Visto" insertaba dos pases (cerrado extendiendo el índice único a pases ya cerrados el mismo día, no solo al abierto) y un pase podía apuntar a la edición de otra obra (cerrado con un trigger, `check_pass_edition`). Una revisión posterior encontró además una fuga de privacidad (reseñas con `is_public = false` se mostraban igualmente en Comunidad/feed/perfil por falta de filtro) y un contador de relecturas que sumaba pases todavía abiertos; ambos corregidos. **Riesgo residual asumido** en `register_book_edition` (función `SECURITY DEFINER` con validación real de dígito de control de ISBN, sin cola de revisión): un usuario autenticado puede adjuntar una edición inventada con ISBN de checksum válido a un libro ajeno — firmado en `created_by`, reversible, no es escalada de privilegios. Ver `docs/superpowers/specs/2026-07-14-registro-pases-ediciones-design.md` y el checklist manual en `docs/superpowers/plans/2026-07-14-registro-pases-ediciones-manual-test.md` |
 
 ## 10. Historial de versiones
 
