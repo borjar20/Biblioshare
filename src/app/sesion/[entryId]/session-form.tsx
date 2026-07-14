@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/select";
 import type { MediaStatus } from "@/lib/library/types";
 import type { Position } from "@/lib/library/position";
 import { addSession, type AddSessionState } from "@/lib/sessions/actions";
+import { timerStorageKey } from "@/lib/sessions/timer";
+import { SessionTimer } from "./session-timer";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -74,8 +76,36 @@ export function SessionForm({
   const remaining =
     toPageNum !== null && total !== null ? total - toPageNum : null;
 
+  // Duración: "a mano" (input libre) o "cronómetro" (SessionTimer, que trae
+  // su propio input oculto name="durationMinutes"). Solo libro tiene
+  // duración — una sesión de serie se mide en episodios (§7.14).
+  const [durationMode, setDurationMode] = useState<"manual" | "timer">(
+    "manual",
+  );
+  const [manualMinutes, setManualMinutes] = useState("");
+
+  // El aviso de cronómetro olvidado ofrece "escribir a mano": trae los
+  // minutos ya acumulados al campo manual y cambia el conmutador por ti.
+  function handleTimerMinutes(minutes: number) {
+    setManualMinutes(String(minutes));
+    setDurationMode("manual");
+  }
+
+  // Al guardar con el cronómetro activo, limpia su localStorage: el valor ya
+  // viaja en el FormData a través del input oculto de SessionTimer, así que
+  // no hace falta conservarlo para la próxima sesión.
+  function handleSubmit() {
+    if (itemType === "book" && durationMode === "timer") {
+      try {
+        window.localStorage.removeItem(timerStorageKey(entryId));
+      } catch {
+        // Almacenamiento inaccesible: nada que limpiar.
+      }
+    }
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Field label={t("date")} htmlFor="session-date">
         <Input
           id="session-date"
@@ -89,20 +119,47 @@ export function SessionForm({
       {/* Solo lectura registra minutos (§7.14): una serie se mide por
           episodios alcanzados, y su duración sale del catálogo. */}
       {itemType === "book" && (
-        <Field
-          label={t("duration")}
-          htmlFor="session-duration"
-          hint={t("durationHint")}
-        >
-          <Input
-            id="session-duration"
-            name="durationMinutes"
-            type="number"
-            min={0}
-            inputMode="numeric"
-            placeholder="0"
-          />
-        </Field>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">{t("duration")}</span>
+          <div className="flex gap-1.5 rounded-[10px] bg-surface-muted p-1">
+            {(["manual", "timer"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={durationMode === mode}
+                onClick={() => setDurationMode(mode)}
+                className={`flex-1 rounded-[7px] px-3 py-2 text-center text-[12px] font-semibold transition-colors ${
+                  durationMode === mode
+                    ? "bg-surface text-foreground shadow-card"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {mode === "manual" ? t("durationManual") : t("durationTimer")}
+              </button>
+            ))}
+          </div>
+
+          {durationMode === "manual" ? (
+            <div className="mt-2 flex flex-col gap-1">
+              <Input
+                id="session-duration"
+                name="durationMinutes"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t("duration")}
+                value={manualMinutes}
+                onChange={(e) => setManualMinutes(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("durationHint")}</p>
+            </div>
+          ) : (
+            <div className="mt-2">
+              <SessionTimer entryId={entryId} onMinutes={handleTimerMinutes} />
+            </div>
+          )}
+        </div>
       )}
 
       {itemType === "book" ? (
