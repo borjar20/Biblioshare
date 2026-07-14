@@ -609,7 +609,11 @@
       "forbidden": "Necesitas ser colaborador para añadir ediciones.",
       "invalidLabel": "Pon un nombre a la edición.",
       "generic": "No se pudo guardar la edición."
-    }
+    },
+    "whichEdition": "¿Qué edición tienes?",
+    "whichEditionReading": "¿Qué edición estás leyendo?",
+    "unknownEdition": "No lo sé",
+    "unknownEditionHint": "Tu progreso se medirá contra la edición principal. Puedes cambiarlo cuando quieras."
   },
   "detail": {
     "back": "Volver",

@@ -60,21 +60,8 @@ export function LogPanel({
   editions: Edition[];
   queues: Queue[];
 }) {
-  const t = useTranslations("item");
-  const [isPending, startTransition] = useTransition();
-
   if (!entry) {
-    return (
-      <Button
-        type="button"
-        disabled={isPending}
-        onClick={() =>
-          startTransition(() => addExistingItemToLibrary(itemType, itemId))
-        }
-      >
-        {isPending ? t("following") : t("follow")}
-      </Button>
-    );
+    return <FollowButton itemType={itemType} itemId={itemId} editions={editions} />;
   }
 
   return (
@@ -87,6 +74,75 @@ export function LogPanel({
       editions={editions}
       queues={queues}
     />
+  );
+}
+
+// Botón de "Seguir" cuando el ítem todavía no está en la biblioteca (Tarea
+// 3, Paso 1). Con más de una edición, primero pregunta cuál tienes — con una
+// sola (o ninguna) se añade directo, como antes. "No lo sé" es una salida
+// legítima, no un error: no fija edición y el progreso se mide contra la
+// primaria (se puede volver a preguntar más tarde, al empezar a leer).
+function FollowButton({
+  itemType,
+  itemId,
+  editions,
+}: {
+  itemType: ItemType;
+  itemId: string;
+  editions: Edition[];
+}) {
+  const t = useTranslations("item");
+  const tEditions = useTranslations("editions");
+  const [isPending, startTransition] = useTransition();
+  const [choosingEdition, setChoosingEdition] = useState(false);
+
+  function follow(editionId: string | null) {
+    startTransition(() =>
+      addExistingItemToLibrary(itemType, itemId, undefined, editionId)
+    );
+  }
+
+  if (!choosingEdition) {
+    return (
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={() => {
+          if (editions.length > 1) setChoosingEdition(true);
+          else follow(null);
+        }}
+      >
+        {isPending ? t("following") : t("follow")}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface p-3 shadow-card">
+      <span className="text-sm font-medium">{tEditions("whichEdition")}</span>
+      <div className="flex flex-col gap-1.5">
+        {editions.map((edition) => (
+          <button
+            key={edition.id}
+            type="button"
+            disabled={isPending}
+            onClick={() => follow(edition.id)}
+            className="rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-60"
+          >
+            {formatEdition(edition, itemType)}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => follow(null)}
+          className="rounded-md border border-dashed border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
+        >
+          {tEditions("unknownEdition")}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">{tEditions("unknownEditionHint")}</p>
+    </div>
   );
 }
 
@@ -282,6 +338,7 @@ function ProgressBlock({
   const t = useTranslations("detail.log");
   const tPasses = useTranslations("passes");
   const tSessions = useTranslations("item.sessions");
+  const tEditions = useTranslations("editions");
   const [isPending, startTransition] = useTransition();
   const [rating, setRating] = useState(openPass.rating);
 
@@ -292,6 +349,27 @@ function ProgressBlock({
     setPrevOpenPass(openPass);
     if (openPass.rating !== rating) setRating(openPass.rating);
   }
+
+  // Pregunta pendiente "¿qué edición estás leyendo?" (Tarea 3, Paso 2): solo
+  // tiene sentido si hay más de una edición entre las que elegir y el pase
+  // abierto todavía no tiene una asignada. No existe una columna que guarde
+  // "ya se preguntó y contestó que no lo sabía" (la edición vive en el pase,
+  // no en un segundo sitio — misma decisión que en add-existing-item.ts), así
+  // que `answered` es puramente local: la fila desaparece en cuanto se
+  // contesta, incluida la salida "No lo sé", pero puede volver a aparecer si
+  // se recarga la página con el pase aún sin edición asignada. Se resetea
+  // solo si cambia de pase (pase distinto = pregunta distinta).
+  const [answered, setAnswered] = useState(false);
+  const [prevOpenPassId, setPrevOpenPassId] = useState(openPass.id);
+  if (openPass.id !== prevOpenPassId) {
+    setPrevOpenPassId(openPass.id);
+    setAnswered(false);
+  }
+  const pendingEditionQuestion =
+    itemType !== "series" &&
+    editions.length > 1 &&
+    openPass.editionId === null &&
+    !answered;
 
   let page: number | undefined;
   if (itemType === "book" && "page" in entry.position && entry.position.page !== undefined) {
@@ -304,6 +382,45 @@ function ProgressBlock({
       <span className="text-xs font-semibold text-foreground">
         {t("progressTitle")}
       </span>
+
+      {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
+          contestar (incluida la salida "No lo sé"). */}
+      {pendingEditionQuestion && (
+        <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
+          <span className="text-xs font-semibold text-foreground">
+            {tEditions("whichEditionReading")}
+          </span>
+          <div className="flex flex-col gap-1">
+            {editions.map((edition) => (
+              <button
+                key={edition.id}
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setAnswered(true);
+                  startTransition(() =>
+                    setPassEdition(openPass.id, itemType, itemId, edition.id)
+                  );
+                }}
+                className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
+              >
+                {formatEdition(edition, itemType)}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => setAnswered(true)}
+              className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
+            >
+              {tEditions("unknownEdition")}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {tEditions("unknownEditionHint")}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
@@ -325,8 +442,10 @@ function ProgressBlock({
         </p>
       )}
 
-      {/* Las series no tienen ediciones: sin selector para ellas. */}
-      {itemType !== "series" && editions.length > 0 && (
+      {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
+          pregunta pendiente de arriba está sin contestar, no repetimos el
+          mismo selector aquí abajo. */}
+      {itemType !== "series" && editions.length > 0 && !pendingEditionQuestion && (
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
             {t("edition")}
