@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 export type Club = {
   id: string;
@@ -80,6 +81,7 @@ export async function createClub(input: {
     p_cover_url: input.coverUrl ?? "",
   });
   if (error) throw error;
+  revalidateClubPages();
   return mapClub(data);
 }
 
@@ -108,6 +110,7 @@ export async function updateClub(
     })
     .eq("id", clubId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function getClub(slug: string): Promise<

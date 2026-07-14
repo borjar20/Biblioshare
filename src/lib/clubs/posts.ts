@@ -6,6 +6,7 @@ import { notifyMany } from "@/lib/social/notifications";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
 import type { FeedEvent } from "@/lib/social/feed";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -107,6 +108,7 @@ export async function createTextPost(clubId: string, body: string): Promise<void
   if (error) throw error;
 
   await notifyNewPost(supabase, clubId, userId);
+  revalidateClubPages();
 }
 
 export async function createShareActivityPost(
@@ -133,6 +135,7 @@ export async function createShareActivityPost(
   if (error) throw error;
 
   await notifyNewPost(supabase, clubId, userId);
+  revalidateClubPages();
 }
 
 export async function createPoll(
@@ -158,18 +161,21 @@ export async function createPoll(
   if (error) throw error;
 
   await notifyNewPost(supabase, clubId, userId);
+  revalidateClubPages();
 }
 
 export async function votePoll(postId: string, optionId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.rpc("vote_club_poll", { p_post_id: postId, p_option_id: optionId });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function deletePost(postId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("club_posts").delete().eq("id", postId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function listClubPosts(clubId: string, cursor?: string): Promise<ClubPostsPage> {

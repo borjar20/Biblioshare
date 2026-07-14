@@ -7,6 +7,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { Position } from "@/lib/library/position";
 import type { ActivityKind } from "./core";
 import { notifyClub } from "./notify-club";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 export type ProposedItem = { itemType: ItemType; itemId: string };
 
@@ -114,5 +115,6 @@ export async function proposeActivityWithSetup(
     activityId,
   );
 
+  revalidateClubPages();
   return activityId;
 }

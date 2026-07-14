@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { notifyClub } from "./notify-club";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -106,6 +107,7 @@ export async function proposeActivity(
   if (error) throw error;
 
   await notifyClub(supabase, clubId, userId, "club_activity_proposed", data.id);
+  revalidateClubPages();
 }
 
 // Editar la config de una actividad (EPIC-05 Bloque H4). Va por RPC porque Bloque G no dejó
@@ -119,6 +121,7 @@ export async function updateActivityConfig(activityId: string, config: Json): Pr
     p_config: config,
   });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function activateActivity(activityId: string): Promise<void> {
@@ -134,18 +137,21 @@ export async function activateActivity(activityId: string): Promise<void> {
   if (error) throw error;
 
   await notifyClub(supabase, activity.club_id, userId, "club_activity_activated", activityId);
+  revalidateClubPages();
 }
 
 export async function finishActivity(activityId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.rpc("finish_club_activity", { p_activity_id: activityId });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function archiveActivity(activityId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.rpc("archive_club_activity", { p_activity_id: activityId });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function joinActivity(activityId: string): Promise<void> {
@@ -154,6 +160,7 @@ export async function joinActivity(activityId: string): Promise<void> {
     .from("club_activity_participants")
     .insert({ activity_id: activityId, user_id: userId });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function leaveActivity(activityId: string): Promise<void> {
@@ -164,6 +171,7 @@ export async function leaveActivity(activityId: string): Promise<void> {
     .eq("activity_id", activityId)
     .eq("user_id", userId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function addActivityItem(
@@ -184,12 +192,14 @@ export async function addActivityItem(
     position: count ?? 0,
   });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function removeActivityItem(itemId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("club_activity_items").delete().eq("id", itemId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function addOpinion(
@@ -214,6 +224,7 @@ export async function addOpinion(
     { onConflict: "activity_id,user_id,item_type,item_id" },
   );
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function listClubActivities(clubId: string): Promise<ClubActivity[]> {

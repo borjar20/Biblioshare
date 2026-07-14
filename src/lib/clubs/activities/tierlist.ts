@@ -6,6 +6,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { itemKey } from "./list-challenge-types";
 import { parseTierlistConfig } from "./tierlist-types";
 import type { ParticipantBoard, TierlistView } from "./tierlist-types";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 // Tierlist de club (EPIC-05, Bloque H2). Hermano de checkpoints.ts (H1), list-challenge.ts
 // (H3) y criteria-challenge.ts (H4) -- pero el PRIMERO con mutaciones: H3 y H4 son de solo
@@ -139,6 +140,7 @@ export async function setPlacement(
     { onConflict: "activity_id,user_id,item_type,item_id" },
   );
   if (error) throw error;
+  revalidateClubPages();
 }
 
 // Devolver un ítem a la bandeja de "sin colocar".
@@ -156,4 +158,5 @@ export async function clearPlacement(
     .eq("item_type", itemType)
     .eq("item_id", itemId);
   if (error) throw error;
+  revalidateClubPages();
 }

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -36,6 +37,7 @@ export async function joinClub(clubId: string): Promise<void> {
     .from("club_members")
     .insert({ club_id: clubId, user_id: userId, status: "active" });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 // Rechaza si el actor es owner y hay otros miembros activos -- debe
@@ -75,6 +77,7 @@ export async function leaveClub(clubId: string): Promise<void> {
     .eq("club_id", clubId)
     .eq("user_id", userId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 // moderator+ solo puede invitar; role siempre queda 'member' (promociones
@@ -108,6 +111,7 @@ export async function inviteMember(clubId: string, userId: string): Promise<void
   } catch (notifyError) {
     console.error("inviteMember notify failed", notifyError);
   }
+  revalidateClubPages();
 }
 
 export async function acceptInvite(clubId: string): Promise<void> {
@@ -143,6 +147,8 @@ export async function acceptInvite(clubId: string): Promise<void> {
     } catch (notifyError) {
       console.error("acceptInvite notify failed", notifyError);
     }
+    // Solo revalida si de verdad hubo mutación (fila 'invited' -> 'active').
+    revalidateClubPages();
   }
 }
 
@@ -156,6 +162,7 @@ export async function declineInvite(clubId: string): Promise<void> {
     .eq("user_id", userId)
     .eq("status", "invited");
   if (error) throw error;
+  revalidateClubPages();
 }
 
 // No permite auto-eliminarse por esta vía -- el RLS de borrado permite
@@ -174,6 +181,7 @@ export async function removeMember(clubId: string, userId: string): Promise<void
     .eq("club_id", clubId)
     .eq("user_id", userId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function setMemberRole(
@@ -189,6 +197,7 @@ export async function setMemberRole(
     p_role: role,
   });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function transferOwnership(clubId: string, newOwnerId: string): Promise<void> {
@@ -199,4 +208,5 @@ export async function transferOwnership(clubId: string, newOwnerId: string): Pro
     p_new_owner_id: newOwnerId,
   });
   if (error) throw error;
+  revalidateClubPages();
 }
