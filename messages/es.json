@@ -571,6 +571,29 @@
       "duration": "{count} min"
     }
   },
+  "editions": {
+    "titleBook": "Ediciones",
+    "titleMovie": "Versiones",
+    "count": "{count} en esta ficha",
+    "add": "Añadir edición",
+    "addMovie": "Añadir versión",
+    "yours": "La tuya",
+    "label": "Nombre",
+    "labelHint": "p. ej. Tapa dura, Bolsillo, Extendida",
+    "publisher": "Editorial",
+    "year": "Año",
+    "language": "Idioma",
+    "pages": "Páginas",
+    "duration": "Duración (min)",
+    "isbn": "ISBN",
+    "submit": "Guardar edición",
+    "submitting": "Guardando…",
+    "errors": {
+      "forbidden": "Necesitas ser colaborador para añadir ediciones.",
+      "invalidLabel": "Pon un nombre a la edición.",
+      "generic": "No se pudo guardar la edición."
+    }
+  },
   "detail": {
     "back": "Volver",
     "ratings": "valoraciones",
