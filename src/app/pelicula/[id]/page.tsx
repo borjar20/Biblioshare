@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
-  ItemManagePanel,
+  LogPanel,
   type ManagedEntry,
-} from "@/components/item-manage-panel";
+} from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
@@ -32,6 +32,8 @@ import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
+import { getPasses } from "@/lib/passes/get-passes";
+import type { Pass } from "@/lib/passes/types";
 import { SagaAssignForm } from "@/components/saga-assign-form";
 
 export async function generateMetadata({
@@ -93,6 +95,7 @@ export default async function MovieDetailPage({
   ]);
 
   let entry: ManagedEntry | null = null;
+  let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
@@ -111,6 +114,7 @@ export default async function MovieDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
+      passes = await getPasses(supabase, row.id);
     }
     queues = await getQueues(supabase, user.id);
   }
@@ -196,7 +200,7 @@ export default async function MovieDetailPage({
               itemType="movie"
               itemId={movie.id}
               editions={editions}
-              selectedEditionId={null}
+              selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
               canContribute={canContribute}
             />
             <InfoPanel
@@ -236,11 +240,13 @@ export default async function MovieDetailPage({
           </div>
         }
         log={
-          <ItemManagePanel
+          <LogPanel
             itemType="movie"
             itemId={movie.id}
             entry={entry}
+            passes={passes}
             sessions={[]}
+            editions={editions}
             queues={queues}
           />
         }

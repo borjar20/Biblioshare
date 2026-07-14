@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
-  ItemManagePanel,
+  LogPanel,
   type ManagedEntry,
-} from "@/components/item-manage-panel";
+} from "@/components/detail/log-panel";
 import { SagaAssignForm } from "@/components/saga-assign-form";
 import { ItemHero } from "@/components/detail/item-hero";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
@@ -31,6 +31,8 @@ import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
+import { getPasses } from "@/lib/passes/get-passes";
+import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
 
 export async function generateMetadata({
@@ -94,6 +96,7 @@ export default async function BookDetailPage({
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
+  let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
@@ -112,7 +115,10 @@ export default async function BookDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
-      sessions = await getSessions(supabase, row.id, "book");
+      [sessions, passes] = await Promise.all([
+        getSessions(supabase, row.id, "book"),
+        getPasses(supabase, row.id),
+      ]);
     }
     queues = await getQueues(supabase, user.id);
   }
@@ -209,7 +215,7 @@ export default async function BookDetailPage({
               itemType="book"
               itemId={book.id}
               editions={editions}
-              selectedEditionId={null}
+              selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
               canContribute={canContribute}
             />
             <InfoPanel
@@ -242,11 +248,13 @@ export default async function BookDetailPage({
         }
         log={
           <div className="flex flex-col gap-4">
-            <ItemManagePanel
+            <LogPanel
               itemType="book"
               itemId={book.id}
               entry={entry}
+              passes={passes}
               sessions={sessions}
+              editions={editions}
               queues={queues}
             />
           </div>

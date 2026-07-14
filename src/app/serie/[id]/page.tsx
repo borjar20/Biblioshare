@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
-  ItemManagePanel,
+  LogPanel,
   type ManagedEntry,
-} from "@/components/item-manage-panel";
+} from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
@@ -35,6 +35,8 @@ import type { SagaMember } from "@/lib/sagas/types";
 import { parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
+import { getPasses } from "@/lib/passes/get-passes";
+import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { SagaAssignForm } from "@/components/saga-assign-form";
 
@@ -102,6 +104,7 @@ export default async function SeriesDetailPage({
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
+  let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
     const { data: row } = await supabase
@@ -120,7 +123,10 @@ export default async function SeriesDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
-      sessions = await getSessions(supabase, row.id, "series");
+      [sessions, passes] = await Promise.all([
+        getSessions(supabase, row.id, "series"),
+        getPasses(supabase, row.id),
+      ]);
     }
     queues = await getQueues(supabase, user.id);
   }
@@ -264,11 +270,15 @@ export default async function SeriesDetailPage({
           </div>
         }
         log={
-          <ItemManagePanel
+          <LogPanel
             itemType="series"
             itemId={series.id}
             entry={entry}
+            passes={passes}
             sessions={sessions}
+            // Las series no tienen ediciones (getEditions ni siquiera
+            // consulta la BD para este tipo): no hace falta cargarlas.
+            editions={[]}
             queues={queues}
           />
         }

@@ -176,6 +176,35 @@ export async function deletePass(
   revalidateItemViews(itemType, itemId);
 }
 
+// Puntuar el pase MIENTRAS sigue abierto (panel "Progreso" de la pestaña
+// Registro, Tarea 12): no podemos reutilizar updatePass/savePassFields para
+// esto — esa función siempre escribe finished_on (vacío → hoy), así que
+// cerraría el pase de tapadillo. Si eso pasara, updateStatus ya no
+// encontraría un pase abierto la próxima vez que el usuario marque
+// "completado" y abriría uno nuevo (pase duplicado, sesiones huérfanas en el
+// viejo). Esta acción solo toca la nota.
+export async function ratePass(
+  passId: string,
+  itemType: ItemType,
+  itemId: string,
+  rating: number
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("diary_entries")
+    .update({ rating })
+    .eq("id", passId)
+    .eq("user_id", user.id);
+
+  if (error) throw error;
+  revalidateItemViews(itemType, itemId);
+}
+
 export async function setPassEdition(
   passId: string,
   itemType: ItemType,

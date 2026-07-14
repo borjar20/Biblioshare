@@ -13,11 +13,15 @@ export function SessionList({
   itemType,
   itemId,
   sessions,
+  editionLabel = null,
 }: {
   entryId: string;
   itemType: ItemType;
   itemId: string;
   sessions: ProgressSession[];
+  /** Edición del pase abierto, rotulada encima de la lista (mockup pantalla
+   * 3, "Edición: Plaza & Janés · tapa dura"). Solo libro tiene ediciones. */
+  editionLabel?: string | null;
 }) {
   const t = useTranslations("item.sessions");
   const [isPending, startTransition] = useTransition();
@@ -33,6 +37,12 @@ export function SessionList({
           {t("add")}
         </Link>
       </div>
+
+      {editionLabel && (
+        <p className="-mt-1 font-mono text-[10px] text-muted-foreground">
+          {t("edition", { label: editionLabel })}
+        </p>
+      )}
 
       {sessions.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("empty")}</p>
