@@ -87,12 +87,20 @@ export default async function BookDetailPage({
       id: book.id,
       author: book.author,
     }),
-    ensureBookEditions(supabase, {
-      id: book.id,
-      openlibrary_work_key: book.openlibrary_work_key,
-      isbn: book.isbn,
-      editions_synced_at: book.editions_synced_at,
-    }),
+    // Solo con sesión: un visitante anónimo no puede escribir ni las ediciones
+    // (la RPC exige auth.uid()) ni la marca de sincronización (el grant es de
+    // `authenticated`). Sin este guardia, cada visita anónima a una ficha sin
+    // sincronizar pagaría hasta cinco llamadas a OpenLibrary y veinte RPC para
+    // tirarlo todo a la basura, una y otra vez. La ficha se pinta igual con las
+    // ediciones que ya haya.
+    user
+      ? ensureBookEditions(supabase, {
+          id: book.id,
+          openlibrary_work_key: book.openlibrary_work_key,
+          isbn: book.isbn,
+          editions_synced_at: book.editions_synced_at,
+        })
+      : Promise.resolve(),
   ]);
 
   const [credits, saga, editions] = await Promise.all([
