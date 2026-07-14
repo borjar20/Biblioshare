@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import type { ActivityDetail, ActivityItem } from "@/lib/clubs/activities/core";
 import { getTierlists, setPlacement, clearPlacement } from "@/lib/clubs/activities/tierlist";
 import type { TierlistView } from "@/lib/clubs/activities/tierlist-types";
+import { UserAvatar } from "@/components/social/user-avatar";
 import { TierRow } from "./tier-row";
 
 const UNPLACED = "unplaced";
@@ -55,7 +56,9 @@ export function TierlistBoard({
   if (!activity.viewerIsParticipant) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-foreground">{t("tierlistTitle")}</h2>
+        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("tierlistTitle")}
+        </h2>
         <p className="text-xs text-muted-foreground">{t("tierlistJoinToSee")}</p>
       </div>
     );
@@ -64,7 +67,9 @@ export function TierlistBoard({
   if (!view) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-foreground">{t("tierlistTitle")}</h2>
+        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("tierlistTitle")}
+        </h2>
         <p className="text-xs text-muted-foreground">{t("tierlistNoConfig")}</p>
       </div>
     );
@@ -136,8 +141,6 @@ export function TierlistBoard({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-foreground">{t("tierlistTitle")}</h2>
-
       {/* Conmutador de participante: la tuya es editable, las demás de solo lectura. */}
       <div className="flex flex-wrap gap-2">
         {view.boards.map((b) => (
@@ -148,16 +151,23 @@ export function TierlistBoard({
               setShownUserId(b.userId);
               setSelectedKey(null);
             }}
-            className={`rounded-full border px-3 py-1 text-xs ${
+            className={`inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-3 pl-0.5 text-xs ${
               b.userId === board.userId
                 ? "border-accent text-accent"
                 : "border-border text-muted-foreground hover:text-foreground"
             }`}
           >
+            <UserAvatar name={b.displayName || b.username} avatarUrl={b.avatarUrl} size={20} />
             {b.isViewer ? t("tierlistMine") : b.displayName || b.username}
           </button>
         ))}
       </div>
+
+      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {board.isViewer
+          ? t("tierlistYours")
+          : t("tierlistOf", { name: board.displayName || board.username })}
+      </h2>
 
       <DndContext
         id="tierlist-board"
@@ -178,16 +188,20 @@ export function TierlistBoard({
               onSelect={setSelectedKey}
             />
           ))}
-
-          <TierRow
-            id={UNPLACED}
-            label={t("tierlistUnplacedShort")}
-            items={itemsOf(board.unplacedItemKeys)}
-            editable={editable}
-            selectedKey={selectedKey}
-            onSelect={setSelectedKey}
-          />
         </div>
+
+        <p className="mt-1 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("tierlistUnplaced", { count: board.unplacedItemKeys.length })}
+        </p>
+        <TierRow
+          id={UNPLACED}
+          label=""
+          variant="pool"
+          items={itemsOf(board.unplacedItemKeys)}
+          editable={editable}
+          selectedKey={selectedKey}
+          onSelect={setSelectedKey}
+        />
       </DndContext>
 
       {/* Camino táctil y accesible: seleccionas una portada y eliges tier aquí. */}
