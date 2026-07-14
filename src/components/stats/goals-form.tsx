@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,36 @@ export function GoalsForm({
     updateGoals,
     initialState,
   );
+  // Plegado por defecto (limpieza): la card muestra las filas de GoalRows y el
+  // objetivo diario en estático; "Editar" despliega los inputs. Tras guardar,
+  // el refresh del server actualiza las filas — el form queda abierto hasta
+  // que el usuario lo cierre.
+  const [editing, setEditing] = useState(false);
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            {t("dailyGoal")}
+          </span>
+          <span className="text-sm text-foreground">
+            {dailyGoalMinutes
+              ? t("minutesCount", { count: dailyGoalMinutes })
+              : t("noGoal")}
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="px-4 py-1.5 text-xs"
+          onClick={() => setEditing(true)}
+        >
+          {t("editGoals")}
+        </Button>
+      </div>
+    );
+  }
 
   // Formulario pelado: vive dentro de la card "Objetivos {año}" del panel
   // (GoalRows pone el título; el panel, la card y el divisor).
@@ -83,9 +113,19 @@ export function GoalsForm({
           </p>
         )}
 
-        <Button type="submit" disabled={pending} variant="secondary">
-          {pending ? t("savingGoals") : t("saveGoals")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" disabled={pending} variant="primary">
+            {pending ? t("savingGoals") : t("saveGoals")}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => setEditing(false)}
+          >
+            {t("cancelGoals")}
+          </Button>
+        </div>
       </form>
   );
 }
