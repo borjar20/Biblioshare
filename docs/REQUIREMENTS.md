@@ -159,6 +159,7 @@ Formato checklist para seguimiento, pero **siguen siendo candidatas, no compromi
 - [x] ISBN capturado en el catálogo (`books.isbn`) leyendo `industryIdentifiers` de la respuesta, y también disponible en "añadir manualmente" con su propia validación.
 - [x] Datos mock actualizados (`MOCK_EXTERNAL_APIS=true` soporta búsqueda por ISBN también).
 - [x] **Búsqueda inversa para datos incompletos**: un hit directo por ISBN a veces viene sin portada o sin sinopsis (ediciones "delgadas" de Google Books). `src/lib/catalog/google-books.ts` detecta esto (`isIncomplete`: falta `coverUrl` o `synopsis`) y hace una segunda búsqueda por título+autor, rellenando solo los campos que faltaban — conserva el ISBN/identidad del hit original, no lo sustituye por otra edición. Verificado en producción con datos reales (Google Books devuelve intermitentemente `503`, manejado como "sin resultados" en vez de error).
+  - **Desactualizado (2026-07-15, ver §7.39)**: ya no hay Google Books (`google-books.ts` era código muerto y se ha borrado) ni búsqueda inversa. Un ISBN es un *lookup* que resuelve la **obra** (`openlibrary/isbn-lookup.ts`), y los datos que faltaban —sinopsis, géneros, portada— los trae la hidratación de la obra al abrir su ficha, no una segunda búsqueda por título. El agrupado de ediciones por título+autor (`group-editions.ts`) también desaparece: `search.json` ya devuelve obras.
 
 ### 7.3 Escanear código de barras para añadir por ISBN — *hecho (versión nativa)*
 - [x] Botón de cámara en la búsqueda de libros (`src/app/buscar/barcode-scanner.tsx`), visible **solo dentro del wrapper nativo de Capacitor** (`Capacitor.isNativePlatform()`) — nunca en la PWA web, porque no hay una vía web fiable de escaneo (ver 8-F). Usa `@capacitor-mlkit/barcode-scanning` (`scan()`, formatos `Ean13`/`Ean8`) y navega a `/buscar?type=book&q=<isbn>`, reutilizando la autodetección de ISBN de 7.2 sin cambios.
@@ -340,7 +341,16 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 - [ ] **Compilar y probar en un dispositivo/emulador Android real** — sigue bloqueado por falta de Android Studio/JDK en esta máquina (ver `docs/TESTING.md`). Todo lo anterior es configuración verificada por `tsc`/`eslint`, no ejecución real en el wrapper nativo.
 - Decidido en §8-F como prerrequisito de 7.17 (notificaciones) — ver ahí el razonamiento completo.
 
-### 7.32 Búsqueda "local primero" con persistencia automática al catálogo — *hecho*
+### 7.32 Búsqueda "local primero" con persistencia automática al catálogo — *hecho, SUPERADO por §7.39*
+
+> **Desactualizado (2026-07-15, ver §7.39).** Este diseño se ha rehecho entero para libros. Lo que ya
+> **no** es cierto: (1) la búsqueda **no persiste** los resultados de la API — la fila de `books` nace
+> al abrir la ficha o al añadir; (2) un hit local por título **no** cortocircuita la API — solo lo hace
+> un ISBN exacto, porque buscar por título es descubrir; (3) la sinopsis y los géneros **no** se
+> capturan en la búsqueda, sino al hidratar la obra desde `/works/<key>.json`. El "trade-off aceptado"
+> de más abajo era precisamente el bug: congelaba el catálogo sucio para siempre. Para películas y
+> series, lo único que cambia es que local y API se fusionan en vez de excluirse.
+
 - [x] Cada búsqueda consulta primero el catálogo propio (`books`/`movies`/`series`) antes de llamar a la API externa — `src/lib/catalog/local-search.ts`. Para libros, si la query es un **ISBN exacto** ya cacheado, se devuelve directamente desde la base de datos y **se salta la llamada a Google Books por completo** (caso más claro de "evitar llamadas repetidas"; también beneficia directamente a 7.3, ya que cada escaneo de un libro ya visto no vuelve a llamar a la API).
 - [x] Para búsquedas por título (sin ISBN exacto): **el catálogo local gana directamente si devuelve algo** — no se llama a la API en absoluto en ese caso. Solo si lo local no encuentra nada se consulta la API externa, y esos resultados se **insertan en el catálogo antes de devolver la respuesta** (`src/lib/catalog/find-or-create.ts`, reutilizado tanto por la búsqueda como por "añadir a biblioteca"), para que la próxima búsqueda de ese mismo título ya sea un hit local.
   - **Descartado un diseño anterior** que consultaba local y API en paralelo siempre: no reducía nada el consumo de API (se llamaba en cada búsqueda, cachear o no). Se cambió a "local gana si hay algo" tras detectarlo.
@@ -753,6 +763,75 @@ separado. Diseño completo en
 - **Verificado**: checklist manual en
   `docs/superpowers/plans/2026-07-14-ediciones-ficha-y-editor-manual-test.md` (el proyecto no usa
   E2E automático, ver `docs/TESTING.md`).
+
+### 7.39 Búsqueda e hidratación de libros: la escalera de tres peldaños — *hecho*
+
+La API de OpenLibrary da **obra + ediciones** y la interfaz muestra **obra + ediciones** (§7.38),
+pero en medio había una capa que lo aplanaba todo a "un libro" y lo cacheaba mal. Rehecha para que
+cada dato entre por la puerta que le corresponde. Spec:
+`docs/superpowers/specs/2026-07-14-busqueda-e-hidratacion-de-libros-design.md`.
+
+**Lo que estaba roto** (diagnóstico, con datos de producción a 14/07/2026: 10 libros cacheados,
+ninguno en la biblioteca de nadie, 5 sin sinopsis y 6 sin portada):
+- `search.json` devuelve **obras** (`/works/OL…W`), pero se mapeaban como si fueran una edición:
+  `isbn` era el primero de una lista de cientos, `publisher` el primero de muchos y `pageCount` la
+  **mediana** de páginas — un número que no es el de ningún libro real. Después `group-editions.ts`
+  reagrupaba por título+autor: deduplicaba a mano lo que la API ya entrega deduplicado.
+- La **sinopsis no llegaba nunca**: se pedía `description` en el parámetro `fields` de `search.json`,
+  que no la devuelve. Vive en `/works/<key>.json`, que no se llamaba jamás.
+- Los **géneros** eran el volcado crudo de `subject` (cientos de etiquetas: "Protected DAISY",
+  "award:nebula_award=novel"), y eso es lo que se pintaba como `GenreTag`.
+- Todo eso se **horneaba en la BD** al buscar, y como un hit local por título cortocircuitaba la API
+  para siempre, el registro sucio no volvía a curarse nunca.
+
+**Peldaño 1 — la tarjeta (`src/lib/catalog/openlibrary/work-search.ts`)**: se piden solo los campos
+que la tarjeta muestra (`key,title,author_name,cover_i,first_publish_year,edition_count`). Un doc es
+una obra, `editionCount` es el `edition_count` real de OpenLibrary, y `group-editions.ts` /
+`title-match.ts`-para-agrupar desaparecen. **La búsqueda ya no escribe en la base de datos**: los
+resultados de la API viajan sin `catalogId` y se fusionan con el catálogo local por
+`openlibrary_work_key` (`merge-results.ts`). Una búsqueda por texto **siempre** llama a la API:
+cortocircuitarla escondía obras ("dune" no enseñaba "Dune Messiah").
+- **Único atajo: el ISBN**, que no es una búsqueda sino un *lookup* de una tirada concreta (el
+  escáner de §7.3). Si está en el catálogo, no se llama a la API; si no,
+  `openlibrary/isbn-lookup.ts` resuelve la obra a partir de la edición y anota `matchedIsbn`.
+- **Revierte el trade-off de §7.32** (ver más abajo): aquel diseño "local gana si hay algo" ahorraba
+  llamadas a costa de congelar el catálogo sucio y de no descubrir nada nuevo.
+
+**Peldaño 2 — la ficha (`src/lib/catalog/hydrate-book.ts`)**: la fila de `books` nace al **abrir la
+ficha o al añadir el libro**, nunca antes, y nace hidratada desde `/works/<key>.json` (sinopsis,
+géneros, portada). Guard: `books.hydrated_at`, hermano de `editions_synced_at`. Nunca bloquea el
+render (`after()`, mismo patrón que §7.38); si OpenLibrary falla, `hydrated_at` se queda a null y se
+reintenta en la siguiente visita. Los libros viejos, cacheados sucios, **se curan solos** la primera
+vez que alguien los abre.
+- Escribe vía la RPC `hydrate_book` (`security definer`), que **solo rellena huecos**: `synopsis`,
+  `genres` y `cover_url` son columnas curadas (solo colaborador+, §7.38), y hidratar es rellenar un
+  hueco, no curar. Un visitante autenticado completa una obra vacía sin poder pisar jamás lo que un
+  colaborador escribió a mano en el editor de ficha.
+- Si la obra no trae `description`, se cae a la de una de sus ediciones (una llamada extra, y solo en
+  ese caso).
+
+**Géneros: vocabulario canónico** (`src/lib/catalog/genres.ts`). Tabla cerrada en español, del mismo
+estilo que los géneros de TMDB, con un mapeo `subject → género` y tope de 5; lo que no mapea se
+descarta. Dos niveles de coincidencia, y cada uno existe por un falso positivo **encontrado en datos
+reales**, no en un test sintético:
+- **Prefijo de palabra** para la ficción: con `includes` a secas, el subject `thoughtcrime` de *1984*
+  casaba con "crime" y el libro salía etiquetado como novela negra.
+- **Coincidencia exacta** para la no ficción, que es la que se contamina con temas: "Psychological
+  fiction" y "loss (psychology)" no hacen de *El nombre del viento* un libro de Psicología, ni
+  "voyages and travels" uno de Viajes, ni "History and criticism" (crítica literaria) uno de Historia.
+- Resultado con datos reales: Dune → Ciencia ficción, Fantasía. 1984 → Ciencia ficción, Clásicos,
+  Política, Distopía. El nombre del viento → Fantasía, Juvenil, Aventura, Misterio.
+
+**Esquema** (`20260715_book_hydration.sql`, aplicada en dev, prod pendiente): `books.hydrated_at`,
+la función `hydrate_book`, y `drop column books.google_books_id` — la columna legacy que guardaba la
+work key de OpenLibrary bajo un nombre que mentía (§7.38 ya había copiado su contenido a
+`openlibrary_work_key`). `google-books.ts` era código muerto y se borra.
+
+**Cierra la deuda de §7.1**: `search-result-card.tsx` ya no pinta `publisher`/`pageCount`. Quedaría
+`library-item-card.tsx`, que sigue pintándolos desde `books`.
+
+**Alcance**: solo libros. Películas y series (TMDB) mantienen su comportamiento; solo heredan la
+misma fusión local + API por id.
 
 ## 8. Decisiones de arquitectura (evaluadas antes de construir más)
 
