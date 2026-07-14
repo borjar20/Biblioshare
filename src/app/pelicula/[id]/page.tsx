@@ -55,7 +55,6 @@ export default async function MovieDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const t = await getTranslations("item");
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -116,14 +115,10 @@ export default async function MovieDetailPage({
     queues = await getQueues(supabase, user.id);
   }
 
+  // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
+  // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
   const byline =
-    [
-      movie.director || null,
-      movie.release_year ? String(movie.release_year) : null,
-      movie.duration_minutes
-        ? `${movie.duration_minutes} ${t("minutes")}`
-        : null,
-    ]
+    [movie.director || null, movie.release_year ? String(movie.release_year) : null]
       .filter(Boolean)
       .join(" · ") || null;
 
@@ -131,8 +126,6 @@ export default async function MovieDetailPage({
     ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
     : false;
 
-  // La duración es de la VERSIÓN (movie_versions), no de la obra: se ve en
-  // el panel de la edición (EditionDetails), no aquí.
   const metaRows: MetaRow[] = [];
   if (movie.director)
     metaRows.push({ label: tMeta("director"), value: movie.director });

@@ -26,6 +26,30 @@ import {
 } from "@/lib/library/manage-actions";
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
 import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
+import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
+
+// Lee si a este pase ya se le preguntó "¿qué edición estás leyendo?" y el
+// usuario contestó "No lo sé". Se llama solo desde el inicializador de
+// useState de ProgressBlock (nunca en un efecto ni durante el cuerpo del
+// render): así el primer pintado ya sabe si la pregunta debe mostrarse, sin
+// lecturas impuras en render (mismo patrón que session-timer.tsx).
+function readEditionAsked(passId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(editionAskedStorageKey(passId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeEditionAsked(passId: string) {
+  try {
+    window.localStorage.setItem(editionAskedStorageKey(passId), "1");
+  } catch {
+    // Cuota llena o almacenamiento inaccesible (modo privado): la pregunta
+    // podrá volver a aparecer tras recargar, pero no rompe nada más.
+  }
+}
 
 // Mismo tipo que el panel de gestión que este componente jubila: lo
 // exportamos ahora desde aquí porque este es el nuevo punto de entrada de la
@@ -262,7 +286,13 @@ function ManagedLog({
       )}
 
       {openPass && (
+        // key={openPass.id}: fuerza un remount cuando cambia de pase (p. ej.
+        // una relectura), para que el inicializador de useState que lee
+        // localStorage (readEditionAsked) se ejecute de nuevo con la clave
+        // del pase nuevo, sin tener que releer localStorage durante el
+        // render.
         <ProgressBlock
+          key={openPass.id}
           itemType={itemType}
           itemId={itemId}
           entry={entry}
@@ -352,19 +382,15 @@ function ProgressBlock({
 
   // Pregunta pendiente "¿qué edición estás leyendo?" (Tarea 3, Paso 2): solo
   // tiene sentido si hay más de una edición entre las que elegir y el pase
-  // abierto todavía no tiene una asignada. No existe una columna que guarde
-  // "ya se preguntó y contestó que no lo sabía" (la edición vive en el pase,
-  // no en un segundo sitio — misma decisión que en add-existing-item.ts), así
-  // que `answered` es puramente local: la fila desaparece en cuanto se
-  // contesta, incluida la salida "No lo sé", pero puede volver a aparecer si
-  // se recarga la página con el pase aún sin edición asignada. Se resetea
-  // solo si cambia de pase (pase distinto = pregunta distinta).
-  const [answered, setAnswered] = useState(false);
-  const [prevOpenPassId, setPrevOpenPassId] = useState(openPass.id);
-  if (openPass.id !== prevOpenPassId) {
-    setPrevOpenPassId(openPass.id);
-    setAnswered(false);
-  }
+  // abierto todavía no tiene una asignada. Elegir una edición de verdad la
+  // hace desaparecer sola (openPass.editionId deja de ser null). La salida
+  // "No lo sé" no fija edición, así que sin recordarla se repetiría en cada
+  // recarga: se guarda en localStorage bajo una clave por passId (no por
+  // ítem, ver src/lib/passes/edition-asked.ts), para que una relectura (pase
+  // nuevo) vuelva a preguntar. El componente está keyed por openPass.id (ver
+  // ManagedLog), así este inicializador se ejecuta de nuevo con cada pase
+  // distinto sin releer localStorage durante el render.
+  const [answered, setAnswered] = useState(() => readEditionAsked(openPass.id));
   const pendingEditionQuestion =
     itemType !== "series" &&
     editions.length > 1 &&
@@ -384,7 +410,8 @@ function ProgressBlock({
       </span>
 
       {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
-          contestar (incluida la salida "No lo sé"). */}
+          contestar (incluida la salida "No lo sé", que además se recuerda en
+          localStorage para no repetirse en cada recarga). */}
       {pendingEditionQuestion && (
         <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
           <span className="text-xs font-semibold text-foreground">
@@ -410,7 +437,13 @@ function ProgressBlock({
             <button
               type="button"
               disabled={isPending}
-              onClick={() => setAnswered(true)}
+              onClick={() => {
+                // "No lo sé" no fija edición: se recuerda por passId para
+                // que no vuelva a preguntar en cada recarga (sí volverá a
+                // preguntar si se abre un pase nuevo, p. ej. una relectura).
+                writeEditionAsked(openPass.id);
+                setAnswered(true);
+              }}
               className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
             >
               {tEditions("unknownEdition")}
