@@ -38,7 +38,7 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { CatalogEditor } from "@/components/detail/catalog-editor";
+import { CatalogEditor, EditFichaButton } from "@/components/detail/catalog-editor";
 
 export async function generateMetadata({
   params,
@@ -237,39 +237,37 @@ export default async function SeriesDetailPage({
             saga={saga ? { id: saga.sagaId, name: saga.name } : null}
             canContribute={canContribute}
           >
-            {(editButton) => (
-              <div className="flex flex-col gap-10">
-                {saga && sagaMembers.length >= 2 && (
-                  <SagaStrip
-                    members={sagaMembers}
-                    currentType="series"
-                    currentId={series.id}
-                    sagaId={saga.sagaId}
-                    sagaName={saga.name}
-                    label={tDetail("saga")}
-                  />
-                )}
-                <InfoPanel
-                  aboutLabel={tDetail("about")}
-                  synopsis={series.synopsis}
-                  noSynopsisLabel={tDetail("noSynopsis")}
-                  actions={editButton}
-                  sidebar={
-                    <MetadataSidebar
-                      rows={metaRows}
-                      genres={genres}
-                      genresLabel={tDetail("genres")}
-                    />
-                  }
-                  extra={
-                    <>
-                      <CreditsSection credits={credits} />
-                      {watchProviders && <WatchProviders data={watchProviders} />}
-                    </>
-                  }
+            <div className="flex flex-col gap-10">
+              {saga && sagaMembers.length >= 2 && (
+                <SagaStrip
+                  members={sagaMembers}
+                  currentType="series"
+                  currentId={series.id}
+                  sagaId={saga.sagaId}
+                  sagaName={saga.name}
+                  label={tDetail("saga")}
                 />
-              </div>
-            )}
+              )}
+              <InfoPanel
+                aboutLabel={tDetail("about")}
+                synopsis={series.synopsis}
+                noSynopsisLabel={tDetail("noSynopsis")}
+                actions={<EditFichaButton />}
+                sidebar={
+                  <MetadataSidebar
+                    rows={metaRows}
+                    genres={genres}
+                    genresLabel={tDetail("genres")}
+                  />
+                }
+                extra={
+                  <>
+                    <CreditsSection credits={credits} />
+                    {watchProviders && <WatchProviders data={watchProviders} />}
+                  </>
+                }
+              />
+            </div>
           </CatalogEditor>
         }
         episodes={

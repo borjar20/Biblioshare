@@ -1,6 +1,15 @@
 "use client";
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -52,17 +61,66 @@ export type CatalogItemFields = {
 };
 
 const MAX_GENRES = 10;
+// Espejo cliente de MAX_COVER_BYTES/ALLOWED_COVER_TYPES en edit-actions.ts:
+// solo da feedback inmediato sin gastar el POST, la validación que manda de
+// verdad sigue siendo la del servidor.
+const MAX_COVER_CLIENT_BYTES = 2 * 1024 * 1024; // 2 MB
+const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+// Contexto del botón "Editar ficha": children ahora es un ReactNode plano
+// (ver comentario de CatalogEditor más abajo), así que ya no hay forma de
+// pasarle el setter de `editing` como argumento de función. En su lugar,
+// CatalogEditor provee este contexto y EditFichaButton (un componente
+// cliente aparte) lo consume desde donde el servidor lo haya colocado dentro
+// de `children` -- junto al título "Sinopsis" de InfoPanel, según el mockup.
+type CatalogEditorContextValue = {
+  canContribute: boolean;
+  savedFlash: boolean;
+  onEditClick: () => void;
+};
+
+const CatalogEditorContext = createContext<CatalogEditorContextValue | null>(null);
+
+// Botón "Editar ficha" + aviso de "Ficha actualizada". Se coloca dentro de
+// `children`, que el servidor compone y le pasa a CatalogEditor ya
+// renderizado -- por eso este botón no puede recibir el setter de `editing`
+// como prop y en vez de eso lo toma del contexto.
+export function EditFichaButton() {
+  const t = useTranslations("catalogEdit");
+  const ctx = useContext(CatalogEditorContext);
+  if (!ctx?.canContribute) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        className="!rounded-md !px-2 !py-1 text-xs"
+        onClick={ctx.onEditClick}
+      >
+        <PencilIcon className="h-3.5 w-3.5" />
+        {t("edit")}
+      </Button>
+      {ctx.savedFlash && (
+        <span className="text-xs text-muted-foreground">{t("saved")}</span>
+      )}
+    </div>
+  );
+}
 
 // Editor de la ficha oficial del catálogo (pantalla 6 del mockup Paper):
 // portada, título, autoría, géneros, sinopsis, año, sagas y ediciones, todo
 // editable por un colaborador+. Conmuta con la ficha de lectura normal EN LA
 // MISMA página (mismo patrón que ClubForm/ClubHeader), sin ruta propia.
 //
-// `children` es una render-prop en vez de un ReactNode plano: así el botón
-// "Editar ficha" (resuelto aquí, con el label y el estado de "guardado" que
-// le tocan) puede colocarse exactamente donde manda el mockup — junto al
-// título "Sinopsis" de InfoPanel — sin que esta pieza necesite saber nada de
-// EditionsSection ni de SagaStrip.
+// `children` es un ReactNode YA RENDERIZADO por el servidor, nunca una
+// función: una función no se puede serializar a través de la frontera
+// servidor->cliente (solo las server actions pueden), así que pasarla como
+// children reventaba las tres fichas con 500 en cada visita ("Functions are
+// not valid as a child of Client Components"), incluso para un visitante
+// anónimo. Ver EditFichaButton/CatalogEditorContext arriba para cómo el botón
+// "Editar ficha" sigue pudiendo cambiar el `editing` de este componente pese
+// a que el servidor solo compone ReactNodes.
 export function CatalogEditor({
   itemType,
   itemId,
@@ -79,34 +137,49 @@ export function CatalogEditor({
   /** La saga asignada a este ítem, si tiene (un ítem solo puede estar en una). */
   saga: { id: string; name: string } | null;
   canContribute: boolean;
-  children: (editButton: ReactNode) => ReactNode;
+  children: ReactNode;
 }) {
-  const t = useTranslations("catalogEdit");
   const [editing, setEditing] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
-  const editButton = canContribute ? (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        className="!rounded-md !px-2 !py-1 text-xs"
-        onClick={() => {
-          setEditing(true);
-          setSavedFlash(false);
-        }}
-      >
-        <PencilIcon className="h-3.5 w-3.5" />
-        {t("edit")}
-      </Button>
-      {savedFlash && (
-        <span className="text-xs text-muted-foreground">{t("saved")}</span>
-      )}
-    </div>
-  ) : null;
+  // El useActionState de "Guardar cambios" vive aquí, en CatalogEditor (quien
+  // posee `editing`/`savedFlash`), y no en CatalogEditorForm: cerrar el
+  // editor tras un guardado correcto es un ajuste de estado en respuesta al
+  // resultado de la acción, y con el patrón prevState eso solo vale para
+  // actualizar el estado PROPIO del componente que lo ejecuta. Hacerlo en
+  // CatalogEditorForm para tocar el estado de su padre (vía un callback
+  // onDone) es lo que React 19 avisa como inválido: "Cannot update a
+  // component while rendering a different component".
+  const updateAction = updateCatalogItem.bind(null, itemType, itemId);
+  const [state, formAction, pending] = useActionState(updateAction, initialItemState);
+
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state.ok) {
+      setEditing(false);
+      setSavedFlash(true);
+    }
+  }
+
+  const contextValue = useMemo<CatalogEditorContextValue>(
+    () => ({
+      canContribute,
+      savedFlash,
+      onEditClick: () => {
+        setEditing(true);
+        setSavedFlash(false);
+      },
+    }),
+    [canContribute, savedFlash]
+  );
 
   if (!editing || !canContribute) {
-    return <>{children(editButton)}</>;
+    return (
+      <CatalogEditorContext.Provider value={contextValue}>
+        {children}
+      </CatalogEditorContext.Provider>
+    );
   }
 
   return (
@@ -116,9 +189,12 @@ export function CatalogEditor({
       item={item}
       editions={editions}
       saga={saga}
-      onDone={(saved) => {
+      state={state}
+      formAction={formAction}
+      pending={pending}
+      onCancel={() => {
         setEditing(false);
-        setSavedFlash(saved);
+        setSavedFlash(false);
       }}
     />
   );
@@ -130,33 +206,26 @@ function CatalogEditorForm({
   item,
   editions,
   saga,
-  onDone,
+  state,
+  formAction,
+  pending,
+  onCancel,
 }: {
   itemType: ItemType;
   itemId: string;
   item: CatalogItemFields;
   editions: Edition[];
   saga: { id: string; name: string } | null;
-  onDone: (saved: boolean) => void;
+  /** useActionState de "Guardar cambios" vive en CatalogEditor (ver comentario ahí). */
+  state: EditItemState;
+  formAction: (formData: FormData) => void;
+  pending: boolean;
+  onCancel: () => void;
 }) {
   const t = useTranslations("catalogEdit");
   const tSaga = useTranslations("item.sagaForm");
   const tEditions = useTranslations("editions");
   const isMovie = itemType === "movie";
-
-  const updateAction = updateCatalogItem.bind(null, itemType, itemId);
-  const [state, formAction, pending] = useActionState(updateAction, initialItemState);
-
-  // Cerrar el editor tras un guardado correcto es un ajuste de estado en
-  // respuesta al resultado de la acción, no un efecto secundario: se hace
-  // durante el render (patrón prevState de edition-strip.tsx), nunca en un
-  // useEffect (dispararía react-hooks/set-state-in-effect y además tardaría
-  // un ciclo extra en reflejarse).
-  const [prevState, setPrevState] = useState(state);
-  if (state !== prevState) {
-    setPrevState(state);
-    if (state.ok) onDone(true);
-  }
 
   const [genres, setGenres] = useState(item.genres);
   const [addingGenre, setAddingGenre] = useState(false);
@@ -175,20 +244,71 @@ function CatalogEditorForm({
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Blob URL de la preview optimista en curso, si hay uno vivo. Se guarda en
+  // un ref (no en un state) porque solo hace falta para poder revocarlo más
+  // tarde -- no para pintar nada.
+  const objectUrlRef = useRef<string | null>(null);
+
+  // Revoca el blob URL pendiente al desmontar (p.ej. al cerrar el editor
+  // guardando "Guardar cambios"): sin esto, cada portada subida en la sesión
+  // se queda reservando memoria para siempre. No es un setState, así que no
+  // cae bajo la prohibición de setState-en-efecto: es solo limpieza.
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, []);
 
   // Subida de portada: acción independiente de "Guardar cambios" (igual que
   // AvatarUpload), con preview local inmediato vía createObjectURL. La URL
   // pública real (con su parámetro de cache-busting) llega cuando Next
   // refresque los datos de servidor tras el revalidatePath de uploadCover.
   async function handleCoverChange(file: File) {
-    setCoverUrl(URL.createObjectURL(file));
+    // Validación en cliente: mismo criterio que uploadCover en
+    // edit-actions.ts (MAX_COVER_BYTES/ALLOWED_COVER_TYPES), para dar
+    // feedback inmediato sin gastar el POST. No sustituye la validación del
+    // servidor -- esa es la que manda de verdad.
+    if (!ALLOWED_COVER_TYPES.has(file.type) || file.size > MAX_COVER_CLIENT_BYTES) {
+      setCoverError(true);
+      return;
+    }
+
+    // Si ya había un blob URL de un intento anterior (p.ej. un reintento
+    // tras un fallo), se revoca antes de crear el nuevo: si no, cada intento
+    // deja un blob URL huérfano en memoria.
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
+
+    const previousCoverUrl = coverUrl;
+    setCoverUrl(objectUrl);
     setCoverUploading(true);
     setCoverError(false);
-    const formData = new FormData();
-    formData.append("file", file);
-    const result = await uploadCover(itemType, itemId, formData);
-    setCoverUploading(false);
-    if (result.error) setCoverError(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await uploadCover(itemType, itemId, formData);
+      if (result.error) {
+        // La subida falló: se revierte la preview optimista -- si no, el
+        // colaborador ve puesta una portada nueva que nunca se llegó a
+        // guardar.
+        setCoverUrl(previousCoverUrl);
+        setCoverError(true);
+        URL.revokeObjectURL(objectUrl);
+        objectUrlRef.current = null;
+      }
+    } catch {
+      // Sin este catch, una promesa rechazada (red caída, timeout, el
+      // bodySizeLimit de 5 MB de next.config.ts...) dejaba
+      // setCoverUploading(false) sin ejecutarse nunca: el overlay de "…" se
+      // quedaba cargando para siempre y no se avisaba de nada.
+      setCoverUrl(previousCoverUrl);
+      setCoverError(true);
+      URL.revokeObjectURL(objectUrl);
+      objectUrlRef.current = null;
+    } finally {
+      setCoverUploading(false);
+    }
   }
 
   const sagaAssignAction = assignItemToSaga.bind(null, itemType, itemId);
@@ -267,6 +387,10 @@ function CatalogEditorForm({
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
+                // Se resetea el value tras leer el fichero: si no, elegir el
+                // MISMO fichero dos veces seguidas (p.ej. reintentar tras un
+                // fallo) no dispara este onChange la segunda vez.
+                e.target.value = "";
                 if (file) void handleCoverChange(file);
               }}
             />
@@ -494,7 +618,7 @@ function CatalogEditorForm({
           a BottomNav (solo móvil, sticky bottom-0 también); en sm+ no hay
           BottomNav así que baja a bottom-0. */}
       <div className="sticky bottom-16 z-30 -mx-4 flex justify-end gap-2 border-t border-border bg-surface px-4 py-3 shadow-card sm:bottom-0 sm:-mx-6 sm:px-6">
-        <Button type="button" variant="ghost" onClick={() => onDone(false)}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           {t("cancel")}
         </Button>
         <Button type="submit" form="catalog-edit-form" disabled={pending}>

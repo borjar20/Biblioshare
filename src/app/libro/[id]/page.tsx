@@ -8,7 +8,7 @@ import {
   LogPanel,
   type ManagedEntry,
 } from "@/components/detail/log-panel";
-import { CatalogEditor } from "@/components/detail/catalog-editor";
+import { CatalogEditor, EditFichaButton } from "@/components/detail/catalog-editor";
 import { ItemHero } from "@/components/detail/item-hero";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
@@ -235,40 +235,38 @@ export default async function BookDetailPage({
             saga={saga ? { id: saga.sagaId, name: saga.name } : null}
             canContribute={canContribute}
           >
-            {(editButton) => (
-              <div className="flex flex-col gap-10">
-                {saga && sagaMembers.length >= 1 && (
-                  <SagaStrip
-                    members={sagaMembers}
-                    currentType="book"
-                    currentId={book.id}
-                    sagaId={saga.sagaId}
-                    sagaName={saga.name}
-                    label={tDetail("saga")}
-                  />
-                )}
-                {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
-                    entre la tira de ediciones y el panel de metadatos, y así los
-                    dos comparten el estado de "qué edición miro". */}
-                <EditionsSection
-                  itemType="book"
-                  itemId={book.id}
-                  editions={editions}
-                  selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
-                  canContribute={canContribute}
-                  workRows={metaRows}
-                  genres={genres}
-                  genresLabel={tDetail("genres")}
-                >
-                  <InfoPanel
-                    aboutLabel={tDetail("about")}
-                    synopsis={book.synopsis}
-                    noSynopsisLabel={tDetail("noSynopsis")}
-                    actions={editButton}
-                  />
-                </EditionsSection>
-              </div>
-            )}
+            <div className="flex flex-col gap-10">
+              {saga && sagaMembers.length >= 1 && (
+                <SagaStrip
+                  members={sagaMembers}
+                  currentType="book"
+                  currentId={book.id}
+                  sagaId={saga.sagaId}
+                  sagaName={saga.name}
+                  label={tDetail("saga")}
+                />
+              )}
+              {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+                  entre la tira de ediciones y el panel de metadatos, y así los
+                  dos comparten el estado de "qué edición miro". */}
+              <EditionsSection
+                itemType="book"
+                itemId={book.id}
+                editions={editions}
+                selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
+                canContribute={canContribute}
+                workRows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              >
+                <InfoPanel
+                  aboutLabel={tDetail("about")}
+                  synopsis={book.synopsis}
+                  noSynopsisLabel={tDetail("noSynopsis")}
+                  actions={<EditFichaButton />}
+                />
+              </EditionsSection>
+            </div>
           </CatalogEditor>
         }
         community={

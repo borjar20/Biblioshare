@@ -38,6 +38,26 @@ const COVER_EXTENSION: Record<string, string> = {
   "image/webp": "webp",
 };
 
+const ITEM_TYPES = new Set<ItemType>(["book", "movie", "series"]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// uploadCover, deleteEdition y resyncEditions se llaman de forma DIRECTA
+// desde el cliente (no vía .bind() en la action de un <form>, que es lo que
+// Next cifra): sus argumentos viajan tal cual en el body del POST y son
+// 100% manipulables por quien controle el cliente. El tipo ItemType de
+// TypeScript no existe en runtime -- sin esto, un itemType desconocido caía
+// por el ternario de fallback a "series", y un itemId/editionId cualquiera
+// se colaba directo en el path de Storage (`${itemType}/${itemId}.ext`),
+// dejando escribir fuera del prefijo previsto o pisar la portada de otro
+// ítem.
+function isValidItemType(value: unknown): value is ItemType {
+  return typeof value === "string" && ITEM_TYPES.has(value as ItemType);
+}
+
+function isValidUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
 // "" -> null; entero fuera de [1400, 2200] o no numérico -> "invalid". Una
 // server action es un endpoint POST público: no basta con que el <input
 // type="number"> del formulario ya lo valide, porque nada impide un POST
@@ -175,6 +195,11 @@ export async function uploadCover(
   itemId: string,
   formData: FormData
 ): Promise<EditItemState> {
+  // Validación de runtime antes de tocar nada (ver comentario de
+  // isValidItemType más arriba): itemType/itemId construyen el path del
+  // objeto en Storage un poco más abajo.
+  if (!isValidItemType(itemType) || !isValidUuid(itemId)) return { error: "generic" };
+
   const supabase = await createClient();
   const guard = await requireCollaborator(supabase);
   if (guard) return guard;
@@ -280,6 +305,12 @@ export async function deleteEdition(
   itemType: ItemType,
   itemId: string
 ): Promise<DeleteEditionState> {
+  // Validación de runtime antes de tocar nada (ver comentario de
+  // isValidItemType más arriba).
+  if (!isValidUuid(editionId) || !isValidItemType(itemType) || !isValidUuid(itemId)) {
+    return { error: "generic" };
+  }
+
   const supabase = await createClient();
   const guard = await requireCollaborator(supabase);
   if (guard) return guard;
@@ -321,6 +352,10 @@ export async function deleteEdition(
 // visita a la ficha. Solo aplica a libros (las ediciones de película no se
 // sincronizan desde una API externa).
 export async function resyncEditions(bookId: string): Promise<EditItemState> {
+  // Validación de runtime antes de tocar nada (ver comentario de
+  // isValidItemType más arriba); aquí solo hay itemId (siempre "book").
+  if (!isValidUuid(bookId)) return { error: "generic" };
+
   const supabase = await createClient();
   const guard = await requireCollaborator(supabase);
   if (guard) return guard;
