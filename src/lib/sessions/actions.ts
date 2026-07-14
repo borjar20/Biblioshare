@@ -7,6 +7,10 @@ import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
+import { getPasses } from "@/lib/passes/get-passes";
+import { openPass } from "@/lib/passes/actions";
+import { getEditions } from "@/lib/editions/get-editions";
+import { primaryEdition } from "@/lib/editions/edition-label";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -72,14 +76,37 @@ export async function addSession(
 
   const note = String(formData.get("note") ?? "").trim();
 
+  // La sesión cuelga del pase abierto de la entrada. Registrar una sesión
+  // implica que has empezado: si el ítem seguía "pendiente" y no hay ningún
+  // pase abierto, lo abrimos aquí mismo en vez de exigir que el usuario
+  // cambie el estado primero.
+  let passes = await getPasses(supabase, entryId);
+  let currentOpenPass = passes.find((p) => !p.finishedOn) ?? null;
+  if (!currentOpenPass) {
+    await openPass(entryId, null);
+    passes = await getPasses(supabase, entryId);
+    currentOpenPass = passes.find((p) => !p.finishedOn) ?? null;
+  }
+
+  // El total contra el que se valida la página sale de la EDICIÓN del pase
+  // (o de la primaria si el pase no tiene ninguna asignada), no de
+  // books.total_pages: la de bolsillo y la de tapa dura no tienen las mismas
+  // páginas, así que "hasta la 240" solo es válido contra tu edición.
   let maxPosition: number | null = null;
   if (itemType === "book") {
-    const { data: book } = await supabase
-      .from("books")
-      .select("total_pages")
-      .eq("id", itemId)
-      .maybeSingle();
-    maxPosition = book?.total_pages ?? null;
+    const editions = await getEditions(supabase, "book", itemId);
+    const edition =
+      editions.find((e) => e.id === currentOpenPass?.editionId) ??
+      primaryEdition(editions);
+    maxPosition = edition?.totalUnits ?? null;
+    if (maxPosition === null) {
+      const { data: book } = await supabase
+        .from("books")
+        .select("total_pages")
+        .eq("id", itemId)
+        .maybeSingle();
+      maxPosition = book?.total_pages ?? null;
+    }
   } else if (itemType === "series") {
     const { data: series } = await supabase
       .from("series")
@@ -133,6 +160,7 @@ export async function addSession(
     duration_minutes: durationMinutes,
     position: sessionPosition,
     note: note || null,
+    pass_id: currentOpenPass?.id ?? null,
   });
 
   if (insertError) return { error: "generic" };
