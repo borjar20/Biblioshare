@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -91,6 +91,7 @@ export function LogPanel({
   sessions,
   editions,
   queues,
+  initialClosingPassId,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -99,6 +100,12 @@ export function LogPanel({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
+  // Pase a abrir en la hoja de cierre desde el primer pintado (§Tarea 7,
+  // hallazgo de revisión): lo calcula el SERVER component de la ficha leyendo
+  // `?cerrar` de `searchParams` (que no se retrasa, a diferencia de
+  // useSearchParams en cliente) y ya validado contra el pase activo. Ver el
+  // comentario largo en ManagedLog.
+  initialClosingPassId?: string | null;
 }) {
   if (!entry) {
     return <FollowButton itemType={itemType} itemId={itemId} editions={editions} />;
@@ -113,6 +120,7 @@ export function LogPanel({
       sessions={sessions}
       editions={editions}
       queues={queues}
+      initialClosingPassId={initialClosingPassId ?? null}
     />
   );
 }
@@ -197,6 +205,7 @@ function ManagedLog({
   sessions,
   editions,
   queues,
+  initialClosingPassId,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -205,12 +214,12 @@ function ManagedLog({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
+  initialClosingPassId: string | null;
 }) {
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
   const tSegments = useTranslations("detail.statusSegments");
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(entry.status);
   const [queueId, setQueueId] = useState(entry.queueId);
@@ -238,32 +247,30 @@ function ManagedLog({
   // refrescar, basta con encadenar la hoja de cierre con ese passId.
   //
   // El auto-cierre por sesión (§Tarea 7) hace lo mismo por URL: la sesión que
-  // alcanza el final redirige a `?cerrar=<passId>&tab=log` y aquí se abre la
-  // hoja al leer ese parámetro con useSearchParams. Se valida contra el pase
-  // ACTIVO —nunca uno archivado—: un ?cerrar a mano con un pase viejo ya
-  // cerrado no abre nada (y closePass revalida user_id server-side igual). El
-  // `&tab=log` del redirect es obligatorio: ItemDetailTabs solo monta la
-  // pestaña activa, sin él la ficha abriría en "Información" y este componente
-  // ni existiría. LIMITACIÓN CONOCIDA (Next 16): tras el redirect de la server
-  // action (navegación blanda) useSearchParams va rezagado un render, así que
-  // la hoja no salta sola en ese instante; sí lo hace en cuanto la ficha se
-  // carga/recarga con ?cerrar en la URL. El auto-cierre en BD (lo importante)
-  // es fiable; ver task-7-report.md.
-  const cerrarParam = searchParams.get("cerrar");
-  const cerrarForActive =
-    cerrarParam && cerrarParam === activePass?.id ? cerrarParam : null;
+  // alcanza el final redirige a `?cerrar=<passId>&tab=log`. `initialClosingPassId`
+  // lo lee y valida el SERVER component de la ficha (contra el pase ACTIVO —
+  // nunca uno archivado; ver los tres `page.tsx` de libro/película/serie), así
+  // que llega aquí ya validado. Arreglo de la revisión de la Tarea 7: leer
+  // `?cerrar` con useSearchParams (cliente) iba un render por detrás tras el
+  // redirect de la server action, así que la hoja no se abría sola al
+  // terminar un libro — solo tras recargar a mano. El servidor no sufre ese
+  // rezago, pero SÍ hace falta el ajuste "durante el render" de abajo (mismo
+  // patrón que `entry`/`status` arriba): la ida y vuelta a `/sesion/[passId]`
+  // vuelve al MISMO `id` de obra, así que Next reutiliza la instancia ya
+  // montada de esta página en vez de remontarla — un `useState` inicializado
+  // una sola vez con la prop nunca vería el `cerrar` nuevo sin este
+  // seguimiento de `prev`. El `&tab=log` del redirect sigue siendo
+  // obligatorio: ItemDetailTabs solo monta la pestaña activa, sin él la ficha
+  // abriría en "Información" y este componente ni existiría.
   const [closingPassId, setClosingPassId] = useState<string | null>(
-    cerrarForActive
+    initialClosingPassId
   );
-
-  // Ajuste durante el render con seguimiento de `prev` (mismo patrón que
-  // `entry`/`status` de arriba): abre la hoja cuando ?cerrar CAMBIA a un pase
-  // activo nuevo. Así cerrar la hoja (closingPassId → null) no la reabre en
-  // el siguiente render, y solo una compleción distinta la vuelve a abrir.
-  const [prevCerrarForActive, setPrevCerrarForActive] = useState(cerrarForActive);
-  if (cerrarForActive !== prevCerrarForActive) {
-    setPrevCerrarForActive(cerrarForActive);
-    if (cerrarForActive) setClosingPassId(cerrarForActive);
+  const [prevInitialClosingPassId, setPrevInitialClosingPassId] = useState(
+    initialClosingPassId
+  );
+  if (initialClosingPassId !== prevInitialClosingPassId) {
+    setPrevInitialClosingPassId(initialClosingPassId);
+    if (initialClosingPassId) setClosingPassId(initialClosingPassId);
   }
 
   // Retomar un abandonado (dropped → in_progress) es la única transición que

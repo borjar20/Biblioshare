@@ -51,10 +51,13 @@ export async function generateMetadata({
 
 export default async function MovieDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
+  const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -114,6 +117,16 @@ export default async function MovieDetailPage({
     }
     queues = await getQueues(supabase, user.id);
   }
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo. Las películas no generan
+  // sesiones (§7.14) así que este path solo importa por el manual "marcar
+  // completado", que no depende de la URL — se deja aquí por consistencia y
+  // para que un `?cerrar` forjado tampoco reabra nada.
+  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
+  const initialClosingPassId =
+    cerrar && cerrar === activePassId ? cerrar : null;
 
   // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
   // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
@@ -245,6 +258,7 @@ export default async function MovieDetailPage({
             sessions={[]}
             editions={editions}
             queues={queues}
+            initialClosingPassId={initialClosingPassId}
           />
         }
       />

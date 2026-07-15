@@ -58,10 +58,13 @@ export async function generateMetadata({
 
 export default async function SeriesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
+  const { cerrar } = await searchParams;
   const t = await getTranslations("item");
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
@@ -138,6 +141,13 @@ export default async function SeriesDetailPage({
     }
     queues = await getQueues(supabase, user.id);
   }
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo.
+  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
+  const initialClosingPassId =
+    cerrar && cerrar === activePassId ? cerrar : null;
 
   const byline =
     [
@@ -300,6 +310,7 @@ export default async function SeriesDetailPage({
             // consulta la BD para este tipo): no hace falta cargarlas.
             editions={[]}
             queues={queues}
+            initialClosingPassId={initialClosingPassId}
           />
         }
       />
