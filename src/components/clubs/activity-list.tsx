@@ -1,12 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import {
-  listClubActivities,
-  type ClubActivity,
-} from "@/lib/clubs/activities/core";
+import { type ClubActivity } from "@/lib/clubs/activities/core";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
@@ -26,14 +22,9 @@ export function ActivityList({
   isModerator: boolean;
 }) {
   const t = useTranslations("activity");
-  const [activities, setActivities] = useState(initialActivities);
-  const [, startTransition] = useTransition();
-
-  function refresh() {
-    startTransition(async () => {
-      setActivities(await listClubActivities(clubId));
-    });
-  }
+  // Deriva de props: proponer/moderar revalida (Fase 1) y la RSC re-ejecuta con
+  // las actividades frescas. Sin espejo local ni re-fetch cliente.
+  const activities = initialActivities;
 
   const active = activities.filter((a) => a.status === "active");
   const proposed = activities.filter((a) => a.status === "proposed");
@@ -43,7 +34,7 @@ export function ActivityList({
 
   return (
     <div className="flex flex-col gap-6">
-      <ActivityComposer clubId={clubId} onProposed={refresh} />
+      <ActivityComposer clubId={clubId} />
 
       {activities.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
@@ -63,7 +54,6 @@ export function ActivityList({
         proposals={proposed}
         clubSlug={clubSlug}
         canModerate={isModerator}
-        onChanged={refresh}
       />
 
       <Group title={t("groupFinished")}>
