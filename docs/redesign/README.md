@@ -5,6 +5,10 @@ Planes por pestaña para acercar el producto a las maquetas del handoff
 La base del rediseño (tokens, fuentes, IA nueva, componentes) ya está mergeada;
 esto es la pasada de **fidelidad**: que cada pantalla calque su frame.
 
+## Principio responsive (aplica a todo)
+
+Los mockups son **mobile-first**: casi todos los frames son de teléfono. En móvil se calca el frame; en **tablet y escritorio se mantiene la estética Paper pero se aprovecha el espacio lateral** con dos columnas, rails sticky y grids anchos — nada de "móvil estirado" en una columna centrada. Donde un plan no trae frame de escritorio (Clubes, Ficha, actividad, notificaciones), el layout ancho es diseño propio a proponer antes de codificar. Norma completa y patrones en [plan 07 §0 + decisión P-T7](./plan-07-transversal.md).
+
 ## Cómo usar estos planes
 
 - **Una sesión por plan** (Clubes admite 2–3; Colección ahora incluye v2 con 2 sesiones extra). Cada plan es autocontenido: estado actual → diferencias visuales → decisiones → tareas → verificación.

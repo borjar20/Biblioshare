@@ -40,7 +40,7 @@ Piezas ya muy fieles (verificado): `club-summary.tsx` (tarjetas de actividad act
 5. **Estado "Miembro ✓"** — Maqueta: chip outline "Miembro ✓" en la cabecera (en vez del botón "Salir" siempre visible). Propuesta fiel sin perder función: mostrar "Miembro ✓" y que el "Salir" viva detrás (menú ⋯ o el mismo botón con confirm). Si se prefiere no tocar la interacción, dejar "Salir" pero con estilo outline sm.
 6. **Composer colapsado** — Maqueta: fila avatar + "Comparte algo con el club…" + glifos de encuesta/compartir a la derecha. Actual: `club-post-composer.tsx` con modos pero disparador distinto. Restylear el estado cerrado a esa fila.
 7. **Encuestas** — Maqueta `.poll`: opciones con **barra de relleno proporcional** (`accent` al 12%), % en mono a la derecha, opción propia con borde accent. Verificar `club-post-card.tsx` y ajustar.
-8. **Pestañas del club** — Maqueta: Fraunces serif con pip de contador y ◈ en Gestión. Actual: mono uppercase (patrón deliberado) con pip ✔ y ◈ ✔. **No tocar hasta resolver P-T2** (serif vs mono, plan transversal).
+8. **Pestañas del club** — Maqueta: Fraunces serif con pip de contador y ◈ en Gestión. Actual: mono uppercase con pip ✔ y ◈ ✔. **P-T2 resuelto: pasar a serif** (`club-tabs.tsx`, junto al resto de subtabs en la tarea transversal 1d).
 
 ### Frame 3 · Actividades
 9. **Botón proponer full-width** — "+ Proponer actividad" primario a lo ancho arriba del listado. Verificar disposición actual de `activity-composer.tsx`.
@@ -59,6 +59,14 @@ Piezas ya muy fieles (verificado): `club-summary.tsx` (tarjetas de actividad act
 
 ### Wizard Proponer actividad
 18. Contra `Paper - Proponer actividad.html`: paso 1 con 4 tarjetas de tipo (icono teñido + nombre + descripción), pasos por tipo (fechas, editor de hitos, niveles de tierlist editables, ítems del reto). Auditar `propose-wizard.tsx` frame a frame en su sesión.
+
+### Escritorio/tablet (P-T7 — diseño propio, sin frame de maqueta)
+19. Los frames de Clubes son todos de móvil. En `lg:` aprovechar el lateral (respetando la estética Paper), a proponer al abrir cada sesión:
+    - **Landing:** grid de tarjetas de club a 2–3 columnas en vez de lista única; "Tus clubes" y "Descubrir" pueden ir en columnas o secciones anchas.
+    - **Club (Feed):** dos columnas — hilo de posts a la izquierda, **rail derecho sticky** con "Actividades activas" + "Próximo" (hoy en móvil van en strips horizontales arriba; en escritorio quedan mejor como rail).
+    - **Actividades:** listado a la izquierda, panel de la actividad seleccionada o propuestas a la derecha; o grid de 2 columnas de `actrow`.
+    - **Detalle de actividad:** cabecera + progreso a la izquierda, hitos/lista/tierlist ocupando el ancho; el chat de hito puede ir en columna lateral.
+    - **Gestión:** las tres secciones (propuestas, solicitudes, miembros) en dos columnas.
 
 ## 3. Divergencias funcionales — RESUELTAS (2026-07-15)
 

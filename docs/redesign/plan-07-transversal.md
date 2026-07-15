@@ -13,6 +13,23 @@
 
 ---
 
+## 0. Principio responsive (2026-07-15) — aplica a TODOS los planes
+
+**Los mockups son mobile-first.** Casi todos los frames son de teléfono (400px); solo Home, Colección y Buscar traen un frame de escritorio (`.win`). Eso **no** significa que el resto deba quedarse en una columna estrecha centrada en pantallas grandes.
+
+**Norma:** en móvil se calca el frame; en **tablet y escritorio se conserva la estética Paper pero se aprovecha el espacio lateral** con layouts de dos (o más) columnas, rails laterales, grids más anchos y agrupaciones que en móvil van apiladas. El objetivo es que la app no se sienta "un móvil estirado" en el navegador.
+
+Patrones a preferir en `md:`/`lg:` (Tailwind), respetando tokens y sin romper el móvil:
+- **Contenido + rail lateral sticky** (Inicio: feed + stats; Ficha: contenido + sidebar de metadatos/ediciones; Perfil: overview + destacados).
+- **Rejillas más anchas** (Colección/Buscar: 2 col móvil → 5 col escritorio, ya en las maquetas `.win`).
+- **Secciones apiladas en móvil que pasan a fila** (bloques del Panel, resumen + "en curso").
+- **Ancho máximo generoso** donde hoy hay `max-w-2xl`/`max-w-4xl` cortando la página; subirlo en `lg:` cuando el contenido lo aproveche.
+- Anti-regresión: cada layout de escritorio debe **degradar limpio a la columna móvil** y no introducir scroll horizontal.
+
+Donde un plan no trae frame de escritorio (Clubes, Ficha, detalle de actividad, notificaciones), el layout ancho es **diseño propio** guiado por esta norma — al ejecutar esas sesiones, proponer la disposición de dos columnas antes de codificar. Registrado como decisión **P-T7** en §3.
+
+---
+
 ## 1. Estado actual
 
 | Pieza | Archivo | Estado |
@@ -46,6 +63,7 @@
 - **P-T4 · DECIDIDO: auditar el set propio primero.** Migrar a lucide-react solo si la auditoría (§2.3) sale mal.
 - **P-T5 · DECIDIDO: entran DOS features de §3.8** — **calendario con portadas** (celda del calendario del Panel con portada + barra de intensidad, verde = terminado; sobre `MonthCalendar`) y **"¿Qué has disfrutado hoy?"** (registro del día en un toque encabezando el Inicio sobre el feed → coordinar con plan 01). El resto (muro, stats diarias, notas/citas, sorteo) a epic aparte.
 - **P-T6 · DECIDIDO: token nuevo `--foreground-soft`** (light `#584f43` + equivalente dark tomado de las maquetas de modo oscuro) en `globals.css`, aplicado en reseñas/sinopsis/excerpts (planes 01/04/06).
+- **P-T7 · DECIDIDO: aprovechar el espacio lateral en tablet/escritorio** (ver §0). Los mockups son mobile-first; en pantallas grandes se mantiene la estética Paper pero con dos columnas / rails / grids anchos en vez de una columna centrada. Aplica a todos los planes; donde no hay frame de escritorio, el layout ancho es diseño propio a proponer antes de codificar.
 
 ## 4. Tareas
 

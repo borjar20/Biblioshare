@@ -70,6 +70,16 @@
 ### Frame 7 · Elegir edición
 23. Selector radio `edpick` (tag del formato, nombre, metadatos, páginas a la derecha; seleccionada con borde+tinte del acento), buscador `edsearch`, chip "RECOMENDADA", opción discontinua "otra edición / edición manual", y en pases nuevos la opción de **reusar la edición del pase anterior**. PR #33 tocó justo esto: comparar contra el frame y afinar.
 
+### Escritorio/tablet (P-T7 — los 7 frames son de móvil; layout ancho de diseño propio)
+24. La ficha es la pantalla que más gana con dos columnas. En `lg:` (hoy todo va en `max-w-4xl` apilado), a proponer al abrir la sesión:
+    - **Hero a lo ancho:** portada más grande a la izquierda, título/byline/nota/estado a la derecha, con más aire (el hero ya es fila en `sm:`, ensancharlo).
+    - **Info a dos columnas:** sinopsis + sagas + ediciones a la izquierda (columna principal), **sidebar de metadatos sticky a la derecha** (`metadata-sidebar.tsx` ya se llama "sidebar" — en escritorio que lo sea de verdad, no una tabla apilada abajo).
+    - **Comunidad:** tarjeta resumen + histograma arriba a lo ancho; reseñas en una o dos columnas.
+    - **Registro:** panel del pase (estado + progreso) a la izquierda, sesiones + diario de pases a la derecha; o el pase arriba a lo ancho y sesiones/diario en dos columnas debajo.
+    - **Episodios:** temporadas a lo ancho; la rejilla ya aprovecha el ancho de forma natural.
+    - **Moderador:** formulario a doble columna (metadatos que hoy van en grid estrecho) manteniendo la barra sticky de guardar.
+    - Las **hojas de sesión** (P4) en escritorio pueden ser modal centrado en vez de hoja inferior a pantalla completa.
+
 ## 3. Divergencias funcionales / de sistema — RESUELTAS (2026-07-15)
 
 - **P1 · DECIDIDO: híbrido de la maqueta.** **Estrellas gold /5** para agregados de comunidad (hero de ficha, histograma, reseñas ajenas — en ficha, feed, perfil y clubes) y **dots** para la nota propia 1–10 (rate-pick, diario, tarjetas propias). Norma de sistema: documentarla al aplicarla.
