@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateLibrary, revalidateProfilePages } from "@/lib/reactivity/revalidate";
 
 // Simple version of §7.9: a single flat set of up to MAX_FAVORITES pinned
 // items, no reordering UI. `pinned_order` is only used to preserve a stable
@@ -78,6 +78,6 @@ export async function toggleFavorite(
 // La biblioteca se ve desde dos sitios desde el rediseño Paper: /coleccion (la
 // tuya) y /u/[username] (la de cualquiera). Un pin afecta a ambas.
 function revalidateLibraryViews() {
-  revalidatePath("/coleccion");
-  revalidatePath("/u/[username]", "page");
+  revalidateLibrary();
+  revalidateProfilePages();
 }

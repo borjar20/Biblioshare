@@ -1,10 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { itemHref } from "@/lib/catalog/item-href";
+import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 
 // Unlike addToLibrary in src/app/buscar/actions.ts, the item here already has
 // a catalog row (we're on its detail page) — no findOrCreate step needed.
@@ -42,5 +41,5 @@ export async function addExistingItemToLibrary(
     throw error;
   }
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
 }

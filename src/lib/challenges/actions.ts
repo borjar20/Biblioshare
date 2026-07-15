@@ -1,10 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { ChallengeCriteria } from "./types";
+import { revalidateProfilePages } from "@/lib/reactivity/revalidate";
 
 const ITEM_TYPES: ItemType[] = ["book", "movie", "series"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -81,7 +81,7 @@ export async function createChallenge(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/u/[username]", "page");
+  revalidateProfilePages();
   return {};
 }
 
@@ -107,7 +107,7 @@ export async function updateChallenge(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/u/[username]", "page");
+  revalidateProfilePages();
   return {};
 }
 
@@ -130,7 +130,7 @@ export async function setChallengeArchived(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/u/[username]", "page");
+  revalidateProfilePages();
 }
 
 export async function deleteChallenge(challengeId: string): Promise<void> {
@@ -147,5 +147,5 @@ export async function deleteChallenge(challengeId: string): Promise<void> {
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/u/[username]", "page");
+  revalidateProfilePages();
 }

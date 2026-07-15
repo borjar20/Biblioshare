@@ -1,11 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
+import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 
 export type CreateEditionState = {
   error?: "forbidden" | "invalidLabel" | "generic";
@@ -67,6 +66,6 @@ export async function createEdition(
 
   if (error) return { error: "generic" };
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
   return {};
 }

@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -15,6 +14,7 @@ import {
   markEpisodeWatched,
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
+import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -22,14 +22,6 @@ const VALID_STATUSES: MediaStatus[] = [
   "completed",
   "dropped",
 ];
-
-// Session writes touch three views: the item detail page, the profile
-// (progress bars / "Ahora mismo"), and the home shelf.
-function revalidateItemViews(itemType: ItemType, itemId: string) {
-  revalidatePath(itemHref(itemType, itemId));
-  revalidatePath("/u/[username]", "page");
-  revalidatePath("/");
-}
 
 export type AddSessionState = {
   error?: "invalidPosition" | "invalidDuration" | "generic";
@@ -207,7 +199,7 @@ export async function addSession(
     if (updateError) return { error: "generic" };
   }
 
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
   redirect(itemHref(itemType, itemId));
 }
 
@@ -229,5 +221,5 @@ export async function deleteSession(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
 }

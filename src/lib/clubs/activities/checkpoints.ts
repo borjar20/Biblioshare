@@ -7,6 +7,7 @@ import type { InteractionSummary } from "@/lib/social/interactions";
 import { parsePosition, hasReachedPosition } from "@/lib/library/position";
 import type { Position } from "@/lib/library/position";
 import type { ItemType } from "@/lib/catalog/types";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 // Checkpoints de una actividad buddy_read (EPIC-05, Bloque H1). Hermano de
 // core.ts -- misma forma "use server" plana, sin chequeo de rol en la app:
@@ -178,6 +179,7 @@ export async function createCheckpoint(
     created_by: userId,
   });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function updateCheckpoint(
@@ -199,12 +201,14 @@ export async function updateCheckpoint(
 
   const { error } = await supabase.from("club_activity_checkpoints").update(update).eq("id", checkpointId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function deleteCheckpoint(checkpointId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("club_activity_checkpoints").delete().eq("id", checkpointId);
   if (error) throw error;
+  revalidateClubPages();
 }
 
 export async function reorderCheckpoints(activityId: string, orderedIds: string[]): Promise<void> {
@@ -214,6 +218,7 @@ export async function reorderCheckpoints(activityId: string, orderedIds: string[
     p_checkpoint_ids: orderedIds,
   });
   if (error) throw error;
+  revalidateClubPages();
 }
 
 // Revalida en servidor (posición real vs. objetivo) y, si se alcanza,
@@ -223,4 +228,5 @@ export async function confirmCheckpoint(checkpointId: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.rpc("confirm_checkpoint", { p_checkpoint_id: checkpointId });
   if (error) throw error;
+  revalidateClubPages();
 }

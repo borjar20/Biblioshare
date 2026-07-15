@@ -8,6 +8,7 @@ import type {
   ListChallengeParticipantProgress,
   ListChallengeProgressView,
 } from "./list-challenge-types";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 // Progreso de un reto por lista (EPIC-05, Bloque H3). Hermano de checkpoints.ts
 // (H1) -- misma forma "use server" plana, sin chequeos de rol en la app.
@@ -130,4 +131,5 @@ export async function setCompletionMode(
     p_mode: mode,
   });
   if (error) throw error;
+  revalidateClubPages();
 }

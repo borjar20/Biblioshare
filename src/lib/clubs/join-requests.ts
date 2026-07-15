@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
+import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -100,6 +101,7 @@ export async function requestJoinClub(clubId: string): Promise<void> {
   // Best-effort, como el resto de fan-outs de la app: si el aviso falla, la
   // solicitud ya está hecha y no queremos deshacerla por eso.
   if (notifyError) console.error("notify_club_join_request failed", notifyError);
+  revalidateClubPages();
 }
 
 /** Retirar tu propia solicitud (la política DELETE ya cubre tu propia fila). */
@@ -112,6 +114,7 @@ export async function withdrawJoinRequest(clubId: string): Promise<void> {
     .eq("user_id", userId)
     .eq("status", "requested");
   if (error) throw error;
+  revalidateClubPages();
 }
 
 // Solo miembros ven el roster (RLS), y solo moderator+ tiene sentido que llame a
@@ -177,6 +180,7 @@ export async function approveJoinRequest(
     actorId,
     type: "club_join_approved",
   });
+  revalidateClubPages();
 }
 
 // Rechazar = borrar la fila. Lo cubre "club_members delete self or moderate": un
@@ -195,4 +199,5 @@ export async function rejectJoinRequest(
     .eq("user_id", userId)
     .eq("status", "requested");
   if (error) throw error;
+  revalidateClubPages();
 }

@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateLibrary } from "@/lib/reactivity/revalidate";
 
 export type ReorderQueueState = {
   error?: "generic";
@@ -31,7 +31,7 @@ export async function reorderQueue(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/coleccion");
+  revalidateLibrary();
   return {};
 }
 
@@ -80,7 +80,7 @@ export async function createQueue(
   // 23505 = unique (user_id, name): the user already has a queue by this name.
   if (error) return { error: error.code === "23505" ? "duplicateName" : "generic" };
 
-  revalidatePath("/coleccion");
+  revalidateLibrary();
   return {};
 }
 
@@ -106,7 +106,7 @@ export async function renameQueue(
 
   if (error) return { error: error.code === "23505" ? "duplicateName" : "generic" };
 
-  revalidatePath("/coleccion");
+  revalidateLibrary();
   return {};
 }
 
@@ -126,5 +126,5 @@ export async function deleteQueue(queueId: string): Promise<void> {
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath("/coleccion");
+  revalidateLibrary();
 }
