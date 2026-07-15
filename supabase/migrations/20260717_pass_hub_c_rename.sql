@@ -106,8 +106,11 @@ $function$;
 -- 2d) get_list_challenge_progress: misma migración de puente a passes directo.
 --     Antes: library_entries (INNER, con el status) + diary_entries (LEFT, para
 --     completed_on). En el hub, passes lleva status Y finished_on, así que un
---     único INNER a passes cubre ambos: en modo 'any' el filtro pide status
---     'completed' (equivale al le.status='completed' de antes) y completed_on
+--     único INNER a passes cubre ambos: en modo 'any' el filtro pide el PASE
+--     ACTIVO con status 'completed' (el le.status='completed' de antes era el
+--     estado ACTUAL de la entrada = el del pase activo del hub; sin el is_active
+--     un pase histórico archivado, siempre 'completed', haría contar un ítem que
+--     estás releyendo ahora — hallazgo de revisión Tarea 10) y completed_on
 --     puede quedar nulo (el tick "ya lo tenías"); en modo 'window' el join no
 --     filtra status y el HAVING exige un pase terminado dentro de la ventana.
 create or replace function public.get_list_challenge_progress(p_activity_id uuid)
@@ -140,7 +143,7 @@ as $function$
       on d.user_id = p.user_id
      and d.item_type = i.item_type
      and d.item_id = i.item_id
-     and (not a.open_mode or d.status = 'completed')
+     and (not a.open_mode or (d.is_active and d.status = 'completed'))
    group by a.open_mode, p.user_id, i.item_type, i.item_id
   having a.open_mode
       or bool_or(d.finished_on between a.window_start and a.window_end);
