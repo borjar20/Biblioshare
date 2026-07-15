@@ -116,7 +116,11 @@ export function aggregateEpisodeData(
       const current = activePassId
         ? rows.find((r) => r.pass_id === activePassId)
         : undefined;
-      const seenBefore = rows.some((r) => r.pass_id !== activePassId);
+      // Comparar contra `current` (la fila concreta), no contra `activePassId`:
+      // si no hay pase activo (o no hay fila para él), `current` es undefined
+      // y CUALQUIER fila —incluida una legado con pass_id null— cuenta como
+      // "visto alguna vez" (hallazgo de revisión, Tarea 8).
+      const seenBefore = rows.some((r) => r !== current);
       own.set(k, {
         watched: Boolean(current),
         rating: current?.rating ?? null,

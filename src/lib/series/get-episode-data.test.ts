@@ -128,4 +128,18 @@ describe("aggregateEpisodeData", () => {
     expect(row.own.rating).toBe(7);
     expect(row.own.seenBefore).toBe(false);
   });
+
+  // Hallazgo de revisión (Tarea 8): si el usuario borró su único pase,
+  // episode_watches.pass_id queda a null (ON DELETE SET NULL) y activePassId
+  // es null en la siguiente carga. Una fila legado (pass_id null) debe seguir
+  // contando como "visto alguna vez" — no debe desaparecer de la UI.
+  it("surfaces a legacy (pass_id null) watch as seenBefore when there is no active pass", () => {
+    const episodes = [ep(1, 1)];
+    const watches = [watch("me", 1, 1, 8, "de cuando tenía pase", null)];
+    const data = aggregateEpisodeData(episodes, watches, "me", null);
+
+    const row = data.bySeasons.get(1)![0];
+    expect(row.own.watched).toBe(false); // no hay pase activo, no hay cursor
+    expect(row.own.seenBefore).toBe(true); // pero sí se vio alguna vez
+  });
 });
