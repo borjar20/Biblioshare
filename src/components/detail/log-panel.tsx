@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -91,7 +91,6 @@ export function LogPanel({
   sessions,
   editions,
   queues,
-  initialClosingPassId = null,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -100,10 +99,6 @@ export function LogPanel({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
-  /** Id de pase a validar contra ?cerrar de la URL (Tarea 7): la sesión que
-   * alcanza el final redirige aquí para encadenar la hoja de cierre sin
-   * pasar por un clic manual en el segmented de estados. */
-  initialClosingPassId?: string | null;
 }) {
   if (!entry) {
     return <FollowButton itemType={itemType} itemId={itemId} editions={editions} />;
@@ -118,7 +113,6 @@ export function LogPanel({
       sessions={sessions}
       editions={editions}
       queues={queues}
-      initialClosingPassId={initialClosingPassId}
     />
   );
 }
@@ -203,7 +197,6 @@ function ManagedLog({
   sessions,
   editions,
   queues,
-  initialClosingPassId,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -212,15 +205,20 @@ function ManagedLog({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
-  initialClosingPassId?: string | null;
 }) {
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
   const tSegments = useTranslations("detail.statusSegments");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(entry.status);
   const [queueId, setQueueId] = useState(entry.queueId);
+
+  // Pase ACTIVO de la obra (is_active): dueño de las sesiones y objetivo de
+  // la hoja de cierre por URL. Se calcula arriba porque el auto-cierre por
+  // sesión (más abajo) lo necesita para validar el ?cerrar.
+  const activePass = passes.find((p) => p.isActive) ?? null;
 
   // Resincroniza el estado local con las props tras cada revalidación del
   // servidor (cambio de estado, cola...). Ajuste durante el render, no un
@@ -237,13 +235,36 @@ function ManagedLog({
   // Al marcar "completado" (o "dejado") updateStatus ya cierra el pase en BD
   // (o abre-y-cierra uno si el ítem venía de "planificado") y nos devuelve
   // directamente su id: no hace falta rebuscar entre los pases tras
-  // refrescar, basta con encadenar la hoja de cierre con ese passId. La
-  // sesión que alcanza el final (§Tarea 7) hace lo mismo pero por URL
-  // (?cerrar=<passId>, validado por la página): initialClosingPassId es ese
-  // mismo mecanismo, solo que llega ya resuelto desde el servidor.
+  // refrescar, basta con encadenar la hoja de cierre con ese passId.
+  //
+  // El auto-cierre por sesión (§Tarea 7) hace lo mismo por URL: la sesión que
+  // alcanza el final redirige a `?cerrar=<passId>&tab=log` y aquí se abre la
+  // hoja al leer ese parámetro con useSearchParams. Se valida contra el pase
+  // ACTIVO —nunca uno archivado—: un ?cerrar a mano con un pase viejo ya
+  // cerrado no abre nada (y closePass revalida user_id server-side igual). El
+  // `&tab=log` del redirect es obligatorio: ItemDetailTabs solo monta la
+  // pestaña activa, sin él la ficha abriría en "Información" y este componente
+  // ni existiría. LIMITACIÓN CONOCIDA (Next 16): tras el redirect de la server
+  // action (navegación blanda) useSearchParams va rezagado un render, así que
+  // la hoja no salta sola en ese instante; sí lo hace en cuanto la ficha se
+  // carga/recarga con ?cerrar en la URL. El auto-cierre en BD (lo importante)
+  // es fiable; ver task-7-report.md.
+  const cerrarParam = searchParams.get("cerrar");
+  const cerrarForActive =
+    cerrarParam && cerrarParam === activePass?.id ? cerrarParam : null;
   const [closingPassId, setClosingPassId] = useState<string | null>(
-    initialClosingPassId ?? null
+    cerrarForActive
   );
+
+  // Ajuste durante el render con seguimiento de `prev` (mismo patrón que
+  // `entry`/`status` de arriba): abre la hoja cuando ?cerrar CAMBIA a un pase
+  // activo nuevo. Así cerrar la hoja (closingPassId → null) no la reabre en
+  // el siguiente render, y solo una compleción distinta la vuelve a abrir.
+  const [prevCerrarForActive, setPrevCerrarForActive] = useState(cerrarForActive);
+  if (cerrarForActive !== prevCerrarForActive) {
+    setPrevCerrarForActive(cerrarForActive);
+    if (cerrarForActive) setClosingPassId(cerrarForActive);
+  }
 
   // Retomar un abandonado (dropped → in_progress) es la única transición que
   // la máquina no resuelve sola: askResume significa que no se escribió nada
@@ -270,14 +291,13 @@ function ManagedLog({
     });
   }
 
-  const openPass = passes.find((p) => p.finishedOn === null) ?? null;
   // El pase ACTIVO (is_active) no siempre es el "abierto": si el ítem está
   // completado/dejado sigue habiendo un pase activo (el cerrado que
-  // representa la obra), solo que ya no es "abierto". Las sesiones cuelgan
-  // de ESE (§Tarea 7): un pase abierto siempre es también el activo (el
-  // índice passes_one_active no permite lo contrario), así que cuando existe
-  // openPass son el mismo pase.
-  const activePass = passes.find((p) => p.isActive) ?? null;
+  // representa la obra), solo que ya no es "abierto" (ver `activePass`
+  // arriba). Las sesiones cuelgan del activo; un pase abierto siempre es
+  // también el activo (el índice passes_one_active no permite lo contrario),
+  // así que cuando existe openPass son el mismo pase.
+  const openPass = passes.find((p) => p.finishedOn === null) ?? null;
   const openPassEdition = openPass
     ? (openPass.editionId
         ? (editions.find((e) => e.id === openPass.editionId) ?? null)

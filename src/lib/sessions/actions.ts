@@ -195,7 +195,10 @@ export async function addSession(
   // Auto-cierre de libro (Regla 5 del esquema de flujo): si la sesión
   // alcanza la última página de TU edición, el pase se completa solo —
   // pasando por la máquina, no aparte — y la ficha encadena la hoja de
-  // cierre (parámetro ?cerrar) al volver.
+  // cierre (parámetro ?cerrar) al volver. `tab=log` es obligatorio: la hoja
+  // de cierre vive dentro de LogPanel (pestaña "Mi registro") e
+  // ItemDetailTabs SOLO monta la pestaña activa (slots[tab]); sin él la
+  // ficha abriría en "Información" y la hoja nunca llegaría a montarse.
   const reachedEnd =
     itemType === "book" &&
     maxPosition !== null &&
@@ -204,7 +207,7 @@ export async function addSession(
   if (reachedEnd) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);
-    redirect(`${itemHref(itemType, itemId)}?cerrar=${passId}`);
+    redirect(`${itemHref(itemType, itemId)}?cerrar=${passId}&tab=log`);
   }
 
   revalidateReadingLog(itemType, itemId);

@@ -51,13 +51,10 @@ export async function generateMetadata({
 
 export default async function MovieDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
-  const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -117,14 +114,6 @@ export default async function MovieDetailPage({
     }
     queues = await getQueues(supabase, user.id);
   }
-
-  // Sesión que alcanzó el final (§Tarea 7): ver el mismo comentario en
-  // src/app/libro/[id]/page.tsx — se valida contra el pase ACTIVO, no contra
-  // cualquier pase (archivado incluido) de esta obra. Las películas no
-  // tienen sesiones, pero el mecanismo de la hoja de cierre es genérico: se
-  // deja simétrico.
-  const closingPassId =
-    cerrar && passes.find((p) => p.isActive)?.id === cerrar ? cerrar : null;
 
   // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
   // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
@@ -256,7 +245,6 @@ export default async function MovieDetailPage({
             sessions={[]}
             editions={editions}
             queues={queues}
-            initialClosingPassId={closingPassId}
           />
         }
       />

@@ -53,13 +53,10 @@ export async function generateMetadata({
 
 export default async function BookDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
-  const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -179,14 +176,6 @@ export default async function BookDetailPage({
     }
     queues = await getQueues(supabase, user.id);
   }
-
-  // Sesión que alcanzó el final (§Tarea 7): ?cerrar trae el id del pase que
-  // la sesión acaba de completar. Se valida contra el pase ACTIVO, no contra
-  // "cualquier pase mío de esta obra" (passes trae también los archivados):
-  // un ?cerrar= manipulado a mano con un pase antiguo ya cerrado no debe
-  // poder reabrir su hoja y sobrescribirle finished_on/rating/review.
-  const closingPassId =
-    cerrar && passes.find((p) => p.isActive)?.id === cerrar ? cerrar : null;
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
   const canContribute = user
@@ -326,7 +315,6 @@ export default async function BookDetailPage({
               sessions={sessions}
               editions={editions}
               queues={queues}
-              initialClosingPassId={closingPassId}
             />
           </div>
         }
