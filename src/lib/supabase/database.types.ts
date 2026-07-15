@@ -741,11 +741,19 @@ export type Database = {
           edition_id: string | null
           finished_on: string | null
           id: string
+          is_active: boolean
           is_public: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
           library_entry_id: string
+          pinned_order: number | null
+          position: Json
+          queue_id: string | null
+          queue_order: number | null
           rating: number | null
           review: string | null
           started_on: string | null
+          status: Database["public"]["Enums"]["media_status"]
           updated_at: string
           user_id: string
         }
@@ -754,11 +762,19 @@ export type Database = {
           edition_id?: string | null
           finished_on?: string | null
           id?: string
+          is_active?: boolean
           is_public?: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
           library_entry_id: string
+          pinned_order?: number | null
+          position?: Json
+          queue_id?: string | null
+          queue_order?: number | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
           user_id: string
         }
@@ -767,11 +783,19 @@ export type Database = {
           edition_id?: string | null
           finished_on?: string | null
           id?: string
+          is_active?: boolean
           is_public?: boolean
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
           library_entry_id?: string
+          pinned_order?: number | null
+          position?: Json
+          queue_id?: string | null
+          queue_order?: number | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
           user_id?: string
         }
@@ -783,6 +807,13 @@ export type Database = {
             referencedRelation: "library_entries"
             referencedColumns: ["id", "user_id"]
           },
+          {
+            foreignKeyName: "diary_entries_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "queues"
+            referencedColumns: ["id"]
+          },
         ]
       }
       episode_watches: {
@@ -790,6 +821,7 @@ export type Database = {
           created_at: string
           episode_number: number
           id: string
+          pass_id: string | null
           rating: number | null
           review: string | null
           season_number: number
@@ -802,6 +834,7 @@ export type Database = {
           created_at?: string
           episode_number: number
           id?: string
+          pass_id?: string | null
           rating?: number | null
           review?: string | null
           season_number: number
@@ -814,6 +847,7 @@ export type Database = {
           created_at?: string
           episode_number?: number
           id?: string
+          pass_id?: string | null
           rating?: number | null
           review?: string | null
           season_number?: number
@@ -823,6 +857,20 @@ export type Database = {
           watched_on?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "episode_watches_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "episode_watches_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "episode_watches_series_id_fkey"
             columns: ["series_id"]
@@ -1155,7 +1203,7 @@ export type Database = {
           id: string
           library_entry_id: string
           note: string | null
-          pass_id: string | null
+          pass_id: string
           position: Json
           session_date: string
           user_id: string
@@ -1166,7 +1214,7 @@ export type Database = {
           id?: string
           library_entry_id: string
           note?: string | null
-          pass_id?: string | null
+          pass_id: string
           position?: Json
           session_date?: string
           user_id: string
@@ -1177,7 +1225,7 @@ export type Database = {
           id?: string
           library_entry_id?: string
           note?: string | null
-          pass_id?: string | null
+          pass_id?: string
           position?: Json
           session_date?: string
           user_id?: string
@@ -1488,11 +1536,17 @@ export type Database = {
           edition_id: string | null
           finished_on: string | null
           id: string | null
+          is_active: boolean | null
           is_public: boolean | null
+          item_id: string | null
+          item_type: Database["public"]["Enums"]["item_type"] | null
           library_entry_id: string | null
+          pinned_order: number | null
+          position: Json | null
           rating: number | null
           review: string | null
           started_on: string | null
+          status: Database["public"]["Enums"]["media_status"] | null
           user_id: string | null
         }
         Insert: {
@@ -1500,11 +1554,17 @@ export type Database = {
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
+          is_active?: boolean | null
           is_public?: boolean | null
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
           library_entry_id?: string | null
+          pinned_order?: number | null
+          position?: Json | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"] | null
           user_id?: string | null
         }
         Update: {
@@ -1512,11 +1572,17 @@ export type Database = {
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
+          is_active?: boolean | null
           is_public?: boolean | null
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
           library_entry_id?: string | null
+          pinned_order?: number | null
+          position?: Json | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"] | null
           user_id?: string | null
         }
         Relationships: [
@@ -1696,7 +1762,7 @@ export type Database = {
       }
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
       is_visible_via_club_share: {
-        Args: { p_row_id: string; p_source_table: string }
+        Args: { p_owner_id: string; p_row_id: string; p_source_table: string }
         Returns: boolean
       }
       notify_club_join_request: {
