@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, use, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
@@ -141,49 +141,102 @@ export function EditionDetails({
 export function EditionsSection({
   itemType,
   itemId,
-  editions,
+  editionsPromise,
   selectedEditionId,
   canContribute,
   workRows,
   genres,
   genresLabel,
+  editionsFallback,
   children,
 }: {
   itemType: ItemType;
   itemId: string;
-  editions: Edition[];
+  /** Se resuelve con las ediciones (posible sync desde OpenLibrary): llega por
+   *  streaming, resuelto con use() dentro de los <Suspense> de abajo. */
+  editionsPromise: Promise<Edition[]>;
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
   canContribute: boolean;
   workRows: MetaRow[];
   genres: string[];
   genresLabel: string;
-  /** La sinopsis (<InfoPanel>), que va entre la tira y el panel de metadatos. */
+  /** Fallback de la tira mientras el promise no resuelve. */
+  editionsFallback: ReactNode;
+  /** La sinopsis (<InfoPanel>), entre la tira y el panel de metadatos. Va FUERA
+   *  de los <Suspense>: se pinta al instante aunque las ediciones tarden. */
   children: ReactNode;
 }) {
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-10">
-      <EditionStrip
-        itemType={itemType}
-        itemId={itemId}
-        editions={editions}
-        selectedEditionId={selectedEditionId}
-        viewingId={viewingId}
-        onSelect={setViewingId}
-        canContribute={canContribute}
-      />
+      <Suspense fallback={editionsFallback}>
+        <ResolvedEditionStrip
+          itemType={itemType}
+          itemId={itemId}
+          editionsPromise={editionsPromise}
+          selectedEditionId={selectedEditionId}
+          viewingId={viewingId}
+          onSelect={setViewingId}
+          canContribute={canContribute}
+        />
+      </Suspense>
+
       {children}
-      <EditionDetails
-        itemType={itemType}
-        editions={editions}
-        viewingId={viewingId}
-        onSelect={setViewingId}
-        workRows={workRows}
-        genres={genres}
-        genresLabel={genresLabel}
-      />
+
+      {/* Mientras cargan las ediciones, el panel muestra la metadata de la OBRA
+          (que es justo lo que EditionDetails pinta cuando no hay edición en
+          mira), así que este fallback no parpadea a "vacío". */}
+      <Suspense
+        fallback={
+          <MetadataSidebar rows={workRows} genres={genres} genresLabel={genresLabel} />
+        }
+      >
+        <ResolvedEditionDetails
+          itemType={itemType}
+          editionsPromise={editionsPromise}
+          viewingId={viewingId}
+          onSelect={setViewingId}
+          workRows={workRows}
+          genres={genres}
+          genresLabel={genresLabel}
+        />
+      </Suspense>
     </div>
   );
+}
+
+// Resuelven el promise con use() (React 19): suspenden hasta que las ediciones
+// están, y comparten viewingId con el resto de EditionsSection.
+function ResolvedEditionStrip({
+  editionsPromise,
+  ...props
+}: {
+  itemType: ItemType;
+  itemId: string;
+  editionsPromise: Promise<Edition[]>;
+  selectedEditionId: string | null;
+  viewingId: string | null;
+  onSelect: (id: string | null) => void;
+  canContribute: boolean;
+}) {
+  const editions = use(editionsPromise);
+  return <EditionStrip editions={editions} {...props} />;
+}
+
+function ResolvedEditionDetails({
+  editionsPromise,
+  ...props
+}: {
+  itemType: ItemType;
+  editionsPromise: Promise<Edition[]>;
+  viewingId: string | null;
+  onSelect: (id: string | null) => void;
+  workRows: MetaRow[];
+  genres: string[];
+  genresLabel: string;
+}) {
+  const editions = use(editionsPromise);
+  return <EditionDetails editions={editions} {...props} />;
 }
