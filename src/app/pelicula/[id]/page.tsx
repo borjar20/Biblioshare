@@ -17,6 +17,7 @@ import { type MetaRow } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
+import { EditionsLoading } from "@/components/detail/editions-loading";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
@@ -204,7 +205,8 @@ export default async function MovieDetailPage({
               <EditionsSection
                 itemType="movie"
                 itemId={movie.id}
-                editions={editions}
+                editionsPromise={Promise.resolve(editions)}
+                editionsFallback={<EditionsLoading />}
                 selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
                 canContribute={canContribute}
                 workRows={metaRows}

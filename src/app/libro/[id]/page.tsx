@@ -21,7 +21,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
-import { ensureBookEditions } from "@/lib/editions/sync-editions";
+import { loadBookEditions } from "@/lib/editions/load-editions";
+import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -115,14 +116,6 @@ export default async function BookDetailPage({
   // se arreglan solas la primera vez que alguien las abre.
   if (user) {
     after(() =>
-      ensureBookEditions(supabase, {
-        id: book.id,
-        openlibrary_work_key: book.openlibrary_work_key,
-        isbn: book.isbn,
-        editions_synced_at: book.editions_synced_at,
-      })
-    );
-    after(() =>
       ensureBookHydrated(supabase, {
         id: book.id,
         openlibrary_work_key: book.openlibrary_work_key,
@@ -137,6 +130,20 @@ export default async function BookDetailPage({
     getItemSaga(supabase, "book", book.id),
     getEditions(supabase, "book", book.id),
   ]);
+
+  // Ediciones del DISPLAY: se resuelven por streaming (sync-si-hace-falta + lee)
+  // dentro del <Suspense> de EditionsSection. NO se await aquí: eso bloquearía la
+  // página, que es justo lo que evitábamos con after().
+  const editionsPromise = loadBookEditions(
+    supabase,
+    {
+      id: book.id,
+      openlibrary_work_key: book.openlibrary_work_key,
+      isbn: book.isbn,
+      editions_synced_at: book.editions_synced_at,
+    },
+    Boolean(user),
+  );
   // Autores como enlaces a su ficha; si no se pudo enriquecer, texto plano.
   const authorCredits = credits.crew.filter((c) => c.role === "author");
 
@@ -281,7 +288,8 @@ export default async function BookDetailPage({
               <EditionsSection
                 itemType="book"
                 itemId={book.id}
-                editions={editions}
+                editionsPromise={editionsPromise}
+                editionsFallback={<EditionsLoading />}
                 selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
                 canContribute={canContribute}
                 workRows={metaRows}
