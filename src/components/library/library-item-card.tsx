@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { LibraryItem } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -11,6 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { toggleFavorite } from "@/lib/library/favorite-actions";
+import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { SparklesIcon } from "@/components/ui/icons";
 
 export function LibraryItemCard({
@@ -21,8 +21,16 @@ export function LibraryItemCard({
   isOwner: boolean;
 }) {
   const t = useTranslations("library");
-  const [isPending, startTransition] = useTransition();
-  const [favoriteError, setFavoriteError] = useState<string | null>(null);
+  // Favorito optimista: el pin/unpin se pinta al instante y revierte en error.
+  const {
+    state: pinned,
+    isPending,
+    failed,
+    run,
+  } = useOptimisticAction<boolean, "toggle">({
+    state: item.pinnedOrder !== null,
+    reducer: (p) => !p,
+  });
   const progress = getProgress(item);
   const accent = MEDIA_ACCENT[item.itemType];
 
@@ -95,19 +103,20 @@ export function LibraryItemCard({
             type="button"
             disabled={isPending}
             onClick={() =>
-              startTransition(async () => {
-                setFavoriteError(null);
+              run("toggle", async () => {
                 const result = await toggleFavorite(item.entryId);
-                if (result.error) setFavoriteError(t(`pinError`));
+                // toggleFavorite devuelve {error} en vez de lanzar: lo pasamos a
+                // throw para que el hook haga rollback del pin optimista.
+                if (result.error) throw new Error("pin_failed");
               })
             }
             className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
           >
             <SparklesIcon className="h-3.5 w-3.5" />
-            {item.pinnedOrder !== null ? t("unpin") : t("pin")}
+            {pinned ? t("unpin") : t("pin")}
           </button>
-          {favoriteError && (
-            <p className="text-xs text-status-dropped">{favoriteError}</p>
+          {failed && (
+            <p className="text-xs text-status-dropped">{t("pinError")}</p>
           )}
         </>
       )}

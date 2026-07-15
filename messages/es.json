@@ -233,7 +233,8 @@
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
-    "deleteComment": "Borrar"
+    "deleteComment": "Borrar",
+    "you": "Tú"
   },
   "feed": {
     "verbs": {
