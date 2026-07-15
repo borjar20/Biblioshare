@@ -40,31 +40,39 @@ exception when others then
 end;
 $$;
 
--- Limpieza de las primarias en blanco ya creadas por el bug (dev y prod). Si el
--- libro tiene además ediciones reales, se promueve la mejor a primaria DESPUÉS
--- de borrar la blanca (el índice único parcial (book_id) where is_primary exige
--- que solo haya una, por eso primero se borra y luego se promueve).
-do $$
-declare b record;
-begin
-  for b in
-    select id as blank_id, book_id
-    from public.book_editions
-    where is_primary
-      and publisher is null
-      and isbn is null
-      and total_pages is null
-  loop
-    delete from public.book_editions where id = b.blank_id;
+-- Limpieza de las primarias en blanco ya creadas por el bug (dev y prod), en DOS
+-- fases para no chocar con el índice único parcial (book_id) where is_primary:
+--
+-- 1) Borrar TODAS las blancas de un tirón (solo DELETE: no puede violar el
+--    índice, sea cual sea el orden).
+-- 2) Por cada libro que quedó SIN primaria, promover su mejor edición CON DATOS.
+--    Como el libro no tiene ninguna primaria, poner una no puede colisionar.
+--
+-- Un único bucle "borra-y-promueve" fila a fila NO servía: un libro con la blanca
+-- MÁS ediciones reales generaba una primaria transitoria que violaba el índice
+-- (pasó en prod con un libro de 21 ediciones). Si un libro no tiene ninguna
+-- edición con datos, se queda sin primaria (getEditions ordena por año y tira
+-- igual); no se re-crea una blanca.
+delete from public.book_editions
+where is_primary and publisher is null and isbn is null and total_pages is null;
 
+do $$
+declare r record;
+begin
+  for r in
+    select book_id
+    from public.book_editions
+    group by book_id
+    having count(*) filter (where is_primary) = 0
+  loop
     update public.book_editions
        set is_primary = true
      where id = (
        select id
        from public.book_editions
-       where book_id = b.book_id
-       order by (publisher is not null or total_pages is not null) desc,
-                published_year desc nulls last
+       where book_id = r.book_id
+         and (publisher is not null or isbn is not null or total_pages is not null)
+       order by published_year desc nulls last, id
        limit 1
      );
   end loop;
