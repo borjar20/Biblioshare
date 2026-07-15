@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import {
   approveJoinRequest,
   rejectJoinRequest,
-  listJoinRequests,
   type JoinRequest,
 } from "@/lib/clubs/join-requests";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,9 @@ export function JoinRequestList({
   initialRequests: JoinRequest[];
 }) {
   const t = useTranslations("club");
-  const [requests, setRequests] = useState(initialRequests);
+  // Deriva de props: tras aprobar/rechazar, las acciones revalidan (Fase 1) y
+  // la RSC re-ejecuta entregando un initialRequests sin la fila resuelta.
+  const requests = initialRequests;
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -32,7 +33,6 @@ export function JoinRequestList({
       await (decision === "approve"
         ? approveJoinRequest(clubId, userId)
         : rejectJoinRequest(clubId, userId));
-      setRequests(await listJoinRequests(clubId));
       setPendingId(null);
     });
   }
