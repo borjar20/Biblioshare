@@ -7,9 +7,8 @@ esto es la pasada de **fidelidad**: que cada pantalla calque su frame.
 
 ## Cómo usar estos planes
 
-- **Una sesión por plan** (Clubes admite 2–3). Cada plan es autocontenido: estado actual → diferencias visuales → divergencias funcionales → tareas → verificación.
-- **Antes de la primera sesión**: resolver las decisiones transversales **P-T1…P-T6** del plan 07 — varias bloquean tareas de los otros planes.
-- Las secciones **"Divergencias funcionales — COMENTAR ANTES DE IMPLEMENTAR"** son literales: ahí no se asume nada, se pregunta al usuario y se anota la decisión en el propio doc (regla de la iniciativa).
+- **Una sesión por plan** (Clubes admite 2–3; Colección ahora incluye v2 con 2 sesiones extra). Cada plan es autocontenido: estado actual → diferencias visuales → decisiones → tareas → verificación.
+- **Decisiones RESUELTAS (2026-07-15):** todas las preguntas (P-N, P-T y las P de cada plan) están contestadas y anotadas en la §3 de cada doc. Si al ejecutar surge una divergencia nueva, se pregunta — no se asume (regla de la iniciativa).
 - Método de trabajo en cada sesión: abrir la maqueta `.html` en el navegador (canvas pannable, es pixel-perfect) y comparar lado a lado con la app en dev, light y dark, antes y después.
 - Verificación: e2e con Playwright (`docs/TESTING.md`); recordar `fnm use` (Node 22) antes de `npx playwright test`.
 
@@ -28,16 +27,19 @@ esto es la pasada de **fidelidad**: que cada pantalla calque su frame.
 
 ## Orden sugerido
 
-0. **00 Navegación** (fases A+B: skeletons + streaming) — cambia cómo se estructuran las páginas, así que va antes de restylearlas; sus preguntas P-N1…P-N4 se pueden resolver junto a las P-T.
-1. **07 (decisiones)** → desbloquea el resto.
-2. **06 Ficha** (pantalla núcleo; coordinar con pases) o **02 Colección** (autocontenida).
-3. 01 Inicio · 03 Buscar (cortas).
-4. 05 Perfil (corta, ya muy fiel).
-5. 04 Clubes (la más larga, trocear).
-6. Cierre: pasada de modo oscuro + estados (07 §2.2, §2.7).
+0. **00 Navegación** (fases A+B: skeletons + streaming; fase C descartada por ahora) — cambia cómo se estructuran las páginas, va antes de restylearlas. Orden interno: ficha → colección → resto.
+1. **07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2) — tres tareas cortas que tocan toda la app; mejor antes de los restylings por pestaña.
+2. **06 Ficha** (pantalla núcleo; coordinar con PRs #32/#42 de pases) o **02 Colección v1** (autocontenida).
+3. 01 Inicio (incluye clubes en feed + "¿qué has disfrutado hoy?") · 03 Buscar (corta).
+4. 05 Perfil (incluye el cambio de IA: perfil propio sin Colección).
+5. 04 Clubes (la más larga: 3 sesiones con progreso real e invitaciones).
+6. **02 Colección v2** (2 sesiones: migración+grid, Todo+hoja añadir).
+7. Cierre: hojas de sesión+cronómetro (06 P4), calendario con portadas (07 P-T5), pasada de modo oscuro + estados.
 
-## Fuera de alcance (decidido en los planes, pendiente de confirmar)
+## Fuera de alcance (decidido 2026-07-15)
 
-- Colección v2 (colecciones curadas) — feature nueva completa (plan 02, P1).
-- §3.8 Estadísticas y features (muro, sorteo, notas/citas, registro en un toque) — epic aparte (plan 07, P-T5).
-- Quick-add desde Buscar — contradice la escalera de hidratación (plan 03, P1).
+- Fase C de navegación (`cacheComponents`/`use cache`) — reevaluar tras medir A+B (plan 00, P-N1).
+- §3.8 salvo lo aprobado: muro de stats, stats diarias, notas/citas y sorteo van a epic aparte (plan 07, P-T5). **Entran**: calendario con portadas y "¿qué has disfrutado hoy?".
+- Quick-add y editorial·páginas en Buscar — la escalera de hidratación manda (plan 03).
+- "Compartir" en el feed — pospuesto hasta tener destino claro (plan 01, P4).
+- Chips de recuento en Buscar·Personas — idea futura anotada: tags de géneros favoritos + logros por usuario (plan 03, P3).

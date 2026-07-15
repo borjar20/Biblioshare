@@ -31,14 +31,13 @@ Lo grueso del frame A ya está hecho. Lo que queda es (a) detalles finos de la t
 4. **Dot de estado en evento "añadió"** — Maqueta frame A (línea 237): texto del estado en **el color del estado** (`color:var(--st-planned)`, weight 600, 11px), no en muted. Actual (`feed-card.tsx:117`): `text-muted-foreground`. Cambiar a texto teñido por estado (`text-status-planned` etc. — comprobar que existen esas utilidades de texto; si no, añadirlas en `globals.css`).
 5. **Espaciados de página** — Maqueta: cabecera `padding:18px 20px 8px`, cuerpo `12px 20px 22px`, gap entre filtros y primera tarjeta 16px, entre tarjetas 12px. Actual: `gap-6 px-4 py-8`. Ajustar a ritmo de la maqueta (py más corto arriba, gap 3 entre tarjetas).
 
-## 3. Divergencias funcionales — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Divergencias funcionales — RESUELTAS (2026-07-15)
 
-> No implementar nada de esta sección sin decisión explícita del usuario.
-
-- **P1 · Actividad de clubes en el feed.** La maqueta (frames A y B) mezcla tarjetas de club («Club · Ciencia ficción — nueva actividad», badge verde `club-badge`, "6 se apuntan") con la actividad de personas. Hoy `getFeed` no emite eventos de club. ¿Se añaden eventos de club al feed (nueva fuente de datos + tarjeta nueva), se deja para el epic social (bloques I/J pendientes), o se descarta?
-- **P2 · Set de filtros.** Maqueta: `Todo · Reseñas · Libros · Pantalla · Clubes`. Actual: `Todo · Libros · Películas · Series · Solo reseñas`. "Pantalla" agrupa películas+series en un solo filtro y "Clubes" depende de P1. ¿Adoptamos el set de la maqueta (implica soportar filtro combinado movie+series en `getFeed`) o mantenemos el actual?
-- **P3 · Layout de escritorio.** El frame B (Home feed+stats) pone en ≥tablet dos columnas: feed + **rail de stats sticky de 312px** (Ahora mismo, Esta semana, Racha, Meta libros, Objetivos) y saludo "Hola, Borja". Pero la IA nueva movió el Panel a Perfil, y el propio frame dice "aquí sí conviven a la vez". ¿El escritorio de Inicio lleva el rail de stats (duplicando datos del Panel de Perfil, componentes ya existentes en `src/components/stats/*`) o se queda feed-only centrado? Si lleva rail: ¿con el saludo "Hola, {nombre}"?
-- **P4 · Acción "Compartir".** El frame B añade `↗ Compartir` en la fila de reacciones. No existe hoy. ¿Se hace (y qué hace: compartir al feed propio, a un club, share nativo del SO), se pospone o se descarta?
+- **P1 · DECIDIDO: SÍ, clubes en el feed.** `getFeed` emite también eventos de los clubes del usuario (nueva actividad, propuestas) y `feed-card.tsx` gana la variante club (badge verde `club-badge`, "N se apuntan"). Desbloquea la Tarea 4.
+- **P2 · DECIDIDO: set de la maqueta** — `Todo · Reseñas · Libros · Pantalla · Clubes`. "Pantalla" = películas+series combinado (soportarlo en `getFeed`); "Clubes" filtra los eventos de P1.
+- **P3 · DECIDIDO: feed + rail de stats en escritorio** (frame B): dos columnas con rail sticky de 312px reutilizando los componentes del Panel, con el saludo "Hola, {nombre}". Desbloquea la Tarea 3.
+- **P4 · DECIDIDO: Compartir se POSPONE** — se decidirá cuando haya un destino claro (share nativo vs compartir a club).
+- **Nuevo (P-T5 transversal):** entra el bloque **"¿Qué has disfrutado hoy?"** encabezando el Inicio sobre el feed (frame G de Estadísticas y features) — añadir como tarea propia en la sesión de este plan.
 
 ## 4. Tareas
 

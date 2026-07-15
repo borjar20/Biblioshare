@@ -37,12 +37,12 @@ Por pantalla (orden = impacto):
 ### Fase C — (opcional, decisión P-N1) Shell estático con `cacheComponents`
 `cacheComponents: true` + `"use cache"` en las lecturas de **catálogo** (obras/ediciones: datos compartidos y moderados, cacheables por tag e invalidables con `updateTag` al editar ficha) haría el shell instantáneo de verdad y habilita `unstable_instant` (validación en dev/build de que cada ruta navega instantánea) y el helper `instant()` de `@next/playwright` para e2e. **Obstáculo real:** `createClient` usa `cookies()` → toda query es dinámica; cachear catálogo exige un cliente Supabase sin cookies para lecturas públicas (revisar RLS: el catálogo debe ser legible anon) y separar "datos de obra" de "datos del usuario" en cada pantalla. Es un cambio de arquitectura de datos, no un retoque.
 
-## 3. Divergencias / decisiones — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Decisiones — RESUELTAS (2026-07-15)
 
-- **P-N1 · ¿Fase C sí o no (o después)?** Recomendación: hacer A+B ahora (resuelven el síntoma) y dejar C como epic aparte tras medir; toca RLS, clientes Supabase y cache-invalidation, y `unstable_instant` sigue marcado draft en 16.2.
-- **P-N2 · Skeleton vs contenido conocido.** En la ficha podríamos pintar el hero **con los datos que ya tenía la tarjeta clicada** (título/portada) en vez de skeleton puro. Técnicas: query mínima rápida (recomendada, server-first) o pasar datos por la navegación. ¿Vale la query mínima o quieres explorar el "hero instantáneo" con datos del cliente?
-- **P-N3 · Prioridad de rutas.** Propuesta: ficha y colección primero (las que citas), luego perfil, inicio, club. ¿De acuerdo, o hay otra que te duela más?
-- **P-N4 · Indicador de navegación global.** Mientras el `loading.tsx` no llega (prefetch frío), ¿quieres además una barra de progreso fina bajo el topbar (patrón clásico) o lo consideramos ruido?
+- **P-N1 · DECIDIDO: fases A y B ahora; fase C (cacheComponents) NO por ahora** — se reevaluará tras medir el resultado de A+B.
+- **P-N2 · DECIDIDO: query mínima.** El hero de la ficha pinta con una query rápida solo de la obra (título, portada, géneros); skeletons solo en las secciones. Sin datos pasados desde el cliente.
+- **P-N3 · DECIDIDO: Ficha → Colección → Perfil → Inicio → Club.**
+- **P-N4 · DECIDIDO: sin barra de progreso global** — los skeletons prefetcheados bastan.
 
 ## 4. Tareas
 

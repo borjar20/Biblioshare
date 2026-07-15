@@ -35,14 +35,12 @@
 8. **Escritorio General a dos columnas** — Maqueta C: fila superior en grid `1fr 320px`: tarjetas continuar apiladas a la izquierda, Resumen como tarjeta a la derecha (sticky no, simplemente columna); "Actualizado recientemente" a lo ancho debajo con `g5`. Actual: todo apilado en una columna `max-w-4xl`. Añadir `lg:grid-cols-[1fr_320px]` al bloque GeneralOverview.
 9. **Tarjeta continuar, ajustes finos** — Maqueta: portada 58×87 radio 5px, título 15px, autor 11.5px, progreso con fila "p. 240 / 662 · 38%" en mono 10px + "Continuar ›" 11px semibold teñido. Actual muy cerca (portada 64×96 rounded-lg). Ajustar tamaños exactos y ordenar la fila progreso/CTA como en la maqueta (label izquierda, CTA derecha, ya está). En General móvil las tarjetas van **apiladas a una columna** (maqueta A), no `sm:grid-cols-2`; a partir de escritorio siguen apiladas dentro de la columna izquierda (frame C). Cambiar el grid interno de `continue-strip.tsx` a una columna.
 
-## 3. Divergencias funcionales — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Divergencias funcionales — RESUELTAS (2026-07-15)
 
-> No implementar nada de esta sección sin decisión explícita del usuario.
-
-- **P1 · Colección v2 (colecciones curadas).** `Paper - Colección v2.html` reorganiza la pestaña entera: la vista principal pasa a ser un **grid de colecciones del usuario** (abanico de portadas, nombre, recuento, tile "crear nueva"), con detalle de colección, pestaña "Todo" (la biblioteca completa actual, sin bloque "en curso") y hoja "Añadir a colección" desde cualquier ficha. Es una **feature nueva completa** (tablas `collections` + `collection_items`, CRUD, RLS…), no un restyling. ¿Se planifica como epic aparte (recomendado: aquí solo dejamos la Colección "v1" fiel), se integra ya, o se descarta?
-- **P2 · Botones ⌕ y + del topbar de Colección.** La maqueta pone búsqueda-en-colección y "añadir" como iconos del topbar. Hoy la búsqueda vive en `LibraryFilters` (pestañas de tipo) y el alta en la pestaña Buscar. ¿Replicamos los accesos del topbar (el + llevaría a `/buscar`) o lo dejamos como está? Afecta al header global (ver plan transversal, P-T1 topbar contextual).
-- **P3 · Pestaña Colas.** La maqueta de Colección no muestra la pestaña Colas (General·Libros·Películas·Series); las colas aparecen en su propia maqueta ("Colas · en Colección", frame 1 de Colas/Retos/Usuarios/Admin). La integración actual como 5ª pestaña ya se decidió — asumo que se mantiene y solo se restyla su contenido contra ese frame en una tarea propia. ¿Correcto, o prefieres moverlas (p. ej. dentro de General)?
-- **P4 · Subtabs serif vs mono.** La maqueta usa pestañas Fraunces serif 15.5px; la app usa mono uppercase por decisión previa ("subtabs en mono es patrón"). Decisión transversal — se pregunta una sola vez en el plan transversal (P-T2) y aplica aquí.
+- **P1 · DECIDIDO: Colección v2 SE INCLUYE en la iniciativa.** Se planifica como **sesión(es) extra de este plan** con spec propia previa: modelo de datos (`collections` + `collection_items`, RLS, migración vía agente supabase-schema), grid de colecciones con abanico de portadas + tile crear, detalle, pestaña "Todo" (absorbe el grid actual sin bloque "en curso") y hoja "Añadir a colección" desde ficha/grid. **Ejecutar DESPUÉS de la fidelidad v1** (tareas 1–5), porque v2 reorganiza las pestañas.
+- **P2 · DECIDIDO vía P-T3 (topbar contextual): SÍ** — topbar "Mi colección" con barrita de acento + ⌕ (búsqueda en colección) y + (→ `/buscar`).
+- **P3 · Colas: se mantiene como pestaña** (no cuestionado en la sesión de decisiones; si molesta al integrar v2, replantear entonces). Restyling contra su frame en tarea propia.
+- **P4 · DECIDIDO vía P-T2: subtabs en serif Fraunces.**
 
 ## 4. Tareas
 
@@ -77,8 +75,9 @@
 ### Tarea 6 — (bloqueada por P3) Restyling del panel de Colas
 - Contra el frame "Colas · en Colección": filas arrastrables con portada, estimación por ítem y total por cola. Analizar `queues-panel.tsx` en su sesión (hoy fuera de alcance visual de esta pasada).
 
-### Tarea 7 — (bloqueada por P1) Colección v2
-- Si se aprueba: spec propia (modelo de datos + pantallas) como epic aparte; no cabe en esta iniciativa de fidelidad.
+### Tarea 7 — Colección v2 (APROBADA, tras las tareas 1–6)
+- Sesión 1: spec + migración (`collections`, `collection_items`, RLS; agente supabase-schema) + grid de colecciones y detalle (frames A/B de `Paper - Colección v2.html`).
+- Sesión 2: pestaña "Todo" (reubicar el grid actual) + hoja "Añadir a colección" (frame D) desde ficha y grid.
 
 ## 5. Verificación de cierre
 

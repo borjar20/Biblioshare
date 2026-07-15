@@ -70,12 +70,12 @@
 ### Frame 7 · Elegir edición
 23. Selector radio `edpick` (tag del formato, nombre, metadatos, páginas a la derecha; seleccionada con borde+tinte del acento), buscador `edsearch`, chip "RECOMENDADA", opción discontinua "otra edición / edición manual", y en pases nuevos la opción de **reusar la edición del pase anterior**. PR #33 tocó justo esto: comparar contra el frame y afinar.
 
-## 3. Divergencias funcionales / de sistema — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Divergencias funcionales / de sistema — RESUELTAS (2026-07-15)
 
-- **P1 · Estrellas doradas vs dots.** La maqueta de la ficha muestra la nota media como **X,X/5 con estrellas gold** (hero y Comunidad) y el `rate-pick` de 5 posiciones; la app guarda nota 1–10 y pinta `RatingDots` (también componente oficial del DS). ¿Norma? Propuesta a validar: estrellas gold /5 para **agregados de comunidad** (hero, histograma, reseñas ajenas) y dots para la nota propia 1–10 — o todo dots como hoy. Afecta a feed, perfil y clubes, no solo a la ficha.
-- **P2 · Menú ⋯ del hero.** No existe hoy. ¿Qué contendría (compartir, quitar de biblioteca, editar ficha si moderador…)? ¿Se hace o se omite el botón?
-- **P3 · Delta del diario de pases.** "▲ +1★ vs. anterior" implica comparar nota entre pases. Trivial si PR #32 (nota por pase) está mergeado; si no, esperar. Confirmar orden de ejecución con pase-hub (PR #42).
-- **P4 · Hojas de "Registrar sesión".** `Paper - Registrar sesión.html` define 5 hojas modales (tramo de páginas con delta, selector de temporada, cronómetro, sesión que completa el pase, retomar abandonado). Hoy la sesión vive en `/sesion/[entryId]` (página). ¿Se migra a hojas modales sobre la ficha (fiel) o se restylea la página actual? El cronómetro (hoja 3) ¿existe ya o es feature nueva?
+- **P1 · DECIDIDO: híbrido de la maqueta.** **Estrellas gold /5** para agregados de comunidad (hero de ficha, histograma, reseñas ajenas — en ficha, feed, perfil y clubes) y **dots** para la nota propia 1–10 (rate-pick, diario, tarjetas propias). Norma de sistema: documentarla al aplicarla.
+- **P2 · DECIDIDO: SÍ, menú ⋯ del hero** — quitar de mi biblioteca, editar ficha (solo moderador); "compartir" entrará cuando se decida (plan 01 P4 pospuesto).
+- **P3 · Delta del diario: coordinación** — hacer cuando PR #32 (nota por pase) esté mergeado; confirmar orden con pase-hub (#42) al arrancar la sesión.
+- **P4 · DECIDIDO: hojas modales sobre la ficha, CON cronómetro.** Las 5 hojas de `Paper - Registrar sesión.html` (tramo de páginas con delta, selector de temporada, **cronómetro en vivo con pausar/reiniciar que vuelca la duración** — feature nueva, no existe hoy —, sesión que completa el pase, retomar abandonado). `/sesion/[entryId]` queda como fallback deep-link. Añadir como bloque de tareas propio (probablemente su propia sesión).
 
 ## 4. Tareas
 

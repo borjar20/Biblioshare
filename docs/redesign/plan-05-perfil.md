@@ -33,11 +33,11 @@
 5. **Layout de escritorio** — `Paper - Perfil.html` frame C: cabecera a lo ancho (avatar izquierda, acciones derecha), **destacados en fila de 6**, overview en **dos columnas**. Actual: una columna `max-w-4xl` en todo. Añadir en `lg:`: FavoritesShelf con `grid-cols-6`, y en Actividad/Panel un grid de dos columnas para las tarjetas (`lg:grid-cols-2`, calendario y semana pueden compartir fila).
 6. **Gráfico anual** — Frame D: barras apiladas por tipo con leyenda (dot 8px + label 11.5px). Verificar `activity-chart.tsx` (existía antes del rediseño); alturas, `stackbar` con esquinas 4px arriba y meses en mono 8.5px.
 
-## 3. Divergencias funcionales — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Divergencias funcionales — RESUELTAS (2026-07-15)
 
-- **P1 · Ajustes del perfil (⚙).** La maqueta solo muestra un icono ⚙ en el topbar del perfil propio; hoy el perfil pinta inline el toggle de visibilidad, las solicitudes de seguimiento pendientes y el enlace admin. ¿Se crea una hoja/página de ajustes colgada de un ⚙ (movería visibilidad + admin ahí; las solicitudes podrían ir a Notificaciones, donde la maqueta de Notificaciones ya muestra solicitudes con aceptar/rechazar) o se deja como está?
-- **P2 · Filtros de la Colección del perfil.** El frame C solo enseña píldoras de tipo; hoy hay además búsqueda, estado y orden (los mismos de `/coleccion`). ¿Reducimos el perfil a píldoras de tipo (más fiel; la biblioteca completa con filtros ya vive en `/coleccion`) o conservamos los filtros completos?
-- **P3 · "Editar" como botón outline.** La maqueta tiene un botón "Editar" que (se asume) abre la edición; hoy `EditProfileForm` se despliega inline. Si el formulario inline molesta para la fidelidad, ¿lo movemos a hoja modal? (Cambio de interacción, no solo estilo.)
+- **P1 · DECIDIDO: ⚙ con hoja de ajustes.** Visibilidad pública/privada y enlace admin se mueven a una hoja tras el ⚙ del topbar; las **solicitudes de seguimiento se mudan al desplegable de Notificaciones** (la maqueta de Notificaciones ya las pinta con aceptar/rechazar en línea — coordinar con plan 07 §2.1).
+- **P2 · DECIDIDO — CAMBIO DE IA: el perfil PROPIO pierde la pestaña Colección.** Queda **Panel + Actividad** (la biblioteca ya tiene página propia en `/coleccion`; el perfil se orienta a estadísticas y actividad). **El visitante SÍ sigue viendo Colección + Actividad** (frame D intacto — la función social de ver estanterías ajenas no se recorta). Consecuencias: `SectionTabs` pasa a depender de `isOwner` también para Colección; el `CollectionTab` del perfil queda solo para visitantes con **píldoras de tipo únicamente** (sin búsqueda/estado/orden); los deep-links `?tab=coleccion` en perfil propio redirigen a `/coleccion`.
+- **P3 · DECIDIDO: editar perfil en hoja modal.** El botón "Editar" abre una hoja con el formulario (nombre, bio, avatar) en vez del despliegue inline.
 
 ## 4. Tareas
 
@@ -46,10 +46,11 @@
 - §2.1 y §2.2. Verificar tarjeta de semana contra `weekwrap` (barras + anillo "7/10 hoy" a la derecha — ya existe `CircularProgress`).
 - Commit: `style(perfil): panel fiel al frame B (ahora consumiendo, retos serif)`
 
-### Tarea 2 — Colección del perfil: eyebrows + píldoras
-- **Modificar:** `src/app/u/[username]/page.tsx`, `src/components/library/library-filters.tsx`
-- §2.3 (píldoras `.pill` con dot; eyebrows). Si P2 se aprueba, quitar búsqueda/estado/orden del perfil en la misma pasada.
-- Commit: `style(perfil): coleccion con eyebrows y píldoras del mockup`
+### Tarea 2 — Reestructurar pestañas (P2) + Colección de visitante
+- **Modificar:** `src/app/u/[username]/page.tsx`, `src/components/section-tabs.tsx`, `src/components/library/library-filters.tsx`
+- Perfil propio: quitar pestaña Colección (redirigir `?tab=coleccion` a `/coleccion`). Visitante: Colección con **solo píldoras de tipo** + eyebrows del frame C (§2.3).
+- **Prueba:** e2e de perfil (propio y visitante) actualizados a la nueva estructura de pestañas.
+- Commit: `feat(perfil): perfil propio sin coleccion; visitante con pildoras de tipo (P2)`
 
 ### Tarea 3 — Escritorio
 - **Modificar:** `src/app/u/[username]/page.tsx`, `src/components/favorites-shelf.tsx`
@@ -61,8 +62,9 @@
 - §2.6 contra el frame D.
 - Commit: `style(perfil): grafico anual fiel al frame D`
 
-### Tarea 5 — (bloqueada por P1/P3) Ajustes y edición
-- Alcance según decisión; tocaría `profile-header.tsx`, `edit-profile-form.tsx`, quizá ruta nueva `/cuenta`.
+### Tarea 5 — Ajustes (⚙) y edición en hoja (P1/P3, APROBADAS)
+- **Modificar:** `profile-header.tsx`, `edit-profile-form.tsx` (a hoja modal), `u/[username]/page.tsx` (retirar toggle/solicitudes/enlace admin inline), `notification-bell.tsx` (absorbe solicitudes — coordinar con plan 07), hoja/página de ajustes nueva (visibilidad + admin).
+- Commit: `feat(perfil): ajustes tras engranaje y edicion en hoja (P1/P3)`
 
 ## 5. Verificación de cierre
 

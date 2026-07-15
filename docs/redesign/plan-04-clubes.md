@@ -60,11 +60,11 @@ Piezas ya muy fieles (verificado): `club-summary.tsx` (tarjetas de actividad act
 ### Wizard Proponer actividad
 18. Contra `Paper - Proponer actividad.html`: paso 1 con 4 tarjetas de tipo (icono teñido + nombre + descripción), pasos por tipo (fechas, editor de hitos, niveles de tierlist editables, ítems del reto). Auditar `propose-wizard.tsx` frame a frame en su sesión.
 
-## 3. Divergencias funcionales — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Divergencias funcionales — RESUELTAS (2026-07-15)
 
-- **P1 · Progreso real en las tarjetas de actividad activa.** La maqueta pinta "Hito 3/5 · pág 320" (progreso por hitos) y "14/40 · 8 participan"; `club-summary.tsx` pinta a propósito **progreso temporal** (comentario en código: el real costaría una query por actividad). ¿Pagamos la query (o una vista agregada) para el dato real, o se queda la barra temporal?
-- **P2 · Menú ⋯ del club.** La maqueta lo dibuja en el banner. Hoy no existe un menú contextual del club (editar/salir/ajustes están como botones). ¿Se crea el menú ⋯ (agrupa Editar/Salir/Ajustes) o se mantienen los botones visibles?
-- **P3 · "Invitar" desde Gestión.** El frame 6 tiene botón "+ Invitar" junto a Miembros. Verificar si el flujo de invitación existe (hay `acceptInvite` en membership); si no hay UI de invitar, decidir si se añade en esta pasada o después.
+- **P1 · DECIDIDO: progreso real por hitos.** Sustituir la barra temporal de `club-summary.tsx` por el avance real ("Hito 3/5 · pág 320", "14/40") vía query o vista agregada por actividad.
+- **P2 · DECIDIDO: SÍ, menú ⋯ del club** en el banner (agrupa Editar / Ajustes / Salir) y el botón de cabecera pasa a "Miembro ✓". La §2.5 deja de ser condicional.
+- **P3 · DECIDIDO: SÍ, construir el flujo de invitar.** El backend ya tiene `acceptInvite`/`declineInvite`; falta la UI: "+ Invitar" en Gestión → buscar usuario → invitación + notificación. Añadir como tarea propia en la sesión C.
 
 ## 4. Tareas (sugerencia de reparto en sesiones)
 

@@ -38,20 +38,22 @@
 7. **Modo oscuro** — al cerrar cada plan 01–06, pasar las pantallas de `Modo oscuro(.resto).html`; los tokens ya existen, esto es caza de hardcodes.
 8. **Admin (ruta oculta)** — frame 4 de `Paper - Colas, Retos, Usuarios, Admin.html`: topbar con chip mono "ADMIN" teñido, tabla de usuarios con rol editable (usuario/colaborador/admin) y acciones suspender/banear/eliminar. Comparar `src/app/admin/page.tsx`; la entrada es el enlace del perfil propio (ya así).
 
-## 3. Decisiones transversales — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Decisiones transversales — RESUELTAS (2026-07-15)
 
-> Estas preguntas afectan a varios planes; conviene resolverlas ANTES de empezar las sesiones por pestaña.
-
-- **P-T1 · Nav de escritorio: ¿topbar horizontal o SideNav?** Todas las maquetas de escritorio (Home B, Colección C, Buscar C) usan **topbar horizontal** (wordmark + Inicio·Colección·Buscar·Clubes + iconos búsqueda/perfil/avatar). La app usa SideNav lateral en sm+, decisión del rediseño. Fidelidad estricta = topbar. ¿Cambiamos o mantenemos SideNav?
-- **P-T2 · Subtabs: ¿serif (maqueta) o mono (patrón actual)?** Las maquetas pintan las subtabs de Perfil/Colección/Club en **Fraunces serif 15–15.5px**; la app las unificó en **mono uppercase** ("subtabs en mono es patrón", decisión previa del rediseño). Una sola decisión para toda la app (afecta a planes 02, 04, 05; la ficha usa sans y va aparte). 
-- **P-T3 · Topbar contextual por sección.** Las maquetas ponen el título de la sección en el topbar ("Mi colección" con barrita de acento, "Buscar", "Clubes" con + Crear) y acciones contextuales; la app tiene un header global fijo (wordmark + campana + tema) y el título dentro de la página. ¿Adoptamos topbar contextual (más fiel, más obra) o mantenemos el header global?
-- **P-T4 · ¿Migrar iconos a lucide-react?** Solo si la auditoría (§2.3) encuentra el set propio inconsistente. Migrar es mecánico pero toca toda la app.
-- **P-T5 · §3.8 Estadísticas y features (muro de stats, stats diarias con anillos, calendario con portadas, memorizar notas/citas, sorteo de cartas/estantería, "¿qué has disfrutado hoy?").** Son **features nuevas**, no fidelidad — la mayoría ni existe. Propuesta: sacarlas de esta iniciativa y tratarlas como epic aparte cuando toque. ¿De acuerdo? (El "muro" podría absorber parte del Panel del perfil en el futuro.)
-- **P-T6 · Excerpt/texto secundario `#584f43`.** Varias maquetas usan un marrón intermedio entre `foreground` y `muted-foreground` para texto de reseñas/sinopsis. ¿Se añade token (`--foreground-soft` o similar) o se aproxima con `text-foreground/75`? Una decisión, se aplica en 01/04/06.
+- **P-T1 · DECIDIDO: topbar horizontal en escritorio.** Wordmark + Inicio·Colección·Buscar·Clubes + iconos a la derecha, como las maquetas. Se retira SideNav. Tarea nueva §4.7.
+- **P-T2 · DECIDIDO: subtabs en serif Fraunces** (~15.5px, 600, subrayado de acento). Revierte la decisión previa "subtabs en mono" — actualizar la memoria del proyecto. Afecta a planes 02, 04, 05; la ficha va en sans semibold (su maqueta).
+- **P-T3 · DECIDIDO: topbar contextual por sección.** Título y acciones de cada pestaña en el topbar ("Mi colección" + barrita de acento + ⌕/+, "Clubes" + Crear…). Se hace incremental, una sección por sesión; campana y toggle de tema se recolocan (perfil/ajustes y donde diga la maqueta).
+- **P-T4 · DECIDIDO: auditar el set propio primero.** Migrar a lucide-react solo si la auditoría (§2.3) sale mal.
+- **P-T5 · DECIDIDO: entran DOS features de §3.8** — **calendario con portadas** (celda del calendario del Panel con portada + barra de intensidad, verde = terminado; sobre `MonthCalendar`) y **"¿Qué has disfrutado hoy?"** (registro del día en un toque encabezando el Inicio sobre el feed → coordinar con plan 01). El resto (muro, stats diarias, notas/citas, sorteo) a epic aparte.
+- **P-T6 · DECIDIDO: token nuevo `--foreground-soft`** (light `#584f43` + equivalente dark tomado de las maquetas de modo oscuro) en `globals.css`, aplicado en reseñas/sinopsis/excerpts (planes 01/04/06).
 
 ## 4. Tareas
 
-1. **Resolver P-T1…P-T6 con el usuario** y anotar las decisiones aquí. Sin esto no arrancar las sesiones de los planes 01–06 que dependan de ellas.
+1. ~~Resolver P-T1…P-T6~~ **HECHO 2026-07-15** — decisiones en §3.
+1b. **Topbar horizontal de escritorio** (P-T1): sustituir `side-nav.tsx` por nav horizontal en el header (`header.tsx` + `nav-items.ts`); el contextual por sección (P-T3) se monta encima al pasar cada plan. Commit: `feat(nav): topbar horizontal en escritorio (P-T1)`
+1c. **Token `--foreground-soft`** (P-T6) en `globals.css` + utilidades. Commit: `feat(theme): token foreground-soft del mockup`
+1d. **Subtabs a serif** (P-T2): `section-tabs.tsx`, `collection-tabs.tsx`, `club-tabs.tsx` a Fraunces 600 con subrayado de acento. Commit: `style(nav): subtabs en serif (P-T2)`
+1e. **Features aprobadas de §3.8** (P-T5): calendario con portadas (`stats/month-calendar.tsx`) y "¿Qué has disfrutado hoy?" (bloque nuevo sobre el feed, plan 01) — cada una su sesión corta con spec mínima contra `Paper - Estadísticas y features.html` frames C y G.
 2. Notificaciones (§2.1). Commit: `style(notificaciones): dropdown fiel a la maqueta`
 3. Estados (§2.2), un commit por estado si hay cambios.
 4. Auditoría de iconos (§2.3) → informe corto en este doc + fixes. 

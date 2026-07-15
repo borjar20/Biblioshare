@@ -33,13 +33,10 @@
 8. **Formulario manual** — Frame B: selector de tipo (mismas píldoras con dot) arriba del formulario; Año y Páginas en **dos columnas** (`grid-cols-2 gap-3`); labels mono uppercase con asterisco de requerido en accent (revisar `Field`); botón final full-width "Añadir a mi biblioteca". Actual: sin selector visible (llega por `?type=`), todo a una columna, botón no full-width. Ajustar (el selector puede ser Links que cambian `?type=`, como en Buscar).
 9. **Personas: filas** — Frame 3 `.userrow`: avatar con gradiente, nombre semibold, @usuario mono muted, chips pequeños de recuento por tipo ("210 libros · 132 pelis"), chevron › a la derecha. Comparar `user-card.tsx` y ajustar (sobre todo chips de recuento por tipo si ya existen los datos; si el recuento por tipo no está en la query de personas, ver §3-P3).
 
-## 3. Divergencias funcionales — COMENTAR ANTES DE IMPLEMENTAR
+## 3. Divergencias funcionales — RESUELTAS (2026-07-15)
 
-> No implementar nada de esta sección sin decisión explícita del usuario.
-
-- **P1 · Botón "+ Añadir" rápido en resultados.** La maqueta añade a biblioteca desde la tarjeta de resultado. La decisión de la **escalera de hidratación** (mergeada, PRs #34/#35) hizo la búsqueda deliberadamente de solo lectura: tarjeta → ficha → (elegir edición) → alta. Un añadido rápido tendría que hidratar obra+ediciones al pulsarlo (y en libros elegir edición, que la maqueta de Ficha exige en el primer pase). ¿Se descarta el quick-add (recomendado: contradice la escalera y el flujo de ediciones), o se quiere una versión "añadir a Pendiente con edición sin decidir"?
-- **P2 · "Nova · 662 págs" en la tarjeta de resultado.** La maqueta muestra editorial·páginas, pero el código las quitó a propósito (son de una tirada concreta, no de la obra — comentario en `search-result-card.tsx`, spec 2026-07-14). Recomiendo mantener la app como está (título, autoría, año, nº de ediciones) y dar la maqueta por desactualizada aquí. ¿Confirmas?
-- **P3 · Recuento por tipo en resultados de Personas.** El frame 3 muestra chips "210 libros · 132 pelis" por usuario. Si la query actual de personas no trae esos agregados, añadirlos tiene coste (agregado por usuario sobre `library_entries`, con RLS de perfiles privados). ¿Se añade el dato o se dejan las filas sin chips?
+- **P1/P2 · DECIDIDO: se mantiene la escalera de hidratación.** Sin quick-add "+ Añadir" y sin editorial·páginas en la tarjeta de resultado — la maqueta queda desactualizada en esos dos puntos. La Tarea 2 se limita al restyling (borde por tipo, autoría serif).
+- **P3 · DECIDIDO: sin chips de recuento por ahora.** Idea a futuro registrada por el usuario: en vez de recuentos, cada usuario podrá lucir **tags** en los resultados de personas — géneros favoritos elegidos y **logros** conseguidos (p. ej. "rey de la lectura" por leer X libros). Es una feature nueva (perfil + sistema de logros), fuera de esta iniciativa; queda anotada para su futuro epic.
 
 ## 4. Tareas
 
