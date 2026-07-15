@@ -31,8 +31,17 @@ Dos capas separadas:
   refleja). Patrón usado en `activity-detail.tsx` con los tableros por tipo y los
   checkpoints. Coste: un refresco redundante con el `revalidatePath` de la
   action; aceptable a cambio de no reescribir componentes frágiles.
-- **Microacción (like, follow, voto, comentario):** `useOptimisticAction`
-  (Fase 3) para respuesta instantánea + rollback en error.
+- **Microacción frecuente (like, follow, comentario, favorito):**
+  `useOptimisticAction` (`src/lib/reactivity/use-optimistic-action.ts`) para
+  respuesta instantánea + rollback en error. Firma: `{ state, reducer }` →
+  `{ state, isPending, failed, run(action, mutate) }`. El **reducer es puro** y
+  se testea aparte (el runner es node-only, sin jsdom); vive en un `.ts` junto al
+  componente (p.ej. `follow-optimistic.ts`, `interaction-optimistic.ts`). El
+  optimismo va SIEMPRE encima de la revalidación, nunca en su lugar: `run`
+  aplica el cambio optimista y llama al server action (que revalida); en error el
+  estado real no cambió y useOptimistic revierte solo. Aplícalo SOLO donde el
+  round-trip se nota (disciplina B) — el voto de encuesta y "episodio visto" ya
+  eran optimistas de fábrica y se dejaron como estaban (convertirlos era churn).
 
 ## Modelo de caché
 
