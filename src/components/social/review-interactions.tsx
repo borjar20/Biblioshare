@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { HeartIcon, CommentIcon } from "@/components/ui/icons";
@@ -9,13 +9,18 @@ import {
   addComment,
   deleteComment,
 } from "@/lib/social/interaction-actions";
-import type { InteractionComment, TargetType } from "@/lib/social/interactions";
+import type {
+  InteractionComment,
+  TargetType,
+} from "@/lib/social/interactions";
+import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
+import { interactionReducer } from "@/lib/social/interaction-optimistic";
 
-// Like + hilo de comentarios bajo una reseña (EPIC-05, Bloque B, SD-3). Mismo
-// patrón que FollowButton: el estado se deriva de las props revalidadas por el
-// servidor tras cada acción (revalidatePath), sin estado optimista local. Los
-// comentarios ya vienen prefetcheados (capados) desde el servidor — expandir
-// no dispara ningún fetch nuevo, solo muestra/oculta.
+// Like + hilo de comentarios bajo una reseña (EPIC-05, Bloque B, SD-3). El
+// estado real deriva de las props que el servidor revalida tras cada acción
+// (revalidatePath); encima, useOptimisticAction pinta like/comentario al
+// instante y revierte en error. Los comentarios vienen prefetcheados (capados)
+// desde el servidor — expandir no dispara fetch, solo muestra/oculta.
 export function ReviewInteractions({
   targetType,
   targetId,
@@ -39,7 +44,10 @@ export function ReviewInteractions({
   showTargetReaction?: boolean;
 }) {
   const t = useTranslations("social");
-  const [isPending, startTransition] = useTransition();
+  const { state, isPending, run } = useOptimisticAction({
+    state: { reactionCount, viewerReacted, commentCount, comments },
+    reducer: interactionReducer,
+  });
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -48,7 +56,7 @@ export function ReviewInteractions({
       <div className="flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
         {showTargetReaction && (
           <span className="flex items-center gap-1.5">
-            <HeartIcon className="h-4 w-4" /> {reactionCount}
+            <HeartIcon className="h-4 w-4" /> {state.reactionCount}
           </span>
         )}
         <Link
@@ -56,9 +64,31 @@ export function ReviewInteractions({
           className="flex items-center gap-1.5 hover:text-foreground"
         >
           <CommentIcon className="h-4 w-4" />
-          {t("commentsCount", { count: commentCount })}
+          {t("commentsCount", { count: state.commentCount })}
         </Link>
       </div>
+    );
+  }
+
+  function submitComment() {
+    const value = draft.trim();
+    if (!value) return;
+    setDraft("");
+    // Comentario optimista: muestra "Tú" hasta que la revalidación trae el real
+    // (con id y autor de verdad) y useOptimistic lo sustituye al asentarse.
+    const optimistic: InteractionComment = {
+      id: `optimistic-${Date.now()}`,
+      authorId: "",
+      author: t("you"),
+      initials: "",
+      body: value,
+      createdAt: new Date().toISOString(),
+      isOwn: true,
+      reactionCount: 0,
+      viewerReacted: false,
+    };
+    run({ type: "addComment", comment: optimistic }, () =>
+      addComment(targetType, targetId, value),
     );
   }
 
@@ -70,19 +100,23 @@ export function ReviewInteractions({
             type="button"
             disabled={isPending}
             aria-label={t("like")}
-            aria-pressed={viewerReacted}
-            onClick={() => startTransition(() => toggleReaction(targetType, targetId))}
+            aria-pressed={state.viewerReacted}
+            onClick={() =>
+              run({ type: "toggleTarget" }, () =>
+                toggleReaction(targetType, targetId),
+              )
+            }
             className={`flex items-center gap-1.5 transition-colors ${
-              viewerReacted
+              state.viewerReacted
                 ? "text-accent"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <HeartIcon
               className="h-4 w-4"
-              fill={viewerReacted ? "currentColor" : "none"}
+              fill={state.viewerReacted ? "currentColor" : "none"}
             />
-            {reactionCount}
+            {state.reactionCount}
           </button>
         )}
         <button
@@ -91,13 +125,13 @@ export function ReviewInteractions({
           className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
         >
           <CommentIcon className="h-4 w-4" />
-          {t("commentsCount", { count: commentCount })}
+          {t("commentsCount", { count: state.commentCount })}
         </button>
       </div>
 
       {expanded && (
         <div className="flex flex-col gap-2">
-          {comments.map((c) => (
+          {state.comments.map((c) => (
             <div
               key={c.id}
               className="flex items-start justify-between gap-2 text-xs"
@@ -111,7 +145,11 @@ export function ReviewInteractions({
                   type="button"
                   disabled={isPending}
                   aria-pressed={c.viewerReacted}
-                  onClick={() => startTransition(() => toggleReaction("comment", c.id))}
+                  onClick={() =>
+                    run({ type: "toggleComment", id: c.id }, () =>
+                      toggleReaction("comment", c.id),
+                    )
+                  }
                   className={`flex items-center gap-1 ${
                     c.viewerReacted ? "text-accent" : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -123,7 +161,11 @@ export function ReviewInteractions({
                   <button
                     type="button"
                     disabled={isPending}
-                    onClick={() => startTransition(() => deleteComment(c.id))}
+                    onClick={() =>
+                      run({ type: "deleteComment", id: c.id }, () =>
+                        deleteComment(c.id),
+                      )
+                    }
                     className="text-muted-foreground hover:text-foreground"
                   >
                     {t("deleteComment")}
@@ -135,10 +177,7 @@ export function ReviewInteractions({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const value = draft.trim();
-              if (!value) return;
-              setDraft("");
-              startTransition(() => addComment(targetType, targetId, value));
+              submitComment();
             }}
             className="flex items-center gap-2"
           >
