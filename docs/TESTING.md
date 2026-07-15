@@ -23,33 +23,38 @@ navegador, usa la cuenta ya creada y con onboarding completo:
 - Deja `devtest.is_public = true` al terminar (es su estado por defecto);
   si una prueba lo cambia a privado, reviértelo antes de acabar.
 
-## Verificación de UI: checklist manual (por defecto desde 2026-07-12)
+## Verificación de UI: E2E automático con Playwright (por defecto desde 2026-07-15)
 
-**Cambio de metodología**: verificar una feature de UI con un agente
-conduciendo el navegador automáticamente (`qa-verifier`, o cualquier subagente
-usando Playwright/Preview MCP) dejó de ser el camino por defecto. Las tandas
-de verificación automática habían crecido en tamaño y se volvían frágiles —
-herramientas de navegador desconectándose a media sesión, fricción de
-entorno repetida. En su lugar, **tras implementar algo con UI, genera un
-documento markdown con un checklist paso a paso** para que lo ejecute el
-usuario manualmente en su propio navegador:
+**Metodología actual**: tras implementar algo con UI, el camino por defecto
+es verificarlo de forma automática — **E2E con Playwright** (`npm run
+test:e2e`, specs bajo `e2e/`, ver el agente `test-author`) y/o un agente
+conduciendo el navegador (`qa-verifier`, o cualquier subagente usando
+Playwright/Preview MCP). Ya no hace falta pedirlo explícitamente por
+nombre: es el camino por defecto para "verifica esto" / "pruébalo en el
+navegador" tras implementar una feature de UI.
 
-- Guárdalo junto al plan/spec de la feature si existe uno (p. ej.
-  `docs/superpowers/plans/<fecha>-<feature>-manual-test.md`), o en un sitio
-  igual de visible si no hay un plan formal.
-- Cada punto: qué hacer (clic, campo a rellenar, URL a visitar) y qué
-  resultado esperar. Si el checklist cubre una corrección de un bug
-  específico, dilo explícitamente ("antes de la corrección pasaba X, ahora
-  debería pasar Y") para que el usuario sepa qué mirar.
-- Incluye los pasos de preparación de datos que hagan falta (a qué usuario
-  loguearse, qué actividad/relaciones necesita tener sembradas) para que el
-  usuario pueda ejecutar el checklist sin fricción añadida.
+- Si la feature necesita cobertura duradera, escribe o actualiza un spec en
+  `e2e/` (de eso se encarga `test-author`) y corre `npm run test:e2e`.
+- Para una verificación puntual de principio a fin en el navegador (login,
+  ejercitar el flujo, revisar consola/red, limpiar datos), usa
+  `qa-verifier`.
 - Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
-  archivos) la sigue haciendo el agente directamente — el cambio es
-  específicamente sobre *conducir la interfaz*, no sobre toda verificación.
+  archivos) la sigue haciendo el agente directamente, como siempre.
 
-`qa-verifier` (ver abajo) sigue existiendo y funciona si el usuario lo pide
-explícitamente por nombre, pero ya no se invoca de forma proactiva.
+**Nota histórica (2026-07-12 → 2026-07-15):** durante esos días el default
+fue justo lo contrario: tras implementar algo con UI, generar un documento
+markdown con un checklist paso a paso para que lo ejecutara el usuario
+manualmente en su propio navegador, en vez de conducirlo con un agente. El
+motivo fue que las tandas de verificación automática se habían vuelto
+frágiles — herramientas de navegador desconectándose a media sesión,
+fricción de entorno repetida. El usuario revirtió esa decisión el
+2026-07-15 y el default vuelve a ser el E2E automático de arriba. El
+checklist manual sigue siendo una opción válida para casos puntuales (p.
+ej. si las herramientas de navegador fallan, o si el usuario lo pide
+explícitamente): guárdalo junto al plan/spec de la feature si existe uno
+(p. ej. `docs/superpowers/plans/<fecha>-<feature>-manual-test.md`), con
+cada punto detallando qué hacer (clic, campo a rellenar, URL a visitar) y
+qué resultado esperar.
 
 ## Agentes disponibles
 
@@ -57,8 +62,8 @@ Ver `.claude/agents/`:
 
 - **qa-verifier**: verifica una funcionalidad en el navegador de principio a
   fin (login con `devtest`, ejercitar el flujo, revisar consola/red, limpiar
-  datos) y reporta si pasa o no. **Ya no es el camino por defecto** (ver
-  sección de arriba) — solo se usa si el usuario lo pide explícitamente.
+  datos) y reporta si pasa o no. Es de nuevo el camino por defecto para
+  verificación de UI (ver sección de arriba), junto con `npm run test:e2e`.
 - **supabase-schema**: migraciones, RLS, advisors y regeneración de tipos de
   Supabase.
 - **backlog-scribe**: mantiene `docs/REQUIREMENTS.md` al día (checklists,
