@@ -78,38 +78,9 @@ async function savePassFields(
   return error ? { error: "generic" } : {};
 }
 
-// El usuario nunca abre un pase a mano en el flujo normal: lo abre el cambio
-// de estado del ítem (updateStatus en manage-actions.ts). Esta acción existe
-// para los gestos que necesitan abrir uno directamente (p. ej. "releer" desde
-// el diario). Solo puede haber un pase abierto por entrada — lo garantiza el
-// índice único parcial diary_entries_one_open_pass en BD, no la app: los
-// cambios de estado pueden llegar en paralelo desde dos pestañas. Si el
-// insert choca con él (23505), ya había un pase abierto: es justo lo que
-// queríamos, no un error que deba explotar.
-export async function openPass(
-  entryId: string,
-  editionId: string | null
-): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { error } = await supabase.from("diary_entries").insert({
-    library_entry_id: entryId,
-    user_id: user.id,
-    started_on: today(),
-    finished_on: null,
-    // is_public solo dice si el TEXTO de la reseña es visible, no si el
-    // pase existe: por defecto true, igual que updateStatus, para que
-    // quien escriba una reseña sin tocar nada la publique (Hallazgo 3).
-    is_public: true,
-    edition_id: editionId,
-  });
-
-  if (error && error.code !== "23505") throw error;
-}
+// openPass ya no existe: abrir un pase es una transición de estado y pasa
+// por applyTransition (src/lib/passes/apply-transition.ts), nunca un insert
+// directo. Las acciones de este fichero editan un pase que ya reciben por id.
 
 // Cierra el pase abierto: "¿Qué te ha parecido?" tras terminar de leer/ver.
 export async function closePass(

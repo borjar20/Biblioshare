@@ -127,7 +127,7 @@ export default async function SeriesDetailPage({
       // 4): en una relectura, las sesiones de la lectura anterior no deben
       // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
       // va primero: getSessions necesita saber cuál es el pase abierto.
-      passes = await getPasses(supabase, row.id);
+      passes = await getPasses(supabase, "series", series.id, user.id);
       // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
       // segundo caso, la lista de sesiones de una serie vista se quedaría vacía
       // para siempre: getPasses ordena el abierto primero y luego los cerrados

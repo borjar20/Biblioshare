@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
+import { applyTransition } from "@/lib/passes/apply-transition";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { SearchResult } from "@/lib/catalog/types";
@@ -59,16 +60,21 @@ export async function addToLibrary(result: SearchResult, queueId?: string | null
   const itemId =
     result.catalogId ?? (await findOrCreateCatalogItem(supabase, result, user.id));
 
-  const { error } = await supabase.from("library_entries").insert({
-    user_id: user.id,
-    item_type: result.itemType,
-    item_id: itemId,
-    ...(queueId && { queue_id: queueId }),
-  });
+  // Alta = pase activo en planned vía la máquina; si ya estaba en la
+  // biblioteca (pase activo existente), la transición es un no-op.
+  await applyTransition(supabase, user.id, result.itemType, itemId, "planned");
 
-  // Ignore "already in your library" conflicts; anything else is a real error.
-  if (error && error.code !== "23505") {
-    throw error;
+  // La cola solo significa algo en el pase activo planned (§7.22).
+  if (queueId) {
+    const { error } = await supabase
+      .from("diary_entries")
+      .update({ queue_id: queueId, queue_order: null })
+      .eq("user_id", user.id)
+      .eq("item_type", result.itemType)
+      .eq("item_id", itemId)
+      .eq("is_active", true)
+      .eq("status", "planned");
+    if (error) throw error;
   }
 
   revalidatePath("/buscar");

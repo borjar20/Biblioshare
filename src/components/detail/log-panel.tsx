@@ -247,7 +247,11 @@ function ManagedLog({
     setStatus(next);
     if (next === "completed") setPendingComplete(true);
     startTransition(async () => {
-      await updateStatus(entry.entryId, itemType, itemId, next);
+      // updateStatus ya devuelve el TransitionOutcome (askResume / done +
+      // closed). La Tarea 6 lo usa para abrir la hoja de retomar y encadenar
+      // la de cierre; de momento, wiring mínimo: se ignora y se refresca.
+      const outcome = await updateStatus(itemType, itemId, next);
+      void outcome;
       router.refresh();
     });
   }
@@ -288,9 +292,7 @@ function ManagedLog({
             onChange={(event) => {
               const next = event.target.value || null;
               setQueueId(next);
-              startTransition(() =>
-                moveEntryToQueue(entry.entryId, itemType, itemId, next)
-              );
+              startTransition(() => moveEntryToQueue(itemType, itemId, next));
             }}
           >
             <option value="">{tQueue("noQueue")}</option>
@@ -341,7 +343,7 @@ function ManagedLog({
         type="button"
         disabled={isPending}
         onClick={() =>
-          startTransition(() => removeFromLibrary(entry.entryId, itemType, itemId))
+          startTransition(() => removeFromLibrary(itemType, itemId))
         }
         className="self-start text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
       >

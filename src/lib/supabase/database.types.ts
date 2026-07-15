@@ -766,7 +766,12 @@ export type Database = {
           is_public?: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
-          library_entry_id: string
+          // PARCHE A MANO (Tarea 5, migración b4): opcional y nullable en el
+          // Insert — los pases del hub nacen sin entrada de biblioteca. El
+          // Row se deja en string a propósito: los lectores legacy (Task 9)
+          // siguen leyendo pases pre-hub, que siempre la tienen. Reponer en
+          // cada regen hasta que la Task 10 elimine la columna.
+          library_entry_id?: string | null
           pinned_order?: number | null
           position?: Json
           queue_id?: string | null

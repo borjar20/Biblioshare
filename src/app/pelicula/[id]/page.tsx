@@ -110,7 +110,7 @@ export default async function MovieDetailPage({
         notes: row.notes,
         queueId: row.queue_id,
       };
-      passes = await getPasses(supabase, row.id);
+      passes = await getPasses(supabase, "movie", movie.id, user.id);
     }
     queues = await getQueues(supabase, user.id);
   }
