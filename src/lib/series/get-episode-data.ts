@@ -13,10 +13,15 @@ export type GridCell = {
 };
 
 // Estado del propio usuario sobre un episodio (para la lista interactiva).
+// Dos capas (Tarea 8, hub): `watched`/`rating`/`review` son SIEMPRE del pase
+// ACTIVO (el cursor); `seenBefore` señala que el episodio también está visto
+// en OTRO pase (un revisionado anterior) o en una fila legado sin pase —
+// visto alguna vez, pero no en el pase actual.
 export type OwnWatch = {
   watched: boolean;
   rating: number | null;
   review: string | null;
+  seenBefore: boolean;
 };
 
 export type EpisodeRow = {
@@ -63,14 +68,18 @@ export type EpisodeWatchRow = {
   episode_number: number;
   rating: number | null;
   review: string | null;
+  pass_id: string | null;
 };
 
 // Lógica pura: agrega catálogo de episodios + visionados en la rejilla de la
-// comunidad y la lista por temporada con el estado del propio usuario. Ver §7.x.
+// comunidad y la lista por temporada con el estado del propio usuario. Ver
+// §7.x. `activePassId` distingue la capa cursor (este pase) de "visto alguna
+// vez" (Tarea 8, hub) — null si el usuario no tiene pase activo en la serie.
 export function aggregateEpisodeData(
   episodes: EpisodeCatalogRow[],
   allWatches: EpisodeWatchRow[],
-  userId: string | null
+  userId: string | null,
+  activePassId: string | null
 ): EpisodeData {
   // Agregado comunidad por episodio.
   const ratingSum = new Map<string, number>();
@@ -87,15 +96,32 @@ export function aggregateEpisodeData(
     return Math.round(((ratingSum.get(k) ?? 0) / count) * 10) / 10;
   };
 
-  // Estado propio por episodio.
+  // Estado propio por episodio, agrupando primero las filas propias por
+  // episodio: un mismo episodio puede tener varias filas (una por pase en
+  // que se vio, más quizá una legado sin pase) desde que la unicidad pasó a
+  // ser por pase (migración 20260717_pass_hub_b2_episode_unique.sql). La
+  // capa cursor sale de la fila del pase activo si existe; `seenBefore` es
+  // true si hay CUALQUIER otra fila (pase distinto o legado).
   const own = new Map<string, OwnWatch>();
   if (userId) {
+    const ownByKey = new Map<string, EpisodeWatchRow[]>();
     for (const w of allWatches) {
       if (w.user_id !== userId) continue;
-      own.set(key(w.season_number, w.episode_number), {
-        watched: true,
-        rating: w.rating,
-        review: w.review,
+      const k = key(w.season_number, w.episode_number);
+      const rows = ownByKey.get(k);
+      if (rows) rows.push(w);
+      else ownByKey.set(k, [w]);
+    }
+    for (const [k, rows] of ownByKey) {
+      const current = activePassId
+        ? rows.find((r) => r.pass_id === activePassId)
+        : undefined;
+      const seenBefore = rows.some((r) => r.pass_id !== activePassId);
+      own.set(k, {
+        watched: Boolean(current),
+        rating: current?.rating ?? null,
+        review: current?.review ?? null,
+        seenBefore,
       });
     }
   }
@@ -152,7 +178,7 @@ export function aggregateEpisodeData(
       runtimeMinutes: e.runtime_minutes,
       avgRating: avgOf(k),
       ratingCount: ratingCount.get(k) ?? 0,
-      own: own.get(k) ?? { watched: false, rating: null, review: null },
+      own: own.get(k) ?? { watched: false, rating: null, review: null, seenBefore: false },
     });
   }
 
@@ -160,11 +186,14 @@ export function aggregateEpisodeData(
 }
 
 // Lee series_episodes + episode_watches (RLS ya filtra a perfiles públicos +
-// propios) y delega en aggregateEpisodeData. Ver §7.x.
+// propios) y delega en aggregateEpisodeData. `activePassId` (Tarea 8, hub)
+// es el pase activo del usuario en esta serie, o null si no sigue la serie
+// todavía — lo calcula el caller (ya lo necesita para otras cosas). Ver §7.x.
 export async function getEpisodeData(
   supabase: SupabaseServerClient,
   seriesId: string,
-  userId: string | null
+  userId: string | null,
+  activePassId: string | null
 ): Promise<EpisodeData> {
   const [{ data: catalog }, { data: watches }] = await Promise.all([
     supabase
@@ -177,9 +206,9 @@ export async function getEpisodeData(
       .order("episode_number", { ascending: true }),
     supabase
       .from("episode_watches")
-      .select("user_id, season_number, episode_number, rating, review")
+      .select("user_id, season_number, episode_number, rating, review, pass_id")
       .eq("series_id", seriesId),
   ]);
 
-  return aggregateEpisodeData(catalog ?? [], watches ?? [], userId);
+  return aggregateEpisodeData(catalog ?? [], watches ?? [], userId, activePassId);
 }

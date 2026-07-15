@@ -94,7 +94,7 @@ export default async function SessionPage({
       tmdbId: series.tmdb_id,
       totalSeasons: series.total_seasons,
     });
-    const episodeData = await getEpisodeData(supabase, itemId, user.id);
+    const episodeData = await getEpisodeData(supabase, itemId, user.id, activePass.id);
     seriesEpisodes = episodeData.seasons.map((season) => ({
       season,
       episodes: (episodeData.bySeasons.get(season) ?? []).map((e) => ({

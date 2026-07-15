@@ -154,15 +154,20 @@ export async function addSession(
   if (insertError) return { error: "generic" };
 
   // Serie: marca cada episodio reutilizando la MISMA escritura que la
-  // pestaña Episodios (episode-watch-store.ts) y deja que rollSeriesProgress
-  // recalcule la posición una sola vez — toma el episodio más avanzado de
-  // TODO lo marcado, así que registrar aquí un episodio antiguo nunca hace
-  // retroceder el progreso (§Tarea 15).
+  // pestaña Episodios (episode-watch-store.ts), atado al PASE de esta sesión
+  // (Tarea 8, hub) — no a user+series como antes de la migración del hub —
+  // y deja que rollSeriesProgress recalcule la posición una sola vez — toma
+  // el episodio más avanzado de TODO lo marcado EN ESTE PASE, así que
+  // registrar aquí un episodio antiguo nunca hace retroceder el progreso
+  // (§Tarea 15). `seriesReachedEnd` alimenta el mismo auto-cierre que ya
+  // tenía el libro más abajo.
+  let seriesReachedEnd = false;
   if (itemType === "series" && episodesToMark.length > 0) {
     for (const { season, episode } of episodesToMark) {
-      await markEpisodeWatched(supabase, user.id, itemId, season, episode);
+      await markEpisodeWatched(supabase, user.id, itemId, passId, season, episode);
     }
-    await rollSeriesProgress(supabase, user.id, itemId);
+    const result = await rollSeriesProgress(supabase, user.id, itemId, passId);
+    seriesReachedEnd = result.reachedEnd;
   }
 
   // El Select de estado del formulario NUNCA escribe a mano (era el fallo 5
@@ -192,18 +197,21 @@ export async function addSession(
     if (updateError) return { error: "generic" };
   }
 
-  // Auto-cierre de libro (Regla 5 del esquema de flujo): si la sesión
-  // alcanza la última página de TU edición, el pase se completa solo —
-  // pasando por la máquina, no aparte — y la ficha encadena la hoja de
-  // cierre (parámetro ?cerrar) al volver. `tab=log` es obligatorio: la hoja
-  // de cierre vive dentro de LogPanel (pestaña "Mi registro") e
-  // ItemDetailTabs SOLO monta la pestaña activa (slots[tab]); sin él la
-  // ficha abriría en "Información" y la hoja nunca llegaría a montarse.
+  // Auto-cierre de libro o serie (Regla 5 del esquema de flujo): si la
+  // sesión alcanza la última página de TU edición (libro) o el último
+  // episodio de la serie EN ESTE PASE (rollSeriesProgress arriba), el pase
+  // se completa solo — pasando por la máquina, no aparte — y la ficha
+  // encadena la hoja de cierre (parámetro ?cerrar) al volver. `tab=log` es
+  // obligatorio: la hoja de cierre vive dentro de LogPanel (pestaña "Mi
+  // registro") e ItemDetailTabs SOLO monta la pestaña activa (slots[tab]);
+  // sin él la ficha abriría en "Información" y la hoja nunca llegaría a
+  // montarse.
   const reachedEnd =
-    itemType === "book" &&
-    maxPosition !== null &&
-    "page" in sessionPosition &&
-    sessionPosition.page === maxPosition;
+    (itemType === "book" &&
+      maxPosition !== null &&
+      "page" in sessionPosition &&
+      sessionPosition.page === maxPosition) ||
+    seriesReachedEnd;
   if (reachedEnd) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);

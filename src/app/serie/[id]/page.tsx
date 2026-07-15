@@ -178,9 +178,12 @@ export default async function SeriesDetailPage({
     });
 
   const genres = series.genres ?? [];
+  // El pase activo ya se calculó arriba (`activePassId`) para validar
+  // `?cerrar`: la pestaña Episodios lo reutiliza para separar la capa cursor
+  // (este pase) de "visto alguna vez" (Tarea 8, hub).
   const [community, episodeData, episodeReviews] = await Promise.all([
     getCommunity(supabase, "series", series.id),
-    getEpisodeData(supabase, series.id, user?.id ?? null),
+    getEpisodeData(supabase, series.id, user?.id ?? null, activePassId),
     getEpisodeReviews(supabase, series.id),
   ]);
 

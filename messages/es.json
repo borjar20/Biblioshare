@@ -159,6 +159,7 @@
     "delete": "Borrar pase",
     "edit": "Editar",
     "cancelEdit": "Cancelar",
+    "seenBefore": "Visto en otro pase",
     "errors": {
       "invalidDate": "La fecha no es válida.",
       "invalidRating": "La nota va de media estrella a cinco.",
