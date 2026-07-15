@@ -163,6 +163,12 @@
       "invalidDate": "La fecha no es válida.",
       "invalidRating": "La nota va de media estrella a cinco.",
       "generic": "No se pudo guardar."
+    },
+    "resume": {
+      "title": "¿Retomar donde lo dejaste?",
+      "continue": "Continuar donde lo dejé",
+      "restart": "Empezar de cero",
+      "cancel": "Cancelar"
     }
   },
   "profile": {

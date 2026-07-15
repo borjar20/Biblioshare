@@ -10,10 +10,11 @@ import { StarRating } from "@/components/ui/star-rating";
 import { SessionList } from "@/components/session-list";
 import { StatusSegments } from "@/components/detail/status-segments";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
+import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import type { Position } from "@/lib/library/position";
+import { formatPosition, type Position } from "@/lib/library/position";
 import type { ProgressSession } from "@/lib/sessions/types";
 import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
@@ -225,34 +226,34 @@ function ManagedLog({
     if (entry.queueId !== queueId) setQueueId(entry.queueId);
   }
 
-  // Al marcar "completado" hay que abrir la hoja de cierre con el pase que
-  // se acaba de cerrar. updateStatus ya lo cierra en BD (o abre-y-cierra uno
-  // si el ítem venía de "planificado"); aquí solo hace falta refrescar y, en
-  // cuanto lleguen los pases nuevos, coger el primero — sin pase abierto por
-  // delante, es el que se acaba de cerrar (getPasses ordena el abierto
-  // primero si lo hay, si no el cerrado más reciente).
-  const [pendingComplete, setPendingComplete] = useState(false);
+  // Al marcar "completado" (o "dejado") updateStatus ya cierra el pase en BD
+  // (o abre-y-cierra uno si el ítem venía de "planificado") y nos devuelve
+  // directamente su id: no hace falta rebuscar entre los pases tras
+  // refrescar, basta con encadenar la hoja de cierre con ese passId.
   const [closingPassId, setClosingPassId] = useState<string | null>(null);
-  const [prevPasses, setPrevPasses] = useState(passes);
-  if (passes !== prevPasses) {
-    setPrevPasses(passes);
-    if (pendingComplete) {
-      setPendingComplete(false);
-      const justClosed = passes.find((p) => p.finishedOn !== null) ?? null;
-      if (justClosed) setClosingPassId(justClosed.id);
-    }
-  }
+
+  // Retomar un abandonado (dropped → in_progress) es la única transición que
+  // la máquina no resuelve sola: askResume significa que no se escribió nada
+  // en BD todavía (el pill optimista de abajo se revierte) y que hace falta
+  // preguntar "¿continuar o de cero?" antes de reintentar con `resume`.
+  const [resumeOpen, setResumeOpen] = useState(false);
 
   function handleStatusChange(next: MediaStatus) {
     setStatus(next);
-    if (next === "completed") setPendingComplete(true);
     startTransition(async () => {
-      // updateStatus ya devuelve el TransitionOutcome (askResume / done +
-      // closed). La Tarea 6 lo usa para abrir la hoja de retomar y encadenar
-      // la de cierre; de momento, wiring mínimo: se ignora y se refresca.
       const outcome = await updateStatus(itemType, itemId, next);
-      void outcome;
+      if (outcome.kind === "askResume") {
+        setStatus(entry.status);
+        setResumeOpen(true);
+        return;
+      }
       router.refresh();
+      // Hallazgo de la revisión de la Task 5: en una carrera de doble-submit
+      // sin pase activo previo, closed puede llegar true con passId vacío.
+      // No abrir la hoja de cierre contra un pase inexistente.
+      if (outcome.closed && outcome.passId) {
+        setClosingPassId(outcome.passId);
+      }
     });
   }
 
@@ -357,6 +358,19 @@ function ManagedLog({
           itemId={itemId}
           open
           onClose={() => setClosingPassId(null)}
+        />
+      )}
+
+      {resumeOpen && (
+        <ResumePassSheet
+          itemType={itemType}
+          itemId={itemId}
+          droppedAtLabel={formatPosition(itemType, entry.position)}
+          open
+          onClose={() => {
+            setResumeOpen(false);
+            router.refresh();
+          }}
         />
       )}
     </div>
