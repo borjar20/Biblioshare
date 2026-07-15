@@ -17,6 +17,7 @@ esto es la pasada de **fidelidad**: que cada pantalla calque su frame.
 
 | # | Plan | Ámbito | Dependencias |
 |---|---|---|---|
+| 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | **Pasada previa** — antes que el resto |
 | 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio | P3 layout escritorio; clubes en feed (P1) |
 | 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | Colección v2 = posible epic aparte (P1) |
 | 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | Escalera de hidratación ya decidida (P1/P2) |
@@ -27,6 +28,7 @@ esto es la pasada de **fidelidad**: que cada pantalla calque su frame.
 
 ## Orden sugerido
 
+0. **00 Navegación** (fases A+B: skeletons + streaming) — cambia cómo se estructuran las páginas, así que va antes de restylearlas; sus preguntas P-N1…P-N4 se pueden resolver junto a las P-T.
 1. **07 (decisiones)** → desbloquea el resto.
 2. **06 Ficha** (pantalla núcleo; coordinar con pases) o **02 Colección** (autocontenida).
 3. 01 Inicio · 03 Buscar (cortas).
