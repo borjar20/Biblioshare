@@ -27,5 +27,10 @@ export async function loadBookEditions(
   if (canSync && book.editions_synced_at === null) {
     await ensureBookEditions(supabase, book);
   }
-  return getEditions(supabase, "book", book.id);
+  // freshRead=true: esta lectura viene DESPUÉS de un posible sync que acaba
+  // de escribir. La página también llama a getEditions ANTES de esto, para
+  // el editor y el registro (ver BookDetailPage); sin diferenciar ambas
+  // peticiones, Next las trata como la misma llamada y sirve aquí la
+  // respuesta vacía de antes del sync. Ver el comentario en getEditions.
+  return getEditions(supabase, "book", book.id, true);
 }

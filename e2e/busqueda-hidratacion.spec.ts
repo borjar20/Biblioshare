@@ -2,6 +2,12 @@ import { test, expect } from "@playwright/test";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+function adminHeaders() {
+  return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+}
 
 // Verificación de la escalera de hidratación (§7.39): la búsqueda devuelve
 // OBRAS y no escribe en la base de datos; la obra nace y se hidrata al abrir su
@@ -150,5 +156,125 @@ test.describe("búsqueda e hidratación de libros", () => {
     await expect(
       page.getByText(/Nineteen Eighty-Four|1984/i).first(),
     ).toBeVisible({ timeout: 20_000 });
+  });
+
+  // Tarea 5: la primera visita a una ficha recién nacida ya trae sus
+  // ediciones REALES por streaming (loadBookEditions + <Suspense>, sin
+  // recargar), y el trigger de books ya no le cuelga una "Edición principal"
+  // en blanco. "The Left Hand of Darkness" (Ursula K. Le Guin) se verificó a
+  // mano contra la API en vivo de OpenLibrary: su obra (/works/OL59800W)
+  // tiene decenas de ediciones con ISBN, así que la sincronización trae datos
+  // de verdad, no una lista vacía.
+  test("una obra nueva llega con ediciones reales en la primera visita, sin edición en blanco", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    await login(page);
+
+    const WORK_KEY = "/works/OL59800W";
+    const SEARCH_URL =
+      "/buscar?type=book&q=the+left+hand+of+darkness+ursula+le+guin";
+
+    let bookId: string | undefined;
+    try {
+      // fetchWorkEditions (src/lib/catalog/openlibrary/editions.ts) le da a
+      // OpenLibrary 5s antes de rendirse; contra la API real, esa ventana
+      // ocasionalmente no llega a tiempo y ensureBookEditions marca la
+      // sincronización como "hecha" con cero ediciones (comportamiento
+      // deliberado del código de producción: no reintenta en cada visita, ver
+      // sync-editions.ts). Eso es ruido de red de un tercero, no lo que este
+      // test verifica — así que si pasa, se descarta el libro y se reintenta
+      // con uno nuevo en vez de fallar el test entero.
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/books?openlibrary_work_key=eq.${encodeURIComponent(WORK_KEY)}`,
+          { method: "DELETE", headers: adminHeaders() },
+        );
+
+        await page.goto(SEARCH_URL);
+
+        // Botón, no enlace: confirma que la obra todavía no está en el
+        // catálogo, así que pulsarla dispara openCatalogItem (nace la fila) y
+        // esta SÍ es la primera visita a su ficha.
+        const result = page
+          .getByRole("button", { name: /^The Left Hand of Darkness \d+ ediciones/ })
+          .first();
+        await expect(result).toBeVisible({ timeout: 20_000 });
+        await result.click();
+        await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
+
+        bookId = page.url().match(/\/libro\/([0-9a-f-]{36})/)?.[1];
+        expect(bookId).toBeTruthy();
+
+        // SIN recargar: la tira de ediciones llega por streaming (Suspense +
+        // loadBookEditions/use()). Se acota a la sección "Ediciones" (hay
+        // otros botones con aria-pressed en la ficha, como los segmentos de
+        // estado) y se exige el contador real ("N en esta ficha"), que el
+        // fallback de carga (aria-hidden, sin texto) nunca pinta.
+        const editionsSection = page.locator("section").filter({ hasText: "Ediciones" });
+        const streamed = await editionsSection
+          .getByText(/\d+ en esta ficha/)
+          .waitFor({ state: "visible", timeout: 30_000 })
+          .then(() => true)
+          .catch(() => false);
+
+        if (streamed) break;
+
+        if (attempt === 3) {
+          throw new Error(
+            "la tira de ediciones no llegó por streaming tras 3 intentos " +
+              "(¿OpenLibrary lenta o el streaming de EditionsSection roto?)",
+          );
+        }
+        await fetch(`${SUPABASE_URL}/rest/v1/books?id=eq.${bookId}`, {
+          method: "DELETE",
+          headers: adminHeaders(),
+        });
+        bookId = undefined;
+      }
+
+      // Edición real visible en la tira (no solo el texto del contador):
+      // aria-pressed solo lo llevan las tarjetas de edición, no el botón
+      // "Añadir edición".
+      await expect(
+        page
+          .locator("section")
+          .filter({ hasText: "Ediciones" })
+          .locator("button[aria-pressed]")
+          .first(),
+      ).toBeVisible();
+
+      // La BD manda, no la UI: ninguna primaria en blanco, y al menos una
+      // edición real registrada.
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/book_editions?book_id=eq.${bookId}&select=is_primary,publisher,isbn,total_pages`,
+        { headers: adminHeaders() },
+      );
+      const rows: {
+        is_primary: boolean;
+        publisher: string | null;
+        isbn: string | null;
+        total_pages: number | null;
+      }[] = await res.json();
+
+      expect(rows.length).toBeGreaterThan(0);
+      expect(
+        rows.some(
+          (r) => r.is_primary && !r.publisher && !r.isbn && !r.total_pages,
+        ),
+      ).toBe(false);
+      console.log("EDICIONES OK:", bookId, "->", rows.length, "ediciones reales");
+    } finally {
+      // fetch nativo, no el `request` de Playwright (ver club-join-request.spec.ts):
+      // si el test expirase, ese fixture muere junto con el contexto y la
+      // limpieza no llegaría a ejecutarse.
+      if (bookId) {
+        await fetch(`${SUPABASE_URL}/rest/v1/books?id=eq.${bookId}`, {
+          method: "DELETE",
+          headers: adminHeaders(),
+        });
+        console.log("LIMPIEZA OK: libro", bookId, "borrado");
+      }
+    }
   });
 });
