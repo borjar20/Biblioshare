@@ -1,10 +1,9 @@
 import {
-  Skeleton,
   SkeletonLine,
-  SkeletonCard,
   SkeletonCoverGrid,
   LoadingAnnounce,
 } from "@/components/ui/skeleton";
+import { CollectionOverviewSkeleton } from "@/components/library/collection-skeletons";
 
 // Skeleton de /coleccion: h1 + pestañas de tipo + bloque "en curso" (tarjetas
 // continuar) + resumen + rejilla. Misma envoltura que la página real.
@@ -21,32 +20,7 @@ export default function Loading() {
         ))}
       </div>
 
-      {/* En curso (2 tarjetas continuar) */}
-      <div className="flex flex-col gap-3">
-        {[0, 1].map((i) => (
-          <div
-            key={i}
-            className="flex gap-3 rounded-card border border-border bg-surface p-3 shadow-card"
-          >
-            <Skeleton className="h-24 w-16 shrink-0 rounded-lg" />
-            <div className="flex flex-1 flex-col gap-2 py-1">
-              <SkeletonLine className="w-16" />
-              <SkeletonLine className="w-2/3" />
-              <SkeletonLine className="mt-auto w-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Resumen */}
-      <SkeletonCard className="flex flex-col gap-4">
-        <SkeletonLine className="h-6 w-16" />
-        <Skeleton className="h-2 w-full rounded-full" />
-        <div className="flex gap-4">
-          <SkeletonLine className="w-24" />
-          <SkeletonLine className="w-24" />
-        </div>
-      </SkeletonCard>
+      <CollectionOverviewSkeleton />
 
       <SkeletonCoverGrid count={9} />
     </div>
