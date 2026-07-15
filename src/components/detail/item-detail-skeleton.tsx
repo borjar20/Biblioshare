@@ -1,8 +1,8 @@
 import {
   Skeleton,
   SkeletonLine,
-  LoadingAnnounce,
 } from "@/components/ui/skeleton";
+import { LoadingAnnounce } from "@/components/ui/loading-announce";
 
 // Skeleton de la ficha de título (libro/película/serie). Imita el hero
 // full-bleed (portada + título + byline + nota) y la fila de pestañas con un

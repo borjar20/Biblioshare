@@ -1,4 +1,5 @@
-import { Skeleton, SkeletonLine, LoadingAnnounce } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 
 // Skeleton del Inicio (feed). Vive en la raíz, así que además hace de fallback

@@ -1,10 +1,11 @@
 import type { ComponentProps, ReactNode } from "react";
-import { getTranslations } from "next-intl/server";
 
 // Skeletons de carga (Paper). Bloques neutros en `animate-pulse` sobre
 // `surface-muted` que RESERVAN las dimensiones reales del contenido, para que
 // al llegar los datos no haya salto de layout (CLS). Son decorativos:
-// `aria-hidden`. El anuncio para lectores de pantalla lo pone `LoadingAnnounce`.
+// `aria-hidden`. El anuncio para lectores de pantalla lo pone `LoadingAnnounce`
+// (en `loading-announce.tsx`, aparte porque usa i18n de servidor y estos
+// primitivos deben poder usarse también desde client components).
 export function Skeleton({ className = "", ...props }: ComponentProps<"div">) {
   return (
     <div
@@ -66,13 +67,3 @@ export function SkeletonCoverGrid({ count = 10 }: { count?: number }) {
   );
 }
 
-// Anuncio accesible del estado de carga. Server component: toma `common.loading`
-// de i18n. Un sync parent puede renderizarlo sin ser async él mismo.
-export async function LoadingAnnounce() {
-  const t = await getTranslations("common");
-  return (
-    <span role="status" className="sr-only">
-      {t("loading")}
-    </span>
-  );
-}

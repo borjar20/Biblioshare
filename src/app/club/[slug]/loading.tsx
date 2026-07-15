@@ -2,8 +2,8 @@ import {
   Skeleton,
   SkeletonLine,
   SkeletonCard,
-  LoadingAnnounce,
 } from "@/components/ui/skeleton";
+import { LoadingAnnounce } from "@/components/ui/loading-announce";
 
 // Skeleton de /club/[slug]: banner + nombre/meta + pestañas + un par de
 // tarjetas de contenido (resumen/feed).

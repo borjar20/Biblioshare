@@ -1,8 +1,8 @@
 import {
   SkeletonLine,
   SkeletonCoverGrid,
-  LoadingAnnounce,
 } from "@/components/ui/skeleton";
+import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { CollectionOverviewSkeleton } from "@/components/library/collection-skeletons";
 
 // Skeleton de /coleccion: h1 + pestañas de tipo + bloque "en curso" (tarjetas

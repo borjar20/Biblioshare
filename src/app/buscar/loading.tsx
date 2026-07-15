@@ -2,8 +2,8 @@ import {
   Skeleton,
   SkeletonLine,
   SkeletonCoverGrid,
-  LoadingAnnounce,
 } from "@/components/ui/skeleton";
+import { LoadingAnnounce } from "@/components/ui/loading-announce";
 
 // Skeleton de /buscar: h1 + conmutador Títulos/Personas + píldoras de tipo +
 // barra de búsqueda + rejilla de resultados.

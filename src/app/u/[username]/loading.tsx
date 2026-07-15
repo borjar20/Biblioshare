@@ -3,8 +3,8 @@ import {
   SkeletonLine,
   SkeletonAvatar,
   SkeletonCard,
-  LoadingAnnounce,
 } from "@/components/ui/skeleton";
+import { LoadingAnnounce } from "@/components/ui/loading-announce";
 
 // Skeleton del perfil: cabecera (avatar + nombre + counts + chips) + subtabs +
 // un par de tarjetas de panel. Misma envoltura que la página real.
