@@ -92,6 +92,22 @@ async function ensureActivePass(
 // para pases del hub (library_entry_id nulo no participa en
 // diary_entries_one_pass_per_day, que es por library_entry_id) — se
 // comprueba a mano para que reimportar el mismo fichero no duplique historial.
+//
+// created_at se backdatea a la fecha real del pase (Hallazgo Tarea 9,
+// revisión): sin esto, TODOS los pases históricos de una importación nacen
+// con created_at ≈ ahora (default de columna), y feed.ts's addedResult (el
+// query "añadió X") no filtra por is_active — cada pase es su propio evento
+// "added" a propósito, para que las relecturas orgánicas aparezcan. Sin
+// backdate, importar un libro con 4 relecturas dispara 4 eventos "añadió"
+// casi simultáneos a quien te sigue, todos con fecha de HOY, aunque las
+// lecturas reales sean de hace años — se comprobó que addedResult ordena y
+// pagina por created_at (ver feed.ts líneas ~153-160), así que un created_at
+// real y antiguo cae fuera del feed reciente sin tocar esa query. finishedOn
+// nunca es null en ImportDiaryDate, así que siempre hay fecha real que usar.
+function historicalCreatedAt(date: ImportDiaryDate): string {
+  return date.finishedOn;
+}
+
 async function addHistoricalPasses(
   supabase: SupabaseServerClient,
   userId: string,
@@ -124,6 +140,7 @@ async function addHistoricalPasses(
       finished_on: date.finishedOn,
       rating: row.rating,
       is_public: true,
+      created_at: historicalCreatedAt(date),
     });
   }
 }
