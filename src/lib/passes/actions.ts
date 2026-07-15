@@ -1,10 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { itemHref } from "@/lib/catalog/item-href";
+import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -12,14 +11,6 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-// Mismo patrón que las demás acciones de biblioteca: detalle, perfil y
-// estante de inicio renderizan estado de pases.
-function revalidateItemViews(itemType: ItemType, itemId: string) {
-  revalidatePath(itemHref(itemType, itemId));
-  revalidatePath("/u/[username]", "page");
-  revalidatePath("/");
 }
 
 // Nota SIEMPRE entera 1-10 (media estrella a cinco estrellas); la escala de
@@ -137,7 +128,7 @@ export async function closePass(
   const result = await savePassFields(supabase, passId, user.id, formData);
   if (result.error) return result;
 
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
   return {};
 }
 
@@ -158,7 +149,7 @@ export async function updatePass(
   const result = await savePassFields(supabase, passId, user.id, formData);
   if (result.error) return result;
 
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
   return {};
 }
 
@@ -182,7 +173,7 @@ export async function deletePass(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
 }
 
 // Puntuar el pase MIENTRAS sigue abierto (panel "Progreso" de la pestaña
@@ -216,7 +207,7 @@ export async function ratePass(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
 }
 
 export async function setPassEdition(
@@ -238,5 +229,5 @@ export async function setPassEdition(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
 }

@@ -1,9 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "./notifications";
+import { revalidateProfilePages } from "@/lib/reactivity/revalidate";
 
 // Mutaciones del grafo social (EPIC-05, Bloque A). El status correcto
 // (accepted vs pending) lo decide la regla de auto-accept según si el perfil
@@ -13,7 +13,7 @@ import { notify } from "./notifications";
 // Revalida todas las páginas de perfil: los contadores y el estado del botón
 // aparecen en varias (perfil propio y ajeno). Mismo patrón que toggleFavorite.
 function revalidateProfiles() {
-  revalidatePath("/u/[username]", "page");
+  revalidateProfilePages();
 }
 
 export async function followUser(targetUserId: string): Promise<void> {

@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateProfile } from "@/lib/reactivity/revalidate";
 
 // Library-entry management actions (status/progress/remove) live in
 // src/lib/library/manage-actions.ts since the item detail pages became the
@@ -24,7 +24,7 @@ export async function updateProfileVisibility(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidatePath(`/u/${username}`);
+  revalidateProfile(username);
 }
 
 // toggleFavorite se mudó a src/lib/library/favorite-actions.ts: la biblioteca

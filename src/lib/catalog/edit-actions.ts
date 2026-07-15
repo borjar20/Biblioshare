@@ -1,12 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { ensureBookEditions } from "@/lib/editions/sync-editions";
+import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -182,7 +181,7 @@ export async function updateCatalogItem(
 
   if (error) return { error: "generic" };
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
   return { ok: true };
 }
 
@@ -237,7 +236,7 @@ export async function uploadCover(
 
   if (error) return { error: "generic" };
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
   return { ok: true };
 }
 
@@ -295,7 +294,7 @@ export async function updateEdition(
 
   if (error) return { error: "generic" };
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
   return { ok: true };
 }
 
@@ -342,7 +341,7 @@ export async function deleteEdition(
     return { error: "generic" };
   }
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
   return { ok: true };
 }
 
@@ -371,6 +370,6 @@ export async function resyncEditions(bookId: string): Promise<EditItemState> {
 
   await ensureBookEditions(supabase, book);
 
-  revalidatePath(itemHref("book", bookId));
+  revalidateItemPage("book", bookId);
   return { ok: true };
 }

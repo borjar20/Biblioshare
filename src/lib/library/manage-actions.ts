@@ -1,24 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { itemHref } from "@/lib/catalog/item-href";
 import { passEffect } from "@/lib/passes/transitions";
 import type { MediaStatus } from "./types";
+import { revalidateReadingLog, revalidateLibrary } from "@/lib/reactivity/revalidate";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-// These actions are shared between the item detail pages (the management
-// hub since §7.14) and any other surface, so they revalidate every view
-// that renders library state: detail page, profile, and home shelf.
-function revalidateItemViews(itemType: ItemType, itemId: string) {
-  revalidatePath(itemHref(itemType, itemId));
-  revalidatePath("/u/[username]", "page");
-  revalidatePath("/");
 }
 
 export async function updateStatus(
@@ -94,7 +84,7 @@ export async function updateStatus(
     if (passError && passError.code !== "23505") throw passError;
   }
 
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
 }
 
 export async function removeFromLibrary(
@@ -115,7 +105,7 @@ export async function removeFromLibrary(
     .eq("user_id", user.id);
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
+  revalidateReadingLog(itemType, itemId);
 }
 
 // Moves a planned item into a named queue (or the "Sin cola" bucket when
@@ -142,6 +132,6 @@ export async function moveEntryToQueue(
     .eq("status", "planned");
 
   if (error) throw error;
-  revalidateItemViews(itemType, itemId);
-  revalidatePath("/coleccion");
+  revalidateReadingLog(itemType, itemId);
+  revalidateLibrary();
 }

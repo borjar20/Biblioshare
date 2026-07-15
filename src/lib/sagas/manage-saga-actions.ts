@@ -1,11 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
-import { itemHref, sagaHref } from "@/lib/catalog/item-href";
+import { itemHref } from "@/lib/catalog/item-href";
+import { revalidateItemPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
 
 export type AssignSagaState = {
   error?: "nameRequired" | "forbidden" | "generic";
@@ -78,8 +78,8 @@ export async function assignItemToSaga(
     .insert({ saga_id: sagaId, item_type: itemType, item_id: itemId, position });
   if (insertError) return { error: "generic" };
 
-  revalidatePath(itemHref(itemType, itemId));
-  revalidatePath(sagaHref(sagaId));
+  revalidateItemPage(itemType, itemId);
+  revalidateSagaPage(sagaId);
   return {};
 }
 
@@ -101,5 +101,5 @@ export async function removeItemFromSaga(itemType: ItemType, itemId: string) {
     .eq("item_id", itemId);
   if (error) throw error;
 
-  revalidatePath(itemHref(itemType, itemId));
+  revalidateItemPage(itemType, itemId);
 }

@@ -1,22 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { itemHref } from "@/lib/catalog/item-href";
 import {
   episodeExists,
   markEpisodeWatched,
   rollSeriesProgress,
 } from "./episode-watch-store";
-
-// Los cambios por episodio afectan a la ficha, al perfil (progreso / "Ahora
-// mismo") y a la home — igual que las sesiones (src/lib/sessions/actions.ts).
-function revalidateSeriesViews(seriesId: string) {
-  revalidatePath(itemHref("series", seriesId));
-  revalidatePath("/u/[username]", "page");
-  revalidatePath("/");
-}
+import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 
 // Marca / desmarca un episodio como visto. Marcar no pisa una nota/reseña ya
 // existente; desmarcar borra la fila (y con ella su nota/reseña). Ver §7.x.
@@ -46,7 +37,7 @@ export async function setEpisodeWatched(
   }
 
   await rollSeriesProgress(supabase, user.id, seriesId);
-  revalidateSeriesViews(seriesId);
+  revalidateReadingLog("series", seriesId);
 }
 
 // Pone (o actualiza) nota y/o reseña de un episodio. Puntuar implica visto.
@@ -99,5 +90,5 @@ export async function rateEpisode(
   }
 
   await rollSeriesProgress(supabase, user.id, seriesId);
-  revalidateSeriesViews(seriesId);
+  revalidateReadingLog("series", seriesId);
 }

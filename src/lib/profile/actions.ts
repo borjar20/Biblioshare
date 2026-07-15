@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateProfile, revalidateFeed } from "@/lib/reactivity/revalidate";
 
 export type UpdateProfileState = {
   error?: "generic";
@@ -43,7 +43,7 @@ export async function updateProfile(
 
   if (error) return { error: "generic" };
 
-  revalidatePath(`/u/${username}`);
+  revalidateProfile(username);
   return {};
 }
 
@@ -93,6 +93,6 @@ export async function updateGoals(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/");
+  revalidateFeed();
   return {};
 }
