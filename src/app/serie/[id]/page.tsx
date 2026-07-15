@@ -58,10 +58,13 @@ export async function generateMetadata({
 
 export default async function SeriesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
+  const { cerrar } = await searchParams;
   const t = await getTranslations("item");
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
@@ -138,6 +141,11 @@ export default async function SeriesDetailPage({
     }
     queues = await getQueues(supabase, user.id);
   }
+
+  // Sesión que alcanzó el final (§Tarea 7): ver el mismo comentario en
+  // src/app/libro/[id]/page.tsx.
+  const closingPassId =
+    cerrar && passes.some((p) => p.id === cerrar) ? cerrar : null;
 
   const byline =
     [
@@ -300,6 +308,7 @@ export default async function SeriesDetailPage({
             // consulta la BD para este tipo): no hace falta cargarlas.
             editions={[]}
             queues={queues}
+            initialClosingPassId={closingPassId}
           />
         }
       />

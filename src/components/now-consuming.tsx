@@ -37,8 +37,8 @@ export async function NowConsuming({
   if (featured.length === 0) return null;
 
   const hrefFor = (item: LibraryItem) =>
-    linkToSession && item.itemType !== "movie"
-      ? `/sesion/${item.entryId}`
+    linkToSession && item.itemType !== "movie" && item.activePassId
+      ? `/sesion/${item.activePassId}`
       : itemHref(item.itemType, item.itemId);
 
   if (variant === "strip") {

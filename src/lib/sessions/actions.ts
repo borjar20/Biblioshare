@@ -6,8 +6,8 @@ import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
-import { getPasses } from "@/lib/passes/get-passes";
-import { openPass } from "@/lib/passes/actions";
+import { getActivePass } from "@/lib/passes/get-passes";
+import { applyTransition } from "@/lib/passes/apply-transition";
 import { getEditions } from "@/lib/editions/get-editions";
 import { primaryEdition } from "@/lib/editions/edition-label";
 import {
@@ -27,11 +27,12 @@ export type AddSessionState = {
   error?: "invalidPosition" | "invalidDuration" | "generic";
 };
 
-// Logs a reading/watching session AND rolls the entry's current state
+// Logs a reading/watching session AND rolls the PASE's current state
 // forward (position + status) — the session form is the daily-loop way of
-// updating progress. See docs/REQUIREMENTS.md §7.14.
+// updating progress. La sesión cuelga del pase ACTIVO (§Tarea 7, hub):
+// library_entries deja de participar aquí. Ver docs/REQUIREMENTS.md §7.14.
 export async function addSession(
-  entryId: string,
+  passId: string,
   itemType: ItemType,
   itemId: string,
   _prevState: AddSessionState,
@@ -43,15 +44,12 @@ export async function addSession(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: entry, error: entryError } = await supabase
-    .from("library_entries")
-    .select("id, position")
-    .eq("id", entryId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (entryError) return { error: "generic" };
-  if (!entry) return { error: "generic" };
+  // El passId que llega del formulario tiene que ser EXACTAMENTE el pase
+  // activo de la obra ahora mismo — nunca un pase archivado de una relectura
+  // anterior (p. ej. una pestaña vieja abierta contra un pase que ya se
+  // cerró y se reemplazó por uno nuevo).
+  const pass = await getActivePass(supabase, itemType, itemId, user.id);
+  if (!pass || pass.id !== passId) return { error: "generic" };
 
   const sessionDate = String(formData.get("sessionDate") ?? "").trim();
 
@@ -72,16 +70,15 @@ export async function addSession(
 
   const note = String(formData.get("note") ?? "").trim();
 
-  // La sesión cuelga del pase abierto de la entrada. Registrar una sesión
-  // implica que has empezado: si el ítem seguía "pendiente" y no hay ningún
-  // pase abierto, lo abrimos aquí mismo en vez de exigir que el usuario
-  // cambie el estado primero.
-  let passes = await getPasses(supabase, entryId);
-  let currentOpenPass = passes.find((p) => !p.finishedOn) ?? null;
-  if (!currentOpenPass) {
-    await openPass(entryId, null);
-    passes = await getPasses(supabase, entryId);
-    currentOpenPass = passes.find((p) => !p.finishedOn) ?? null;
+  // Registrar una sesión implica que has empezado: si el pase seguía
+  // "planificado", esta es la primera escritura y la máquina lo mueve a "en
+  // curso" — sustituye al openPass() de antes de la migración hub. El resto
+  // de cambios de estado (Select de abajo) SÍ son elección explícita del
+  // usuario y se tratan aparte.
+  let currentStatus = pass.status;
+  if (currentStatus === "planned") {
+    await applyTransition(supabase, user.id, itemType, itemId, "in_progress");
+    currentStatus = "in_progress";
   }
 
   // El total contra el que se valida la página sale de la EDICIÓN del pase
@@ -95,8 +92,7 @@ export async function addSession(
   if (itemType === "book") {
     const editions = await getEditions(supabase, "book", itemId);
     const edition =
-      editions.find((e) => e.id === currentOpenPass?.editionId) ??
-      primaryEdition(editions);
+      editions.find((e) => e.id === pass.editionId) ?? primaryEdition(editions);
     maxPosition = edition?.totalUnits ?? null;
     if (maxPosition === null) {
       const { data: book } = await supabase
@@ -109,12 +105,12 @@ export async function addSession(
   }
 
   // Position reached in this session. Optional: a time-only session (no
-  // position entered) is valid and doesn't move the entry's position.
+  // position entered) is valid and doesn't move the pase's position.
   //
   // Serie: el formulario manda `season` + varios `episodes` (chips
   // pulsables, uno por valor repetido). `episodesToMark` es lo que se marca
   // como visto abajo; `sessionPosition` aquí solo alimenta el HISTÓRICO de la
-  // sesión (progress_sessions.position) — la posición real de la entrada la
+  // sesión (progress_sessions.position) — la posición real del pase la
   // deriva rollSeriesProgress a partir de episode_watches, nunca este valor.
   let sessionPosition: Position = {};
   let episodesToMark: { season: number; episode: number }[] = [];
@@ -147,13 +143,12 @@ export async function addSession(
     : undefined;
 
   const { error: insertError } = await supabase.from("progress_sessions").insert({
-    library_entry_id: entryId,
+    pass_id: passId,
     user_id: user.id,
     ...(sessionDate && { session_date: sessionDate }),
     duration_minutes: durationMinutes,
     position: sessionPosition,
     note: note || null,
-    pass_id: currentOpenPass?.id ?? null,
   });
 
   if (insertError) return { error: "generic" };
@@ -170,33 +165,46 @@ export async function addSession(
     await rollSeriesProgress(supabase, user.id, itemId);
   }
 
-  // Roll the entry's current position forward. For books, merge so the
+  // El Select de estado del formulario NUNCA escribe a mano (era el fallo 5
+  // de la spec): si el usuario eligió un estado distinto del que ya tiene el
+  // pase, se pide por la máquina — la misma que usa el segmented de la ficha.
+  if (status && status !== currentStatus) {
+    await applyTransition(supabase, user.id, itemType, itemId, status);
+  }
+
+  // Roll the pase's current position forward. For books, merge so the
   // copy's `format` (part of the same JSONB) isn't lost by a page update.
   // Para series NO se escribe aquí: rollSeriesProgress ya dejó la posición
   // derivada de episode_watches.
   const hasSessionPosition = Object.keys(sessionPosition).length > 0;
-  const currentPosition = parsePosition(itemType, entry.position);
+  const currentPosition = parsePosition(itemType, pass.position);
   const nextPosition =
     itemType === "book" && hasSessionPosition
       ? { ...currentPosition, ...sessionPosition }
       : undefined;
 
-  if (nextPosition || status) {
-    // Same queue cleanup as updateStatus (§7.22) — a session can also roll
-    // status out of "planned", which should drop the queue membership+order.
+  if (nextPosition) {
     const { error: updateError } = await supabase
-      .from("library_entries")
-      .update({
-        ...(nextPosition && { position: nextPosition }),
-        ...(status && {
-          status,
-          ...(status !== "planned" && { queue_id: null, queue_order: null }),
-        }),
-      })
-      .eq("id", entryId)
+      .from("diary_entries")
+      .update({ position: nextPosition })
+      .eq("id", passId)
       .eq("user_id", user.id);
-
     if (updateError) return { error: "generic" };
+  }
+
+  // Auto-cierre de libro (Regla 5 del esquema de flujo): si la sesión
+  // alcanza la última página de TU edición, el pase se completa solo —
+  // pasando por la máquina, no aparte — y la ficha encadena la hoja de
+  // cierre (parámetro ?cerrar) al volver.
+  const reachedEnd =
+    itemType === "book" &&
+    maxPosition !== null &&
+    "page" in sessionPosition &&
+    sessionPosition.page === maxPosition;
+  if (reachedEnd) {
+    await applyTransition(supabase, user.id, itemType, itemId, "completed");
+    revalidateReadingLog(itemType, itemId);
+    redirect(`${itemHref(itemType, itemId)}?cerrar=${passId}`);
   }
 
   revalidateReadingLog(itemType, itemId);

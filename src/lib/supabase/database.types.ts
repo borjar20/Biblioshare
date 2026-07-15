@@ -1217,7 +1217,14 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           id?: string
-          library_entry_id: string
+          // PARCHE A MANO (Tarea 7, migración b5): opcional y nullable en el
+          // Insert — addSession ya no depende de la entrada de biblioteca,
+          // solo del pase (pass_id). El Row se deja en string a propósito:
+          // los lectores legacy siguen leyendo sesiones pre-hub, que siempre
+          // la tienen. Reponer en cada regen hasta que la Tarea 10 elimine
+          // la columna (mismo patrón que diary_entries.library_entry_id
+          // arriba).
+          library_entry_id?: string | null
           note?: string | null
           pass_id: string
           position?: Json

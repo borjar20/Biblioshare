@@ -135,6 +135,20 @@ export async function getLibraryItems(
     );
   }
 
+  // Id del pase ACTIVO por obra (§Tarea 7, hub): "/sesion/" ya no acepta el
+  // id de library_entries, así que cada item necesita el suyo para poder
+  // enlazar ahí (p. ej. NowConsuming). Una query batched por usuario, no una
+  // por entrada — passes_one_active garantiza como mucho una fila por
+  // (user, item_type, item_id).
+  const { data: activePassRows } = await supabase
+    .from("diary_entries")
+    .select("id, item_type, item_id")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  const activePassIdByItem = new Map(
+    (activePassRows ?? []).map((p) => [`${p.item_type}:${p.item_id}`, p.id])
+  );
+
   // Nota (estrellas) y "notas" (texto) visibles de cada entrada: las del
   // último pase cerrado, mismo criterio de desempate que la media de
   // comunidad (latest-rating.ts), agrupado aquí por entrada en vez de por
@@ -185,6 +199,7 @@ export async function getLibraryItems(
         totalEpisodes: meta.totalEpisodes,
         rereadCount: rereadCountByEntry.get(entry.id) ?? 0,
         pinnedOrder: entry.pinned_order,
+        activePassId: activePassIdByItem.get(`${entry.item_type}:${entry.item_id}`) ?? null,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);
