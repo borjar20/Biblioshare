@@ -6,6 +6,12 @@
 
 **Referencias:** guías de Next 16.2 en `node_modules/next/dist/docs/01-app/02-guides/` — `streaming.md`, `instant-navigation.md`, `prefetching.md` (leerlas antes de tocar código: esta versión tiene convenciones nuevas).
 
+> ⚠️ **Coordinación con el pase-hub (PR #42, en paralelo).** Analizado el 2026-07-15 contra el plan de implementación de #42 (12 tasks; hoy solo docs, el código va después). Solape:
+> - **Fase A (skeletons + `loading.tsx`): CERO conflicto.** Solo crea ficheros nuevos; el pase-hub no toca ninguno. Se puede hacer entera y en paralelo sin coordinar.
+> - **Fase B en la Ficha: COLISIÓN DIRECTA.** Ambos editan `src/app/libro/[id]/page.tsx`, `serie/[id]/page.tsx` y `pelicula/[id]/page.tsx` (pase-hub Task 9 los reescribe para leer del pase; fase B los reestructura con Suspense). → **La fase B de la Ficha espera a que #42 aterrice** y se aplica encima; si no, rework/merge garantizado.
+> - **Fase B en Colección/Perfil/Inicio/Club: acoplamiento blando.** El pase-hub reescribe las *funciones lectoras* (`get-library-items/summary/stats`, `feed.ts`…) pero **no** esos ficheros de página (no están en su lista). La fase B reestructura la página, no la lectora, y las lectoras conservan su firma → sin colisión de fichero; a lo sumo un ajuste trivial si cambia el tipo devuelto. Se puede hacer sin esperar.
+> - **Regla operativa:** empezar por Fase A (todo) + Fase B de Colección/Perfil/Inicio/Club; **dejar la Fase B de la Ficha para después de #42**. Reordena el §2 Fase B en consecuencia.
+
 ---
 
 ## 1. Diagnóstico (verificado en el código)
@@ -27,12 +33,12 @@ Lo más barato y lo que más se nota. `loading.tsx` se **prefetch-ea como fallba
 ### Fase B — Suspense granular: shell primero, secciones después
 `loading.tsx` es de página completa; el objetivo real es que **el shell (título, tabs, filtros) pinte ya** y cada sección hidrate al llegar, como pides. Patrón (de `streaming.md`): no awaitar en la cima; cada sección es un server component async envuelto en `<Suspense>` con su skeleton, y las promesas se pasan hacia abajo (como ya hace `editionsPromise`).
 
-Por pantalla (orden = impacto):
-1. **Ficha** (`libro|pelicula|serie/[id]`): query mínima de la obra (título, portada, géneros — lo que pinta el hero) → hero renderiza ya; `credits`, `saga`, `community`, `passes/log` cada uno en su boundary. La hidratación de primera visita (APIs externas) pasa a streamear en vez de bloquear. ⚠️ mantener `notFound()` **antes** del primer boundary (contrato HTTP, `streaming.md` §status codes).
-2. **Colección**: h1 + tabs + filtros sin await; `ContinueStrip`, `CollectionSummary` y el grid en boundaries hermanos (cada uno resuelve solo).
-3. **Perfil**: cabecera con la query de perfil sola; counts/stats/favoritos/panel en boundaries por tarjeta (el Panel entero puede ser un boundary).
-4. **Inicio**: feed en boundary (el shell con h1+filtros pinta ya).
-5. **Club**: header con la query del club; summary, feed y actividades en boundaries.
+Por pantalla (orden ajustado por la coordinación con #42 — ver aviso arriba; el orden por impacto puro sería Ficha primero):
+1. **Colección**: h1 + tabs + filtros sin await; `ContinueStrip`, `CollectionSummary` y el grid en boundaries hermanos (cada uno resuelve solo).
+2. **Perfil**: cabecera con la query de perfil sola; counts/stats/favoritos/panel en boundaries por tarjeta (el Panel entero puede ser un boundary).
+3. **Inicio**: feed en boundary (el shell con h1+filtros pinta ya).
+4. **Club**: header con la query del club; summary, feed y actividades en boundaries.
+5. **Ficha** (`libro|pelicula|serie/[id]`) — **BLOQUEADA por #42 (colisión directa de fichero):** query mínima de la obra (título, portada, géneros) → hero renderiza ya; `credits`, `saga`, `community`, `passes/log` cada uno en su boundary. La hidratación de primera visita (APIs externas) pasa a streamear en vez de bloquear. ⚠️ mantener `notFound()` **antes** del primer boundary (contrato HTTP, `streaming.md` §status codes). Hacer **después** de que el pase-hub reescriba estas páginas, aplicando la estructura de Suspense encima.
 
 ### Fase C — (opcional, decisión P-N1) Shell estático con `cacheComponents`
 `cacheComponents: true` + `"use cache"` en las lecturas de **catálogo** (obras/ediciones: datos compartidos y moderados, cacheables por tag e invalidables con `updateTag` al editar ficha) haría el shell instantáneo de verdad y habilita `unstable_instant` (validación en dev/build de que cada ruta navega instantánea) y el helper `instant()` de `@next/playwright` para e2e. **Obstáculo real:** `createClient` usa `cookies()` → toda query es dinámica; cachear catálogo exige un cliente Supabase sin cookies para lecturas públicas (revisar RLS: el catálogo debe ser legible anon) y separar "datos de obra" de "datos del usuario" en cada pantalla. Es un cambio de arquitectura de datos, no un retoque.
