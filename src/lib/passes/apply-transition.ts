@@ -44,7 +44,7 @@ export async function applyTransition(
 
   if (plan.kind === "updateActive") {
     const { error } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .update({ ...plan.set, ...clearQueue })
       .eq("id", active!.id)
       .eq("user_id", userId);
@@ -61,7 +61,7 @@ export async function applyTransition(
   // createActive y archiveAndCreate comparten el insert.
   if (plan.kind === "archiveAndCreate") {
     const { error: archiveError } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .update({ is_active: false, queue_id: null, queue_order: null })
       .eq("id", active!.id)
       .eq("user_id", userId);
@@ -71,7 +71,7 @@ export async function applyTransition(
   const startedOn = plan.startedOn;
   const finishedOn = plan.kind === "createActive" ? plan.finishedOn : null;
   const { data: created, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .insert({
       user_id: userId,
       item_type: itemType,

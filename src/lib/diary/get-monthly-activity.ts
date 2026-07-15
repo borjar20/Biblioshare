@@ -32,7 +32,7 @@ export async function getMonthlyActivity(
   // item_type ya es una columna propia del pase (§Tarea 9): sin join a
   // library_entries.
   const { data, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("finished_on, item_type")
     .eq("user_id", userId)
     .gte("finished_on", rangeStart.toISOString().slice(0, 10))

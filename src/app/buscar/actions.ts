@@ -67,7 +67,7 @@ export async function addToLibrary(result: SearchResult, queueId?: string | null
   // La cola solo significa algo en el pase activo planned (§7.22).
   if (queueId) {
     const { error } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .update({ queue_id: queueId, queue_order: null })
       .eq("user_id", user.id)
       .eq("item_type", result.itemType)

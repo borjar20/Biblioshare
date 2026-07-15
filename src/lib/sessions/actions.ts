@@ -190,7 +190,7 @@ export async function addSession(
 
   if (nextPosition) {
     const { error: updateError } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .update({ position: nextPosition })
       .eq("id", passId)
       .eq("user_id", user.id);

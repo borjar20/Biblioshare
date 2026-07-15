@@ -36,7 +36,7 @@ export default async function SessionPage({
   // (item_type/item_id, desde la migración A). Se busca directo por id +
   // user_id — ya no hace falta pasar por library_entries.
   const { data: passRow } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id, item_type, item_id")
     .eq("id", passId)
     .eq("user_id", user.id)

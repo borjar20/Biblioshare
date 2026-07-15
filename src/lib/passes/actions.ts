@@ -65,7 +65,7 @@ async function savePassFields(
   const isPublic = formData.get("isPublic") === "on";
 
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .update({
       finished_on: finishedOn,
       rating,
@@ -138,7 +138,7 @@ export async function deletePass(
   // Las sesiones del pase (progress_sessions.pass_id) se borran en cascada
   // por la FK: on delete cascade en 20260714_passes.sql.
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .delete()
     .eq("id", passId)
     .eq("user_id", user.id);
@@ -172,7 +172,7 @@ export async function ratePass(
   if (!user) redirect("/login");
 
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .update({ rating })
     .eq("id", passId)
     .eq("user_id", user.id);
@@ -194,7 +194,7 @@ export async function setPassEdition(
   if (!user) redirect("/login");
 
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .update({ edition_id: editionId })
     .eq("id", passId)
     .eq("user_id", user.id);

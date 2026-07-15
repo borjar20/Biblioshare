@@ -21,7 +21,7 @@ export async function getQueueItems(
   // Pase ACTIVO planned = ítem en cola (§Tarea 9, hub): item_type/item_id/
   // queue_id/queue_order viven en diary_entries, library_entries ya no se lee.
   let query = supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id, item_type, item_id, queue_id, queue_order")
     .eq("user_id", userId)
     .eq("is_active", true)

@@ -21,7 +21,7 @@ export async function getMoviePace(
   // item_type ya es una columna propia del pase (§Tarea 9): sin join a
   // library_entries.
   const { count, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("item_type", "movie")

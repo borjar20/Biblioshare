@@ -20,7 +20,7 @@ export async function getLibrarySummary(
   // "Entrada de biblioteca" = pase ACTIVO (§Tarea 9, hub): item_type/status
   // ya viven en diary_entries, library_entries ya no se lee.
   const { data, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("item_type, status")
     .eq("user_id", userId)
     .eq("is_active", true);

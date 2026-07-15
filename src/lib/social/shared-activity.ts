@@ -70,7 +70,7 @@ async function resolveCatalog(supabase: SupabaseServerClient, itemType: ItemType
 // obra de un pase por su id, ya sin pasar por library_entries.
 async function resolvePassItem(supabase: SupabaseServerClient, passId: string) {
   const { data } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("item_type, item_id")
     .eq("id", passId)
     .maybeSingle();
@@ -90,7 +90,7 @@ export async function resolveSharedActivity(
     // item_type/item_id/status/created_at ya son columnas propias del pase
     // (§Tarea 9): sin join a library_entries.
     const { data: row } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id, user_id, item_type, item_id, status, created_at")
       .eq("id", ref.rowId)
       .maybeSingle();

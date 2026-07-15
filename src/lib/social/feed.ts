@@ -151,7 +151,7 @@ export async function getFeed(
           // pasaba con "finished" más abajo, que nunca se filtró por pase
           // activo.
           let q = supabase
-            .from("diary_entries")
+            .from("passes")
             .select("id, user_id, item_type, item_id, status, created_at")
             .in("user_id", followedIds)
             .order("created_at", { ascending: false })
@@ -166,12 +166,12 @@ export async function getFeed(
           let q = supabase
             .from("progress_sessions")
             .select(
-              "id, user_id, pass_id, session_date, duration_minutes, note, diary_entries!inner(item_type, item_id)"
+              "id, user_id, pass_id, session_date, duration_minutes, note, passes!inner(item_type, item_id)"
             )
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
             .limit(pageSize);
-          if (options.itemType) q = q.eq("diary_entries.item_type", options.itemType);
+          if (options.itemType) q = q.eq("passes.item_type", options.itemType);
           if (cursor) q = q.lte("session_date", dateUpperBound(cursor.date));
           return q;
         })()
@@ -185,7 +185,7 @@ export async function getFeed(
           // diary_entries: el texto (si lo hay y es visible) se resuelve
           // después vía pass_reviews.
           let q = supabase
-            .from("diary_entries")
+            .from("passes")
             .select("id, user_id, item_type, item_id, finished_on, rating")
             .in("user_id", followedIds)
             // Un pase abierto no es actividad terminada: no aparece en el
@@ -259,11 +259,11 @@ export async function getFeed(
 
   // progress_sessions no tiene item_type propio (cuelga del pase vía
   // pass_id): se resuelve del pase embebido por la query de arriba
-  // (diary_entries!inner). Se normaliza array-vs-objeto por si Supabase lo
+  // (passes!inner). Se normaliza array-vs-objeto por si Supabase lo
   // tipa como array — mismo patrón que get-month-calendar.ts.
   type ProgressedRow = (typeof progressedRows)[number];
   function progressedItem(row: ProgressedRow): { itemType: ItemType; itemId: string } | null {
-    const embed = row.diary_entries as unknown as
+    const embed = row.passes as unknown as
       | { item_type: ItemType; item_id: string }
       | { item_type: ItemType; item_id: string }[]
       | null;

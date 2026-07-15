@@ -118,7 +118,7 @@ export async function getCommunity(
   // filtro de abandono pasa de la ENTRADA al PASE (cambio semántico validado
   // en la Tarea 1, control de medias).
   const { data: passRows } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id, rating, finished_on, user_id")
     .eq("item_type", itemType)
     .eq("item_id", itemId)

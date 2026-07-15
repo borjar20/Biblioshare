@@ -50,7 +50,7 @@ export async function GET() {
   // pase ACTIVO, no el de una library_entries que ya no existe para los
   // ítems nuevos).
   const { data: diaryRows, error: diaryError } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("item_type, item_id, started_on, finished_on")
     .eq("user_id", user.id)
     .in("item_id", items.map((item) => item.itemId))

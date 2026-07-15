@@ -103,7 +103,7 @@ export default async function MovieDetailPage({
     // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
     // resuelve igualmente para no dejar el campo con un dato inventado.
     const { data: row } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id, status, rating, position, queue_id")
       .eq("user_id", user.id)
       .eq("item_type", "movie")

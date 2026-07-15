@@ -51,9 +51,9 @@ export async function getBookPace(
   // se resuelve vía library_entries sino uniendo con el propio pase.
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("pass_id, session_date, duration_minutes, position, diary_entries!inner(item_type)")
+    .select("pass_id, session_date, duration_minutes, position, passes!inner(item_type)")
     .eq("user_id", userId)
-    .eq("diary_entries.item_type", "book")
+    .eq("passes.item_type", "book")
     .order("session_date", { ascending: true })
     .order("created_at", { ascending: true });
 

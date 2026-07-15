@@ -8,14 +8,14 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 type SessionRow = {
   session_date: string;
   created_at: string;
-  diary_entries:
+  passes:
     | { item_type: ItemType; item_id: string }
     | { item_type: ItemType; item_id: string }[]
     | null;
 };
 
 function normalizeEntry(row: SessionRow) {
-  const e = row.diary_entries;
+  const e = row.passes;
   return Array.isArray(e) ? e[0] : e;
 }
 
@@ -34,7 +34,7 @@ export async function getMonthCalendar(
   // ya no se resuelven vía library_entries sino uniendo con el propio pase.
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("session_date, created_at, diary_entries!inner(item_type, item_id)")
+    .select("session_date, created_at, passes!inner(item_type, item_id)")
     .eq("user_id", userId)
     .gte("session_date", monthStart)
     .lte("session_date", monthEnd)

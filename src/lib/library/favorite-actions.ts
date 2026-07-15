@@ -28,7 +28,7 @@ export async function toggleFavorite(
   if (!user) redirect("/login");
 
   const { data: current, error: fetchError } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("pinned_order")
     .eq("id", entryId)
     .eq("user_id", user.id)
@@ -40,7 +40,7 @@ export async function toggleFavorite(
 
   if (current.pinned_order !== null) {
     const { error } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .update({ pinned_order: null })
       .eq("id", entryId)
       .eq("user_id", user.id);
@@ -51,7 +51,7 @@ export async function toggleFavorite(
   }
 
   const { count, error: countError } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("is_active", true)
@@ -61,7 +61,7 @@ export async function toggleFavorite(
   if ((count ?? 0) >= MAX_FAVORITES) return { error: "maxReached" };
 
   const { data: topPin, error: topPinError } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("pinned_order")
     .eq("user_id", user.id)
     .eq("is_active", true)
@@ -73,7 +73,7 @@ export async function toggleFavorite(
   if (topPinError) throw topPinError;
 
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .update({ pinned_order: (topPin?.pinned_order ?? 0) + 1 })
     .eq("id", entryId)
     .eq("user_id", user.id);

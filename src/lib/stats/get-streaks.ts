@@ -19,7 +19,7 @@ export async function getStreaks(
     // Un pase abierto todavía no ha terminado nada ese día: no cuenta para
     // la racha.
     supabase
-      .from("diary_entries")
+      .from("passes")
       .select("finished_on")
       .eq("user_id", userId)
       .not("finished_on", "is", null),

@@ -18,7 +18,7 @@ export async function ensureQueueOrder(
   // Pase ACTIVO planned = ítem en cola (§Tarea 9, hub): queue_id/queue_order
   // viven en diary_entries, library_entries ya no se lee ni se escribe.
   const { data: entries, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id, queue_id, queue_order")
     .eq("user_id", userId)
     .eq("is_active", true)
@@ -51,7 +51,7 @@ export async function ensureQueueOrder(
   await Promise.all(
     updates.map(({ id, index }) =>
       supabase
-        .from("diary_entries")
+        .from("passes")
         .update({ queue_order: index })
         .eq("id", id)
         .eq("user_id", userId)

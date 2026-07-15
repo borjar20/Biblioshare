@@ -33,7 +33,7 @@ export async function getLibraryItems(
   // nota y la reseña (20260714_passes.sql). Se recalculan más abajo a partir
   // del último pase cerrado de cada obra.
   let query = supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id, item_type, item_id, status, position, pinned_order")
     .eq("user_id", userId)
     .eq("is_active", true);
@@ -126,7 +126,7 @@ export async function getLibraryItems(
   // lo que is_public escondía.
   const allItemIds = entries.map((entry) => entry.item_id);
   const { data: closedPassRows } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id, item_type, item_id, finished_on, rating")
     .eq("user_id", userId)
     .in("item_id", allItemIds)

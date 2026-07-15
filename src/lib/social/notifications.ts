@@ -187,7 +187,7 @@ async function resolveTargetHrefs(
 
   if (diaryIds.length > 0) {
     const { data: diaryRows, error } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id, item_type, item_id")
       .in("id", diaryIds);
     if (error) throw error;

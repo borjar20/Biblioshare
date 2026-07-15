@@ -121,7 +121,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
   let viewerPosition: Position | null = null;
   if (itemRow && itemType) {
     const { data: entry } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("position")
       .eq("user_id", userId)
       .eq("item_type", itemRow.item_type)

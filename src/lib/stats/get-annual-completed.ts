@@ -20,7 +20,7 @@ export async function getAnnualCompleted(
   }
 
   const { data, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("finished_on, item_type")
     .eq("user_id", userId)
     .gte("finished_on", `${year}-01-01`)

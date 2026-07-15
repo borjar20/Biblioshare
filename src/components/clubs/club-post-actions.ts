@@ -26,7 +26,7 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
     // Cada pase es su propio evento "added" (§Tarea 9, hub): sin
     // library_entries.
     supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -38,7 +38,7 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
       .order("session_date", { ascending: false })
       .limit(RECENT_LIMIT),
     supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id, finished_on")
       .eq("user_id", user.id)
       // Un pase abierto no es actividad terminada: no aparece como algo

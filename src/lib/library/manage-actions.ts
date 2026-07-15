@@ -43,7 +43,7 @@ export async function removeFromLibrary(itemType: ItemType, itemId: string) {
   if (!user) redirect("/login");
 
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .delete()
     .eq("user_id", user.id)
     .eq("item_type", itemType)
@@ -69,7 +69,7 @@ export async function moveEntryToQueue(
   if (!user) redirect("/login");
 
   const { error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .update({ queue_id: queueId, queue_order: null })
     .eq("user_id", user.id)
     .eq("item_type", itemType)

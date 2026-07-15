@@ -108,7 +108,7 @@ export async function rollSeriesProgress(
 
   if (furthest) {
     const { error } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .update({
         position: {
           season: furthest.season_number,

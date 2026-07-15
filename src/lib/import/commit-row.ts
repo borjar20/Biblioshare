@@ -51,7 +51,7 @@ async function ensureActivePass(
       : null;
 
   const { data: inserted, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .insert({
       user_id: userId,
       item_type: itemType,
@@ -74,7 +74,7 @@ async function ensureActivePass(
 
   if (error.code === "23505") {
     const { data: existing } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id")
       .eq("user_id", userId)
       .eq("item_type", itemType)
@@ -120,7 +120,7 @@ async function addHistoricalPasses(
     if (skip && date.finishedOn === skip.finishedOn) continue;
 
     const { data: existing } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id")
       .eq("user_id", userId)
       .eq("item_type", itemType)
@@ -129,7 +129,7 @@ async function addHistoricalPasses(
       .maybeSingle();
     if (existing) continue;
 
-    await supabase.from("diary_entries").insert({
+    await supabase.from("passes").insert({
       user_id: userId,
       item_type: itemType,
       item_id: itemId,

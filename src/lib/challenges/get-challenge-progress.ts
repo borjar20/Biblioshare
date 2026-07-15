@@ -31,7 +31,7 @@ export async function getChallengeProgress(
   // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin join a
   // library_entries.
   const { data: diary, error } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("finished_on, item_type, item_id")
     .eq("user_id", userId)
     .gte("finished_on", spanStart)

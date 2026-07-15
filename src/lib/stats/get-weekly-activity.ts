@@ -30,9 +30,9 @@ export async function getWeeklyActivity(
   // esta tira.
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("session_date, duration_minutes, diary_entries!inner(item_type)")
+    .select("session_date, duration_minutes, passes!inner(item_type)")
     .eq("user_id", userId)
-    .eq("diary_entries.item_type", "book")
+    .eq("passes.item_type", "book")
     .gte("session_date", rangeStart)
     .lte("session_date", todayISO());
 
