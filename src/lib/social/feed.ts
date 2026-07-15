@@ -32,7 +32,7 @@ export type FeedEvent = {
   // Autor del catálogo — solo los libros lo tienen; películas/series no
   // guardan creador, así que queda null.
   itemSubtitle: string | null;
-  // Estado de la entrada de biblioteca; solo informa el verbo "added".
+  // Estado del pase; solo informa el verbo "added".
   entryStatus: MediaStatus | null;
   eventDate: string;
   rating: number | null;
@@ -63,8 +63,8 @@ const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_EXCERPT_LENGTH = 200;
 
 // ── Cursor keyset (fecha, id) ────────────────────────────────────────────────
-// Las 4 fuentes mezclan granularidades: library_entries pagina por timestamptz
-// y las otras tres por date. El cursor antiguo era solo la fecha y filtraba con
+// Las 4 fuentes mezclan granularidades: "added" (diary_entries.created_at)
+// pagina por timestamptz y las otras tres por date. El cursor antiguo era solo la fecha y filtraba con
 // `lt`, así que al paginar se PERDÍAN todos los demás eventos del mismo día
 // (p. ej. dos pases de diario con el mismo finished_on). Ahora: se consulta con
 // `lte` (inclusivo) y el par (fecha, id) desempata en cliente — el mismo orden
@@ -133,36 +133,25 @@ export async function getFeed(
   const followedIds = (followRows ?? []).map((f) => f.followee_id);
   if (followedIds.length === 0) return { events: [], nextCursor: null };
 
-  // Si se filtra por tipo de ítem, resolvemos primero qué library_entries de
-  // los seguidos son de ese tipo — diary_entries/progress_sessions no tienen
-  // item_type propio, solo llegan a él vía library_entry_id.
-  let libraryEntryIdsForType: string[] | null = null;
-  if (options.itemType) {
-    const { data: typedEntries, error: typedError } = await supabase
-      .from("library_entries")
-      .select("id")
-      .in("user_id", followedIds)
-      .eq("item_type", options.itemType);
-    if (typedError) throw typedError;
-    libraryEntryIdsForType = (typedEntries ?? []).map((e) => e.id);
-  }
-  // Si el filtro de tipo no dejó ningún library_entry, diary/progress no
-  // pueden aportar nada — se evita el .in([]) ambiguo saltándose la query.
-  const typeFilterExcludesAll =
-    options.itemType !== undefined && (libraryEntryIdsForType?.length ?? 0) === 0;
-
-  const includeAdded = !options.reviewsOnly && !typeFilterExcludesAll;
-  const includeProgressed = !options.reviewsOnly && !typeFilterExcludesAll;
-  const includeDiary = !typeFilterExcludesAll;
-  const includeEpisodes =
-    (options.itemType === undefined || options.itemType === "series") &&
-    !typeFilterExcludesAll;
+  // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin el
+  // paso previo por library_entries que resolvía qué entradas eran de un
+  // tipo. progress_sessions no tiene item_type propio (cuelga del pase vía
+  // pass_id), así que su query se une a diary_entries para filtrar.
+  const includeAdded = !options.reviewsOnly;
+  const includeProgressed = !options.reviewsOnly;
+  const includeDiary = true;
+  const includeEpisodes = options.itemType === undefined || options.itemType === "series";
 
   const [addedResult, progressedResult, diaryResult, episodeResult] = await Promise.all([
     includeAdded
       ? (() => {
+          // Cada pase es su propio evento "added" (§Tarea 9, hub): un
+          // segundo pase de la misma obra (relectura) tiene su propio
+          // created_at y es tan "added" como el primero — igual que ya
+          // pasaba con "finished" más abajo, que nunca se filtró por pase
+          // activo.
           let q = supabase
-            .from("library_entries")
+            .from("diary_entries")
             .select("id, user_id, item_type, item_id, status, created_at")
             .in("user_id", followedIds)
             .order("created_at", { ascending: false })
@@ -176,11 +165,13 @@ export async function getFeed(
       ? (() => {
           let q = supabase
             .from("progress_sessions")
-            .select("id, user_id, library_entry_id, session_date, duration_minutes, note")
+            .select(
+              "id, user_id, pass_id, session_date, duration_minutes, note, diary_entries!inner(item_type, item_id)"
+            )
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
             .limit(pageSize);
-          if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);
+          if (options.itemType) q = q.eq("diary_entries.item_type", options.itemType);
           if (cursor) q = q.lte("session_date", dateUpperBound(cursor.date));
           return q;
         })()
@@ -195,14 +186,14 @@ export async function getFeed(
           // después vía pass_reviews.
           let q = supabase
             .from("diary_entries")
-            .select("id, user_id, library_entry_id, finished_on, rating")
+            .select("id, user_id, item_type, item_id, finished_on, rating")
             .in("user_id", followedIds)
             // Un pase abierto no es actividad terminada: no aparece en el
             // feed social de gente a la que sigues.
             .not("finished_on", "is", null)
             .order("finished_on", { ascending: false })
             .limit(pageSize);
-          if (libraryEntryIdsForType) q = q.in("library_entry_id", libraryEntryIdsForType);
+          if (options.itemType) q = q.eq("item_type", options.itemType);
           if (cursor) q = q.lte("finished_on", dateUpperBound(cursor.date));
           return q;
         })()
@@ -266,26 +257,19 @@ export async function getFeed(
     diaryRowsRaw.length < pageSize &&
     episodeRows.length < pageSize;
 
-  // library_entries de progress_sessions/diary_entries → item_type/item_id.
-  const libraryEntryIds = [
-    ...new Set([
-      ...progressedRows.map((r) => r.library_entry_id),
-      ...diaryRows.map((r) => r.library_entry_id),
-    ]),
-  ];
-  const { data: libraryEntries, error: libError } = libraryEntryIds.length
-    ? await supabase
-        .from("library_entries")
-        .select("id, item_type, item_id")
-        .in("id", libraryEntryIds)
-    : { data: [] as { id: string; item_type: ItemType; item_id: string }[], error: null };
-  if (libError) throw libError;
-  const itemByLibraryEntry = new Map(
-    (libraryEntries ?? []).map((e) => [
-      e.id,
-      { itemType: e.item_type as ItemType, itemId: e.item_id },
-    ]),
-  );
+  // progress_sessions no tiene item_type propio (cuelga del pase vía
+  // pass_id): se resuelve del pase embebido por la query de arriba
+  // (diary_entries!inner). Se normaliza array-vs-objeto por si Supabase lo
+  // tipa como array — mismo patrón que get-month-calendar.ts.
+  type ProgressedRow = (typeof progressedRows)[number];
+  function progressedItem(row: ProgressedRow): { itemType: ItemType; itemId: string } | null {
+    const embed = row.diary_entries as unknown as
+      | { item_type: ItemType; item_id: string }
+      | { item_type: ItemType; item_id: string }[]
+      | null;
+    const entry = Array.isArray(embed) ? embed[0] : embed;
+    return entry ? { itemType: entry.item_type, itemId: entry.item_id } : null;
+  }
 
   // Catálogo (título/portada) por tipo, mismo patrón batch que
   // get-library-items.ts.
@@ -296,13 +280,10 @@ export async function getFeed(
   };
   for (const r of addedRows) idsByType[r.item_type].add(r.item_id);
   for (const r of progressedRows) {
-    const it = itemByLibraryEntry.get(r.library_entry_id);
+    const it = progressedItem(r);
     if (it) idsByType[it.itemType].add(it.itemId);
   }
-  for (const r of diaryRows) {
-    const it = itemByLibraryEntry.get(r.library_entry_id);
-    if (it) idsByType[it.itemType].add(it.itemId);
-  }
+  for (const r of diaryRows) idsByType[r.item_type].add(r.item_id);
   for (const r of episodeRows) idsByType.series.add(r.series_id);
 
   const [books, movies, series] = await Promise.all([
@@ -383,7 +364,12 @@ export async function getFeed(
     const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
     if (!actor || !catalog) continue;
     events.push({
-      id: `library_entries:${r.id}`,
+      // "diary_entries_added", no "library_entries" (§Tarea 9, hub): el
+      // evento "added" ahora sale del propio pase — ver ShareRef en
+      // shared-activity.ts para por qué necesita una etiqueta propia y no
+      // puede compartir la de "finished" (`diary_entries:${id}`) aunque sea
+      // la MISMA fila.
+      id: `diary_entries_added:${r.id}`,
       actorId: r.user_id,
       actorUsername: actor.username,
       actorDisplayName: actor.display_name,
@@ -410,7 +396,7 @@ export async function getFeed(
 
   for (const r of progressedRows) {
     const actor = actorById.get(r.user_id);
-    const it = itemByLibraryEntry.get(r.library_entry_id);
+    const it = progressedItem(r);
     if (!actor || !it) continue;
     const catalog = catalogByKey.get(`${it.itemType}:${it.itemId}`);
     if (!catalog) continue;
@@ -442,10 +428,8 @@ export async function getFeed(
 
   for (const r of diaryRows) {
     const actor = actorById.get(r.user_id);
-    const it = itemByLibraryEntry.get(r.library_entry_id);
-    if (!actor || !it) continue;
-    const catalog = catalogByKey.get(`${it.itemType}:${it.itemId}`);
-    if (!catalog) continue;
+    const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
+    if (!actor || !catalog) continue;
     // El filtro .not("finished_on", "is", null) de la query ya garantiza
     // esto en runtime; la comprobación es solo para que el compilador vea
     // el tipo correcto (Supabase no lo infiere de la query).
@@ -460,8 +444,8 @@ export async function getFeed(
       actorDisplayName: actor.display_name,
       actorAvatarUrl: actor.avatar_url,
       verb: verbForReviewable(r.rating, reviewText, "finished"),
-      itemType: it.itemType,
-      itemId: it.itemId,
+      itemType: r.item_type,
+      itemId: r.item_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.coverUrl,
       itemSubtitle: catalog.subtitle,

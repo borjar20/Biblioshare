@@ -148,20 +148,31 @@ export default async function BookDetailPage({
   let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
+    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
+    // status/rating/position/queue_id viven en diary_entries, library_entries
+    // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
+    // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
+    // resuelve igualmente para no dejar el campo con un dato inventado.
     const { data: row } = await supabase
-      .from("library_entries")
-      .select("id, status, rating, position, notes, queue_id")
+      .from("diary_entries")
+      .select("id, status, rating, position, queue_id")
       .eq("user_id", user.id)
       .eq("item_type", "book")
       .eq("item_id", book.id)
+      .eq("is_active", true)
       .maybeSingle();
     if (row) {
+      const { data: reviewRow } = await supabase
+        .from("pass_reviews")
+        .select("review")
+        .eq("id", row.id)
+        .maybeSingle();
       entry = {
         entryId: row.id,
         status: row.status as MediaStatus,
         rating: row.rating,
         position: parsePosition("book", row.position),
-        notes: row.notes,
+        notes: reviewRow?.review ?? null,
         queueId: row.queue_id,
       };
       // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo

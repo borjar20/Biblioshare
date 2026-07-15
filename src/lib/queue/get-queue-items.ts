@@ -18,10 +18,13 @@ export async function getQueueItems(
   userId: string,
   queueId: string | null
 ): Promise<QueueItem[]> {
+  // Pase ACTIVO planned = ítem en cola (§Tarea 9, hub): item_type/item_id/
+  // queue_id/queue_order viven en diary_entries, library_entries ya no se lee.
   let query = supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("id, item_type, item_id, queue_id, queue_order")
     .eq("user_id", userId)
+    .eq("is_active", true)
     .eq("status", "planned");
 
   // Postgres treats `= NULL` as never-true, so the empty bucket needs `is`.

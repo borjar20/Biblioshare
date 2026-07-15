@@ -7,7 +7,7 @@ const MIN_PACE_SAMPLES = 3;
 const MAX_SAMPLES = 20;
 
 type SessionRow = {
-  library_entry_id: string;
+  pass_id: string;
   session_date: string;
   duration_minutes: number | null;
   position: unknown;
@@ -22,14 +22,18 @@ function mostRecentAverage(samples: Sample[]): { rate: number; sampleCount: numb
   return { rate, sampleCount: recent.length };
 }
 
-function groupByEntry(rows: SessionRow[]): Map<string, SessionRow[]> {
-  const byEntry = new Map<string, SessionRow[]>();
+// Agrupado por PASE, no por obra: cada relectura empieza su propio cursor de
+// página en 0 (§Tarea 9, hub) — agrupar por obra mezclaría el final de una
+// lectura anterior con el arranque de la siguiente y produciría deltas
+// negativos o falsos.
+function groupByPass(rows: SessionRow[]): Map<string, SessionRow[]> {
+  const byPass = new Map<string, SessionRow[]>();
   for (const row of rows) {
-    const list = byEntry.get(row.library_entry_id) ?? [];
+    const list = byPass.get(row.pass_id) ?? [];
     list.push(row);
-    byEntry.set(row.library_entry_id, list);
+    byPass.set(row.pass_id, list);
   }
-  return byEntry;
+  return byPass;
 }
 
 export type BookPace = { pagesPerMinute: number; sampleCount: number } | null;
@@ -43,18 +47,20 @@ export async function getBookPace(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<BookPace> {
+  // Las sesiones cuelgan del pase (pass_id, §Tarea 9, hub); item_type ya no
+  // se resuelve vía library_entries sino uniendo con el propio pase.
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("library_entry_id, session_date, duration_minutes, position, library_entries!inner(item_type)")
+    .select("pass_id, session_date, duration_minutes, position, diary_entries!inner(item_type)")
     .eq("user_id", userId)
-    .eq("library_entries.item_type", "book")
+    .eq("diary_entries.item_type", "book")
     .order("session_date", { ascending: true })
     .order("created_at", { ascending: true });
 
   if (error) throw error;
 
   const samples: Sample[] = [];
-  for (const sessions of groupByEntry((data ?? []) as SessionRow[]).values()) {
+  for (const sessions of groupByPass((data ?? []) as SessionRow[]).values()) {
     let lastKnownPage: number | null = null;
     for (const session of sessions) {
       const position = parsePosition("book", session.position);

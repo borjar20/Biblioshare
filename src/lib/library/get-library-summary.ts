@@ -17,10 +17,13 @@ export async function getLibrarySummary(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<LibrarySummary> {
+  // "Entrada de biblioteca" = pase ACTIVO (§Tarea 9, hub): item_type/status
+  // ya viven en diary_entries, library_entries ya no se lee.
   const { data, error } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("item_type, status")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_active", true);
 
   if (error) throw error;
 

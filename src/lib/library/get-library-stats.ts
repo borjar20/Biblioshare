@@ -9,10 +9,13 @@ export async function getLibraryStats(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<LibraryStats> {
+  // "Entrada de biblioteca" = pase ACTIVO (§Tarea 9, hub): item_type ya vive
+  // en diary_entries, library_entries ya no se lee.
   const { data, error } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("item_type")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_active", true);
 
   if (error) throw error;
 

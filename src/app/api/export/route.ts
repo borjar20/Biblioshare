@@ -44,11 +44,16 @@ export async function GET() {
   const items = await getLibraryItems(supabase, user.id, {});
 
   // Fechas de pases (diario) de TODA la biblioteca en una sola query, agrupadas
-  // por entrada — antes era una query por ítem (N+1: 500 ítems = 500 queries).
+  // por OBRA — antes era una query por ítem (N+1: 500 ítems = 500 queries).
+  // item_type/item_id ya son columnas propias del pase (§Tarea 9): se agrupa
+  // por `${item_type}:${item_id}`, no por entryId (que ahora es el id del
+  // pase ACTIVO, no el de una library_entries que ya no existe para los
+  // ítems nuevos).
   const { data: diaryRows, error: diaryError } = await supabase
     .from("diary_entries")
-    .select("library_entry_id, started_on, finished_on")
-    .in("library_entry_id", items.map((item) => item.entryId))
+    .select("item_type, item_id, started_on, finished_on")
+    .eq("user_id", user.id)
+    .in("item_id", items.map((item) => item.itemId))
     // Un pase abierto todavía no ha terminado: no exportamos "lecturas en
     // curso" como si fueran pases completados.
     .not("finished_on", "is", null)
@@ -61,11 +66,12 @@ export async function GET() {
     (d): d is typeof d & { finished_on: string } => d.finished_on !== null
   );
 
-  const passesByEntry = new Map<string, string[]>();
+  const passesByItem = new Map<string, string[]>();
   for (const d of finishedDiaryRows) {
-    const list = passesByEntry.get(d.library_entry_id) ?? [];
+    const key = `${d.item_type}:${d.item_id}`;
+    const list = passesByItem.get(key) ?? [];
     list.push(d.started_on ? `${d.started_on}..${d.finished_on}` : d.finished_on);
-    passesByEntry.set(d.library_entry_id, list);
+    passesByItem.set(key, list);
   }
 
   const rows = items.map((item) => [
@@ -77,7 +83,7 @@ export async function GET() {
     item.notes ?? "",
     item.rereadCount,
     // "inicio..fin" separados por ";".
-    (passesByEntry.get(item.entryId) ?? []).join(";"),
+    (passesByItem.get(`${item.itemType}:${item.itemId}`) ?? []).join(";"),
   ]);
 
   const csv = [

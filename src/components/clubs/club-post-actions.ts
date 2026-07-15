@@ -23,8 +23,10 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
   if (!user) redirect("/login");
 
   const [added, progressed, diary, episodes] = await Promise.all([
+    // Cada pase es su propio evento "added" (§Tarea 9, hub): sin
+    // library_entries.
     supabase
-      .from("library_entries")
+      .from("diary_entries")
       .select("id, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -54,7 +56,7 @@ export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
 
   const refs: { ref: ShareRef; date: string }[] = [
     ...(added.data ?? []).map((r) => ({
-      ref: { sourceTable: "library_entries" as const, rowId: r.id },
+      ref: { sourceTable: "diary_entries_added" as const, rowId: r.id },
       date: r.created_at,
     })),
     ...(progressed.data ?? []).map((r) => ({

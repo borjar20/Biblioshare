@@ -13,6 +13,11 @@ export type ToggleFavoriteState = {
   error?: "maxReached";
 };
 
+// entryId es el id del pase ACTIVO de la obra (§Tarea 9, hub): favoritos
+// fija/desfija sobre ese pase, no sobre library_entries — el .eq("is_active",
+// true) de cada consulta de abajo es defensa en profundidad: un entryId de un
+// pase archivado (relectura vieja) nunca debería llegar aquí, pero si llegara
+// no debe tocar pinned_order de un pase que ya no representa la obra.
 export async function toggleFavorite(
   entryId: string
 ): Promise<ToggleFavoriteState> {
@@ -23,10 +28,11 @@ export async function toggleFavorite(
   if (!user) redirect("/login");
 
   const { data: current, error: fetchError } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("pinned_order")
     .eq("id", entryId)
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (fetchError) throw fetchError;
@@ -34,7 +40,7 @@ export async function toggleFavorite(
 
   if (current.pinned_order !== null) {
     const { error } = await supabase
-      .from("library_entries")
+      .from("diary_entries")
       .update({ pinned_order: null })
       .eq("id", entryId)
       .eq("user_id", user.id);
@@ -45,18 +51,20 @@ export async function toggleFavorite(
   }
 
   const { count, error: countError } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .not("pinned_order", "is", null);
 
   if (countError) throw countError;
   if ((count ?? 0) >= MAX_FAVORITES) return { error: "maxReached" };
 
   const { data: topPin, error: topPinError } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("pinned_order")
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .not("pinned_order", "is", null)
     .order("pinned_order", { ascending: false })
     .limit(1)
@@ -65,7 +73,7 @@ export async function toggleFavorite(
   if (topPinError) throw topPinError;
 
   const { error } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .update({ pinned_order: (topPin?.pinned_order ?? 0) + 1 })
     .eq("id", entryId)
     .eq("user_id", user.id);

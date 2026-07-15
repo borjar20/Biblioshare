@@ -50,7 +50,7 @@ export function ClubPostComposer({ clubId }: { clubId: string }) {
     startTransition(async () => {
       try {
         await createShareActivityPost(clubId, shareCaption, {
-          sourceTable: sourceTable as "library_entries" | "progress_sessions" | "diary_entries" | "episode_watches",
+          sourceTable: sourceTable as "diary_entries_added" | "progress_sessions" | "diary_entries" | "episode_watches",
           rowId,
         });
         reset();

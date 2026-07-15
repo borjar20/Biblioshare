@@ -62,7 +62,7 @@ const MAX_BODY_LENGTH = 5000;
 const MAX_OPTION_LENGTH = 120;
 
 const SHARE_SOURCE_TABLES: ReadonlySet<string> = new Set([
-  "library_entries",
+  "diary_entries_added",
   "progress_sessions",
   "diary_entries",
   "episode_watches",

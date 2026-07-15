@@ -26,13 +26,17 @@ export async function getLibraryItems(
     favoritesOnly?: boolean;
   }
 ): Promise<LibraryItem[]> {
-  // rating/notes YA NO se leen de aquí: quedaron huérfanas cuando el pase se
-  // convirtió en el dueño de la nota y la reseña (20260714_passes.sql). Se
-  // recalculan más abajo a partir del último pase cerrado de cada entrada.
+  // "Entrada de biblioteca" = pase ACTIVO de la obra (§Tarea 9, hub):
+  // item_type/item_id/status/position/pinned_order viven directamente en
+  // diary_entries, library_entries ya no se lee. rating/notes tampoco se leen
+  // de aquí: quedaron huérfanas cuando el pase se convirtió en el dueño de la
+  // nota y la reseña (20260714_passes.sql). Se recalculan más abajo a partir
+  // del último pase cerrado de cada obra.
   let query = supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("id, item_type, item_id, status, position, pinned_order")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_active", true);
 
   if (filters.favoritesOnly) {
     query = query.not("pinned_order", "is", null).order("pinned_order", { ascending: true });
@@ -110,59 +114,47 @@ export async function getLibraryItems(
     });
   }
 
-  // Un pase por fila, batched — cheaper than one query per entry. See
-  // docs/REQUIREMENTS.md §7.13. `rating` sale de diary_entries directamente:
-  // la RLS de la tabla ya decide qué filas se ven (perfil propio o público
-  // visible) y esa columna es legible siempre, cuente o no la reseña como
-  // pública — la nota nunca fue lo que is_public escondía.
+  // Todos los pases (de cualquier obra en esta página, abiertos y cerrados)
+  // de este usuario, batched — cheaper than one query per entry. See
+  // docs/REQUIREMENTS.md §7.13. item_type/item_id ya son columnas propias del
+  // pase (§Tarea 9): se filtra por item_id directamente, sin el join a
+  // library_entries que resolvía antes esa relación, y se agrupa abajo por
+  // `${item_type}:${item_id}` en vez de por id de entrada (que ya no existe).
+  // `rating` sale de diary_entries directamente: la RLS de la tabla ya decide
+  // qué filas se ven (perfil propio o público visible) y esa columna es
+  // legible siempre, cuente o no la reseña como pública — la nota nunca fue
+  // lo que is_public escondía.
+  const allItemIds = entries.map((entry) => entry.item_id);
   const { data: closedPassRows } = await supabase
     .from("diary_entries")
-    .select("id, library_entry_id, finished_on, rating")
-    .in(
-      "library_entry_id",
-      entries.map((entry) => entry.id)
-    )
+    .select("id, item_type, item_id, finished_on, rating")
+    .eq("user_id", userId)
+    .in("item_id", allItemIds)
     // Un pase abierto ("lo estoy leyendo ahora") todavía no es una lectura
     // terminada: no debe sumar a "Leído {count} veces" (colección, perfiles
     // públicos y export CSV comparten este contador) ni aportar nota/reseña.
     .not("finished_on", "is", null);
 
-  const rereadCountByEntry = new Map<string, number>();
+  const rereadCountByItem = new Map<string, number>();
   for (const row of closedPassRows ?? []) {
-    rereadCountByEntry.set(
-      row.library_entry_id,
-      (rereadCountByEntry.get(row.library_entry_id) ?? 0) + 1
-    );
+    const key = `${row.item_type}:${row.item_id}`;
+    rereadCountByItem.set(key, (rereadCountByItem.get(key) ?? 0) + 1);
   }
 
-  // Id del pase ACTIVO por obra (§Tarea 7, hub): "/sesion/" ya no acepta el
-  // id de library_entries, así que cada item necesita el suyo para poder
-  // enlazar ahí (p. ej. NowConsuming). Una query batched por usuario, no una
-  // por entrada — passes_one_active garantiza como mucho una fila por
-  // (user, item_type, item_id).
-  const { data: activePassRows } = await supabase
-    .from("diary_entries")
-    .select("id, item_type, item_id")
-    .eq("user_id", userId)
-    .eq("is_active", true);
-  const activePassIdByItem = new Map(
-    (activePassRows ?? []).map((p) => [`${p.item_type}:${p.item_id}`, p.id])
-  );
-
-  // Nota (estrellas) y "notas" (texto) visibles de cada entrada: las del
-  // último pase cerrado, mismo criterio de desempate que la media de
-  // comunidad (latest-rating.ts), agrupado aquí por entrada en vez de por
-  // usuario porque toda esta colección es de un único usuario.
+  // Nota (estrellas) y "notas" (texto) visibles de cada obra: las del último
+  // pase cerrado, mismo criterio de desempate que la media de comunidad
+  // (latest-rating.ts), agrupado aquí por obra en vez de por usuario porque
+  // toda esta colección es de un único usuario.
   const latestClosedPasses = keepLatestClosedPass(
     (closedPassRows ?? []).map((r) => ({
       id: r.id,
-      libraryEntryId: r.library_entry_id,
+      itemKey: `${r.item_type}:${r.item_id}`,
       finishedOn: r.finished_on as string,
       rating: r.rating,
     }))
   );
-  const ratingByEntry = new Map(
-    latestClosedPasses.map((p) => [p.libraryEntryId, p.rating])
+  const ratingByItem = new Map(
+    latestClosedPasses.map((p) => [p.itemKey, p.rating])
   );
 
   // El texto de la reseña ("notas") vive en pass_reviews: es la única vía de
@@ -175,31 +167,37 @@ export async function getLibraryItems(
     ? await supabase.from("pass_reviews").select("id, review").in("id", latestPassIds)
     : { data: [] as { id: string | null; review: string | null }[] };
   const reviewByPassId = new Map((reviewRows ?? []).map((r) => [r.id, r.review]));
-  const notesByEntry = new Map(
-    latestClosedPasses.map((p) => [p.libraryEntryId, reviewByPassId.get(p.id) ?? null])
+  const notesByItem = new Map(
+    latestClosedPasses.map((p) => [p.itemKey, reviewByPassId.get(p.id) ?? null])
   );
 
   let items = entries
-    .map((entry) => {
-      const meta = catalogByKey.get(`${entry.item_type}:${entry.item_id}`);
+    .map((entry): LibraryItem | null => {
+      const itemKey = `${entry.item_type}:${entry.item_id}`;
+      const meta = catalogByKey.get(itemKey);
       if (!meta) return null;
       return {
+        // entryId/activePassId son ahora el MISMO id: el pase activo es la
+        // entrada de biblioteca (§Tarea 9, hub). Se conservan ambos campos en
+        // LibraryItem porque la UI ya los consume por separado (favoritos vs.
+        // "/sesion/"), pero ya no hace falta una segunda query para resolver
+        // el activo — esta fila YA es el pase activo.
         entryId: entry.id,
         itemId: entry.item_id,
         itemType: entry.item_type,
         status: entry.status,
-        rating: ratingByEntry.get(entry.id) ?? null,
+        rating: ratingByItem.get(itemKey) ?? null,
         position: parsePosition(entry.item_type, entry.position),
-        notes: notesByEntry.get(entry.id) ?? null,
+        notes: notesByItem.get(itemKey) ?? null,
         title: meta.title,
         coverUrl: meta.coverUrl,
         subtitle: meta.subtitle,
         publisher: meta.publisher,
         pageCount: meta.pageCount,
         totalEpisodes: meta.totalEpisodes,
-        rereadCount: rereadCountByEntry.get(entry.id) ?? 0,
+        rereadCount: rereadCountByItem.get(itemKey) ?? 0,
         pinnedOrder: entry.pinned_order,
-        activePassId: activePassIdByItem.get(`${entry.item_type}:${entry.item_id}`) ?? null,
+        activePassId: entry.id,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);

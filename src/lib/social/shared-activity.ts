@@ -12,8 +12,19 @@ import type { FeedEvent, FeedVerb } from "./feed";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
+// "diary_entries_added" (no "library_entries", §Tarea 9 hub): el evento
+// "added" ahora sale de un pase (su propio created_at), no de una entrada de
+// biblioteca -- se etiqueta distinto de "diary_entries" (el evento
+// "finished") porque ambos pueden apuntar a la MISMA fila (un pase que se
+// cierra el mismo día que se abre), y el par (sourceTable, rowId) tiene que
+// seguir identificando un evento único. sourceTable es una etiqueta interna
+// de enrutado, no un nombre de tabla literal -- ref.sourceTable se persiste
+// en club_posts.ref (JSONB), así que una comparticiones vieja con
+// "library_entries" ya no resuelve tras esta migración (se trata como fila
+// borrada: "ya no disponible"), coste aceptado del cierre de la ventana
+// transicional.
 export type ShareRef = {
-  sourceTable: "library_entries" | "progress_sessions" | "diary_entries" | "episode_watches";
+  sourceTable: "diary_entries_added" | "progress_sessions" | "diary_entries" | "episode_watches";
   rowId: string;
 };
 
@@ -55,11 +66,13 @@ async function resolveCatalog(supabase: SupabaseServerClient, itemType: ItemType
   return data ? { title: data.title, cover_url: data.cover_url, subtitle: null } : null;
 }
 
-async function resolveLibraryEntryItem(supabase: SupabaseServerClient, libraryEntryId: string) {
+// item_type/item_id son columnas propias del pase (§Tarea 9): resuelve la
+// obra de un pase por su id, ya sin pasar por library_entries.
+async function resolvePassItem(supabase: SupabaseServerClient, passId: string) {
   const { data } = await supabase
-    .from("library_entries")
+    .from("diary_entries")
     .select("item_type, item_id")
-    .eq("id", libraryEntryId)
+    .eq("id", passId)
     .maybeSingle();
   if (!data) return null;
   return { itemType: data.item_type as ItemType, itemId: data.item_id };
@@ -73,26 +86,28 @@ export async function resolveSharedActivity(
   supabase: SupabaseServerClient,
   ref: ShareRef,
 ): Promise<FeedEvent | null> {
-  if (ref.sourceTable === "library_entries") {
+  if (ref.sourceTable === "diary_entries_added") {
+    // item_type/item_id/status/created_at ya son columnas propias del pase
+    // (§Tarea 9): sin join a library_entries.
     const { data: row } = await supabase
-      .from("library_entries")
+      .from("diary_entries")
       .select("id, user_id, item_type, item_id, status, created_at")
       .eq("id", ref.rowId)
       .maybeSingle();
     if (!row) return null;
     const [actor, catalog] = await Promise.all([
       resolveActor(supabase, row.user_id),
-      resolveCatalog(supabase, row.item_type as ItemType, row.item_id),
+      resolveCatalog(supabase, row.item_type, row.item_id),
     ]);
     if (!actor || !catalog) return null;
     return {
-      id: `library_entries:${row.id}`,
+      id: `diary_entries_added:${row.id}`,
       actorId: row.user_id,
       actorUsername: actor.username!,
       actorDisplayName: actor.display_name,
       actorAvatarUrl: actor.avatar_url,
       verb: "added",
-      itemType: row.item_type as ItemType,
+      itemType: row.item_type,
       itemId: row.item_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.cover_url,
@@ -112,13 +127,15 @@ export async function resolveSharedActivity(
   }
 
   if (ref.sourceTable === "progress_sessions") {
+    // La sesión cuelga del pase vía pass_id (§Tarea 9, hub): sin
+    // library_entry_id.
     const { data: row } = await supabase
       .from("progress_sessions")
-      .select("id, user_id, library_entry_id, session_date, duration_minutes, note")
+      .select("id, user_id, pass_id, session_date, duration_minutes, note")
       .eq("id", ref.rowId)
       .maybeSingle();
     if (!row) return null;
-    const item = await resolveLibraryEntryItem(supabase, row.library_entry_id);
+    const item = await resolvePassItem(supabase, row.pass_id);
     if (!item) return null;
     const [actor, catalog] = await Promise.all([
       resolveActor(supabase, row.user_id),
@@ -161,7 +178,7 @@ export async function resolveSharedActivity(
     // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, library_entry_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review")
       .eq("id", ref.rowId)
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
@@ -171,21 +188,20 @@ export async function resolveSharedActivity(
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
     // porque Supabase no infiere el tipo a partir de la query. pass_reviews
     // tipa TODAS sus columnas como nullable (es una vista), así que también
-    // se narrowan id/user_id/library_entry_id — nunca vienen null en la
+    // se narrowan id/user_id/item_type/item_id — nunca vienen null en la
     // práctica.
     if (
       !row ||
       row.id === null ||
       row.user_id === null ||
-      row.library_entry_id === null ||
+      row.item_type === null ||
+      row.item_id === null ||
       row.finished_on === null
     )
       return null;
-    const item = await resolveLibraryEntryItem(supabase, row.library_entry_id);
-    if (!item) return null;
     const [actor, catalog] = await Promise.all([
       resolveActor(supabase, row.user_id),
-      resolveCatalog(supabase, item.itemType, item.itemId),
+      resolveCatalog(supabase, row.item_type, row.item_id),
     ]);
     if (!actor || !catalog) return null;
     return {
@@ -195,8 +211,8 @@ export async function resolveSharedActivity(
       actorDisplayName: actor.display_name,
       actorAvatarUrl: actor.avatar_url,
       verb: verbForReviewable(row.rating, row.review, "finished"),
-      itemType: item.itemType,
-      itemId: item.itemId,
+      itemType: row.item_type,
+      itemId: row.item_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.cover_url,
       itemSubtitle: catalog.subtitle,
