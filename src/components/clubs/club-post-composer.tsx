@@ -10,13 +10,7 @@ import { Input } from "@/components/ui/input";
 
 type Mode = "closed" | "text" | "pick_activity" | "share_activity" | "poll";
 
-export function ClubPostComposer({
-  clubId,
-  onPosted,
-}: {
-  clubId: string;
-  onPosted: () => void;
-}) {
+export function ClubPostComposer({ clubId }: { clubId: string }) {
   const t = useTranslations("clubPost");
   const [mode, setMode] = useState<Mode>("closed");
   const [text, setText] = useState("");
@@ -44,7 +38,6 @@ export function ClubPostComposer({
       try {
         await createTextPost(clubId, text);
         reset();
-        onPosted();
       } catch {
         setError(t("postError"));
       }
@@ -61,7 +54,6 @@ export function ClubPostComposer({
           rowId,
         });
         reset();
-        onPosted();
       } catch {
         setError(t("postError"));
       }
@@ -73,7 +65,6 @@ export function ClubPostComposer({
       try {
         await createPoll(clubId, pollQuestion, pollOptions, new Date(pollEndsAt).toISOString());
         reset();
-        onPosted();
       } catch {
         setError(t("postError"));
       }

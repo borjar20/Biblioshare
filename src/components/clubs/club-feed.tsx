@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { listClubPosts, type ClubPost, type ClubPostsPage } from "@/lib/clubs/posts";
+import { type ClubPost, type ClubPostsPage } from "@/lib/clubs/posts";
 import { loadMoreClubPosts } from "./club-post-actions";
 import { ClubPostComposer } from "./club-post-composer";
 import { ClubPostCard } from "./club-post-card";
@@ -24,9 +24,19 @@ export function ClubFeed({
   const [cursor, setCursor] = useState(initialPage.nextCursor);
   const [isPending, startTransition] = useTransition();
 
-  function refresh(page: ClubPostsPage) {
-    setPosts(page.posts);
-    setCursor(page.nextCursor);
+  // Página 1 server-authoritative: cuando una mutación revalida el club (Fase 1)
+  // la RSC re-ejecuta y entrega un initialPage nuevo; resembramos desde él, así
+  // el post nuevo / el voto / el borrado se reflejan sin recargar. Es el patrón
+  // "ajustar estado al cambiar una prop" de React (en render, con seguimiento
+  // del valor previo — no un efecto). Las páginas extra de "cargar más" se
+  // pierden al resembrar: trade-off aceptado por la convención (reconciliar la
+  // primera página). initialPage solo cambia de identidad cuando la RSC
+  // re-ejecuta, no en re-renders de cliente.
+  const [seededPage, setSeededPage] = useState(initialPage);
+  if (seededPage !== initialPage) {
+    setSeededPage(initialPage);
+    setPosts(initialPage.posts);
+    setCursor(initialPage.nextCursor);
   }
 
   function loadMore() {
@@ -44,14 +54,7 @@ export function ClubFeed({
 
   return (
     <div className="flex flex-col gap-4">
-      <ClubPostComposer
-        clubId={clubId}
-        onPosted={() => {
-          startTransition(async () => {
-            refresh(await listClubPosts(clubId));
-          });
-        }}
-      />
+      <ClubPostComposer clubId={clubId} />
 
       {posts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
@@ -63,12 +66,6 @@ export function ClubFeed({
               post={post}
               viewerLoggedIn
               canDelete={canDelete(post)}
-              onDeleted={() => setPosts((prev) => prev.filter((p) => p.id !== post.id))}
-              onVoted={() => {
-                startTransition(async () => {
-                  refresh(await listClubPosts(clubId));
-                });
-              }}
             />
           ))}
         </div>

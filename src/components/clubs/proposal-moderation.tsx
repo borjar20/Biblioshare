@@ -17,12 +17,10 @@ export function ProposalModeration({
   proposals,
   clubSlug,
   canModerate,
-  onChanged,
 }: {
   proposals: ClubActivity[];
   clubSlug: string;
   canModerate: boolean;
-  onChanged: () => void;
 }) {
   const t = useTranslations("activity");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -34,11 +32,11 @@ export function ProposalModeration({
     setPendingId(id);
     startTransition(async () => {
       // Aprobar = activarla. Rechazar = archivarla: no se borra, queda el
-      // rastro de que se propuso y se descartó.
+      // rastro de que se propuso y se descartó. La propuesta cambia de grupo
+      // porque activate/archive revalidan (Fase 1) y el padre deriva de props.
       await (decision === "approve"
         ? activateActivity(id)
         : archiveActivity(id));
-      onChanged();
       setPendingId(null);
     });
   }

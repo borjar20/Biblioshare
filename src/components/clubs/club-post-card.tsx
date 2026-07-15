@@ -13,14 +13,10 @@ export function ClubPostCard({
   post,
   viewerLoggedIn,
   canDelete,
-  onDeleted,
-  onVoted,
 }: {
   post: ClubPost;
   viewerLoggedIn: boolean;
   canDelete: boolean;
-  onDeleted: () => void;
-  onVoted: () => void;
 }) {
   const t = useTranslations("clubPost");
   const [selectedOption, setSelectedOption] = useState(post.poll?.viewerOptionId ?? null);
@@ -33,8 +29,9 @@ export function ClubPostCard({
     setError(null);
     startTransition(async () => {
       try {
+        // selectedOption da feedback inmediato del radio; la revalidación
+        // (Fase 1) resiembra la página 1 del feed con los conteos frescos.
         await votePoll(post.id, optionId);
-        onVoted();
       } catch {
         setSelectedOption(previous);
         setError(t("postError"));
@@ -48,7 +45,6 @@ export function ClubPostCard({
     startTransition(async () => {
       try {
         await deletePost(post.id);
-        onDeleted();
       } catch {
         setError(t("postError"));
       }

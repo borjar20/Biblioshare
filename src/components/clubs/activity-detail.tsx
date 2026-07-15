@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   activateActivity,
   archiveActivity,
   finishActivity,
-  getActivity,
   joinActivity,
   leaveActivity,
   type ActivityDetail,
@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/social/user-avatar";
 
 export function ActivityDetailView({
-  activity: initialActivity,
+  activity,
   viewerId,
   viewerRole,
   clubSlug,
@@ -33,9 +33,12 @@ export function ActivityDetailView({
   clubSlug: string;
 }) {
   const t = useTranslations("activity");
-  const [activity, setActivity] = useState(initialActivity);
-  const [status, setStatus] = useState(activity.status);
-  const [isParticipant, setIsParticipant] = useState(activity.viewerIsParticipant);
+  const router = useRouter();
+  // Los datos de la actividad derivan de la prop: cada mutación revalida
+  // /club/[slug]/actividad/[id] (Fase 1) y la RSC re-ejecuta con la actividad
+  // fresca. Solo el estado de UI (editar, error, pendiente) es local.
+  const status = activity.status;
+  const isParticipant = activity.viewerIsParticipant;
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -53,23 +56,24 @@ export function ActivityDetailView({
   // ítems ajenos y gestionar los hitos de la lectura conjunta.
   const canEdit = canCurate || isModerator;
 
+  // Reconcilia el subárbol profundo (pool de ítems, tableros por tipo,
+  // checkpoints): esos hijos conservan estado local propio, así que en vez de
+  // derivarlos hoja por hoja se repunta su onChanged a router.refresh(), que
+  // re-ejecuta la RSC y les entrega props frescas (este componente ya deriva de
+  // props). Coste consciente: un refresco redundante con el revalidatePath de
+  // la propia action (Fase 1), a cambio de no tocar los tableros con drag.
   function refreshActivity() {
-    startTransition(async () => {
-      const fresh = await getActivity(activity.id);
-      if (fresh) {
-        setActivity(fresh);
-        setStatus(fresh.status);
-        setIsParticipant(fresh.viewerIsParticipant);
-      }
-    });
+    router.refresh();
   }
 
-  function run(action: () => Promise<void>, onSuccess: () => void) {
+  // Los botones propios del detalle (join/leave/activate/finish/archive) no
+  // necesitan refresco explícito: la action revalida la ruta actual y, como
+  // status/isParticipant derivan de props, la vista se recalcula sola.
+  function run(action: () => Promise<void>) {
     setError(null);
     startTransition(async () => {
       try {
         await action();
-        onSuccess();
       } catch {
         setError(t("activateError"));
       }
@@ -196,7 +200,7 @@ export function ActivityDetailView({
             variant="green"
             className={`ml-auto ${compact}`}
             disabled={isPending}
-            onClick={() => run(() => joinActivity(activity.id), refreshActivity)}
+            onClick={() => run(() => joinActivity(activity.id))}
           >
             {t("join")}
           </Button>
@@ -207,7 +211,7 @@ export function ActivityDetailView({
             variant="secondary"
             className={`ml-auto ${compact}`}
             disabled={isPending}
-            onClick={() => run(() => leaveActivity(activity.id), refreshActivity)}
+            onClick={() => run(() => leaveActivity(activity.id))}
           >
             {t("leave")}
           </Button>
@@ -224,7 +228,7 @@ export function ActivityDetailView({
               type="button"
               className={compact}
               disabled={isPending}
-              onClick={() => run(() => activateActivity(activity.id), () => setStatus("active"))}
+              onClick={() => run(() => activateActivity(activity.id))}
             >
               {t("activate")}
             </Button>
@@ -235,7 +239,7 @@ export function ActivityDetailView({
               variant="secondary"
               className={compact}
               disabled={isPending}
-              onClick={() => run(() => finishActivity(activity.id), () => setStatus("finished"))}
+              onClick={() => run(() => finishActivity(activity.id))}
             >
               {t("finish")}
             </Button>
@@ -245,7 +249,7 @@ export function ActivityDetailView({
             variant="ghost"
             className={compact}
             disabled={isPending}
-            onClick={() => run(() => archiveActivity(activity.id), () => setStatus("archived"))}
+            onClick={() => run(() => archiveActivity(activity.id))}
           >
             {t("archive")}
           </Button>
@@ -260,7 +264,7 @@ export function ActivityDetailView({
             variant="secondary"
             className={compact}
             disabled={isPending}
-            onClick={() => run(() => finishActivity(activity.id), () => setStatus("finished"))}
+            onClick={() => run(() => finishActivity(activity.id))}
           >
             {t("finish")}
           </Button>

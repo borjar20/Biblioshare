@@ -1,10 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-  listClubActivities,
-  type ClubActivity,
-} from "@/lib/clubs/activities/core";
+import { type ClubActivity } from "@/lib/clubs/activities/core";
 import type { JoinRequest } from "@/lib/clubs/join-requests";
 import { ProposalModeration } from "./proposal-moderation";
 import { JoinRequestList } from "./join-request-list";
@@ -27,16 +23,9 @@ export function ClubManagement({
   initialActivities: ClubActivity[];
   initialJoinRequests: JoinRequest[];
 }) {
-  const [activities, setActivities] = useState(initialActivities);
-  const [, startTransition] = useTransition();
-
-  function refresh() {
-    startTransition(async () => {
-      setActivities(await listClubActivities(clubId));
-    });
-  }
-
-  const proposed = activities.filter((a) => a.status === "proposed");
+  // Deriva de props: moderar una propuesta revalida (Fase 1) y la RSC re-ejecuta
+  // con las actividades frescas. Sin espejo local ni re-fetch cliente.
+  const proposed = initialActivities.filter((a) => a.status === "proposed");
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,7 +33,6 @@ export function ClubManagement({
         proposals={proposed}
         clubSlug={clubSlug}
         canModerate
-        onChanged={refresh}
       />
 
       <JoinRequestList clubId={clubId} initialRequests={initialJoinRequests} />

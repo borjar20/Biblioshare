@@ -13,11 +13,24 @@ Dos capas separadas:
 
 ## Cómo obtener datos y reflejar cambios
 
-- **Vista no paginada:** deriva de props del servidor. Con la revalidación
-  correcta, se actualiza sola tras la acción.
-- **Vista paginada (feed con "cargar más"):** estado local sembrado del
-  servidor; reconcilia la primera página con `router.refresh()`/re-fetch tras
-  CADA mutación. No dejes ninguna mutación sin su refresco.
+- **Vista no paginada:** deriva de props del servidor — **no** siembres un
+  espejo con `useState(initialX)`. Mecanismo: la server action revalida (helpers
+  de `revalidate.ts`) → la RSC re-ejecuta → el componente, al derivar de props,
+  se actualiza al momento. La doc de esta versión de Next lo garantiza:
+  *"Server Functions: Updates the UI immediately (if viewing the affected
+  path)."* No hace falta `router.refresh()` ni re-fetch cliente.
+- **Vista paginada (feed con "cargar más"):** necesitas estado local para
+  acumular páginas. Mantén la **primera página server-authoritative**: resiémbrala
+  desde la prop cuando el servidor entrega una nueva (patrón de React "ajustar
+  estado al cambiar una prop", **en render** con seguimiento del valor previo, no
+  en un efecto — `set-state-in-effect` está prohibido por el linter). Las páginas
+  extra se pierden al resembrar: es el trade-off aceptado. Ver `club-feed.tsx`.
+- **Subárbol con estado local propio (drag, edición) que no se puede derivar de
+  props sin refactor:** reconcílialo repuntando su callback a `router.refresh()`
+  **desde un padre que sí deriva de props** (así `router.refresh()` sí se
+  refleja). Patrón usado en `activity-detail.tsx` con los tableros por tipo y los
+  checkpoints. Coste: un refresco redundante con el `revalidatePath` de la
+  action; aceptable a cambio de no reescribir componentes frágiles.
 - **Microacción (like, follow, voto, comentario):** `useOptimisticAction`
   (Fase 3) para respuesta instantánea + rollback en error.
 
