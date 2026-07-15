@@ -89,31 +89,20 @@ export default async function BookDetailPage({
     author: book.author,
   });
 
-  // Ediciones reales de OpenLibrary (Hallazgo 4 de la revisión final): esto
-  // SÍ hay que sacarlo del camino bloqueante. La primera visita a un libro
-  // sin sincronizar podía tardar hasta 5s en la primera página de
-  // editions.json + otros 5s en las páginas 2-5 (en paralelo entre sí) + hasta
-  // veinte llamadas a la RPC register_book_edition — todo ANTES de pintar
-  // nada, violando el diseño explícito de que esto "no bloquee nunca" la
-  // ficha. after() (Next 16) pospone la sincronización a DESPUÉS de enviar la
-  // respuesta: la ficha se pinta al instante con las ediciones que YA
-  // hubiera: si esta es la primera visita sin sincronizar, esta carga no las
-  // ve — se verán en la SIGUIENTE visita. Ese es el precio explícito de no
-  // bloquear nunca, no un descuido.
+  // Hidratación de la OBRA (sinopsis y géneros desde /works/<key>.json): se
+  // resuelve en after() porque es una API externa que escribe. Lo normal es
+  // que la fila ya llegue hidratada (openCatalogItem hidrata al pulsar el
+  // resultado), así que esto es sobre todo curador de filas viejas (`hydrated_at`
+  // null) que se arreglan solas la primera vez que se abren.
   //
-  // Solo con sesión: un visitante anónimo no puede escribir ni las ediciones
-  // (la RPC exige auth.uid()) ni la marca de sincronización (el grant es de
-  // `authenticated`). Sin este guardia, cada visita anónima a una ficha sin
-  // sincronizar programaría en segundo plano hasta cinco llamadas a
-  // OpenLibrary y veinte RPC para tirarlo todo a la basura, una y otra vez.
+  // Las EDICIONES ya NO se sincronizan aquí en after(): se resuelven por
+  // streaming vía loadBookEditions (ver editionsPromise, dentro del <Suspense>
+  // de EditionsSection), así que la primera visita SÍ las ve tras el streaming.
   //
-  // La hidratación de la OBRA (sinopsis y géneros desde /works/<key>.json, el
-  // peldaño 2 de la escalera) viaja en el mismo after() y por los mismos dos
-  // motivos: es una API externa, y escribe. Lo normal es que la fila ya llegue
-  // hidratada —openCatalogItem hidrata al crearla, que es cuando el usuario pulsa
-  // un resultado de búsqueda—, así que esto es sobre todo el curador de las filas
-  // viejas: las que se cachearon sucias con el flujo antiguo (`hydrated_at` null)
-  // se arreglan solas la primera vez que alguien las abre.
+  // Solo con sesión: un visitante anónimo no puede escribir — el grant es de
+  // `authenticated`. Sin este guardia, cada visita anónima a una ficha sin
+  // hidratación programaría en segundo plano hasta cinco llamadas a
+  // OpenLibrary, todo para tirarlo a la basura.
   if (user) {
     after(() =>
       ensureBookHydrated(supabase, {
