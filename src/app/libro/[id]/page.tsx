@@ -180,12 +180,13 @@ export default async function BookDetailPage({
     queues = await getQueues(supabase, user.id);
   }
 
-  // Sesión que alcanzó el final (§Tarea 7): ?cerrar trae el id de un pase que
-  // la propia obra ya validó como "de este usuario" al construir `passes`
-  // (getPasses está filtrado por user_id) — comparar contra ese array basta
-  // como comprobación de propiedad, sin otra consulta.
+  // Sesión que alcanzó el final (§Tarea 7): ?cerrar trae el id del pase que
+  // la sesión acaba de completar. Se valida contra el pase ACTIVO, no contra
+  // "cualquier pase mío de esta obra" (passes trae también los archivados):
+  // un ?cerrar= manipulado a mano con un pase antiguo ya cerrado no debe
+  // poder reabrir su hoja y sobrescribirle finished_on/rating/review.
   const closingPassId =
-    cerrar && passes.some((p) => p.id === cerrar) ? cerrar : null;
+    cerrar && passes.find((p) => p.isActive)?.id === cerrar ? cerrar : null;
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
   const canContribute = user

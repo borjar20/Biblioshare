@@ -143,9 +143,10 @@ export default async function SeriesDetailPage({
   }
 
   // Sesión que alcanzó el final (§Tarea 7): ver el mismo comentario en
-  // src/app/libro/[id]/page.tsx.
+  // src/app/libro/[id]/page.tsx — se valida contra el pase ACTIVO, no contra
+  // cualquier pase (archivado incluido) de esta obra.
   const closingPassId =
-    cerrar && passes.some((p) => p.id === cerrar) ? cerrar : null;
+    cerrar && passes.find((p) => p.isActive)?.id === cerrar ? cerrar : null;
 
   const byline =
     [
