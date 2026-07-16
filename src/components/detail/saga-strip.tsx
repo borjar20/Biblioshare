@@ -6,41 +6,48 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { EyeIcon } from "@/components/ui/icons";
 
-// Horizontal saga rail (reel+shelf structure): the current item is ringed with
-// its media accent and marked; siblings dim to links.
+// La tira de portadas de la saga PRINCIPAL (.saga-block del frame 1): la obra
+// actual va anillada con el acento de su tipo y marcada con el ojo; las demás
+// quedan como enlaces atenuados.
+//
+// Solo se pinta en móvil: en PC (frame 8) no hay tira y todas las sagas son
+// filas — de eso se encarga SagaList.
 export function SagaStrip({
   members,
   currentType,
   currentId,
   sagaId,
   sagaName,
-  label,
+  positionLabel,
 }: {
   members: SagaMember[];
   currentType: ItemType;
   currentId: string;
   sagaId: string;
   sagaName: string;
-  label: string;
+  /** "· nº 1 de 3" ya traducido, o null si la obra no tiene posición. */
+  positionLabel: string | null;
 }) {
   if (members.length < 1) return null;
   const accent = MEDIA_ACCENT[currentType];
 
   return (
     <section className="flex flex-col gap-3.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`h-4 w-0.5 rounded-full ${accent.bg}`} />
-        <span
-          className={`font-mono text-[10px] tracking-wider ${accent.text} uppercase`}
-        >
-          {label}
-        </span>
+      {/* .saga-name: el nombre de la saga y la posición de esta obra. El
+          rótulo "Sagas · N" lo pone la sección de arriba, así que aquí ya no
+          hace falta eyebrow. */}
+      <div className="flex flex-wrap items-baseline gap-1.5">
         <Link
           href={sagaHref(sagaId)}
-          className="text-sm text-foreground italic underline-offset-2 hover:underline"
+          className={`text-sm font-semibold ${accent.text} underline-offset-2 hover:underline`}
         >
           {sagaName}
         </Link>
+        {positionLabel && (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {positionLabel}
+          </span>
+        )}
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2">

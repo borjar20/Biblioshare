@@ -39,9 +39,10 @@ import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
-import { getItemSaga } from "@/lib/sagas/get-item-saga";
+import { getItemSagas } from "@/lib/sagas/get-item-sagas";
+import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
-import type { SagaMember } from "@/lib/sagas/types";
+import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
 import { parsePosition, type BookPosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
@@ -251,11 +252,11 @@ async function BookTabs({
   // reales: ensureItemEnriched escribe lo que getItemCredits lee, y getSessions
   // necesita saber el pase abierto. Todo lo demás va en paralelo aunque el
   // código lo lea en orden.
-  const [, saga, editions, activeRow, loadedQueues, role] = await Promise.all([
+  const [, sagas, editions, activeRow, loadedQueues, role] = await Promise.all([
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
     ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
-    getItemSaga(supabase, "book", book.id),
+    getItemSagas(supabase, "book", book.id),
     getEditions(supabase, "book", book.id),
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
     // status/rating/position/queue_id viven en passes, library_entries ya no
@@ -373,11 +374,18 @@ async function BookTabs({
 
   const genres = book.genres ?? [];
 
+  // La principal es la primera (la más antigua): solo de ella se pinta la tira
+  // de portadas, y solo en móvil. Ver getItemSagas.
+  const mainSaga = sagas[0] ?? null;
   let sagaMembers: SagaMember[] = [];
-  if (saga) {
-    const full = await getSaga(supabase, saga.sagaId);
+  if (mainSaga) {
+    const full = await getSaga(supabase, mainSaga.sagaId);
     sagaMembers = full?.members ?? [];
   }
+  const sagaPosition = (s: SagaMembership) =>
+    s.position !== null && s.total > 0
+      ? tDetail("sagaPosition", { position: s.position, total: s.total })
+      : null;
 
   return (
     <ItemDetailTabs
@@ -400,7 +408,7 @@ async function BookTabs({
             coverUrl: book.cover_url,
           }}
           editions={editions}
-          saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+          saga={mainSaga ? { id: mainSaga.sagaId, name: mainSaga.name } : null}
           canContribute={canContribute}
         >
           {/* Orden del mockup (frame 1): sagas → sinopsis → ficha →
@@ -409,15 +417,29 @@ async function BookTabs({
               izquierda, la ficha en la de 340. */}
           <div className="lg:grid lg:grid-cols-[1fr_340px] lg:items-start lg:gap-11">
             <div className="flex flex-col gap-10">
-              {saga && sagaMembers.length >= 1 && (
-                <SagaStrip
-                  members={sagaMembers}
-                  currentType="book"
-                  currentId={book.id}
-                  sagaId={saga.sagaId}
-                  sagaName={saga.name}
-                  label={tDetail("saga")}
-                />
+              {sagas.length > 0 && (
+                <section className="flex flex-col gap-3.5">
+                  <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                    {tDetail("sagasCount", { count: sagas.length })}
+                  </span>
+                  {mainSaga && sagaMembers.length >= 1 && (
+                    <div className="lg:hidden">
+                      <SagaStrip
+                        members={sagaMembers}
+                        currentType="book"
+                        currentId={book.id}
+                        sagaId={mainSaga.sagaId}
+                        sagaName={mainSaga.name}
+                        positionLabel={sagaPosition(mainSaga)}
+                      />
+                    </div>
+                  )}
+                  <SagaList
+                    itemType="book"
+                    sagas={sagas}
+                    positionLabel={sagaPosition}
+                  />
+                </section>
               )}
               <InfoPanel
                 aboutLabel={tDetail("about")}

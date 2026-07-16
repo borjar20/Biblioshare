@@ -9,11 +9,13 @@ export type Saga = {
   tmdbCollectionId: number | null;
 };
 
-// Pertenencia de un ítem a una saga (para la chip de la ficha).
+// Pertenencia de un ítem a una saga.
 export type SagaMembership = {
   sagaId: string;
   name: string;
   position: number | null;
+  /** Obras que tiene la saga, para el "nº 4 de 20" de la ficha. */
+  total: number;
 };
 
 // Miembro de una saga (para la vista de saga).
