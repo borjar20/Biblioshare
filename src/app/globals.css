@@ -10,6 +10,10 @@
   --surface: #fffdf8;
   --surface-muted: #ece3d4;
   --foreground: #2c2620;
+  /* Prosa larga (reseñas, texto del feed, sinopsis): un peldaño más suave que
+     --foreground, pero sin llegar a --muted-foreground, que es para etiquetas.
+     En las maquetas va suelto — es el `.tx`/`.syn`/`.review .tx` del handoff. */
+  --foreground-soft: #584f43;
   --muted-foreground: #877e70;
   --border: rgba(44, 20, 32, 0.14);
   --scrim: rgba(44, 38, 32, 0.45);
@@ -46,6 +50,7 @@
   --surface: #2a231d;
   --surface-muted: #332b23;
   --foreground: #f0e8db;
+  --foreground-soft: #cabfb0;
   --muted-foreground: #a99e8c;
   --border: rgba(240, 232, 219, 0.12);
   --scrim: rgba(12, 9, 7, 0.6);
@@ -81,6 +86,7 @@
     --surface: #2a231d;
     --surface-muted: #332b23;
     --foreground: #f0e8db;
+    --foreground-soft: #cabfb0;
     --muted-foreground: #a99e8c;
     --border: rgba(240, 232, 219, 0.12);
     --scrim: rgba(12, 9, 7, 0.6);
@@ -116,6 +122,7 @@
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-scrim: var(--scrim);

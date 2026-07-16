@@ -17,8 +17,8 @@ export type NavItem = {
 };
 
 // Fuente única de la navegación (§IA del rediseño Paper). La barra inferior
-// (móvil) y la lateral (sm+) renderizan exactamente esto: si cambia una
-// entrada, cambia en las dos.
+// (móvil) y la topbar (sm+) salen de aquí: si cambia una entrada, cambia en
+// las dos.
 export function navItems(username: string): NavItem[] {
   return [
     { key: "home", href: "/", labelKey: "home", Icon: HomeIcon },
@@ -37,6 +37,14 @@ export function navItems(username: string): NavItem[] {
       Icon: UserIcon,
     },
   ];
+}
+
+// La topbar de escritorio solo lleva las cuatro primeras: Perfil no es un
+// enlace más, sino el avatar de la derecha. Es lo que dan los cuatro frames de
+// escritorio del handoff (Home B, Colección C, Buscar C, Perfil C), todos
+// iguales; en móvil la tabbar sí conserva las cinco.
+export function primaryNavItems(username: string): NavItem[] {
+  return navItems(username).filter((item) => item.key !== "profile");
 }
 
 // Una entrada está activa si la ruta coincide o cuelga de ella. "/" es

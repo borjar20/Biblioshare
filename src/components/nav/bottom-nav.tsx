@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { navItems, isNavItemActive } from "./nav-items";
 
-// Barra inferior (solo móvil). En sm+ la sustituye SideNav.
+// Barra inferior (solo móvil). En sm+ la sustituyen las entradas de la topbar
+// (TopNav) más el avatar; aquí Perfil sí es una entrada más, como la tabbar de
+// las maquetas de móvil.
 export function BottomNav({ username }: { username: string }) {
   const t = useTranslations("nav.items");
   const pathname = usePathname();
