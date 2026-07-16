@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
@@ -52,6 +54,21 @@ export async function generateMetadata({
   return { title: book ? `${book.title} — Biblioshare` : "Biblioshare" };
 }
 
+type Supa = Awaited<ReturnType<typeof createClient>>;
+
+function fetchBook(supabase: Supa, id: string) {
+  return supabase
+    .from("books")
+    .select(
+      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
+}
+
+type BookRow = NonNullable<Awaited<ReturnType<typeof fetchBook>>["data"]>;
+type Community = Awaited<ReturnType<typeof getCommunity>>;
+
 export default async function BookDetailPage({
   params,
   searchParams,
@@ -62,7 +79,6 @@ export default async function BookDetailPage({
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
@@ -71,26 +87,9 @@ export default async function BookDetailPage({
     {
       data: { user },
     },
-  ] = await Promise.all([
-    supabase
-      .from("books")
-      .select(
-        "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at",
-      )
-      .eq("id", id)
-      .maybeSingle(),
-    supabase.auth.getUser(),
-  ]);
+  ] = await Promise.all([fetchBook(supabase, id), supabase.auth.getUser()]);
 
   if (!book) notFound();
-
-  // Créditos (autor): backfill puntual de personas, no una API externa
-  // paginada, así que esperarlo no rompe el contrato de "la ficha no bloquea
-  // nunca" — y getItemCredits, más abajo, necesita que ya haya escrito.
-  await ensureItemEnriched(supabase, "book", {
-    id: book.id,
-    author: book.author,
-  });
 
   // Hidratación de la OBRA (sinopsis y géneros desde /works/<key>.json): se
   // resuelve en after() porque es una API externa que escribe. Lo normal es
@@ -117,6 +116,97 @@ export default async function BookDetailPage({
     );
   }
 
+  // Lo mínimo para pintar el hero: la nota media de la comunidad y el estado
+  // del pase activo. Todo lo demás (créditos, saga, ediciones, pases, sesiones,
+  // colas) vive en las pestañas y llega por streaming — Fase B del plan de
+  // navegación: la primera visita ya no espera al backfill ni a las ediciones.
+  const [community, activeStatus] = await Promise.all([
+    getCommunity(supabase, "book", book.id),
+    user
+      ? supabase
+          .from("passes")
+          .select("status")
+          .eq("user_id", user.id)
+          .eq("item_type", "book")
+          .eq("item_id", book.id)
+          .eq("is_active", true)
+          .maybeSingle()
+          .then(({ data }) => (data?.status as MediaStatus | undefined) ?? null)
+      : Promise.resolve(null),
+  ]);
+
+  // El byline del hero sale de la propia fila (autor + año): los créditos
+  // enriquecidos dan el mismo texto y no merece la pena bloquear el hero por
+  // ellos — se usan dentro de las pestañas para enlazar a la ficha del autor.
+  const byline =
+    [
+      book.author || null,
+      book.published_year ? String(book.published_year) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
+
+  const genres = book.genres ?? [];
+
+  return (
+    <div className="flex flex-col">
+      <ItemHero
+        itemType="book"
+        mediaLabel={tDetail("mediaLabel.book")}
+        title={book.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={book.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={
+          activeStatus ? (
+            <StatusBadge
+              status={activeStatus}
+              label={tLibrary(`status.${activeStatus}`)}
+            />
+          ) : null
+        }
+      />
+
+      <Suspense fallback={<ItemTabsSkeleton />}>
+        <BookTabs
+          book={book}
+          userId={user?.id ?? null}
+          community={community}
+          cerrar={cerrar}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+// Las pestañas: aquí vive todo lo pesado (backfill de personas, créditos, saga,
+// ediciones, pases, sesiones y colas), detrás del <Suspense> del hero.
+async function BookTabs({
+  book,
+  userId,
+  community,
+  cerrar,
+}: {
+  book: BookRow;
+  userId: string | null;
+  community: Community;
+  cerrar?: string;
+}) {
+  const supabase = await createClient();
+  const tDetail = await getTranslations("detail");
+  const tMeta = await getTranslations("detail.meta");
+
+  // Créditos (autor): backfill puntual de personas, no una API externa
+  // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
+  await ensureItemEnriched(supabase, "book", {
+    id: book.id,
+    author: book.author,
+  });
+
   const [credits, saga, editions] = await Promise.all([
     getItemCredits(supabase, "book", book.id),
     getItemSaga(supabase, "book", book.id),
@@ -134,7 +224,7 @@ export default async function BookDetailPage({
       isbn: book.isbn,
       editions_synced_at: book.editions_synced_at,
     },
-    Boolean(user),
+    Boolean(userId),
   );
   // Autores como enlaces a su ficha; si no se pudo enriquecer, texto plano.
   const authorCredits = credits.crew.filter((c) => c.role === "author");
@@ -143,7 +233,7 @@ export default async function BookDetailPage({
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
   let queues: Queue[] = [];
-  if (user) {
+  if (userId) {
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
     // status/rating/position/queue_id viven en diary_entries, library_entries
     // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
@@ -152,7 +242,7 @@ export default async function BookDetailPage({
     const { data: row } = await supabase
       .from("passes")
       .select("id, status, rating, position, queue_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("item_type", "book")
       .eq("item_id", book.id)
       .eq("is_active", true)
@@ -175,7 +265,7 @@ export default async function BookDetailPage({
       // 4): en una relectura, las sesiones de la lectura anterior no deben
       // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
       // va primero: getSessions necesita saber cuál es el pase abierto.
-      passes = await getPasses(supabase, "book", book.id, user.id);
+      passes = await getPasses(supabase, "book", book.id, userId);
       // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
       // segundo caso, la lista de sesiones de un libro leído se quedaría vacía
       // para siempre: getPasses ordena el abierto primero y luego los cerrados
@@ -184,7 +274,7 @@ export default async function BookDetailPage({
         passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
       sessions = await getSessions(supabase, currentPassId, "book");
     }
-    queues = await getQueues(supabase, user.id);
+    queues = await getQueues(supabase, userId);
   }
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
@@ -199,7 +289,7 @@ export default async function BookDetailPage({
     cerrar && cerrar === activePassId ? cerrar : null;
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
-  const canContribute = user
+  const canContribute = userId
     ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
     : false;
 
@@ -209,14 +299,6 @@ export default async function BookDetailPage({
       : book.author
         ? [book.author]
         : [];
-
-  const byline =
-    [
-      authorNames.join(", ") || null,
-      book.published_year ? String(book.published_year) : null,
-    ]
-      .filter(Boolean)
-      .join(" · ") || null;
 
   // Editorial, páginas e ISBN son datos de la EDICIÓN (tirada concreta), no
   // de la obra: se muestran en el panel de la edición (EditionDetails), no
@@ -231,7 +313,6 @@ export default async function BookDetailPage({
     });
 
   const genres = book.genres ?? [];
-  const community = await getCommunity(supabase, "book", book.id);
 
   let sagaMembers: SagaMember[] = [];
   if (saga) {
@@ -240,28 +321,6 @@ export default async function BookDetailPage({
   }
 
   return (
-    <div className="flex flex-col">
-      <ItemHero
-        itemType="book"
-        mediaLabel={tDetail("mediaLabel.book")}
-        title={book.title}
-        byline={byline}
-        genres={genres}
-        coverUrl={book.cover_url}
-        avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
-        backLabel={tDetail("back")}
-        statusSlot={
-          entry ? (
-            <StatusBadge
-              status={entry.status}
-              label={tLibrary(`status.${entry.status}`)}
-            />
-          ) : null
-        }
-      />
-
       <ItemDetailTabs
         itemType="book"
         labels={{
@@ -324,7 +383,7 @@ export default async function BookDetailPage({
           <CommunityPanel
             itemType="book"
             community={community}
-            viewerLoggedIn={Boolean(user)}
+            viewerLoggedIn={Boolean(userId)}
           />
         }
         log={
@@ -342,6 +401,5 @@ export default async function BookDetailPage({
           </div>
         }
       />
-    </div>
   );
 }

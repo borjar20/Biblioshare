@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
+import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
 import { listClubActivities } from "@/lib/clubs/activities/core";
 import { getUpcomingCheckpoints } from "@/lib/clubs/activities/upcoming";
@@ -73,21 +75,11 @@ export default async function ClubPage({
   const tab: ClubTab =
     requested === "gestion" && !canModerate ? "feed" : (requested ?? "feed");
 
-  const [initialPage, activities] = await Promise.all([
-    isMember && tab === "feed"
-      ? listClubPosts(club.id)
-      : Promise.resolve({ posts: [], nextCursor: null }),
-    isMember ? listClubActivities(club.id) : Promise.resolve([]),
-  ]);
-
-  const upcoming =
-    isMember && tab === "feed" ? await getUpcomingCheckpoints(club.id) : [];
-
-  // Abrir el feed es haberlo leído: a partir de aquí, las novedades se cuentan
-  // desde ahora. Solo en el feed — mirar la pestaña de Gestión no es ponerse al
-  // día con la conversación del club.
-  if (isMember && tab === "feed") await markClubRead(club.id);
-
+  // La cabecera y las pestañas (con su badge) forman el shell: solo necesitan
+  // el club y el recuento de actividades. El contenido pesado de cada pestaña
+  // —posts del feed, próximos hitos, solicitudes de entrada— llega por
+  // streaming detrás de su <Suspense> (Fase B del plan de navegación).
+  const activities = isMember ? await listClubActivities(club.id) : [];
   const pendingProposals = activities.filter(
     (a) => a.status === "proposed",
   ).length;
@@ -108,19 +100,13 @@ export default async function ClubPage({
           />
 
           {tab === "feed" && (
-            <>
-              <ClubSummary
+            <Suspense fallback={<ClubContentSkeleton />}>
+              <ClubFeedSection
+                club={club}
+                userId={user.id}
                 activities={activities}
-                upcoming={upcoming}
-                clubSlug={club.slug}
               />
-              <ClubFeed
-                clubId={club.id}
-                viewerId={user.id}
-                viewerRole={club.viewerRole!}
-                initialPage={initialPage}
-              />
-            </>
+            </Suspense>
           )}
 
           {tab === "actividades" && (
@@ -133,17 +119,96 @@ export default async function ClubPage({
           )}
 
           {tab === "gestion" && canModerate && (
-            <ClubManagement
-              clubId={club.id}
-              clubSlug={club.slug}
-              viewerId={user.id}
-              viewerRole={club.viewerRole as "moderator" | "owner"}
-              initialActivities={activities}
-              initialJoinRequests={await listJoinRequests(club.id)}
-            />
+            <Suspense fallback={<ClubContentSkeleton />}>
+              <ClubManagementSection
+                club={club}
+                userId={user.id}
+                activities={activities}
+              />
+            </Suspense>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+type ClubDetail = NonNullable<Awaited<ReturnType<typeof getClub>>>;
+type ClubActivities = Awaited<ReturnType<typeof listClubActivities>>;
+
+// Feed del club: posts + próximos hitos, y marcar el club como leído. Aislado
+// en su boundary para que la cabecera y las pestañas pinten sin esperarlo.
+async function ClubFeedSection({
+  club,
+  userId,
+  activities,
+}: {
+  club: ClubDetail;
+  userId: string;
+  activities: ClubActivities;
+}) {
+  const [initialPage, upcoming] = await Promise.all([
+    listClubPosts(club.id),
+    getUpcomingCheckpoints(club.id),
+  ]);
+  // Abrir el feed es haberlo leído: a partir de aquí, las novedades se cuentan
+  // desde ahora.
+  await markClubRead(club.id);
+
+  return (
+    <>
+      <ClubSummary
+        activities={activities}
+        upcoming={upcoming}
+        clubSlug={club.slug}
+      />
+      <ClubFeed
+        clubId={club.id}
+        viewerId={userId}
+        viewerRole={club.viewerRole!}
+        initialPage={initialPage}
+      />
+    </>
+  );
+}
+
+// Gestión: las solicitudes de entrada se consultan aquí para no bloquear el
+// shell.
+async function ClubManagementSection({
+  club,
+  userId,
+  activities,
+}: {
+  club: ClubDetail;
+  userId: string;
+  activities: ClubActivities;
+}) {
+  const joinRequests = await listJoinRequests(club.id);
+  return (
+    <ClubManagement
+      clubId={club.id}
+      clubSlug={club.slug}
+      viewerId={userId}
+      viewerRole={club.viewerRole as "moderator" | "owner"}
+      initialActivities={activities}
+      initialJoinRequests={joinRequests}
+    />
+  );
+}
+
+// Fallback de contenido del club: un par de tarjetas skeleton.
+function ClubContentSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <SkeletonCard>
+        <SkeletonLine className="mb-3 w-32" />
+        <Skeleton className="h-20 w-full rounded-lg" />
+      </SkeletonCard>
+      <SkeletonCard>
+        <SkeletonLine className="mb-3 w-24" />
+        <SkeletonLine className="w-full" />
+        <SkeletonLine className="mt-2 w-3/4" />
+      </SkeletonCard>
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
@@ -56,6 +58,21 @@ export async function generateMetadata({
   return { title: series ? `${series.title} — Biblioshare` : "Biblioshare" };
 }
 
+type Supa = Awaited<ReturnType<typeof createClient>>;
+
+function fetchSeries(supabase: Supa, id: string) {
+  return supabase
+    .from("series")
+    .select(
+      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id",
+    )
+    .eq("id", id)
+    .maybeSingle();
+}
+
+type SeriesRow = NonNullable<Awaited<ReturnType<typeof fetchSeries>>["data"]>;
+type Community = Awaited<ReturnType<typeof getCommunity>>;
+
 export default async function SeriesDetailPage({
   params,
   searchParams,
@@ -65,9 +82,7 @@ export default async function SeriesDetailPage({
 }) {
   const { id } = await params;
   const { cerrar } = await searchParams;
-  const t = await getTranslations("item");
   const tDetail = await getTranslations("detail");
-  const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
@@ -76,18 +91,90 @@ export default async function SeriesDetailPage({
     {
       data: { user },
     },
-  ] = await Promise.all([
-    supabase
-      .from("series")
-      .select(
-        "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id",
-      )
-      .eq("id", id)
-      .maybeSingle(),
-    supabase.auth.getUser(),
-  ]);
+  ] = await Promise.all([fetchSeries(supabase, id), supabase.auth.getUser()]);
 
   if (!series) notFound();
+
+  // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
+  // resto (sincronización de episodios con TMDB, plataformas, reparto, saga,
+  // pases) llega por streaming en las pestañas — Fase B del plan de navegación.
+  const [community, activeStatus] = await Promise.all([
+    getCommunity(supabase, "series", series.id),
+    user
+      ? supabase
+          .from("passes")
+          .select("status")
+          .eq("user_id", user.id)
+          .eq("item_type", "series")
+          .eq("item_id", series.id)
+          .eq("is_active", true)
+          .maybeSingle()
+          .then(({ data }) => (data?.status as MediaStatus | undefined) ?? null)
+      : Promise.resolve(null),
+  ]);
+
+  const byline =
+    [
+      series.creator || null,
+      series.release_year ? String(series.release_year) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
+
+  const genres = series.genres ?? [];
+
+  return (
+    <div className="flex flex-col">
+      <ItemHero
+        itemType="series"
+        mediaLabel={tDetail("mediaLabel.series")}
+        title={series.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={series.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={
+          activeStatus ? (
+            <StatusBadge
+              status={activeStatus}
+              label={tLibrary(`status.${activeStatus}`)}
+            />
+          ) : null
+        }
+      />
+
+      <Suspense fallback={<ItemTabsSkeleton />}>
+        <SeriesTabs
+          series={series}
+          userId={user?.id ?? null}
+          community={community}
+          cerrar={cerrar}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+// Las pestañas: sincronización de episodios (TMDB), plataformas, reparto,
+// saga, pases y la rejilla de episodios — todo detrás del <Suspense> del hero.
+async function SeriesTabs({
+  series,
+  userId,
+  community,
+  cerrar,
+}: {
+  series: SeriesRow;
+  userId: string | null;
+  community: Community;
+  cerrar?: string;
+}) {
+  const supabase = await createClient();
+  const t = await getTranslations("item");
+  const tDetail = await getTranslations("detail");
+  const tMeta = await getTranslations("detail.meta");
 
   await ensureItemEnriched(supabase, "series", {
     id: series.id,
@@ -109,7 +196,7 @@ export default async function SeriesDetailPage({
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
   let queues: Queue[] = [];
-  if (user) {
+  if (userId) {
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
     // status/rating/position/queue_id viven en diary_entries, library_entries
     // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
@@ -118,7 +205,7 @@ export default async function SeriesDetailPage({
     const { data: row } = await supabase
       .from("passes")
       .select("id, status, rating, position, queue_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("item_type", "series")
       .eq("item_id", series.id)
       .eq("is_active", true)
@@ -141,7 +228,7 @@ export default async function SeriesDetailPage({
       // 4): en una relectura, las sesiones de la lectura anterior no deben
       // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
       // va primero: getSessions necesita saber cuál es el pase abierto.
-      passes = await getPasses(supabase, "series", series.id, user.id);
+      passes = await getPasses(supabase, "series", series.id, userId);
       // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
       // segundo caso, la lista de sesiones de una serie vista se quedaría vacía
       // para siempre: getPasses ordena el abierto primero y luego los cerrados
@@ -150,7 +237,7 @@ export default async function SeriesDetailPage({
         passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
       sessions = await getSessions(supabase, currentPassId, "series");
     }
-    queues = await getQueues(supabase, user.id);
+    queues = await getQueues(supabase, userId);
   }
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
@@ -160,15 +247,7 @@ export default async function SeriesDetailPage({
   const initialClosingPassId =
     cerrar && cerrar === activePassId ? cerrar : null;
 
-  const byline =
-    [
-      series.creator || null,
-      series.release_year ? String(series.release_year) : null,
-    ]
-      .filter(Boolean)
-      .join(" · ") || null;
-
-  const canContribute = user
+  const canContribute = userId
     ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
     : false;
 
@@ -192,9 +271,8 @@ export default async function SeriesDetailPage({
   // El pase activo ya se calculó arriba (`activePassId`) para validar
   // `?cerrar`: la pestaña Episodios lo reutiliza para separar la capa cursor
   // (este pase) de "visto alguna vez" (Tarea 8, hub).
-  const [community, episodeData, episodeReviews] = await Promise.all([
-    getCommunity(supabase, "series", series.id),
-    getEpisodeData(supabase, series.id, user?.id ?? null, activePassId),
+  const [episodeData, episodeReviews] = await Promise.all([
+    getEpisodeData(supabase, series.id, userId, activePassId),
     getEpisodeReviews(supabase, series.id),
   ]);
 
@@ -213,28 +291,6 @@ export default async function SeriesDetailPage({
   }
 
   return (
-    <div className="flex flex-col">
-      <ItemHero
-        itemType="series"
-        mediaLabel={tDetail("mediaLabel.series")}
-        title={series.title}
-        byline={byline}
-        genres={genres}
-        coverUrl={series.cover_url}
-        avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
-        backLabel={tDetail("back")}
-        statusSlot={
-          entry ? (
-            <StatusBadge
-              status={entry.status}
-              label={tLibrary(`status.${entry.status}`)}
-            />
-          ) : null
-        }
-      />
-
       <ItemDetailTabs
         itemType="series"
         labels={{
@@ -299,7 +355,7 @@ export default async function SeriesDetailPage({
             <EpisodePanel
               seriesId={series.id}
               seasons={seasonGroups}
-              isLoggedIn={Boolean(user)}
+              isLoggedIn={Boolean(userId)}
             />
           ) : undefined
         }
@@ -309,7 +365,7 @@ export default async function SeriesDetailPage({
               itemType="series"
               community={community}
               episodeReviews={episodeReviews}
-              viewerLoggedIn={Boolean(user)}
+              viewerLoggedIn={Boolean(userId)}
             />
           </div>
         }
@@ -328,6 +384,5 @@ export default async function SeriesDetailPage({
           />
         }
       />
-    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -6,6 +7,7 @@ import { getFeed } from "@/lib/social/feed";
 import { getFollowCounts } from "@/lib/social/follows";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
+import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
@@ -54,14 +56,10 @@ export default async function Home({
     : undefined;
   const reviewsOnly = reviewsOnlyParam === "1";
 
-  const [feedPage, counts] = await Promise.all([
-    getFeed(supabase, user.id, {
-      itemType,
-      reviewsOnly,
-      pageSize: 20,
-    }),
-    getFollowCounts(supabase, user.id),
-  ]);
+  // Shell inmediato (título + contador + filtros); el feed —la consulta lenta—
+  // llega por streaming detrás de su <Suspense> (Fase B). El contador de
+  // seguidos es una cuenta ligera, se espera aquí.
+  const counts = await getFollowCounts(supabase, user.id);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -76,14 +74,41 @@ export default async function Home({
 
       <FeedFilters itemType={itemType} reviewsOnly={reviewsOnly} />
 
-      <FeedList
+      <Suspense
         key={`${itemType ?? "all"}:${reviewsOnly ? 1 : 0}`}
-        initialEvents={feedPage.events}
-        initialCursor={feedPage.nextCursor}
-        itemType={itemType}
-        reviewsOnly={reviewsOnly}
-        viewerLoggedIn={true}
-      />
+        fallback={<FeedListSkeleton count={4} />}
+      >
+        <FeedSection itemType={itemType} reviewsOnly={reviewsOnly} userId={user.id} />
+      </Suspense>
     </div>
+  );
+}
+
+// El feed: la consulta pesada, aislada en su propio boundary para que el shell
+// pinte sin esperarla.
+async function FeedSection({
+  itemType,
+  reviewsOnly,
+  userId,
+}: {
+  itemType?: ItemType;
+  reviewsOnly: boolean;
+  userId: string;
+}) {
+  const supabase = await createClient();
+  const feedPage = await getFeed(supabase, userId, {
+    itemType,
+    reviewsOnly,
+    pageSize: 20,
+  });
+
+  return (
+    <FeedList
+      initialEvents={feedPage.events}
+      initialCursor={feedPage.nextCursor}
+      itemType={itemType}
+      reviewsOnly={reviewsOnly}
+      viewerLoggedIn={true}
+    />
   );
 }

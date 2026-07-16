@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
@@ -50,6 +52,21 @@ export async function generateMetadata({
   return { title: movie ? `${movie.title} — Biblioshare` : "Biblioshare" };
 }
 
+type Supa = Awaited<ReturnType<typeof createClient>>;
+
+function fetchMovie(supabase: Supa, id: string) {
+  return supabase
+    .from("movies")
+    .select(
+      "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id",
+    )
+    .eq("id", id)
+    .maybeSingle();
+}
+
+type MovieRow = NonNullable<Awaited<ReturnType<typeof fetchMovie>>["data"]>;
+type Community = Awaited<ReturnType<typeof getCommunity>>;
+
 export default async function MovieDetailPage({
   params,
   searchParams,
@@ -60,7 +77,6 @@ export default async function MovieDetailPage({
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
@@ -69,18 +85,88 @@ export default async function MovieDetailPage({
     {
       data: { user },
     },
-  ] = await Promise.all([
-    supabase
-      .from("movies")
-      .select(
-        "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id",
-      )
-      .eq("id", id)
-      .maybeSingle(),
-    supabase.auth.getUser(),
-  ]);
+  ] = await Promise.all([fetchMovie(supabase, id), supabase.auth.getUser()]);
 
   if (!movie) notFound();
+
+  // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
+  // resto (reparto, plataformas de TMDB, saga, ediciones, pases) llega por
+  // streaming en las pestañas — Fase B del plan de navegación.
+  const [community, activeStatus] = await Promise.all([
+    getCommunity(supabase, "movie", movie.id),
+    user
+      ? supabase
+          .from("passes")
+          .select("status")
+          .eq("user_id", user.id)
+          .eq("item_type", "movie")
+          .eq("item_id", movie.id)
+          .eq("is_active", true)
+          .maybeSingle()
+          .then(({ data }) => (data?.status as MediaStatus | undefined) ?? null)
+      : Promise.resolve(null),
+  ]);
+
+  // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
+  // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
+  const byline =
+    [movie.director || null, movie.release_year ? String(movie.release_year) : null]
+      .filter(Boolean)
+      .join(" · ") || null;
+
+  const genres = movie.genres ?? [];
+
+  return (
+    <div className="flex flex-col">
+      <ItemHero
+        itemType="movie"
+        mediaLabel={tDetail("mediaLabel.movie")}
+        title={movie.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={movie.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={
+          activeStatus ? (
+            <StatusBadge
+              status={activeStatus}
+              label={tLibrary(`status.${activeStatus}`)}
+            />
+          ) : null
+        }
+      />
+
+      <Suspense fallback={<ItemTabsSkeleton />}>
+        <MovieTabs
+          movie={movie}
+          userId={user?.id ?? null}
+          community={community}
+          cerrar={cerrar}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+// Las pestañas: backfill de personas, plataformas de TMDB (API externa),
+// créditos, saga, ediciones y pases — todo detrás del <Suspense> del hero.
+async function MovieTabs({
+  movie,
+  userId,
+  community,
+  cerrar,
+}: {
+  movie: MovieRow;
+  userId: string | null;
+  community: Community;
+  cerrar?: string;
+}) {
+  const supabase = await createClient();
+  const tDetail = await getTranslations("detail");
+  const tMeta = await getTranslations("detail.meta");
 
   await ensureItemEnriched(supabase, "movie", {
     id: movie.id,
@@ -97,7 +183,7 @@ export default async function MovieDetailPage({
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];
   let queues: Queue[] = [];
-  if (user) {
+  if (userId) {
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
     // status/rating/position/queue_id viven en diary_entries, library_entries
     // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
@@ -106,7 +192,7 @@ export default async function MovieDetailPage({
     const { data: row } = await supabase
       .from("passes")
       .select("id, status, rating, position, queue_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("item_type", "movie")
       .eq("item_id", movie.id)
       .eq("is_active", true)
@@ -125,9 +211,9 @@ export default async function MovieDetailPage({
         notes: reviewRow?.review ?? null,
         queueId: row.queue_id,
       };
-      passes = await getPasses(supabase, "movie", movie.id, user.id);
+      passes = await getPasses(supabase, "movie", movie.id, userId);
     }
-    queues = await getQueues(supabase, user.id);
+    queues = await getQueues(supabase, userId);
   }
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
@@ -140,14 +226,7 @@ export default async function MovieDetailPage({
   const initialClosingPassId =
     cerrar && cerrar === activePassId ? cerrar : null;
 
-  // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
-  // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
-  const byline =
-    [movie.director || null, movie.release_year ? String(movie.release_year) : null]
-      .filter(Boolean)
-      .join(" · ") || null;
-
-  const canContribute = user
+  const canContribute = userId
     ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
     : false;
 
@@ -158,7 +237,6 @@ export default async function MovieDetailPage({
     metaRows.push({ label: tMeta("year"), value: String(movie.release_year) });
 
   const genres = movie.genres ?? [];
-  const community = await getCommunity(supabase, "movie", movie.id);
 
   let sagaMembers: SagaMember[] = [];
   if (saga) {
@@ -167,28 +245,6 @@ export default async function MovieDetailPage({
   }
 
   return (
-    <div className="flex flex-col">
-      <ItemHero
-        itemType="movie"
-        mediaLabel={tDetail("mediaLabel.movie")}
-        title={movie.title}
-        byline={byline}
-        genres={genres}
-        coverUrl={movie.cover_url}
-        avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
-        backLabel={tDetail("back")}
-        statusSlot={
-          entry ? (
-            <StatusBadge
-              status={entry.status}
-              label={tLibrary(`status.${entry.status}`)}
-            />
-          ) : null
-        }
-      />
-
       <ItemDetailTabs
         itemType="movie"
         labels={{
@@ -258,7 +314,7 @@ export default async function MovieDetailPage({
             <CommunityPanel
               itemType="movie"
               community={community}
-              viewerLoggedIn={Boolean(user)}
+              viewerLoggedIn={Boolean(userId)}
             />
           </div>
         }
@@ -275,6 +331,5 @@ export default async function MovieDetailPage({
           />
         }
       />
-    </div>
   );
 }
