@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { StarRating } from "@/components/ui/star-rating";
+import { PassProgress } from "./pass-progress";
 import { SessionList } from "@/components/session-list";
 import { StatusSegments } from "@/components/detail/status-segments";
 import { useItemStatus } from "@/components/detail/item-status-context";
@@ -93,6 +94,7 @@ export function LogPanel({
   editions,
   queues,
   initialClosingPassId,
+  workTotalUnits,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -107,13 +109,20 @@ export function LogPanel({
   // useSearchParams en cliente) y ya validado contra el pase activo. Ver el
   // comentario largo en ManagedLog.
   initialClosingPassId?: string | null;
+  /** Páginas de la OBRA: respaldo cuando la edición del pase no las trae.
+   *  Mismo criterio que addSession (src/lib/sessions/actions.ts), que valida
+   *  contra la edición si tiene páginas y si no contra books.total_pages. */
+  workTotalUnits?: number | null;
 }) {
   if (!entry) {
-    return <FollowButton itemType={itemType} itemId={itemId} editions={editions} />;
+    return (
+      <FollowButton itemType={itemType} itemId={itemId} editions={editions} />
+    );
   }
 
   return (
     <ManagedLog
+      workTotalUnits={workTotalUnits}
       itemType={itemType}
       itemId={itemId}
       entry={entry}
@@ -196,12 +205,15 @@ function FollowButton({
           {tEditions("unknownEdition")}
         </button>
       </div>
-      <p className="text-xs text-muted-foreground">{tEditions("unknownEditionHint")}</p>
+      <p className="text-xs text-muted-foreground">
+        {tEditions("unknownEditionHint")}
+      </p>
     </div>
   );
 }
 
 function ManagedLog({
+  workTotalUnits,
   itemType,
   itemId,
   entry,
@@ -211,6 +223,7 @@ function ManagedLog({
   queues,
   initialClosingPassId,
 }: {
+  workTotalUnits?: number | null;
   itemType: ItemType;
   itemId: string;
   entry: ManagedEntry;
@@ -274,11 +287,10 @@ function ManagedLog({
   // obligatorio: ItemDetailTabs solo monta la pestaña activa, sin él la ficha
   // abriría en "Información" y este componente ni existiría.
   const [closingPassId, setClosingPassId] = useState<string | null>(
-    initialClosingPassId
+    initialClosingPassId,
   );
-  const [prevInitialClosingPassId, setPrevInitialClosingPassId] = useState(
-    initialClosingPassId
-  );
+  const [prevInitialClosingPassId, setPrevInitialClosingPassId] =
+    useState(initialClosingPassId);
   if (initialClosingPassId !== prevInitialClosingPassId) {
     setPrevInitialClosingPassId(initialClosingPassId);
     if (initialClosingPassId) setClosingPassId(initialClosingPassId);
@@ -317,9 +329,9 @@ function ManagedLog({
   // así que cuando existe openPass son el mismo pase.
   const openPass = passes.find((p) => p.finishedOn === null) ?? null;
   const openPassEdition = openPass
-    ? (openPass.editionId
+    ? ((openPass.editionId
         ? (editions.find((e) => e.id === openPass.editionId) ?? null)
-        : null) ?? primaryEdition(editions)
+        : null) ?? primaryEdition(editions))
     : null;
 
   return (
@@ -377,6 +389,7 @@ function ManagedLog({
           entry={entry}
           openPass={openPass}
           openPassEdition={openPassEdition}
+          workTotalUnits={workTotalUnits}
           editions={editions}
         />
       )}
@@ -387,7 +400,9 @@ function ManagedLog({
           itemType={itemType}
           itemId={itemId}
           sessions={sessions}
-          editionLabel={openPassEdition ? formatEdition(openPassEdition, itemType) : null}
+          editionLabel={
+            openPassEdition ? formatEdition(openPassEdition, itemType) : null
+          }
         />
       )}
 
@@ -455,10 +470,12 @@ function ProgressBlock({
   openPass,
   openPassEdition,
   editions,
+  workTotalUnits,
 }: {
   itemType: ItemType;
   itemId: string;
   entry: { position: Position };
+  workTotalUnits?: number | null;
   openPass: Pass;
   openPassEdition: Edition | null;
   editions: Edition[];
@@ -521,128 +538,154 @@ function ProgressBlock({
       // Si no se puede borrar, en el peor caso se reintenta en la próxima
       // recarga: no rompe nada más.
     }
-    startTransition(() => setPassEdition(openPass.id, itemType, itemId, choice));
+    startTransition(() =>
+      setPassEdition(openPass.id, itemType, itemId, choice),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   let page: number | undefined;
-  if (itemType === "book" && "page" in entry.position && entry.position.page !== undefined) {
+  if (
+    itemType === "book" &&
+    "page" in entry.position &&
+    entry.position.page !== undefined
+  ) {
     page = entry.position.page;
   }
-  const totalPages = itemType === "book" ? (openPassEdition?.totalUnits ?? null) : null;
+  // La edición del pase manda; si no trae páginas (pasa, y mucho: OpenLibrary
+  // no siempre las da), cae al total de la obra. Mismo criterio que addSession.
+  const totalPages =
+    itemType === "book"
+      ? (openPassEdition?.totalUnits ?? workTotalUnits ?? null)
+      : null;
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface-muted p-3">
-      <span className="text-xs font-semibold text-foreground">
-        {t("progressTitle")}
-      </span>
+    <>
+      {/* La barra del pase va FUERA del panel y encima, como el .prg del
+          frame 3. Necesita total conocido: sin él no hay porcentaje que
+          enseñar ni cierre automático que avisar. */}
+      {page !== undefined && totalPages !== null && totalPages > 0 && (
+        <PassProgress itemType={itemType} page={page} total={totalPages} />
+      )}
 
-      {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
+      <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface-muted p-3">
+        <span className="text-xs font-semibold text-foreground">
+          {t("progressTitle")}
+        </span>
+
+        {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
           contestar (incluida la salida "No lo sé", que además se recuerda en
           localStorage para no repetirse en cada recarga). */}
-      {pendingEditionQuestion && (
-        <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
-          <span className="text-xs font-semibold text-foreground">
-            {tEditions("whichEditionReading")}
-          </span>
-          <div className="flex flex-col gap-1">
-            {editions.map((edition) => (
+        {pendingEditionQuestion && (
+          <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
+            <span className="text-xs font-semibold text-foreground">
+              {tEditions("whichEditionReading")}
+            </span>
+            <div className="flex flex-col gap-1">
+              {editions.map((edition) => (
+                <button
+                  key={edition.id}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    setAnswered(true);
+                    startTransition(() =>
+                      setPassEdition(openPass.id, itemType, itemId, edition.id),
+                    );
+                  }}
+                  className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
+                >
+                  {formatEdition(edition, itemType)}
+                </button>
+              ))}
               <button
-                key={edition.id}
                 type="button"
                 disabled={isPending}
                 onClick={() => {
+                  // "No lo sé" no fija edición: se recuerda por passId para
+                  // que no vuelva a preguntar en cada recarga (sí volverá a
+                  // preguntar si se abre un pase nuevo, p. ej. una relectura).
+                  writeEditionAsked(openPass.id);
                   setAnswered(true);
-                  startTransition(() =>
-                    setPassEdition(openPass.id, itemType, itemId, edition.id)
-                  );
                 }}
-                className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
+                className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
               >
-                {formatEdition(edition, itemType)}
+                {tEditions("unknownEdition")}
               </button>
-            ))}
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => {
-                // "No lo sé" no fija edición: se recuerda por passId para
-                // que no vuelva a preguntar en cada recarga (sí volverá a
-                // preguntar si se abre un pase nuevo, p. ej. una relectura).
-                writeEditionAsked(openPass.id);
-                setAnswered(true);
-              }}
-              className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
-            >
-              {tEditions("unknownEdition")}
-            </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {tEditions("unknownEditionHint")}
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            {tEditions("unknownEditionHint")}
-          </p>
-        </div>
-      )}
+        )}
 
-      <div className="flex flex-col gap-1">
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-          {tPasses("rating")}
-        </span>
-        <StarRating
-          value={rating}
-          onChange={(next) => {
-            setRating(next);
-            startTransition(() => ratePass(openPass.id, itemType, itemId, next));
-          }}
-          size="sm"
-        />
-      </div>
-
-      {page !== undefined && (
-        <p className="text-xs text-muted-foreground">
-          {totalPages !== null ? t("page", { page, total: totalPages }) : t("pageOnly", { page })}
-        </p>
-      )}
-
-      {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
-          pregunta pendiente de arriba está sin contestar, no repetimos el
-          mismo selector aquí abajo. */}
-      {itemType !== "series" && editions.length > 0 && !pendingEditionQuestion && (
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-            {t("edition")}
+            {tPasses("rating")}
           </span>
-          <Select
-            size="sm"
-            value={openPass.editionId ?? ""}
-            disabled={isPending}
-            onChange={(event) => {
-              const next = event.target.value || null;
+          <StarRating
+            value={rating}
+            onChange={(next) => {
+              setRating(next);
               startTransition(() =>
-                setPassEdition(openPass.id, itemType, itemId, next)
+                ratePass(openPass.id, itemType, itemId, next),
               );
             }}
-          >
-            <option value="">{t("noEdition")}</option>
-            {editions.map((edition) => (
-              <option key={edition.id} value={edition.id}>
-                {formatEdition(edition, itemType)}
-              </option>
-            ))}
-          </Select>
+            size="sm"
+          />
         </div>
-      )}
 
-      {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
+        {page !== undefined && (
+          <p className="text-xs text-muted-foreground">
+            {totalPages !== null
+              ? t("page", { page, total: totalPages })
+              : t("pageOnly", { page })}
+          </p>
+        )}
+
+        {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
+          pregunta pendiente de arriba está sin contestar, no repetimos el
+          mismo selector aquí abajo. */}
+        {itemType !== "series" &&
+          editions.length > 0 &&
+          !pendingEditionQuestion && (
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                {t("edition")}
+              </span>
+              <Select
+                size="sm"
+                value={openPass.editionId ?? ""}
+                disabled={isPending}
+                onChange={(event) => {
+                  const next = event.target.value || null;
+                  startTransition(() =>
+                    setPassEdition(openPass.id, itemType, itemId, next),
+                  );
+                }}
+              >
+                <option value="">{t("noEdition")}</option>
+                {editions.map((edition) => (
+                  <option key={edition.id} value={edition.id}>
+                    {formatEdition(edition, itemType)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+        {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
           abierto es siempre el activo (ver comentario de ManagedLog), así
           que openPass.id es el id correcto para la ruta. */}
-      {itemType !== "movie" && (
-        <Link
-          href={`/sesion/${openPass.id}`}
-          className="self-start text-xs text-muted-foreground underline hover:text-foreground"
-        >
-          {tSessions("add")}
-        </Link>
-      )}
-    </div>
+        {itemType !== "movie" && (
+          <Link
+            href={`/sesion/${openPass.id}`}
+            className="self-start text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            {tSessions("add")}
+          </Link>
+        )}
+      </div>
+    </>
   );
 }

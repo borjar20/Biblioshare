@@ -490,6 +490,7 @@ async function BookTabs({
           <LogPanel
             itemType="book"
             itemId={book.id}
+            workTotalUnits={book.total_pages}
             entry={entry}
             passes={passes}
             sessions={sessions}
