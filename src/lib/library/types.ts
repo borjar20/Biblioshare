@@ -24,4 +24,8 @@ export type LibraryItem = {
   rereadCount: number;
   // NULL = not pinned to the public profile. See docs/REQUIREMENTS.md §7.9.
   pinnedOrder: number | null;
+  // Id del pase ACTIVO de esta obra (diary_entries.is_active, §Tarea 7 hub):
+  // destino real de "/sesion/", que ya no acepta el id de library_entries.
+  // null solo en datos huérfanos (no debería pasar para una entrada seguida).
+  activePassId: string | null;
 };

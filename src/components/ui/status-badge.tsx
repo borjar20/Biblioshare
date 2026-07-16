@@ -22,13 +22,17 @@ export function StatusBadge({
         role="img"
         aria-label={label}
         title={label}
+        data-testid="status-badge"
         className={`inline-block h-2.5 w-2.5 rounded-full ring-2 ring-background ${STATUS_DOT_CLASSES[status]}`}
       />
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-foreground">
+    <span
+      data-testid="status-badge"
+      className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-foreground"
+    >
       <span
         className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASSES[status]}`}
       />

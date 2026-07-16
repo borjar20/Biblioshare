@@ -52,10 +52,13 @@ export async function generateMetadata({
 
 export default async function MovieDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
+  const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -95,26 +98,47 @@ export default async function MovieDetailPage({
   let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
+    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
+    // status/rating/position/queue_id viven en diary_entries, library_entries
+    // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
+    // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
+    // resuelve igualmente para no dejar el campo con un dato inventado.
     const { data: row } = await supabase
-      .from("library_entries")
-      .select("id, status, rating, position, notes, queue_id")
+      .from("passes")
+      .select("id, status, rating, position, queue_id")
       .eq("user_id", user.id)
       .eq("item_type", "movie")
       .eq("item_id", movie.id)
+      .eq("is_active", true)
       .maybeSingle();
     if (row) {
+      const { data: reviewRow } = await supabase
+        .from("pass_reviews")
+        .select("review")
+        .eq("id", row.id)
+        .maybeSingle();
       entry = {
         entryId: row.id,
         status: row.status as MediaStatus,
         rating: row.rating,
         position: parsePosition("movie", row.position),
-        notes: row.notes,
+        notes: reviewRow?.review ?? null,
         queueId: row.queue_id,
       };
-      passes = await getPasses(supabase, row.id);
+      passes = await getPasses(supabase, "movie", movie.id, user.id);
     }
     queues = await getQueues(supabase, user.id);
   }
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo. Las películas no generan
+  // sesiones (§7.14) así que este path solo importa por el manual "marcar
+  // completado", que no depende de la URL — se deja aquí por consistencia y
+  // para que un `?cerrar` forjado tampoco reabra nada.
+  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
+  const initialClosingPassId =
+    cerrar && cerrar === activePassId ? cerrar : null;
 
   // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
   // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
@@ -247,6 +271,7 @@ export default async function MovieDetailPage({
             sessions={[]}
             editions={editions}
             queues={queues}
+            initialClosingPassId={initialClosingPassId}
           />
         }
       />

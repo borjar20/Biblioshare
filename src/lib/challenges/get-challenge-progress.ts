@@ -6,11 +6,6 @@ import { loadGenres, loadSagaIds } from "./load-catalog-facets";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-type DiaryRow = {
-  finished_on: string;
-  library_entries: { item_type: ItemType; item_id: string };
-};
-
 // Computes progress for a set of challenges in one pass. Reads the user's
 // finished diary entries within the challenges' combined date span, then
 // enriches them with genres / saga memberships only when some challenge needs
@@ -33,19 +28,21 @@ export async function getChallengeProgress(
     challenges[0].endDate
   );
 
+  // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin join a
+  // library_entries.
   const { data: diary, error } = await supabase
-    .from("diary_entries")
-    .select("finished_on, library_entries!inner(item_type, item_id)")
+    .from("passes")
+    .select("finished_on, item_type, item_id")
     .eq("user_id", userId)
     .gte("finished_on", spanStart)
     .lte("finished_on", spanEnd);
 
   if (error) throw error;
 
-  const rows = (diary ?? []) as unknown as DiaryRow[];
+  const rows = (diary ?? []) as { finished_on: string; item_type: ItemType; item_id: string }[];
   const refs = rows.map((row) => ({
-    itemType: row.library_entries.item_type,
-    itemId: row.library_entries.item_id,
+    itemType: row.item_type,
+    itemId: row.item_id,
   }));
 
   const needsGenres = challenges.some((c) => c.criteria.genre);
@@ -57,10 +54,10 @@ export async function getChallengeProgress(
   ]);
 
   const items: CompletedItem[] = rows.map((row) => {
-    const key = `${row.library_entries.item_type}:${row.library_entries.item_id}`;
+    const key = `${row.item_type}:${row.item_id}`;
     return {
-      itemType: row.library_entries.item_type,
-      itemId: row.library_entries.item_id,
+      itemType: row.item_type,
+      itemId: row.item_id,
       finishedOn: row.finished_on,
       genres: genresByKey.get(key) ?? [],
       sagaIds: sagasByKey.get(key) ?? [],

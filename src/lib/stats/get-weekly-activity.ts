@@ -24,11 +24,15 @@ export async function getWeeklyActivity(
   }
   const rangeStart = days[0].date;
 
+  // Las sesiones cuelgan del pase (pass_id, §Tarea 9, hub); item_type ya no
+  // se resuelve vía library_entries sino uniendo con el propio pase — si no,
+  // las sesiones de pases nuevos (library_entry_id null) desaparecerían de
+  // esta tira.
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("session_date, duration_minutes, library_entries!inner(item_type)")
+    .select("session_date, duration_minutes, passes!inner(item_type)")
     .eq("user_id", userId)
-    .eq("library_entries.item_type", "book")
+    .eq("passes.item_type", "book")
     .gte("session_date", rangeStart)
     .lte("session_date", todayISO());
 

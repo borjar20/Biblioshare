@@ -19,7 +19,7 @@ async function resolveTargetOwner(
   targetId: string,
 ): Promise<string | null> {
   if (targetType === "diary_entry" || targetType === "episode_watch") {
-    const table = targetType === "diary_entry" ? "diary_entries" : "episode_watches";
+    const table = targetType === "diary_entry" ? "passes" : "episode_watches";
     const { data, error } = await supabase.from(table).select("user_id").eq("id", targetId).maybeSingle();
     if (error) throw error;
     return data?.user_id ?? null;

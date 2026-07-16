@@ -34,4 +34,4 @@ export function toMinutes(ms: number): number {
   return Math.round(ms / 60_000);
 }
 
-export const timerStorageKey = (entryId: string) => `biblioshare:timer:${entryId}`;
+export const timerStorageKey = (passId: string) => `biblioshare:timer:${passId}`;

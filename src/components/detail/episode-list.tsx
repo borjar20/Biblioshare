@@ -137,6 +137,7 @@ function EpisodeItem({
   isLoggedIn: boolean;
 }) {
   const t = useTranslations("episode");
+  const tPasses = useTranslations("passes");
   const [isPending, startTransition] = useTransition();
   const [watched, setWatched] = useState(episode.own.watched);
   const [rating, setRating] = useState<number | null>(episode.own.rating);
@@ -199,8 +200,21 @@ function EpisodeItem({
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="truncate text-sm font-medium text-foreground">
-            {episode.title ?? t("untitled")}
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            <span className="truncate text-sm font-medium text-foreground">
+              {episode.title ?? t("untitled")}
+            </span>
+            {/* Capa "visto alguna vez" (Tarea 8, hub): visto en un pase
+                distinto del activo (revisionado anterior) o en una fila
+                legado sin pase — atenuado a propósito, no es el cursor. */}
+            {source === "mine" && episode.own.seenBefore && (
+              <span
+                title={tPasses("seenBefore")}
+                className="shrink-0 rounded-full bg-muted-foreground/10 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground/70"
+              >
+                {tPasses("seenBefore")}
+              </span>
+            )}
           </span>
           <div className="flex shrink-0 items-center gap-2">
             <EpisodeRating
