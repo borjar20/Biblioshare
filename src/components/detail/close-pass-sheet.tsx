@@ -68,14 +68,18 @@ export function ClosePassSheet({
 
   // Tras un envío sin error cerramos la hoja llamando a dialog.close(): eso
   // dispara el evento nativo "close" (onClose={onClose} más abajo), que es
-  // quien de verdad avisa al padre. hasSubmitted evita cerrar en el montaje
-  // inicial, antes de que haya habido ningún envío.
-  const hasSubmitted = useRef(false);
+  // quien de verdad avisa al padre.
+  //
+  // "¿Ha habido envío ya?" se resuelve comparando la referencia con
+  // `initialState`: useActionState devuelve LA MISMA hasta que una acción
+  // resuelve. Antes esto era un `useRef` que se marcaba en la primera pasada
+  // del efecto, y StrictMode lo rompía: en desarrollo React invoca los efectos
+  // dos veces y el ref sobrevive entre ambas, así que la segunda pasada creía
+  // que ya se había enviado y cerraba la hoja nada más abrirse (el auto-cierre
+  // al terminar un libro no llegaba a verse). El guard de abajo es idempotente,
+  // que es justo lo que la doble invocación exige.
   useEffect(() => {
-    if (!hasSubmitted.current) {
-      hasSubmitted.current = true;
-      return;
-    }
+    if (state === initialState) return;
     if (!state.error) dialogRef.current?.close();
   }, [state]);
 
