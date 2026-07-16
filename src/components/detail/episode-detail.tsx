@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
 import { formatDots } from "@/lib/rating/dots";
@@ -29,7 +28,7 @@ type DetailProps = {
   onSave: () => void;
 };
 
-// La línea `.em` del frame 11: duración · emitido · nota, en mono y apagada.
+// La línea `.em` de los frames: duración · emitido · nota, en mono y apagada.
 // Con fuente comunidad la nota es la media con sus votos; con "mis notas", la
 // propia — en texto plano /5, nada de ★ (dots en todo).
 function MetaLine({
@@ -69,13 +68,11 @@ function ReviewBox({
   onDraftChange,
   onSave,
   isPending,
-  tall = false,
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
   onSave: () => void;
   isPending: boolean;
-  tall?: boolean;
 }) {
   const t = useTranslations("episode");
   return (
@@ -84,9 +81,7 @@ function ReviewBox({
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
         placeholder={t("reviewPlaceholder")}
-        className={`w-full resize-none rounded-[9px] border border-border bg-surface-muted px-[11px] py-[9px] text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none lg:px-[13px] lg:py-[11px] lg:text-[13px] ${
-          tall ? "h-[70px]" : "h-14"
-        }`}
+        className="h-14 w-full resize-none rounded-[9px] border border-border bg-surface-muted px-[11px] py-[9px] text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none lg:h-[70px] lg:px-[13px] lg:py-[11px] lg:text-[13px]"
       />
       <button
         type="button"
@@ -100,8 +95,8 @@ function ReviewBox({
   );
 }
 
-// Desplegable inline del móvil (`.epi-detail` del frame 4): sinopsis y tu
-// reseña, sangrados hasta la columna del título.
+// El detalle del episodio (`.epi-detail`), desplegado bajo su fila: metadatos,
+// sinopsis y tu reseña, sangrados hasta la columna del título.
 export function EpisodeInlineDetail({
   episode,
   own,
@@ -128,81 +123,6 @@ export function EpisodeInlineDetail({
           isPending={isPending}
         />
       )}
-    </div>
-  );
-}
-
-// Tarjeta fija de PC (`.desk-epdetail` del frame 11): fotograma 16:9 con el
-// código del episodio encima, título en serif, la línea de metadatos y la
-// reseña. Se queda quieta a la derecha mientras recorres la lista — el mismo
-// gesto que el resumen de Comunidad.
-export function EpisodeDetailCard({
-  episode,
-  own,
-  source,
-  interactive,
-  isPending,
-  draft,
-  onDraftChange,
-  onSave,
-}: Omit<DetailProps, "episode" | "own" | "onSave"> & {
-  episode: EpisodeRow | null;
-  own: OwnWatch | null;
-  onSave?: () => void;
-}) {
-  const t = useTranslations("episode");
-
-  if (!episode || !own) {
-    return (
-      <div className="rounded-[12px] border border-border bg-surface p-[18px]">
-        <p className="text-[13px] text-muted-foreground">{t("selectHint")}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
-      <div className="relative aspect-video bg-surface-muted">
-        {episode.stillUrl && (
-          <Image
-            src={episode.stillUrl}
-            alt=""
-            fill
-            sizes="340px"
-            className="object-cover"
-          />
-        )}
-        <span className="absolute bottom-2.5 left-3 rounded-[5px] bg-black/45 px-2 py-[3px] font-mono text-[10px] tracking-[0.05em] text-white uppercase">
-          {t("codeLong", { s: episode.season, e: episode.episode })}
-        </span>
-      </div>
-      <div className="p-[18px]">
-        <h3 className="font-serif text-[19px] font-semibold text-foreground">
-          {episode.title ?? t("untitled")}
-        </h3>
-        <MetaLine
-          episode={episode}
-          own={own}
-          source={source}
-          className="mt-1.5 mb-3"
-        />
-        {episode.synopsis && (
-          <p className="text-[13.5px] leading-[1.6] text-foreground-soft">
-            {episode.synopsis}
-          </p>
-        )}
-        {interactive && (
-          <div className="mt-3.5">
-            <ReviewBox
-              draft={draft}
-              onDraftChange={onDraftChange}
-              onSave={onSave ?? (() => {})}
-              isPending={isPending}
-              tall
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

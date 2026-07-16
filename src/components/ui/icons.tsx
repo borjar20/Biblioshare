@@ -282,6 +282,14 @@ export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function ChevronLeftIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </Icon>
+  );
+}
+
 export function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
