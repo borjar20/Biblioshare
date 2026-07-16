@@ -135,6 +135,11 @@ function statusGroup(page: Page) {
 // distingue la píldora de solo lectura del control. El filtro es por
 // SUBcadena, así que casa con la etiqueta larga del hero ("En tu biblioteca ·
 // Leyendo").
+//
+// Ojo con el verbo: "en curso" y "completado" cambian por tipo de medio
+// (Leyendo/Viendo, Leído/Vista), como en el control. Los genéricos "En curso"
+// y "Completado" NO aparecen en la píldora; "Pendiente" y "Abandonado" sí,
+// que no tienen verbo propio.
 function statusBadge(page: Page, label: string) {
   return page.getByTestId("status-badge").filter({ hasText: label });
 }
@@ -312,7 +317,7 @@ test.describe
     await expect(
       page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
     ).toHaveCount(0);
-    await expect(statusBadge(page, "Completado")).toBeVisible({
+    await expect(statusBadge(page, "Leído")).toBeVisible({
       timeout: 15_000,
     });
   });
@@ -324,7 +329,7 @@ test.describe
     await login(page);
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});
-    await expect(statusBadge(page, "Completado")).toBeVisible({
+    await expect(statusBadge(page, "Leído")).toBeVisible({
       timeout: 15_000,
     });
 
@@ -506,7 +511,7 @@ test.describe("película de un gesto", () => {
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
       ).toHaveCount(0);
-      await expect(statusBadge(page, "Completado")).toBeVisible({
+      await expect(statusBadge(page, "Vista")).toBeVisible({
         timeout: 15_000,
       });
     } finally {
@@ -582,7 +587,7 @@ test.describe("serie con revisionado", () => {
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
       ).toHaveCount(0);
-      await expect(statusBadge(page, "Completado")).toBeVisible({
+      await expect(statusBadge(page, "Vista")).toBeVisible({
         timeout: 15_000,
       });
 
