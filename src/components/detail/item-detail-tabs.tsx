@@ -47,32 +47,47 @@ export function ItemDetailTabs({
     if (id === "info") params.delete("tab");
     else params.set("tab", id);
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
-      <div className="flex gap-6 border-b border-border">
-        {order.map((id) => {
-          const isActive = tab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => selectTab(id)}
-              className={`-mb-px border-b-2 px-1 pb-3 font-mono text-xs tracking-wider uppercase transition-colors ${
-                isActive
-                  ? `${accent.border} text-foreground`
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {labels[id]}
-            </button>
-          );
-        })}
+    <div className="flex flex-col">
+      {/* .tabs del mockup: sans semibold (NO el mono de las subtabs — aquí la
+          maqueta escribe Geist), subrayado de 2px del acento y barra pegada
+          bajo la topbar con blur sobre el fondo. */}
+      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-4xl gap-5 overflow-x-auto px-4 sm:px-6">
+          {order.map((id) => {
+            const isActive = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectTab(id)}
+                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {labels[id]}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="pt-6">{slots[tab]}</div>
+      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+        {slots[tab]}
+      </div>
     </div>
   );
 }

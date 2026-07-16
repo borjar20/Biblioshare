@@ -28,7 +28,10 @@ export async function Header({
   const t = await getTranslations("nav.items");
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:px-6">
+    // Altura fija (--topbar-h) en vez de crecer con el contenido: las
+    // pestañas de la ficha se pegan justo debajo con top-[var(--topbar-h)] y
+    // se solaparían si la topbar midiera otra cosa. Ver globals.css.
+    <header className="sticky top-0 z-20 flex h-[var(--topbar-h)] items-center justify-between gap-3 border-b border-border bg-background/90 px-4 backdrop-blur sm:px-6">
       <div className="flex min-w-0 items-center gap-6">
         <Link href="/" className="shrink-0">
           <Wordmark />

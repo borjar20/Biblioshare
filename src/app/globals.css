@@ -18,6 +18,14 @@
   --border: rgba(44, 20, 32, 0.14);
   --scrim: rgba(44, 38, 32, 0.45);
 
+  /* Altura de la topbar, que es sticky. Es una CONSTANTE porque hay barras
+     que se pegan justo debajo (las pestañas de la ficha) y necesitan saber
+     dónde acaba: header.tsx la impone con h-[var(--topbar-h)] en vez de
+     crecer con su contenido, así que este número no puede quedarse obsoleto.
+     Da para el elemento más alto que lleva (el avatar de 34px) más su
+     padding vertical y el borde. */
+  --topbar-h: 59px;
+
   --accent: #b0542f;
   --accent-foreground: #fff5ef;
   --accent-hover: #9a4526;
