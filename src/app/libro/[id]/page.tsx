@@ -13,7 +13,7 @@ import {
   CatalogEditor,
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
-import { ItemHero } from "@/components/detail/item-hero";
+import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { type MetaRow } from "@/components/detail/metadata-sidebar";
@@ -160,30 +160,29 @@ export default async function BookDetailPage({
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
-      <div className="flex flex-col">
-        <ItemHero
-          itemType="book"
-          mediaLabel={tDetail("mediaLabel.book")}
-          title={book.title}
-          byline={byline}
-          genres={genres}
-          coverUrl={book.cover_url}
-          avgRating={community.avgRating}
-          ratingCount={community.ratingCount}
-          ratingsLabel={tDetail("ratings")}
-          backLabel={tDetail("back")}
-          statusSlot={<StatusBadgeLive labels={statusLabels} />}
-        />
-
-        <Suspense fallback={<ItemTabsSkeleton />}>
-          <BookTabs
-            book={book}
-            userId={user?.id ?? null}
-            community={community}
-            cerrar={cerrar}
-          />
-        </Suspense>
-      </div>
+      <ItemShell
+        itemType="book"
+        mediaLabel={tDetail("mediaLabel.book")}
+        title={book.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={book.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        tabs={
+          <Suspense fallback={<ItemTabsSkeleton />}>
+            <BookTabs
+              book={book}
+              userId={user?.id ?? null}
+              community={community}
+              cerrar={cerrar}
+            />
+          </Suspense>
+        }
+      />
     </ItemStatusProvider>
   );
 }

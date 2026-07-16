@@ -10,7 +10,7 @@ import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
-import { ItemHero } from "@/components/detail/item-hero";
+import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import {
@@ -138,30 +138,29 @@ export default async function SeriesDetailPage({
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
-      <div className="flex flex-col">
-        <ItemHero
-          itemType="series"
-          mediaLabel={tDetail("mediaLabel.series")}
-          title={series.title}
-          byline={byline}
-          genres={genres}
-          coverUrl={series.cover_url}
-          avgRating={community.avgRating}
-          ratingCount={community.ratingCount}
-          ratingsLabel={tDetail("ratings")}
-          backLabel={tDetail("back")}
-          statusSlot={<StatusBadgeLive labels={statusLabels} />}
-        />
-
-        <Suspense fallback={<ItemTabsSkeleton />}>
-          <SeriesTabs
-            series={series}
-            userId={user?.id ?? null}
-            community={community}
-            cerrar={cerrar}
-          />
-        </Suspense>
-      </div>
+      <ItemShell
+        itemType="series"
+        mediaLabel={tDetail("mediaLabel.series")}
+        title={series.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={series.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        tabs={
+          <Suspense fallback={<ItemTabsSkeleton />}>
+            <SeriesTabs
+              series={series}
+              userId={user?.id ?? null}
+              community={community}
+              cerrar={cerrar}
+            />
+          </Suspense>
+        }
+      />
     </ItemStatusProvider>
   );
 }

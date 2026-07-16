@@ -10,7 +10,7 @@ import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
-import { ItemHero } from "@/components/detail/item-hero";
+import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { type MetaRow } from "@/components/detail/metadata-sidebar";
@@ -131,30 +131,29 @@ export default async function MovieDetailPage({
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
-      <div className="flex flex-col">
-        <ItemHero
-          itemType="movie"
-          mediaLabel={tDetail("mediaLabel.movie")}
-          title={movie.title}
-          byline={byline}
-          genres={genres}
-          coverUrl={movie.cover_url}
-          avgRating={community.avgRating}
-          ratingCount={community.ratingCount}
-          ratingsLabel={tDetail("ratings")}
-          backLabel={tDetail("back")}
-          statusSlot={<StatusBadgeLive labels={statusLabels} />}
-        />
-
-        <Suspense fallback={<ItemTabsSkeleton />}>
-          <MovieTabs
-            movie={movie}
-            userId={user?.id ?? null}
-            community={community}
-            cerrar={cerrar}
-          />
-        </Suspense>
-      </div>
+      <ItemShell
+        itemType="movie"
+        mediaLabel={tDetail("mediaLabel.movie")}
+        title={movie.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={movie.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        tabs={
+          <Suspense fallback={<ItemTabsSkeleton />}>
+            <MovieTabs
+              movie={movie}
+              userId={user?.id ?? null}
+              community={community}
+              cerrar={cerrar}
+            />
+          </Suspense>
+        }
+      />
     </ItemStatusProvider>
   );
 }
