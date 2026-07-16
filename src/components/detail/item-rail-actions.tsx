@@ -64,6 +64,10 @@ export function ItemRailActions({
       <Link
         href={`${pathname}?tab=log`}
         title={goToLogLabel}
+        // Mismo testid que la píldora del hero (status-badge.tsx): las dos son
+        // "el estado en modo lectura", cada una en su vista. El e2e busca la
+        // que esté VISIBLE, así no depende del breakpoint en que corra.
+        data-testid="status-badge"
         className="flex items-center gap-2.5 rounded-[10px] border border-border bg-surface px-[15px] py-[13px] text-sm font-semibold text-foreground transition-colors hover:bg-surface-muted"
       >
         <span

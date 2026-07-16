@@ -140,8 +140,14 @@ function statusGroup(page: Page) {
 // (Leyendo/Viendo, Leído/Vista), como en el control. Los genéricos "En curso"
 // y "Completado" NO aparecen en la píldora; "Pendiente" y "Abandonado" sí,
 // que no tienen verbo propio.
+// `:visible` porque el estado se pinta en DOS sitios según el ancho y el otro
+// se queda en el DOM apagado: la píldora del hero en móvil, la pastilla del
+// rail en PC (item-rail-actions.tsx). La suite corre a 1280 —o sea, la del
+// rail—, pero así el helper no depende de eso.
 function statusBadge(page: Page, label: string) {
-  return page.getByTestId("status-badge").filter({ hasText: label });
+  return page
+    .locator('[data-testid="status-badge"]:visible')
+    .filter({ hasText: label });
 }
 
 // "Seguir": con una sola edición (o ninguna) añade directo; con varias abre

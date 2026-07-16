@@ -25,7 +25,9 @@ test.describe("búsqueda e hidratación de libros", () => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
   test.setTimeout(90_000);
 
-  test("la búsqueda devuelve obras, no ediciones repetidas", async ({ page }) => {
+  test("la búsqueda devuelve obras, no ediciones repetidas", async ({
+    page,
+  }) => {
     await page.goto("/buscar?type=book&q=dune");
 
     await expect(page.getByText("Dune", { exact: true }).first()).toBeVisible({
@@ -34,8 +36,12 @@ test.describe("búsqueda e hidratación de libros", () => {
 
     // Una tarjeta por obra: los títulos de la saga aparecen UNA vez cada uno, no
     // repetidos como tiradas casi idénticas.
-    await expect(page.getByText("Dune Messiah", { exact: true })).toHaveCount(1);
-    await expect(page.getByText("Children of Dune", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Dune Messiah", { exact: true })).toHaveCount(
+      1,
+    );
+    await expect(
+      page.getByText("Children of Dune", { exact: true }),
+    ).toHaveCount(1);
 
     // El contador es el edition_count real de OpenLibrary (Dune tiene >100).
     await expect(page.getByText(/1\d\d ediciones/).first()).toBeVisible();
@@ -44,7 +50,9 @@ test.describe("búsqueda e hidratación de libros", () => {
     await expect(page.getByText(/págs\./)).toHaveCount(0);
   });
 
-  test("abrir un resultado nuevo crea la obra y la hidrata", async ({ page }) => {
+  test("abrir un resultado nuevo crea la obra y la hidrata", async ({
+    page,
+  }) => {
     await login(page);
 
     // Un título aún no visto: así la primera vez es garantizadamente un botón
@@ -67,16 +75,24 @@ test.describe("búsqueda e hidratación de libros", () => {
     // texto de "sin sinopsis".
     await expect(page.getByText(/sin sinopsis/i)).toHaveCount(0);
     // Al menos un género del vocabulario canónico, y nada del volcado crudo.
+    // `:visible` porque los géneros se pintan en dos sitios según el ancho (el
+    // hero en móvil, la ficha del cuerpo en PC) y el otro se queda en el DOM
+    // apagado — sin esto, `.first()` cazaba el oculto.
     await expect(
       page
         .getByText("Ciencia ficción")
         .or(page.getByText("Fantasía"))
+        .locator("visible=true")
         .first(),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/Protected DAISY|bestseller|nyt:/i)).toHaveCount(0);
+    await expect(
+      page.getByText(/Protected DAISY|bestseller|nyt:/i),
+    ).toHaveCount(0);
   });
 
-  test("el panel de la obra no muestra datos de la edición", async ({ page }) => {
+  test("el panel de la obra no muestra datos de la edición", async ({
+    page,
+  }) => {
     await login(page);
     await page.goto("/buscar?type=book&q=dune");
 
@@ -119,8 +135,12 @@ test.describe("búsqueda e hidratación de libros", () => {
 
     // Y el resto de obras de la búsqueda siguen presentes: un hit local ya NO
     // cortocircuita la API (lo que antes hacía desaparecer a Dune Messiah).
-    await expect(page.getByText("Dune Messiah", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Children of Dune", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("Dune Messiah", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Children of Dune", { exact: true }).first(),
+    ).toBeVisible();
   });
 
   test("un libro viejo sin hidratar se cura al abrirlo con sesión", async ({
@@ -197,7 +217,9 @@ test.describe("búsqueda e hidratación de libros", () => {
         // catálogo, así que pulsarla dispara openCatalogItem (nace la fila) y
         // esta SÍ es la primera visita a su ficha.
         const result = page
-          .getByRole("button", { name: /^The Left Hand of Darkness \d+ ediciones/ })
+          .getByRole("button", {
+            name: /^The Left Hand of Darkness \d+ ediciones/,
+          })
           .first();
         await expect(result).toBeVisible({ timeout: 20_000 });
         await result.click();
@@ -211,7 +233,9 @@ test.describe("búsqueda e hidratación de libros", () => {
         // otros botones con aria-pressed en la ficha, como los segmentos de
         // estado) y se exige el contador real ("N en esta ficha"), que el
         // fallback de carga (aria-hidden, sin texto) nunca pinta.
-        const editionsSection = page.locator("section").filter({ hasText: "Ediciones" });
+        const editionsSection = page
+          .locator("section")
+          .filter({ hasText: "Ediciones" });
         const streamed = await editionsSection
           .getByText(/\d+ en esta ficha/)
           .waitFor({ state: "visible", timeout: 30_000 })
@@ -263,7 +287,13 @@ test.describe("búsqueda e hidratación de libros", () => {
           (r) => r.is_primary && !r.publisher && !r.isbn && !r.total_pages,
         ),
       ).toBe(false);
-      console.log("EDICIONES OK:", bookId, "->", rows.length, "ediciones reales");
+      console.log(
+        "EDICIONES OK:",
+        bookId,
+        "->",
+        rows.length,
+        "ediciones reales",
+      );
     } finally {
       // fetch nativo, no el `request` de Playwright (ver club-join-request.spec.ts):
       // si el test expirase, ese fixture muere junto con el contexto y la
