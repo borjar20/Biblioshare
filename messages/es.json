@@ -594,7 +594,7 @@
       }
     },
     "watchProviders": {
-      "title": "Dónde verlo",
+      "title": "Dónde verla",
       "none": "No disponible en streaming por suscripción ahora mismo.",
       "attribution": "Datos de disponibilidad por JustWatch, vía TMDB"
     },
