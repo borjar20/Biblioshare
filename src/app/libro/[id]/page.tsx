@@ -54,10 +54,13 @@ export async function generateMetadata({
 
 export default async function BookDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cerrar?: string }>;
 }) {
   const { id } = await params;
+  const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
   const tLibrary = await getTranslations("library");
@@ -141,27 +144,38 @@ export default async function BookDetailPage({
   let passes: Pass[] = [];
   let queues: Queue[] = [];
   if (user) {
+    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
+    // status/rating/position/queue_id viven en diary_entries, library_entries
+    // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
+    // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
+    // resuelve igualmente para no dejar el campo con un dato inventado.
     const { data: row } = await supabase
-      .from("library_entries")
-      .select("id, status, rating, position, notes, queue_id")
+      .from("passes")
+      .select("id, status, rating, position, queue_id")
       .eq("user_id", user.id)
       .eq("item_type", "book")
       .eq("item_id", book.id)
+      .eq("is_active", true)
       .maybeSingle();
     if (row) {
+      const { data: reviewRow } = await supabase
+        .from("pass_reviews")
+        .select("review")
+        .eq("id", row.id)
+        .maybeSingle();
       entry = {
         entryId: row.id,
         status: row.status as MediaStatus,
         rating: row.rating,
         position: parsePosition("book", row.position),
-        notes: row.notes,
+        notes: reviewRow?.review ?? null,
         queueId: row.queue_id,
       };
       // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo
       // 4): en una relectura, las sesiones de la lectura anterior no deben
       // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
       // va primero: getSessions necesita saber cuál es el pase abierto.
-      passes = await getPasses(supabase, row.id);
+      passes = await getPasses(supabase, "book", book.id, user.id);
       // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
       // segundo caso, la lista de sesiones de un libro leído se quedaría vacía
       // para siempre: getPasses ordena el abierto primero y luego los cerrados
@@ -172,6 +186,17 @@ export default async function BookDetailPage({
     }
     queues = await getQueues(supabase, user.id);
   }
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
+  // en el server component, contra el pase ACTIVO — nunca uno archivado, para
+  // que un `?cerrar` forjado con un pase viejo ya cerrado no reabra su hoja
+  // (hallazgo de seguridad f35106b). Al calcularse en el servidor y viajar
+  // como prop, la hoja de cierre se abre desde el PRIMER pintado, sin el
+  // rezago de un render que sufre useSearchParams tras el redirect de la
+  // server action (hallazgo de revisión de la Tarea 7).
+  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
+  const initialClosingPassId =
+    cerrar && cerrar === activePassId ? cerrar : null;
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
   const canContribute = user
@@ -312,6 +337,7 @@ export default async function BookDetailPage({
               sessions={sessions}
               editions={editions}
               queues={queues}
+              initialClosingPassId={initialClosingPassId}
             />
           </div>
         }

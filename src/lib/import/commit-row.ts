@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Position } from "@/lib/library/position";
-import type { ImportRow, ImportRowResult } from "./types";
+import type { ImportDiaryDate, ImportRow, ImportRowResult } from "./types";
 import { matchImportRow } from "./match-row";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -12,82 +12,164 @@ const TABLE_BY_TYPE = {
   series: "series",
 } as const;
 
-type EntryResult =
-  | { libraryEntryId: string; isNew: boolean }
+type ActivePassResult =
+  | { passId: string; isNew: boolean; historicalDate: ImportDiaryDate | null }
   | { error: string };
 
+// El CSV entero se importa como pases (§Tarea 9, hub): sin library_entries.
+// Cada fila produce el pase ACTIVO (el estado/nota que refleja el shelf de
+// origen) más un pase histórico CERRADO por cada fecha de relectura del CSV
+// (diaryDates) que no sea la que ya representa el activo.
+//
+// Si el estado es completed/dropped y el CSV trae fechas, la más reciente ES
+// el pase activo (mismo criterio que 20260716_pass_hub_a_columns.sql: el
+// activo de una obra terminada es su último pase cerrado) — no tendría
+// sentido un pase activo "completado hoy" Y un histórico "completado el
+// {fecha real}" para la MISMA lectura. Si el estado es planned/in_progress,
+// el activo es un pase aparte y abierto (o planificado, sin fechas): las
+// fechas del CSV son relecturas PASADAS, no la lectura en curso.
+function mostRecentDate(dates: ImportDiaryDate[]): ImportDiaryDate | null {
+  if (dates.length === 0) return null;
+  return [...dates].sort((a, b) => a.finishedOn.localeCompare(b.finishedOn)).at(-1)!;
+}
+
 // Same idiom as add-existing-item.ts/buscar/actions.ts: a unique-violation on
-// insert means the row is already in the user's library, not a real error —
-// look up its id instead so re-importing the same file stays idempotent.
-async function ensureLibraryEntry(
+// insert means the row is already in the user's library (ya tiene pase
+// activo para esta obra), no un error real — se busca su id para que
+// reimportar el mismo fichero sea idempotente.
+async function ensureActivePass(
   supabase: SupabaseServerClient,
   userId: string,
   itemType: ItemType,
   itemId: string,
   row: ImportRow
-): Promise<EntryResult> {
+): Promise<ActivePassResult> {
   const position: Position = row.bookFormat ? { format: row.bookFormat } : {};
+  const historical =
+    (row.status === "completed" || row.status === "dropped")
+      ? mostRecentDate(row.diaryDates)
+      : null;
 
   const { data: inserted, error } = await supabase
-    .from("library_entries")
+    .from("passes")
     .insert({
       user_id: userId,
       item_type: itemType,
       item_id: itemId,
       status: row.status,
-      rating: row.rating,
+      is_active: true,
       position,
+      rating: row.rating,
+      started_on: historical?.startedOn ?? null,
+      finished_on: historical?.finishedOn ?? null,
+      // Mismo valor por defecto que abrir un pase a mano (Hallazgo 3): sin
+      // esto, el default de columna (false) dejaba el pase importado fuera
+      // del feed de quien te sigue.
+      is_public: true,
     })
     .select("id")
     .single();
 
-  if (!error) return { libraryEntryId: inserted.id, isNew: true };
+  if (!error) return { passId: inserted.id, isNew: true, historicalDate: historical };
 
   if (error.code === "23505") {
     const { data: existing } = await supabase
-      .from("library_entries")
+      .from("passes")
       .select("id")
       .eq("user_id", userId)
       .eq("item_type", itemType)
       .eq("item_id", itemId)
+      .eq("is_active", true)
       .single();
-    if (existing) return { libraryEntryId: existing.id, isNew: false };
+    if (existing) return { passId: existing.id, isNew: false, historicalDate: historical };
   }
 
   return { error: error.message };
 }
 
-// One diary_entries row per CSV row with a date, skipping ones that already
-// exist (no unique DB constraint on library_entry_id+finished_on, so this is
-// checked at the application level) — keeps re-imports from duplicating
-// reread/rewatch history.
-async function addMissingDiaryEntries(
+// Un pase CERRADO por cada fecha del CSV que no sea ya el pase activo (una
+// relectura pasada). No hay restricción única en BD que lo impida por sí sola
+// para pases del hub (library_entry_id nulo no participa en
+// diary_entries_one_pass_per_day, que es por library_entry_id) — se
+// comprueba a mano para que reimportar el mismo fichero no duplique historial.
+//
+// created_at se backdatea a la fecha real del pase (Hallazgo Tarea 9,
+// revisión): sin esto, TODOS los pases históricos de una importación nacen
+// con created_at ≈ ahora (default de columna), y feed.ts's addedResult (el
+// query "añadió X") no filtra por is_active — cada pase es su propio evento
+// "added" a propósito, para que las relecturas orgánicas aparezcan. Sin
+// backdate, importar un libro con 4 relecturas dispara 4 eventos "añadió"
+// casi simultáneos a quien te sigue, todos con fecha de HOY, aunque las
+// lecturas reales sean de hace años — se comprobó que addedResult ordena y
+// pagina por created_at (ver feed.ts líneas ~153-160), así que un created_at
+// real y antiguo cae fuera del feed reciente sin tocar esa query. finishedOn
+// nunca es null en ImportDiaryDate, así que siempre hay fecha real que usar.
+function historicalCreatedAt(date: ImportDiaryDate): string {
+  return date.finishedOn;
+}
+
+async function addHistoricalPasses(
   supabase: SupabaseServerClient,
   userId: string,
-  libraryEntryId: string,
-  row: ImportRow
+  itemType: ItemType,
+  itemId: string,
+  row: ImportRow,
+  skip: ImportDiaryDate | null
 ) {
   for (const date of row.diaryDates) {
+    if (skip && date.finishedOn === skip.finishedOn) continue;
+
     const { data: existing } = await supabase
-      .from("diary_entries")
+      .from("passes")
       .select("id")
-      .eq("library_entry_id", libraryEntryId)
+      .eq("user_id", userId)
+      .eq("item_type", itemType)
+      .eq("item_id", itemId)
       .eq("finished_on", date.finishedOn)
       .maybeSingle();
     if (existing) continue;
 
-    await supabase.from("diary_entries").insert({
-      library_entry_id: libraryEntryId,
+    await supabase.from("passes").insert({
       user_id: userId,
+      item_type: itemType,
+      item_id: itemId,
+      status: "completed",
+      is_active: false,
+      position: {},
       started_on: date.startedOn,
       finished_on: date.finishedOn,
       rating: row.rating,
-      // Mismo valor por defecto que abrir un pase a mano (Hallazgo 3): sin
-      // esto, el default de columna (false) dejaba el pase importado fuera
-      // del feed de quien te sigue.
       is_public: true,
+      created_at: historicalCreatedAt(date),
     });
   }
+}
+
+async function commitPasses(
+  supabase: SupabaseServerClient,
+  userId: string,
+  itemType: ItemType,
+  itemId: string,
+  row: ImportRow
+): Promise<ImportRowResult> {
+  const activeResult = await ensureActivePass(supabase, userId, itemType, itemId, row);
+  if ("error" in activeResult) {
+    return {
+      rowNumber: row.rowNumber,
+      title: row.title,
+      outcome: "error",
+      errorMessage: activeResult.error,
+    };
+  }
+
+  await addHistoricalPasses(supabase, userId, itemType, itemId, row, activeResult.historicalDate);
+
+  return {
+    rowNumber: row.rowNumber,
+    title: row.title,
+    outcome: activeResult.isNew ? "imported" : "duplicate",
+    unknownStatus: row.unknownStatusLabel ?? undefined,
+  };
 }
 
 export async function commitImportRow(
@@ -102,24 +184,7 @@ export async function commitImportRow(
       return { rowNumber: row.rowNumber, title: row.title, outcome: "unmatched" };
     }
 
-    const entryResult = await ensureLibraryEntry(supabase, userId, itemType, catalogId, row);
-    if ("error" in entryResult) {
-      return {
-        rowNumber: row.rowNumber,
-        title: row.title,
-        outcome: "error",
-        errorMessage: entryResult.error,
-      };
-    }
-
-    await addMissingDiaryEntries(supabase, userId, entryResult.libraryEntryId, row);
-
-    return {
-      rowNumber: row.rowNumber,
-      title: row.title,
-      outcome: entryResult.isNew ? "imported" : "duplicate",
-      unknownStatus: row.unknownStatusLabel ?? undefined,
-    };
+    return await commitPasses(supabase, userId, itemType, catalogId, row);
   } catch (err) {
     return {
       rowNumber: row.rowNumber,
@@ -132,8 +197,8 @@ export async function commitImportRow(
 
 // Used by the "add manually" affordance on unmatched rows — same insert
 // shape as src/app/buscar/manual/actions.ts's addManualItem, just invoked
-// inline instead of through a page redirect, and reusing this module's
-// library_entries/diary_entries commit logic.
+// inline instead of through a page redirect, and reusing this module's pass
+// commit logic.
 export async function commitManualImportRow(
   supabase: SupabaseServerClient,
   userId: string,
@@ -171,21 +236,5 @@ export async function commitManualImportRow(
     };
   }
 
-  const entryResult = await ensureLibraryEntry(supabase, userId, itemType, inserted.id, row);
-  if ("error" in entryResult) {
-    return {
-      rowNumber: row.rowNumber,
-      title: row.title,
-      outcome: "error",
-      errorMessage: entryResult.error,
-    };
-  }
-
-  await addMissingDiaryEntries(supabase, userId, entryResult.libraryEntryId, row);
-
-  return {
-    rowNumber: row.rowNumber,
-    title: row.title,
-    outcome: entryResult.isNew ? "imported" : "duplicate",
-  };
+  return await commitPasses(supabase, userId, itemType, inserted.id, row);
 }

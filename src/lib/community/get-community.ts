@@ -38,19 +38,6 @@ function initials(name: string): string {
     .join("");
 }
 
-// Fila de diary_entries con el join a library_entries que usan tanto la
-// consulta de notas como la de reseñas: Supabase tipa la relación embebida de
-// forma laxa, así que se castea una vez aquí en vez de en cada callsite.
-type PassJoinRow = {
-  rating: number | null;
-  finished_on: string | null;
-  user_id: string;
-  edition_id: string | null;
-  review: string | null;
-  id: string;
-  library_entries: { item_type: ItemType; item_id: string; status: string };
-};
-
 // Resuelve las etiquetas de edición de un lote de ids en UNA consulta (no una
 // por reseña). Las series no tienen tabla de ediciones.
 async function loadEditionLabels(
@@ -126,18 +113,20 @@ export async function getCommunity(
   // Notas: un voto por usuario, el de su pase cerrado más reciente, sin
   // contar las entradas abandonadas (dropped). latestRatingPerUser hace el
   // "quédate con el último pase por user_id" en TypeScript porque Supabase
-  // no expresa DISTINCT ON en su query builder.
+  // no expresa DISTINCT ON en su query builder. item_type/item_id/status ya
+  // son columnas propias del pase (§Tarea 9): sin join a library_entries — el
+  // filtro de abandono pasa de la ENTRADA al PASE (cambio semántico validado
+  // en la Tarea 1, control de medias).
   const { data: passRows } = await supabase
-    .from("diary_entries")
-    .select("id, rating, finished_on, user_id, library_entries!inner(item_type, item_id, status)")
-    .eq("library_entries.item_type", itemType)
-    .eq("library_entries.item_id", itemId)
+    .from("passes")
+    .select("id, rating, finished_on, user_id")
+    .eq("item_type", itemType)
+    .eq("item_id", itemId)
     .not("finished_on", "is", null)
     .not("rating", "is", null)
-    .neq("library_entries.status", "dropped");
+    .neq("status", "dropped");
 
-  const ratedRows = (passRows ?? []) as unknown as PassJoinRow[];
-  const ratedPasses: RatedPass[] = ratedRows.map((r) => ({
+  const ratedPasses: RatedPass[] = (passRows ?? []).map((r) => ({
     id: r.id,
     userId: r.user_id,
     // finished_on y rating no son null por los .not(...) de arriba.
@@ -161,17 +150,12 @@ export async function getCommunity(
     }
   }
 
-  // Reseñas: pases con texto, de cualquier entrada de este ítem (incluidas
-  // las abandonadas — una reseña sigue siendo válida aunque el pase no vote).
-  const { data: entries } = await supabase
-    .from("library_entries")
-    .select("id")
-    .eq("item_type", itemType)
-    .eq("item_id", itemId);
-
-  const entryIds = (entries ?? []).map((e) => e.id);
+  // Reseñas: pases con texto, de cualquier pase de esta obra (incluidos los
+  // abandonados — una reseña sigue siendo válida aunque el pase no vote).
+  // pass_reviews ya expone item_type/item_id directamente: sin el paso previo
+  // por library_entries que sacaba entryIds.
   let reviews: CommunityReview[] = [];
-  if (entryIds.length > 0) {
+  {
     // review ya no es una columna legible de diary_entries: se lee de la
     // vista pass_reviews (privacidad ya aplicada — ver
     // 20260714_passes_review_privacy.sql). El .eq("is_public", true) de abajo
@@ -180,7 +164,8 @@ export async function getCommunity(
     const { data: diaryRows } = await supabase
       .from("pass_reviews")
       .select("id, user_id, finished_on, rating, review, edition_id")
-      .in("library_entry_id", entryIds)
+      .eq("item_type", itemType)
+      .eq("item_id", itemId)
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado, así que
       // no debe verlo la comunidad.

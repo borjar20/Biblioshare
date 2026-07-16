@@ -9,13 +9,15 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { deleteSession } from "@/lib/sessions/actions";
 
 export function SessionList({
-  entryId,
+  passId,
   itemType,
   itemId,
   sessions,
   editionLabel = null,
 }: {
-  entryId: string;
+  /** Id del pase ACTIVO de la obra (§Tarea 7, hub): destino del enlace
+   * "Añadir sesión". */
+  passId: string;
   itemType: ItemType;
   itemId: string;
   sessions: ProgressSession[];
@@ -31,7 +33,7 @@ export function SessionList({
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{t("title")}</h3>
         <Link
-          href={`/sesion/${entryId}`}
+          href={`/sesion/${passId}`}
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >
           {t("add")}

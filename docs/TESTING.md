@@ -12,9 +12,11 @@ navegador, usa la cuenta ya creada y con onboarding completo:
 
 ### Qué limpiar y qué no, tras probar algo
 
-- Si la prueba añade ítems a la biblioteca de `devtest` (`library_entries`,
-  `diary_entries`, filas nuevas en `books`/`movies`/`series`): bórralas por
-  SQL al terminar, igual que se hacía con los usuarios de un solo uso.
+- Si la prueba añade ítems a la biblioteca de `devtest` (`passes` —la tabla
+  `diary_entries` ya no existe, se renombró en la migración del hub—,
+  `library_entries` si tocara, filas nuevas en `books`/`movies`/`series`):
+  bórralas por SQL al terminar, igual que se hacía con los usuarios de un solo
+  uso.
 - Si la prueba requiere un **segundo usuario** (p. ej. verificar cómo ve otro
   visitante un perfil público/privado), crea uno nuevo desechable con el
   patrón habitual (`signup` → username único → probar → borrar el usuario

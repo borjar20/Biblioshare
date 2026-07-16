@@ -10,10 +10,11 @@ import { StarRating } from "@/components/ui/star-rating";
 import { SessionList } from "@/components/session-list";
 import { StatusSegments } from "@/components/detail/status-segments";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
+import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import type { Position } from "@/lib/library/position";
+import { formatPosition, type Position } from "@/lib/library/position";
 import type { ProgressSession } from "@/lib/sessions/types";
 import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
@@ -90,6 +91,7 @@ export function LogPanel({
   sessions,
   editions,
   queues,
+  initialClosingPassId,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -98,6 +100,12 @@ export function LogPanel({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
+  // Pase a abrir en la hoja de cierre desde el primer pintado (§Tarea 7,
+  // hallazgo de revisión): lo calcula el SERVER component de la ficha leyendo
+  // `?cerrar` de `searchParams` (que no se retrasa, a diferencia de
+  // useSearchParams en cliente) y ya validado contra el pase activo. Ver el
+  // comentario largo en ManagedLog.
+  initialClosingPassId?: string | null;
 }) {
   if (!entry) {
     return <FollowButton itemType={itemType} itemId={itemId} editions={editions} />;
@@ -112,6 +120,7 @@ export function LogPanel({
       sessions={sessions}
       editions={editions}
       queues={queues}
+      initialClosingPassId={initialClosingPassId ?? null}
     />
   );
 }
@@ -196,6 +205,7 @@ function ManagedLog({
   sessions,
   editions,
   queues,
+  initialClosingPassId,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -204,6 +214,7 @@ function ManagedLog({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
+  initialClosingPassId: string | null;
 }) {
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
@@ -212,6 +223,11 @@ function ManagedLog({
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(entry.status);
   const [queueId, setQueueId] = useState(entry.queueId);
+
+  // Pase ACTIVO de la obra (is_active): dueño de las sesiones y objetivo de
+  // la hoja de cierre por URL. Se calcula arriba porque el auto-cierre por
+  // sesión (más abajo) lo necesita para validar el ?cerrar.
+  const activePass = passes.find((p) => p.isActive) ?? null;
 
   // Resincroniza el estado local con las props tras cada revalidación del
   // servidor (cambio de estado, cola...). Ajuste durante el render, no un
@@ -225,33 +241,69 @@ function ManagedLog({
     if (entry.queueId !== queueId) setQueueId(entry.queueId);
   }
 
-  // Al marcar "completado" hay que abrir la hoja de cierre con el pase que
-  // se acaba de cerrar. updateStatus ya lo cierra en BD (o abre-y-cierra uno
-  // si el ítem venía de "planificado"); aquí solo hace falta refrescar y, en
-  // cuanto lleguen los pases nuevos, coger el primero — sin pase abierto por
-  // delante, es el que se acaba de cerrar (getPasses ordena el abierto
-  // primero si lo hay, si no el cerrado más reciente).
-  const [pendingComplete, setPendingComplete] = useState(false);
-  const [closingPassId, setClosingPassId] = useState<string | null>(null);
-  const [prevPasses, setPrevPasses] = useState(passes);
-  if (passes !== prevPasses) {
-    setPrevPasses(passes);
-    if (pendingComplete) {
-      setPendingComplete(false);
-      const justClosed = passes.find((p) => p.finishedOn !== null) ?? null;
-      if (justClosed) setClosingPassId(justClosed.id);
-    }
+  // Al marcar "completado" (o "dejado") updateStatus ya cierra el pase en BD
+  // (o abre-y-cierra uno si el ítem venía de "planificado") y nos devuelve
+  // directamente su id: no hace falta rebuscar entre los pases tras
+  // refrescar, basta con encadenar la hoja de cierre con ese passId.
+  //
+  // El auto-cierre por sesión (§Tarea 7) hace lo mismo por URL: la sesión que
+  // alcanza el final redirige a `?cerrar=<passId>&tab=log`. `initialClosingPassId`
+  // lo lee y valida el SERVER component de la ficha (contra el pase ACTIVO —
+  // nunca uno archivado; ver los tres `page.tsx` de libro/película/serie), así
+  // que llega aquí ya validado. Arreglo de la revisión de la Tarea 7: leer
+  // `?cerrar` con useSearchParams (cliente) iba un render por detrás tras el
+  // redirect de la server action, así que la hoja no se abría sola al
+  // terminar un libro — solo tras recargar a mano. El servidor no sufre ese
+  // rezago, pero SÍ hace falta el ajuste "durante el render" de abajo (mismo
+  // patrón que `entry`/`status` arriba): la ida y vuelta a `/sesion/[passId]`
+  // vuelve al MISMO `id` de obra, así que Next reutiliza la instancia ya
+  // montada de esta página en vez de remontarla — un `useState` inicializado
+  // una sola vez con la prop nunca vería el `cerrar` nuevo sin este
+  // seguimiento de `prev`. El `&tab=log` del redirect sigue siendo
+  // obligatorio: ItemDetailTabs solo monta la pestaña activa, sin él la ficha
+  // abriría en "Información" y este componente ni existiría.
+  const [closingPassId, setClosingPassId] = useState<string | null>(
+    initialClosingPassId
+  );
+  const [prevInitialClosingPassId, setPrevInitialClosingPassId] = useState(
+    initialClosingPassId
+  );
+  if (initialClosingPassId !== prevInitialClosingPassId) {
+    setPrevInitialClosingPassId(initialClosingPassId);
+    if (initialClosingPassId) setClosingPassId(initialClosingPassId);
   }
+
+  // Retomar un abandonado (dropped → in_progress) es la única transición que
+  // la máquina no resuelve sola: askResume significa que no se escribió nada
+  // en BD todavía (el pill optimista de abajo se revierte) y que hace falta
+  // preguntar "¿continuar o de cero?" antes de reintentar con `resume`.
+  const [resumeOpen, setResumeOpen] = useState(false);
 
   function handleStatusChange(next: MediaStatus) {
     setStatus(next);
-    if (next === "completed") setPendingComplete(true);
     startTransition(async () => {
-      await updateStatus(entry.entryId, itemType, itemId, next);
+      const outcome = await updateStatus(itemType, itemId, next);
+      if (outcome.kind === "askResume") {
+        setStatus(entry.status);
+        setResumeOpen(true);
+        return;
+      }
       router.refresh();
+      // Hallazgo de la revisión de la Task 5: en una carrera de doble-submit
+      // sin pase activo previo, closed puede llegar true con passId vacío.
+      // No abrir la hoja de cierre contra un pase inexistente.
+      if (outcome.closed && outcome.passId) {
+        setClosingPassId(outcome.passId);
+      }
     });
   }
 
+  // El pase ACTIVO (is_active) no siempre es el "abierto": si el ítem está
+  // completado/dejado sigue habiendo un pase activo (el cerrado que
+  // representa la obra), solo que ya no es "abierto" (ver `activePass`
+  // arriba). Las sesiones cuelgan del activo; un pase abierto siempre es
+  // también el activo (el índice passes_one_active no permite lo contrario),
+  // así que cuando existe openPass son el mismo pase.
   const openPass = passes.find((p) => p.finishedOn === null) ?? null;
   const openPassEdition = openPass
     ? (openPass.editionId
@@ -288,9 +340,7 @@ function ManagedLog({
             onChange={(event) => {
               const next = event.target.value || null;
               setQueueId(next);
-              startTransition(() =>
-                moveEntryToQueue(entry.entryId, itemType, itemId, next)
-              );
+              startTransition(() => moveEntryToQueue(itemType, itemId, next));
             }}
           >
             <option value="">{tQueue("noQueue")}</option>
@@ -320,9 +370,9 @@ function ManagedLog({
         />
       )}
 
-      {itemType !== "movie" && (
+      {itemType !== "movie" && activePass && (
         <SessionList
-          entryId={entry.entryId}
+          passId={activePass.id}
           itemType={itemType}
           itemId={itemId}
           sessions={sessions}
@@ -341,7 +391,7 @@ function ManagedLog({
         type="button"
         disabled={isPending}
         onClick={() =>
-          startTransition(() => removeFromLibrary(entry.entryId, itemType, itemId))
+          startTransition(() => removeFromLibrary(itemType, itemId))
         }
         className="self-start text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
       >
@@ -357,6 +407,19 @@ function ManagedLog({
           onClose={() => setClosingPassId(null)}
         />
       )}
+
+      {resumeOpen && (
+        <ResumePassSheet
+          itemType={itemType}
+          itemId={itemId}
+          droppedAtLabel={formatPosition(itemType, entry.position)}
+          open
+          onClose={() => {
+            setResumeOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -365,9 +428,12 @@ function ManagedLog({
 // estoy leyendo/viendo ahora"). La nota se guarda con ratePass — NO con
 // updatePass, que siempre escribe finished_on y cerraría el pase de tapadillo
 // (ver el comentario en src/lib/passes/actions.ts). La página actual sale de
-// library_entries.position (la actualizan las sesiones), comparada contra
-// las páginas de la edición del pase — o la primaria si el pase no tiene una
-// asignada todavía.
+// `entry.position` (library_entries), comparada contra las páginas de la
+// edición del pase — o la primaria si el pase no tiene una asignada todavía.
+// OJO (ventana transicional Tarea 7→9): desde que las sesiones cuelgan del
+// pase, esta cifra deja de refrescarse tras registrar una sesión —
+// library_entries.position ya no la escribe nadie. El barrido de la Tarea 9
+// (derivar esto de diary_entries) la pone al día otra vez.
 function ProgressBlock({
   itemType,
   itemId,
@@ -378,7 +444,7 @@ function ProgressBlock({
 }: {
   itemType: ItemType;
   itemId: string;
-  entry: { entryId: string; position: Position };
+  entry: { position: Position };
   openPass: Pass;
   openPassEdition: Edition | null;
   editions: Edition[];
@@ -552,10 +618,12 @@ function ProgressBlock({
         </div>
       )}
 
-      {/* Las películas no tienen sesiones (§7.14 scope decision). */}
+      {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
+          abierto es siempre el activo (ver comentario de ManagedLog), así
+          que openPass.id es el id correcto para la ruta. */}
       {itemType !== "movie" && (
         <Link
-          href={`/sesion/${entry.entryId}`}
+          href={`/sesion/${openPass.id}`}
           className="self-start text-xs text-muted-foreground underline hover:text-foreground"
         >
           {tSessions("add")}

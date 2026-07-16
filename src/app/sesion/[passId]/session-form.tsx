@@ -34,7 +34,7 @@ type SeriesSeasonEpisodes = {
 };
 
 export function SessionForm({
-  entryId,
+  passId,
   itemType,
   itemId,
   position,
@@ -42,7 +42,7 @@ export function SessionForm({
   total,
   seriesEpisodes,
 }: {
-  entryId: string;
+  passId: string;
   itemType: "book" | "series";
   itemId: string;
   position: Position;
@@ -54,7 +54,7 @@ export function SessionForm({
   const tLibrary = useTranslations("library");
   const tEpisode = useTranslations("episode");
 
-  const boundAddSession = addSession.bind(null, entryId, itemType, itemId);
+  const boundAddSession = addSession.bind(null, passId, itemType, itemId);
   const [state, formAction, pending] = useActionState(
     boundAddSession,
     initialState,
@@ -162,7 +162,7 @@ export function SessionForm({
   function handleSubmit() {
     if (itemType === "book" && durationMode === "timer") {
       try {
-        window.localStorage.removeItem(timerStorageKey(entryId));
+        window.localStorage.removeItem(timerStorageKey(passId));
       } catch {
         // Almacenamiento inaccesible: nada que limpiar.
       }
@@ -221,7 +221,7 @@ export function SessionForm({
             </div>
           ) : (
             <div className="mt-2">
-              <SessionTimer entryId={entryId} onMinutes={handleTimerMinutes} />
+              <SessionTimer passId={passId} onMinutes={handleTimerMinutes} />
             </div>
           )}
         </div>

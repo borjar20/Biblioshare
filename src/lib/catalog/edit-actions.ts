@@ -323,7 +323,7 @@ export async function deleteEdition(
   // (20260714_editions_f_delete_guard.sql), que ve TODOS los pases sin filtro de
   // RLS y es lo único que de verdad impide el borrado.
   const { count } = await supabase
-    .from("diary_entries")
+    .from("passes")
     .select("id", { count: "exact", head: true })
     .eq("edition_id", editionId);
   if ((count ?? 0) > 0) return { error: "inUse" };

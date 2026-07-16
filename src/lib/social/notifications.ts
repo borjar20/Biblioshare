@@ -165,8 +165,9 @@ export async function getUnreadCount(
 }
 
 // Resuelve el enlace de una notificación en batch (una query por tabla
-// fuente, no una por notificación). diary_entry pasa por library_entries
-// para saber item_type/item_id; episode_watch ya guarda series_id directo.
+// fuente, no una por notificación). diary_entry ya tiene item_type/item_id
+// como columnas propias (§Tarea 9, hub); episode_watch ya guarda series_id
+// directo.
 // club/club_post/comment se resuelven aquí también ahora (EPIC-05 Bloque F)
 // -- antes 'club' vivía como un caso especial duplicado en deliverPush() y
 // listNotifications(); se unifica en una sola función para no triplicar la
@@ -186,34 +187,16 @@ async function resolveTargetHrefs(
 
   if (diaryIds.length > 0) {
     const { data: diaryRows, error } = await supabase
-      .from("diary_entries")
-      .select("id, library_entry_id")
+      .from("passes")
+      .select("id, item_type, item_id")
       .in("id", diaryIds);
     if (error) throw error;
 
-    const libraryEntryIds = [
-      ...new Set((diaryRows ?? []).map((d) => d.library_entry_id)),
-    ];
-    const { data: libraryRows, error: libError } = await supabase
-      .from("library_entries")
-      .select("id, item_type, item_id")
-      .in("id", libraryEntryIds);
-    if (libError) throw libError;
-
-    const itemByEntry = new Map(
-      (libraryRows ?? []).map((l) => [
-        l.id,
-        { itemType: l.item_type as ItemType, itemId: l.item_id },
-      ]),
-    );
     for (const d of diaryRows ?? []) {
-      const item = itemByEntry.get(d.library_entry_id);
-      if (item) {
-        hrefByKey.set(
-          `diary_entry:${d.id}`,
-          `${itemHref(item.itemType, item.itemId)}?tab=community`,
-        );
-      }
+      hrefByKey.set(
+        `diary_entry:${d.id}`,
+        `${itemHref(d.item_type as ItemType, d.item_id)}?tab=community`,
+      );
     }
   }
 

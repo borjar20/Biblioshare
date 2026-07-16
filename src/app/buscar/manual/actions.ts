@@ -6,6 +6,7 @@ import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { normalizeIsbn } from "@/lib/catalog/isbn";
+import { applyTransition } from "@/lib/passes/apply-transition";
 
 export type AddManualItemState = {
   error?: "titleRequired" | "invalidPageCount" | "invalidIsbn" | "forbidden" | "generic";
@@ -84,13 +85,13 @@ export async function addManualItem(
 
   if (error) return { error: "generic" };
 
-  const { error: libraryError } = await supabase.from("library_entries").insert({
-    user_id: user.id,
-    item_type: itemType,
-    item_id: inserted.id,
-  });
-
-  if (libraryError) return { error: "generic" };
+  // Alta = pase activo en planned vía la máquina (el ítem acaba de nacer,
+  // así que no puede haber pase previo; la transición crea el activo).
+  try {
+    await applyTransition(supabase, user.id, itemType, inserted.id, "planned");
+  } catch {
+    return { error: "generic" };
+  }
 
   const profile = await getOwnProfile(supabase, user.id);
   redirect(profile ? `/u/${profile.username}` : "/");
