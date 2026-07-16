@@ -2,12 +2,14 @@
 
 > Parte de la iniciativa **fidelidad Paper**. Índice y convenciones en [`README.md`](./README.md).
 
+> ⚠️ **La maqueta se ACTUALIZÓ el 2026-07-16 (12 frames, antes 7).** Lo escrito antes de esa fecha en §2 sigue valiendo para móvil, pero la distribución de Info cambió y **ahora hay vista de PC de verdad** (§2bis), que sustituye al "diseño propio a proponer" del §2.24 original. Si vienes de la versión vieja, lee §2bis y §4 antes de nada.
+
 **Maquetas de referencia**
-- `Paper - Ficha de título completa.html` → frames **1 · Libro Info**, **2 · Comunidad**, **3 · Registro (pase activo)**, **4 · Serie Episodios**, **5 · Película Info**, **6 · Moderador Editar ficha**, **7 · Registro — elegir edición**
+- `Paper - Ficha de título completa.html` → **móvil**: **1 · Libro Info**, **2 · Comunidad**, **3 · Registro (pase activo)**, **4 · Serie Episodios**, **5 · Película Info**, **6 · Moderador Editar ficha**, **7 · Registro — elegir edición**. **PC**: **8 · Libro Info**, **9 · Libro Comunidad**, **10 · Libro Registro**, **11 · Serie Episodios**, **12 · Película Info**.
 - `Paper - Episodios rejilla.html` → rejilla de episodios (mías/comunidad, escala cálida)
 - `Paper - Registrar sesión.html` → hojas modales de sesión (ver §3-P4)
 
-**Objetivo:** afinar la pantalla más importante de la app. Toda la funcionalidad de los 7 frames existe (`info-panel`, `community-panel`, `log-panel` + pases, `edition-strip`, `catalog-editor` de moderador, `episode-*`), así que es trabajo de detalle visual — con dos decisiones de sistema pendientes (§3).
+**Objetivo:** afinar la pantalla más importante de la app. Toda la funcionalidad existe (`info-panel`, `community-panel`, `log-panel` + pases, `edition-strip`, `catalog-editor` de moderador, `episode-*`), así que en móvil es trabajo de detalle visual. **En PC no**: el layout ancho es una estructura nueva (§2bis) y ahí sí hay construcción.
 
 > ⚠️ Coordinación: el **pase-hub** (spec en PR #42: `passes` absorbe estado/cursor/cola y `library_entries` muere) y **PR #32** (pase dueño de nota/reseña, migraciones solo en dev) tocan el corazón del Registro. Antes de restylear el Registro, comprobar el estado de esos PRs para no maquillar código que va a cambiar de forma.
 
@@ -70,47 +72,105 @@
 ### Frame 7 · Elegir edición
 23. Selector radio `edpick` (tag del formato, nombre, metadatos, páginas a la derecha; seleccionada con borde+tinte del acento), buscador `edsearch`, chip "RECOMENDADA", opción discontinua "otra edición / edición manual", y en pases nuevos la opción de **reusar la edición del pase anterior**. PR #33 tocó justo esto: comparar contra el frame y afinar.
 
-### Escritorio/tablet (P-T7 — los 7 frames son de móvil; layout ancho de diseño propio)
-24. La ficha es la pantalla que más gana con dos columnas. En `lg:` (hoy todo va en `max-w-4xl` apilado), a proponer al abrir la sesión:
-    - **Hero a lo ancho:** portada más grande a la izquierda, título/byline/nota/estado a la derecha, con más aire (el hero ya es fila en `sm:`, ensancharlo).
-    - **Info a dos columnas:** sinopsis + sagas + ediciones a la izquierda (columna principal), **sidebar de metadatos sticky a la derecha** (`metadata-sidebar.tsx` ya se llama "sidebar" — en escritorio que lo sea de verdad, no una tabla apilada abajo).
-    - **Comunidad:** tarjeta resumen + histograma arriba a lo ancho; reseñas en una o dos columnas.
-    - **Registro:** panel del pase (estado + progreso) a la izquierda, sesiones + diario de pases a la derecha; o el pase arriba a lo ancho y sesiones/diario en dos columnas debajo.
-    - **Episodios:** temporadas a lo ancho; la rejilla ya aprovecha el ancho de forma natural.
-    - **Moderador:** formulario a doble columna (metadatos que hoy van en grid estrecho) manteniendo la barra sticky de guardar.
-    - Las **hojas de sesión** (P4) en escritorio pueden ser modal centrado en vez de hoja inferior a pantalla completa.
+### ~~Escritorio/tablet (layout ancho de diseño propio)~~ → OBSOLETO
+
+24. ~~A proponer al abrir la sesión.~~ **Ya no hay nada que proponer: la maqueta trae 5 frames de PC (8–12).** Ver §2bis.
+
+## 2bis. Vista de PC (frames 8–12, maqueta del 2026-07-16)
+
+Adaptación **estilo Goodreads en dos columnas**. La estructura (`.desk-shell`) es **idéntica en los 5 frames**; solo cambia el cuerpo. No es "el móvil estirado": es otra pantalla.
+
+```
+topbar de la app (sticky, global — P-T1)
+├────────────┬──────────────────────────────────┐
+│ RAIL 300px │  cabecera (.desk-header)         │
+│  (sticky)  │  ── pestañas (sticky) ───────────│
+│  portada   │  cuerpo (.desk-cols)             │
+│  estado ▾  │    1fr            │   340px      │
+│  progreso  │                   │              │
+│  + sesión  │                   │              │
+│  tu nota   │                   │              │
+└────────────┴──────────────────────────────────┘
+```
+
+### El rail (`.desk-rail`, 300px, `padding:34px 0 34px 40px`)
+
+25. **Portada 256×384**, radio 8, borde 2px del acento, sombra `0 20px 40px -16px`.
+26. **Estado como CONTROL desplegable** (`.desk-shelf`): pastilla sobre `surface` con dot del estado + verbo por tipo ("Leyendo"/"Viendo"/"Vista") + `▾`. **No es la píldora "En tu biblioteca ·" del móvil**: en PC esa píldora no existe.
+27. **Barra de progreso** (`.desk-prog`): track de 8px con relleno degradado del estado + `pág. 240 / 662` y `36%` en mono a los lados. **Solo donde hay cursor**: el frame 12 (película) NO la lleva.
+28. **CTA de acento** (`.desk-cta`): "＋ Registrar sesión" en libro, **"＋ Registrar visionado" en película** (frame 12). Copy por tipo de medio.
+29. **"Tu nota"** (`.desk-userrate`): etiqueta mono + 5 estrellas pulsables. Ojo con P1: es la nota PROPIA y aquí la maqueta usa **estrellas**, no dots.
+30. En PC **no hay botón de volver ni label de tipo centrado** (eso es la `.hero-top` del móvil). El badge de medio vive en la cabecera.
+
+### La cabecera (`.desk-header`, dentro de la columna derecha)
+
+31. Backdrop difuminado igual que el móvil, pero `height:200px`, `blur(30px)`, `opacity:.20`.
+32. **Común a todas las pestañas** (frames 9 y 10 se paran aquí): `mbadge` → **saga en Fraunces itálica 17px** ("Crónica del asesino de reyes · nº 1 de 3") → **título Fraunces 600 44px**/1.02 → **byline en FRAUNCES 22px** (`#4a4238`, el año en muted) — ojo, **no es el mono de 11px del móvil** → **nota en línea**: `estrellas 22px` → `4,2` (Fraunces 26px, acento) → `1 284 votos · 312 reseñas` (mono 11px). **Sin el sufijo "/5"** que sí lleva el móvil.
+33. **Solo en Info** (frame 8) la cabecera se alarga con: **sinopsis** (15.5px/1.7, `max-width:660px`), **géneros** (etiqueta mono "Géneros" + chips 13px sobre `surface-2`) y **fila de datos** (`.desk-facts`: "**662** páginas · Tapa dura · Plaza & Janés · 1.ª ed. 2007").
+
+### Pestañas y cuerpo
+
+34. **`.desk-tabs`**: sticky, **sobre `surface`** (no el translúcido del móvil), borde arriba y abajo, `gap:32`, texto 15px semibold, `padding:16px 0`, subrayado de 2.5px.
+35. **`.desk-body`**: `padding:34px 44px 42px` y `.desk-cols` = **grid `1fr 340px`, gap 44, `align-items:start`**. Por pestaña:
+    - **Info** (8): izquierda sagas (lista en `rowset` a 2 columnas) + **ediciones YA DESPLEGADAS en rejilla de 3** (en móvil siguen colapsadas); derecha "Ficha" (`meta wide`) + "Editar ficha (moderador) ✎".
+    - **Comunidad** (9): izquierda reseñas a toda columna; derecha **tarjeta fija con nota media + histograma** (`.rate-card`).
+    - **Registro** (10): izquierda cabecera del pase + segmented de 4 + progreso con pin + `closehint` + sesiones + diario; derecha **tarjeta "Datos del pase"** (nota, página, formato) con "+ Nuevo pase" y, debajo, "Quitar de mi biblioteca".
+    - **Episodios** (11): izquierda temporadas/episodios; derecha **el detalle del episodio seleccionado se ANCLA en una tarjeta fija** en vez del desplegable inline del móvil.
+    - **Película** (12): reparto en rejilla amplia + plataformas + versiones desplegadas; ficha técnica a la derecha.
+
+### Distribución del Info MÓVIL — también cambió (frame 1)
+
+36. **Sagas son N, no una**: `Sagas · 4` = tira de portadas de la principal (con ojo + anillo) + **lista `saga-row`** para el resto (nombre, `nº 4 de 20` en mono, chevron). Hoy `saga-strip.tsx` asume una sola.
+37. **Nuevo orden del pane**: moderador → **sagas → sinopsis → ficha (`meta`) → ediciones**. Las **ediciones bajan al final** y en tono menor (`.eds.minor`). Hoy la app las pinta arriba del todo.
 
 ## 3. Divergencias funcionales / de sistema — RESUELTAS (2026-07-15)
 
 - **P1 · DECIDIDO: híbrido de la maqueta.** **Estrellas gold /5** para agregados de comunidad (hero de ficha, histograma, reseñas ajenas — en ficha, feed, perfil y clubes) y **dots** para la nota propia 1–10 (rate-pick, diario, tarjetas propias). Norma de sistema: documentarla al aplicarla.
 - **P2 · DECIDIDO: SÍ, menú ⋯ del hero** — quitar de mi biblioteca, editar ficha (solo moderador); "compartir" entrará cuando se decida (plan 01 P4 pospuesto).
 - **P3 · Delta del diario: coordinación** — hacer cuando PR #32 (nota por pase) esté mergeado; confirmar orden con pase-hub (#42) al arrancar la sesión.
+### Decisiones de la vista de PC (2026-07-16, tras la maqueta nueva)
+
+- **P5 · DECIDIDO: rail sticky con scroll de página, NO scroll interno.** La maqueta monta la columna derecha con `height:680px; overflow-y:auto` y el rail fijo al lado. Se calca el EFECTO (el rail se queda quieto mientras el contenido sube) con `position:sticky`, no la técnica: el scroll interno mete dos barras, hace que la rueda dependa de dónde esté el puntero, rompe la restauración de posición y el enlace profundo, y choca con el streaming por `<Suspense>` de la Fase B. Un contenedor de 680px es cómo se maqueta un frame, no cómo se construye una página.
+- **P6 · DECIDIDO: el CTA del rail enlaza al flujo de sesión que ya existe** (`/sesion/[entryId]`). Cuando P4 traiga las hojas modales con cronómetro solo cambia el destino; el rail no se toca. Así el rail nace completo sin meter una feature nueva por delante de la fidelidad.
+- **P7 · El rail DUPLICA controles del Registro a propósito** — estado, progreso y nota están en los dos sitios (el frame 10 los enseña a la vez). No es un descuido de la maqueta: el rail es el panel de control siempre visible y el Registro sigue siendo la pestaña de gestión. **Implicación técnica:** dos controles del mismo estado en pantalla ⇒ tienen que compartir fuente, que es justo lo que hace `ItemStatusProvider` (PR #48). Extenderlo a progreso y nota cuando toque.
+- **P8 · La topbar de la app se queda.** El frame de PC dibuja cromo de navegador y omite nuestra topbar, pero los frames de PC de las otras pantallas (p. ej. `Paper - Perfil.html` C) sí la llevan: es abreviatura del frame, no ausencia de diseño. El rail y la columna van DEBAJO de la topbar, y las pestañas se pegan bajo ella (`--topbar-h`, ver §6).
 - **P4 · DECIDIDO: hojas modales sobre la ficha, CON cronómetro.** Las 5 hojas de `Paper - Registrar sesión.html` (tramo de páginas con delta, selector de temporada, **cronómetro en vivo con pausar/reiniciar que vuelca la duración** — feature nueva, no existe hoy —, sesión que completa el pase, retomar abandonado). `/sesion/[entryId]` queda como fallback deep-link. Añadir como bloque de tareas propio (probablemente su propia sesión).
 
-## 4. Tareas
+## 4. Tareas — REORDENADAS el 2026-07-16 (móvil + PC juntos, pestaña a pestaña)
 
-> Orden recomendado. Las del Registro (T4–T6) tras confirmar P3/pase-hub.
+> **Cambio de método (decisión del usuario):** cada tarea trae **su móvil y su PC a la vez**, en vez de hacer todo el móvil y el ancho al final. Motivo: el layout de PC no es un ajuste responsive, es otra distribución (§2bis), y restylear una pestaña sin él obliga a tocarla dos veces.
 
-1. ~~**Hero fiel** (§2.1–2.5) — `item-hero.tsx`~~ ✅ **HECHA** (PR #49, `a963d72`) — ver §6.
-2. ~~**Pestañas sans semibold sticky** (§2.6, tras P-T2) — `item-detail-tabs.tsx`~~ ✅ **HECHA** (PR #49, `19ac1d4`) — ver §6.
-3. **Info: sagas, ediciones, sinopsis, metadatos, fila moderador** (§2.7–2.10) — commits separados por pieza.
-4. **Registro: progreso con pin + closehint** (§2.15) — `log-panel.tsx`. Commit: `style(ficha): barra de progreso con cursor del pase`
-5. **Registro: cabecera de pase, seg, panel, sesiones** (§2.13–2.17).
-6. **Diario de pases + delta** (§2.18–2.19, tras P3).
-7. **Comunidad** (§2.11–2.12, tras P1).
-8. **Episodios** (§2.20) — sesión propia si hace falta (rejilla + lista + temporadas).
-9. **Película** (§2.21) y **Moderador** (§2.22).
-10. **Elegir edición** (§2.23).
+**Hechas (móvil):**
+
+1. ~~**Hero fiel** (§2.1–2.5) — `item-hero.tsx`~~ ✅ **HECHA** (PR #49, `a963d72`) — la maqueta nueva **confirma que el móvil es correcto**; el hero móvil no cambió.
+2. ~~**Pestañas sans semibold sticky** (§2.6) — `item-detail-tabs.tsx`~~ ✅ **HECHA** (PR #49, `19ac1d4`). En PC las pestañas cambian de piel (§2bis.34), no de sitio.
+
+> ⚠️ **Deuda conocida de la #49:** su escritorio (hero móvil ensanchado con `sm:`) se hizo cuando NO había frame de PC y **queda sustituido** por el rail de §2bis. Es provisional a propósito, no un descuido.
+
+**Pendientes, en este orden:**
+
+3. **T3 · Shell de PC + Info** (frames 1 y 8) — la primera trae el layout ancho porque lo sostiene todo:
+   - `desk-shell`: grid `300px 1fr` en `lg:`, **rail sticky** (P5) bajo la topbar (P8).
+   - Rail: portada 256×384, estado desplegable, progreso (salvo película), CTA (P6), "Tu nota" (§2bis.25–29).
+   - Cabecera común: saga itálica, título 44px, byline serif, nota en línea (§2bis.32).
+   - Info: cabecera larga (sinopsis + géneros + facts), sagas a N (§2bis.36), ediciones desplegadas en rejilla de 3 en PC / al final y en tono menor en móvil (§2bis.37), `meta` a la derecha.
+   - Es la tarea más grande del plan: probablemente 2 PRs (shell+rail primero, cuerpo de Info después).
+4. **T4 · Registro** (frames 3 y 10) — progreso con pin + `closehint`, cabecera de pase, seg, sesiones; en PC "Datos del pase" y "Quitar de mi biblioteca" a la derecha. Diario + delta (§2.18–2.19, tras P3).
+5. **T5 · Comunidad** (frames 2 y 9) — reseñas + histograma; en PC el histograma es tarjeta lateral fija.
+6. **T6 · Episodios** (frames 4 y 11) — temporadas/rejilla; en PC el detalle del episodio se ancla a la derecha.
+7. **T7 · Película** (frames 5 y 12) y **Moderador** (frame 6).
+8. **T8 · Elegir edición** (frame 7) y el **menú `⋯`** del hero móvil (P2, pendiente de la #49).
 
 ## 5. Verificación de cierre
 
-- [ ] Los 7 frames lado a lado con un libro (con saga y 2+ pases), una serie (con episodios vistos) y una película (con reparto y plataformas).
+- [ ] Los **12** frames lado a lado con un libro (con saga y 2+ pases), una serie (con episodios vistos) y una película (con reparto y plataformas) — **móvil Y PC**.
 - [ ] Acentos por tipo correctos en hero, tabs, ediciones y episodios (ámbar/teal/ciruela).
 - [ ] Cierre automático: sesión que llega al final → Completado (e2e existente del flujo de pases en verde).
 - [ ] Moderador: editar ficha solo visible con rol; guardar/cancelar funcionan.
 - [ ] Modo oscuro (Ficha está en Paper - Modo oscuro.html).
 - [ ] `npx playwright test` verde (Node 22).
-- [ ] P1–P4 respondidas y registradas.
+- [ ] P1–P8 respondidas y registradas.
+- [ ] En PC: el rail se queda quieto al scrollear y las pestañas se pegan bajo la topbar (P5/P8); el rail y el Registro no se contradicen al cambiar de estado (P7).
 
 ## 6. Hallazgos de ejecución (T1 + T2, PR #49 · 2026-07-16)
 
