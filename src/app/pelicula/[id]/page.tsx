@@ -17,7 +17,10 @@ import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
-import { type MetaRow } from "@/components/detail/metadata-sidebar";
+import {
+  MetadataSidebar,
+  type MetaRow,
+} from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
@@ -311,33 +314,20 @@ async function MovieTabs({
           saga={saga ? { id: saga.sagaId, name: saga.name } : null}
           canContribute={canContribute}
         >
-          <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 1 && (
-              <SagaStrip
-                members={sagaMembers}
-                currentType="movie"
-                currentId={movie.id}
-                sagaId={saga.sagaId}
-                sagaName={saga.name}
-                label={tDetail("saga")}
-              />
-            )}
-            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
-                  entre la tira de ediciones y el panel de metadatos, y así los
-                  dos comparten el estado de "qué edición miro". */}
-            <EditionsSection
-              itemType="movie"
-              itemId={movie.id}
-              editionsPromise={Promise.resolve(editions)}
-              editionsFallback={<EditionsLoading />}
-              selectedEditionId={
-                passes.find((p) => !p.finishedOn)?.editionId ?? null
-              }
-              canContribute={canContribute}
-              workRows={metaRows}
-              genres={genres}
-              genresLabel={tDetail("genres")}
-            >
+          {/* Mismo orden y mismas dos columnas que la ficha de libro
+              (frames 5 y 12): sagas → sinopsis → ficha → versiones. */}
+          <div className="lg:grid lg:grid-cols-[1fr_340px] lg:items-start lg:gap-11">
+            <div className="flex flex-col gap-10">
+              {saga && sagaMembers.length >= 1 && (
+                <SagaStrip
+                  members={sagaMembers}
+                  currentType="movie"
+                  currentId={movie.id}
+                  sagaId={saga.sagaId}
+                  sagaName={saga.name}
+                  label={tDetail("saga")}
+                />
+              )}
               <InfoPanel
                 aboutLabel={tDetail("about")}
                 synopsis={movie.synopsis}
@@ -350,7 +340,32 @@ async function MovieTabs({
                   </>
                 }
               />
-            </EditionsSection>
+              <div className="lg:hidden">
+                <MetadataSidebar
+                  rows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                />
+              </div>
+              <EditionsSection
+                itemType="movie"
+                itemId={movie.id}
+                editionsPromise={Promise.resolve(editions)}
+                editionsFallback={<EditionsLoading />}
+                selectedEditionId={
+                  passes.find((p) => !p.finishedOn)?.editionId ?? null
+                }
+                canContribute={canContribute}
+              />
+            </div>
+
+            <div className="hidden lg:block">
+              <MetadataSidebar
+                rows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              />
+            </div>
           </div>
         </CatalogEditor>
       }

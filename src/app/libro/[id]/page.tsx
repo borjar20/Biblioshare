@@ -20,7 +20,10 @@ import {
 import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
-import { type MetaRow } from "@/components/detail/metadata-sidebar";
+import {
+  MetadataSidebar,
+  type MetaRow,
+} from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
@@ -400,40 +403,56 @@ async function BookTabs({
           saga={saga ? { id: saga.sagaId, name: saga.name } : null}
           canContribute={canContribute}
         >
-          <div className="flex flex-col gap-10">
-            {saga && sagaMembers.length >= 1 && (
-              <SagaStrip
-                members={sagaMembers}
-                currentType="book"
-                currentId={book.id}
-                sagaId={saga.sagaId}
-                sagaName={saga.name}
-                label={tDetail("saga")}
-              />
-            )}
-            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
-                  entre la tira de ediciones y el panel de metadatos, y así los
-                  dos comparten el estado de "qué edición miro". */}
-            <EditionsSection
-              itemType="book"
-              itemId={book.id}
-              editionsPromise={editionsPromise}
-              editionsFallback={<EditionsLoading />}
-              selectedEditionId={
-                passes.find((p) => !p.finishedOn)?.editionId ?? null
-              }
-              canContribute={canContribute}
-              workRows={metaRows}
-              genres={genres}
-              genresLabel={tDetail("genres")}
-            >
+          {/* Orden del mockup (frame 1): sagas → sinopsis → ficha →
+              ediciones, con las ediciones AL FINAL y en tono menor. En PC
+              (frame 8) el cuerpo son dos columnas: sagas y ediciones a la
+              izquierda, la ficha en la de 340. */}
+          <div className="lg:grid lg:grid-cols-[1fr_340px] lg:items-start lg:gap-11">
+            <div className="flex flex-col gap-10">
+              {saga && sagaMembers.length >= 1 && (
+                <SagaStrip
+                  members={sagaMembers}
+                  currentType="book"
+                  currentId={book.id}
+                  sagaId={saga.sagaId}
+                  sagaName={saga.name}
+                  label={tDetail("saga")}
+                />
+              )}
               <InfoPanel
                 aboutLabel={tDetail("about")}
                 synopsis={book.synopsis}
                 noSynopsisLabel={tDetail("noSynopsis")}
                 actions={<EditFichaButton />}
               />
-            </EditionsSection>
+              {/* La ficha de la obra: en móvil va aquí, entre la sinopsis y
+                  las ediciones; en PC se muda a la columna lateral. */}
+              <div className="lg:hidden">
+                <MetadataSidebar
+                  rows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                />
+              </div>
+              <EditionsSection
+                itemType="book"
+                itemId={book.id}
+                editionsPromise={editionsPromise}
+                editionsFallback={<EditionsLoading />}
+                selectedEditionId={
+                  passes.find((p) => !p.finishedOn)?.editionId ?? null
+                }
+                canContribute={canContribute}
+              />
+            </div>
+
+            <div className="hidden lg:block">
+              <MetadataSidebar
+                rows={metaRows}
+                genres={genres}
+                genresLabel={tDetail("genres")}
+              />
+            </div>
           </div>
         </CatalogEditor>
       }
