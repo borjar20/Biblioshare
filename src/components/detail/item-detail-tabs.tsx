@@ -35,6 +35,19 @@ export function ItemDetailTabs({
   const initialTab: TabId =
     urlTab && VALID_TABS.includes(urlTab) ? (urlTab as TabId) : "info";
   const [tab, setTab] = useState<TabId>(initialTab);
+
+  // Sigue los cambios de `?tab=` que llegan de FUERA (p. ej. el menú ⋯ del
+  // hero navega a ?tab=info&editar=ficha con la página ya montada). Ajuste
+  // durante el render, no un efecto — mismo patrón que el resto de la app.
+  // Los cambios propios (selectTab) escriben la misma URL que acaban de
+  // poner en el estado, así que aquí no re-disparan nada.
+  const [prevUrlTab, setPrevUrlTab] = useState(urlTab);
+  if (urlTab !== prevUrlTab) {
+    setPrevUrlTab(urlTab);
+    const next: TabId =
+      urlTab && VALID_TABS.includes(urlTab) ? (urlTab as TabId) : "info";
+    if (next !== tab) setTab(next);
+  }
   const accent = MEDIA_ACCENT[itemType];
   const order: TabId[] = episodes
     ? ["info", "episodes", "community", "log"]

@@ -34,6 +34,7 @@ export function ItemHero({
   ratingsLabel,
   backLabel,
   statusSlot,
+  menuSlot,
 }: {
   itemType: ItemType;
   mediaLabel: string;
@@ -47,6 +48,8 @@ export function ItemHero({
   ratingsLabel: string;
   backLabel: string;
   statusSlot?: ReactNode;
+  /** El menú `⋯` (HeroMenu); sin él, un hueco simétrico centra el label. */
+  menuSlot?: ReactNode;
 }) {
   const accent = MEDIA_ACCENT[itemType];
   const Icon = TYPE_ICON[itemType];
@@ -69,10 +72,10 @@ export function ItemHero({
       )}
 
       <div className="relative mx-auto w-full max-w-4xl px-4 pt-3.5 pb-5 sm:px-6">
-        {/* .hero-top: volver a la izquierda, tipo de medio centrado y teñido.
-            El ⋯ de la maqueta llega con el menú del hero (§2.2 / P2 del plan
-            06); hasta entonces, un hueco del mismo ancho que el botón para
-            que el label quede centrado de verdad. */}
+        {/* .hero-top: volver a la izquierda, tipo de medio centrado y teñido,
+            y el menú ⋯ a la derecha (P2). El propio HeroMenu pinta el hueco
+            simétrico cuando no tiene nada que ofrecer; sin slot, lo pinta
+            este layout para que el label siga centrado. */}
         <div className="flex items-center justify-between gap-3">
           <BackButton label={backLabel} />
           <span
@@ -80,7 +83,7 @@ export function ItemHero({
           >
             {mediaLabel}
           </span>
-          <span aria-hidden className="h-[34px] w-[34px] shrink-0" />
+          {menuSlot ?? <span aria-hidden className="h-[34px] w-[34px] shrink-0" />}
         </div>
 
         <div className="mt-2 flex gap-4 sm:mt-4 sm:gap-6">

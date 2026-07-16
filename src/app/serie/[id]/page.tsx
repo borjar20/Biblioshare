@@ -12,6 +12,7 @@ import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
+import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
@@ -112,7 +113,8 @@ export default async function SeriesDetailPage({
   // Promise.all: cuestan cero tiempo en serie. El de vistos filtra por el pase
   // activo sin conocer su id, con el join embebido (passes!inner) — verificado
   // contra dev que devuelve lo mismo que la consulta en dos pasos.
-  const [community, activePass, watchedEpisodes, catalogEpisodes] =
+  // El rol también (menú ⋯ del hero, P2): todo paralelo, coste cero en serie.
+  const [community, activePass, watchedEpisodes, catalogEpisodes, shellRole] =
     await Promise.all([
       getCommunity(supabase, "series", series.id),
       user
@@ -145,8 +147,10 @@ export default async function SeriesDetailPage({
             .eq("series_id", series.id)
             .then(({ count }) => count ?? 0)
         : Promise.resolve(0),
+      user ? getCurrentUserRole(supabase) : Promise.resolve(null),
     ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
+  const canEditCatalog = hasMinRole(shellRole, "collaborator");
 
   const byline =
     [
@@ -202,6 +206,13 @@ export default async function SeriesDetailPage({
         ratingsLabel={tDetail("ratings")}
         backLabel={tDetail("back")}
         statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        menuSlot={
+          <HeroMenu
+            itemType="series"
+            itemId={series.id}
+            canEditCatalog={canEditCatalog}
+          />
+        }
         railActions={
           <ItemRailActions
             itemType="series"
@@ -487,6 +498,7 @@ async function SeriesTabs({
           editions={[]}
           queues={queues}
           initialClosingPassId={initialClosingPassId}
+          canContribute={canContribute}
         />
       }
     />

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useActionState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
@@ -140,8 +141,36 @@ export function CatalogEditor({
   canContribute: boolean;
   children: ReactNode;
 }) {
-  const [editing, setEditing] = useState(false);
+  // `?editar=ficha` abre el editor desde fuera (el menú ⋯ del hero, P2): la
+  // URL es la única vía que tiene un componente de otro subárbol para llegar
+  // hasta aquí. El botón "Editar ficha" de siempre sigue usando el estado.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const editParam = searchParams.get("editar") === "ficha";
+  const [editing, setEditing] = useState(editParam && canContribute);
   const [savedFlash, setSavedFlash] = useState(false);
+
+  // Sigue el parámetro si cambia con el componente ya montado (ajuste
+  // durante el render, como el resto de la app).
+  const [prevEditParam, setPrevEditParam] = useState(editParam);
+  if (editParam !== prevEditParam) {
+    setPrevEditParam(editParam);
+    if (editParam && canContribute) setEditing(true);
+  }
+
+  // Al cerrar el editor (cancelar o guardar), la URL no debe seguir diciendo
+  // "editando": una recarga lo reabriría. router.replace es un efecto de
+  // verdad (navegación), no un setState — este useEffect es legítimo.
+  useEffect(() => {
+    if (editing || !editParam) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("editar");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [editing, editParam, searchParams, pathname, router]);
 
   // El useActionState de "Guardar cambios" vive aquí, en CatalogEditor (quien
   // posee `editing`/`savedFlash`), y no en CatalogEditorForm: cerrar el

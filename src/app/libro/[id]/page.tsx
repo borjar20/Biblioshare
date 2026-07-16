@@ -13,6 +13,7 @@ import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
+import { HeroMenu } from "@/components/detail/hero-menu";
 import {
   CatalogEditor,
   EditFichaButton,
@@ -134,7 +135,9 @@ export default async function BookDetailPage({
   // El pase activo se lee ENTERO (no solo el estado): el rail de PC enseña
   // también progreso y nota, y salen de esta misma fila — misma consulta, mismo
   // viaje. Con Supabase remoto lo caro es la ida y vuelta, no las columnas.
-  const [community, activePass] = await Promise.all([
+  // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
+  // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
+  const [community, activePass, shellRole] = await Promise.all([
     getCommunity(supabase, "book", book.id),
     user
       ? supabase
@@ -147,8 +150,10 @@ export default async function BookDetailPage({
           .maybeSingle()
           .then(({ data }) => data)
       : Promise.resolve(null),
+    user ? getCurrentUserRole(supabase) : Promise.resolve(null),
   ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
+  const canEditCatalog = hasMinRole(shellRole, "collaborator");
 
   // El byline del hero sale de la propia fila (autor + año): los créditos
   // enriquecidos dan el mismo texto y no merece la pena bloquear el hero por
@@ -202,6 +207,13 @@ export default async function BookDetailPage({
         ratingsLabel={tDetail("ratings")}
         backLabel={tDetail("back")}
         statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        menuSlot={
+          <HeroMenu
+            itemType="book"
+            itemId={book.id}
+            canEditCatalog={canEditCatalog}
+          />
+        }
         railActions={
           <ItemRailActions
             itemType="book"
@@ -497,6 +509,7 @@ async function BookTabs({
             editions={editions}
             queues={queues}
             initialClosingPassId={initialClosingPassId}
+            canContribute={canContribute}
           />
         </div>
       }

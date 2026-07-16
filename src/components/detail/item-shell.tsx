@@ -32,6 +32,7 @@ export function ItemShell({
   ratingsLabel,
   backLabel,
   statusSlot,
+  menuSlot,
   railActions,
   tabs,
 }: {
@@ -47,6 +48,8 @@ export function ItemShell({
   backLabel: string;
   /** La píldora "En tu biblioteca · Leyendo" — solo móvil. */
   statusSlot?: ReactNode;
+  /** El menú ⋯ de la barra del hero (P2) — solo móvil, como la barra. */
+  menuSlot?: ReactNode;
   /** Panel de control del rail — solo PC. */
   railActions?: ReactNode;
   tabs: ReactNode;
@@ -76,6 +79,7 @@ export function ItemShell({
             ratingsLabel={ratingsLabel}
             backLabel={backLabel}
             statusSlot={statusSlot}
+            menuSlot={menuSlot}
           />
         </div>
 
