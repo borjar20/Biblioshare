@@ -19,6 +19,16 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: "list",
+  // Un reintento. NO es para tapar tests malos: el origen está medido y es del
+  // entorno (Supabase remoto, ~240 ms por consulta con picos de 1,3 s), no del
+  // producto — se ve igual en GETs y en el proxy de auth, que no revalidan
+  // nada. La prueba de que no es el bug de ningún test es que el que falla se
+  // MUEVE en cada pasada (310, 347, 467, 512...).
+  //
+  // Playwright marca como "flaky" (no "passed") lo que pasa al reintentar, así
+  // que esto estabiliza la señal sin esconderla: si un test empieza a salir
+  // flaky de forma consistente, sigue viéndose en el informe.
+  retries: 1,
   // El defecto de Playwright son 5 s, y se queda corto contra `next dev`. Aquí
   // casi todo lo que se comprueba llega tras un ida y vuelta al servidor, y el
   // entorno de desarrollo tiene picos de latencia MEDIDOS: un POST normal va en
