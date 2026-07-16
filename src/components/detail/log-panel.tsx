@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { StarRating } from "@/components/ui/star-rating";
+import { RatingDots } from "@/components/ui/rating-dots";
+import { ChevronDownIcon } from "@/components/ui/icons";
 import { PassProgress } from "./pass-progress";
 import { SessionList } from "@/components/session-list";
 import { StatusSegments } from "@/components/detail/status-segments";
@@ -634,124 +635,152 @@ function ProgressBlock({
         <PassProgress itemType={itemType} page={page} total={totalPages} />
       )}
 
-      <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface-muted p-3">
-        <span className="text-xs font-semibold text-foreground">
-          {t("progressTitle")}
-        </span>
+      {/* El `.panel` del frame 3: fondo --surface (NO --surface-muted, que es
+          el --surface-2 del handoff — con el panel un peldaño más oscuro, todo
+          lo de dentro se lavaba y los dots apagados desaparecían), radio 12 y
+          cabecera separada del cuerpo por el borde.
 
-        {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
+          Plegable con <details>/<summary> nativo, como la matriz del reto de
+          listas (list-challenge-board.tsx): el navegador ya trae el estado, el
+          teclado y la semántica de "abrir/cerrar". Nace abierto porque es el
+          panel del pase en curso — plegarlo es para quitarlo de en medio, no
+          el estado normal. */}
+      <details
+        open
+        className="group flex flex-col rounded-[12px] border border-border bg-surface"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between px-[15px] py-[13px] text-[13px] font-semibold text-foreground">
+          {t("progressTitle")}
+          {/* Abierto apunta ABAJO, que es el `▾` que pinta el frame; cerrado
+              apunta a la derecha. (list-challenge-board hace lo contrario —
+              abierto arriba — pero ahí el chevron va ANTES del texto, como una
+              flecha de árbol; aquí cierra la fila por la derecha.) */}
+          <ChevronDownIcon
+            aria-hidden
+            className="h-3 w-3 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0"
+          />
+        </summary>
+
+        <div className="flex flex-col gap-2.5 border-t border-border px-[15px] pt-3.5 pb-[15px]">
+          {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
           contestar (incluida la salida "No lo sé", que además se recuerda en
           localStorage para no repetirse en cada recarga). */}
-        {pendingEditionQuestion && (
-          <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
-            <span className="text-xs font-semibold text-foreground">
-              {tEditions("whichEditionReading")}
-            </span>
-            <div className="flex flex-col gap-1">
-              {editions.map((edition) => (
+          {pendingEditionQuestion && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
+              <span className="text-xs font-semibold text-foreground">
+                {tEditions("whichEditionReading")}
+              </span>
+              <div className="flex flex-col gap-1">
+                {editions.map((edition) => (
+                  <button
+                    key={edition.id}
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      setAnswered(true);
+                      startTransition(() =>
+                        setPassEdition(
+                          openPass.id,
+                          itemType,
+                          itemId,
+                          edition.id,
+                        ),
+                      );
+                    }}
+                    className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
+                  >
+                    {formatEdition(edition, itemType)}
+                  </button>
+                ))}
                 <button
-                  key={edition.id}
                   type="button"
                   disabled={isPending}
                   onClick={() => {
+                    // "No lo sé" no fija edición: se recuerda por passId para
+                    // que no vuelva a preguntar en cada recarga (sí volverá a
+                    // preguntar si se abre un pase nuevo, p. ej. una relectura).
+                    writeEditionAsked(openPass.id);
                     setAnswered(true);
-                    startTransition(() =>
-                      setPassEdition(openPass.id, itemType, itemId, edition.id),
-                    );
                   }}
-                  className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
+                  className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
                 >
-                  {formatEdition(edition, itemType)}
+                  {tEditions("unknownEdition")}
                 </button>
-              ))}
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  // "No lo sé" no fija edición: se recuerda por passId para
-                  // que no vuelva a preguntar en cada recarga (sí volverá a
-                  // preguntar si se abre un pase nuevo, p. ej. una relectura).
-                  writeEditionAsked(openPass.id);
-                  setAnswered(true);
-                }}
-                className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
-              >
-                {tEditions("unknownEdition")}
-              </button>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {tEditions("unknownEditionHint")}
-            </p>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-            {tPasses("rating")}
-          </span>
-          <StarRating
-            value={rating}
-            onChange={(next) => {
-              setRating(next);
-              startTransition(() =>
-                ratePass(openPass.id, itemType, itemId, next),
-              );
-            }}
-            size="sm"
-          />
-        </div>
-
-        {page !== undefined && (
-          <p className="text-xs text-muted-foreground">
-            {totalPages !== null
-              ? t("page", { page, total: totalPages })
-              : t("pageOnly", { page })}
-          </p>
-        )}
-
-        {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
-          pregunta pendiente de arriba está sin contestar, no repetimos el
-          mismo selector aquí abajo. */}
-        {itemType !== "series" &&
-          editions.length > 0 &&
-          !pendingEditionQuestion && (
-            <div className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("edition")}
-              </span>
-              <Select
-                size="sm"
-                value={openPass.editionId ?? ""}
-                disabled={isPending}
-                onChange={(event) => {
-                  const next = event.target.value || null;
-                  startTransition(() =>
-                    setPassEdition(openPass.id, itemType, itemId, next),
-                  );
-                }}
-              >
-                <option value="">{t("noEdition")}</option>
-                {editions.map((edition) => (
-                  <option key={edition.id} value={edition.id}>
-                    {formatEdition(edition, itemType)}
-                  </option>
-                ))}
-              </Select>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {tEditions("unknownEditionHint")}
+              </p>
             </div>
           )}
 
-        {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+              {tPasses("rating")}
+            </span>
+            <RatingDots
+              value={rating}
+              onChange={(next) => {
+                setRating(next);
+                startTransition(() =>
+                  ratePass(openPass.id, itemType, itemId, next),
+                );
+              }}
+              size="sm"
+            />
+          </div>
+
+          {page !== undefined && (
+            <p className="text-xs text-muted-foreground">
+              {totalPages !== null
+                ? t("page", { page, total: totalPages })
+                : t("pageOnly", { page })}
+            </p>
+          )}
+
+          {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
+          pregunta pendiente de arriba está sin contestar, no repetimos el
+          mismo selector aquí abajo. */}
+          {itemType !== "series" &&
+            editions.length > 0 &&
+            !pendingEditionQuestion && (
+              <div className="flex flex-col gap-1">
+                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                  {t("edition")}
+                </span>
+                <Select
+                  size="sm"
+                  value={openPass.editionId ?? ""}
+                  disabled={isPending}
+                  onChange={(event) => {
+                    const next = event.target.value || null;
+                    startTransition(() =>
+                      setPassEdition(openPass.id, itemType, itemId, next),
+                    );
+                  }}
+                >
+                  <option value="">{t("noEdition")}</option>
+                  {editions.map((edition) => (
+                    <option key={edition.id} value={edition.id}>
+                      {formatEdition(edition, itemType)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
+          {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
           abierto es siempre el activo (ver comentario de ManagedLog), así
           que openPass.id es el id correcto para la ruta. */}
-        {itemType !== "movie" && (
-          <Link
-            href={`/sesion/${openPass.id}`}
-            className="self-start text-xs text-muted-foreground underline hover:text-foreground"
-          >
-            {tSessions("add")}
-          </Link>
-        )}
-      </div>
+          {itemType !== "movie" && (
+            <Link
+              href={`/sesion/${openPass.id}`}
+              className="self-start text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              {tSessions("add")}
+            </Link>
+          )}
+        </div>
+      </details>
     </>
   );
 }

@@ -2,8 +2,8 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { StarRating } from "@/components/ui/star-rating";
-import { formatStars } from "@/lib/rating/stars";
+import { RatingDots } from "@/components/ui/rating-dots";
+import { formatDots } from "@/lib/rating/dots";
 import { GenreTag } from "@/components/ui/genre-tag";
 import { BackButton } from "./back-button";
 import { BookIcon, FilmIcon, SeriesIcon } from "@/components/ui/icons";
@@ -133,13 +133,13 @@ export function ItemHero({
                 <span
                   className={`font-serif text-[30px] leading-none font-semibold ${accent.text}`}
                 >
-                  {formatStars(avgRating)}
+                  {formatDots(avgRating)}
                   <small className="text-sm font-normal text-muted-foreground">
                     /5
                   </small>
                 </span>
                 <div className="flex flex-col gap-1">
-                  <StarRating value={avgRating} size="sm" />
+                  <RatingDots value={avgRating} size="sm" />
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {ratingCount.toLocaleString("es")} {ratingsLabel}
                   </span>

@@ -1,7 +1,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { StarRating } from "@/components/ui/star-rating";
-import { formatStars } from "@/lib/rating/stars";
+import { RatingDots } from "@/components/ui/rating-dots";
+import { formatDots } from "@/lib/rating/dots";
 import { BookIcon, FilmIcon, SeriesIcon } from "@/components/ui/icons";
 
 const TYPE_ICON = {
@@ -67,11 +67,11 @@ export function ItemHeaderWide({
 
         {avgRating !== null && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <StarRating value={avgRating} size="lg" />
+            <RatingDots value={avgRating} size="lg" />
             <span
               className={`font-serif text-[26px] leading-none font-semibold ${accent.text}`}
             >
-              {formatStars(avgRating)}
+              {formatDots(avgRating)}
             </span>
             <span className="font-mono text-[11px] text-muted-foreground">
               {ratingCount.toLocaleString("es")} {ratingsLabel}

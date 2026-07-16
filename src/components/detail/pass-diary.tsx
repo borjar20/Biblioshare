@@ -12,7 +12,7 @@ import {
 } from "@/lib/passes/actions";
 import { formatEdition } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { StarRating } from "@/components/ui/star-rating";
+import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
 
 const initialState: ClosePassState = {};
@@ -157,7 +157,7 @@ function PassCard({
   return (
     <div className="flex flex-col gap-1.5 rounded-card border border-border bg-surface p-3 text-xs">
       <div className="flex items-center justify-between gap-2">
-        <StarRating value={pass.rating} size="sm" />
+        <RatingDots value={pass.rating} size="sm" />
         {deltaLabel && (
           <span
             className={`font-mono text-[10px] ${
@@ -230,7 +230,7 @@ function PassCard({
             <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
               {t("rating")}
             </span>
-            <StarRating value={rating} onChange={setRating} size="sm" />
+            <RatingDots value={rating} onChange={setRating} size="sm" />
             <input type="hidden" name="rating" value={rating ?? ""} />
           </div>
 
