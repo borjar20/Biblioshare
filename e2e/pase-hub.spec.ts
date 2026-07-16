@@ -150,6 +150,15 @@ function statusBadge(page: Page, label: string) {
     .filter({ hasText: label });
 }
 
+// Una tarjeta del diario de pases por su ordinal. El ordinal va por tipo de
+// medio ("2.ª lectura" / "2.º visionado", passes.nth) y lo dice TAMBIÉN la
+// cabecera del pase activo: sin acotar al data-testid, un getByText casaría
+// con las dos y fallaría por modo estricto.
+function diaryEntry(page: Page, itemType: "book" | "series", n: number) {
+  const ordinal = itemType === "book" ? `${n}.ª lectura` : `${n}.º visionado`;
+  return page.getByTestId("diary-entry").filter({ hasText: ordinal });
+}
+
 // "Seguir": con una sola edición (o ninguna) añade directo; con varias abre
 // el selector "¿Qué edición tienes?" (FollowButton en log-panel.tsx) y hay
 // que elegir una salida — "No lo sé" es la legítima para no atarnos a que el
@@ -350,8 +359,8 @@ test.describe
 
     // Diario con los dos pases; el nuevo panel de Progreso existe (el pase
     // recién creado tiene posición vacía) pero SIN página registrada todavía.
-    await expect(page.getByText("1º pase")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("2º pase")).toBeVisible();
+    await expect(diaryEntry(page, "book", 1)).toBeVisible({ timeout: 15_000 });
+    await expect(diaryEntry(page, "book", 2)).toBeVisible();
     await expect(page.getByText("Progreso", { exact: true })).toBeVisible();
     await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
   });
@@ -469,12 +478,12 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       // pases distintos en el diario (el dejado + el nuevo abierto). Misma
       // recarga explícita (con reintento) que arriba, por la misma razón.
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
-        p.getByText("2º pase"),
+        diaryEntry(p, "book", 2),
       );
       await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
-      await expect(page.getByText("1º pase")).toBeVisible();
-      await expect(page.getByText("2º pase")).toBeVisible();
-      await expect(page.getByText("3º pase")).toHaveCount(0);
+      await expect(diaryEntry(page, "book", 1)).toBeVisible();
+      await expect(diaryEntry(page, "book", 2)).toBeVisible();
+      await expect(diaryEntry(page, "book", 3)).toHaveCount(0);
     } finally {
       await cleanupBook(bookId);
     }
@@ -612,8 +621,8 @@ test.describe("serie con revisionado", () => {
       await reloadUntilVisible(page, `/serie/${seriesId}?tab=log`, (p) =>
         statusBadge(p, "Viendo"),
       );
-      await expect(page.getByText("1º pase")).toBeVisible();
-      await expect(page.getByText("2º pase")).toBeVisible();
+      await expect(diaryEntry(page, "series", 1)).toBeVisible();
+      await expect(diaryEntry(page, "series", 2)).toBeVisible();
 
       // El último episodio, visto en el pase ANTERIOR, sale SIN marcar en
       // este pase nuevo — su cursor propio no hereda nada — pero con la capa
@@ -714,11 +723,11 @@ test.describe("nuevo pase", () => {
       // router.refresh() tras el POST es una carrera menos determinista que
       // una navegación completa.
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
-        p.getByText("2º pase"),
+        diaryEntry(p, "book", 2),
       );
-      await expect(page.getByText("1º pase")).toBeVisible();
-      await expect(page.getByText("2º pase")).toBeVisible();
-      await expect(page.getByText("3º pase")).toHaveCount(0);
+      await expect(diaryEntry(page, "book", 1)).toBeVisible();
+      await expect(diaryEntry(page, "book", 2)).toBeVisible();
+      await expect(diaryEntry(page, "book", 3)).toHaveCount(0);
       await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
       await expect(statusBadge(page, "Leyendo")).toBeVisible({
         timeout: 15_000,

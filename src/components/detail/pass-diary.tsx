@@ -21,9 +21,12 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Diferencia en estrellas entre dos notas 1-10 (media estrella = 1 punto),
-// con signo siempre visible ("+1", "-0,5"…) — locale es-ES, coma decimal.
-function starsDelta(current: number, previous: number): string {
+// Diferencia entre dos notas 1-10 en la escala que se ENSEÑA (la de 5 dots,
+// donde un dot = 2 puntos), con signo siempre visible ("+1", "-0,5"…) —
+// locale es-ES, coma decimal. Se llamaba starsDelta y su etiqueta acababa en
+// "★"; la app ya no tiene estrellas (ver rating-dots.tsx), así que el delta va
+// sin unidad: el número está en la misma escala que el "4,5" de al lado.
+function ratingDelta(current: number, previous: number): string {
   const diff = (current - previous) / 2;
   return diff.toLocaleString("es-ES", {
     maximumFractionDigits: 1,
@@ -49,15 +52,16 @@ export function PassDiary({
   const t = useTranslations("passes");
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-foreground">
+    <div className="flex flex-col">
+      {/* `.h5` del frame: mono, versalitas, apagado (igual que Sesiones). */}
+      <h3 className="mb-[11px] font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase lg:mb-[15px]">
         {t("diaryTitle")}
       </h3>
 
       {passes.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("empty")}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2.5">
           {passes.map((pass, i) => {
             // Los pases vienen del más reciente al más antiguo: el n-ésimo
             // pase cronológico es al revés del índice del array.
@@ -83,15 +87,20 @@ export function PassDiary({
                   n={n}
                   itemType={itemType}
                   itemId={itemId}
-                  editionLabel={edition ? formatEdition(edition, itemType) : null}
+                  editionLabel={
+                    edition ? formatEdition(edition, itemType) : null
+                  }
                   deltaLabel={
                     showDelta
                       ? t(diff > 0 ? "delta" : "deltaDown", {
-                          delta: `${starsDelta(pass.rating!, previous!.rating!)}★`,
+                          delta: ratingDelta(pass.rating!, previous!.rating!),
                         })
                       : null
                   }
                   deltaUp={showDelta ? diff > 0 : null}
+                  // Los pases viejos se atenúan (`opacity:.8` del frame): el
+                  // de arriba es el que cuenta ahora.
+                  isOld={i > 0}
                 />
               </li>
             );
@@ -110,6 +119,7 @@ function PassCard({
   editionLabel,
   deltaLabel,
   deltaUp,
+  isOld,
 }: {
   pass: Pass;
   n: number;
@@ -119,6 +129,8 @@ function PassCard({
   deltaLabel: string | null;
   /** true = subió, false = bajó, null = sin delta que mostrar. */
   deltaUp: boolean | null;
+  /** No es el pase más reciente: se atenúa (`opacity:.8` del frame). */
+  isOld: boolean;
 }) {
   const t = useTranslations("passes");
   const format = useFormatter();
@@ -128,7 +140,7 @@ function PassCard({
   const [rating, setRating] = useState<number | null>(pass.rating);
   const [state, formAction, pending] = useActionState(
     updatePass.bind(null, pass.id, itemType, itemId),
-    initialState
+    initialState,
   );
 
   // Cerrar el formulario tras un guardado sin error: ajuste de estado
@@ -154,13 +166,23 @@ function PassCard({
   // finished_on, así que abrirlo en un pase abierto lo cerraría de tapadillo.
   const canEdit = pass.finishedOn !== null;
 
+  // `.diary-entry` del frame: sobre --surface-muted (el --surface-2 del
+  // handoff), radio 10 y 13 de padding.
   return (
-    <div className="flex flex-col gap-1.5 rounded-card border border-border bg-surface p-3 text-xs">
-      <div className="flex items-center justify-between gap-2">
+    <div
+      // El ordinal ("2.ª lectura") lo dice TAMBIÉN la cabecera del pase
+      // activo (§2.13): sin un asidero propio, un getByText por ese texto
+      // casaría con los dos y el e2e reventaría por modo estricto.
+      data-testid="diary-entry"
+      className={`flex flex-col rounded-[10px] border border-border bg-surface-muted p-[13px] text-xs ${
+        isOld ? "opacity-80" : ""
+      }`}
+    >
+      <div className="mb-1.5 flex items-center gap-2">
         <RatingDots value={pass.rating} size="sm" />
         {deltaLabel && (
           <span
-            className={`font-mono text-[10px] ${
+            className={`ml-auto font-mono text-[10px] ${
               deltaUp ? "text-status-completed" : "text-status-dropped"
             }`}
           >
@@ -170,8 +192,11 @@ function PassCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+        {/* "2.ª lectura · 12 mar 2026": el mismo ordinal por tipo de medio que
+            usa la cabecera del pase (§2.13), no un genérico "2º pase" — es la
+            misma cosa contada en el mismo idioma. */}
         <span>
-          {t("pass", { n })} · {dateLabel}
+          {t(`nth.${itemType}`, { n })} · {dateLabel}
         </span>
         {editionLabel && (
           <span
@@ -182,8 +207,12 @@ function PassCard({
         )}
       </div>
 
+      {/* `.tx` del frame: prosa, no metadato — va en --foreground-soft (el
+          #584f43 del handoff), no en el gris de las etiquetas. */}
       {pass.review && (
-        <p className="text-muted-foreground">{pass.review}</p>
+        <p className="mt-1 text-[12.5px] leading-[1.55] text-foreground-soft">
+          {pass.review}
+        </p>
       )}
 
       <div className="flex items-center gap-3 pt-1">
