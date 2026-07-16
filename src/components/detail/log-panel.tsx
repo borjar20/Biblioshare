@@ -359,137 +359,201 @@ function ManagedLog({
         : null) ?? primaryEdition(editions))
     : null;
 
+  // Página del pase y su total. Se calculan AQUÍ, en el antecesor común, y no
+  // dentro del panel: en PC la barra se queda en la columna izquierda y el
+  // panel cruza a la derecha, así que los dos necesitan el dato y ninguno es
+  // padre del otro.
+  let page: number | undefined;
+  if (
+    itemType === "book" &&
+    "page" in entry.position &&
+    entry.position.page !== undefined
+  ) {
+    page = entry.position.page;
+  }
+  // La edición del pase manda; si no trae páginas (pasa, y mucho: OpenLibrary
+  // no siempre las da), cae al total de la obra. Mismo criterio que addSession.
+  const totalPages =
+    itemType === "book"
+      ? (openPassEdition?.totalUnits ?? workTotalUnits ?? null)
+      : null;
+
   return (
-    <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
-      <div className="flex flex-col gap-1.5">
-        {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases sustituyen al
+    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
+      {/* Frame 10: en PC el Registro son DOS columnas — a la izquierda la
+          historia del pase (cabecera, estado, progreso, sesiones, diario) y a
+          la derecha sus datos y el quitar.
+
+          El DOM es UNO solo. Los envoltorios van en `display:contents` en
+          móvil, así que sus hijos caen directos en la columna flex de fuera y
+          se ordenan con `order` — que es el orden del frame 3, con el panel
+          entre la barra y las sesiones. En `lg` pasan a ser columnas de
+          verdad. La alternativa era duplicar el árbol, y el panel tiene estado
+          propio (la nota, la pregunta de edición): dos copias divergirían. */}
+      {/* El frame fija las dos columnas (378 y 340), pero sus medidas son de
+          un lienzo sin la tarjeta que envuelve nuestra pestaña: sumadas con el
+          hueco se salen por la derecha. Se fija solo la DERECHA —340 es el
+          ancho de diseño del panel— y la izquierda toma lo que quede, que
+          además aguanta anchos intermedios sin desbordar. */}
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-11 lg:gap-y-0">
+        <div className="contents lg:flex lg:flex-col lg:gap-4">
+          <div className="order-1 flex flex-col gap-1.5">
+            {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases sustituyen al
             rótulo "Tu estado", que además repetía el aria-label del propio
             control (StatusSegments ya se anuncia como grupo "Tu estado"). El
             ordinal del pase activo es passes.length: vienen del más reciente
             al más antiguo, así que el activo es el último cronológico —
             mismo criterio que el diario. */}
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div>
-            <span className="block font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
-              {tPasses("activeLabel")}
-            </span>
-            <span className="font-serif text-base leading-tight font-semibold">
-              {tPasses(`nth.${itemType}`, { n: passes.length })}
-            </span>
-          </div>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div>
+                <span className="block font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
+                  {tPasses("activeLabel")}
+                </span>
+                <span className="font-serif text-base leading-tight font-semibold">
+                  {tPasses(`nth.${itemType}`, { n: passes.length })}
+                </span>
+              </div>
 
-          {/* "Nuevo pase" = cerrar el actual y empezar otro de cero. No se
+              {/* "Nuevo pase" = cerrar el actual y empezar otro de cero. No se
               pinta sobre un PENDIENTE: ahí no hay nada que cerrar todavía (el
               pase no ha empezado), así que archivarlo para crear otro igual de
               vacío no diría nada nuevo — y "¿completado o abandonado?" no
               tendría respuesta honesta. Con el pase ya cerrado el botón actúa
               directo; solo pregunta si sigue abierto. */}
-          {status !== "planned" && (
-            <button
-              type="button"
+              {status !== "planned" && (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={handleNewPass}
+                  // `.newpase` del frame: mono 10, TEÑIDO del acento del medio y
+                  // con el borde a medio camino entre el acento y --border
+                  // (color-mix al 35%). En #56 salió gris, que lo hacía parecer un
+                  // enlace secundario más.
+                  className={`shrink-0 rounded-lg border px-[11px] py-1.5 font-mono text-[10px] font-medium whitespace-nowrap disabled:opacity-60 ${accent.text} ${accent.borderSoft}`}
+                >
+                  {tPasses("newPass")}
+                </button>
+              )}
+            </div>
+            <StatusSegments
+              status={status}
+              itemType={itemType}
+              onChange={handleStatusChange}
               disabled={isPending}
-              onClick={handleNewPass}
-              // `.newpase` del frame: mono 10, TEÑIDO del acento del medio y
-              // con el borde a medio camino entre el acento y --border
-              // (color-mix al 35%). En #56 salió gris, que lo hacía parecer un
-              // enlace secundario más.
-              className={`shrink-0 rounded-lg border px-[11px] py-1.5 font-mono text-[10px] font-medium whitespace-nowrap disabled:opacity-60 ${accent.text} ${accent.borderSoft}`}
-            >
-              {tPasses("newPass")}
-            </button>
-          )}
-        </div>
-        <StatusSegments
-          status={status}
-          itemType={itemType}
-          onChange={handleStatusChange}
-          disabled={isPending}
-        />
-      </div>
+            />
+          </div>
 
-      {/* Elegir cola: solo tiene sentido mientras el ítem está planificado
+          {/* Elegir cola: solo tiene sentido mientras el ítem está planificado
           (§7.22). Al salir de "planned" el server limpia queue_id. */}
-      {status === "planned" && queues.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor={`log-queue-${entry.entryId}`}
-            className="text-sm font-medium"
-          >
-            {tQueue("title")}
-          </label>
-          <Select
-            id={`log-queue-${entry.entryId}`}
-            value={queueId ?? ""}
-            disabled={isPending}
-            onChange={(event) => {
-              const next = event.target.value || null;
-              setQueueId(next);
-              startTransition(() => moveEntryToQueue(itemType, itemId, next));
-            }}
-          >
-            <option value="">{tQueue("noQueue")}</option>
-            {queues.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.name}
-              </option>
-            ))}
-          </Select>
+          {status === "planned" && queues.length > 0 && (
+            <div className="order-2 flex flex-col gap-1">
+              <label
+                htmlFor={`log-queue-${entry.entryId}`}
+                className="text-sm font-medium"
+              >
+                {tQueue("title")}
+              </label>
+              <Select
+                id={`log-queue-${entry.entryId}`}
+                value={queueId ?? ""}
+                disabled={isPending}
+                onChange={(event) => {
+                  const next = event.target.value || null;
+                  setQueueId(next);
+                  startTransition(() =>
+                    moveEntryToQueue(itemType, itemId, next),
+                  );
+                }}
+              >
+                <option value="">{tQueue("noQueue")}</option>
+                {queues.map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          {/* La barra va FUERA del panel y encima, como el `.prg` del frame; en
+          PC se queda en la columna izquierda. Necesita total conocido: sin él
+          no hay porcentaje que enseñar ni cierre automático que avisar. */}
+          {openPass &&
+            page !== undefined &&
+            totalPages !== null &&
+            totalPages > 0 && (
+              <div className="order-3">
+                <PassProgress
+                  itemType={itemType}
+                  page={page}
+                  total={totalPages}
+                />
+              </div>
+            )}
+
+          {itemType !== "movie" && activePass && (
+            <div className="order-5">
+              <SessionList
+                passId={activePass.id}
+                itemType={itemType}
+                itemId={itemId}
+                sessions={sessions}
+                editionLabel={
+                  openPassEdition
+                    ? formatEdition(openPassEdition, itemType)
+                    : null
+                }
+              />
+            </div>
+          )}
+
+          <div className="order-6">
+            <PassDiary
+              itemType={itemType}
+              itemId={itemId}
+              passes={passes}
+              editions={editions}
+            />
+          </div>
         </div>
-      )}
 
-      {openPass && (
-        // key={openPass.id}: fuerza un remount cuando cambia de pase (p. ej.
-        // una relectura), para que el inicializador de useState que lee
-        // localStorage (readEditionAsked) se ejecute de nuevo con la clave
-        // del pase nuevo, sin tener que releer localStorage durante el
-        // render.
-        <ProgressBlock
-          key={openPass.id}
-          itemType={itemType}
-          itemId={itemId}
-          entry={entry}
-          openPass={openPass}
-          openPassEdition={openPassEdition}
-          workTotalUnits={workTotalUnits}
-          editions={editions}
-        />
-      )}
+        {/* Columna derecha en PC: los datos del pase y el quitar. */}
+        <div className="contents lg:flex lg:flex-col lg:gap-4">
+          {openPass && (
+            // key={openPass.id}: fuerza un remount cuando cambia de pase (p. ej.
+            // una relectura), para que el inicializador de useState que lee
+            // localStorage (readEditionAsked) se ejecute de nuevo con la clave
+            // del pase nuevo, sin tener que releer localStorage durante el
+            // render.
+            <PassDataPanel
+              key={openPass.id}
+              itemType={itemType}
+              itemId={itemId}
+              openPass={openPass}
+              page={page}
+              totalPages={totalPages}
+              editions={editions}
+            />
+          )}
 
-      {itemType !== "movie" && activePass && (
-        <SessionList
-          passId={activePass.id}
-          itemType={itemType}
-          itemId={itemId}
-          sessions={sessions}
-          editionLabel={
-            openPassEdition ? formatEdition(openPassEdition, itemType) : null
-          }
-        />
-      )}
-
-      <PassDiary
-        itemType={itemType}
-        itemId={itemId}
-        passes={passes}
-        editions={editions}
-      />
-
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => {
-          // Quitar de la biblioteca = quedarse sin pase activo: el badge del
-          // hero debe desaparecer ya, no cuando aterrice la revalidación.
-          setStatus(null);
-          startTransition(() => removeFromLibrary(itemType, itemId));
-        }}
-        // `.unfollow` del frame: centrado, rojo y subrayado. No se esconde en
-        // gris — quitar una obra de la biblioteca borra TODOS sus pases (ver
-        // removeFromLibrary), así que el color dice lo que hace.
-        className="py-3 text-center text-xs text-status-dropped underline underline-offset-2 disabled:opacity-60"
-      >
-        {t("unfollow")}
-      </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              // Quitar de la biblioteca = quedarse sin pase activo: el badge del
+              // hero debe desaparecer ya, no cuando aterrice la revalidación.
+              setStatus(null);
+              startTransition(() => removeFromLibrary(itemType, itemId));
+            }}
+            // `.unfollow` del frame: centrado, rojo y subrayado. No se esconde en
+            // gris — quitar una obra de la biblioteca borra TODOS sus pases (ver
+            // removeFromLibrary), así que el color dice lo que hace.
+            className="order-7 py-3 text-center text-xs text-status-dropped underline underline-offset-2 disabled:opacity-60"
+          >
+            {t("unfollow")}
+          </button>
+        </div>
+      </div>
 
       {closingPassId && (
         <ClosePassSheet
@@ -539,22 +603,22 @@ function ManagedLog({
 // pase, esta cifra deja de refrescarse tras registrar una sesión —
 // library_entries.position ya no la escribe nadie. El barrido de la Tarea 9
 // (derivar esto de diary_entries) la pone al día otra vez.
-function ProgressBlock({
+function PassDataPanel({
   itemType,
   itemId,
-  entry,
   openPass,
-  openPassEdition,
   editions,
-  workTotalUnits,
+  page,
+  totalPages,
 }: {
   itemType: ItemType;
   itemId: string;
-  entry: { position: Position };
-  workTotalUnits?: number | null;
   openPass: Pass;
-  openPassEdition: Edition | null;
   editions: Edition[];
+  /** Página actual del pase, ya calculada por ManagedLog (la comparte con la
+   *  barra, que en PC vive en la otra columna). */
+  page: number | undefined;
+  totalPages: number | null;
 }) {
   const t = useTranslations("detail.log");
   const tPasses = useTranslations("passes");
@@ -620,176 +684,146 @@ function ProgressBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  let page: number | undefined;
-  if (
-    itemType === "book" &&
-    "page" in entry.position &&
-    entry.position.page !== undefined
-  ) {
-    page = entry.position.page;
-  }
-  // La edición del pase manda; si no trae páginas (pasa, y mucho: OpenLibrary
-  // no siempre las da), cae al total de la obra. Mismo criterio que addSession.
-  const totalPages =
-    itemType === "book"
-      ? (openPassEdition?.totalUnits ?? workTotalUnits ?? null)
-      : null;
-
+  // El `.panel` del frame 3 (y el `.desk-panel` del 10): fondo --surface (NO
+  // --surface-muted, que es el --surface-2 del handoff — con el panel un
+  // peldaño más oscuro todo lo de dentro se lavaba y los dots apagados
+  // desaparecían), radio 12 y cabecera separada del cuerpo por el borde.
+  //
+  // Plegable con <details>/<summary> nativo, como la matriz del reto de listas
+  // (list-challenge-board.tsx): el navegador ya trae el estado, el teclado y
+  // la semántica de "abrir/cerrar". Nace abierto porque es el panel del pase
+  // en curso — plegarlo es para quitarlo de en medio, no el estado normal.
   return (
-    <>
-      {/* La barra del pase va FUERA del panel y encima, como el .prg del
-          frame 3. Necesita total conocido: sin él no hay porcentaje que
-          enseñar ni cierre automático que avisar. */}
-      {page !== undefined && totalPages !== null && totalPages > 0 && (
-        <PassProgress itemType={itemType} page={page} total={totalPages} />
-      )}
-
-      {/* El `.panel` del frame 3: fondo --surface (NO --surface-muted, que es
-          el --surface-2 del handoff — con el panel un peldaño más oscuro, todo
-          lo de dentro se lavaba y los dots apagados desaparecían), radio 12 y
-          cabecera separada del cuerpo por el borde.
-
-          Plegable con <details>/<summary> nativo, como la matriz del reto de
-          listas (list-challenge-board.tsx): el navegador ya trae el estado, el
-          teclado y la semántica de "abrir/cerrar". Nace abierto porque es el
-          panel del pase en curso — plegarlo es para quitarlo de en medio, no
-          el estado normal. */}
-      <details
-        open
-        className="group flex flex-col rounded-[12px] border border-border bg-surface"
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between px-[15px] py-[13px] text-[13px] font-semibold text-foreground">
-          {t("progressTitle")}
-          {/* Abierto apunta ABAJO, que es el `▾` que pinta el frame; cerrado
+    <details
+      open
+      className="order-4 group flex flex-col rounded-[12px] border border-border bg-surface"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between px-[15px] py-[13px] text-[13px] font-semibold text-foreground">
+        {t("progressTitle")}
+        {/* Abierto apunta ABAJO, que es el `▾` que pinta el frame; cerrado
               apunta a la derecha. (list-challenge-board hace lo contrario —
               abierto arriba — pero ahí el chevron va ANTES del texto, como una
               flecha de árbol; aquí cierra la fila por la derecha.) */}
-          <ChevronDownIcon
-            aria-hidden
-            className="h-3 w-3 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0"
-          />
-        </summary>
+        <ChevronDownIcon
+          aria-hidden
+          className="h-3 w-3 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0"
+        />
+      </summary>
 
-        <div className="flex flex-col gap-2.5 border-t border-border px-[15px] pt-3.5 pb-[15px]">
-          {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
+      <div className="flex flex-col gap-2.5 border-t border-border px-[15px] pt-3.5 pb-[15px]">
+        {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
           contestar (incluida la salida "No lo sé", que además se recuerda en
           localStorage para no repetirse en cada recarga). */}
-          {pendingEditionQuestion && (
-            <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
-              <span className="text-xs font-semibold text-foreground">
-                {tEditions("whichEditionReading")}
-              </span>
-              <div className="flex flex-col gap-1">
-                {editions.map((edition) => (
-                  <button
-                    key={edition.id}
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => {
-                      setAnswered(true);
-                      startTransition(() =>
-                        setPassEdition(
-                          openPass.id,
-                          itemType,
-                          itemId,
-                          edition.id,
-                        ),
-                      );
-                    }}
-                    className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
-                  >
-                    {formatEdition(edition, itemType)}
-                  </button>
-                ))}
+        {pendingEditionQuestion && (
+          <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
+            <span className="text-xs font-semibold text-foreground">
+              {tEditions("whichEditionReading")}
+            </span>
+            <div className="flex flex-col gap-1">
+              {editions.map((edition) => (
                 <button
+                  key={edition.id}
                   type="button"
                   disabled={isPending}
                   onClick={() => {
-                    // "No lo sé" no fija edición: se recuerda por passId para
-                    // que no vuelva a preguntar en cada recarga (sí volverá a
-                    // preguntar si se abre un pase nuevo, p. ej. una relectura).
-                    writeEditionAsked(openPass.id);
                     setAnswered(true);
+                    startTransition(() =>
+                      setPassEdition(openPass.id, itemType, itemId, edition.id),
+                    );
                   }}
-                  className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
+                  className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
                 >
-                  {tEditions("unknownEdition")}
+                  {formatEdition(edition, itemType)}
                 </button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {tEditions("unknownEditionHint")}
-              </p>
+              ))}
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  // "No lo sé" no fija edición: se recuerda por passId para
+                  // que no vuelva a preguntar en cada recarga (sí volverá a
+                  // preguntar si se abre un pase nuevo, p. ej. una relectura).
+                  writeEditionAsked(openPass.id);
+                  setAnswered(true);
+                }}
+                className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
+              >
+                {tEditions("unknownEdition")}
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {tEditions("unknownEditionHint")}
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            {tPasses("rating")}
+          </span>
+          <RatingDots
+            value={rating}
+            onChange={(next) => {
+              setRating(next);
+              startTransition(() =>
+                ratePass(openPass.id, itemType, itemId, next),
+              );
+            }}
+            size="sm"
+          />
+        </div>
+
+        {page !== undefined && (
+          <p className="text-xs text-muted-foreground">
+            {totalPages !== null
+              ? t("page", { page, total: totalPages })
+              : t("pageOnly", { page })}
+          </p>
+        )}
+
+        {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
+          pregunta pendiente de arriba está sin contestar, no repetimos el
+          mismo selector aquí abajo. */}
+        {itemType !== "series" &&
+          editions.length > 0 &&
+          !pendingEditionQuestion && (
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                {t("edition")}
+              </span>
+              <Select
+                size="sm"
+                value={openPass.editionId ?? ""}
+                disabled={isPending}
+                onChange={(event) => {
+                  const next = event.target.value || null;
+                  startTransition(() =>
+                    setPassEdition(openPass.id, itemType, itemId, next),
+                  );
+                }}
+              >
+                <option value="">{t("noEdition")}</option>
+                {editions.map((edition) => (
+                  <option key={edition.id} value={edition.id}>
+                    {formatEdition(edition, itemType)}
+                  </option>
+                ))}
+              </Select>
             </div>
           )}
 
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-              {tPasses("rating")}
-            </span>
-            <RatingDots
-              value={rating}
-              onChange={(next) => {
-                setRating(next);
-                startTransition(() =>
-                  ratePass(openPass.id, itemType, itemId, next),
-                );
-              }}
-              size="sm"
-            />
-          </div>
-
-          {page !== undefined && (
-            <p className="text-xs text-muted-foreground">
-              {totalPages !== null
-                ? t("page", { page, total: totalPages })
-                : t("pageOnly", { page })}
-            </p>
-          )}
-
-          {/* Las series no tienen ediciones: sin selector para ellas. Mientras la
-          pregunta pendiente de arriba está sin contestar, no repetimos el
-          mismo selector aquí abajo. */}
-          {itemType !== "series" &&
-            editions.length > 0 &&
-            !pendingEditionQuestion && (
-              <div className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                  {t("edition")}
-                </span>
-                <Select
-                  size="sm"
-                  value={openPass.editionId ?? ""}
-                  disabled={isPending}
-                  onChange={(event) => {
-                    const next = event.target.value || null;
-                    startTransition(() =>
-                      setPassEdition(openPass.id, itemType, itemId, next),
-                    );
-                  }}
-                >
-                  <option value="">{t("noEdition")}</option>
-                  {editions.map((edition) => (
-                    <option key={edition.id} value={edition.id}>
-                      {formatEdition(edition, itemType)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            )}
-
-          {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
+        {/* Las películas no tienen sesiones (§7.14 scope decision). El pase
           abierto es siempre el activo (ver comentario de ManagedLog), así
           que openPass.id es el id correcto para la ruta. */}
-          {itemType !== "movie" && (
-            <Link
-              href={`/sesion/${openPass.id}`}
-              className="self-start text-xs text-muted-foreground underline hover:text-foreground"
-            >
-              {tSessions("add")}
-            </Link>
-          )}
-        </div>
-      </details>
-    </>
+        {itemType !== "movie" && (
+          <Link
+            href={`/sesion/${openPass.id}`}
+            className="self-start text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            {tSessions("add")}
+          </Link>
+        )}
+      </div>
+    </details>
   );
 }
