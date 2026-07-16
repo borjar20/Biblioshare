@@ -20,7 +20,10 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { EditionsLoading } from "@/components/detail/editions-loading";
-import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  ItemStatusProvider,
+  StatusBadgeLive,
+} from "@/components/detail/item-status-context";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
@@ -116,38 +119,42 @@ export default async function MovieDetailPage({
 
   const genres = movie.genres ?? [];
 
-  return (
-    <div className="flex flex-col">
-      <ItemHero
-        itemType="movie"
-        mediaLabel={tDetail("mediaLabel.movie")}
-        title={movie.title}
-        byline={byline}
-        genres={genres}
-        coverUrl={movie.cover_url}
-        avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
-        backLabel={tDetail("back")}
-        statusSlot={
-          activeStatus ? (
-            <StatusBadge
-              status={activeStatus}
-              label={tLibrary(`status.${activeStatus}`)}
-            />
-          ) : null
-        }
-      />
+  // Mismo esquema que la ficha de libro: etiquetas traducidas en el servidor,
+  // estado compartido entre badge y pills vía ItemStatusProvider.
+  const statusLabels = {
+    planned: tLibrary("status.planned"),
+    in_progress: tLibrary("status.in_progress"),
+    completed: tLibrary("status.completed"),
+    dropped: tLibrary("status.dropped"),
+  };
 
-      <Suspense fallback={<ItemTabsSkeleton />}>
-        <MovieTabs
-          movie={movie}
-          userId={user?.id ?? null}
-          community={community}
-          cerrar={cerrar}
+  return (
+    <ItemStatusProvider initialStatus={activeStatus}>
+      <div className="flex flex-col">
+        <ItemHero
+          itemType="movie"
+          mediaLabel={tDetail("mediaLabel.movie")}
+          title={movie.title}
+          byline={byline}
+          genres={genres}
+          coverUrl={movie.cover_url}
+          avgRating={community.avgRating}
+          ratingCount={community.ratingCount}
+          ratingsLabel={tDetail("ratings")}
+          backLabel={tDetail("back")}
+          statusSlot={<StatusBadgeLive labels={statusLabels} />}
         />
-      </Suspense>
-    </div>
+
+        <Suspense fallback={<ItemTabsSkeleton />}>
+          <MovieTabs
+            movie={movie}
+            userId={user?.id ?? null}
+            community={community}
+            cerrar={cerrar}
+          />
+        </Suspense>
+      </div>
+    </ItemStatusProvider>
   );
 }
 

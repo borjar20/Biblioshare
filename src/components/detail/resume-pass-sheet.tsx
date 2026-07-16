@@ -4,6 +4,7 @@ import { useEffect, useRef, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { updateStatus } from "@/lib/library/manage-actions";
+import { useItemStatus } from "@/components/detail/item-status-context";
 import { Button } from "@/components/ui/button";
 
 // Al retomar un abandonado hay dos historias posibles: seguir el intento
@@ -31,6 +32,7 @@ export function ResumePassSheet({
   const t = useTranslations("passes.resume");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, startTransition] = useTransition();
+  const { setStatus } = useItemStatus();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -40,6 +42,10 @@ export function ResumePassSheet({
   }, [open]);
 
   function pick(resume: "continue" | "restart") {
+    // Elegir cualquiera de las dos opciones acaba en "in_progress": badge y
+    // pills lo enseñan ya. Cancelar no pasa por aquí — el estado se quedó en
+    // el revert que hizo ManagedLog al recibir askResume.
+    setStatus("in_progress");
     startTransition(async () => {
       // Este updateStatus siempre resuelve a un pase abierto (to ===
       // "in_progress" con resume ya decidido): nunca puede volver a pedir

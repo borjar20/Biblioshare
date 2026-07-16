@@ -22,7 +22,10 @@ import {
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
-import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  ItemStatusProvider,
+  StatusBadgeLive,
+} from "@/components/detail/item-status-context";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
@@ -123,38 +126,45 @@ export default async function SeriesDetailPage({
 
   const genres = series.genres ?? [];
 
-  return (
-    <div className="flex flex-col">
-      <ItemHero
-        itemType="series"
-        mediaLabel={tDetail("mediaLabel.series")}
-        title={series.title}
-        byline={byline}
-        genres={genres}
-        coverUrl={series.cover_url}
-        avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
-        backLabel={tDetail("back")}
-        statusSlot={
-          activeStatus ? (
-            <StatusBadge
-              status={activeStatus}
-              label={tLibrary(`status.${activeStatus}`)}
-            />
-          ) : null
-        }
-      />
+  // Mismo esquema que la ficha de libro: etiquetas traducidas en el servidor,
+  // estado compartido entre badge y pills vía ItemStatusProvider. Nota de
+  // alcance: el auto-cierre por episodios (EpisodePanel) NO publica aquí —
+  // redirige a `?cerrar=...&tab=log`, que es una navegación completa con
+  // render fresco del servidor, así que el badge llega ya correcto.
+  const statusLabels = {
+    planned: tLibrary("status.planned"),
+    in_progress: tLibrary("status.in_progress"),
+    completed: tLibrary("status.completed"),
+    dropped: tLibrary("status.dropped"),
+  };
 
-      <Suspense fallback={<ItemTabsSkeleton />}>
-        <SeriesTabs
-          series={series}
-          userId={user?.id ?? null}
-          community={community}
-          cerrar={cerrar}
+  return (
+    <ItemStatusProvider initialStatus={activeStatus}>
+      <div className="flex flex-col">
+        <ItemHero
+          itemType="series"
+          mediaLabel={tDetail("mediaLabel.series")}
+          title={series.title}
+          byline={byline}
+          genres={genres}
+          coverUrl={series.cover_url}
+          avgRating={community.avgRating}
+          ratingCount={community.ratingCount}
+          ratingsLabel={tDetail("ratings")}
+          backLabel={tDetail("back")}
+          statusSlot={<StatusBadgeLive labels={statusLabels} />}
         />
-      </Suspense>
-    </div>
+
+        <Suspense fallback={<ItemTabsSkeleton />}>
+          <SeriesTabs
+            series={series}
+            userId={user?.id ?? null}
+            community={community}
+            cerrar={cerrar}
+          />
+        </Suspense>
+      </div>
+    </ItemStatusProvider>
   );
 }
 
