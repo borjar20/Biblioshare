@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ChevronDownIcon } from "@/components/ui/icons";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { PassProgress } from "./pass-progress";
 import { SessionList } from "@/components/session-list";
 import { StatusSegments } from "@/components/detail/status-segments";
@@ -238,6 +239,7 @@ function ManagedLog({
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
   const tPasses = useTranslations("passes");
+  const accent = MEDIA_ACCENT[itemType];
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // El estado ya no es local: vive en ItemStatusContext, compartido con el
@@ -387,7 +389,11 @@ function ManagedLog({
               type="button"
               disabled={isPending}
               onClick={handleNewPass}
-              className="shrink-0 rounded-full border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-foreground-soft hover:text-foreground disabled:opacity-60"
+              // `.newpase` del frame: mono 10, TEÑIDO del acento del medio y
+              // con el borde a medio camino entre el acento y --border
+              // (color-mix al 35%). En #56 salió gris, que lo hacía parecer un
+              // enlace secundario más.
+              className={`shrink-0 rounded-lg border px-[11px] py-1.5 font-mono text-[10px] font-medium whitespace-nowrap disabled:opacity-60 ${accent.text} ${accent.borderSoft}`}
             >
               {tPasses("newPass")}
             </button>
@@ -477,7 +483,10 @@ function ManagedLog({
           setStatus(null);
           startTransition(() => removeFromLibrary(itemType, itemId));
         }}
-        className="self-start text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
+        // `.unfollow` del frame: centrado, rojo y subrayado. No se esconde en
+        // gris — quitar una obra de la biblioteca borra TODOS sus pases (ver
+        // removeFromLibrary), así que el color dice lo que hace.
+        className="py-3 text-center text-xs text-status-dropped underline underline-offset-2 disabled:opacity-60"
       >
         {t("unfollow")}
       </button>
