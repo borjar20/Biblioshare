@@ -34,15 +34,15 @@ Donde un plan no trae frame de escritorio (Clubes, Ficha, detalle de actividad, 
 
 | Pieza | Archivo | Estado |
 |---|---|---|
-| Nav inferior | `src/components/nav/bottom-nav.tsx` | Fiel al `.tabbar`: mono 10px, activo accent, blur, safe-area. Iconos propios. |
-| Nav escritorio | `src/components/nav/side-nav.tsx` | **SideNav lateral** en sm+ (las maquetas de escritorio usan topbar horizontal — ver P-T1). |
-| Topbar | `src/components/header.tsx` | Wordmark + campana + theme toggle; no navega. |
+| Nav inferior | `src/components/nav/bottom-nav.tsx` | Fiel al `.tabbar`: mono 10px, activo accent, blur, safe-area. Iconos propios. Conserva las **cinco** entradas (Perfil incluido). |
+| Nav escritorio | `src/components/nav/top-nav.tsx` | ✅ **Topbar horizontal** (P-T1, PR #46). SideNav retirada. Cuatro entradas; Perfil es el avatar (§6). |
+| Topbar | `src/components/header.tsx` | Wordmark + nav (sm+) + campana + theme toggle + avatar (sm+). Falta el **contextual por sección** (P-T3). |
 | Notificaciones | `src/components/social/notification-bell.tsx`, `social/follow-requests.tsx`, `push/push-toggle.tsx` | Campana con dropdown; push toggle existe. |
 | Estados | `src/components/ui/empty-state.tsx`, `retry-button.tsx`, `social/private-profile-stub.tsx`, `src/app/offline/` | Los 6 estados tienen equivalente. |
 | Iconos | `src/components/ui/icons.tsx` | Set propio (no hay librería fijada; el handoff sugiere lucide-react o equivalente, trazo ~1.8 redondeado). |
 | Marca | `src/components/ui/wordmark.tsx`, `AppLogoIcon` | Wordmark "Biblio**share**" ✔. Logo estantería/app icon: revisar manifest y splash. |
 | Onboarding | `src/app/onboarding/` | Existe; comparar contra las 4 pantallas de la maqueta. |
-| Tema | `globals.css` + `theme-toggle.tsx` | Tokens Paper light/dark ya aplicados (base del rediseño, mergeada). |
+| Tema | `globals.css` + `theme-toggle.tsx` | Tokens Paper light/dark ya aplicados (base del rediseño, mergeada) + `--foreground-soft` (P-T6, PR #46) **declarado pero sin aplicar**. |
 
 ## 2. Trabajo transversal (hacer sin preguntar)
 
@@ -57,20 +57,20 @@ Donde un plan no trae frame de escritorio (Clubes, Ficha, detalle de actividad, 
 
 ## 3. Decisiones transversales — RESUELTAS (2026-07-15)
 
-- **P-T1 · DECIDIDO: topbar horizontal en escritorio.** Wordmark + Inicio·Colección·Buscar·Clubes + iconos a la derecha, como las maquetas. Se retira SideNav. Tarea nueva §4.7.
-- **P-T2 · DECIDIDO: subtabs en serif Fraunces** (~15.5px, 600, subrayado de acento). Revierte la decisión previa "subtabs en mono" — actualizar la memoria del proyecto. Afecta a planes 02, 04, 05; la ficha va en sans semibold (su maqueta).
-- **P-T3 · DECIDIDO: topbar contextual por sección.** Título y acciones de cada pestaña en el topbar ("Mi colección" + barrita de acento + ⌕/+, "Clubes" + Crear…). Se hace incremental, una sección por sesión; campana y toggle de tema se recolocan (perfil/ajustes y donde diga la maqueta).
+- **P-T1 · DECIDIDO: topbar horizontal en escritorio.** Wordmark + Inicio·Colección·Buscar·Clubes + iconos a la derecha, como las maquetas. Se retira SideNav. Tarea nueva §4.7. — ✅ **EJECUTADO** 2026-07-16 (PR #46). Al ejecutarlo se concretó **dónde queda Perfil**: en el avatar (§6.1).
+- **P-T2 · DECIDIDO: subtabs en serif Fraunces** (~15.5px, 600, subrayado de acento). Revierte la decisión previa "subtabs en mono" — actualizar la memoria del proyecto. Afecta a planes 02, 04, 05; la ficha va en sans semibold (su maqueta). — ✅ **EJECUTADO** 2026-07-16 (PR #46), ficha excluida a propósito (§6.3).
+- **P-T3 · DECIDIDO: topbar contextual por sección.** Título y acciones de cada pestaña en el topbar ("Mi colección" + barrita de acento + ⌕/+, "Clubes" + Crear…). Se hace incremental, una sección por sesión; campana y toggle de tema se recolocan (perfil/ajustes y donde diga la maqueta). — ⏳ **PENDIENTE**, se monta encima de la topbar de P-T1. **Leer §6.2 antes de empezar**: los iconos de la derecha varían por frame y hay un glifo ambiguo sin resolver.
 - **P-T4 · DECIDIDO: auditar el set propio primero.** Migrar a lucide-react solo si la auditoría (§2.3) sale mal.
 - **P-T5 · DECIDIDO: entran DOS features de §3.8** — **calendario con portadas** (celda del calendario del Panel con portada + barra de intensidad, verde = terminado; sobre `MonthCalendar`) y **"¿Qué has disfrutado hoy?"** (registro del día en un toque encabezando el Inicio sobre el feed → coordinar con plan 01). El resto (muro, stats diarias, notas/citas, sorteo) a epic aparte.
-- **P-T6 · DECIDIDO: token nuevo `--foreground-soft`** (light `#584f43` + equivalente dark tomado de las maquetas de modo oscuro) en `globals.css`, aplicado en reseñas/sinopsis/excerpts (planes 01/04/06).
+- **P-T6 · DECIDIDO: token nuevo `--foreground-soft`** (light `#584f43` + equivalente dark tomado de las maquetas de modo oscuro) en `globals.css`, aplicado en reseñas/sinopsis/excerpts (planes 01/04/06). — ✅ **DECLARADO** 2026-07-16 (PR #46); el equivalente oscuro que faltaba resulta ser **`#cabfb0`** (§6.4). **Aplicarlo sigue pendiente** en los planes 01/04/06.
 - **P-T7 · DECIDIDO: aprovechar el espacio lateral en tablet/escritorio** (ver §0). Los mockups son mobile-first; en pantallas grandes se mantiene la estética Paper pero con dos columnas / rails / grids anchos en vez de una columna centrada. Aplica a todos los planes; donde no hay frame de escritorio, el layout ancho es diseño propio a proponer antes de codificar.
 
 ## 4. Tareas
 
 1. ~~Resolver P-T1…P-T6~~ **HECHO 2026-07-15** — decisiones en §3.
-1b. **Topbar horizontal de escritorio** (P-T1): sustituir `side-nav.tsx` por nav horizontal en el header (`header.tsx` + `nav-items.ts`); el contextual por sección (P-T3) se monta encima al pasar cada plan. Commit: `feat(nav): topbar horizontal en escritorio (P-T1)`
-1c. **Token `--foreground-soft`** (P-T6) en `globals.css` + utilidades. Commit: `feat(theme): token foreground-soft del mockup`
-1d. **Subtabs a serif** (P-T2): `section-tabs.tsx`, `collection-tabs.tsx`, `club-tabs.tsx` a Fraunces 600 con subrayado de acento. Commit: `style(nav): subtabs en serif (P-T2)`
+1b. ~~**Topbar horizontal de escritorio** (P-T1)~~ **HECHA 2026-07-16** (PR #46). `side-nav.tsx` borrado; nav horizontal nueva en `nav/top-nav.tsx`, montada desde `header.tsx`. Ver §6 para el hallazgo del avatar y el aviso a P-T3.
+1c. ~~**Token `--foreground-soft`** (P-T6)~~ **HECHA 2026-07-16** (PR #46). Declarado en `globals.css` en los cuatro sitios (`:root`, `.dark`, `prefers-color-scheme` y `@theme` → utilidad `text-foreground-soft`). **Solo declarado: falta aplicarlo** en reseñas/sinopsis/excerpts — eso es de los planes 01/04/06.
+1d. ~~**Subtabs a serif** (P-T2)~~ **HECHA 2026-07-16** (PR #46). `components/section-tabs.tsx`, `app/coleccion/collection-tabs.tsx` y `clubs/club-tabs.tsx` a Fraunces 600 ~15.5px con subrayado de acento. Ojo a las rutas: dos de los tres archivos **no** estaban donde este plan decía (`section-tabs.tsx` cuelga de `components/`, no de `components/nav/`; `collection-tabs.tsx` vive en `app/coleccion/`).
 1e. **Features aprobadas de §3.8** (P-T5): calendario con portadas (`stats/month-calendar.tsx`) y "¿Qué has disfrutado hoy?" (bloque nuevo sobre el feed, plan 01) — cada una su sesión corta con spec mínima contra `Paper - Estadísticas y features.html` frames C y G.
 2. Notificaciones (§2.1). Commit: `style(notificaciones): dropdown fiel a la maqueta`
 3. Estados (§2.2), un commit por estado si hay cambios.
@@ -84,3 +84,49 @@ Donde un plan no trae frame de escritorio (Clubes, Ficha, detalle de actividad, 
 - [ ] Instalación PWA muestra el icono nuevo.
 - [ ] `npx playwright test` verde (Node 22).
 - [ ] Decisiones P-T1…P-T6 registradas aquí y reflejadas en los planes 01–06.
+
+## 6. Hallazgos al ejecutar la base transversal (2026-07-16, PR #46)
+
+Lo que las maquetas concretaron y el plan no decía. Todo sale de leer los frames, no de suponer.
+
+### 6.1 Perfil no es una entrada de nav en escritorio: es el avatar
+
+Los **cuatro** frames de escritorio (`Home` B, `Colección` C, `Buscar` C, `Perfil` C) traen la misma topbar: a la izquierda ❖ + wordmark y **cuatro** enlaces (Inicio·Colección·Buscar·Clubes); a la derecha, iconos y un **avatar con degradado** que es la entrada a Perfil. En **móvil** la `.tabbar` sí conserva las **cinco** entradas, Perfil incluida, y la topbar móvil no lleva avatar.
+
+Por eso `nav-items.ts` expone ahora dos cosas: `navItems()` (5, para la tabbar) y `primaryNavItems()` (4, para la topbar). `AppShell` ya hacía una sola lectura de perfil; ahora trae `avatar_url` en esa misma consulta, sin viajes extra.
+
+**Consecuencia para el plan 05 (Perfil):** el acceso al perfil propio en escritorio es este avatar. Tenerlo presente si ese plan recoloca ajustes ⚙ o las solicitudes de seguir.
+
+### 6.2 ⚠️ Aviso para P-T3: los iconos de la derecha varían por frame
+
+No hay un set fijo de iconos en la topbar. Por frame:
+
+| Frame | Iconos a la derecha |
+|---|---|
+| Home · escritorio | ⌕ · ◔ · avatar |
+| Colección · escritorio | ⌕ · ◔ · avatar |
+| Buscar · escritorio | ◔ · avatar (**sin ⌕** — ya estás en Buscar) |
+| Perfil · escritorio | ⌕ · avatar (**sin ◔**) |
+| Topbar móvil | ⌕ · ◔ (sin avatar) |
+
+**Duda NO resuelta, a decidir en P-T3:** el glifo `◔` es ambiguo — puede ser el toggle de tema o la campana de notificaciones. En la `.tabbar` móvil `◔` es el icono de **Perfil**, lo que sugiere que son placeholders reutilizados y no un icono con significado fijo (coherente con §2.3: *los glifos unicode de las maquetas son placeholders, no el set final*).
+
+En la PR #46 **no se tocó nada de esto**: campana y toggle siguen donde estaban. Recolocarlos es explícitamente parte de P-T3.
+
+### 6.3 La ficha se queda fuera de P-T2, y es correcto
+
+`item-detail-tabs.tsx` **no** se pasó a serif. Su frame (`Paper - Ficha de título completa.html`) define `.tab` **sin `font-family`** → sans, 13.5px, 600. Es distinto a propósito de los subtabs de Colección/Perfil/Clubes, que sí piden Fraunces. Coincide con lo que ya decía P-T2 ("la ficha va en sans semibold"). **Pasar la ficha de mono a sans semibold queda para el plan 06**, que es su dueño.
+
+Detalle útil: el `uppercase` de los subtabs era solo CSS (`text-transform`), así que quitarlo **no cambia los nombres accesibles** y los e2e que localizan pestañas por nombre siguen valiendo.
+
+### 6.4 El equivalente oscuro de `--foreground-soft` es `#cabfb0`
+
+`#584f43` no era un token en las maquetas: está **hardcodeado** en tres frames (`Ficha`, `Home`, `IA nueva`), siempre en el mismo rol — prosa larga: `.fitem .tx` (texto del feed), `.review .tx` (reseñas), `.diary-entry .tx`, `.epi-detail .syn` (sinopsis).
+
+El valor oscuro **no hay que inventarlo**: `Paper - Modo oscuro (resto).html` trae el bloque gemelo del feed (mismas clases `.fitem`/`.art`/`.tt`/`.au`/`.rd`/`.tx`/`.frx`) y ahí `.tx` es **`#cabfb0`**.
+
+Sitio del token: entre `--foreground` y `--muted-foreground`. **No** usar `--muted-foreground` para prosa — es para etiquetas.
+
+### 6.5 Rutas reales de los subtabs
+
+Dos de los tres archivos de la tarea 1d no estaban donde este plan decía: `section-tabs.tsx` cuelga de `src/components/` (no de `components/nav/`) y `collection-tabs.tsx` vive en `src/app/coleccion/` (no en `components/library/`). Corregido arriba.

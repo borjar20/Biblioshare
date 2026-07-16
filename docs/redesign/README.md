@@ -27,12 +27,12 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 | 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard | 2–3 sesiones; PR #13 tierlist |
 | 05 | [Perfil](./plan-05-perfil.md) | Panel/Colección/Actividad, escritorio | PR #30 (objetivos plegados) |
 | 06 | [Ficha de título](./plan-06-ficha.md) | Hero, Info, Comunidad, Registro, Episodios, Moderador, ediciones | PR #32/#42 (pases); P1 estrellas vs dots |
-| 07 | [Transversal](./plan-07-transversal.md) | Nav, notificaciones, estados, marca, onboarding, **decisiones P-T** | Resolver primero |
+| 07 | [Transversal](./plan-07-transversal.md) | Nav, notificaciones, estados, marca, onboarding, **decisiones P-T** | Base (P-T1/P-T2/P-T6) ✅ **HECHA** (PR #46) — ver su **§6 Hallazgos**; el resto sigue abierto |
 
 ## Orden sugerido
 
 0. ~~**00 Navegación**~~ ✅ **HECHO y mergeado** (PR #44; fase C descartada por ahora). Las páginas ya nacen con su shell + `<Suspense>` por sección: **al restylear, respeta esa estructura** y no metas un `loading.tsx` en rutas con `notFound()` (regla del 404 en el plan 00). De paso salió el arreglo del #45 (hoja de cierre y StrictMode).
-1. **07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2) — tres tareas cortas que tocan toda la app; mejor antes de los restylings por pestaña.
+1. ~~**07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2)~~ ✅ **HECHA** (PR #46). Del plan 07 sigue pendiente todo lo demás (topbar contextual P-T3, notificaciones, estados, iconos, onboarding, marca). Antes de restylear una pestaña, **lee el [§6 del plan 07](./plan-07-transversal.md)**: Perfil es el avatar en escritorio, el token `--foreground-soft` ya existe pero **falta aplicarlo** (planes 01/04/06), y los subtabs de la ficha siguen pendientes a propósito (plan 06).
 2. **06 Ficha** (pantalla núcleo; coordinar con PRs #32/#42 de pases) o **02 Colección v1** (autocontenida).
 3. 01 Inicio (incluye clubes en feed + "¿qué has disfrutado hoy?") · 03 Buscar (corta).
 4. 05 Perfil (incluye el cambio de IA: perfil propio sin Colección).
