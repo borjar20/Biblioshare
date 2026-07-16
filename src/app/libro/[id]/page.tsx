@@ -200,18 +200,38 @@ async function BookTabs({
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
 
-  // Créditos (autor): backfill puntual de personas, no una API externa
-  // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
-  await ensureItemEnriched(supabase, "book", {
-    id: book.id,
-    author: book.author,
-  });
-
-  const [credits, saga, editions] = await Promise.all([
-    getItemCredits(supabase, "book", book.id),
+  // Ojo al ORDEN de esta sección: con Supabase remoto (también en producción)
+  // cada consulta cuesta ~240 ms de ida y vuelta, así que lo que manda no es
+  // cuántas hay, sino cuántas van EN FILA. Aquí solo hay dos dependencias
+  // reales: ensureItemEnriched escribe lo que getItemCredits lee, y getSessions
+  // necesita saber el pase abierto. Todo lo demás va en paralelo aunque el
+  // código lo lea en orden.
+  const [, saga, editions, activeRow, loadedQueues, role] = await Promise.all([
+    // Créditos (autor): backfill puntual de personas, no una API externa
+    // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
+    ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
     getItemSaga(supabase, "book", book.id),
     getEditions(supabase, "book", book.id),
+    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
+    // status/rating/position/queue_id viven en passes, library_entries ya no
+    // se lee.
+    userId
+      ? supabase
+          .from("passes")
+          .select("id, status, rating, position, queue_id")
+          .eq("user_id", userId)
+          .eq("item_type", "book")
+          .eq("item_id", book.id)
+          .eq("is_active", true)
+          .maybeSingle()
+          .then(({ data }) => data)
+      : null,
+    userId ? getQueues(supabase, userId) : [],
+    userId ? getCurrentUserRole(supabase) : null,
   ]);
+
+  // Lo único que de verdad esperaba a ensureItemEnriched.
+  const credits = await getItemCredits(supabase, "book", book.id);
 
   // Ediciones del DISPLAY: se resuelven por streaming (sync-si-hace-falta + lee)
   // dentro del <Suspense> de EditionsSection. NO se await aquí: eso bloquearía la
@@ -232,49 +252,44 @@ async function BookTabs({
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
-  let queues: Queue[] = [];
-  if (userId) {
-    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
-    // status/rating/position/queue_id viven en diary_entries, library_entries
-    // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
-    // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
-    // resuelve igualmente para no dejar el campo con un dato inventado.
-    const { data: row } = await supabase
-      .from("passes")
-      .select("id, status, rating, position, queue_id")
-      .eq("user_id", userId)
-      .eq("item_type", "book")
-      .eq("item_id", book.id)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (row) {
-      const { data: reviewRow } = await supabase
+  const queues: Queue[] = loadedQueues;
+  if (userId && activeRow) {
+    // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
+    // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
+    // para no dejar el campo con un dato inventado.
+    //
+    // pass_reviews y getPasses no se necesitan entre sí: solo dependen del pase
+    // activo, que ya lo tenemos. En paralelo.
+    const [reviewRow, loadedPasses] = await Promise.all([
+      supabase
         .from("pass_reviews")
         .select("review")
-        .eq("id", row.id)
-        .maybeSingle();
-      entry = {
-        entryId: row.id,
-        status: row.status as MediaStatus,
-        rating: row.rating,
-        position: parsePosition("book", row.position),
-        notes: reviewRow?.review ?? null,
-        queueId: row.queue_id,
-      };
-      // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo
-      // 4): en una relectura, las sesiones de la lectura anterior no deben
-      // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
-      // va primero: getSessions necesita saber cuál es el pase abierto.
-      passes = await getPasses(supabase, "book", book.id, userId);
-      // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
-      // segundo caso, la lista de sesiones de un libro leído se quedaría vacía
-      // para siempre: getPasses ordena el abierto primero y luego los cerrados
-      // de más reciente a más antiguo, así que passes[0] es el que toca.
-      const currentPassId =
-        passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
-      sessions = await getSessions(supabase, currentPassId, "book");
-    }
-    queues = await getQueues(supabase, userId);
+        .eq("id", activeRow.id)
+        .maybeSingle()
+        .then(({ data }) => data),
+      getPasses(supabase, "book", book.id, userId),
+    ]);
+    passes = loadedPasses;
+    entry = {
+      entryId: activeRow.id,
+      status: activeRow.status as MediaStatus,
+      rating: activeRow.rating,
+      position: parsePosition("book", activeRow.position),
+      notes: reviewRow?.review ?? null,
+      queueId: activeRow.queue_id,
+    };
+    // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo 4):
+    // en una relectura, las sesiones de la lectura anterior no deben colarse
+    // bajo el cartel de la edición del pase nuevo. Esta sí espera a getPasses:
+    // getSessions necesita saber cuál es el pase abierto.
+    //
+    // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
+    // segundo caso, la lista de sesiones de un libro leído se quedaría vacía
+    // para siempre: getPasses ordena el abierto primero y luego los cerrados
+    // de más reciente a más antiguo, así que passes[0] es el que toca.
+    const currentPassId =
+      passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
+    sessions = await getSessions(supabase, currentPassId, "book");
   }
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
@@ -288,10 +303,9 @@ async function BookTabs({
   const initialClosingPassId =
     cerrar && cerrar === activePassId ? cerrar : null;
 
-  // Asignar saga a mano es contribución curada → colaborador+ (§7.35).
-  const canContribute = userId
-    ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
-    : false;
+  // Asignar saga a mano es contribución curada → colaborador+ (§7.35). El rol
+  // ya viaja resuelto desde el bloque paralelo de arriba.
+  const canContribute = role ? hasMinRole(role, "collaborator") : false;
 
   const authorNames =
     authorCredits.length > 0

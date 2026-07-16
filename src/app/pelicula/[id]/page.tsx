@@ -168,52 +168,66 @@ async function MovieTabs({
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
 
-  await ensureItemEnriched(supabase, "movie", {
-    id: movie.id,
-    tmdbId: movie.tmdb_id,
-  });
+  // Ojo al ORDEN (mismo criterio que la ficha de libro): con Supabase remoto
+  // —también en producción— cada consulta cuesta ~240 ms de ida y vuelta, así
+  // que lo que manda no es cuántas hay sino cuántas van EN FILA. La única
+  // dependencia real aquí es que ensureItemEnriched escribe lo que
+  // getItemCredits lee; el resto va en paralelo aunque se lea en orden.
+  const [watchProviders, , saga, editions, activeRow, loadedQueues, role] =
+    await Promise.all([
+      movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
+      ensureItemEnriched(supabase, "movie", {
+        id: movie.id,
+        tmdbId: movie.tmdb_id,
+      }),
+      getItemSaga(supabase, "movie", movie.id),
+      getEditions(supabase, "movie", movie.id),
+      // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
+      userId
+        ? supabase
+            .from("passes")
+            .select("id, status, rating, position, queue_id")
+            .eq("user_id", userId)
+            .eq("item_type", "movie")
+            .eq("item_id", movie.id)
+            .eq("is_active", true)
+            .maybeSingle()
+            .then(({ data }) => data)
+        : null,
+      userId ? getQueues(supabase, userId) : [],
+      userId ? getCurrentUserRole(supabase) : null,
+    ]);
 
-  const [watchProviders, credits, saga, editions] = await Promise.all([
-    movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
-    getItemCredits(supabase, "movie", movie.id),
-    getItemSaga(supabase, "movie", movie.id),
-    getEditions(supabase, "movie", movie.id),
-  ]);
+  // Lo único que de verdad esperaba a ensureItemEnriched.
+  const credits = await getItemCredits(supabase, "movie", movie.id);
 
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];
-  let queues: Queue[] = [];
-  if (userId) {
-    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
-    // status/rating/position/queue_id viven en diary_entries, library_entries
-    // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
-    // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
-    // resuelve igualmente para no dejar el campo con un dato inventado.
-    const { data: row } = await supabase
-      .from("passes")
-      .select("id, status, rating, position, queue_id")
-      .eq("user_id", userId)
-      .eq("item_type", "movie")
-      .eq("item_id", movie.id)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (row) {
-      const { data: reviewRow } = await supabase
+  const queues: Queue[] = loadedQueues;
+  if (userId && activeRow) {
+    // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
+    // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
+    // para no dejar el campo con un dato inventado.
+    //
+    // pass_reviews y getPasses no se necesitan entre sí: en paralelo.
+    const [reviewRow, loadedPasses] = await Promise.all([
+      supabase
         .from("pass_reviews")
         .select("review")
-        .eq("id", row.id)
-        .maybeSingle();
-      entry = {
-        entryId: row.id,
-        status: row.status as MediaStatus,
-        rating: row.rating,
-        position: parsePosition("movie", row.position),
-        notes: reviewRow?.review ?? null,
-        queueId: row.queue_id,
-      };
-      passes = await getPasses(supabase, "movie", movie.id, userId);
-    }
-    queues = await getQueues(supabase, userId);
+        .eq("id", activeRow.id)
+        .maybeSingle()
+        .then(({ data }) => data),
+      getPasses(supabase, "movie", movie.id, userId),
+    ]);
+    passes = loadedPasses;
+    entry = {
+      entryId: activeRow.id,
+      status: activeRow.status as MediaStatus,
+      rating: activeRow.rating,
+      position: parsePosition("movie", activeRow.position),
+      notes: reviewRow?.review ?? null,
+      queueId: activeRow.queue_id,
+    };
   }
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
@@ -226,9 +240,8 @@ async function MovieTabs({
   const initialClosingPassId =
     cerrar && cerrar === activePassId ? cerrar : null;
 
-  const canContribute = userId
-    ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
-    : false;
+  // El rol ya viaja resuelto desde el bloque paralelo de arriba.
+  const canContribute = role ? hasMinRole(role, "collaborator") : false;
 
   const metaRows: MetaRow[] = [];
   if (movie.director)

@@ -13,7 +13,10 @@ export function ActivityComposer({ clubId }: { clubId: string }) {
   if (!open) {
     return (
       <Button type="button" className="w-full" onClick={() => setOpen(true)}>
-        + {t("propose")}
+        {/* El "+" es decoración de la maqueta, no parte del nombre del botón:
+            sin aria-hidden se cuela en el nombre accesible ("+ Proponer
+            actividad") y quien use lector de pantalla oye el glifo. */}
+        <span aria-hidden>+</span> {t("propose")}
       </Button>
     );
   }
