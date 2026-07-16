@@ -13,6 +13,7 @@ import { StatusSegments } from "@/components/detail/status-segments";
 import { useItemStatus } from "@/components/detail/item-status-context";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
+import { NewPassSheet } from "@/components/detail/new-pass-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
@@ -235,7 +236,7 @@ function ManagedLog({
 }) {
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
-  const tSegments = useTranslations("detail.statusSegments");
+  const tPasses = useTranslations("passes");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // El estado ya no es local: vive en ItemStatusContext, compartido con el
@@ -302,6 +303,27 @@ function ManagedLog({
   // preguntar "¿continuar o de cero?" antes de reintentar con `resume`.
   const [resumeOpen, setResumeOpen] = useState(false);
 
+  // "Nuevo pase" con el actual TODAVÍA abierto: hay que saber cómo se cierra
+  // el que se deja atrás antes de crear el siguiente (NewPassSheet pregunta).
+  const [newPassOpen, setNewPassOpen] = useState(false);
+
+  // Con el pase ya cerrado no hay nada que preguntar: "de cero" sobre un
+  // completado/abandonado es exactamente la transición archiveAndCreate que la
+  // máquina ya sabe hacer. El `restart` evita el askResume de un abandonado —
+  // "Nuevo pase" ya ES la respuesta "de cero".
+  function handleNewPass() {
+    const active = passes.find((p) => p.isActive) ?? null;
+    if (active && active.finishedOn === null) {
+      setNewPassOpen(true);
+      return;
+    }
+    setStatus("in_progress");
+    startTransition(async () => {
+      await updateStatus(itemType, itemId, "in_progress", "restart");
+      router.refresh();
+    });
+  }
+
   function handleStatusChange(next: MediaStatus) {
     setStatus(next);
     startTransition(async () => {
@@ -337,7 +359,39 @@ function ManagedLog({
   return (
     <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">{tSegments("groupLabel")}</span>
+        {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases sustituyen al
+            rótulo "Tu estado", que además repetía el aria-label del propio
+            control (StatusSegments ya se anuncia como grupo "Tu estado"). El
+            ordinal del pase activo es passes.length: vienen del más reciente
+            al más antiguo, así que el activo es el último cronológico —
+            mismo criterio que el diario. */}
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div>
+            <span className="block font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
+              {tPasses("activeLabel")}
+            </span>
+            <span className="font-serif text-base leading-tight font-semibold">
+              {tPasses(`nth.${itemType}`, { n: passes.length })}
+            </span>
+          </div>
+
+          {/* "Nuevo pase" = cerrar el actual y empezar otro de cero. No se
+              pinta sobre un PENDIENTE: ahí no hay nada que cerrar todavía (el
+              pase no ha empezado), así que archivarlo para crear otro igual de
+              vacío no diría nada nuevo — y "¿completado o abandonado?" no
+              tendría respuesta honesta. Con el pase ya cerrado el botón actúa
+              directo; solo pregunta si sigue abierto. */}
+          {status !== "planned" && (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleNewPass}
+              className="shrink-0 rounded-full border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-foreground-soft hover:text-foreground disabled:opacity-60"
+            >
+              {tPasses("newPass")}
+            </button>
+          )}
+        </div>
         <StatusSegments
           status={status}
           itemType={itemType}
@@ -434,6 +488,18 @@ function ManagedLog({
           itemId={itemId}
           open
           onClose={() => setClosingPassId(null)}
+        />
+      )}
+
+      {newPassOpen && (
+        <NewPassSheet
+          itemType={itemType}
+          itemId={itemId}
+          open
+          onClose={() => {
+            setNewPassOpen(false);
+            router.refresh();
+          }}
         />
       )}
 

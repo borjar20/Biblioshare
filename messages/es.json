@@ -145,6 +145,18 @@
     "empty": "Todavía no has registrado ningún pase.",
     "open": "En curso",
     "pass": "{n}º pase",
+    "activeLabel": "Pase activo",
+    "nth": {
+      "book": "{n}.ª lectura",
+      "movie": "{n}.º visionado",
+      "series": "{n}.º visionado"
+    },
+    "newPass": "Nuevo pase",
+    "newPassSheet": {
+      "title": "¿Cómo cierras el pase actual?",
+      "hint": "El pase actual se guarda en tu diario y empieza uno nuevo desde cero.",
+      "cancel": "Cancelar"
+    },
     "closeTitle": "¿Qué te ha parecido?",
     "finishedOn": "Fecha",
     "rating": "Tu nota",
