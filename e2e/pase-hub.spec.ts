@@ -51,7 +51,12 @@ async function reloadUntilVisible(
   for (let i = 0; i < attempts; i++) {
     await page.goto(url);
     await page.waitForLoadState("networkidle").catch(() => {});
-    if (await locator(page).isVisible().catch(() => false)) return;
+    if (
+      await locator(page)
+        .isVisible()
+        .catch(() => false)
+    )
+      return;
   }
 }
 
@@ -86,7 +91,11 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
-const PATH_SEGMENT = { book: "libro", movie: "pelicula", series: "serie" } as const;
+const PATH_SEGMENT = {
+  book: "libro",
+  movie: "pelicula",
+  series: "serie",
+} as const;
 
 // Busca en el catálogo real y abre el primer resultado cuyo texto contiene
 // `titleText` (acepta tarjeta-botón si la obra aún no existe en catálogo, o
@@ -120,10 +129,12 @@ function statusGroup(page: Page) {
   return page.getByRole("group", { name: "Tu estado" });
 }
 
-// El badge de estado de la ficha (ItemHero) y el pill activo de StatusSegments
-// muestran el MISMO texto ("Pendiente", "Completado"...): un getByText a
-// secas es ambiguo. data-testid="status-badge" (src/components/ui/
-// status-badge.tsx) distingue el badge de solo lectura del control.
+// La píldora de estado del hero (ItemHero) y el pill activo de StatusSegments
+// contienen el MISMO texto ("Pendiente", "Leyendo"...): un getByText a secas
+// es ambiguo. data-testid="status-badge" (src/components/ui/status-badge.tsx)
+// distingue la píldora de solo lectura del control. El filtro es por
+// SUBcadena, así que casa con la etiqueta larga del hero ("En tu biblioteca ·
+// Leyendo").
 function statusBadge(page: Page, label: string) {
   return page.getByTestId("status-badge").filter({ hasText: label });
 }
@@ -168,7 +179,9 @@ async function maxBookPosition(itemId: string): Promise<number> {
     `${SUPABASE_URL}/rest/v1/book_editions?book_id=eq.${itemId}&is_primary=eq.true&select=total_pages&limit=1`,
     { headers: adminHeaders() },
   );
-  const primaryRows = (await primaryRes.json()) as { total_pages: number | null }[];
+  const primaryRows = (await primaryRes.json()) as {
+    total_pages: number | null;
+  }[];
   if (primaryRows[0]?.total_pages) return primaryRows[0].total_pages;
 
   const bookRes = await fetch(
@@ -224,7 +237,8 @@ async function cleanupBook(bookId: string) {
 // arrastrar un estado a medias) porque las tres reglas describen tramos
 // sucesivos del ciclo de vida de una obra real, no casos independientes.
 // ─────────────────────────────────────────────────────────────────────────
-test.describe.serial("ciclo de vida de un libro: alta, auto-cierre, relectura", () => {
+test.describe
+  .serial("ciclo de vida de un libro: alta, auto-cierre, relectura", () => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   let bookId = "";
@@ -257,9 +271,9 @@ test.describe.serial("ciclo de vida de un libro: alta, auto-cierre, relectura", 
     });
 
     await page.goto("/coleccion");
-    await expect(
-      page.getByText("The Old Man and the Sea").first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("The Old Man and the Sea").first()).toBeVisible(
+      { timeout: 15_000 },
+    );
   });
 
   test("Regla 2 — Auto-cierre: una sesión hasta la última página abre la hoja de cierre sola", async ({
@@ -272,8 +286,8 @@ test.describe.serial("ciclo de vida de un libro: alta, auto-cierre, relectura", 
 
     await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
     const addSessionLink = page
-        .getByRole("link", { name: /registrar sesión/i })
-        .first();
+      .getByRole("link", { name: /registrar sesión/i })
+      .first();
     await expect(addSessionLink).toBeVisible({ timeout: 15_000 });
 
     const maxPage = await maxBookPosition(bookId);
@@ -383,7 +397,9 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       });
 
       // Abandonar a medias → Dejado.
-      await statusGroup(page).getByRole("button", { name: "Abandonado" }).click();
+      await statusGroup(page)
+        .getByRole("button", { name: "Abandonado" })
+        .click();
       await dismissCloseSheetIfOpen(page);
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
         statusBadge(p, "Abandonado"),
@@ -397,7 +413,9 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       await expect(
         page.getByRole("heading", { name: "¿Retomar donde lo dejaste?" }),
       ).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("button", { name: "Continuar donde lo dejé" }).click();
+      await page
+        .getByRole("button", { name: "Continuar donde lo dejé" })
+        .click();
       await expect(
         page.getByRole("heading", { name: "¿Retomar donde lo dejaste?" }),
       ).toHaveCount(0);
@@ -416,7 +434,9 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       });
 
       // Abandonar de nuevo, y esta vez "de cero".
-      await statusGroup(page).getByRole("button", { name: "Abandonado" }).click();
+      await statusGroup(page)
+        .getByRole("button", { name: "Abandonado" })
+        .click();
       await dismissCloseSheetIfOpen(page);
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
         statusBadge(p, "Abandonado"),
@@ -536,9 +556,10 @@ test.describe("serie con revisionado", () => {
       });
 
       await statusGroup(page).getByRole("button", { name: "Viendo" }).click();
-      // El badge de la ficha muestra el estado GENÉRICO ("En curso"); el verbo
-      // por tipo de medio ("Viendo") solo lo pinta el pill activo del control.
-      await expect(statusBadge(page, "En curso")).toBeVisible({
+      // La píldora del hero usa el MISMO verbo por tipo de medio que el pill
+      // del control ("Viendo"), no el genérico "En curso": así lo escribe la
+      // maqueta de la ficha (.hero-status, "En tu biblioteca · Viendo").
+      await expect(statusBadge(page, "Viendo")).toBeVisible({
         timeout: 15_000,
       });
 
@@ -574,14 +595,12 @@ test.describe("serie con revisionado", () => {
       // prop `entry` del servidor en cuanto cambia de referencia, y una
       // lectura aún no asentada puede revertir brevemente lo que se acaba de
       // pintar.
+      // La píldora del hero usa el MISMO verbo por tipo de medio que el pill
+      // del control ("Viendo"), no el genérico "En curso": así lo escribe la
+      // maqueta de la ficha (.hero-status, "En tu biblioteca · Viendo").
       await reloadUntilVisible(page, `/serie/${seriesId}?tab=log`, (p) =>
-        statusBadge(p, "En curso"),
+        statusBadge(p, "Viendo"),
       );
-      // El badge de la ficha muestra el estado GENÉRICO ("En curso"); el verbo
-      // por tipo de medio ("Viendo") solo lo pinta el pill activo del control.
-      await expect(statusBadge(page, "En curso")).toBeVisible({
-        timeout: 15_000,
-      });
       await expect(page.getByText("1º pase")).toBeVisible();
       await expect(page.getByText("2º pase")).toBeVisible();
 
