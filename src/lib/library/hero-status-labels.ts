@@ -17,17 +17,35 @@ import type { MediaStatus } from "@/lib/library/types";
 export async function heroStatusLabels(
   itemType: ItemType,
 ): Promise<Record<MediaStatus, string>> {
+  const [tDetail, verbs] = await Promise.all([
+    getTranslations("detail"),
+    statusVerbs(itemType),
+  ]);
+  const prefix = tDetail("inLibrary");
+
+  return {
+    planned: `${prefix} · ${verbs.planned}`,
+    in_progress: `${prefix} · ${verbs.in_progress}`,
+    completed: `${prefix} · ${verbs.completed}`,
+    dropped: `${prefix} · ${verbs.dropped}`,
+  };
+}
+
+// Los mismos 4 estados SIN el prefijo: el rail de PC (.desk-shelf) escribe
+// "Leyendo" a secas, no "En tu biblioteca · Leyendo" — ahí la portada al lado
+// ya dice de qué obra hablamos.
+export async function statusVerbs(
+  itemType: ItemType,
+): Promise<Record<MediaStatus, string>> {
   const [tLibrary, tDetail] = await Promise.all([
     getTranslations("library"),
     getTranslations("detail"),
   ]);
-  const prefix = tDetail("inLibrary");
-  const withPrefix = (label: string) => `${prefix} · ${label}`;
 
   return {
-    planned: withPrefix(tLibrary("status.planned")),
-    in_progress: withPrefix(tDetail(`statusSegments.inProgress.${itemType}`)),
-    completed: withPrefix(tDetail(`statusSegments.completed.${itemType}`)),
-    dropped: withPrefix(tLibrary("status.dropped")),
+    planned: tLibrary("status.planned"),
+    in_progress: tDetail(`statusSegments.inProgress.${itemType}`),
+    completed: tDetail(`statusSegments.completed.${itemType}`),
+    dropped: tLibrary("status.dropped"),
   };
 }

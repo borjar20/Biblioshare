@@ -658,6 +658,16 @@
   "detail": {
     "back": "Volver",
     "inLibrary": "En tu biblioteca",
+    "rail": {
+      "yourRating": "Tu nota",
+      "goToLog": "Ver y cambiar en Mi registro",
+      "cta": {
+        "book": "Registrar sesión",
+        "series": "Marcar episodio",
+        "movie": "Registrar visionado"
+      },
+      "pages": "pág. {page} / {total}"
+    },
     "ratings": "valoraciones",
     "tabInfo": "Información",
     "tabEpisodes": "Episodios",

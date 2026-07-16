@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { heroStatusLabels } from "@/lib/library/hero-status-labels";
+import {
+  heroStatusLabels,
+  statusVerbs,
+} from "@/lib/library/hero-status-labels";
+import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
@@ -101,20 +105,23 @@ export default async function SeriesDetailPage({
   // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
   // resto (sincronización de episodios con TMDB, plataformas, reparto, saga,
   // pases) llega por streaming en las pestañas — Fase B del plan de navegación.
-  const [community, activeStatus] = await Promise.all([
+  // El pase activo entero: el rail de PC enseña también la nota (y el
+  // progreso donde lo hay). Misma consulta, mismo viaje.
+  const [community, activePass] = await Promise.all([
     getCommunity(supabase, "series", series.id),
     user
       ? supabase
           .from("passes")
-          .select("status")
+          .select("id, status, rating, position")
           .eq("user_id", user.id)
           .eq("item_type", "series")
           .eq("item_id", series.id)
           .eq("is_active", true)
           .maybeSingle()
-          .then(({ data }) => (data?.status as MediaStatus | undefined) ?? null)
+          .then(({ data }) => data)
       : Promise.resolve(null),
   ]);
+  const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
 
   const byline =
     [
@@ -136,6 +143,12 @@ export default async function SeriesDetailPage({
   // render fresco del servidor, así que el badge llega ya correcto.
   const statusLabels = await heroStatusLabels("series");
 
+  // El rail de PC, solo lectura (ver item-rail-actions.tsx). El frame 11 pinta
+  // "16 / 20 vistos", pero ese recuento se calcula con los episodios, que viven
+  // tras el <Suspense> de las pestañas: traerlo aquí añadiría una consulta a la
+  // ruta crítica del shell. Entra con la tarea de Episodios (T6).
+  const railLabels = await statusVerbs("series");
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       <ItemShell
@@ -150,6 +163,18 @@ export default async function SeriesDetailPage({
         ratingsLabel={tDetail("ratings")}
         backLabel={tDetail("back")}
         statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        railActions={
+          <ItemRailActions
+            itemType="series"
+            labels={railLabels}
+            progress={null}
+            rating={activePass?.rating ?? null}
+            ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
+            ctaLabel={tDetail("rail.cta.series")}
+            ratingLabel={tDetail("rail.yourRating")}
+            goToLogLabel={tDetail("rail.goToLog")}
+          />
+        }
         tabs={
           <Suspense fallback={<ItemTabsSkeleton />}>
             <SeriesTabs
