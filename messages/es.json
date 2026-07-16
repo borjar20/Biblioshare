@@ -678,6 +678,8 @@
     "about": "Sinopsis",
     "genres": "Géneros",
     "saga": "Parte de una saga",
+    "sagasCount": "Sagas · {count}",
+    "sagaPosition": "nº {position} de {total}",
     "communityRatings": "Valoraciones de la comunidad",
     "reviews": "Reseñas",
     "noSynopsis": "Sin sinopsis disponible.",
