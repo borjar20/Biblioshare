@@ -8,6 +8,11 @@ import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 
 export type CreateEditionState = {
   error?: "forbidden" | "invalidLabel" | "generic";
+  // Al crear con éxito se devuelve el id: el selector de edición (frame 7,
+  // "+ Es una edición nueva") elige la recién creada sin esperar a encontrarla
+  // en la revalidación.
+  ok?: true;
+  editionId?: string;
 };
 
 function intOrNull(raw: FormDataEntryValue | null): number | null {
@@ -40,10 +45,11 @@ export async function createEdition(
   const label = String(formData.get("label") ?? "").trim();
   if (!label || label.length > 60) return { error: "invalidLabel" };
 
-  const error =
+  const { data: created, error } =
     itemType === "book"
-      ? (
-          await supabase.from("book_editions").insert({
+      ? await supabase
+          .from("book_editions")
+          .insert({
             book_id: itemId,
             label,
             publisher: String(formData.get("publisher") ?? "").trim() || null,
@@ -53,19 +59,22 @@ export async function createEdition(
             isbn: String(formData.get("isbn") ?? "").trim() || null,
             created_by: user.id,
           })
-        ).error
-      : (
-          await supabase.from("movie_versions").insert({
+          .select("id")
+          .single()
+      : await supabase
+          .from("movie_versions")
+          .insert({
             movie_id: itemId,
             label,
             release_year: intOrNull(formData.get("year")),
             duration_minutes: intOrNull(formData.get("totalUnits")),
             created_by: user.id,
           })
-        ).error;
+          .select("id")
+          .single();
 
-  if (error) return { error: "generic" };
+  if (error || !created) return { error: "generic" };
 
   revalidateItemPage(itemType, itemId);
-  return {};
+  return { ok: true, editionId: created.id };
 }

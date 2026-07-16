@@ -12,6 +12,7 @@ import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
+import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
@@ -112,7 +113,9 @@ export default async function MovieDetailPage({
   // streaming en las pestañas — Fase B del plan de navegación.
   // El pase activo entero: el rail de PC enseña también la nota (y el
   // progreso donde lo hay). Misma consulta, mismo viaje.
-  const [community, activePass] = await Promise.all([
+  // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
+  // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
+  const [community, activePass, shellRole] = await Promise.all([
     getCommunity(supabase, "movie", movie.id),
     user
       ? supabase
@@ -125,8 +128,10 @@ export default async function MovieDetailPage({
           .maybeSingle()
           .then(({ data }) => data)
       : Promise.resolve(null),
+    user ? getCurrentUserRole(supabase) : Promise.resolve(null),
   ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
+  const canEditCatalog = hasMinRole(shellRole, "collaborator");
 
   // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
   // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
@@ -165,6 +170,13 @@ export default async function MovieDetailPage({
         ratingsLabel={tDetail("ratings")}
         backLabel={tDetail("back")}
         statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        menuSlot={
+          <HeroMenu
+            itemType="movie"
+            itemId={movie.id}
+            canEditCatalog={canEditCatalog}
+          />
+        }
         railActions={
           <ItemRailActions
             itemType="movie"
@@ -432,6 +444,7 @@ async function MovieTabs({
           editions={editions}
           queues={queues}
           initialClosingPassId={initialClosingPassId}
+          canContribute={canContribute}
         />
       }
     />

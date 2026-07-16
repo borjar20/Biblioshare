@@ -17,6 +17,7 @@ import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
 import { NewPassSheet } from "@/components/detail/new-pass-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
+import { EditionPicker } from "@/components/detail/edition-picker";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { formatPosition, type Position } from "@/lib/library/position";
@@ -98,6 +99,7 @@ export function LogPanel({
   queues,
   initialClosingPassId,
   workTotalUnits,
+  canContribute = false,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -106,6 +108,8 @@ export function LogPanel({
   sessions: ProgressSession[];
   editions: Edition[];
   queues: Queue[];
+  /** Colaborador+: habilita "+ Es una edición nueva" en el selector. */
+  canContribute?: boolean;
   // Pase a abrir en la hoja de cierre desde el primer pintado (§Tarea 7,
   // hallazgo de revisión): lo calcula el SERVER component de la ficha leyendo
   // `?cerrar` de `searchParams` (que no se retrasa, a diferencia de
@@ -119,7 +123,12 @@ export function LogPanel({
 }) {
   if (!entry) {
     return (
-      <FollowButton itemType={itemType} itemId={itemId} editions={editions} />
+      <FollowButton
+        itemType={itemType}
+        itemId={itemId}
+        editions={editions}
+        canContribute={canContribute}
+      />
     );
   }
 
@@ -134,6 +143,7 @@ export function LogPanel({
       editions={editions}
       queues={queues}
       initialClosingPassId={initialClosingPassId ?? null}
+      canContribute={canContribute}
     />
   );
 }
@@ -147,10 +157,12 @@ function FollowButton({
   itemType,
   itemId,
   editions,
+  canContribute,
 }: {
   itemType: ItemType;
   itemId: string;
   editions: Edition[];
+  canContribute: boolean;
 }) {
   const t = useTranslations("item");
   const tEditions = useTranslations("editions");
@@ -185,32 +197,20 @@ function FollowButton({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface p-3 shadow-card">
-      <span className="text-sm font-medium">{tEditions("whichEdition")}</span>
-      <div className="flex flex-col gap-1.5">
-        {editions.map((edition) => (
-          <button
-            key={edition.id}
-            type="button"
-            disabled={isPending}
-            onClick={() => follow(edition.id)}
-            className="rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-60"
-          >
-            {formatEdition(edition, itemType)}
-          </button>
-        ))}
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => follow(null)}
-          className="rounded-md border border-dashed border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
-        >
-          {tEditions("unknownEdition")}
-        </button>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {tEditions("unknownEditionHint")}
-      </p>
+    <div className="rounded-card border border-border bg-surface p-3 shadow-card">
+      {/* Sin historial todavía (primer seguir): passes vacío, el picker no
+          pinta el grupo "Ya las has usado". */}
+      <EditionPicker
+        itemType={itemType}
+        itemId={itemId}
+        editions={editions}
+        passes={[]}
+        title={tEditions("whichEdition")}
+        disabled={isPending}
+        canContribute={canContribute}
+        onPick={(editionId) => follow(editionId)}
+        onUnknown={() => follow(null)}
+      />
     </div>
   );
 }
@@ -225,6 +225,7 @@ function ManagedLog({
   editions,
   queues,
   initialClosingPassId,
+  canContribute,
 }: {
   workTotalUnits?: number | null;
   itemType: ItemType;
@@ -235,6 +236,7 @@ function ManagedLog({
   editions: Edition[];
   queues: Queue[];
   initialClosingPassId: string | null;
+  canContribute: boolean;
 }) {
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
@@ -530,9 +532,11 @@ function ManagedLog({
               itemType={itemType}
               itemId={itemId}
               openPass={openPass}
+              passes={passes}
               page={page}
               totalPages={totalPages}
               editions={editions}
+              canContribute={canContribute}
             />
           )}
 
@@ -607,23 +611,30 @@ function PassDataPanel({
   itemType,
   itemId,
   openPass,
+  passes,
   editions,
   page,
   totalPages,
+  canContribute,
 }: {
   itemType: ItemType;
   itemId: string;
   openPass: Pass;
+  /** Todos los pases: el selector de edición destaca las YA USADAS (frame 7).
+   *  El abierto no aporta (su editionId es null justo cuando se pregunta). */
+  passes: Pass[];
   editions: Edition[];
   /** Página actual del pase, ya calculada por ManagedLog (la comparte con la
    *  barra, que en PC vive en la otra columna). */
   page: number | undefined;
   totalPages: number | null;
+  canContribute: boolean;
 }) {
   const t = useTranslations("detail.log");
   const tPasses = useTranslations("passes");
   const tSessions = useTranslations("item.sessions");
   const tEditions = useTranslations("editions");
+  const accent = MEDIA_ACCENT[itemType];
   const [isPending, startTransition] = useTransition();
   const [rating, setRating] = useState(openPass.rating);
 
@@ -713,47 +724,34 @@ function PassDataPanel({
       <div className="flex flex-col gap-2.5 border-t border-border px-[15px] pt-3.5 pb-[15px]">
         {/* Fila pendiente: arriba del todo, y no un modal. Desaparece al
           contestar (incluida la salida "No lo sé", que además se recuerda en
-          localStorage para no repetirse en cada recarga). */}
+          localStorage para no repetirse en cada recarga). El selector es el
+          del frame 7 — con las ediciones de pases anteriores destacadas
+          arriba, que en una relectura es reusar la del pase anterior en un
+          clic. */}
         {pendingEditionQuestion && (
-          <div className="flex flex-col gap-1.5 rounded-md border border-accent bg-surface p-2.5">
-            <span className="text-xs font-semibold text-foreground">
-              {tEditions("whichEditionReading")}
-            </span>
-            <div className="flex flex-col gap-1">
-              {editions.map((edition) => (
-                <button
-                  key={edition.id}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => {
-                    setAnswered(true);
-                    startTransition(() =>
-                      setPassEdition(openPass.id, itemType, itemId, edition.id),
-                    );
-                  }}
-                  className="rounded-md border border-border px-2.5 py-1.5 text-left text-xs hover:bg-surface-muted disabled:opacity-60"
-                >
-                  {formatEdition(edition, itemType)}
-                </button>
-              ))}
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  // "No lo sé" no fija edición: se recuerda por passId para
-                  // que no vuelva a preguntar en cada recarga (sí volverá a
-                  // preguntar si se abre un pase nuevo, p. ej. una relectura).
-                  writeEditionAsked(openPass.id);
-                  setAnswered(true);
-                }}
-                className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-60"
-              >
-                {tEditions("unknownEdition")}
-              </button>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {tEditions("unknownEditionHint")}
-            </p>
+          <div className={`rounded-md border p-2.5 ${accent.border}`}>
+            <EditionPicker
+              itemType={itemType}
+              itemId={itemId}
+              editions={editions}
+              passes={passes}
+              title={tEditions("whichEditionReading")}
+              disabled={isPending}
+              canContribute={canContribute}
+              onPick={(editionId) => {
+                setAnswered(true);
+                startTransition(() =>
+                  setPassEdition(openPass.id, itemType, itemId, editionId),
+                );
+              }}
+              onUnknown={() => {
+                // "No lo sé" no fija edición: se recuerda por passId para
+                // que no vuelva a preguntar en cada recarga (sí volverá a
+                // preguntar si se abre un pase nuevo, p. ej. una relectura).
+                writeEditionAsked(openPass.id);
+                setAnswered(true);
+              }}
+            />
           </div>
         )}
 
