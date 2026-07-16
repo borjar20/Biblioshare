@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { heroStatusLabels } from "@/lib/library/hero-status-labels";
+import {
+  heroStatusLabels,
+  statusVerbs,
+} from "@/lib/library/hero-status-labels";
+import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
@@ -10,7 +14,7 @@ import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
-import { ItemHero } from "@/components/detail/item-hero";
+import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { type MetaRow } from "@/components/detail/metadata-sidebar";
@@ -95,20 +99,23 @@ export default async function MovieDetailPage({
   // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
   // resto (reparto, plataformas de TMDB, saga, ediciones, pases) llega por
   // streaming en las pestañas — Fase B del plan de navegación.
-  const [community, activeStatus] = await Promise.all([
+  // El pase activo entero: el rail de PC enseña también la nota (y el
+  // progreso donde lo hay). Misma consulta, mismo viaje.
+  const [community, activePass] = await Promise.all([
     getCommunity(supabase, "movie", movie.id),
     user
       ? supabase
           .from("passes")
-          .select("status")
+          .select("id, status, rating, position")
           .eq("user_id", user.id)
           .eq("item_type", "movie")
           .eq("item_id", movie.id)
           .eq("is_active", true)
           .maybeSingle()
-          .then(({ data }) => (data?.status as MediaStatus | undefined) ?? null)
+          .then(({ data }) => data)
       : Promise.resolve(null),
   ]);
+  const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
 
   // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
   // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
@@ -129,32 +136,47 @@ export default async function MovieDetailPage({
   // optimista (ver item-status-context.tsx).
   const statusLabels = await heroStatusLabels("movie");
 
+  // El rail de PC, solo lectura (ver item-rail-actions.tsx). La película NO
+  // lleva barra de progreso: su estado es binario y el frame 12 no la pinta.
+  const railLabels = await statusVerbs("movie");
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
-      <div className="flex flex-col">
-        <ItemHero
-          itemType="movie"
-          mediaLabel={tDetail("mediaLabel.movie")}
-          title={movie.title}
-          byline={byline}
-          genres={genres}
-          coverUrl={movie.cover_url}
-          avgRating={community.avgRating}
-          ratingCount={community.ratingCount}
-          ratingsLabel={tDetail("ratings")}
-          backLabel={tDetail("back")}
-          statusSlot={<StatusBadgeLive labels={statusLabels} />}
-        />
-
-        <Suspense fallback={<ItemTabsSkeleton />}>
-          <MovieTabs
-            movie={movie}
-            userId={user?.id ?? null}
-            community={community}
-            cerrar={cerrar}
+      <ItemShell
+        itemType="movie"
+        mediaLabel={tDetail("mediaLabel.movie")}
+        title={movie.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={movie.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        railActions={
+          <ItemRailActions
+            itemType="movie"
+            labels={railLabels}
+            progress={null}
+            rating={activePass?.rating ?? null}
+            ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
+            ctaLabel={tDetail("rail.cta.movie")}
+            ratingLabel={tDetail("rail.yourRating")}
+            goToLogLabel={tDetail("rail.goToLog")}
           />
-        </Suspense>
-      </div>
+        }
+        tabs={
+          <Suspense fallback={<ItemTabsSkeleton />}>
+            <MovieTabs
+              movie={movie}
+              userId={user?.id ?? null}
+              community={community}
+              cerrar={cerrar}
+            />
+          </Suspense>
+        }
+      />
     </ItemStatusProvider>
   );
 }

@@ -54,11 +54,13 @@ export function ItemDetailTabs({
 
   return (
     <div className="flex flex-col">
-      {/* .tabs del mockup: sans semibold (NO el mono de las subtabs — aquí la
-          maqueta escribe Geist), subrayado de 2px del acento y barra pegada
-          bajo la topbar con blur sobre el fondo. */}
-      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-4xl gap-5 overflow-x-auto px-4 sm:px-6">
+      {/* Sans semibold (NO el mono de las subtabs — aquí la maqueta escribe
+          Geist) y subrayado del acento, en las dos vistas. Cambia la piel:
+          móvil (.tabs) va translúcida con blur sobre el fondo; PC
+          (.desk-tabs) va opaca sobre surface, con borde arriba, más aire y
+          texto de 15. Pegada bajo la topbar en ambas. */}
+      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:border-t lg:bg-background lg:backdrop-blur-none">
+        <div className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-8 lg:px-11">
           {order.map((id) => {
             const isActive = tab === id;
             return (
@@ -66,7 +68,7 @@ export function ItemDetailTabs({
                 key={id}
                 type="button"
                 onClick={() => selectTab(id)}
-                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors ${
+                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-4 lg:text-[15px] ${
                   isActive
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -76,7 +78,7 @@ export function ItemDetailTabs({
                 {isActive && (
                   <span
                     aria-hidden
-                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
+                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm lg:h-[2.5px] ${accent.bg}`}
                   />
                 )}
               </button>
@@ -85,7 +87,7 @@ export function ItemDetailTabs({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:max-w-none lg:px-11 lg:pt-[34px] lg:pb-[42px]">
         {slots[tab]}
       </div>
     </div>

@@ -3,7 +3,11 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { heroStatusLabels } from "@/lib/library/hero-status-labels";
+import {
+  heroStatusLabels,
+  statusVerbs,
+} from "@/lib/library/hero-status-labels";
+import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
@@ -13,7 +17,7 @@ import {
   CatalogEditor,
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
-import { ItemHero } from "@/components/detail/item-hero";
+import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { type MetaRow } from "@/components/detail/metadata-sidebar";
@@ -35,7 +39,7 @@ import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSaga } from "@/lib/sagas/get-item-saga";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember } from "@/lib/sagas/types";
-import { parsePosition } from "@/lib/library/position";
+import { parsePosition, type BookPosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
@@ -123,20 +127,24 @@ export default async function BookDetailPage({
   // del pase activo. Todo lo demás (créditos, saga, ediciones, pases, sesiones,
   // colas) vive en las pestañas y llega por streaming — Fase B del plan de
   // navegación: la primera visita ya no espera al backfill ni a las ediciones.
-  const [community, activeStatus] = await Promise.all([
+  // El pase activo se lee ENTERO (no solo el estado): el rail de PC enseña
+  // también progreso y nota, y salen de esta misma fila — misma consulta, mismo
+  // viaje. Con Supabase remoto lo caro es la ida y vuelta, no las columnas.
+  const [community, activePass] = await Promise.all([
     getCommunity(supabase, "book", book.id),
     user
       ? supabase
           .from("passes")
-          .select("status")
+          .select("id, status, rating, position")
           .eq("user_id", user.id)
           .eq("item_type", "book")
           .eq("item_id", book.id)
           .eq("is_active", true)
           .maybeSingle()
-          .then(({ data }) => (data?.status as MediaStatus | undefined) ?? null)
+          .then(({ data }) => data)
       : Promise.resolve(null),
   ]);
+  const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
 
   // El byline del hero sale de la propia fila (autor + año): los créditos
   // enriquecidos dan el mismo texto y no merece la pena bloquear el hero por
@@ -158,32 +166,61 @@ export default async function BookDetailPage({
   // optimista (ver item-status-context.tsx).
   const statusLabels = await heroStatusLabels("book");
 
+  // El rail de PC (solo lectura, ver item-rail-actions.tsx). La barra de
+  // progreso solo tiene sentido con total de páginas conocido.
+  const railLabels = await statusVerbs("book");
+  const bookPosition = parsePosition(
+    "book",
+    activePass?.position,
+  ) as BookPosition;
+  const currentPage = bookPosition.page ?? 0;
+  const totalPages = book.total_pages ?? 0;
+  const railProgress =
+    totalPages > 0
+      ? {
+          percent: Math.min(100, Math.round((currentPage / totalPages) * 100)),
+          left: tDetail("rail.pages", { page: currentPage, total: totalPages }),
+          right: `${Math.min(100, Math.round((currentPage / totalPages) * 100))}%`,
+        }
+      : null;
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
-      <div className="flex flex-col">
-        <ItemHero
-          itemType="book"
-          mediaLabel={tDetail("mediaLabel.book")}
-          title={book.title}
-          byline={byline}
-          genres={genres}
-          coverUrl={book.cover_url}
-          avgRating={community.avgRating}
-          ratingCount={community.ratingCount}
-          ratingsLabel={tDetail("ratings")}
-          backLabel={tDetail("back")}
-          statusSlot={<StatusBadgeLive labels={statusLabels} />}
-        />
-
-        <Suspense fallback={<ItemTabsSkeleton />}>
-          <BookTabs
-            book={book}
-            userId={user?.id ?? null}
-            community={community}
-            cerrar={cerrar}
+      <ItemShell
+        itemType="book"
+        mediaLabel={tDetail("mediaLabel.book")}
+        title={book.title}
+        byline={byline}
+        genres={genres}
+        coverUrl={book.cover_url}
+        avgRating={community.avgRating}
+        ratingCount={community.ratingCount}
+        ratingsLabel={tDetail("ratings")}
+        backLabel={tDetail("back")}
+        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        railActions={
+          <ItemRailActions
+            itemType="book"
+            labels={railLabels}
+            progress={railProgress}
+            rating={activePass?.rating ?? null}
+            ctaHref={activePass ? `/sesion/${activePass.id}` : null}
+            ctaLabel={tDetail("rail.cta.book")}
+            ratingLabel={tDetail("rail.yourRating")}
+            goToLogLabel={tDetail("rail.goToLog")}
           />
-        </Suspense>
-      </div>
+        }
+        tabs={
+          <Suspense fallback={<ItemTabsSkeleton />}>
+            <BookTabs
+              book={book}
+              userId={user?.id ?? null}
+              community={community}
+              cerrar={cerrar}
+            />
+          </Suspense>
+        }
+      />
     </ItemStatusProvider>
   );
 }
