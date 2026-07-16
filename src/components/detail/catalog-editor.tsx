@@ -15,8 +15,9 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import type { ItemType } from "@/lib/catalog/types";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import type { Edition } from "@/lib/editions/types";
-import { formatEdition, formatEditionMeta } from "@/lib/editions/edition-label";
+import { formatEditionDetails } from "@/lib/editions/edition-label";
 import { sagaHref } from "@/lib/catalog/item-href";
 import {
   updateCatalogItem,
@@ -223,9 +224,11 @@ function CatalogEditorForm({
   onCancel: () => void;
 }) {
   const t = useTranslations("catalogEdit");
+  const tDetail = useTranslations("detail");
   const tSaga = useTranslations("item.sagaForm");
   const tEditions = useTranslations("editions");
   const isMovie = itemType === "movie";
+  const accent = MEDIA_ACCENT[itemType];
 
   const [genres, setGenres] = useState(item.genres);
   const [addingGenre, setAddingGenre] = useState(false);
@@ -340,44 +343,56 @@ function CatalogEditorForm({
 
   return (
     <>
-      {/* Banner ámbar pegajoso: recuerda que esto no es un borrador personal,
-          es la ficha compartida por toda la comunidad. top-14 aproxima la
-          altura del Header sticky (src/components/header.tsx) para no
-          solaparse con él. */}
-      <div className="sticky top-14 z-30 -mx-4 flex items-start gap-2.5 border-b border-amber-300/60 bg-amber-50 px-4 py-2.5 text-amber-900 sm:-mx-6 sm:px-6 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
-        <span aria-hidden className="text-sm leading-5">
+      {/* Banner ámbar pegajoso (`.mod-banner` del frame 6): recuerda que esto
+          no es un borrador personal, es la ficha compartida por toda la
+          comunidad. El degradado y el borde salen de mezclar --gold con la
+          superficie (color-mix), así que el modo oscuro se adapta solo con el
+          --gold oscuro; los dos textos sí llevan su pareja dark a mano. */}
+      <div className="sticky top-[var(--topbar-h)] z-30 -mx-4 flex items-center gap-[9px] border-b border-[color:color-mix(in_oklab,var(--gold)_35%,transparent)] bg-[linear-gradient(90deg,color-mix(in_oklab,var(--gold)_22%,var(--surface)),color-mix(in_oklab,var(--gold)_12%,var(--surface)))] px-4 py-[11px] sm:-mx-6 sm:px-6 lg:-mx-11 lg:px-11">
+        <span
+          aria-hidden
+          className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] bg-gold text-[13px] text-white"
+        >
           ✎
         </span>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold">{t("title")}</span>
-          <span className="text-xs opacity-80">{t("subtitle")}</span>
+          <span className="text-[12.5px] leading-[1.15] font-semibold text-[#5f4708] dark:text-[#e8c87a]">
+            {t("title")}
+          </span>
+          <span className="font-mono text-[9.5px] tracking-[0.04em] text-[#8a6d1e] dark:text-[#c9a95c]">
+            {t("subtitle")}
+          </span>
         </div>
       </div>
 
       <div className="flex flex-col gap-8 pt-5 pb-28">
         <form id="catalog-edit-form" action={formAction} className="flex flex-col gap-5">
           <div className="flex gap-4">
+            {/* `.mod-cover` del frame: borde discontinuo del acento y el
+                overlay "↑ Cambiar" SIEMPRE visible — en modo edición la
+                portada es un control, no una ilustración. */}
             <button
               type="button"
               aria-label={t("cover")}
               onClick={() => fileInputRef.current?.click()}
-              className="group relative aspect-[2/3] w-28 shrink-0 overflow-hidden rounded-cover border border-border bg-surface-muted"
+              className={`relative aspect-[2/3] w-[116px] shrink-0 overflow-hidden rounded-[6px] border-2 border-dashed ${accent.border} bg-surface-muted`}
             >
-              {coverUrl ? (
+              {coverUrl && (
                 <Image
                   src={coverUrl}
                   alt=""
                   fill
-                  sizes="112px"
+                  sizes="116px"
                   className="object-cover"
                 />
-              ) : (
-                <div className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-                  {t("cover")}
-                </div>
               )}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
-                {coverUploading ? "…" : t("changeCover")}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-[5px] bg-[rgba(44,38,32,.5)] text-white">
+                <span aria-hidden className="text-lg leading-none">
+                  ↑
+                </span>
+                <span className="font-mono text-[9px] tracking-[0.04em] uppercase">
+                  {coverUploading ? "…" : t("changeCover")}
+                </span>
               </div>
             </button>
             <input
@@ -395,47 +410,81 @@ function CatalogEditorForm({
               }}
             />
 
-            <label className="flex flex-1 flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("fieldTitle")}
-              </span>
-              <input
-                name="title"
-                defaultValue={item.title}
-                required
-                maxLength={300}
-                className="rounded-md border border-border bg-surface px-3 py-2 font-serif text-lg text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </label>
+            <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+              {/* "Tipo de medio" en solo lectura (frame 6): sitúa qué ficha se
+                  está tocando sin permitir cambiarla — el tipo no se edita. */}
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                  {t("fieldType")}
+                </span>
+                <input
+                  readOnly
+                  tabIndex={-1}
+                  value={tDetail(`mediaLabel.${itemType}`)}
+                  className="rounded-[8px] border border-border bg-surface px-[11px] py-2 text-[12.5px] text-muted-foreground focus:outline-none"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                  {t("fieldTitle")}
+                </span>
+                {/* `.title-ed`: el título se edita en serif y a 20px — sigue
+                    siendo EL título mientras se corrige. */}
+                <input
+                  name="title"
+                  defaultValue={item.title}
+                  required
+                  maxLength={300}
+                  className="rounded-[8px] border border-border bg-surface px-[11px] py-2 font-serif text-xl font-semibold text-foreground focus:border-accent focus:outline-none"
+                />
+              </label>
+            </div>
           </div>
           {coverError && (
             <p className="text-sm text-status-dropped">{t("errors.generic")}</p>
           )}
 
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-              {t(AUTHOR_LABEL_KEY[itemType])}
-            </span>
-            <Input name="author" defaultValue={item.author ?? ""} maxLength={200} />
-          </label>
+          <div className="grid grid-cols-[1fr_96px] gap-2.5">
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                {t(AUTHOR_LABEL_KEY[itemType])}
+              </span>
+              <Input name="author" defaultValue={item.author ?? ""} maxLength={200} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                {t("fieldYearShort")}
+              </span>
+              <Input
+                name="year"
+                type="number"
+                inputMode="numeric"
+                defaultValue={item.year ?? ""}
+              />
+            </label>
+          </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
               {t("fieldGenres")}
             </span>
+            {/* `.chips-ed` del frame: chips en caja (no en mono-etiqueta) con
+                el aspa en un circulito, y "+ Añadir" discontinuo del acento —
+                lo editable se distingue de lo decorativo. */}
             <div className="flex flex-wrap items-center gap-1.5">
               {genres.map((genre) => (
                 <span
                   key={genre}
-                  className="inline-flex items-center gap-1 rounded-chip border border-border bg-surface-muted px-2 py-0.5 font-mono text-[10px] tracking-wide text-muted-foreground uppercase"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted py-[5px] pr-2 pl-[11px] text-[11.5px] text-foreground-soft"
                 >
                   {genre}
                   <button
                     type="button"
                     aria-label={t("removeGenre", { genre })}
                     onClick={() => setGenres((prev) => prev.filter((g) => g !== genre))}
+                    className="grid h-[15px] w-[15px] place-items-center rounded-full bg-surface-3 text-muted-foreground"
                   >
-                    <XIcon className="h-3 w-3" />
+                    <XIcon className="h-2.5 w-2.5" />
                   </button>
                 </span>
               ))}
@@ -453,14 +502,14 @@ function CatalogEditorForm({
                   }}
                   placeholder={t("genrePlaceholder")}
                   maxLength={40}
-                  className="w-32 rounded-chip border border-border bg-surface px-2 py-0.5 font-mono text-[10px] text-foreground focus:border-accent focus:outline-none"
+                  className="w-32 rounded-full border border-border bg-surface px-[11px] py-[5px] text-[11.5px] text-foreground focus:border-accent focus:outline-none"
                 />
               ) : (
                 genres.length < MAX_GENRES && (
                   <button
                     type="button"
                     onClick={() => setAddingGenre(true)}
-                    className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase hover:text-foreground"
+                    className={`inline-flex items-center rounded-full border border-dashed px-[11px] py-[5px] text-[11.5px] ${accent.border} ${accent.text}`}
                   >
                     {t("addGenre")}
                   </button>
@@ -480,19 +529,7 @@ function CatalogEditorForm({
               defaultValue={item.synopsis ?? ""}
               rows={5}
               maxLength={5000}
-              className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 sm:w-48">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-              {t("fieldYear")}
-            </span>
-            <Input
-              name="year"
-              type="number"
-              inputMode="numeric"
-              defaultValue={item.year ?? ""}
+              className="resize-none rounded-[8px] border border-border bg-surface px-3 py-2.5 text-[13px] leading-[1.6] text-foreground focus:border-accent focus:outline-none"
             />
           </label>
 
@@ -509,21 +546,30 @@ function CatalogEditorForm({
             {tSaga("title")}
           </span>
           {saga && (
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-muted-foreground">
-                {tSaga("current")}{" "}
+            // La saga actual como chip con su aspa (`.chips-ed` del frame),
+            // igual que los géneros: quitarla es el mismo gesto en las dos
+            // filas. El aspa es un <form> porque quitar es una server action.
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted py-[5px] pr-2 pl-[11px] text-[11.5px] text-foreground-soft">
                 <Link
                   href={sagaHref(saga.id)}
-                  className="text-foreground underline-offset-2 hover:underline"
+                  className="underline-offset-2 hover:underline"
                 >
                   {saga.name}
                 </Link>
+                <form
+                  action={removeItemFromSaga.bind(null, itemType, itemId)}
+                  className="contents"
+                >
+                  <button
+                    type="submit"
+                    aria-label={tSaga("remove")}
+                    className="grid h-[15px] w-[15px] place-items-center rounded-full bg-surface-3 text-muted-foreground"
+                  >
+                    <XIcon className="h-2.5 w-2.5" />
+                  </button>
+                </form>
               </span>
-              <form action={removeItemFromSaga.bind(null, itemType, itemId)}>
-                <Button type="submit" variant="secondary">
-                  {tSaga("remove")}
-                </Button>
-              </form>
             </div>
           )}
           <form action={sagaFormAction} className="flex flex-col gap-2 sm:flex-row">
@@ -586,20 +632,21 @@ function CatalogEditorForm({
               ))}
             </div>
 
-            <div className="flex flex-col gap-3 rounded-card border border-dashed border-border p-3.5">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            {/* `.ed-addbox`: caja discontinua sobre --surface-2 con el botón
+                de añadir también discontinuo y del acento. */}
+            <div className="flex flex-col gap-3 rounded-[10px] border border-dashed border-border bg-surface-muted p-3">
+              <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
                 {isMovie ? tEditions("addMovie") : tEditions("add")}
               </span>
               <form action={createFormAction} className="flex flex-col gap-3">
                 <EditionFields isMovie={isMovie} />
-                <Button
+                <button
                   type="submit"
-                  variant="secondary"
                   disabled={createPending}
-                  className="self-start"
+                  className={`inline-flex items-center gap-[5px] self-start rounded-[8px] border border-dashed px-[13px] py-2 text-[11.5px] font-semibold disabled:opacity-60 ${accent.border} ${accent.text}`}
                 >
                   {createPending ? tEditions("submitting") : tEditions("submit")}
-                </Button>
+                </button>
                 {createState.error && (
                   <p className="text-sm text-status-dropped">
                     {tEditions(`errors.${createState.error}`)}
@@ -611,17 +658,29 @@ function CatalogEditorForm({
         )}
       </div>
 
-      {/* Barra fija: Guardar cambios envía el <form> de arriba por id (el
-          botón vive fuera de él a propósito, para poder quedarse pegado abajo
-          sin anidar el resto de formularios de esta pantalla — sagas y
-          ediciones — dentro del formulario principal). bottom-16 dejar sitio
-          a BottomNav (solo móvil, sticky bottom-0 también); en sm+ no hay
-          BottomNav así que baja a bottom-0. */}
-      <div className="sticky bottom-16 z-30 -mx-4 flex justify-end gap-2 border-t border-border bg-surface px-4 py-3 shadow-card sm:bottom-0 sm:-mx-6 sm:px-6">
-        <Button type="button" variant="ghost" onClick={onCancel}>
+      {/* Barra fija (`.mod-foot` del frame): fondo translúcido con blur y los
+          dos botones A LO ANCHO en móvil — la decisión de guardar o cancelar
+          es el único gesto que queda. Guardar cambios envía el <form> de
+          arriba por id (el botón vive fuera de él a propósito, para poder
+          quedarse pegado abajo sin anidar el resto de formularios de esta
+          pantalla — sagas y ediciones — dentro del formulario principal).
+          bottom-16 deja sitio a BottomNav (solo móvil, sticky bottom-0
+          también); en sm+ no hay BottomNav así que baja a bottom-0. */}
+      <div className="sticky bottom-16 z-30 -mx-4 flex gap-2.5 border-t border-border bg-background/90 px-4 py-[13px] backdrop-blur-[12px] sm:bottom-0 sm:-mx-6 sm:px-6 lg:-mx-11 lg:justify-end lg:px-11">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onCancel}
+          className="flex-1 lg:flex-none"
+        >
           {t("cancel")}
         </Button>
-        <Button type="submit" form="catalog-edit-form" disabled={pending}>
+        <Button
+          type="submit"
+          form="catalog-edit-form"
+          disabled={pending}
+          className="flex-1 lg:flex-none"
+        >
           {pending ? t("saving") : t("save")}
         </Button>
       </div>
@@ -663,16 +722,22 @@ function EditionRow({
     });
   }
 
-  const meta = isMovie ? formatEditionMeta(edition) : formatEdition(edition, itemType);
+  const meta = formatEditionDetails(edition, itemType);
 
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-col">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+    // `.edn.full` del frame: el formato como pastilla mono (tag), los
+    // metadatos en mono apagado debajo y el lápiz arriba a la derecha.
+    <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[11px] pl-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col items-start">
+          <span className="inline-block rounded-[4px] bg-surface-muted px-1.5 py-0.5 font-mono text-[9px] tracking-[0.05em] text-muted-foreground uppercase">
             {edition.label}
           </span>
-          {meta && <span className="text-xs text-muted-foreground">{meta}</span>}
+          {meta && (
+            <span className="mt-[5px] font-mono text-[9.5px] leading-[1.5] text-muted-foreground">
+              {meta}
+            </span>
+          )}
         </div>
         <button
           type="button"

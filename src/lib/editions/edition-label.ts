@@ -27,6 +27,28 @@ export function formatEditionMeta(edition: Edition): string {
   return parts.join(" · ");
 }
 
+// Línea completa de una tarjeta del EDITOR (`.mt` del frame 6): todo lo que
+// se sabe de la edición — editorial, año, idioma, extensión, ISBN — sin
+// repetir la etiqueta, que ya se pinta como pastilla encima.
+export function formatEditionDetails(
+  edition: Edition,
+  itemType: ItemType,
+): string {
+  const parts: string[] = [];
+  if (edition.publisher) parts.push(edition.publisher);
+  if (edition.year !== null) parts.push(String(edition.year));
+  if (edition.language) parts.push(edition.language.toUpperCase());
+  if (edition.totalUnits !== null) {
+    parts.push(
+      itemType === "movie"
+        ? runtime(edition.totalUnits)
+        : `${edition.totalUnits} p`,
+    );
+  }
+  if (edition.isbn) parts.push(`ISBN ${edition.isbn}`);
+  return parts.join(" · ");
+}
+
 export function primaryEdition(editions: Edition[]): Edition | null {
   return editions.find((e) => e.isPrimary) ?? null;
 }
