@@ -161,7 +161,7 @@ export async function ratePass(
   rating: number
 ): Promise<void> {
   // Esta acción es un endpoint POST público: no podemos fiarnos de que el
-  // `rating` recibido venga del <StarRating> del cliente. Mismo rango que
+  // `rating` recibido venga del <RatingDots> del cliente. Mismo rango que
   // parseRating (entero 1-10); si no cumple, no escribimos nada y salimos.
   if (!isValidRating(rating)) return;
 

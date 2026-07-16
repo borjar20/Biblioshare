@@ -41,7 +41,7 @@ export async function CommunityPanel({
               <span className={`font-serif text-4xl leading-none font-bold ${accent.text}`}>
                 {community.avgRating.toFixed(1)}
               </span>
-              <RatingDots value={community.avgRating / 2} />
+              <RatingDots value={community.avgRating} />
               <span className="font-mono text-[10px] text-muted-foreground">
                 {community.ratingCount.toLocaleString("es")} {t("ratings")}
               </span>
@@ -108,7 +108,7 @@ export async function CommunityPanel({
                       </span>
                       {review.rating !== null && (
                         <RatingDots
-                          value={review.rating / 2}
+                          value={review.rating}
                          
                         />
                       )}
@@ -169,7 +169,7 @@ export async function CommunityPanel({
                     </div>
                     {review.rating !== null && (
                       <RatingDots
-                        value={review.rating / 2}
+                        value={review.rating}
                        
                       />
                     )}

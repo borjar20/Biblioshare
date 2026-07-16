@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { StarRating } from "@/components/ui/star-rating";
+import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "@/components/detail/item-status-context";
 
 const STATUS_DOT_CLASSES: Record<MediaStatus, string> = {
@@ -106,7 +106,7 @@ export function ItemRailActions({
         <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
           {ratingLabel}
         </span>
-        <StarRating value={rating} />
+        <RatingDots value={rating} />
       </div>
     </>
   );

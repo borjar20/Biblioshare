@@ -111,7 +111,7 @@ export function FeedCard({
             )}
           </div>
 
-          {event.rating !== null && <RatingDots value={event.rating / 2} />}
+          {event.rating !== null && <RatingDots value={event.rating} />}
 
           {event.verb === "added" && event.entryStatus && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

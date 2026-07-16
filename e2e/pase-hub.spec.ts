@@ -315,9 +315,9 @@ test.describe
       page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
     ).toBeVisible({ timeout: 20_000 });
 
-    await page
-      .getByRole("button", { name: "5 de 5 estrellas", exact: true })
-      .click();
+    // La nota máxima. Las mitades de cada dot se anuncian por su valor real
+    // 1-10 (RatingDots), no en estrellas: la app ya no tiene ninguna.
+    await page.getByRole("button", { name: "10/10", exact: true }).click();
     await page.getByRole("button", { name: "Guardar" }).click();
 
     await expect(

@@ -9,6 +9,13 @@
   --background: #f3ece1;
   --surface: #fffdf8;
   --surface-muted: #ece3d4;
+  /* Un peldaño MÁS hundido que --surface-muted: superficies que solo tienen
+     que estar sin llamar la atención, pero que deben VERSE (el dot apagado de
+     una nota, el hueco de un control). Es el `--surface-3` del handoff
+     (--surface-muted es su `--surface-2`); el par claro/oscuro sale de
+     "Paper - Guía de estilo.html". Nació porque los dots vacíos pintados con
+     --border (alfa .14) no se distinguían del fondo. */
+  --surface-3: #e2d7c4;
   --foreground: #2c2620;
   /* Prosa larga (reseñas, texto del feed, sinopsis): un peldaño más suave que
      --foreground, pero sin llegar a --muted-foreground, que es para etiquetas.
@@ -60,6 +67,7 @@
   --background: #1f1a16;
   --surface: #2a231d;
   --surface-muted: #332b23;
+  --surface-3: #3d342b;
   --foreground: #f0e8db;
   --foreground-soft: #cabfb0;
   --foreground-faint: #6f665a;
@@ -97,6 +105,7 @@
     --background: #1f1a16;
     --surface: #2a231d;
     --surface-muted: #332b23;
+    --surface-3: #3d342b;
     --foreground: #f0e8db;
     --foreground-soft: #cabfb0;
     --foreground-faint: #6f665a;
@@ -134,6 +143,7 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-3: var(--surface-3);
   --color-foreground: var(--foreground);
   --color-foreground-soft: var(--foreground-soft);
   --color-foreground-faint: var(--foreground-faint);
