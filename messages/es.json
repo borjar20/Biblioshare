@@ -151,6 +151,12 @@
       "movie": "{n}.º visionado",
       "series": "{n}.º visionado"
     },
+    "newPass": "Nuevo pase",
+    "newPassSheet": {
+      "title": "¿Cómo cierras el pase actual?",
+      "hint": "El pase actual se guarda en tu diario y empieza uno nuevo desde cero.",
+      "cancel": "Cancelar"
+    },
     "closeTitle": "¿Qué te ha parecido?",
     "finishedOn": "Fecha",
     "rating": "Tu nota",

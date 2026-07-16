@@ -636,3 +636,95 @@ test.describe("serie con revisionado", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// "Nuevo pase" (plan 06 T4, §2.13): cerrar el pase actual y empezar otro de
+// cero en un gesto. Sobre un pase ABIERTO no puede decidir solo cómo termina
+// el que archiva —o se completó, o se abandonó— así que pregunta; sobre uno
+// ya cerrado actúa directo. Libro propio, para no interferir con los ciclos
+// de vida de arriba.
+// ─────────────────────────────────────────────────────────────────────────
+test.describe("nuevo pase", () => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  test("sobre un pase abierto pregunta cómo cerrarlo y abre otro a cursor 0", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    let bookId = "";
+
+    try {
+      await login(page);
+      bookId = await openSearchResult(
+        page,
+        "book",
+        "the trial kafka",
+        "The Trial",
+      );
+
+      await page.goto(`/libro/${bookId}?tab=log`);
+      await page.waitForLoadState("networkidle").catch(() => {});
+      await followItem(page);
+      await expect(statusBadge(page, "Pendiente")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // Sobre un PENDIENTE el botón no se pinta: el pase no ha empezado, así
+      // que no hay nada que cerrar ni pregunta con respuesta honesta.
+      await expect(
+        page.getByRole("button", { name: "Nuevo pase" }),
+      ).toHaveCount(0);
+
+      await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+      const addSessionLink = page
+        .getByRole("link", { name: /registrar sesión/i })
+        .first();
+      await expect(addSessionLink).toBeVisible({ timeout: 15_000 });
+
+      // Sesión a medias (página 20, lejísimos del total): deja el pase
+      // ABIERTO y con cursor, que es la rama que pregunta.
+      await addSessionLink.click();
+      await page.waitForURL(/\/sesion\//, { timeout: 15_000 });
+      await page.locator("#session-page").fill("20");
+      await page.getByRole("button", { name: "Guardar sesión" }).click();
+      await page.waitForURL(/\/libro\//, { timeout: 15_000 });
+
+      await page.goto(`/libro/${bookId}?tab=log`);
+      await page.waitForLoadState("networkidle").catch(() => {});
+      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await page.getByRole("button", { name: "Nuevo pase" }).click();
+      const sheet = page.getByRole("heading", {
+        name: "¿Cómo cierras el pase actual?",
+      });
+      await expect(sheet).toBeVisible({ timeout: 15_000 });
+
+      // Acotado al <dialog>: "Leído" es TAMBIÉN una pastilla de
+      // StatusSegments, así que a secas el locator sería ambiguo.
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Leído" })
+        .click();
+      await expect(sheet).toHaveCount(0);
+
+      // El viejo queda archivado en el diario con su cierre, y el nuevo nace
+      // a cursor 0 y leyendo. Misma recarga con reintento que los vecinos: el
+      // router.refresh() tras el POST es una carrera menos determinista que
+      // una navegación completa.
+      await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
+        p.getByText("2º pase"),
+      );
+      await expect(page.getByText("1º pase")).toBeVisible();
+      await expect(page.getByText("2º pase")).toBeVisible();
+      await expect(page.getByText("3º pase")).toHaveCount(0);
+      await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+      await expect(statusBadge(page, "Leyendo")).toBeVisible({
+        timeout: 15_000,
+      });
+    } finally {
+      await cleanupBook(bookId);
+    }
+  });
+});
