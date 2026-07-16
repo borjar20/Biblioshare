@@ -150,13 +150,13 @@ topbar de la app (sticky, global — P-T1)
 
 **Pendientes, en este orden:**
 
-3. **T3 · Shell de PC + Info** (frames 1 y 8) — **shell ✅ HECHO** (PR #50 `e76ebfa` + #51 `bbb7f41`); **falta el CUERPO de Info**:
+3. ~~**T3 · Shell de PC + Info** (frames 1 y 8)~~ ✅ **HECHA** — shell (#50 `e76ebfa`, #51 `bbb7f41`), cuerpo de Info (#53 `4a23362`) y sagas a N (#54). Detalle:
    - ~~`desk-shell`: grid `300px 1fr` en `lg:`, **rail sticky** (P5) bajo la topbar (P8)~~ ✅
    - ~~Rail: portada 256×384, estado, progreso (salvo película), CTA (P6), "Tu nota"~~ ✅ — **en MODO LECTURA**, ver §6b.
    - ~~Cabecera común: título 44px, byline serif, nota en línea~~ ✅ — **falta la línea de saga** (necesita `getItemSaga`, hoy tras el `<Suspense>`).
    - ~~Pestañas con piel de PC~~ ✅ (#51, según la maqueta nueva de PC).
-   - **PENDIENTE — cuerpo de Info:** cabecera larga (sinopsis + géneros + facts, §2bis.33), sagas a N (§2bis.36), ediciones desplegadas en rejilla de 3 en PC / al final y en tono menor en móvil (§2bis.37), `meta` en la columna de 340px, y el nuevo orden móvil.
-     ⚠️ **No es un restyle, es un refactor:** hoy `EditionsSection` (`edition-details.tsx`) es la DUEÑA de la sinopsis, los metadatos y los géneros — los tiene dentro porque comparten el estado de "qué edición miro". La maqueta los saca de ahí, así que hay que decidir de quién cuelgan y tocar `edition-details.tsx`, `info-panel.tsx`, `metadata-sidebar.tsx` y `saga-strip.tsx` a la vez, en dos vistas. Sesión propia.
+   - ~~Cuerpo de Info: orden móvil, dos columnas de PC, ediciones, sagas a N~~ ✅ — ver §6c.
+   - **La cola de la cabecera de PC (sinopsis + géneros + facts, §2bis.33) NO se hace** — decidido, ver §6c/P9.
 4. **T4 · Registro** (frames 3 y 10) — progreso con pin + `closehint`, cabecera de pase, seg, sesiones; en PC "Datos del pase" y "Quitar de mi biblioteca" a la derecha. Diario + delta (§2.18–2.19, tras P3).
 5. **T5 · Comunidad** (frames 2 y 9) — reseñas + histograma; en PC el histograma es tarjeta lateral fija.
 6. **T6 · Episodios** (frames 4 y 11) — temporadas/rejilla; en PC el detalle del episodio se ancla a la derecha.
@@ -188,6 +188,15 @@ topbar de la app (sticky, global — P-T1)
 - **Radio de la portada del hero: 6px literal**, no `--radius-cover` (10px). El token es correcto para el resto de portadas de la app; el frame del hero pide 6.
 - **Los géneros del hero NO se tocaron.** El `.g` de la maqueta (10.5px, sans, sin borde, `#6a604f`) no coincide con `GenreTag` (mono uppercase con borde), pero §2 no lo lista como diferencia y `GenreTag` es transversal. Si se quiere alinear, es decisión de sistema → plan 07.
 - **Las estrellas del hero funcionan con `StarRating` tal cual** (recibe 1–10 y convierte por dentro) + `formatStars` para el "4,5". Es un componente cliente: el hero deja de ser 100% servidor por esa isla, cosa asumible.
+
+## 6c. Hallazgos del cuerpo de Info (PRs #53 y #54 · 2026-07-16)
+
+- **P9 · DECIDIDO: la sinopsis se queda en el CUERPO de Info, no en la cabecera.** El frame 8 la pone encima de la barra de pestañas, pero solo en Info (los frames 9 y 10 cortan la cabecera en la nota) — y nuestra cabecera vive FUERA de `ItemDetailTabs`, que es quien sabe qué pestaña está activa. Las salidas eran: contexto de pestaña activa (fontanería nueva), leer `?tab=` en el servidor (**descartada: convertiría cada cambio de pestaña en una ida y vuelta**, justo lo que el diseño evita) o dejarla donde está. Se deja donde está: la cabecera de PC queda más corta que el frame, y se asume. **Consecuencia: `headerExtra` de `ItemShell`/`ItemHeaderWide` queda muerto — quitarlo.**
+- **El panel "Esta edición / Volver a la obra" NO existía en ninguna maqueta.** Era invención nuestra (#21-33) y repetía lo que la tarjeta ya enseña. Al quitarlo se fue `viewingId`, que era **el único motivo** por el que la sinopsis y los metadatos vivían dentro de `EditionsSection`: sin él, cada pieza se coloca donde diga el frame. `edition-details.tsx` pasó de 242 a 65 líneas y `MetadataSidebar` dejó de depender del `<Suspense>` de ediciones. **Lección: antes de dar por hecho que algo es un refactor, mirar si el acoplamiento lo sostiene una feature que la maqueta ya no quiere.**
+- **En PC solo 5 ediciones de primeras, la tuya primero, y "Ver todas (N)".** El frame dibuja 4 pero un libro real trae hasta 18 tras sincronizar con OpenLibrary y la rejilla se comía seis filas. Ordenar por "la tuya primero" jubiló de paso un `scrollIntoView` que existía solo para que no hubiera que buscarla en la tira. El recorte es **solo de PC** (`lg:hidden`, no cortar el array): en móvil la tira ya scrollea.
+- ⚠️ **BUG LATENTE arreglado:** `getItemSaga` usaba `maybeSingle()`, que **revienta con más de una fila**. `saga_items` nunca impuso una saga por ítem, así que **un libro en dos sagas rompía la ficha**; no había saltado porque en dev no hay ninguno. La maqueta ("Sagas · 4") lo destapó antes que un usuario.
+- **P10 · DECIDIDO: la saga principal es la PRIMERA** (la más antigua, por el `created_at` de la membresía). Regla única para los tres tipos: el modelo no puede marcar una principal y una heurística que acierte a veces es peor que una regla que se explica en una frase. El `total` del "nº 4 de 20" va como agregado anidado en la misma consulta (`sagas(id, name, saga_items(count))`) — una consulta por saga serían N viajes.
+- ⚠️ **Sin comprobar a ojo:** el render de 2+ sagas. En dev no hay ningún ítem con dos, y una saga sembrada con la service-key **no la ve el usuario de la app** (probablemente RLS sobre `sagas` manuales sin dueño).
 
 ## 6b. Hallazgos del shell de PC (T3, PRs #50 y #51 · 2026-07-16)
 
