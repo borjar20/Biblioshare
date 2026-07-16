@@ -679,7 +679,8 @@
         "series": "Marcar episodio",
         "movie": "Registrar visionado"
       },
-      "pages": "pág. {page} / {total}"
+      "pages": "pág. {page} / {total}",
+      "episodes": "{watched} / {total} vistos"
     },
     "ratings": "valoraciones",
     "tabInfo": "Información",
@@ -777,7 +778,11 @@
     "communityCount": "{count, plural, =0 {sin votos} =1 {1 voto} other {# votos}}",
     "episodeCount": "{count, plural, =1 {1 episodio} other {# episodios}}",
     "watchedCount": "{watched}/{total} vistos",
-    "watchedProgress": "{watched} / {total} episodios vistos",
+    "watchedProgress": "<b>{watched}</b> / {total} vistos",
+    "airedOn": "emitido {date}",
+    "yourRatingMeta": "{value}/5 (tu nota)",
+    "codeLong": "T{s} · E{e}",
+    "selectHint": "Elige un episodio de la lista para ver aquí su detalle.",
     "sourceMine": "Mis notas",
     "sourceCommunity": "Comunidad",
     "viewGrid": "Rejilla",
