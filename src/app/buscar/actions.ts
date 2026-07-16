@@ -2,18 +2,25 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { itemHref } from "@/lib/catalog/item-href";
+import { settledWithin } from "@/lib/async/settled-within";
 import type { SearchResult } from "@/lib/catalog/types";
+
+// Presupuesto de la hidratación antes de navegar. No es un timeout de la
+// llamada: es cuánto está dispuesto el usuario a mirar una pantalla congelada.
+const HYDRATION_BUDGET_MS = 1200;
 
 // Abrir la ficha de un resultado que TODAVÍA no está en el catálogo: la búsqueda
 // ya no persiste nada (§7.32), así que un resultado de la API llega sin
 // catalogId y no hay ficha a la que enlazar hasta que la obra existe. Aquí es
 // donde nace: el usuario ha hecho clic, es decir, se ha comprometido con el
-// libro. Al abrirla, la ficha la hidrata (ensureBookHydrated).
+// libro. La hidratación se intenta aquí con un presupuesto corto y, si no llega
+// a tiempo, se termina en segundo plano (ver HYDRATION_BUDGET_MS arriba).
 export async function openCatalogItem(result: SearchResult) {
   if (result.catalogId) redirect(itemHref(result.itemType, result.catalogId));
 
@@ -27,17 +34,26 @@ export async function openCatalogItem(result: SearchResult) {
 
   const itemId = await findOrCreateCatalogItem(supabase, result, user.id);
 
-  // Se hidrata AQUÍ, antes de redirigir, y no en la ficha: el usuario ya está
-  // esperando la navegación, así que la llamada a OpenLibrary se paga en un
-  // momento en el que no se nota, y la ficha aparece con su sinopsis a la
-  // primera en lugar de vacía hasta la siguiente visita. Nunca lanza.
   if (result.itemType === "book") {
-    await ensureBookHydrated(supabase, {
+    // La hidratación pega a OpenLibrary, y sus DOS llamadas tienen 5 s de
+    // timeout cada una (work-detail.ts): esperarla entera aquí dejaba el clic
+    // en el resultado congelado hasta ~10 s, con la pantalla de búsqueda
+    // intacta y sin más aviso que la tarjeta atenuada. Se le da un presupuesto
+    // corto: si OpenLibrary responde rápido (lo normal), la ficha nace ya con
+    // su sinopsis y sus géneros; si no, se navega igual y el trabajo sigue vivo
+    // en after(), así que la ficha lo tendrá en el siguiente pintado. La red de
+    // seguridad final es el curador de la propia ficha (after() en
+    // libro/[id]/page.tsx), que rehidrata cualquier fila con hydrated_at null
+    // la próxima vez que se abra. Nunca lanza.
+    const hydration = ensureBookHydrated(supabase, {
       id: itemId,
       openlibrary_work_key: result.externalId,
       isbn: result.matchedIsbn ?? null,
       hydrated_at: null,
     });
+    if (!(await settledWithin(hydration, HYDRATION_BUDGET_MS))) {
+      after(() => hydration);
+    }
   }
 
   redirect(itemHref(result.itemType, itemId));
