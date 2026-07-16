@@ -108,20 +108,44 @@ export default async function SeriesDetailPage({
   // pases) llega por streaming en las pestañas — Fase B del plan de navegación.
   // El pase activo entero: el rail de PC enseña también la nota (y el
   // progreso donde lo hay). Misma consulta, mismo viaje.
-  const [community, activePass] = await Promise.all([
-    getCommunity(supabase, "series", series.id),
-    user
-      ? supabase
-          .from("passes")
-          .select("id, status, rating, position")
-          .eq("user_id", user.id)
-          .eq("item_type", "series")
-          .eq("item_id", series.id)
-          .eq("is_active", true)
-          .maybeSingle()
-          .then(({ data }) => data)
-      : Promise.resolve(null),
-  ]);
+  // Los dos recuentos del rail ("16 / 20 vistos", frame 11) van en el MISMO
+  // Promise.all: cuestan cero tiempo en serie. El de vistos filtra por el pase
+  // activo sin conocer su id, con el join embebido (passes!inner) — verificado
+  // contra dev que devuelve lo mismo que la consulta en dos pasos.
+  const [community, activePass, watchedEpisodes, catalogEpisodes] =
+    await Promise.all([
+      getCommunity(supabase, "series", series.id),
+      user
+        ? supabase
+            .from("passes")
+            .select("id, status, rating, position")
+            .eq("user_id", user.id)
+            .eq("item_type", "series")
+            .eq("item_id", series.id)
+            .eq("is_active", true)
+            .maybeSingle()
+            .then(({ data }) => data)
+        : Promise.resolve(null),
+      user
+        ? supabase
+            .from("episode_watches")
+            .select("pass_id, passes!inner(is_active)", {
+              count: "exact",
+              head: true,
+            })
+            .eq("user_id", user.id)
+            .eq("series_id", series.id)
+            .eq("passes.is_active", true)
+            .then(({ count }) => count ?? 0)
+        : Promise.resolve(0),
+      user
+        ? supabase
+            .from("series_episodes")
+            .select("*", { count: "exact", head: true })
+            .eq("series_id", series.id)
+            .then(({ count }) => count ?? 0)
+        : Promise.resolve(0),
+    ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
 
   const byline =
@@ -144,11 +168,25 @@ export default async function SeriesDetailPage({
   // render fresco del servidor, así que el badge llega ya correcto.
   const statusLabels = await heroStatusLabels("series");
 
-  // El rail de PC, solo lectura (ver item-rail-actions.tsx). El frame 11 pinta
-  // "16 / 20 vistos", pero ese recuento se calcula con los episodios, que viven
-  // tras el <Suspense> de las pestañas: traerlo aquí añadiría una consulta a la
-  // ruta crítica del shell. Entra con la tarea de Episodios (T6).
+  // El rail de PC, solo lectura (ver item-rail-actions.tsx). El total sale del
+  // catálogo (lo mismo que cuenta la pestaña Episodios); en la primera visita
+  // el catálogo aún no está sincronizado y el fallback es la columna de TMDB.
   const railLabels = await statusVerbs("series");
+  const totalEpisodes = catalogEpisodes || series.total_episodes || 0;
+  const railProgress =
+    activePass && totalEpisodes > 0
+      ? {
+          percent: Math.min(
+            100,
+            Math.round((watchedEpisodes / totalEpisodes) * 100),
+          ),
+          left: tDetail("rail.episodes", {
+            watched: watchedEpisodes,
+            total: totalEpisodes,
+          }),
+          right: `${Math.min(100, Math.round((watchedEpisodes / totalEpisodes) * 100))}%`,
+        }
+      : null;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
@@ -168,7 +206,7 @@ export default async function SeriesDetailPage({
           <ItemRailActions
             itemType="series"
             labels={railLabels}
-            progress={null}
+            progress={railProgress}
             rating={activePass?.rating ?? null}
             ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
             ctaLabel={tDetail("rail.cta.series")}
