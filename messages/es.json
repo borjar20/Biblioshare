@@ -603,6 +603,8 @@
     "add": "Añadir edición",
     "addMovie": "Añadir versión",
     "yours": "La tuya",
+    "showAll": "Ver todas ({count})",
+    "showLess": "Ver menos",
     "label": "Nombre",
     "labelHint": "p. ej. Tapa dura, Bolsillo, Extendida",
     "publisher": "Editorial",

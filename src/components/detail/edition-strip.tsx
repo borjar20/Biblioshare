@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
@@ -12,6 +12,11 @@ import { Button } from "@/components/ui/button";
 import { CheckIcon, PlusIcon } from "@/components/ui/icons";
 
 const initialState: CreateEditionState = {};
+
+// Cuántas ediciones se enseñan de primeras en PC. La maqueta dibuja 4 y el
+// tile de añadir (dos filas de la rejilla de 3), pero un libro real trae hasta
+// 18 tras sincronizar con OpenLibrary y la rejilla se comía la pantalla.
+const PC_PREVIEW = 5;
 
 // Horizontal edition/version rail for the detail "Info" tab (same family as
 // SagaStrip): cada tarjeta muestra la etiqueta, el nombre y el resumen de
@@ -58,18 +63,18 @@ export function EditionStrip({
     if (!state.error) setAdding(false);
   }
 
-  // La tarjeta de la edición del pase (selectedEditionId, "La tuya") debe
-  // verse sin que el usuario tenga que buscarla: con muchas ediciones (hasta
-  // 20 tras la sincronización con OpenLibrary, Tarea 6) puede caer fuera del
-  // scroll horizontal inicial de la tira.
-  const selectedRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    // Llamada imperativa al DOM (no un setState), por eso vive en un efecto:
-    // centra la tarjeta seleccionada dentro del scroll horizontal al montar.
-    // Deliberadamente solo al montar — no debe reajustar el scroll cada vez
-    // que se añade una edición nueva.
-    selectedRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, []);
+  // La tuya primero. Antes se dejaban en el orden que vinieran y se centraba
+  // la tarjeta del pase con un scrollIntoView al montar; ordenar es más
+  // simple y sirve a las dos vistas — en la tira no hay que buscarla, y en la
+  // rejilla de PC entra en el primer corte aunque la obra tenga 18 ediciones.
+  const ordered = selectedEditionId
+    ? [...editions].sort((a, b) =>
+        a.id === selectedEditionId ? -1 : b.id === selectedEditionId ? 1 : 0,
+      )
+    : editions;
+
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = ordered.length > PC_PREVIEW;
 
   if (editions.length === 0 && !canContribute) return null;
 
@@ -93,8 +98,12 @@ export function EditionStrip({
       {/* Móvil: tira con scroll (.eds-row). PC: rejilla de 3 ya desplegada
           (.eds-grid) — en el ancho hay sitio y no hace falta recortar. */}
       <div className="flex gap-2.5 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:gap-3 lg:overflow-visible lg:pb-0">
-        {editions.map((edition) => {
+        {ordered.map((edition, index) => {
           const isSelected = edition.id === selectedEditionId;
+          // El recorte es SOLO de PC: en móvil la tira ya scrollea, que es su
+          // forma natural de "ver todas". Por eso se esconde con `lg:hidden`
+          // en vez de cortar el array — así el móvil no se entera.
+          const hiddenOnPc = !expanded && index >= PC_PREVIEW;
           // Solo pintamos el nombre en semibold si aporta algo distinto de la
           // etiqueta de arriba: en película publisher siempre es null, así
           // que sin este guard el nombre repetía la misma etiqueta dos veces.
@@ -112,14 +121,13 @@ export function EditionStrip({
           return (
             <div
               key={edition.id}
-              ref={isSelected ? selectedRef : undefined}
               // Las tarjetas dejaron de ser botones al quitar la mirada de
               // edición: sin aria-pressed que las distinga del "+ Añadir",
               // el e2e necesita un asidero propio.
               data-testid="edition-card"
               className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 text-left lg:w-auto lg:shrink ${
                 isSelected ? accent.border : "border-border"
-              }`}
+              } ${hiddenOnPc ? "lg:hidden" : ""}`}
             >
               {isSelected && (
                 <span
@@ -169,6 +177,17 @@ export function EditionStrip({
           </button>
         )}
       </div>
+
+      {/* Solo PC: en móvil la tira scrollea y no hay nada que desplegar. */}
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="hidden self-start font-mono text-[10px] text-muted-foreground underline transition-colors hover:text-foreground lg:block"
+        >
+          {expanded ? t("showLess") : t("showAll", { count: ordered.length })}
+        </button>
+      )}
 
       {canContribute && adding && (
         <form
