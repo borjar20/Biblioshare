@@ -225,6 +225,20 @@ async function deletePasses(
   );
 }
 
+// La pestaña Episodios ya no apila todas las temporadas: enseña una, elegida en
+// el raíl (PC, donde corre la suite) o en el índice (móvil). Para llegar al
+// último episodio de la serie hay que entrar antes en la última temporada.
+// Devuelve la fila del último episodio de esa temporada.
+async function openLastSeason(page: Page) {
+  const rail = page.getByRole("button", { name: /^Temporada \d+$/ });
+  const count = await rail.count();
+  if (count > 0) await rail.nth(count - 1).click();
+  return page
+    .locator("li")
+    .filter({ has: page.getByRole("button", { name: "Visto" }) })
+    .last();
+}
+
 async function deleteEpisodeWatches(seriesId: string, userId: string) {
   await fetch(
     `${SUPABASE_URL}/rest/v1/episode_watches?series_id=eq.${seriesId}&user_id=eq.${userId}`,
@@ -591,8 +605,7 @@ test.describe("serie con revisionado", () => {
       await page.waitForLoadState("networkidle").catch(() => {});
       await page.getByRole("button", { name: "Lista", exact: true }).click();
 
-      const lastSeason = page.locator("section").last();
-      const lastEpisode = lastSeason.locator("li").last();
+      const lastEpisode = await openLastSeason(page);
       await lastEpisode.getByRole("button", { name: "Visto" }).click();
 
       await expect(
@@ -630,8 +643,7 @@ test.describe("serie con revisionado", () => {
       await page.goto(`/serie/${seriesId}?tab=episodes`);
       await page.waitForLoadState("networkidle").catch(() => {});
       await page.getByRole("button", { name: "Lista", exact: true }).click();
-      const lastSeasonAgain = page.locator("section").last();
-      const lastEpisodeAgain = lastSeasonAgain.locator("li").last();
+      const lastEpisodeAgain = await openLastSeason(page);
       await expect(
         lastEpisodeAgain.getByText("Visto en otro pase"),
       ).toBeVisible({ timeout: 15_000 });

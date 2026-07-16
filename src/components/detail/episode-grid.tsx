@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow } from "@/lib/series/get-episode-data";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import {
   RATING_TIERS,
   ratingColor,
@@ -11,6 +12,10 @@ import {
 
 export type SeasonGroup = { season: number; episodes: EpisodeRow[] };
 export type GridSource = "mine" | "community";
+
+// Cuántas temporadas caben en la ventana del móvil (frame C3). Con más, la
+// rejilla se pagina en horizontal en vez de encoger las celdas.
+const WINDOW = 6;
 
 // Valor y metadatos de una celda según la fuente seleccionada.
 function cellData(ep: EpisodeRow, source: GridSource) {
@@ -24,16 +29,23 @@ function cellData(ep: EpisodeRow, source: GridSource) {
   return { rating: ep.avgRating, present: ep.ratingCount > 0, hasNote: false };
 }
 
-// Rejilla temporada × episodio (§7.36): temporadas en filas, episodios en
-// columnas. Celdas coloreadas por tramo de nota (escala de 6), con panel de
-// detalle al pasar el ratón. La fuente (mis notas / comunidad) la controla el
-// contenedor.
+// Rejilla temporada × episodio (§7.36). Dos dibujos, uno por breakpoint, y por
+// una razón: el eje largo cambia de sitio. En móvil (frame C3) la rejilla va
+// TRANSPUESTA —temporadas en columnas, episodios en filas— para que lo que
+// crece sin límite (los episodios) crezca hacia abajo, que es por donde el
+// móvil tiene sitio; y solo se enseña una ventana de 6 temporadas, paginada.
+// En PC se queda la tabla de siempre (temporadas en filas): el ancho da para
+// las 12 sin encoger nada.
 export function EpisodeGrid({
   seasons,
   source,
+  selectedKey,
+  onSelect,
 }: {
   seasons: SeasonGroup[];
   source: GridSource;
+  selectedKey: string | null;
+  onSelect: (ep: EpisodeRow) => void;
 }) {
   const t = useTranslations("episode");
   const tLegend = useTranslations("detail.grid.legend");
@@ -45,9 +57,150 @@ export function EpisodeGrid({
   );
   const columns = Array.from({ length: maxEpisodes }, (_, i) => i + 1);
 
+  // La ventana arranca donde está el cursor: la primera temporada con algo sin
+  // ver (o la última, si están todas vistas), no siempre en la T1.
+  const cursorIndex = useMemo(() => {
+    const i = seasons.findIndex((s) => s.episodes.some((e) => !e.own.watched));
+    return i === -1 ? seasons.length - 1 : i;
+  }, [seasons]);
+  const maxStart = Math.max(0, seasons.length - WINDOW);
+  const [start, setStart] = useState(() =>
+    Math.min(Math.max(0, cursorIndex - WINDOW + 1), Math.max(0, seasons.length - WINDOW)),
+  );
+  const windowSeasons = seasons.slice(start, start + WINDOW);
+  const paged = seasons.length > WINDOW;
+  // Las filas se cuentan DENTRO de la ventana: si ninguna de las 6 temporadas
+  // visibles llega a 13 episodios, no se pintan filas vacías por una T11 que
+  // ni se ve.
+  const windowRows = Array.from(
+    {
+      length: windowSeasons.reduce(
+        (max, s) => Math.max(max, ...s.episodes.map((e) => e.episode)),
+        0,
+      ),
+    },
+    (_, i) => i + 1,
+  );
+
+  const detail = hover ?? null;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
+      {/* `.ctwin` de C3: paginador de la ventana de temporadas. */}
+      {paged && (
+        <div className="order-1 flex items-center gap-2.5 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setStart((s) => Math.max(0, s - WINDOW))}
+            disabled={start === 0}
+            aria-label={t("prevSeasons")}
+            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-muted-foreground disabled:opacity-40"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <p className="flex-1 text-center">
+            <span className="block font-serif text-[15px] leading-[1.1] font-semibold text-foreground">
+              {t("seasonWindow", {
+                from: windowSeasons[0]?.season ?? 0,
+                to: windowSeasons[windowSeasons.length - 1]?.season ?? 0,
+              })}
+            </span>
+            <span className="mt-[3px] block font-mono text-[8.5px] tracking-[0.05em] text-muted-foreground uppercase">
+              {t("seasonWindowHint", { size: WINDOW, total: seasons.length })}
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setStart((s) => Math.min(maxStart, s + WINDOW))}
+            disabled={start >= maxStart}
+            aria-label={t("nextSeasons")}
+            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-muted-foreground disabled:opacity-40"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Leyenda. En C3 va ANTES de la rejilla (los colores son el contenido, no
+          una nota al pie); en la tabla de PC se queda debajo, como estaba. */}
+      <div className="order-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 lg:order-4">
+        {RATING_TIERS.map((tier) => (
+          <span key={tier.key} className="inline-flex items-center gap-1.5">
+            <span
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: tier.color }}
+            />
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {tLegend(tier.key)}
+            </span>
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border border-border bg-surface-muted" />
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {t("legendUnseen")}
+          </span>
+        </span>
+        {source === "mine" && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {t("hasNote")}
+            </span>
+          </span>
+        )}
+      </div>
+
+      {/* C3 — móvil: temporadas en columnas, episodios en filas. */}
+      <div
+        className="order-3 grid gap-[5px] lg:hidden"
+        style={{
+          gridTemplateColumns: `26px repeat(${windowSeasons.length}, minmax(0,1fr))`,
+        }}
+      >
+        <div />
+        {windowSeasons.map((s) => {
+          const watched = s.episodes.filter((e) => e.own.watched).length;
+          const done = watched === s.episodes.length;
+          return (
+            <div
+              key={s.season}
+              className="flex flex-col items-center gap-0.5 pb-[3px]"
+            >
+              <span
+                className={`font-mono text-[10px] font-semibold ${
+                  s.season === seasons[cursorIndex]?.season
+                    ? "text-type-series"
+                    : "text-foreground"
+                }`}
+              >
+                {t("seasonTile", { n: s.season })}
+              </span>
+              <span className="font-mono text-[8px] text-muted-foreground">
+                {done ? "✓" : `${watched}/${s.episodes.length}`}
+              </span>
+            </div>
+          );
+        })}
+
+        {windowRows.map((epNum) => (
+          <FragmentRow
+            key={epNum}
+            epNum={epNum}
+            windowSeasons={windowSeasons}
+            source={source}
+            selectedKey={selectedKey}
+            onPick={(ep) => {
+              setHover(ep);
+              onSelect(ep);
+            }}
+            label={t("episodeShort", { n: epNum })}
+          />
+        ))}
+      </div>
+
+      {/* PC — la tabla de siempre: temporadas en filas, episodios en columnas. */}
+      <div className="order-3 hidden overflow-x-auto lg:block">
         <table className="border-separate border-spacing-1">
           <tbody>
             {seasons.map((s) => {
@@ -80,7 +233,10 @@ export function EpisodeGrid({
                           type="button"
                           onMouseEnter={() => setHover(ep)}
                           onFocus={() => setHover(ep)}
-                          onClick={() => setHover(ep)}
+                          onClick={() => {
+                            setHover(ep);
+                            onSelect(ep);
+                          }}
                           style={
                             color
                               ? {
@@ -115,37 +271,77 @@ export function EpisodeGrid({
         </table>
       </div>
 
-      {/* Leyenda */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        {RATING_TIERS.map((tier) => (
-          <span key={tier.key} className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 rounded-sm"
-              style={{ backgroundColor: tier.color }}
-            />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {tLegend(tier.key)}
-            </span>
-          </span>
-        ))}
-        {source === "mine" && (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {t("hasNote")}
-            </span>
-          </span>
-        )}
-      </div>
-      {/* Panel de detalle (hover/tap) */}
-      <div className="min-h-[3.75rem] rounded-card border border-border bg-surface shadow-card px-4 py-3">
-        {hover ? (
-          <HoverDetail episode={hover} source={source} />
+      {/* Panel de detalle (hover en PC, toque en móvil) */}
+      <div className="order-5 min-h-[3.75rem] rounded-card border border-border bg-surface px-4 py-3 shadow-card">
+        {detail ? (
+          <HoverDetail episode={detail} source={source} />
         ) : (
           <p className="text-sm text-muted-foreground">{t("hoverHint")}</p>
         )}
       </div>
     </div>
+  );
+}
+
+// Una fila de C3: el rótulo `.cteph` del episodio y su celda en cada temporada
+// de la ventana. Sin envoltorio propio — las celdas son hijas directas de la
+// rejilla, así que van sueltas en un fragmento.
+function FragmentRow({
+  epNum,
+  windowSeasons,
+  source,
+  selectedKey,
+  onPick,
+  label,
+}: {
+  epNum: number;
+  windowSeasons: SeasonGroup[];
+  source: GridSource;
+  selectedKey: string | null;
+  onPick: (ep: EpisodeRow) => void;
+  label: string;
+}) {
+  const t = useTranslations("episode");
+  return (
+    <>
+      <span className="text-right font-mono text-[8.5px] text-muted-foreground">
+        {label}
+      </span>
+      {windowSeasons.map((s) => {
+        const ep = s.episodes.find((e) => e.episode === epNum);
+        if (!ep) return <span key={s.season} aria-hidden />;
+        const { rating, present, hasNote } = cellData(ep, source);
+        const color = ratingColor(rating);
+        const selected = selectedKey === `${ep.season}:${ep.episode}`;
+        return (
+          <button
+            key={s.season}
+            type="button"
+            onClick={() => onPick(ep)}
+            style={color ? { backgroundColor: color } : undefined}
+            title={`${t("code", { s: ep.season, e: ep.episode })}${ep.title ? ` · ${ep.title}` : ""}`}
+            className={`relative aspect-square rounded-[6px] border ${
+              color
+                ? "border-transparent"
+                : present
+                  ? "border-border bg-surface-muted"
+                  : "border-border bg-surface-muted/40"
+            } ${selected ? "z-10 outline-2 outline-offset-1 outline-type-series" : ""}`}
+          >
+            {hasNote && (
+              <span
+                className="absolute top-[3px] right-[3px] h-1 w-1 rounded-full"
+                style={{
+                  backgroundColor: color
+                    ? "var(--tier-foreground)"
+                    : "var(--muted-foreground)",
+                }}
+              />
+            )}
+          </button>
+        );
+      })}
+    </>
   );
 }
 
