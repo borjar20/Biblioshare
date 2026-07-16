@@ -6,6 +6,7 @@
 
 **Maquetas de referencia**
 - `Paper - Ficha de título completa.html` → **móvil**: **1 · Libro Info**, **2 · Comunidad**, **3 · Registro (pase activo)**, **4 · Serie Episodios**, **5 · Película Info**, **6 · Moderador Editar ficha**, **7 · Registro — elegir edición**. **PC**: **8 · Libro Info**, **9 · Libro Comunidad**, **10 · Libro Registro**, **11 · Serie Episodios**, **12 · Película Info**.
+- `Web - Ficha de titulo (PC).html` (2026-07-16 16:58) → **manda para PC**: son los mismos frames, con `.desk-bd` fuera y `.desk-tabs` translúcida. El resto de `.desk-*` es idéntico al fichero grande.
 - `Paper - Episodios rejilla.html` → rejilla de episodios (mías/comunidad, escala cálida)
 - `Paper - Registrar sesión.html` → hojas modales de sesión (ver §3-P4)
 
@@ -149,12 +150,13 @@ topbar de la app (sticky, global — P-T1)
 
 **Pendientes, en este orden:**
 
-3. **T3 · Shell de PC + Info** (frames 1 y 8) — la primera trae el layout ancho porque lo sostiene todo:
-   - `desk-shell`: grid `300px 1fr` en `lg:`, **rail sticky** (P5) bajo la topbar (P8).
-   - Rail: portada 256×384, estado desplegable, progreso (salvo película), CTA (P6), "Tu nota" (§2bis.25–29).
-   - Cabecera común: saga itálica, título 44px, byline serif, nota en línea (§2bis.32).
-   - Info: cabecera larga (sinopsis + géneros + facts), sagas a N (§2bis.36), ediciones desplegadas en rejilla de 3 en PC / al final y en tono menor en móvil (§2bis.37), `meta` a la derecha.
-   - Es la tarea más grande del plan: probablemente 2 PRs (shell+rail primero, cuerpo de Info después).
+3. **T3 · Shell de PC + Info** (frames 1 y 8) — **shell ✅ HECHO** (PR #50 `e76ebfa` + #51 `bbb7f41`); **falta el CUERPO de Info**:
+   - ~~`desk-shell`: grid `300px 1fr` en `lg:`, **rail sticky** (P5) bajo la topbar (P8)~~ ✅
+   - ~~Rail: portada 256×384, estado, progreso (salvo película), CTA (P6), "Tu nota"~~ ✅ — **en MODO LECTURA**, ver §6b.
+   - ~~Cabecera común: título 44px, byline serif, nota en línea~~ ✅ — **falta la línea de saga** (necesita `getItemSaga`, hoy tras el `<Suspense>`).
+   - ~~Pestañas con piel de PC~~ ✅ (#51, según la maqueta nueva de PC).
+   - **PENDIENTE — cuerpo de Info:** cabecera larga (sinopsis + géneros + facts, §2bis.33), sagas a N (§2bis.36), ediciones desplegadas en rejilla de 3 en PC / al final y en tono menor en móvil (§2bis.37), `meta` en la columna de 340px, y el nuevo orden móvil.
+     ⚠️ **No es un restyle, es un refactor:** hoy `EditionsSection` (`edition-details.tsx`) es la DUEÑA de la sinopsis, los metadatos y los géneros — los tiene dentro porque comparten el estado de "qué edición miro". La maqueta los saca de ahí, así que hay que decidir de quién cuelgan y tocar `edition-details.tsx`, `info-panel.tsx`, `metadata-sidebar.tsx` y `saga-strip.tsx` a la vez, en dos vistas. Sesión propia.
 4. **T4 · Registro** (frames 3 y 10) — progreso con pin + `closehint`, cabecera de pase, seg, sesiones; en PC "Datos del pase" y "Quitar de mi biblioteca" a la derecha. Diario + delta (§2.18–2.19, tras P3).
 5. **T5 · Comunidad** (frames 2 y 9) — reseñas + histograma; en PC el histograma es tarjeta lateral fija.
 6. **T6 · Episodios** (frames 4 y 11) — temporadas/rejilla; en PC el detalle del episodio se ancla a la derecha.
@@ -186,6 +188,15 @@ topbar de la app (sticky, global — P-T1)
 - **Radio de la portada del hero: 6px literal**, no `--radius-cover` (10px). El token es correcto para el resto de portadas de la app; el frame del hero pide 6.
 - **Los géneros del hero NO se tocaron.** El `.g` de la maqueta (10.5px, sans, sin borde, `#6a604f`) no coincide con `GenreTag` (mono uppercase con borde), pero §2 no lo lista como diferencia y `GenreTag` es transversal. Si se quiere alinear, es decisión de sistema → plan 07.
 - **Las estrellas del hero funcionan con `StarRating` tal cual** (recibe 1–10 y convierte por dentro) + `formatStars` para el "4,5". Es un componente cliente: el hero deja de ser 100% servidor por esa isla, cosa asumible.
+
+## 6b. Hallazgos del shell de PC (T3, PRs #50 y #51 · 2026-07-16)
+
+- **Dos árboles (móvil y PC), no un hero que se estira.** La portada cambia de columna entre las dos vistas y el DOM no se reordena así con CSS sin trucos frágiles. Precio: una portada oculta de más (~15 KB). Las pestañas, en cambio, se pintan UNA vez como slot, así que el `<Suspense>` de la Fase B queda intacto.
+- **El rail va en MODO LECTURA** (decisión del usuario). En la maqueta el estado es un desplegable, pero cambiarlo no es escribir un campo: abandonar encadena la hoja de cierre y retomar pregunta continuar/de cero, y esa máquina vive en `ManagedLog` (`log-panel.tsx`), tras el `<Suspense>`. Duplicarla serían dos máquinas contradiciéndose. Así que el rail enseña y el control sigue en Registro; la pastilla **no lleva el `▾`** de la maqueta (prometería un desplegable que no hay) y enlaza a `?tab=log`. Si algún día se levanta esa lógica a un sitio compartido, el rail pasa a control.
+- **Los datos del rail no cuestan un viaje más:** la consulta del pase activo ya existía para el badge; ahora trae `id, rating, position`. Con Supabase remoto lo caro es la ida y vuelta, no las columnas.
+- **`--foreground-faint`** (#a89e8d / #6f665a, par sacado de los `.html` de modo oscuro como en P-T6): un peldaño más claro que `--muted-foreground`, para etiquetas que solo deben estar. Lo pidieron las pestañas inactivas de PC.
+- ⚠️ **REGLA e2e nueva:** con dos árboles por breakpoint, **todo locator de la ficha debe ser `:visible`**. La suite corre a 1280 y `getByTestId`/`getByText().first()` cazaban el elemento del OTRO árbol, apagado pero presente en el DOM — 5 asserts rojos con "hidden". La pastilla del rail lleva el mismo `data-testid="status-badge"` que la píldora del hero (las dos son "el estado en modo lectura") y los helpers filtran por `:visible`. De paso queda probado P7: los tests cambian el estado en Registro y comprueban la pastilla del RAIL.
+- **La maqueta es un documento VIVO.** Cambió dos veces el mismo día (7→12 frames, y luego `Web - Ficha de titulo (PC).html`). **Comprobar la fecha del `.html` antes de calcar.** La versión de PC aparte solo cambió dos reglas (`.desk-bd` fuera y `.desk-tabs` translúcida), que validaron los ajustes ya pedidos a ojo; el resto de `.desk-*` era idéntico byte a byte.
 
 ### Verificación
 
