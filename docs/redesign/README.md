@@ -33,7 +33,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 
 0. ~~**00 Navegación**~~ ✅ **HECHO y mergeado** (PR #44; fase C descartada por ahora). Las páginas ya nacen con su shell + `<Suspense>` por sección: **al restylear, respeta esa estructura** y no metas un `loading.tsx` en rutas con `notFound()` (regla del 404 en el plan 00). De paso salió el arreglo del #45 (hoja de cierre y StrictMode).
 1. ~~**07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2)~~ ✅ **HECHA** (PR #46). Del plan 07 sigue pendiente todo lo demás (topbar contextual P-T3, notificaciones, estados, iconos, onboarding, marca). Antes de restylear una pestaña, **lee el [§6 del plan 07](./plan-07-transversal.md)**: Perfil es el avatar en escritorio, el token `--foreground-soft` ya existe pero **falta aplicarlo** (planes 01/04/06), y los subtabs de la ficha siguen pendientes a propósito (plan 06).
-2. **06 Ficha** (pantalla núcleo; coordinar con PRs #32/#42 de pases) o **02 Colección v1** (autocontenida).
+2. **06 Ficha** (pantalla núcleo) — **EN CURSO**: hero y pestañas hechos (PR #49; lee su [§6 Hallazgos](./plan-06-ficha.md#6-hallazgos-de-ejecución-t1--t2-pr-49--2026-07-16) antes de seguir — la píldora del hero usa el verbo por tipo, el `⋯` queda pendiente y hay token nuevo `--topbar-h`). Quedan Info, Registro, Comunidad, Episodios, Película, Moderador y elegir edición. Alternativa autocontenida: **02 Colección v1**.
 3. 01 Inicio (incluye clubes en feed + "¿qué has disfrutado hoy?") · 03 Buscar (corta).
 4. 05 Perfil (incluye el cambio de IA: perfil propio sin Colección).
 5. 04 Clubes (la más larga: 3 sesiones con progreso real e invitaciones).

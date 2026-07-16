@@ -91,8 +91,8 @@
 
 > Orden recomendado. Las del Registro (T4–T6) tras confirmar P3/pase-hub.
 
-1. **Hero fiel** (§2.1–2.5) — `item-hero.tsx`. Commit: `style(ficha): hero fiel (serif, top bar, borde de portada)`
-2. **Pestañas sans semibold sticky** (§2.6, tras P-T2) — `item-detail-tabs.tsx`. Commit: `style(ficha): pestañas del mockup`
+1. ~~**Hero fiel** (§2.1–2.5) — `item-hero.tsx`~~ ✅ **HECHA** (PR #49, `a963d72`) — ver §6.
+2. ~~**Pestañas sans semibold sticky** (§2.6, tras P-T2) — `item-detail-tabs.tsx`~~ ✅ **HECHA** (PR #49, `19ac1d4`) — ver §6.
 3. **Info: sagas, ediciones, sinopsis, metadatos, fila moderador** (§2.7–2.10) — commits separados por pieza.
 4. **Registro: progreso con pin + closehint** (§2.15) — `log-panel.tsx`. Commit: `style(ficha): barra de progreso con cursor del pase`
 5. **Registro: cabecera de pase, seg, panel, sesiones** (§2.13–2.17).
@@ -111,3 +111,24 @@
 - [ ] Modo oscuro (Ficha está en Paper - Modo oscuro.html).
 - [ ] `npx playwright test` verde (Node 22).
 - [ ] P1–P4 respondidas y registradas.
+
+## 6. Hallazgos de ejecución (T1 + T2, PR #49 · 2026-07-16)
+
+### Lo que hubo que decidir sobre la marcha
+
+- **La píldora de estado del hero lleva el verbo POR TIPO, no el genérico.** La maqueta escribe "En tu biblioteca · Leyendo" en el frame del libro y "· Viendo" en el de la serie, igual que los pills de `StatusSegments`. El badge pintaba el genérico ("En curso", "Completado") y había incluso un e2e que lo daba por bueno con un comentario explícito. Se alineó con la maqueta: **"En curso" y "Completado" ya no existen en la píldora** (son "Leyendo"/"Viendo" y "Leído"/"Vista"); "Pendiente" y "Abandonado" siguen igual, que no tienen verbo propio. El prefijo "En tu biblioteca" es clave nueva (`detail.inLibrary`), y las 4 etiquetas las compone `lib/library/hero-status-labels.ts` **en el servidor** — así la isla de cliente del badge (#48) sigue sin arrastrar i18n, y las 3 fichas no triplican la composición.
+- **El `⋯` del hero no entró.** P2 lo aprueba, pero necesita menú de verdad (quitar de biblioteca + editar ficha de moderador) y ambas acciones tienen hoy su sitio en Registro/Info; además §2.19 mantiene el enlace rojo de "quitar" al final del Registro, así que el `⋯` sería un segundo punto de entrada. Queda como tarea propia. Mientras tanto, hueco simétrico de 34px para que el label del tipo quede centrado de verdad.
+- **`--topbar-h` (nuevo token de layout).** Las pestañas son sticky (§2.6) y la topbar también, así que las pestañas necesitan saber dónde acaba: `sticky top-[var(--topbar-h)]`. Para que esa constante no pueda quedarse obsoleta, **la topbar deja de crecer con su contenido** y se fija a `h-[var(--topbar-h)]` (59px = avatar de 34 + padding + borde). Efecto colateral: en móvil la topbar crece ~2px, porque ahí el elemento más alto es más bajo que el avatar. Toca `header.tsx`, que es del plan 07 — mínimo y documentado en ambos sitios.
+
+### Detalles menores
+
+- **El hero pierde su `border-b`**: la línea la pone ahora la barra de pestañas sticky, y dos bordes seguidos se veían doble.
+- **Radio de la portada del hero: 6px literal**, no `--radius-cover` (10px). El token es correcto para el resto de portadas de la app; el frame del hero pide 6.
+- **Los géneros del hero NO se tocaron.** El `.g` de la maqueta (10.5px, sans, sin borde, `#6a604f`) no coincide con `GenreTag` (mono uppercase con borde), pero §2 no lo lista como diferencia y `GenreTag` es transversal. Si se quiere alinear, es decisión de sistema → plan 07.
+- **Las estrellas del hero funcionan con `StarRating` tal cual** (recibe 1–10 y convierte por dentro) + `formatStars` para el "4,5". Es un componente cliente: el hero deja de ser 100% servidor por esa isla, cosa asumible.
+
+### Verificación
+
+Suite e2e completa **21/21 sin reintentos** (la línea base tras #47 era 20 + 1 flaky). Los 3 fallos que salieron por el camino eran **consecuencias reales del cambio de copy**, no flakiness — se distinguen del ruido del entorno porque fallaban SIEMPRE, en el mismo assert, y no se movían de sitio (la señal contraria a la de la #47). Comprobado en navegador a 390 y 1280, claro y oscuro, con la barra pegada tras scroll, y la nota en estrellas contra una obra puntuada de dev.
+
+**Ojo con `npx next build`:** falla en `main` y en cualquier rama por `rimraf` no resoluble desde `exceljs` (cadena `parse-bookmory` → `exceljs` → `unzipper` → `fstream`). Es preexistente y ajeno a la iniciativa, pero significa que **el build de producción no sirve hoy como verificación**: tsc + eslint + e2e sí.
