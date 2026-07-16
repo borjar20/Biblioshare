@@ -176,46 +176,72 @@ async function SeriesTabs({
   const tDetail = await getTranslations("detail");
   const tMeta = await getTranslations("detail.meta");
 
-  await ensureItemEnriched(supabase, "series", {
-    id: series.id,
-    tmdbId: series.tmdb_id,
-  });
-  await ensureSeriesEpisodes(supabase, {
-    id: series.id,
-    tmdbId: series.tmdb_id,
-    totalSeasons: series.total_seasons,
-  });
-
-  const [watchProviders, credits, saga] = await Promise.all([
+  // Ojo al ORDEN (mismo criterio que la ficha de libro): con Supabase remoto
+  // —también en producción— cada consulta cuesta ~240 ms de ida y vuelta, así
+  // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
+  // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
+  // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
+  const [
+    ,
+    ,
+    watchProviders,
+    saga,
+    activeRow,
+    loadedQueues,
+    role,
+  ] = await Promise.all([
+    ensureItemEnriched(supabase, "series", {
+      id: series.id,
+      tmdbId: series.tmdb_id,
+    }),
+    ensureSeriesEpisodes(supabase, {
+      id: series.id,
+      tmdbId: series.tmdb_id,
+      totalSeasons: series.total_seasons,
+    }),
     series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
-    getItemCredits(supabase, "series", series.id),
     getItemSaga(supabase, "series", series.id),
+    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
+    userId
+      ? supabase
+          .from("passes")
+          .select("id, status, rating, position, queue_id")
+          .eq("user_id", userId)
+          .eq("item_type", "series")
+          .eq("item_id", series.id)
+          .eq("is_active", true)
+          .maybeSingle()
+          .then(({ data }) => data)
+      : null,
+    userId ? getQueues(supabase, userId) : [],
+    userId ? getCurrentUserRole(supabase) : null,
   ]);
+
+  // Lo único que de verdad esperaba a ensureItemEnriched.
+  const credits = await getItemCredits(supabase, "series", series.id);
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
-  let queues: Queue[] = [];
-  if (userId) {
-    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
-    // status/rating/position/queue_id viven en diary_entries, library_entries
-    // ya no se lee. La nota (notes) sale de pass_reviews (privacidad ya
-    // aplicada) — ningún consumidor de ManagedEntry la renderiza hoy, pero se
-    // resuelve igualmente para no dejar el campo con un dato inventado.
-    const { data: row } = await supabase
-      .from("passes")
-      .select("id, status, rating, position, queue_id")
-      .eq("user_id", userId)
-      .eq("item_type", "series")
-      .eq("item_id", series.id)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (row) {
-      const { data: reviewRow } = await supabase
-        .from("pass_reviews")
-        .select("review")
-        .eq("id", row.id)
-        .maybeSingle();
+  const queues: Queue[] = loadedQueues;
+  {
+    const row = activeRow;
+    if (userId && row) {
+      // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
+      // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
+      // para no dejar el campo con un dato inventado.
+      //
+      // pass_reviews y getPasses no se necesitan entre sí: en paralelo.
+      const [reviewRow, loadedPasses] = await Promise.all([
+        supabase
+          .from("pass_reviews")
+          .select("review")
+          .eq("id", row.id)
+          .maybeSingle()
+          .then(({ data }) => data),
+        getPasses(supabase, "series", series.id, userId),
+      ]);
+      passes = loadedPasses;
       entry = {
         entryId: row.id,
         status: row.status as MediaStatus,
@@ -224,11 +250,9 @@ async function SeriesTabs({
         notes: reviewRow?.review ?? null,
         queueId: row.queue_id,
       };
-      // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo
-      // 4): en una relectura, las sesiones de la lectura anterior no deben
-      // colarse bajo el cartel de la edición del pase nuevo. Por eso getPasses
-      // va primero: getSessions necesita saber cuál es el pase abierto.
-      passes = await getPasses(supabase, "series", series.id, userId);
+      // Las sesiones sí esperan a getPasses: son del pase ABIERTO, no de toda
+      // la entrada (Hallazgo 4) — en una relectura, las sesiones de la lectura
+      // anterior no deben colarse bajo el cartel de la edición del pase nuevo.
       // El pase abierto si lo hay; si ya terminaste, el último cerrado. Sin ese
       // segundo caso, la lista de sesiones de una serie vista se quedaría vacía
       // para siempre: getPasses ordena el abierto primero y luego los cerrados
@@ -237,7 +261,6 @@ async function SeriesTabs({
         passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
       sessions = await getSessions(supabase, currentPassId, "series");
     }
-    queues = await getQueues(supabase, userId);
   }
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
@@ -248,7 +271,7 @@ async function SeriesTabs({
     cerrar && cerrar === activePassId ? cerrar : null;
 
   const canContribute = userId
-    ? hasMinRole(await getCurrentUserRole(supabase), "collaborator")
+    ? hasMinRole(role, "collaborator")
     : false;
 
   const metaRows: MetaRow[] = [];
