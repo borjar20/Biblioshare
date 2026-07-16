@@ -79,6 +79,13 @@ function fetchMovie(supabase: Supa, id: string) {
 type MovieRow = NonNullable<Awaited<ReturnType<typeof fetchMovie>>["data"]>;
 type Community = Awaited<ReturnType<typeof getCommunity>>;
 
+// "2h 35m" como escribe la maqueta (o "47m" si no llega a la hora).
+function formatRuntime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export default async function MovieDetailPage({
   params,
   searchParams,
@@ -282,6 +289,13 @@ async function MovieTabs({
     metaRows.push({ label: tMeta("director"), value: movie.director });
   if (movie.release_year)
     metaRows.push({ label: tMeta("year"), value: String(movie.release_year) });
+  // La duración de la OBRA (frame 12: "Duración · 2h 35m"). La de cada versión
+  // sigue en su tarjeta; esta es la de referencia que trae TMDB.
+  if (movie.duration_minutes)
+    metaRows.push({
+      label: tMeta("runtime"),
+      value: formatRuntime(movie.duration_minutes),
+    });
 
   const genres = movie.genres ?? [];
 
@@ -322,12 +336,24 @@ async function MovieTabs({
           saga={mainSaga ? { id: mainSaga.sagaId, name: mainSaga.name } : null}
           canContribute={canContribute}
         >
-          {/* Mismo orden y mismas dos columnas que la ficha de libro
-              (frames 5 y 12): sagas → sinopsis → ficha → versiones. */}
-          <div className="lg:grid lg:grid-cols-[1fr_340px] lg:items-start lg:gap-11">
-            <div className="flex flex-col gap-10">
+          {/* Frames 5 (móvil) y 12 (PC), y son órdenes DISTINTOS con el mismo
+              DOM (`display:contents` + `order`, como el Registro):
+                móvil → sagas, sinopsis, versiones, reparto, dónde verla, ficha
+                PC    → reparto A LO ANCHO primero (rejilla de 6), y debajo las
+                        dos columnas: sinopsis, dónde verla y versiones a la
+                        izquierda; la ficha técnica a la derecha.
+              La sinopsis se queda en el cuerpo también en PC (P9, decidido).
+              Todo es servidor y sin estado: reordenar no duplica nada. */}
+          <div className="flex flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-11 lg:gap-y-9">
+            {(credits.cast.length > 0 || credits.crew.length > 0) && (
+              <div className="order-4 lg:order-none lg:col-span-2">
+                <CreditsSection credits={credits} />
+              </div>
+            )}
+
+            <div className="contents lg:flex lg:flex-col lg:gap-10">
               {sagas.length > 0 && (
-                <section className="flex flex-col gap-3.5">
+                <section className="order-1 flex flex-col gap-3.5 lg:order-none">
                   <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                     {tDetail("sagasCount", { count: sagas.length })}
                   </span>
@@ -350,38 +376,34 @@ async function MovieTabs({
                   />
                 </section>
               )}
-              <InfoPanel
-                aboutLabel={tDetail("about")}
-                synopsis={movie.synopsis}
-                noSynopsisLabel={tDetail("noSynopsis")}
-                actions={<EditFichaButton />}
-                extra={
-                  <>
-                    <CreditsSection credits={credits} />
-                    {watchProviders && <WatchProviders data={watchProviders} />}
-                  </>
-                }
-              />
-              <div className="lg:hidden">
-                <MetadataSidebar
-                  rows={metaRows}
-                  genres={genres}
-                  genresLabel={tDetail("genres")}
+              <div className="order-2 lg:order-none">
+                <InfoPanel
+                  aboutLabel={tDetail("about")}
+                  synopsis={movie.synopsis}
+                  noSynopsisLabel={tDetail("noSynopsis")}
+                  actions={<EditFichaButton />}
                 />
               </div>
-              <EditionsSection
-                itemType="movie"
-                itemId={movie.id}
-                editionsPromise={Promise.resolve(editions)}
-                editionsFallback={<EditionsLoading />}
-                selectedEditionId={
-                  passes.find((p) => !p.finishedOn)?.editionId ?? null
-                }
-                canContribute={canContribute}
-              />
+              {watchProviders && (
+                <div className="order-5 lg:order-none">
+                  <WatchProviders data={watchProviders} />
+                </div>
+              )}
+              <div className="order-3 lg:order-none">
+                <EditionsSection
+                  itemType="movie"
+                  itemId={movie.id}
+                  editionsPromise={Promise.resolve(editions)}
+                  editionsFallback={<EditionsLoading />}
+                  selectedEditionId={
+                    passes.find((p) => !p.finishedOn)?.editionId ?? null
+                  }
+                  canContribute={canContribute}
+                />
+              </div>
             </div>
 
-            <div className="hidden lg:block">
+            <div className="order-6 lg:order-none">
               <MetadataSidebar
                 rows={metaRows}
                 genres={genres}
