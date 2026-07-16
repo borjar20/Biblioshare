@@ -229,10 +229,9 @@ test.describe("búsqueda e hidratación de libros", () => {
         expect(bookId).toBeTruthy();
 
         // SIN recargar: la tira de ediciones llega por streaming (Suspense +
-        // loadBookEditions/use()). Se acota a la sección "Ediciones" (hay
-        // otros botones con aria-pressed en la ficha, como los segmentos de
-        // estado) y se exige el contador real ("N en esta ficha"), que el
-        // fallback de carga (aria-hidden, sin texto) nunca pinta.
+        // loadBookEditions/use()). Se acota a la sección "Ediciones" y se
+        // exige el contador real ("N en esta ficha"), que el fallback de
+        // carga (aria-hidden, sin texto) nunca pinta.
         const editionsSection = page
           .locator("section")
           .filter({ hasText: "Ediciones" });
@@ -257,16 +256,11 @@ test.describe("búsqueda e hidratación de libros", () => {
         bookId = undefined;
       }
 
-      // Edición real visible en la tira (no solo el texto del contador):
-      // aria-pressed solo lo llevan las tarjetas de edición, no el botón
-      // "Añadir edición".
-      await expect(
-        page
-          .locator("section")
-          .filter({ hasText: "Ediciones" })
-          .locator("button[aria-pressed]")
-          .first(),
-      ).toBeVisible();
+      // Edición real visible en la tira (no solo el texto del contador).
+      // Las tarjetas son data-testid="edition-card": dejaron de ser botones
+      // cuando se quitó la mirada de edición, así que ya no valen ni
+      // aria-pressed ni getByRole("button").
+      await expect(page.getByTestId("edition-card").first()).toBeVisible();
 
       // La BD manda, no la UI: ninguna primaria en blanco, y al menos una
       // edición real registrada.

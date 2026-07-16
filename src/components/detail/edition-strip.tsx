@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
@@ -13,23 +13,27 @@ import { CheckIcon, PlusIcon } from "@/components/ui/icons";
 
 const initialState: CreateEditionState = {};
 
+// Cuántas ediciones se enseñan de primeras en PC. La maqueta dibuja 4 y el
+// tile de añadir (dos filas de la rejilla de 3), pero un libro real trae hasta
+// 18 tras sincronizar con OpenLibrary y la rejilla se comía la pantalla.
+const PC_PREVIEW = 5;
+
 // Horizontal edition/version rail for the detail "Info" tab (same family as
 // SagaStrip): cada tarjeta muestra la etiqueta, el nombre y el resumen de
 // formatEdition; la del pase abierto (selectedEditionId, Tarea 12) lleva ✓ y
 // el acento de tipo de medio. El alta inline solo se pinta a colaborador+.
 //
-// OJO: selectedEditionId (✓ + "La tuya") es la edición del PASE — solo
-// cambia desde el Registro. viewingId (borde de acento) es la que se está
-// MIRANDO en la ficha ahora mismo, y cambia al pulsar una tarjeta. Son dos
-// conceptos distintos que pueden no coincidir: pulsar para mirar no adopta
-// la edición del pase.
+// selectedEditionId (✓ + "La tuya") es la edición del PASE — solo cambia
+// desde el Registro. Las tarjetas NO son pulsables: cada una ya enseña sus
+// datos (etiqueta, editorial, año, páginas, ISBN), que es justo lo que hace
+// la maqueta (.edn). Hubo un panel que cambiaba a los datos de la edición
+// pulsada; se quitó porque repetía lo que la tarjeta ya dice y no existía en
+// ningún frame.
 export function EditionStrip({
   itemType,
   itemId,
   editions,
   selectedEditionId,
-  viewingId,
-  onSelect,
   canContribute,
 }: {
   itemType: ItemType;
@@ -37,9 +41,6 @@ export function EditionStrip({
   editions: Edition[];
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
-  /** La edición que se está mirando en el panel ahora mismo (no adoptada). */
-  viewingId: string | null;
-  onSelect: (id: string | null) => void;
   canContribute: boolean;
 }) {
   const t = useTranslations("editions");
@@ -47,7 +48,7 @@ export function EditionStrip({
   const [adding, setAdding] = useState(false);
   const [state, formAction, pending] = useActionState(
     createEdition.bind(null, itemType, itemId),
-    initialState
+    initialState,
   );
 
   // Cerrar el panel de alta tras un envío correcto es un ajuste de estado en
@@ -62,18 +63,18 @@ export function EditionStrip({
     if (!state.error) setAdding(false);
   }
 
-  // La tarjeta de la edición del pase (selectedEditionId, "La tuya") debe
-  // verse sin que el usuario tenga que buscarla: con muchas ediciones (hasta
-  // 20 tras la sincronización con OpenLibrary, Tarea 6) puede caer fuera del
-  // scroll horizontal inicial de la tira.
-  const selectedRef = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
-    // Llamada imperativa al DOM (no un setState), por eso vive en un efecto:
-    // centra la tarjeta seleccionada dentro del scroll horizontal al montar.
-    // Deliberadamente solo al montar — no debe reajustar el scroll cada vez
-    // que cambia viewingId (mirar una edición) o se añade una nueva.
-    selectedRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, []);
+  // La tuya primero. Antes se dejaban en el orden que vinieran y se centraba
+  // la tarjeta del pase con un scrollIntoView al montar; ordenar es más
+  // simple y sirve a las dos vistas — en la tira no hay que buscarla, y en la
+  // rejilla de PC entra en el primer corte aunque la obra tenga 18 ediciones.
+  const ordered = selectedEditionId
+    ? [...editions].sort((a, b) =>
+        a.id === selectedEditionId ? -1 : b.id === selectedEditionId ? 1 : 0,
+      )
+    : editions;
+
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = ordered.length > PC_PREVIEW;
 
   if (editions.length === 0 && !canContribute) return null;
 
@@ -94,10 +95,15 @@ export function EditionStrip({
         )}
       </div>
 
-      <div className="flex gap-2.5 overflow-x-auto pb-2">
-        {editions.map((edition) => {
+      {/* Móvil: tira con scroll (.eds-row). PC: rejilla de 3 ya desplegada
+          (.eds-grid) — en el ancho hay sitio y no hace falta recortar. */}
+      <div className="flex gap-2.5 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:gap-3 lg:overflow-visible lg:pb-0">
+        {ordered.map((edition, index) => {
           const isSelected = edition.id === selectedEditionId;
-          const isViewing = edition.id === viewingId;
+          // El recorte es SOLO de PC: en móvil la tira ya scrollea, que es su
+          // forma natural de "ver todas". Por eso se esconde con `lg:hidden`
+          // en vez de cortar el array — así el móvil no se entera.
+          const hiddenOnPc = !expanded && index >= PC_PREVIEW;
           // Solo pintamos el nombre en semibold si aporta algo distinto de la
           // etiqueta de arriba: en película publisher siempre es null, así
           // que sin este guard el nombre repetía la misma etiqueta dos veces.
@@ -113,15 +119,15 @@ export function EditionStrip({
             : formatEdition(edition, itemType);
 
           return (
-            <button
+            <div
               key={edition.id}
-              ref={isSelected ? selectedRef : undefined}
-              type="button"
-              onClick={() => onSelect(edition.id)}
-              aria-pressed={isViewing}
-              className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 text-left ${
-                isViewing ? `${accent.border} ${accent.bgSoft}` : "border-border"
-              }`}
+              // Las tarjetas dejaron de ser botones al quitar la mirada de
+              // edición: sin aria-pressed que las distinga del "+ Añadir",
+              // el e2e necesita un asidero propio.
+              data-testid="edition-card"
+              className={`relative w-[150px] shrink-0 rounded-lg border bg-surface p-3 text-left lg:w-auto lg:shrink ${
+                isSelected ? accent.border : "border-border"
+              } ${hiddenOnPc ? "lg:hidden" : ""}`}
             >
               {isSelected && (
                 <span
@@ -156,7 +162,7 @@ export function EditionStrip({
                   {meta}
                 </p>
               )}
-            </button>
+            </div>
           );
         })}
 
@@ -171,6 +177,17 @@ export function EditionStrip({
           </button>
         )}
       </div>
+
+      {/* Solo PC: en móvil la tira scrollea y no hay nada que desplegar. */}
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="hidden self-start font-mono text-[10px] text-muted-foreground underline transition-colors hover:text-foreground lg:block"
+        >
+          {expanded ? t("showLess") : t("showAll", { count: ordered.length })}
+        </button>
+      )}
 
       {canContribute && adding && (
         <form
@@ -189,7 +206,9 @@ export function EditionStrip({
           </Button>
 
           {state.error && (
-            <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
+            <p className="text-sm text-status-dropped">
+              {t(`errors.${state.error}`)}
+            </p>
           )}
         </form>
       )}
