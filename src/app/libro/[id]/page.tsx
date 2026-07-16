@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ItemTabsSkeleton } from "@/components/detail/item-detail-skeleton";
+import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
 import {
