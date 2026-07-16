@@ -59,8 +59,8 @@ export function ItemDetailTabs({
           móvil (.tabs) va translúcida con blur sobre el fondo; PC
           (.desk-tabs) va opaca sobre surface, con borde arriba, más aire y
           texto de 15. Pegada bajo la topbar en ambas. */}
-      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:border-t lg:bg-surface lg:backdrop-blur-none">
-        <div className="mx-auto flex w-full max-w-4xl gap-5 overflow-x-auto px-4 sm:px-6 lg:max-w-none lg:gap-8 lg:px-11">
+      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:border-t lg:bg-background lg:backdrop-blur-none">
+        <div className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-8 lg:px-11">
           {order.map((id) => {
             const isActive = tab === id;
             return (

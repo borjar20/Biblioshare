@@ -20,7 +20,6 @@ export function ItemHeaderWide({
   mediaLabel,
   title,
   byline,
-  coverUrl,
   avgRating,
   ratingCount,
   ratingsLabel,
@@ -30,7 +29,6 @@ export function ItemHeaderWide({
   mediaLabel: string;
   title: string;
   byline: string | null;
-  coverUrl: string | null;
   /** Nota media 1–10 de la comunidad, o null si nadie ha puntuado. */
   avgRating: number | null;
   ratingCount: number;
@@ -42,22 +40,11 @@ export function ItemHeaderWide({
   const Icon = TYPE_ICON[itemType];
 
   return (
-    <div className="relative px-11 pt-[34px] pb-6">
-      {/* .desk-bd: el mismo difuminado del móvil pero más alto y más suave. */}
-      {coverUrl && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[200px] overflow-hidden"
-        >
-          <div
-            className="h-full w-full scale-110 bg-cover bg-center opacity-20 blur-[30px]"
-            style={{ backgroundImage: `url(${coverUrl})` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background" />
-        </div>
-      )}
-
-      <div className="relative">
+    // Sin el difuminado de la portada (.desk-bd de la maqueta): en el ancho de
+    // PC el degradado teñía media pantalla y ensuciaba el fondo en vez de dar
+    // ambiente. La cabecera va sobre el papel liso, como el resto de la app.
+    <div className="px-11 pt-[34px] pb-6">
+      <div>
         <span
           className={`inline-flex items-center gap-1.5 rounded-chip border ${accent.borderSoft} ${accent.bgSoft} px-2.5 py-1 font-mono text-[10px] font-medium tracking-wider ${accent.text} uppercase`}
         >

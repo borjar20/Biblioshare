@@ -88,7 +88,6 @@ export function ItemShell({
             mediaLabel={mediaLabel}
             title={title}
             byline={byline}
-            coverUrl={coverUrl}
             avgRating={avgRating}
             ratingCount={ratingCount}
             ratingsLabel={ratingsLabel}
