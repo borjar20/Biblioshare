@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { heroStatusLabels } from "@/lib/library/hero-status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
-import {
-  LogPanel,
-  type ManagedEntry,
-} from "@/components/detail/log-panel";
+import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
@@ -37,7 +35,10 @@ import { parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
-import { CatalogEditor, EditFichaButton } from "@/components/detail/catalog-editor";
+import {
+  CatalogEditor,
+  EditFichaButton,
+} from "@/components/detail/catalog-editor";
 
 export async function generateMetadata({
   params,
@@ -80,7 +81,6 @@ export default async function MovieDetailPage({
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [
@@ -113,20 +113,21 @@ export default async function MovieDetailPage({
   // La duración es de la VERSIÓN (movie_versions), no de la obra: no va en el
   // byline del hero. Ya se ve en el panel de la edición (EditionDetails).
   const byline =
-    [movie.director || null, movie.release_year ? String(movie.release_year) : null]
+    [
+      movie.director || null,
+      movie.release_year ? String(movie.release_year) : null,
+    ]
       .filter(Boolean)
       .join(" · ") || null;
 
   const genres = movie.genres ?? [];
 
-  // Mismo esquema que la ficha de libro: etiquetas traducidas en el servidor,
-  // estado compartido entre badge y pills vía ItemStatusProvider.
-  const statusLabels = {
-    planned: tLibrary("status.planned"),
-    in_progress: tLibrary("status.in_progress"),
-    completed: tLibrary("status.completed"),
-    dropped: tLibrary("status.dropped"),
-  };
+  // Las 4 etiquetas de la píldora del hero ("En tu biblioteca · Viendo"),
+  // traducidas aquí para que la isla de cliente (StatusBadgeLive) no arrastre
+  // i18n. El provider comparte el estado del pase activo entre el badge del
+  // hero y los pills de la pestaña Registro: ambos cambian en el mismo commit
+  // optimista (ver item-status-context.tsx).
+  const statusLabels = await heroStatusLabels("movie");
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
@@ -265,91 +266,93 @@ async function MovieTabs({
   }
 
   return (
-      <ItemDetailTabs
-        itemType="movie"
-        labels={{
-          info: tDetail("tabInfo"),
-          community: tDetail("tabCommunity"),
-          log: tDetail("tabLog"),
-        }}
-        info={
-          <CatalogEditor
-            itemType="movie"
-            itemId={movie.id}
-            item={{
-              title: movie.title,
-              author: movie.director,
-              synopsis: movie.synopsis,
-              genres,
-              year: movie.release_year,
-              coverUrl: movie.cover_url,
-            }}
-            editions={editions}
-            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
-            canContribute={canContribute}
-          >
-            <div className="flex flex-col gap-10">
-              {saga && sagaMembers.length >= 1 && (
-                <SagaStrip
-                  members={sagaMembers}
-                  currentType="movie"
-                  currentId={movie.id}
-                  sagaId={saga.sagaId}
-                  sagaName={saga.name}
-                  label={tDetail("saga")}
-                />
-              )}
-              {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+    <ItemDetailTabs
+      itemType="movie"
+      labels={{
+        info: tDetail("tabInfo"),
+        community: tDetail("tabCommunity"),
+        log: tDetail("tabLog"),
+      }}
+      info={
+        <CatalogEditor
+          itemType="movie"
+          itemId={movie.id}
+          item={{
+            title: movie.title,
+            author: movie.director,
+            synopsis: movie.synopsis,
+            genres,
+            year: movie.release_year,
+            coverUrl: movie.cover_url,
+          }}
+          editions={editions}
+          saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+          canContribute={canContribute}
+        >
+          <div className="flex flex-col gap-10">
+            {saga && sagaMembers.length >= 1 && (
+              <SagaStrip
+                members={sagaMembers}
+                currentType="movie"
+                currentId={movie.id}
+                sagaId={saga.sagaId}
+                sagaName={saga.name}
+                label={tDetail("saga")}
+              />
+            )}
+            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
                   entre la tira de ediciones y el panel de metadatos, y así los
                   dos comparten el estado de "qué edición miro". */}
-              <EditionsSection
-                itemType="movie"
-                itemId={movie.id}
-                editionsPromise={Promise.resolve(editions)}
-                editionsFallback={<EditionsLoading />}
-                selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
-                canContribute={canContribute}
-                workRows={metaRows}
-                genres={genres}
-                genresLabel={tDetail("genres")}
-              >
-                <InfoPanel
-                  aboutLabel={tDetail("about")}
-                  synopsis={movie.synopsis}
-                  noSynopsisLabel={tDetail("noSynopsis")}
-                  actions={<EditFichaButton />}
-                  extra={
-                    <>
-                      <CreditsSection credits={credits} />
-                      {watchProviders && <WatchProviders data={watchProviders} />}
-                    </>
-                  }
-                />
-              </EditionsSection>
-            </div>
-          </CatalogEditor>
-        }
-        community={
-          <div className="flex flex-col gap-10">
-            <CommunityPanel
+            <EditionsSection
               itemType="movie"
-              community={community}
-              viewerLoggedIn={Boolean(userId)}
-            />
+              itemId={movie.id}
+              editionsPromise={Promise.resolve(editions)}
+              editionsFallback={<EditionsLoading />}
+              selectedEditionId={
+                passes.find((p) => !p.finishedOn)?.editionId ?? null
+              }
+              canContribute={canContribute}
+              workRows={metaRows}
+              genres={genres}
+              genresLabel={tDetail("genres")}
+            >
+              <InfoPanel
+                aboutLabel={tDetail("about")}
+                synopsis={movie.synopsis}
+                noSynopsisLabel={tDetail("noSynopsis")}
+                actions={<EditFichaButton />}
+                extra={
+                  <>
+                    <CreditsSection credits={credits} />
+                    {watchProviders && <WatchProviders data={watchProviders} />}
+                  </>
+                }
+              />
+            </EditionsSection>
           </div>
-        }
-        log={
-          <LogPanel
+        </CatalogEditor>
+      }
+      community={
+        <div className="flex flex-col gap-10">
+          <CommunityPanel
             itemType="movie"
-            itemId={movie.id}
-            entry={entry}
-            passes={passes}
-            sessions={[]}
-            editions={editions}
-            queues={queues}
-            initialClosingPassId={initialClosingPassId}
+            community={community}
+            viewerLoggedIn={Boolean(userId)}
           />
-        }
-      />
+        </div>
+      }
+      log={
+        <LogPanel
+          itemType="movie"
+          itemId={movie.id}
+          entry={entry}
+          passes={passes}
+          sessions={[]}
+          editions={editions}
+          queues={queues}
+          initialClosingPassId={initialClosingPassId}
+        />
+      }
+    />
   );
 }

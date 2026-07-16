@@ -72,5 +72,5 @@ export function StatusBadgeLive({
 }) {
   const { status } = useItemStatus();
   if (!status) return null;
-  return <StatusBadge status={status} label={labels[status]} />;
+  return <StatusBadge status={status} label={labels[status]} variant="hero" />;
 }

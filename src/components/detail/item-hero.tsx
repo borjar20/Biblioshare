@@ -2,7 +2,8 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { RatingDots } from "@/components/ui/rating-dots";
+import { StarRating } from "@/components/ui/star-rating";
+import { formatStars } from "@/lib/rating/stars";
 import { GenreTag } from "@/components/ui/genre-tag";
 import { BackButton } from "./back-button";
 import { BookIcon, FilmIcon, SeriesIcon } from "@/components/ui/icons";
@@ -13,10 +14,14 @@ const TYPE_ICON = {
   series: SeriesIcon,
 } as const;
 
-// Editorial detail hero (reel+shelf structure, Biblioshare palette): a blurred
-// cover backdrop fading into the page, the cover thumbnail, media badge + genre
-// tags, serif title, byline, community rating readout, and a slot for the
-// viewer's own status/actions.
+// Hero de la ficha, calcado del mockup "Paper - Ficha de título completa"
+// (.hero-*, los 7 frames comparten hero): portada difuminada de fondo, barra
+// superior (volver + tipo de medio + hueco del menú), portada con borde del
+// acento, badge + géneros, título serif, byline mono, nota de la comunidad y
+// la píldora de estado del usuario.
+//
+// La maqueta es de móvil: ahí se calca (fila de 116×174). En sm+ se ensancha
+// —portada mayor, más aire— según el principio responsive P-T7.
 export function ItemHero({
   itemType,
   mediaLabel,
@@ -47,7 +52,9 @@ export function ItemHero({
   const Icon = TYPE_ICON[itemType];
 
   return (
-    <div className="relative overflow-hidden border-b border-border">
+    // Sin border-b: la línea la pone la barra de pestañas, que va pegada
+    // debajo y es sticky (mockup .tabs). Dos bordes seguidos se veían doble.
+    <div className="relative overflow-hidden">
       {coverUrl && (
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <Image
@@ -61,19 +68,31 @@ export function ItemHero({
         </div>
       )}
 
-      <div className="relative mx-auto w-full max-w-4xl px-4 pt-6 pb-8 sm:px-6">
-        <BackButton label={backLabel} />
+      <div className="relative mx-auto w-full max-w-4xl px-4 pt-3.5 pb-5 sm:px-6">
+        {/* .hero-top: volver a la izquierda, tipo de medio centrado y teñido.
+            El ⋯ de la maqueta llega con el menú del hero (§2.2 / P2 del plan
+            06); hasta entonces, un hueco del mismo ancho que el botón para
+            que el label quede centrado de verdad. */}
+        <div className="flex items-center justify-between gap-3">
+          <BackButton label={backLabel} />
+          <span
+            className={`truncate font-mono text-[10.5px] font-medium tracking-[0.12em] uppercase ${accent.text}`}
+          >
+            {mediaLabel}
+          </span>
+          <span aria-hidden className="h-[34px] w-[34px] shrink-0" />
+        </div>
 
-        <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-end">
+        <div className="mt-2 flex gap-4 sm:mt-4 sm:gap-6">
           <div
-            className={`relative aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-cover border-2 ${accent.borderSoft} bg-surface-muted shadow-cover sm:w-40`}
+            className={`relative h-[174px] w-[116px] shrink-0 overflow-hidden rounded-[6px] border-2 ${accent.border} bg-surface-muted shadow-cover sm:h-[240px] sm:w-40`}
           >
             {coverUrl ? (
               <Image
                 src={coverUrl}
                 alt={title}
                 fill
-                sizes="(max-width: 640px) 128px, 160px"
+                sizes="(max-width: 640px) 116px, 160px"
                 className="object-cover"
               />
             ) : (
@@ -83,7 +102,7 @@ export function ItemHero({
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-3 pb-1">
+          <div className="min-w-0 flex-1 pt-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <span
                 className={`inline-flex items-center gap-1 rounded-chip border ${accent.borderSoft} ${accent.bgSoft} px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${accent.text} uppercase`}
@@ -96,37 +115,45 @@ export function ItemHero({
               ))}
             </div>
 
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="mt-2 font-serif text-[25px] leading-[1.05] font-semibold sm:text-[34px]">
               {title}
             </h1>
 
             {byline && (
-              <p className="font-mono text-xs text-muted-foreground">{byline}</p>
+              <p className="mt-1.5 font-mono text-[11px] text-muted-foreground">
+                {byline}
+              </p>
             )}
 
+            {/* Nota de la comunidad: estrellas oro sobre 5 (P1 del plan 06 —
+                los agregados de la comunidad van en estrellas; los dots se
+                reservan para la nota propia 1–10). */}
             {avgRating !== null && (
-              <div className="flex items-center gap-3">
+              <div className="mt-3 flex items-center gap-2.5">
                 <span
-                  className={`font-serif text-3xl leading-none font-bold ${accent.text}`}
+                  className={`font-serif text-[30px] leading-none font-semibold ${accent.text}`}
                 >
-                  {avgRating.toFixed(1)}
+                  {formatStars(avgRating)}
+                  <small className="text-sm font-normal text-muted-foreground">
+                    /5
+                  </small>
                 </span>
                 <div className="flex flex-col gap-1">
-                  <RatingDots value={avgRating / 2} />
+                  <StarRating value={avgRating} size="sm" />
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {ratingCount.toLocaleString("es")} {ratingsLabel}
                   </span>
                 </div>
               </div>
             )}
-
-            {statusSlot && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {statusSlot}
-              </div>
-            )}
           </div>
         </div>
+
+        {/* .hero-status: fuera de la fila de la portada, alineada a su
+            izquierda (la maqueta la saca del hero-main a propósito). */}
+        {statusSlot && (
+          <div className="mt-3 flex flex-wrap gap-2">{statusSlot}</div>
+        )}
       </div>
     </div>
   );

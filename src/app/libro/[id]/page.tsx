@@ -3,15 +3,16 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
+import { heroStatusLabels } from "@/lib/library/hero-status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
+import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import {
-  LogPanel,
-  type ManagedEntry,
-} from "@/components/detail/log-panel";
-import { CatalogEditor, EditFichaButton } from "@/components/detail/catalog-editor";
+  CatalogEditor,
+  EditFichaButton,
+} from "@/components/detail/catalog-editor";
 import { ItemHero } from "@/components/detail/item-hero";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
@@ -82,7 +83,6 @@ export default async function BookDetailPage({
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [
@@ -115,7 +115,7 @@ export default async function BookDetailPage({
         openlibrary_work_key: book.openlibrary_work_key,
         isbn: book.isbn,
         hydrated_at: book.hydrated_at,
-      })
+      }),
     );
   }
 
@@ -151,16 +151,12 @@ export default async function BookDetailPage({
 
   const genres = book.genres ?? [];
 
-  // Las 4 etiquetas del badge, traducidas aquí para que la isla de cliente
-  // (StatusBadgeLive) no arrastre i18n. El provider comparte el estado del
-  // pase activo entre el badge del hero y los pills de la pestaña Registro:
-  // ambos cambian en el mismo commit optimista (ver item-status-context.tsx).
-  const statusLabels = {
-    planned: tLibrary("status.planned"),
-    in_progress: tLibrary("status.in_progress"),
-    completed: tLibrary("status.completed"),
-    dropped: tLibrary("status.dropped"),
-  };
+  // Las 4 etiquetas de la píldora del hero ("En tu biblioteca · Leyendo"),
+  // traducidas aquí para que la isla de cliente (StatusBadgeLive) no arrastre
+  // i18n. El provider comparte el estado del pase activo entre el badge del
+  // hero y los pills de la pestaña Registro: ambos cambian en el mismo commit
+  // optimista (ver item-status-context.tsx).
+  const statusLabels = await heroStatusLabels("book");
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
@@ -344,85 +340,87 @@ async function BookTabs({
   }
 
   return (
-      <ItemDetailTabs
-        itemType="book"
-        labels={{
-          info: tDetail("tabInfo"),
-          community: tDetail("tabCommunity"),
-          log: tDetail("tabLog"),
-        }}
-        info={
-          <CatalogEditor
-            itemType="book"
-            itemId={book.id}
-            item={{
-              title: book.title,
-              author: book.author,
-              synopsis: book.synopsis,
-              genres,
-              year: book.published_year,
-              coverUrl: book.cover_url,
-            }}
-            editions={editions}
-            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
-            canContribute={canContribute}
-          >
-            <div className="flex flex-col gap-10">
-              {saga && sagaMembers.length >= 1 && (
-                <SagaStrip
-                  members={sagaMembers}
-                  currentType="book"
-                  currentId={book.id}
-                  sagaId={saga.sagaId}
-                  sagaName={saga.name}
-                  label={tDetail("saga")}
-                />
-              )}
-              {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
+    <ItemDetailTabs
+      itemType="book"
+      labels={{
+        info: tDetail("tabInfo"),
+        community: tDetail("tabCommunity"),
+        log: tDetail("tabLog"),
+      }}
+      info={
+        <CatalogEditor
+          itemType="book"
+          itemId={book.id}
+          item={{
+            title: book.title,
+            author: book.author,
+            synopsis: book.synopsis,
+            genres,
+            year: book.published_year,
+            coverUrl: book.cover_url,
+          }}
+          editions={editions}
+          saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+          canContribute={canContribute}
+        >
+          <div className="flex flex-col gap-10">
+            {saga && sagaMembers.length >= 1 && (
+              <SagaStrip
+                members={sagaMembers}
+                currentType="book"
+                currentId={book.id}
+                sagaId={saga.sagaId}
+                sagaName={saga.name}
+                label={tDetail("saga")}
+              />
+            )}
+            {/* La sinopsis va DENTRO de EditionsSection: el mockup la pone
                   entre la tira de ediciones y el panel de metadatos, y así los
                   dos comparten el estado de "qué edición miro". */}
-              <EditionsSection
-                itemType="book"
-                itemId={book.id}
-                editionsPromise={editionsPromise}
-                editionsFallback={<EditionsLoading />}
-                selectedEditionId={passes.find((p) => !p.finishedOn)?.editionId ?? null}
-                canContribute={canContribute}
-                workRows={metaRows}
-                genres={genres}
-                genresLabel={tDetail("genres")}
-              >
-                <InfoPanel
-                  aboutLabel={tDetail("about")}
-                  synopsis={book.synopsis}
-                  noSynopsisLabel={tDetail("noSynopsis")}
-                  actions={<EditFichaButton />}
-                />
-              </EditionsSection>
-            </div>
-          </CatalogEditor>
-        }
-        community={
-          <CommunityPanel
-            itemType="book"
-            community={community}
-            viewerLoggedIn={Boolean(userId)}
-          />
-        }
-        log={
-          <div className="flex flex-col gap-4">
-            <LogPanel
+            <EditionsSection
               itemType="book"
               itemId={book.id}
-              entry={entry}
-              passes={passes}
-              sessions={sessions}
-              editions={editions}
-              queues={queues}
-              initialClosingPassId={initialClosingPassId}
-            />
+              editionsPromise={editionsPromise}
+              editionsFallback={<EditionsLoading />}
+              selectedEditionId={
+                passes.find((p) => !p.finishedOn)?.editionId ?? null
+              }
+              canContribute={canContribute}
+              workRows={metaRows}
+              genres={genres}
+              genresLabel={tDetail("genres")}
+            >
+              <InfoPanel
+                aboutLabel={tDetail("about")}
+                synopsis={book.synopsis}
+                noSynopsisLabel={tDetail("noSynopsis")}
+                actions={<EditFichaButton />}
+              />
+            </EditionsSection>
           </div>
-        }
-      />
+        </CatalogEditor>
+      }
+      community={
+        <CommunityPanel
+          itemType="book"
+          community={community}
+          viewerLoggedIn={Boolean(userId)}
+        />
+      }
+      log={
+        <div className="flex flex-col gap-4">
+          <LogPanel
+            itemType="book"
+            itemId={book.id}
+            entry={entry}
+            passes={passes}
+            sessions={sessions}
+            editions={editions}
+            queues={queues}
+            initialClosingPassId={initialClosingPassId}
+          />
+        </div>
+      }
+    />
   );
 }

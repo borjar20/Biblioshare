@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { heroStatusLabels } from "@/lib/library/hero-status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { getQueues } from "@/lib/queue/get-queues";
 import type { Queue } from "@/lib/queue/types";
-import {
-  LogPanel,
-  type ManagedEntry,
-} from "@/components/detail/log-panel";
+import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemHero } from "@/components/detail/item-hero";
@@ -43,7 +41,10 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { CatalogEditor, EditFichaButton } from "@/components/detail/catalog-editor";
+import {
+  CatalogEditor,
+  EditFichaButton,
+} from "@/components/detail/catalog-editor";
 
 export async function generateMetadata({
   params,
@@ -86,7 +87,6 @@ export default async function SeriesDetailPage({
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tLibrary = await getTranslations("library");
   const supabase = await createClient();
 
   const [
@@ -126,17 +126,15 @@ export default async function SeriesDetailPage({
 
   const genres = series.genres ?? [];
 
-  // Mismo esquema que la ficha de libro: etiquetas traducidas en el servidor,
-  // estado compartido entre badge y pills vía ItemStatusProvider. Nota de
-  // alcance: el auto-cierre por episodios (EpisodePanel) NO publica aquí —
-  // redirige a `?cerrar=...&tab=log`, que es una navegación completa con
+  // Las 4 etiquetas de la píldora del hero ("En tu biblioteca · Viendo"),
+  // traducidas aquí para que la isla de cliente (StatusBadgeLive) no arrastre
+  // i18n. El provider comparte el estado del pase activo entre el badge del
+  // hero y los pills de la pestaña Registro: ambos cambian en el mismo commit
+  // optimista (ver item-status-context.tsx).
+  // Nota de alcance: el auto-cierre por episodios (EpisodePanel) NO publica
+  // ahí — redirige a `?cerrar=...&tab=log`, que es una navegación completa con
   // render fresco del servidor, así que el badge llega ya correcto.
-  const statusLabels = {
-    planned: tLibrary("status.planned"),
-    in_progress: tLibrary("status.in_progress"),
-    completed: tLibrary("status.completed"),
-    dropped: tLibrary("status.dropped"),
-  };
+  const statusLabels = await heroStatusLabels("series");
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
@@ -191,41 +189,34 @@ async function SeriesTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
   // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
   // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
-  const [
-    ,
-    ,
-    watchProviders,
-    saga,
-    activeRow,
-    loadedQueues,
-    role,
-  ] = await Promise.all([
-    ensureItemEnriched(supabase, "series", {
-      id: series.id,
-      tmdbId: series.tmdb_id,
-    }),
-    ensureSeriesEpisodes(supabase, {
-      id: series.id,
-      tmdbId: series.tmdb_id,
-      totalSeasons: series.total_seasons,
-    }),
-    series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
-    getItemSaga(supabase, "series", series.id),
-    // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
-    userId
-      ? supabase
-          .from("passes")
-          .select("id, status, rating, position, queue_id")
-          .eq("user_id", userId)
-          .eq("item_type", "series")
-          .eq("item_id", series.id)
-          .eq("is_active", true)
-          .maybeSingle()
-          .then(({ data }) => data)
-      : null,
-    userId ? getQueues(supabase, userId) : [],
-    userId ? getCurrentUserRole(supabase) : null,
-  ]);
+  const [, , watchProviders, saga, activeRow, loadedQueues, role] =
+    await Promise.all([
+      ensureItemEnriched(supabase, "series", {
+        id: series.id,
+        tmdbId: series.tmdb_id,
+      }),
+      ensureSeriesEpisodes(supabase, {
+        id: series.id,
+        tmdbId: series.tmdb_id,
+        totalSeasons: series.total_seasons,
+      }),
+      series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
+      getItemSaga(supabase, "series", series.id),
+      // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
+      userId
+        ? supabase
+            .from("passes")
+            .select("id, status, rating, position, queue_id")
+            .eq("user_id", userId)
+            .eq("item_type", "series")
+            .eq("item_id", series.id)
+            .eq("is_active", true)
+            .maybeSingle()
+            .then(({ data }) => data)
+        : null,
+      userId ? getQueues(supabase, userId) : [],
+      userId ? getCurrentUserRole(supabase) : null,
+    ]);
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits(supabase, "series", series.id);
@@ -280,9 +271,7 @@ async function SeriesTabs({
   const initialClosingPassId =
     cerrar && cerrar === activePassId ? cerrar : null;
 
-  const canContribute = userId
-    ? hasMinRole(role, "collaborator")
-    : false;
+  const canContribute = userId ? hasMinRole(role, "collaborator") : false;
 
   const metaRows: MetaRow[] = [];
   if (series.creator)
@@ -324,98 +313,98 @@ async function SeriesTabs({
   }
 
   return (
-      <ItemDetailTabs
-        itemType="series"
-        labels={{
-          info: tDetail("tabInfo"),
-          ...(hasEpisodes && { episodes: tDetail("tabEpisodes") }),
-          community: tDetail("tabCommunity"),
-          log: tDetail("tabLog"),
-        }}
-        info={
-          <CatalogEditor
-            itemType="series"
-            itemId={series.id}
-            item={{
-              title: series.title,
-              author: series.creator,
-              synopsis: series.synopsis,
-              genres,
-              year: series.release_year,
-              coverUrl: series.cover_url,
-            }}
-            // Las series no tienen ediciones: CatalogEditor no pinta esa
-            // sección para este tipo, así que este array nunca se usa.
-            editions={[]}
-            saga={saga ? { id: saga.sagaId, name: saga.name } : null}
-            canContribute={canContribute}
-          >
-            <div className="flex flex-col gap-10">
-              {saga && sagaMembers.length >= 2 && (
-                <SagaStrip
-                  members={sagaMembers}
-                  currentType="series"
-                  currentId={series.id}
-                  sagaId={saga.sagaId}
-                  sagaName={saga.name}
-                  label={tDetail("saga")}
-                />
-              )}
-              <InfoPanel
-                aboutLabel={tDetail("about")}
-                synopsis={series.synopsis}
-                noSynopsisLabel={tDetail("noSynopsis")}
-                actions={<EditFichaButton />}
-                sidebar={
-                  <MetadataSidebar
-                    rows={metaRows}
-                    genres={genres}
-                    genresLabel={tDetail("genres")}
-                  />
-                }
-                extra={
-                  <>
-                    <CreditsSection credits={credits} />
-                    {watchProviders && <WatchProviders data={watchProviders} />}
-                  </>
-                }
-              />
-            </div>
-          </CatalogEditor>
-        }
-        episodes={
-          hasEpisodes ? (
-            <EpisodePanel
-              seriesId={series.id}
-              seasons={seasonGroups}
-              isLoggedIn={Boolean(userId)}
-            />
-          ) : undefined
-        }
-        community={
+    <ItemDetailTabs
+      itemType="series"
+      labels={{
+        info: tDetail("tabInfo"),
+        ...(hasEpisodes && { episodes: tDetail("tabEpisodes") }),
+        community: tDetail("tabCommunity"),
+        log: tDetail("tabLog"),
+      }}
+      info={
+        <CatalogEditor
+          itemType="series"
+          itemId={series.id}
+          item={{
+            title: series.title,
+            author: series.creator,
+            synopsis: series.synopsis,
+            genres,
+            year: series.release_year,
+            coverUrl: series.cover_url,
+          }}
+          // Las series no tienen ediciones: CatalogEditor no pinta esa
+          // sección para este tipo, así que este array nunca se usa.
+          editions={[]}
+          saga={saga ? { id: saga.sagaId, name: saga.name } : null}
+          canContribute={canContribute}
+        >
           <div className="flex flex-col gap-10">
-            <CommunityPanel
-              itemType="series"
-              community={community}
-              episodeReviews={episodeReviews}
-              viewerLoggedIn={Boolean(userId)}
+            {saga && sagaMembers.length >= 2 && (
+              <SagaStrip
+                members={sagaMembers}
+                currentType="series"
+                currentId={series.id}
+                sagaId={saga.sagaId}
+                sagaName={saga.name}
+                label={tDetail("saga")}
+              />
+            )}
+            <InfoPanel
+              aboutLabel={tDetail("about")}
+              synopsis={series.synopsis}
+              noSynopsisLabel={tDetail("noSynopsis")}
+              actions={<EditFichaButton />}
+              sidebar={
+                <MetadataSidebar
+                  rows={metaRows}
+                  genres={genres}
+                  genresLabel={tDetail("genres")}
+                />
+              }
+              extra={
+                <>
+                  <CreditsSection credits={credits} />
+                  {watchProviders && <WatchProviders data={watchProviders} />}
+                </>
+              }
             />
           </div>
-        }
-        log={
-          <LogPanel
-            itemType="series"
-            itemId={series.id}
-            entry={entry}
-            passes={passes}
-            sessions={sessions}
-            // Las series no tienen ediciones (getEditions ni siquiera
-            // consulta la BD para este tipo): no hace falta cargarlas.
-            editions={[]}
-            queues={queues}
-            initialClosingPassId={initialClosingPassId}
+        </CatalogEditor>
+      }
+      episodes={
+        hasEpisodes ? (
+          <EpisodePanel
+            seriesId={series.id}
+            seasons={seasonGroups}
+            isLoggedIn={Boolean(userId)}
           />
-        }
-      />
+        ) : undefined
+      }
+      community={
+        <div className="flex flex-col gap-10">
+          <CommunityPanel
+            itemType="series"
+            community={community}
+            episodeReviews={episodeReviews}
+            viewerLoggedIn={Boolean(userId)}
+          />
+        </div>
+      }
+      log={
+        <LogPanel
+          itemType="series"
+          itemId={series.id}
+          entry={entry}
+          passes={passes}
+          sessions={sessions}
+          // Las series no tienen ediciones (getEditions ni siquiera
+          // consulta la BD para este tipo): no hace falta cargarlas.
+          editions={[]}
+          queues={queues}
+          initialClosingPassId={initialClosingPassId}
+        />
+      }
+    />
   );
 }

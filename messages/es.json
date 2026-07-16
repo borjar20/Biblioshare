@@ -657,6 +657,7 @@
   },
   "detail": {
     "back": "Volver",
+    "inLibrary": "En tu biblioteca",
     "ratings": "valoraciones",
     "tabInfo": "Información",
     "tabEpisodes": "Episodios",
