@@ -20,7 +20,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 
 | # | Plan | Ámbito | Dependencias |
 |---|---|---|---|
-| 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | **Pasada previa** — antes que el resto |
+| 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | ✅ **HECHO** (PR #44, mergeado) — lee su **regla del 404** antes de añadir cualquier `loading.tsx` |
 | 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio | P3 layout escritorio; clubes en feed (P1) |
 | 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | Colección v2 = posible epic aparte (P1) |
 | 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | Escalera de hidratación ya decidida (P1/P2) |
@@ -31,7 +31,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 
 ## Orden sugerido
 
-0. **00 Navegación** (fases A+B: skeletons + streaming; fase C descartada por ahora) — cambia cómo se estructuran las páginas, va antes de restylearlas. Orden interno: ficha → colección → resto.
+0. ~~**00 Navegación**~~ ✅ **HECHO y mergeado** (PR #44; fase C descartada por ahora). Las páginas ya nacen con su shell + `<Suspense>` por sección: **al restylear, respeta esa estructura** y no metas un `loading.tsx` en rutas con `notFound()` (regla del 404 en el plan 00). De paso salió el arreglo del #45 (hoja de cierre y StrictMode).
 1. **07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2) — tres tareas cortas que tocan toda la app; mejor antes de los restylings por pestaña.
 2. **06 Ficha** (pantalla núcleo; coordinar con PRs #32/#42 de pases) o **02 Colección v1** (autocontenida).
 3. 01 Inicio (incluye clubes en feed + "¿qué has disfrutado hoy?") · 03 Buscar (corta).
