@@ -86,18 +86,19 @@ Cómo quedó cada pantalla (todas HECHAS en #44):
 - [x] Navegar tarjeta → ficha: el hero pinta con datos reales y las secciones llegan por streaming detrás (comprobado sobre una ficha real; skeletons con dimensiones reales).
 - [x] Colección y perfil: shell (título/tabs/filtros) visible antes de que resuelvan las queries (comprobado en `/u/<perfil público>`: cabecera real + skeleton de sección en el mismo stream).
 - [x] `notFound()` de fichas inexistentes devuelve **404 real** — se rompió con la Fase A y se recuperó acotando los `loading.tsx`. Verificado en libro/película/serie/perfil/saga/persona.
-- [ ] `npx playwright test` verde — **NO alcanzable tal cual, y no por este plan**: la suite ya estaba roja en `main`. Estado tras #44+#45: **15/21**. Los fallos se atribuyeron uno a uno (revirtiendo a `main` y repitiendo): 4 preexistentes + 1 flaky, **ninguno de la Fase A/B**. De esos, #45 arregló los de `pase-hub`. **Queda rojo**: `propose-wizard` (preexistente) y la búsqueda de películas (**`TMDB_API_KEY` vacía en el entorno local**, no es código).
+- [ ] `npx playwright test` verde — **NO alcanzable tal cual, y no por este plan**: la suite ya estaba roja en `main`. Estado tras #44+#45: **15/21**. Los fallos se atribuyeron uno a uno (revirtiendo a `main` y repitiendo): 4 preexistentes + 1 flaky, **ninguno de la Fase A/B**. De esos, #45 arregló los de `pase-hub`. **Queda rojo y SIN EXPLICAR**: `propose-wizard` y la búsqueda de películas/series (ver §6.3).
 - [x] P-N1…P-N4 respondidas y registradas.
 
 ## 6. Pendiente tras cerrar el plan
 
 1. **Streaming en el hosting real** (§4) — que gzip/proxy de Vercel no bufericen la respuesta; si lo hacen, el streaming no se nota en producción.
 2. **Suite e2e roja en `main`** — `propose-wizard` falla sin tocar nada; merece su propia mirada (fuera de esta iniciativa).
-3. **`TMDB_API_KEY` y `GOOGLE_BOOKS_API_KEY` vacías** en el `.env.local` local: varios e2e no pueden pasar sin ellas.
+3. **Los e2e de película y serie fallan por causa DESCONOCIDA** — reinvestigar. Se dijo que era por `TMDB_API_KEY` vacía: **era falso**, la clave está puesta (239 chars). El diagnóstico salió de un `grep -oE '…KEY='` cuya regex terminaba en `=`, así que solo imprimía el nombre de la clave y jamás pudo mostrar el valor. Síntoma real a investigar: `page.waitForURL` agota los 30 s esperando la tarjeta de resultado en `/buscar?type=movie&q=whiplash`, y en algún run apareció `TypeError: fetch failed`. Puede ser TMDB (red, rate-limit, token v4 vs v3) o código.
 4. **Fase C** (`cacheComponents` + `use cache`) — reevaluar tras medir A+B.
 
 ## 7. Notas de herramientas (para la próxima vez)
 
+- **`grep -o` solo imprime lo que casa la regex.** `grep -oE '^…KEY=' .env.local` devuelve `TMDB_API_KEY=` **tenga valor o no** — la regex acaba en `=`. Leerlo como "la clave está vacía" es un error real que ya se cometió aquí y contaminó tres documentos. Para comprobar si una var tiene valor: `awk -F= '/^CLAVE=/ {print length($2)}'`.
 - **Depurar el servidor desde los e2e:** Playwright arranca su `webServer` con `stdout: 'ignore'` y `stderr: 'pipe'` → los `console.log` de server components **se descartan**. Usa `console.error` para que salgan como `[WebServer] …`.
 - **El MCP de Supabase apunta a PROD y el dev server a DEV** ([[supabase-environments]]): son BD distintas. Un id sacado del MCP no existe en dev — para datos de dev, ir a su API REST con la anon key del `.env.local`.
 - **`git checkout origin/main -- src` restaura pero no borra**: los ficheros que tu rama eliminó (p. ej. `src/app/page.tsx` movido a `(home)`) reaparecen y pueden duplicar rutas. Comprobar `git status` antes de dar por buena una línea base.
