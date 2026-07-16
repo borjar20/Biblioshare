@@ -15,6 +15,9 @@
      En las maquetas va suelto — es el `.tx`/`.syn`/`.review .tx` del handoff. */
   --foreground-soft: #584f43;
   --muted-foreground: #877e70;
+  /* Un peldaño MÁS claro que --muted-foreground: etiquetas que solo deben
+     estar (pestañas inactivas, chevrones). Es el `--faint` del handoff. */
+  --foreground-faint: #a89e8d;
   --border: rgba(44, 20, 32, 0.14);
   --scrim: rgba(44, 38, 32, 0.45);
 
@@ -59,6 +62,7 @@
   --surface-muted: #332b23;
   --foreground: #f0e8db;
   --foreground-soft: #cabfb0;
+  --foreground-faint: #6f665a;
   --muted-foreground: #a99e8c;
   --border: rgba(240, 232, 219, 0.12);
   --scrim: rgba(12, 9, 7, 0.6);
@@ -95,6 +99,7 @@
     --surface-muted: #332b23;
     --foreground: #f0e8db;
     --foreground-soft: #cabfb0;
+    --foreground-faint: #6f665a;
     --muted-foreground: #a99e8c;
     --border: rgba(240, 232, 219, 0.12);
     --scrim: rgba(12, 9, 7, 0.6);
@@ -131,6 +136,7 @@
   --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
   --color-foreground-soft: var(--foreground-soft);
+  --color-foreground-faint: var(--foreground-faint);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-scrim: var(--scrim);

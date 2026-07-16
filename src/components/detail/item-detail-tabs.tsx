@@ -54,13 +54,15 @@ export function ItemDetailTabs({
 
   return (
     <div className="flex flex-col">
-      {/* Sans semibold (NO el mono de las subtabs — aquí la maqueta escribe
-          Geist) y subrayado del acento, en las dos vistas. Cambia la piel:
-          móvil (.tabs) va translúcida con blur sobre el fondo; PC
-          (.desk-tabs) va opaca sobre surface, con borde arriba, más aire y
-          texto de 15. Pegada bajo la topbar en ambas. */}
-      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:border-t lg:bg-background lg:backdrop-blur-none">
-        <div className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-8 lg:px-11">
+      {/* Sans (NO el mono de las subtabs — aquí la maqueta escribe Geist),
+          subrayado del acento y pegada bajo la topbar, en las dos vistas.
+          Cambia la piel: en PC el texto es más pequeño (14) y más ligero, y
+          las inactivas bajan a `faint` — un peldaño más claro que `muted`:
+          en el ancho hay menos ruido y la activa se distingue sola.
+          Sin scroll horizontal: caben (comprobado con 4 pestañas a 390).
+          .desk-tabs de "Web - Ficha de titulo (PC).html". */}
+      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:bg-background/80 lg:backdrop-blur-[10px]">
+        <div className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-7 lg:px-11">
           {order.map((id) => {
             const isActive = tab === id;
             return (
@@ -68,17 +70,17 @@ export function ItemDetailTabs({
                 key={id}
                 type="button"
                 onClick={() => selectTab(id)}
-                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-4 lg:text-[15px] ${
+                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
                   isActive
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-foreground lg:font-semibold"
+                    : "text-muted-foreground hover:text-foreground lg:font-medium lg:text-foreground-faint lg:hover:text-foreground"
                 }`}
               >
                 {labels[id]}
                 {isActive && (
                   <span
                     aria-hidden
-                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm lg:h-[2.5px] ${accent.bg}`}
+                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
                   />
                 )}
               </button>
