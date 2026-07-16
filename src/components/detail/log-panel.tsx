@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { StarRating } from "@/components/ui/star-rating";
 import { SessionList } from "@/components/session-list";
 import { StatusSegments } from "@/components/detail/status-segments";
+import { useItemStatus } from "@/components/detail/item-status-context";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
@@ -143,6 +144,7 @@ function FollowButton({
   const tEditions = useTranslations("editions");
   const [isPending, startTransition] = useTransition();
   const [choosingEdition, setChoosingEdition] = useState(false);
+  const { setStatus } = useItemStatus();
 
   function follow(editionId: string | null) {
     // "No lo sé" (editionId null) no guarda nada: se comporta como hoy, el
@@ -150,6 +152,8 @@ function FollowButton({
     // verdad, se guarda ANTES de disparar la transición — sigue siendo un
     // manejador de clic, no el cuerpo del render.
     if (editionId) writeEditionChoice(itemId, editionId);
+    // Seguir una obra la deja "pendiente": el badge del hero lo enseña ya.
+    setStatus("planned");
     startTransition(() => addExistingItemToLibrary(itemType, itemId));
   }
 
@@ -221,7 +225,14 @@ function ManagedLog({
   const tSegments = useTranslations("detail.statusSegments");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [status, setStatus] = useState(entry.status);
+  // El estado ya no es local: vive en ItemStatusContext, compartido con el
+  // badge del hero, para que ambos cambien en el mismo commit optimista. El
+  // `?? entry.status` cubre la ventana de "Quitar de mi biblioteca": ahí se
+  // publica null (el badge desaparece), pero este panel sigue montado con la
+  // entry vieja hasta que la revalidación lo desmonta — los pills no deben
+  // quedarse sin estado que pintar mientras tanto.
+  const { status: sharedStatus, setStatus } = useItemStatus();
+  const status = sharedStatus ?? entry.status;
   const [queueId, setQueueId] = useState(entry.queueId);
 
   // Pase ACTIVO de la obra (is_active): dueño de las sesiones y objetivo de
@@ -230,14 +241,14 @@ function ManagedLog({
   const activePass = passes.find((p) => p.isActive) ?? null;
 
   // Resincroniza el estado local con las props tras cada revalidación del
-  // servidor (cambio de estado, cola...). Ajuste durante el render, no un
-  // useEffect (mismo patrón que EditionStrip, ver
-  // src/components/detail/edition-strip.tsx), porque aquí dispararía
-  // react-hooks/set-state-in-effect.
+  // servidor. Ajuste durante el render, no un useEffect (mismo patrón que
+  // EditionStrip, ver src/components/detail/edition-strip.tsx), porque aquí
+  // dispararía react-hooks/set-state-in-effect. El estado (status) ya no se
+  // resincroniza aquí: lo hace el ItemStatusProvider con su propia prop de
+  // servidor, que cambia en la misma revalidación que esta entry.
   const [prevEntry, setPrevEntry] = useState(entry);
   if (entry !== prevEntry) {
     setPrevEntry(entry);
-    if (entry.status !== status) setStatus(entry.status);
     if (entry.queueId !== queueId) setQueueId(entry.queueId);
   }
 
@@ -390,9 +401,12 @@ function ManagedLog({
       <button
         type="button"
         disabled={isPending}
-        onClick={() =>
-          startTransition(() => removeFromLibrary(itemType, itemId))
-        }
+        onClick={() => {
+          // Quitar de la biblioteca = quedarse sin pase activo: el badge del
+          // hero debe desaparecer ya, no cuando aterrice la revalidación.
+          setStatus(null);
+          startTransition(() => removeFromLibrary(itemType, itemId));
+        }}
         className="self-start text-xs text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
       >
         {t("unfollow")}

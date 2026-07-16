@@ -19,7 +19,10 @@ import { type MetaRow } from "@/components/detail/metadata-sidebar";
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
-import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  ItemStatusProvider,
+  StatusBadgeLive,
+} from "@/components/detail/item-status-context";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
@@ -148,38 +151,44 @@ export default async function BookDetailPage({
 
   const genres = book.genres ?? [];
 
-  return (
-    <div className="flex flex-col">
-      <ItemHero
-        itemType="book"
-        mediaLabel={tDetail("mediaLabel.book")}
-        title={book.title}
-        byline={byline}
-        genres={genres}
-        coverUrl={book.cover_url}
-        avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
-        backLabel={tDetail("back")}
-        statusSlot={
-          activeStatus ? (
-            <StatusBadge
-              status={activeStatus}
-              label={tLibrary(`status.${activeStatus}`)}
-            />
-          ) : null
-        }
-      />
+  // Las 4 etiquetas del badge, traducidas aquí para que la isla de cliente
+  // (StatusBadgeLive) no arrastre i18n. El provider comparte el estado del
+  // pase activo entre el badge del hero y los pills de la pestaña Registro:
+  // ambos cambian en el mismo commit optimista (ver item-status-context.tsx).
+  const statusLabels = {
+    planned: tLibrary("status.planned"),
+    in_progress: tLibrary("status.in_progress"),
+    completed: tLibrary("status.completed"),
+    dropped: tLibrary("status.dropped"),
+  };
 
-      <Suspense fallback={<ItemTabsSkeleton />}>
-        <BookTabs
-          book={book}
-          userId={user?.id ?? null}
-          community={community}
-          cerrar={cerrar}
+  return (
+    <ItemStatusProvider initialStatus={activeStatus}>
+      <div className="flex flex-col">
+        <ItemHero
+          itemType="book"
+          mediaLabel={tDetail("mediaLabel.book")}
+          title={book.title}
+          byline={byline}
+          genres={genres}
+          coverUrl={book.cover_url}
+          avgRating={community.avgRating}
+          ratingCount={community.ratingCount}
+          ratingsLabel={tDetail("ratings")}
+          backLabel={tDetail("back")}
+          statusSlot={<StatusBadgeLive labels={statusLabels} />}
         />
-      </Suspense>
-    </div>
+
+        <Suspense fallback={<ItemTabsSkeleton />}>
+          <BookTabs
+            book={book}
+            userId={user?.id ?? null}
+            community={community}
+            cerrar={cerrar}
+          />
+        </Suspense>
+      </div>
+    </ItemStatusProvider>
   );
 }
 
