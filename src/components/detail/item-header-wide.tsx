@@ -13,8 +13,13 @@ const TYPE_ICON = {
 // La cabecera de la columna derecha en PC (.desk-header de los frames 8-12).
 // NO es el hero móvil ensanchado: aquí no hay botón de volver, ni label de
 // tipo centrado, ni píldora "En tu biblioteca ·" — el estado es un control del
-// rail. Los frames 9 y 10 se paran en la nota; solo Info (frame 8) alarga la
-// cabecera con sinopsis, géneros y datos, que llegan por `extra`.
+// rail.
+//
+// El frame 8 alarga esta cabecera con la sinopsis, los géneros y los datos,
+// pero solo en Info — y aquí no sabemos qué pestaña está activa: ese estado
+// vive en ItemDetailTabs, por debajo. Decidido (P9 del plan 06): la sinopsis
+// se queda en el cuerpo de Info y esta cabecera es igual en las tres
+// pestañas, como los frames 9 y 10.
 export function ItemHeaderWide({
   itemType,
   mediaLabel,
@@ -23,7 +28,6 @@ export function ItemHeaderWide({
   avgRating,
   ratingCount,
   ratingsLabel,
-  extra,
 }: {
   itemType: ItemType;
   mediaLabel: string;
@@ -33,8 +37,6 @@ export function ItemHeaderWide({
   avgRating: number | null;
   ratingCount: number;
   ratingsLabel: string;
-  /** Solo Info: sinopsis + géneros + datos (frame 8). */
-  extra?: React.ReactNode;
 }) {
   const accent = MEDIA_ACCENT[itemType];
   const Icon = TYPE_ICON[itemType];
@@ -76,8 +78,6 @@ export function ItemHeaderWide({
             </span>
           </div>
         )}
-
-        {extra}
       </div>
     </div>
   );

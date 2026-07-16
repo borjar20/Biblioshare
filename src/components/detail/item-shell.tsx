@@ -33,7 +33,6 @@ export function ItemShell({
   backLabel,
   statusSlot,
   railActions,
-  headerExtra,
   tabs,
 }: {
   itemType: ItemType;
@@ -50,8 +49,6 @@ export function ItemShell({
   statusSlot?: ReactNode;
   /** Panel de control del rail — solo PC. */
   railActions?: ReactNode;
-  /** Cola de la cabecera de PC (sinopsis + géneros + datos): solo Info. */
-  headerExtra?: ReactNode;
   tabs: ReactNode;
 }) {
   return (
@@ -91,7 +88,6 @@ export function ItemShell({
             avgRating={avgRating}
             ratingCount={ratingCount}
             ratingsLabel={ratingsLabel}
-            extra={headerExtra}
           />
         </div>
 
