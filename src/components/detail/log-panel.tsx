@@ -235,7 +235,7 @@ function ManagedLog({
 }) {
   const t = useTranslations("item");
   const tQueue = useTranslations("queue");
-  const tSegments = useTranslations("detail.statusSegments");
+  const tPasses = useTranslations("passes");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // El estado ya no es local: vive en ItemStatusContext, compartido con el
@@ -337,7 +337,22 @@ function ManagedLog({
   return (
     <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">{tSegments("groupLabel")}</span>
+        {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases sustituyen al
+            rótulo "Tu estado", que además repetía el aria-label del propio
+            control (StatusSegments ya se anuncia como grupo "Tu estado"). El
+            ordinal del pase activo es passes.length: vienen del más reciente
+            al más antiguo, así que el activo es el último cronológico —
+            mismo criterio que el diario. */}
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div>
+            <span className="block font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
+              {tPasses("activeLabel")}
+            </span>
+            <span className="font-serif text-base leading-tight font-semibold">
+              {tPasses(`nth.${itemType}`, { n: passes.length })}
+            </span>
+          </div>
+        </div>
         <StatusSegments
           status={status}
           itemType={itemType}
