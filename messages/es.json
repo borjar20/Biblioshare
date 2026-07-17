@@ -1000,7 +1000,8 @@
     "pin": "Fijar en el perfil",
     "unpin": "Quitar de fijados",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
-    "emptyTitle": "Tu colección está vacía"
+    "emptyTitle": "Tu colección está vacía",
+    "titlesCount": "{count, plural, one {# título} other {# títulos}}"
   },
   "import": {
     "title": "Importar biblioteca",

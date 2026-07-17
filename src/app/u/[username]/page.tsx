@@ -18,7 +18,6 @@ import { FollowRequests } from "@/components/social/follow-requests";
 import { PrivateProfileStub } from "@/components/social/private-profile-stub";
 import { getLibraryStats } from "@/lib/library/get-library-stats";
 import type { ItemType } from "@/lib/catalog/types";
-import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import { LockIcon } from "@/components/ui/icons";
@@ -43,13 +42,6 @@ const VALID_TABS: SectionTab[] = [
 // Estadísticas y Rincón son del dueño: un visitante no las alcanza ni por URL.
 const OWNER_ONLY_TABS: SectionTab[] = ["estadisticas", "rincon"];
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
-const VALID_STATUSES: MediaStatus[] = [
-  "planned",
-  "in_progress",
-  "completed",
-  "dropped",
-];
-const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 export async function generateMetadata({
   params,
@@ -134,15 +126,6 @@ export default async function PublicProfilePage({
   const itemType = VALID_TYPES.includes(parsedParams.type as ItemType)
     ? (parsedParams.type as ItemType)
     : undefined;
-  const status = VALID_STATUSES.includes(parsedParams.status as MediaStatus)
-    ? (parsedParams.status as MediaStatus)
-    : undefined;
-  const search = parsedParams.q?.trim() || undefined;
-  const sort: LibrarySort = VALID_SORTS.includes(
-    parsedParams.sort as LibrarySort,
-  )
-    ? (parsedParams.sort as LibrarySort)
-    : "recent";
 
   // Solo lo que necesita la cabecera se espera aquí; el contenido de cada
   // pestaña llega por streaming detrás de su <Suspense> (Fase B).
@@ -224,16 +207,13 @@ export default async function PublicProfilePage({
 
       {tab === "coleccion" && (
         <Suspense
-          key={`${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}`}
+          key={itemType ?? ""}
           fallback={<SkeletonCoverGrid count={10} />}
         >
           <CollectionTab
             userId={profile.userId}
             basePath={basePath}
             itemType={itemType}
-            status={status}
-            search={search}
-            sort={sort}
           />
         </Suspense>
       )}
