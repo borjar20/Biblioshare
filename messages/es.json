@@ -1215,6 +1215,7 @@
     "title": "Memorizar",
     "countLink": "{count, plural, one {# nota} other {# notas}}",
     "anotherNote": "Otra nota",
+    "exportCard": "Exportar tarjeta",
     "emptyTitle": "Aún no has guardado nada",
     "empty": "Guarda una cita o una nota desde una sesión o desde la ficha de una obra.",
     "kindQuote": "Cita",

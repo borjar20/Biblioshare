@@ -77,6 +77,41 @@ export async function getNotes(
   }));
 }
 
+// Una nota por id, con el título de la obra resuelto. RLS la acota al dueño: si
+// el id no existe o es de otro, devuelve null. La usa el export de la cita (F6).
+export async function getNoteById(
+  supabase: SupabaseServerClient,
+  id: string,
+): Promise<Note | null> {
+  const { data, error } = await supabase
+    .from("notes")
+    .select("id, item_type, item_id, kind, body, position, is_favorite, created_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  const r = data as Row;
+
+  const { data: titleRow } = await supabase
+    .from(r.item_type === "book" ? "books" : r.item_type === "movie" ? "movies" : "series")
+    .select("title")
+    .eq("id", r.item_id)
+    .maybeSingle();
+
+  return {
+    id: r.id,
+    itemType: r.item_type,
+    itemId: r.item_id,
+    kind: r.kind,
+    body: r.body,
+    page: pageOf(r.position, r.item_type),
+    isFavorite: r.is_favorite,
+    createdAt: r.created_at,
+    itemTitle: (titleRow as { title: string } | null)?.title ?? null,
+  };
+}
+
 // Contadores del rail del Rincón (frame H): citas / notas / favoritas.
 export function countNotes(notes: Note[]): NoteCounts {
   let quotes = 0;
