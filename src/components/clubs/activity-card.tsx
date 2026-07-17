@@ -42,10 +42,11 @@ export function ActivityCard({
         href={`/club/${clubSlug}/actividad/${activity.id}`}
         className="flex items-center gap-3 hover:opacity-80"
       >
-        {/* El tipo se reconoce por su icono y su color, sin tener que leer. */}
+        {/* El tipo se reconoce por su icono y su color, sin tener que leer.
+            Baldosa 40px teñida por tipo, como el .ic del frame 3. */}
         <span
           aria-hidden
-          className={`grid h-9 w-9 shrink-0 place-items-center rounded-chip border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
+          className={`grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
         >
           <accent.Icon className="h-4 w-4" />
         </span>
@@ -55,8 +56,10 @@ export function ActivityCard({
             {activity.title}
           </span>
           {/* Sin truncate: en móvil "lectura conjunta · 0 participantes" no cabe
-              en una línea, y cortarlo a media palabra no ayuda a nadie. */}
-          <span className={`font-mono text-[10px] tracking-wider uppercase ${accent.text}`}>
+              en una línea, y cortarlo a media palabra no ayuda a nadie. La meta
+              va en muted (.mm del frame 3): el color de tipo lo lleva la baldosa,
+              no el texto. */}
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
             {t(`kind_${activity.kind}`)} ·{" "}
             {t("participants", { count: activity.participantCount })}
           </span>

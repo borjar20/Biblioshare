@@ -20,17 +20,20 @@ import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/social/user-avatar";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 
 export function ActivityDetailView({
   activity,
   viewerId,
   viewerRole,
   clubSlug,
+  clubName,
 }: {
   activity: ActivityDetail;
   viewerId: string;
   viewerRole: "member" | "moderator" | "owner";
   clubSlug: string;
+  clubName: string;
 }) {
   const t = useTranslations("activity");
   const router = useRouter();
@@ -138,12 +141,19 @@ export function ActivityDetailView({
 
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href={`/club/${clubSlug}`}
-        className="font-mono text-xs text-muted-foreground hover:text-foreground"
-      >
-        {t("backToClub")}
-      </Link>
+      {/* Topbar del frame 4: «‹» + nombre del club, en vez de un enlace de texto. */}
+      <div className="flex items-center gap-2.5">
+        <Link
+          href={`/club/${clubSlug}`}
+          aria-label={t("backToClub")}
+          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+        </Link>
+        <span className="truncate font-serif text-sm font-semibold text-foreground">
+          {clubName}
+        </span>
+      </div>
 
       <div className="flex flex-col gap-2">
         {/* El chip identifica tipo y estado de un vistazo, con el color del
