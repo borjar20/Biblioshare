@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { getInteractionSummary, type InteractionComment } from "./interactions";
+import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 
 // Feed de actividad personal (EPIC-05, Bloque C, SD-1). On-read fan-out sobre
 // cuatro tablas fuente ya existentes — sin tabla nueva. La RLS de cada fuente
@@ -46,17 +47,38 @@ export type FeedEvent = {
   comments: InteractionComment[];
 };
 
+// El feed mezcla dos cosas que no comparten forma: los eventos de personas
+// (siempre sobre un ítem del catálogo) y los de club (una actividad, que puede
+// no tener ítem — una tierlist, un reto). En vez de forzar un ítem falso en el
+// evento de club, la lista transporta la unión y cada tarjeta lee lo suyo.
+export type FeedEntry =
+  | { source: "person"; id: string; eventDate: string; event: FeedEvent }
+  | { source: "club"; id: string; eventDate: string; event: ClubFeedEvent };
+
 export type FeedPage = {
-  events: FeedEvent[];
+  events: FeedEntry[];
   nextCursor: string | null;
 };
+
+// El set del frame A. Es de selección única: "Reseñas" ya no se combina con un
+// tipo como hacía el antiguo reviewsOnly.
+//   · book   → libros
+//   · screen → "Pantalla": películas Y series juntas
+//   · clubs  → solo la actividad de tus clubes
+export type FeedFilter = "reviews" | "book" | "screen" | "clubs";
+
+export const FEED_FILTERS: readonly FeedFilter[] = ["reviews", "book", "screen", "clubs"];
+
+export function parseFeedFilter(value: string | undefined): FeedFilter | undefined {
+  return FEED_FILTERS.includes(value as FeedFilter) ? (value as FeedFilter) : undefined;
+}
 
 export type FeedOptions = {
   /** Cursor keyset opaco: `${eventDate}~${eventId}` del último evento servido. */
   cursor?: string;
   pageSize?: number;
-  itemType?: ItemType;
-  reviewsOnly?: boolean;
+  /** Sin filtro = todo. */
+  filter?: FeedFilter;
 };
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -123,24 +145,49 @@ export async function getFeed(
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const cursor = options.cursor ? parseCursor(options.cursor) : null;
 
-  const { data: followRows, error: followError } = await supabase
-    .from("follows")
-    .select("followee_id")
-    .eq("follower_id", viewerId)
-    .eq("status", "accepted");
-  if (followError) throw followError;
+  const filter = options.filter;
+  const reviewsOnly = filter === "reviews";
+  // "Pantalla" es un filtro de la maqueta, no un item_type: son dos.
+  const itemTypes: ItemType[] | undefined =
+    filter === "book" ? ["book"] : filter === "screen" ? ["movie", "series"] : undefined;
+  const includePeople = filter !== "clubs";
+  // Los eventos de club no son de un tipo de ítem, así que no sobreviven a
+  // "Libros" ni a "Pantalla"; y no son reseñas.
+  const includeClubs = filter === undefined || filter === "clubs";
 
-  const followedIds = (followRows ?? []).map((f) => f.followee_id);
-  if (followedIds.length === 0) return { events: [], nextCursor: null };
+  const [followResult, clubResult] = await Promise.all([
+    includePeople
+      ? supabase
+          .from("follows")
+          .select("followee_id")
+          .eq("follower_id", viewerId)
+          .eq("status", "accepted")
+      : Promise.resolve({ data: [] as { followee_id: string }[], error: null }),
+    includeClubs
+      ? getClubActivityEvents(supabase, viewerId, {
+          cursorUpperBound: cursor ? timestampUpperBound(cursor.date) : undefined,
+          pageSize,
+        })
+      : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
+  ]);
+  if (followResult.error) throw followResult.error;
+
+  const followedIds = (followResult.data ?? []).map((f) => f.followee_id);
+  // Seguir a nadie ya no vacía el feed: puedes tener clubes igualmente.
+  const includePerson = includePeople && followedIds.length > 0;
+  if (!includePerson && clubResult.events.length === 0) {
+    return { events: [], nextCursor: null };
+  }
 
   // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin el
   // paso previo por library_entries que resolvía qué entradas eran de un
   // tipo. progress_sessions no tiene item_type propio (cuelga del pase vía
   // pass_id), así que su query se une a diary_entries para filtrar.
-  const includeAdded = !options.reviewsOnly;
-  const includeProgressed = !options.reviewsOnly;
-  const includeDiary = true;
-  const includeEpisodes = options.itemType === undefined || options.itemType === "series";
+  const includeAdded = includePerson && !reviewsOnly;
+  const includeProgressed = includePerson && !reviewsOnly;
+  const includeDiary = includePerson;
+  const includeEpisodes =
+    includePerson && (itemTypes === undefined || itemTypes.includes("series"));
 
   const [addedResult, progressedResult, diaryResult, episodeResult] = await Promise.all([
     includeAdded
@@ -156,7 +203,7 @@ export async function getFeed(
             .in("user_id", followedIds)
             .order("created_at", { ascending: false })
             .limit(pageSize);
-          if (options.itemType) q = q.eq("item_type", options.itemType);
+          if (itemTypes) q = q.in("item_type", itemTypes);
           if (cursor) q = q.lte("created_at", timestampUpperBound(cursor.date));
           return q;
         })()
@@ -171,7 +218,7 @@ export async function getFeed(
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
             .limit(pageSize);
-          if (options.itemType) q = q.eq("passes.item_type", options.itemType);
+          if (itemTypes) q = q.in("passes.item_type", itemTypes);
           if (cursor) q = q.lte("session_date", dateUpperBound(cursor.date));
           return q;
         })()
@@ -193,7 +240,7 @@ export async function getFeed(
             .not("finished_on", "is", null)
             .order("finished_on", { ascending: false })
             .limit(pageSize);
-          if (options.itemType) q = q.eq("item_type", options.itemType);
+          if (itemTypes) q = q.in("item_type", itemTypes);
           if (cursor) q = q.lte("finished_on", dateUpperBound(cursor.date));
           return q;
         })()
@@ -208,7 +255,7 @@ export async function getFeed(
             .in("user_id", followedIds)
             .order("watched_on", { ascending: false })
             .limit(pageSize);
-          if (options.reviewsOnly) q = q.not("review", "is", null);
+          if (reviewsOnly) q = q.not("review", "is", null);
           if (cursor) q = q.lte("watched_on", dateUpperBound(cursor.date));
           return q;
         })()
@@ -240,7 +287,7 @@ export async function getFeed(
   // "Solo reseñas" ya no puede filtrarse en la query (review no es una
   // columna filtrable desde diary_entries): se aplica aquí, sobre el texto
   // ya resuelto con privacidad.
-  const diaryRows = options.reviewsOnly
+  const diaryRows = reviewsOnly
     ? diaryRowsRaw.filter((r) => (reviewById.get(r.id) ?? "").trim() !== "")
     : diaryRowsRaw;
 
@@ -255,7 +302,8 @@ export async function getFeed(
     addedRows.length < pageSize &&
     progressedRows.length < pageSize &&
     diaryRowsRaw.length < pageSize &&
-    episodeRows.length < pageSize;
+    episodeRows.length < pageSize &&
+    clubResult.rowCount < pageSize;
 
   // progress_sessions no tiene item_type propio (cuelga del pase vía
   // pass_id): se resuelve del pase embebido por la query de arriba
@@ -498,30 +546,53 @@ export async function getFeed(
     });
   }
 
+  // Las dos familias se mezclan aquí, ya como entradas: a partir de este punto
+  // el orden, el cursor y el corte son los mismos para ambas.
+  const entries: FeedEntry[] = [
+    ...events.map(
+      (event): FeedEntry => ({
+        source: "person",
+        id: event.id,
+        eventDate: event.eventDate,
+        event,
+      }),
+    ),
+    ...clubResult.events.map(
+      (event): FeedEntry => ({
+        source: "club",
+        id: event.id,
+        eventDate: event.eventDate,
+        event,
+      }),
+    ),
+  ];
+
   // Orden total (fecha desc, id desc) — el desempate por id hace la paginación
   // determinista entre eventos con la misma fecha, en pareja con isAfterCursor.
-  events.sort((a, b) => {
+  entries.sort((a, b) => {
     if (a.eventDate !== b.eventDate) return a.eventDate < b.eventDate ? 1 : -1;
     return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
   });
   // Las queries usan `lte` (inclusivo), así que aquí se descarta lo ya servido
   // en páginas anteriores — incluido el propio evento del cursor.
-  const fresh = cursor ? events.filter((e) => isAfterCursor(e, cursor)) : events;
+  const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
   const page = fresh.slice(0, pageSize);
 
   // Interacciones de Bloque B, batch por tipo, solo para los eventos de esta
-  // página que tienen target real.
-  const diaryTargetIds = page
+  // página que tienen target real. Las actividades de club no son un target de
+  // interacción, así que aquí solo entran los de persona.
+  const personEvents = page.filter((e) => e.source === "person").map((e) => e.event);
+  const diaryTargetIds = personEvents
     .filter((e) => e.interactionTarget?.targetType === "diary_entry")
     .map((e) => e.interactionTarget!.targetId);
-  const episodeTargetIds = page
+  const episodeTargetIds = personEvents
     .filter((e) => e.interactionTarget?.targetType === "episode_watch")
     .map((e) => e.interactionTarget!.targetId);
   const [diarySummaries, episodeSummaries] = await Promise.all([
     getInteractionSummary(supabase, "diary_entry", diaryTargetIds),
     getInteractionSummary(supabase, "episode_watch", episodeTargetIds),
   ]);
-  for (const e of page) {
+  for (const e of personEvents) {
     if (!e.interactionTarget) continue;
     const summaries =
       e.interactionTarget.targetType === "diary_entry" ? diarySummaries : episodeSummaries;
