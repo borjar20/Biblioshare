@@ -15,26 +15,28 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 - **Decisiones RESUELTAS (2026-07-15):** todas las preguntas (P-N, P-T y las P de cada plan) están contestadas y anotadas en la §3 de cada doc. Si al ejecutar surge una divergencia nueva, se pregunta — no se asume (regla de la iniciativa).
 - Método de trabajo en cada sesión: abrir la maqueta `.html` en el navegador (canvas pannable, es pixel-perfect) y comparar lado a lado con la app en dev, light y dark, antes y después.
 - Verificación: e2e con Playwright (`docs/TESTING.md`); recordar `fnm use` (Node 22) antes de `npx playwright test`.
+- **Regla de los dos árboles (salió del plan 06, confirmada en el 01):** cuando una pantalla pinta lo mismo en dos árboles por breakpoint (`lg:hidden` / `hidden lg:block`), el que no toca **se queda en el DOM, oculto**. La suite corre a **1280**, así que **todo locator lleva `:visible`** (`page.locator("h1:visible")`, `locator("visible=true")`). Ya ha roto tests dos veces: 5 asserts en la ficha (#50) y 2 en el feed (#69). El patrón solo es seguro para **duplicados sin estado**.
+- **Si cae media suite de golpe, mira la carga de la máquina antes que tu código** — con varias sesiones en paralelo el home autenticado pasa de 4 s a 20 s y caen 15+ tests con asserts inconexos. Y no montes un A/B con el server exhausto en una rama y recién arrancado en la otra: eso mide el cansancio, no tu cambio.
 
 ## Planes
 
 | # | Plan | Ámbito | Dependencias |
 |---|---|---|---|
 | 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | ✅ **HECHO** (PR #44, mergeado) — lee su **regla del 404** antes de añadir cualquier `loading.tsx` |
-| 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio | P3 layout escritorio; clubes en feed (P1) |
+| 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio | **T1–T4 HECHAS** (PR #69). Queda solo el bloque "¿Qué has disfrutado hoy?" (frame G). Lee su **§6 Hallazgos**: `getFeed` devuelve `FeedEntry[]` y el filtro es `?filtro=` |
 | 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | Colección v2 = posible epic aparte (P1) |
 | 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | Escalera de hidratación ya decidida (P1/P2) |
 | 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard | 2–3 sesiones; PR #13 tierlist |
 | 05 | [Perfil](./plan-05-perfil.md) | Panel/Colección/Actividad, escritorio | PR #30 (objetivos plegados) |
-| 06 | [Ficha de título](./plan-06-ficha.md) | Hero, Info, Comunidad, Registro, Episodios, Moderador, ediciones | PR #32/#42 (pases); P1 estrellas vs dots |
+| 06 | [Ficha de título](./plan-06-ficha.md) | Hero, Info, Comunidad, Registro, Episodios, Moderador, ediciones | ✅ **CERRADO** (T1–T8 + verificación, PR #68). Ojo al **choque de shells** de su §6e: el cuerpo de la ficha topa en 771px |
 | 07 | [Transversal](./plan-07-transversal.md) | Nav, notificaciones, estados, marca, onboarding, **decisiones P-T** | Base (P-T1/P-T2/P-T6) ✅ **HECHA** (PR #46) — ver su **§6 Hallazgos**; el resto sigue abierto |
 
 ## Orden sugerido
 
 0. ~~**00 Navegación**~~ ✅ **HECHO y mergeado** (PR #44; fase C descartada por ahora). Las páginas ya nacen con su shell + `<Suspense>` por sección: **al restylear, respeta esa estructura** y no metas un `loading.tsx` en rutas con `notFound()` (regla del 404 en el plan 00). De paso salió el arreglo del #45 (hoja de cierre y StrictMode).
-1. ~~**07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2)~~ ✅ **HECHA** (PR #46). Del plan 07 sigue pendiente todo lo demás (topbar contextual P-T3, notificaciones, estados, iconos, onboarding, marca). Antes de restylear una pestaña, **lee el [§6 del plan 07](./plan-07-transversal.md)**: Perfil es el avatar en escritorio, el token `--foreground-soft` ya existe pero **falta aplicarlo** (planes 01/04/06), y los subtabs de la ficha siguen pendientes a propósito (plan 06).
-2. **06 Ficha** (pantalla núcleo) — **EN CURSO**: hero y pestañas hechos (PR #49; lee su [§6 Hallazgos](./plan-06-ficha.md#6-hallazgos-de-ejecución-t1--t2-pr-49--2026-07-16) antes de seguir — la píldora del hero usa el verbo por tipo, el `⋯` queda pendiente y hay token nuevo `--topbar-h`). Quedan Info, Registro, Comunidad, Episodios, Película, Moderador y elegir edición. Alternativa autocontenida: **02 Colección v1**.
-3. 01 Inicio (incluye clubes en feed + "¿qué has disfrutado hoy?") · 03 Buscar (corta).
+1. ~~**07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2)~~ ✅ **HECHA** (PR #46). Del plan 07 sigue pendiente todo lo demás (topbar contextual P-T3, notificaciones, estados, iconos, onboarding, marca). Antes de restylear una pestaña, **lee el [§6 del plan 07](./plan-07-transversal.md)**: Perfil es el avatar en escritorio y los subtabs de la ficha siguen pendientes a propósito (plan 06). El token `--foreground-soft` **ya está aplicado en 01 y 06**; queda por aplicar en **04 Clubes**.
+2. ~~**06 Ficha**~~ ✅ **CERRADO** (2026-07-17): T1–T8 mergeadas y verificación de cierre pasada (PR #68). Antes de tocar cualquier escritorio, lee su **§6e**: mientras la ficha conserve el raíl lateral, el cuerpo de sus pestañas **topa en 771px a cualquier viewport**, y las maquetas nuevas están dibujadas para ~1160.
+3. **01 Inicio** — **T1–T4 HECHAS** (PR #69: clubes en el feed, filtros `?filtro=`, rail de escritorio, frame A fiel). **Queda la T5**: "¿Qué has disfrutado hoy?" (frame G), del tamaño de las otras cuatro juntas. · 03 Buscar (corta).
 4. 05 Perfil (incluye el cambio de IA: perfil propio sin Colección).
 5. 04 Clubes (la más larga: 3 sesiones con progreso real e invitaciones).
 6. **02 Colección v2** (2 sesiones: migración+grid, Todo+hoja añadir).
