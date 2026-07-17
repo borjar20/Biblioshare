@@ -2,7 +2,9 @@
 
 > Parte de la iniciativa **fidelidad Paper** (una sesión por pestaña). Índice y convenciones en [`README.md`](./README.md).
 
-> **PLAN 01 CERRADO (2026-07-17).** T1–T4 en la PR #69 (squash `c605366`) y T5 en la **PR #70**. Todas las decisiones (P1–P4 + las tres del frame G) están registradas aquí.
+> **PLAN 01 CERRADO Y MERGEADO (2026-07-17).** T1–T4 en la PR #69 (squash `c605366`), T5 en la **#70** (`6262296`) y T6 en la **#71** (`dbc8275`). Todas las decisiones (P1–P4 + las cuatro del frame G) están registradas aquí.
+>
+> **Del frame G no queda nada por construir:** "Registrar algo nuevo" fue **descartado** por el usuario, no aplazado. Nada de este plan está a medias.
 >
 > **Antes de tocar el feed, lee la [§6 Hallazgos](#6-hallazgos-de-ejecución-t1t4--pr-69--2026-07-17):** `getFeed` ya no devuelve `FeedEvent[]` sino `FeedEntry[]` (unión persona|club), y la URL del filtro es `?filtro=`, de selección única.
 >
@@ -28,7 +30,7 @@
 | Datos | `src/lib/social/feed.ts` + `club-feed.ts` | Eventos de personas (4 fuentes) **+ actividad de clubes** (T4). Devuelve `FeedEntry[]`, no `FeedEvent[]` — ver §6. |
 | Rail escritorio | `src/components/stats/stats-rail.tsx` | Nuevo (T3): resumen de stats a `lg`. NO es el Panel (sin calendario, retos ni formulario). |
 
-~~Lo grueso del frame A ya está hecho. Lo que queda es (a) detalles finos de la tarjeta, (b) el layout de escritorio, y (c) decisiones funcionales.~~ **Todo eso está HECHO (T1–T4).** Queda solo el bloque del frame G (T5).
+~~Lo grueso del frame A ya está hecho. Lo que queda es (a) detalles finos de la tarjeta, (b) el layout de escritorio, y (c) decisiones funcionales.~~ **Todo eso está HECHO (T1–T4)**, y el bloque del frame G también: T5 (destacado + carrusel) y T6 ("Para más tarde"). **El plan no tiene nada pendiente.**
 
 ## 2. Diferencias visuales con la maqueta (hacer sin preguntar)
 
@@ -104,7 +106,9 @@ De los dos bloques que la T5 dejó fuera, entra uno.
 
 ## 5. Verificación de cierre
 
-De T1–T4 (2026-07-17). La casilla que queda es de la T5.
+Todo de 2026-07-17. **Todas las casillas cerradas: T1–T6.**
+
+La suite final del plan, con la máquina sana: **22 pasados · 1 saltado · 0 fallos · 5,3 min**. Una tanda intermedia dio 15 fallos en 33,4 min y **no era del código**: un `next dev` huérfano que Playwright dejó vivo al cortarse una pasada, inflado a 1,8 GB en una máquina de 7,8 GB (0,8 GB libres → todo a swap). La métrica útil ahí es la **RAM libre**, no el número de procesos node: de los 19 vivos, 18 ocupaban ~0 MB.
 
 - [x] Frame A y `/` en móvil (viewport 400px) lado a lado: cabecera, filtros y tarjetas. Medido: h1 Fraunces 600 24px; los 5 chips en UNA fila (353px de 360 útiles); primera tarjeta a 175px.
 - [x] Frame B y `/` a 1280: rail 312px clavados, se ancla a 75px durante el scroll (`--topbar-h` + 16), sin scroll horizontal, y oculto a 400px.

@@ -23,7 +23,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 | # | Plan | Ámbito | Dependencias |
 |---|---|---|---|
 | 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | ✅ **HECHO** (PR #44, mergeado) — lee su **regla del 404** antes de añadir cualquier `loading.tsx` |
-| 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio | **T1–T4 HECHAS** (PR #69). Queda solo el bloque "¿Qué has disfrutado hoy?" (frame G). Lee su **§6 Hallazgos**: `getFeed` devuelve `FeedEntry[]` y el filtro es `?filtro=` |
+| 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio, bloque de hoy | ✅ **CERRADO** (T1–T6, PRs #69/#70/#71). Lee su **§6 Hallazgos**: `getFeed` devuelve `FeedEntry[]` y el filtro es `?filtro=` |
 | 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | Colección v2 = posible epic aparte (P1) |
 | 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | Escalera de hidratación ya decidida (P1/P2) |
 | 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard | 2–3 sesiones; PR #13 tierlist |
@@ -36,7 +36,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 0. ~~**00 Navegación**~~ ✅ **HECHO y mergeado** (PR #44; fase C descartada por ahora). Las páginas ya nacen con su shell + `<Suspense>` por sección: **al restylear, respeta esa estructura** y no metas un `loading.tsx` en rutas con `notFound()` (regla del 404 en el plan 00). De paso salió el arreglo del #45 (hoja de cierre y StrictMode).
 1. ~~**07 base transversal**: topbar horizontal de escritorio (P-T1), token `--foreground-soft` (P-T6), subtabs serif (P-T2)~~ ✅ **HECHA** (PR #46). Del plan 07 sigue pendiente todo lo demás (topbar contextual P-T3, notificaciones, estados, iconos, onboarding, marca). Antes de restylear una pestaña, **lee el [§6 del plan 07](./plan-07-transversal.md)**: Perfil es el avatar en escritorio y los subtabs de la ficha siguen pendientes a propósito (plan 06). El token `--foreground-soft` **ya está aplicado en 01 y 06**; queda por aplicar en **04 Clubes**.
 2. ~~**06 Ficha**~~ ✅ **CERRADO** (2026-07-17): T1–T8 mergeadas y verificación de cierre pasada (PR #68). Antes de tocar cualquier escritorio, lee su **§6e**: mientras la ficha conserve el raíl lateral, el cuerpo de sus pestañas **topa en 771px a cualquier viewport**, y las maquetas nuevas están dibujadas para ~1160.
-3. **01 Inicio** — **T1–T4 HECHAS** (PR #69: clubes en el feed, filtros `?filtro=`, rail de escritorio, frame A fiel). **Queda la T5**: "¿Qué has disfrutado hoy?" (frame G), del tamaño de las otras cuatro juntas. · 03 Buscar (corta).
+3. ~~**01 Inicio**~~ ✅ **CERRADO** (2026-07-17): T1–T4 (#69, clubes en el feed, filtros `?filtro=`, rail de escritorio, frame A fiel), T5 (#70, el bloque "¿Qué has disfrutado hoy?") y T6 (#71, "Para más tarde"). Del frame G **no queda nada por construir**: "Registrar algo nuevo" fue descartado por el usuario, no aplazado. Si vas a tocar el Inicio, lee su **§7** (por qué el rail perdió "Ahora mismo" y conservó "Racha") y su **§9**. · Siguiente: **03 Buscar** (corta).
 4. 05 Perfil (incluye el cambio de IA: perfil propio sin Colección).
 5. 04 Clubes (la más larga: 3 sesiones con progreso real e invitaciones).
 6. **02 Colección v2** (2 sesiones: migración+grid, Todo+hoja añadir).
