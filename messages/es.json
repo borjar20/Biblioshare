@@ -241,9 +241,10 @@
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
     "tabs": {
-      "panel": "Panel",
-      "coleccion": "Colección",
-      "actividad": "Actividad"
+      "actividad": "Actividad",
+      "estadisticas": "Estadísticas",
+      "rincon": "Rincón",
+      "coleccion": "Colección"
     },
     "avatar": "Avatar",
     "avatarChoose": "Elegir imagen",

@@ -2,11 +2,15 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { LockIcon } from "@/components/ui/icons";
 
-export type SectionTab = "panel" | "coleccion" | "actividad";
+export type SectionTab = "actividad" | "estadisticas" | "rincon" | "coleccion";
 
-// Panel es privado: solo lo ve el dueño. Un visitante ve Colección y Actividad.
-const OWNER_TABS: SectionTab[] = ["panel", "coleccion", "actividad"];
-const VISITOR_TABS: SectionTab[] = ["coleccion", "actividad"];
+// IA del mockup Perfil v2 (plan 05, P2). El dueño no tiene pestaña Colección:
+// su biblioteca es /coleccion. Estadísticas y Rincón son privadas (◍) y solo
+// existen para el dueño; el visitante ve la cara pública: Actividad + Colección.
+const OWNER_TABS: SectionTab[] = ["actividad", "estadisticas", "rincon"];
+const VISITOR_TABS: SectionTab[] = ["actividad", "coleccion"];
+
+const PRIVATE_TABS: SectionTab[] = ["estadisticas", "rincon"];
 
 export async function SectionTabs({
   active,
@@ -34,7 +38,7 @@ export async function SectionTabs({
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "panel" && <LockIcon className="h-3 w-3" />}
+            {PRIVATE_TABS.includes(tab) && <LockIcon className="h-3 w-3" />}
             {t(tab)}
           </Link>
         );
