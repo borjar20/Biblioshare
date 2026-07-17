@@ -1,10 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
-import { getLibraryItems } from "@/lib/library/get-library-items";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getAnnualCompleted } from "@/lib/stats/get-annual-completed";
-import { NowConsuming } from "@/components/now-consuming";
 import { WeeklyStrip } from "./weekly-strip";
 import { StreakCard } from "./streak-card";
 import { BookGoalCard } from "./book-goal-card";
@@ -16,11 +14,19 @@ import { GoalRows } from "./goal-rows";
 // Es un RESUMEN, no el Panel: sin calendario, sin retos y sin el formulario de
 // objetivos — eso sigue siendo de Perfil › Panel, que es la vista completa. No
 // se ve por debajo de lg, donde el feed se queda solo (frame A).
+//
+// SIN "Ahora mismo" (decisión del usuario, 2026-07-17): el bloque de hoy, justo
+// encima, ya enseña lo que tienes a medias — y mejor, con progreso y acciones y
+// no solo portadas. Era el duplicado literal de juntar dos maquetas de distinta
+// época (el frame B es de la IA vieja; el G, posterior).
+//
+// "Racha" SÍ se queda: la de aquí es la GLOBAL —tus días seguidos, leas lo que
+// leas— y la de las tarjetas de hoy es la de CADA PASE. Desde que dejaron de ser
+// el mismo número, dicen cosas distintas y las dos aportan.
 export async function StatsRail({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [profile, inProgress, weekly, streaks, annual] = await Promise.all([
+  const [profile, weekly, streaks, annual] = await Promise.all([
     getOwnProfile(supabase, userId),
-    getLibraryItems(supabase, userId, { status: "in_progress" }),
     getWeeklyActivity(supabase, userId),
     getStreaks(supabase, userId),
     getAnnualCompleted(supabase, userId, new Date().getFullYear()),
@@ -30,8 +36,6 @@ export async function StatsRail({ userId }: { userId: string }) {
 
   return (
     <div className="grid gap-4">
-      <NowConsuming items={inProgress} linkToSession variant="strip" />
-
       <div className="rounded-card border border-border bg-surface shadow-card p-4">
         <WeeklyStrip
           days={weekly}

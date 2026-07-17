@@ -7,6 +7,7 @@ import { getFeed, parseFeedFilter, type FeedFilter } from "@/lib/social/feed";
 import { getFollowCounts } from "@/lib/social/follows";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { StatsRail } from "@/components/stats/stats-rail";
+import { TodayBlock } from "@/components/stats/today-block";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
@@ -63,15 +64,6 @@ export default async function Home({
   // Duplicados sin estado, así que el patrón de dos árboles es seguro.
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1080px] lg:px-7 lg:pt-[26px]">
-      <div className="flex items-baseline justify-between gap-3 pb-5 lg:hidden">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight">
-          {t("home.feedTitle")}
-        </h1>
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {t("feed.followingCount", { count: counts.following })}
-        </span>
-      </div>
-
       <div className="hidden pb-2.5 lg:block">
         <h1 className="font-serif text-[30px] leading-none font-semibold tracking-tight">
           {t("home.greeting", { name: profile?.displayName || profile?.username || "" })}
@@ -83,8 +75,32 @@ export default async function Home({
         )}
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_312px] lg:items-start lg:gap-7 lg:pt-2">
+      {/* "¿Qué has disfrutado hoy?" (frame G) encabeza el Inicio, sobre el
+          feed: primero lo tuyo a medias, después lo de los demás. En escritorio
+          cruza las DOS columnas (decisión del usuario) — el frame G solo está
+          dibujado para móvil. Detrás de su propio <Suspense> para no retrasar
+          el shell, igual que el feed y el rail. */}
+      <Suspense fallback={null}>
+        <TodayBlock userId={user.id} />
+      </Suspense>
+
+      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_312px] lg:items-start lg:gap-7">
         <div className="min-w-0">
+          {/* En móvil "Novedades" encabeza el FEED, no la página: encima está
+              el bloque de hoy, que es quien abre el Inicio (frame G). Es la
+              misma estructura que ya tenía el escritorio con "Actividad de tu
+              gente" — primero lo tuyo, luego lo de los demás. */}
+          <div className="flex items-baseline justify-between gap-3 pb-4 lg:hidden">
+            <h1 className="font-serif text-2xl font-semibold tracking-tight">
+              {t("home.feedTitle")}
+            </h1>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {t("feed.followingCount", { count: counts.following })}
+            </span>
+          </div>
+
+          {/* En PC el rótulo y los chips comparten línea (frame B); en móvil el
+              rótulo no está y los chips se quedan solos a la izquierda. */}
           <div className="mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
             <span className="hidden font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase lg:block">
               {t("feed.sectionTitle")}

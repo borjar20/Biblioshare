@@ -41,6 +41,11 @@
   --accent-hover: #9a4526;
 
   --gold: #c98a2b;
+  /* Texto sobre un fondo teñido de oro (badge de racha del frame G). --gold
+     puro no se lee encima de su propio tinte al 16%, así que en claro baja a
+     este oro tostado; en oscuro el propio --gold ya contrasta y son el mismo
+     color. Mismo patrón de par por tema que --foreground-soft. */
+  --gold-ink: #8a5a12;
   --green: #5c7052;
 
   --status-planned: #b3a894;
@@ -80,6 +85,7 @@
   --accent-hover: #e5a074;
 
   --gold: #e0a94a;
+  --gold-ink: #e0a94a;
   --green: #8ba57b;
 
   --status-planned: #8a8072;
@@ -118,6 +124,7 @@
     --accent-hover: #e5a074;
 
     --gold: #e0a94a;
+    --gold-ink: #e0a94a;
     --green: #8ba57b;
 
     --status-planned: #8a8072;
@@ -156,6 +163,7 @@
   --color-accent-hover: var(--accent-hover);
 
   --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
   --color-green: var(--green);
 
   --color-status-planned: var(--status-planned);

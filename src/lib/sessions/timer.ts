@@ -35,3 +35,68 @@ export function toMinutes(ms: number): number {
 }
 
 export const timerStorageKey = (passId: string) => `biblioshare:timer:${passId}`;
+
+// ── Persistencia ────────────────────────────────────────────────────────────
+// Vive aquí, y no en cada componente, porque desde el plan 01 hay DOS
+// cronómetros sobre el mismo pase: el de la vista de sesión y el de la tarjeta
+// de hoy. Son el mismo reloj — misma clave — así que arrancarlo en la portada y
+// abrir la vista de sesión no pierde un segundo. Con una copia de estas
+// funciones en cada sitio, tarde o temprano divergirían.
+
+function isTimerState(value: unknown): value is TimerState {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (typeof (value as TimerState).startedAt === "number" ||
+      (value as TimerState).startedAt === null) &&
+    typeof (value as TimerState).accumulatedMs === "number"
+  );
+}
+
+const listeners = new Set<() => void>();
+
+/** Avisa a los cronómetros vivos de ESTA pestaña (el evento `storage` del
+ *  navegador solo llega a las demás). */
+export function subscribeTimer(listener: () => void): () => void {
+  listeners.add(listener);
+  if (typeof window !== "undefined") window.addEventListener("storage", listener);
+  return () => {
+    listeners.delete(listener);
+    if (typeof window !== "undefined") window.removeEventListener("storage", listener);
+  };
+}
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+export function readTimer(passId: string): TimerState {
+  if (typeof window === "undefined") return reset();
+  try {
+    const raw = window.localStorage.getItem(timerStorageKey(passId));
+    if (!raw) return reset();
+    const parsed: unknown = JSON.parse(raw);
+    return isTimerState(parsed) ? parsed : reset();
+  } catch {
+    return reset();
+  }
+}
+
+export function writeTimer(passId: string, state: TimerState): void {
+  try {
+    window.localStorage.setItem(timerStorageKey(passId), JSON.stringify(state));
+  } catch {
+    // Cuota llena o almacenamiento inaccesible (modo privado): el cronómetro
+    // sigue funcionando en memoria durante esta sesión de página.
+  }
+  emit();
+}
+
+export function clearTimer(passId: string): void {
+  try {
+    window.localStorage.removeItem(timerStorageKey(passId));
+  } catch {
+    // Ídem.
+  }
+  emit();
+}

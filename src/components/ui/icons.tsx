@@ -394,6 +394,17 @@ export function XIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Reloj: el "⏱ Sesión" del bloque de hoy (frame G) — registrar una sesión con
+// su tiempo, no solo el progreso.
+export function ClockIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </Icon>
+  );
+}
+
 // Lápiz: entrada al editor de ficha oficial (botón "Editar ficha") y al
 // desplegable de cada edición dentro del editor.
 export function PencilIcon(props: SVGProps<SVGSVGElement>) {
