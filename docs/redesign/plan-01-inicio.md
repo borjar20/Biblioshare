@@ -6,7 +6,7 @@
 >
 > **Antes de tocar el feed, lee la [§6 Hallazgos](#6-hallazgos-de-ejecución-t1t4--pr-69--2026-07-17):** `getFeed` ya no devuelve `FeedEvent[]` sino `FeedEntry[]` (unión persona|club), y la URL del filtro es `?filtro=`, de selección única.
 >
-> **Queda una decisión abierta del usuario** (§7): en escritorio el rail duplica al bloque de hoy — "Ahora mismo", la racha y la semana salen dos veces.
+> Todas las decisiones cerradas, incluida la del rail contra el bloque de hoy (§7).
 
 **Maquetas de referencia**
 - `Paper - IA nueva (Inicio + Perfil).html` → frame **A · Inicio · Feed** (móvil, la verdad vigente)
@@ -82,6 +82,11 @@
   - **Destacado: la sesión más reciente.** Descartadas "la racha viva" (la racha es global, no por ítem) y "el más cerca de acabar" (deja clavado un libro al 95% sin tocar).
   - **Escritorio: ancho completo sobre las dos columnas.**
 - **Datos nuevos:** `lib/stats/get-today-focus.ts` — `started_on` del pase (el "Día N · desde 8/7") y las `progress_sessions` con texto (el "N notas"). El resto ya existía.
+- **Afinado después, a petición del usuario** (mismo PR):
+  - **La acción cambia por tipo.** Libro → cronómetro EN la tarjeta (el mismo de la vista de sesión: misma librería y misma clave de localStorage, así que no pierde un segundo al saltar, y sobrevive a recargar). Al pulsar Registrar se para, se limpia y los minutos van a `/sesion/[passId]?minutos=N`. Serie → no hay cronómetro (se mide en episodios): marca el siguiente. Película → solo Registrar.
+  - **Las mini SUBEN al destacado** en vez de llevar a la ficha (372 ms, estado de cliente, sin tocar la URL). Por eso el próximo episodio se resuelve para CADA serie, no solo la destacada.
+  - **La racha de las tarjetas es la del PASE**, no la global (§6 punto 11). Eso desbloqueó el "◆ 4 d" que el frame dibuja en las mini.
+  - **Fuera el tipo de la cabecera** ("Libro · "): ya lo dicen el verbo y el color.
 
 ### ⬜ Tarea 6 — El resto del frame G — PENDIENTE, tarea aparte
 Los dos bloques que la T5 dejó fuera por decisión de alcance:
@@ -132,22 +137,31 @@ export type FeedEntry =
 - **"Novedades" bajó a encabezar el FEED en móvil**: encima está el bloque, que es quien abre el Inicio. Móvil y escritorio comparten estructura (lo tuyo → lo de los demás). El `h1` visible por breakpoint no cambia, así que los locators `:visible` de la suite siguen valiendo.
 - **Token nuevo `--gold-ink`** (#8a5a12 claro / #e0a94a oscuro): el texto del badge de racha. `--gold` puro no se lee sobre su propio tinte al 16%, y el frame G **solo trae el valor claro** — ninguna maqueta oscura cubre este badge. Par por tema, mismo patrón que `--foreground-soft`.
 
-**10. Aviso de método — A/B confundido.** Llegué a "medir" que el rail costaba 18 s: comparé *con rail* en un servidor exhausto por una pasada de la suite contra *sin rail* recién arrancado. Con el server fresco en **ambas** ramas, el rail cuesta ~2,4 s de consultas en paralelo y el home carga en 4,2 s. Los 20 s eran la máquina (22 procesos node de otras sesiones). Ver [[e2e-contra-build-de-produccion]]: **si cae media suite, mira la carga antes que tu código**.
+**10. Dos bugs del bloque de hoy que conviene no repetir:**
 
-## 7. Decisión abierta — el rail duplica al bloque de hoy (escritorio)
+- **`rereadCount` NO es el ordinal del pase.** Cuenta los pases CERRADOS — es el "Leído N veces" de la colección y del CSV — así que no incluye el que tienes abierto: el ordinal de ESTE pase es `rereadCount + 1`. Sin el +1 una segunda lectura se anunciaba como la primera, y **la primera salía bien**, que es por lo que el fallo pasa desapercibido con datos normales.
+- **"Sesión" no es una tabla, es un concepto.** Ordenar por la última `progress_sessions` mandaba TODAS las series al final (no tienen sesiones: se miden en episodios) y ninguna podía ser nunca la destacada. Lo último que tocas de una serie es su último episodio visto.
+- **Al intercambiar tarjetas, keys.** React reutilizaba el mismo `<img>` y le cambiaba el src, pero el navegador seguía pintando la portada anterior hasta descargar la nueva: se veía la portada de un libro bajo el título de otro. El `src` era correcto desde el primer instante, así que **ningún assert de DOM lo habría cazado** — salió mirando una captura.
+- **Una FUNCIÓN no cruza a un componente de cliente.** Pasar `focusLabel={(t) => …}` tiró la página entera a su error boundary. Es la misma regla que impide pasar `t` hacia dentro: cruzan datos, no funciones.
 
-Se avisó al decidir el ancho completo del frame G y el usuario lo aceptó, pero conviene verlo montado (PR #70): a `lg`, el bloque y el rail enseñan lo mismo a 200px de distancia.
+**11. Aviso de método — A/B confundido.** Llegué a "medir" que el rail costaba 18 s: comparé *con rail* en un servidor exhausto por una pasada de la suite contra *sin rail* recién arrancado. Con el server fresco en **ambas** ramas, el rail cuesta ~2,4 s de consultas en paralelo y el home carga en 4,2 s. Los 20 s eran la máquina (22 procesos node de otras sesiones). Ver [[e2e-contra-build-de-produccion]]: **si cae media suite, mira la carga antes que tu código**.
 
-| Dato | En el bloque (frame G) | En el rail (frame B) |
-|---|---|---|
-| Lo que estás consumiendo | El destacado + el carrusel | "Ahora mismo" (`NowConsuming`, tira de portadas) |
-| Racha | Badge "◆ Racha 2 d" | Tarjeta "Racha · 2 días · mejor 5" |
-| La semana | 7 puntitos | "Lectura esta semana", barras |
-| Meta | Meta de HOY (minutos) | Meta de LIBROS (anual) — **no** se duplica |
+## 7. El rail contra el bloque de hoy — RESUELTO (2026-07-17)
 
-**Recomendación (pendiente de que el usuario decida):** quitar del rail **"Ahora mismo"** y **"Racha"**, y dejarle lo que el bloque no da (semana, meta de libros, objetivos anuales). El bloque es más rico en ambos casos: enseña progreso por ítem y acciones, no solo portadas.
+Al juntar el frame B (rail de stats, IA vieja) con el G (bloque de hoy, posterior) los dos enseñaban lo mismo a 200px de distancia. Son maquetas que nunca se vieron entre sí — el mismo patrón que el **choque de shells** del plan 06 §6e.
 
-No se tocó el rail por cuenta propia: el frame B lo dibuja así y la duplicación nace de juntar dos maquetas que nunca se vieron entre sí (B es de la IA vieja, G es posterior) — es el mismo patrón que el **choque de shells** del plan 06 §6e.
+**Decisión del usuario:**
+
+| Dato | En el bloque (frame G) | En el rail (frame B) | Resuelto |
+|---|---|---|---|
+| Lo que estás consumiendo | El destacado + el carrusel | ~~"Ahora mismo"~~ | **FUERA del rail.** Duplicado literal, y el bloque es más rico: progreso y acciones, no solo portadas. Ahorra su consulta (`getLibraryItems`). |
+| Racha | Badge "◆ Racha 2 d" — **del PASE** | "Racha · 2 días · mejor 5" — **GLOBAL** | **SE QUEDA.** Ya no es el mismo número: aquí son tus días seguidos leas lo que leas; allí, con ESE título. Dicen cosas distintas. |
+| La semana | 7 puntitos — días de ESE pase | "Lectura esta semana" — tus minutos | Se queda: tampoco es el mismo dato. |
+| Meta | Meta de HOY (minutos) | Meta de LIBROS (anual) | Nunca se duplicó. |
+
+`NowConsuming` sigue vivo en **Perfil › Panel**, que es su sitio: ahí no hay bloque de hoy encima.
+
+**Lección:** la duplicación se resolvió sola en dos de los tres casos al hacer la racha por pase. Antes de borrar una pieza "duplicada", mirar si lo que duplica es el DATO o solo la palabra.
 
 ## 8. Fuera de alcance / anotado
 
