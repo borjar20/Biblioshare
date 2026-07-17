@@ -76,7 +76,7 @@ export function FeedList({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {events.map((event) => (
         <FeedCard key={event.id} event={event} viewerLoggedIn={viewerLoggedIn} />
       ))}

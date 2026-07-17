@@ -61,10 +61,12 @@ export default async function Home({
   // seguidos es una cuenta ligera, se espera aquí.
   const counts = await getFollowCounts(supabase, user.id);
 
+  // Ritmo del frame A: cabecera 18/20/8, cuerpo 12/20/22 — más apretado arriba
+  // que el py-8 anterior, para que el feed empiece antes.
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px]">
+      <div className="flex items-baseline justify-between gap-3 pb-5">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight">
           {t("home.feedTitle")}
         </h1>
         <span className="font-mono text-[11px] text-muted-foreground">
@@ -72,7 +74,9 @@ export default async function Home({
         </span>
       </div>
 
-      <FeedFilters itemType={itemType} reviewsOnly={reviewsOnly} />
+      <div className="mb-4">
+        <FeedFilters itemType={itemType} reviewsOnly={reviewsOnly} />
+      </div>
 
       <Suspense
         key={`${itemType ?? "all"}:${reviewsOnly ? 1 : 0}`}

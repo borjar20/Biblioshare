@@ -18,6 +18,16 @@ const STATUS_BG: Record<MediaStatus, string> = {
   dropped: "bg-status-dropped",
 };
 
+// El estado de un alta va teñido de su propio color (frame A), no en muted: el
+// punto solo no basta para leerlo de un vistazo. Clases enteras, no
+// interpoladas — el JIT de Tailwind no ve `text-status-${x}`.
+const STATUS_TEXT: Record<MediaStatus, string> = {
+  planned: "text-status-planned",
+  in_progress: "text-status-in-progress",
+  completed: "text-status-completed",
+  dropped: "text-status-dropped",
+};
+
 // `hideActor`: variante para "Reseñas recientes" del perfil, donde el autor es
 // el propio perfil y repetir avatar+nombre sería ruido — la cabecera queda en
 // "reseñó · hace 2 días".
@@ -114,7 +124,9 @@ export function FeedCard({
           {event.rating !== null && <RatingDots value={event.rating} />}
 
           {event.verb === "added" && event.entryStatus && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span
+              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${STATUS_TEXT[event.entryStatus]}`}
+            >
               <span
                 aria-hidden
                 className={`h-1.5 w-1.5 rounded-full ${STATUS_BG[event.entryStatus]}`}
@@ -124,7 +136,7 @@ export function FeedCard({
           )}
 
           {event.reviewExcerpt && (
-            <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+            <p className="text-[12.5px] leading-[1.55] text-foreground-soft">
               {event.reviewExcerpt}
             </p>
           )}
