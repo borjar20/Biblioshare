@@ -2,17 +2,17 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { createClient } from "@/lib/supabase/client";
 import { toSquareWebp } from "@/lib/image/to-square-webp";
+import { uploadAvatar } from "@/lib/profile/actions";
 
 const MAX_DIMENSION = 512;
 
-// Sube el avatar al bucket de Storage y sincroniza un input oculto (avatarUrl)
-// con la URL pública, para que el submit del formulario la persista vía la
-// server action existente. Path estable {uid}/avatar.webp con upsert; un
-// parámetro de cache-busting fuerza el refresco de la imagen mostrada.
+// Sube el avatar vía la server action uploadAvatar (que escribe en Storage con
+// service-role) y sincroniza un input oculto (avatarUrl) con la URL pública,
+// para que el submit del formulario la persista vía updateProfile. La subida
+// directa desde el cliente daba RLS 403 porque Storage no valida el JWT ES256.
 export function AvatarUpload({
-  userId,
+  userId: _userId,
   initialUrl,
 }: {
   userId: string;
@@ -30,19 +30,12 @@ export function AvatarUpload({
     setError(false);
     try {
       const webp = await toSquareWebp(file, MAX_DIMENSION);
-      const supabase = createClient();
-      const path = `${userId}/avatar.webp`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, webp, { upsert: true, contentType: "image/webp" });
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(path);
-      const busted = `${publicUrl}?v=${Date.now()}`;
-      setUrl(busted);
-      setPreview(busted);
+      const formData = new FormData();
+      formData.append("file", webp, "avatar.webp");
+      const result = await uploadAvatar(formData);
+      if (result.error || !result.url) throw new Error("upload failed");
+      setUrl(result.url);
+      setPreview(result.url);
     } catch {
       setError(true);
     } finally {
@@ -76,7 +69,8 @@ export function AvatarUpload({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          e.target.value = "";
+          if (file) void handleFile(file);
         }}
       />
       {error && <p className="text-xs text-status-dropped">{t("avatarError")}</p>}

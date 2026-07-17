@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateProfile, revalidateFeed } from "@/lib/reactivity/revalidate";
+import { uploadPublicImage } from "@/lib/storage/upload-public-image";
 
 export type UpdateProfileState = {
   error?: "generic";
@@ -84,4 +85,34 @@ export async function updateGoals(
 
   revalidateFeed();
   return {};
+}
+
+// Límites del avatar. El cliente ya comprime a WebP 512px (avatar-upload.tsx),
+// así que aquí solo se acepta WebP y un tamaño holgado sobre lo esperado. El
+// accept del <input> no es defensa: el tipo/tamaño se comprueban aquí.
+const MAX_AVATAR_BYTES = 1 * 1024 * 1024; // 1 MB
+const ALLOWED_AVATAR_TYPES = new Set(["image/webp"]);
+
+export type UploadAvatarState = { url?: string; error?: "generic" };
+
+// Sube el avatar comprimido a Storage con service-role (Storage no valida el
+// token ES256 del usuario -> una subida de usuario cae por RLS). La ruta se
+// deriva del uid de la SESIÓN, nunca del cliente, replicando la garantía de la
+// política "carpeta propia". No persiste el perfil: eso sigue haciéndolo el
+// submit del formulario (updateProfile) con la URL devuelta.
+export async function uploadAvatar(formData: FormData): Promise<UploadAvatarState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "generic" };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "generic" };
+  if (!ALLOWED_AVATAR_TYPES.has(file.type)) return { error: "generic" };
+  if (file.size > MAX_AVATAR_BYTES) return { error: "generic" };
+
+  const result = await uploadPublicImage("avatars", `${user.id}/avatar.webp`, file, "image/webp");
+  if ("error" in result) return { error: "generic" };
+  return { url: result.url };
 }
