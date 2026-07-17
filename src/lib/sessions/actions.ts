@@ -70,6 +70,16 @@ export async function addSession(
 
   const note = String(formData.get("note") ?? "").trim();
 
+  // Hora real de inicio (§7.14, P8): la manda el cronómetro; la hoja a mano no,
+  // y queda null. "Cuándo lees" ignora las filas sin ella — nunca se sustituye
+  // por created_at (eso es cuándo registraste, no cuándo consumiste).
+  const startedAtRaw = String(formData.get("startedAt") ?? "").trim();
+  let startedAt: string | null = null;
+  if (startedAtRaw) {
+    const parsed = new Date(startedAtRaw);
+    if (!Number.isNaN(parsed.getTime())) startedAt = parsed.toISOString();
+  }
+
   // Registrar una sesión implica que has empezado: si el pase seguía
   // "planificado", esta es la primera escritura y la máquina lo mueve a "en
   // curso" — sustituye al openPass() de antes de la migración hub. El resto
@@ -149,6 +159,7 @@ export async function addSession(
     duration_minutes: durationMinutes,
     position: sessionPosition,
     note: note || null,
+    started_at: startedAt,
   });
 
   if (insertError) return { error: "generic" };

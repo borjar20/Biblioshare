@@ -128,6 +128,16 @@ export function SessionTimer({
           padre: no hace falta subir el valor por estado en cada tick, se
           recalcula aquí mismo en cada render. */}
       <input type="hidden" name="durationMinutes" value={minutes} />
+      {/* La hora real de inicio para "Cuándo lees" (plan 05, P8): el primer
+          arranque del cronómetro, no cuándo registras. La hoja a mano no lo
+          manda y queda null. */}
+      {state.firstStartedAt != null && (
+        <input
+          type="hidden"
+          name="startedAt"
+          value={new Date(state.firstStartedAt).toISOString()}
+        />
+      )}
 
       <p className="font-mono text-[34px] leading-none font-medium tracking-wide text-foreground">
         {formatClock(elapsed)}

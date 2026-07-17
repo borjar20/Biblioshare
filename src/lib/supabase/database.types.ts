@@ -1186,6 +1186,7 @@ export type Database = {
           pass_id: string
           position: Json
           session_date: string
+          started_at: string | null
           user_id: string
         }
         Insert: {
@@ -1196,6 +1197,7 @@ export type Database = {
           pass_id: string
           position?: Json
           session_date?: string
+          started_at?: string | null
           user_id: string
         }
         Update: {
@@ -1206,6 +1208,7 @@ export type Database = {
           pass_id?: string
           position?: Json
           session_date?: string
+          started_at?: string | null
           user_id?: string
         }
         Relationships: [
