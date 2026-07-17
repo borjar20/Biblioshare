@@ -4,7 +4,6 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getTodayFocus, getNextEpisode, type TodayPass } from "@/lib/stats/get-today-focus";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
-import { getStreaks } from "@/lib/stats/get-streaks";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
@@ -21,10 +20,12 @@ import { TodayPicker } from "./today-picker";
 // nuevo" y "Para más tarde" quedan anotados en el plan como tarea aparte.
 export async function TodayBlock({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [focus, weekly, streaks, profile] = await Promise.all([
+  // Sin getStreaks: la racha de estas tarjetas es la del PASE y sale de las
+  // filas que getTodayFocus ya trae. `weekly` se queda solo por la meta de hoy,
+  // que sí es tuya y no de la obra.
+  const [focus, weekly, profile] = await Promise.all([
     getTodayFocus(supabase, userId),
     getWeeklyActivity(supabase, userId),
-    getStreaks(supabase, userId),
     getOwnProfile(supabase, userId),
   ]);
 
@@ -102,7 +103,6 @@ export async function TodayBlock({ userId }: { userId: string }) {
             <TodayCard
               pass={pass}
               weekly={weekly}
-              streaks={streaks}
               dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
               nextEpisode={nextEpisodes.get(pass.item.entryId) ?? null}
             />
@@ -150,11 +150,13 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
       <div className="mt-[9px] h-1 overflow-hidden rounded-full bg-surface-3">
         <div className="h-full rounded-full bg-[var(--acc)]" style={{ width: `${percent}%` }} />
       </div>
-      {/* El frame pone aquí un "◆ 4 d" que es una racha POR ÍTEM. La nuestra es
-          global (getStreaks), así que ese rombo sería un dato inventado: se
-          queda solo el progreso hasta que la racha se derive por pase. */}
-      <div className="mt-1.5 flex items-center justify-between font-mono text-[9px] text-muted-foreground">
-        <span>{progress ? progress.label : t("noProgress")}</span>
+      {/* El "◆ 4 d" del frame ya se puede pintar: la racha es DE ESTE PASE, no
+          la global del perfil, así que el rombo dice la verdad. */}
+      <div className="mt-1.5 flex items-center justify-between gap-2 font-mono text-[9px] text-muted-foreground">
+        <span className="truncate">{progress ? progress.label : t("noProgress")}</span>
+        {pass.streakDays > 0 && (
+          <span className="shrink-0 text-gold-ink">{t("streakShort", { count: pass.streakDays })}</span>
+        )}
       </div>
     </div>
   );

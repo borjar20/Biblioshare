@@ -100,6 +100,7 @@
     "goalToday": "Meta de hoy",
     "goalMinutes": "{done} / {goal} min",
     "streak": "{count, plural, =1 {Racha 1 d} other {Racha # d}}",
+    "streakShort": "◆ {count} d",
     "session": "Sesión",
     "log": "Registrar",
     "noProgress": "Sin progreso",

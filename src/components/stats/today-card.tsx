@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { TodayPass } from "@/lib/stats/get-today-focus";
-import type { DayActivity, Streaks } from "@/lib/stats/types";
+import type { DayActivity } from "@/lib/stats/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -17,13 +17,14 @@ import { TodayActions } from "./today-actions";
 export async function TodayCard({
   pass,
   weekly,
-  streaks,
   dailyGoalMinutes,
   nextEpisode,
 }: {
   pass: TodayPass;
+  /** Solo para la meta de HOY, que es tuya y no de la obra: minutos de lectura
+   *  del día, de todos los libros juntos. La racha y los puntos de la semana
+   *  salen del propio pase. */
   weekly: DayActivity[];
-  streaks: Streaks;
   dailyGoalMinutes: number | null;
   /** Solo series: el primer episodio sin ver. null = serie al día o sin datos. */
   nextEpisode: { season: number; episode: number } | null;
@@ -118,16 +119,20 @@ export async function TodayCard({
             </div>
           ) : null}
 
+          {/* Racha y semana DE ESTE PASE: en una tarjeta que habla de un título
+              concreto, "Racha 6 d" solo puede querer decir seis días seguidos
+              con ESE título. La global sigue en el rail y en Perfil › Panel,
+              donde sí habla de ti. */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {streaks.current > 0 && (
+            {pass.streakDays > 0 && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/16 px-2.5 py-[3px] font-mono text-[10px] font-medium text-gold-ink">
                 <span aria-hidden className="text-gold">
                   ◆
                 </span>
-                {t("streak", { count: streaks.current })}
+                {t("streak", { count: pass.streakDays })}
               </span>
             )}
-            <WeekDots days={weekly} />
+            <WeekDots days={pass.week} />
           </div>
         </div>
       </div>
@@ -154,9 +159,10 @@ export async function TodayCard({
   );
 }
 
-// Los 7 días de la semana como cuadraditos: hoy va en hueco con borde, los días
-// con actividad rellenos. Es el mismo dato que la barra del rail, en miniatura.
-function WeekDots({ days }: { days: DayActivity[] }) {
+// Los 7 días como cuadraditos: hoy va en hueco con borde, los días que tocaste
+// ESTE título, rellenos. No es la barra del rail en miniatura: aquella son tus
+// minutos de lectura de todo junto; esta, tu constancia con esta obra.
+function WeekDots({ days }: { days: { date: string; active: boolean }[] }) {
   const todayIndex = days.length - 1;
   return (
     <span aria-hidden className="ml-auto flex gap-[3px]">

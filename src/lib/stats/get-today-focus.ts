@@ -3,6 +3,9 @@ import type { LibraryItem } from "@/lib/library/types";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { todayISO } from "./dates";
+import { currentStreak, lastDays } from "./streak";
+
+const EMPTY_DAYS: ReadonlySet<string> = new Set();
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -32,6 +35,15 @@ export type TodayPass = {
   noteCount: number;
   /** "Día 6": días desde que abriste el pase, contando el primero. */
   dayNumber: number | null;
+  /**
+   * Días seguidos CON ESTE PASE, no la racha global del perfil: en una tarjeta
+   * que habla de un título concreto, "Racha 6 d" solo puede querer decir seis
+   * días seguidos con ESE título. La global sigue en Perfil › Panel y en el
+   * rail, donde sí habla de ti y no de una obra.
+   */
+  streakDays: number;
+  /** Los últimos 7 días de ESTE pase, del más antiguo a hoy. */
+  week: { date: string; active: boolean }[];
 };
 
 export type TodayFocus = {
@@ -113,9 +125,16 @@ export async function getTodayFocus(
   const startedByPass = new Map((passes.data ?? []).map((p) => [p.id, p.started_on]));
   const lastByPass = new Map<string, string>();
   const notesByPass = new Map<string, number>();
+  // Los días con actividad DE CADA PASE. Salen de las mismas filas que ya
+  // trajimos para ordenar, así que la racha por pase no cuesta una consulta
+  // más.
+  const daysByPass = new Map<string, Set<string>>();
   const touch = (passId: string, date: string) => {
     const prev = lastByPass.get(passId);
     if (!prev || date > prev) lastByPass.set(passId, date);
+    const days = daysByPass.get(passId);
+    if (days) days.add(date);
+    else daysByPass.set(passId, new Set([date]));
   };
   for (const s of sessions.data ?? []) {
     touch(s.pass_id, s.session_date);
@@ -130,12 +149,15 @@ export async function getTodayFocus(
   const passesToday: TodayPass[] = items.map((item) => {
     const passId = item.activePassId;
     const startedOn = passId ? (startedByPass.get(passId) ?? null) : null;
+    const days = (passId ? daysByPass.get(passId) : null) ?? EMPTY_DAYS;
     return {
       item,
       startedOn,
       lastSessionDate: passId ? (lastByPass.get(passId) ?? null) : null,
       noteCount: passId ? (notesByPass.get(passId) ?? 0) : 0,
       dayNumber: startedOn ? daysBetween(startedOn, today) + 1 : null,
+      streakDays: currentStreak(days, today),
+      week: lastDays(days, today),
     };
   });
 
