@@ -322,9 +322,12 @@ Referencia: capturas de un competidor mostrando 4 pantallas — estadísticas di
 - [ ] Guardar citas/frases de un libro ancladas al ítem, con opción de foto+OCR y exportables como tarjetas visuales para compartir.
   - Versión ampliada de la idea ya apuntada en el backlog general — el OCR y la exportación como imagen son lo nuevo; el guardado simple de texto es barato, OCR es una pieza aparte (servicio externo o librería cliente) a evaluar aparte si se llega a esta idea.
 
-### 7.28 Random picker ("no sé qué ver/leer")
-- [ ] Botón que elige al azar un ítem de tu lista de pendientes, con filtros opcionales (ej. "tengo 2 horas" usando `duration_minutes`/`total_pages`/ritmo personal de 7.22).
-  - Idea barata y autocontenida: no requiere esquema nuevo, solo una query aleatoria sobre `library_entries` con status `planned` filtrada por los metadatos que ya existen (o existirán tras 7.8/7.1).
+### 7.28 Random picker ("no sé qué ver/leer") — *hecho*
+- [x] Botón que elige al azar un ítem de tu lista de pendientes, con filtros opcionales (ej. "tengo 2 horas" usando `duration_minutes`/`total_pages`/ritmo personal de 7.22).
+  - Implementado como ceremonia (mockup «Sorteo · Sacar un lomo»): la tarjeta del Rincón abre una hoja `<dialog>` con estantería de lomos reales (muestra de ~12, color por tipo, alturas deterministas), ruleta animada que desacelera hasta el ganador (decidido antes de animar; `prefers-reduced-motion` la salta) y resultado con portada y CTA contextual.
+  - Filtros: tipo, duración estimada (‹2 h / 2–5 h / +5 h sobre las estimaciones de 7.22 — `computeQueueEstimates`; sin estimación solo entra en "Cualquiera") y "sin empezar" (= sin ningún pase anterior con la obra).
+  - El CTA reutiliza `updateStatus(..., "in_progress")` — el mismo gesto que marcar "Leyendo" en la ficha. El ítem revelado se congela en estado propio: el revalidate posterior al CTA re-muestrea la estantería y un índice vivo señalaría otro título.
+  - Spec y plan en `docs/superpowers/` (2026-07-17); lógica pura testeada en `sorteo-logic.test.ts`, flujo cubierto por `e2e/sorteo.spec.ts`.
 
 ### 7.29 Método de adquisición y "dinero ahorrado"
 - [ ] Marcar cómo obtuviste cada ítem (comprado / biblioteca / prestado / regalo) y, si se compró, su precio — para poder mostrar una estadística de "dinero ahorrado" con préstamos/biblioteca.
@@ -382,7 +385,6 @@ No vinculante — orden propuesto combinando esfuerzo, valor y dependencias, par
 | 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, §8-E | Necesita masa crítica para tener sentido |
 | 7.24 Notas ancladas al progreso | M | §8-E | Tabla nueva; valor real pero no urgente |
 | 7.19 Recomendaciones cruzadas | XL | §8-B (resuelto) + normalización géneros (abierta) | El más caro; empezar solo con tabla curada a mano si se aborda |
-| 7.28 Random picker | S | 7.1/7.8 (metadatos) | Barato y autocontenido, pero aplazado a propósito para el final — decisión explícita, no por dependencias |
 
 ### 7.34 Personas (autores/reparto/equipo) y sagas — *hecho*
 Información más rica de los ítems: fichas de persona con su obra, reparto/equipo en cine y series, y pertenencia a saga con vista propia. Cierra la parte de sagas de 7.4.
