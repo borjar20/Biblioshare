@@ -60,6 +60,8 @@ function parseGoal(raw: string): number | null | "invalid" {
   return value;
 }
 
+// Solo el objetivo DIARIO de lectura (§7.14). La meta anual dejó de ser una
+// columna: tras la fusión (plan 05, P6) es un reto y se edita en el Rincón.
 export async function updateGoals(
   _prevState: UpdateGoalsState,
   formData: FormData
@@ -70,25 +72,12 @@ export async function updateGoals(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Un objetivo anual por tipo de ítem; el diario es solo de lectura (§7.14).
   const dailyGoal = parseGoal(String(formData.get("dailyGoalMinutes") ?? ""));
-  const annualBooks = parseGoal(String(formData.get("annualGoalBooks") ?? ""));
-  const annualMovies = parseGoal(String(formData.get("annualGoalMovies") ?? ""));
-  const annualSeries = parseGoal(String(formData.get("annualGoalSeries") ?? ""));
-
-  const parsed = [dailyGoal, annualBooks, annualMovies, annualSeries];
-  if (parsed.some((goal) => goal === "invalid")) {
-    return { error: "invalidGoal" };
-  }
+  if (dailyGoal === "invalid") return { error: "invalidGoal" };
 
   const { error } = await supabase
     .from("profiles")
-    .update({
-      daily_goal_minutes: dailyGoal as number | null,
-      annual_goal_books: annualBooks as number | null,
-      annual_goal_movies: annualMovies as number | null,
-      annual_goal_series: annualSeries as number | null,
-    })
+    .update({ daily_goal_minutes: dailyGoal as number | null })
     .eq("user_id", user.id);
 
   if (error) return { error: "generic" };

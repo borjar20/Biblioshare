@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
+import { getAnnualGoals } from "@/lib/challenges/annual-goals";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getStreaks } from "@/lib/stats/get-streaks";
@@ -11,7 +12,7 @@ import { WeeklyStrip } from "@/components/stats/weekly-strip";
 import { StreakCard } from "@/components/stats/streak-card";
 import { BookGoalCard } from "@/components/stats/book-goal-card";
 import { GoalRows } from "@/components/stats/goal-rows";
-import { GoalsForm } from "@/components/stats/goals-form";
+import { DailyGoalForm } from "@/components/stats/daily-goal-form";
 import { MonthCalendar } from "@/components/stats/month-calendar";
 import { todayISO } from "@/lib/stats/dates";
 
@@ -33,25 +34,22 @@ export async function StatsTab({
 }) {
   const t = await getTranslations("profile");
   const supabase = await createClient();
+  const year = new Date().getFullYear();
   const ownProfile = await getOwnProfile(supabase, userId);
 
-  const [inProgress, weekly, streaks, calendar, annual] = await Promise.all([
-    getLibraryItems(supabase, userId, { status: "in_progress" }),
-    getWeeklyActivity(supabase, userId),
-    getStreaks(supabase, userId),
-    getMonthCalendar(
-      supabase,
-      userId,
-      MONTH_RE.test(monthParam ?? "") ? (monthParam as string) : currentMonthKey(),
-    ),
-    getAnnualCompleted(supabase, userId, new Date().getFullYear()),
-  ]);
-
-  const annualGoals = ownProfile?.annualGoals ?? {
-    book: null,
-    movie: null,
-    series: null,
-  };
+  const [inProgress, weekly, streaks, calendar, annual, annualGoals] =
+    await Promise.all([
+      getLibraryItems(supabase, userId, { status: "in_progress" }),
+      getWeeklyActivity(supabase, userId),
+      getStreaks(supabase, userId),
+      getMonthCalendar(
+        supabase,
+        userId,
+        MONTH_RE.test(monthParam ?? "") ? (monthParam as string) : currentMonthKey(),
+      ),
+      getAnnualCompleted(supabase, userId, year),
+      getAnnualGoals(supabase, userId, year),
+    ]);
 
   return (
     <div className="grid gap-6">
@@ -81,10 +79,7 @@ export async function StatsTab({
       <div className="grid gap-4 rounded-card border border-border bg-surface shadow-card p-4">
         <GoalRows annual={annual} annualGoals={annualGoals} />
         <div className="border-t border-border" />
-        <GoalsForm
-          dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
-          annualGoals={annualGoals}
-        />
+        <DailyGoalForm dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null} />
       </div>
 
       <div className="rounded-card border border-border bg-surface shadow-card p-4">

@@ -1140,9 +1140,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          annual_goal_books: number | null
-          annual_goal_movies: number | null
-          annual_goal_series: number | null
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -1155,9 +1152,6 @@ export type Database = {
           username: string
         }
         Insert: {
-          annual_goal_books?: number | null
-          annual_goal_movies?: number | null
-          annual_goal_series?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1170,9 +1164,6 @@ export type Database = {
           username: string
         }
         Update: {
-          annual_goal_books?: number | null
-          annual_goal_movies?: number | null
-          annual_goal_series?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1756,9 +1747,7 @@ export type Database = {
         Returns: undefined
       }
       reorder_queue: {
-        // Ajuste a mano, NO lo generado: target_queue acepta null (mover a la
-        // cola por defecto / sin cola). El generador lo tipa como string.
-        Args: { entry_ids: string[]; target_queue: string | null }
+        Args: { entry_ids: string[]; target_queue: string }
         Returns: undefined
       }
       resolve_pending_import: {
