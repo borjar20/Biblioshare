@@ -8,7 +8,7 @@ import { NewChallenge } from "@/components/challenges/new-challenge";
 import { getNotes, countNotes } from "@/lib/notes/get-notes";
 import { MemorizeCard } from "@/components/notes/memorize-card";
 import { NotesCountsCard } from "@/components/notes/notes-counts-card";
-import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { SpineDraw } from "@/components/rincon/spine-draw";
 
 function Card({
@@ -42,10 +42,10 @@ export async function RinconTab({
   const tChallenges = await getTranslations("challenges");
   const supabase = await createClient();
 
-  const [challenges, notes, planned] = await Promise.all([
+  const [challenges, notes, pool] = await Promise.all([
     getChallenges(supabase, userId, { includeArchived }),
     getNotes(supabase, userId),
-    getLibraryItems(supabase, userId, { status: "planned" }),
+    getSorteoPool(supabase, userId),
   ]);
   const challengeProgress = await getChallengeProgress(
     supabase,
@@ -53,12 +53,6 @@ export async function RinconTab({
     challenges,
   );
   const counts = countNotes(notes);
-  const spineItems = planned.map((item) => ({
-    itemType: item.itemType,
-    itemId: item.itemId,
-    title: item.title,
-    coverUrl: item.coverUrl,
-  }));
 
   const main = (
     <div className="flex flex-col gap-4">
@@ -100,7 +94,7 @@ export async function RinconTab({
   // contadores (solo escritorio, el móvil C no los trae — frame H).
   const rail = (
     <div className="flex flex-col gap-4">
-      <SpineDraw planned={spineItems} />
+      <SpineDraw pool={pool} />
       <div className="hidden lg:block">
         <Card>
           <NotesCountsCard counts={counts} />

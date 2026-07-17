@@ -1,21 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import type { ItemType } from "@/lib/catalog/types";
-import { itemHref } from "@/lib/catalog/item-href";
+import { SorteoSheet } from "./sorteo-sheet";
+import type { SorteoItem } from "./sorteo-logic";
 
-export type SpineItem = {
-  itemType: ItemType;
-  itemId: string;
-  title: string;
-  coverUrl: string | null;
-};
-
-// La estantería de lomos del frame C/H: alturas y colores variados, fijos, para
-// que la tarjeta tenga cuerpo aunque el sorteo aún no haya elegido.
+// La estantería decorativa del frame C/H: alturas y colores variados, fijos,
+// para que la tarjeta tenga cuerpo. El sorteo real vive en la hoja.
 const SPINES = [
   { h: 78, c: "#cf8a54" },
   { h: 100, c: "#6bb0b4" },
@@ -29,24 +21,12 @@ const SPINES = [
   { h: 90, c: "#e0a94a" },
 ];
 
-// "Sacar un lomo" (plan 05, F4): sobre los PENDIENTES del usuario, elige uno al
-// azar. Tarjeta oscura a propósito (misma en claro y oscuro). Vacío: en vez de
-// sortear la nada, invita a añadir pendientes.
-export function SpineDraw({ planned }: { planned: SpineItem[] }) {
+// "Sacar un lomo": tarjeta-entrada del ritual (spec 2026-07-17). El botón abre
+// la hoja del sorteo (estantería animada + filtros). Tarjeta oscura a
+// propósito (misma en claro y oscuro). Vacío: invita a añadir pendientes.
+export function SpineDraw({ pool }: { pool: SorteoItem[] }) {
   const t = useTranslations("rincon");
-  const [picked, setPicked] = useState<SpineItem | null>(null);
-
-  function draw() {
-    if (planned.length === 0) return;
-    // Evita repetir el mismo si hay más de uno.
-    let next = planned[Math.floor(Math.random() * planned.length)];
-    if (planned.length > 1) {
-      while (picked && next.itemId === picked.itemId) {
-        next = planned[Math.floor(Math.random() * planned.length)];
-      }
-    }
-    setPicked(next);
-  }
+  const [open, setOpen] = useState(false);
 
   const dark = "rounded-[14px] border p-4";
   const darkStyle = {
@@ -55,7 +35,7 @@ export function SpineDraw({ planned }: { planned: SpineItem[] }) {
     color: "#f0e8db",
   };
 
-  if (planned.length === 0) {
+  if (pool.length === 0) {
     return (
       <div className={dark} style={darkStyle}>
         <h3 className="font-serif text-sm font-semibold">{t("drawEmptyTitle")}</h3>
@@ -80,54 +60,27 @@ export function SpineDraw({ planned }: { planned: SpineItem[] }) {
         {t("drawSub")}
       </p>
 
-      {picked ? (
-        <Link
-          href={itemHref(picked.itemType, picked.itemId)}
-          className="my-3.5 flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-white/5"
-        >
-          <div className="relative h-[66px] w-11 shrink-0 overflow-hidden rounded shadow">
-            {picked.coverUrl ? (
-              <Image
-                src={picked.coverUrl}
-                alt={picked.title}
-                fill
-                sizes="44px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="h-full w-full" style={{ background: "#4a3f33" }} />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="font-mono text-[9px] tracking-wider uppercase" style={{ color: "#a99e8c" }}>
-              {t("drawPicked")}
-            </p>
-            <p className="line-clamp-2 font-serif text-[15px] leading-snug">
-              {picked.title}
-            </p>
-          </div>
-        </Link>
-      ) : (
-        <div className="my-3.5 flex h-16 items-end gap-[5px]">
-          {SPINES.map((s, i) => (
-            <span
-              key={i}
-              aria-hidden
-              className="w-3.5 rounded-t-[5px] rounded-b-[2px]"
-              style={{ height: `${s.h}%`, background: s.c }}
-            />
-          ))}
-        </div>
-      )}
+      <div className="my-3.5 flex h-16 items-end gap-[5px]">
+        {SPINES.map((s, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className="w-3.5 rounded-t-[5px] rounded-b-[2px]"
+            style={{ height: `${s.h}%`, background: s.c }}
+          />
+        ))}
+      </div>
 
       <button
         type="button"
-        onClick={draw}
+        onClick={() => setOpen(true)}
         className="w-full rounded-full px-4 py-2 text-center text-sm font-semibold transition-opacity hover:opacity-90"
         style={{ background: "#d98a5c", color: "#1f1409" }}
       >
-        {picked ? t("drawAgain") : t("drawButton")}
+        {t("drawButton")}
       </button>
+
+      <SorteoSheet pool={pool} open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

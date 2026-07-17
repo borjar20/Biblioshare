@@ -1,13 +1,9 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { QueueItem } from "./types";
+import { fetchCatalogMeta } from "./fetch-catalog-meta";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-type CatalogMeta = Omit<
-  QueueItem,
-  "entryId" | "itemId" | "itemType" | "queueId" | "queueOrder"
->;
 
 // Assumes ensureQueueOrder(supabase, userId) already ran this request — a
 // dense, gap-free queue_order per "planned" item, within each queue. Pass a
@@ -38,61 +34,7 @@ export async function getQueueItems(
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
   for (const entry of entries) idsByType[entry.item_type].push(entry.item_id);
 
-  const [books, movies, series] = await Promise.all([
-    idsByType.book.length
-      ? supabase.from("books").select("id, title, author, cover_url, total_pages").in("id", idsByType.book)
-      : Promise.resolve({ data: [] }),
-    idsByType.movie.length
-      ? supabase
-          .from("movies")
-          .select("id, title, cover_url, duration_minutes, tmdb_id")
-          .in("id", idsByType.movie)
-      : Promise.resolve({ data: [] }),
-    idsByType.series.length
-      ? supabase
-          .from("series")
-          .select("id, title, cover_url, total_episodes, episode_runtime_minutes, tmdb_id")
-          .in("id", idsByType.series)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const metaByKey = new Map<string, CatalogMeta>();
-  for (const row of books.data ?? []) {
-    metaByKey.set(`book:${row.id}`, {
-      title: row.title,
-      coverUrl: row.cover_url,
-      subtitle: row.author,
-      totalPages: row.total_pages,
-      durationMinutes: null,
-      totalEpisodes: null,
-      episodeRuntimeMinutes: null,
-      tmdbId: null,
-    });
-  }
-  for (const row of movies.data ?? []) {
-    metaByKey.set(`movie:${row.id}`, {
-      title: row.title,
-      coverUrl: row.cover_url,
-      subtitle: null,
-      totalPages: null,
-      durationMinutes: row.duration_minutes,
-      totalEpisodes: null,
-      episodeRuntimeMinutes: null,
-      tmdbId: row.tmdb_id,
-    });
-  }
-  for (const row of series.data ?? []) {
-    metaByKey.set(`series:${row.id}`, {
-      title: row.title,
-      coverUrl: row.cover_url,
-      subtitle: null,
-      totalPages: null,
-      durationMinutes: null,
-      totalEpisodes: row.total_episodes,
-      episodeRuntimeMinutes: row.episode_runtime_minutes,
-      tmdbId: row.tmdb_id,
-    });
-  }
+  const metaByKey = await fetchCatalogMeta(supabase, idsByType);
 
   return entries
     .map((entry) => {
