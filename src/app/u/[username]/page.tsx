@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   getProfileByUsername,
@@ -20,7 +18,6 @@ import { getLibraryStats } from "@/lib/library/get-library-stats";
 import type { ItemType } from "@/lib/catalog/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
-import { LockIcon } from "@/components/ui/icons";
 import {
   Skeleton,
   SkeletonLine,
@@ -31,7 +28,6 @@ import { ActivityTab } from "./_tabs/activity-tab";
 import { CollectionTab } from "./_tabs/collection-tab";
 import { StatsTab } from "./_tabs/stats-tab";
 import { RinconTab } from "./_tabs/rincon-tab";
-import { VisibilityToggle } from "./visibility-toggle";
 
 const VALID_TABS: SectionTab[] = [
   "actividad",
@@ -70,7 +66,6 @@ export default async function PublicProfilePage({
   const { username } = await params;
   const parsedParams = await searchParams;
 
-  const tAdmin = await getTranslations("admin");
   const supabase = await createClient();
 
   const [
@@ -155,27 +150,10 @@ export default async function PublicProfilePage({
         }
       />
 
+      {/* Solicitudes de seguimiento: en el mockup v2 se mudan al desplegable de
+          Notificaciones (P1/D3), que es del plan 07. Hasta entonces siguen
+          aquí. Visibilidad y admin ya viven en la hoja de ajustes (⚙). */}
       {isOwner && <FollowRequests requests={pendingRequests} />}
-
-      {isOwner && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <VisibilityToggle
-            username={profile.username}
-            isPublic={profile.isPublic}
-          />
-          {/* Admin salió del nav en el rediseño Paper: es una ruta oculta y su
-              única entrada es esta, en tu propio perfil. */}
-          {profile.role === "admin" && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground uppercase underline hover:text-foreground"
-            >
-              <LockIcon className="h-3.5 w-3.5" />
-              {tAdmin("navLabel")}
-            </Link>
-          )}
-        </div>
-      )}
 
       <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />
 

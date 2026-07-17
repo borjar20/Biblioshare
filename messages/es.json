@@ -259,7 +259,9 @@
     "activityYesterday": "Ayer",
     "activityEmptyTitle": "Sin actividad todavía",
     "activityEmptyOwn": "Tu actividad aparecerá aquí en cuanto registres algo.",
-    "activityEmptyCta": "Buscar algo que registrar"
+    "activityEmptyCta": "Buscar algo que registrar",
+    "settings": "Ajustes",
+    "visibilityLabel": "Visibilidad"
   },
   "social": {
     "follow": "Seguir",

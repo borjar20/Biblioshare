@@ -5,6 +5,7 @@ import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
 import type { FollowCounts } from "@/lib/social/follows";
 import { EditProfileForm } from "./edit-profile-form";
+import { ProfileSettingsSheet } from "@/app/u/[username]/profile-settings-sheet";
 import { UserAvatar } from "@/components/social/user-avatar";
 
 // Cabecera compacta del mockup "IA nueva": (avatar + nombre/@user + acción) →
@@ -24,6 +25,7 @@ export async function ProfileHeader({
 }) {
   const t = await getTranslations("profile");
   const tSocial = await getTranslations("social");
+  const tAdmin = await getTranslations("admin");
   const name = profile.displayName || profile.username;
   const memberSinceYear = new Date(profile.createdAt).getFullYear();
   const basePath = `/u/${profile.username}`;
@@ -65,7 +67,17 @@ export async function ProfileHeader({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {followButton}
-            {isOwner && <EditProfileForm profile={profile} />}
+            {isOwner && (
+              <>
+                <EditProfileForm profile={profile} />
+                <ProfileSettingsSheet
+                  username={profile.username}
+                  isPublic={profile.isPublic}
+                  isAdmin={profile.role === "admin"}
+                  adminLabel={tAdmin("navLabel")}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
