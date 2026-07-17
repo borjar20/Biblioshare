@@ -5,31 +5,47 @@ import { createClient } from "@/lib/supabase/server";
 import { getTodayFocus, getNextEpisode, type TodayPass } from "@/lib/stats/get-today-focus";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
+import { getLibraryItems } from "@/lib/library/get-library-items";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { TodayCard } from "./today-card";
 import { TodayPicker } from "./today-picker";
+import { LaterShelf } from "./later-shelf";
+
+// Cuántas portadas de la cola se enseñan. En móvil el resto queda tras el
+// scroll; en escritorio caben seis por fila, así que doce son dos filas, la
+// altura de la columna de al lado. Para ver la cola entera está "Ver todos".
+const LATER_SHOWN = 12;
 
 // El bloque "¿Qué has disfrutado hoy?" (frame G). Encabeza el Inicio, sobre el
 // feed: primero lo tuyo a medias, después lo de los demás.
 //
-// Si no tienes nada en curso NO se pinta: un bloque que pregunta qué has
-// disfrutado hoy y no ofrece nada que tocar sería un hueco, no una invitación.
-// Del frame G entra solo este bloque (decisión del usuario): "Registrar algo
-// nuevo" y "Para más tarde" quedan anotados en el plan como tarea aparte.
+// Si no tienes nada en curso no se pregunta qué has disfrutado hoy: un bloque
+// que lo pregunta y no ofrece nada que tocar sería un hueco, no una invitación.
+// Pero "Para más tarde" SÍ sobrevive solo, porque es justo cuando más sirve:
+// sin nada a medias, lo que necesitas es elegir lo próximo.
+//
+// De "Registrar algo nuevo" (el tercer bloque del frame G) no queda nada:
+// descartado por el usuario, 2026-07-17.
 export async function TodayBlock({ userId }: { userId: string }) {
   const supabase = await createClient();
   // Sin getStreaks: la racha de estas tarjetas es la del PASE y sale de las
   // filas que getTodayFocus ya trae. `weekly` se queda solo por la meta de hoy,
   // que sí es tuya y no de la obra.
-  const [focus, weekly, profile] = await Promise.all([
+  const [focus, weekly, profile, planned] = await Promise.all([
     getTodayFocus(supabase, userId),
     getWeeklyActivity(supabase, userId),
     getOwnProfile(supabase, userId),
+    getLibraryItems(supabase, userId, { status: "planned" }),
   ]);
 
-  if (!focus.featured) return null;
+  const later =
+    planned.length > 0 ? (
+      <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} />
+    ) : null;
+
+  if (!focus.featured) return later && <div className="pb-1">{later}</div>;
 
   const passes = [focus.featured, ...focus.rest];
 
@@ -76,26 +92,29 @@ export async function TodayBlock({ userId }: { userId: string }) {
         </h2>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[11px] tracking-[0.12em] uppercase text-muted-foreground">
-          {t("inProgress")}
-        </span>
-        <Link
-          href="/coleccion?status=in_progress"
-          className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.06em] uppercase text-accent hover:underline"
-        >
-          {t("seeAll", { count: focus.total })}
-          <ChevronRightIcon className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* En móvil el bloque se apila (frame G). En escritorio NO se estira: una
           tarjeta de 1024px deja la portada en 58px y convierte la barra de
           progreso en una línea de 800px — el "móvil estirado" que prohíbe P-T7.
-          Así que el ancho se usa de verdad: destacado y carrusel en paralelo
-          (el reparto lo hace TodayPicker). */}
+          Así que el ancho se usa de verdad: a la izquierda el destacado con sus
+          mini debajo, y "Para más tarde" de rail a la derecha (el reparto lo
+          hace TodayPicker). */}
       <TodayPicker
         keepGoingLabel={t("keepGoing")}
+        later={later}
+        heading={
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
+              {t("inProgress")}
+            </span>
+            <Link
+              href="/coleccion?status=in_progress"
+              className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.06em] uppercase text-accent hover:underline"
+            >
+              {t("seeAll", { count: focus.total })}
+              <ChevronRightIcon className="h-3 w-3" />
+            </Link>
+          </div>
+        }
         entries={passes.map((pass) => ({
           id: pass.item.entryId,
           focusLabel: t("focusMini", { title: pass.item.title }),
