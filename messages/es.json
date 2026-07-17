@@ -92,6 +92,7 @@
     "inProgress": "En curso",
     "seeAll": "{count} · Ver todos",
     "keepGoing": "Continúa donde lo dejaste",
+    "later": "Para más tarde",
     "day": "Día {n}",
     "since": "desde {date}",
     "notes": "{count, plural, =1 {1 nota} other {# notas}}",
