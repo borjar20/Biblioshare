@@ -2,12 +2,15 @@
 
 > Parte de la iniciativa **fidelidad Paper**. Índice y convenciones en [`README.md`](./README.md).
 
+> ✅ **PLAN CERRADO el 2026-07-17.** T1–T8 hechas y mergeadas, y la verificación de cierre (§5) pasada. Lo que quedó por el camino, con su porqué, en **§6d** (T4–T8) y **§6e** (Episodios rehecha por escala + el cierre). Si vas a tocar la ficha, lee antes el **choque de shells de escritorio** de §6e: mientras la ficha conserve el raíl lateral, **el cuerpo de cualquier pestaña está topado en 771px**.
+
 > ⚠️ **La maqueta se ACTUALIZÓ el 2026-07-16 (12 frames, antes 7).** Lo escrito antes de esa fecha en §2 sigue valiendo para móvil, pero la distribución de Info cambió y **ahora hay vista de PC de verdad** (§2bis), que sustituye al "diseño propio a proponer" del §2.24 original. Si vienes de la versión vieja, lee §2bis y §4 antes de nada.
 
 **Maquetas de referencia**
 - `Paper - Ficha de título completa.html` → **móvil**: **1 · Libro Info**, **2 · Comunidad**, **3 · Registro (pase activo)**, **4 · Serie Episodios**, **5 · Película Info**, **6 · Moderador Editar ficha**, **7 · Registro — elegir edición**. **PC**: **8 · Libro Info**, **9 · Libro Comunidad**, **10 · Libro Registro**, **11 · Serie Episodios**, **12 · Película Info**.
 - `Web - Ficha de titulo (PC).html` (2026-07-16 16:58) → **manda para PC**: son los mismos frames, con `.desk-bd` fuera y `.desk-tabs` translúcida. El resto de `.desk-*` es idéntico al fichero grande.
 - `Paper - Episodios rejilla.html` → rejilla de episodios (mías/comunidad, escala cálida)
+- `Paper - Episodios (escala y PC).html` (2026-07-17 01:01) → **manda para Episodios**, y es POSTERIOR a todo lo demás: rehace la pestaña en tres niveles por escala. Frames elegidos por el usuario: **E3** (índice en rejilla) → **E2** (temporada) en móvil lista, **C3** (rejilla transpuesta) en móvil rejilla, **PC·1** (master-detail) en PC. Ver §6e — incluido por qué PC·1 acabó con dos columnas y no tres.
 - `Paper - Registrar sesión.html` → hojas modales de sesión (ver §3-P4)
 
 **Objetivo:** afinar la pantalla más importante de la app. Toda la funcionalidad existe (`info-panel`, `community-panel`, `log-panel` + pases, `edition-strip`, `catalog-editor` de moderador, `episode-*`), así que en móvil es trabajo de detalle visual. **En PC no**: el layout ancho es una estructura nueva (§2bis) y ahí sí hay construcción.
@@ -126,7 +129,8 @@ topbar de la app (sticky, global — P-T1)
 
 ## 3. Divergencias funcionales / de sistema — RESUELTAS (2026-07-15)
 
-- **P1 · DECIDIDO: híbrido de la maqueta.** **Estrellas gold /5** para agregados de comunidad (hero de ficha, histograma, reseñas ajenas — en ficha, feed, perfil y clubes) y **dots** para la nota propia 1–10 (rate-pick, diario, tarjetas propias). Norma de sistema: documentarla al aplicarla.
+- ~~**P1 · DECIDIDO: híbrido de la maqueta.** **Estrellas gold /5** para agregados de comunidad (hero de ficha, histograma, reseñas ajenas — en ficha, feed, perfil y clubes) y **dots** para la nota propia 1–10 (rate-pick, diario, tarjetas propias). Norma de sistema: documentarla al aplicarla.~~ → **DEROGADA por el usuario el 2026-07-16: DOTS EN TODO.** No hay estrellas en ninguna parte. `RatingDots` es el componente canónico (5 dots sobre escala 1–10, mitades pulsables), `--surface-3` es el dot apagado y `star-rating.tsx` está **borrado**. Las maquetas siguen dibujando ★ para los agregados (incl. las de episodios de 2026-07-17): **la maqueta no manda aquí**, manda esta derogación.
+- **P11 · DECIDIDO: "Nuevo pase" pregunta solo sobre un pase ABIERTO.** Sobre uno abierto no puede decidir por su cuenta cómo se archiva el que cierra —o se completó, o se abandonó—, así que pregunta; sobre uno ya cerrado actúa directo. (T4, PRs #55–#60.)
 - **P2 · DECIDIDO: SÍ, menú ⋯ del hero** — quitar de mi biblioteca, editar ficha (solo moderador); "compartir" entrará cuando se decida (plan 01 P4 pospuesto).
 - **P3 · Delta del diario: coordinación** — hacer cuando PR #32 (nota por pase) esté mergeado; confirmar orden con pase-hub (#42) al arrancar la sesión.
 ### Decisiones de la vista de PC (2026-07-16, tras la maqueta nueva)
@@ -157,22 +161,26 @@ topbar de la app (sticky, global — P-T1)
    - ~~Pestañas con piel de PC~~ ✅ (#51, según la maqueta nueva de PC).
    - ~~Cuerpo de Info: orden móvil, dos columnas de PC, ediciones, sagas a N~~ ✅ — ver §6c.
    - **La cola de la cabecera de PC (sinopsis + géneros + facts, §2bis.33) NO se hace** — decidido, ver §6c/P9.
-4. **T4 · Registro** (frames 3 y 10) — progreso con pin + `closehint`, cabecera de pase, seg, sesiones; en PC "Datos del pase" y "Quitar de mi biblioteca" a la derecha. Diario + delta (§2.18–2.19, tras P3).
-5. **T5 · Comunidad** (frames 2 y 9) — reseñas + histograma; en PC el histograma es tarjeta lateral fija.
-6. **T6 · Episodios** (frames 4 y 11) — temporadas/rejilla; en PC el detalle del episodio se ancla a la derecha.
-7. **T7 · Película** (frames 5 y 12) y **Moderador** (frame 6).
-8. **T8 · Elegir edición** (frame 7) y el **menú `⋯`** del hero móvil (P2, pendiente de la #49).
+4. ~~**T4 · Registro** (frames 3 y 10)~~ ✅ **HECHA** (PRs #55, #56, #58, #59, #60) — progreso con pin + `closehint`, cabecera de pase, seg, sesiones; en PC "Datos del pase" y "Quitar de mi biblioteca" a la derecha. Diario + delta. Trajo P11 y el token `--surface-3`.
+5. ~~**T5 · Comunidad** (frames 2 y 9)~~ ✅ **HECHA** (PR #61) — reseñas + histograma; en PC el histograma es tarjeta lateral fija.
+6. ~~**T6 · Episodios** (frames 4 y 11)~~ ✅ **HECHA** (PR #62) — **y luego REHECHA entera** por escala: ver §6e.
+7. ~~**T7 · Película** (frames 5 y 12) y **Moderador** (frame 6)~~ ✅ **HECHA** (PRs #63 y #64).
+8. ~~**T8 · Elegir edición** (frame 7) y el **menú `⋯`** del hero móvil (P2, pendiente de la #49)~~ ✅ **HECHA** (PR #65).
 
-## 5. Verificación de cierre
+**Todas las tareas cerradas el 2026-07-17.** La verificación de cierre (§5) está hecha; sus dos hallazgos, en la PR #68.
 
-- [ ] Los **12** frames lado a lado con un libro (con saga y 2+ pases), una serie (con episodios vistos) y una película (con reparto y plataformas) — **móvil Y PC**.
-- [ ] Acentos por tipo correctos en hero, tabs, ediciones y episodios (ámbar/teal/ciruela).
-- [ ] Cierre automático: sesión que llega al final → Completado (e2e existente del flujo de pases en verde).
-- [ ] Moderador: editar ficha solo visible con rol; guardar/cancelar funcionan.
-- [ ] Modo oscuro (Ficha está en Paper - Modo oscuro.html).
-- [ ] `npx playwright test` verde (Node 22).
-- [ ] P1–P8 respondidas y registradas.
-- [ ] En PC: el rail se queda quieto al scrollear y las pestañas se pegan bajo la topbar (P5/P8); el rail y el Registro no se contradicen al cambiar de estado (P7).
+## 5. Verificación de cierre — HECHA el 2026-07-17
+
+- [x] Los **12** frames lado a lado con un libro (con saga y 2+ pases), una serie (con episodios vistos) y una película (con reparto y plataformas) — **móvil Y PC**. Sujetos: *The Final Empire* (saga de 10 + 2 pases), *Juego de tronos* (8 temporadas), *Batman Begins* (reparto + 7 plataformas con la atribución a JustWatch).
+- [x] Acentos por tipo correctos en hero, tabs, ediciones y episodios (ámbar/teal/ciruela). **Medidos**, no mirados: libro `#a15a34`, película `#3f6b6e`, serie `#7a5676`.
+- [x] Cierre automático: sesión que llega al final → Completado (e2e existente del flujo de pases en verde).
+- [x] Moderador: editar ficha solo visible con rol; guardar/cancelar funcionan (T7b, PR #64).
+- [x] Modo oscuro (Ficha está en Paper - Modo oscuro.html) — incluido el anillo de progreso de episodios, que es un `conic-gradient` sobre tokens y adapta solo.
+- [x] `npx playwright test` verde (Node 22) — **22 pasados · 1 saltado · 0 fallos**.
+- [x] P1–P8 respondidas y registradas (§3), **más P9/P10 (§6c) y P11 (§3)**. Ojo: **P1 quedó DEROGADA** — dots en todo.
+- [x] En PC: el rail se queda quieto al scrollear y las pestañas se pegan bajo la topbar (P5/P8); el rail y el Registro no se contradicen al cambiar de estado (P7). Ver §6e para la cautela de la medición.
+
+**Dos hallazgos, los dos arreglados en la PR #68** — ver §6e.
 
 ## 6. Hallazgos de ejecución (T1 + T2, PR #49 · 2026-07-16)
 
@@ -206,6 +214,40 @@ topbar de la app (sticky, global — P-T1)
 - **`--foreground-faint`** (#a89e8d / #6f665a, par sacado de los `.html` de modo oscuro como en P-T6): un peldaño más claro que `--muted-foreground`, para etiquetas que solo deben estar. Lo pidieron las pestañas inactivas de PC.
 - ⚠️ **REGLA e2e nueva:** con dos árboles por breakpoint, **todo locator de la ficha debe ser `:visible`**. La suite corre a 1280 y `getByTestId`/`getByText().first()` cazaban el elemento del OTRO árbol, apagado pero presente en el DOM — 5 asserts rojos con "hidden". La pastilla del rail lleva el mismo `data-testid="status-badge"` que la píldora del hero (las dos son "el estado en modo lectura") y los helpers filtran por `:visible`. De paso queda probado P7: los tests cambian el estado en Registro y comprueban la pastilla del RAIL.
 - **La maqueta es un documento VIVO.** Cambió dos veces el mismo día (7→12 frames, y luego `Web - Ficha de titulo (PC).html`). **Comprobar la fecha del `.html` antes de calcar.** La versión de PC aparte solo cambió dos reglas (`.desk-bd` fuera y `.desk-tabs` translúcida), que validaron los ajustes ya pedidos a ojo; el resto de `.desk-*` era idéntico byte a byte.
+
+## 6d. Hallazgos de T4–T8 (PRs #55–#65 · 2026-07-16)
+
+- **La corrección del `1fr 340px`.** El cuerpo de PC es `grid-cols-[minmax(0,1fr)_340px]` con `gap-x-11` — la misma `.desk-cols` para Registro, Comunidad y Episodios. Se descubrió pintándolo: sin `minmax(0,…)` la columna flexible no baja de su contenido y la tarjeta lateral se salía. (#60/#61.)
+- ⚠️ **Bug real que destapó T5:** el histograma hacía `avgRating.toFixed(1)` sobre la escala **1–10** y decía "8,4" donde el hero decía "4,2". La media se guarda 1–10 y se enseña en 5: `formatDots` es el único módulo que conoce la equivalencia. (#61.)
+- **T6: el estado por episodio se LEVANTÓ al panel.** El frame 11 ancla el detalle en una tarjeta y el 4 lo despliega inline: son el **mismo dato**, y con copias locales por fila puntuar desde un sitio y desde el otro divergía. Parches optimistas sobre los props del servidor. De regalo, el contador "N/M vistos" se mueve al instante.
+- **El "16/20 vistos" del rail sin viaje extra:** `.select("pass_id, passes!inner(is_active)", { count: "exact", head: true })` filtra por el pase activo sin saber su id. (#62.)
+- **T8 traía una feature que no existía**: §23 pedía "reusar la edición del pase anterior" y no había ninguna forma de hacerlo. `EditionPicker` agrupa "Ya las has usado" (los pases llegan de más nuevo a más viejo ⇒ el primero visto por edición es su último uso) y el reuso es **un clic**. "+ Es una edición nueva" crea Y elige: `createEdition` devuelve el id.
+- **El `⋯` del hero se comunica por la URL**, porque el hero y el editor viven en subárboles distintos: `?editar=ficha`. Obligó a que `ItemDetailTabs` **siga los cambios externos de `?tab=`** (ajuste durante el render) y a que `CatalogEditor` limpie el parámetro al cerrar (ahí sí un `useEffect` legítimo: `router.replace` es navegación, no `setState`).
+- ⚠️ **Lección repetida DOS veces (T7b y T8): los scripts de verificación con esperas fijas MIENTEN en dev.** Guardados de 2–4s y revalidaciones en vuelo hicieron que un script informara "no se guardó" y que un `<select>` leyera "Sin asignar" **cuando la BD tenía el dato correcto**. Verificar contra la BD o con esperas de Playwright de verdad (`waitForURL`, asserts), nunca con `sleep`.
+
+## 6e. Episodios rehecha por escala + verificación de cierre (PRs #67 y #68 · 2026-07-17)
+
+**T6 se rehízo entera.** Maqueta nueva: `Paper - Episodios (escala y PC).html`. La pestaña apilaba TODAS las temporadas en acordeones — con 8 temporadas y 73 episodios era un scroll interminable, y con 20 sería inutilizable. Ahora **tres niveles** (temporadas → episodios de una → detalle de uno) y cada breakpoint enseña los que le caben: móvil lista = índice en rejilla (E3) → pantalla de temporada (E2); móvil rejilla = **transpuesta** (C3), temporadas en columnas y episodios en filas, con ventana de 6 paginada, para que el eje que crece sin límite crezca hacia donde el móvil tiene sitio; PC lista = raíl + lista (PC·1). **La rejilla de PC no se toca** (decisión del usuario): el ancho ya daba para las 12 temporadas en filas. Un solo estado `openSeason`: `null` = índice en móvil / la del cursor en PC. Nuevo "Marcar próximo episodio"; **"Marcar hasta aquí" queda fuera a propósito** — marca N de golpe y necesita decidir confirmación/deshacer/si pisa notas.
+
+⚠️ **CHOQUE DE SHELLS DE ESCRITORIO — la tensión de fondo, y volverá a salir.** Las maquetas dibujan **dos fichas de PC distintas**:
+
+| Maqueta | Escritorio | Cuerpo de la pestaña |
+|---|---|---|
+| `Ficha de título completa` (**lo implementado**, T3–T7) | `.desk-rail` lateral con la portada | **771px, a cualquier viewport** |
+| `Episodios (escala y PC)` (**más nueva**) | `.dhead`: portada 78×117 en cabecera, sin raíl | ~1160px |
+
+El shell lo fija `item-shell.tsx`: `lg:max-w-[1160px] lg:grid-cols-[300px_1fr]`. Medido a 1280/1440/1600/1920: **siempre 771** (hay max-width, no es cuestión de pantallas grandes). Por eso PC·1 `220|1fr|340` **no cabe**: la lista quedaba en 208px y los títulos se partían **letra a letra**. **Decisión del usuario: dos columnas en PC** (raíl 220 + lista 549) y el detalle desplegado bajo su fila en ambos breakpoints; `EpisodeDetailCard` **borrada**. Si algún día se adopta el shell nuevo, la tercera columna vuelve a caber y **PC·2** (muro/heatmap), hoy dibujado sin usar, pasa a ser viable.
+
+**Lección e2e:** `pase-hub.spec.ts` localizaba temporadas con `page.locator("section")` — ya no existe, la pestaña enseña UNA temporada. Helper `openLastSeason()` que entra por el raíl.
+
+### Los dos hallazgos de la verificación de cierre (PR #68)
+
+- **"1 valoraciones"**, dos veces por ficha (hero + histograma). La causa no era la cadena sino **la forma**: `ratingsLabel` era un sustantivo suelto que cada consumidor anteponía al número (`{count} {label}`), así que no había dónde meter el plural — y no vale pasar la función de traducción hacia dentro (páginas de servidor → consumidores de cliente). Ahora es plural ICU y **las páginas pasan la cadena ya formateada**; `#` formatea con separadores de locale igual que el `toLocaleString("es")` que sustituye. La prop `ratingCount` se quedó muerta en los tres consumidores y se retiró de la cadena entera.
+- **El nombre de la saga truncaba a media fila** ("Batman …", "Nacido…") con el ancho de al lado vacío: `lg:grid-cols-2` es para emparejar sagas, pero con **una sola** la segunda columna se queda vacía. Una sola saga ocupa ahora la fila entera.
+
+### Cautela sobre la medición de P5
+
+Las tabs se pegan **exactamente en 59px = `--topbar-h`** ✔ y el raíl se queda clavado en 93px durante todo el recorrido real a 900px de alto ✔. Con un viewport artificialmente corto (560px) el raíl acaba subiendo a −123: **no es un bug**, es el empuje normal de `sticky` al acabarse su contenedor (`overflow: visible` en toda la cadena). Queda escrito porque una medición de dos puntos lo hacía parecer roto.
 
 ### Verificación
 
