@@ -36,6 +36,7 @@ import {
   type AssignSagaState,
 } from "@/lib/sagas/manage-saga-actions";
 import { EditionFields } from "./edition-fields";
+import { toContainedWebp } from "@/lib/image/to-contained-webp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PencilIcon, XIcon } from "@/components/ui/icons";
@@ -66,7 +67,10 @@ const MAX_GENRES = 10;
 // Espejo cliente de MAX_COVER_BYTES/ALLOWED_COVER_TYPES en edit-actions.ts:
 // solo da feedback inmediato sin gastar el POST, la validación que manda de
 // verdad sigue siendo la del servidor.
-const MAX_COVER_CLIENT_BYTES = 2 * 1024 * 1024; // 2 MB
+// El original se comprime a WebP antes de subir, así que aceptamos fotos de
+// móvil grandes; el límite real (2 MB) lo aplica el servidor sobre el WebP ya
+// comprimido. El tope aquí solo evita decodificar ficheros absurdos en canvas.
+const MAX_COVER_CLIENT_BYTES = 15 * 1024 * 1024; // 15 MB (original)
 const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 // Contexto del botón "Editar ficha": children ahora es un ReactNode plano
@@ -317,8 +321,9 @@ function CatalogEditorForm({
     setCoverUploading(true);
     setCoverError(false);
     try {
+      const webp = await toContainedWebp(file, 1200, 0.8);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", webp, "cover.webp");
       const result = await uploadCover(itemType, itemId, formData);
       if (result.error) {
         // La subida falló: se revierte la preview optimista -- si no, el
