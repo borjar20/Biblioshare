@@ -88,10 +88,19 @@
   - **La racha de las tarjetas es la del PASE**, no la global (§6 punto 11). Eso desbloqueó el "◆ 4 d" que el frame dibuja en las mini.
   - **Fuera el tipo de la cabecera** ("Libro · "): ya lo dicen el verbo y el color.
 
-### ⬜ Tarea 6 — El resto del frame G — PENDIENTE, tarea aparte
-Los dos bloques que la T5 dejó fuera por decisión de alcance:
-- **"Registrar algo nuevo"** (`.qadd`): 3 accesos rápidos (Leer · Ver peli · Ver serie) con el icono teñido por tipo. **Hay que decidir a dónde llevan** y mirar si roza el quick-add que el plan 03 dejó fuera (manda la escalera de hidratación).
-- **"Para más tarde · 32"** (`.tbr`): estantería horizontal de portadas de la cola de pendientes. **Solapa con Colección** — decidir si es un atajo o una duplicación.
+### ✅ Tarea 6 — "Para más tarde" (frame G) — HECHA
+De los dos bloques que la T5 dejó fuera, entra uno.
+
+- **"Registrar algo nuevo"** (`.qadd`): **DESCARTADO** por el usuario (2026-07-17). No se construye, y con él cae la **casilla "+"** que cerraba la estantería en el frame: era su gemelo (añadir a la cola sin salir del Inicio). Añadir sigue siendo cosa de **Buscar**, donde vive la escalera de hidratación.
+- **"Para más tarde"** (`.tbr`): **HECHA** — `src/components/stats/later-shelf.tsx`.
+
+**La duda del alcance ("¿atajo o duplicación?") la respondieron los datos: es un ATAJO.** Enseña hasta 12 portadas de una cola que puede tener 32, sin filtros, sin orden y sin rejilla — para elegir lo próximo de un vistazo. "Ver todos" lleva a `/coleccion?status=planned`, que es la vista completa y ya existía (el pill "Pendiente" sale activo). Duplicar habría sido pintar aquí la rejilla entera.
+
+**Decisión del usuario — escritorio: rail del bloque de hoy.** El frame G solo está dibujado para móvil, así que P-T7 obligaba a proponerlo antes de escribirlo. A la izquierda el destacado con sus mini **debajo** (antes iban al lado); a la derecha, la estantería. En móvil se apila y el carrusel sangra hasta el borde, como el frame.
+
+**Datos: ninguno nuevo.** El estado se llama **`planned`** ("Pendiente") y `getLibraryItems(..., { status: "planned" })` ya existía — es el mismo que usa Colección.
+
+**Sin nada en curso el bloque de hoy no se pinta, pero la estantería SÍ**, a ancho completo: es justo cuando más sirve, porque sin nada a medias lo que necesitas es elegir lo próximo. Verificado volteando el único pase en curso y restaurando la fila entera (idéntica salvo `updated_at`).
 
 ## 5. Verificación de cierre
 
@@ -103,6 +112,7 @@ De T1–T4 (2026-07-17). La casilla que queda es de la T5.
 - [x] `npx playwright test` verde: **21 pasados · 1 flaky · 1 saltado · 0 fallos** (5,8 min, Node 22). vitest 138/138. tsc limpio.
 - [x] Preguntas P1–P4 respondidas y registradas (§3 + §6).
 - [x] T5: frame G lado a lado, móvil y escritorio. Medido con datos reales (2 pases sembrados y **borrados** después, verificado a cero): orden por sesión más reciente correcto, `Pág. 167 / 760 · 22%`, `Día 7 · desde 11/7 · 1 nota`, sin scroll horizontal a 400 ni a 1280. e2e **22 pasados · 1 saltado · 0 fallos**, sin flaky.
+- [x] T6: medido con **13 pendientes sembrados y borrados** después (12 por SQL + 1 por "Seguir"; cuenta devuelta a sus 65 pases activos exactos). A 1280: estantería en la columna derecha, 12 portadas en 2 filas de 6, "13 · Ver todos" → `/coleccion?status=planned`. A 400: carrusel que sangra al borde, sin scroll horizontal (`scrollWidth` = 400). Sin nada en curso: se cae la pregunta de hoy y la estantería queda sola a ancho completo. Oscuro con tokens. **0 errores de consola.**
 
 ## 6. Hallazgos de ejecución (T1–T4 · PR #69 · 2026-07-17)
 
@@ -165,6 +175,15 @@ Al juntar el frame B (rail de stats, IA vieja) con el G (bloque de hoy, posterio
 
 ## 8. Fuera de alcance / anotado
 
-- **T6** (arriba): "Registrar algo nuevo" y "Para más tarde" del frame G.
+- **"Registrar algo nuevo"** (el `.qadd` del frame G): **descartado** por el usuario, no "pendiente". Con la T6 hecha, del frame G no queda nada por construir.
+- **Pases huérfanos: "Pendiente · 4" pero solo 1 tarjeta.** Hallazgo de la T6, **preexistente y ajeno a este plan**. `getLibrarySummary` cuenta los pases activos a pelo, pero `getLibraryItems` hace `if (!meta) return null` (`get-library-items.ts:178`) y descarta en silencio los que apuntan a una obra sin fila en `books`/`movies`/`series`. En los datos de dev hay 3 así, del 2026-07-15 (huelen a la época anterior a la escalera de hidratación, PRs #34/#35). Resultado: el resumen y la rejilla dan números distintos para lo mismo, y "Para más tarde" hereda el de la rejilla. **No se toca aquí**: es un arreglo de Colección, no del Inicio, y hay que decidir si se limpian los huérfanos o si el resumen debe filtrarlos igual.
 - **Compartir en el feed** (P4): pospuesto hasta tener destino claro. El frame B lo dibuja (`↗ Compartir`), pero es el mockup de la IA anterior.
 - **Racha por ítem**: hoy `getStreaks` solo da la global. Bloquea el "◆ 4 d" de las mini-tarjetas.
+
+## 9. Hallazgos de ejecución (T6 · 2026-07-17)
+
+**1. Dos "Ver todos" apilados a 27px.** El rótulo "En curso · N · Ver todos" cruzaba las dos columnas, así que su enlace caía justo encima del "13 · Ver todos" de la estantería, con distinto destino (`?status=in_progress` vs `?status=planned`). Se arregló metiendo la cabecera **dentro** de la columna izquierda (slot `heading` de `TodayPicker`): cada rótulo manda sobre su columna y los dos arrancan a la misma altura. **Lo vio una captura, no un assert** — la misma lección que la portada rancia de la T5: los dos enlaces existían, eran correctos y estaban donde el DOM decía.
+
+**2. Mi comprobación decía que el bloque no se pintaba, y mentía.** Busqué `includes("Para más tarde")` cuando el rótulo va en `uppercase` por CSS e `innerText` devuelve el texto ya transformado. El código estaba bien; el assert, no. Antes de "arreglar" un fallo, mirar si falla lo que mide.
+
+**3. Sembrar por la UI no es fiable para preparar datos.** De 8 "Seguir" a través de buscar → ficha, solo cuajó 1 (los otros 7 no dejaron pase). Para preparar datos, SQL directo contra obras que ya están en el catálogo: rápido, y se borra por id exacto. La UI es para verificar, no para sembrar.
