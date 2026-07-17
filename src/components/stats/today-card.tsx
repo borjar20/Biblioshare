@@ -31,9 +31,6 @@ export async function TodayCard({
 }) {
   const t = await getTranslations("today");
   const tPasses = await getTranslations("passes");
-  // El singular de la ficha ("Libro"), no el plural de los filtros ("Libros"):
-  // aquí se habla de UNA obra.
-  const tMedia = await getTranslations("detail.mediaLabel");
 
   const { item } = pass;
   const accent = MEDIA_ACCENT[item.itemType];
@@ -70,8 +67,14 @@ export async function TodayCard({
         </Link>
 
         <div className="min-w-0 flex-1">
+          {/* Sin el tipo ("Libro · "): ya lo dicen el verbo —lectura/visionado—
+              y el color de la tarjeta, así que repetirlo era ruido.
+
+              `rereadCount` cuenta los pases CERRADOS ("leído N veces"), no el
+              que tienes abierto ahora: el ordinal de ESTE pase es uno más. Sin
+              el +1, una segunda lectura se anunciaba como la primera. */}
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--acc)]">
-            {`${tMedia(item.itemType)} · ${tPasses(`nth.${item.itemType}`, { n: Math.max(1, item.rereadCount) })}`}
+            {tPasses(`nth.${item.itemType}`, { n: item.rereadCount + 1 })}
           </p>
           <Link
             href={itemHref(item.itemType, item.itemId)}
