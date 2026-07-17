@@ -2,19 +2,17 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { createClient } from "@/lib/supabase/client";
 import { toSquareWebp } from "@/lib/image/to-square-webp";
+import { uploadClubCover } from "@/lib/clubs/club-media";
 
 const MAX_DIMENSION = 512;
 
-// Portada de club (EPIC-05 Bloque E): reutiliza el bucket "avatars" y sus
-// políticas existentes (own-folder-only), NO un bucket/prefijo nuevo -- la
-// política exige que el primer segmento de la ruta sea auth.uid(), así que
-// el path es {userId}/club-cover-{timestamp}.webp, no clubs/{clubId}/...
-// (que además no resolvería el problema de subir portada antes de que el
-// club exista, en el formulario de creación).
+// Portada de club (EPIC-05 Bloque E). Sube vía la server action uploadClubCover
+// (Storage con service-role); la subida directa desde el cliente daba RLS 403
+// porque Storage no valida el JWT ES256. La ruta la deriva la action del uid de
+// sesión, así que ya no hace falta el userId aquí para construirla.
 export function ClubCoverUpload({
-  userId,
+  userId: _userId,
   initialUrl,
   onUploaded,
 }: {
@@ -33,18 +31,12 @@ export function ClubCoverUpload({
     setError(false);
     try {
       const webp = await toSquareWebp(file, MAX_DIMENSION);
-      const supabase = createClient();
-      const path = `${userId}/club-cover-${Date.now()}.webp`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, webp, { upsert: true, contentType: "image/webp" });
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(path);
-      setPreview(publicUrl);
-      onUploaded(publicUrl);
+      const formData = new FormData();
+      formData.append("file", webp, "club-cover.webp");
+      const result = await uploadClubCover(formData);
+      if (result.error || !result.url) throw new Error("upload failed");
+      setPreview(result.url);
+      onUploaded(result.url);
     } catch {
       setError(true);
     } finally {
@@ -78,7 +70,8 @@ export function ClubCoverUpload({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          e.target.value = "";
+          if (file) void handleFile(file);
         }}
       />
       {error && <p className="text-xs text-status-dropped">{t("coverError")}</p>}
