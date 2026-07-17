@@ -1210,5 +1210,15 @@
     "cancel": "Cancelar",
     "errorEmpty": "Escribe algo antes de guardar.",
     "errorGeneric": "No se pudo guardar. Inténtalo de nuevo."
+  },
+  "rincon": {
+    "drawTitle": "¿No sabes qué leer?",
+    "drawSub": "Saca un lomo de tu estantería de pendientes y deja que decida el azar.",
+    "drawButton": "Sacar un lomo",
+    "drawAgain": "Otro",
+    "drawEmptyTitle": "Tu estantería de pendientes está vacía",
+    "drawEmptySub": "Añade obras a tu biblioteca como «Pendiente» y el azar elegirá por ti.",
+    "drawEmptyCta": "Buscar algo que añadir",
+    "drawPicked": "El azar dice:"
   }
 }
