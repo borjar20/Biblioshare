@@ -6,6 +6,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { ensureBookEditions } from "@/lib/editions/sync-editions";
 import { revalidateItemPage } from "@/lib/reactivity/revalidate";
+import { uploadPublicImage } from "@/lib/storage/upload-public-image";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -211,21 +212,13 @@ export async function uploadCover(
   const extension = COVER_EXTENSION[file.type];
   const path = `${itemType}/${itemId}.${extension}`;
 
-  const buffer = await file.arrayBuffer();
-  const { error: uploadError } = await supabase.storage
-    .from("covers")
-    .upload(path, buffer, { upsert: true, contentType: file.type });
-  if (uploadError) return { error: "generic" };
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("covers").getPublicUrl(path);
-
-  // El path es estable (upsert: true reemplaza el mismo objeto), así que sin
-  // un parámetro de versión el navegador (o una CDN intermedia) seguiría
-  // sirviendo la portada vieja tras sustituirla. Mismo patrón que
-  // avatar-upload.tsx.
-  const coverUrl = `${publicUrl}?v=${Date.now()}`;
+  // Escritura con service-role: Storage no valida el token ES256 del usuario
+  // (una subida de usuario cae por RLS). La autorización ya la garantiza
+  // requireCollaborator de arriba, y la ruta se deriva de itemType/itemId ya
+  // validados, no del cliente. El cache-bust ?v= lo añade uploadPublicImage.
+  const result = await uploadPublicImage("covers", path, file, file.type);
+  if ("error" in result) return { error: "generic" };
+  const coverUrl = result.url;
 
   const { error } =
     itemType === "book"
