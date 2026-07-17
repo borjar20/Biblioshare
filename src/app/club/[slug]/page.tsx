@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getClub } from "@/lib/clubs/clubs";
+import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
 import { listClubActivities } from "@/lib/clubs/activities/core";
@@ -147,9 +147,10 @@ async function ClubFeedSection({
   userId: string;
   activities: ClubActivities;
 }) {
-  const [initialPage, upcoming] = await Promise.all([
+  const [initialPage, upcoming, viewer] = await Promise.all([
     listClubPosts(club.id),
     getUpcomingCheckpoints(club.id),
+    getViewerIdentity(),
   ]);
   // Abrir el feed es haberlo leído: a partir de aquí, las novedades se cuentan
   // desde ahora.
@@ -166,6 +167,8 @@ async function ClubFeedSection({
         clubId={club.id}
         viewerId={userId}
         viewerRole={club.viewerRole!}
+        viewerName={viewer?.name ?? ""}
+        viewerAvatarUrl={viewer?.avatarUrl ?? null}
         initialPage={initialPage}
       />
     </>

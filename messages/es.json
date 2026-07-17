@@ -410,6 +410,8 @@
   },
   "clubPost": {
     "composerPlaceholderText": "¿Qué quieres compartir con el club?",
+    "composerCollapsed": "Comparte algo con el club…",
+    "pollGroupLabel": "Opciones de la encuesta",
     "postText": "Publicar",
     "shareActivity": "Compartir actividad",
     "createPoll": "Crear encuesta",

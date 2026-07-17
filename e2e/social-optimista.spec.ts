@@ -35,7 +35,8 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
     await page.goto(`/club/${CLUB_SLUG}`);
 
     // ── Crear un post de texto sobre el que interactuar ──
-    await page.getByRole("button", { name: /^publicar$/i }).click();
+    // El composer cerrado es una fila; su placeholder abre el modo texto.
+    await page.getByRole("button", { name: /comparte algo con el club/i }).click();
     await page.getByPlaceholder(/qué quieres compartir con el club/i).fill(cuerpo);
     await page.getByRole("button", { name: /^publicar$/i }).click();
     await expect(page.getByText(cuerpo)).toBeVisible({ timeout: 15_000 });
