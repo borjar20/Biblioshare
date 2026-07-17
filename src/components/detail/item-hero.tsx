@@ -30,7 +30,6 @@ export function ItemHero({
   genres,
   coverUrl,
   avgRating,
-  ratingCount,
   ratingsLabel,
   backLabel,
   statusSlot,
@@ -44,7 +43,6 @@ export function ItemHero({
   coverUrl: string | null;
   /** Nota media 1–10 (agregado real de la comunidad) o null si nadie ha puntuado. */
   avgRating: number | null;
-  ratingCount: number;
   ratingsLabel: string;
   backLabel: string;
   statusSlot?: ReactNode;
@@ -144,7 +142,7 @@ export function ItemHero({
                 <div className="flex flex-col gap-1">
                   <RatingDots value={avgRating} size="sm" />
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {ratingCount.toLocaleString("es")} {ratingsLabel}
+                    {ratingsLabel}
                   </span>
                 </div>
               </div>

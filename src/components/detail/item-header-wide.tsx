@@ -26,7 +26,6 @@ export function ItemHeaderWide({
   title,
   byline,
   avgRating,
-  ratingCount,
   ratingsLabel,
 }: {
   itemType: ItemType;
@@ -35,7 +34,6 @@ export function ItemHeaderWide({
   byline: string | null;
   /** Nota media 1–10 de la comunidad, o null si nadie ha puntuado. */
   avgRating: number | null;
-  ratingCount: number;
   ratingsLabel: string;
 }) {
   const accent = MEDIA_ACCENT[itemType];
@@ -74,7 +72,7 @@ export function ItemHeaderWide({
               {formatDots(avgRating)}
             </span>
             <span className="font-mono text-[11px] text-muted-foreground">
-              {ratingCount.toLocaleString("es")} {ratingsLabel}
+              {ratingsLabel}
             </span>
           </div>
         )}

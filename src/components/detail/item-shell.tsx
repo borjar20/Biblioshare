@@ -28,7 +28,6 @@ export function ItemShell({
   genres,
   coverUrl,
   avgRating,
-  ratingCount,
   ratingsLabel,
   backLabel,
   statusSlot,
@@ -43,7 +42,6 @@ export function ItemShell({
   genres: string[];
   coverUrl: string | null;
   avgRating: number | null;
-  ratingCount: number;
   ratingsLabel: string;
   backLabel: string;
   /** La píldora "En tu biblioteca · Leyendo" — solo móvil. */
@@ -75,7 +73,6 @@ export function ItemShell({
             genres={genres}
             coverUrl={coverUrl}
             avgRating={avgRating}
-            ratingCount={ratingCount}
             ratingsLabel={ratingsLabel}
             backLabel={backLabel}
             statusSlot={statusSlot}
@@ -90,7 +87,6 @@ export function ItemShell({
             title={title}
             byline={byline}
             avgRating={avgRating}
-            ratingCount={ratingCount}
             ratingsLabel={ratingsLabel}
           />
         </div>
