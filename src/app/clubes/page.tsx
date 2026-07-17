@@ -15,6 +15,7 @@ import { ClubForm } from "@/components/clubs/club-form";
 import { ClubListSkeleton } from "@/components/clubs/club-skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchIcon } from "@/components/ui/icons";
 
 export default function ClubesPage() {
   const t = useTranslations("club");
@@ -63,20 +64,31 @@ export default function ClubesPage() {
         <h1 className="font-serif text-2xl font-semibold text-foreground">
           {t("navLabel")}
         </h1>
-        <Button type="button" onClick={() => setCreating((v) => !v)}>
-          {t("create")}
+        <Button
+          type="button"
+          className="px-3.5 py-1.5 text-xs"
+          onClick={() => setCreating((v) => !v)}
+        >
+          + {t("create")}
         </Button>
       </div>
 
       {/* El buscador va antes que nada, como en el handoff: buscar un club es
-          la acción más frecuente de quien llega aquí sin uno concreto en mente. */}
-      <Input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t("searchPlaceholder")}
-        className="w-full"
-      />
+          la acción más frecuente de quien llega aquí sin uno concreto en mente.
+          Píldora estilo composer (radio 12px + lupa) como en el frame 1. */}
+      <div className="relative">
+        <SearchIcon
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="w-full rounded-xl py-2.5 pl-10"
+        />
+      </div>
 
       {creating && (
         <ClubForm
