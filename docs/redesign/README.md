@@ -11,7 +11,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 
 ## Cómo usar estos planes
 
-- **Una sesión por plan** (Clubes admite 2–3; Colección ahora incluye v2 con 2 sesiones extra). Cada plan es autocontenido: estado actual → diferencias visuales → decisiones → tareas → verificación.
+- **Una sesión por plan** (Clubes son 5 tras la maqueta ampliada; Colección ahora incluye v2 con 2 sesiones extra). Cada plan es autocontenido: estado actual → diferencias visuales → decisiones → tareas → verificación.
 - **Decisiones RESUELTAS (2026-07-15):** todas las preguntas (P-N, P-T y las P de cada plan) están contestadas y anotadas en la §3 de cada doc. Si al ejecutar surge una divergencia nueva, se pregunta — no se asume (regla de la iniciativa).
 - Método de trabajo en cada sesión: abrir la maqueta `.html` en el navegador (canvas pannable, es pixel-perfect) y comparar lado a lado con la app en dev, light y dark, antes y después.
 - Verificación: e2e con Playwright (`docs/TESTING.md`); recordar `fnm use` (Node 22) antes de `npx playwright test`.
@@ -26,7 +26,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 | 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio, bloque de hoy | ✅ **CERRADO** (T1–T6, PRs #69/#70/#71). Lee su **§6 Hallazgos**: `getFeed` devuelve `FeedEntry[]` y el filtro es `?filtro=` |
 | 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | Colección v2 = posible epic aparte (P1) |
 | 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | Escalera de hidratación ya decidida (P1/P2) |
-| 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard | 2–3 sesiones; PR #13 tierlist |
+| 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard, **directorio de miembros**, **escritorio** | **5 sesiones** (maqueta ampliada a 12 frames, 2026-07-18); PR #13 tierlist |
 | 05 | [Perfil](./plan-05-perfil.md) | **Reescrito v2** (2026-07-17): Actividad/Estadísticas/Rincón, `/estadisticas`, Memorizar, sorteo | **6 fases, ~5 sesiones**; bloqueado por D2 (destacados en plan 02) |
 | 06 | [Ficha de título](./plan-06-ficha.md) | Hero, Info, Comunidad, Registro, Episodios, Moderador, ediciones | ✅ **CERRADO** (T1–T8 + verificación, PR #68). Ojo al **choque de shells** de su §6e: el cuerpo de la ficha topa en 771px |
 | 07 | [Transversal](./plan-07-transversal.md) | Nav, notificaciones, estados, marca, onboarding, **decisiones P-T** | Base (P-T1/P-T2/P-T6) ✅ **HECHA** (PR #46) — ver su **§6 Hallazgos**; el resto sigue abierto |
@@ -38,7 +38,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 2. ~~**06 Ficha**~~ ✅ **CERRADO** (2026-07-17): T1–T8 mergeadas y verificación de cierre pasada (PR #68). Antes de tocar cualquier escritorio, lee su **§6e**: mientras la ficha conserve el raíl lateral, el cuerpo de sus pestañas **topa en 771px a cualquier viewport**, y las maquetas nuevas están dibujadas para ~1160.
 3. ~~**01 Inicio**~~ ✅ **CERRADO** (2026-07-17): T1–T4 (#69, clubes en el feed, filtros `?filtro=`, rail de escritorio, frame A fiel), T5 (#70, el bloque "¿Qué has disfrutado hoy?") y T6 (#71, "Para más tarde"). Del frame G **no queda nada por construir**: "Registrar algo nuevo" fue descartado por el usuario, no aplazado. Si vas a tocar el Inicio, lee su **§7** (por qué el rail perdió "Ahora mismo" y conservó "Racha") y su **§9**. · Siguiente: **03 Buscar** (corta).
 4. **05 Perfil — REPLANIFICADO (2026-07-17) contra `Paper - Perfil v2.html`**, que deroga las maquetas viejas del perfil. Ya no es una sesión de fidelidad: son **6 fases** (F1 estructura · F2 estadísticas · F3 Memorizar · F4 sorteo · F5 `/estadisticas` · F6 exportar), y de F2 en adelante **todas llevan migración**. F1 y F2 se pueden mergear solas. **Antes de empezar, lee su §3** (10 decisiones, incluida la P2 vieja que queda sustituida) **y su §5** (D2: si el plan 02 no aloja los destacados en `/coleccion`, F1 se los carga).
-5. 04 Clubes (la más larga: 3 sesiones con progreso real e invitaciones).
+5. 04 Clubes (la más larga: **5 sesiones** — A landing+shell, B actividades, C gestión+wizard+invitar, D directorio de miembros, E escritorio; con progreso real e invitaciones).
 6. **02 Colección v2** (2 sesiones: migración+grid, Todo+hoja añadir).
 7. Cierre: hojas de sesión+cronómetro (06 P4), calendario con portadas (07 P-T5), pasada de modo oscuro + estados.
 
