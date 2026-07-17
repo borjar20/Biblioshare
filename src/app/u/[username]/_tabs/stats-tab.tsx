@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
@@ -56,6 +57,7 @@ export async function StatsTab({
   monthParam?: string;
 }) {
   const tProfile = await getTranslations("profile");
+  const tStats = await getTranslations("stats");
   const supabase = await createClient();
   const ownProfile = await getOwnProfile(supabase, userId);
 
@@ -141,6 +143,12 @@ export async function StatsTab({
           <TbrCard trend={tbr} />
         </Card>
       </div>
+      <Link
+        href="/estadisticas"
+        className="self-start text-sm font-medium text-accent hover:underline"
+      >
+        {tStats("seeFullStats")}
+      </Link>
     </div>
   );
 

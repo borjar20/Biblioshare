@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { type StatsPeriod, yearBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -74,11 +75,19 @@ function peakIndex(counts: number[]): number | null {
 export async function getHabits(
   supabase: SupabaseServerClient,
   userId: string,
+  period: StatsPeriod = "all",
 ): Promise<Habits> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("progress_sessions")
     .select("session_date, duration_minutes, started_at")
     .eq("user_id", userId);
+
+  if (period !== "all") {
+    const { start, endExclusive } = yearBounds(period);
+    query = query.gte("session_date", start).lt("session_date", endExclusive);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return computeHabits((data ?? []) as HabitRow[]);

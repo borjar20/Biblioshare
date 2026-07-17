@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { type StatsPeriod, yearBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -18,11 +19,21 @@ export type Records = {
 export async function getRecords(
   supabase: SupabaseServerClient,
   userId: string,
+  period: StatsPeriod = "all",
 ): Promise<Records> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("passes")
     .select("item_type, item_id, finished_on, created_at")
     .eq("user_id", userId);
+
+  // Con período, los récords son los de lo TERMINADO ese año; sin él (pestaña
+  // B/G) se calculan sobre toda la historia, como siempre.
+  if (period !== "all") {
+    const { start, endExclusive } = yearBounds(period);
+    query = query.gte("finished_on", start).lt("finished_on", endExclusive);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { parsePosition } from "@/lib/library/position";
+import { type StatsPeriod, yearBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -45,12 +46,20 @@ export function computePagesPerDay(rows: PaceRow[]): number | null {
 export async function getPagesPerDay(
   supabase: SupabaseServerClient,
   userId: string,
+  period: StatsPeriod = "all",
 ): Promise<number | null> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("progress_sessions")
     .select("pass_id, session_date, position, passes!inner(item_type)")
     .eq("user_id", userId)
     .eq("passes.item_type", "book");
+
+  if (period !== "all") {
+    const { start, endExclusive } = yearBounds(period);
+    query = query.gte("session_date", start).lt("session_date", endExclusive);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return computePagesPerDay((data ?? []) as PaceRow[]);

@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { type StatsPeriod, yearBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -21,12 +22,22 @@ function toStar(rating: number): number {
 export async function getRatingDistribution(
   supabase: SupabaseServerClient,
   userId: string,
+  period: StatsPeriod = "all",
 ): Promise<RatingDistribution> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("passes")
     .select("rating")
     .eq("user_id", userId)
     .not("rating", "is", null);
+
+  // Acotar por año cuenta las notas de lo TERMINADO ese año; sin período (la
+  // pestaña B/G) cuenta todas las notas, terminadas o no, como siempre.
+  if (period !== "all") {
+    const { start, endExclusive } = yearBounds(period);
+    query = query.gte("finished_on", start).lt("finished_on", endExclusive);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
