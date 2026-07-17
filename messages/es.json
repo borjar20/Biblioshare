@@ -914,7 +914,11 @@
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
+    },
+    "noteKindNote": "Nota",
+    "noteKindQuote": "Cita",
+    "noteFavorite": "Favorita",
+    "noteKindLabel": "Tipo"
   },
   "stats": {
     "navLabel": "Estadísticas",
@@ -1182,5 +1186,29 @@
     "loadTitle": "No se pudo cargar",
     "loadMessage": "Algo falló al cargar esta página. Puede ser cosa de un momento.",
     "retry": "Reintentar"
+  },
+  "notes": {
+    "title": "Memorizar",
+    "countLink": "{count, plural, one {# nota} other {# notas}}",
+    "anotherNote": "Otra nota",
+    "emptyTitle": "Aún no has guardado nada",
+    "empty": "Guarda una cita o una nota desde una sesión o desde la ficha de una obra.",
+    "kindQuote": "Cita",
+    "kindNote": "Nota",
+    "savedTitle": "Notas guardadas",
+    "savedQuotes": "Citas",
+    "savedNotes": "Notas",
+    "savedFavorites": "Favoritas",
+    "addTitle": "Añadir a Memorizar",
+    "add": "Memorizar",
+    "bodyLabel": "Nota o cita",
+    "bodyPlaceholder": "Escribe una cita textual o tu propia nota…",
+    "pageLabel": "Página (opcional)",
+    "favorite": "Marcar como favorita",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "errorEmpty": "Escribe algo antes de guardar.",
+    "errorGeneric": "No se pudo guardar. Inténtalo de nuevo."
   }
 }

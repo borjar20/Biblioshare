@@ -959,6 +959,70 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_favorite: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          kind: string
+          pass_id: string | null
+          position: Json | null
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          kind: string
+          pass_id?: string | null
+          position?: Json | null
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          kind?: string
+          pass_id?: string | null
+          position?: Json | null
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "passes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "progress_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string

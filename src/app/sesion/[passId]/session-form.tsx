@@ -352,6 +352,35 @@ export function SessionForm({
           rows={3}
           className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
+        {/* Si escribes algo, entra en Memorizar con este tipo y su página
+            (P7). El selector solo importa cuando hay texto. */}
+        <div className="mt-2 flex flex-wrap items-center gap-4">
+          <div className="flex gap-1 rounded-[9px] bg-surface-muted p-1">
+            {(["note", "quote"] as const).map((k) => (
+              <label
+                key={k}
+                className="cursor-pointer rounded-[6px] px-3 py-1.5 text-[12px] font-semibold text-muted-foreground has-[:checked]:bg-surface has-[:checked]:text-foreground has-[:checked]:shadow-card"
+              >
+                <input
+                  type="radio"
+                  name="noteKind"
+                  value={k}
+                  defaultChecked={k === "note"}
+                  className="sr-only"
+                />
+                {k === "note" ? t("noteKindNote") : t("noteKindQuote")}
+              </label>
+            ))}
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              name="noteFavorite"
+              className="h-4 w-4 rounded border-border accent-accent"
+            />
+            {t("noteFavorite")}
+          </label>
+        </div>
       </Field>
 
       <Field label={t("status")} htmlFor="session-status">

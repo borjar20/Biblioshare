@@ -152,17 +152,40 @@ export async function addSession(
     ? (statusRaw as MediaStatus)
     : undefined;
 
-  const { error: insertError } = await supabase.from("progress_sessions").insert({
-    pass_id: passId,
-    user_id: user.id,
-    ...(sessionDate && { session_date: sessionDate }),
-    duration_minutes: durationMinutes,
-    position: sessionPosition,
-    note: note || null,
-    started_at: startedAt,
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from("progress_sessions")
+    .insert({
+      pass_id: passId,
+      user_id: user.id,
+      ...(sessionDate && { session_date: sessionDate }),
+      duration_minutes: durationMinutes,
+      position: sessionPosition,
+      note: note || null,
+      started_at: startedAt,
+    })
+    .select("id")
+    .single();
 
-  if (insertError) return { error: "generic" };
+  if (insertError || !inserted) return { error: "generic" };
+
+  // Memorizar (P7): si la sesión trae nota, entra también en `notes` con su
+  // tipo (nota/cita), su página y la marca de favorita. Doble escritura durante
+  // la transición — la columna vieja progress_sessions.note sigue en su sitio.
+  if (note) {
+    const noteKind = formData.get("noteKind") === "quote" ? "quote" : "note";
+    const noteFavorite = formData.get("noteFavorite") === "on";
+    await supabase.from("notes").insert({
+      user_id: user.id,
+      item_type: itemType,
+      item_id: itemId,
+      pass_id: passId,
+      session_id: inserted.id,
+      kind: noteKind,
+      body: note,
+      position: sessionPosition,
+      is_favorite: noteFavorite,
+    });
+  }
 
   // Serie: marca cada episodio reutilizando la MISMA escritura que la
   // pestaña Episodios (episode-watch-store.ts), atado al PASE de esta sesión
