@@ -79,6 +79,13 @@ export type FeedOptions = {
   pageSize?: number;
   /** Sin filtro = todo. */
   filter?: FeedFilter;
+  /**
+   * Feed de un actor concreto (la pestaña Actividad del perfil, plan 05 P4):
+   * se salta la consulta de `follows` y sirve los eventos de ESE usuario en
+   * vez de los de tus seguidos. Los clubes quedan fuera — la Actividad de un
+   * perfil es lo que esa persona hizo con sus obras, no sus clubes.
+   */
+  actorId?: string;
 };
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -145,6 +152,9 @@ export async function getFeed(
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const cursor = options.cursor ? parseCursor(options.cursor) : null;
 
+  const actorId = options.actorId;
+  const isActorFeed = actorId != null;
+
   const filter = options.filter;
   const reviewsOnly = filter === "reviews";
   // "Pantalla" es un filtro de la maqueta, no un item_type: son dos.
@@ -152,11 +162,12 @@ export async function getFeed(
     filter === "book" ? ["book"] : filter === "screen" ? ["movie", "series"] : undefined;
   const includePeople = filter !== "clubs";
   // Los eventos de club no son de un tipo de ítem, así que no sobreviven a
-  // "Libros" ni a "Pantalla"; y no son reseñas.
-  const includeClubs = filter === undefined || filter === "clubs";
+  // "Libros" ni a "Pantalla"; y no son reseñas. En el feed de un actor tampoco:
+  // los clubes son del visitante, no de la persona del perfil.
+  const includeClubs = !isActorFeed && (filter === undefined || filter === "clubs");
 
   const [followResult, clubResult] = await Promise.all([
-    includePeople
+    includePeople && !isActorFeed
       ? supabase
           .from("follows")
           .select("followee_id")
@@ -172,7 +183,10 @@ export async function getFeed(
   ]);
   if (followResult.error) throw followResult.error;
 
-  const followedIds = (followResult.data ?? []).map((f) => f.followee_id);
+  // Feed de actor: la fuente son sus propios eventos, no los de tus seguidos.
+  const followedIds = isActorFeed
+    ? [actorId]
+    : (followResult.data ?? []).map((f) => f.followee_id);
   // Seguir a nadie ya no vacía el feed: puedes tener clubes igualmente.
   const includePerson = includePeople && followedIds.length > 0;
   if (!includePerson && clubResult.events.length === 0) {

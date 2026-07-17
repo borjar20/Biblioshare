@@ -3,21 +3,38 @@
 // avanzando aunque la pestaña esté dormida. El estado vive en localStorage
 // (por dispositivo): leer no suele repartirse entre móvil y portátil, y
 // llevarlo a la base de datos costaría tabla, acciones y conflictos.
-export type TimerState = { startedAt: number | null; accumulatedMs: number };
+// `startedAt` es el instante del arranque ACTUAL (null cuando está pausado);
+// `firstStartedAt` es el del PRIMER arranque de la sesión y NO se borra al
+// pausar — es la hora real de inicio para "Cuándo lees" (plan 05, P8). Solo
+// reset/clear lo limpian.
+export type TimerState = {
+  startedAt: number | null;
+  accumulatedMs: number;
+  firstStartedAt?: number | null;
+};
 
 const STALE_MS = 4 * 60 * 60 * 1000;
 
 export function reset(): TimerState {
-  return { startedAt: null, accumulatedMs: 0 };
+  return { startedAt: null, accumulatedMs: 0, firstStartedAt: null };
 }
 
 export function start(state: TimerState, now: number): TimerState {
-  return state.startedAt !== null ? state : { ...state, startedAt: now };
+  if (state.startedAt !== null) return state;
+  return {
+    ...state,
+    startedAt: now,
+    firstStartedAt: state.firstStartedAt ?? now,
+  };
 }
 
 export function pause(state: TimerState, now: number): TimerState {
   if (state.startedAt === null) return state;
-  return { startedAt: null, accumulatedMs: elapsedMs(state, now) };
+  return {
+    startedAt: null,
+    accumulatedMs: elapsedMs(state, now),
+    firstStartedAt: state.firstStartedAt ?? null,
+  };
 }
 
 export function elapsedMs(state: TimerState, now: number): number {

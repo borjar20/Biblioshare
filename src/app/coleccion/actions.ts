@@ -25,7 +25,9 @@ export async function reorderQueue(
   if (!user) redirect("/login");
 
   const { error } = await supabase.rpc("reorder_queue", {
-    target_queue: queueId,
+    // El generador de tipos marca target_queue como `string` no-nulo, pero la
+    // función acepta NULL a propósito: es el bucket "Sin cola" (§7.22).
+    target_queue: queueId as string,
     entry_ids: orderedEntryIds,
   });
 

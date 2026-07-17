@@ -959,6 +959,70 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_favorite: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          kind: string
+          pass_id: string | null
+          position: Json | null
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          kind: string
+          pass_id?: string | null
+          position?: Json | null
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          kind?: string
+          pass_id?: string | null
+          position?: Json | null
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "passes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "progress_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string
@@ -1140,9 +1204,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          annual_goal_books: number | null
-          annual_goal_movies: number | null
-          annual_goal_series: number | null
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -1155,9 +1216,6 @@ export type Database = {
           username: string
         }
         Insert: {
-          annual_goal_books?: number | null
-          annual_goal_movies?: number | null
-          annual_goal_series?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1170,9 +1228,6 @@ export type Database = {
           username: string
         }
         Update: {
-          annual_goal_books?: number | null
-          annual_goal_movies?: number | null
-          annual_goal_series?: number | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1195,6 +1250,7 @@ export type Database = {
           pass_id: string
           position: Json
           session_date: string
+          started_at: string | null
           user_id: string
         }
         Insert: {
@@ -1205,6 +1261,7 @@ export type Database = {
           pass_id: string
           position?: Json
           session_date?: string
+          started_at?: string | null
           user_id: string
         }
         Update: {
@@ -1215,6 +1272,7 @@ export type Database = {
           pass_id?: string
           position?: Json
           session_date?: string
+          started_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1756,9 +1814,7 @@ export type Database = {
         Returns: undefined
       }
       reorder_queue: {
-        // Ajuste a mano, NO lo generado: target_queue acepta null (mover a la
-        // cola por defecto / sin cola). El generador lo tipa como string.
-        Args: { entry_ids: string[]; target_queue: string | null }
+        Args: { entry_ids: string[]; target_queue: string }
         Returns: undefined
       }
       resolve_pending_import: {

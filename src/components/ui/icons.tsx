@@ -30,6 +30,16 @@ export function AppLogoIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Engranaje: ajustes del perfil (⚙ de las maquetas).
+export function GearIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 2.5v2.6M12 18.9v2.6M4.2 6.5l2.3 1.3M17.5 16.2l2.3 1.3M4.2 17.5l2.3-1.3M17.5 7.8l2.3-1.3" />
+    </Icon>
+  );
+}
+
 export function HomeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

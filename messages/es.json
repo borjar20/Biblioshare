@@ -223,7 +223,7 @@
     "statsFilms": "{count, plural, =0 {0 películas} one {1 película} other {# películas}}",
     "memberSince": "Desde {year}",
     "nowConsuming": "Ahora mismo",
-    "activityEmpty": "Todavía no hay pases registrados en el diario.",
+    "activityEmpty": "Este perfil todavía no tiene actividad pública.",
     "typeBooks": "Libros",
     "typeSeries": "Series",
     "typeFilms": "Películas",
@@ -241,9 +241,10 @@
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
     "tabs": {
-      "panel": "Panel",
-      "coleccion": "Colección",
-      "actividad": "Actividad"
+      "actividad": "Actividad",
+      "estadisticas": "Estadísticas",
+      "rincon": "Rincón",
+      "coleccion": "Colección"
     },
     "avatar": "Avatar",
     "avatarChoose": "Elegir imagen",
@@ -253,7 +254,14 @@
     "emptyTitle": "Colección vacía",
     "activityYearTitle": "Actividad este año",
     "highlights": "Destacados",
-    "recentReviews": "Reseñas recientes"
+    "recentReviews": "Reseñas recientes",
+    "activityToday": "Hoy",
+    "activityYesterday": "Ayer",
+    "activityEmptyTitle": "Sin actividad todavía",
+    "activityEmptyOwn": "Tu actividad aparecerá aquí en cuanto registres algo.",
+    "activityEmptyCta": "Buscar algo que registrar",
+    "settings": "Ajustes",
+    "visibilityLabel": "Visibilidad"
   },
   "social": {
     "follow": "Seguir",
@@ -906,7 +914,11 @@
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
+    },
+    "noteKindNote": "Nota",
+    "noteKindQuote": "Cita",
+    "noteFavorite": "Favorita",
+    "noteKindLabel": "Tipo"
   },
   "stats": {
     "navLabel": "Estadísticas",
@@ -936,7 +948,39 @@
       "invalidGoal": "Los objetivos deben ser números enteros positivos.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
-    "annualGoalsTitle": "Objetivos anuales"
+    "annualGoalsTitle": "Objetivos anuales",
+    "paceTitle": "Ritmo",
+    "pacePerDay": "pág/día de media",
+    "ratingTitle": "Valoración media",
+    "ratingCount": "{count, plural, one {# nota} other {# notas}}",
+    "ratingEmpty": "Aún no has puntuado nada.",
+    "recordsTitle": "Récords",
+    "recordMonth": "Mes más activo",
+    "recordFastest": "Libro más rápido",
+    "recordStreak": "Mejor racha",
+    "recordRereads": "Relecturas y re-visionados",
+    "recordDays": "{count, plural, one {1 día} other {# días}}",
+    "recordWorks": "{count, plural, one {1 obra} other {# obras}}",
+    "recordPasses": "{count, plural, one {1 pase} other {# pases}}",
+    "recordEmpty": "—",
+    "tbrTitle": "La pila",
+    "tbrPending": "pendientes: {count} · {net}",
+    "tbrNet": "{sign}{count} este año",
+    "tbrAdded": "Añadidos",
+    "tbrFinished": "Terminados",
+    "habitsTitle": "Cuándo lees",
+    "habitBand": "Franja favorita",
+    "habitWeekday": "Día más lector",
+    "habitAvg": "Sesión media",
+    "habitBandValue": "{from} – {to} h",
+    "seeFullStats": "Ver estadísticas completas ›",
+    "weekday_0": "lunes",
+    "weekday_1": "martes",
+    "weekday_2": "miércoles",
+    "weekday_3": "jueves",
+    "weekday_4": "viernes",
+    "weekday_5": "sábado",
+    "weekday_6": "domingo"
   },
   "admin": {
     "navLabel": "Admin",
@@ -994,7 +1038,8 @@
     "pin": "Fijar en el perfil",
     "unpin": "Quitar de fijados",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
-    "emptyTitle": "Tu colección está vacía"
+    "emptyTitle": "Tu colección está vacía",
+    "titlesCount": "{count, plural, one {# título} other {# títulos}}"
   },
   "import": {
     "title": "Importar biblioteca",
@@ -1141,5 +1186,39 @@
     "loadTitle": "No se pudo cargar",
     "loadMessage": "Algo falló al cargar esta página. Puede ser cosa de un momento.",
     "retry": "Reintentar"
+  },
+  "notes": {
+    "title": "Memorizar",
+    "countLink": "{count, plural, one {# nota} other {# notas}}",
+    "anotherNote": "Otra nota",
+    "emptyTitle": "Aún no has guardado nada",
+    "empty": "Guarda una cita o una nota desde una sesión o desde la ficha de una obra.",
+    "kindQuote": "Cita",
+    "kindNote": "Nota",
+    "savedTitle": "Notas guardadas",
+    "savedQuotes": "Citas",
+    "savedNotes": "Notas",
+    "savedFavorites": "Favoritas",
+    "addTitle": "Añadir a Memorizar",
+    "add": "Memorizar",
+    "bodyLabel": "Nota o cita",
+    "bodyPlaceholder": "Escribe una cita textual o tu propia nota…",
+    "pageLabel": "Página (opcional)",
+    "favorite": "Marcar como favorita",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "errorEmpty": "Escribe algo antes de guardar.",
+    "errorGeneric": "No se pudo guardar. Inténtalo de nuevo."
+  },
+  "rincon": {
+    "drawTitle": "¿No sabes qué leer?",
+    "drawSub": "Saca un lomo de tu estantería de pendientes y deja que decida el azar.",
+    "drawButton": "Sacar un lomo",
+    "drawAgain": "Otro",
+    "drawEmptyTitle": "Tu estantería de pendientes está vacía",
+    "drawEmptySub": "Añade obras a tu biblioteca como «Pendiente» y el azar elegirá por ti.",
+    "drawEmptyCta": "Buscar algo que añadir",
+    "drawPicked": "El azar dice:"
   }
 }

@@ -20,6 +20,7 @@ import {
 import { QueuesPanel } from "./queues-panel";
 import { ContinueStrip } from "@/components/library/continue-strip";
 import { CollectionSummary } from "@/components/library/collection-summary";
+import { FavoritesShelf } from "@/components/favorites-shelf";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
 import { SkeletonCoverGrid } from "@/components/ui/skeleton";
 import {
@@ -131,15 +132,20 @@ export default async function CollectionPage({
 
 async function GeneralOverview({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [inProgress, summary] = await Promise.all([
+  const [inProgress, summary, favorites] = await Promise.all([
     getLibraryItems(supabase, userId, { status: "in_progress" }),
     getLibrarySummary(supabase, userId),
+    getLibraryItems(supabase, userId, { favoritesOnly: true }),
   ]);
 
   return (
     <>
       <ContinueStrip items={inProgress} />
       <CollectionSummary summary={summary} />
+      {/* Los destacados del dueño viven aquí, no en su perfil: el perfil propio
+          pierde la pestaña Colección (plan 05, P2) y sin esta casa se
+          quedarían sin sitio (D2). */}
+      <FavoritesShelf items={favorites} />
     </>
   );
 }

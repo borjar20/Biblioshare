@@ -38,6 +38,18 @@ describe("cronometro", () => {
     expect(toMinutes(89_000)).toBe(1);
     expect(toMinutes(91_000)).toBe(2);
   });
+
+  it("firstStartedAt es el PRIMER arranque y sobrevive a las pausas (P8)", () => {
+    // La hora real de inicio de "Cuándo lees": el primer start la fija, pausar
+    // y volver a arrancar NO la mueve, reset la limpia.
+    let s = start(reset(), T0);
+    expect(s.firstStartedAt).toBe(T0);
+    s = pause(s, T0 + 10 * MIN);
+    expect(s.firstStartedAt).toBe(T0);
+    s = start(s, T0 + 60 * MIN);
+    expect(s.firstStartedAt).toBe(T0);
+    expect(reset().firstStartedAt).toBeNull();
+  });
 });
 
 // El cronómetro de la tarjeta de hoy (plan 01 T5) para el reloj y manda los

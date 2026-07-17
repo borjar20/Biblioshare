@@ -11,6 +11,7 @@ import { ChevronDownIcon } from "@/components/ui/icons";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { PassProgress } from "./pass-progress";
 import { SessionList } from "@/components/session-list";
+import { AddNoteForm } from "@/components/notes/add-note-form";
 import { StatusSegments } from "@/components/detail/status-segments";
 import { useItemStatus } from "@/components/detail/item-status-context";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
@@ -515,6 +516,15 @@ function ManagedLog({
               itemId={itemId}
               passes={passes}
               editions={editions}
+            />
+          </div>
+
+          {/* Añadir a Memorizar sin sesión (P7): también para películas. */}
+          <div className="order-7">
+            <AddNoteForm
+              itemType={itemType}
+              itemId={itemId}
+              showPage={itemType === "book"}
             />
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
+import { getAnnualGoals } from "@/lib/challenges/annual-goals";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getAnnualCompleted } from "@/lib/stats/get-annual-completed";
@@ -25,14 +26,14 @@ import { GoalRows } from "./goal-rows";
 // el mismo número, dicen cosas distintas y las dos aportan.
 export async function StatsRail({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [profile, weekly, streaks, annual] = await Promise.all([
+  const year = new Date().getFullYear();
+  const [profile, weekly, streaks, annual, annualGoals] = await Promise.all([
     getOwnProfile(supabase, userId),
     getWeeklyActivity(supabase, userId),
     getStreaks(supabase, userId),
-    getAnnualCompleted(supabase, userId, new Date().getFullYear()),
+    getAnnualCompleted(supabase, userId, year),
+    getAnnualGoals(supabase, userId, year),
   ]);
-
-  const annualGoals = profile?.annualGoals ?? { book: null, movie: null, series: null };
 
   return (
     <div className="grid gap-4">

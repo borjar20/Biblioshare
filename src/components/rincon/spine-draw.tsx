@@ -1,0 +1,133 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import type { ItemType } from "@/lib/catalog/types";
+import { itemHref } from "@/lib/catalog/item-href";
+
+export type SpineItem = {
+  itemType: ItemType;
+  itemId: string;
+  title: string;
+  coverUrl: string | null;
+};
+
+// La estantería de lomos del frame C/H: alturas y colores variados, fijos, para
+// que la tarjeta tenga cuerpo aunque el sorteo aún no haya elegido.
+const SPINES = [
+  { h: 78, c: "#cf8a54" },
+  { h: 100, c: "#6bb0b4" },
+  { h: 60, c: "#b592bd" },
+  { h: 88, c: "#e0a94a" },
+  { h: 70, c: "#8ba57b" },
+  { h: 94, c: "#cf8a54" },
+  { h: 55, c: "#6bb0b4" },
+  { h: 82, c: "#b592bd" },
+  { h: 66, c: "#d97a63" },
+  { h: 90, c: "#e0a94a" },
+];
+
+// "Sacar un lomo" (plan 05, F4): sobre los PENDIENTES del usuario, elige uno al
+// azar. Tarjeta oscura a propósito (misma en claro y oscuro). Vacío: en vez de
+// sortear la nada, invita a añadir pendientes.
+export function SpineDraw({ planned }: { planned: SpineItem[] }) {
+  const t = useTranslations("rincon");
+  const [picked, setPicked] = useState<SpineItem | null>(null);
+
+  function draw() {
+    if (planned.length === 0) return;
+    // Evita repetir el mismo si hay más de uno.
+    let next = planned[Math.floor(Math.random() * planned.length)];
+    if (planned.length > 1) {
+      while (picked && next.itemId === picked.itemId) {
+        next = planned[Math.floor(Math.random() * planned.length)];
+      }
+    }
+    setPicked(next);
+  }
+
+  const dark = "rounded-[14px] border p-4";
+  const darkStyle = {
+    background: "#2a231d",
+    borderColor: "rgba(240,232,219,.12)",
+    color: "#f0e8db",
+  };
+
+  if (planned.length === 0) {
+    return (
+      <div className={dark} style={darkStyle}>
+        <h3 className="font-serif text-sm font-semibold">{t("drawEmptyTitle")}</h3>
+        <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "#a99e8c" }}>
+          {t("drawEmptySub")}
+        </p>
+        <Link
+          href="/buscar"
+          className="mt-3 inline-block rounded-full px-4 py-2 text-center text-sm font-semibold"
+          style={{ background: "#d98a5c", color: "#1f1409" }}
+        >
+          {t("drawEmptyCta")}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className={dark} style={darkStyle}>
+      <h3 className="font-serif text-sm font-semibold">{t("drawTitle")}</h3>
+      <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "#a99e8c" }}>
+        {t("drawSub")}
+      </p>
+
+      {picked ? (
+        <Link
+          href={itemHref(picked.itemType, picked.itemId)}
+          className="my-3.5 flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-white/5"
+        >
+          <div className="relative h-[66px] w-11 shrink-0 overflow-hidden rounded shadow">
+            {picked.coverUrl ? (
+              <Image
+                src={picked.coverUrl}
+                alt={picked.title}
+                fill
+                sizes="44px"
+                className="object-cover"
+              />
+            ) : (
+              <div className="h-full w-full" style={{ background: "#4a3f33" }} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-mono text-[9px] tracking-wider uppercase" style={{ color: "#a99e8c" }}>
+              {t("drawPicked")}
+            </p>
+            <p className="line-clamp-2 font-serif text-[15px] leading-snug">
+              {picked.title}
+            </p>
+          </div>
+        </Link>
+      ) : (
+        <div className="my-3.5 flex h-16 items-end gap-[5px]">
+          {SPINES.map((s, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="w-3.5 rounded-t-[5px] rounded-b-[2px]"
+              style={{ height: `${s.h}%`, background: s.c }}
+            />
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={draw}
+        className="w-full rounded-full px-4 py-2 text-center text-sm font-semibold transition-opacity hover:opacity-90"
+        style={{ background: "#d98a5c", color: "#1f1409" }}
+      >
+        {picked ? t("drawAgain") : t("drawButton")}
+      </button>
+    </div>
+  );
+}
