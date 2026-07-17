@@ -2,9 +2,11 @@
 
 > Parte de la iniciativa **fidelidad Paper** (una sesión por pestaña). Índice y convenciones en [`README.md`](./README.md).
 
-> **ESTADO (2026-07-17): T1–T4 HECHAS y MERGEADAS** (PR #69, squash `c605366`). Queda **una sola tarea, la 5**: el bloque "¿Qué has disfrutado hoy?" (frame G), que es del tamaño de las otras cuatro juntas y va en sesión propia.
+> **PLAN 01 CERRADO (2026-07-17).** T1–T4 en la PR #69 (squash `c605366`) y T5 en la **PR #70**. Todas las decisiones (P1–P4 + las tres del frame G) están registradas aquí.
 >
 > **Antes de tocar el feed, lee la [§6 Hallazgos](#6-hallazgos-de-ejecución-t1t4--pr-69--2026-07-17):** `getFeed` ya no devuelve `FeedEvent[]` sino `FeedEntry[]` (unión persona|club), y la URL del filtro es `?filtro=`, de selección única.
+>
+> **Queda una decisión abierta del usuario** (§7): en escritorio el rail duplica al bloque de hoy — "Ahora mismo", la racha y la semana salen dos veces.
 
 **Maquetas de referencia**
 - `Paper - IA nueva (Inicio + Perfil).html` → frame **A · Inicio · Feed** (móvil, la verdad vigente)
@@ -73,11 +75,18 @@
 - Salió tal cual se preveía: `src/lib/social/feed.ts` (unión con actividad de clubes), tarjeta de club con el `club-badge` verde y `feed-filters.tsx` con el set nuevo. Detalles en §6.
 - **Compartir sigue fuera** (P4 lo pospuso): el frame B lo dibuja (`↗ Compartir`) pero es el mockup viejo de la IA anterior. Sin destino claro, no entra.
 
-### ⬜ Tarea 5 — Bloque "¿Qué has disfrutado hoy?" (frame G) — PENDIENTE, sesión propia
-- **Maqueta:** frame **G** de `Paper - Estadísticas y features.html` (ojo: es el .html que MÁS se ha tocado — comprobar su fecha antes de calcar). Encabeza el Inicio, **sobre** el feed.
-- **No es un remate, es una tarea grande.** El frame trae: cabecera con la fecha ("Miércoles · 15 jul") + el título; fila "En curso · N · Ver todos ›"; **tarjeta destacada** del ítem sobre el que más vas a actuar hoy, con portada, "Libro · 1ª lectura", "Día 6 · desde 8/7 · 3 notas", barra de progreso con "Pág. 240 / 662 · 38%", **meta de hoy** ("12 / 30 min"), **badge de racha** y **puntos de la semana**, y dos acciones rápidas (⏱ Sesión · ✎ Registrar); y debajo **"Continúa donde lo dejaste"**, un carrusel horizontal de los demás en curso (`.nowrow` / `.mini`), pensado explícitamente para no hacer scroll infinito.
-- **Preguntar antes de codificar:** qué manda el "destacado" cuando hay varios en curso (¿el pase más reciente? ¿el de la racha?), y si en escritorio va encima del feed a todo el ancho o dentro de la columna del feed — el frame G solo es de móvil (P-T7: donde no hay frame de escritorio, el layout ancho se propone antes de codificar).
-- Datos: casi todo existe ya (`getLibraryItems` en curso, `getStreaks`, `getWeeklyActivity`, `getProgress`, el `dailyGoalMinutes` del perfil). Lo que NO existe: "N notas" y "desde 8/7" del pase.
+### ✅ Tarea 5 — Bloque "¿Qué has disfrutado hoy?" (frame G) — HECHA (PR #70, `fad05df`)
+- **Maqueta:** frame **G** de `Paper - Estadísticas y features.html`. Encabeza el Inicio, **sobre** el feed.
+- **Decisiones del usuario (2026-07-17):**
+  - **Alcance: solo el bloque de hoy** (cabecera con la fecha + destacado + carrusel "Continúa donde lo dejaste"). Ver §8 para lo que queda del frame.
+  - **Destacado: la sesión más reciente.** Descartadas "la racha viva" (la racha es global, no por ítem) y "el más cerca de acabar" (deja clavado un libro al 95% sin tocar).
+  - **Escritorio: ancho completo sobre las dos columnas.**
+- **Datos nuevos:** `lib/stats/get-today-focus.ts` — `started_on` del pase (el "Día N · desde 8/7") y las `progress_sessions` con texto (el "N notas"). El resto ya existía.
+
+### ⬜ Tarea 6 — El resto del frame G — PENDIENTE, tarea aparte
+Los dos bloques que la T5 dejó fuera por decisión de alcance:
+- **"Registrar algo nuevo"** (`.qadd`): 3 accesos rápidos (Leer · Ver peli · Ver serie) con el icono teñido por tipo. **Hay que decidir a dónde llevan** y mirar si roza el quick-add que el plan 03 dejó fuera (manda la escalera de hidratación).
+- **"Para más tarde · 32"** (`.tbr`): estantería horizontal de portadas de la cola de pendientes. **Solapa con Colección** — decidir si es un atajo o una duplicación.
 
 ## 5. Verificación de cierre
 
@@ -88,7 +97,7 @@ De T1–T4 (2026-07-17). La casilla que queda es de la T5.
 - [x] Modo oscuro sin regresiones (tokens, nada hardcodeado): fondo `#1f1a16`, el badge verde del club legible.
 - [x] `npx playwright test` verde: **21 pasados · 1 flaky · 1 saltado · 0 fallos** (5,8 min, Node 22). vitest 138/138. tsc limpio.
 - [x] Preguntas P1–P4 respondidas y registradas (§3 + §6).
-- [ ] T5: frame G lado a lado, móvil y escritorio.
+- [x] T5: frame G lado a lado, móvil y escritorio. Medido con datos reales (2 pases sembrados y **borrados** después, verificado a cero): orden por sesión más reciente correcto, `Pág. 167 / 760 · 22%`, `Día 7 · desde 11/7 · 1 nota`, sin scroll horizontal a 400 ni a 1280. e2e **22 pasados · 1 saltado · 0 fallos**, sin flaky.
 
 ## 6. Hallazgos de ejecución (T1–T4 · PR #69 · 2026-07-17)
 
@@ -116,4 +125,32 @@ export type FeedEntry =
 
 **8. Detalle fino que importa:** los 5 chips caben en una fila a 400px **por los pelos** (353 de 360 útiles). Con `px-3` y `tracking-wider` en vez de los `px-[11px]` / `.03em` de la maqueta, "Clubes" se caía a una segunda fila y empujaba el feed 37px. Aquí el milímetro de la maqueta no era capricho.
 
-**9. Aviso de método — A/B confundido.** Llegué a "medir" que el rail costaba 18 s: comparé *con rail* en un servidor exhausto por una pasada de la suite contra *sin rail* recién arrancado. Con el server fresco en **ambas** ramas, el rail cuesta ~2,4 s de consultas en paralelo y el home carga en 4,2 s. Los 20 s eran la máquina (22 procesos node de otras sesiones). Ver [[e2e-contra-build-de-produccion]]: **si cae media suite, mira la carga antes que tu código**.
+**9. Del frame G (T5, PR #70):**
+
+- **En escritorio el bloque NO se estira.** A 1024px la tarjeta dejaba la portada en 58px y convertía la barra de progreso en una línea de 800px — el "móvil estirado" que prohíbe P-T7. Dentro del bloque: destacado (520px) y carrusel en paralelo. **Lección general: "ancho completo" nunca significa "estirar el móvil"; significa rehacer el interior.**
+- **El "◆ 4 d" de las mini-tarjetas no está.** En el frame es una racha POR ÍTEM; la nuestra es global (`getStreaks`). Pintarlo con los días del pase sería fingir un dato que no tenemos. Si algún día se deriva la racha por pase, vuelve.
+- **"Novedades" bajó a encabezar el FEED en móvil**: encima está el bloque, que es quien abre el Inicio. Móvil y escritorio comparten estructura (lo tuyo → lo de los demás). El `h1` visible por breakpoint no cambia, así que los locators `:visible` de la suite siguen valiendo.
+- **Token nuevo `--gold-ink`** (#8a5a12 claro / #e0a94a oscuro): el texto del badge de racha. `--gold` puro no se lee sobre su propio tinte al 16%, y el frame G **solo trae el valor claro** — ninguna maqueta oscura cubre este badge. Par por tema, mismo patrón que `--foreground-soft`.
+
+**10. Aviso de método — A/B confundido.** Llegué a "medir" que el rail costaba 18 s: comparé *con rail* en un servidor exhausto por una pasada de la suite contra *sin rail* recién arrancado. Con el server fresco en **ambas** ramas, el rail cuesta ~2,4 s de consultas en paralelo y el home carga en 4,2 s. Los 20 s eran la máquina (22 procesos node de otras sesiones). Ver [[e2e-contra-build-de-produccion]]: **si cae media suite, mira la carga antes que tu código**.
+
+## 7. Decisión abierta — el rail duplica al bloque de hoy (escritorio)
+
+Se avisó al decidir el ancho completo del frame G y el usuario lo aceptó, pero conviene verlo montado (PR #70): a `lg`, el bloque y el rail enseñan lo mismo a 200px de distancia.
+
+| Dato | En el bloque (frame G) | En el rail (frame B) |
+|---|---|---|
+| Lo que estás consumiendo | El destacado + el carrusel | "Ahora mismo" (`NowConsuming`, tira de portadas) |
+| Racha | Badge "◆ Racha 2 d" | Tarjeta "Racha · 2 días · mejor 5" |
+| La semana | 7 puntitos | "Lectura esta semana", barras |
+| Meta | Meta de HOY (minutos) | Meta de LIBROS (anual) — **no** se duplica |
+
+**Recomendación (pendiente de que el usuario decida):** quitar del rail **"Ahora mismo"** y **"Racha"**, y dejarle lo que el bloque no da (semana, meta de libros, objetivos anuales). El bloque es más rico en ambos casos: enseña progreso por ítem y acciones, no solo portadas.
+
+No se tocó el rail por cuenta propia: el frame B lo dibuja así y la duplicación nace de juntar dos maquetas que nunca se vieron entre sí (B es de la IA vieja, G es posterior) — es el mismo patrón que el **choque de shells** del plan 06 §6e.
+
+## 8. Fuera de alcance / anotado
+
+- **T6** (arriba): "Registrar algo nuevo" y "Para más tarde" del frame G.
+- **Compartir en el feed** (P4): pospuesto hasta tener destino claro. El frame B lo dibuja (`↗ Compartir`), pero es el mockup de la IA anterior.
+- **Racha por ítem**: hoy `getStreaks` solo da la global. Bloquea el "◆ 4 d" de las mini-tarjetas.
