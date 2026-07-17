@@ -68,6 +68,10 @@ export function SorteoSheet({
   const [phase, setPhase] = useState<Phase>("shelf");
   const [tickIndex, setTickIndex] = useState<number | null>(null);
   const [winner, setWinner] = useState<number | null>(null);
+  // El ítem revelado se congela aquí: tras el CTA el server revalida y el pool
+  // (y con él la estantería) cambia bajo los pies — un índice vivo señalaría
+  // a otro título (bug cazado en el smoke del 2026-07-17).
+  const [picked, setPicked] = useState<SorteoItem | null>(null);
   const [ctaState, setCtaState] = useState<"idle" | "done" | "error">("idle");
   const [pending, startTransition] = useTransition();
 
@@ -85,6 +89,7 @@ export function SorteoSheet({
     setPhase("shelf");
     setTickIndex(null);
     setWinner(null);
+    setPicked(null);
     setCtaState("idle");
   }, []);
 
@@ -120,6 +125,7 @@ export function SorteoSheet({
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || shelf.length === 1) {
       setWinner(target);
+      setPicked(shelf[target]);
       setPhase("revealed");
       return;
     }
@@ -138,13 +144,12 @@ export function SorteoSheet({
         // Pausa con el ganador elevado y el resto atenuado, luego revelado.
         setTickIndex(null);
         setWinner(target);
+        setPicked(shelf[target]);
         timers.current.push(window.setTimeout(() => setPhase("revealed"), 520));
       }
     };
     run();
   }
-
-  const picked = winner !== null ? shelf[winner] : null;
 
   function start() {
     if (!picked || pending || ctaState === "done") return;
