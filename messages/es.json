@@ -266,7 +266,17 @@
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
     "filters": {
-      "reviewsOnly": "Solo reseñas"
+      "all": "Todo",
+      "reviews": "Reseñas",
+      "books": "Libros",
+      "screen": "Pantalla",
+      "clubs": "Clubes"
+    },
+    "club": {
+      "header": "Club · {name}",
+      "verb": "nueva actividad",
+      "proposedBy": "propuesto por {name}",
+      "participants": "{count, plural, =0 {nadie se ha apuntado aún} =1 {1 se apunta} other {# se apuntan}}"
     },
     "empty": "Cuando sigas a otras personas, sus reseñas y avances aparecerán aquí.",
     "emptyCta": "Descubrir usuarios",

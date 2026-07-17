@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import type { FeedEvent } from "@/lib/social/feed";
-import type { ItemType } from "@/lib/catalog/types";
+import type { FeedEntry, FeedFilter } from "@/lib/social/feed";
 import { loadMoreFeed } from "@/lib/social/feed-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { UsersIcon } from "@/components/ui/icons";
 import { FeedCard } from "./feed-card";
+import { ClubFeedCard } from "./club-feed-card";
 
 // Lista del feed con paginación "Cargar más" (EPIC-05, Bloque C). Los eventos
 // de la primera página llegan siempre frescos vía `initialEvents` (Next.js
@@ -24,18 +24,16 @@ import { FeedCard } from "./feed-card";
 export function FeedList({
   initialEvents,
   initialCursor,
-  itemType,
-  reviewsOnly,
+  filter,
   viewerLoggedIn,
 }: {
-  initialEvents: FeedEvent[];
+  initialEvents: FeedEntry[];
   initialCursor: string | null;
-  itemType?: ItemType;
-  reviewsOnly?: boolean;
+  filter?: FeedFilter;
   viewerLoggedIn: boolean;
 }) {
   const t = useTranslations("feed");
-  const [extraEvents, setExtraEvents] = useState<FeedEvent[]>([]);
+  const [extraEvents, setExtraEvents] = useState<FeedEntry[]>([]);
   const [cursor, setCursor] = useState(initialCursor);
   const [isPending, startTransition] = useTransition();
 
@@ -43,7 +41,7 @@ export function FeedList({
 
   function loadMore() {
     startTransition(async () => {
-      const page = await loadMoreFeed(cursor, itemType, reviewsOnly);
+      const page = await loadMoreFeed(cursor, filter);
       setExtraEvents((prev) => [...prev, ...page.events]);
       setCursor(page.nextCursor);
     });
@@ -77,9 +75,13 @@ export function FeedList({
 
   return (
     <div className="flex flex-col gap-3">
-      {events.map((event) => (
-        <FeedCard key={event.id} event={event} viewerLoggedIn={viewerLoggedIn} />
-      ))}
+      {events.map((entry) =>
+        entry.source === "club" ? (
+          <ClubFeedCard key={entry.id} event={entry.event} />
+        ) : (
+          <FeedCard key={entry.id} event={entry.event} viewerLoggedIn={viewerLoggedIn} />
+        ),
+      )}
       {cursor && (
         <button
           type="button"

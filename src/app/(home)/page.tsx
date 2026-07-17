@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
-import { getFeed } from "@/lib/social/feed";
+import { getFeed, parseFeedFilter, type FeedFilter } from "@/lib/social/feed";
 import { getFollowCounts } from "@/lib/social/follows";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
@@ -11,9 +11,6 @@ import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
-import type { ItemType } from "@/lib/catalog/types";
-
-const ITEM_TYPES: readonly string[] = ["book", "movie", "series"];
 
 // Inicio = el feed (§IA del rediseño Paper). El panel de estadísticas que vivía
 // aquí en una pestaña se mudó a Perfil › Panel, que es donde tiene sentido:
@@ -21,13 +18,9 @@ const ITEM_TYPES: readonly string[] = ["book", "movie", "series"];
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{
-    itemType?: string;
-    reviewsOnly?: string;
-  }>;
+  searchParams: Promise<{ filtro?: string }>;
 }) {
-  const { itemType: itemTypeParam, reviewsOnly: reviewsOnlyParam } =
-    await searchParams;
+  const { filtro } = await searchParams;
   const t = await getTranslations();
   const supabase = await createClient();
   const {
@@ -51,10 +44,7 @@ export default async function Home({
     );
   }
 
-  const itemType = ITEM_TYPES.includes(itemTypeParam ?? "")
-    ? (itemTypeParam as ItemType)
-    : undefined;
-  const reviewsOnly = reviewsOnlyParam === "1";
+  const filter = parseFeedFilter(filtro);
 
   // Shell inmediato (título + contador + filtros); el feed —la consulta lenta—
   // llega por streaming detrás de su <Suspense> (Fase B). El contador de
@@ -75,14 +65,11 @@ export default async function Home({
       </div>
 
       <div className="mb-4">
-        <FeedFilters itemType={itemType} reviewsOnly={reviewsOnly} />
+        <FeedFilters filter={filter} />
       </div>
 
-      <Suspense
-        key={`${itemType ?? "all"}:${reviewsOnly ? 1 : 0}`}
-        fallback={<FeedListSkeleton count={4} />}
-      >
-        <FeedSection itemType={itemType} reviewsOnly={reviewsOnly} userId={user.id} />
+      <Suspense key={filter ?? "all"} fallback={<FeedListSkeleton count={4} />}>
+        <FeedSection filter={filter} userId={user.id} />
       </Suspense>
     </div>
   );
@@ -91,27 +78,20 @@ export default async function Home({
 // El feed: la consulta pesada, aislada en su propio boundary para que el shell
 // pinte sin esperarla.
 async function FeedSection({
-  itemType,
-  reviewsOnly,
+  filter,
   userId,
 }: {
-  itemType?: ItemType;
-  reviewsOnly: boolean;
+  filter?: FeedFilter;
   userId: string;
 }) {
   const supabase = await createClient();
-  const feedPage = await getFeed(supabase, userId, {
-    itemType,
-    reviewsOnly,
-    pageSize: 20,
-  });
+  const feedPage = await getFeed(supabase, userId, { filter, pageSize: 20 });
 
   return (
     <FeedList
       initialEvents={feedPage.events}
       initialCursor={feedPage.nextCursor}
-      itemType={itemType}
-      reviewsOnly={reviewsOnly}
+      filter={filter}
       viewerLoggedIn={true}
     />
   );

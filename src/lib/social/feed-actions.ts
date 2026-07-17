@@ -1,8 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getFeed, type FeedPage } from "./feed";
-import type { ItemType } from "@/lib/catalog/types";
+import { getFeed, type FeedFilter, type FeedPage } from "./feed";
 
 // Única mutación... en realidad una LECTURA vía server action, no una
 // mutación — necesario porque la paginación del feed es abierta (a
@@ -11,8 +10,7 @@ import type { ItemType } from "@/lib/catalog/types";
 // el cursor acumulado.
 export async function loadMoreFeed(
   cursor: string | null,
-  itemType?: ItemType,
-  reviewsOnly?: boolean,
+  filter?: FeedFilter,
 ): Promise<FeedPage> {
   const supabase = await createClient();
   const {
@@ -22,7 +20,6 @@ export async function loadMoreFeed(
 
   return getFeed(supabase, user.id, {
     cursor: cursor ?? undefined,
-    itemType,
-    reviewsOnly,
+    filter,
   });
 }
