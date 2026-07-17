@@ -116,14 +116,17 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
     groupSafeOrder = min >= 0 ? min : null;
   }
 
+  // La posición vive en el pase ACTIVO de la obra (§Tarea 9, hub):
+  // library_entries ya no se lee.
   let viewerPosition: Position | null = null;
   if (itemRow && itemType) {
     const { data: entry } = await supabase
-      .from("library_entries")
+      .from("passes")
       .select("position")
       .eq("user_id", userId)
       .eq("item_type", itemRow.item_type)
       .eq("item_id", itemRow.item_id)
+      .eq("is_active", true)
       .maybeSingle();
     viewerPosition = entry ? parsePosition(itemType, entry.position) : null;
   }

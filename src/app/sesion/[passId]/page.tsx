@@ -6,8 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { parsePosition } from "@/lib/library/position";
-import type { MediaStatus } from "@/lib/library/types";
-import { getPasses } from "@/lib/passes/get-passes";
+import { getActivePass } from "@/lib/passes/get-passes";
 import { getEditions } from "@/lib/editions/get-editions";
 import { primaryEdition } from "@/lib/editions/edition-label";
 import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
@@ -18,12 +17,27 @@ export const metadata: Metadata = {
   title: "Guardar sesión — Biblioshare",
 };
 
+// Un parámetro de URL es texto de fuera: se acepta solo si es un entero de
+// minutos con sentido. Se topa a 24 h para que un valor absurdo no llegue al
+// formulario.
+function parseMinutes(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const minutes = Number(raw);
+  return Number.isInteger(minutes) && minutes > 0 && minutes <= 24 * 60 ? minutes : null;
+}
+
 export default async function SessionPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ entryId: string }>;
+  params: Promise<{ passId: string }>;
+  // `minutos`: lo trae el cronómetro de la tarjeta de hoy (plan 01 T5) cuando
+  // pulsas "Registrar" — llegas con el tiempo ya escrito en vez de tener que
+  // acordarte de él.
+  searchParams: Promise<{ minutos?: string }>;
 }) {
-  const { entryId } = await params;
+  const { passId } = await params;
+  const { minutos } = await searchParams;
   const t = await getTranslations("session");
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
@@ -33,29 +47,39 @@ export default async function SessionPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: entry } = await supabase
-    .from("library_entries")
-    .select("id, item_type, item_id, status, position")
-    .eq("id", entryId)
+  // El pase es el hub (§Tarea 7): la obra ya vive en el propio pase
+  // (item_type/item_id, desde la migración A). Se busca directo por id +
+  // user_id — ya no hace falta pasar por library_entries.
+  const { data: passRow } = await supabase
+    .from("passes")
+    .select("id, item_type, item_id")
+    .eq("id", passId)
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!entry) notFound();
+  if (!passRow) notFound();
 
   // Sessions only make sense for books and series (§7.14 scope). A movie
   // entry has no incremental progress — send it back to its detail page.
-  if (entry.item_type === "movie") {
-    redirect(itemHref("movie", entry.item_id));
+  if (passRow.item_type === "movie") {
+    redirect(itemHref("movie", passRow.item_id));
   }
 
-  const itemType = entry.item_type as "book" | "series";
+  const itemType = passRow.item_type as "book" | "series";
+  const itemId = passRow.item_id;
 
-  const [{ data: book }, { data: series }, passes] = await Promise.all([
+  // Confirma que sigue siendo el pase ACTIVO de la obra ahora mismo — nunca
+  // un pase archivado de una relectura anterior (mismo guard que
+  // addSession).
+  const activePass = await getActivePass(supabase, itemType, itemId, user.id);
+  if (!activePass || activePass.id !== passId) notFound();
+
+  const [{ data: book }, { data: series }] = await Promise.all([
     itemType === "book"
       ? supabase
           .from("books")
           .select("title, author, cover_url, total_pages")
-          .eq("id", entry.item_id)
+          .eq("id", itemId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     itemType === "series"
@@ -64,10 +88,9 @@ export default async function SessionPage({
           .select(
             "title, creator, cover_url, total_episodes, total_seasons, tmdb_id",
           )
-          .eq("id", entry.item_id)
+          .eq("id", itemId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    getPasses(supabase, entry.id),
   ]);
 
   const title = book?.title ?? series?.title ?? "";
@@ -82,11 +105,11 @@ export default async function SessionPage({
     | undefined;
   if (itemType === "series" && series) {
     await ensureSeriesEpisodes(supabase, {
-      id: entry.item_id,
+      id: itemId,
       tmdbId: series.tmdb_id,
       totalSeasons: series.total_seasons,
     });
-    const episodeData = await getEpisodeData(supabase, entry.item_id, user.id);
+    const episodeData = await getEpisodeData(supabase, itemId, user.id, activePass.id);
     seriesEpisodes = episodeData.seasons.map((season) => ({
       season,
       episodes: (episodeData.bySeasons.get(season) ?? []).map((e) => ({
@@ -97,15 +120,14 @@ export default async function SessionPage({
   }
 
   // El total contra el que se mide el progreso sale de la EDICIÓN del pase
-  // abierto (o de la primaria si el pase no tiene ninguna asignada), no de
+  // activo (o de la primaria si el pase no tiene ninguna asignada), no de
   // books.total_pages: la de bolsillo y la de tapa dura no tienen las mismas
   // páginas, así que "voy por la 240" solo es cierto contra tu edición. Las
   // series no tienen ediciones (getEditions devuelve []), así que caen al
   // total de episodios del catálogo.
-  const openPass = passes.find((p) => !p.finishedOn) ?? null;
-  const editions = await getEditions(supabase, itemType, entry.item_id);
+  const editions = await getEditions(supabase, itemType, itemId);
   const edition =
-    editions.find((e) => e.id === openPass?.editionId) ?? primaryEdition(editions);
+    editions.find((e) => e.id === activePass.editionId) ?? primaryEdition(editions);
   const total = edition?.totalUnits ?? book?.total_pages ?? series?.total_episodes ?? null;
 
   const accent = MEDIA_ACCENT[itemType];
@@ -143,13 +165,14 @@ export default async function SessionPage({
       </div>
 
       <SessionForm
-        entryId={entry.id}
+        passId={activePass.id}
         itemType={itemType}
-        itemId={entry.item_id}
-        position={parsePosition(itemType, entry.position)}
-        status={entry.status as MediaStatus}
+        itemId={itemId}
+        position={parsePosition(itemType, activePass.position)}
+        status={activePass.status}
         total={total}
         seriesEpisodes={seriesEpisodes}
+        initialMinutes={parseMinutes(minutos)}
       />
     </div>
   );

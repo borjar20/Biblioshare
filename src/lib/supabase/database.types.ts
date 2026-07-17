@@ -735,61 +735,12 @@ export type Database = {
           },
         ]
       }
-      diary_entries: {
-        Row: {
-          created_at: string
-          edition_id: string | null
-          finished_on: string | null
-          id: string
-          is_public: boolean
-          library_entry_id: string
-          rating: number | null
-          review: string | null
-          started_on: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          edition_id?: string | null
-          finished_on?: string | null
-          id?: string
-          is_public?: boolean
-          library_entry_id: string
-          rating?: number | null
-          review?: string | null
-          started_on?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          edition_id?: string | null
-          finished_on?: string | null
-          id?: string
-          is_public?: boolean
-          library_entry_id?: string
-          rating?: number | null
-          review?: string | null
-          started_on?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "diary_entries_entry_owner_fkey"
-            columns: ["library_entry_id", "user_id"]
-            isOneToOne: false
-            referencedRelation: "library_entries"
-            referencedColumns: ["id", "user_id"]
-          },
-        ]
-      }
       episode_watches: {
         Row: {
           created_at: string
           episode_number: number
           id: string
+          pass_id: string | null
           rating: number | null
           review: string | null
           season_number: number
@@ -802,6 +753,7 @@ export type Database = {
           created_at?: string
           episode_number: number
           id?: string
+          pass_id?: string | null
           rating?: number | null
           review?: string | null
           season_number: number
@@ -814,6 +766,7 @@ export type Database = {
           created_at?: string
           episode_number?: number
           id?: string
+          pass_id?: string | null
           rating?: number | null
           review?: string | null
           season_number?: number
@@ -823,6 +776,20 @@ export type Database = {
           watched_on?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "episode_watches_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "episode_watches_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "passes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "episode_watches_series_id_fkey"
             columns: ["series_id"]
@@ -1025,6 +992,77 @@ export type Database = {
         }
         Relationships: []
       }
+      passes: {
+        Row: {
+          created_at: string
+          edition_id: string | null
+          finished_on: string | null
+          id: string
+          is_active: boolean
+          is_public: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          pinned_order: number | null
+          position: Json
+          queue_id: string | null
+          queue_order: number | null
+          rating: number | null
+          review: string | null
+          started_on: string | null
+          status: Database["public"]["Enums"]["media_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          edition_id?: string | null
+          finished_on?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          pinned_order?: number | null
+          position?: Json
+          queue_id?: string | null
+          queue_order?: number | null
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          edition_id?: string | null
+          finished_on?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          pinned_order?: number | null
+          position?: Json
+          queue_id?: string | null
+          queue_order?: number | null
+          rating?: number | null
+          review?: string | null
+          started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passes_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "queues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_import_rows: {
         Row: {
           created_at: string
@@ -1153,9 +1191,8 @@ export type Database = {
           created_at: string
           duration_minutes: number | null
           id: string
-          library_entry_id: string
           note: string | null
-          pass_id: string | null
+          pass_id: string
           position: Json
           session_date: string
           user_id: string
@@ -1164,9 +1201,8 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           id?: string
-          library_entry_id: string
           note?: string | null
-          pass_id?: string | null
+          pass_id: string
           position?: Json
           session_date?: string
           user_id: string
@@ -1175,33 +1211,25 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           id?: string
-          library_entry_id?: string
           note?: string | null
-          pass_id?: string | null
+          pass_id?: string
           position?: Json
           session_date?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "progress_sessions_entry_owner_fkey"
-            columns: ["library_entry_id", "user_id"]
-            isOneToOne: false
-            referencedRelation: "library_entries"
-            referencedColumns: ["id", "user_id"]
-          },
-          {
             foreignKeyName: "progress_sessions_pass_id_fkey"
             columns: ["pass_id"]
             isOneToOne: false
-            referencedRelation: "diary_entries"
+            referencedRelation: "pass_reviews"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "progress_sessions_pass_id_fkey"
             columns: ["pass_id"]
             isOneToOne: false
-            referencedRelation: "pass_reviews"
+            referencedRelation: "passes"
             referencedColumns: ["id"]
           },
         ]
@@ -1488,11 +1516,16 @@ export type Database = {
           edition_id: string | null
           finished_on: string | null
           id: string | null
+          is_active: boolean | null
           is_public: boolean | null
-          library_entry_id: string | null
+          item_id: string | null
+          item_type: Database["public"]["Enums"]["item_type"] | null
+          pinned_order: number | null
+          position: Json | null
           rating: number | null
           review: string | null
           started_on: string | null
+          status: Database["public"]["Enums"]["media_status"] | null
           user_id: string | null
         }
         Insert: {
@@ -1500,11 +1533,16 @@ export type Database = {
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
+          is_active?: boolean | null
           is_public?: boolean | null
-          library_entry_id?: string | null
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          pinned_order?: number | null
+          position?: Json | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"] | null
           user_id?: string | null
         }
         Update: {
@@ -1512,22 +1550,19 @@ export type Database = {
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
+          is_active?: boolean | null
           is_public?: boolean | null
-          library_entry_id?: string | null
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          pinned_order?: number | null
+          position?: Json | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
+          status?: Database["public"]["Enums"]["media_status"] | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "diary_entries_entry_owner_fkey"
-            columns: ["library_entry_id", "user_id"]
-            isOneToOne: false
-            referencedRelation: "library_entries"
-            referencedColumns: ["id", "user_id"]
-          },
-        ]
+        Relationships: []
       }
       profile_identities: {
         Row: {
@@ -1696,7 +1731,7 @@ export type Database = {
       }
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
       is_visible_via_club_share: {
-        Args: { p_row_id: string; p_source_table: string }
+        Args: { p_owner_id: string; p_row_id: string; p_source_table: string }
         Returns: boolean
       }
       notify_club_join_request: {
@@ -1721,10 +1756,8 @@ export type Database = {
         Returns: undefined
       }
       reorder_queue: {
-        // Ajuste a mano, NO lo generado: target_queue acepta null (reordenar
-        // el bucket "Sin cola", §7.22). Postgres no declara la nulabilidad de
-        // los argumentos, así que el generador la pierde. Repón este `| null`
-        // cada vez que regeneres este fichero.
+        // Ajuste a mano, NO lo generado: target_queue acepta null (mover a la
+        // cola por defecto / sin cola). El generador lo tipa como string.
         Args: { entry_ids: string[]; target_queue: string | null }
         Returns: undefined
       }

@@ -1,270 +1,249 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
-import type { EpisodeRow } from "@/lib/series/get-episode-data";
-import { averageRating } from "@/lib/series/rating-scale";
-import { setEpisodeWatched, rateEpisode } from "@/lib/series/episode-actions";
-import { CheckIcon, NoteIcon, ChevronDownIcon } from "@/components/ui/icons";
+import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
+import { formatDots } from "@/lib/rating/dots";
+import { CheckIcon, ChevronLeftIcon } from "@/components/ui/icons";
 import { EpisodeRating } from "./episode-rating";
-import type { SeasonGroup, GridSource } from "./episode-grid";
+import { EpisodeInlineDetail } from "./episode-detail";
+import { episodeKey } from "./episode-panel";
+import { ProgressRing, seasonPercent, type SeasonStat } from "./season-index";
+import type { GridSource } from "./episode-grid";
 
-const dateFmt = new Intl.DateTimeFormat("es", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
+const dateFmt = new Intl.DateTimeFormat("es", { day: "numeric", month: "short" });
 
-function formatDate(iso: string | null): string | null {
+function formatAired(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : dateFmt.format(d);
 }
 
-// Lista por temporadas colapsables (§7.36): checkmark de visto, valoración por
-// dots y reseña expandible. La fuente (mis notas / comunidad) alterna entre la
-// vista interactiva del propio usuario y la agregada de la comunidad.
-export function EpisodeList({
-  seriesId,
-  seasons,
-  source,
-  isLoggedIn,
-}: {
-  seriesId: string;
-  seasons: SeasonGroup[];
+// Los episodios de UNA temporada. Es el nivel 2 del móvil (frame E2, con su
+// vuelta al índice y su cabecera de temporada) y a la vez la columna central de
+// PC (frame PC·1, con la cabecera `.lh` pegajosa). Un solo componente para los
+// dos: las filas son idénticas en ambos frames, y duplicarlas por breakpoint
+// habría duplicado también la lista larga.
+export type EpisodeListProps = {
+  group: { season: number; episodes: EpisodeRow[] };
+  stat: SeasonStat;
   source: GridSource;
   isLoggedIn: boolean;
-}) {
+  interactive: boolean;
+  isPending: boolean;
+  ownOf: (ep: EpisodeRow) => OwnWatch;
+  selectedKey: string | null;
+  onSelect: (ep: EpisodeRow) => void;
+  onToggleWatched: (ep: EpisodeRow) => void;
+  onRate: (ep: EpisodeRow, rating: number) => void;
+  onBack: () => void;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onSaveReview: (ep: EpisodeRow) => void;
+};
+
+export function EpisodeList(props: EpisodeListProps) {
+  const t = useTranslations("episode");
+  const { group, stat, isLoggedIn, onBack } = props;
+  const remaining = stat.total - stat.watched;
+
   return (
-    <div className="flex flex-col gap-4">
-      {seasons.map((s) => (
-        <SeasonSection
-          key={s.season}
-          seriesId={seriesId}
-          group={s}
-          source={source}
-          isLoggedIn={isLoggedIn}
-        />
-      ))}
+    <div className="lg:max-h-[560px] lg:overflow-y-auto">
+      {/* Cabecera del nivel 2 en móvil: volver al índice y el resumen de la
+          temporada. En PC no hay nivel 2 — el raíl de la izquierda ya dice
+          dónde estás — así que esto no se pinta. */}
+      <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-3.5 inline-flex items-center gap-[7px] font-mono text-[11px] font-medium text-accent"
+        >
+          <ChevronLeftIcon className="h-3.5 w-3.5" />
+          {t("allSeasons")}
+        </button>
+
+        <h3 className="font-serif text-[20px] font-semibold text-foreground">
+          {t("season", { n: group.season })}
+        </h3>
+        <p className="mt-1.5 mb-2.5 flex items-center gap-1 font-mono text-[10.5px] text-muted-foreground">
+          <span>{t("episodeCount", { count: stat.total })}</span>
+          {stat.avg !== null && (
+            <>
+              <span aria-hidden>·</span>
+              <i aria-hidden className="h-[4px] w-[4px] rounded-full bg-gold" />
+              <span>{formatDots(stat.avg)}</span>
+            </>
+          )}
+        </p>
+
+        {isLoggedIn && (
+          <div className="mb-2 flex items-center gap-2.5">
+            <ProgressRing
+              percent={seasonPercent(stat)}
+              label={
+                stat.total > 0 && stat.watched === stat.total
+                  ? "✓"
+                  : `${stat.watched}/${stat.total}`
+              }
+              size="lg"
+            />
+            <div className="flex-1">
+              <p className="font-serif text-[15px] font-semibold text-foreground">
+                {t("yourProgress")}
+              </p>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {t("remaining", { count: remaining })}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* `.lh` de PC·1: rótulo pegajoso de la columna central. */}
+      <div className="sticky top-0 hidden border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:block">
+        {t("season", { n: group.season })}
+        {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
+        {stat.avg !== null && ` · ${formatDots(stat.avg)}`}
+      </div>
+
+      <ul>
+        {group.episodes.map((ep) => (
+          <EpisodeItem key={ep.episode} episode={ep} {...props} />
+        ))}
+      </ul>
     </div>
   );
 }
 
-function SeasonSection({
-  seriesId,
-  group,
-  source,
-  isLoggedIn,
-}: {
-  seriesId: string;
-  group: SeasonGroup;
-  source: GridSource;
-  isLoggedIn: boolean;
-}) {
-  const t = useTranslations("episode");
-  const [open, setOpen] = useState(group.season === 1);
-
-  const { watched, avg } = useMemo(() => {
-    const watchedCount = group.episodes.filter((e) => e.own.watched).length;
-    const ratings = group.episodes
-      .map((e) => (source === "mine" ? e.own.rating : e.avgRating))
-      .filter((r): r is number => r !== null);
-    return { watched: watchedCount, avg: averageRating(ratings) };
-  }, [group.episodes, source]);
-
-  return (
-    <section className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-3 border-l-2 border-type-series px-4 py-3 text-left"
-      >
-        <h3 className="font-serif text-base font-semibold text-foreground">
-          {t("season", { n: group.season })}
-        </h3>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {t("episodeCount", { count: group.episodes.length })}
-        </span>
-        {isLoggedIn && (
-          <span
-            className={`font-mono text-[10px] ${
-              watched === group.episodes.length
-                ? "text-status-completed"
-                : "text-muted-foreground"
-            }`}
-          >
-            {t("watchedCount", { watched, total: group.episodes.length })}
-          </span>
-        )}
-        {avg !== null && (
-          <span className="font-mono text-[10px] text-type-series">
-            {t("avgShort", { value: avg.toFixed(1) })}
-          </span>
-        )}
-        <ChevronDownIcon
-          className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {open && (
-        <ul className="divide-y divide-border">
-          {group.episodes.map((ep) => (
-            <EpisodeItem
-              key={ep.episode}
-              seriesId={seriesId}
-              episode={ep}
-              source={source}
-              isLoggedIn={isLoggedIn}
-            />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 function EpisodeItem({
-  seriesId,
   episode,
   source,
-  isLoggedIn,
-}: {
-  seriesId: string;
-  episode: EpisodeRow;
-  source: GridSource;
-  isLoggedIn: boolean;
-}) {
+  interactive,
+  isPending,
+  ownOf,
+  selectedKey,
+  onSelect,
+  onToggleWatched,
+  onRate,
+  draft,
+  onDraftChange,
+  onSaveReview,
+}: EpisodeListProps & { episode: EpisodeRow }) {
   const t = useTranslations("episode");
-  const [isPending, startTransition] = useTransition();
-  const [watched, setWatched] = useState(episode.own.watched);
-  const [rating, setRating] = useState<number | null>(episode.own.rating);
-  const [review, setReview] = useState(episode.own.review ?? "");
-  const [open, setOpen] = useState(false);
+  const tPasses = useTranslations("passes");
+  const own = ownOf(episode);
+  const selected = selectedKey === episodeKey(episode);
+  const displayRating = source === "mine" ? own.rating : episode.avgRating;
 
-  const interactive = source === "mine" && isLoggedIn;
   const meta = [
+    t("episodeShort", { n: episode.episode }),
     episode.runtimeMinutes ? t("runtime", { n: episode.runtimeMinutes }) : null,
-    formatDate(episode.airDate),
+    formatAired(episode.airDate),
   ]
     .filter(Boolean)
     .join(" · ");
 
-  const displayRating = source === "mine" ? rating : episode.avgRating;
-
-  const toggleWatched = () => {
-    const next = !watched;
-    setWatched(next);
-    if (!next) {
-      setRating(null);
-      setReview("");
-    }
-    startTransition(() =>
-      setEpisodeWatched(seriesId, episode.season, episode.episode, next)
-    );
-  };
-
-  const save = (nextRating: number | null, nextReview: string) => {
-    setWatched(true);
-    setRating(nextRating);
-    startTransition(() =>
-      rateEpisode(seriesId, episode.season, episode.episode, nextRating, nextReview || null)
-    );
-  };
-
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
-      {interactive ? (
+    <li className="border-t border-border first:border-t-0 lg:border-t-0 lg:border-b">
+      <div
+        className={`flex items-center gap-3 px-[15px] py-[11px] lg:gap-[11px] lg:px-4 ${
+          // En PC la fila seleccionada se tiñe del acento (frame PC·1): señala
+          // qué episodio está anclado en la columna de detalle. En móvil el
+          // desplegable inline ya lo dice solo.
+          selected ? "lg:bg-type-series/7" : ""
+        }`}
+      >
+        {interactive ? (
+          <button
+            type="button"
+            onClick={() => onToggleWatched(episode)}
+            disabled={isPending}
+            aria-label={t("watched")}
+            className={`grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[6px] border-[1.5px] transition-colors disabled:opacity-60 ${
+              own.watched
+                ? "border-type-series bg-type-series text-white"
+                : "border-border text-transparent hover:border-type-series hover:text-type-series/40"
+            }`}
+          >
+            <CheckIcon className="h-3 w-3" />
+          </button>
+        ) : (
+          <span className="w-[22px] shrink-0" />
+        )}
+
+        {/* El fotograma llega del catálogo; sin él, el hueco se queda como
+            superficie hundida para que la rejilla de la fila no baile. */}
         <button
           type="button"
-          onClick={toggleWatched}
-          disabled={isPending}
-          aria-label={t("watched")}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
-            watched
-              ? "border-type-series bg-type-series/15 text-type-series"
-              : "border-border text-transparent hover:border-type-series hover:text-type-series/40"
-          }`}
+          onClick={() => onSelect(episode)}
+          aria-expanded={selected}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left lg:gap-[11px]"
         >
-          <CheckIcon className="h-3.5 w-3.5" />
-        </button>
-      ) : (
-        <span className="w-7 shrink-0" />
-      )}
-
-      <span className="w-7 shrink-0 font-mono text-[11px] text-muted-foreground">
-        {t("episodeShort", { n: episode.episode })}
-      </span>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="truncate text-sm font-medium text-foreground">
-            {episode.title ?? t("untitled")}
-          </span>
-          <div className="flex shrink-0 items-center gap-2">
-            <EpisodeRating
-              rating={displayRating}
-              onRate={interactive ? (r) => save(r, review) : undefined}
-              disabled={isPending}
-            />
-            <button
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              aria-label={t("details")}
-              className="relative flex h-7 items-center gap-0.5 rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <NoteIcon className="h-3.5 w-3.5" />
-              {source === "mine" && Boolean(episode.own.review) && (
-                <span className="h-1 w-1 rounded-full bg-type-series" />
-              )}
-              <ChevronDownIcon
-                className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
+          <span className="relative block h-[34px] w-[58px] shrink-0 overflow-hidden rounded-[5px] bg-surface-3 lg:h-[38px] lg:w-16">
+            {episode.stillUrl && (
+              <Image
+                src={episode.stillUrl}
+                alt=""
+                fill
+                sizes="64px"
+                className="object-cover"
               />
-            </button>
-          </div>
-        </div>
-
-        {meta && (
-          <span className="font-mono text-[10px] text-muted-foreground">{meta}</span>
-        )}
-
-        {open && (
-          <div className="mt-1 flex flex-col gap-2">
-            {episode.synopsis && (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {episode.synopsis}
-              </p>
             )}
-
-            {interactive ? (
-              <div className="flex flex-col gap-2 border-l-2 border-type-series/40 pl-3">
-                <textarea
-                  value={review}
-                  onChange={(e) => setReview(e.target.value)}
-                  rows={2}
-                  placeholder={t("reviewPlaceholder")}
-                  className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => save(rating, review)}
-                  disabled={isPending}
-                  className="self-start rounded-full border border-border px-3 py-1 text-[11px] text-foreground hover:bg-surface-muted disabled:opacity-60"
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline gap-1.5">
+              <span
+                className={`truncate text-[12.5px] lg:text-[13px] ${
+                  own.watched
+                    ? "font-medium text-foreground lg:font-semibold"
+                    : "font-medium text-muted-foreground"
+                }`}
+              >
+                {episode.title ?? t("untitled")}
+              </span>
+              {/* Capa "visto alguna vez" (Tarea 8, hub): visto en un pase
+                  distinto del activo o en una fila legado sin pase — atenuado
+                  a propósito, no es el cursor. */}
+              {source === "mine" && episode.own.seenBefore && (
+                <span
+                  title={tPasses("seenBefore")}
+                  className="shrink-0 rounded-full bg-muted-foreground/10 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground/70"
                 >
-                  {t("save")}
-                </button>
-              </div>
-            ) : (
-              displayRating !== null && (
-                <p className="font-mono text-[10px] text-muted-foreground">
-                  {t("communityCount", { count: episode.ratingCount })}
-                </p>
-              )
-            )}
-          </div>
-        )}
+                  {tPasses("seenBefore")}
+                </span>
+              )}
+            </span>
+            <span className="mt-[3px] block font-mono text-[9.5px] text-muted-foreground">
+              {meta}
+            </span>
+          </span>
+        </button>
+
+        <EpisodeRating
+          rating={displayRating}
+          onRate={interactive ? (r) => onRate(episode, r) : undefined}
+          disabled={isPending}
+          size={7}
+        />
       </div>
+
+      {/* El nivel 3, bajo su fila y en los dos breakpoints: el detalle no tiene
+          columna propia (ver el porqué en episode-panel.tsx), así que se abre
+          donde estás mirando. */}
+      {selected && (
+        <div className="border-t border-border pr-[15px] pb-3.5 pl-[49px] lg:pl-[57px]">
+          <EpisodeInlineDetail
+            episode={episode}
+            own={own}
+            source={source}
+            interactive={interactive}
+            isPending={isPending}
+            draft={draft}
+            onDraftChange={onDraftChange}
+            onSave={() => onSaveReview(episode)}
+          />
+        </div>
+      )}
     </li>
   );
 }

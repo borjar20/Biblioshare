@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -37,6 +38,12 @@ import { ProfileHeader } from "@/components/profile-header";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import { LockIcon, InboxIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Skeleton,
+  SkeletonLine,
+  SkeletonCard,
+  SkeletonCoverGrid,
+} from "@/components/ui/skeleton";
 import { NowConsuming } from "@/components/now-consuming";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { ActivityChart } from "@/components/activity-chart";
@@ -159,16 +166,17 @@ export default async function PublicProfilePage({
     ? (parsedParams.sort as LibrarySort)
     : "recent";
 
-  const [counts, followState, pendingRequests, stats, favorites] =
-    await Promise.all([
-      getFollowCounts(supabase, profile.userId),
-      getFollowState(supabase, user?.id ?? null, profile.userId),
-      isOwner
-        ? getPendingRequests(supabase, profile.userId)
-        : Promise.resolve([]),
-      getLibraryStats(supabase, profile.userId),
-      getLibraryItems(supabase, profile.userId, { favoritesOnly: true }),
-    ]);
+  // Solo lo que necesita la cabecera se espera aquí; el contenido de cada
+  // pestaña (panel, colección, actividad) llega por streaming detrás de su
+  // <Suspense> (Fase B). `favorites` se movió dentro de ActivityTab.
+  const [counts, followState, pendingRequests, stats] = await Promise.all([
+    getFollowCounts(supabase, profile.userId),
+    getFollowState(supabase, user?.id ?? null, profile.userId),
+    isOwner
+      ? getPendingRequests(supabase, profile.userId)
+      : Promise.resolve([]),
+    getLibraryStats(supabase, profile.userId),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
@@ -214,46 +222,68 @@ export default async function PublicProfilePage({
       <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />
 
       {tab === "panel" && (
-        <OwnerPanel
-          userId={profile.userId}
-          monthParam={parsedParams.month}
-          includeArchived={parsedParams.archivados === "1"}
-          basePath={basePath}
-          privateNote={t("panelPrivateNote")}
-          challengesTitle={tChallenges("title")}
-          challengesEmpty={tChallenges("empty")}
-          archivedLabel={
-            parsedParams.archivados === "1"
-              ? tChallenges("hideArchived")
-              : tChallenges("showArchived")
-          }
-        />
+        <Suspense fallback={<ProfileSectionSkeleton />}>
+          <OwnerPanel
+            userId={profile.userId}
+            monthParam={parsedParams.month}
+            includeArchived={parsedParams.archivados === "1"}
+            basePath={basePath}
+            privateNote={t("panelPrivateNote")}
+            challengesTitle={tChallenges("title")}
+            challengesEmpty={tChallenges("empty")}
+            archivedLabel={
+              parsedParams.archivados === "1"
+                ? tChallenges("hideArchived")
+                : tChallenges("showArchived")
+            }
+          />
+        </Suspense>
       )}
 
       {tab === "coleccion" && (
-        <CollectionTab
-          userId={profile.userId}
-          isOwner={isOwner}
-          basePath={basePath}
-          itemType={itemType}
-          status={status}
-          search={search}
-          sort={sort}
-          emptyOwnTitle={tLibrary("emptyTitle")}
-          emptyOwn={tLibrary("empty")}
-          emptyOwnCta={tLibrary("emptyCta")}
-          emptyOtherTitle={t("emptyTitle")}
-          emptyOther={t("empty")}
-        />
+        <Suspense
+          key={`${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}`}
+          fallback={<SkeletonCoverGrid count={10} />}
+        >
+          <CollectionTab
+            userId={profile.userId}
+            isOwner={isOwner}
+            basePath={basePath}
+            itemType={itemType}
+            status={status}
+            search={search}
+            sort={sort}
+            emptyOwnTitle={tLibrary("emptyTitle")}
+            emptyOwn={tLibrary("empty")}
+            emptyOwnCta={tLibrary("emptyCta")}
+            emptyOtherTitle={t("emptyTitle")}
+            emptyOther={t("empty")}
+          />
+        </Suspense>
       )}
 
       {tab === "actividad" && (
-        <ActivityTab
-          userId={profile.userId}
-          favorites={favorites}
-          viewerLoggedIn={!!user}
-        />
+        <Suspense fallback={<ProfileSectionSkeleton />}>
+          <ActivityTab userId={profile.userId} viewerLoggedIn={!!user} />
+        </Suspense>
       )}
+    </div>
+  );
+}
+
+// Fallback genérico para el Panel y la Actividad: un par de tarjetas skeleton.
+function ProfileSectionSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <SkeletonCard>
+        <SkeletonLine className="mb-4 w-32" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </SkeletonCard>
+      <SkeletonCard>
+        <SkeletonLine className="mb-3 w-24" />
+        <SkeletonLine className="w-full" />
+        <SkeletonLine className="mt-2 w-3/4" />
+      </SkeletonCard>
     </div>
   );
 }
@@ -480,18 +510,17 @@ async function CollectionTab({
 // Actividad: la cara pública del perfil.
 async function ActivityTab({
   userId,
-  favorites,
   viewerLoggedIn,
 }: {
   userId: string;
-  favorites: Awaited<ReturnType<typeof getLibraryItems>>;
   viewerLoggedIn: boolean;
 }) {
   const supabase = await createClient();
   const t = await getTranslations("profile");
-  const [months, recentReviews] = await Promise.all([
+  const [months, recentReviews, favorites] = await Promise.all([
     getMonthlyActivity(supabase, userId),
     getRecentReviews(supabase, userId),
+    getLibraryItems(supabase, userId, { favoritesOnly: true }),
   ]);
 
   // Orden del mockup (frame D): gráfico anual → destacados → reseñas

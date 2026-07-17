@@ -53,7 +53,7 @@ export function ReviewInteractions({
 
   if (!viewerLoggedIn) {
     return (
-      <div className="flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-4 border-t border-border pt-[11px] text-[11.5px] text-muted-foreground">
         {showTargetReaction && (
           <span className="flex items-center gap-1.5">
             <HeartIcon className="h-4 w-4" /> {state.reactionCount}
@@ -93,8 +93,9 @@ export function ReviewInteractions({
   }
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-3">
-      <div className="flex items-center gap-4 text-xs">
+    // .frx del frame A: separador arriba, 11.5px y gap de 16px.
+    <div className="flex flex-col gap-3 border-t border-border pt-[11px]">
+      <div className="flex items-center gap-4 text-[11.5px]">
         {showTargetReaction && (
           <button
             type="button"

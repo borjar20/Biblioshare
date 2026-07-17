@@ -9,16 +9,43 @@
   --background: #f3ece1;
   --surface: #fffdf8;
   --surface-muted: #ece3d4;
+  /* Un peldaño MÁS hundido que --surface-muted: superficies que solo tienen
+     que estar sin llamar la atención, pero que deben VERSE (el dot apagado de
+     una nota, el hueco de un control). Es el `--surface-3` del handoff
+     (--surface-muted es su `--surface-2`); el par claro/oscuro sale de
+     "Paper - Guía de estilo.html". Nació porque los dots vacíos pintados con
+     --border (alfa .14) no se distinguían del fondo. */
+  --surface-3: #e2d7c4;
   --foreground: #2c2620;
+  /* Prosa larga (reseñas, texto del feed, sinopsis): un peldaño más suave que
+     --foreground, pero sin llegar a --muted-foreground, que es para etiquetas.
+     En las maquetas va suelto — es el `.tx`/`.syn`/`.review .tx` del handoff. */
+  --foreground-soft: #584f43;
   --muted-foreground: #877e70;
+  /* Un peldaño MÁS claro que --muted-foreground: etiquetas que solo deben
+     estar (pestañas inactivas, chevrones). Es el `--faint` del handoff. */
+  --foreground-faint: #a89e8d;
   --border: rgba(44, 20, 32, 0.14);
   --scrim: rgba(44, 38, 32, 0.45);
+
+  /* Altura de la topbar, que es sticky. Es una CONSTANTE porque hay barras
+     que se pegan justo debajo (las pestañas de la ficha) y necesitan saber
+     dónde acaba: header.tsx la impone con h-[var(--topbar-h)] en vez de
+     crecer con su contenido, así que este número no puede quedarse obsoleto.
+     Da para el elemento más alto que lleva (el avatar de 34px) más su
+     padding vertical y el borde. */
+  --topbar-h: 59px;
 
   --accent: #b0542f;
   --accent-foreground: #fff5ef;
   --accent-hover: #9a4526;
 
   --gold: #c98a2b;
+  /* Texto sobre un fondo teñido de oro (badge de racha del frame G). --gold
+     puro no se lee encima de su propio tinte al 16%, así que en claro baja a
+     este oro tostado; en oscuro el propio --gold ya contrasta y son el mismo
+     color. Mismo patrón de par por tema que --foreground-soft. */
+  --gold-ink: #8a5a12;
   --green: #5c7052;
 
   --status-planned: #b3a894;
@@ -45,7 +72,10 @@
   --background: #1f1a16;
   --surface: #2a231d;
   --surface-muted: #332b23;
+  --surface-3: #3d342b;
   --foreground: #f0e8db;
+  --foreground-soft: #cabfb0;
+  --foreground-faint: #6f665a;
   --muted-foreground: #a99e8c;
   --border: rgba(240, 232, 219, 0.12);
   --scrim: rgba(12, 9, 7, 0.6);
@@ -55,6 +85,7 @@
   --accent-hover: #e5a074;
 
   --gold: #e0a94a;
+  --gold-ink: #e0a94a;
   --green: #8ba57b;
 
   --status-planned: #8a8072;
@@ -80,7 +111,10 @@
     --background: #1f1a16;
     --surface: #2a231d;
     --surface-muted: #332b23;
+    --surface-3: #3d342b;
     --foreground: #f0e8db;
+    --foreground-soft: #cabfb0;
+    --foreground-faint: #6f665a;
     --muted-foreground: #a99e8c;
     --border: rgba(240, 232, 219, 0.12);
     --scrim: rgba(12, 9, 7, 0.6);
@@ -90,6 +124,7 @@
     --accent-hover: #e5a074;
 
     --gold: #e0a94a;
+    --gold-ink: #e0a94a;
     --green: #8ba57b;
 
     --status-planned: #8a8072;
@@ -115,7 +150,10 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-3: var(--surface-3);
   --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
+  --color-foreground-faint: var(--foreground-faint);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-scrim: var(--scrim);
@@ -125,6 +163,7 @@
   --color-accent-hover: var(--accent-hover);
 
   --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
   --color-green: var(--green);
 
   --color-status-planned: var(--status-planned);

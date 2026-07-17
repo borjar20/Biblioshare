@@ -18,11 +18,13 @@ export async function getMoviePace(
 ): Promise<MoviePace> {
   const windowStart = addDaysISO(todayISO(), -WINDOW_DAYS);
 
+  // item_type ya es una columna propia del pase (§Tarea 9): sin join a
+  // library_entries.
   const { count, error } = await supabase
-    .from("diary_entries")
-    .select("id, library_entries!inner(item_type)", { count: "exact", head: true })
+    .from("passes")
+    .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("library_entries.item_type", "movie")
+    .eq("item_type", "movie")
     .gte("finished_on", windowStart);
 
   if (error) throw error;

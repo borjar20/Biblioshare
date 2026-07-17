@@ -15,9 +15,15 @@ function weekday(iso: string): string {
 export async function WeeklyStrip({
   days,
   dailyGoalMinutes,
+  showDailyGoal = true,
 }: {
   days: DayActivity[];
   dailyGoalMinutes: number | null;
+  // El rail del feed en escritorio (frame B) enseña solo las barras: el aro del
+  // objetivo diario es del Panel, que es la vista completa. Es un prop propio y
+  // no `dailyGoalMinutes={null}` porque eso significa "no tiene objetivo", que
+  // es otra cosa.
+  showDailyGoal?: boolean;
 }) {
   const t = await getTranslations("stats");
   const today = days[days.length - 1];
@@ -75,24 +81,25 @@ export async function WeeklyStrip({
           })}
         </div>
 
-        {dailyGoalMinutes ? (
-          <CircularProgress
-            value={today.minutes}
-            total={dailyGoalMinutes}
-            label={`${today.minutes}`}
-            label2={`${dailyGoalMinutes}`}
-            caption={`${t("dailyGoal")}`}
-          />
-        ) : (
-          <div className="flex flex-col">
-            <span className="font-serif text-2xl font-semibold text-foreground">
-              {t("minutesCount", { count: today.minutes })}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {t("todayNoGoal")}
-            </span>
-          </div>
-        )}
+        {showDailyGoal &&
+          (dailyGoalMinutes ? (
+            <CircularProgress
+              value={today.minutes}
+              total={dailyGoalMinutes}
+              label={`${today.minutes}`}
+              label2={`${dailyGoalMinutes}`}
+              caption={`${t("dailyGoal")}`}
+            />
+          ) : (
+            <div className="flex flex-col">
+              <span className="font-serif text-2xl font-semibold text-foreground">
+                {t("minutesCount", { count: today.minutes })}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {t("todayNoGoal")}
+              </span>
+            </div>
+          ))}
       </div>
     </div>
   );

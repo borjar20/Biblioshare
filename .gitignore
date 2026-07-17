@@ -57,3 +57,7 @@ next-env.d.ts
 /.design-sync/learnings/
 /.design-sync/node_modules
 
+# Capturas de depuración de los e2e (propose-wizard.spec.ts las escribe en
+# cada pasada). Son artefactos, no fuente: se colaron en el repo con un
+# `git add -A` y volvían a ensuciar el diff en cada corrida.
+/shots

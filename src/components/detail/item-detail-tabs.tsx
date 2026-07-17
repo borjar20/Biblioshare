@@ -35,6 +35,19 @@ export function ItemDetailTabs({
   const initialTab: TabId =
     urlTab && VALID_TABS.includes(urlTab) ? (urlTab as TabId) : "info";
   const [tab, setTab] = useState<TabId>(initialTab);
+
+  // Sigue los cambios de `?tab=` que llegan de FUERA (p. ej. el menú ⋯ del
+  // hero navega a ?tab=info&editar=ficha con la página ya montada). Ajuste
+  // durante el render, no un efecto — mismo patrón que el resto de la app.
+  // Los cambios propios (selectTab) escriben la misma URL que acaban de
+  // poner en el estado, así que aquí no re-disparan nada.
+  const [prevUrlTab, setPrevUrlTab] = useState(urlTab);
+  if (urlTab !== prevUrlTab) {
+    setPrevUrlTab(urlTab);
+    const next: TabId =
+      urlTab && VALID_TABS.includes(urlTab) ? (urlTab as TabId) : "info";
+    if (next !== tab) setTab(next);
+  }
   const accent = MEDIA_ACCENT[itemType];
   const order: TabId[] = episodes
     ? ["info", "episodes", "community", "log"]
@@ -47,32 +60,51 @@ export function ItemDetailTabs({
     if (id === "info") params.delete("tab");
     else params.set("tab", id);
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
-      <div className="flex gap-6 border-b border-border">
-        {order.map((id) => {
-          const isActive = tab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => selectTab(id)}
-              className={`-mb-px border-b-2 px-1 pb-3 font-mono text-xs tracking-wider uppercase transition-colors ${
-                isActive
-                  ? `${accent.border} text-foreground`
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {labels[id]}
-            </button>
-          );
-        })}
+    <div className="flex flex-col">
+      {/* Sans (NO el mono de las subtabs — aquí la maqueta escribe Geist),
+          subrayado del acento y pegada bajo la topbar, en las dos vistas.
+          Cambia la piel: en PC el texto es más pequeño (14) y más ligero, y
+          las inactivas bajan a `faint` — un peldaño más claro que `muted`:
+          en el ancho hay menos ruido y la activa se distingue sola.
+          Sin scroll horizontal: caben (comprobado con 4 pestañas a 390).
+          .desk-tabs de "Web - Ficha de titulo (PC).html". */}
+      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:bg-background/80 lg:backdrop-blur-[10px]">
+        <div className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-7 lg:px-11">
+          {order.map((id) => {
+            const isActive = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectTab(id)}
+                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
+                  isActive
+                    ? "text-foreground lg:font-semibold"
+                    : "text-muted-foreground hover:text-foreground lg:font-medium lg:text-foreground-faint lg:hover:text-foreground"
+                }`}
+              >
+                {labels[id]}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="pt-6">{slots[tab]}</div>
+      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:max-w-none lg:px-11 lg:pt-[34px] lg:pb-[42px]">
+        {slots[tab]}
+      </div>
     </div>
   );
 }

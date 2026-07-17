@@ -12,6 +12,7 @@ import {
 import { getClubUnreadCounts } from "@/lib/clubs/unread";
 import { ClubCard } from "@/components/clubs/club-card";
 import { ClubForm } from "@/components/clubs/club-form";
+import { ClubListSkeleton } from "@/components/clubs/club-skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -23,18 +24,33 @@ export default function ClubesPage() {
   const [unread, setUnread] = useState<Map<string, number>>(new Map());
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  // Estos fetches son de cliente (useEffect): sin un flag de carga, el primer
+  // render pintaría el mensaje "no hay clubes" con la lista aún vacía. Mientras
+  // no resuelvan, se muestran skeletons.
+  const [myClubsLoading, setMyClubsLoading] = useState(true);
+  const [discoverLoading, setDiscoverLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-    listMyClubs().then(setMyClubs);
+    listMyClubs().then((clubs) => {
+      setMyClubs(clubs);
+      setMyClubsLoading(false);
+    });
     getClubUnreadCounts().then(setUnread);
-    discoverPublicClubs().then(setDiscovered);
   }, []);
 
   useEffect(() => {
+    // Cubre también la carga inicial (query = ""; discoverLoading arranca en
+    // true). Durante la búsqueda vuelve a mostrar skeleton hasta que llegan los
+    // nuevos resultados. El setState va dentro del timeout (no en el cuerpo del
+    // efecto) para no disparar renders en cascada.
     const handle = setTimeout(() => {
-      discoverPublicClubs(query || undefined).then(setDiscovered);
+      setDiscoverLoading(true);
+      discoverPublicClubs(query || undefined).then((clubs) => {
+        setDiscovered(clubs);
+        setDiscoverLoading(false);
+      });
     }, 300);
     return () => clearTimeout(handle);
   }, [query]);
@@ -79,7 +95,9 @@ export default function ClubesPage() {
         <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
           {t("myClubs")}
         </h2>
-        {myClubs.length === 0 ? (
+        {myClubsLoading ? (
+          <ClubListSkeleton count={2} />
+        ) : myClubs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
           <div className="flex flex-col gap-3.5">
@@ -98,7 +116,9 @@ export default function ClubesPage() {
         <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
           {t("discover")}
         </h2>
-        {discovered.length === 0 ? (
+        {discoverLoading ? (
+          <ClubListSkeleton count={2} />
+        ) : discovered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
         ) : (
           <div className="flex flex-col gap-3.5">

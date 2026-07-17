@@ -17,10 +17,12 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   await page.click('button[type="submit"]');
   await page.waitForURL("/");
 
-  // Home autenticada: el feed (el dashboard se mudó a Perfil › Panel).
-  await expect(
-    page.getByRole("heading", { name: /novedades/i }),
-  ).toBeVisible();
+  // Home autenticada: el feed (el dashboard se mudó a Perfil › Panel). La
+  // cabecera tiene un árbol por breakpoint (plan 01, frames A y B): "Novedades"
+  // en móvil y el saludo en escritorio, y el otro queda en el DOM oculto. La
+  // suite corre a 1280, así que el locator SIEMPRE lleva :visible — el mismo
+  // cuidado que en la ficha.
+  await expect(page.locator("h1:visible")).toHaveText(/hola,|novedades/i);
 
   // La nav lleva a las 5 secciones.
   await expect(page.getByRole("link", { name: /^colección$/i }).first()).toBeVisible();

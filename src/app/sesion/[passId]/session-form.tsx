@@ -34,27 +34,30 @@ type SeriesSeasonEpisodes = {
 };
 
 export function SessionForm({
-  entryId,
+  passId,
   itemType,
   itemId,
   position,
   status,
   total,
   seriesEpisodes,
+  initialMinutes,
 }: {
-  entryId: string;
+  passId: string;
   itemType: "book" | "series";
   itemId: string;
   position: Position;
   status: MediaStatus;
   total: number | null;
   seriesEpisodes?: SeriesSeasonEpisodes[];
+  /** Minutos que trae el cronómetro de la tarjeta de hoy (?minutos=). */
+  initialMinutes?: number | null;
 }) {
   const t = useTranslations("session");
   const tLibrary = useTranslations("library");
   const tEpisode = useTranslations("episode");
 
-  const boundAddSession = addSession.bind(null, entryId, itemType, itemId);
+  const boundAddSession = addSession.bind(null, passId, itemType, itemId);
   const [state, formAction, pending] = useActionState(
     boundAddSession,
     initialState,
@@ -90,10 +93,15 @@ export function SessionForm({
   // Duración: "a mano" (input libre) o "cronómetro" (SessionTimer, que trae
   // su propio input oculto name="durationMinutes"). Solo libro tiene
   // duración — una sesión de serie se mide en episodios (§7.14).
+  // Si vienes del cronómetro de la tarjeta de hoy, el tiempo ya está contado:
+  // llega "a mano" con el número puesto y editable, no en modo cronómetro — ese
+  // reloj ya se paró y se limpió al traerte aquí.
   const [durationMode, setDurationMode] = useState<"manual" | "timer">(
     "manual",
   );
-  const [manualMinutes, setManualMinutes] = useState("");
+  const [manualMinutes, setManualMinutes] = useState(
+    initialMinutes ? String(initialMinutes) : "",
+  );
 
   // El aviso de cronómetro olvidado ofrece "escribir a mano": trae los
   // minutos ya acumulados al campo manual y cambia el conmutador por ti.
@@ -162,7 +170,7 @@ export function SessionForm({
   function handleSubmit() {
     if (itemType === "book" && durationMode === "timer") {
       try {
-        window.localStorage.removeItem(timerStorageKey(entryId));
+        window.localStorage.removeItem(timerStorageKey(passId));
       } catch {
         // Almacenamiento inaccesible: nada que limpiar.
       }
@@ -221,7 +229,7 @@ export function SessionForm({
             </div>
           ) : (
             <div className="mt-2">
-              <SessionTimer entryId={entryId} onMinutes={handleTimerMinutes} />
+              <SessionTimer passId={passId} onMinutes={handleTimerMinutes} />
             </div>
           )}
         </div>

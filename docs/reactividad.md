@@ -43,6 +43,23 @@ Dos capas separadas:
   round-trip se nota (disciplina B) — el voto de encuesta y "episodio visto" ya
   eran optimistas de fábrica y se dejaron como estaban (convertirlos era churn).
 
+## El service worker no puede cachear datos del usuario
+
+`public/sw.js` solo cachea contenido inmutable (`/_next/static`, assets de
+`/public`) y el documento como salvavidas de offline. **Nunca** payloads RSC
+(cabecera `RSC` o `?_rsc=`): son la carga útil de cada navegación cliente, y
+servirlos de caché anula toda la capa de verdad de arriba — el servidor
+revalida y el SW sigue entregando lo viejo hasta que recargas a mano. No es
+teórico: la v2 del caché lo hacía, y por eso registrabas una sesión, cambiabas
+de pestaña en la ficha y lo registrado desaparecía (arreglado 2026-07-16).
+
+Si tocas la estrategia del SW, `src/lib/pwa/sw-strategy.test.ts` carga el
+fichero real y fija la decisión para cada tipo de petición; el defecto es NO
+cachear. El SW se registra **solo en producción**
+(`service-worker-register.tsx`): en desarrollo se desregistra y se vacían sus
+cachés. Verificación end-to-end en `e2e/sw-rsc.spec.ts` (opt-in, `SW_E2E=1`,
+contra un build de producción).
+
 ## Modelo de caché
 
 El proyecto usa el modelo anterior (sin `cacheComponents`). `revalidatePath` es

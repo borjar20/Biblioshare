@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -20,6 +21,11 @@ import { QueuesPanel } from "./queues-panel";
 import { ContinueStrip } from "@/components/library/continue-strip";
 import { CollectionSummary } from "@/components/library/collection-summary";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
+import { SkeletonCoverGrid } from "@/components/ui/skeleton";
+import {
+  CollectionOverviewSkeleton,
+  QueuesSkeleton,
+} from "@/components/library/collection-skeletons";
 
 export const metadata: Metadata = {
   title: "Tu colección — Biblioshare",
@@ -69,6 +75,10 @@ export default async function CollectionPage({
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
 
+  // Shell inmediato (título + pestañas + filtros); cada sección con datos
+  // llega por streaming detrás de su <Suspense> con skeleton (Fase B del plan
+  // de navegación). El `key` de los boundaries es la consulta: al cambiar un
+  // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
@@ -79,23 +89,41 @@ export default async function CollectionPage({
           arriba, y el resumen de la colección. Con un filtro activo se ocultan
           — contradirían lo que la rejilla está mostrando. */}
       {tab === "general" && !status && !search && (
-        <GeneralOverview userId={user.id} />
+        <Suspense fallback={<CollectionOverviewSkeleton />}>
+          <GeneralOverview userId={user.id} />
+        </Suspense>
       )}
 
       {tab === "colas" ? (
-        <QueuesPanel userId={user.id} activeParam={params.cola} />
+        <Suspense key={params.cola ?? "all"} fallback={<QueuesSkeleton />}>
+          <QueuesPanel userId={user.id} activeParam={params.cola} />
+        </Suspense>
       ) : (
-        <LibraryGrid
-          userId={user.id}
-          itemType={tab === "general" ? undefined : tab}
-          tab={tab}
-          status={status}
-          search={search}
-          sort={sort}
-          emptyTitle={tLibrary("emptyTitle")}
-          emptyLabel={tLibrary("empty")}
-          emptyCta={tLibrary("emptyCta")}
-        />
+        <>
+          <LibraryFilters
+            status={status}
+            search={search}
+            sort={sort}
+            basePath="/coleccion"
+            showTypeFilter={false}
+            extraParams={tab === "general" ? undefined : { tab }}
+          />
+          <Suspense
+            key={`${tab}:${status ?? ""}:${search ?? ""}:${sort}`}
+            fallback={<SkeletonCoverGrid count={10} />}
+          >
+            <LibraryGrid
+              userId={user.id}
+              itemType={tab === "general" ? undefined : tab}
+              status={status}
+              search={search}
+              sort={sort}
+              emptyTitle={tLibrary("emptyTitle")}
+              emptyLabel={tLibrary("empty")}
+              emptyCta={tLibrary("emptyCta")}
+            />
+          </Suspense>
+        </>
       )}
     </div>
   );
@@ -119,7 +147,6 @@ async function GeneralOverview({ userId }: { userId: string }) {
 async function LibraryGrid({
   userId,
   itemType,
-  tab,
   status,
   search,
   sort,
@@ -129,7 +156,6 @@ async function LibraryGrid({
 }: {
   userId: string;
   itemType?: ItemType;
-  tab: CollectionTab;
   status?: MediaStatus;
   search?: string;
   sort: LibrarySort;
@@ -145,35 +171,26 @@ async function LibraryGrid({
     sort,
   });
 
-  return (
-    <>
-      <LibraryFilters
-        status={status}
-        search={search}
-        sort={sort}
-        basePath="/coleccion"
-        showTypeFilter={false}
-        extraParams={tab === "general" ? undefined : { tab }}
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        glyph={<InboxIcon className="h-7 w-7" />}
+        title={emptyTitle}
+        message={emptyLabel}
+        action={
+          <Link href="/buscar" className={buttonVariants("primary")}>
+            {emptyCta}
+          </Link>
+        }
       />
+    );
+  }
 
-      {items.length === 0 ? (
-        <EmptyState
-          glyph={<InboxIcon className="h-7 w-7" />}
-          title={emptyTitle}
-          message={emptyLabel}
-          action={
-            <Link href="/buscar" className={buttonVariants("primary")}>
-              {emptyCta}
-            </Link>
-          }
-        />
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {items.map((item) => (
-            <LibraryItemCard key={item.entryId} item={item} isOwner />
-          ))}
-        </div>
-      )}
-    </>
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      {items.map((item) => (
+        <LibraryItemCard key={item.entryId} item={item} isOwner />
+      ))}
+    </div>
   );
 }

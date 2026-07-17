@@ -39,15 +39,16 @@ export function latestRatingPerUser<T extends RatedPass>(rows: T[]): T[] {
   return keepLatestPerGroup(rows, (r) => r.userId);
 }
 
-// Mismo criterio que arriba, pero agrupado por ENTRADA de biblioteca en vez
-// de por usuario: library/get-library-items.ts lo usa para sacar la nota y la
-// reseña visibles de la propia colección del último pase CERRADO de cada
-// entrada (library_entries.rating/notes quedaron huérfanas cuando el pase se
-// convirtió en su dueño — ver 20260714_passes.sql). A diferencia de
-// RatedPass, aquí `rating` puede ser null (un pase cerrado sin puntuar sigue
-// siendo "el último pase").
+// Mismo criterio que arriba, pero agrupado por OBRA (item_type:item_id) en
+// vez de por usuario: library/get-library-items.ts lo usa para sacar la nota
+// y la reseña visibles de la propia colección del último pase CERRADO de cada
+// obra (library_entries.rating/notes quedaron huérfanas cuando el pase se
+// convirtió en su dueño — ver 20260714_passes.sql; el agrupado pasó de
+// library_entry_id a itemKey en la Tarea 9, cuando library_entries dejó de
+// ser lo que se lee). A diferencia de RatedPass, aquí `rating` puede ser null
+// (un pase cerrado sin puntuar sigue siendo "el último pase").
 export function keepLatestClosedPass<
-  T extends { id: string; libraryEntryId: string; finishedOn: string },
+  T extends { id: string; itemKey: string; finishedOn: string },
 >(rows: T[]): T[] {
-  return keepLatestPerGroup(rows, (r) => r.libraryEntryId);
+  return keepLatestPerGroup(rows, (r) => r.itemKey);
 }

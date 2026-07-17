@@ -26,7 +26,7 @@ export async function CollectionTabs({ active }: { active: CollectionTab }) {
   const t = await getTranslations("collection.tabs");
 
   return (
-    <div className="flex gap-6 overflow-x-auto border-b border-border font-mono">
+    <div className="flex gap-6 overflow-x-auto border-b border-border">
       {COLLECTION_TABS.map((tab) => {
         const href = tab === "general" ? "/coleccion" : `/coleccion?tab=${tab}`;
         const isActive = tab === active;
@@ -34,7 +34,7 @@ export async function CollectionTabs({ active }: { active: CollectionTab }) {
           <Link
             key={tab}
             href={href}
-            className={`-mb-px shrink-0 border-b-2 px-1 pb-3 text-xs font-medium tracking-wider uppercase transition-colors ${
+            className={`-mb-px shrink-0 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
               isActive
                 ? ACTIVE_CLASSES[tab]
                 : "border-transparent text-muted-foreground hover:text-foreground"

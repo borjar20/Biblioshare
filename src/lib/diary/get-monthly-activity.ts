@@ -29,10 +29,12 @@ export async function getMonthlyActivity(
   }
   const rangeStart = new Date(now.getFullYear(), now.getMonth() - (MONTHS_BACK - 1), 1);
 
+  // item_type ya es una columna propia del pase (§Tarea 9): sin join a
+  // library_entries.
   const { data, error } = await supabase
-    .from("diary_entries")
-    .select("finished_on, library_entries!inner(item_type, user_id)")
-    .eq("library_entries.user_id", userId)
+    .from("passes")
+    .select("finished_on, item_type")
+    .eq("user_id", userId)
     .gte("finished_on", rangeStart.toISOString().slice(0, 10))
     // Un pase abierto (sin finished_on) todavía no ha terminado nada: no
     // cuenta como actividad del mes.
@@ -50,11 +52,7 @@ export async function getMonthlyActivity(
   for (const row of rows) {
     const month = row.finished_on.slice(0, 7);
     const bucket = byMonth.get(month);
-    const itemType = (
-      row.library_entries as unknown as { item_type: ItemType } | { item_type: ItemType }[]
-    );
-    const type = Array.isArray(itemType) ? itemType[0]?.item_type : itemType?.item_type;
-    if (bucket && type) bucket[type] += 1;
+    if (bucket) bucket[row.item_type] += 1;
   }
 
   return months;

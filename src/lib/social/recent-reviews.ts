@@ -35,7 +35,7 @@ export async function getRecentReviews(
     // aparecer aquí.
     supabase
       .from("pass_reviews")
-      .select("id, user_id, library_entry_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review")
       .eq("user_id", userId)
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado.
@@ -68,39 +68,22 @@ export async function getRecentReviews(
   // El filtro anterior garantiza finished_on no nulo; se narrowa aquí porque
   // Supabase no infiere el tipo a partir de la query. pass_reviews tipa TODAS
   // sus columnas como nullable (es una vista), así que también se narrowan
-  // id/library_entry_id — nunca vienen null en la práctica.
+  // id/item_type/item_id — nunca vienen null en la práctica.
   const diaryRows = (diaryResult.data ?? []).filter(
-    (r): r is typeof r & { id: string; library_entry_id: string; finished_on: string } =>
-      r.id !== null && r.library_entry_id !== null && r.finished_on !== null
+    (r): r is typeof r & { id: string; item_type: ItemType; item_id: string; finished_on: string } =>
+      r.id !== null && r.item_type !== null && r.item_id !== null && r.finished_on !== null
   );
   const episodeRows = episodeResult.data ?? [];
 
-  // library_entries de las entradas de diario → item_type/item_id.
-  const libraryEntryIds = [...new Set(diaryRows.map((r) => r.library_entry_id))];
-  const { data: libraryEntries, error: libError } = libraryEntryIds.length
-    ? await supabase
-        .from("library_entries")
-        .select("id, item_type, item_id")
-        .in("id", libraryEntryIds)
-    : { data: [] as { id: string; item_type: ItemType; item_id: string }[], error: null };
-  if (libError) throw libError;
-  const itemByLibraryEntry = new Map(
-    (libraryEntries ?? []).map((e) => [
-      e.id,
-      { itemType: e.item_type as ItemType, itemId: e.item_id },
-    ]),
-  );
-
   // Catálogo por tipo, mismo patrón batch que feed.ts (books trae author).
+  // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin join
+  // a library_entries.
   const idsByType: Record<ItemType, Set<string>> = {
     book: new Set(),
     movie: new Set(),
     series: new Set(),
   };
-  for (const r of diaryRows) {
-    const it = itemByLibraryEntry.get(r.library_entry_id);
-    if (it) idsByType[it.itemType].add(it.itemId);
-  }
+  for (const r of diaryRows) idsByType[r.item_type].add(r.item_id);
   for (const r of episodeRows) idsByType.series.add(r.series_id);
 
   const [books, movies, series] = await Promise.all([
@@ -151,9 +134,7 @@ export async function getRecentReviews(
   const events: FeedEvent[] = [];
 
   for (const r of diaryRows) {
-    const it = itemByLibraryEntry.get(r.library_entry_id);
-    if (!it) continue;
-    const catalog = catalogByKey.get(`${it.itemType}:${it.itemId}`);
+    const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
     if (!catalog) continue;
     events.push({
       id: `diary_entries:${r.id}`,
@@ -162,8 +143,8 @@ export async function getRecentReviews(
       actorDisplayName: actor.display_name,
       actorAvatarUrl: actor.avatar_url,
       verb: "reviewed",
-      itemType: it.itemType,
-      itemId: it.itemId,
+      itemType: r.item_type,
+      itemId: r.item_id,
       itemTitle: catalog.title,
       itemCoverUrl: catalog.coverUrl,
       itemSubtitle: catalog.subtitle,

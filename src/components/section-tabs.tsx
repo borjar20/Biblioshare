@@ -21,14 +21,14 @@ export async function SectionTabs({
   const tabs = isOwner ? OWNER_TABS : VISITOR_TABS;
 
   return (
-    <div className="flex gap-6 border-b border-border font-mono">
+    <div className="flex gap-6 border-b border-border">
       {tabs.map((tab) => {
         const isActive = tab === active;
         return (
           <Link
             key={tab}
             href={`${basePath}?tab=${tab}`}
-            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 pb-3 text-xs font-medium tracking-wider uppercase transition-colors ${
+            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
               isActive
                 ? "border-accent text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
