@@ -9,7 +9,15 @@
 -- anexan al final EN EL ORDEN DE APLICACIÓN REAL de prod — que no coincide con
 -- el orden de los ficheros de supabase/migrations (tierlist se aplicó ANTES que
 -- propose_with_setup; ver 20260715_consolidate_activity_items_policies.sql).
--- Este fichero se mantiene a mano y ya se desincronizó una vez; ante la duda,
+-- NOTA (2026-07-17): se había vuelto a desincronizar — le faltaban 14
+-- migraciones ya en prod (book_hydration, book_editions_no_blank_primary, los
+-- 8 del pase-hub #42 que RENOMBRAN diary_entries -> passes, y las 3 del plan 05
+-- estadísticas: started_at, notes, fuse_annual_goals_into_challenges). Anexadas
+-- al final bajo "ANEXO 2026-07-17" en el orden de aplicación REAL de prod. Tras
+-- este anexo el esquema replica prod al 17-jul. (El fichero
+-- 20260716_list_challenge_completion_mode.sql existe en migrations pero NO está
+-- en prod: se deja fuera a propósito.)
+-- Este fichero se mantiene a mano y ya se desincronizó DOS veces; ante la duda,
 -- regenerarlo con `pg_dump --schema-only` de prod.
 -- ============================================================================
 
@@ -5243,3 +5251,1068 @@ create trigger trg_enforce_series_edit_collaborator_only
 -- El trigger lo dispara Postgres, no es una RPC: mismo revoke de higiene que
 -- el resto de funciones de trigger del proyecto.
 revoke execute on function public.enforce_catalog_edit_collaborator_only() from public, anon, authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- ANEXO 2026-07-17 — cola que faltaba (pase-hub #42 + plan 05)
+-- ──────────────────────────────────────────────────────────────────────────
+-- El baseline se había quedado en editions_h (14 jul). Faltaban 14
+-- migraciones YA APLICADAS EN PROD, que se anexan aquí EN EL ORDEN DE
+-- APLICACION REAL de prod (supabase_migrations.schema_migrations), que NO
+-- coincide con el orden alfabetico de los ficheros (los pass_hub b2..c se
+-- redataron a 20260717 pero prod los registra en 20260716). La gorda es
+-- pass_hub_c_rename: RENOMBRA diary_entries -> passes, asi que todo lo de
+-- arriba que dice diary_entries queda como passes tras este bloque.
+-- OJO: el fichero 20260716_list_challenge_completion_mode.sql NO esta en
+-- las migraciones de prod (no aplicado o aplicado sin registrar) — se deja
+-- FUERA a proposito; este baseline replica lo que hay en prod.
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260714225237 book_hydration  (fichero: 20260715_book_hydration.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- PELDAÑO 2 de la escalera de hidratación (spec 2026-07-14): la obra se hidrata
+-- al ABRIR su ficha, no al buscarla. `hydrated_at` es el guard de ese
+-- cache-as-you-go, hermano de `editions_synced_at` (20260714_editions_d_sync):
+-- si está puesta, no se vuelve a preguntar a OpenLibrary por esta obra.
+--
+-- Las filas que ya existen quedan con null a propósito: se rehidratan solas la
+-- primera vez que alguien abra su ficha, y así se curan las que se cachearon
+-- sucias con el flujo antiguo (sinopsis vacía, géneros de basura, páginas que
+-- eran la mediana de todas las ediciones).
+alter table public.books
+  add column hydrated_at timestamptz;
+
+-- Mismo grant que `editions_synced_at`: la hidratación la dispara la ficha con
+-- la sesión del visitante, que no tiene por qué ser colaborador.
+grant update (hydrated_at) on public.books to authenticated;
+
+-- La hidratación escribe synopsis/genres/cover_url, que son columnas CURADAS:
+-- el trigger de 20260714_editions_h_catalog_edit_grants solo deja cambiarlas a
+-- collaborator+. Pero rellenar un hueco no es curar. Esta función es la vía:
+-- security definer, y escribe SOLO donde la fila no tenía nada. Así un
+-- authenticated cualquiera completa una obra vacía con solo abrir su ficha, sin
+-- poder pisar jamás lo que un colaborador escribió a mano.
+create or replace function public.hydrate_book(
+  p_book_id uuid,
+  p_synopsis text default null,
+  p_genres text[] default null,
+  p_cover_url text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'authentication required';
+  end if;
+
+  update public.books
+     set synopsis    = case
+                         when (synopsis is null or synopsis = '') and p_synopsis is not null
+                           then left(p_synopsis, 5000)
+                         else synopsis
+                       end,
+         genres      = case
+                         when (genres is null or cardinality(genres) = 0) and p_genres is not null
+                           then p_genres
+                         else genres
+                       end,
+         cover_url   = case
+                         when (cover_url is null or cover_url = '') and p_cover_url is not null
+                           then p_cover_url
+                         else cover_url
+                       end,
+         hydrated_at = now()
+   where id = p_book_id;
+end;
+$$;
+
+revoke all on function public.hydrate_book(uuid, text, text[], text) from public;
+grant execute on function public.hydrate_book(uuid, text, text[], text) to authenticated;
+
+comment on function public.hydrate_book is
+  'Cache-as-you-go de la obra al abrir su ficha (spec 2026-07-14): rellena synopsis/genres/cover_url SOLO si estaban vacíos y marca hydrated_at. No pisa nunca lo que un colaborador haya escrito; para eso está el editor de ficha.';
+
+-- La columna legacy: guardaba la work key de OpenLibrary bajo un nombre que
+-- mentía (el código de Google Books lleva muerto desde que la búsqueda pasó a
+-- OpenLibrary). 20260714_editions_d_sync.sql ya copió su contenido a
+-- `openlibrary_work_key`, que es la columna por la que ahora busca
+-- find-or-create.ts.
+alter table public.books
+  drop column google_books_id;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260714225439 book_hydration_revoke_anon  (fichero: 20260715_book_hydration_revoke_anon.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- hydrate_book nació con EXECUTE para anon: los default privileges de Supabase
+-- conceden ejecución a anon+authenticated en funciones nuevas, y el
+-- `revoke all ... from public` de 20260715_book_hydration no quita ese grant
+-- explícito a anon. Funcionalmente anon no puede hacer nada (la función lanza
+-- 'authentication required' si auth.uid() es null), pero se revoca igual para
+-- igualar el patrón de register_book_edition y limpiar el advisor
+-- `anon_security_definer_function_executable`. Aplicada en dev y prod.
+revoke execute on function public.hydrate_book(uuid, text, text[], text) from anon;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260715102234 book_editions_no_blank_primary  (fichero: 20260715_book_editions_no_blank_primary.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Una obra nacida ligera desde la búsqueda por texto (findOrCreateCatalogItem
+-- solo pone work_key/título/autor/portada/año) hacía que el trigger
+-- create_primary_book_edition creara una "Edición principal" en blanco, sin
+-- editorial/ISBN/páginas. Esa edición vacía es la que se ve en la primera
+-- visita a la ficha, antes de que ensureBookEditions sincronice las reales.
+--
+-- Arreglo: no crear la primaria cuando NO hay ningún dato de tirada. Cuando sí
+-- lo hay (escáner por ISBN, importador), se sigue creando como hasta ahora. La
+-- primera edición real que sincronice pasará a primaria via
+-- ensure_primary_book_edition (BEFORE INSERT), que ya existe.
+
+create or replace function public.create_primary_book_edition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Sin ningún dato de tirada: no se crea primaria en blanco.
+  if new.publisher is null
+     and (new.isbn is null or char_length(trim(new.isbn)) = 0)
+     and new.total_pages is null then
+    return new;
+  end if;
+
+  insert into public.book_editions
+    (book_id, label, publisher, published_year, total_pages, isbn, cover_url, is_primary)
+  values
+    (new.id, 'Edición principal', new.publisher,
+     public.sane_int(new.published_year, 1400, 2200),
+     public.sane_int(new.total_pages, 1, 20000),
+     case when char_length(coalesce(new.isbn, '')) <= 20 then new.isbn end,
+     new.cover_url, true)
+  on conflict do nothing;
+  return new;
+exception when others then
+  -- La obra manda: si su edición primaria no se puede crear, que nazca igual.
+  raise warning 'edicion primaria omitida para el libro %: %', new.id, sqlerrm;
+  return new;
+end;
+$$;
+
+-- Limpieza de las primarias en blanco ya creadas por el bug (dev y prod), en DOS
+-- fases para no chocar con el índice único parcial (book_id) where is_primary:
+--
+-- 1) Borrar TODAS las blancas de un tirón (solo DELETE: no puede violar el
+--    índice, sea cual sea el orden).
+-- 2) Por cada libro que quedó SIN primaria, promover su mejor edición CON DATOS.
+--    Como el libro no tiene ninguna primaria, poner una no puede colisionar.
+--
+-- Un único bucle "borra-y-promueve" fila a fila NO servía: un libro con la blanca
+-- MÁS ediciones reales generaba una primaria transitoria que violaba el índice
+-- (pasó en prod con un libro de 21 ediciones). Si un libro no tiene ninguna
+-- edición con datos, se queda sin primaria (getEditions ordena por año y tira
+-- igual); no se re-crea una blanca.
+delete from public.book_editions
+where is_primary and publisher is null and isbn is null and total_pages is null;
+
+do $$
+declare r record;
+begin
+  for r in
+    select book_id
+    from public.book_editions
+    group by book_id
+    having count(*) filter (where is_primary) = 0
+  loop
+    update public.book_editions
+       set is_primary = true
+     where id = (
+       select id
+       from public.book_editions
+       where book_id = r.book_id
+         and (publisher is not null or isbn is not null or total_pages is not null)
+       order by published_year desc nulls last, id
+       limit 1
+     );
+  end loop;
+end $$;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061754 pass_hub_a_columns  (fichero: 20260716_pass_hub_a_columns.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- El pase pasa a ser el hub: absorbe estado, cursor, cola y fijados de
+-- library_entries. library_entries NO se toca aún (queda como red de revert;
+-- se congela en la migración C). Ver docs/superpowers/specs/2026-07-15-pase-hub-design.md.
+
+-- 1) Columnas nuevas.
+alter table public.diary_entries
+  add column if not exists item_type public.item_type,
+  add column if not exists item_id uuid,
+  add column if not exists status public.media_status not null default 'planned',
+  add column if not exists is_active boolean not null default false,
+  add column if not exists position jsonb not null default '{}'::jsonb,
+  add column if not exists queue_id uuid references public.queues(id) on delete set null,
+  add column if not exists queue_order integer,
+  add column if not exists pinned_order integer;
+
+-- 2) Toda entrada sin ningún pase engendra uno, para que "en mi biblioteca"
+--    pueda pasar a significar "existe pase activo". Idempotente.
+insert into public.diary_entries (library_entry_id, user_id, started_on, finished_on, is_public)
+select
+  le.id,
+  le.user_id,
+  case when le.status <> 'planned'
+       then coalesce(le.started_at::date, le.updated_at::date) end,
+  case when le.status in ('completed', 'dropped') then le.updated_at::date end,
+  true
+from public.library_entries le
+where not exists (
+  select 1 from public.diary_entries d where d.library_entry_id = le.id
+);
+
+-- 3) La obra, en todos los pases (aún vía library_entry_id; la columna se
+--    volverá not null al final de este fichero).
+update public.diary_entries d
+set item_type = le.item_type, item_id = le.item_id
+from public.library_entries le
+where d.library_entry_id = le.id
+  and (d.item_type is null or d.item_id is null);
+
+-- 4) Estado provisional derivado de finished_on. El histórico no distinguía
+--    completado de abandonado: los cerrados no-activos quedan como
+--    'completed' (es lo que la media de comunidad asumía de facto).
+update public.diary_entries set status = 'completed'
+where finished_on is not null and status = 'planned';
+update public.diary_entries set status = 'in_progress'
+where finished_on is null and status = 'planned' and started_on is not null;
+
+-- 5) El pase activo de cada entrada (el abierto si lo hay; si no, el último
+--    cerrado) hereda el estado REAL y el contexto de biblioteca.
+with actives as (
+  select distinct on (d.library_entry_id) d.id, d.library_entry_id
+  from public.diary_entries d
+  order by d.library_entry_id,
+           (d.finished_on is null) desc,
+           d.finished_on desc,
+           d.created_at desc
+)
+update public.diary_entries d
+set is_active   = true,
+    status      = le.status,
+    position    = le.position,
+    queue_id    = le.queue_id,
+    queue_order = le.queue_order,
+    pinned_order = le.pinned_order
+from actives a
+join public.library_entries le on le.id = a.library_entry_id
+where d.id = a.id;
+
+-- 6) Coherencia estado ↔ fechas en los activos (deriva histórica posible):
+--    cerrado sin fecha gana la fecha; abierto con fecha la pierde. El índice
+--    diary_entries_one_open_pass no puede chocar: si hubiera habido un pase
+--    abierto, ESE habría sido elegido activo en el paso 5.
+update public.diary_entries
+set finished_on = coalesce(finished_on, updated_at::date)
+where is_active and status in ('completed', 'dropped') and finished_on is null;
+update public.diary_entries
+set finished_on = null
+where is_active and status in ('planned', 'in_progress') and finished_on is not null;
+
+-- 7) Cierres e índices.
+alter table public.diary_entries
+  alter column item_type set not null,
+  alter column item_id set not null;
+
+create unique index if not exists passes_one_active
+  on public.diary_entries (user_id, item_type, item_id)
+  where is_active;
+create index if not exists passes_active_by_user
+  on public.diary_entries (user_id)
+  where is_active;
+create index if not exists passes_by_item
+  on public.diary_entries (item_type, item_id);
+
+-- 8) Grants por columna: el SELECT de tabla se quitó en
+--    20260714_passes_review_privacy.sql; cada columna nueva necesita el suyo.
+grant select (item_type, item_id, status, is_active, position,
+              queue_id, queue_order, pinned_order)
+  on public.diary_entries to anon, authenticated;
+
+-- 9) La vista de reseñas gana las columnas nuevas (mismo WHERE de privacidad).
+--    El literal 'diary_entries' de is_visible_via_club_share es la etiqueta
+--    almacenada en las comparticiones de club: NO cambia aunque la tabla se
+--    renombre después (dato, no nombre de tabla).
+drop view if exists public.pass_reviews;
+create view public.pass_reviews as
+select
+  d.id, d.library_entry_id, d.user_id, d.item_type, d.item_id,
+  d.status, d.is_active, d.position,
+  d.started_on, d.finished_on, d.rating, d.review, d.is_public,
+  d.edition_id, d.created_at
+from public.diary_entries d
+where
+  d.user_id = (select auth.uid())
+  or (
+    d.is_public
+    and (
+      public.can_view_profile(d.user_id)
+      or public.is_visible_via_club_share('diary_entries', d.id, d.user_id)
+    )
+  );
+
+grant select on public.pass_reviews to anon, authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061828 pass_hub_a_view_pinned  (fichero: 20260716_pass_hub_a_view_pinned.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- La vista pass_reviews debe exponer pinned_order: el ejecutor de
+-- transiciones hereda el fijado al archivar un pase, y la capa de lectura de
+-- pases (getPasses) lee por la vista — es la única lectura que incluye
+-- review, así que el pase entero sale de ahí. La tanda A la creó sin esta
+-- columna; misma técnica drop+create (no se pueden insertar columnas en
+-- medio con create or replace).
+drop view if exists public.pass_reviews;
+create view public.pass_reviews as
+select
+  d.id, d.library_entry_id, d.user_id, d.item_type, d.item_id,
+  d.status, d.is_active, d.position, d.pinned_order,
+  d.started_on, d.finished_on, d.rating, d.review, d.is_public,
+  d.edition_id, d.created_at
+from public.diary_entries d
+where
+  d.user_id = (select auth.uid())
+  or (
+    d.is_public
+    and (
+      public.can_view_profile(d.user_id)
+      or public.is_visible_via_club_share('diary_entries', d.id, d.user_id)
+    )
+  );
+
+grant select on public.pass_reviews to anon, authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061843 pass_hub_b_satellites  (fichero: 20260716_pass_hub_b_satellites.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Las sesiones pasan a colgar SOLO del pase; los episodios vistos ganan
+-- pass_id para que el cursor de serie sea por pase (revisionados con cursor
+-- propio). pass_id null en episode_watches = visto en la era pre-pases o de
+-- una serie ya quitada de la biblioteca: cuenta para "visto alguna vez",
+-- no para el cursor de ningún pase.
+
+-- 1) Sesiones huérfanas de pase → al pase activo de su entrada.
+update public.progress_sessions s
+set pass_id = d.id
+from public.diary_entries d
+where s.pass_id is null
+  and d.library_entry_id = s.library_entry_id
+  and d.is_active;
+
+alter table public.progress_sessions alter column pass_id set not null;
+
+-- 2) Episodios vistos → al pase activo de esa serie para ese usuario.
+alter table public.episode_watches
+  add column if not exists pass_id uuid references public.diary_entries(id) on delete cascade;
+
+update public.episode_watches w
+set pass_id = d.id
+from public.diary_entries d
+where w.pass_id is null
+  and d.user_id = w.user_id
+  and d.item_type = 'series'
+  and d.item_id = w.series_id
+  and d.is_active;
+
+create index if not exists episode_watches_by_pass
+  on public.episode_watches (pass_id);
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061921 pass_hub_b2_episode_unique  (fichero: 20260717_pass_hub_b2_episode_unique.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Tarea 8 (hub): el cursor de episodios pasa a ser POR PASE, no por
+-- usuario+serie. Un episodio puede estar visto en varios pases distintos
+-- (revisionado): la unicidad vieja (user_id, series_id, season, episode)
+-- lo impedía. Se sustituye por dos índices únicos parciales:
+--   - uno por pase (pass_id, season, episode) para el visionado activo,
+--   - uno "legacy" (user_id, series_id, season, episode) WHERE pass_id IS
+--     NULL para no duplicar historia anterior a la migración del hub (esos
+--     vistos no pertenecen a ningún pase y siguen contando para "visto
+--     alguna vez").
+alter table public.episode_watches
+  drop constraint if exists episode_watches_user_id_series_id_season_number_episode_num_key;
+
+create unique index if not exists episode_watches_once_per_pass
+  on public.episode_watches (pass_id, season_number, episode_number)
+  where pass_id is not null;
+
+create unique index if not exists episode_watches_legacy_unique
+  on public.episode_watches (user_id, series_id, season_number, episode_number)
+  where pass_id is null;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061926 pass_hub_b3_fk_set_null  (fichero: 20260717_pass_hub_b3_fk_set_null.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- La tanda B ató episode_watches.pass_id con ON DELETE CASCADE, y eso
+-- contradice su propia semántica: pass_id nulo significa "visto alguna vez,
+-- aunque la serie ya no esté en la biblioteca". Si borrar los pases (quitar
+-- de biblioteca) arrastrara los vistos, esa capa desaparecería justo cuando
+-- tiene que sobrevivir. El FK pasa a SET NULL: el pase muere, el visto queda.
+alter table public.episode_watches
+  drop constraint if exists episode_watches_pass_id_fkey;
+alter table public.episode_watches
+  add constraint episode_watches_pass_id_fkey
+  foreign key (pass_id) references public.diary_entries(id) on delete set null;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061939 pass_hub_b4_hub_writes  (fichero: 20260717_pass_hub_b4_hub_writes.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Hueco del plan detectado en la Tarea 5: el ejecutor de transiciones
+-- (applyTransition) inserta y actualiza pases-hub, pero la BD todavía exigía
+-- el mundo viejo por tres sitios. Sin esto, TODA alta y TODO cambio de
+-- estado fallan en runtime (compilan bien: el fallo es NOT NULL + grants).
+--
+-- 1) library_entry_id era NOT NULL: un pase del hub nace SIN entrada de
+--    biblioteca (el alta ya no escribe library_entries). Nullable hasta que
+--    la migración C (Task 10) elimine la columna. El FK compuesto
+--    (library_entry_id, user_id) es MATCH SIMPLE: con la columna a null no
+--    se evalúa, así que los pases nuevos no chocan con él.
+alter table public.diary_entries
+  alter column library_entry_id drop not null;
+
+-- 2) Grants por columna (20260714_passes_grants.sql hizo revoke all + grant
+--    fino): las columnas del hub (tanda A) solo recibieron SELECT. El
+--    ejecutor escribe estado, actividad, cursor, cola y fijado; la cola y el
+--    fijado también los escriben moveEntryToQueue y favorite-actions.
+grant insert (item_type, item_id, status, is_active, position,
+              queue_id, queue_order, pinned_order)
+  on public.diary_entries to authenticated;
+grant update (status, is_active, position, queue_id, queue_order, pinned_order)
+  on public.diary_entries to authenticated;
+
+-- 3) check_pass_edition resolvía la obra vía library_entries usando
+--    new.library_entry_id — con pases sin entrada, v_item_type quedaba null
+--    y el trigger rechazaba CUALQUIER edición ("una serie no tiene
+--    ediciones"). La obra ya vive en el propio pase (item_type/item_id NOT
+--    NULL desde la tanda A): se lee de ahí y vale para viejos y nuevos.
+create or replace function public.check_pass_edition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.edition_id is null then
+    return new;
+  end if;
+
+  if new.item_type = 'book' then
+    if not exists (
+      select 1 from public.book_editions be
+      where be.id = new.edition_id and be.book_id = new.item_id
+    ) then
+      raise exception 'la edicion % no es de este libro', new.edition_id;
+    end if;
+  elsif new.item_type = 'movie' then
+    if not exists (
+      select 1 from public.movie_versions mv
+      where mv.id = new.edition_id and mv.movie_id = new.item_id
+    ) then
+      raise exception 'la version % no es de esta pelicula', new.edition_id;
+    end if;
+  else
+    -- Las series no tienen ediciones: su unidad de progreso son los episodios.
+    raise exception 'una serie no tiene ediciones';
+  end if;
+
+  return new;
+end;
+$$;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716061946 pass_hub_b5_sessions_optional  (fichero: 20260717_pass_hub_b5_sessions_optional.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Hueco del plan detectado en la Tarea 7: el propio plan (línea 880 de
+-- docs/superpowers/plans/2026-07-15-pase-hub.md) pide que addSession deje de
+-- escribir `library_entry_id` en progress_sessions ("el insert de la sesión
+-- pierde library_entry_id y usa pass_id"), pero esa columna sigue siendo
+-- NOT NULL hoy — solo se elimina del todo en la Tarea 10 (línea 1067 del
+-- plan). Sin este cambio, TODO insert de sesión falla en runtime con "null
+-- value in column library_entry_id violates not-null constraint": el código
+-- compila (los tipos ya se parchearon a mano, ver database.types.ts) pero
+-- revienta al primer guardado.
+--
+-- Mismo tratamiento que ya recibió diary_entries.library_entry_id en
+-- 20260717_pass_hub_b4_hub_writes.sql: nullable, no se borra la columna
+-- todavía (eso es la Tarea 10) ni se toca el FK compuesto (library_entry_id,
+-- user_id) — MATCH SIMPLE ya no se evalúa cuando la columna es null, así que
+-- las sesiones de pases nuevos (sin entrada de biblioteca, seguir ya no crea
+-- library_entries) no chocan con él.
+alter table public.progress_sessions
+  alter column library_entry_id drop not null;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260716062101 pass_hub_c_rename  (fichero: 20260717_pass_hub_c_rename.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Migración C del hub del pase: la tabla del pase deja de llamarse como el
+-- diario. `diary_entries` era ya el hub del registro personal (item/estado/
+-- cola/cursor, con sesiones y episodios colgando de pass_id); este rename hace
+-- que el repositorio diga la verdad y corta el último lazo con library_entries.
+--
+-- Distinción CLAVE que gobierna toda la migración:
+--   * Un `FROM diary_entries` en el cuerpo de una función ES una referencia de
+--     TABLA y hay que reescribirla a `passes` (plpgsql resuelve el nombre en
+--     tiempo de ejecución: una función que siga diciendo diary_entries fallaría).
+--   * La CADENA 'diary_entries' / 'diary_entry' almacenada en comparticiones de
+--     club (club_posts.ref->>'sourceTable') e interacciones (target_type) es un
+--     DATO (una etiqueta), NO un nombre de tabla: NO se toca, o romperíamos las
+--     comparticiones e interacciones existentes.
+
+-- 1) El rename. FKs e índices cuelgan de la tabla por OID, así que las FKs que
+--    APUNTAN a diary_entries (episode_watches.pass_id, progress_sessions.pass_id)
+--    siguen la tabla sin tocar nada. Los triggers también.
+alter table public.diary_entries rename to passes;
+
+-- 2) Reescritura de TODA función cuyo cuerpo nombraba diary_entries como tabla.
+--    Enumeradas exhaustivamente con `select proname from pg_proc where prosrc
+--    ilike '%diary_entries%'` (6 funciones) — no por adivinanza.
+
+-- 2a) block_edition_delete_if_used: cuenta pases que usan una edición. Simple
+--     rename de tabla.
+create or replace function public.block_edition_delete_if_used()
+ returns trigger
+ language plpgsql
+ security definer
+ set search_path to 'public'
+as $function$
+declare
+  v_pases integer;
+begin
+  select count(*) into v_pases
+  from public.passes d
+  where d.edition_id = old.id;
+
+  if v_pases > 0 then
+    raise exception 'edition_in_use'
+      using hint = format('%s pases usan esta edicion', v_pases);
+  end if;
+
+  return old;
+end;
+$function$;
+
+-- 2b) can_view_target: el `when 'diary_entry'` es la etiqueta de datos del enum
+--     target_kind (NO se toca); el `from diary_entries` sí es tabla → passes.
+create or replace function public.can_view_target(p_target_type target_kind, p_target_id uuid)
+ returns boolean
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  select case p_target_type
+    when 'diary_entry' then exists (
+      select 1 from public.passes d where d.id = p_target_id and public.can_view_profile(d.user_id)
+    )
+    when 'episode_watch' then exists (
+      select 1 from public.episode_watches e where e.id = p_target_id and public.can_view_profile(e.user_id)
+    )
+    when 'club_post' then exists (
+      select 1 from public.club_posts cp where cp.id = p_target_id and public.is_club_member(cp.club_id)
+    )
+    when 'comment' then exists (
+      select 1 from public.comments c where c.id = p_target_id
+        and public.can_view_target(c.target_type, c.target_id)
+    )
+    when 'activity_checkpoint' then exists (
+      select 1 from public.club_activity_checkpoints cc
+      where cc.id = p_target_id
+        and public.is_activity_participant(cc.activity_id)
+        and public.has_reached_checkpoint(cc.id)
+    )
+  end;
+$function$;
+
+-- 2c) get_activity_diary_passes: antes puenteaba participante → library_entries
+--     → diary_entries por library_entry_id. En el hub el pase YA lleva
+--     item_type/item_id, así que se une passes directamente (esto además
+--     ARREGLA un hueco: los pases nacidos en el hub tienen library_entry_id nulo
+--     y quedaban fuera del join antiguo).
+create or replace function public.get_activity_diary_passes(p_activity_id uuid)
+ returns TABLE(user_id uuid, item_type item_type, item_id uuid, finished_on date)
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  with act as (
+    select ca.id, w.window_start, w.window_end
+      from public.club_activities ca
+      cross join lateral public.activity_window(ca.id) w
+     where ca.id = p_activity_id
+       and ca.kind = 'criteria_challenge'
+       and public.is_activity_participant(ca.id)
+  )
+  select p.user_id, d.item_type, d.item_id, d.finished_on
+    from act a
+    join public.club_activity_participants p on p.activity_id = a.id
+    join public.passes d
+      on d.user_id = p.user_id
+     and d.finished_on between a.window_start and a.window_end;
+$function$;
+
+-- 2d) get_list_challenge_progress: misma migración de puente a passes directo.
+--     Antes: library_entries (INNER, con el status) + diary_entries (LEFT, para
+--     completed_on). En el hub, passes lleva status Y finished_on, así que un
+--     único INNER a passes cubre ambos: en modo 'any' el filtro pide el PASE
+--     ACTIVO con status 'completed' (el le.status='completed' de antes era el
+--     estado ACTUAL de la entrada = el del pase activo del hub; sin el is_active
+--     un pase histórico archivado, siempre 'completed', haría contar un ítem que
+--     estás releyendo ahora — hallazgo de revisión Tarea 10) y completed_on
+--     puede quedar nulo (el tick "ya lo tenías"); en modo 'window' el join no
+--     filtra status y el HAVING exige un pase terminado dentro de la ventana.
+create or replace function public.get_list_challenge_progress(p_activity_id uuid)
+ returns TABLE(user_id uuid, item_type item_type, item_id uuid, completed_on date)
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  with act as (
+    select ca.id,
+           w.window_start,
+           w.window_end,
+           coalesce(ca.config ->> 'completionMode', 'window') = 'any' as open_mode
+      from public.club_activities ca
+      cross join lateral public.activity_window(ca.id) w
+     where ca.id = p_activity_id
+       and ca.kind = 'list_challenge'
+       and public.is_activity_participant(ca.id)
+  )
+  select p.user_id,
+         i.item_type,
+         i.item_id,
+         min(d.finished_on) filter (
+           where d.finished_on between a.window_start and a.window_end
+         ) as completed_on
+    from act a
+    join public.club_activity_participants p on p.activity_id = a.id
+    join public.club_activity_items i on i.activity_id = a.id
+    join public.passes d
+      on d.user_id = p.user_id
+     and d.item_type = i.item_type
+     and d.item_id = i.item_id
+     and (not a.open_mode or (d.is_active and d.status = 'completed'))
+   group by a.open_mode, p.user_id, i.item_type, i.item_id
+  having a.open_mode
+      or bool_or(d.finished_on between a.window_start and a.window_end);
+$function$;
+
+-- 2e) resolve_pending_import: la cola de revisión (un colaborador resuelve una
+--     fila de importación sin match, a nombre de su DUEÑO). El cuerpo antiguo
+--     insertaba en library_entries + diary_entries(library_entry_id), un patrón
+--     que ya estaba ROTO tras el hub (item_type/item_id son NOT NULL sin default
+--     y no se aportaban). Se reescribe para insertar pases directamente,
+--     espejando commit-row.ts: un pase ACTIVO (el estado/nota del shelf de
+--     origen) más un pase histórico CERRADO por cada fecha de relectura que no
+--     sea ya la del activo.
+create or replace function public.resolve_pending_import(p_pending_id uuid, p_catalog_item_id uuid)
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'public'
+as $function$
+declare
+  v_row public.pending_import_rows;
+  v_status media_status;
+  v_rating smallint;
+  v_position jsonb;
+  v_dates jsonb;
+  v_historical jsonb;
+  v_date jsonb;
+begin
+  if not public.has_min_role('collaborator') then
+    raise exception 'forbidden';
+  end if;
+
+  select * into v_row from public.pending_import_rows
+    where id = p_pending_id and status = 'pending';
+  if not found then
+    raise exception 'pending row not found';
+  end if;
+
+  v_status := coalesce(nullif(v_row.payload->>'status','')::media_status, 'planned');
+  v_rating := nullif(v_row.payload->>'rating','')::smallint;
+  v_position := case
+    when v_row.payload->>'bookFormat' is not null
+      then jsonb_build_object('format', v_row.payload->>'bookFormat')
+    else '{}'::jsonb
+  end;
+  v_dates := coalesce(v_row.payload->'diaryDates', '[]'::jsonb);
+
+  -- Mismo criterio que commit-row.ts: si la obra está terminada/abandonada y hay
+  -- fechas, la MÁS RECIENTE es el pase activo; si está planned/in_progress el
+  -- activo es un pase aparte (abierto o planificado) y las fechas son relecturas
+  -- pasadas.
+  v_historical := null;
+  if v_status in ('completed','dropped') then
+    select d into v_historical
+    from jsonb_array_elements(v_dates) d
+    order by d->>'finishedOn' desc
+    limit 1;
+  end if;
+
+  -- Pase activo. ON CONFLICT contra el índice parcial passes_one_active: si el
+  -- dueño ya tiene un pase activo para esta obra (re-resolución), no se duplica.
+  insert into public.passes (
+    user_id, item_type, item_id, status, is_active, position, rating,
+    started_on, finished_on, is_public
+  ) values (
+    v_row.user_id, v_row.item_type, p_catalog_item_id, v_status, true, v_position, v_rating,
+    nullif(v_historical->>'startedOn','')::date, (v_historical->>'finishedOn')::date, true
+  )
+  on conflict (user_id, item_type, item_id) where is_active do nothing;
+
+  -- Un pase cerrado por cada fecha del CSV que no sea ya la del activo, sin
+  -- duplicar historial si se reimporta (no hay unique de BD para pases del hub).
+  for v_date in select * from jsonb_array_elements(v_dates)
+  loop
+    if v_historical is not null and v_date->>'finishedOn' = v_historical->>'finishedOn' then
+      continue;
+    end if;
+    if exists (
+      select 1 from public.passes
+      where user_id = v_row.user_id
+        and item_type = v_row.item_type
+        and item_id = p_catalog_item_id
+        and finished_on = (v_date->>'finishedOn')::date
+    ) then
+      continue;
+    end if;
+
+    insert into public.passes (
+      user_id, item_type, item_id, status, is_active, position,
+      started_on, finished_on, rating, is_public, created_at
+    ) values (
+      v_row.user_id, v_row.item_type, p_catalog_item_id, 'completed', false, '{}'::jsonb,
+      nullif(v_date->>'startedOn','')::date, (v_date->>'finishedOn')::date, v_rating, true,
+      (v_date->>'finishedOn')::timestamptz
+    );
+  end loop;
+
+  update public.pending_import_rows
+    set status = 'resolved', resolved_at = now(), resolved_by = auth.uid()
+    where id = p_pending_id;
+end;
+$function$;
+
+-- 2f) validate_club_post_ref: el `case v_source` compara etiquetas ALMACENADAS
+--     (datos), pero el `select 1 from diary_entries` de la rama 'diary_entries'
+--     ES una tabla → passes. Además (alcance plegado de la revisión de la Tarea
+--     9) se enseña la etiqueta nueva 'diary_entries_added': los ítems del hub no
+--     tienen fila en library_entries, así que las comparticiones de "añadió a la
+--     biblioteca" usan esa etiqueta y apuntan a una fila de `passes` (la del
+--     pase añadido); antes caían en el `else null` → 'invalid_ref'. La
+--     normalización final preserva v_source, así que la etiqueta se guarda tal
+--     cual (dato intacto).
+create or replace function public.validate_club_post_ref()
+ returns trigger
+ language plpgsql
+ set search_path to 'public'
+as $function$
+declare
+  v_source text;
+  v_row uuid;
+  v_owned boolean;
+begin
+  if new.kind <> 'activity_share' then
+    if new.ref is not null then
+      raise exception 'ref_only_for_activity_share';
+    end if;
+    return new;
+  end if;
+
+  if new.ref is null then
+    raise exception 'ref_required';
+  end if;
+
+  v_source := new.ref->>'sourceTable';
+  begin
+    v_row := (new.ref->>'rowId')::uuid;
+  exception when others then
+    raise exception 'invalid_ref';
+  end;
+
+  v_owned := case v_source
+    when 'diary_entries' then exists (
+      select 1 from public.passes where id = v_row and user_id = new.author_id
+    )
+    when 'diary_entries_added' then exists (
+      select 1 from public.passes where id = v_row and user_id = new.author_id
+    )
+    when 'episode_watches' then exists (
+      select 1 from public.episode_watches where id = v_row and user_id = new.author_id
+    )
+    when 'library_entries' then exists (
+      select 1 from public.library_entries where id = v_row and user_id = new.author_id
+    )
+    when 'progress_sessions' then exists (
+      select 1 from public.progress_sessions where id = v_row and user_id = new.author_id
+    )
+    else null
+  end;
+
+  if v_owned is distinct from true then
+    raise exception 'invalid_ref';
+  end if;
+
+  new.ref := jsonb_build_object('sourceTable', v_source, 'rowId', v_row::text);
+  return new;
+end;
+$function$;
+
+-- 2g) is_visible_via_club_share: su cuerpo NO nombra ninguna tabla (compara la
+--     etiqueta almacenada contra el parámetro), así que el rename no le obliga.
+--     Pero un pase compartido como 'diary_entries_added' apunta a la MISMA fila
+--     de passes que uno compartido como 'diary_entries'; su visibilidad es la
+--     misma. Como la vista pass_reviews y la política RLS de passes consultan con
+--     'diary_entries' fijo, se enseña aquí a hacer coincidir ambas etiquetas para
+--     esa consulta (así un "añadido" compartido a un club se ve sin tocar sus
+--     llamadores). Las demás etiquetas (episode_watches, etc.) no se ven afectadas.
+create or replace function public.is_visible_via_club_share(p_source_table text, p_row_id uuid, p_owner_id uuid)
+ returns boolean
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  select exists (
+    select 1 from public.club_posts cp
+    where cp.kind = 'activity_share'
+      and (
+        cp.ref->>'sourceTable' = p_source_table
+        or (p_source_table = 'diary_entries' and cp.ref->>'sourceTable' = 'diary_entries_added')
+      )
+      and cp.ref->>'rowId' = p_row_id::text
+      and cp.author_id = p_owner_id
+      and public.is_club_member(cp.club_id)
+  );
+$function$;
+
+-- 3) La vista pass_reviews depende de passes.library_entry_id, así que se tira
+--    ANTES de borrar la columna y se recrea sin ella (para la Tarea 9 ya nada la
+--    selecciona) y con pinned_order.
+drop view if exists public.pass_reviews;
+
+-- 4) El footgun de la Tarea 5: finished_on arrastra DEFAULT CURRENT_DATE, que
+--    estamparía una fecha de fin a cualquier pase abierto. Un pase abierto debe
+--    conservar finished_on NULL.
+alter table public.passes alter column finished_on drop default;
+
+-- 5) El cordón: se corta el último lazo con library_entries. DROP COLUMN tira en
+--    cascada la FK compuesta (…entry_owner_fkey) y los índices legacy que colgaban
+--    de library_entry_id (one_open_pass / one_pass_per_day / idx_library_entry);
+--    su papel ya lo hacen passes_one_active y passes_by_item, nacidos en el hub.
+alter table public.progress_sessions drop column if exists library_entry_id;
+alter table public.passes drop column if exists library_entry_id;
+
+-- 6) Recreación de la vista desde passes, sin library_entry_id y con pinned_order.
+create view public.pass_reviews as
+select
+  d.id, d.user_id, d.item_type, d.item_id,
+  d.status, d.is_active, d.position, d.pinned_order,
+  d.started_on, d.finished_on, d.rating, d.review, d.is_public,
+  d.edition_id, d.created_at
+from public.passes d
+where
+  d.user_id = (select auth.uid())
+  or (
+    d.is_public
+    and (
+      public.can_view_profile(d.user_id)
+      or public.is_visible_via_club_share('diary_entries', d.id, d.user_id)
+    )
+  );
+
+grant select on public.pass_reviews to anon, authenticated;
+
+-- 7) Renombrado cosmético de los objetos SUPERVIVIENTES que aún llevan el nombre
+--    viejo (para que el repositorio diga la verdad). Los que colgaban de
+--    library_entry_id ya desaparecieron con la columna.
+alter table public.passes rename constraint diary_entries_pkey to passes_pkey;
+alter table public.passes rename constraint diary_entries_rating_check to passes_rating_check;
+alter table public.passes rename constraint diary_entries_review_len to passes_review_len;
+alter table public.passes rename constraint diary_entries_user_id_fkey to passes_user_id_fkey;
+alter table public.passes rename constraint diary_entries_queue_id_fkey to passes_queue_id_fkey;
+alter index public.idx_diary_entries_finished rename to idx_passes_finished;
+alter trigger diary_entries_check_edition on public.passes rename to passes_check_edition;
+alter trigger diary_entries_set_updated_at on public.passes rename to passes_set_updated_at;
+
+-- 8) library_entries queda congelada como red de revert: sólo lectura, sin
+--    escrituras de la app (se borrará en una limpieza posterior).
+revoke insert, update, delete on public.library_entries from authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260717195505 progress_sessions_started_at  (fichero: 20260717_progress_sessions_started_at.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- "Cuándo lees" con dato real (plan 05, P8).
+--
+-- progress_sessions solo guardaba session_date (el día) y created_at (cuándo se
+-- REGISTRÓ la sesión, no cuándo se consumió). Para la franja horaria favorita
+-- hace falta la hora real de inicio: el cronómetro la rellena solo, la hoja
+-- manual la deja opcional.
+--
+-- SIN backfill a propósito: created_at no es un sustituto honesto (mentiría
+-- sobre la franja). "Cuándo lees" ignora las filas sin started_at.
+alter table public.progress_sessions
+  add column started_at timestamptz;
+
+-- El grant de INSERT de progress_sessions es POR COLUMNA (ver
+-- 20260714_passes_grants.sql): una columna nueva NO entra sola, así que sin
+-- esto el rol authenticated no puede escribir started_at y el insert entero
+-- falla con "permission denied for column started_at". (El SELECT sí la cubre:
+-- ese grant es de tabla.)
+grant insert (started_at) on public.progress_sessions to authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260717195537 notes  (fichero: 20260717_notes.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Memorizar: notas y citas (plan 05, P7).
+--
+-- Hasta ahora una nota vivía suelta en dos sitios: progress_sessions.note (la
+-- nota de una sesión, con su página en `position`) y library_entries.notes (una
+-- nota de biblioteca sin sesión). Memorizar las unifica en una entidad propia,
+-- privada, que además distingue nota de CITA y permite marcarla favorita.
+--
+-- Las columnas viejas se DEJAN en su sitio esta fase (el código lee de `notes`,
+-- no las borra); se retiran en una limpieza posterior cuando la migración esté
+-- verificada en prod.
+
+create table public.notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_type public.item_type not null,
+  item_id uuid not null,
+  -- Opcionales: una cita puede venir de una sesión (libro) o no (una película
+  -- no tiene sesión). Si el pase/sesión se borra, la nota sobrevive huérfana.
+  pass_id uuid references public.passes(id) on delete set null,
+  session_id uuid references public.progress_sessions(id) on delete set null,
+  kind text not null check (kind in ('note', 'quote')),
+  body text not null check (char_length(body) between 1 and 5000),
+  -- Página / posición, mismo formato jsonb que progress_sessions.position.
+  position jsonb,
+  is_favorite boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index idx_notes_user on public.notes (user_id, created_at desc);
+
+comment on table public.notes is 'Notas y citas de Memorizar (§P7). Privadas: solo el dueño, como challenges/queues.';
+
+-- Privada, solo el dueño (mismo patrón que challenges).
+alter table public.notes enable row level security;
+
+create policy "own notes select" on public.notes
+  for select to authenticated using ((select auth.uid()) = user_id);
+create policy "own notes insert" on public.notes
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "own notes update" on public.notes
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+create policy "own notes delete" on public.notes
+  for delete to authenticated using ((select auth.uid()) = user_id);
+
+-- ── Migración de datos ───────────────────────────────────────────────────────
+
+-- Notas de sesión: llevan su sesión y su página (position). El tipo y la obra
+-- salen del pase.
+insert into public.notes
+  (user_id, item_type, item_id, pass_id, session_id, kind, body, position, created_at)
+select ps.user_id, p.item_type, p.item_id, ps.pass_id, ps.id, 'note',
+       ps.note, ps.position, ps.created_at
+from public.progress_sessions ps
+join public.passes p on p.id = ps.pass_id
+where ps.note is not null and btrim(ps.note) <> '';
+
+-- Notas de biblioteca: sin sesión ni pase; la obra sale de la propia entrada.
+insert into public.notes
+  (user_id, item_type, item_id, kind, body, created_at)
+select le.user_id, le.item_type, le.item_id, 'note', le.notes, le.created_at
+from public.library_entries le
+where le.notes is not null and btrim(le.notes) <> '';
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260717195606 fuse_annual_goals_into_challenges  (fichero: 20260717_fuse_annual_goals_into_challenges.sql)
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- Fusión de las metas anuales en retos (plan 05, P6).
+--
+-- Antes: profiles.annual_goal_{books,movies,series} guardaban la meta anual por
+-- tipo, un modelo aparte de los retos (challenges) pese a significar lo mismo
+-- ("N ítems completados de este tipo en el año"). Ahora hay un solo modelo: cada
+-- meta > 0 se convierte en un reto del año natural en curso (item_type fijado,
+-- criterio vacío, target = la meta) y las tres columnas se eliminan.
+--
+-- El progreso se conserva: un reto item_type='book', criteria={}, rango = el año
+-- cuenta exactamente lo que contaba BookGoalCard (ver src/lib/challenges/match.ts
+-- y annual-goals.ts, que deriva la meta por tipo del reto correspondiente).
+--
+-- ⚠️ Migración DESTRUCTIVA (DROP COLUMN). Aplicada primero en dev y verificada
+-- (recuento antes/después) antes de prod.
+
+-- 1) Data migration: cada meta > 0 → un reto del año en curso.
+insert into public.challenges
+  (user_id, name, item_type, target_count, criteria, start_date, end_date)
+select
+  user_id,
+  annual_goal_books
+    || case when annual_goal_books = 1 then ' libro en 2026' else ' libros en 2026' end,
+  'book'::item_type, annual_goal_books, '{}'::jsonb, '2026-01-01'::date, '2026-12-31'::date
+from public.profiles
+where annual_goal_books is not null and annual_goal_books > 0
+union all
+select
+  user_id,
+  annual_goal_movies
+    || case when annual_goal_movies = 1 then ' pelicula en 2026' else ' peliculas en 2026' end,
+  'movie'::item_type, annual_goal_movies, '{}'::jsonb, '2026-01-01'::date, '2026-12-31'::date
+from public.profiles
+where annual_goal_movies is not null and annual_goal_movies > 0
+union all
+select
+  user_id,
+  annual_goal_series
+    || case when annual_goal_series = 1 then ' serie en 2026' else ' series en 2026' end,
+  'series'::item_type, annual_goal_series, '{}'::jsonb, '2026-01-01'::date, '2026-12-31'::date
+from public.profiles
+where annual_goal_series is not null and annual_goal_series > 0;
+
+-- 2) Retirar las columnas: el modelo único son los retos.
+alter table public.profiles
+  drop column annual_goal_books,
+  drop column annual_goal_movies,
+  drop column annual_goal_series;
