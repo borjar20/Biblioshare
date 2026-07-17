@@ -23,3 +23,21 @@ export async function loadMoreFeed(
     filter,
   });
 }
+
+// "Cargar más" de la Actividad de un perfil (plan 05, P4): a diferencia del
+// feed de inicio, la fuente es un actor fijo, no tus seguidos. El viewer sigue
+// siendo quien mira (para las reacciones), pero los eventos son de `actorId`.
+export async function loadMoreProfileFeed(
+  actorId: string,
+  cursor: string | null,
+): Promise<FeedPage> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return getFeed(supabase, user?.id ?? actorId, {
+    cursor: cursor ?? undefined,
+    actorId,
+  });
+}

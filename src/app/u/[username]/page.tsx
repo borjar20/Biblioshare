@@ -198,7 +198,11 @@ export default async function PublicProfilePage({
 
       {tab === "actividad" && (
         <Suspense fallback={<ProfileSectionSkeleton />}>
-          <ActivityTab userId={profile.userId} viewerLoggedIn={!!user} />
+          <ActivityTab
+            userId={profile.userId}
+            viewerLoggedIn={!!user}
+            isOwner={isOwner}
+          />
         </Suspense>
       )}
 

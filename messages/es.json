@@ -223,7 +223,7 @@
     "statsFilms": "{count, plural, =0 {0 películas} one {1 película} other {# películas}}",
     "memberSince": "Desde {year}",
     "nowConsuming": "Ahora mismo",
-    "activityEmpty": "Todavía no hay pases registrados en el diario.",
+    "activityEmpty": "Este perfil todavía no tiene actividad pública.",
     "typeBooks": "Libros",
     "typeSeries": "Series",
     "typeFilms": "Películas",
@@ -254,7 +254,12 @@
     "emptyTitle": "Colección vacía",
     "activityYearTitle": "Actividad este año",
     "highlights": "Destacados",
-    "recentReviews": "Reseñas recientes"
+    "recentReviews": "Reseñas recientes",
+    "activityToday": "Hoy",
+    "activityYesterday": "Ayer",
+    "activityEmptyTitle": "Sin actividad todavía",
+    "activityEmptyOwn": "Tu actividad aparecerá aquí en cuanto registres algo.",
+    "activityEmptyCta": "Buscar algo que registrar"
   },
   "social": {
     "follow": "Seguir",

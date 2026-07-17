@@ -1,49 +1,56 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getMonthlyActivity } from "@/lib/diary/get-monthly-activity";
-import { getRecentReviews } from "@/lib/social/recent-reviews";
-import { getLibraryItems } from "@/lib/library/get-library-items";
-import { ActivityChart } from "@/components/activity-chart";
-import { FavoritesShelf } from "@/components/favorites-shelf";
-import { FeedCard } from "@/components/social/feed-card";
+import { getFeed } from "@/lib/social/feed";
+import { ProfileActivityFeed } from "@/components/social/profile-activity-feed";
+import { EmptyState } from "@/components/ui/empty-state";
+import { UsersIcon } from "@/components/ui/icons";
+import { buttonVariants } from "@/components/ui/button";
 
-// Actividad: la cara pública del perfil.
+// Actividad — la cara pública del perfil (frames A/D). Es el mismo feed que ve
+// un visitante, sin ramas por rol (plan 05, P5): un no-seguidor de un perfil
+// público ve también las sesiones. La privacidad la decide el interruptor de
+// perfil privado, que corta antes de llegar aquí.
 export async function ActivityTab({
   userId,
   viewerLoggedIn,
+  isOwner,
 }: {
   userId: string;
   viewerLoggedIn: boolean;
+  isOwner: boolean;
 }) {
   const supabase = await createClient();
   const t = await getTranslations("profile");
-  const [months, recentReviews, favorites] = await Promise.all([
-    getMonthlyActivity(supabase, userId),
-    getRecentReviews(supabase, userId),
-    getLibraryItems(supabase, userId, { favoritesOnly: true }),
-  ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const page = await getFeed(supabase, user?.id ?? userId, { actorId: userId });
+
+  if (page.events.length === 0) {
+    return (
+      <EmptyState
+        glyph={<UsersIcon className="h-7 w-7" />}
+        title={t("activityEmptyTitle")}
+        message={isOwner ? t("activityEmptyOwn") : t("activityEmpty")}
+        action={
+          isOwner ? (
+            <Link href="/buscar" className={buttonVariants("primary")}>
+              {t("activityEmptyCta")}
+            </Link>
+          ) : undefined
+        }
+      />
+    );
+  }
 
   return (
-    <>
-      <div className="rounded-card border border-border bg-surface shadow-card p-4">
-        <ActivityChart months={months} />
-      </div>
-      <FavoritesShelf items={favorites} />
-      {recentReviews.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            {t("recentReviews")}
-          </h2>
-          {recentReviews.map((event) => (
-            <FeedCard
-              key={event.id}
-              event={event}
-              viewerLoggedIn={viewerLoggedIn}
-              hideActor
-            />
-          ))}
-        </div>
-      )}
-    </>
+    <ProfileActivityFeed
+      actorId={userId}
+      initialEvents={page.events}
+      initialCursor={page.nextCursor}
+      viewerLoggedIn={viewerLoggedIn}
+    />
   );
 }
