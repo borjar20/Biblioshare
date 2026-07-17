@@ -41,6 +41,7 @@ export function SessionForm({
   status,
   total,
   seriesEpisodes,
+  initialMinutes,
 }: {
   passId: string;
   itemType: "book" | "series";
@@ -49,6 +50,8 @@ export function SessionForm({
   status: MediaStatus;
   total: number | null;
   seriesEpisodes?: SeriesSeasonEpisodes[];
+  /** Minutos que trae el cronómetro de la tarjeta de hoy (?minutos=). */
+  initialMinutes?: number | null;
 }) {
   const t = useTranslations("session");
   const tLibrary = useTranslations("library");
@@ -90,10 +93,15 @@ export function SessionForm({
   // Duración: "a mano" (input libre) o "cronómetro" (SessionTimer, que trae
   // su propio input oculto name="durationMinutes"). Solo libro tiene
   // duración — una sesión de serie se mide en episodios (§7.14).
+  // Si vienes del cronómetro de la tarjeta de hoy, el tiempo ya está contado:
+  // llega "a mano" con el número puesto y editable, no en modo cronómetro — ese
+  // reloj ya se paró y se limpió al traerte aquí.
   const [durationMode, setDurationMode] = useState<"manual" | "timer">(
     "manual",
   );
-  const [manualMinutes, setManualMinutes] = useState("");
+  const [manualMinutes, setManualMinutes] = useState(
+    initialMinutes ? String(initialMinutes) : "",
+  );
 
   // El aviso de cronómetro olvidado ofrece "escribir a mano": trae los
   // minutos ya acumulados al campo manual y cambia el conmutador por ti.

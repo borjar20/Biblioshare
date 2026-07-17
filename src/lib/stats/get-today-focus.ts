@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { LibraryItem } from "@/lib/library/types";
 import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { todayISO } from "./dates";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -14,11 +15,18 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // de la racha viva" (la racha es global, no por ítem: habría que derivarla por
 // pase) y "el más cerca de acabar" (deja clavado arriba un libro al 95% que
 // llevas meses sin tocar).
+//
+// OJO: "sesión" no es una tabla, es un concepto. Una SERIE no tiene
+// progress_sessions —se mide en episodios (§7.14)—, así que mirar solo
+// progress_sessions mandaba TODAS las series al final de la lista y ninguna
+// podía ser nunca la destacada. Lo último que tocaste de una serie es su último
+// episodio visto, y eso es lo que cuenta aquí.
 
 export type TodayPass = {
   item: LibraryItem;
   /** Del pase activo, no de la obra. */
   startedOn: string | null;
+  /** Lo último que tocaste: una sesión (libro) o un episodio visto (serie). */
   lastSessionDate: string | null;
   /** Sesiones con texto — el "3 notas" del frame. */
   noteCount: number;
@@ -33,6 +41,31 @@ export type TodayFocus = {
   /** Todos los en curso, para el "5 · Ver todos ›". */
   total: number;
 };
+
+export type NextEpisode = { season: number; episode: number };
+
+// El primer episodio sin ver, en orden (temporada asc, episodio asc) — la
+// misma regla que el cursor de la pestaña Episodios, para que "el siguiente"
+// signifique lo mismo en los dos sitios.
+//
+// Solo se resuelve para el DESTACADO: pedir los episodios de cada serie en
+// curso costaría una consulta por tarjeta para un dato que las mini ni usan.
+// Si la serie aún no tiene episodios cacheados devuelve null y el botón
+// desaparece: hidratar desde TMDB no es trabajo de la portada.
+export async function getNextEpisode(
+  supabase: SupabaseServerClient,
+  seriesId: string,
+  userId: string,
+  activePassId: string | null,
+): Promise<NextEpisode | null> {
+  const data = await getEpisodeData(supabase, seriesId, userId, activePassId);
+  for (const season of data.seasons) {
+    for (const ep of data.bySeasons.get(season) ?? []) {
+      if (!ep.own.watched) return { season: ep.season, episode: ep.episode };
+    }
+  }
+  return null;
+}
 
 function daysBetween(fromISO: string, toISO: string): number {
   const [fy, fm, fd] = fromISO.split("-").map(Number);
@@ -55,7 +88,7 @@ export async function getTodayFocus(
     .map((i) => i.activePassId)
     .filter((id): id is string => id !== null);
 
-  const [passes, sessions] = await Promise.all([
+  const [passes, sessions, watches] = await Promise.all([
     passIds.length
       ? supabase.from("passes").select("id, started_on").in("id", passIds)
       : Promise.resolve({ data: [] as { id: string; started_on: string | null }[], error: null }),
@@ -68,18 +101,29 @@ export async function getTodayFocus(
           data: [] as { pass_id: string; session_date: string; note: string | null }[],
           error: null,
         }),
+    // El equivalente a "sesión" de una serie.
+    passIds.length
+      ? supabase.from("episode_watches").select("pass_id, watched_on").in("pass_id", passIds)
+      : Promise.resolve({ data: [] as { pass_id: string | null; watched_on: string }[], error: null }),
   ]);
   if (passes.error) throw passes.error;
   if (sessions.error) throw sessions.error;
+  if (watches.error) throw watches.error;
 
   const startedByPass = new Map((passes.data ?? []).map((p) => [p.id, p.started_on]));
   const lastByPass = new Map<string, string>();
   const notesByPass = new Map<string, number>();
+  const touch = (passId: string, date: string) => {
+    const prev = lastByPass.get(passId);
+    if (!prev || date > prev) lastByPass.set(passId, date);
+  };
   for (const s of sessions.data ?? []) {
-    const prev = lastByPass.get(s.pass_id);
-    if (!prev || s.session_date > prev) lastByPass.set(s.pass_id, s.session_date);
+    touch(s.pass_id, s.session_date);
     if (s.note && s.note.trim() !== "")
       notesByPass.set(s.pass_id, (notesByPass.get(s.pass_id) ?? 0) + 1);
+  }
+  for (const w of watches.data ?? []) {
+    if (w.pass_id) touch(w.pass_id, w.watched_on);
   }
 
   const today = todayISO();

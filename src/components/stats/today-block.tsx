@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getTodayFocus, type TodayPass } from "@/lib/stats/get-today-focus";
+import { getTodayFocus, getNextEpisode, type TodayPass } from "@/lib/stats/get-today-focus";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
@@ -29,6 +29,14 @@ export async function TodayBlock({ userId }: { userId: string }) {
   ]);
 
   if (!focus.featured) return null;
+
+  // Solo si el destacado es una serie: para un libro no hay episodio que
+  // marcar, y pedirlo para las mini sería una consulta por tarjeta.
+  const featured = focus.featured;
+  const nextEpisode =
+    featured.item.itemType === "series"
+      ? await getNextEpisode(supabase, featured.item.itemId, userId, featured.item.activePassId)
+      : null;
 
   const t = await getTranslations("today");
   // "Viernes · 17 jul". El español pone el día en minúscula y el frame lo
@@ -73,10 +81,11 @@ export async function TodayBlock({ userId }: { userId: string }) {
           Así que el ancho se usa de verdad: destacado y carrusel en paralelo. */}
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] lg:items-start lg:gap-6">
         <TodayCard
-          pass={focus.featured}
+          pass={featured}
           weekly={weekly}
           streaks={streaks}
           dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+          nextEpisode={nextEpisode}
         />
 
         {focus.rest.length > 0 && (

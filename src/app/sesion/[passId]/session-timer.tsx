@@ -5,57 +5,17 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { AlertIcon } from "@/components/ui/icons";
 import {
+  clearTimer,
   elapsedMs,
   isStale,
   pause,
+  readTimer,
   reset,
   start,
-  timerStorageKey,
   toMinutes,
+  writeTimer,
   type TimerState,
 } from "@/lib/sessions/timer";
-
-function isTimerState(value: unknown): value is TimerState {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (typeof (value as TimerState).startedAt === "number" ||
-      (value as TimerState).startedAt === null) &&
-    typeof (value as TimerState).accumulatedMs === "number"
-  );
-}
-
-// Lee el estado guardado. Se llama solo durante el render (inicializador de
-// useState), nunca en un efecto: así el primer pintado ya refleja lo que
-// había en localStorage, sin parpadeo de "00:00:00" antes de corregirse.
-function readState(passId: string): TimerState {
-  if (typeof window === "undefined") return reset();
-  try {
-    const raw = window.localStorage.getItem(timerStorageKey(passId));
-    if (!raw) return reset();
-    const parsed: unknown = JSON.parse(raw);
-    return isTimerState(parsed) ? parsed : reset();
-  } catch {
-    return reset();
-  }
-}
-
-function writeState(passId: string, state: TimerState) {
-  try {
-    window.localStorage.setItem(timerStorageKey(passId), JSON.stringify(state));
-  } catch {
-    // Cuota llena o almacenamiento inaccesible (modo privado): el cronómetro
-    // sigue funcionando en memoria durante esta sesión de página.
-  }
-}
-
-function clearState(passId: string) {
-  try {
-    window.localStorage.removeItem(timerStorageKey(passId));
-  } catch {
-    // Ídem.
-  }
-}
 
 function formatClock(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -82,7 +42,7 @@ export function SessionTimer({
   onMinutes: (minutes: number) => void;
 }) {
   const t = useTranslations("session");
-  const [state, setState] = useState<TimerState>(() => readState(passId));
+  const [state, setState] = useState<TimerState>(() => readTimer(passId));
   // Momento en el que se evalúa si el cronómetro estaba "olvidado" al
   // aterrizar en la página. Fijo tras el primer render: si el usuario decide
   // seguir usándolo, no queremos que isStale se vuelva true a mitad de sesión
@@ -116,7 +76,7 @@ export function SessionTimer({
     const next = start(state, clickedAt);
     setState(next);
     setNow(clickedAt);
-    writeState(passId, next);
+    writeTimer(passId, next);
   }
 
   function handlePause() {
@@ -124,13 +84,13 @@ export function SessionTimer({
     const next = pause(state, clickedAt);
     setState(next);
     setNow(clickedAt);
-    writeState(passId, next);
+    writeTimer(passId, next);
   }
 
   function handleReset() {
     const next = reset();
     setState(next);
-    clearState(passId);
+    clearTimer(passId);
   }
 
   function handleWriteManually() {

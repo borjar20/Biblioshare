@@ -6,7 +6,7 @@ import type { DayActivity, Streaks } from "@/lib/stats/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { itemHref } from "@/lib/catalog/item-href";
-import { ClockIcon, PencilIcon } from "@/components/ui/icons";
+import { TodayActions } from "./today-actions";
 
 // La tarjeta destacada del frame G: el ítem sobre el que más vas a actuar hoy,
 // con todo lo que necesitas para decidir en un vistazo — dónde vas, cuánto te
@@ -19,11 +19,14 @@ export async function TodayCard({
   weekly,
   streaks,
   dailyGoalMinutes,
+  nextEpisode,
 }: {
   pass: TodayPass;
   weekly: DayActivity[];
   streaks: Streaks;
   dailyGoalMinutes: number | null;
+  /** Solo series: el primer episodio sin ver. null = serie al día o sin datos. */
+  nextEpisode: { season: number; episode: number } | null;
 }) {
   const t = await getTranslations("today");
   const tPasses = await getTranslations("passes");
@@ -129,28 +132,24 @@ export async function TodayCard({
         </div>
       </div>
 
-      <div className="flex border-t border-border">
-        {sessionHref && (
-          <Link
-            href={sessionHref}
-            className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted"
-          >
-            <ClockIcon className="h-4 w-4" />
-            {t("session")}
-          </Link>
-        )}
-        <Link
-          href={`${itemHref(item.itemType, item.itemId)}?tab=log`}
-          className={`flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold transition-colors hover:bg-surface-muted ${
-            sessionHref
-              ? "border-l border-border text-muted-foreground"
-              : "text-[var(--acc)]"
-          }`}
-        >
-          <PencilIcon className="h-4 w-4" />
-          {t("log")}
-        </Link>
-      </div>
+      <TodayActions
+        passId={item.activePassId}
+        itemType={item.itemType}
+        seriesId={item.itemId}
+        nextEpisode={nextEpisode}
+        sessionHref={sessionHref}
+        logHref={`${itemHref(item.itemType, item.itemId)}?tab=log`}
+        labels={{
+          session: t("session"),
+          log: t("log"),
+          cancel: t("timerCancel"),
+          register: t("timerRegister"),
+          timerLabel: t("timerLabel"),
+          nextEpisode: nextEpisode
+            ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
+            : null,
+        }}
+      />
     </article>
   );
 }

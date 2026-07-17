@@ -102,7 +102,11 @@
     "streak": "{count, plural, =1 {Racha 1 d} other {Racha # d}}",
     "session": "Sesión",
     "log": "Registrar",
-    "noProgress": "Sin progreso"
+    "noProgress": "Sin progreso",
+    "timerCancel": "Cancelar",
+    "timerRegister": "Registrar",
+    "timerLabel": "Tiempo de esta sesión",
+    "markEpisode": "T{season} · E{episode}"
   },
   "search": {
     "title": "Buscar",

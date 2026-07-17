@@ -39,3 +39,22 @@ describe("cronometro", () => {
     expect(toMinutes(91_000)).toBe(2);
   });
 });
+
+// El cronómetro de la tarjeta de hoy (plan 01 T5) para el reloj y manda los
+// minutos a la vista de sesión por la URL. Estas son las dos puntas de ese
+// contrato: cuánto ha pasado al pausar, y qué se acepta al recibirlo.
+describe("cronómetro de la tarjeta de hoy", () => {
+  it("pausar congela el tiempo: lo que llega a la URL no sigue creciendo", () => {
+    const running = start(reset(), T0);
+    const stoppedAt = T0 + 25 * MIN;
+    const stopped = pause(running, stoppedAt);
+    expect(toMinutes(elapsedMs(stopped, stoppedAt))).toBe(25);
+    // Diez minutos después de pulsar Registrar sigue diciendo 25.
+    expect(toMinutes(elapsedMs(stopped, stoppedAt + 10 * MIN))).toBe(25);
+  });
+
+  it("una sesión de segundos redondea a 0 y no viaja a la URL", () => {
+    const running = start(reset(), T0);
+    expect(toMinutes(elapsedMs(pause(running, T0 + 20_000), T0 + 20_000))).toBe(0);
+  });
+});
