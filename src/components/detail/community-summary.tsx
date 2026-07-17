@@ -13,14 +13,12 @@ import type { ItemType } from "@/lib/catalog/types";
 export function CommunitySummary({
   itemType,
   avgRating,
-  ratingCount,
   distribution,
   ratingsLabel,
 }: {
   itemType: ItemType;
   /** Media 1–10 (la escala de guardado), NO la de 5 que se enseña. */
   avgRating: number;
-  ratingCount: number;
   /** Porcentaje por cubo, de 5 a 1. */
   distribution: number[];
   ratingsLabel: string;
@@ -47,7 +45,7 @@ export function CommunitySummary({
           <RatingDots value={avgRating} size="md" className="hidden lg:flex" />
         </div>
         <div className="mt-[5px] font-mono text-[10px] text-muted-foreground lg:text-[11px]">
-          {ratingCount.toLocaleString("es")} {ratingsLabel}
+          {ratingsLabel}
         </div>
       </div>
 

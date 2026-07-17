@@ -131,9 +131,8 @@ export async function CommunityPanel({
           <CommunitySummary
             itemType={itemType}
             avgRating={community.avgRating}
-            ratingCount={community.ratingCount}
             distribution={community.distribution}
-            ratingsLabel={t("ratings")}
+            ratingsLabel={t("ratings", { count: community.ratingCount })}
           />
         )}
       </aside>

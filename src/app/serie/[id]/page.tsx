@@ -202,8 +202,7 @@ export default async function SeriesDetailPage({
         genres={genres}
         coverUrl={series.cover_url}
         avgRating={community.avgRating}
-        ratingCount={community.ratingCount}
-        ratingsLabel={tDetail("ratings")}
+        ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
         backLabel={tDetail("back")}
         statusSlot={<StatusBadgeLive labels={statusLabels} />}
         menuSlot={

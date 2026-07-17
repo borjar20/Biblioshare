@@ -697,7 +697,7 @@
       "pages": "pág. {page} / {total}",
       "episodes": "{watched} / {total} vistos"
     },
-    "ratings": "valoraciones",
+    "ratings": "{count, plural, =0 {sin valoraciones} =1 {1 valoración} other {# valoraciones}}",
     "tabInfo": "Información",
     "tabEpisodes": "Episodios",
     "tabCommunity": "Comunidad",

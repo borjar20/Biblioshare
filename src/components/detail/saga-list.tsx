@@ -27,8 +27,13 @@ export function SagaList({
   const accent = MEDIA_ACCENT[itemType];
   if (sagas.length === 0) return null;
 
+  // Las dos columnas de PC son para cuando hay sagas que emparejar. Con UNA
+  // sola, la segunda columna se queda vacía y el nombre se trunca a media fila
+  // ("Batman …", "Nacido…") teniendo el ancho al lado sin usar.
+  const columns = sagas.length > 1 ? "lg:grid lg:grid-cols-2" : "lg:grid lg:grid-cols-1";
+
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-x-5 lg:gap-y-2">
+    <div className={`flex flex-col lg:gap-x-5 lg:gap-y-2 ${columns}`}>
       {sagas.map((saga, index) => {
         const isMain = index === 0;
         const label = positionLabel(saga);
