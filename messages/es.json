@@ -87,6 +87,23 @@
     "feedTitle": "Novedades",
     "greeting": "Hola, {name}"
   },
+  "today": {
+    "title": "¿Qué has disfrutado hoy?",
+    "inProgress": "En curso",
+    "seeAll": "{count} · Ver todos",
+    "keepGoing": "Continúa donde lo dejaste",
+    "day": "Día {n}",
+    "since": "desde {date}",
+    "notes": "{count, plural, =1 {1 nota} other {# notas}}",
+    "page": "Pág. {current} / {total}",
+    "episode": "Ep. {current} / {total}",
+    "goalToday": "Meta de hoy",
+    "goalMinutes": "{done} / {goal} min",
+    "streak": "{count, plural, =1 {Racha 1 d} other {Racha # d}}",
+    "session": "Sesión",
+    "log": "Registrar",
+    "noProgress": "Sin progreso"
+  },
   "search": {
     "title": "Buscar",
     "placeholder": "Busca un título...",
