@@ -106,7 +106,8 @@
     "timerCancel": "Cancelar",
     "timerRegister": "Registrar",
     "timerLabel": "Tiempo de esta sesión",
-    "markEpisode": "T{season} · E{episode}"
+    "markEpisode": "T{season} · E{episode}",
+    "focusMini": "Poner {title} arriba"
   },
   "search": {
     "title": "Buscar",

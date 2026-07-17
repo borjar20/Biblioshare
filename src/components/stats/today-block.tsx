@@ -8,9 +8,9 @@ import { getStreaks } from "@/lib/stats/get-streaks";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
-import { itemHref } from "@/lib/catalog/item-href";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { TodayCard } from "./today-card";
+import { TodayPicker } from "./today-picker";
 
 // El bloque "¿Qué has disfrutado hoy?" (frame G). Encabeza el Inicio, sobre el
 // feed: primero lo tuyo a medias, después lo de los demás.
@@ -30,13 +30,26 @@ export async function TodayBlock({ userId }: { userId: string }) {
 
   if (!focus.featured) return null;
 
-  // Solo si el destacado es una serie: para un libro no hay episodio que
-  // marcar, y pedirlo para las mini sería una consulta por tarjeta.
-  const featured = focus.featured;
-  const nextEpisode =
-    featured.item.itemType === "series"
-      ? await getNextEpisode(supabase, featured.item.itemId, userId, featured.item.activePassId)
-      : null;
+  const passes = [focus.featured, ...focus.rest];
+
+  // El próximo episodio de CADA serie, no solo de la destacada: desde que las
+  // mini suben al destacado con un clic, cualquiera puede acabar arriba, y
+  // resolverlo entonces costaría un viaje al servidor por clic. Solo las series
+  // lo piden (un libro no tiene episodio que marcar) y son las que tengas a
+  // medias, así que el paralelo es corto.
+  const nextEpisodes = new Map(
+    await Promise.all(
+      passes
+        .filter((p) => p.item.itemType === "series")
+        .map(
+          async (p) =>
+            [
+              p.item.entryId,
+              await getNextEpisode(supabase, p.item.itemId, userId, p.item.activePassId),
+            ] as const,
+        ),
+    ),
+  );
 
   const t = await getTranslations("today");
   // "Viernes · 17 jul". El español pone el día en minúscula y el frame lo
@@ -78,32 +91,25 @@ export async function TodayBlock({ userId }: { userId: string }) {
       {/* En móvil el bloque se apila (frame G). En escritorio NO se estira: una
           tarjeta de 1024px deja la portada en 58px y convierte la barra de
           progreso en una línea de 800px — el "móvil estirado" que prohíbe P-T7.
-          Así que el ancho se usa de verdad: destacado y carrusel en paralelo. */}
-      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] lg:items-start lg:gap-6">
-        <TodayCard
-          pass={featured}
-          weekly={weekly}
-          streaks={streaks}
-          dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
-          nextEpisode={nextEpisode}
-        />
-
-        {focus.rest.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
-              {t("keepGoing")}
-            </span>
-            {/* Carrusel, no lista: con 5 en curso una lista vertical empujaría
-                el feed fuera de la pantalla. El frame G lo dice explícitamente.
-                En escritorio sigue siendo una tira, pero ya cabe entera. */}
-            <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
-              {focus.rest.map((pass) => (
-                <MiniCard key={pass.item.entryId} pass={pass} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+          Así que el ancho se usa de verdad: destacado y carrusel en paralelo
+          (el reparto lo hace TodayPicker). */}
+      <TodayPicker
+        keepGoingLabel={t("keepGoing")}
+        entries={passes.map((pass) => ({
+          id: pass.item.entryId,
+          focusLabel: t("focusMini", { title: pass.item.title }),
+          card: (
+            <TodayCard
+              pass={pass}
+              weekly={weekly}
+              streaks={streaks}
+              dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+              nextEpisode={nextEpisodes.get(pass.item.entryId) ?? null}
+            />
+          ),
+          mini: <MiniCard pass={pass} />,
+        }))}
+      />
     </section>
   );
 }
@@ -118,10 +124,11 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
     ? Math.min(100, Math.round((progress.current / progress.total) * 100))
     : 0;
 
+  // Ya no es un enlace: el botón que la envuelve (TodayPicker) la sube al
+  // destacado. A la ficha se va desde el destacado.
   return (
-    <Link
-      href={itemHref(item.itemType, item.itemId)}
-      className="relative w-40 shrink-0 overflow-hidden rounded-[12px] border border-border bg-surface p-[11px] shadow-card"
+    <div
+      className="relative w-40 overflow-hidden rounded-[12px] border border-border bg-surface p-[11px] shadow-card"
       style={{ ["--acc" as string]: `var(${accent.varName})` }}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-[var(--acc)]" />
@@ -149,6 +156,6 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
       <div className="mt-1.5 flex items-center justify-between font-mono text-[9px] text-muted-foreground">
         <span>{progress ? progress.label : t("noProgress")}</span>
       </div>
-    </Link>
+    </div>
   );
 }
