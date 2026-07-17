@@ -3,6 +3,7 @@ import {
   DEFAULT_FILTERS,
   durationBucket,
   eligibleItems,
+  pickIndex,
   sampleShelf,
   SHELF_MAX,
   spineHeight,
@@ -91,6 +92,13 @@ describe("sampleShelf", () => {
     const before = input.map((i) => i.itemId);
     sampleShelf(input, () => 0.1);
     expect(input.map((i) => i.itemId)).toEqual(before);
+  });
+});
+
+describe("pickIndex", () => {
+  it("queda dentro de [0, length) incluso con rng en los extremos", () => {
+    expect(pickIndex(5, () => 0)).toBe(0);
+    expect(pickIndex(5, () => 0.999999)).toBe(4);
   });
 });
 

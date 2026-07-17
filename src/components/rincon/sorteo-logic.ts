@@ -53,6 +53,13 @@ export function sampleShelf(items: SorteoItem[], rng: () => number = Math.random
   return copy.slice(0, SHELF_MAX);
 }
 
+// Elección uniforme del ganador. Vive aquí (y no inline en el componente)
+// para poder inyectar el rng en tests y para que la impureza quede fuera del
+// árbol que analiza el compilador de React.
+export function pickIndex(length: number, rng: () => number = Math.random): number {
+  return Math.floor(rng() * length);
+}
+
 // Altura del lomo (55–100%) derivada del id: estable entre renders y entre
 // aperturas, sin guardar estado.
 export function spineHeight(itemId: string): number {
