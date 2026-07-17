@@ -61,3 +61,6 @@ next-env.d.ts
 # cada pasada). Son artefactos, no fuente: se colaron en el repo con un
 # `git add -A` y volvían a ensuciar el diff en cada corrida.
 /shots
+
+# Playwright MCP artefactos de verificacion
+.playwright-mcp/
