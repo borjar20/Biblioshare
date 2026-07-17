@@ -7,9 +7,9 @@ import type { Note } from "@/lib/notes/types";
 import { itemHref } from "@/lib/catalog/item-href";
 
 // Memorizar (frames C/H): enseña UNA nota o cita del usuario y deja cambiarla
-// con "Otra nota". La cita en serif, su meta (obra · página · tipo) en mono. El
-// botón "Exportar tarjeta" llega en F6; "Repasar todas" (una vista de repaso)
-// aún no existe, así que el recuento va como texto, no como enlace muerto.
+// con "Otra nota". La cita en serif, su meta (obra · página · tipo) en mono.
+// "Exportar tarjeta" (solo en citas, P10) abre el PNG de /api/og. "Repasar
+// todas" aún no existe, así que el recuento va como texto, no como enlace muerto.
 export function MemorizeCard({ notes }: { notes: Note[] }) {
   const t = useTranslations("notes");
   const [index, setIndex] = useState(() =>
@@ -69,15 +69,28 @@ export function MemorizeCard({ notes }: { notes: Note[] }) {
         </p>
       </Link>
 
-      {notes.length > 1 && (
-        <div>
-          <button
-            type="button"
-            onClick={another}
-            className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted"
-          >
-            {t("anotherNote")}
-          </button>
+      {(notes.length > 1 || note.kind === "quote") && (
+        <div className="flex flex-wrap gap-2">
+          {notes.length > 1 && (
+            <button
+              type="button"
+              onClick={another}
+              className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted"
+            >
+              {t("anotherNote")}
+            </button>
+          )}
+          {/* Exportar solo la cita (P10): la tarjeta PNG de /api/og. */}
+          {note.kind === "quote" && (
+            <a
+              href={`/api/og/nota/${note.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted"
+            >
+              {t("exportCard")}
+            </a>
+          )}
         </div>
       )}
     </div>
