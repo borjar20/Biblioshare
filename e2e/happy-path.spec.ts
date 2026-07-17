@@ -93,7 +93,10 @@ test("crear y borrar un reto", async ({ page }) => {
   // Los retos viven en Perfil › Rincón desde el mockup Perfil v2 (plan 05, P2).
   await page.goto(`/u/${USERNAME}?tab=rincon`);
   await page.getByRole("button", { name: /nuevo reto/i }).click();
-  await page.getByLabel(/^nombre$/i).fill(name);
+  // La hoja de "Editar perfil" (un <dialog> cerrado) también tiene un campo
+  // "Nombre" en el DOM: se apunta al del reto por su id para no cazar el oculto
+  // (regla de los dos árboles del README).
+  await page.locator("#challenge-name").fill(name);
   await page.getByLabel(/objetivo \(número/i).fill("9999");
   await page.getByLabel(/desde/i).fill("2026-01-01");
   await page.getByLabel(/hasta/i).fill("2026-12-31");
