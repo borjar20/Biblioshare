@@ -19,7 +19,9 @@ test("registro completo: entra con perfil, sin pasar por onboarding", async ({ p
   // debe aterrizar en el feed, NO en /onboarding.
   await page.waitForURL("/", { timeout: 20000 });
   expect(page.url()).not.toContain("onboarding");
-  await expect(page.getByRole("heading", { name: /novedades/i })).toBeVisible();
+  // Un árbol de cabecera por breakpoint (plan 01): a 1280 se ve el saludo y
+  // "Novedades" queda oculta en el DOM, así que el locator lleva :visible.
+  await expect(page.locator("h1:visible")).toHaveText(/hola,|novedades/i);
 
   // Y el perfil existe con el @usuario elegido en el registro.
   await page.goto(`/u/${username}`);
