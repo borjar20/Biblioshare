@@ -84,7 +84,8 @@
   "home": {
     "tagline": "Tu biblioteca de todo, compartida.",
     "cta": "Empieza tu estantería",
-    "feedTitle": "Novedades"
+    "feedTitle": "Novedades",
+    "greeting": "Hola, {name}"
   },
   "search": {
     "title": "Buscar",
@@ -283,7 +284,9 @@
     "loadMore": "Cargar más",
     "emptyTitle": "Tu feed está tranquilo",
     "emptyClubs": "Explorar clubes",
-    "followingCount": "sigues a {count}"
+    "followingCount": "sigues a {count}",
+    "followingPeople": "{count, plural, =0 {no sigues a nadie} =1 {sigues a 1 persona} other {sigues a # personas}}",
+    "sectionTitle": "Actividad de tu gente"
   },
   "notifications": {
     "title": "Notificaciones",
