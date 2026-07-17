@@ -425,3 +425,14 @@ export function PencilIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+// Tres puntos horizontales: el menú de acciones (⋯ de las maquetas).
+export function EllipsisIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </Icon>
+  );
+}
