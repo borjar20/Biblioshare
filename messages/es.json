@@ -1236,19 +1236,26 @@
     }
   },
   "collection": {
-    "title": "Tu colección",
+    "title": "Mi Biblioteca",
     "tabs": {
-      "general": "General",
-      "book": "Libros",
-      "movie": "Películas",
-      "series": "Series",
+      "colecciones": "Colecciones",
+      "todo": "Todo",
       "colas": "Colas"
     },
     "continue": "Continuar",
     "continueCta": "Continuar ›",
     "inProgress": "En curso",
     "titleCount": "{count, plural, one {# título} other {# títulos}}",
-    "recentlyUpdated": "Actualizado recientemente",
+    "collectionsCount": "{count, plural, one {# colección} other {# colecciones}}",
+    "newCollection": "Nueva colección",
+    "newCollectionNameLabel": "Nombre",
+    "create": "Crear",
+    "creating": "Creando…",
+    "cancel": "Cancelar",
+    "errors": {
+      "invalid_name": "Escribe un nombre (máx. 80 caracteres).",
+      "create_failed": "No se pudo crear. Inténtalo de nuevo."
+    },
     "summary": {
       "heading": "Resumen",
       "total": "ítems en total"
