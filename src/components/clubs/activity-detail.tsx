@@ -103,6 +103,54 @@ export function ActivityDetailView({
 
   const overflow = activity.participantCount - activity.participants.length;
 
+  // La "estructura" que ve cada quién, compartida por la vista principal y la
+  // previa. El PARTICIPANTE ve el tablero completo (rejilla con su progreso,
+  // tierlist, hitos con "Tu progreso"). El NO-PARTICIPANTE —un miembro suelto,
+  // o un mod/creador que no se ha unido— no puede cargar ese tablero (se gatea a
+  // participante y solo diría "únete para ver"), así que ve las portadas de los
+  // ítems en solo lectura para saber de qué va, enlazadas a su ficha. La lectura
+  // con hitos SÍ expone sus checkpoints a todo el club, así que además monta su
+  // tablero (los "hitos previstos" del frame B).
+  const structureSection = (
+    <>
+      {!isParticipant && activity.items.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("previewItems")}
+          </h2>
+          <div className="grid grid-cols-5 gap-2">
+            {activity.items.map((item) => (
+              <Link
+                key={item.id}
+                href={itemHref(item.itemType, item.itemId)}
+                title={item.itemTitle}
+                className="relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted"
+              >
+                {item.itemCoverUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
+                  <img
+                    src={item.itemCoverUrl}
+                    alt={item.itemTitle}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(isParticipant || activity.kind === "buddy_read") && DetailExtension && (
+        <DetailExtension
+          activity={activity}
+          viewerId={viewerId}
+          isModerator={isModerator}
+          onChanged={refreshActivity}
+        />
+      )}
+    </>
+  );
+
   // Vista "Modificar actividad" (misma página, patrón del ClubForm de editar
   // club): aquí y solo aquí vive la curación del pool (añadir/quitar ítems).
   if (editing) {
@@ -231,50 +279,7 @@ export function ActivityDetailView({
 
         {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-        {/* Los ítems de la actividad, en solo lectura: es lo que un no-participante
-            necesita ver para decidir si unirse. Los tableros por tipo (reto de
-            lista / tierlist / genérico) se gatean a participantes y solo enseñan
-            "únete para ver", así que aquí se reintroduce la tira de portadas que
-            daba la lista genérica retirada. Cada portada enlaza a su ficha. */}
-        {activity.items.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-              {t("previewItems")}
-            </h2>
-            <div className="grid grid-cols-5 gap-2">
-              {activity.items.map((item) => (
-                <Link
-                  key={item.id}
-                  href={itemHref(item.itemType, item.itemId)}
-                  title={item.itemTitle}
-                  className="relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted"
-                >
-                  {item.itemCoverUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
-                    <img
-                      src={item.itemCoverUrl}
-                      alt={item.itemTitle}
-                      className="h-full w-full object-cover"
-                    />
-                  )}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* La estructura del tipo solo se enseña a no-participantes en la lectura
-            con hitos: sus checkpoints son públicos al club (los "hitos previstos"
-            del frame B, para decidir si unirse). Los demás tableros se gatean a
-            participantes, así que su preview es la tira de ítems de arriba. */}
-        {activity.kind === "buddy_read" && DetailExtension && (
-          <DetailExtension
-            activity={activity}
-            viewerId={viewerId}
-            isModerator={isModerator}
-            onChanged={refreshActivity}
-          />
-        )}
+        {structureSection}
 
         {/* Chat bloqueado: un teaser borroso en vez del ActivityChat real,
             que no participantes no pueden cargar (RLS can_view_target =
@@ -474,14 +479,7 @@ export function ActivityDetailView({
         </div>
       )}
 
-      {DetailExtension && (
-        <DetailExtension
-          activity={activity}
-          viewerId={viewerId}
-          isModerator={isModerator}
-          onChanged={refreshActivity}
-        />
-      )}
+      {structureSection}
 
       {/* Chat general de la actividad: no en buddy_read (que ya tiene sus
           chats por checkpoint) y solo visible/usable para participantes -- la
