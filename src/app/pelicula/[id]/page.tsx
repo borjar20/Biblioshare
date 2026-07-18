@@ -184,6 +184,8 @@ export default async function MovieDetailPage({
         railActions={
           <ItemRailActions
             itemType="movie"
+            itemId={movie.id}
+            isLoggedIn={Boolean(user)}
             labels={railLabels}
             progress={null}
             rating={activePass?.rating ?? null}

@@ -221,6 +221,8 @@ export default async function BookDetailPage({
         railActions={
           <ItemRailActions
             itemType="book"
+            itemId={book.id}
+            isLoggedIn={Boolean(user)}
             labels={railLabels}
             progress={railProgress}
             rating={activePass?.rating ?? null}

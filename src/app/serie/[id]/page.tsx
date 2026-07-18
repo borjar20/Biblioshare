@@ -220,6 +220,8 @@ export default async function SeriesDetailPage({
         railActions={
           <ItemRailActions
             itemType="series"
+            itemId={series.id}
+            isLoggedIn={Boolean(user)}
             labels={railLabels}
             progress={railProgress}
             rating={activePass?.rating ?? null}
