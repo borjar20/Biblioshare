@@ -132,7 +132,11 @@ export function AddToCollectionSheet({
         ref={dialogRef}
         onClose={() => setOpen(false)}
         aria-labelledby="add-to-collection-title"
-        className="m-auto flex max-h-[85vh] w-[min(420px,92vw)] flex-col rounded-card border border-border bg-surface p-0 text-foreground shadow-card backdrop:bg-scrim"
+        // Sin `flex` en el <dialog>: la clase de Tailwind anularía el
+        // `display:none` que el navegador aplica a un <dialog> cerrado y el
+        // contenido se pintaría EN LÍNEA (superpuesto al grid, uno por tarjeta).
+        // El layout en columna lo hace el <div> interior.
+        className="m-auto max-h-[85vh] w-[min(420px,92vw)] rounded-card border border-border bg-surface p-0 text-foreground shadow-card backdrop:bg-scrim"
         onClick={(event) => {
           if (event.target === dialogRef.current) dialogRef.current?.close();
         }}

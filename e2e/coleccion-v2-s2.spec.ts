@@ -44,6 +44,12 @@ test("Todo filtra por tipo y la hoja añade el ítem a una colección", async ({
     const href = await firstBook.getAttribute("href");
     const itemId = href!.split("/").pop()!;
 
+    // Antes de abrir: la hoja está OCULTA. El `<dialog>` cerrado debe ser
+    // display:none; si una clase (p. ej. `flex`) anula ese default, el contenido
+    // se pinta EN LÍNEA superpuesto al grid (uno por tarjeta). «Crear nueva
+    // colección…» vive solo dentro de la hoja, así que sirve de centinela.
+    await expect(page.getByText("Crear nueva colección…").first()).toBeHidden();
+
     // ── Hoja «Añadir a colección» desde esa tarjeta: marcar la colección y Hecho ──
     await page.getByRole("button", { name: "Añadir a colección" }).first().click();
     // Cada tarjeta monta su propio <dialog>; solo uno está `[open]`.
