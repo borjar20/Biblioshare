@@ -15,51 +15,38 @@ type CatalogMeta = {
   totalEpisodes: number | null;
 };
 
-export async function getLibraryItems(
+type ActivePassMeta = {
+  id: string;
+  status: MediaStatus;
+  position: unknown;
+  pinnedOrder: number | null;
+};
+
+// Hidratación compartida biblioteca/colección: a partir de un conjunto de
+// (item_type,item_id) resuelve catálogo (título/portada/subtítulo/páginas) +
+// el pase ACTIVO de cada obra (estado/posición/favorito) + nota y reseña del
+// último pase CERRADO. `getLibraryItems` ya trae sus claves desde su propia
+// consulta de `passes` (siempre tienen pase activo, por construcción); Colección
+// (`getCollection`, src/lib/library/collections.ts) hidrata claves que vienen de
+// `collection_items` y que pueden NO tener ningún pase activo (un ítem se puede
+// colocar en una colección sin haberlo empezado a trackear) — por eso esta
+// función vuelve a resolver el pase activo por clave en vez de asumir que quien
+// llama ya lo trae, y descarta (como con el catálogo) las claves sin pase activo
+// en vez de inventar un `entryId`/`status` que no existen.
+export async function hydrateItems(
   supabase: SupabaseServerClient,
   userId: string,
-  filters: {
-    itemType?: ItemType;
-    status?: MediaStatus;
-    search?: string;
-    sort?: LibrarySort;
-    favoritesOnly?: boolean;
-    /** Recorta a los N primeros tras aplicar orden (General = recientes). */
-    limit?: number;
-  }
+  keys: { item_type: ItemType; item_id: string }[]
 ): Promise<LibraryItem[]> {
-  // "Entrada de biblioteca" = pase ACTIVO de la obra (§Tarea 9, hub):
-  // item_type/item_id/status/position/pinned_order viven directamente en
-  // diary_entries, library_entries ya no se lee. rating/notes tampoco se leen
-  // de aquí: quedaron huérfanas cuando el pase se convirtió en el dueño de la
-  // nota y la reseña (20260714_passes.sql). Se recalculan más abajo a partir
-  // del último pase cerrado de cada obra.
-  let query = supabase
-    .from("passes")
-    .select("id, item_type, item_id, status, position, pinned_order")
-    .eq("user_id", userId)
-    .eq("is_active", true);
-
-  if (filters.favoritesOnly) {
-    query = query.not("pinned_order", "is", null).order("pinned_order", { ascending: true });
-  } else {
-    query = query.order("updated_at", { ascending: false });
-  }
-
-  if (filters.itemType) query = query.eq("item_type", filters.itemType);
-  if (filters.status) query = query.eq("status", filters.status);
-
-  const { data: entries, error } = await query;
-  if (error) throw error;
-  if (!entries || entries.length === 0) return [];
+  if (keys.length === 0) return [];
 
   const idsByType: Record<ItemType, string[]> = {
     book: [],
     movie: [],
     series: [],
   };
-  for (const entry of entries) {
-    idsByType[entry.item_type].push(entry.item_id);
+  for (const key of keys) {
+    idsByType[key.item_type].push(key.item_id);
   }
 
   const catalogByKey = new Map<string, CatalogMeta>();
@@ -116,8 +103,32 @@ export async function getLibraryItems(
     });
   }
 
-  // Todos los pases (de cualquier obra en esta página, abiertos y cerrados)
-  // de este usuario, batched — cheaper than one query per entry. See
+  const allItemIds = keys.map((key) => key.item_id);
+
+  // Pase ACTIVO de cada obra: entryId/activePassId/status/position/pinnedOrder
+  // de LibraryItem salen todos de aquí (§Tarea 9, hub: el pase activo ES la
+  // entrada de biblioteca). Se resuelve por clave en vez de reutilizar filas ya
+  // traídas por quien llama porque este helper también sirve a Colección, cuyas
+  // claves no vienen de `passes`.
+  const { data: activePassRows } = await supabase
+    .from("passes")
+    .select("id, item_type, item_id, status, position, pinned_order")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .in("item_id", allItemIds);
+
+  const activePassByKey = new Map<string, ActivePassMeta>();
+  for (const row of activePassRows ?? []) {
+    activePassByKey.set(`${row.item_type}:${row.item_id}`, {
+      id: row.id,
+      status: row.status,
+      position: row.position,
+      pinnedOrder: row.pinned_order,
+    });
+  }
+
+  // Todos los pases (de cualquier obra en este lote, abiertos y cerrados) de
+  // este usuario, batched — cheaper than one query per entry. See
   // docs/REQUIREMENTS.md §7.13. item_type/item_id ya son columnas propias del
   // pase (§Tarea 9): se filtra por item_id directamente, sin el join a
   // library_entries que resolvía antes esa relación, y se agrupa abajo por
@@ -126,7 +137,6 @@ export async function getLibraryItems(
   // qué filas se ven (perfil propio o público visible) y esa columna es
   // legible siempre, cuente o no la reseña como pública — la nota nunca fue
   // lo que is_public escondía.
-  const allItemIds = entries.map((entry) => entry.item_id);
   const { data: closedPassRows } = await supabase
     .from("passes")
     .select("id, item_type, item_id, finished_on, rating")
@@ -173,23 +183,25 @@ export async function getLibraryItems(
     latestClosedPasses.map((p) => [p.itemKey, reviewByPassId.get(p.id) ?? null])
   );
 
-  let items = entries
-    .map((entry): LibraryItem | null => {
-      const itemKey = `${entry.item_type}:${entry.item_id}`;
+  return keys
+    .map((key): LibraryItem | null => {
+      const itemKey = `${key.item_type}:${key.item_id}`;
       const meta = catalogByKey.get(itemKey);
       if (!meta) return null;
+      const activePass = activePassByKey.get(itemKey);
+      if (!activePass) return null;
       return {
         // entryId/activePassId son ahora el MISMO id: el pase activo es la
         // entrada de biblioteca (§Tarea 9, hub). Se conservan ambos campos en
         // LibraryItem porque la UI ya los consume por separado (favoritos vs.
         // "/sesion/"), pero ya no hace falta una segunda query para resolver
         // el activo — esta fila YA es el pase activo.
-        entryId: entry.id,
-        itemId: entry.item_id,
-        itemType: entry.item_type,
-        status: entry.status,
+        entryId: activePass.id,
+        itemId: key.item_id,
+        itemType: key.item_type,
+        status: activePass.status,
         rating: ratingByItem.get(itemKey) ?? null,
-        position: parsePosition(entry.item_type, entry.position),
+        position: parsePosition(key.item_type, activePass.position),
         notes: notesByItem.get(itemKey) ?? null,
         title: meta.title,
         coverUrl: meta.coverUrl,
@@ -198,11 +210,61 @@ export async function getLibraryItems(
         pageCount: meta.pageCount,
         totalEpisodes: meta.totalEpisodes,
         rereadCount: rereadCountByItem.get(itemKey) ?? 0,
-        pinnedOrder: entry.pinned_order,
-        activePassId: entry.id,
+        pinnedOrder: activePass.pinnedOrder,
+        activePassId: activePass.id,
       } satisfies LibraryItem;
     })
     .filter((item): item is LibraryItem => item !== null);
+}
+
+export async function getLibraryItems(
+  supabase: SupabaseServerClient,
+  userId: string,
+  filters: {
+    itemType?: ItemType;
+    status?: MediaStatus;
+    search?: string;
+    sort?: LibrarySort;
+    favoritesOnly?: boolean;
+    /** Recorta a los N primeros tras aplicar orden (General = recientes). */
+    limit?: number;
+  }
+): Promise<LibraryItem[]> {
+  // "Entrada de biblioteca" = pase ACTIVO de la obra (§Tarea 9, hub):
+  // item_type/item_id/status/position/pinned_order viven directamente en
+  // diary_entries, library_entries ya no se lee. rating/notes tampoco se leen
+  // de aquí: quedaron huérfanas cuando el pase se convirtió en el dueño de la
+  // nota y la reseña (20260714_passes.sql). Se recalculan en `hydrateItems` a
+  // partir del último pase cerrado de cada obra.
+  let query = supabase
+    .from("passes")
+    .select("id, item_type, item_id, status, position, pinned_order")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (filters.favoritesOnly) {
+    query = query.not("pinned_order", "is", null).order("pinned_order", { ascending: true });
+  } else {
+    query = query.order("updated_at", { ascending: false });
+  }
+
+  if (filters.itemType) query = query.eq("item_type", filters.itemType);
+  if (filters.status) query = query.eq("status", filters.status);
+
+  const { data: entries, error } = await query;
+  if (error) throw error;
+  if (!entries || entries.length === 0) return [];
+
+  // La hidratación (catálogo + pase activo + rating/notes) vive en
+  // `hydrateItems`, compartida con Colección (src/lib/library/collections.ts).
+  // El orden de `entries` (ya resuelto arriba: pinned_order o updated_at desc)
+  // se conserva porque `hydrateItems` mapea sobre las claves en el mismo orden
+  // en que se le pasan.
+  let items = await hydrateItems(
+    supabase,
+    userId,
+    entries.map((entry) => ({ item_type: entry.item_type, item_id: entry.item_id }))
+  );
 
   // Title lives in books/movies/series, not library_entries, so search and
   // title-sort can't happen in the SQL query above — applied here instead,
