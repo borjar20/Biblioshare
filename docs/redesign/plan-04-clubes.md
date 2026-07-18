@@ -148,6 +148,8 @@ Del re-troceo salieron cinco preguntas nuevas. Recomendaciones abajo, **aprobada
 
 ## 6. Cambios de actividades (mockup `-cambios-`, 2026-07-18)
 
+> **HECHO (código) 2026-07-18** — 5 tareas de código implementadas y revisadas (ejecución dirigida por subagentes; 2 bugs de gating cazados y corregidos en revisión). Migración `20260718_activity_chat_target` **APLICADA Y VERIFICADA en dev y prod** (enum `club_activity` + rama en `can_view_target`; sin advisors nuevos). `schema-baseline.sql` al día. **PENDIENTE: e2e (Node 22) + verificación en NAVEGADOR** (no hechas en la sesión headless).
+>
 > Set posterior al plan 04, sobre el **detalle de actividad**. Maqueta `Paper - Clubes -cambios-.html` (frames **A · Barra de acciones**, **B · Vista previa sin unirse**) + dos replanteamientos del usuario. Diseño completo y decisiones en [`docs/superpowers/specs/2026-07-18-clubes-actividades-cambios-design.md`](../superpowers/specs/2026-07-18-clubes-actividades-cambios-design.md). Se ejecuta **después** del escritorio (Sesión E).
 
 Cuatro cambios, todos sobre `activity-detail.tsx`:
