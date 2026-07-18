@@ -51,20 +51,23 @@ async function resolveTargetOwner(
 // reaccionando -- paridad completa con review_liked (EPIC-05 Bloque F,
 // decisión de sesión). Comentar solo aplica a diary_entry/episode_watch/
 // club_post (nunca a un comentario -- sin anidación). `activity_checkpoint`
-// (EPIC-05 Bloque H1) queda deliberadamente sin notificación en este MVP
-// (decisión de diseño) -- `null` corta el flujo antes de notificar.
+// (EPIC-05 Bloque H1) y `club_activity` (chat general de actividad) quedan
+// deliberadamente sin notificación en este MVP (decisión de diseño) --
+// `null` corta el flujo antes de notificar.
 const LIKE_NOTIFICATION_TYPE: Record<ReactableTargetType, NotificationType | null> = {
   diary_entry: "review_liked",
   episode_watch: "review_liked",
   club_post: "club_post_liked",
   comment: "comment_liked",
   activity_checkpoint: null,
+  club_activity: null,
 };
 const COMMENT_NOTIFICATION_TYPE: Record<TargetType, NotificationType | null> = {
   diary_entry: "review_commented",
   episode_watch: "review_commented",
   club_post: "club_post_commented",
   activity_checkpoint: null,
+  club_activity: null,
 };
 
 export async function toggleReaction(

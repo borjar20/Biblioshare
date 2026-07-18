@@ -12,6 +12,7 @@ import {
   leaveActivity,
   type ActivityDetail,
 } from "@/lib/clubs/activities/core";
+import { ActivityChat } from "./activity-chat";
 import { ActivityItemPool } from "./activity-item-pool";
 import { ActivityItemList } from "./activity-item-list";
 import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
@@ -297,6 +298,18 @@ export function ActivityDetailView({
           isModerator={isModerator}
           onChanged={refreshActivity}
         />
+      )}
+
+      {/* Chat general de la actividad: no en buddy_read (que ya tiene sus
+          chats por checkpoint) y solo visible/usable para participantes -- la
+          RLS (can_view_target = is_activity_participant) lo respalda. */}
+      {activity.kind !== "buddy_read" && isParticipant && (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("activityChat")}
+          </h2>
+          <ActivityChat activityId={activity.id} summary={activity.chat} viewerLoggedIn />
+        </section>
       )}
 
       {/* La lista de ítems cierra la página: el tablero del kind es el

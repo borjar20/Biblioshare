@@ -5,6 +5,7 @@ import { notifyClub } from "./notify-club";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
+import { getInteractionSummary, type InteractionSummary } from "@/lib/social/interactions";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -73,6 +74,8 @@ export type ActivityDetail = ClubActivity & {
   opinions: ActivityOpinion[]; // vacío si el viewer no es participante -- RLS ya lo filtra
   /** Muestra para el stack de avatares (máx. 4); el total está en participantCount. */
   participants: ActivityParticipant[];
+  /** Chat general de la actividad (vacío/oculto en buddy_read). RLS lo filtra a participantes. */
+  chat: InteractionSummary;
 };
 
 export async function proposeActivity(
@@ -395,6 +398,14 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     })
     .filter((o): o is ActivityOpinion => o !== null);
 
+  const chatSummary = await getInteractionSummary(supabase, "club_activity", [activityId]);
+  const chat = chatSummary.get(activityId) ?? {
+    reactionCount: 0,
+    viewerReacted: false,
+    commentCount: 0,
+    comments: [],
+  };
+
   return {
     id: row.id,
     clubId: row.club_id,
@@ -412,5 +423,6 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     items,
     opinions,
     participants,
+    chat,
   };
 }

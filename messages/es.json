@@ -502,6 +502,7 @@
     "itemPool": "Ítems",
     "itemPoolEmpty": "Todavía no hay ítems en esta actividad.",
     "itemPoolError": "Algo falló. Inténtalo de nuevo.",
+    "activityChat": "Chat de la actividad",
     "editActivity": "Modificar actividad",
     "backToActivity": "← Volver a la actividad",
     "opinionsToggle": "{count, plural, =0 {Opinar} one {# opinión} other {# opiniones}}",

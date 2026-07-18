@@ -1885,6 +1885,7 @@ export type Database = {
         | "club_post"
         | "comment"
         | "activity_checkpoint"
+        | "club_activity"
       user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
@@ -2052,6 +2053,7 @@ export const Constants = {
         "club_post",
         "comment",
         "activity_checkpoint",
+        "club_activity",
       ],
       user_role: ["user", "collaborator", "admin"],
     },
