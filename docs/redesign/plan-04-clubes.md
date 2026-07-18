@@ -5,6 +5,7 @@
 **Maquetas de referencia**
 - `Paper - Clubes.html` → frames **1 · Inicio**, **2 · Feed**, **3 · Actividades**, **4 · Lectura con hitos**, **5 · Reto de lista**, **6 · Gestión**, **7 · Tierlist**, **8 · Reto genérico**, **9 · Miembros (directorio)**, **10 · Feed PC**, **11 · Miembros PC**, **12 · Actividades PC**
 - `Paper - Proponer actividad.html` / `Proponer actividad (standalone).html` → wizard de propuesta (5 pasos)
+- `Paper - Clubes -cambios-.html` → frames **A · Barra de acciones**, **B · Vista previa sin unirse** (set de cambios del detalle de actividad, §6)
 
 > **Actualización 2026-07-18.** La maqueta de Clubes pasó de 8 a 12 frames y esto reordena el plan. Lo nuevo no es fidelidad de algo existente, es **superficie nueva**:
 > - **Frame 9 · Directorio de miembros** — hoy la lista de miembros solo vive en Gestión (moderación). El frame 9 es una pantalla **abierta a todo miembro**, solo lectura, a la que se llega por el enlace «N miembros ›» de la cabecera. Es funcionalidad nueva (ruta + datos), no un restyle. → **Sesión D**.
@@ -144,3 +145,18 @@ Del re-troceo salieron cinco preguntas nuevas. Recomendaciones abajo, **aprobada
 - [ ] Modo oscuro (Club·Feed está en Paper - Modo oscuro (resto).html).
 - [ ] `npx playwright test` verde (Node 22) — clubes tiene e2e del epic social; añadir cobertura del directorio (Sesión D) siguiendo la regla de los dos árboles (`:visible`).
 - [ ] P1–P8 respondidas y registradas.
+
+## 6. Cambios de actividades (mockup `-cambios-`, 2026-07-18)
+
+> Set posterior al plan 04, sobre el **detalle de actividad**. Maqueta `Paper - Clubes -cambios-.html` (frames **A · Barra de acciones**, **B · Vista previa sin unirse**) + dos replanteamientos del usuario. Diseño completo y decisiones en [`docs/superpowers/specs/2026-07-18-clubes-actividades-cambios-design.md`](../superpowers/specs/2026-07-18-clubes-actividades-cambios-design.md). Se ejecuta **después** del escritorio (Sesión E).
+
+Cuatro cambios, todos sobre `activity-detail.tsx`:
+
+1. **Barra de acciones (frame A):** consolidar las acciones dispersas en una barra bajo los participantes — **Salir** (todo participante) + grupo **◈ MOD** (dueño/mods): Modificar · Finalizar · Archivar (+ Activar en propuesta). El «Unirse» sale de aquí → barra inferior del frame B.
+2. **Fuera la lista genérica de ítems:** el tablero de cada tipo ES la lista (portadas enlazadas a ficha); se borra `activity-item-list.tsx`. La curación del pool sigue en «Modificar actividad».
+3. **Chat general (sustituye opiniones):** se retira `addOpinion`/`opinions`; chat general nuevo reutilizando el sistema de interacciones (**target `club_activity`**, +RLS de participante) para **reto de lista / tierlist / genérico**. La lectura con hitos **conserva sus chats por hito** (anti-spoiler), sin chat general.
+4. **Vista previa sin unirse (frame B), todos los tipos:** no-participante ve la estructura en solo lectura, chat/progreso bloqueados tras un teaser, y una barra inferior fija con **«Unirme»**.
+
+**Decisiones (confirmadas 2026-07-18):** (1) el chat sustituye del todo la opinión por ítem —desaparece «nota media que das»—; (2) el chat general no toca la lectura con hitos; (3) fuera la lista genérica; (4) el frame B se extrapola a todos los tipos; (5) el chat reutiliza interacciones (target nuevo) en vez de tabla propia.
+
+**Migración:** 1 — `club_activity` como target de interacciones + RLS de participante (espejo de `activity_checkpoint`). La tabla de opiniones se deja **muerta, sin DROP**.
