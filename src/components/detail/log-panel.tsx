@@ -17,6 +17,7 @@ import { useItemStatus } from "@/components/detail/item-status-context";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
 import { NewPassSheet } from "@/components/detail/new-pass-sheet";
+import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import { EditionPicker } from "@/components/detail/edition-picker";
 import type { ItemType } from "@/lib/catalog/types";
@@ -549,6 +550,25 @@ function ManagedLog({
               canContribute={canContribute}
             />
           )}
+
+          {/* «Añadir a colección» (frame D, Colección v2 S2): mismo <dialog>
+          reutilizable que el disparador del grid (library-item-card.tsx).
+          Solo tiene sentido con la obra ya en biblioteca — este bloque entero
+          está detrás de `entry`, así que se cumple por construcción. */}
+          <AddToCollectionSheet
+            itemType={itemType}
+            itemId={itemId}
+            renderTrigger={(open) => (
+              <button
+                type="button"
+                onClick={open}
+                className="order-7 flex items-center justify-center gap-2 rounded-[10px] border border-border py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted"
+              >
+                <span aria-hidden>▤</span>
+                {t("addToCollection")}
+              </button>
+            )}
+          />
 
           <button
             type="button"

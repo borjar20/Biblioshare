@@ -12,6 +12,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { toggleFavorite } from "@/lib/library/favorite-actions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { SparklesIcon } from "@/components/ui/icons";
+import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
 
 export function LibraryItemCard({
   item,
@@ -120,22 +121,43 @@ export function LibraryItemCard({
 
       {isOwner && (
         <>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() =>
-              run("toggle", async () => {
-                const result = await toggleFavorite(item.entryId);
-                // toggleFavorite devuelve {error} en vez de lanzar: lo pasamos a
-                // throw para que el hook haga rollback del pin optimista.
-                if (result.error) throw new Error("pin_failed");
-              })
-            }
-            className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
-          >
-            <SparklesIcon className="h-3.5 w-3.5" />
-            {pinned ? t("unpin") : t("pin")}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                run("toggle", async () => {
+                  const result = await toggleFavorite(item.entryId);
+                  // toggleFavorite devuelve {error} en vez de lanzar: lo pasamos a
+                  // throw para que el hook haga rollback del pin optimista.
+                  if (result.error) throw new Error("pin_failed");
+                })
+              }
+              className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
+            >
+              <SparklesIcon className="h-3.5 w-3.5" />
+              {pinned ? t("unpin") : t("pin")}
+            </button>
+
+            {/* Segundo disparador de la hoja «Añadir a colección» (frame D):
+            el de la ficha vive en log-panel.tsx. Junto al fijado porque los
+            dos son "acciones rápidas sobre este ítem" del dueño (S1 solo
+            traía el fijado). */}
+            <AddToCollectionSheet
+              itemType={item.itemType}
+              itemId={item.itemId}
+              renderTrigger={(open) => (
+                <button
+                  type="button"
+                  onClick={open}
+                  className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground"
+                >
+                  <span aria-hidden>▤</span>
+                  {t("addToCollection")}
+                </button>
+              )}
+            />
+          </div>
           {failed && (
             <p className="text-xs text-status-dropped">{t("pinError")}</p>
           )}

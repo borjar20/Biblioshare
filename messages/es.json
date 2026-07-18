@@ -658,6 +658,7 @@
     "follow": "Seguir",
     "following": "Añadiendo...",
     "unfollow": "Quitar de mi biblioteca",
+    "addToCollection": "Añadir a colección",
     "status": "Estado",
     "manage": "Gestionar",
     "creditsTitle": "Reparto y equipo",
@@ -1106,6 +1107,7 @@
     "remove": "Quitar",
     "pin": "Fijar en el perfil",
     "unpin": "Quitar de fijados",
+    "addToCollection": "Añadir a colección",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
     "emptyTitle": "Tu colección está vacía",
     "titlesCount": "{count, plural, one {# título} other {# títulos}}"
@@ -1257,11 +1259,25 @@
     "cancel": "Cancelar",
     "errors": {
       "invalid_name": "Escribe un nombre (máx. 80 caracteres).",
-      "create_failed": "No se pudo crear. Inténtalo de nuevo."
+      "create_failed": "No se pudo crear. Inténtalo de nuevo.",
+      "rename_failed": "No se pudo renombrar. Inténtalo de nuevo.",
+      "delete_failed": "No se pudo borrar. Inténtalo de nuevo.",
+      "add_failed": "No se pudo añadir. Inténtalo de nuevo.",
+      "set_failed": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+      "load_failed": "No se pudieron cargar tus colecciones. Inténtalo de nuevo."
     },
     "summary": {
       "heading": "Resumen",
       "total": "ítems en total"
+    },
+    "addSheet": {
+      "title": "Añadir a colección",
+      "markedCount": "{count, plural, =0 {Ninguna marcada} one {# marcada} other {# marcadas}}",
+      "loading": "Cargando tus colecciones…",
+      "empty": "Todavía no tienes colecciones.",
+      "createNew": "＋ Crear nueva colección…",
+      "done": "Hecho",
+      "saving": "Guardando…"
     }
   },
   "errors": {
