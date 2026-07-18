@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/social/user-avatar";
+import { ActionMenu } from "@/components/ui/action-menu";
 
 // Chips de rol del handoff: el dueño en terracota, la moderación en verde
 // (el color de lo social). Clases enteras y literales — Tailwind no ve las
@@ -159,27 +160,39 @@ export function ManageMembers({
               {m.role === "owner" ? t("roleOwner") : m.role === "moderator" ? t("roleModerator") : t("roleMember")}
             </span>
             {m.userId !== viewerId && (
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1.5">
+                {/* Acción principal en outline, como el "Hacer mod" del frame 6;
+                    el resto (transferir, expulsar) se pliega en el menú ⋯. */}
                 {viewerRole === "owner" && m.role === "member" && (
-                  <Button type="button" variant="ghost" className={compact} disabled={isPending} onClick={() => handlePromote(m.userId, "moderator")}>
-                    {t("promote")}
+                  <Button type="button" variant="secondary" className={compact} disabled={isPending} onClick={() => handlePromote(m.userId, "moderator")}>
+                    {t("promoteShort")}
                   </Button>
                 )}
                 {viewerRole === "owner" && m.role === "moderator" && (
-                  <Button type="button" variant="ghost" className={compact} disabled={isPending} onClick={() => handlePromote(m.userId, "member")}>
-                    {t("demote")}
+                  <Button type="button" variant="secondary" className={compact} disabled={isPending} onClick={() => handlePromote(m.userId, "member")}>
+                    {t("demoteShort")}
                   </Button>
                 )}
-                {viewerRole === "owner" && m.role !== "owner" && (
-                  <Button type="button" variant="ghost" className={compact} disabled={isPending} onClick={() => handleTransfer(m.userId)}>
-                    {t("transferOwnership")}
-                  </Button>
-                )}
-                {m.role !== "owner" && (viewerRole === "owner" || m.role === "member") && (
-                  <Button type="button" variant="ghost" className={compact} disabled={isPending} onClick={() => handleRemove(m.userId)}>
-                    {t("remove")}
-                  </Button>
-                )}
+                <ActionMenu
+                  label={t("memberActions")}
+                  items={[
+                    viewerRole === "owner" &&
+                      m.role !== "owner" && {
+                        key: "transfer",
+                        label: t("transferOwnership"),
+                        onSelect: () => handleTransfer(m.userId),
+                        disabled: isPending,
+                      },
+                    m.role !== "owner" &&
+                      (viewerRole === "owner" || m.role === "member") && {
+                        key: "remove",
+                        label: t("remove"),
+                        onSelect: () => handleRemove(m.userId),
+                        disabled: isPending,
+                        danger: true,
+                      },
+                  ]}
+                />
               </div>
             )}
           </div>

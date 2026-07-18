@@ -9,6 +9,7 @@ import {
 } from "@/lib/clubs/join-requests";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/social/user-avatar";
+import { XIcon } from "@/components/ui/icons";
 
 // Solicitudes de entrada esperando en la puerta de un club privado.
 export function JoinRequestList({
@@ -66,7 +67,7 @@ export function JoinRequestList({
                 </span>
               </div>
 
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   type="button"
                   variant="green"
@@ -76,15 +77,17 @@ export function JoinRequestList({
                 >
                   {t("approveRequest")}
                 </Button>
-                <Button
+                {/* Rechazar como ✕ iconbtn del frame 6 (aceptar es el acto
+                    principal; rechazar, secundario y compacto). */}
+                <button
                   type="button"
-                  variant="secondary"
-                  className="px-3.5 py-1.5 text-xs"
+                  aria-label={t("rejectRequest")}
                   disabled={pendingId === request.userId}
                   onClick={() => decide(request.userId, "reject")}
+                  className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:opacity-60"
                 >
-                  {t("rejectRequest")}
-                </Button>
+                  <XIcon className="h-4 w-4" />
+                </button>
               </div>
             </div>
           );

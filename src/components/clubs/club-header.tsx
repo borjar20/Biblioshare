@@ -1,20 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { getClub } from "@/lib/clubs/clubs";
 import { joinClub, leaveClub, acceptInvite, declineInvite } from "@/lib/clubs/membership";
 import { ClubForm } from "./club-form";
 import { ClubCoverBand } from "./club-cover";
 import { Button } from "@/components/ui/button";
-import {
-  LockIcon,
-  ChevronLeftIcon,
-  EllipsisIcon,
-  CheckIcon,
-  PencilIcon,
-} from "@/components/ui/icons";
+import { ActionMenu } from "@/components/ui/action-menu";
+import { LockIcon, ChevronLeftIcon, CheckIcon, PencilIcon } from "@/components/ui/icons";
 
 type ClubDetail = NonNullable<Awaited<ReturnType<typeof getClub>>>;
 
@@ -90,25 +85,28 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
           <ChevronLeftIcon className="h-4 w-4" />
         </Link>
         {hasMenu && (
-          <ClubHeaderMenu
-            label={t("menuLabel")}
-            items={[
-              canEdit && {
-                key: "edit",
-                label: t("editMenu"),
-                icon: <PencilIcon className="h-4 w-4" />,
-                onSelect: () => setEditing((v) => !v),
-              },
-              canLeave && {
-                key: "leave",
-                label: t("leaveMenu"),
-                icon: <ChevronLeftIcon className="h-4 w-4" />,
-                onSelect: handleLeave,
-                disabled: isPending,
-                danger: true,
-              },
-            ]}
-          />
+          <div className="absolute top-3.5 right-4">
+            <ActionMenu
+              label={t("menuLabel")}
+              triggerClassName="grid h-[34px] w-[34px] place-items-center rounded-[9px] border border-border bg-surface/80 text-foreground backdrop-blur-sm transition-colors hover:bg-surface"
+              items={[
+                canEdit && {
+                  key: "edit",
+                  label: t("editMenu"),
+                  icon: <PencilIcon className="h-4 w-4" />,
+                  onSelect: () => setEditing((v) => !v),
+                },
+                canLeave && {
+                  key: "leave",
+                  label: t("leaveMenu"),
+                  icon: <ChevronLeftIcon className="h-4 w-4" />,
+                  onSelect: handleLeave,
+                  disabled: isPending,
+                  danger: true,
+                },
+              ]}
+            />
+          </div>
         )}
       </div>
 
@@ -172,87 +170,6 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
           onUpdated={() => setEditing(false)}
           onCancel={() => setEditing(false)}
         />
-      )}
-    </div>
-  );
-}
-
-type MenuItem = {
-  key: string;
-  label: string;
-  icon: ReactNode;
-  onSelect: () => void;
-  disabled?: boolean;
-  danger?: boolean;
-};
-
-// Menú ⋯ del banner (P2): agrupa Editar y Salir. Menú ligero y accesible —
-// no hay primitiva de dropdown en el proyecto y no merece traerse una
-// dependencia por dos items: botón con aria-haspopup, cierre por Escape y
-// clic fuera, y foco visible en cada opción.
-function ClubHeaderMenu({
-  label,
-  items,
-}: {
-  label: string;
-  items: (MenuItem | false)[];
-}) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const visible = items.filter((it): it is MenuItem => Boolean(it));
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointer(e: PointerEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={rootRef} className="absolute top-3.5 right-4">
-      <button
-        type="button"
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="grid h-[34px] w-[34px] place-items-center rounded-[9px] border border-border bg-surface/80 text-foreground backdrop-blur-sm transition-colors hover:bg-surface"
-      >
-        <EllipsisIcon className="h-4 w-4" />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute top-[42px] right-0 z-10 min-w-[168px] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-card"
-        >
-          {visible.map((it) => (
-            <button
-              key={it.key}
-              type="button"
-              role="menuitem"
-              disabled={it.disabled}
-              onClick={() => {
-                setOpen(false);
-                it.onSelect();
-              }}
-              className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-surface-muted disabled:opacity-60 ${
-                it.danger ? "text-status-dropped" : "text-foreground"
-              }`}
-            >
-              {it.icon}
-              {it.label}
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );
