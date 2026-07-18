@@ -202,7 +202,9 @@ export function ActivityDetailView({
           (Modificar/Finalizar/Archivar/+Activar) para moderadores. El
           creador no-mod conserva un Finalizar aparte aunque no lleve el
           grupo MOD. Unirse se rehace en la barra inferior (Task 5). */}
-      {(isParticipant || (!isModerator && isCreator && status === "active")) && (
+      {(isParticipant ||
+        (isModerator && (status === "proposed" || status === "active")) ||
+        (!isModerator && isCreator && status === "active")) && (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
           {isParticipant && (
             <Button
