@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { LibraryItem } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
-import { getProgress } from "@/lib/library/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { ProgressBar } from "@/components/ui/progress-bar";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { toggleFavorite } from "@/lib/library/favorite-actions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
@@ -36,17 +34,18 @@ export function LibraryItemCard({
     state: item.pinnedOrder !== null,
     reducer: (p) => !p,
   });
-  const progress = getProgress(item);
   const accent = MEDIA_ACCENT[item.itemType];
 
   return (
     <div className="flex flex-col gap-2">
-      <Link
-        href={itemHref(item.itemType, item.itemId)}
-        className="group flex flex-col gap-2"
-      >
-        <div
-          className={`relative aspect-[2/3] w-full overflow-hidden rounded-cover border ${accent.borderSoft} bg-surface-muted shadow-cover`}
+      {/* Portada con overlays: badge de estado arriba y, para el dueño, los
+          botones de acción abajo. Ambos van FUERA del <Link> de la portada
+          para que pulsarlos no navegue a la ficha; sobre la portada quedan en
+          posición FIJA (no dependen de cuántos metadatos tenga la tarjeta). */}
+      <div className="relative">
+        <Link
+          href={itemHref(item.itemType, item.itemId)}
+          className={`group block aspect-[2/3] w-full overflow-hidden rounded-cover border ${accent.borderSoft} bg-surface-muted shadow-cover`}
         >
           {item.coverUrl ? (
             <Image
@@ -61,71 +60,19 @@ export function LibraryItemCard({
               {item.title}
             </div>
           )}
-          <div className="absolute right-1.5 top-1.5">
-            <StatusBadge
-              status={item.status}
-              label={t(`status.${item.status}`)}
-              dotOnly={!inCollection}
-              variant={inCollection ? "overlay" : "chip"}
-            />
-          </div>
+        </Link>
+
+        <div className="absolute right-1.5 top-1.5">
+          <StatusBadge
+            status={item.status}
+            label={t(`status.${item.status}`)}
+            dotOnly={!inCollection}
+            variant={inCollection ? "overlay" : "chip"}
+          />
         </div>
 
-        <span className="line-clamp-2 font-serif text-sm font-semibold text-foreground">
-          {item.title}
-        </span>
-      </Link>
-
-      <div className="flex flex-col gap-1">
-        {item.subtitle && (
-          <span className="line-clamp-1 font-serif text-xs italic text-muted-foreground">
-            {item.subtitle}
-          </span>
-        )}
-        {(item.publisher || item.pageCount) && (
-          <span className="line-clamp-1 text-xs text-muted-foreground">
-            {[item.publisher, item.pageCount ? `${item.pageCount} págs.` : null]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-        )}
-        {progress && (
-          <ProgressBar
-            current={progress.current}
-            total={progress.total}
-            label={progress.label}
-          />
-        )}
-        {inCollection
-          ? (item.rating !== null || item.rereadCount > 0) && (
-              // Frame B: relecturas y nota juntas en una línea mono.
-              <span className="line-clamp-1 font-mono text-[9.5px] text-muted-foreground">
-                {[
-                  item.rereadCount > 0
-                    ? t(`rereadCount.${item.itemType}`, {
-                        count: item.rereadCount,
-                      })
-                    : null,
-                  item.rating !== null ? `★ ${item.rating}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            )
-          : item.rereadCount > 0 && (
-              <span className="line-clamp-1 text-xs text-muted-foreground">
-                {t(`rereadCount.${item.itemType}`, { count: item.rereadCount })}
-              </span>
-            )}
-      </div>
-
-      {isOwner && (
-        <>
-          {/* Acciones rápidas del dueño como botones de icono (estilo `.ibtn`
-              del handoff): fijar en el perfil (se rellena en oro al fijar, lee
-              como "favorito") y abrir la hoja «Añadir a colección». La etiqueta
-              va en aria-label/title para no romper la rejilla en 2 columnas. */}
-          <div className="flex items-center gap-1.5">
+        {isOwner && (
+          <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1.5">
             <button
               type="button"
               disabled={isPending}
@@ -135,24 +82,22 @@ export function LibraryItemCard({
               onClick={() =>
                 run("toggle", async () => {
                   const result = await toggleFavorite(item.entryId);
-                  // toggleFavorite devuelve {error} en vez de lanzar: lo pasamos a
-                  // throw para que el hook haga rollback del pin optimista.
+                  // toggleFavorite devuelve {error} en vez de lanzar: lo pasamos
+                  // a throw para que el hook haga rollback del pin optimista.
                   if (result.error) throw new Error("pin_failed");
                 })
               }
-              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors disabled:opacity-60 ${
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border shadow-card transition-colors disabled:opacity-60 ${
                 pinned
-                  ? "border-gold/40 bg-gold/15 text-gold"
-                  : "border-border bg-surface text-muted-foreground hover:border-accent/40 hover:bg-surface-muted hover:text-foreground"
+                  ? "border-gold/50 bg-gold/90 text-white"
+                  : "border-border bg-surface/90 text-foreground backdrop-blur hover:bg-surface"
               }`}
             >
               <SparklesIcon className="h-4 w-4" />
             </button>
 
             {/* Segundo disparador de la hoja «Añadir a colección» (frame D):
-            el de la ficha vive en log-panel.tsx. Junto al fijado porque los
-            dos son "acciones rápidas sobre este ítem" del dueño (S1 solo
-            traía el fijado). */}
+            el de la ficha vive en log-panel.tsx. */}
             <AddToCollectionSheet
               itemType={item.itemType}
               itemId={item.itemId}
@@ -162,17 +107,49 @@ export function LibraryItemCard({
                   onClick={open}
                   aria-label={t("addToCollection")}
                   title={t("addToCollection")}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface text-[15px] text-muted-foreground transition-colors hover:border-accent/40 hover:bg-surface-muted hover:text-foreground"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface/90 text-[15px] text-foreground shadow-card backdrop-blur transition-colors hover:bg-surface"
                 >
                   <span aria-hidden>▤</span>
                 </button>
               )}
             />
           </div>
-          {failed && (
-            <p className="text-xs text-status-dropped">{t("pinError")}</p>
-          )}
-        </>
+        )}
+      </div>
+
+      <Link href={itemHref(item.itemType, item.itemId)} className="block">
+        <span className="line-clamp-2 min-h-[2.5rem] font-serif text-sm leading-tight font-semibold text-foreground">
+          {item.title}
+        </span>
+      </Link>
+
+      {/* Metadatos de altura FIJA (autor + nota/relecturas). Reservar el alto
+          —aunque el ítem no traiga datos— es lo que mantiene la rejilla sin
+          saltos entre tarjetas con y sin metadatos. Editorial y barra de
+          progreso quedan en la ficha; el estado ya lo da el badge de la
+          portada. */}
+      <div className="flex h-8 flex-col justify-start gap-0.5 overflow-hidden">
+        {item.subtitle && (
+          <span className="line-clamp-1 font-serif text-xs italic text-muted-foreground">
+            {item.subtitle}
+          </span>
+        )}
+        {(item.rating !== null || item.rereadCount > 0) && (
+          <span className="line-clamp-1 font-mono text-[9.5px] text-muted-foreground">
+            {[
+              item.rereadCount > 0
+                ? t(`rereadCount.${item.itemType}`, { count: item.rereadCount })
+                : null,
+              item.rating !== null ? `★ ${item.rating}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        )}
+      </div>
+
+      {isOwner && failed && (
+        <p className="text-xs text-status-dropped">{t("pinError")}</p>
       )}
     </div>
   );
