@@ -689,6 +689,71 @@ export type Database = {
         }
         Relationships: []
       }
+      collection_items: {
+        Row: {
+          added_at: string
+          collection_id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position: number
+        }
+        Insert: {
+          added_at?: string
+          collection_id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          position?: number
+        }
+        Update: {
+          added_at?: string
+          collection_id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           author_id: string
@@ -1899,6 +1964,8 @@ export type Database = {
         | "follow_accepted"
         | "review_liked"
         | "review_commented"
+        | "club_join_request"
+        | "club_join_approved"
         | "club_invite"
         | "club_invite_accepted"
         | "club_post"
@@ -1907,8 +1974,6 @@ export type Database = {
         | "comment_liked"
         | "club_activity_proposed"
         | "club_activity_activated"
-        | "club_join_request"
-        | "club_join_approved"
         | "club_activity_spawned"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
@@ -2067,6 +2132,8 @@ export const Constants = {
         "follow_accepted",
         "review_liked",
         "review_commented",
+        "club_join_request",
+        "club_join_approved",
         "club_invite",
         "club_invite_accepted",
         "club_post",
@@ -2075,8 +2142,6 @@ export const Constants = {
         "comment_liked",
         "club_activity_proposed",
         "club_activity_activated",
-        "club_join_request",
-        "club_join_approved",
         "club_activity_spawned",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
