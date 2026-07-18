@@ -50,7 +50,10 @@ alter type public.target_kind add value 'club_activity';
 commit;
 
 -- can_view_target() gana una rama. Las 5 ramas existentes se preservan VERBATIM
--- (misma definición que 20260713_activity_checkpoints.sql) -- solo se añade 'club_activity'.
+-- desde su definición VIGENTE en 20260717_pass_hub_c_rename.sql (NO 20260713).
+-- OJO: tras el hub, la rama 'diary_entry' apunta a public.passes -- copiarla de
+-- 20260713 (public.diary_entries) revertiría el rename y rompería las
+-- interacciones de diario. Solo se añade 'club_activity'.
 create or replace function public.can_view_target(p_target_type public.target_kind, p_target_id uuid)
 returns boolean
 language sql
@@ -60,7 +63,7 @@ set search_path to 'public'
 as $$
   select case p_target_type
     when 'diary_entry' then exists (
-      select 1 from public.diary_entries d where d.id = p_target_id and public.can_view_profile(d.user_id)
+      select 1 from public.passes d where d.id = p_target_id and public.can_view_profile(d.user_id)
     )
     when 'episode_watch' then exists (
       select 1 from public.episode_watches e where e.id = p_target_id and public.can_view_profile(e.user_id)
