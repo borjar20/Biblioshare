@@ -1,4 +1,5 @@
-"use server";
+// Módulo server-only de LECTURA (lo consumen server components como
+// `get-library-items.ts`). Sin `"use server"`: no son server actions.
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibraryItem } from "./types";
