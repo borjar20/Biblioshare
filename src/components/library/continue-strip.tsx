@@ -18,11 +18,20 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-        {t("continue")}
-      </h2>
+      {/* pin-head del mockup: dot de acento + eyebrow + contador a la derecha. */}
+      <div className="flex items-center gap-2">
+        <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full bg-accent" />
+        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          {t("continue")}
+        </h2>
+        <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
+          {items.length}
+        </span>
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* Una sola columna en todos los anchos (frame A móvil; frame C las apila
+          dentro de la columna izquierda del escritorio). */}
+      <div className="flex flex-col gap-3">
         {items.map((item) => {
           const accent = MEDIA_ACCENT[item.itemType];
           const progress = getProgress(item);
@@ -39,14 +48,14 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
                 className={`-my-3 -ml-3 w-1 shrink-0 self-stretch ${accent.bg}`}
               />
               <div
-                className={`relative h-24 w-16 shrink-0 overflow-hidden rounded-lg border ${accent.borderSoft} bg-surface-muted`}
+                className={`relative h-[87px] w-[58px] shrink-0 overflow-hidden rounded-[5px] border ${accent.borderSoft} bg-surface-muted`}
               >
                 {item.coverUrl ? (
                   <Image
                     src={item.coverUrl}
                     alt={item.title}
                     fill
-                    sizes="64px"
+                    sizes="58px"
                     className="object-cover"
                   />
                 ) : null}
@@ -58,11 +67,11 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
                 >
                   {tTypes(item.itemType)}
                 </span>
-                <span className="line-clamp-2 font-serif text-sm font-semibold text-foreground">
+                <span className="line-clamp-2 font-serif text-[15px] font-semibold text-foreground">
                   {item.title}
                 </span>
                 {item.subtitle && (
-                  <span className="line-clamp-1 font-serif text-xs italic text-muted-foreground">
+                  <span className="line-clamp-1 font-serif text-[11.5px] italic text-muted-foreground">
                     {item.subtitle}
                   </span>
                 )}

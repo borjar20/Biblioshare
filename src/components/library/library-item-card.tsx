@@ -16,9 +16,13 @@ import { SparklesIcon } from "@/components/ui/icons";
 export function LibraryItemCard({
   item,
   isOwner,
+  inCollection = false,
 }: {
   item: LibraryItem;
   isOwner: boolean;
+  // En Colección (frame B): badge de estado con TEXTO sobre la portada y línea
+  // mono «relecturas · ★ nota». En el Perfil (mockup IA nueva) sigue dot-only.
+  inCollection?: boolean;
 }) {
   const t = useTranslations("library");
   // Favorito optimista: el pin/unpin se pinta al instante y revierte en error.
@@ -60,7 +64,8 @@ export function LibraryItemCard({
             <StatusBadge
               status={item.status}
               label={t(`status.${item.status}`)}
-              dotOnly
+              dotOnly={!inCollection}
+              variant={inCollection ? "overlay" : "chip"}
             />
           </div>
         </div>
@@ -90,11 +95,27 @@ export function LibraryItemCard({
             label={progress.label}
           />
         )}
-        {item.rereadCount > 0 && (
-          <span className="line-clamp-1 text-xs text-muted-foreground">
-            {t(`rereadCount.${item.itemType}`, { count: item.rereadCount })}
-          </span>
-        )}
+        {inCollection
+          ? (item.rating !== null || item.rereadCount > 0) && (
+              // Frame B: relecturas y nota juntas en una línea mono.
+              <span className="line-clamp-1 font-mono text-[9.5px] text-muted-foreground">
+                {[
+                  item.rereadCount > 0
+                    ? t(`rereadCount.${item.itemType}`, {
+                        count: item.rereadCount,
+                      })
+                    : null,
+                  item.rating !== null ? `★ ${item.rating}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            )
+          : item.rereadCount > 0 && (
+              <span className="line-clamp-1 text-xs text-muted-foreground">
+                {t(`rereadCount.${item.itemType}`, { count: item.rereadCount })}
+              </span>
+            )}
       </div>
 
       {isOwner && (

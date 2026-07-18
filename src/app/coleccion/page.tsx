@@ -82,7 +82,21 @@ export default async function CollectionPage({
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+      {/* Cabecera del frame A/C: barrita de acento + título serif + contador de
+          títulos (mono). El contador llega por streaming para no bloquear el
+          shell instantáneo (plan 00). */}
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="h-[22px] w-2 shrink-0 rounded-full bg-accent"
+        />
+        <h1 className="font-serif text-2xl font-semibold text-foreground lg:text-[28px]">
+          {t("title")}
+        </h1>
+        <Suspense fallback={null}>
+          <TitleCount userId={user.id} />
+        </Suspense>
+      </div>
 
       <CollectionTabs active={tab} />
 
@@ -99,7 +113,28 @@ export default async function CollectionPage({
         <Suspense key={params.cola ?? "all"} fallback={<QueuesSkeleton />}>
           <QueuesPanel userId={user.id} activeParam={params.cola} />
         </Suspense>
+      ) : tab === "general" && !status && !search ? (
+        // General (limpio) = «Actualizado recientemente» sin filtros (frame A):
+        // solo lo último tocado, en un grid más denso (3 col en móvil).
+        <section className="flex flex-col gap-3">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("recentlyUpdated")}
+          </h2>
+          <Suspense fallback={<SkeletonCoverGrid count={12} />}>
+            <LibraryGrid
+              userId={user.id}
+              sort="recent"
+              limit={12}
+              variant="recent"
+              emptyTitle={tLibrary("emptyTitle")}
+              emptyLabel={tLibrary("empty")}
+              emptyCta={tLibrary("emptyCta")}
+            />
+          </Suspense>
+        </section>
       ) : (
+        // Pestañas de tipo (o General con un ?status=/q= heredado de un enlace
+        // viejo): filtros + rejilla completa.
         <>
           <LibraryFilters
             status={status}
@@ -130,6 +165,22 @@ export default async function CollectionPage({
   );
 }
 
+// Contador de títulos junto al h1 (frame C: "128 títulos"). Su propia consulta
+// para no acoplarse al summary de GeneralOverview, que solo existe en General.
+async function TitleCount({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const [summary, t] = await Promise.all([
+    getLibrarySummary(supabase, userId),
+    getTranslations("collection"),
+  ]);
+  if (summary.total === 0) return null;
+  return (
+    <span className="font-mono text-xs tracking-wide text-muted-foreground">
+      {t("titleCount", { count: summary.total })}
+    </span>
+  );
+}
+
 async function GeneralOverview({ userId }: { userId: string }) {
   const supabase = await createClient();
   const [inProgress, summary, favorites] = await Promise.all([
@@ -140,8 +191,13 @@ async function GeneralOverview({ userId }: { userId: string }) {
 
   return (
     <>
-      <ContinueStrip items={inProgress} />
-      <CollectionSummary summary={summary} />
+      {/* Frame C: en escritorio la fila superior es [continuar | resumen] a
+          1fr/320px; en móvil se apila. `items-start` para que la tarjeta de
+          resumen no se estire a la altura de la columna de continuar. */}
+      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6">
+        <ContinueStrip items={inProgress} />
+        <CollectionSummary summary={summary} />
+      </div>
       {/* Los destacados del dueño viven aquí, no en su perfil: el perfil propio
           pierde la pestaña Colección (plan 05, P2) y sin esta casa se
           quedarían sin sitio (D2). */}
@@ -156,6 +212,8 @@ async function LibraryGrid({
   status,
   search,
   sort,
+  limit,
+  variant = "type",
   emptyTitle,
   emptyLabel,
   emptyCta,
@@ -165,6 +223,10 @@ async function LibraryGrid({
   status?: MediaStatus;
   search?: string;
   sort: LibrarySort;
+  limit?: number;
+  // "type": rejilla de pestaña (2 col móvil, frame B); "recent": recientes de
+  // General (3 col móvil, frame A). En escritorio ambas van a 5 (frame C).
+  variant?: "type" | "recent";
   emptyTitle: string;
   emptyLabel: string;
   emptyCta: string;
@@ -175,6 +237,7 @@ async function LibraryGrid({
     status,
     search,
     sort,
+    limit,
   });
 
   if (items.length === 0) {
@@ -192,10 +255,15 @@ async function LibraryGrid({
     );
   }
 
+  const gridClass =
+    variant === "recent"
+      ? "grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-5"
+      : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
+
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className={gridClass}>
       {items.map((item) => (
-        <LibraryItemCard key={item.entryId} item={item} isOwner />
+        <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
       ))}
     </div>
   );
