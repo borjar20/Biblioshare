@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { CollectionDetail as CollectionDetailData } from "@/lib/library/collections";
-import { LibraryItemCard } from "@/components/library/library-item-card";
+import { CollectionItems } from "@/components/library/collection-items";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxIcon } from "@/components/ui/icons";
 
@@ -80,25 +80,15 @@ export async function CollectionDetail({
         )}
       </div>
 
-      {/* «＋ Añadir títulos» / «Ordenar» son de la Sesión 2 (hoja «Añadir a
-          colección» y reordenado del detalle, plan Colección v2 §6): no se
-          pintan aquí para no dejar botones muertos que aún no hacen nada. */}
+      {/* Con ítems: rejilla + desplegable de filtros (tipo/estado/orden) en
+          cliente (CollectionItems). Sin ítems: estado vacío. */}
       {detail.items.length === 0 ? (
         <EmptyState
           glyph={<InboxIcon className="h-7 w-7" />}
           title={t("emptyDetail")}
         />
       ) : (
-        <div className="grid grid-cols-3 gap-3.5">
-          {detail.items.map((item) => (
-            <LibraryItemCard
-              key={item.entryId}
-              item={item}
-              isOwner={false}
-              inCollection
-            />
-          ))}
-        </div>
+        <CollectionItems items={detail.items} />
       )}
     </div>
   );
