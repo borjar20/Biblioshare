@@ -18,6 +18,7 @@ import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
 import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
+import { itemHref } from "@/lib/catalog/item-href";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ChevronLeftIcon } from "@/components/ui/icons";
@@ -230,11 +231,43 @@ export function ActivityDetailView({
 
         {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-        {/* Tablero del tipo: solo lectura para no-participantes, respaldado
-            por RLS (no por esta vista) -- cada DetailExtension ya gestiona su
-            propio "únete para ver" donde aplica (listChallengeJoinToSee,
-            criteriaJoinToSee). */}
-        {DetailExtension && (
+        {/* Los ítems de la actividad, en solo lectura: es lo que un no-participante
+            necesita ver para decidir si unirse. Los tableros por tipo (reto de
+            lista / tierlist / genérico) se gatean a participantes y solo enseñan
+            "únete para ver", así que aquí se reintroduce la tira de portadas que
+            daba la lista genérica retirada. Cada portada enlaza a su ficha. */}
+        {activity.items.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              {t("previewItems")}
+            </h2>
+            <div className="grid grid-cols-5 gap-2">
+              {activity.items.map((item) => (
+                <Link
+                  key={item.id}
+                  href={itemHref(item.itemType, item.itemId)}
+                  title={item.itemTitle}
+                  className="relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted"
+                >
+                  {item.itemCoverUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
+                    <img
+                      src={item.itemCoverUrl}
+                      alt={item.itemTitle}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* La estructura del tipo solo se enseña a no-participantes en la lectura
+            con hitos: sus checkpoints son públicos al club (los "hitos previstos"
+            del frame B, para decidir si unirse). Los demás tableros se gatean a
+            participantes, así que su preview es la tira de ítems de arriba. */}
+        {activity.kind === "buddy_read" && DetailExtension && (
           <DetailExtension
             activity={activity}
             viewerId={viewerId}
