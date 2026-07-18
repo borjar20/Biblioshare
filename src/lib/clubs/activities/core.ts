@@ -38,6 +38,8 @@ export type ClubActivity = {
   createdAt: string;
   viewerIsParticipant: boolean;
   participantCount: number;
+  spawnedFromActivityId: string | null;
+  spawnedFromItem: { itemType: ItemType; itemId: string } | null;
 };
 
 export type ActivityItem = {
@@ -63,6 +65,16 @@ export type ActivityDetail = ClubActivity & {
   participants: ActivityParticipant[];
   /** Chat general de la actividad (vacío/oculto en buddy_read). RLS lo filtra a participantes. */
   chat: InteractionSummary;
+  /** Actividades hijas nacidas de esta (spawn desde list_challenge: buddy_read o tierlist de cierre). */
+  linkedChildren: LinkedChild[];
+};
+
+export type LinkedChild = {
+  id: string;
+  kind: ActivityKind;
+  title: string;
+  status: ActivityStatus;
+  fromItem: { itemType: ItemType; itemId: string; itemTitle: string } | null;
 };
 
 export async function proposeActivity(
@@ -192,11 +204,49 @@ export async function removeActivityItem(itemId: string): Promise<void> {
   revalidateClubPages();
 }
 
+// Crea una actividad hija enlazada a una list_challenge padre (EPIC-05 interconexión):
+// buddy_read desde un ítem del pool (padre activo) o la tierlist de cierre (padre finished,
+// única por padre). La RPC hace todas las validaciones server-side; aquí solo se lanza el
+// fan-out de notificación y se revalida.
+export async function spawnLinkedActivity(input: {
+  parentActivityId: string;
+  kind: "buddy_read" | "tierlist";
+  title: string;
+  fromItemType?: ItemType | null;
+  fromItemId?: string | null;
+}): Promise<string> {
+  const { supabase, userId } = await requireUser();
+  const { data: childId, error } = await supabase.rpc("spawn_linked_activity", {
+    p_parent_activity_id: input.parentActivityId,
+    p_kind: input.kind,
+    p_title: input.title,
+    // El generador de tipos marca estos dos como no-nulos (la función no tiene DEFAULT), pero
+    // sí acepta NULL a propósito: la tierlist de cierre no lleva ítem de origen (§ RPC arriba).
+    p_from_item_type: (input.fromItemType ?? null) as ItemType,
+    p_from_item_id: (input.fromItemId ?? null) as string,
+  });
+  if (error) throw error;
+
+  // La hija ya nace en el mismo club que el padre; leemos su club_id para el fan-out.
+  const { data: child } = await supabase
+    .from("club_activities")
+    .select("club_id")
+    .eq("id", childId as string)
+    .single();
+  if (child) {
+    await notifyClub(supabase, child.club_id, userId, "club_activity_spawned", childId as string);
+  }
+  revalidateClubPages();
+  return childId as string;
+}
+
 export async function listClubActivities(clubId: string): Promise<ClubActivity[]> {
   const { supabase, userId } = await requireUser();
   const { data: rows, error } = await supabase
     .from("club_activities")
-    .select("id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at")
+    .select(
+      "id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at, spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id",
+    )
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -228,6 +278,11 @@ export async function listClubActivities(clubId: string): Promise<ClubActivity[]
     createdAt: r.created_at,
     viewerIsParticipant: viewerParticipates.has(r.id),
     participantCount: countByActivity.get(r.id) ?? 0,
+    spawnedFromActivityId: r.spawned_from_activity_id,
+    spawnedFromItem:
+      r.spawned_from_item_type && r.spawned_from_item_id
+        ? { itemType: r.spawned_from_item_type as ItemType, itemId: r.spawned_from_item_id }
+        : null,
   }));
 }
 
@@ -236,7 +291,9 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
 
   const { data: row, error } = await supabase
     .from("club_activities")
-    .select("id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at")
+    .select(
+      "id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at, spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id",
+    )
     .eq("id", activityId)
     .maybeSingle();
   if (error) throw error;
@@ -330,6 +387,56 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
       : ((await getInteractionSummary(supabase, "club_activity", [activityId])).get(activityId) ??
         zeroChat);
 
+  // Actividades hijas (spawn desde list_challenge): mismo patrón de resolución de
+  // catálogo por tipo que el pool de ítems de arriba, aplicado al ítem de origen de cada hija.
+  const { data: childRows } = await supabase
+    .from("club_activities")
+    .select("id, kind, title, status, spawned_from_item_type, spawned_from_item_id")
+    .eq("spawned_from_activity_id", activityId)
+    .order("created_at", { ascending: true });
+
+  const childIdsByType: Record<ItemType, Set<string>> = {
+    book: new Set(),
+    movie: new Set(),
+    series: new Set(),
+  };
+  for (const c of childRows ?? []) {
+    if (c.spawned_from_item_type && c.spawned_from_item_id) {
+      childIdsByType[c.spawned_from_item_type as ItemType].add(c.spawned_from_item_id);
+    }
+  }
+  const [cBooks, cMovies, cSeries] = await Promise.all([
+    childIdsByType.book.size
+      ? supabase.from("books").select("id, title").in("id", [...childIdsByType.book])
+      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+    childIdsByType.movie.size
+      ? supabase.from("movies").select("id, title").in("id", [...childIdsByType.movie])
+      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+    childIdsByType.series.size
+      ? supabase.from("series").select("id, title").in("id", [...childIdsByType.series])
+      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+  ]);
+  const childTitleByKey = new Map<string, string>();
+  for (const r of cBooks.data ?? []) childTitleByKey.set(`book:${r.id}`, r.title);
+  for (const r of cMovies.data ?? []) childTitleByKey.set(`movie:${r.id}`, r.title);
+  for (const r of cSeries.data ?? []) childTitleByKey.set(`series:${r.id}`, r.title);
+
+  const linkedChildren: LinkedChild[] = (childRows ?? []).map((c) => ({
+    id: c.id,
+    kind: c.kind,
+    title: c.title,
+    status: c.status,
+    fromItem:
+      c.spawned_from_item_type && c.spawned_from_item_id
+        ? {
+            itemType: c.spawned_from_item_type as ItemType,
+            itemId: c.spawned_from_item_id,
+            itemTitle:
+              childTitleByKey.get(`${c.spawned_from_item_type}:${c.spawned_from_item_id}`) ?? "",
+          }
+        : null,
+  }));
+
   return {
     id: row.id,
     clubId: row.club_id,
@@ -344,8 +451,14 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     createdAt: row.created_at,
     viewerIsParticipant,
     participantCount,
+    spawnedFromActivityId: row.spawned_from_activity_id,
+    spawnedFromItem:
+      row.spawned_from_item_type && row.spawned_from_item_id
+        ? { itemType: row.spawned_from_item_type as ItemType, itemId: row.spawned_from_item_id }
+        : null,
     items,
     participants,
     chat,
+    linkedChildren,
   };
 }
