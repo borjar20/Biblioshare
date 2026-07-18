@@ -121,10 +121,17 @@ export function LibraryItemCard({
 
       {isOwner && (
         <>
-          <div className="flex items-center gap-3">
+          {/* Acciones rápidas del dueño como botones de icono (estilo `.ibtn`
+              del handoff): fijar en el perfil (se rellena en oro al fijar, lee
+              como "favorito") y abrir la hoja «Añadir a colección». La etiqueta
+              va en aria-label/title para no romper la rejilla en 2 columnas. */}
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               disabled={isPending}
+              aria-label={pinned ? t("unpin") : t("pin")}
+              title={pinned ? t("unpin") : t("pin")}
+              aria-pressed={pinned}
               onClick={() =>
                 run("toggle", async () => {
                   const result = await toggleFavorite(item.entryId);
@@ -133,10 +140,13 @@ export function LibraryItemCard({
                   if (result.error) throw new Error("pin_failed");
                 })
               }
-              className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-60"
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors disabled:opacity-60 ${
+                pinned
+                  ? "border-gold/40 bg-gold/15 text-gold"
+                  : "border-border bg-surface text-muted-foreground hover:border-accent/40 hover:bg-surface-muted hover:text-foreground"
+              }`}
             >
-              <SparklesIcon className="h-3.5 w-3.5" />
-              {pinned ? t("unpin") : t("pin")}
+              <SparklesIcon className="h-4 w-4" />
             </button>
 
             {/* Segundo disparador de la hoja «Añadir a colección» (frame D):
@@ -150,10 +160,11 @@ export function LibraryItemCard({
                 <button
                   type="button"
                   onClick={open}
-                  className="inline-flex items-center gap-1 text-left text-xs text-muted-foreground underline hover:text-foreground"
+                  aria-label={t("addToCollection")}
+                  title={t("addToCollection")}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface text-[15px] text-muted-foreground transition-colors hover:border-accent/40 hover:bg-surface-muted hover:text-foreground"
                 >
                   <span aria-hidden>▤</span>
-                  {t("addToCollection")}
                 </button>
               )}
             />
