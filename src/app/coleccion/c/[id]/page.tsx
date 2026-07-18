@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCollection } from "@/lib/library/collections";
 import { CollectionDetail } from "@/components/library/collection-detail";
+import { CollectionMenu } from "@/components/library/collection-menu";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 
 export async function generateMetadata({
@@ -55,9 +56,8 @@ export default async function CollectionDetailPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      {/* Topbar del frame B: «‹» a /coleccion + nombre. El menú «⋯»
-          (renombrar/descripción/borrar) es de la Sesión 2: no se pinta aún
-          para no dejar un botón sin acciones. */}
+      {/* Topbar del frame B: «‹» a /coleccion + nombre + menú «⋯»
+          (renombrar/descripción/borrar, Sesión 2). */}
       <div className="flex items-center gap-2.5">
         <Link
           href="/coleccion"
@@ -66,9 +66,14 @@ export default async function CollectionDetailPage({
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </Link>
-        <span className="truncate font-serif text-sm font-semibold text-foreground">
+        <span className="min-w-0 flex-1 truncate font-serif text-sm font-semibold text-foreground">
           {detail.name}
         </span>
+        <CollectionMenu
+          collectionId={detail.id}
+          name={detail.name}
+          description={detail.description}
+        />
       </div>
 
       <CollectionDetail detail={detail} />

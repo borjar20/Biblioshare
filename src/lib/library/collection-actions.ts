@@ -43,6 +43,30 @@ export async function renameCollection(id: string, name: string): Promise<{ erro
   return {};
 }
 
+// Patrón de `renameCollection`: mismo gateo (RLS + `requireUser`), mismo par
+// validación-cliente/error-servidor. `char_length(description) <= 500` es la
+// restricción de la tabla (`20260718_collections.sql`); se valida antes de
+// llegar a la BD para no gastar un roundtrip en un texto que se va a rechazar
+// igual. Vaciar el campo (textarea en blanco) es válido: guarda `null`, no
+// una cadena vacía, para que el resto del código siga tratando "sin
+// descripción" como ya lo hacía (`detail.description &&` en CollectionDetail).
+export async function updateCollectionDescription(
+  id: string,
+  text: string,
+): Promise<{ error?: string }> {
+  const clean = text.trim();
+  if (clean.length > 500) return { error: "invalid_description" };
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("collections")
+    .update({ description: clean || null, updated_at: new Date().toISOString() })
+    .eq("id", id); // RLS restringe al dueño
+  if (error) return { error: "description_failed" };
+  revalidatePath("/coleccion");
+  revalidatePath(`/coleccion/c/${id}`);
+  return {};
+}
+
 export async function deleteCollection(id: string): Promise<{ error?: string }> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("collections").delete().eq("id", id);
