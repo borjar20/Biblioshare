@@ -19,11 +19,16 @@ export async function generateMetadata({
   } = await supabase.auth.getUser();
   if (!user) return { title: "Colección — Biblioshare" };
 
-  const detail = await getCollection(supabase, user.id, id);
+  // Solo el nombre: no hidratamos la colección entera (portadas/pases/notas)
+  // solo para el <title> — eso lo hace el componente. La RLS ya restringe al
+  // dueño, así que una fila ajena/inexistente no devuelve nombre.
+  const { data: col } = await supabase
+    .from("collections")
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
   return {
-    title: detail
-      ? `${detail.name} — Biblioshare`
-      : "Colección — Biblioshare",
+    title: col ? `${col.name} — Biblioshare` : "Colección — Biblioshare",
   };
 }
 
