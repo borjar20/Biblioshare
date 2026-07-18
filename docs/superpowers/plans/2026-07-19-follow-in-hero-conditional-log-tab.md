@@ -633,6 +633,30 @@ git commit -m "fix(ficha): ajustes tras verificación en navegador de Seguir-en-
 
 ---
 
+### Task 8 (añadida en verificación): «Seguir» también en el rail de PC
+
+La verificación en navegador (Task 7) destapó un hueco de diseño: la ficha son
+DOS árboles (ver `item-shell.tsx`) — el `ItemHero` con el `statusSlot` es
+`lg:hidden` (solo móvil) y en PC manda el rail (`ItemRailActions`). Con «Seguir»
+solo en el hero y el `FollowButton` fuera del log-panel, en **PC** un ítem no
+seguido se quedaba **sin forma de seguir** (`ItemRailActions` hacía
+`return null`). Y el e2e corre en **Desktop Chrome (1280)**, donde el hero está
+oculto. Esta tarea cierra el hueco.
+
+**Files:**
+- Create: `src/components/detail/use-follow.ts` (hook compartido)
+- Modify: `src/components/detail/hero-status-or-follow.tsx` (usa el hook)
+- Modify: `src/components/detail/item-rail-actions.tsx` (props `itemId`+`isLoggedIn`; pinta «Seguir» cuando `!status`)
+- Modify: los 3 `page.tsx` (pasan `itemId`+`isLoggedIn` al rail)
+
+- [x] `useFollow(itemType, itemId, isLoggedIn)` extrae la acción (optimista
+  `planned` → `?tab=log` → persistencia; anónimo → solo la acción, que redirige
+  a `/login`). Hero y rail la comparten para que no diverjan.
+- [x] `ItemRailActions` `!status` → `<Button className="w-full">{Seguir}</Button>`
+  en vez de `return null`.
+- [x] tsc + eslint limpios; verificado en navegador móvil (390) y PC (1280):
+  seguir revela «Mi registro» y salta; quitar oculta la tab y devuelve «Seguir».
+
 ## Self-Review (cobertura del spec)
 
 - **«Seguir» en el hero** → Tasks 3 + 4. ✅
