@@ -13,6 +13,9 @@ const STATUS_DOT_CLASSES = {
 // - "hero": la .hero-status de la ficha (mockup "Paper - Ficha de título
 //   completa") — más grande, sobre surface con borde, y con la etiqueta larga
 //   ("En tu biblioteca · Leyendo") que le compone quien la usa.
+// - "overlay": la píldora `.sb` sobre la portada en la rejilla de Colección
+//   (mockup "Paper - Colección" frame B) — texto + dot sobre surface translúcido
+//   con blur y borde, para leerse encima de cualquier portada.
 export function StatusBadge({
   status,
   label,
@@ -22,7 +25,7 @@ export function StatusBadge({
   status: keyof typeof STATUS_DOT_CLASSES;
   label: string;
   dotOnly?: boolean;
-  variant?: "chip" | "hero";
+  variant?: "chip" | "hero" | "overlay";
 }) {
   if (dotOnly) {
     return (
@@ -33,6 +36,20 @@ export function StatusBadge({
         data-testid="status-badge"
         className={`inline-block h-2.5 w-2.5 rounded-full ring-2 ring-background ${STATUS_DOT_CLASSES[status]}`}
       />
+    );
+  }
+
+  if (variant === "overlay") {
+    return (
+      <span
+        data-testid="status-badge"
+        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/[0.88] px-2 py-0.5 text-[10.5px] font-medium text-foreground backdrop-blur"
+      >
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASSES[status]}`}
+        />
+        {label}
+      </span>
     );
   }
 

@@ -44,6 +44,8 @@
 
 ## 4. Tareas
 
+> **TAREAS 1–5 HECHAS Y VERIFICADAS 2026-07-18** (fidelidad v1, frames A/B/C de `Paper - Colección.html`). Verificado en navegador a 1280 y 400, claro y oscuro; tsc/eslint limpios; e2e nuevo `coleccion-general.spec.ts` verde. Hallazgos: el contador de títulos se sirve por **su propia consulta en `<Suspense>`** (`TitleCount`) para no bloquear el shell instantáneo ni duplicar acoplando el summary de General; el badge píldora sobre portada es una **variante `overlay` nueva** de `status-badge` (surface translúcido + blur), y `LibraryItemCard` la usa solo con `inCollection` (el Perfil sigue dot-only); `getLibraryItems` gana un `limit` opcional (recorta tras ordenar) para los recientes de General. **Pendientes del plan:** T6 (Colas, bloqueada por P3) y **T7 (Colección v2, con migración)**.
+
 ### Tarea 1 — Cabecera y sección "en curso"
 - **Modificar:** `src/app/coleccion/page.tsx`, `src/components/library/continue-strip.tsx`
 - `h1` serif + barrita de acento + contador mono de títulos (pasar `summary.total`; en General ya se carga el summary — para las otras pestañas cargarlo o mover el contador solo a General).
@@ -81,7 +83,8 @@
 
 ## 5. Verificación de cierre
 
-- [ ] Frames A/B/C lado a lado con `/coleccion` (móvil 400px y escritorio ~940px): general, pestaña Libros con filtros, escritorio a dos columnas.
-- [ ] Modo oscuro (Paper - Modo oscuro.html incluye Colección) sin hardcodes.
-- [ ] `npx playwright test` verde (Node 22: `fnm use` antes).
-- [ ] P1–P4 respondidas y registradas.
+- [x] Frames A/B/C lado a lado con `/coleccion` (móvil 400px y escritorio 1280): general (recientes 3 col sin filtros), pestaña Libros con filtros (2 col), escritorio a dos columnas (continuar | resumen). — **verificado T1–T5**.
+- [x] Modo oscuro sin hardcodes (verificado claro y oscuro; tokens de acento/estado por tema). — **T1–T5**.
+- [x] `npx playwright test` (Node 22): `coleccion-general.spec.ts` nuevo verde; happy-path/pase-hub (que tocan `/coleccion`) sin regresión.
+- [x] P1–P4 respondidas y registradas.
+- [ ] **T6 (Colas) y T7 (Colección v2, con migración)** — pendientes, sesión aparte.

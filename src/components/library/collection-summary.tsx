@@ -33,6 +33,10 @@ export async function CollectionSummary({
 
   return (
     <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
+      <span className="font-serif text-[15px] font-semibold text-foreground">
+        {t("collection.summary.heading")}
+      </span>
+
       <div className="flex items-baseline gap-2">
         <span className="font-serif text-3xl leading-none font-semibold text-foreground">
           {summary.total}
@@ -55,29 +59,39 @@ export async function CollectionSummary({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {/* Leyenda en dos columnas: dot + nombre …… recuento (mono semibold a la
+          derecha, mockup `.leg`). */}
+      <div className="grid grid-cols-2 gap-x-3.5 gap-y-2">
         {present.map((status) => (
-          <span key={status} className="inline-flex items-center gap-1.5">
+          <span key={status} className="flex items-center gap-1.5">
             <span
-              className={`h-2 w-2 rounded-full ${STATUS_BG[status]}`}
+              className={`h-2 w-2 shrink-0 rounded-full ${STATUS_BG[status]}`}
               aria-hidden
             />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {t(`library.status.${status}`)} · {summary.byStatus[status]}
+            <span className="truncate text-[11px] text-muted-foreground">
+              {t(`library.status.${status}`)}
+            </span>
+            <span className="ml-auto font-mono text-[11px] font-semibold text-foreground">
+              {summary.byStatus[status]}
             </span>
           </span>
         ))}
       </div>
 
-      {/* Recuento por tipo. */}
-      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+      {/* Recuento por tipo: cifra grande serif teñida + label debajo
+          (mockup `.tcount`). */}
+      <div className="flex justify-around border-t border-border pt-3.5">
         {TYPES.map((type) => (
-          <span
-            key={type}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[10px] tracking-wider uppercase ${MEDIA_ACCENT[type].borderSoft} ${MEDIA_ACCENT[type].bgSoft} ${MEDIA_ACCENT[type].text}`}
-          >
-            {t(`search.types.${type}`)} · {summary.byType[type]}
-          </span>
+          <div key={type} className="flex flex-col items-center gap-0.5">
+            <span
+              className={`font-serif text-[26px] leading-none font-semibold ${MEDIA_ACCENT[type].text}`}
+            >
+              {summary.byType[type]}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {t(`search.types.${type}`)}
+            </span>
+          </div>
         ))}
       </div>
     </div>

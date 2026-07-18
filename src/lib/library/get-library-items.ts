@@ -24,6 +24,8 @@ export async function getLibraryItems(
     search?: string;
     sort?: LibrarySort;
     favoritesOnly?: boolean;
+    /** Recorta a los N primeros tras aplicar orden (General = recientes). */
+    limit?: number;
   }
 ): Promise<LibraryItem[]> {
   // "Entrada de biblioteca" = pase ACTIVO de la obra (§Tarea 9, hub):
@@ -216,6 +218,8 @@ export async function getLibraryItems(
     items = items.sort((a, b) => a.title.localeCompare(b.title));
   }
   // "recent" (default) keeps the query's own `updated_at desc` order.
+
+  if (filters.limit !== undefined) items = items.slice(0, filters.limit);
 
   return items;
 }

@@ -1247,7 +1247,10 @@
     "continue": "Continuar",
     "continueCta": "Continuar ›",
     "inProgress": "En curso",
+    "titleCount": "{count, plural, one {# título} other {# títulos}}",
+    "recentlyUpdated": "Actualizado recientemente",
     "summary": {
+      "heading": "Resumen",
       "total": "ítems en total"
     }
   },
