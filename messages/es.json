@@ -484,6 +484,8 @@
     "participants": "{count, plural, one {# participante} other {# participantes}}",
     "join": "Unirse",
     "leave": "Salir",
+    "modTag": "Mod",
+    "modify": "Modificar",
     "activate": "Activar",
     "finish": "Finalizar",
     "archive": "Archivar",

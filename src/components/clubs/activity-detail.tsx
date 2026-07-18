@@ -8,7 +8,6 @@ import {
   activateActivity,
   archiveActivity,
   finishActivity,
-  joinActivity,
   leaveActivity,
   type ActivityDetail,
 } from "@/lib/clubs/activities/core";
@@ -76,7 +75,6 @@ export function ActivityDetailView({
     });
   }
 
-  const compact = "px-3.5 py-1.5 text-xs";
   const overflow = activity.participantCount - activity.participants.length;
 
   // Vista "Modificar actividad" (misma página, patrón del ClubForm de editar
@@ -196,81 +194,67 @@ export function ActivityDetailView({
         <span className="text-xs text-muted-foreground">
           {t("participate", { count: activity.participantCount })}
         </span>
-
-        {status === "active" && !isParticipant && (
-          <Button
-            type="button"
-            variant="green"
-            className={`ml-auto ${compact}`}
-            disabled={isPending}
-            onClick={() => run(() => joinActivity(activity.id))}
-          >
-            {t("join")}
-          </Button>
-        )}
-        {isParticipant && (
-          <Button
-            type="button"
-            variant="secondary"
-            className={`ml-auto ${compact}`}
-            disabled={isPending}
-            onClick={() => run(() => leaveActivity(activity.id))}
-          >
-            {t("leave")}
-          </Button>
-        )}
       </div>
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-      {/* Acciones de moderación, separadas de las de participante. */}
-      {isModerator && (status === "proposed" || status === "active") && (
-        <div className="flex flex-wrap items-center gap-2">
-          {status === "proposed" && (
-            <Button
-              type="button"
-              className={compact}
-              disabled={isPending}
-              onClick={() => run(() => activateActivity(activity.id))}
-            >
-              {t("activate")}
-            </Button>
-          )}
-          {status === "active" && (
+      {/* Barra de acciones: Salir (participantes) + grupo ◈ MOD
+          (Modificar/Finalizar/Archivar/+Activar) para moderadores. El
+          creador no-mod conserva un Finalizar aparte aunque no lleve el
+          grupo MOD. Unirse se rehace en la barra inferior (Task 5). */}
+      {(isParticipant || (!isModerator && isCreator && status === "active")) && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+          {isParticipant && (
             <Button
               type="button"
               variant="secondary"
-              className={compact}
+              className="px-3.5 py-2 text-xs"
+              disabled={isPending}
+              onClick={() => run(() => leaveActivity(activity.id))}
+            >
+              {t("leave")}
+            </Button>
+          )}
+
+          {!isModerator && isCreator && status === "active" && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-3.5 py-2 text-xs"
               disabled={isPending}
               onClick={() => run(() => finishActivity(activity.id))}
             >
               {t("finish")}
             </Button>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            className={compact}
-            disabled={isPending}
-            onClick={() => run(() => archiveActivity(activity.id))}
-          >
-            {t("archive")}
-          </Button>
-        </div>
-      )}
 
-      {/* El creador (no moderador) también puede dar por terminada su actividad. */}
-      {!isModerator && isCreator && status === "active" && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            className={compact}
-            disabled={isPending}
-            onClick={() => run(() => finishActivity(activity.id))}
-          >
-            {t("finish")}
-          </Button>
+          {isModerator && (status === "proposed" || status === "active") && (
+            <div className="ml-auto flex items-center gap-2 border-l border-border pl-3">
+              <span className="font-mono text-[8.5px] tracking-wide text-foreground-faint uppercase">
+                ◈ {t("modTag")}
+              </span>
+              {status === "proposed" && (
+                <Button type="button" variant="secondary" className="px-3.5 py-2 text-xs" disabled={isPending}
+                  onClick={() => run(() => activateActivity(activity.id))}>
+                  {t("activate")}
+                </Button>
+              )}
+              <Button type="button" variant="secondary" className="px-3.5 py-2 text-xs"
+                onClick={() => setEditing(true)}>
+                {t("modify")}
+              </Button>
+              {status === "active" && (
+                <Button type="button" variant="secondary" className="px-3.5 py-2 text-xs" disabled={isPending}
+                  onClick={() => run(() => finishActivity(activity.id))}>
+                  {t("finish")}
+                </Button>
+              )}
+              <Button type="button" variant="secondary" className="px-3.5 py-2 text-xs" disabled={isPending}
+                onClick={() => run(() => archiveActivity(activity.id))}>
+                {t("archive")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
