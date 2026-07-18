@@ -71,7 +71,10 @@ export function ActionMenu({
       {open && (
         <div
           role="menu"
-          className={`absolute top-[38px] z-10 min-w-[168px] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-card ${
+          // z-50 (capa de popover): por encima de contenido decorativo con
+          // z-index propio, p. ej. el abanico del detalle de colección (sus
+          // portadas van a z-30 y, con un z-10, se pintaban por encima del menú).
+          className={`absolute top-[38px] z-50 min-w-[168px] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-card ${
             menuAlign === "right" ? "right-0" : "left-0"
           }`}
         >

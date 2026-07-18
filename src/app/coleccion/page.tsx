@@ -40,6 +40,7 @@ const VALID_STATUSES: MediaStatus[] = [
   "dropped",
 ];
 const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
+const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 
 // Mi Biblioteca (Colección v2, Sesión 1): gira en torno a colecciones que
 // crea el usuario, no a estados. Dos subpestañas visibles — `Colecciones`
@@ -56,6 +57,7 @@ export default async function CollectionPage({
     q?: string;
     sort?: string;
     cola?: string;
+    type?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -75,6 +77,11 @@ export default async function CollectionPage({
   const sort: LibrarySort = VALID_SORTS.includes(params.sort as LibrarySort)
     ? (params.sort as LibrarySort)
     : "recent";
+  const itemType: ItemType | undefined = VALID_TYPES.includes(
+    params.type as ItemType,
+  )
+    ? (params.type as ItemType)
+    : undefined;
 
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
@@ -118,25 +125,27 @@ export default async function CollectionPage({
               destacados del dueño viven aquí, no en su perfil: el perfil
               propio pierde la pestaña Colección (plan 05, P2) y sin esta
               casa se quedarían sin sitio (D2). */}
-          {!status && !search && (
+          {!status && !search && !itemType && (
             <Suspense fallback={<CollectionOverviewSkeleton />}>
               <TodoOverview userId={user.id} />
             </Suspense>
           )}
           <LibraryFilters
+            itemType={itemType}
             status={status}
             search={search}
             sort={sort}
             basePath="/coleccion"
-            showTypeFilter={false}
+            showTypeFilter
             extraParams={{ tab: "todo" }}
           />
           <Suspense
-            key={`todo:${status ?? ""}:${search ?? ""}:${sort}`}
+            key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}`}
             fallback={<SkeletonCoverGrid count={10} />}
           >
             <LibraryGrid
               userId={user.id}
+              itemType={itemType}
               status={status}
               search={search}
               sort={sort}

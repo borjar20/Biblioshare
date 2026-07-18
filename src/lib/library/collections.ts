@@ -84,6 +84,30 @@ export async function listCollections(
   return cards;
 }
 
+// Colecciones (del dueño) que YA contienen este ítem — para premarcar los
+// checkboxes de la hoja «Añadir a colección» (frame D, Task 3 S2). Filtra por
+// `item_type`/`item_id` y comprueba el `user_id` de la colección embebida:
+// la RLS de `collection_items` ya restringe a las colecciones propias, esto
+// es la "doble red" del mismo criterio que `getCollection` usa arriba.
+export async function getCollectionsForItem(
+  supabase: SupabaseServerClient,
+  userId: string,
+  itemType: ItemType,
+  itemId: string,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("collection_items")
+    .select("collection_id, collections!inner(user_id)")
+    .eq("item_type", itemType)
+    .eq("item_id", itemId);
+  if (error) throw error;
+  return new Set(
+    (data ?? [])
+      .filter((r) => r.collections?.user_id === userId)
+      .map((r) => r.collection_id),
+  );
+}
+
 export type CollectionDetail = {
   id: string;
   name: string;

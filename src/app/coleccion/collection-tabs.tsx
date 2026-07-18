@@ -17,7 +17,10 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
   const t = await getTranslations("collection.tabs");
 
   return (
-    <div className="flex gap-6 overflow-x-auto border-b border-border">
+    // Sin `overflow-x-auto`: con solo dos subpestañas siempre caben, y ese
+    // overflow forzaba también `overflow-y:auto` (regla del spec), que sacaba
+    // una barra de scroll fantasma al desbordar el borde inferior 1px.
+    <div className="flex gap-6 border-b border-border">
       {COLLECTION_TABS.map((tab) => {
         const href = tab === "colecciones" ? "/coleccion" : `/coleccion?tab=${tab}`;
         const isActive = tab === active;

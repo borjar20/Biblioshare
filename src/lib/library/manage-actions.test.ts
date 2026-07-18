@@ -28,8 +28,15 @@ type WatchRow = {
   episode_number: number;
   pass_id: string | null;
 };
+// collection_items: la RLS real gatea por dueño del padre; el fake solo borra
+// por (item_type, item_id) — que es como lo hace removeFromLibrary.
+type CollectionItemRow = { collection_id: string; item_type: string; item_id: string };
 
-function makeFakeSupabase(state: { passes: PassRow[]; watches: WatchRow[] }) {
+function makeFakeSupabase(state: {
+  passes: PassRow[];
+  watches: WatchRow[];
+  collectionItems: CollectionItemRow[];
+}) {
   function deleteBuilder(execute: (filters: Record<string, unknown>) => { error: unknown }) {
     const filters: Record<string, unknown> = {};
     const builder = {
@@ -103,12 +110,27 @@ function makeFakeSupabase(state: { passes: PassRow[]; watches: WatchRow[] }) {
             }),
         };
       }
+      if (table === "collection_items") {
+        return {
+          delete: () =>
+            deleteBuilder((filters) => {
+              state.collectionItems = state.collectionItems.filter(
+                (c) => !(c.item_type === filters.item_type && c.item_id === filters.item_id)
+              );
+              return { error: null };
+            }),
+        };
+      }
       throw new Error(`tabla no soportada por el fake: ${table}`);
     },
   };
 }
 
-let dbState: { passes: PassRow[]; watches: WatchRow[] };
+let dbState: {
+  passes: PassRow[];
+  watches: WatchRow[];
+  collectionItems: CollectionItemRow[];
+};
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => makeFakeSupabase(dbState),
@@ -117,7 +139,7 @@ vi.mock("@/lib/supabase/server", () => ({
 describe("removeFromLibrary", () => {
   beforeEach(() => {
     vi.resetModules();
-    dbState = { passes: [], watches: [] };
+    dbState = { passes: [], watches: [], collectionItems: [] };
   });
 
   // Hallazgo de revisión (whole-branch review, Tarea 12): una serie
@@ -166,5 +188,24 @@ describe("removeFromLibrary", () => {
 
     await expect(removeFromLibrary("book", "book-1")).resolves.toBeUndefined();
     expect(dbState.passes).toHaveLength(0);
+  });
+
+  it("quitar de la biblioteca saca el ítem de sus colecciones, sin tocar las de otros ítems", async () => {
+    const { removeFromLibrary } = await import("./manage-actions");
+
+    dbState.passes = [
+      { id: "pass-1", user_id: "user-1", item_type: "book", item_id: "book-1" },
+    ];
+    dbState.collectionItems = [
+      { collection_id: "col-1", item_type: "book", item_id: "book-1" },
+      { collection_id: "col-2", item_type: "book", item_id: "book-1" },
+      { collection_id: "col-1", item_type: "book", item_id: "book-2" }, // otro ítem: se queda
+    ];
+
+    await expect(removeFromLibrary("book", "book-1")).resolves.toBeUndefined();
+    expect(dbState.passes).toHaveLength(0);
+    expect(dbState.collectionItems).toEqual([
+      { collection_id: "col-1", item_type: "book", item_id: "book-2" },
+    ]);
   });
 });
