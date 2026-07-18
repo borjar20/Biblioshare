@@ -304,7 +304,9 @@ test.describe
       timeout: 15_000,
     });
 
-    await page.goto("/coleccion");
+    // La biblioteca completa vive en la pestaña «Todo» (Colección v2); `/coleccion`
+    // a secas abre en «Colecciones» (grid de colecciones), no en la rejilla de ítems.
+    await page.goto("/coleccion?tab=todo");
     await expect(page.getByText("The Old Man and the Sea").first()).toBeVisible(
       { timeout: 15_000 },
     );
