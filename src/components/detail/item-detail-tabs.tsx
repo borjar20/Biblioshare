@@ -56,6 +56,9 @@ export function ItemDetailTabs({
   const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
   if (syncKey !== prevSyncKey) {
     setPrevSyncKey(syncKey);
+    // Los cambios propios (selectTab) ya escribieron el mismo tab en el estado
+    // antes de tocar la URL, así que aquí `next === tab` y el guard lo hace
+    // no-op: la rama solo actúa cuando la URL o el seguido cambian DE FUERA.
     const next = clampDetailTab(urlTab, order);
     if (next !== tab) setTab(next);
   }

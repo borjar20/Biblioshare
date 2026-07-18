@@ -45,8 +45,9 @@ describe("clampDetailTab", () => {
     expect(clampDetailTab("log", notFollowed)).toBe("info");
   });
 
-  it("cae a info con null o un valor desconocido", () => {
+  it("cae a info con null, cadena vacía o un valor desconocido", () => {
     expect(clampDetailTab(null, followed)).toBe("info");
+    expect(clampDetailTab("", followed)).toBe("info");
     expect(clampDetailTab("basura", followed)).toBe("info");
   });
 });
