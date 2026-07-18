@@ -34,11 +34,16 @@ test("Todo filtra por tipo y la hoja añade el ítem a una colección", async ({
 
     // ── Todo con ?type=book: solo libros (hay enlaces /libro, ninguno /pelicula ni /serie) ──
     await page.goto("/coleccion?tab=todo&type=book");
-    await expect(page.getByRole("link", { name: "Libros" })).toBeVisible();
     const firstBook = page.locator('a[href^="/libro/"]').first();
     await expect(firstBook).toBeVisible();
     await expect(page.locator('a[href^="/pelicula/"]')).toHaveCount(0);
     await expect(page.locator('a[href^="/serie/"]')).toHaveCount(0);
+
+    // Los filtros viven en el desplegable «Filtros»: abrirlo muestra la píldora
+    // de tipo activa (el nombre del botón lleva el badge del nº activo).
+    await page.getByRole("button", { name: /^Filtros/ }).click();
+    await expect(page.getByRole("link", { name: "Libros" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
     // El ítem de la primera tarjeta (para verificar en BD después).
     const href = await firstBook.getAttribute("href");

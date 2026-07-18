@@ -4,6 +4,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { SearchIcon } from "@/components/ui/icons";
+import { FiltersDropdown } from "@/components/library/filters-dropdown";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = [
@@ -69,6 +70,20 @@ export async function LibraryFilters({
     return `${basePath}${qs ? `?${qs}` : ""}`;
   }
 
+  // «Limpiar»: conserva la búsqueda (y extraParams como la pestaña), quita
+  // tipo/estado/orden.
+  function clearHref() {
+    const params = new URLSearchParams(extraParams);
+    if (search) params.set("q", search);
+    const qs = params.toString();
+    return `${basePath}${qs ? `?${qs}` : ""}`;
+  }
+
+  const activeCount =
+    (showTypeFilter && itemType ? 1 : 0) +
+    (status ? 1 : 0) +
+    (sort !== "recent" ? 1 : 0);
+
   return (
     <div className="flex flex-col gap-2.5">
       {/* Búsqueda: píldora con la lupa dentro y SIN botón aparte (Enter envía) —
@@ -95,45 +110,70 @@ export async function LibraryFilters({
         />
       </form>
 
-      {showTypeFilter && (
-        <div className="flex flex-wrap gap-1.5">
-          <Link href={buildHref({ type: undefined })} className={pillClass(!itemType)}>
-            {t("library.filters.allTypes")}
-          </Link>
-          {TYPES.map((type) => (
-            <Link key={type} href={buildHref({ type })} className={pillClass(itemType === type)}>
-              {/* Punto de color del tipo (mockup .pill i). */}
-              <span
-                aria-hidden
-                className={`h-1.5 w-1.5 rounded-full ${itemType === type ? "bg-accent-foreground" : MEDIA_ACCENT[type].bg}`}
-              />
-              {t(`search.types.${type}`)}
-            </Link>
-          ))}
-        </div>
-      )}
+      {/* Tipo · estado · orden plegados en un desplegable «Filtros» (igual que el
+          detalle de colección). Los controles son enlaces: el filtrado de Todo
+          es server-side por la URL (getLibraryItems). */}
+      <FiltersDropdown label={t("collection.filters")} activeCount={activeCount}>
+        {showTypeFilter && (
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+              {t("collection.filterType")}
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              <Link href={buildHref({ type: undefined })} className={pillClass(!itemType)}>
+                {t("library.filters.allTypes")}
+              </Link>
+              {TYPES.map((type) => (
+                <Link key={type} href={buildHref({ type })} className={pillClass(itemType === type)}>
+                  <span
+                    aria-hidden
+                    className={`h-1.5 w-1.5 rounded-full ${itemType === type ? "bg-accent-foreground" : MEDIA_ACCENT[type].bg}`}
+                  />
+                  {t(`search.types.${type}`)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* Estado (izquierda) + Orden (derecha) en UNA fila de segmentos menudos.
-          En móvil estrecho, el orden se pliega debajo. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <div className="flex flex-wrap items-center gap-0.5">
-          <Link href={buildHref({ status: undefined })} className={segClass(!status)}>
-            {t("library.filters.allStatuses")}
+        <div className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            {t("collection.filterStatus")}
+          </span>
+          <div className="flex flex-wrap items-center gap-0.5">
+            <Link href={buildHref({ status: undefined })} className={segClass(!status)}>
+              {t("library.filters.allStatuses")}
+            </Link>
+            {STATUSES.map((s) => (
+              <Link key={s} href={buildHref({ status: s })} className={segClass(status === s)}>
+                {t(`library.status.${s}`)}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            {t("collection.filterSort")}
+          </span>
+          <div className="flex flex-wrap items-center gap-0.5">
+            {SORTS.map((s) => (
+              <Link key={s} href={buildHref({ sort: s })} className={segClass(sort === s)}>
+                {t(`library.sort.${s}`)}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {activeCount > 0 && (
+          <Link
+            href={clearHref()}
+            className="self-start text-[11px] font-medium text-accent hover:underline"
+          >
+            {t("collection.clearFilters")}
           </Link>
-          {STATUSES.map((s) => (
-            <Link key={s} href={buildHref({ status: s })} className={segClass(status === s)}>
-              {t(`library.status.${s}`)}
-            </Link>
-          ))}
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-0.5">
-          {SORTS.map((s) => (
-            <Link key={s} href={buildHref({ sort: s })} className={segClass(sort === s)}>
-              {t(`library.sort.${s}`)}
-            </Link>
-          ))}
-        </div>
-      </div>
+        )}
+      </FiltersDropdown>
     </div>
   );
 }
