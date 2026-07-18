@@ -4,9 +4,12 @@ import { useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-
-type TabId = "info" | "episodes" | "community" | "log";
-const VALID_TABS: readonly string[] = ["info", "episodes", "community", "log"];
+import { useItemStatus } from "./item-status-context";
+import {
+  detailTabOrder,
+  clampDetailTab,
+  type DetailTabId,
+} from "./tab-visibility";
 
 // Client tab switcher for the item detail page. Slots are server-rendered on
 // the page and handed in as props, so data fetching stays on the server.
@@ -22,7 +25,7 @@ export function ItemDetailTabs({
   log,
 }: {
   itemType: ItemType;
-  labels: Partial<Record<TabId, string>>;
+  labels: Partial<Record<DetailTabId, string>>;
   info: ReactNode;
   episodes?: ReactNode;
   community: ReactNode;
@@ -32,29 +35,40 @@ export function ItemDetailTabs({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlTab = searchParams.get("tab");
-  const initialTab: TabId =
-    urlTab && VALID_TABS.includes(urlTab) ? (urlTab as TabId) : "info";
-  const [tab, setTab] = useState<TabId>(initialTab);
 
-  // Sigue los cambios de `?tab=` que llegan de FUERA (p. ej. el menú ⋯ del
-  // hero navega a ?tab=info&editar=ficha con la página ya montada). Ajuste
-  // durante el render, no un efecto — mismo patrón que el resto de la app.
-  // Los cambios propios (selectTab) escriben la misma URL que acaban de
-  // poner en el estado, así que aquí no re-disparan nada.
-  const [prevUrlTab, setPrevUrlTab] = useState(urlTab);
-  if (urlTab !== prevUrlTab) {
-    setPrevUrlTab(urlTab);
-    const next: TabId =
-      urlTab && VALID_TABS.includes(urlTab) ? (urlTab as TabId) : "info";
+  // Fuente única del "seguido o no": el mismo contexto que pinta el badge del
+  // hero. followed=false esconde la pestaña "log" (Mi registro).
+  const { status } = useItemStatus();
+  const followed = status !== null;
+  const order = detailTabOrder(Boolean(episodes), followed);
+
+  const [tab, setTab] = useState<DetailTabId>(() =>
+    clampDetailTab(urlTab, order),
+  );
+
+  // Re-sincroniza la pestaña activa cuando cambia la ?tab= de FUERA (deep link,
+  // o el ?tab=log que pone el botón "Seguir" del hero) O cuando cambia el estado
+  // de seguido. La clave combinada evita la carrera: al seguir, `setStatus` y
+  // `router.replace(?tab=log)` pueden aterrizar en renders distintos; cualquiera
+  // que llegue el segundo re-dispara este ajuste y conmuta a "log" ya con el
+  // order que incluye la pestaña. Ajuste durante el render, no useEffect.
+  const syncKey = `${urlTab ?? ""}|${followed}`;
+  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey);
+    const next = clampDetailTab(urlTab, order);
     if (next !== tab) setTab(next);
   }
-  const accent = MEDIA_ACCENT[itemType];
-  const order: TabId[] = episodes
-    ? ["info", "episodes", "community", "log"]
-    : ["info", "community", "log"];
-  const slots: Record<TabId, ReactNode> = { info, episodes, community, log };
 
-  function selectTab(id: TabId) {
+  const accent = MEDIA_ACCENT[itemType];
+  const slots: Record<DetailTabId, ReactNode> = {
+    info,
+    episodes,
+    community,
+    log,
+  };
+
+  function selectTab(id: DetailTabId) {
     setTab(id);
     const params = new URLSearchParams(searchParams.toString());
     if (id === "info") params.delete("tab");
