@@ -12,7 +12,7 @@
 
 - **NO es el Next.js de tu training:** lee `node_modules/next/dist/docs/` si dudas.
 - **Sin migración nueva.** Las acciones ya existen en `src/lib/library/collection-actions.ts` (S1): `createCollection`, `renameCollection`, `deleteCollection`, `addItemToCollections`. Falta cablearlas + `setItemCollections`.
-- **DECISIÓN DE DISEÑO (ítems sin pase) — pendiente de confirmar por el usuario:** la hoja «Añadir a colección» permite añadir CUALQUIER título. Un `collection_item` puede no tener pase activo. **Default de este plan:** `getCollection` incluye los ítems sin pase (portada + título del catálogo, **sin** dot de estado ni nota), y el recuento del grid deja de descuadrar con el detalle. *(Alternativa si se veta: restringir «Añadir» a ítems ya en biblioteca; entonces no hay ítems sin pase y el descuadre no existe.)*
+- **DECISIÓN DE DISEÑO (ítems sin pase) — RESUELTA 2026-07-18: SOLO ÍTEMS DE BIBLIOTECA.** Una colección solo contiene títulos que trackeas (con pase activo). La hoja «Añadir a colección» solo aparece/opera sobre ítems de biblioteca (calca la maqueta B, donde todos llevan estado). Consecuencia: `getCollection` (que ya descarta sin-pase) queda **correcto sin tocar**, y el descuadre de recuento se evita por construcción. Para no dejar huérfanos, **quitar un ítem de la biblioteca borra sus `collection_items`** (Task 1).
 - **NO botones muertos**: todo lo que se pinte debe funcionar.
 - Nota decimal en español (coma): «4,3».
 - **Verificación**: `tsc`/`eslint` limpios; Playwright e2e (Node 22) + navegador (claro/oscuro, 400 y 1280). Regla de los dos árboles: `:visible` si hay duplicado móvil/PC.
@@ -20,24 +20,35 @@
 
 ---
 
-### Task 1: `getCollection` incluye ítems sin pase (resuelve deuda de S1)
+### Task 1: sin huérfanos — quitar de la biblioteca borra los `collection_items`
+
+Bajo la decisión «solo ítems de biblioteca», el descuadre de recuento (deuda de S1) solo puede surgir si un ítem que estaba en una colección se quita luego de la biblioteca. Se ataja en el origen: `removeFromLibrary` borra también los `collection_items` de ese ítem. Así `getCollection` (que descarta sin-pase) nunca se queda corto frente al recuento del grid, y **no hace falta tocar `collections.ts` ni el detalle**.
 
 **Files:**
-- Modify: `src/lib/library/collections.ts`
-- Modify: `src/components/library/collection-detail.tsx`
+- Modify: `src/lib/library/manage-actions.ts` (`removeFromLibrary`, ~línea 51)
 
 **Interfaces:**
-- Produces: `getCollection` devuelve `items` que incluyen los `collection_items` sin pase activo. Nuevo tipo `CollectionItemView` (o `LibraryItem` con `status: MediaStatus | null`).
+- Consumes: RLS de `collection_items` (gatea al dueño del padre).
+- Produces: al quitar un ítem de la biblioteca, desaparece de todas las colecciones del usuario.
 
-- [ ] **Step 1:** Definir el shape. `CollectionItemView = { itemType, itemId, title, coverUrl, subtitle, status: MediaStatus | null, rating: number | null, position, pageCount, totalEpisodes, entryId: string | null }`. Los campos derivados del pase (`status`, `rating`, `entryId`) son `null` cuando no hay pase activo.
+- [ ] **Step 1:** En `removeFromLibrary`, tras borrar los pases, añadir:
 
-- [ ] **Step 2:** En `collections.ts`, `getCollection` deja de apoyarse en `hydrateItems` (que descarta sin-pase) para el catálogo: resuelve el catálogo de TODOS los `collection_items` (patrón `coversFor`/catálogo por tipo, ya presente) y superpone el pase activo + rating **cuando existe**. `avgRating` = media de los que tienen `rating`.
+```ts
+  // Al salir de la biblioteca, el ítem sale de todas las colecciones del usuario
+  // (mantiene el recuento del grid cuadrado con el detalle, que solo pinta
+  // ítems con pase). La RLS de collection_items ya restringe a las colecciones
+  // propias, así que basta filtrar por (item_type, item_id).
+  const { error: colError } = await supabase
+    .from("collection_items")
+    .delete()
+    .eq("item_type", itemType)
+    .eq("item_id", itemId);
+  if (colError) throw colError;
+```
 
-- [ ] **Step 3:** En `collection-detail.tsx`, renderizar `CollectionItemView`. Para ítems con `status`, el badge píldora como hoy; para `status === null`, la portada + título **sin** dot (o con un neutro «No en tu biblioteca» si se quiere señalar). No usar `LibraryItemCard` si su contrato exige `status` no-nulo — extraer una tarjeta ligera o pasar `status` opcional.
+- [ ] **Step 2:** Verificar: `tsc`/`eslint`; e2e (añadir un ítem a una colección, quitarlo de la biblioteca, y comprobar en BD que ya no está en `collection_items`; el grid ya no lo cuenta).
 
-- [ ] **Step 4:** Verificar: `tsc`/`eslint`; e2e/nav (una colección con un ítem trackeado y otro sin pase muestra los dos; el recuento del grid coincide con el nº en el detalle).
-
-- [ ] **Step 5:** Commit: `fix(coleccion): el detalle muestra también ítems sin pase (cuadra recuento con el grid)`.
+- [ ] **Step 3:** Commit: `fix(coleccion): quitar un ítem de la biblioteca lo saca de sus colecciones`.
 
 ---
 
@@ -126,5 +137,6 @@
 
 ## Notas de ejecución
 - **Sin gate de migración** (no hay DDL nueva).
-- La **Task 1 es prerequisito** de la 3 (la hoja puede añadir ítems sin pase, que el detalle debe mostrar). Orden: 1 → 2 → 3 → 4 → 5.
+- Decisión «solo ítems de biblioteca»: la hoja «Añadir a colección» (Task 3) solo se dispara desde ítems que están en biblioteca (ficha con pase / tarjeta del grid), así que solo añade ítems con pase. Task 1 cierra el único hueco (quitar de biblioteca después).
+- Tareas independientes; orden sugerido 1 → 2 → 3 → 4 → 5.
 - Revisión final de rama (opus) antes del PR, como en S1.
