@@ -9,7 +9,7 @@ import { ClubForm } from "./club-form";
 import { ClubCoverBand } from "./club-cover";
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/ui/action-menu";
-import { LockIcon, ChevronLeftIcon, CheckIcon, PencilIcon } from "@/components/ui/icons";
+import { LockIcon, ChevronLeftIcon, ChevronRightIcon, CheckIcon, PencilIcon } from "@/components/ui/icons";
 
 type ClubDetail = NonNullable<Awaited<ReturnType<typeof getClub>>>;
 
@@ -123,7 +123,19 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
                 {" · "}
               </>
             )}
-            {t("memberCount", { count: club.memberCount })}
+            {/* El recuento enlaza al directorio de miembros (§2.5-bis), pero solo
+                para miembros: el roster es members-only (la RLS lo gatea). */}
+            {isMember ? (
+              <Link
+                href={`/club/${club.slug}/miembros`}
+                className="inline-flex items-center gap-0.5 text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground"
+              >
+                {t("memberCount", { count: club.memberCount })}
+                <ChevronRightIcon className="h-3 w-3" />
+              </Link>
+            ) : (
+              t("memberCount", { count: club.memberCount })
+            )}
           </span>
         </div>
 
