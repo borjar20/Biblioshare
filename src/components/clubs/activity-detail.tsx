@@ -160,7 +160,7 @@ export function ActivityDetailView({
   // tras un teaser bloqueado y la única acción posible es unirse, en una
   // barra inferior fija en vez de mezclarse con la barra de acciones de
   // participantes/moderadores.
-  if (status === "active" && !isParticipant) {
+  if (status === "active" && !isParticipant && !isModerator && !isCreator) {
     return (
       <div className="flex flex-col gap-4">
         {/* Topbar del frame 4: «‹» + nombre del club, en vez de un enlace de texto. */}
