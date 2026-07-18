@@ -8,6 +8,7 @@ import {
   activateActivity,
   archiveActivity,
   finishActivity,
+  joinActivity,
   leaveActivity,
   type ActivityDetail,
 } from "@/lib/clubs/activities/core";
@@ -20,6 +21,30 @@ import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ChevronLeftIcon } from "@/components/ui/icons";
+
+const MONTHS = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+];
+
+// `2026-07-18` → "18 jul". Se parte la cadena a mano en vez de new Date(): un
+// `date` de Postgres no tiene zona horaria y pasarlo por Date lo interpreta
+// como UTC, pudiendo retroceder un día según la zona del navegador (mismo
+// patrón que formatDue en club-summary.tsx).
+function formatStartsOn(iso: string): string {
+  const [, month, day] = iso.split("-");
+  return `${day} ${MONTHS[Number(month) - 1] ?? ""}`.trim();
+}
 
 export function ActivityDetailView({
   activity,
@@ -126,6 +151,145 @@ export function ActivityDetailView({
             onChanged={refreshActivity}
           />
         )}
+      </div>
+    );
+  }
+
+  // Vista previa para no-participantes de una actividad activa (frame B): la
+  // misma cabecera y el tablero (de solo lectura por RLS), pero el chat queda
+  // tras un teaser bloqueado y la única acción posible es unirse, en una
+  // barra inferior fija en vez de mezclarse con la barra de acciones de
+  // participantes/moderadores.
+  if (status === "active" && !isParticipant) {
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Topbar del frame 4: «‹» + nombre del club, en vez de un enlace de texto. */}
+        <div className="flex items-center gap-2.5">
+          <Link
+            href={`/club/${clubSlug}`}
+            aria-label={t("backToClub")}
+            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </Link>
+          <span className="truncate font-serif text-sm font-semibold text-foreground">
+            {clubName}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {/* El chip identifica tipo y estado de un vistazo, con el color del
+              tipo — el mismo lenguaje que las tarjetas de la lista. */}
+          <span
+            className={`inline-flex w-fit items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
+          >
+            <span aria-hidden className={`h-1.5 w-1.5 rounded-[2px] ${accent.bar}`} />
+            {t(`kind_${activity.kind}`)} · {t(`status_${status}`)}
+          </span>
+
+          <h1 className="font-serif text-[23px] leading-tight font-semibold text-foreground">
+            {activity.title}
+          </h1>
+
+          {activity.description && (
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
+              {activity.description}
+            </p>
+          )}
+        </div>
+
+        {/* Quién participa: igual que en la vista de participante, sin la
+            fila de acciones que solo tiene sentido dentro de la actividad. */}
+        <div className="flex items-center gap-3">
+          {activity.participants.length > 0 && (
+            <span className="flex" aria-hidden>
+              {activity.participants.map((participant) => (
+                <span
+                  key={participant.userId}
+                  className="-ml-2 rounded-full ring-2 ring-background first:ml-0"
+                >
+                  <UserAvatar
+                    name={participant.displayName || participant.username}
+                    avatarUrl={participant.avatarUrl}
+                    size={28}
+                  />
+                </span>
+              ))}
+              {overflow > 0 && (
+                <span className="-ml-2 grid h-7 w-7 place-items-center rounded-full bg-surface-muted font-mono text-[10px] text-muted-foreground ring-2 ring-background">
+                  +{overflow}
+                </span>
+              )}
+            </span>
+          )}
+
+          <span className="text-xs text-muted-foreground">
+            {t("participate", { count: activity.participantCount })}
+          </span>
+        </div>
+
+        {error && <p className="text-xs text-status-dropped">{error}</p>}
+
+        {/* Tablero del tipo: solo lectura para no-participantes, respaldado
+            por RLS (no por esta vista) -- cada DetailExtension ya gestiona su
+            propio "únete para ver" donde aplica (listChallengeJoinToSee,
+            criteriaJoinToSee). */}
+        {DetailExtension && (
+          <DetailExtension
+            activity={activity}
+            viewerId={viewerId}
+            isModerator={isModerator}
+            onChanged={refreshActivity}
+          />
+        )}
+
+        {/* Chat bloqueado: un teaser borroso en vez del ActivityChat real,
+            que no participantes no pueden cargar (RLS can_view_target =
+            is_activity_participant). */}
+        <div className="relative overflow-hidden rounded-card border border-dashed border-border">
+          <div className="pointer-events-none p-4 opacity-50 blur-[3px]" aria-hidden>
+            <p className="font-mono text-[9.5px] tracking-wide text-green uppercase">
+              ◎ {t("activityChat")}
+            </p>
+          </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface/55 px-6 text-center">
+            <span aria-hidden className="text-lg">
+              ◎
+            </span>
+            <p className="font-serif text-[15px] font-semibold text-foreground">
+              {t("joinTeaserTitle")}
+            </p>
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              {t("joinTeaserBody")}
+            </p>
+          </div>
+        </div>
+
+        {/* Barra inferior fija: única acción posible para quien no participa.
+            Reemplaza el join que antes vivía en la barra de acciones (Task 4
+            la reserva a participantes/moderadores). */}
+        <div
+          className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-border bg-background/90 px-4 py-3 backdrop-blur lg:-mx-8 lg:px-8"
+          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="flex-1">
+            {activity.startsOn && (
+              <p className="font-serif text-[13px] font-semibold text-foreground">
+                {t("startsOnLabel", { date: formatStartsOn(activity.startsOn) })}
+              </p>
+            )}
+            <p className="text-[10.5px] text-muted-foreground">{t("previewLeaveHint")}</p>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            className="px-5 py-3"
+            disabled={isPending}
+            onClick={() => run(() => joinActivity(activity.id))}
+          >
+            {t("joinCta")}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -258,15 +422,6 @@ export function ActivityDetailView({
             </div>
           )}
         </div>
-      )}
-
-      {/* Aviso antes de unirse (cierra Q5 y Q8 del backlog): unirse añade los
-          ítems del pool a tu biblioteca como pendientes y comparte tu progreso
-          con los participantes, aunque tu perfil sea privado fuera. */}
-      {status === "active" && !isParticipant && activity.items.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {t("joinDisclosure", { count: activity.items.length })}
-        </p>
       )}
 
       {DetailExtension && (
