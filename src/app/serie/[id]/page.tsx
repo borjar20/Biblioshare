@@ -25,10 +25,8 @@ import {
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
-import {
-  ItemStatusProvider,
-  StatusBadgeLive,
-} from "@/components/detail/item-status-context";
+import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
@@ -204,7 +202,14 @@ export default async function SeriesDetailPage({
         avgRating={community.avgRating}
         ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
         backLabel={tDetail("back")}
-        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        statusSlot={
+          <HeroStatusOrFollow
+            itemType="series"
+            itemId={series.id}
+            isLoggedIn={Boolean(user)}
+            statusLabels={statusLabels}
+          />
+        }
         menuSlot={
           <HeroMenu
             itemType="series"
@@ -215,6 +220,8 @@ export default async function SeriesDetailPage({
         railActions={
           <ItemRailActions
             itemType="series"
+            itemId={series.id}
+            isLoggedIn={Boolean(user)}
             labels={railLabels}
             progress={railProgress}
             rating={activePass?.rating ?? null}

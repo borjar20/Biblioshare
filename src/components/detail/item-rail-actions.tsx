@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
+import { Button } from "@/components/ui/button";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "@/components/detail/item-status-context";
+import { useFollow } from "@/components/detail/use-follow";
 
 const STATUS_DOT_CLASSES: Record<MediaStatus, string> = {
   planned: "bg-status-planned",
@@ -31,6 +34,8 @@ const STATUS_DOT_CLASSES: Record<MediaStatus, string> = {
 // Registro en el mismo commit optimista: son dos vistas del mismo estado (P7).
 export function ItemRailActions({
   itemType,
+  itemId,
+  isLoggedIn,
   labels,
   progress,
   rating,
@@ -40,6 +45,8 @@ export function ItemRailActions({
   goToLogLabel,
 }: {
   itemType: ItemType;
+  itemId: string;
+  isLoggedIn: boolean;
   /** Verbo por tipo de medio, sin el prefijo del móvil ("Leyendo"). */
   labels: Record<MediaStatus, string>;
   /** Solo donde hay cursor: la película no lleva barra (frame 12). */
@@ -51,13 +58,27 @@ export function ItemRailActions({
   ratingLabel: string;
   goToLogLabel: string;
 }) {
+  const t = useTranslations("item");
   const { status } = useItemStatus();
   const pathname = usePathname();
   const accent = MEDIA_ACCENT[itemType];
+  const { follow, isPending } = useFollow(itemType, itemId, isLoggedIn);
 
-  // Sin pase activo la obra no está en la biblioteca: el rail se queda con la
-  // portada sola y "Seguir" sigue siendo cosa de Registro.
-  if (!status) return null;
+  // Sin pase activo la obra no está en la biblioteca: el rail enseña "Seguir",
+  // la cara de PC del botón que el hero pinta en móvil (misma acción, useFollow).
+  // El hero es lg:hidden, así que sin esto en PC no habría forma de seguir.
+  if (!status) {
+    return (
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={follow}
+        className="w-full"
+      >
+        {isPending ? t("following") : t("follow")}
+      </Button>
+    );
+  }
 
   return (
     <>

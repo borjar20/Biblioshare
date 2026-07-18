@@ -159,19 +159,12 @@ function diaryEntry(page: Page, itemType: "book" | "series", n: number) {
   return page.getByTestId("diary-entry").filter({ hasText: ordinal });
 }
 
-// "Seguir": con una sola edición (o ninguna) añade directo; con varias abre
-// el selector "¿Qué edición tienes?" (FollowButton en log-panel.tsx) y hay
-// que elegir una salida — "No lo sé" es la legítima para no atarnos a que el
-// catálogo de una obra real tenga siempre 0/1 ediciones.
+// "Seguir" ahora vive en el HERO (visible desde cualquier pestaña), no dentro
+// de la pestaña Mi registro. Ya no abre el selector de edición: la edición se
+// difiere a cuando se empieza a leer (panel Progreso). Tras seguir, la app
+// revela "Mi registro" y salta a ella.
 async function followItem(page: Page) {
   await page.getByRole("button", { name: "Seguir" }).click();
-  const unknownEdition = page.getByRole("button", { name: "No lo sé" });
-  try {
-    await unknownEdition.waitFor({ state: "visible", timeout: 3_000 });
-    await unknownEdition.click();
-  } catch {
-    // Sin selector de edición: ya se siguió directamente.
-  }
 }
 
 // applyTransition marca `closed` tanto para "completed" como para "dropped"
@@ -294,15 +287,23 @@ test.describe
       "The Old Man and the Sea",
     );
 
+    // Deep link a ?tab=log de un ítem AÚN no seguido: la pestaña "Mi registro"
+    // no existe todavía, así que la ficha cae en "Información".
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});
-    await followItem(page);
+    await expect(
+      page.getByRole("button", { name: "Mi registro" }),
+    ).toHaveCount(0);
 
-    // La ficha refleja el alta sin recargar (la server action revalida el
-    // árbol de Server Components) y la colección lo lista.
+    // "Seguir" es accesible en el hero. Al seguir, la obra pasa a Pendiente y
+    // aparece la pestaña "Mi registro".
+    await followItem(page);
     await expect(statusBadge(page, "Pendiente")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(
+      page.getByRole("button", { name: "Mi registro" }),
+    ).toBeVisible({ timeout: 15_000 });
 
     // La biblioteca completa vive en la pestaña «Todo» (Colección v2); `/coleccion`
     // a secas abre en «Colecciones» (grid de colecciones), no en la rejilla de ítems.

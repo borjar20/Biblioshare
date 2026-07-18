@@ -12,9 +12,10 @@ import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 //
 // "Seguir" = crear el pase activo en planned vía la máquina (applyTransition):
 // si ya había pase activo, la transición es un no-op (idempotente, el 23505
-// de antes). La edición elegida AL SEGUIR sigue viajando por localStorage
-// (ver FollowButton en log-panel.tsx / editionChoiceStorageKey) y se aplica
-// sola con setPassEdition en cuanto se abre el primer pase del ítem.
+// de antes). El disparador vive en el hero (HeroStatusOrFollow) y en el rail de
+// PC (ItemRailActions), ambos vía el hook useFollow. Ya no se pregunta la
+// edición al seguir: se difiere al empezar a leer (panel Progreso), así que este
+// alta no arrastra ninguna elección de edición.
 export async function addExistingItemToLibrary(
   itemType: ItemType,
   itemId: string,

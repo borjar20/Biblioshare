@@ -28,10 +28,8 @@ import {
 import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
-import {
-  ItemStatusProvider,
-  StatusBadgeLive,
-} from "@/components/detail/item-status-context";
+import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
@@ -205,7 +203,14 @@ export default async function BookDetailPage({
         avgRating={community.avgRating}
         ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
         backLabel={tDetail("back")}
-        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        statusSlot={
+          <HeroStatusOrFollow
+            itemType="book"
+            itemId={book.id}
+            isLoggedIn={Boolean(user)}
+            statusLabels={statusLabels}
+          />
+        }
         menuSlot={
           <HeroMenu
             itemType="book"
@@ -216,6 +221,8 @@ export default async function BookDetailPage({
         railActions={
           <ItemRailActions
             itemType="book"
+            itemId={book.id}
+            isLoggedIn={Boolean(user)}
             labels={railLabels}
             progress={railProgress}
             rating={activePass?.rating ?? null}
