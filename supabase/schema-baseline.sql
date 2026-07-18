@@ -6316,3 +6316,47 @@ alter table public.profiles
   drop column annual_goal_books,
   drop column annual_goal_movies,
   drop column annual_goal_series;
+
+
+-- 20260718092053 20260718_activity_chat_target_enum  (fichero: 20260718_activity_chat_target.sql, parte 1/2)
+-- 20260718092105 20260718_activity_chat_target_can_view  (fichero: 20260718_activity_chat_target.sql, parte 2/2)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Chat general de actividad (cambios de actividades): las actividades se vuelven
+-- comentables/reaccionables reutilizando el sistema de interacciones (Bloque
+-- B/F), con un target nuevo 'club_activity', gateado a participantes. Aplicada en
+-- prod como DOS migraciones (el valor de enum debe estar committeado antes de que
+-- can_view_target lo use, 55P04); el fichero del repo lo une con el idiom del
+-- `commit;`. can_view_target se recrea desde su definición VIGENTE (diary_entry→
+-- passes tras el hub), no desde 20260713.
+alter type public.target_kind add value if not exists 'club_activity';
+
+create or replace function public.can_view_target(p_target_type public.target_kind, p_target_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select case p_target_type
+    when 'diary_entry' then exists (
+      select 1 from public.passes d where d.id = p_target_id and public.can_view_profile(d.user_id)
+    )
+    when 'episode_watch' then exists (
+      select 1 from public.episode_watches e where e.id = p_target_id and public.can_view_profile(e.user_id)
+    )
+    when 'club_post' then exists (
+      select 1 from public.club_posts cp where cp.id = p_target_id and public.is_club_member(cp.club_id)
+    )
+    when 'comment' then exists (
+      select 1 from public.comments c where c.id = p_target_id
+        and public.can_view_target(c.target_type, c.target_id)
+    )
+    when 'activity_checkpoint' then exists (
+      select 1 from public.club_activity_checkpoints cc
+      where cc.id = p_target_id
+        and public.is_activity_participant(cc.activity_id)
+        and public.has_reached_checkpoint(cc.id)
+    )
+    when 'club_activity' then public.is_activity_participant(p_target_id)
+  end;
+$$;

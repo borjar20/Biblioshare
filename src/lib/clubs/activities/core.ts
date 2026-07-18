@@ -5,6 +5,7 @@ import { notifyClub } from "./notify-club";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
+import { getInteractionSummary, type InteractionSummary } from "@/lib/social/interactions";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -49,18 +50,6 @@ export type ActivityItem = {
   position: number;
 };
 
-export type ActivityOpinion = {
-  userId: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  itemType: ItemType;
-  itemId: string;
-  rating: number | null;
-  comment: string | null;
-  createdAt: string;
-};
-
 export type ActivityParticipant = {
   userId: string;
   username: string;
@@ -70,9 +59,10 @@ export type ActivityParticipant = {
 
 export type ActivityDetail = ClubActivity & {
   items: ActivityItem[];
-  opinions: ActivityOpinion[]; // vacío si el viewer no es participante -- RLS ya lo filtra
   /** Muestra para el stack de avatares (máx. 4); el total está en participantCount. */
   participants: ActivityParticipant[];
+  /** Chat general de la actividad (vacío/oculto en buddy_read). RLS lo filtra a participantes. */
+  chat: InteractionSummary;
 };
 
 export async function proposeActivity(
@@ -202,31 +192,6 @@ export async function removeActivityItem(itemId: string): Promise<void> {
   revalidateClubPages();
 }
 
-export async function addOpinion(
-  activityId: string,
-  itemType: ItemType,
-  itemId: string,
-  rating?: number,
-  comment?: string,
-): Promise<void> {
-  const { supabase, userId } = await requireUser();
-  const trimmedComment = comment?.trim() || null;
-  if (rating == null && !trimmedComment) throw new Error("rating_or_comment_required");
-  const { error } = await supabase.from("club_activity_opinions").upsert(
-    {
-      activity_id: activityId,
-      user_id: userId,
-      item_type: itemType,
-      item_id: itemId,
-      rating: rating ?? null,
-      comment: trimmedComment,
-    },
-    { onConflict: "activity_id,user_id,item_type,item_id" },
-  );
-  if (error) throw error;
-  revalidateClubPages();
-}
-
 export async function listClubActivities(clubId: string): Promise<ClubActivity[]> {
   const { supabase, userId } = await requireUser();
   const { data: rows, error } = await supabase
@@ -350,50 +315,20 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     })
     .filter((i): i is ActivityItem => i !== null);
 
-  // Opiniones: RLS ya las filtra a solo-participantes -- si el viewer no es participante,
-  // esta query simplemente devuelve 0 filas, sin necesitar un chequeo aparte aquí.
-  const { data: opinionRows } = await supabase
-    .from("club_activity_opinions")
-    .select("user_id, item_type, item_id, rating, comment, created_at")
-    .eq("activity_id", activityId);
-
-  const opinionAuthorIds = [...new Set((opinionRows ?? []).map((o) => o.user_id))];
-  const { data: authors } = opinionAuthorIds.length
-    ? await supabase
-        .from("profile_identities")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", opinionAuthorIds)
-    : {
-        data: [] as {
-          user_id: string | null;
-          username: string | null;
-          display_name: string | null;
-          avatar_url: string | null;
-        }[],
-      };
-  const authorById = new Map(
-    (authors ?? [])
-      .filter((a): a is typeof a & { user_id: string; username: string } => a.user_id != null && a.username != null)
-      .map((a) => [a.user_id, a]),
-  );
-
-  const opinions: ActivityOpinion[] = (opinionRows ?? [])
-    .map((o): ActivityOpinion | null => {
-      const author = authorById.get(o.user_id);
-      if (!author) return null;
-      return {
-        userId: o.user_id,
-        username: author.username,
-        displayName: author.display_name,
-        avatarUrl: author.avatar_url,
-        itemType: o.item_type as ItemType,
-        itemId: o.item_id,
-        rating: o.rating,
-        comment: o.comment,
-        createdAt: o.created_at,
-      };
-    })
-    .filter((o): o is ActivityOpinion => o !== null);
+  // El chat general no se pinta en buddy_read (que ya tiene sus chats por
+  // checkpoint) -- se evita la consulta y se devuelve el resumen a cero en
+  // vez de pedir un dato que la vista nunca usa.
+  const zeroChat: InteractionSummary = {
+    reactionCount: 0,
+    viewerReacted: false,
+    commentCount: 0,
+    comments: [],
+  };
+  const chat =
+    row.kind === "buddy_read"
+      ? zeroChat
+      : ((await getInteractionSummary(supabase, "club_activity", [activityId])).get(activityId) ??
+        zeroChat);
 
   return {
     id: row.id,
@@ -410,7 +345,7 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     viewerIsParticipant,
     participantCount,
     items,
-    opinions,
     participants,
+    chat,
   };
 }

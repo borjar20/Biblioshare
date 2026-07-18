@@ -87,31 +87,58 @@ export function ClubPostCard({
         )
       )}
 
-      {post.kind === "poll" && post.poll && (
-        <div className="flex flex-col gap-1">
-          {post.poll.options.map((opt) => (
-            <label key={opt.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name={`poll-${post.id}`}
-                checked={selectedOption === opt.id}
-                disabled={post.poll!.isClosed || isPending}
-                onChange={() => handleVote(opt.id)}
-              />
-              <span className="flex-1">{opt.label}</span>
-              {opt.voteCount != null && (
-                <span className="text-xs text-muted-foreground">
-                  {t("pollVotes", { count: opt.voteCount })}
-                </span>
-              )}
-            </label>
-          ))}
-          {!post.poll.resultsVisible && (
-            <p className="text-xs text-muted-foreground">{t("pollResultsHidden")}</p>
-          )}
-          {post.poll.isClosed && <p className="text-xs text-muted-foreground">{t("pollClosed")}</p>}
-        </div>
-      )}
+      {post.kind === "poll" && post.poll && (() => {
+        // Encuesta del frame 2 (.poll): cada opción es una barra con relleno
+        // proporcional (accent al 12%) y su % en mono; la opción votada lleva
+        // borde accent. Radiogroup accesible: una sola elección.
+        const poll = post.poll;
+        const showResults = poll.resultsVisible;
+        const total = poll.options.reduce((sum, o) => sum + (o.voteCount ?? 0), 0);
+        return (
+          <div role="radiogroup" aria-label={t("pollGroupLabel")} className="flex flex-col gap-[7px]">
+            {poll.options.map((opt) => {
+              const isSel = selectedOption === opt.id;
+              const pct =
+                showResults && total > 0
+                  ? Math.round(((opt.voteCount ?? 0) / total) * 100)
+                  : 0;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSel}
+                  disabled={poll.isClosed || isPending}
+                  onClick={() => handleVote(opt.id)}
+                  className={`relative overflow-hidden rounded-lg border px-3 py-2.5 text-left text-[12.5px] transition-colors disabled:cursor-default ${
+                    isSel ? "border-accent" : "border-border hover:bg-surface-muted"
+                  }`}
+                >
+                  {showResults && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-0 left-0 bg-accent/[0.12]"
+                      style={{ width: `${pct}%` }}
+                    />
+                  )}
+                  <span className="relative flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">{opt.label}</span>
+                    {showResults && (
+                      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                        {pct}%
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+            {!showResults && (
+              <p className="text-xs text-muted-foreground">{t("pollResultsHidden")}</p>
+            )}
+            {poll.isClosed && <p className="text-xs text-muted-foreground">{t("pollClosed")}</p>}
+          </div>
+        );
+      })()}
 
       <ReviewInteractions
         targetType="club_post"

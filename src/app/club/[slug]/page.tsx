@@ -1,8 +1,10 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getClub } from "@/lib/clubs/clubs";
+import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
 import { listClubActivities } from "@/lib/clubs/activities/core";
@@ -20,6 +22,12 @@ import {
 import { markClubRead } from "@/lib/clubs/unread";
 import { ClubFeed } from "@/components/clubs/club-feed";
 import { ActivityList } from "@/components/clubs/activity-list";
+import {
+  ClubShell,
+  ClubSidebar,
+  ClubMainHeader,
+} from "@/components/clubs/club-shell";
+import { buttonVariants } from "@/components/ui/button";
 
 export async function generateMetadata({
   params,
@@ -84,52 +92,71 @@ export default async function ClubPage({
     (a) => a.status === "proposed",
   ).length;
 
-  return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
-      <ClubHeader club={club} userId={user.id} />
+  // Sin ser miembro no hay contenido que enseñar: el club existe, pero su
+  // interior es de sus miembros (SD-4). Se queda en la columna centrada; el
+  // shell de escritorio (sidebar + main) es para la vida interna del club.
+  if (!isMember) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
+        <ClubHeader club={club} userId={user.id} />
+      </div>
+    );
+  }
 
-      {/* Sin ser miembro no hay contenido que enseñar: el club existe, pero su
-          interior es de sus miembros (SD-4). */}
-      {isMember && (
+  const tt = await getTranslations("club.tabs");
+
+  return (
+    <ClubShell
+      sidebar={
+        <ClubSidebar
+          club={club}
+          active={tab}
+          canModerate={canModerate}
+          pendingProposals={pendingProposals}
+        />
+      }
+      mobileHeader={
         <>
+          <ClubHeader club={club} userId={user.id} />
           <ClubTabs
             active={tab}
             basePath={`/club/${club.slug}`}
             canModerate={canModerate}
             activityCount={canModerate ? pendingProposals : 0}
           />
-
-          {tab === "feed" && (
-            <Suspense fallback={<ClubContentSkeleton />}>
-              <ClubFeedSection
-                club={club}
-                userId={user.id}
-                activities={activities}
-              />
-            </Suspense>
-          )}
-
-          {tab === "actividades" && (
-            <ActivityList
-              clubId={club.id}
-              clubSlug={club.slug}
-              initialActivities={activities}
-              isModerator={canModerate}
-            />
-          )}
-
-          {tab === "gestion" && canModerate && (
-            <Suspense fallback={<ClubContentSkeleton />}>
-              <ClubManagementSection
-                club={club}
-                userId={user.id}
-                activities={activities}
-              />
-            </Suspense>
-          )}
         </>
+      }
+      desktopHeader={<ClubMainHeader title={tt(tab)} />}
+    >
+      {tab === "feed" && (
+        <Suspense fallback={<ClubContentSkeleton />}>
+          <ClubFeedSection club={club} userId={user.id} activities={activities} />
+        </Suspense>
       )}
-    </div>
+
+      {tab === "actividades" && (
+        <div className="lg:max-w-4xl">
+          <ActivityList
+            clubId={club.id}
+            clubSlug={club.slug}
+            initialActivities={activities}
+            isModerator={canModerate}
+          />
+        </div>
+      )}
+
+      {tab === "gestion" && canModerate && (
+        <div className="lg:max-w-3xl">
+          <Suspense fallback={<ClubContentSkeleton />}>
+            <ClubManagementSection
+              club={club}
+              userId={user.id}
+              activities={activities}
+            />
+          </Suspense>
+        </div>
+      )}
+    </ClubShell>
   );
 }
 
@@ -147,28 +174,51 @@ async function ClubFeedSection({
   userId: string;
   activities: ClubActivities;
 }) {
-  const [initialPage, upcoming] = await Promise.all([
+  const [initialPage, upcoming, viewer, t] = await Promise.all([
     listClubPosts(club.id),
     getUpcomingCheckpoints(club.id),
+    getViewerIdentity(),
+    getTranslations("club"),
   ]);
   // Abrir el feed es haberlo leído: a partir de aquí, las novedades se cuentan
   // desde ahora.
   await markClubRead(club.id);
 
+  // Frame 10: en escritorio el hilo va a la izquierda y el resumen pasa a un
+  // rail derecho sticky. Un solo árbol — el rail se coloca con `order` (el
+  // resumen queda ARRIBA en móvil, como el frame 2, y a la derecha en `lg`).
   return (
-    <>
-      <ClubSummary
-        activities={activities}
-        upcoming={upcoming}
-        clubSlug={club.slug}
-      />
-      <ClubFeed
-        clubId={club.id}
-        viewerId={userId}
-        viewerRole={club.viewerRole!}
-        initialPage={initialPage}
-      />
-    </>
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+      <aside className="flex flex-col gap-5 lg:order-2 lg:sticky lg:top-[96px]">
+        <ClubSummary
+          activities={activities}
+          upcoming={upcoming}
+          clubSlug={club.slug}
+        />
+        <div className="hidden rounded-card border border-border bg-surface p-4 shadow-card lg:block">
+          <h2 className="mb-3 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("directorySectionMembers")} · {club.memberCount}
+          </h2>
+          <Link
+            href={`/club/${club.slug}/miembros`}
+            className={buttonVariants("secondary", "w-full justify-center text-xs")}
+          >
+            {t("seeAllMembers")}
+          </Link>
+        </div>
+      </aside>
+
+      <div className="min-w-0 lg:order-1">
+        <ClubFeed
+          clubId={club.id}
+          viewerId={userId}
+          viewerRole={club.viewerRole!}
+          viewerName={viewer?.name ?? ""}
+          viewerAvatarUrl={viewer?.avatarUrl ?? null}
+          initialPage={initialPage}
+        />
+      </div>
+    </div>
   );
 }
 

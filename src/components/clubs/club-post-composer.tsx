@@ -7,10 +7,20 @@ import { createTextPost, createShareActivityPost, createPoll } from "@/lib/clubs
 import { ActivitySharePicker } from "./activity-share-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UserAvatar } from "@/components/social/user-avatar";
+import { PollIcon, ListCheckIcon } from "@/components/ui/icons";
 
 type Mode = "closed" | "text" | "pick_activity" | "share_activity" | "poll";
 
-export function ClubPostComposer({ clubId }: { clubId: string }) {
+export function ClubPostComposer({
+  clubId,
+  viewerName,
+  viewerAvatarUrl,
+}: {
+  clubId: string;
+  viewerName: string;
+  viewerAvatarUrl: string | null;
+}) {
   const t = useTranslations("clubPost");
   const [mode, setMode] = useState<Mode>("closed");
   const [text, setText] = useState("");
@@ -72,17 +82,37 @@ export function ClubPostComposer({ clubId }: { clubId: string }) {
   }
 
   if (mode === "closed") {
+    // Fila colapsada del frame 2: avatar + disparador de texto + glifos de
+    // encuesta y compartir. El placeholder es un botón (abre el modo texto);
+    // los glifos abren directamente su modo.
     return (
-      <div className="flex gap-2 rounded-card border border-border bg-surface shadow-card p-3">
-        <Button type="button" variant="secondary" onClick={() => setMode("text")}>
-          {t("postText")}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => setMode("pick_activity")}>
-          {t("shareActivity")}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => setMode("poll")}>
-          {t("createPoll")}
-        </Button>
+      <div className="flex items-center gap-2.5 rounded-card border border-border bg-surface p-3 shadow-card">
+        <UserAvatar name={viewerName} avatarUrl={viewerAvatarUrl} size={32} />
+        <button
+          type="button"
+          onClick={() => setMode("text")}
+          className="min-w-0 flex-1 truncate text-left text-sm text-muted-foreground"
+        >
+          {t("composerCollapsed")}
+        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label={t("createPoll")}
+            onClick={() => setMode("poll")}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+          >
+            <PollIcon className="h-[18px] w-[18px]" />
+          </button>
+          <button
+            type="button"
+            aria-label={t("shareActivity")}
+            onClick={() => setMode("pick_activity")}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+          >
+            <ListCheckIcon className="h-[18px] w-[18px]" />
+          </button>
+        </div>
       </div>
     );
   }

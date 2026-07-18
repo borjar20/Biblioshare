@@ -12,11 +12,15 @@ export function ClubFeed({
   clubId,
   viewerId,
   viewerRole,
+  viewerName,
+  viewerAvatarUrl,
   initialPage,
 }: {
   clubId: string;
   viewerId: string;
   viewerRole: "member" | "moderator" | "owner";
+  viewerName: string;
+  viewerAvatarUrl: string | null;
   initialPage: ClubPostsPage;
 }) {
   const t = useTranslations("clubPost");
@@ -54,7 +58,11 @@ export function ClubFeed({
 
   return (
     <div className="flex flex-col gap-4">
-      <ClubPostComposer clubId={clubId} />
+      <ClubPostComposer
+        clubId={clubId}
+        viewerName={viewerName}
+        viewerAvatarUrl={viewerAvatarUrl}
+      />
 
       {posts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>

@@ -425,3 +425,23 @@ export function PencilIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+// Barras verticales: crear una encuesta en el composer del club.
+export function PollIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 20V10M12 20V4M18 20v-7" />
+    </Icon>
+  );
+}
+
+// Tres puntos horizontales: el menú de acciones (⋯ de las maquetas).
+export function EllipsisIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </Icon>
+  );
+}

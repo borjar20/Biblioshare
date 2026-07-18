@@ -37,9 +37,10 @@ test("el feed de club refleja un post nuevo y su borrado sin recargar", async ({
     await page.goto(`/club/${CLUB_SLUG}`);
 
     // ── Publicar un post de texto ──
-    // En estado cerrado, el composer muestra el botón "Publicar" que ABRE el
-    // modo texto; ya abierto, el textarea + un "Publicar" que ENVÍA.
-    await page.getByRole("button", { name: /^publicar$/i }).click();
+    // En estado cerrado, el composer es una fila (avatar + placeholder + glifos):
+    // el placeholder "Comparte algo con el club…" ABRE el modo texto; ya abierto,
+    // el textarea + un "Publicar" que ENVÍA.
+    await page.getByRole("button", { name: /comparte algo con el club/i }).click();
     await page
       .getByPlaceholder(/qué quieres compartir con el club/i)
       .fill(cuerpo);

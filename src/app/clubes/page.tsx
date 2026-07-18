@@ -15,6 +15,7 @@ import { ClubForm } from "@/components/clubs/club-form";
 import { ClubListSkeleton } from "@/components/clubs/club-skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchIcon } from "@/components/ui/icons";
 
 export default function ClubesPage() {
   const t = useTranslations("club");
@@ -58,25 +59,36 @@ export default function ClubesPage() {
   if (!userId) return null;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 lg:max-w-5xl">
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-2xl font-semibold text-foreground">
           {t("navLabel")}
         </h1>
-        <Button type="button" onClick={() => setCreating((v) => !v)}>
-          {t("create")}
+        <Button
+          type="button"
+          className="px-3.5 py-1.5 text-xs"
+          onClick={() => setCreating((v) => !v)}
+        >
+          + {t("create")}
         </Button>
       </div>
 
       {/* El buscador va antes que nada, como en el handoff: buscar un club es
-          la acción más frecuente de quien llega aquí sin uno concreto en mente. */}
-      <Input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t("searchPlaceholder")}
-        className="w-full"
-      />
+          la acción más frecuente de quien llega aquí sin uno concreto en mente.
+          Píldora estilo composer (radio 12px + lupa) como en el frame 1. */}
+      <div className="relative">
+        <SearchIcon
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          className="w-full rounded-xl py-2.5 pl-10"
+        />
+      </div>
 
       {creating && (
         <ClubForm
@@ -100,7 +112,7 @@ export default function ClubesPage() {
         ) : myClubs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
-          <div className="flex flex-col gap-3.5">
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {myClubs.map((club) => (
               <ClubCard
                 key={club.id}
@@ -121,7 +133,7 @@ export default function ClubesPage() {
         ) : discovered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
         ) : (
-          <div className="flex flex-col gap-3.5">
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {discovered.map((club) => (
               <ClubCard key={club.id} club={club} />
             ))}

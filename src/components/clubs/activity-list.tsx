@@ -54,6 +54,7 @@ export function ActivityList({
         proposals={proposed}
         clubSlug={clubSlug}
         canModerate={isModerator}
+        layout="grid"
       />
 
       <Group title={t("groupFinished")}>
@@ -70,6 +71,8 @@ export function ActivityList({
   );
 }
 
+// En escritorio (frame 12) las actividades van en rejilla de 2 columnas por
+// estado; en móvil, una sola columna.
 function Group({ title, children }: { title: string; children: ReactNode[] }) {
   if (children.length === 0) return null;
 
@@ -78,7 +81,7 @@ function Group({ title, children }: { title: string; children: ReactNode[] }) {
       <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
         {title}
       </h2>
-      <div className="flex flex-col gap-2">{children}</div>
+      <div className="grid gap-2 lg:grid-cols-2">{children}</div>
     </section>
   );
 }

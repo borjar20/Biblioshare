@@ -40,6 +40,7 @@ export default async function ActivityPage({
         viewerId={user.id}
         viewerRole={club.viewerRole}
         clubSlug={slug}
+        clubName={club.name}
       />
     </div>
   );

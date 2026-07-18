@@ -323,3 +323,26 @@ export async function resolveUsername(username: string): Promise<string | null> 
     .maybeSingle();
   return data?.user_id ?? null;
 }
+
+export type ViewerIdentity = { name: string; avatarUrl: string | null };
+
+// Identidad del usuario actual (nombre para mostrar + avatar), para pintar su
+// avatar en el composer del feed (frame 2). Devuelve null si no hay sesión o
+// aún no tiene ficha de identidad.
+export async function getViewerIdentity(): Promise<ViewerIdentity | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("profile_identities")
+    .select("username, display_name, avatar_url")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    name: data.display_name ?? data.username ?? "",
+    avatarUrl: data.avatar_url,
+  };
+}
