@@ -337,6 +337,7 @@
     "commentLiked": "A {name} le gustó tu comentario",
     "clubActivityProposed": "{name} propuso una actividad en el club",
     "clubActivityActivated": "{name} activó una actividad en el club",
+    "clubActivitySpawned": "{name} enlazó una actividad nueva en el club",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club"
   },

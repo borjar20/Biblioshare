@@ -13,7 +13,7 @@ export async function notifyClub(
   supabase: Awaited<ReturnType<typeof createClient>>,
   clubId: string,
   actorId: string,
-  type: "club_activity_proposed" | "club_activity_activated",
+  type: "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned",
   activityId: string,
 ): Promise<void> {
   try {
