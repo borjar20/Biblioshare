@@ -129,9 +129,15 @@ test("crea una tierlist al cerrar el reto", async ({ page }) => {
     await page.getByRole("button", { name: "Crear" }).click();
 
     // ── Aterriza en la tierlist hija, activa ──
-    await page.waitForURL(/\/actividad\/[0-9a-f-]+$/i, { timeout: 15_000 });
-    await expect(page.getByText("Tierlist", { exact: false })).toBeVisible();
-    await expect(page.getByText("Activa")).toBeVisible();
+    // Predicado que excluye el padre: su URL también casa /actividad/<uuid>$, y una
+    // regex sola resolvería sin esperar la navegación a la hija (mismo latente que buddy).
+    await page.waitForURL(
+      (url) => /\/actividad\/[0-9a-f-]+$/i.test(url.pathname) && !url.pathname.endsWith(activityId!),
+      { timeout: 15_000 },
+    );
+    // Chip tipo+estado en un solo elemento: texto exacto para no chocar con el h1
+    // ("Tierlist · <título del reto>") ni con el route-announcer de Next.
+    await expect(page.getByText("Tierlist · Activa")).toBeVisible();
 
     const url = page.url();
     childId = url.slice(url.lastIndexOf("/") + 1);
@@ -161,7 +167,11 @@ test("crea una tierlist al cerrar el reto", async ({ page }) => {
     expect(childItemIds).toEqual(books.map((b) => b.id).sort());
 
     // ── Volviendo al reto: oferta única (ya no está) y la hija figura enlazada ──
-    await page.goBack();
+    // Navegación fresca en vez de goBack(): el back del navegador sirve el bfcache
+    // del padre renderizado ANTES de que naciera la hija (linkedChildren vacío), y
+    // el heading de enlazadas solo aparece con ≥1 hija. Un usuario que vuelve a
+    // entrar ve el estado fresco -- que es justo lo que este assert comprueba.
+    await page.goto(`/club/${CLUB_SLUG}/actividad/${activityId}`);
     await expect(
       page.getByRole("heading", { name: "Actividades enlazadas a este reto" }),
     ).toBeVisible();

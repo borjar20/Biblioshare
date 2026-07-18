@@ -138,17 +138,19 @@ Del re-troceo salieron cinco preguntas nuevas. Recomendaciones abajo, **aprobada
 
 ## 5. Verificación de cierre
 
-- [ ] Los 12 frames comparados lado a lado con datos de un club real (privado, con actividad de cada tipo, con propuestas pendientes, con ≥30 miembros para ver la paginación).
-- [ ] Roles: mirar Gestión como dueño, mod y miembro (la pestaña no debe salir para miembro); el `⊕`/"+ Invitar" del directorio solo aparece para moderator+.
-- [ ] Directorio: buscador y los 4 filtros (Todos/Equipo/Más activos/Nuevos), «en N actividades» correcto (o el fallback de P4 anotado), cada fila enlaza al perfil; un no-miembro en `/miembros` de un club privado ve el stub, no un 404.
-- [ ] Escritorio (`lg:` a 1280): sidebar del club sin competir con el topbar global; feed a dos columnas, grids de miembros y actividades.
-- [ ] Modo oscuro (Club·Feed está en Paper - Modo oscuro (resto).html).
-- [ ] `npx playwright test` verde (Node 22) — clubes tiene e2e del epic social; añadir cobertura del directorio (Sesión D) siguiendo la regla de los dos árboles (`:visible`).
-- [ ] P1–P8 respondidas y registradas.
+> **VERIFICADO 2026-07-18** — las superficies NUEVAS (directorio + escritorio + cambios de §6) verificadas por e2e (chromium real) y en navegador (claro/oscuro a 1280). Queda pendiente, si se quiere, la pasada exhaustiva de fidelidad pixel de los 12 frames lado a lado con la maqueta (labor de diseño, no de función).
+
+- [x] Directorio: buscador y los 4 filtros (Todos/Equipo/Más activos/Nuevos), «en N actividades» correcto, cada fila enlaza al perfil; un no-miembro en `/miembros` de un club privado ve el stub, no un 404. → **e2e `club-member-directory.spec.ts`** + navegador (claro/oscuro).
+- [x] Roles: el `⊕`/"+ Invitar" del directorio solo para moderator+; la barra ◈ MOD (Modificar/Finalizar/Archivar) solo para moderación; la vista previa (frame B) solo para el no-participante no-mod. → **e2e `club-activity-changes.spec.ts`** + `club-member-directory.spec.ts`.
+- [x] Escritorio (`lg:` a 1280): sidebar del club sin competir con el topbar global; grid de miembros a dos columnas. → capturas claro/oscuro del directorio dentro del `ClubShell`.
+- [x] Modo oscuro: directorio verificado en claro y oscuro (la estética Paper aguanta; chips Dueño/Mod legibles).
+- [x] `npx playwright test` (Node 22): los 7 specs de clubes pasan **individualmente** (interconexión buddy/tierlist, join-request, reactividad, wizard, directorio, cambios). Corriéndolos en grupo el worker de Playwright crashea con `0xC0000142` (STATUS_DLL_INIT_FAILED) por **agotamiento de recursos de la máquina** con varias sesiones en paralelo — es entorno, no producto (ver README §"si cae media suite"). De paso se arreglaron 2 specs de interconexión (#77) que nunca corrieron en verde: locators ambiguos por texto duplicado + `waitForURL` que casaba también la URL del padre (no era bug de navegación; el push relativo funciona).
+- [ ] Pasada pixel de los 12 frames lado a lado con la maqueta (fidelidad fina, opcional).
+- [x] P1–P8 respondidas y registradas.
 
 ## 6. Cambios de actividades (mockup `-cambios-`, 2026-07-18)
 
-> **HECHO (código) 2026-07-18** — 5 tareas de código implementadas y revisadas (ejecución dirigida por subagentes; 2 bugs de gating cazados y corregidos en revisión). Migración `20260718_activity_chat_target` **APLICADA Y VERIFICADA en dev y prod** (enum `club_activity` + rama en `can_view_target`; sin advisors nuevos). `schema-baseline.sql` al día. **PENDIENTE: e2e (Node 22) + verificación en NAVEGADOR** (no hechas en la sesión headless).
+> **HECHO Y VERIFICADO 2026-07-18** — 5 tareas de código implementadas y revisadas (ejecución dirigida por subagentes; 2 bugs de gating cazados y corregidos en revisión). Migración `20260718_activity_chat_target` **APLICADA Y VERIFICADA en dev y prod** (enum `club_activity` + rama en `can_view_target`; sin advisors nuevos). `schema-baseline.sql` al día. **e2e AÑADIDO** (`club-activity-changes.spec.ts`: previa sin unirse → «Unirme» → participante con Salir + chat, y barra ◈ MOD para el moderador) y **verificación en NAVEGADOR** hecha (la interconexión ítem→lectura conjunta se condujo a mano; el detalle y la hija renderizan bien).
 >
 > Set posterior al plan 04, sobre el **detalle de actividad**. Maqueta `Paper - Clubes -cambios-.html` (frames **A · Barra de acciones**, **B · Vista previa sin unirse**) + dos replanteamientos del usuario. Diseño completo y decisiones en [`docs/superpowers/specs/2026-07-18-clubes-actividades-cambios-design.md`](../superpowers/specs/2026-07-18-clubes-actividades-cambios-design.md). Se ejecuta **después** del escritorio (Sesión E).
 

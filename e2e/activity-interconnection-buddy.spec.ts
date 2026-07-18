@@ -120,15 +120,25 @@ test("curador abre lectura conjunta desde un ítem del reto por lista activo", a
     await expect(
       page.getByRole("heading", { name: "Conectar una actividad desde este ítem" }),
     ).toBeVisible();
-    await expect(page.getByText(book.title)).toBeVisible();
+    // El título del libro aparece también como chip en la rejilla del reto, así que
+    // se asienta sobre el título de la hoja (id propio) en vez de un getByText ambiguo.
+    await expect(page.locator("#item-connect-title")).toHaveText(book.title);
 
     // ── Abre la lectura conjunta ──
     await page.getByRole("button", { name: "Abrir lectura conjunta" }).click();
 
     // ── Aterriza en la actividad hija: lectura conjunta activa, nacida de ese ítem ──
-    await page.waitForURL(/\/actividad\/[0-9a-f-]+$/i, { timeout: 15_000 });
-    await expect(page.getByText("Lectura conjunta", { exact: false })).toBeVisible();
-    await expect(page.getByText("Activa")).toBeVisible();
+    // El predicado excluye el id del padre a propósito: la URL del reto padre también
+    // casa /actividad/<uuid>$, así que una regex sola resolvería al instante sin esperar
+    // la navegación a la hija, y el page.url() de abajo leería el padre (list_challenge).
+    await page.waitForURL(
+      (url) => /\/actividad\/[0-9a-f-]+$/i.test(url.pathname) && !url.pathname.endsWith(activityId!),
+      { timeout: 15_000 },
+    );
+    // El chip de la hija reúne tipo+estado en un solo elemento; se asienta sobre su
+    // texto exacto para no chocar con el h1 ("Lectura conjunta · Rayuela") ni con el
+    // route-announcer de Next, que también contienen "Lectura conjunta".
+    await expect(page.getByText("Lectura conjunta · Activa")).toBeVisible();
 
     // Verificación de datos: la hija quedó enlazada al padre y nació con el mismo ítem.
     const url = page.url();
