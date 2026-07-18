@@ -9,15 +9,17 @@ import { InboxIcon } from "@/components/ui/icons";
 // las 3 portadas más recientes de la colección (`getCollection` ya las
 // entrega ordenadas por `position`/`added_at` en `items`), a un tamaño mayor
 // que el de `CollectionCard` (96×78, portadas 46×69) y con las rotaciones
-// del mockup: -12°/0°/12°, ±18px. Mismo truco de composición que el abanico
-// del grid: `translate(...)` antes de `rotate(...)` para que el
-// desplazamiento sea en el eje de pantalla.
+// del mockup: -12°/0°/12°, ±18px. Mismo orden que `CollectionCard`
+// (`fanCovers[0]` centrada y al frente, las otras dos abiertas detrás a los
+// lados) para que 1-2 portadas degraden bien en vez de quedar descentradas.
+// Mismo truco de composición: `translate(...)` antes de `rotate(...)` para
+// que el desplazamiento sea en el eje de pantalla.
 const FAN_SLOTS = [
-  { x: "translate-x-[calc(-50%-18px)]", rotate: "-rotate-[12deg]" },
   { x: "-translate-x-1/2", rotate: "" },
+  { x: "translate-x-[calc(-50%-18px)]", rotate: "-rotate-[12deg]" },
   { x: "translate-x-[calc(-50%+18px)]", rotate: "rotate-[12deg]" },
 ];
-const FAN_Z = ["z-10", "z-30", "z-20"];
+const FAN_Z = ["z-30", "z-10", "z-20"];
 
 export async function CollectionDetail({
   detail,
