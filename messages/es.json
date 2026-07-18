@@ -337,6 +337,7 @@
     "commentLiked": "A {name} le gustó tu comentario",
     "clubActivityProposed": "{name} propuso una actividad en el club",
     "clubActivityActivated": "{name} activó una actividad en el club",
+    "clubActivitySpawned": "{name} enlazó una actividad nueva en el club",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club"
   },
@@ -556,6 +557,12 @@
     "listChallengeCellLabel": "{user} · {item} · {state}",
     "listChallengeRule": "Un ítem se marca solo cuando registres un pase terminado entre {start} y {end}. Si ya lo habías terminado antes, cuenta una relectura.",
     "listChallengeRuleOpen": "Cuenta cualquier ítem que tengas completado en tu biblioteca, también si lo terminaste antes del reto.",
+    "connectFromItem": "Conectar una actividad desde este ítem",
+    "openBuddyRead": "Abrir lectura conjunta",
+    "openBuddyReadHint": "Leerlo en grupo, con hitos y chat sin spoilers",
+    "viewItemSheet": "Ver ficha del título",
+    "viewItemSheetHint": "Puntuar, opinar y ver reseñas del club",
+    "tierlistOfferedAtClose": "La tierlist con estos ítems se ofrece al cerrar el reto, no por ítem.",
     "completionMode": "Cómo cuenta un ítem",
     "completionMode_window": "Solo durante el reto",
     "completionMode_any": "También lo que ya leíste",
@@ -623,7 +630,12 @@
     "tierlistTierLabel": "Nombre del nivel",
     "tierlistTierColor": "Cambiar color",
     "tierlistAddTier": "Añadir nivel",
-    "tierlistRemoveTier": "Quitar nivel"
+    "tierlistRemoveTier": "Quitar nivel",
+    "linkedActivities": "Actividades enlazadas a este reto",
+    "bornFromItem": "nacida del ítem «{title}»",
+    "closeWithTierlist": "Cierra con una tierlist",
+    "closeWithTierlistHint": "Clasificad juntos los ítems, ya cargados en el pool.",
+    "create": "Crear"
   },
   "sagaPicker": {
     "placeholder": "Buscar una saga…",
