@@ -37,7 +37,15 @@ export function HeroStatusOrFollow({
   }
 
   return (
-    <Button type="button" disabled={isPending} onClick={follow}>
+    // Ancho calcado a la portada del hero (w-[116px] / sm:w-40, ver
+    // item-hero.tsx): el botón queda como una "base" alineada justo debajo de
+    // ella en móvil, no un pill suelto más estrecho.
+    <Button
+      type="button"
+      disabled={isPending}
+      onClick={follow}
+      className="w-[116px] whitespace-nowrap sm:w-40"
+    >
       {isPending ? t("following") : t("follow")}
     </Button>
   );
