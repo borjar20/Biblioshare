@@ -64,7 +64,10 @@ export function AddToCollectionSheet({
       setLoading(false);
       if ("error" in result) {
         setError(t(`errors.${result.error}`));
-        setCollections([]);
+        // Un fallo de carga NO es «0 colecciones»: dejar `collections` en null
+        // mantiene «Hecho» deshabilitado (evita que un `setItemCollections([])`
+        // borre el ítem de TODAS sus colecciones) y no pinta el estado vacío.
+        setCollections(null);
         return;
       }
       setCollections(result.collections);
