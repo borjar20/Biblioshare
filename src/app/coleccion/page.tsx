@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getLibraryItems } from "@/lib/library/get-library-items";
-import { listCollections } from "@/lib/library/collections";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
@@ -162,14 +161,19 @@ export default async function CollectionPage({
 // títulos». Consulta propia, en Suspense aparte, para no bloquear el grid.
 async function CollectionsHeader({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [cards, summary, t] = await Promise.all([
-    listCollections(supabase, userId),
+  // Recuento ligero: `head:true` + `count:exact` no trae filas ni portadas —
+  // el grid (CollectionsGrid) es quien hidrata los abanicos, no este header.
+  const [{ count }, summary, t] = await Promise.all([
+    supabase
+      .from("collections")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
     getLibrarySummary(supabase, userId),
     getTranslations("collection"),
   ]);
   return (
     <p className="font-mono text-xs tracking-wide text-muted-foreground">
-      {t("collectionsCount", { count: cards.length })}
+      {t("collectionsCount", { count: count ?? 0 })}
       {" · "}
       {t("titleCount", { count: summary.total })}
     </p>
