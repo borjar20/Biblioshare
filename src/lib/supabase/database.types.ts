@@ -167,6 +167,11 @@ export type Database = {
           ends_on: string | null
           id: string
           kind: Database["public"]["Enums"]["activity_kind"]
+          spawned_from_activity_id: string | null
+          spawned_from_item_id: string | null
+          spawned_from_item_type:
+            | Database["public"]["Enums"]["item_type"]
+            | null
           starts_on: string | null
           status: Database["public"]["Enums"]["activity_status"]
           title: string
@@ -180,6 +185,11 @@ export type Database = {
           ends_on?: string | null
           id?: string
           kind: Database["public"]["Enums"]["activity_kind"]
+          spawned_from_activity_id?: string | null
+          spawned_from_item_id?: string | null
+          spawned_from_item_type?:
+            | Database["public"]["Enums"]["item_type"]
+            | null
           starts_on?: string | null
           status?: Database["public"]["Enums"]["activity_status"]
           title: string
@@ -193,6 +203,11 @@ export type Database = {
           ends_on?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["activity_kind"]
+          spawned_from_activity_id?: string | null
+          spawned_from_item_id?: string | null
+          spawned_from_item_type?:
+            | Database["public"]["Enums"]["item_type"]
+            | null
           starts_on?: string | null
           status?: Database["public"]["Enums"]["activity_status"]
           title?: string
@@ -217,6 +232,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_activities_spawned_from_activity_id_fkey"
+            columns: ["spawned_from_activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
             referencedColumns: ["id"]
           },
         ]
@@ -1834,6 +1856,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      spawn_linked_activity: {
+        Args: {
+          p_from_item_id: string
+          p_from_item_type: Database["public"]["Enums"]["item_type"]
+          p_kind: Database["public"]["Enums"]["activity_kind"]
+          p_parent_activity_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       transfer_club_ownership: {
         Args: { p_club_id: string; p_new_owner_id: string }
         Returns: undefined
@@ -1867,8 +1899,6 @@ export type Database = {
         | "follow_accepted"
         | "review_liked"
         | "review_commented"
-        | "club_join_request"
-        | "club_join_approved"
         | "club_invite"
         | "club_invite_accepted"
         | "club_post"
@@ -1877,6 +1907,9 @@ export type Database = {
         | "comment_liked"
         | "club_activity_proposed"
         | "club_activity_activated"
+        | "club_join_request"
+        | "club_join_approved"
+        | "club_activity_spawned"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       target_kind:
@@ -2034,8 +2067,6 @@ export const Constants = {
         "follow_accepted",
         "review_liked",
         "review_commented",
-        "club_join_request",
-        "club_join_approved",
         "club_invite",
         "club_invite_accepted",
         "club_post",
@@ -2044,6 +2075,9 @@ export const Constants = {
         "comment_liked",
         "club_activity_proposed",
         "club_activity_activated",
+        "club_join_request",
+        "club_join_approved",
+        "club_activity_spawned",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
