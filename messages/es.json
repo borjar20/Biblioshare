@@ -630,7 +630,12 @@
     "tierlistTierLabel": "Nombre del nivel",
     "tierlistTierColor": "Cambiar color",
     "tierlistAddTier": "Añadir nivel",
-    "tierlistRemoveTier": "Quitar nivel"
+    "tierlistRemoveTier": "Quitar nivel",
+    "linkedActivities": "Actividades enlazadas a este reto",
+    "bornFromItem": "nacida del ítem «{title}»",
+    "closeWithTierlist": "Cierra con una tierlist",
+    "closeWithTierlistHint": "Clasificad juntos los ítems, ya cargados en el pool.",
+    "create": "Crear"
   },
   "sagaPicker": {
     "placeholder": "Buscar una saga…",
