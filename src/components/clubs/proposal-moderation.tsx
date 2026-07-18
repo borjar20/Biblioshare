@@ -17,10 +17,13 @@ export function ProposalModeration({
   proposals,
   clubSlug,
   canModerate,
+  layout = "list",
 }: {
   proposals: ClubActivity[];
   clubSlug: string;
   canModerate: boolean;
+  /** "grid" = rejilla 2-col del frame 12 (Actividades); "list" = Gestión. */
+  layout?: "list" | "grid";
 }) {
   const t = useTranslations("activity");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -47,7 +50,7 @@ export function ProposalModeration({
         {t("groupProposed", { count: proposals.length })}
       </h2>
 
-      <div className="flex flex-col gap-2">
+      <div className={layout === "grid" ? "grid gap-2 lg:grid-cols-2" : "flex flex-col gap-2"}>
         {proposals.map((activity) => (
           <ActivityCard
             key={activity.id}

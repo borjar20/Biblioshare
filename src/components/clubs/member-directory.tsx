@@ -98,12 +98,13 @@ export function MemberDirectory({
   return (
     <div className="flex flex-col gap-4">
       {/* Topbar del frame 9: «‹» + Miembros + «club · N», y «⊕» invitar solo
-          para moderación (lleva a Gestión, donde vive la acción). */}
+          para moderación (lleva a Gestión, donde vive la acción). En escritorio
+          (frame 11) el «‹» sobra: la vuelta la da el sidebar del club. */}
       <div className="flex items-center gap-2.5">
         <Link
           href={`/club/${clubSlug}`}
           aria-label={t("directoryBack")}
-          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted lg:hidden"
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </Link>
@@ -160,28 +161,32 @@ export function MemberDirectory({
       </div>
 
       {data.team.length > 0 && (
-        <section className="flex flex-col">
-          <h2 className="mb-0.5 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <section className="flex flex-col gap-2">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
             {t("directorySectionTeam")}
           </h2>
-          {data.team.map((m) => (
-            <DirectoryRow key={m.userId} member={m} viewerId={viewerId} t={t} />
-          ))}
+          <div className="divide-y divide-border lg:grid lg:grid-cols-2 lg:gap-3 lg:divide-y-0">
+            {data.team.map((m) => (
+              <DirectoryRow key={m.userId} member={m} viewerId={viewerId} t={t} />
+            ))}
+          </div>
         </section>
       )}
 
-      <section className="flex flex-col">
+      <section className="flex flex-col gap-2">
         {showMainHeading && (
-          <h2 className="mb-0.5 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
             {t("directorySectionMembers")} · {data.rowsTotal}
           </h2>
         )}
         {data.rows.length === 0 && data.team.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">{t("directoryEmpty")}</p>
         ) : (
-          data.rows.map((m) => (
-            <DirectoryRow key={m.userId} member={m} viewerId={viewerId} t={t} />
-          ))
+          <div className="divide-y divide-border lg:grid lg:grid-cols-2 lg:gap-3 lg:divide-y-0">
+            {data.rows.map((m) => (
+              <DirectoryRow key={m.userId} member={m} viewerId={viewerId} t={t} />
+            ))}
+          </div>
         )}
 
         {hasMore && (
@@ -224,7 +229,7 @@ function DirectoryRow({
   return (
     <Link
       href={`/u/${member.username}`}
-      className="flex items-center gap-3 border-t border-border py-2.5 transition-colors first:border-t-0 hover:bg-surface-muted"
+      className="flex items-center gap-3 py-2.5 transition-colors hover:bg-surface-muted lg:rounded-card lg:border lg:border-border lg:p-3.5 lg:shadow-card lg:hover:bg-surface-muted"
     >
       <UserAvatar name={name} avatarUrl={member.avatarUrl} size={38} />
       <div className="min-w-0 flex-1">
@@ -250,7 +255,7 @@ function DirectoryRow({
           {prefix} · {activities}
         </div>
       </div>
-      <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted-foreground lg:hidden" />
     </Link>
   );
 }

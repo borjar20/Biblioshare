@@ -135,7 +135,7 @@ export default async function ClubPage({
       )}
 
       {tab === "actividades" && (
-        <div className="lg:max-w-3xl">
+        <div className="lg:max-w-4xl">
           <ActivityList
             clubId={club.id}
             clubSlug={club.slug}

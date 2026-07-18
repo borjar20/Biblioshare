@@ -21,8 +21,11 @@ export function ClubShell({
   children,
 }: {
   sidebar: ReactNode;
-  mobileHeader: ReactNode;
-  desktopHeader: ReactNode;
+  /** Chrome móvil propio (banner + pestañas). Si la pantalla trae el suyo
+      dentro de `children` (el directorio), se omite. */
+  mobileHeader?: ReactNode;
+  /** Cabecera sticky de escritorio. Opcional por el mismo motivo. */
+  desktopHeader?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -30,15 +33,17 @@ export function ClubShell({
       <div className="hidden lg:block">{sidebar}</div>
 
       <div className="min-w-0">
-        {/* Chrome móvil: banner + pestañas, centrado como el resto de la app. */}
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-8 lg:hidden">
-          {mobileHeader}
-        </div>
+        {mobileHeader && (
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-8 lg:hidden">
+            {mobileHeader}
+          </div>
+        )}
 
-        {/* Cabecera de escritorio: sticky bajo el topbar global. */}
-        <div className="sticky top-[var(--topbar-h)] z-10 hidden border-b border-border bg-background/85 backdrop-blur lg:block">
-          {desktopHeader}
-        </div>
+        {desktopHeader && (
+          <div className="sticky top-[var(--topbar-h)] z-10 hidden border-b border-border bg-background/85 backdrop-blur lg:block">
+            {desktopHeader}
+          </div>
+        )}
 
         <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:mx-0 lg:max-w-none lg:px-8">
           {children}

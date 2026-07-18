@@ -59,7 +59,7 @@ export default function ClubesPage() {
   if (!userId) return null;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 lg:max-w-5xl">
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-2xl font-semibold text-foreground">
           {t("navLabel")}
@@ -112,7 +112,7 @@ export default function ClubesPage() {
         ) : myClubs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
-          <div className="flex flex-col gap-3.5">
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {myClubs.map((club) => (
               <ClubCard
                 key={club.id}
@@ -133,7 +133,7 @@ export default function ClubesPage() {
         ) : discovered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
         ) : (
-          <div className="flex flex-col gap-3.5">
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {discovered.map((club) => (
               <ClubCard key={club.id} club={club} />
             ))}

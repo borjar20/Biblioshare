@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
 import { getClubIdentity, hasPendingRequest } from "@/lib/clubs/join-requests";
 import { PrivateClubStub } from "@/components/clubs/private-club-stub";
+import { listClubActivities } from "@/lib/clubs/activities/core";
 import { listClubDirectory } from "@/lib/clubs/directory";
 import { MemberDirectory } from "@/components/clubs/member-directory";
+import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
 
 export async function generateMetadata({
   params,
@@ -54,10 +56,28 @@ export default async function ClubMembersPage({
 
   const canModerate =
     club.viewerRole === "moderator" || club.viewerRole === "owner";
-  const initial = await listClubDirectory(club.id, { filter: "all", page: 0 });
+  const [initial, activities] = await Promise.all([
+    listClubDirectory(club.id, { filter: "all", page: 0 }),
+    canModerate ? listClubActivities(club.id) : Promise.resolve([]),
+  ]);
+  const pendingProposals = activities.filter(
+    (a) => a.status === "proposed",
+  ).length;
 
+  // En escritorio el directorio vive dentro del shell del club (frame 11): el
+  // sidebar da la navegación y el directorio trae su propio chrome (buscador +
+  // filtros). Por eso no se pasa mobile/desktopHeader al shell.
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
+    <ClubShell
+      sidebar={
+        <ClubSidebar
+          club={club}
+          active="miembros"
+          canModerate={canModerate}
+          pendingProposals={pendingProposals}
+        />
+      }
+    >
       <MemberDirectory
         clubId={club.id}
         clubSlug={club.slug}
@@ -66,6 +86,6 @@ export default async function ClubMembersPage({
         canModerate={canModerate}
         viewerId={user.id}
       />
-    </div>
+    </ClubShell>
   );
 }
