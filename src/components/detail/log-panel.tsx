@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ChevronDownIcon } from "@/components/ui/icons";
@@ -27,7 +26,6 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
 import type { Queue } from "@/lib/queue/types";
-import { addExistingItemToLibrary } from "@/lib/library/add-existing-item";
 import {
   updateStatus,
   removeFromLibrary,
@@ -37,20 +35,6 @@ import { ratePass, setPassEdition } from "@/lib/passes/actions";
 import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
 import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
 import { editionChoiceStorageKey } from "@/lib/passes/edition-choice";
-
-// Guarda la edición elegida AL SEGUIR (Hallazgo 3): se llama solo desde un
-// manejador de clic (FollowButton.follow), nunca durante el render, así que
-// escribir en localStorage aquí no viola la regla de pureza de render. Se
-// aplicará sola con setPassEdition en cuanto se abra el primer pase del
-// ítem (ver el efecto en ProgressBlock más abajo).
-function writeEditionChoice(itemId: string, editionId: string) {
-  try {
-    window.localStorage.setItem(editionChoiceStorageKey(itemId), editionId);
-  } catch {
-    // Cuota llena o almacenamiento inaccesible (modo privado): la elección se
-    // pierde y se volverá a preguntar al empezar a leer, pero no rompe nada.
-  }
-}
 
 // Lee si a este pase ya se le preguntó "¿qué edición estás leyendo?" y el
 // usuario contestó "No lo sé". Se llama solo desde el inicializador de
@@ -124,14 +108,11 @@ export function LogPanel({
   workTotalUnits?: number | null;
 }) {
   if (!entry) {
-    return (
-      <FollowButton
-        itemType={itemType}
-        itemId={itemId}
-        editions={editions}
-        canContribute={canContribute}
-      />
-    );
+    // Sin pase activo la pestaña "Mi registro" ni se enseña (ItemDetailTabs la
+    // oculta), así que llegar aquí es la ventana transitoria del "Seguir" del
+    // hero: estado optimista "planned" mientras la revalidación trae la entry.
+    // Un placeholder breve, no el botón "Seguir" (que ahora vive en el hero).
+    return <FollowingPlaceholder />;
   }
 
   return (
@@ -150,70 +131,16 @@ export function LogPanel({
   );
 }
 
-// Botón de "Seguir" cuando el ítem todavía no está en la biblioteca (Tarea
-// 3, Paso 1). Con más de una edición, primero pregunta cuál tienes — con una
-// sola (o ninguna) se añade directo, como antes. "No lo sé" es una salida
-// legítima, no un error: no fija edición y el progreso se mide contra la
-// primaria (se puede volver a preguntar más tarde, al empezar a leer).
-function FollowButton({
-  itemType,
-  itemId,
-  editions,
-  canContribute,
-}: {
-  itemType: ItemType;
-  itemId: string;
-  editions: Edition[];
-  canContribute: boolean;
-}) {
+// Placeholder de la ventana transitoria tras pulsar "Seguir" en el hero: el
+// estado ya es "planned" (optimista) pero la entry del servidor aún no ha
+// llegado. Texto sobrio, centrado; desaparece solo cuando la revalidación monta
+// ManagedLog.
+function FollowingPlaceholder() {
   const t = useTranslations("item");
-  const tEditions = useTranslations("editions");
-  const [isPending, startTransition] = useTransition();
-  const [choosingEdition, setChoosingEdition] = useState(false);
-  const { setStatus } = useItemStatus();
-
-  function follow(editionId: string | null) {
-    // "No lo sé" (editionId null) no guarda nada: se comporta como hoy, el
-    // progreso se mide contra la primaria. Con una edición elegida de
-    // verdad, se guarda ANTES de disparar la transición — sigue siendo un
-    // manejador de clic, no el cuerpo del render.
-    if (editionId) writeEditionChoice(itemId, editionId);
-    // Seguir una obra la deja "pendiente": el badge del hero lo enseña ya.
-    setStatus("planned");
-    startTransition(() => addExistingItemToLibrary(itemType, itemId));
-  }
-
-  if (!choosingEdition) {
-    return (
-      <Button
-        type="button"
-        disabled={isPending}
-        onClick={() => {
-          if (editions.length > 1) setChoosingEdition(true);
-          else follow(null);
-        }}
-      >
-        {isPending ? t("following") : t("follow")}
-      </Button>
-    );
-  }
-
   return (
-    <div className="rounded-card border border-border bg-surface p-3 shadow-card">
-      {/* Sin historial todavía (primer seguir): passes vacío, el picker no
-          pinta el grupo "Ya las has usado". */}
-      <EditionPicker
-        itemType={itemType}
-        itemId={itemId}
-        editions={editions}
-        passes={[]}
-        title={tEditions("whichEdition")}
-        disabled={isPending}
-        canContribute={canContribute}
-        onPick={(editionId) => follow(editionId)}
-        onUnknown={() => follow(null)}
-      />
-    </div>
+    <p className="py-8 text-center text-sm text-muted-foreground">
+      {t("following")}
+    </p>
   );
 }
 
