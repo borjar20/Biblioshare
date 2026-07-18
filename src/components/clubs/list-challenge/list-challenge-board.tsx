@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import type { ActivityDetail } from "@/lib/clubs/activities/core";
+import type { ActivityDetail, ActivityItem } from "@/lib/clubs/activities/core";
 import { getListChallengeProgress } from "@/lib/clubs/activities/list-challenge";
 import {
   itemKey,
@@ -15,6 +15,7 @@ import { CheckIcon, ChevronDownIcon } from "@/components/ui/icons";
 import { MemberRankRow } from "@/components/clubs/member-rank-row";
 import { ListChallengeSummary } from "./list-challenge-summary";
 import { ListChallengeGrid } from "./list-challenge-grid";
+import { ItemConnectSheet } from "./item-connect-sheet";
 
 // DetailExtension de list_challenge (registro de kinds, EPIC-05 Bloque H3).
 // Mismo patrón de montaje que BuddyReadCheckpoints (H1): estado propio + su
@@ -31,6 +32,8 @@ import { ListChallengeGrid } from "./list-challenge-grid";
 // vista con el detalle de quién completó qué.
 export function ListChallengeBoard({
   activity,
+  viewerId,
+  isModerator,
 }: {
   activity: ActivityDetail;
   viewerId: string;
@@ -40,6 +43,9 @@ export function ListChallengeBoard({
   const t = useTranslations("activity");
   const [view, setView] = useState<ListChallengeProgressView | null>(null);
   const [, startTransition] = useTransition();
+  const [sheetItem, setSheetItem] = useState<ActivityItem | null>(null);
+  const isCurator = isModerator || activity.createdBy === viewerId;
+  const canConnect = isCurator && activity.status === "active";
 
   useEffect(() => {
     startTransition(async () => {
@@ -103,13 +109,10 @@ export function ListChallengeBoard({
       <div className="grid grid-cols-5 gap-2">
         {activity.items.map((item) => {
           const done = viewer?.completedKeys.includes(itemKey(item.itemType, item.itemId)) ?? false;
-          return (
-            <Link
-              key={item.id}
-              href={itemHref(item.itemType, item.itemId)}
-              title={item.itemTitle}
-              className="relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted"
-            >
+          const itemClassName =
+            "relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted";
+          const cover = (
+            <>
               {item.itemCoverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
                 <img
@@ -123,6 +126,28 @@ export function ListChallengeBoard({
                   <CheckIcon className="h-4 w-4 text-accent-foreground" />
                 </span>
               )}
+            </>
+          );
+          // canConnect (curador/mod + reto activo): el ítem abre la hoja de conexión (frame 14)
+          // en vez de ir directo a su ficha -- desde ahí también se puede llegar a la ficha.
+          return canConnect ? (
+            <button
+              key={item.id}
+              type="button"
+              title={item.itemTitle}
+              onClick={() => setSheetItem(item)}
+              className={itemClassName}
+            >
+              {cover}
+            </button>
+          ) : (
+            <Link
+              key={item.id}
+              href={itemHref(item.itemType, item.itemId)}
+              title={item.itemTitle}
+              className={itemClassName}
+            >
+              {cover}
             </Link>
           );
         })}
@@ -170,6 +195,13 @@ export function ListChallengeBoard({
           ? t("listChallengeRuleOpen")
           : t("listChallengeRule", { start: view.windowStart, end: view.windowEnd })}
       </p>
+
+      <ItemConnectSheet
+        parentActivityId={activity.id}
+        item={sheetItem}
+        open={sheetItem !== null}
+        onClose={() => setSheetItem(null)}
+      />
     </div>
   );
 }
