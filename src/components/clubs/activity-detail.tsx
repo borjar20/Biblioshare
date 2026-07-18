@@ -14,7 +14,6 @@ import {
 } from "@/lib/clubs/activities/core";
 import { ActivityChat } from "./activity-chat";
 import { ActivityItemPool } from "./activity-item-pool";
-import { ActivityItemList } from "./activity-item-list";
 import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
 import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
@@ -52,13 +51,6 @@ export function ActivityDetailView({
   const kindDefinition = getActivityKindDefinition(activity.kind);
   const DetailExtension = kindDefinition.DetailExtension;
   const accent = ACTIVITY_ACCENT[activity.kind];
-  // Mismo espejo de la RLS que usa el pool: quién puede curar los ítems.
-  const canCurate =
-    kindDefinition.usesItemPool &&
-    (kindDefinition.itemCuration === "curators" ? isCreator || isModerator : isParticipant);
-  // Los moderadores entran a editar aunque no participen: ya podían quitar
-  // ítems ajenos y gestionar los hitos de la lectura conjunta.
-  const canEdit = canCurate || isModerator;
 
   // Reconcilia el subárbol profundo (pool de ítems, tableros por tipo,
   // checkpoints): esos hijos conservan estado local propio, así que en vez de
@@ -310,41 +302,6 @@ export function ActivityDetailView({
           </h2>
           <ActivityChat activityId={activity.id} summary={activity.chat} viewerLoggedIn />
         </section>
-      )}
-
-      {/* La lista de ítems cierra la página: el tablero del kind es el
-          protagonista y aquí abajo se opina, ítem a ítem.
-          criteria_challenge (H4) no tiene pool: su reto se describe por
-          criterio, no se enumera -- y sin ítems tampoco hay opiniones.
-          La lista es de solo lectura; la curación vive en "Modificar actividad". */}
-      {kindDefinition.usesItemPool && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-              {t("itemPool")}
-            </h2>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase hover:text-foreground"
-              >
-                {t("editActivity")}
-              </button>
-            )}
-          </div>
-
-          <ActivityItemList
-            activity={activity}
-            viewerId={viewerId}
-            isParticipant={isParticipant}
-            onChanged={refreshActivity}
-          />
-
-          {activity.items.length === 0 && (
-            <p className="text-xs text-muted-foreground">{t("itemPoolEmpty")}</p>
-          )}
-        </div>
       )}
     </div>
   );

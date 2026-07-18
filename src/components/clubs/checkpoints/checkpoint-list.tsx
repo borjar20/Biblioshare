@@ -15,7 +15,7 @@ import { CheckIcon, LockIcon } from "@/components/ui/icons";
 // botón "confirmar" y el chat gestionan su propio acceso vía RLS.
 // El chat asume viewer logueado -- toda la ruta /club/[slug] requiere auth
 // (SD-4, sin lectura anónima de contenido de club), mismo supuesto que
-// ActivityOpinions/ActivityItemPool ya hacen en este árbol.
+// ActivityChat/ActivityItemPool ya hacen en este árbol.
 //
 // Layout del mockup (Paper · Clubes, frame 4): el chat solo se despliega en
 // los hitos que el viewer ya confirmó; los demás muestran la banda rayada
