@@ -315,13 +315,20 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     })
     .filter((i): i is ActivityItem => i !== null);
 
-  const chatSummary = await getInteractionSummary(supabase, "club_activity", [activityId]);
-  const chat = chatSummary.get(activityId) ?? {
+  // El chat general no se pinta en buddy_read (que ya tiene sus chats por
+  // checkpoint) -- se evita la consulta y se devuelve el resumen a cero en
+  // vez de pedir un dato que la vista nunca usa.
+  const zeroChat: InteractionSummary = {
     reactionCount: 0,
     viewerReacted: false,
     commentCount: 0,
     comments: [],
   };
+  const chat =
+    row.kind === "buddy_read"
+      ? zeroChat
+      : ((await getInteractionSummary(supabase, "club_activity", [activityId])).get(activityId) ??
+        zeroChat);
 
   return {
     id: row.id,

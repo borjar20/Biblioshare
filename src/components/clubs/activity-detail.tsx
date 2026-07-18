@@ -249,7 +249,10 @@ export function ActivityDetailView({
         <div className="relative overflow-hidden rounded-card border border-dashed border-border">
           <div className="pointer-events-none p-4 opacity-50 blur-[3px]" aria-hidden>
             <p className="font-mono text-[9.5px] tracking-wide text-green uppercase">
-              ◎ {t("activityChat")}
+              ◎{" "}
+              {activity.kind === "buddy_read"
+                ? t("previewChatTeaserBuddy")
+                : t("activityChat")}
             </p>
           </div>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface/55 px-6 text-center">
@@ -362,14 +365,28 @@ export function ActivityDetailView({
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-      {/* Barra de acciones: Salir (participantes) + grupo ◈ MOD
-          (Modificar/Finalizar/Archivar/+Activar) para moderadores. El
-          creador no-mod conserva un Finalizar aparte aunque no lleve el
-          grupo MOD. Unirse se rehace en la barra inferior (Task 5). */}
+      {/* Barra de acciones: Unirme (no participantes de una activa) + Salir
+          (participantes) + grupo ◈ MOD (Modificar/Finalizar/Archivar/+Activar)
+          para moderadores. El creador no-mod conserva un Finalizar aparte
+          aunque no lleve el grupo MOD. Unirme y Salir son mutuamente
+          excluyentes (uno u otro según isParticipant). */}
       {(isParticipant ||
         (isModerator && (status === "proposed" || status === "active")) ||
-        (!isModerator && isCreator && status === "active")) && (
+        (!isModerator && isCreator && status === "active") ||
+        (status === "active" && !isParticipant)) && (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+          {status === "active" && !isParticipant && (
+            <Button
+              type="button"
+              variant="green"
+              className="px-3.5 py-2 text-xs"
+              disabled={isPending}
+              onClick={() => run(() => joinActivity(activity.id))}
+            >
+              {t("join")}
+            </Button>
+          )}
+
           {isParticipant && (
             <Button
               type="button"
