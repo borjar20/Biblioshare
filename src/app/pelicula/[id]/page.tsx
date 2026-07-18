@@ -26,10 +26,8 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { EditionsLoading } from "@/components/detail/editions-loading";
-import {
-  ItemStatusProvider,
-  StatusBadgeLive,
-} from "@/components/detail/item-status-context";
+import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
@@ -168,7 +166,14 @@ export default async function MovieDetailPage({
         avgRating={community.avgRating}
         ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
         backLabel={tDetail("back")}
-        statusSlot={<StatusBadgeLive labels={statusLabels} />}
+        statusSlot={
+          <HeroStatusOrFollow
+            itemType="movie"
+            itemId={movie.id}
+            isLoggedIn={Boolean(user)}
+            statusLabels={statusLabels}
+          />
+        }
         menuSlot={
           <HeroMenu
             itemType="movie"
