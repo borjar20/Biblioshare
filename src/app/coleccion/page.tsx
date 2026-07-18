@@ -14,22 +14,23 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import {
   CollectionTabs,
-  COLLECTION_TABS,
-  type CollectionTab,
+  KNOWN_TABS,
+  type KnownTab,
 } from "./collection-tabs";
 import { QueuesPanel } from "./queues-panel";
-import { ContinueStrip } from "@/components/library/continue-strip";
 import { CollectionSummary } from "@/components/library/collection-summary";
 import { FavoritesShelf } from "@/components/favorites-shelf";
+import { CollectionsGrid } from "@/components/library/collections-grid";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
 import { SkeletonCoverGrid } from "@/components/ui/skeleton";
 import {
   CollectionOverviewSkeleton,
+  CollectionsGridSkeleton,
   QueuesSkeleton,
 } from "@/components/library/collection-skeletons";
 
 export const metadata: Metadata = {
-  title: "Tu colección — Biblioshare",
+  title: "Mi Biblioteca — Biblioshare",
 };
 
 const VALID_STATUSES: MediaStatus[] = [
@@ -40,8 +41,12 @@ const VALID_STATUSES: MediaStatus[] = [
 ];
 const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
-// Tu biblioteca. Las colas viven aquí dentro (§IA del rediseño Paper): son una
-// forma de organizar los pendientes, no una sección aparte.
+// Mi Biblioteca (Colección v2, Sesión 1): gira en torno a colecciones que
+// crea el usuario, no a estados. Dos subpestañas visibles — `Colecciones`
+// (default, frame A) y `Todo` (frame C, la biblioteca completa sin el
+// bloque «en curso», que ahora vive en Inicio/Perfil). `colas` sigue siendo
+// una ruta viva (`?tab=colas`, `happy-path.spec.ts`) pero ya no se pinta en
+// las subpestañas.
 export default async function CollectionPage({
   searchParams,
 }: {
@@ -60,11 +65,9 @@ export default async function CollectionPage({
   if (!user) redirect("/login");
 
   const params = await searchParams;
-  const tab: CollectionTab = COLLECTION_TABS.includes(
-    params.tab as CollectionTab,
-  )
-    ? (params.tab as CollectionTab)
-    : "general";
+  const tab: KnownTab = KNOWN_TABS.includes(params.tab as KnownTab)
+    ? (params.tab as KnownTab)
+    : "colecciones";
   const status = VALID_STATUSES.includes(params.status as MediaStatus)
     ? (params.status as MediaStatus)
     : undefined;
@@ -76,15 +79,15 @@ export default async function CollectionPage({
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
 
-  // Shell inmediato (título + pestañas + filtros); cada sección con datos
-  // llega por streaming detrás de su <Suspense> con skeleton (Fase B del plan
-  // de navegación). El `key` de los boundaries es la consulta: al cambiar un
+  // Shell inmediato (título + pestañas); cada sección con datos llega por
+  // streaming detrás de su <Suspense> con skeleton (Fase B del plan de
+  // navegación). El `key` de los boundaries es la consulta: al cambiar un
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      {/* Cabecera del frame A/C: barrita de acento + título serif + contador de
-          títulos (mono). El contador llega por streaming para no bloquear el
-          shell instantáneo (plan 00). */}
+      {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
+          NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
+          da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
       <div className="flex items-center gap-3">
         <span
           aria-hidden
@@ -93,64 +96,47 @@ export default async function CollectionPage({
         <h1 className="font-serif text-2xl font-semibold text-foreground lg:text-[28px]">
           {t("title")}
         </h1>
-        <Suspense fallback={null}>
-          <TitleCount userId={user.id} />
-        </Suspense>
       </div>
 
       <CollectionTabs active={tab} />
 
-      {/* En General y sin filtros aplicados: lo que tienes a medias, fijado
-          arriba, y el resumen de la colección. Con un filtro activo se ocultan
-          — contradirían lo que la rejilla está mostrando. */}
-      {tab === "general" && !status && !search && (
-        <Suspense fallback={<CollectionOverviewSkeleton />}>
-          <GeneralOverview userId={user.id} />
-        </Suspense>
+      {tab === "colecciones" && (
+        <>
+          <Suspense fallback={null}>
+            <CollectionsHeader userId={user.id} />
+          </Suspense>
+          <Suspense fallback={<CollectionsGridSkeleton />}>
+            <CollectionsGrid userId={user.id} />
+          </Suspense>
+        </>
       )}
 
-      {tab === "colas" ? (
-        <Suspense key={params.cola ?? "all"} fallback={<QueuesSkeleton />}>
-          <QueuesPanel userId={user.id} activeParam={params.cola} />
-        </Suspense>
-      ) : tab === "general" && !status && !search ? (
-        // General (limpio) = «Actualizado recientemente» sin filtros (frame A):
-        // solo lo último tocado, en un grid más denso (3 col en móvil).
-        <section className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            {t("recentlyUpdated")}
-          </h2>
-          <Suspense fallback={<SkeletonCoverGrid count={12} />}>
-            <LibraryGrid
-              userId={user.id}
-              sort="recent"
-              limit={12}
-              variant="recent"
-              emptyTitle={tLibrary("emptyTitle")}
-              emptyLabel={tLibrary("empty")}
-              emptyCta={tLibrary("emptyCta")}
-            />
-          </Suspense>
-        </section>
-      ) : (
-        // Pestañas de tipo (o General con un ?status=/q= heredado de un enlace
-        // viejo): filtros + rejilla completa.
+      {tab === "todo" && (
         <>
+          {/* Resumen + destacados: solo sin filtros — con uno activo
+              contradirían lo que la rejilla filtrada está mostrando. Los
+              destacados del dueño viven aquí, no en su perfil: el perfil
+              propio pierde la pestaña Colección (plan 05, P2) y sin esta
+              casa se quedarían sin sitio (D2). */}
+          {!status && !search && (
+            <Suspense fallback={<CollectionOverviewSkeleton />}>
+              <TodoOverview userId={user.id} />
+            </Suspense>
+          )}
           <LibraryFilters
             status={status}
             search={search}
             sort={sort}
             basePath="/coleccion"
             showTypeFilter={false}
-            extraParams={tab === "general" ? undefined : { tab }}
+            extraParams={{ tab: "todo" }}
           />
           <Suspense
-            key={`${tab}:${status ?? ""}:${search ?? ""}:${sort}`}
+            key={`todo:${status ?? ""}:${search ?? ""}:${sort}`}
             fallback={<SkeletonCoverGrid count={10} />}
           >
             <LibraryGrid
               userId={user.id}
-              itemType={tab === "general" ? undefined : tab}
               status={status}
               search={search}
               sort={sort}
@@ -161,46 +147,49 @@ export default async function CollectionPage({
           </Suspense>
         </>
       )}
+
+      {tab === "colas" && (
+        <Suspense key={params.cola ?? "all"} fallback={<QueuesSkeleton />}>
+          <QueuesPanel userId={user.id} activeParam={params.cola} />
+        </Suspense>
+      )}
     </div>
   );
 }
 
-// Contador de títulos junto al h1 (frame C: "128 títulos"). Su propia consulta
-// para no acoplarse al summary de GeneralOverview, que solo existe en General.
-async function TitleCount({ userId }: { userId: string }) {
+// Cabecera de la rejilla de Colecciones (frame A): «N colecciones · M
+// títulos». Consulta propia, en Suspense aparte, para no bloquear el grid.
+async function CollectionsHeader({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [summary, t] = await Promise.all([
+  // Recuento ligero: `head:true` + `count:exact` no trae filas ni portadas —
+  // el grid (CollectionsGrid) es quien hidrata los abanicos, no este header.
+  const [{ count }, summary, t] = await Promise.all([
+    supabase
+      .from("collections")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
     getLibrarySummary(supabase, userId),
     getTranslations("collection"),
   ]);
-  if (summary.total === 0) return null;
   return (
-    <span className="font-mono text-xs tracking-wide text-muted-foreground">
+    <p className="font-mono text-xs tracking-wide text-muted-foreground">
+      {t("collectionsCount", { count: count ?? 0 })}
+      {" · "}
       {t("titleCount", { count: summary.total })}
-    </span>
+    </p>
   );
 }
 
-async function GeneralOverview({ userId }: { userId: string }) {
+async function TodoOverview({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const [inProgress, summary, favorites] = await Promise.all([
-    getLibraryItems(supabase, userId, { status: "in_progress" }),
+  const [summary, favorites] = await Promise.all([
     getLibrarySummary(supabase, userId),
     getLibraryItems(supabase, userId, { favoritesOnly: true }),
   ]);
 
   return (
     <>
-      {/* Frame C: en escritorio la fila superior es [continuar | resumen] a
-          1fr/320px; en móvil se apila. `items-start` para que la tarjeta de
-          resumen no se estire a la altura de la columna de continuar. */}
-      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6">
-        <ContinueStrip items={inProgress} />
-        <CollectionSummary summary={summary} />
-      </div>
-      {/* Los destacados del dueño viven aquí, no en su perfil: el perfil propio
-          pierde la pestaña Colección (plan 05, P2) y sin esta casa se
-          quedarían sin sitio (D2). */}
+      <CollectionSummary summary={summary} />
       <FavoritesShelf items={favorites} />
     </>
   );
@@ -213,7 +202,6 @@ async function LibraryGrid({
   search,
   sort,
   limit,
-  variant = "type",
   emptyTitle,
   emptyLabel,
   emptyCta,
@@ -224,9 +212,6 @@ async function LibraryGrid({
   search?: string;
   sort: LibrarySort;
   limit?: number;
-  // "type": rejilla de pestaña (2 col móvil, frame B); "recent": recientes de
-  // General (3 col móvil, frame A). En escritorio ambas van a 5 (frame C).
-  variant?: "type" | "recent";
   emptyTitle: string;
   emptyLabel: string;
   emptyCta: string;
@@ -255,13 +240,8 @@ async function LibraryGrid({
     );
   }
 
-  const gridClass =
-    variant === "recent"
-      ? "grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-5"
-      : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
-
   return (
-    <div className={gridClass}>
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {items.map((item) => (
         <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
       ))}
