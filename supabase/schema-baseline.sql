@@ -6780,3 +6780,48 @@ create policy collection_items_owner on public.collection_items
     exists (select 1 from public.collections c
             where c.id = collection_id and c.user_id = auth.uid())
   );
+
+-- ============================================================
+-- 20260719_promote_active_pass_after_delete.sql
+-- ============================================================
+
+-- Al borrar el pase ACTIVO de una obra con varios pases, la obra desaparecía
+-- de la biblioteca en vez de reactivar el pase anterior: solo un pase lleva
+-- is_active=true (passes_one_active) y toda la lectura filtra por él. Espeja
+-- promote_primary_edition_after_delete: tras borrar el activo, promueve el más
+-- reciente que quede (mismo orden que getPasses). AFTER DELETE para no chocar
+-- con passes_one_active; el borrado en bloque (removeFromLibrary) no promueve
+-- porque no queda superviviente.
+create or replace function public.promote_active_pass_after_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not old.is_active then
+    return old;
+  end if;
+
+  update public.passes
+     set is_active = true
+   where id = (
+     select id
+       from public.passes
+      where user_id = old.user_id
+        and item_type = old.item_type
+        and item_id = old.item_id
+      order by finished_on desc nulls first, created_at desc
+      limit 1
+   );
+
+  return old;
+end;
+$$;
+
+drop trigger if exists passes_promote_active_after_delete on public.passes;
+create trigger passes_promote_active_after_delete
+  after delete on public.passes
+  for each row execute function public.promote_active_pass_after_delete();
+
+revoke execute on function public.promote_active_pass_after_delete() from public, anon, authenticated;

@@ -380,6 +380,42 @@ test.describe
     await expect(page.getByText("Progreso", { exact: true })).toBeVisible();
     await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
   });
+
+  test("Regla 6 — Borrar el pase activo reactiva el anterior en vez de esfumar la obra", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await login(page);
+    await page.goto(`/libro/${bookId}?tab=log`);
+    await page.waitForLoadState("networkidle").catch(() => {});
+
+    // Estado heredado de la Regla 5: dos pases, el 2.º (relectura) abierto y
+    // ACTIVO sobre el 1.º ya cerrado (Leído).
+    await expect(statusBadge(page, "Leyendo")).toBeVisible({ timeout: 15_000 });
+    await expect(diaryEntry(page, "book", 2)).toBeVisible();
+
+    // Borrar el pase ACTIVO: la tarjeta de arriba (2.ª lectura).
+    await diaryEntry(page, "book", 2)
+      .getByRole("button", { name: "Borrar pase" })
+      .click();
+
+    // La regresión: la obra desaparecía por completo (se quedaba sin pase
+    // activo). El fix promueve el pase anterior, así que la obra SIGUE en la
+    // biblioteca, vuelve a estar Leído (el 1.º pase) y el diario se queda con un
+    // solo pase. Recarga explícita (con reintento) como el resto de la suite.
+    await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
+      statusBadge(p, "Leído"),
+    );
+    await expect(statusBadge(page, "Leído")).toBeVisible({ timeout: 15_000 });
+    await expect(diaryEntry(page, "book", 1)).toBeVisible();
+    await expect(diaryEntry(page, "book", 2)).toHaveCount(0);
+
+    // Y sigue listada en la biblioteca (la regresión era que se esfumaba).
+    await page.goto("/coleccion?tab=todo");
+    await expect(
+      page.getByText("The Old Man and the Sea").first(),
+    ).toBeVisible({ timeout: 15_000 });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────
