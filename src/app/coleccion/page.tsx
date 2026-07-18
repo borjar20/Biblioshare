@@ -86,9 +86,9 @@ export default async function CollectionPage({
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      {/* Cabecera: barrita de acento + título serif + contador de títulos
-          (mono). El contador llega por streaming para no bloquear el shell
-          instantáneo (plan 00). */}
+      {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
+          NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
+          da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
       <div className="flex items-center gap-3">
         <span
           aria-hidden
@@ -97,9 +97,6 @@ export default async function CollectionPage({
         <h1 className="font-serif text-2xl font-semibold text-foreground lg:text-[28px]">
           {t("title")}
         </h1>
-        <Suspense fallback={null}>
-          <TitleCount userId={user.id} />
-        </Suspense>
       </div>
 
       <CollectionTabs active={tab} />
@@ -158,22 +155,6 @@ export default async function CollectionPage({
         </Suspense>
       )}
     </div>
-  );
-}
-
-// Contador de títulos junto al h1 (frame C: "128 títulos"). Su propia consulta
-// para no acoplarse a las de las subpestañas.
-async function TitleCount({ userId }: { userId: string }) {
-  const supabase = await createClient();
-  const [summary, t] = await Promise.all([
-    getLibrarySummary(supabase, userId),
-    getTranslations("collection"),
-  ]);
-  if (summary.total === 0) return null;
-  return (
-    <span className="font-mono text-xs tracking-wide text-muted-foreground">
-      {t("titleCount", { count: summary.total })}
-    </span>
   );
 }
 

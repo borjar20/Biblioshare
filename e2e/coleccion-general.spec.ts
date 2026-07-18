@@ -3,11 +3,10 @@ import { test, expect } from "@playwright/test";
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
 
-// Plan 02 (Colección) T3: la pestaña General deja de ser una rejilla con filtros
-// y pasa a ser «Actualizado recientemente» SIN buscador (frame A del mockup);
-// los filtros solo viven en las pestañas de tipo (frame B). El usuario de prueba
-// ya tiene biblioteca sembrada, así que basta con leer la UI.
-test("General = recientes sin filtros; la pestaña de tipo sí los trae", async ({
+// Colección v2: «Mi Biblioteca» abre en la pestaña `Colecciones` (grid de
+// colecciones, sin buscador); la biblioteca completa con filtros vive en `Todo`.
+// El usuario de prueba ya tiene biblioteca sembrada, así que basta con leer la UI.
+test("Mi Biblioteca: Colecciones sin buscador; Todo con buscador", async ({
   page,
 }) => {
   await page.goto("/login");
@@ -16,18 +15,16 @@ test("General = recientes sin filtros; la pestaña de tipo sí los trae", async 
   await page.click('button[type="submit"]');
   await page.waitForURL("/");
 
-  // ── General: cabecera serif, eyebrow de recientes y NADA de buscador ──
+  // ── Colecciones (default): cabecera renombrada y SIN buscador ──
   await page.goto("/coleccion");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Tu colección" }),
+    page.getByRole("heading", { level: 1, name: "Mi Biblioteca" }),
   ).toBeVisible();
-  await expect(page.getByText("Actualizado recientemente")).toBeVisible();
   await expect(page.locator('input[name="q"]')).toHaveCount(0);
 
-  // ── Pestaña de tipo (Libros): buscador presente y sin el eyebrow de General ──
-  await page.goto("/coleccion?tab=book");
+  // ── Todo: la biblioteca completa SÍ trae el buscador ──
+  await page.goto("/coleccion?tab=todo");
   await expect(page.locator('input[name="q"]')).toBeVisible();
-  await expect(page.getByText("Actualizado recientemente")).toHaveCount(0);
 
-  console.log("COLECCION GENERAL OK");
+  console.log("MI BIBLIOTECA OK");
 });
