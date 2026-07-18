@@ -71,6 +71,18 @@ export async function removeFromLibrary(itemType: ItemType, itemId: string) {
     .eq("item_type", itemType)
     .eq("item_id", itemId);
   if (error) throw error;
+
+  // Al salir de la biblioteca, el ítem sale de todas las colecciones del usuario
+  // (Colección v2: una colección solo contiene ítems trackeados, así el recuento
+  // del grid cuadra con el detalle). La RLS de collection_items ya restringe a las
+  // colecciones propias, así que basta filtrar por (item_type, item_id).
+  const { error: colError } = await supabase
+    .from("collection_items")
+    .delete()
+    .eq("item_type", itemType)
+    .eq("item_id", itemId);
+  if (colError) throw colError;
+
   revalidateReadingLog(itemType, itemId);
 }
 
