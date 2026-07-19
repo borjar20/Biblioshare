@@ -52,8 +52,10 @@ export async function SagaMapTab({
         </ol>
       ) : (
         <>
-          <GraphLegend graph={graph} />
-          {/* Móvil: CTA al mapa completo + timeline. PC: grafo embebido. */}
+          {/* Móvil: leyenda arriba, CTA al mapa completo y timeline. */}
+          <div className="lg:hidden">
+            <GraphLegend graph={graph} />
+          </div>
           <div className="lg:hidden">
             <MapCta graph={graph} href={`${base}/mapa`} />
             <ReadingTimeline sections={deriveTimeline(graph)} />
@@ -84,8 +86,14 @@ export async function SagaMapTab({
                 ))}
             </ol>
           </div>
-          <div className="hidden overflow-hidden rounded-2xl border border-border lg:block">
-            <SagaGraphView graph={graph} className="h-[640px] w-full" />
+          {/* PC: grafo embebido con la leyenda como barra inferior del marco (frame E). */}
+          <div className="hidden lg:block">
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <SagaGraphView graph={graph} className="h-[640px] w-full" />
+            </div>
+            <div className="mt-3">
+              <GraphLegend graph={graph} />
+            </div>
           </div>
         </>
       )}

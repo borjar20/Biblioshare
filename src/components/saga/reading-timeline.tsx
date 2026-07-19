@@ -30,7 +30,7 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
             </span>
           </div>
         ) : (
-          <section key={section.groupSagaId ?? `s-${si}`}>
+          <section key={`${section.groupSagaId ?? "direct"}-${si}`}>
             {section.groupName && (
               <div className="mb-1 mt-3.5 flex items-center gap-2">
                 <span className={`h-4 w-1 rounded-full ${SAGA_ACCENT[section.accent].tick}`} />
