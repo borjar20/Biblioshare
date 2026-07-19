@@ -22,6 +22,8 @@ import { CollectionSummary } from "@/components/library/collection-summary";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { CollectionsGrid } from "@/components/library/collections-grid";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
+import { getFollowedSagas } from "@/lib/sagas/get-followed-sagas";
+import { SagaLibraryCard } from "@/components/library/saga-library-card";
 import { SkeletonCoverGrid } from "@/components/ui/skeleton";
 import {
   CollectionOverviewSkeleton,
@@ -42,12 +44,13 @@ const VALID_STATUSES: MediaStatus[] = [
 const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 
-// Mi Biblioteca (Colección v2, Sesión 1): gira en torno a colecciones que
-// crea el usuario, no a estados. Dos subpestañas visibles — `Colecciones`
-// (default, frame A) y `Todo` (frame C, la biblioteca completa sin el
-// bloque «en curso», que ahora vive en Inicio/Perfil). `colas` sigue siendo
-// una ruta viva (`?tab=colas`, `happy-path.spec.ts`) pero ya no se pinta en
-// las subpestañas.
+// Mi Biblioteca (Colección v2, Sesión 1 + F5 Task 4): gira en torno a
+// colecciones que crea el usuario, no a estados. Tres subpestañas visibles —
+// `Colecciones` (default, frame A), `Todo` (frame C, la biblioteca completa
+// sin el bloque «en curso», que ahora vive en Inicio/Perfil) y `Sagas` (frame
+// COL, sagas seguidas con progreso). `colas` sigue siendo una ruta viva
+// (`?tab=colas`, `happy-path.spec.ts`) pero ya no se pinta en las
+// subpestañas.
 export default async function CollectionPage({
   searchParams,
 }: {
@@ -157,6 +160,12 @@ export default async function CollectionPage({
         </>
       )}
 
+      {tab === "sagas" && (
+        <Suspense fallback={<SkeletonCoverGrid count={4} />}>
+          <FollowedSagasPanel userId={user.id} />
+        </Suspense>
+      )}
+
       {tab === "colas" && (
         <Suspense key={params.cola ?? "all"} fallback={<QueuesSkeleton />}>
           <QueuesPanel userId={user.id} activeParam={params.cola} />
@@ -253,6 +262,39 @@ async function LibraryGrid({
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {items.map((item) => (
         <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
+      ))}
+    </div>
+  );
+}
+
+// Sagas seguidas (frame COL): cards con progreso segmentado y bloque
+// «siguiente». Los datos llegan en un solo batch (getFollowedSagas).
+async function FollowedSagasPanel({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const [cards, t] = await Promise.all([
+    getFollowedSagas(supabase, userId),
+    getTranslations("sagaLibrary"),
+  ]);
+
+  if (cards.length === 0) {
+    return (
+      <EmptyState
+        glyph={<InboxIcon className="h-7 w-7" />}
+        title={t("emptyTitle")}
+        message={t("emptyBody")}
+        action={
+          <Link href="/sagas" className={buttonVariants("primary")}>
+            {t("emptyCta")}
+          </Link>
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {cards.map((card) => (
+        <SagaLibraryCard key={card.sagaId} card={card} />
       ))}
     </div>
   );
