@@ -11,6 +11,7 @@ import {
   groupMembers,
   type MemberGroup,
 } from "./group-members";
+import { createMainOrder } from "./main-order";
 import type { DetailMember, MemberStatus, Saga, SagaChildRef } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -223,7 +224,8 @@ export async function getSagaDetail(
   }
 
   const groups = groupMembers(members, children);
-  const progress = computeProgress(groups);
+  // `progress` se calcula más abajo: necesita el orden principal (§1.5) y por
+  // tanto los nodos del grafo, que se descargan en el batch de consultas.
 
   // Nota media comunitaria: pases puntuados de todos los miembros, sin contar
   // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase
@@ -286,10 +288,14 @@ export async function getSagaDetail(
   // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
   // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
   const [nodesRes, edgesRes, followRow, parentRow, roleRow] = await Promise.all([
+    // Nodos de TODO el subárbol, no solo los de la raíz: el orden principal
+    // (§1.5) expande recursivamente los nodos-saga con el orden principal de la
+    // saga hija, así que necesita sus nodos. El grafo que se pinta sigue siendo
+    // solo el de la raíz — se filtra abajo.
     supabase
       .from("saga_nodes")
-      .select("id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
-      .eq("saga_id", id)
+      .select("saga_id, id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
+      .in("saga_id", sagaIds)
       .order("created_at", { ascending: true }),
     supabase
       .from("saga_edges")
@@ -341,7 +347,38 @@ export async function getSagaDetail(
     childCounts.set(row.saga_id, (childCounts.get(row.saga_id) ?? 0) + 1);
   }
 
-  const rawNodes = (nodesRes.data ?? []) as RawSagaNode[];
+  const treeNodes = (nodesRes.data ?? []) as Array<RawSagaNode & { saga_id: string }>;
+
+  // Avance del hero sobre el ORDEN PRINCIPAL (§1.5), la misma regla y el mismo
+  // código que las cards de Mi Biblioteca (issue #91: antes contaba todos los
+  // miembros del subárbol y discrepaba de la card sobre la misma saga).
+  const mainOrder = createMainOrder(
+    [
+      { id, name: saga.name, parentSagaId: null },
+      ...[...descendants.values()].map((d) => ({
+        id: d.id,
+        name: d.name,
+        parentSagaId: d.parent_saga_id,
+      })),
+    ],
+    rows.map((r) => ({
+      sagaId: r.saga_id,
+      itemType: r.item_type,
+      itemId: r.item_id,
+      position: r.position,
+    })),
+    treeNodes.map((n) => ({
+      sagaId: n.saga_id,
+      itemType: n.item_type,
+      itemId: n.item_id,
+      childSagaId: n.child_saga_id,
+      orderNo: n.order_no,
+    })),
+    (k) => meta.get(k)?.title ?? "",
+  );
+  const progress = computeProgress(groups, mainOrder(id));
+
+  const rawNodes = treeNodes.filter((n) => n.saga_id === id);
   const rawEdges = (edgesRes.data ?? []) as RawSagaEdge[];
   const graph =
     rawNodes.length > 0

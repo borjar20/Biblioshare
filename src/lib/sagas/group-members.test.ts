@@ -93,8 +93,8 @@ describe("groupMembers", () => {
 });
 
 describe("computeProgress", () => {
-  it("cuenta completados sobre el total y da segmentos por grupo", () => {
-    const groups = groupMembers(
+  const fourMembers = () =>
+    groupMembers(
       [
         member({ itemId: "b1", groupSagaId: "ceniza", position: 1, status: "completed" }),
         member({ itemId: "b2", groupSagaId: "ceniza", position: 2, status: "in_progress" }),
@@ -103,7 +103,10 @@ describe("computeProgress", () => {
       ],
       children,
     );
-    const p = computeProgress(groups);
+  const all = ["book:b1", "book:b2", "book:b4", "book:b5"];
+
+  it("cuenta completados sobre el orden principal y da segmentos por grupo", () => {
+    const p = computeProgress(fourMembers(), all);
     expect(p).toMatchObject({ completed: 2, total: 4, pct: 50 });
     expect(p.segments).toEqual([
       { accent: "verde", fraction: 0.25 },
@@ -111,8 +114,23 @@ describe("computeProgress", () => {
     ]);
   });
 
-  it("sin miembros: 0% sin dividir por cero", () => {
-    expect(computeProgress([])).toMatchObject({ completed: 0, total: 0, pct: 0, segments: [] });
+  // El caso del issue #91: el hero contaba TODOS los miembros del subárbol y
+  // decía 2/7 = 29% donde la card de biblioteca, que ya aplicaba §1.5, decía
+  // 2/5 = 40%. Los opcionales (fuera del orden) no penalizan.
+  it("los miembros fuera del orden principal no entran en el denominador", () => {
+    const p = computeProgress(fourMembers(), ["book:b1", "book:b5"]);
+    expect(p).toMatchObject({ completed: 2, total: 2, pct: 100 });
+  });
+
+  it("una clave del orden sin miembro suma al total pero no a un segmento", () => {
+    const p = computeProgress(fourMembers(), [...all, "book:huerfano"]);
+    expect(p).toMatchObject({ completed: 2, total: 5, pct: 40 });
+    expect(p.segments.reduce((n, s) => n + s.fraction, 0)).toBeCloseTo(0.4);
+  });
+
+  it("orden vacío: 0% sin dividir por cero", () => {
+    expect(computeProgress([], [])).toMatchObject({ completed: 0, total: 0, pct: 0, segments: [] });
+    expect(computeProgress(fourMembers(), [])).toMatchObject({ total: 0, pct: 0, segments: [] });
   });
 });
 
