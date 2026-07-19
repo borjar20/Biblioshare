@@ -49,11 +49,14 @@ export async function SagaInfo({
       )}
 
       <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        {/* flex-wrap en AMBOS niveles: con 3 botones de curación a 390px la
+            fila no cabe; el shrink-0 del bloque de botones impedía encoger y
+            desbordaba la página entera en horizontal. */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
             {t("itemsTitle")}
           </h2>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {canConfigure && (
               <Link
                 href={`/saga/${sagaId}/editar`}
