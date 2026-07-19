@@ -273,15 +273,19 @@ export async function getSagaDetail(
     if (top && top[1] >= 2) byline = top[0];
   }
 
+  // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
+  // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
   const [nodesRes, edgesRes, followRow, parentRow] = await Promise.all([
     supabase
       .from("saga_nodes")
       .select("id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
-      .eq("saga_id", id),
+      .eq("saga_id", id)
+      .order("created_at", { ascending: true }),
     supabase
       .from("saga_edges")
       .select("id, from_node, to_node, edge_type")
-      .eq("saga_id", id),
+      .eq("saga_id", id)
+      .order("id", { ascending: true }),
     user
       ? supabase
           .from("saga_follows")
