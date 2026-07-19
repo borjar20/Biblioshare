@@ -25,7 +25,7 @@ export async function getItemSagas(
 ): Promise<SagaMembership[]> {
   const { data } = await supabase
     .from("saga_items")
-    .select("position, saga:sagas(id, name, saga_items(count))")
+    .select("position, is_primary, saga:sagas(id, name, saga_items(count))")
     .eq("item_type", itemType)
     .eq("item_id", itemId)
     .order("is_primary", { ascending: false })
@@ -45,6 +45,7 @@ export async function getItemSagas(
         name: saga.name,
         position: row.position ?? null,
         total: saga.saga_items?.[0]?.count ?? 0,
+        isPrimary: Boolean((row as { is_primary?: boolean }).is_primary),
       },
     ];
   });
