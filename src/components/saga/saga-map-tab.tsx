@@ -5,7 +5,7 @@ import { deriveTimeline, sortByPublication } from "@/lib/sagas/derive-timeline";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { GraphLegend } from "./graph/graph-legend";
-import { SagaGraphView } from "./graph/saga-graph-view";
+import { SagaGraphLazy } from "./graph/saga-graph-lazy";
 import { MapCta } from "./map-cta";
 import { OrderToggle } from "./order-toggle";
 import { ReadingTimeline } from "./reading-timeline";
@@ -15,9 +15,11 @@ import { ReadingTimeline } from "./reading-timeline";
 export async function SagaMapTab({
   detail,
   orden,
+  canEdit,
 }: {
   detail: SagaDetail;
   orden: "lectura" | "publicacion";
+  canEdit?: boolean;
 }) {
   const t = await getTranslations("saga");
   const graph = detail.graph;
@@ -56,7 +58,15 @@ export async function SagaMapTab({
           <div className="lg:hidden">
             <GraphLegend graph={graph} />
           </div>
-          <div className="lg:hidden">
+          <div className="flex flex-col lg:hidden">
+            {canEdit && (
+              <Link
+                href={`${base}/mapa/editar`}
+                className="mb-2 self-end rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              >
+                ✎ {t("editGraph")}
+              </Link>
+            )}
             <MapCta graph={graph} href={`${base}/mapa`} />
             <ReadingTimeline sections={deriveTimeline(graph)} />
             {/* «Como lista lineal» (frame B): la columna en orden de lectura. */}
@@ -87,9 +97,17 @@ export async function SagaMapTab({
             </ol>
           </div>
           {/* PC: grafo embebido con la leyenda como barra inferior del marco (frame E). */}
-          <div className="hidden lg:block">
+          <div className="hidden flex-col lg:flex">
+            {canEdit && (
+              <Link
+                href={`${base}/mapa/editar`}
+                className="mb-2 self-end rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              >
+                ✎ {t("editGraph")}
+              </Link>
+            )}
             <div className="overflow-hidden rounded-2xl border border-border">
-              <SagaGraphView graph={graph} className="h-[640px] w-full" />
+              <SagaGraphLazy graph={graph} className="h-[640px] w-full" />
             </div>
             <div className="mt-3">
               <GraphLegend graph={graph} />

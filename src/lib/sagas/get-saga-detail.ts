@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import type { UserRole } from "@/lib/auth/roles";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getSagaBase } from "./get-saga";
 import { buildSagaGraph, type GraphLookup, type RawSagaEdge, type RawSagaNode, type SagaGraph } from "./graph-data";
@@ -42,6 +43,8 @@ export type SagaDetail = {
   /** Grafo resuelto, o null si la saga no tiene nodos. hasGraph = graph !== null. */
   graph: SagaGraph | null;
   hasGraph: boolean;
+  /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
+  viewerRole: UserRole | null;
 };
 
 type DescendantRow = {
@@ -275,7 +278,8 @@ export async function getSagaDetail(
 
   // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
   // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
-  const [nodesRes, edgesRes, followRow, parentRow] = await Promise.all([
+  // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
+  const [nodesRes, edgesRes, followRow, parentRow, roleRow] = await Promise.all([
     supabase
       .from("saga_nodes")
       .select("id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
@@ -296,6 +300,9 @@ export async function getSagaDetail(
       : Promise.resolve({ data: null }),
     saga.parentSagaId
       ? supabase.from("sagas").select("id, name").eq("id", saga.parentSagaId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase.from("profiles").select("role").eq("user_id", user.id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -355,5 +362,6 @@ export async function getSagaDetail(
     isAuthenticated: Boolean(user),
     graph,
     hasGraph: graph !== null,
+    viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
   };
 }

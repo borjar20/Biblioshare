@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { GraphLegend } from "@/components/saga/graph/graph-legend";
-import { SagaGraphView } from "@/components/saga/graph/saga-graph-view";
+import { SagaGraphLazy } from "@/components/saga/graph/saga-graph-lazy";
 
 export async function generateMetadata({
   params,
@@ -39,7 +39,7 @@ export default async function SagaMapPage({
 
   return (
     <div className="relative h-dvh w-full">
-      <SagaGraphView graph={graph} className="h-full w-full" showZoomControls />
+      <SagaGraphLazy graph={graph} className="h-full w-full" showZoomControls />
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent p-4">
         <Link
