@@ -177,23 +177,29 @@ export async function getSagaDetail(
     }),
   );
 
+  // Estado por ítem desde PASES (dueños del estado desde el hub §Tarea 9;
+  // library_entries quedó congelada y aquí marcaba las obras como no leídas).
+  // MemberStatus es un solo valor: "completed" gana sobre "in_progress" para
+  // que una relectura no reste avance (cuesta el resaltado «Leyendo ahora» de
+  // ese nodo, aceptado); in_progress solo cuenta desde el pase activo.
   const statusByItem = new Map<string, MemberStatus>();
   if (user) {
     await Promise.all(
       (Object.keys(idsByType) as ItemType[]).map(async (type) => {
         if (idsByType[type].length === 0) return;
         const { data } = await supabase
-          .from("library_entries")
-          .select("item_id, status")
+          .from("passes")
+          .select("item_id, status, is_active")
           .eq("user_id", user.id)
           .eq("item_type", type)
           .in("item_id", idsByType[type]);
         for (const r of data ?? []) {
-          const s = r.status as string;
-          statusByItem.set(
-            `${type}:${r.item_id}`,
-            s === "completed" ? "completed" : s === "in_progress" ? "in_progress" : null,
-          );
+          const k = `${type}:${r.item_id}`;
+          if (r.status === "completed") {
+            statusByItem.set(k, "completed");
+          } else if (r.is_active && r.status === "in_progress" && statusByItem.get(k) !== "completed") {
+            statusByItem.set(k, "in_progress");
+          }
         }
       }),
     );

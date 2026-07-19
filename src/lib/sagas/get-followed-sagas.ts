@@ -141,32 +141,38 @@ export async function getFollowedSagas(
     }),
   );
 
-  // Entradas de biblioteca del usuario (item_id, status, updated_at) por tipo
-  // — copiado de get-saga-detail.ts:180-200, con updated_at añadido (aquí
-  // hace falta para el bloque «siguiente»/recencia, allí no).
+  // Estado del usuario por ítem, desde PASES (dueños del estado desde el hub
+  // §Tarea 9; library_entries quedó congelada y marcaba 0% de avance). Un ítem
+  // puede tener varios pases: se agregan en una LibEntry por ítem — status del
+  // pase activo, everCompleted si algún pase está completado (relecturas),
+  // updated_at máximo para la recencia.
   const entries: LibEntry[] = [];
   await Promise.all(
     (Object.keys(idsByType) as ItemType[]).map(async (type) => {
       if (idsByType[type].length === 0) return;
       const { data } = await supabase
-        .from("library_entries")
-        .select("item_id, status, updated_at")
+        .from("passes")
+        .select("item_id, status, is_active, updated_at")
         .eq("user_id", userId)
         .eq("item_type", type)
         .in("item_id", idsByType[type]);
+      const byItem = new Map<string, { status: string; everCompleted: boolean; updatedAt: string }>();
       for (const r of data ?? []) {
-        entries.push({
-          itemType: type,
-          itemId: r.item_id,
-          status: r.status as string,
-          updatedAt: r.updated_at as string,
-        });
+        const agg = byItem.get(r.item_id) ?? { status: "", everCompleted: false, updatedAt: "" };
+        if (r.is_active) agg.status = r.status as string;
+        if (r.status === "completed") agg.everCompleted = true;
+        const updatedAt = r.updated_at as string;
+        if (updatedAt > agg.updatedAt) agg.updatedAt = updatedAt;
+        byItem.set(r.item_id, agg);
+      }
+      for (const [itemId, agg] of byItem) {
+        entries.push({ itemType: type, itemId, ...agg });
       }
     }),
   );
 
   // Pases PROPIOS puntuados (no comunitarios como averageSagaRating de la
-  // ficha): mismo filtro de get-saga-detail.ts:229-245 (rating y finished_on
+  // ficha): mismo filtro de get-saga-detail.ts:228-254 (rating y finished_on
   // no nulos, status != dropped) más el .eq("user_id", userId) que aquí sí
   // hace falta porque solo interesan las valoraciones del propio usuario.
   const ratings: LibRating[] = [];
@@ -194,7 +200,7 @@ export async function getFollowedSagas(
   );
 
   // Creador/autor dominante — misma fuente que el byline del hero de la
-  // ficha (get-saga-detail.ts:251-277: credits con roles de autoría), pero
+  // ficha (get-saga-detail.ts:257-283: credits con roles de autoría), pero
   // sin agregar aquí: se entrega una fila por crédito y buildLibrarySagaCards
   // hace el mode() por ítem/saga.
   const creators: LibCreator[] = [];
