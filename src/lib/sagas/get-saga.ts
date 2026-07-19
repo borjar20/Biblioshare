@@ -3,6 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getCollection } from "@/lib/catalog/tmdb";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
+import { planCollectionSync, type DesiredPart } from "./collection-sync";
 import type { Saga, SagaMember } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -14,6 +15,8 @@ type SagaRow = {
   cover_url: string | null;
   source: string;
   tmdb_collection_id: number | null;
+  parent_saga_id: string | null;
+  accent_color: string | null;
 };
 
 const CATALOG_TABLE: Record<ItemType, "books" | "movies" | "series"> = {
@@ -30,6 +33,8 @@ function toSaga(row: SagaRow): Saga {
     coverUrl: row.cover_url,
     source: row.source,
     tmdbCollectionId: row.tmdb_collection_id,
+    parentSagaId: row.parent_saga_id,
+    accentColor: row.accent_color,
   };
 }
 
@@ -46,13 +51,8 @@ async function populateTmdbCollection(
     const collection = await getCollection(saga.tmdb_collection_id);
     if (!collection || collection.parts.length === 0) return;
 
-    // Resolver todas las partes a filas de catálogo (creándolas si faltan).
-    const rows: Array<{
-      saga_id: string;
-      item_type: "movie";
-      item_id: string;
-      position: number;
-    }> = [];
+    // Partes deseadas en orden por año (posición 1..N).
+    const desired: DesiredPart[] = [];
     let position = 1;
     for (const part of collection.parts) {
       const itemId = await findOrCreateCatalogItem(supabase, {
@@ -65,15 +65,38 @@ async function populateTmdbCollection(
         synopsis: part.synopsis,
         genres: null,
       });
-      rows.push({ saga_id: saga.id, item_type: "movie", item_id: itemId, position: position++ });
+      desired.push({ itemId, position: position++ });
     }
 
-    // Reconstruir la membresía de la saga de forma determinista (borrar +
-    // reinsertar) para garantizar el orden por año en cada visita; la semántica
-    // de upsert sobre el índice único no actualizaba la posición de las filas ya
-    // existentes (p. ej. la película desde la que se creó la saga).
-    await supabase.from("saga_items").delete().eq("saga_id", saga.id);
-    await supabase.from("saga_items").insert(rows);
+    // Diff no destructivo (multi-saga, spec §1.2): inserta lo que falte y
+    // corrige posiciones, sin tocar miembros manuales. is_primary=false en el
+    // bulk: la primary la fija el alta con contexto (persistCollectionMembership
+    // o el editor), no el rellenado perezoso.
+    const { data: existingRows } = await supabase
+      .from("saga_items")
+      .select("item_id, position")
+      .eq("saga_id", saga.id)
+      .eq("item_type", "movie");
+    const plan = planCollectionSync(existingRows ?? [], desired);
+
+    if (plan.toInsert.length > 0) {
+      await supabase.from("saga_items").insert(
+        plan.toInsert.map((p) => ({
+          saga_id: saga.id,
+          item_type: "movie" as const,
+          item_id: p.itemId,
+          position: p.position,
+        }))
+      );
+    }
+    for (const p of plan.toUpdate) {
+      await supabase
+        .from("saga_items")
+        .update({ position: p.position })
+        .eq("saga_id", saga.id)
+        .eq("item_type", "movie")
+        .eq("item_id", p.itemId);
+    }
   } catch (error) {
     console.error("populateTmdbCollection failed", { sagaId: saga.id, error });
   }
@@ -130,7 +153,7 @@ export async function getSaga(
 ): Promise<{ saga: Saga; members: SagaMember[] } | null> {
   const { data: row } = await supabase
     .from("sagas")
-    .select("id, name, overview, cover_url, source, tmdb_collection_id")
+    .select("id, name, overview, cover_url, source, tmdb_collection_id, parent_saga_id, accent_color")
     .eq("id", id)
     .maybeSingle();
   if (!row) return null;

@@ -10,10 +10,10 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // que un libro en dos sagas reventaba la consulta. La maqueta —que pinta
 // "Sagas · 4"— destapó el bug.
 //
-// La PRINCIPAL es la PRIMERA: la saga a la que se añadió antes (`created_at`
-// de la membresía). Regla única para los tres tipos, decidida a propósito por
-// ser la explicable y estable — el modelo no tiene forma de marcar una saga
-// como principal, y no vamos a inventarnos una heurística que acierte a veces.
+// La PRINCIPAL es la membresía con `is_primary` (spec §1.2): el modelo ya
+// distingue una saga principal por ítem (índice parcial saga_items_primary_idx).
+// `created_at` queda como desempate para ítems sin ninguna primary (p. ej. los
+// del bulk de `populateTmdbCollection`, que inserta con is_primary=false).
 //
 // `total` es el número de obras de esa saga, para el "nº 4 de 20" de la
 // maqueta. Va como agregado anidado en la MISMA consulta: con Supabase remoto
@@ -28,6 +28,7 @@ export async function getItemSagas(
     .select("position, saga:sagas(id, name, saga_items(count))")
     .eq("item_type", itemType)
     .eq("item_id", itemId)
+    .order("is_primary", { ascending: false })
     .order("created_at", { ascending: true });
 
   if (!data) return [];

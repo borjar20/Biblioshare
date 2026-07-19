@@ -7,6 +7,8 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // saga si no existe (por tmdb_collection_id) y enlaza este ítem en `saga_items`.
 // La lista completa de la colección se completa perezosamente al abrir la ficha
 // de saga (ver src/lib/sagas/get-saga.ts). Ver docs/REQUIREMENTS.md §7.34.
+// Multi-saga (spec §1.2): la membresía ya no es única por ítem, un ítem puede
+// estar en varias sagas a la vez; is_primary marca cuál es la principal.
 export async function persistCollectionMembership(
   supabase: SupabaseServerClient,
   itemType: "movie",
@@ -50,8 +52,30 @@ export async function persistCollectionMembership(
 
   if (!sagaId) return;
 
-  // Idempotente por UNIQUE(saga_id, item_type, item_id).
-  await supabase
+  // Idempotente por saga_items_saga_item_key. is_primary solo si el ítem aún
+  // no tiene saga primary (índice parcial saga_items_primary_idx); ante una
+  // carrera con otro alta, el índice rechaza el duplicado y se reintenta sin
+  // primary.
+  const { data: primaryRow } = await supabase
     .from("saga_items")
-    .insert({ saga_id: sagaId, item_type: itemType, item_id: itemId });
+    .select("saga_id")
+    .eq("item_type", itemType)
+    .eq("item_id", itemId)
+    .eq("is_primary", true)
+    .maybeSingle();
+
+  const { error: memberError } = await supabase.from("saga_items").insert({
+    saga_id: sagaId,
+    item_type: itemType,
+    item_id: itemId,
+    is_primary: !primaryRow,
+  });
+  if (memberError && !primaryRow) {
+    await supabase.from("saga_items").insert({
+      saga_id: sagaId,
+      item_type: itemType,
+      item_id: itemId,
+      is_primary: false,
+    });
+  }
 }

@@ -13,8 +13,8 @@ export type AssignSagaState = {
 
 // Asigna un ítem a una saga curada a mano (caso de libros: no hay fuente fiable
 // de sagas literarias). Reutiliza una saga manual existente con el mismo nombre
-// para que varios libros compartan saga. Un ítem está en una sola saga a la vez
-// (la chip usa maybeSingle), así que se limpia la membresía previa primero.
+// para que varios libros compartan saga. Multi-saga (spec §1.2): un ítem puede
+// estar en varias sagas a la vez, así que ya no se limpia la membresía previa.
 export async function assignItemToSaga(
   itemType: ItemType,
   itemId: string,
@@ -66,16 +66,32 @@ export async function assignItemToSaga(
 
   if (!sagaId) return { error: "generic" };
 
-  // Un ítem, una saga: limpiar membresía previa y (re)insertar.
-  await supabase
+  // Multi-saga (spec §1.2): añadir sin tocar las membresías previas. Upsert
+  // por si el ítem ya estaba en ESTA saga (actualiza la posición). Primary solo
+  // si el ítem no tenía ninguna. `.neq("saga_id", sagaId)` excluye la propia
+  // saga destino: si el ítem ya era primary AQUÍ (p. ej. se reenvía el
+  // formulario solo para corregir la posición), no debe contar como "ya tiene
+  // primary en otro sitio" — si contara, `is_primary: !primaryRow` la
+  // des-primariaría en el propio upsert.
+  const { data: primaryRow } = await supabase
     .from("saga_items")
-    .delete()
+    .select("saga_id")
     .eq("item_type", itemType)
-    .eq("item_id", itemId);
+    .eq("item_id", itemId)
+    .eq("is_primary", true)
+    .neq("saga_id", sagaId)
+    .maybeSingle();
 
-  const { error: insertError } = await supabase
-    .from("saga_items")
-    .insert({ saga_id: sagaId, item_type: itemType, item_id: itemId, position });
+  const { error: insertError } = await supabase.from("saga_items").upsert(
+    {
+      saga_id: sagaId,
+      item_type: itemType,
+      item_id: itemId,
+      position,
+      is_primary: !primaryRow,
+    },
+    { onConflict: "saga_id,item_type,item_id" }
+  );
   if (insertError) return { error: "generic" };
 
   revalidateItemPage(itemType, itemId);
@@ -83,7 +99,17 @@ export async function assignItemToSaga(
   return {};
 }
 
-export async function removeItemFromSaga(itemType: ItemType, itemId: string) {
+// Quita el ítem de UNA saga (la indicada por `sagaId`), no de todas: en el
+// modelo multi-saga (spec §1.2) un ítem puede tener varias membresías a la
+// vez, y el aspa de la chip solo representa la que el colaborador tiene
+// delante. Sin el filtro por saga_id, quitar la chip de una saga borraba de
+// paso las demás membresías del ítem.
+//
+// Si la membresía borrada era la primary, el ítem puede quedarse sin
+// ninguna primary (no se re-promociona automáticamente aquí: es decisión de
+// fase 3, del editor completo de sagas). getItemSagas ya contempla ese caso
+// y cae a `created_at` como desempate cuando no hay is_primary.
+export async function removeItemFromSaga(itemType: ItemType, itemId: string, sagaId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -98,8 +124,10 @@ export async function removeItemFromSaga(itemType: ItemType, itemId: string) {
     .from("saga_items")
     .delete()
     .eq("item_type", itemType)
-    .eq("item_id", itemId);
+    .eq("item_id", itemId)
+    .eq("saga_id", sagaId);
   if (error) throw error;
 
   revalidateItemPage(itemType, itemId);
+  revalidateSagaPage(sagaId);
 }

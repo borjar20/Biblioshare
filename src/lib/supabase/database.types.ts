@@ -1454,10 +1454,83 @@ export type Database = {
         }
         Relationships: []
       }
+      saga_edges: {
+        Row: {
+          edge_type: Database["public"]["Enums"]["saga_edge_type"]
+          from_node: string
+          id: string
+          saga_id: string
+          to_node: string
+        }
+        Insert: {
+          edge_type?: Database["public"]["Enums"]["saga_edge_type"]
+          from_node: string
+          id?: string
+          saga_id: string
+          to_node: string
+        }
+        Update: {
+          edge_type?: Database["public"]["Enums"]["saga_edge_type"]
+          from_node?: string
+          id?: string
+          saga_id?: string
+          to_node?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_edges_from_node_fkey"
+            columns: ["from_node"]
+            isOneToOne: false
+            referencedRelation: "saga_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_edges_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_edges_to_node_fkey"
+            columns: ["to_node"]
+            isOneToOne: false
+            referencedRelation: "saga_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saga_follows: {
+        Row: {
+          created_at: string
+          saga_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          saga_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          saga_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_follows_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saga_items: {
         Row: {
           created_at: string
           id: string
+          is_primary: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           position: number | null
@@ -1466,6 +1539,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           position?: number | null
@@ -1474,6 +1548,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           position?: number | null
@@ -1489,35 +1564,106 @@ export type Database = {
           },
         ]
       }
+      saga_nodes: {
+        Row: {
+          child_saga_id: string | null
+          created_at: string
+          id: string
+          item_id: string | null
+          item_type: Database["public"]["Enums"]["item_type"] | null
+          label_override: string | null
+          level: Database["public"]["Enums"]["saga_node_level"]
+          order_no: number | null
+          saga_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          child_saga_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          label_override?: string | null
+          level?: Database["public"]["Enums"]["saga_node_level"]
+          order_no?: number | null
+          saga_id: string
+          x?: number
+          y?: number
+        }
+        Update: {
+          child_saga_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          label_override?: string | null
+          level?: Database["public"]["Enums"]["saga_node_level"]
+          order_no?: number | null
+          saga_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_nodes_child_saga_id_fkey"
+            columns: ["child_saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_nodes_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sagas: {
         Row: {
+          accent_color: string | null
           cover_url: string | null
           created_at: string
           id: string
           name: string
           overview: string | null
+          parent_saga_id: string | null
           source: string
           tmdb_collection_id: number | null
         }
         Insert: {
+          accent_color?: string | null
           cover_url?: string | null
           created_at?: string
           id?: string
           name: string
           overview?: string | null
+          parent_saga_id?: string | null
           source?: string
           tmdb_collection_id?: number | null
         }
         Update: {
+          accent_color?: string | null
           cover_url?: string | null
           created_at?: string
           id?: string
           name?: string
           overview?: string | null
+          parent_saga_id?: string | null
           source?: string
           tmdb_collection_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sagas_parent_saga_id_fkey"
+            columns: ["parent_saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       series: {
         Row: {
@@ -1977,6 +2123,8 @@ export type Database = {
         | "club_activity_spawned"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
+      saga_edge_type: "principal" | "opcional" | "requisito"
+      saga_node_level: "principal" | "menor"
       target_kind:
         | "diary_entry"
         | "episode_watch"
@@ -2146,6 +2294,8 @@ export const Constants = {
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
+      saga_edge_type: ["principal", "opcional", "requisito"],
+      saga_node_level: ["principal", "menor"],
       target_kind: [
         "diary_entry",
         "episode_watch",

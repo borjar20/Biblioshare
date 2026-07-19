@@ -140,7 +140,9 @@ export function CatalogEditor({
   itemId: string;
   item: CatalogItemFields;
   editions: Edition[];
-  /** La saga asignada a este ítem, si tiene (un ítem solo puede estar en una). */
+  /** La saga PRIMARY de este ítem, si tiene. El ítem puede estar en varias
+   *  sagas a la vez (multi-membresía, spec §1.2); esta es solo la que se
+   *  pinta como chip principal aquí. */
   saga: { id: string; name: string } | null;
   canContribute: boolean;
   children: ReactNode;
@@ -573,8 +575,9 @@ function CatalogEditorForm({
         </form>
 
         {/* Sagas: contenido absorbido de saga-assign-form.tsx (que se borra).
-            Un ítem está en una sola saga a la vez, así que no hay lista, solo
-            la chip actual (si la hay) + el formulario para asignar/renombrar. */}
+            La chip muestra la saga PRIMARY (multi-membresía existe, spec
+            §1.2, pero este editor solo maneja la principal); el aspa quita
+            SOLO esa membresía, no las demás sagas del ítem. */}
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
             {tSaga("title")}
@@ -592,7 +595,7 @@ function CatalogEditorForm({
                   {saga.name}
                 </Link>
                 <form
-                  action={removeItemFromSaga.bind(null, itemType, itemId)}
+                  action={removeItemFromSaga.bind(null, itemType, itemId, saga.id)}
                   className="contents"
                 >
                   <button

@@ -6825,3 +6825,186 @@ create trigger passes_promote_active_after_delete
   for each row execute function public.promote_active_pass_after_delete();
 
 revoke execute on function public.promote_active_pass_after_delete() from public, anon, authenticated;
+
+-- ── 20260719_sagas_hierarchy.sql ──────────────────────────────────────────────────────
+
+-- Sagas v2 fase 1 (spec docs/superpowers/specs/2026-07-19-sagas-v2-design.md §1.1):
+-- jerarquía de sagas. Una saga puede tener padre (saga "universo", p. ej.
+-- UCM → Iron Man). accent_color es el token Paper con el que se pinta como
+-- subsaga dentro de la ficha del padre; null = color rotatorio en render.
+
+alter table public.sagas
+  add column parent_saga_id uuid references public.sagas(id) on delete set null,
+  add column accent_color text check (
+    accent_color in ('terracota','verde','teal','ambar','purpura','beige')
+  );
+
+create index sagas_parent_idx on public.sagas (parent_saga_id)
+  where parent_saga_id is not null;
+
+-- Anti-ciclos: subir por la cadena de ancestros del nuevo padre; si aparece la
+-- propia saga, hay ciclo. Cap de profundidad como cinturón extra (la lectura
+-- también capa a 4, §1.5). SECURITY INVOKER basta: SELECT sobre sagas es público.
+create or replace function public.saga_parent_no_cycle()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  cur uuid;
+  depth integer := 0;
+begin
+  if new.parent_saga_id is null then
+    return new;
+  end if;
+  if new.parent_saga_id = new.id then
+    raise exception 'saga % cannot be its own parent', new.id;
+  end if;
+  cur := new.parent_saga_id;
+  while cur is not null loop
+    depth := depth + 1;
+    if depth > 10 then
+      raise exception 'saga hierarchy deeper than 10 levels';
+    end if;
+    if cur = new.id then
+      raise exception 'saga hierarchy cycle detected for %', new.id;
+    end if;
+    select parent_saga_id into cur from public.sagas where id = cur;
+  end loop;
+  return new;
+end;
+$$;
+
+create trigger sagas_parent_no_cycle
+  before insert or update of parent_saga_id on public.sagas
+  for each row execute function public.saga_parent_no_cycle();
+
+-- ── 20260719_saga_multi_membership.sql ──────────────────────────────────────────────────────
+
+-- Sagas v2 fase 1 (spec §1.2): un ítem puede estar en N sagas (crossovers,
+-- ítem directo en un universo). is_primary marca la saga que muestran el strip
+-- de la ficha de obra y el breadcrumb; única por ítem (índice parcial).
+
+alter table public.saga_items
+  drop constraint saga_items_item_key;
+
+alter table public.saga_items
+  add constraint saga_items_saga_item_key unique (saga_id, item_type, item_id);
+
+alter table public.saga_items
+  add column is_primary boolean not null default false;
+
+-- Backfill: hasta ahora cada ítem tenía como mucho UNA membresía (la
+-- constraint borrada lo garantizaba), así que todas pasan a primary.
+update public.saga_items set is_primary = true;
+
+create unique index saga_items_primary_idx
+  on public.saga_items (item_type, item_id)
+  where is_primary;
+
+-- ── 20260719_saga_graph.sql ──────────────────────────────────────────────────────
+
+-- Sagas v2 fase 1 (spec §1.3): grafo de lectura curado. Un nodo referencia un
+-- ítem del catálogo O una saga anidada (XOR). La subsaga de un nodo NO se
+-- guarda: se deriva de saga_items. order_no define el orden principal;
+-- opcional = nodo sin order_no. En fase 1 estas tablas quedan vacías (el
+-- editor llega en fase 3); la ficha solo consulta si existen nodos.
+
+create type public.saga_node_level as enum ('principal', 'menor');
+create type public.saga_edge_type as enum ('principal', 'opcional', 'requisito');
+
+create table public.saga_nodes (
+  id             uuid primary key default gen_random_uuid(),
+  saga_id        uuid not null references public.sagas(id) on delete cascade,
+  item_type      public.item_type,
+  item_id        uuid,
+  child_saga_id  uuid references public.sagas(id) on delete cascade,
+  x              real not null default 0,
+  y              real not null default 0,
+  level          public.saga_node_level not null default 'principal',
+  order_no       integer check (order_no > 0),
+  label_override text check (char_length(label_override) <= 120),
+  created_at     timestamptz not null default now(),
+  constraint saga_nodes_ref_xor check (
+    (item_type is not null and item_id is not null and child_saga_id is null)
+    or (item_type is null and item_id is null and child_saga_id is not null)
+  )
+);
+create unique index saga_nodes_item_key on public.saga_nodes (saga_id, item_type, item_id)
+  where item_id is not null;
+create unique index saga_nodes_child_key on public.saga_nodes (saga_id, child_saga_id)
+  where child_saga_id is not null;
+create index saga_nodes_saga_idx on public.saga_nodes (saga_id);
+
+create table public.saga_edges (
+  id        uuid primary key default gen_random_uuid(),
+  saga_id   uuid not null references public.sagas(id) on delete cascade,
+  from_node uuid not null references public.saga_nodes(id) on delete cascade,
+  to_node   uuid not null references public.saga_nodes(id) on delete cascade,
+  edge_type public.saga_edge_type not null default 'principal',
+  constraint saga_edges_no_self check (from_node <> to_node),
+  constraint saga_edges_pair_key unique (from_node, to_node)
+);
+create index saga_edges_saga_idx on public.saga_edges (saga_id);
+
+-- RLS: catálogo compartido — lectura pública, escritura = curación (collaborator+,
+-- mismo gate que sagas/saga_items, §7.35).
+alter table public.saga_nodes enable row level security;
+create policy "saga nodes readable" on public.saga_nodes
+  for select to anon, authenticated using (true);
+create policy "saga nodes writable by collaborators" on public.saga_nodes
+  for all to authenticated
+  using (public.has_min_role('collaborator'))
+  with check (public.has_min_role('collaborator'));
+
+alter table public.saga_edges enable row level security;
+create policy "saga edges readable" on public.saga_edges
+  for select to anon, authenticated using (true);
+create policy "saga edges writable by collaborators" on public.saga_edges
+  for all to authenticated
+  using (public.has_min_role('collaborator'))
+  with check (public.has_min_role('collaborator'));
+
+-- ── 20260719_saga_follows.sql ──────────────────────────────────────────────────────
+
+-- Sagas v2 fase 1 (spec §1.4): seguimiento explícito de sagas. Alimenta el
+-- botón «Seguir esta saga» del hero (fase 1) y la pestaña Sagas de Mi
+-- Biblioteca (fase 4). RLS solo-dueño, patrón collections.
+
+create table public.saga_follows (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  saga_id    uuid not null references public.sagas(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, saga_id)
+);
+create index saga_follows_saga_idx on public.saga_follows (saga_id);
+
+alter table public.saga_follows enable row level security;
+create policy saga_follows_owner on public.saga_follows
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ── 20260719_saga_items_update_policy.sql ──────────────────────────────────────────────────────
+
+-- Sagas v2 fase 1: saga_items no tenía política de UPDATE (el modelo viejo
+-- solo borraba+insertaba). La necesitan el upsert de assignItemToSaga y el
+-- sync de posiciones de populateTmdbCollection. Curación = collaborator+
+-- (§7.35), igual que el DELETE: para no-colaboradores el sync de posiciones
+-- es no-op silencioso, como ya lo era el delete+insert anterior.
+create policy "saga items updatable by collaborators" on public.saga_items
+  for update to authenticated
+  using (public.has_min_role('collaborator'))
+  with check (public.has_min_role('collaborator'));
+
+-- ── 20260719_sagas_insert_hardening.sql ──────────────────────────────────────────────────────
+
+-- Sagas v2 fase 1 — endurecimiento pre-prod (revisión final): crear sagas
+-- sueltas sigue abierto a autenticados (lo necesita el cache-as-you-go de
+-- persist-collection.ts), pero colgar una saga como hija de otra
+-- (parent_saga_id) es curación de jerarquía → collaborator+ (§7.35). Sin esto,
+-- cualquier autenticado podría colgar sagas basura de un universo curado vía
+-- PostgREST y aparecerían como subsagas en la ficha.
+
+drop policy "sagas insertable" on public.sagas;
+create policy "sagas insertable" on public.sagas
+  for insert to authenticated
+  with check (parent_saga_id is null or public.has_min_role('collaborator'));
