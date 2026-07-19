@@ -205,23 +205,26 @@ export async function deleteSaga(sagaId: string): Promise<{ error?: string }> {
 
   const { data: existing } = await supabase
     .from("sagas")
-    .select("id")
+    .select("id, parent_saga_id")
     .eq("id", sagaId)
     .maybeSingle();
   if (!existing) return { error: "generic" };
 
-  // Capturar las membresías ANTES del delete: la cascada se las lleva de
-  // golpe (saga_items on delete cascade) y sin este snapshot no habría forma
-  // de saber qué fichas revalidar después.
-  const { data: members } = await supabase
-    .from("saga_items")
-    .select("item_type, item_id")
-    .eq("saga_id", sagaId);
+  // Capturar membresías, padre e hijas ANTES del delete: la cascada se lleva
+  // las membresías de golpe y el set null desengancha a las hijas — sin este
+  // snapshot no habría forma de saber qué fichas revalidar después (el padre
+  // pierde un grupo/nodo; las hijas pierden su chip «Parte de»).
+  const [{ data: members }, { data: childRows }] = await Promise.all([
+    supabase.from("saga_items").select("item_type, item_id").eq("saga_id", sagaId),
+    supabase.from("sagas").select("id").eq("parent_saga_id", sagaId),
+  ]);
 
   const { error } = await supabase.from("sagas").delete().eq("id", sagaId);
   if (error) return { error: "generic" };
 
   revalidateSagaPage(sagaId);
+  if (existing.parent_saga_id) revalidateSagaPage(existing.parent_saga_id);
+  for (const child of childRows ?? []) revalidateSagaPage(child.id);
   const seen = new Set<string>();
   for (const member of members ?? []) {
     const key = `${member.item_type}:${member.item_id}`;
