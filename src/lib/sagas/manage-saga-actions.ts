@@ -68,13 +68,18 @@ export async function assignItemToSaga(
 
   // Multi-saga (spec §1.2): añadir sin tocar las membresías previas. Upsert
   // por si el ítem ya estaba en ESTA saga (actualiza la posición). Primary solo
-  // si el ítem no tenía ninguna.
+  // si el ítem no tenía ninguna. `.neq("saga_id", sagaId)` excluye la propia
+  // saga destino: si el ítem ya era primary AQUÍ (p. ej. se reenvía el
+  // formulario solo para corregir la posición), no debe contar como "ya tiene
+  // primary en otro sitio" — si contara, `is_primary: !primaryRow` la
+  // des-primariaría en el propio upsert.
   const { data: primaryRow } = await supabase
     .from("saga_items")
     .select("saga_id")
     .eq("item_type", itemType)
     .eq("item_id", itemId)
     .eq("is_primary", true)
+    .neq("saga_id", sagaId)
     .maybeSingle();
 
   const { error: insertError } = await supabase.from("saga_items").upsert(
