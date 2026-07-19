@@ -680,6 +680,8 @@
       "submit": "Guardar saga",
       "submitting": "Guardando...",
       "remove": "Quitar",
+      "makePrimary": "hacer principal",
+      "primaryBadge": "Saga principal",
       "errors": {
         "nameRequired": "Escribe el nombre de la saga.",
         "forbidden": "No tienes permiso para gestionar sagas.",

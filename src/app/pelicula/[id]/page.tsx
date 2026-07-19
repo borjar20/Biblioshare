@@ -352,7 +352,7 @@ async function MovieTabs({
             coverUrl: movie.cover_url,
           }}
           editions={editions}
-          saga={mainSaga ? { id: mainSaga.sagaId, name: mainSaga.name } : null}
+          sagas={sagas.map((s) => ({ sagaId: s.sagaId, name: s.name, isPrimary: s.isPrimary }))}
           canContribute={canContribute}
         >
           {/* Frames 5 (móvil) y 12 (PC), y son órdenes DISTINTOS con el mismo

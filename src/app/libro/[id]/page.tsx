@@ -427,7 +427,7 @@ async function BookTabs({
             coverUrl: book.cover_url,
           }}
           editions={editions}
-          saga={mainSaga ? { id: mainSaga.sagaId, name: mainSaga.name } : null}
+          sagas={sagas.map((s) => ({ sagaId: s.sagaId, name: s.name, isPrimary: s.isPrimary }))}
           canContribute={canContribute}
         >
           {/* Orden del mockup (frame 1): sagas → sinopsis → ficha →
