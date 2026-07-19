@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  deleteSaga,
   setParentSaga,
   updateSagaMeta,
   uploadSagaCover,
@@ -86,6 +87,27 @@ export function SagaMetaEditor({
         else setCoverUrl(result.url);
       } catch {
         setCoverError(true);
+      }
+    });
+  }
+
+  // Zona de peligro: confirmación en dos pasos en estado local (patrón
+  // portada/universo — acción inmediata fuera del form de metadatos).
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const [deletePending, startDeleteTransition] = useTransition();
+
+  function handleDelete() {
+    setDeleteError(false);
+    startDeleteTransition(async () => {
+      try {
+        const result = await deleteSaga(sagaId);
+        // deleteSaga redirige a /sagas si borra; si devuelve, es error.
+        if (result?.error) setDeleteError(true);
+      } catch (err) {
+        // redirect() de Next lanza NEXT_REDIRECT: dejarlo propagar.
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+        setDeleteError(true);
       }
     });
   }
@@ -188,6 +210,36 @@ export function SagaMetaEditor({
           <p className="text-sm text-status-dropped">
             {parentError === "cycle" ? t("editErrors.cycle") : t("editErrors.generic")}
           </p>
+        )}
+      </div>
+
+      {/* ── Zona de peligro ── */}
+      <div className="flex flex-col gap-2 rounded-xl border border-status-dropped/40 p-4">
+        <span className="font-mono text-[11px] tracking-[0.12em] text-status-dropped uppercase">
+          {t("dangerZone")}
+        </span>
+        {confirmingDelete ? (
+          <>
+            <p className="text-xs text-muted-foreground">{t("deleteWarning")}</p>
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" disabled={deletePending} onClick={() => setConfirmingDelete(false)}>
+                {t("deleteCancel")}
+              </Button>
+              <button
+                type="button"
+                disabled={deletePending}
+                onClick={handleDelete}
+                className="rounded-full bg-status-dropped px-5 py-2 text-sm font-medium text-white disabled:opacity-60"
+              >
+                {deletePending ? t("deleting") : t("deleteConfirm")}
+              </button>
+            </div>
+            {deleteError && <p className="text-sm text-status-dropped">{t("editErrors.generic")}</p>}
+          </>
+        ) : (
+          <Button type="button" variant="secondary" onClick={() => setConfirmingDelete(true)} className="self-start">
+            {t("deleteSaga")}
+          </Button>
         )}
       </div>
     </div>

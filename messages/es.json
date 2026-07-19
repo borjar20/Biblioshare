@@ -983,7 +983,13 @@
       "nameRequired": "El nombre es obligatorio.",
       "cycle": "Ese anidamiento crearía un ciclo.",
       "generic": "No se pudo guardar. Inténtalo de nuevo."
-    }
+    },
+    "dangerZone": "Zona de peligro",
+    "deleteSaga": "Borrar saga",
+    "deleteWarning": "Se borran sus membresías, su grafo y sus seguidores. Sus subsagas quedarán como sagas sueltas. Los títulos del catálogo no se tocan. Esto no se puede deshacer.",
+    "deleteCancel": "Cancelar",
+    "deleteConfirm": "Borrar definitivamente",
+    "deleting": "Borrando…"
   },
   "sagaEditor": {
     "eyebrow": "◆ Modo colaborador",
