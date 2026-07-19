@@ -1360,11 +1360,24 @@
       "generic": "Algo salió mal. Inténtalo de nuevo."
     }
   },
+  "sagaLibrary": {
+    "graphTag": "Grafo",
+    "by": "de {name}",
+    "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",
+    "readingNow": "Leyendo ahora",
+    "nextUp": "Siguiente",
+    "completed": "Saga completada",
+    "ratedAt": "valorada ★ {rating}",
+    "emptyTitle": "Sin sagas seguidas",
+    "emptyBody": "Sigue una saga desde su ficha («Seguir esta saga») o explora el catálogo.",
+    "emptyCta": "Explorar sagas"
+  },
   "collection": {
     "title": "Mi Biblioteca",
     "tabs": {
       "colecciones": "Colecciones",
       "todo": "Todo",
+      "sagas": "Sagas",
       "colas": "Colas"
     },
     "continue": "Continuar",
