@@ -194,7 +194,10 @@ export async function updateSagaMeta(
 // saga_nodes, saga_edges, saga_follows); las SUBSAGAS no se borran: quedan
 // como sagas raíz (parent_saga_id on delete set null). Los ítems de catálogo
 // no se tocan. Vale para manuales y TMDB (una TMDB puede reaparecer por
-// cache-as-you-go — aceptado en el spec post-v2 §3).
+// cache-as-you-go — aceptado en el spec post-v2 §3). Requiere la policy de
+// DELETE de 20260719_sagas_delete_policy.sql: sin ella el DELETE afecta 0
+// filas en silencio (no da error, sagas ya tenía SELECT/INSERT/UPDATE pero
+// ninguna policy de DELETE).
 export async function deleteSaga(sagaId: string): Promise<{ error?: string }> {
   const { supabase } = await requireCollaborator();
   if (!supabase) return { error: "forbidden" };
@@ -207,10 +210,25 @@ export async function deleteSaga(sagaId: string): Promise<{ error?: string }> {
     .maybeSingle();
   if (!existing) return { error: "generic" };
 
+  // Capturar las membresías ANTES del delete: la cascada se las lleva de
+  // golpe (saga_items on delete cascade) y sin este snapshot no habría forma
+  // de saber qué fichas revalidar después.
+  const { data: members } = await supabase
+    .from("saga_items")
+    .select("item_type, item_id")
+    .eq("saga_id", sagaId);
+
   const { error } = await supabase.from("sagas").delete().eq("id", sagaId);
   if (error) return { error: "generic" };
 
   revalidateSagaPage(sagaId);
+  const seen = new Set<string>();
+  for (const member of members ?? []) {
+    const key = `${member.item_type}:${member.item_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    revalidateItemPage(member.item_type as ItemType, member.item_id);
+  }
   redirect("/sagas");
 }
 
