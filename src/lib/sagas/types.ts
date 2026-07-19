@@ -37,6 +37,8 @@ export type MemberStatus = "completed" | "in_progress" | null;
 export type DetailMember = SagaMember & {
   status: MemberStatus;
   groupSagaId: string | null;
+  /** Año de publicación/estreno (books.published_year / movies|series.release_year); para el orden «Publicación». */
+  year: number | null;
 };
 
 export type SagaChildRef = {

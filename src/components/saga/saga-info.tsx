@@ -12,9 +12,11 @@ import type { MemberGroup } from "@/lib/sagas/group-members";
 export async function SagaInfo({
   overview,
   groups,
+  hasGraph,
 }: {
   overview: string | null;
   groups: MemberGroup[];
+  hasGraph: boolean;
 }) {
   const t = await getTranslations("saga");
   return (
@@ -27,6 +29,18 @@ export async function SagaInfo({
           {overview ?? t("noSynopsis")}
         </p>
       </section>
+
+      {/* Infonote (spec §2.3): avisa de que hay un orden de lectura configurado
+          antes de que el usuario llegue a la grid de portadas — el enlace real
+          a la pestaña vive en SagaTabs, esto solo anuncia que existe. */}
+      {hasGraph && (
+        <aside className="flex items-start gap-2.5 rounded-xl border border-gold/30 bg-gold/10 px-3.5 py-3">
+          <span className="text-[15px] text-gold">◆</span>
+          <p className="text-xs leading-relaxed text-foreground">
+            <b>{t("graphAvailableTitle")}</b> {t("graphAvailableBody")}
+          </p>
+        </aside>
+      )}
 
       <section>
         <h2 className="mb-3 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
