@@ -106,7 +106,8 @@ export async function getSagaDetail(
   const { data: itemRows } = await supabase
     .from("saga_items")
     .select("saga_id, item_type, item_id, position")
-    .in("saga_id", sagaIds);
+    .in("saga_id", sagaIds)
+    .order("created_at", { ascending: true });
   const rows = (itemRows ?? []) as Array<{
     saga_id: string;
     item_type: ItemType;
@@ -115,7 +116,13 @@ export async function getSagaDetail(
   }>;
 
   // Dedupe multi-membresía: la fila con subsaga gana sobre la directa (spec
-  // §2.3: el ítem se pinta en su grupo, no en el nexo).
+  // §2.3: el ítem se pinta en su grupo, no en el nexo). Entre dos subsagas
+  // HERMANAS (mismo ítem en ambas, ninguna es la directa) no hay criterio de
+  // spec para desempatar, así que se necesita un orden determinista: el
+  // `.order("created_at", ...)` de arriba hace que el bucle procese primero
+  // la fila más antigua, y como ninguna de las dos condiciones de reemplazo
+  // se cumple entre dos no-null, gana la membresía más antigua en vez de
+  // depender del orden físico que devuelva Postgres.
   const byItem = new Map<string, { row: (typeof rows)[number]; groupSagaId: string | null }>();
   for (const row of rows) {
     const groupSagaId =
@@ -188,7 +195,10 @@ export async function getSagaDetail(
   const groups = groupMembers(members, children);
   const progress = computeProgress(groups);
 
-  // Nota media comunitaria: pases puntuados de todos los miembros.
+  // Nota media comunitaria: pases puntuados de todos los miembros, sin contar
+  // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase
+  // con finished_on al pasar a dropped sin limpiar el rating, así que sin este
+  // filtro contaminarían la media (mismo criterio que get-community.ts).
   const ratingRows: Array<{ itemKey: string; userId: string; rating: number; finishedOn: string; passId: string }> = [];
   await Promise.all(
     (Object.keys(idsByType) as ItemType[]).map(async (type) => {
@@ -199,7 +209,8 @@ export async function getSagaDetail(
         .eq("item_type", type)
         .in("item_id", idsByType[type])
         .not("rating", "is", null)
-        .not("finished_on", "is", null);
+        .not("finished_on", "is", null)
+        .neq("status", "dropped");
       for (const r of data ?? []) {
         ratingRows.push({
           itemKey: `${type}:${r.item_id}`,
