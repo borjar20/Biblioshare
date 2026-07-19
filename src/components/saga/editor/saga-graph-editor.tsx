@@ -332,8 +332,13 @@ export function SagaGraphEditor({
 
   const selected = nodes.find((n) => n.id === selectedId) ?? null;
 
+  // min-h-dvh en móvil, h-dvh solo en lg: en móvil el apilado (panel + lienzo
+  // + inspector) desborda una caja de altura fija y la BottomNav sticky del
+  // shell «asentaba» al final de la caja — en mitad del contenido desbordado.
+  // Con altura natural la página fluye y la barra vuelve a su sitio. En lg el
+  // layout en fila necesita la altura fija para los scrolls internos.
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col lg:h-dvh lg:min-h-0">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-gold">{t("eyebrow")}</p>
