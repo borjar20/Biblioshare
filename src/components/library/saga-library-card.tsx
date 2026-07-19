@@ -31,7 +31,13 @@ export async function SagaLibraryCard({ card }: { card: LibrarySagaCardData }) {
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="flex items-start gap-3">
-        <Link href={sagaHref(card.sagaId)} className="relative h-[76px] w-[72px] shrink-0">
+        {/* Las portadas del abanico son decorativas (alt=""): sin este
+            aria-label el enlace queda sin nombre accesible. */}
+        <Link
+          href={sagaHref(card.sagaId)}
+          aria-label={card.name}
+          className="relative h-[76px] w-[72px] shrink-0"
+        >
           {covers.length === 0 && (
             <span
               aria-hidden
