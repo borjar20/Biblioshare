@@ -35,6 +35,7 @@ import {
   removeItemFromSaga,
   type AssignSagaState,
 } from "@/lib/sagas/manage-saga-actions";
+import { setPrimarySaga } from "@/lib/sagas/curation-actions";
 import { EditionFields } from "./edition-fields";
 import { toContainedWebp } from "@/lib/image/to-contained-webp";
 import { Button } from "@/components/ui/button";
@@ -132,7 +133,7 @@ export function CatalogEditor({
   itemId,
   item,
   editions,
-  saga,
+  sagas,
   canContribute,
   children,
 }: {
@@ -140,10 +141,9 @@ export function CatalogEditor({
   itemId: string;
   item: CatalogItemFields;
   editions: Edition[];
-  /** La saga PRIMARY de este ítem, si tiene. El ítem puede estar en varias
-   *  sagas a la vez (multi-membresía, spec §1.2); esta es solo la que se
-   *  pinta como chip principal aquí. */
-  saga: { id: string; name: string } | null;
+  /** Todas las membresías de saga de este ítem (multi-membresía, spec §1.2),
+   *  cada una marcando si es la primary. */
+  sagas: { sagaId: string; name: string; isPrimary: boolean }[];
   canContribute: boolean;
   children: ReactNode;
 }) {
@@ -224,7 +224,7 @@ export function CatalogEditor({
       itemId={itemId}
       item={item}
       editions={editions}
-      saga={saga}
+      sagas={sagas}
       state={state}
       formAction={formAction}
       pending={pending}
@@ -241,7 +241,7 @@ function CatalogEditorForm({
   itemId,
   item,
   editions,
-  saga,
+  sagas,
   state,
   formAction,
   pending,
@@ -251,7 +251,7 @@ function CatalogEditorForm({
   itemId: string;
   item: CatalogItemFields;
   editions: Edition[];
-  saga: { id: string; name: string } | null;
+  sagas: { sagaId: string; name: string; isPrimary: boolean }[];
   /** useActionState de "Guardar cambios" vive en CatalogEditor (ver comentario ahí). */
   state: EditItemState;
   formAction: (formData: FormData) => void;
@@ -355,6 +355,17 @@ function CatalogEditorForm({
     sagaAssignAction,
     initialSagaState
   );
+
+  const [primaryPending, startPrimaryTransition] = useTransition();
+  const [primaryError, setPrimaryError] = useState(false);
+
+  function handleMakePrimary(sagaId: string) {
+    setPrimaryError(false);
+    startPrimaryTransition(async () => {
+      const result = await setPrimarySaga(itemType, itemId, sagaId);
+      if (result.error) setPrimaryError(true);
+    });
+  }
 
   const createEditionAction = createEdition.bind(null, itemType, itemId);
   const [createState, createFormAction, createPending] = useActionState(
@@ -575,45 +586,60 @@ function CatalogEditorForm({
         </form>
 
         {/* Sagas: contenido absorbido de saga-assign-form.tsx (que se borra).
-            La chip muestra la saga PRIMARY (multi-membresía existe, spec
-            §1.2, pero este editor solo maneja la principal); el aspa quita
-            SOLO esa membresía, no las demás sagas del ítem. */}
+            El ítem puede estar en varias sagas a la vez (multi-membresía,
+            spec §1.2): cada membresía es su propia chip, con ★ en la
+            primary y "hacer principal" en las demás. El aspa de cada chip
+            quita SOLO esa membresía, no las demás sagas del ítem. */}
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
             {tSaga("title")}
           </span>
-          {saga && (
-            // La saga actual como chip con su aspa (`.chips-ed` del frame),
-            // igual que los géneros: quitarla es el mismo gesto en las dos
-            // filas. El aspa es un <form> porque quitar es una server action.
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted py-[5px] pr-2 pl-[11px] text-[11.5px] text-foreground-soft">
-                <Link
-                  href={sagaHref(saga.id)}
-                  className="underline-offset-2 hover:underline"
+          {sagas.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {sagas.map((membership) => (
+                <span
+                  key={membership.sagaId}
+                  className="flex items-center gap-1.5 rounded-full border border-border py-1 pr-1.5 pl-3 text-sm"
                 >
-                  {saga.name}
-                </Link>
-                <form
-                  action={removeItemFromSaga.bind(null, itemType, itemId, saga.id)}
-                  className="contents"
-                >
-                  <button
-                    type="submit"
-                    aria-label={tSaga("remove")}
-                    className="grid h-[15px] w-[15px] place-items-center rounded-full bg-surface-3 text-muted-foreground"
+                  {membership.isPrimary && (
+                    <span aria-hidden title={tSaga("primaryBadge")} className="text-gold">
+                      ★
+                    </span>
+                  )}
+                  <Link href={sagaHref(membership.sagaId)} className="hover:underline">
+                    {membership.name}
+                  </Link>
+                  {!membership.isPrimary && (
+                    <button
+                      type="button"
+                      disabled={primaryPending}
+                      onClick={() => handleMakePrimary(membership.sagaId)}
+                      className="rounded-full px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      {tSaga("makePrimary")}
+                    </button>
+                  )}
+                  <form
+                    action={removeItemFromSaga.bind(null, itemType, itemId, membership.sagaId)}
                   >
-                    <XIcon className="h-2.5 w-2.5" />
-                  </button>
-                </form>
-              </span>
+                    <button
+                      type="submit"
+                      aria-label={tSaga("remove")}
+                      className="grid h-5 w-5 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+                    >
+                      ×
+                    </button>
+                  </form>
+                </span>
+              ))}
             </div>
           )}
+          {primaryError && <p className="text-sm text-status-dropped">{tSaga("errors.generic")}</p>}
           <form action={sagaFormAction} className="flex flex-col gap-2 sm:flex-row">
             <Input
               name="name"
               placeholder={tSaga("namePlaceholder")}
-              defaultValue={saga?.name ?? ""}
+              defaultValue=""
               className="flex-1"
             />
             <Input

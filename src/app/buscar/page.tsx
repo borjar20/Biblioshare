@@ -61,6 +61,13 @@ export default async function SearchPage({
         <>
           <SearchForm query={query} itemType={itemType} />
 
+          <Link
+            href="/sagas"
+            className="self-start font-mono text-[11px] tracking-[0.08em] text-muted-foreground uppercase hover:text-foreground"
+          >
+            {t("browseSagas")} →
+          </Link>
+
           {!query && <p className="text-sm text-muted-foreground">{t("empty")}</p>}
 
           {query && results.length === 0 && (

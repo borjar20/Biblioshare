@@ -424,7 +424,7 @@ async function SeriesTabs({
           // Las series no tienen ediciones: CatalogEditor no pinta esa
           // sección para este tipo, así que este array nunca se usa.
           editions={[]}
-          saga={mainSaga ? { id: mainSaga.sagaId, name: mainSaga.name } : null}
+          sagas={sagas.map((s) => ({ sagaId: s.sagaId, name: s.name, isPrimary: s.isPrimary }))}
           canContribute={canContribute}
         >
           <div className="flex flex-col gap-10">

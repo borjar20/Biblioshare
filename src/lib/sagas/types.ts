@@ -18,6 +18,7 @@ export type SagaMembership = {
   position: number | null;
   /** Obras que tiene la saga, para el "nº 4 de 20" de la ficha. */
   total: number;
+  isPrimary: boolean;
 };
 
 // Miembro de una saga (para la vista de saga).
