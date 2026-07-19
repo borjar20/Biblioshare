@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   MarkerType,
   ReactFlow,
   type Connection,
@@ -17,13 +18,16 @@ import { SAGA_ACCENT, SAGA_ACCENT_SEQUENCE, type SagaAccentToken } from "@/lib/s
 import type { EditorEdge, EditorNode, MembershipOp, NodeDisplay } from "@/lib/sagas/editor-types";
 import { displayKey } from "@/lib/sagas/editor-types";
 import { saveSagaGraph } from "@/lib/sagas/editor-actions";
+import { setParentSaga } from "@/lib/sagas/curation-actions";
 import { findOrderCollisions, validateGraphDraft } from "@/lib/sagas/validate-graph-draft";
+import { FloatingEdge } from "../graph/floating-edge";
 import { EditorNodeCard, type EditorFlowNode } from "./editor-node";
 import { EditorLeftPanel, type ChildSagaRef } from "./editor-left-panel";
 import { EditorInspector } from "./editor-inspector";
 import { EditorSaveBar } from "./editor-save-bar";
 
 const NODE_TYPES = { editor: EditorNodeCard };
+const EDGE_TYPES = { floating: FloatingEdge };
 const EDGE_DASH: Record<string, string | undefined> = { principal: undefined, opcional: "2 7", requisito: "1 6" };
 const EDGE_ACCENT: Record<string, SagaAccentToken> = { opcional: "ambar", requisito: "beige" };
 
@@ -58,6 +62,13 @@ export function SagaGraphEditor({
   const [dirty, setDirty] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Registro explícito de subsagas des-anidadas EN ESTA SESIÓN (solo unnestChild
+  // escribe aquí, tras éxito). discardDraft lo usa para filtrar initialNodes en
+  // vez de inferir por `children`: `children` no distingue "hija directa" de
+  // "nieta anidada más profundo" y descartaba nodos-saga legítimos de sagas
+  // anidadas a varios niveles (p.ej. nodo de una saga anidada bajo otra
+  // subsaga, no hija directa del universo).
+  const unnestedChildIdsRef = useRef(new Set<string>());
 
   const touch = useCallback(() => setDirty((d) => d + 1), []);
 
@@ -131,6 +142,7 @@ export function SagaGraphEditor({
           id: e.id,
           source: e.fromNode,
           target: e.toNode,
+          type: "floating",
           style: { stroke: color, strokeWidth: 3, strokeDasharray: EDGE_DASH[e.edgeType], strokeLinecap: "round" },
           markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
         };
@@ -239,7 +251,7 @@ export function SagaGraphEditor({
     (id: string) => {
       setNodes((ns) => ns.filter((n) => n.id !== id));
       setEdges((es) => es.filter((e) => e.fromNode !== id && e.toNode !== id));
-      setSelectedId(null);
+      setSelectedId((cur) => (cur === id ? null : cur));
       touch();
     },
     [touch],
@@ -251,6 +263,25 @@ export function SagaGraphEditor({
       touch();
     },
     [touch],
+  );
+
+  // Sacar una subsaga del universo (spec Task 3): acción inmediata en BD
+  // (setParentSaga a null), igual que crear/anidar subsagas — `children` NO
+  // pasa por el borrador. Su nodo en el grafo (si lo tiene) se queda huérfano
+  // sin esto, así que se quita con el removeNode ya existente en el mismo
+  // gesto: eso SÍ marca el borrador sucio (touch vía removeNode), para que
+  // "Guardar" persista la eliminación del nodo.
+  const unnestChild = useCallback(
+    async (childId: string) => {
+      const result = await setParentSaga(childId, null);
+      if (result.error) return result;
+      unnestedChildIdsRef.current.add(childId);
+      const orphan = nodes.find((n) => n.childSagaId === childId);
+      if (orphan) removeNode(orphan.id);
+      setChildren((cur) => cur.filter((c) => c.id !== childId));
+      return {};
+    },
+    [nodes, removeNode],
   );
 
   async function onSave() {
@@ -274,8 +305,21 @@ export function SagaGraphEditor({
   // mantiene después para resincronizar datos de servidor (p.ej. si otro
   // colaborador guardó mientras tanto).
   const discardDraft = useCallback(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
+    // Los nodos de subsagas des-anidadas (unnestChild) son acción inmediata YA
+    // persistida (setParentSaga a null), no borrador: restaurar initialNodes
+    // crudo resucitaría su nodo y recrearía el huérfano. Filtramos por el
+    // registro EXPLÍCITO unnestedChildIdsRef (solo unnestChild añade ahí, tras
+    // éxito) en vez de inferir por `children`: `children` son solo las hijas
+    // DIRECTAS del universo, y un nodo-saga en el lienzo puede apuntar a una
+    // saga anidada más profundo (p.ej. una "nieta" anidada bajo una hija) —
+    // ese nodo es legítimo y `children.has(childSagaId)` daría falso al
+    // filtrarlo, borrándolo indebidamente al descartar.
+    const keptNodes = initialNodes.filter(
+      (n) => n.childSagaId === null || !unnestedChildIdsRef.current.has(n.childSagaId),
+    );
+    const keptNodeIds = new Set(keptNodes.map((n) => n.id));
+    setNodes(keptNodes);
+    setEdges(initialEdges.filter((e) => keptNodeIds.has(e.fromNode) && keptNodeIds.has(e.toNode)));
     setDisplay(initialDisplay);
     setMembership(initialMembership);
     // children NO se revierte: crear/anidar subsagas y colores son acciones inmediatas ya persistidas, no borrador.
@@ -309,6 +353,7 @@ export function SagaGraphEditor({
           onAddItem={addItemNode}
           onAddSagaNode={addSagaNode}
           onChildrenChange={setChildren}
+          onUnnestChild={unnestChild}
         />
 
         <div className="relative min-h-[420px] flex-1">
@@ -316,6 +361,8 @@ export function SagaGraphEditor({
             nodes={flowNodes}
             edges={flowEdges}
             nodeTypes={NODE_TYPES}
+            edgeTypes={EDGE_TYPES}
+            connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}
             onConnect={onConnect}
             fitView

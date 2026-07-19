@@ -8,10 +8,16 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 // "hacer principal" del test 2, que se revierte al final.
 //
 // Todo lo que este spec CREA lleva el prefijo único `[QA Curación] ` (sagas
-// nuevas). La UI no permite borrar sagas (fuera de alcance de esta fase), así
-// que esos residuos quedan en BD tras correr el spec — el controller los
-// limpia por SQL (`delete from sagas where name like '[QA Curación]%'`)
-// después de la corrida definitiva, no este fichero.
+// nuevas). Desde la mejora post-v2 §3 (zona de peligro / borrar saga) el
+// test 1 se autolimpia al final: borra las DOS sagas que creó (Hija primero,
+// Universo después) navegando a /saga/<uuid>/editar → «Borrar saga» →
+// aviso → «Borrar definitivamente», usando siempre los uuid capturados por
+// createSagaAndCaptureId (nunca busca por nombre — ver comentario de esa
+// función). OJO: puede haber homónimos `[QA Curación] Universo`/`Hija`
+// residuales de corridas ANTERIORES a esta mejora (de cuando la UI no
+// permitía borrar) — este spec NO los toca, solo borra los suyos por uuid;
+// esos residuos previos los limpia el controller por SQL una única vez
+// (`delete from sagas where name like '[QA Curación]%'`), no este fichero.
 const COLLAB_EMAIL = process.env.COLLAB_USER_EMAIL ?? "borjar20+bibliosharecollab@gmail.com";
 const COLLAB_PASSWORD = process.env.COLLAB_USER_PASSWORD ?? "CollabTest1234pass";
 
@@ -73,6 +79,20 @@ async function clickAndWaitForActionResponse(page: Page, locator: Locator) {
     locator.click(),
   ]);
   return response;
+}
+
+// Borra una saga vía la zona de peligro de /saga/<id>/editar (mejora
+// post-v2 §3): «Borrar saga» → aviso de dos pasos → «Borrar definitivamente»
+// → deleteSaga redirige a /sagas si el borrado tuvo éxito. Siempre por uuid
+// capturado, nunca por nombre (mismo motivo que createSagaAndCaptureId: en
+// dev puede haber homónimos).
+async function deleteSagaViaDangerZone(page: Page, sagaId: string) {
+  await page.goto(`/saga/${sagaId}/editar`);
+  await page.getByRole("button", { name: "Borrar saga" }).click();
+  const confirmButton = page.getByRole("button", { name: "Borrar definitivamente" });
+  await expect(confirmButton).toBeVisible();
+  await confirmButton.click();
+  await page.waitForURL("/sagas");
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -145,6 +165,20 @@ test("colaborador: crear saga, editar su ficha y anidar una segunda saga", async
   // universos homónimos).
   await page.goto("/sagas");
   await expect(page.locator(`a[href="/saga/${hijaId}"]`)).toBeVisible();
+
+  // ── Autolimpieza: borrar las DOS sagas creadas por esta corrida vía la
+  // zona de peligro (mejora post-v2 §3). Hija primero (es la subsaga; nada
+  // depende de ella) y Universo después. Por uuid capturado en cada caso —
+  // nunca por nombre, ver comentario del bloque superior sobre homónimos
+  // residuales de corridas previas a esta mejora. Si algún assert anterior
+  // de este test falla, este bloque no se alcanza y las sagas de esa
+  // corrida quedan como residuo (mismo destino que tenían todas las
+  // corridas antes de esta mejora) — el spec no usa try/finally en ningún
+  // otro punto y no es razonable introducirlo aquí en solitario.
+  await deleteSagaViaDangerZone(page, hijaId);
+  await expect(page).toHaveURL("/sagas");
+  await deleteSagaViaDangerZone(page, universoId);
+  await expect(page).toHaveURL("/sagas");
 });
 
 // ─────────────────────────────────────────────────────────────────────────

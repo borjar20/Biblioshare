@@ -190,6 +190,51 @@ export async function updateSagaMeta(
   return {};
 }
 
+// Borra la saga entera. La BD hace el resto en cascada (saga_items,
+// saga_nodes, saga_edges, saga_follows); las SUBSAGAS no se borran: quedan
+// como sagas raíz (parent_saga_id on delete set null). Los ítems de catálogo
+// no se tocan. Vale para manuales y TMDB (una TMDB puede reaparecer por
+// cache-as-you-go — aceptado en el spec post-v2 §3). Requiere la policy de
+// DELETE de 20260719_sagas_delete_policy.sql: sin ella el DELETE afecta 0
+// filas en silencio (no da error, sagas ya tenía SELECT/INSERT/UPDATE pero
+// ninguna policy de DELETE).
+export async function deleteSaga(sagaId: string): Promise<{ error?: string }> {
+  const { supabase } = await requireCollaborator();
+  if (!supabase) return { error: "forbidden" };
+  if (!UUID_RE.test(sagaId)) return { error: "generic" };
+
+  const { data: existing } = await supabase
+    .from("sagas")
+    .select("id, parent_saga_id")
+    .eq("id", sagaId)
+    .maybeSingle();
+  if (!existing) return { error: "generic" };
+
+  // Capturar membresías, padre e hijas ANTES del delete: la cascada se lleva
+  // las membresías de golpe y el set null desengancha a las hijas — sin este
+  // snapshot no habría forma de saber qué fichas revalidar después (el padre
+  // pierde un grupo/nodo; las hijas pierden su chip «Parte de»).
+  const [{ data: members }, { data: childRows }] = await Promise.all([
+    supabase.from("saga_items").select("item_type, item_id").eq("saga_id", sagaId),
+    supabase.from("sagas").select("id").eq("parent_saga_id", sagaId),
+  ]);
+
+  const { error } = await supabase.from("sagas").delete().eq("id", sagaId);
+  if (error) return { error: "generic" };
+
+  revalidateSagaPage(sagaId);
+  if (existing.parent_saga_id) revalidateSagaPage(existing.parent_saga_id);
+  for (const child of childRows ?? []) revalidateSagaPage(child.id);
+  const seen = new Set<string>();
+  for (const member of members ?? []) {
+    const key = `${member.item_type}:${member.item_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    revalidateItemPage(member.item_type as ItemType, member.item_id);
+  }
+  redirect("/sagas");
+}
+
 // Portada de saga con service-role (Storage no valida ES256; misma razón y
 // mismo bucket "covers" que uploadCover de ítems, bajo el prefijo sagas/).
 // Se llama de forma DIRECTA desde el cliente (no via <form action>): validar

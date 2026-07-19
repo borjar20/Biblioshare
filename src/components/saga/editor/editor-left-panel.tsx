@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { ItemPicker, type PickedItem } from "@/components/clubs/item-picker";
 import { SagaPicker } from "@/components/saga-picker";
@@ -23,6 +23,7 @@ export function EditorLeftPanel({
   onAddItem,
   onAddSagaNode,
   onChildrenChange,
+  onUnnestChild,
 }: {
   sagaId: string;
   childSagas: ChildSagaRef[];
@@ -33,6 +34,7 @@ export function EditorLeftPanel({
   onAddItem: (item: PickedItem) => void;
   onAddSagaNode: (child: { id: string; name: string }) => void;
   onChildrenChange: (children: ChildSagaRef[]) => void;
+  onUnnestChild: (childId: string) => Promise<{ error?: string }>;
 }) {
   const t = useTranslations("sagaEditor");
   const [picking, setPicking] = useState(false);
@@ -41,6 +43,24 @@ export function EditorLeftPanel({
   const [nestError, setNestError] = useState(false);
   const [newName, setNewName] = useState("");
   const [newError, setNewError] = useState(false);
+
+  // Sacar del universo: confirmación inline de dos pasos, un id activo a la
+  // vez (patrón zona de peligro de SagaMetaEditor).
+  const [unnestConfirmId, setUnnestConfirmId] = useState<string | null>(null);
+  const [unnestErrorId, setUnnestErrorId] = useState<string | null>(null);
+  const [unnestPending, startUnnestTransition] = useTransition();
+
+  function handleUnnest(childId: string) {
+    setUnnestErrorId(null);
+    startUnnestTransition(async () => {
+      const result = await onUnnestChild(childId);
+      if (result.error) {
+        setUnnestErrorId(childId);
+        return;
+      }
+      setUnnestConfirmId(null);
+    });
+  }
 
   async function submitNewSubsaga() {
     const name = newName.trim();
@@ -101,20 +121,57 @@ export function EditorLeftPanel({
       <section>
         <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t("subsagas")}</h2>
         <ul className="space-y-1.5">
-          {childSagas.map((c) => (
-            <li key={c.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-2">
-              <button
-                type="button"
-                aria-label={t("cycleColor", { name: c.name })}
-                onClick={() => cycleAccent(c)}
-                className={`h-3 w-3 shrink-0 rounded-sm ${SAGA_ACCENT[accentBySaga.get(c.id) ?? "terracota"].bg}`}
-              />
-              <button type="button" onClick={() => onAddSagaNode(c)} className="min-w-0 flex-1 truncate text-left text-xs font-semibold">
-                {c.name}
-              </button>
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{countBySaga.get(c.id) ?? 0}</span>
-            </li>
-          ))}
+          {childSagas.map((c) =>
+            unnestConfirmId === c.id ? (
+              <li key={c.id} className="flex flex-col gap-1.5 rounded-lg border border-status-dropped/40 px-2.5 py-2">
+                <p className="text-[11px] text-muted-foreground">{t("unnestWarning")}</p>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    disabled={unnestPending}
+                    onClick={() => setUnnestConfirmId(null)}
+                    className="h-7 flex-1 rounded-lg border border-border text-[11px] font-semibold disabled:opacity-60"
+                  >
+                    {t("unnestCancel")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={unnestPending}
+                    onClick={() => handleUnnest(c.id)}
+                    className="h-7 flex-1 rounded-lg bg-status-dropped text-[11px] font-semibold text-white disabled:opacity-60"
+                  >
+                    {t("unnestConfirm")}
+                  </button>
+                </div>
+                {unnestErrorId === c.id && <p className="text-[11px] text-red-600">{t("genericError")}</p>}
+              </li>
+            ) : (
+              <li key={c.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-2">
+                <button
+                  type="button"
+                  aria-label={t("cycleColor", { name: c.name })}
+                  onClick={() => cycleAccent(c)}
+                  className={`h-3 w-3 shrink-0 rounded-sm ${SAGA_ACCENT[accentBySaga.get(c.id) ?? "terracota"].bg}`}
+                />
+                <button type="button" onClick={() => onAddSagaNode(c)} className="min-w-0 flex-1 truncate text-left text-xs font-semibold">
+                  {c.name}
+                </button>
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{countBySaga.get(c.id) ?? 0}</span>
+                <button
+                  type="button"
+                  title={t("unnestChild")}
+                  aria-label={t("unnestChild")}
+                  onClick={() => {
+                    setUnnestConfirmId(c.id);
+                    setUnnestErrorId(null);
+                  }}
+                  className="shrink-0 text-[13px] leading-none text-muted-foreground hover:text-status-dropped"
+                >
+                  ⤫
+                </button>
+              </li>
+            ),
+          )}
         </ul>
         <div className="mt-2 flex gap-1.5">
           <input
