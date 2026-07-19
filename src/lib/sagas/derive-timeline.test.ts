@@ -85,6 +85,28 @@ describe("deriveTimeline", () => {
     expect(tl[1].rows[0]).toEqual({ kind: "bridge", node: hub });
   });
 
+  it("dos puentes anclados a la misma sección conservan el orden alfabético", () => {
+    const hubA = node("hubA", { groupSagaId: null, groupName: null, accent: "beige", label: "Alfa Nexo" });
+    const hubB = node("hubB", { groupSagaId: null, groupName: null, accent: "beige", label: "Beta Nexo" });
+    const tl = deriveTimeline(
+      graph(
+        [
+          node("a", { orderNo: 1 }),
+          node("c", { orderNo: 2, groupSagaId: "g2", groupName: "Era Dos", accent: "terracota" }),
+          hubB,
+          hubA,
+        ],
+        [
+          { id: "e1", source: "a", target: "hubA", type: "requisito", accent: "beige" },
+          { id: "e2", source: "a", target: "hubB", type: "requisito", accent: "beige" },
+        ],
+      ),
+    );
+    expect(tl).toHaveLength(4);
+    expect(tl[1].rows[0]).toMatchObject({ kind: "bridge", node: { id: "hubA" } });
+    expect(tl[2].rows[0]).toMatchObject({ kind: "bridge", node: { id: "hubB" } });
+  });
+
   it("los nodos-saga no aparecen en el timeline (solo en el mapa 2D)", () => {
     const tl = deriveTimeline(
       graph([node("a", { orderNo: 1 }), node("s", { kind: "saga", orderNo: 2, groupSagaId: "g2" })]),

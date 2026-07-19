@@ -7,7 +7,8 @@ import type { DetailMember } from "./types";
 // consecutiva; los nodos sin orden cuelgan como ramas de su conexión más
 // temprana (o del final de su sección si están sueltos); los nexos (sin grupo)
 // conectados a la columna se pintan como puente entre secciones. Los
-// nodos-saga solo viven en el mapa 2D.
+// nodos-saga solo viven en el mapa 2D. Las aristas opcional/requisito entre dos
+// nodos DE COLUMNA se ignoran a propósito: la columna ya transmite el orden.
 
 export type TimelineBranch = { node: SagaGraphNode; edgeType: "opcional" | "requisito" };
 export type TimelineRow =
@@ -81,16 +82,27 @@ export function deriveTimeline(graph: SagaGraph): TimelineSection[] {
     row.branches.sort((a, b) => a.node.label.localeCompare(b.node.label));
   }
 
-  // Insertar puentes como secciones propias (después de su sección ancla),
-  // de atrás hacia delante para no desplazar índices.
-  bridges.sort((a, b) => b.afterSectionIdx - a.afterSectionIdx || a.node.label.localeCompare(b.node.label));
+  // Insertar puentes tras su sección ancla. Agrupados por ancla e insertados
+  // como un solo splice en orden alfabético: splices sueltos sobre el mismo
+  // índice invertirían el orden (el segundo empuja al primero).
+  const byAnchor = new Map<number, SagaGraphNode[]>();
   for (const b of bridges) {
-    sections.splice(b.afterSectionIdx + 1, 0, {
-      groupSagaId: null,
-      groupName: null,
-      accent: "beige",
-      rows: [{ kind: "bridge", node: b.node }],
-    });
+    const list = byAnchor.get(b.afterSectionIdx) ?? [];
+    list.push(b.node);
+    byAnchor.set(b.afterSectionIdx, list);
+  }
+  for (const idx of [...byAnchor.keys()].sort((a, b) => b - a)) {
+    const nodes = byAnchor.get(idx)!.sort((a, b) => a.label.localeCompare(b.label));
+    sections.splice(
+      idx + 1,
+      0,
+      ...nodes.map((node) => ({
+        groupSagaId: null,
+        groupName: null,
+        accent: "beige" as const,
+        rows: [{ kind: "bridge" as const, node }],
+      })),
+    );
   }
 
   return sections;
