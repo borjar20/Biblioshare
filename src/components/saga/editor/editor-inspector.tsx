@@ -104,21 +104,20 @@ export function EditorInspector({
             ))}
           </div>
         </label>
-        {isItem && (
-          <label className="w-[74px]">
-            <span className="mb-1 block font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">{t("orderNo")}</span>
-            <input
-              type="number"
-              min={1}
-              value={selected.orderNo ?? ""}
-              onChange={(e) => {
-                const v = e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null;
-                onPatch(selected.id, { orderNo: v === null || Number.isFinite(v) ? v : null });
-              }}
-              className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-center text-sm"
-            />
-          </label>
-        )}
+        {/* order_no de un nodo-saga lo mete en el orden principal; su ausencia lo hace rama opcional (§1.5) */}
+        <label className="w-[74px]">
+          <span className="mb-1 block font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">{t("orderNo")}</span>
+          <input
+            type="number"
+            min={1}
+            value={selected.orderNo ?? ""}
+            onChange={(e) => {
+              const v = e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null;
+              onPatch(selected.id, { orderNo: v === null || Number.isFinite(v) ? v : null });
+            }}
+            className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-center text-sm"
+          />
+        </label>
       </div>
       {selected.orderNo !== null && orderCollisions.includes(selected.orderNo) && (
         <p className="text-[11px] font-semibold text-gold">{t("orderCollision")}</p>
