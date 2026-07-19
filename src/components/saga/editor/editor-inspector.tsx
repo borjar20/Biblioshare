@@ -62,6 +62,7 @@ export function EditorInspector({
         <input
           value={selected.labelOverride ?? ""}
           placeholder={d.label}
+          maxLength={120}
           onChange={(e) => onPatch(selected.id, { labelOverride: e.target.value || null })}
           className="h-9 w-full rounded-lg border border-border bg-surface px-2.5 text-sm"
         />
@@ -110,7 +111,10 @@ export function EditorInspector({
               type="number"
               min={1}
               value={selected.orderNo ?? ""}
-              onChange={(e) => onPatch(selected.id, { orderNo: e.target.value ? Number(e.target.value) : null })}
+              onChange={(e) => {
+                const v = e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null;
+                onPatch(selected.id, { orderNo: v === null || Number.isFinite(v) ? v : null });
+              }}
               className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-center text-sm"
             />
           </label>

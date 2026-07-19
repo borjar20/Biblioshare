@@ -97,6 +97,8 @@ export function SagaGraphEditor({
           id: n.id,
           type: "editor",
           position: { x: n.x, y: n.y },
+          // Eco de la selección al modo controlado: sin esto React Flow la olvida en cada re-render y las flechas del teclado solo funcionan tras re-clicar.
+          selected: n.id === selectedId,
           data: {
             label: n.labelOverride ?? d.label,
             coverUrl: d.coverUrl,
@@ -108,7 +110,7 @@ export function SagaGraphEditor({
           },
         };
       }),
-    [nodes, display, membership, accentBySaga, errorNodeIds],
+    [nodes, display, membership, accentBySaga, errorNodeIds, selectedId],
   );
 
   const sourceGroup = useCallback(

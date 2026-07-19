@@ -55,6 +55,15 @@ describe("validateGraphDraft", () => {
       { code: "edge-self", edgeId: "e2" },
     ]);
   });
+
+  it("bad-order y label-too-long", () => {
+    const bad = itemNode("b", { orderNo: 0 });
+    const long = itemNode("l", { labelOverride: "x".repeat(121) });
+    expect(validateGraphDraft([bad, long], [])).toEqual([
+      { code: "bad-order", nodeId: "b" },
+      { code: "label-too-long", nodeId: "l" },
+    ]);
+  });
 });
 
 describe("findOrderCollisions", () => {
