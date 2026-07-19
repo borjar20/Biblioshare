@@ -161,7 +161,10 @@ export function EditorLeftPanel({
                   type="button"
                   title={t("unnestChild")}
                   aria-label={t("unnestChild")}
-                  onClick={() => setUnnestConfirmId(c.id)}
+                  onClick={() => {
+                    setUnnestConfirmId(c.id);
+                    setUnnestErrorId(null);
+                  }}
                   className="shrink-0 text-[13px] leading-none text-muted-foreground hover:text-status-dropped"
                 >
                   ⤫

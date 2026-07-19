@@ -240,7 +240,7 @@ export function SagaGraphEditor({
     (id: string) => {
       setNodes((ns) => ns.filter((n) => n.id !== id));
       setEdges((es) => es.filter((e) => e.fromNode !== id && e.toNode !== id));
-      setSelectedId(null);
+      setSelectedId((cur) => (cur === id ? null : cur));
       touch();
     },
     [touch],
@@ -293,8 +293,16 @@ export function SagaGraphEditor({
   // mantiene después para resincronizar datos de servidor (p.ej. si otro
   // colaborador guardó mientras tanto).
   const discardDraft = useCallback(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
+    // Los nodos de subsagas des-anidadas (unnestChild) son acción inmediata YA
+    // persistida (setParentSaga a null), no borrador: restaurar initialNodes
+    // crudo resucitaría su nodo y recrearía el huérfano. `children` sí refleja
+    // el estado post-unnest, así que se usa para filtrar qué nodo-subsaga
+    // sobrevive al descarte (y sus aristas, para no dejarlas colgando).
+    const survivingChildIds = new Set(children.map((c) => c.id));
+    const keptNodes = initialNodes.filter((n) => n.childSagaId === null || survivingChildIds.has(n.childSagaId));
+    const keptNodeIds = new Set(keptNodes.map((n) => n.id));
+    setNodes(keptNodes);
+    setEdges(initialEdges.filter((e) => keptNodeIds.has(e.fromNode) && keptNodeIds.has(e.toNode)));
     setDisplay(initialDisplay);
     setMembership(initialMembership);
     // children NO se revierte: crear/anidar subsagas y colores son acciones inmediatas ya persistidas, no borrador.
@@ -303,7 +311,7 @@ export function SagaGraphEditor({
     setDirty(0);
     setSaveError(null);
     router.refresh();
-  }, [initialNodes, initialEdges, initialDisplay, initialMembership, router]);
+  }, [initialNodes, initialEdges, initialDisplay, initialMembership, children, router]);
 
   const selected = nodes.find((n) => n.id === selectedId) ?? null;
 
