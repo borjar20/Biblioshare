@@ -3,7 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getSagaBase } from "./get-saga";
 import { buildSagaGraph, type GraphLookup, type RawSagaEdge, type RawSagaNode, type SagaGraph } from "./graph-data";
-import type { SagaAccentToken } from "./accents";
+import { isSagaAccentToken, type SagaAccentToken } from "./accents";
 import {
   averageSagaRating,
   computeProgress,
@@ -304,7 +304,15 @@ export async function getSagaDetail(
     groupNameMap.set(g.sagaId, g.name);
   }
   const childNames = new Map<string, string>();
-  for (const d of descendants.values()) childNames.set(d.id, d.name);
+  for (const d of descendants.values()) {
+    childNames.set(d.id, d.name);
+    // Nodo-saga de un descendiente profundo o de una hija sin miembros: usa su
+    // accent_color persistido si lo tiene (la rotación solo existe para los
+    // grupos de la ficha); sin color persistido cae al beige del fallback.
+    if (!groupAccent.has(d.id) && isSagaAccentToken(d.accent_color)) {
+      groupAccent.set(d.id, d.accent_color);
+    }
+  }
   const childCovers = new Map<string, string[]>();
   const childCounts = new Map<string, number>();
   for (const g of groups) {
