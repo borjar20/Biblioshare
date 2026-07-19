@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Background,
@@ -62,6 +62,13 @@ export function SagaGraphEditor({
   const [dirty, setDirty] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Registro explícito de subsagas des-anidadas EN ESTA SESIÓN (solo unnestChild
+  // escribe aquí, tras éxito). discardDraft lo usa para filtrar initialNodes en
+  // vez de inferir por `children`: `children` no distingue "hija directa" de
+  // "nieta anidada más profundo" y descartaba nodos-saga legítimos de sagas
+  // anidadas a varios niveles (p.ej. nodo de una saga anidada bajo otra
+  // subsaga, no hija directa del universo).
+  const unnestedChildIdsRef = useRef(new Set<string>());
 
   const touch = useCallback(() => setDirty((d) => d + 1), []);
 
@@ -268,6 +275,7 @@ export function SagaGraphEditor({
     async (childId: string) => {
       const result = await setParentSaga(childId, null);
       if (result.error) return result;
+      unnestedChildIdsRef.current.add(childId);
       const orphan = nodes.find((n) => n.childSagaId === childId);
       if (orphan) removeNode(orphan.id);
       setChildren((cur) => cur.filter((c) => c.id !== childId));
@@ -299,11 +307,16 @@ export function SagaGraphEditor({
   const discardDraft = useCallback(() => {
     // Los nodos de subsagas des-anidadas (unnestChild) son acción inmediata YA
     // persistida (setParentSaga a null), no borrador: restaurar initialNodes
-    // crudo resucitaría su nodo y recrearía el huérfano. `children` sí refleja
-    // el estado post-unnest, así que se usa para filtrar qué nodo-subsaga
-    // sobrevive al descarte (y sus aristas, para no dejarlas colgando).
-    const survivingChildIds = new Set(children.map((c) => c.id));
-    const keptNodes = initialNodes.filter((n) => n.childSagaId === null || survivingChildIds.has(n.childSagaId));
+    // crudo resucitaría su nodo y recrearía el huérfano. Filtramos por el
+    // registro EXPLÍCITO unnestedChildIdsRef (solo unnestChild añade ahí, tras
+    // éxito) en vez de inferir por `children`: `children` son solo las hijas
+    // DIRECTAS del universo, y un nodo-saga en el lienzo puede apuntar a una
+    // saga anidada más profundo (p.ej. una "nieta" anidada bajo una hija) —
+    // ese nodo es legítimo y `children.has(childSagaId)` daría falso al
+    // filtrarlo, borrándolo indebidamente al descartar.
+    const keptNodes = initialNodes.filter(
+      (n) => n.childSagaId === null || !unnestedChildIdsRef.current.has(n.childSagaId),
+    );
     const keptNodeIds = new Set(keptNodes.map((n) => n.id));
     setNodes(keptNodes);
     setEdges(initialEdges.filter((e) => keptNodeIds.has(e.fromNode) && keptNodeIds.has(e.toNode)));
@@ -315,7 +328,7 @@ export function SagaGraphEditor({
     setDirty(0);
     setSaveError(null);
     router.refresh();
-  }, [initialNodes, initialEdges, initialDisplay, initialMembership, children, router]);
+  }, [initialNodes, initialEdges, initialDisplay, initialMembership, router]);
 
   const selected = nodes.find((n) => n.id === selectedId) ?? null;
 
