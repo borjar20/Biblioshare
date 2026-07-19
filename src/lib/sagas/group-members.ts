@@ -61,12 +61,28 @@ export function groupMembers(
   for (const c of childGroups) {
     if (isSagaAccentToken(c.accentColor)) used.add(c.accentColor);
   }
+  const sequenceLength = SAGA_ACCENT_SEQUENCE.length;
   let rotation = 0;
+  // Puntero de reserva para cuando ya no queda ningún token libre (persistido
+  // o ya asignado aquí mismo): a partir de ahí no hay huecos que buscar, así
+  // que se reutiliza cíclicamente sin volver a consultar `used`.
+  let cycleIndex = 0;
   const accentFor = (c: SagaChildRef): SagaAccentToken => {
     if (isSagaAccentToken(c.accentColor)) return c.accentColor;
-    while (used.has(SAGA_ACCENT_SEQUENCE[rotation % SAGA_ACCENT_SEQUENCE.length])) rotation++;
-    const token = SAGA_ACCENT_SEQUENCE[rotation % SAGA_ACCENT_SEQUENCE.length];
-    used.add(token);
+    if (used.size < sequenceLength) {
+      // used.size < sequenceLength garantiza (principio del palomar) que hay
+      // al menos un hueco libre en una vuelta completa: el bucle hace, como
+      // mucho, sequenceLength iteraciones — nunca es infinito.
+      while (used.has(SAGA_ACCENT_SEQUENCE[rotation % sequenceLength])) rotation++;
+      const token = SAGA_ACCENT_SEQUENCE[rotation % sequenceLength];
+      used.add(token);
+      cycleIndex = rotation + 1;
+      return token;
+    }
+    // Los sequenceLength tokens ya están ocupados: en vez de seguir buscando
+    // un hueco que no existe, se reutiliza la secuencia cíclicamente.
+    const token = SAGA_ACCENT_SEQUENCE[cycleIndex % sequenceLength];
+    cycleIndex++;
     return token;
   };
 

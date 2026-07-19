@@ -72,6 +72,23 @@ describe("groupMembers", () => {
     );
     expect(groups[0].members.map((m) => m.itemId)).toEqual(["b2", "a", "z"]);
   });
+
+  it("con más de 5 subsagas sin color reutiliza la secuencia sin colgarse", () => {
+    const manyChildren = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((id) => ({
+      id,
+      name: id,
+      accentColor: null,
+    }));
+    const groups = groupMembers(
+      manyChildren.map((c, i) =>
+        member({ itemId: `i${i}`, groupSagaId: c.id, position: i + 1 }),
+      ),
+      manyChildren,
+    );
+    expect(groups).toHaveLength(7);
+    expect(groups[5].accent).toBe("terracota");
+    expect(groups[6].accent).toBe("verde");
+  });
 });
 
 describe("computeProgress", () => {
