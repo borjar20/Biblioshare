@@ -22,7 +22,11 @@ export type LibNode = {
   orderNo: number | null;
 };
 export type LibItemMeta = { itemType: ItemType; itemId: string; title: string; coverUrl: string | null; year: number | null };
-export type LibEntry = { itemType: ItemType; itemId: string; status: string; updatedAt: string };
+// status = estado del pase ACTIVO (o "" sin pase activo); everCompleted = el
+// usuario tiene ALGÚN pase completado del ítem. Dos campos porque una
+// relectura es in_progress y completada a la vez: cuenta en el avance y sale
+// como «leyendo ahora».
+export type LibEntry = { itemType: ItemType; itemId: string; status: string; everCompleted: boolean; updatedAt: string };
 export type LibRating = { itemType: ItemType; itemId: string; rating: number; finishedOn: string };
 export type LibCreator = { itemType: ItemType; itemId: string; name: string };
 
@@ -155,7 +159,7 @@ export function buildLibrarySagaCards(
     const order = [...new Set(mainOrder(followedId, 0, new Set()))];
     const tree = [...new Set(subtreeItems(followedId, 0, new Set()))];
     const total = order.length;
-    const isCompleted = (k: string) => entryByItem.get(k)?.status === "completed";
+    const isCompleted = (k: string) => entryByItem.get(k)?.everCompleted === true;
     const completed = order.filter(isCompleted).length;
 
     // Segmentos por hija directa (universos): un ítem del orden pertenece a la

@@ -27,10 +27,16 @@ const item = (itemId: string, title: string): LibItemMeta => ({
   coverUrl: `${title}.jpg`,
   year: null,
 });
-const entry = (itemId: string, status: string, updatedAt = "2026-07-01T00:00:00Z"): LibEntry => ({
+const entry = (
+  itemId: string,
+  status: string,
+  updatedAt = "2026-07-01T00:00:00Z",
+  everCompleted = status === "completed",
+): LibEntry => ({
   itemType: "book",
   itemId,
   status,
+  everCompleted,
   updatedAt,
 });
 const node = (sagaId: string, ref: { itemId?: string; childSagaId?: string }, orderNo: number | null): LibNode => ({
@@ -151,6 +157,25 @@ describe("buildLibrarySagaCards", () => {
       [],
     );
     expect(cards.map((c) => c.sagaId)).toEqual(["fresh", "old", "alfa", "zeta", "done"]);
+  });
+
+  it("relectura: un pase completado cuenta en el avance aunque haya otro en curso", () => {
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S")],
+      [mem("s", "a", 1), mem("s", "b", 2), mem("s", "c", 3)],
+      [],
+      [item("a", "A"), item("b", "B"), item("c", "C")],
+      [
+        // a: leída antes (pase completado) y releyéndose ahora (pase activo)
+        entry("a", "in_progress", "2026-07-15T00:00:00Z", true),
+        entry("b", "completed"),
+      ],
+      [],
+      [],
+    );
+    expect(cards[0].progress).toMatchObject({ completed: 2, total: 3, pct: 67 });
+    expect(cards[0].next).toMatchObject({ kind: "reading", itemId: "a" });
   });
 
   it("segmentos de universo: por hija + nexo beige; ciclo/profundidad no cuelga", () => {
