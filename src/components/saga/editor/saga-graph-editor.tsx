@@ -276,13 +276,13 @@ export function SagaGraphEditor({
     setEdges(initialEdges);
     setDisplay(initialDisplay);
     setMembership(initialMembership);
-    setChildren(childSagas);
+    // children NO se revierte: crear/anidar subsagas y colores son acciones inmediatas ya persistidas, no borrador.
     setOps([]);
     setSelectedId(null);
     setDirty(0);
     setSaveError(null);
     router.refresh();
-  }, [initialNodes, initialEdges, initialDisplay, initialMembership, childSagas, router]);
+  }, [initialNodes, initialEdges, initialDisplay, initialMembership, router]);
 
   const selected = nodes.find((n) => n.id === selectedId) ?? null;
 
