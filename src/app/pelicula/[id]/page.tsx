@@ -317,8 +317,9 @@ async function MovieTabs({
 
   const genres = movie.genres ?? [];
 
-  // La principal es la primera (la más antigua): solo de ella se pinta la tira
-  // de portadas, y solo en móvil. Ver getItemSagas.
+  // La principal es la marcada is_primary (created_at como desempate si
+  // ninguna lo es); getItemSagas ya la deja primera. Solo de ella se pinta
+  // la tira de portadas, y solo en móvil. Ver getItemSagas.
   const mainSaga = sagas[0] ?? null;
   let sagaMembers: SagaMember[] = [];
   if (mainSaga) {

@@ -99,7 +99,17 @@ export async function assignItemToSaga(
   return {};
 }
 
-export async function removeItemFromSaga(itemType: ItemType, itemId: string) {
+// Quita el ítem de UNA saga (la indicada por `sagaId`), no de todas: en el
+// modelo multi-saga (spec §1.2) un ítem puede tener varias membresías a la
+// vez, y el aspa de la chip solo representa la que el colaborador tiene
+// delante. Sin el filtro por saga_id, quitar la chip de una saga borraba de
+// paso las demás membresías del ítem.
+//
+// Si la membresía borrada era la primary, el ítem puede quedarse sin
+// ninguna primary (no se re-promociona automáticamente aquí: es decisión de
+// fase 3, del editor completo de sagas). getItemSagas ya contempla ese caso
+// y cae a `created_at` como desempate cuando no hay is_primary.
+export async function removeItemFromSaga(itemType: ItemType, itemId: string, sagaId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -114,8 +124,10 @@ export async function removeItemFromSaga(itemType: ItemType, itemId: string) {
     .from("saga_items")
     .delete()
     .eq("item_type", itemType)
-    .eq("item_id", itemId);
+    .eq("item_id", itemId)
+    .eq("saga_id", sagaId);
   if (error) throw error;
 
   revalidateItemPage(itemType, itemId);
+  revalidateSagaPage(sagaId);
 }
