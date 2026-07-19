@@ -47,6 +47,9 @@
      color. Mismo patrón de par por tema que --foreground-soft. */
   --gold-ink: #8a5a12;
   --green: #5c7052;
+  /* Beige "nexo/spine" de las sagas (mockup Paper - Sagas): color del grupo
+     de miembros directos de un universo sin subsaga. */
+  --spine: #b8a98f;
 
   --status-planned: #b3a894;
   --status-in-progress: #c98a2b;
@@ -87,6 +90,7 @@
   --gold: #e0a94a;
   --gold-ink: #e0a94a;
   --green: #8ba57b;
+  --spine: #8a7d63;
 
   --status-planned: #8a8072;
   --status-in-progress: #e0a94a;
@@ -126,6 +130,7 @@
     --gold: #e0a94a;
     --gold-ink: #e0a94a;
     --green: #8ba57b;
+    --spine: #8a7d63;
 
     --status-planned: #8a8072;
     --status-in-progress: #e0a94a;
@@ -165,6 +170,7 @@
   --color-gold: var(--gold);
   --color-gold-ink: var(--gold-ink);
   --color-green: var(--green);
+  --color-spine: var(--spine);
 
   --color-status-planned: var(--status-planned);
   --color-status-in-progress: var(--status-in-progress);

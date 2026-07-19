@@ -15,6 +15,8 @@ type SagaRow = {
   cover_url: string | null;
   source: string;
   tmdb_collection_id: number | null;
+  parent_saga_id: string | null;
+  accent_color: string | null;
 };
 
 const CATALOG_TABLE: Record<ItemType, "books" | "movies" | "series"> = {
@@ -31,6 +33,8 @@ function toSaga(row: SagaRow): Saga {
     coverUrl: row.cover_url,
     source: row.source,
     tmdbCollectionId: row.tmdb_collection_id,
+    parentSagaId: row.parent_saga_id,
+    accentColor: row.accent_color,
   };
 }
 
@@ -149,7 +153,7 @@ export async function getSaga(
 ): Promise<{ saga: Saga; members: SagaMember[] } | null> {
   const { data: row } = await supabase
     .from("sagas")
-    .select("id, name, overview, cover_url, source, tmdb_collection_id")
+    .select("id, name, overview, cover_url, source, tmdb_collection_id, parent_saga_id, accent_color")
     .eq("id", id)
     .maybeSingle();
   if (!row) return null;

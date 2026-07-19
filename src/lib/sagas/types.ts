@@ -7,6 +7,8 @@ export type Saga = {
   coverUrl: string | null;
   source: string; // "tmdb" | "manual"
   tmdbCollectionId: number | null;
+  parentSagaId: string | null;
+  accentColor: string | null;
 };
 
 // Pertenencia de un ítem a una saga.
@@ -26,4 +28,19 @@ export type SagaMember = {
   coverUrl: string | null;
   href: string;
   position: number | null;
+};
+
+export type MemberStatus = "completed" | "in_progress" | null;
+
+// Miembro resuelto para la ficha: SagaMember + estado del usuario + subsaga
+// (hija directa bajo la que milita; null = miembro directo / nexo).
+export type DetailMember = SagaMember & {
+  status: MemberStatus;
+  groupSagaId: string | null;
+};
+
+export type SagaChildRef = {
+  id: string;
+  name: string;
+  accentColor: string | null;
 };
