@@ -1363,6 +1363,7 @@
   "sagaLibrary": {
     "graphTag": "Grafo",
     "by": "de {name}",
+    "progressLabel": "{completed} / {total} {type, select, book {leídos} movie {vistas} series {vistas} other {}} · {pct}%",
     "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",
     "readingNow": "Leyendo ahora",
     "nextUp": "Siguiente",

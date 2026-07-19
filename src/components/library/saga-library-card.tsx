@@ -22,7 +22,12 @@ const MINI_FAN_Z = ["z-30", "z-20", "z-10"];
 // nombre enlaza a la ficha de saga y el bloque siguiente a la ficha de la obra.
 export async function SagaLibraryCard({ card }: { card: LibrarySagaCardData }) {
   const t = await getTranslations("sagaLibrary");
-  const pctLabel = `${card.progress.completed} / ${card.progress.total} · ${card.progress.pct}%`;
+  const pctLabel = t("progressLabel", {
+    completed: card.progress.completed,
+    total: card.progress.total,
+    pct: card.progress.pct,
+    type: card.dominantType ?? "other",
+  });
   const covers = card.covers.slice(0, 3);
   const dotClass = card.dominantType
     ? MEDIA_ACCENT[card.dominantType].bg
@@ -90,7 +95,8 @@ export async function SagaLibraryCard({ card }: { card: LibrarySagaCardData }) {
             />
           ))
         ) : (
-          <span className="h-full bg-accent" style={{ width: `${card.progress.pct}%` }} />
+          // Sin segmentos (saga simple): color del tipo de obra, §4.3.
+          <span className={`h-full ${dotClass}`} style={{ width: `${card.progress.pct}%` }} />
         )}
       </div>
 
