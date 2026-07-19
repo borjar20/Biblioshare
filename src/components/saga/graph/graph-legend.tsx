@@ -1,0 +1,40 @@
+import { getTranslations } from "next-intl/server";
+import { SAGA_ACCENT } from "@/lib/sagas/accents";
+import type { SagaGraph } from "@/lib/sagas/graph-data";
+
+// Leyenda del mapa (frames B/C/E): tipos de línea + subsagas presentes en el
+// grafo (deducidas de los propios nodos, sin prop extra).
+export async function GraphLegend({ graph }: { graph: SagaGraph }) {
+  const t = await getTranslations("saga");
+  const groups = new Map<string, { name: string; accent: keyof typeof SAGA_ACCENT }>();
+  for (const n of graph.nodes) {
+    if (n.groupSagaId && n.groupName && !groups.has(n.groupSagaId)) {
+      groups.set(n.groupSagaId, { name: n.groupName, accent: n.accent });
+    }
+  }
+  const hasNexus = graph.nodes.some((n) => n.kind === "item" && n.groupSagaId === null);
+
+  return (
+    <div className="grid grid-cols-2 gap-x-3.5 gap-y-2 rounded-xl border border-border bg-surface px-4 py-3">
+      <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+        <i className="w-[26px] border-t-[2.5px] border-foreground" /> {t("legendMain")}
+      </span>
+      <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+        <i className="w-[26px] border-t-[2.5px] border-dashed border-gold" /> {t("legendOptional")}
+      </span>
+      <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+        <i className="w-[26px] border-t-[3px] border-dotted border-spine" /> {t("legendRequisite")}
+      </span>
+      {hasNexus && (
+        <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+          <i className="h-[13px] w-[13px] shrink-0 rounded-full bg-spine" /> {t("nexusGroup")}
+        </span>
+      )}
+      {[...groups.values()].map((g) => (
+        <span key={g.name} className="flex items-center gap-2 text-[11.5px] text-foreground">
+          <i className={`h-[13px] w-[13px] shrink-0 rounded-full ${SAGA_ACCENT[g.accent].bg}`} /> {g.name}
+        </span>
+      ))}
+    </div>
+  );
+}
