@@ -2055,6 +2055,10 @@ export type Database = {
         Returns: undefined
       }
       sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
+      save_saga_graph: {
+        Args: { p_edges: Json; p_nodes: Json; p_saga_id: string }
+        Returns: undefined
+      }
       set_activity_completion_mode: {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
