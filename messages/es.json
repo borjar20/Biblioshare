@@ -127,6 +127,7 @@
     "added": "En tu biblioteca",
     "empty": "Escribe algo para buscar.",
     "noResults": "No se encontraron resultados.",
+    "browseSagas": "Explorar sagas",
     "scan": {
       "button": "Escanear código de barras",
       "cameraDenied": "No se pudo acceder a la cámara. Comprueba los permisos o escribe el ISBN manualmente."
@@ -1004,6 +1005,27 @@
     "saveError": "No se pudo guardar. Revisa el borrador e inténtalo otra vez.",
     "invalidDraft": "El borrador tiene errores (nodos duplicados o aristas rotas).",
     "emptyInspector": "Selecciona un nodo del lienzo para editarlo."
+  },
+  "sagaIndex": {
+    "title": "Sagas",
+    "new": "Nueva saga",
+    "newTitle": "Nueva saga",
+    "newSubtitle": "Crea el contenedor y rellénalo después: miembros y grafo desde su ficha.",
+    "searchPlaceholder": "Buscar sagas…",
+    "emptyTitle": "Sin sagas",
+    "emptyDescription": "Ninguna saga coincide con la búsqueda.",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "p. ej. Universo Cinematográfico de Marvel",
+    "accentLabel": "Color",
+    "accentAuto": "Automático",
+    "create": "Crear saga",
+    "creating": "Creando…",
+    "errors": {
+      "forbidden": "Solo los colaboradores pueden crear sagas.",
+      "nameRequired": "El nombre es obligatorio.",
+      "cycle": "Ese anidamiento crearía un ciclo.",
+      "generic": "No se pudo guardar. Inténtalo de nuevo."
+    }
   },
   "session": {
     "titleBook": "Guardar sesión de lectura",
