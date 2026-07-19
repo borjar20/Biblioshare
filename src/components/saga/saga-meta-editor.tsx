@@ -45,17 +45,26 @@ export function SagaMetaEditor({
   const [parentPending, startParentTransition] = useTransition();
   const [newParentName, setNewParentName] = useState("");
 
-  function applyParent(next: { id: string } | { newName: string } | null, optimistic: { id: string; name: string } | null) {
+  function applyParent(next: { id: string } | { newName: string } | null) {
     setParentError(null);
     startParentTransition(async () => {
-      const result = await setParentSaga(sagaId, next);
-      if (result.error) {
-        setParentError(result.error);
-        return;
+      try {
+        const result = await setParentSaga(sagaId, next);
+        if (result.error) {
+          // El trigger de BD también cae aquí (no en "cycle") cuando la
+          // jerarquía supera 10 niveles de profundidad — aceptado.
+          setParentError(result.error);
+          return;
+        }
+        // Usar siempre el nombre canónico que devuelve el servidor, nunca lo
+        // tecleado en el cliente (puede reutilizar una saga homónima con
+        // nombre distinto en BD).
+        setParent(result.parent ?? null);
+        setNewParentName("");
+        router.refresh();
+      } catch {
+        setParentError("generic");
       }
-      setParent(optimistic ?? (result.parentId ? { id: result.parentId, name: newParentName.trim() } : null));
-      setNewParentName("");
-      router.refresh();
     });
   }
 
@@ -71,9 +80,13 @@ export function SagaMetaEditor({
     const formData = new FormData();
     formData.set("file", file);
     startCoverTransition(async () => {
-      const result = await uploadSagaCover(sagaId, formData);
-      if (result.error || !result.url) setCoverError(true);
-      else setCoverUrl(result.url);
+      try {
+        const result = await uploadSagaCover(sagaId, formData);
+        if (result.error || !result.url) setCoverError(true);
+        else setCoverUrl(result.url);
+      } catch {
+        setCoverError(true);
+      }
     });
   }
 
@@ -144,7 +157,7 @@ export function SagaMetaEditor({
             <button
               type="button"
               disabled={parentPending}
-              onClick={() => applyParent(null, null)}
+              onClick={() => applyParent(null)}
               className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
             >
               {t("editParentRemove")}
@@ -152,7 +165,7 @@ export function SagaMetaEditor({
           </div>
         ) : (
           <>
-            <SagaPicker value={null} onChange={(saga) => saga && applyParent({ id: saga.id }, saga)} />
+            <SagaPicker value={null} onChange={(saga) => saga && applyParent({ id: saga.id })} />
             <div className="flex gap-2">
               <Input
                 value={newParentName}
@@ -164,7 +177,7 @@ export function SagaMetaEditor({
                 type="button"
                 variant="secondary"
                 disabled={parentPending || !newParentName.trim()}
-                onClick={() => applyParent({ newName: newParentName }, null)}
+                onClick={() => applyParent({ newName: newParentName })}
               >
                 {t("editParentCreate")}
               </Button>

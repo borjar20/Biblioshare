@@ -62,37 +62,53 @@ export async function createSaga(_prev: CurationState, formData: FormData): Prom
 // Cambia (o quita, con null) el universo padre de una saga. `newName` crea el
 // universo en el mismo gesto, con buscar-o-crear homónimo case-insensitive
 // (patrón assignItemToSaga). El trigger saga_parent_no_cycle protege en BD;
-// capturamos su excepción como "cycle".
+// capturamos su excepción como "cycle". Contrato: cuando se asigna padre,
+// `parent.name` es SIEMPRE el nombre canónico en BD (nunca lo tecleado por el
+// cliente) — necesario porque la rama "id existente" puede reutilizar una
+// saga manual homónima cuyo nombre en BD difiere en mayúsculas/espacios del
+// que el cliente tenía a mano.
 export async function setParentSaga(
   sagaId: string,
   parent: { id: string } | { newName: string } | null,
-): Promise<{ error?: string; parentId?: string }> {
+): Promise<{ error?: string; parent?: { id: string; name: string } }> {
   const { supabase } = await requireCollaborator();
   if (!supabase) return { error: "forbidden" };
 
   let parentId: string | null = null;
+  let parentName: string | null = null;
   if (parent && "id" in parent) {
-    parentId = parent.id;
+    // No confiar en el nombre que trae el cliente (SagaPicker): puede haber
+    // cambiado desde que se listó. Select barato para el nombre canónico.
+    const { data: target, error: targetError } = await supabase
+      .from("sagas")
+      .select("id, name")
+      .eq("id", parent.id)
+      .maybeSingle();
+    if (targetError || !target) return { error: "generic" };
+    parentId = target.id;
+    parentName = target.name;
   } else if (parent) {
     const name = parent.newName.trim();
     if (!name) return { error: "nameRequired" };
     const { data: existing } = await supabase
       .from("sagas")
-      .select("id")
+      .select("id, name")
       .eq("source", "manual")
       .ilike("name", name)
       .limit(1)
       .maybeSingle();
     if (existing) {
       parentId = existing.id;
+      parentName = existing.name;
     } else {
       const { data: inserted, error } = await supabase
         .from("sagas")
         .insert({ name, source: "manual" })
-        .select("id")
+        .select("id, name")
         .single();
       if (error || !inserted) return { error: "generic" };
       parentId = inserted.id;
+      parentName = inserted.name;
     }
   }
   if (parentId === sagaId) return { error: "cycle" };
@@ -102,7 +118,7 @@ export async function setParentSaga(
 
   revalidateSagaPage(sagaId);
   if (parentId) revalidateSagaPage(parentId);
-  return { parentId: parentId ?? undefined };
+  return { parent: parentId && parentName ? { id: parentId, name: parentName } : undefined };
 }
 
 // Promociona la membresía indicada a primary. Orden OBLIGADO por el índice
