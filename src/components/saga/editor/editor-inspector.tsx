@@ -127,14 +127,14 @@ export function EditorInspector({
             <li key={e.id} className="flex items-center gap-2 py-1.5">
               <span className="w-9 shrink-0 font-mono text-[9px] uppercase text-muted-foreground">{t("connIn")}</span>
               <span className="min-w-0 flex-1 truncate font-semibold">{nodeLabel(e.fromNode)}</span>
-              <button type="button" aria-label="×" onClick={() => onRemoveEdge(e.id)} className="text-muted-foreground">×</button>
+              <button type="button" aria-label={t("removeConnection")} onClick={() => onRemoveEdge(e.id)} className="text-muted-foreground">×</button>
             </li>
           ))}
           {outgoing.map((e) => (
             <li key={e.id} className="flex items-center gap-2 py-1.5">
               <span className="w-9 shrink-0 font-mono text-[9px] uppercase text-muted-foreground">{t("connOut")}</span>
               <span className="min-w-0 flex-1 truncate font-semibold">{nodeLabel(e.toNode)}</span>
-              <button type="button" aria-label="×" onClick={() => onRemoveEdge(e.id)} className="text-muted-foreground">×</button>
+              <button type="button" aria-label={t("removeConnection")} onClick={() => onRemoveEdge(e.id)} className="text-muted-foreground">×</button>
             </li>
           ))}
         </ul>

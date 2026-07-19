@@ -40,15 +40,19 @@ export function EditorLeftPanel({
   const [nestValue, setNestValue] = useState<{ id: string; name: string } | null>(null);
   const [nestError, setNestError] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newError, setNewError] = useState(false);
 
   async function submitNewSubsaga() {
     const name = newName.trim();
     if (!name) return;
+    setNewError(false);
     const result = await createChildSaga(sagaId, name);
     if ("id" in result) {
       onChildrenChange([...childSagas, { ...result, accentColor: null }]);
       setNewName("");
+      return;
     }
+    setNewError(true);
   }
 
   async function submitNest(saga: { id: string; name: string } | null) {
@@ -101,7 +105,7 @@ export function EditorLeftPanel({
             <li key={c.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-2">
               <button
                 type="button"
-                aria-label={c.name}
+                aria-label={t("cycleColor", { name: c.name })}
                 onClick={() => cycleAccent(c)}
                 className={`h-3 w-3 shrink-0 rounded-sm ${SAGA_ACCENT[accentBySaga.get(c.id) ?? "terracota"].bg}`}
               />
@@ -115,14 +119,19 @@ export function EditorLeftPanel({
         <div className="mt-2 flex gap-1.5">
           <input
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e) => {
+              setNewName(e.target.value);
+              setNewError(false);
+            }}
             placeholder={t("newSubsagaPrompt")}
+            aria-label={t("newSubsagaPrompt")}
             className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-surface px-2 text-xs"
           />
           <button type="button" onClick={submitNewSubsaga} className="h-8 shrink-0 rounded-lg bg-accent px-2.5 text-xs font-semibold text-accent-foreground">
             ＋
           </button>
         </div>
+        {newError && <p className="mt-1 text-[11px] text-red-600">{t("createError")}</p>}
         {nesting ? (
           <div className="mt-2">
             <SagaPicker value={nestValue} onChange={submitNest} />

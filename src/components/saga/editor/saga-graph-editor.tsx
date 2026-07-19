@@ -145,7 +145,9 @@ export function SagaGraphEditor({
           setNodes((ns) => ns.map((n) => (n.id === ch.id ? { ...n, x: ch.position!.x, y: ch.position!.y } : n)));
           if (!ch.dragging) touch();
         }
-        if (ch.type === "select") setSelectedId(ch.selected ? ch.id : null);
+        if (ch.type === "select") {
+          setSelectedId((cur) => (ch.selected ? ch.id : cur === ch.id ? null : cur));
+        }
         if (ch.type === "remove") {
           setNodes((ns) => ns.filter((n) => n.id !== ch.id));
           setEdges((es) => es.filter((e) => e.fromNode !== ch.id && e.toNode !== ch.id));
@@ -264,6 +266,24 @@ export function SagaGraphEditor({
     router.refresh();
   }
 
+  // «Descartar» (spec §3.6): useState solo lee initial* al montar, así que
+  // reasignar cada pieza de estado a su valor inicial es la única forma de
+  // deshacer el borrador sin desmontar el árbol. router.refresh() se
+  // mantiene después para resincronizar datos de servidor (p.ej. si otro
+  // colaborador guardó mientras tanto).
+  const discardDraft = useCallback(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setDisplay(initialDisplay);
+    setMembership(initialMembership);
+    setChildren(childSagas);
+    setOps([]);
+    setSelectedId(null);
+    setDirty(0);
+    setSaveError(null);
+    router.refresh();
+  }, [initialNodes, initialEdges, initialDisplay, initialMembership, childSagas, router]);
+
   const selected = nodes.find((n) => n.id === selectedId) ?? null;
 
   return (
@@ -328,7 +348,7 @@ export function SagaGraphEditor({
         saving={saving}
         error={saveError}
         hasErrors={draftErrors.length > 0}
-        onDiscard={() => router.refresh()}
+        onDiscard={discardDraft}
         onSave={onSave}
       />
     </div>
