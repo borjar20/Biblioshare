@@ -147,10 +147,14 @@ async function resolveMembers(
   });
 }
 
-export async function getSaga(
+// Saga + rellenado perezoso TMDB, SIN resolver miembros. getSagaDetail resuelve
+// los miembros por su cuenta (con jerarquía y estados) y usaba getSaga solo
+// para esto — extraerlo ahorra hasta 4 queries de catálogo por visita (DEFER
+// #9 de la revisión final de fase 1).
+export async function getSagaBase(
   supabase: SupabaseServerClient,
-  id: string
-): Promise<{ saga: Saga; members: SagaMember[] } | null> {
+  id: string,
+): Promise<Saga | null> {
   const { data: row } = await supabase
     .from("sagas")
     .select("id, name, overview, cover_url, source, tmdb_collection_id, parent_saga_id, accent_color")
@@ -159,6 +163,15 @@ export async function getSaga(
   if (!row) return null;
 
   await populateTmdbCollection(supabase, row as SagaRow);
+  return toSaga(row as SagaRow);
+}
+
+export async function getSaga(
+  supabase: SupabaseServerClient,
+  id: string
+): Promise<{ saga: Saga; members: SagaMember[] } | null> {
+  const saga = await getSagaBase(supabase, id);
+  if (!saga) return null;
 
   const { data: items } = await supabase
     .from("saga_items")
@@ -170,5 +183,5 @@ export async function getSaga(
     (items ?? []) as Array<{ item_type: ItemType; item_id: string; position: number | null }>
   );
 
-  return { saga: toSaga(row as SagaRow), members };
+  return { saga, members };
 }

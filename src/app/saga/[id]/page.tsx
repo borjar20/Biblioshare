@@ -34,17 +34,9 @@ export default async function SagaDetailPage({
   const detail = await getSagaDetail(supabase, id);
   if (!detail) notFound();
 
-  // Segunda llamada simple a auth.getUser(): getSagaDetail ya la hace por
-  // dentro, pero no expone el usuario en SagaDetail. La llamada extra va
-  // cacheada por request (createServerClient de @supabase/ssr memoiza vía
-  // fetch cache de Next), así que no es una ida y vuelta real de más.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 py-6">
-      <SagaHero detail={detail} isAuthenticated={Boolean(user)} />
+      <SagaHero detail={detail} isAuthenticated={detail.isAuthenticated} />
 
       {/* Barra de pestañas: fase 1 solo Info; la pestaña Mapa (condicionada a
           detail.hasGraph) llega en fase 2 con el conmutador cliente. */}

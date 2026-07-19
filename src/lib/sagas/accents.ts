@@ -17,15 +17,17 @@ export type SagaAccentClasses = {
   border: string;
   /** tick de cabecera de grupo (mismo color que bg; alias semántico) */
   tick: string;
+  /** variable CSS cruda, para SVG/React Flow (patrón MEDIA_ACCENT.varName) */
+  cssVar: string;
 };
 
 export const SAGA_ACCENT: Record<SagaAccentToken, SagaAccentClasses> = {
-  terracota: { bg: "bg-accent", text: "text-accent", border: "border-accent", tick: "bg-accent" },
-  verde: { bg: "bg-green", text: "text-green", border: "border-green", tick: "bg-green" },
-  teal: { bg: "bg-type-movie", text: "text-type-movie", border: "border-type-movie", tick: "bg-type-movie" },
-  ambar: { bg: "bg-gold", text: "text-gold", border: "border-gold", tick: "bg-gold" },
-  purpura: { bg: "bg-type-series", text: "text-type-series", border: "border-type-series", tick: "bg-type-series" },
-  beige: { bg: "bg-spine", text: "text-spine", border: "border-spine", tick: "bg-spine" },
+  terracota: { bg: "bg-accent", text: "text-accent", border: "border-accent", tick: "bg-accent", cssVar: "var(--accent)" },
+  verde: { bg: "bg-green", text: "text-green", border: "border-green", tick: "bg-green", cssVar: "var(--green)" },
+  teal: { bg: "bg-type-movie", text: "text-type-movie", border: "border-type-movie", tick: "bg-type-movie", cssVar: "var(--type-movie)" },
+  ambar: { bg: "bg-gold", text: "text-gold", border: "border-gold", tick: "bg-gold", cssVar: "var(--gold)" },
+  purpura: { bg: "bg-type-series", text: "text-type-series", border: "border-type-series", tick: "bg-type-series", cssVar: "var(--type-series)" },
+  beige: { bg: "bg-spine", text: "text-spine", border: "border-spine", tick: "bg-spine", cssVar: "var(--spine)" },
 };
 
 /** Rotación estable para subsagas sin accent_color persistido. */

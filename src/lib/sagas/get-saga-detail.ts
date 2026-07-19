@@ -1,7 +1,9 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
-import { getSaga } from "./get-saga";
+import { getSagaBase } from "./get-saga";
+import { buildSagaGraph, type GraphLookup, type RawSagaEdge, type RawSagaNode, type SagaGraph } from "./graph-data";
+import type { SagaAccentToken } from "./accents";
 import {
   averageSagaRating,
   computeProgress,
@@ -36,6 +38,9 @@ export type SagaDetail = {
   progress: ReturnType<typeof computeProgress>;
   avgRating: number | null;
   isFollowing: boolean;
+  isAuthenticated: boolean;
+  /** Grafo resuelto, o null si la saga no tiene nodos. hasGraph = graph !== null. */
+  graph: SagaGraph | null;
   hasGraph: boolean;
 };
 
@@ -90,11 +95,17 @@ export async function getSagaDetail(
   supabase: SupabaseServerClient,
   id: string,
 ): Promise<SagaDetail | null> {
-  // getSaga mantiene el rellenado perezoso TMDB y devuelve saga+miembros
-  // directos; aquí se añade todo lo demás.
-  const base = await getSaga(supabase, id);
-  if (!base) return null;
-  const { saga } = base;
+  // getSagaBase mantiene el rellenado perezoso TMDB; aquí se resuelven
+  // miembros (con jerarquía y estados), grafo y todo lo demás.
+  const saga = await getSagaBase(supabase, id);
+  if (!saga) return null;
+
+  // Estado del usuario (RLS: solo sus filas) — puede no haber sesión. Una
+  // sola llamada para toda la función (antes había una segunda a mitad de
+  // fichero y otra en el page component).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const descendants = await fetchDescendants(supabase, id);
   const children: SagaChildRef[] = [...descendants.values()]
@@ -135,25 +146,34 @@ export async function getSagaDetail(
     }
   }
 
-  // Metadatos de catálogo por tipo.
+  // Metadatos de catálogo por tipo, con año real de cada tabla (books.published_year
+  // / movies|series.release_year) para el orden «Publicación» de fase 2.
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
   for (const { row } of byItem.values()) idsByType[row.item_type].push(row.item_id);
-  const meta = new Map<string, { title: string; coverUrl: string | null }>();
+  const YEAR_COLUMN: Record<ItemType, "published_year" | "release_year"> = {
+    book: "published_year",
+    movie: "release_year",
+    series: "release_year",
+  };
+  const meta = new Map<string, { title: string; coverUrl: string | null; year: number | null }>();
   await Promise.all(
     (Object.keys(idsByType) as ItemType[]).map(async (type) => {
       if (idsByType[type].length === 0) return;
       const { data } = await supabase
         .from(CATALOG_TABLE[type])
-        .select("id, title, cover_url")
+        .select(`id, title, cover_url, ${YEAR_COLUMN[type]}`)
         .in("id", idsByType[type]);
-      for (const r of data ?? []) meta.set(`${type}:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+      for (const r of data ?? []) {
+        const row = r as unknown as Record<string, unknown>;
+        meta.set(`${type}:${row.id}`, {
+          title: row.title as string,
+          coverUrl: (row.cover_url as string | null) ?? null,
+          year: (row[YEAR_COLUMN[type]] as number | null) ?? null,
+        });
+      }
     }),
   );
 
-  // Estado del usuario (RLS: solo sus filas) — puede no haber sesión.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const statusByItem = new Map<string, MemberStatus>();
   if (user) {
     await Promise.all(
@@ -189,6 +209,7 @@ export async function getSagaDetail(
       position: row.position,
       status: statusByItem.get(`${row.item_type}:${row.item_id}`) ?? null,
       groupSagaId,
+      year: m.year,
     });
   }
 
@@ -252,8 +273,15 @@ export async function getSagaDetail(
     if (top && top[1] >= 2) byline = top[0];
   }
 
-  const [{ count: nodeCount }, followRow, parentRow] = await Promise.all([
-    supabase.from("saga_nodes").select("id", { count: "exact", head: true }).eq("saga_id", id),
+  const [nodesRes, edgesRes, followRow, parentRow] = await Promise.all([
+    supabase
+      .from("saga_nodes")
+      .select("id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
+      .eq("saga_id", id),
+    supabase
+      .from("saga_edges")
+      .select("id, from_node, to_node, edge_type")
+      .eq("saga_id", id),
     user
       ? supabase
           .from("saga_follows")
@@ -267,6 +295,41 @@ export async function getSagaDetail(
       : Promise.resolve({ data: null }),
   ]);
 
+  // Lookup del grafo desde los MISMOS datos de la pestaña Info (spec §1.3).
+  const membersByKey = new Map(members.map((m) => [`${m.itemType}:${m.itemId}`, m]));
+  const groupAccent = new Map<string | null, SagaAccentToken>();
+  const groupNameMap = new Map<string | null, string | null>();
+  for (const g of groups) {
+    groupAccent.set(g.sagaId, g.accent);
+    groupNameMap.set(g.sagaId, g.name);
+  }
+  const childNames = new Map<string, string>();
+  for (const d of descendants.values()) childNames.set(d.id, d.name);
+  const childCovers = new Map<string, string[]>();
+  const childCounts = new Map<string, number>();
+  for (const g of groups) {
+    if (g.sagaId === null) continue;
+    childCovers.set(g.sagaId, g.members.flatMap((m) => (m.coverUrl ? [m.coverUrl] : [])).slice(0, 3));
+  }
+  for (const row of rows) {
+    if (row.saga_id === id) continue;
+    childCounts.set(row.saga_id, (childCounts.get(row.saga_id) ?? 0) + 1);
+  }
+
+  const rawNodes = (nodesRes.data ?? []) as RawSagaNode[];
+  const rawEdges = (edgesRes.data ?? []) as RawSagaEdge[];
+  const graph =
+    rawNodes.length > 0
+      ? buildSagaGraph(rawNodes, rawEdges, {
+          members: membersByKey,
+          groupAccent,
+          groupName: groupNameMap,
+          childNames,
+          childCovers,
+          childCounts,
+        } satisfies GraphLookup)
+      : null;
+
   return {
     saga,
     parent: (parentRow as { data: { id: string; name: string } | null }).data ?? null,
@@ -277,6 +340,8 @@ export async function getSagaDetail(
     progress,
     avgRating,
     isFollowing: Boolean((followRow as { data: unknown }).data),
-    hasGraph: (nodeCount ?? 0) > 0,
+    isAuthenticated: Boolean(user),
+    graph,
+    hasGraph: graph !== null,
   };
 }
