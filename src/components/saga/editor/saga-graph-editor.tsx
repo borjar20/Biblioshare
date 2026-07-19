@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   MarkerType,
   ReactFlow,
   type Connection,
@@ -19,12 +20,14 @@ import { displayKey } from "@/lib/sagas/editor-types";
 import { saveSagaGraph } from "@/lib/sagas/editor-actions";
 import { setParentSaga } from "@/lib/sagas/curation-actions";
 import { findOrderCollisions, validateGraphDraft } from "@/lib/sagas/validate-graph-draft";
+import { FloatingEdge } from "../graph/floating-edge";
 import { EditorNodeCard, type EditorFlowNode } from "./editor-node";
 import { EditorLeftPanel, type ChildSagaRef } from "./editor-left-panel";
 import { EditorInspector } from "./editor-inspector";
 import { EditorSaveBar } from "./editor-save-bar";
 
 const NODE_TYPES = { editor: EditorNodeCard };
+const EDGE_TYPES = { floating: FloatingEdge };
 const EDGE_DASH: Record<string, string | undefined> = { principal: undefined, opcional: "2 7", requisito: "1 6" };
 const EDGE_ACCENT: Record<string, SagaAccentToken> = { opcional: "ambar", requisito: "beige" };
 
@@ -132,6 +135,7 @@ export function SagaGraphEditor({
           id: e.id,
           source: e.fromNode,
           target: e.toNode,
+          type: "floating",
           style: { stroke: color, strokeWidth: 3, strokeDasharray: EDGE_DASH[e.edgeType], strokeLinecap: "round" },
           markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
         };
@@ -344,6 +348,8 @@ export function SagaGraphEditor({
             nodes={flowNodes}
             edges={flowEdges}
             nodeTypes={NODE_TYPES}
+            edgeTypes={EDGE_TYPES}
+            connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}
             onConnect={onConnect}
             fitView

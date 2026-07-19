@@ -14,6 +14,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { SagaGraph } from "@/lib/sagas/graph-data";
+import { FloatingEdge } from "./floating-edge";
 import { CoverNode, MedallionNode, SagaNodeCard, type GraphFlowNode } from "./graph-nodes";
 
 // Viewer read-only del grafo (frames C/E): pan + zoom (rueda/pellizco), tap en
@@ -27,6 +28,7 @@ import { CoverNode, MedallionNode, SagaNodeCard, type GraphFlowNode } from "./gr
 // (fase 3).
 
 const NODE_TYPES = { cover: CoverNode, medallion: MedallionNode, saga: SagaNodeCard };
+const EDGE_TYPES = { floating: FloatingEdge };
 
 const EDGE_DASH: Record<string, string | undefined> = {
   principal: undefined,
@@ -65,6 +67,7 @@ export function SagaGraphView({
           id: e.id,
           source: e.source,
           target: e.target,
+          type: "floating",
           style: { stroke: color, strokeWidth: 3, strokeDasharray: EDGE_DASH[e.type], strokeLinecap: "round" },
           markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
         };
@@ -82,6 +85,7 @@ export function SagaGraphView({
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         onNodeClick={onNodeClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
