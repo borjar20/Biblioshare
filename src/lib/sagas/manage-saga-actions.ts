@@ -13,8 +13,8 @@ export type AssignSagaState = {
 
 // Asigna un ítem a una saga curada a mano (caso de libros: no hay fuente fiable
 // de sagas literarias). Reutiliza una saga manual existente con el mismo nombre
-// para que varios libros compartan saga. Un ítem está en una sola saga a la vez
-// (la chip usa maybeSingle), así que se limpia la membresía previa primero.
+// para que varios libros compartan saga. Multi-saga (spec §1.2): un ítem puede
+// estar en varias sagas a la vez, así que ya no se limpia la membresía previa.
 export async function assignItemToSaga(
   itemType: ItemType,
   itemId: string,
@@ -66,16 +66,27 @@ export async function assignItemToSaga(
 
   if (!sagaId) return { error: "generic" };
 
-  // Un ítem, una saga: limpiar membresía previa y (re)insertar.
-  await supabase
+  // Multi-saga (spec §1.2): añadir sin tocar las membresías previas. Upsert
+  // por si el ítem ya estaba en ESTA saga (actualiza la posición). Primary solo
+  // si el ítem no tenía ninguna.
+  const { data: primaryRow } = await supabase
     .from("saga_items")
-    .delete()
+    .select("saga_id")
     .eq("item_type", itemType)
-    .eq("item_id", itemId);
+    .eq("item_id", itemId)
+    .eq("is_primary", true)
+    .maybeSingle();
 
-  const { error: insertError } = await supabase
-    .from("saga_items")
-    .insert({ saga_id: sagaId, item_type: itemType, item_id: itemId, position });
+  const { error: insertError } = await supabase.from("saga_items").upsert(
+    {
+      saga_id: sagaId,
+      item_type: itemType,
+      item_id: itemId,
+      position,
+      is_primary: !primaryRow,
+    },
+    { onConflict: "saga_id,item_type,item_id" }
+  );
   if (insertError) return { error: "generic" };
 
   revalidateItemPage(itemType, itemId);

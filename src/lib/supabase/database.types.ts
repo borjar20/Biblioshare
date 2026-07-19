@@ -1458,6 +1458,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_primary: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           position: number | null
@@ -1466,6 +1467,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           position?: number | null
@@ -1474,6 +1476,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           position?: number | null
