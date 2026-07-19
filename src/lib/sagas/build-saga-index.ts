@@ -77,13 +77,16 @@ export function buildSagaIndex(
       for (const key of membersBySaga.get(node.id) ?? []) titles.add(key);
     }
 
-    const children = (byParent.get(root.id) ?? []).map((child, i) => ({
-      id: child.id,
-      name: child.name,
-      accent: isSagaAccentToken(child.accent_color)
-        ? child.accent_color
-        : SAGA_ACCENT_SEQUENCE[i % SAGA_ACCENT_SEQUENCE.length],
-    }));
+    // Orden alfabético estable para fijar también la rotación del acento
+    const children = [...(byParent.get(root.id) ?? [])]
+      .sort((a, b) => a.name.localeCompare(b.name, "es"))
+      .map((child, i) => ({
+        id: child.id,
+        name: child.name,
+        accent: isSagaAccentToken(child.accent_color)
+          ? child.accent_color
+          : SAGA_ACCENT_SEQUENCE[i % SAGA_ACCENT_SEQUENCE.length],
+      }));
 
     cards.push({
       id: root.id,

@@ -41,6 +41,17 @@ describe("buildSagaIndex", () => {
     expect(cards[0].children[1].accent).toBe("verde"); // SAGA_ACCENT_SEQUENCE[1]
   });
 
+  it("children ordenados alfabéticamente aunque el input entre desordenado", () => {
+    const cards = buildSagaIndex(
+      [saga("u", "Universo"), saga("b", "B", "u"), saga("a", "A", "u")],
+      [],
+    );
+    expect(cards[0].children.map((c) => c.name)).toEqual(["A", "B"]);
+    // Los acentos siguen la secuencia del orden final: i=0 -> A, i=1 -> B
+    expect(cards[0].children[0].accent).toBe("terracota"); // SAGA_ACCENT_SEQUENCE[0]
+    expect(cards[0].children[1].accent).toBe("verde"); // SAGA_ACCENT_SEQUENCE[1]
+  });
+
   it("query filtra por nombre de la raíz o de cualquier descendiente", () => {
     const rows = [saga("u", "UCM"), saga("c", "Iron Man", "u"), saga("x", "Dune")];
     expect(buildSagaIndex(rows, [], "iron").map((c) => c.name)).toEqual(["UCM"]);
