@@ -19,6 +19,12 @@ import { CoverNode, MedallionNode, SagaNodeCard, type GraphFlowNode } from "./gr
 // Viewer read-only del grafo (frames C/E): pan + zoom (rueda/pellizco), tap en
 // nodo navega a su ficha. El mismo componente sirve embebido en PC y a
 // pantalla completa en móvil; el editor de fase 3 reutilizará los node types.
+//
+// Limitación conocida (a11y): la navegación al tocar un nodo es solo de
+// puntero — con elementsSelectable=false, React Flow no dispara onNodeClick
+// desde teclado (Enter/Espacio). Las mismas obras son alcanzables por la
+// pestaña Info y las listas; se revisará con las interacciones del editor
+// (fase 3).
 
 const NODE_TYPES = { cover: CoverNode, medallion: MedallionNode, saga: SagaNodeCard };
 
