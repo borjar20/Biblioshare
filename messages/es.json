@@ -1032,7 +1032,12 @@
     "saving": "Guardando…",
     "saveError": "No se pudo guardar. Revisa el borrador e inténtalo otra vez.",
     "invalidDraft": "El borrador tiene errores (nodos duplicados o aristas rotas).",
-    "emptyInspector": "Selecciona un nodo del lienzo para editarlo."
+    "emptyInspector": "Selecciona un nodo del lienzo para editarlo.",
+    "unnestChild": "Sacar del universo",
+    "unnestWarning": "Sus títulos dejarán de contar en este universo y su nodo se quitará del grafo.",
+    "unnestConfirm": "Sacar",
+    "unnestCancel": "Cancelar",
+    "genericError": "No se pudo completar la acción. Inténtalo de nuevo."
   },
   "sagaIndex": {
     "title": "Sagas",

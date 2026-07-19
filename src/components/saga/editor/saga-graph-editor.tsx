@@ -17,6 +17,7 @@ import { SAGA_ACCENT, SAGA_ACCENT_SEQUENCE, type SagaAccentToken } from "@/lib/s
 import type { EditorEdge, EditorNode, MembershipOp, NodeDisplay } from "@/lib/sagas/editor-types";
 import { displayKey } from "@/lib/sagas/editor-types";
 import { saveSagaGraph } from "@/lib/sagas/editor-actions";
+import { setParentSaga } from "@/lib/sagas/curation-actions";
 import { findOrderCollisions, validateGraphDraft } from "@/lib/sagas/validate-graph-draft";
 import { EditorNodeCard, type EditorFlowNode } from "./editor-node";
 import { EditorLeftPanel, type ChildSagaRef } from "./editor-left-panel";
@@ -253,6 +254,24 @@ export function SagaGraphEditor({
     [touch],
   );
 
+  // Sacar una subsaga del universo (spec Task 3): acción inmediata en BD
+  // (setParentSaga a null), igual que crear/anidar subsagas — `children` NO
+  // pasa por el borrador. Su nodo en el grafo (si lo tiene) se queda huérfano
+  // sin esto, así que se quita con el removeNode ya existente en el mismo
+  // gesto: eso SÍ marca el borrador sucio (touch vía removeNode), para que
+  // "Guardar" persista la eliminación del nodo.
+  const unnestChild = useCallback(
+    async (childId: string) => {
+      const result = await setParentSaga(childId, null);
+      if (result.error) return result;
+      const orphan = nodes.find((n) => n.childSagaId === childId);
+      if (orphan) removeNode(orphan.id);
+      setChildren((cur) => cur.filter((c) => c.id !== childId));
+      return {};
+    },
+    [nodes, removeNode],
+  );
+
   async function onSave() {
     setSaving(true);
     setSaveError(null);
@@ -309,6 +328,7 @@ export function SagaGraphEditor({
           onAddItem={addItemNode}
           onAddSagaNode={addSagaNode}
           onChildrenChange={setChildren}
+          onUnnestChild={unnestChild}
         />
 
         <div className="relative min-h-[420px] flex-1">
