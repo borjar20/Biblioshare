@@ -13,10 +13,14 @@ export async function SagaInfo({
   overview,
   groups,
   hasGraph,
+  canConfigure,
+  sagaId,
 }: {
   overview: string | null;
   groups: MemberGroup[];
   hasGraph: boolean;
+  canConfigure?: boolean;
+  sagaId: string;
 }) {
   const t = await getTranslations("saga");
   return (
@@ -43,9 +47,19 @@ export async function SagaInfo({
       )}
 
       <section>
-        <h2 className="mb-3 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
-          {t("itemsTitle")}
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+            {t("itemsTitle")}
+          </h2>
+          {canConfigure && !hasGraph && (
+            <Link
+              href={`/saga/${sagaId}/mapa/editar`}
+              className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+            >
+              ✎ {t("configureGraph")}
+            </Link>
+          )}
+        </div>
         <div className="flex flex-col gap-5">
           {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
               si no. Con un único grupo directo (saga hoja, sin subsagas) la

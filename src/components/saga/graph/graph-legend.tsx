@@ -13,9 +13,11 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
     }
   }
   const hasNexus = graph.nodes.some((n) => n.kind === "item" && n.groupSagaId === null);
+  const hasReading = graph.nodes.some((n) => n.status === "in_progress");
 
   return (
     <div className="grid grid-cols-2 gap-x-3.5 gap-y-2 rounded-xl border border-border bg-surface px-4 py-3">
+      <h3 className="sr-only">{t("legend")}</h3>
       <span className="flex items-center gap-2 text-[11.5px] text-foreground">
         <i className="w-[26px] border-t-[2.5px] border-foreground" /> {t("legendMain")}
       </span>
@@ -30,11 +32,17 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
           <i className="h-[13px] w-[13px] shrink-0 rounded-full bg-spine" /> {t("nexusGroup")}
         </span>
       )}
-      {[...groups.values()].map((g) => (
-        <span key={g.name} className="flex items-center gap-2 text-[11.5px] text-foreground">
+      {[...groups.entries()].map(([sagaId, g]) => (
+        <span key={sagaId} className="flex items-center gap-2 text-[11.5px] text-foreground">
           <i className={`h-[13px] w-[13px] shrink-0 rounded-full ${SAGA_ACCENT[g.accent].bg}`} /> {g.name}
         </span>
       ))}
+      {hasReading && (
+        <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+          <i className="h-[13px] w-[13px] shrink-0 rounded-full bg-accent shadow-[0_0_0_3px_rgba(176,84,47,0.25)]" />{" "}
+          {t("legendReading")}
+        </span>
+      )}
     </div>
   );
 }

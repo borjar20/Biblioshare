@@ -958,7 +958,9 @@
     "follow": "＋ Seguir esta saga",
     "following": "✓ Siguiendo",
     "statusReading": "Leyendo",
-    "statusDone": "Terminado"
+    "statusDone": "Terminado",
+    "editGraph": "Editar grafo",
+    "configureGraph": "Configurar orden de lectura"
   },
   "sagaEditor": {
     "eyebrow": "◆ Modo colaborador",
