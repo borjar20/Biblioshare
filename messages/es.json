@@ -961,7 +961,27 @@
     "statusReading": "Leyendo",
     "statusDone": "Terminado",
     "editGraph": "Editar grafo",
-    "configureGraph": "Configurar orden de lectura"
+    "configureGraph": "Configurar orden de lectura",
+    "editTitle": "Editar saga",
+    "editSheet": "Editar ficha",
+    "nestInUniverse": "Anidar en universo",
+    "editName": "Nombre",
+    "editOverview": "Sinopsis",
+    "editAccent": "Color",
+    "editSave": "Guardar cambios",
+    "editSaving": "Guardando…",
+    "editCoverChange": "Cambiar portada",
+    "editCoverUploading": "Subiendo…",
+    "editParent": "Universo",
+    "editParentRemove": "Quitar del universo",
+    "editParentNewPlaceholder": "o crea un universo nuevo…",
+    "editParentCreate": "Crear y anidar",
+    "editErrors": {
+      "forbidden": "Solo los colaboradores pueden editar sagas.",
+      "nameRequired": "El nombre es obligatorio.",
+      "cycle": "Ese anidamiento crearía un ciclo.",
+      "generic": "No se pudo guardar. Inténtalo de nuevo."
+    }
   },
   "sagaEditor": {
     "eyebrow": "◆ Modo colaborador",

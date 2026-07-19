@@ -57,6 +57,7 @@ export default async function SagaDetailPage({
             hasGraph={detail.hasGraph}
             canConfigure={canEditGraph}
             sagaId={detail.saga.id}
+            hasParent={detail.parent !== null}
           />
         }
         map={

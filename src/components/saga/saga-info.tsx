@@ -15,12 +15,14 @@ export async function SagaInfo({
   hasGraph,
   canConfigure,
   sagaId,
+  hasParent,
 }: {
   overview: string | null;
   groups: MemberGroup[];
   hasGraph: boolean;
   canConfigure?: boolean;
   sagaId: string;
+  hasParent: boolean;
 }) {
   const t = await getTranslations("saga");
   return (
@@ -51,14 +53,32 @@ export async function SagaInfo({
           <h2 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
             {t("itemsTitle")}
           </h2>
-          {canConfigure && !hasGraph && (
-            <Link
-              href={`/saga/${sagaId}/mapa/editar`}
-              className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-            >
-              ✎ {t("configureGraph")}
-            </Link>
-          )}
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canConfigure && (
+              <Link
+                href={`/saga/${sagaId}/editar`}
+                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              >
+                ✎ {t("editSheet")}
+              </Link>
+            )}
+            {canConfigure && !hasParent && (
+              <Link
+                href={`/saga/${sagaId}/editar#universo`}
+                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              >
+                ⌂ {t("nestInUniverse")}
+              </Link>
+            )}
+            {canConfigure && !hasGraph && (
+              <Link
+                href={`/saga/${sagaId}/mapa/editar`}
+                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              >
+                ✎ {t("configureGraph")}
+              </Link>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-5">
           {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
