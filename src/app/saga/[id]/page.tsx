@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { SagaHero } from "@/components/saga/saga-hero";
 import { SagaInfo } from "@/components/saga/saga-info";
+import { SagaMapTab } from "@/components/saga/saga-map-tab";
+import { SagaTabs } from "@/components/saga/saga-tabs";
 
 export async function generateMetadata({
   params,
@@ -24,10 +26,13 @@ export async function generateMetadata({
 
 export default async function SagaDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; orden?: string }>;
 }) {
   const { id } = await params;
+  const { orden } = await searchParams;
   const t = await getTranslations("saga");
   const supabase = await createClient();
 
@@ -38,16 +43,15 @@ export default async function SagaDetailPage({
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 py-6">
       <SagaHero detail={detail} isAuthenticated={detail.isAuthenticated} />
 
-      {/* Barra de pestañas: fase 1 solo Info; la pestaña Mapa (condicionada a
-          detail.hasGraph) llega en fase 2 con el conmutador cliente. */}
-      <nav className="border-b border-border px-4">
-        <span className="relative inline-block pb-3 text-sm font-semibold text-foreground">
-          {t("tabInfo")}
-          <span className="absolute inset-x-0 -bottom-px h-0.5 rounded bg-accent" />
-        </span>
-      </nav>
-
-      <SagaInfo overview={detail.saga.overview} groups={detail.groups} />
+      <SagaTabs
+        labels={{ info: t("tabInfo"), map: t("tabMap") }}
+        info={<SagaInfo overview={detail.saga.overview} groups={detail.groups} hasGraph={detail.hasGraph} />}
+        map={
+          detail.hasGraph ? (
+            <SagaMapTab detail={detail} orden={orden === "publicacion" ? "publicacion" : "lectura"} />
+          ) : null
+        }
+      />
     </div>
   );
 }
