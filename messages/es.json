@@ -97,7 +97,7 @@
       "peopleJoin": "Unirme",
       "peopleMembers": "{count, plural, one {# miembro} other {# miembros}}",
       "welcomeTitle": "Todo listo, {name}",
-      "welcomeWithTitles": "Has añadido {count, plural, one {# título} other {# títulos}} para empezar.",
+      "welcomeWithTitles": "Ya tienes {count, plural, one {# título} other {# títulos}} esperándote.",
       "welcomeNeutral": "Ya puedes empezar a registrar lo que leas y veas.",
       "enter": "Entrar a Biblioshare"
     }

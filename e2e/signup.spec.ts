@@ -2,7 +2,13 @@ import { test, expect } from "@playwright/test";
 
 // Registro completo con una cuenta desechable. Se borra al final (incluida la
 // fila de auth.users), como manda docs/TESTING.md.
-test("registro completo: entra con perfil, sin pasar por onboarding", async ({ page, request }) => {
+//
+// CAMBIO DE COMPORTAMIENTO (spec 2026-07-20): antes este test afirmaba que el
+// registro entraba directo al feed «sin pasar por onboarding». Ahora el
+// asistente de 3 pasos SÍ se ofrece, una sola vez, justo después de registrarse
+// — que es su único momento. Lo que se sigue comprobando es que el perfil queda
+// creado con el @usuario del registro y que se llega al feed al terminar.
+test("registro completo: pasa por el onboarding y entra con perfil", async ({ page, request }) => {
   const stamp = Date.now();
   const username = `e2e${stamp}`.slice(0, 20);
   const email = `${username}@example.com`;
@@ -15,10 +21,24 @@ test("registro completo: entra con perfil, sin pasar por onboarding", async ({ p
   await page.getByLabel(/contrase/i).fill(password);
   await page.getByRole("button", { name: /crear cuenta/i }).click();
 
-  // Sin confirmación de email en dev → sesión inmediata y perfil ya creado:
-  // debe aterrizar en el feed, NO en /onboarding.
+  // Sin confirmación de email en dev → sesión inmediata y perfil ya creado, y
+  // desde ahí al asistente.
+  await page.waitForURL(/\/onboarding/, { timeout: 20000 });
+  await expect(page.getByRole("heading", { name: "¿Qué te gusta seguir?" })).toBeVisible();
+
+  // Se salta entero: el asistente nunca debe ser un muro. Cada «Saltar» avanza
+  // sin guardar, y el número de pasos depende de si hay gente que sugerir.
+  await page.getByRole("link", { name: "Saltar" }).click();
+  await expect(page).toHaveURL(/paso=2/, { timeout: 30000 });
+  await page.getByRole("link", { name: "Saltar" }).click();
+  await expect(page).toHaveURL(/paso=(3|fin)/, { timeout: 30000 });
+  if (/paso=3/.test(page.url())) {
+    await page.getByRole("link", { name: "Saltar" }).click();
+    await expect(page).toHaveURL(/paso=fin/, { timeout: 30000 });
+  }
+
+  await page.getByRole("button", { name: "Entrar a Biblioshare" }).click();
   await page.waitForURL("/", { timeout: 20000 });
-  expect(page.url()).not.toContain("onboarding");
   // Un árbol de cabecera por breakpoint (plan 01): a 1280 se ve el saludo y
   // "Novedades" queda oculta en el DOM, así que el locator lleva :visible.
   await expect(page.locator("h1:visible")).toHaveText(/hola,|novedades/i);

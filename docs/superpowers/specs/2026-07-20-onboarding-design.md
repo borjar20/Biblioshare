@@ -52,6 +52,29 @@ graph LR
 El gate vive en `page.tsx` y cubre los cuatro pasos. Cada paso tiene **«Saltar»**, que avanza
 sin escribir nada.
 
+### Tres cosas que solo aparecieron al ejecutarlo (2026-07-20)
+
+El diseño de arriba estaba bien, pero **no bastaba**: el asistente no se le habría mostrado a
+nadie. Tres piezas del sistema usaban «tiene perfil» como sinónimo de «está onboardeado»,
+cosa que era cierta cuando el onboarding *era* elegir el @usuario y dejó de serlo aquí.
+
+1. **`proxy.ts` echaba de `/onboarding` a cualquiera con perfil.** Ahora distingue
+   `hasProfile` de `isOnboarded`, y solo echa al que ya terminó. La cookie `bs_onb` pasa a
+   cachear «onboardeado» (solo el estado positivo).
+2. **`AppShell` pintaba la barra de navegación sobre el asistente**, porque la mostraba en
+   cuanto había `username`. Ahora exige además `onboarded_at`: mientras el asistente esté
+   pendiente, el chrome se reduce a la topbar — sin escapatorias a media configuración.
+3. **El registro con sesión inmediata aterrizaba en `/`, saltándose el asistente.** El proxy
+   no podía traerlo, porque solo fuerza `/onboarding` a quien **no** tiene perfil, y a esas
+   alturas ya lo tiene. La acción de registro redirige ahora a `/onboarding`.
+   El camino de confirmación por email ya funcionaba: al confirmar aún no hay perfil, así que
+   el proxy lo manda al asistente.
+
+**Consecuencia de alcance que conviene tener presente:** el asistente se ofrece **una sola
+vez, justo tras registrarse**. Quien lo abandone a medias no vuelve a verlo salvo que
+navegue a `/onboarding` a mano — iniciar sesión no lo reabre. Es deliberado: nadie quiere que
+la app le insista cada vez que entra.
+
 ## 4. Los pasos
 
 ### 4.1 Paso 1 — «¿Qué te gusta seguir?»

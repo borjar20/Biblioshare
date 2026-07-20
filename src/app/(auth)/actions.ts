@@ -88,7 +88,11 @@ export async function signup(
   if (created === "usernameTaken") return { error: "usernameTaken" };
   if (created === "generic") return { error: "generic" };
 
-  redirect("/");
+  // Al asistente, no a la home: es la ÚNICA vez que se le ofrece (spec
+  // 2026-07-20). El proxy no puede encargarse de traerlo aquí, porque solo
+  // fuerza /onboarding a quien no tiene perfil — y a estas alturas ya lo tiene.
+  // Quien lo termina o lo salta queda con onboarded_at y no vuelve a verlo.
+  redirect("/onboarding");
 }
 
 // Crea el perfil del usuario con sesión a partir del @usuario que guardó el

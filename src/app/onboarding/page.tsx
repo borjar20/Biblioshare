@@ -91,8 +91,9 @@ export default async function OnboardingPage({
   const addedCount = step === "fin" ? await countPlanned(supabase, user.id) : 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-12">
-      <Wordmark size="lg" />
+    // Sin Wordmark propio: la topbar ya lo pinta (AppShell oculta la barra de
+    // navegación mientras el onboarding esté pendiente, pero la topbar se queda).
+    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-6 px-4 py-12">
       <div className="rounded-card border border-border bg-surface p-6 shadow-card">
         {step === "fin" ? (
           <Welcome
