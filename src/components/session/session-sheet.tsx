@@ -14,7 +14,7 @@ import { timerStorageKey } from "@/lib/sessions/timer";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import type { SessionContext } from "@/lib/sessions/load-context";
 import { useModalClose } from "./session-modal";
-import { SessionTimer } from "./session-timer";
+import { BookProgressField } from "./book-progress-field";
 import { SessionHero } from "./session-hero";
 
 const STATUSES: MediaStatus[] = [
@@ -103,47 +103,6 @@ export function SessionSheet({
   const currentPage =
     "page" in position && position.page !== undefined ? position.page : null;
 
-  // Tramo desde → hasta (§Tarea 13): `fromPage` es solo ayuda visual para el
-  // delta en vivo, nunca se envía al servidor — la sesión ya registra la
-  // posición alcanzada, y el tramo se deduce comparando con la sesión
-  // anterior. Por eso este input no lleva `name`.
-  const [fromPage, setFromPage] = useState(
-    currentPage !== null ? String(currentPage) : "",
-  );
-  const [toPage, setToPage] = useState("");
-
-  const fromPageNum = fromPage.trim() === "" ? null : Number(fromPage);
-  const toPageNum = toPage.trim() === "" ? null : Number(toPage);
-  const delta =
-    fromPageNum !== null &&
-    toPageNum !== null &&
-    Number.isFinite(fromPageNum) &&
-    Number.isFinite(toPageNum)
-      ? toPageNum - fromPageNum
-      : null;
-  const remaining =
-    toPageNum !== null && total !== null ? total - toPageNum : null;
-
-  // Duración: "a mano" (input libre) o "cronómetro" (SessionTimer, que trae
-  // su propio input oculto name="durationMinutes"). Solo libro tiene
-  // duración — una sesión de serie se mide en episodios (§7.14).
-  // Si vienes del cronómetro de la tarjeta de hoy, el tiempo ya está contado:
-  // llega "a mano" con el número puesto y editable, no en modo cronómetro — ese
-  // reloj ya se paró y se limpió al traerte aquí.
-  const [durationMode, setDurationMode] = useState<"manual" | "timer">(
-    "manual",
-  );
-  const [manualMinutes, setManualMinutes] = useState(
-    initialMinutes ? String(initialMinutes) : "",
-  );
-
-  // El aviso de cronómetro olvidado ofrece "escribir a mano": trae los
-  // minutos ya acumulados al campo manual y cambia el conmutador por ti.
-  function handleTimerMinutes(minutes: number) {
-    setManualMinutes(String(minutes));
-    setDurationMode("manual");
-  }
-
   // Serie (§Tarea 15): temporadas + episodios pulsables. `watchedSetFor`
   // busca los ya vistos de una temporada dentro de `seriesEpisodes` (prop
   // del servidor, nunca inventado en el cliente).
@@ -203,16 +162,18 @@ export function SessionSheet({
   const maxSelectedEpisode =
     selectedEpisodes.size > 0 ? Math.max(...selectedEpisodes) : null;
 
-  // Al guardar con el cronómetro activo, limpia su localStorage: el valor ya
-  // viaja en el FormData a través del input oculto de SessionTimer, así que
-  // no hace falta conservarlo para la próxima sesión.
+  // Al guardar, limpia siempre el localStorage del cronómetro de este pase:
+  // si estaba activo, su valor ya viajó en el FormData a través del input
+  // oculto de SessionTimer (dentro de BookProgressField), así que no hace
+  // falta conservarlo; si no estaba activo, el remove es idempotente. Este
+  // componente ya no sabe qué modo de duración eligió el usuario — vive
+  // encapsulado en BookProgressField — así que no hay nada que consultar.
   function handleSubmit() {
-    if (itemType === "book" && durationMode === "timer") {
-      try {
-        window.localStorage.removeItem(timerStorageKey(passId));
-      } catch {
-        // Almacenamiento inaccesible: nada que limpiar.
-      }
+    if (itemType !== "book") return;
+    try {
+      window.localStorage.removeItem(timerStorageKey(passId));
+    } catch {
+      // Almacenamiento inaccesible: nada que limpiar.
     }
   }
 
@@ -250,100 +211,13 @@ export function SessionSheet({
             />
           </Field>
 
-          {/* Solo lectura registra minutos (§7.14): una serie se mide por
-            episodios alcanzados, y su duración sale del catálogo. */}
-          {itemType === "book" && (
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">{t("duration")}</span>
-              <div className="flex gap-1.5 rounded-[10px] bg-surface-muted p-1">
-                {(["manual", "timer"] as const).map((durMode) => (
-                  <button
-                    key={durMode}
-                    type="button"
-                    aria-pressed={durationMode === durMode}
-                    onClick={() => setDurationMode(durMode)}
-                    className={`flex-1 rounded-[7px] px-3 py-2 text-center text-[12px] font-semibold transition-colors ${
-                      durationMode === durMode
-                        ? "bg-surface text-foreground shadow-card"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {durMode === "manual" ? t("durationManual") : t("durationTimer")}
-                  </button>
-                ))}
-              </div>
-
-              {durationMode === "manual" ? (
-                <div className="mt-2 flex flex-col gap-1">
-                  <Input
-                    id="session-duration"
-                    name="durationMinutes"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    placeholder="0"
-                    aria-label={t("duration")}
-                    value={manualMinutes}
-                    onChange={(e) => setManualMinutes(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("durationHint")}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <SessionTimer passId={passId} onMinutes={handleTimerMinutes} />
-                </div>
-              )}
-            </div>
-          )}
-
           {itemType === "book" ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">{t("pagesRange")}</span>
-              <div className="flex items-end gap-2.5">
-                <div className="flex-1">
-                  <Input
-                    id="session-from-page"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    aria-label={t("pageFrom")}
-                    value={fromPage}
-                    onChange={(e) => setFromPage(e.target.value)}
-                    className="text-center"
-                  />
-                  <p className="mt-1.5 text-center text-xs text-muted-foreground">
-                    {t("pageFrom")}
-                  </p>
-                </div>
-                <span className="pb-4 text-muted-foreground">→</span>
-                <div className="flex-1">
-                  <Input
-                    id="session-page"
-                    name="page"
-                    type="number"
-                    min={0}
-                    max={total ?? undefined}
-                    inputMode="numeric"
-                    aria-label={t("pageTo")}
-                    value={toPage}
-                    onChange={(e) => setToPage(e.target.value)}
-                    className="text-center"
-                  />
-                  <p className="mt-1.5 text-center text-xs text-muted-foreground">
-                    {t("pageTo")}
-                  </p>
-                </div>
-              </div>
-
-              {delta !== null && delta > 0 && (
-                <span className="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-md border border-green/25 bg-green/10 px-2.5 py-1.5 font-mono text-[11px] text-green">
-                  {t("delta", { delta })}
-                  {remaining !== null && ` · ${t("remaining", { remaining })}`}
-                </span>
-              )}
-            </div>
+            <BookProgressField
+              passId={passId}
+              fromPage={currentPage}
+              total={total}
+              initialMinutes={initialMinutes}
+            />
           ) : (
             <div className="flex flex-col gap-3">
               <Field label={t("season")} htmlFor="session-season">
