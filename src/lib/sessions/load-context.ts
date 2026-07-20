@@ -121,7 +121,7 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
     title: book?.title ?? series?.title ?? "",
     author: book?.author ?? series?.creator ?? null,
     coverUrl: book?.cover_url ?? series?.cover_url ?? null,
-    position: parsePosition(itemType, activePass.position) as Position,
+    position: parsePosition(itemType, activePass.position),
     status: activePass.status,
     total,
     seriesEpisodes,

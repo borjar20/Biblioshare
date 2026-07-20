@@ -23,6 +23,9 @@ export default async function SessionPage({
   searchParams,
 }: {
   params: Promise<{ passId: string }>;
+  // `minutos`: lo trae el cronómetro de la tarjeta de hoy (plan 01 T5) cuando
+  // pulsas "Registrar" — llegas con el tiempo ya escrito en vez de tener que
+  // acordarte de él.
   searchParams: Promise<{ minutos?: string }>;
 }) {
   const { passId } = await params;
@@ -39,6 +42,9 @@ export default async function SessionPage({
         {ctx.itemType === "book" ? t("titleBook") : t("titleSeries")}
       </h1>
 
+      {/* Tarjeta de contexto del ítem (mockup "Paper - Registrar sesión",
+          pantallas 1-3): recuerda qué estás registrando sin tener que volver
+          atrás — el gesto se repite tanto que no puede obligar a pensar. */}
       <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
         <div className="relative h-[60px] w-10 shrink-0 overflow-hidden rounded-md bg-surface-muted">
           {ctx.coverUrl && (
