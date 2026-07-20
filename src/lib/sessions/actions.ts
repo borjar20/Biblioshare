@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { itemHref } from "@/lib/catalog/item-href";
 import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getActivePass } from "@/lib/passes/get-passes";
@@ -23,8 +22,14 @@ const VALID_STATUSES: MediaStatus[] = [
   "dropped",
 ];
 
+// `ok` marca el guardado con éxito; el cliente decide entonces a dónde ir —
+// cerrar el modal y quedarse, o navegar a la ficha si vino por la ruta
+// directa. `passClosed` avisa de que la sesión completó el pase: el cliente
+// encadena la hoja de cierre en vez de irse (D4 de la spec).
 export type AddSessionState = {
   error?: "invalidPosition" | "invalidDuration" | "generic";
+  ok?: boolean;
+  passClosed?: boolean;
 };
 
 // Logs a reading/watching session AND rolls the PASE's current state
@@ -234,12 +239,11 @@ export async function addSession(
   // Auto-cierre de libro o serie (Regla 5 del esquema de flujo): si la
   // sesión alcanza la última página de TU edición (libro) o el último
   // episodio de la serie EN ESTE PASE (rollSeriesProgress arriba), el pase
-  // se completa solo — pasando por la máquina, no aparte — y la ficha
-  // encadena la hoja de cierre (parámetro ?cerrar) al volver. `tab=log` es
-  // obligatorio: la hoja de cierre vive dentro de LogPanel (pestaña "Mi
-  // registro") e ItemDetailTabs SOLO monta la pestaña activa (slots[tab]);
-  // sin él la ficha abriría en "Información" y la hoja nunca llegaría a
-  // montarse.
+  // se completa solo — pasando por la máquina, no aparte. Antes esto
+  // redirigía a `?cerrar=<passId>&tab=log` para que la ficha encadenara la
+  // hoja de cierre; un redirect de servidor tira la página bajo el modal, así
+  // que ahora se devuelve `passClosed: true` y es el CLIENTE quien decide
+  // cómo encadenar la hoja (D4 de la spec) — ver `AddSessionState` arriba.
   const reachedEnd =
     (itemType === "book" &&
       maxPosition !== null &&
@@ -249,11 +253,11 @@ export async function addSession(
   if (reachedEnd) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);
-    redirect(`${itemHref(itemType, itemId)}?cerrar=${passId}&tab=log`);
+    return { ok: true, passClosed: true };
   }
 
   revalidateReadingLog(itemType, itemId);
-  redirect(itemHref(itemType, itemId));
+  return { ok: true };
 }
 
 export async function deleteSession(
