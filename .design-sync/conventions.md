@@ -16,8 +16,7 @@ Four components — **`ActivityCard`**, **`MonthCalendar`**, **`BackButton`**, a
     genres={["Fantasía", "Aventura"]}
     coverUrl={coverDataUri}
     avgRating={8.4}
-    ratingCount={1284}
-    ratingsLabel="valoraciones"
+    ratingsLabel="1.284 valoraciones"
     backLabel="Volver"
   />
 </Biblioshare.PreviewProvider>
