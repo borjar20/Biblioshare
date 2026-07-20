@@ -1,5 +1,7 @@
 # Registro de decisiones — Biblioshare
 
+> **[Histórico · append-only]** No se reescribe: una decisión superada se deroga con una entrada nueva, nunca editando la vieja. Por eso no puede desincronizarse.
+
 > **[Historia · append-only]** No se reescribe: solo se añaden entradas nuevas al final. Explica *por qué* se decidió cada cosa. Para el estado *actual* del esquema manda `data-model.md`; para el de las features, `backlog.md`.
 
 ## Decisiones de arquitectura (de forma)

@@ -1,5 +1,7 @@
 # Trampas conocidas
 
+> **[Canónico · verificado contra código el 2026-07-20]**
+
 Cosas que ya han costado horas en este proyecto, con la señal que las delata. **Léelo antes
 de depurar algo raro** — la mitad de estas se han "descubierto" dos y tres veces.
 

@@ -1,5 +1,7 @@
 # Testing manual / con agentes
 
+> **[Canónico · verificado contra código el 2026-07-20]**
+
 ## Cuenta de desarrollo persistente
 
 En vez de hacer signup + onboarding cada vez que hay que probar algo en el

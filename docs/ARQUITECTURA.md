@@ -1,5 +1,7 @@
 # Arquitectura
 
+> **[Canónico · verificado contra código el 2026-07-20]**
+
 > Cómo encaja Biblioshare. Verificado contra el código el **2026-07-20**
 > (544 ficheros TS/TSX, ~57.000 líneas, 32 rutas, 76 migraciones).
 >
