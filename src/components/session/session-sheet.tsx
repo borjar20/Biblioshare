@@ -179,7 +179,40 @@ export function SessionSheet({
 
   return (
     <>
-      <form action={formAction} onSubmit={handleSubmit} className="flex h-full flex-col">
+      {/* Región de scroll de la hoja (fix bug de Tarea 5→6): en modo modal,
+          este <form> es el único hijo visible de un <dialog> con
+          `overflow-hidden` y altura acotada (100dvh en móvil, ≤90dvh en pc,
+          ver session-modal.tsx). Antes de este fix el <form> no tenía
+          `overflow`, así que el contenido que no cabía simplemente se
+          desbordaba de su caja y el `overflow-hidden` del <dialog> lo
+          recortaba sin dar ninguna forma de llegar a él (medido: ~184px
+          perdidos a 390×560, con `scrollTop` fijado en 0 pase lo que pase).
+          `flex-1` + `min-h-0` + `overflow-y-auto` arreglan justo eso:
+            - `flex-1` hace que el <dialog> (ahora `flex flex-col`) le ceda
+              exactamente el hueco disponible, no más.
+            - `min-h-0` es LO QUE HACE FALTA PARA QUE LO DE ARRIBA FUNCIONE:
+              por defecto, un hijo flex no se encoge por debajo de la altura
+              de su propio contenido (`min-height: auto`), así que sin esto
+              el formulario seguiría "queriendo" sus ~744px y volveríamos al
+              mismo recorte aunque el <dialog> ya fuera flex. Con
+              `min-h-0` se le permite encogerse al hueco real y es entonces
+              cuando `overflow-y-auto` tiene algo que recortar-y-scrollear en
+              vez de no hacer nada en silencio. NO BORRAR min-h-0 aunque
+              "no parezca hacer nada": es la pieza invisible.
+          La cabecera y el footer siguen con `sticky top-0`/`sticky bottom-0`
+          tal cual Tarea 5 los dejó — con el <form> como su contenedor de
+          scroll, quedan fijos arriba/abajo mientras el hero y los campos del
+          medio se desplazan por debajo.
+          En modo página (sin <dialog> por encima) el <dialog> flex no existe:
+          `flex-1` no hace nada fuera de un contenedor flex y `min-h-0` no
+          cambia nada en un elemento cuya altura ya era `auto`, así que el
+          <form> vuelve a su altura natural y es el documento quien scrollea,
+          exactamente como antes de este fix. */}
+      <form
+        action={formAction}
+        onSubmit={handleSubmit}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between bg-background/90 px-4 py-3.5 backdrop-blur">
           <span className="font-serif text-[17px] font-semibold">{t("sheetTitle")}</span>
           <button

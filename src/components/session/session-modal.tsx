@@ -62,7 +62,15 @@ export function SessionModal({ children }: { children: React.ReactNode }) {
       onClick={(e) => {
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
-      className="m-0 h-full max-h-none w-full max-w-none overflow-hidden border-0 bg-background p-0 text-foreground backdrop:bg-black/50 sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:w-[min(30rem,calc(100vw-2rem))] sm:rounded-2xl sm:shadow-xl"
+      // `flex flex-col`: convierte a este <dialog> en contenedor flex para que
+      // SessionSheet (su único hijo visible) reciba una altura DEFINIDA vía el
+      // algoritmo de flexbox — en vez de depender de que `height: 100%` se
+      // resuelva bien contra un ancestro con `height: auto` + `max-height`
+      // (ambiguo/frágil entre navegadores). Con esto, el formulario puede usar
+      // `flex-1` + `min-h-0` para encajar exactamente en el hueco disponible
+      // (100dvh en móvil, hasta 90dvh en pc) y hacer scroll interno en vez de
+      // desbordar y que este `overflow-hidden` lo recorte en silencio.
+      className="m-0 flex h-full max-h-none w-full flex-col max-w-none overflow-hidden border-0 bg-background p-0 text-foreground backdrop:bg-black/50 sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:w-[min(30rem,calc(100vw-2rem))] sm:rounded-2xl sm:shadow-xl"
     >
       <ModalCloseContext.Provider value={closeOnce}>
         {children}
