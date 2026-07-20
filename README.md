@@ -28,19 +28,39 @@ npm run dev                  # http://localhost:3000
 
 ## Documentación
 
-| Doc | Para qué |
-|---|---|
-| [**Arquitectura**](docs/ARQUITECTURA.md) | Cómo encaja todo: rutas, capas, flujo de datos, mapa de módulos |
-| [**Modelo de datos**](docs/requirements/data-model.md) | **Canónico** para el esquema. Verificado contra prod |
-| [**Trampas conocidas**](docs/TRAMPAS.md) | Lo que ya ha costado horas. **Léelo antes de depurar algo raro** |
-| [Requisitos y alcance](docs/REQUIREMENTS.md) | Visión, requisitos y backlog por secciones |
-| [Testing](docs/TESTING.md) | Cómo se verifica |
-| [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño, plan por pestaña |
+Cada documento tiene **un solo trabajo** y una **cabecera de frescura** que dice si puedes
+fiarte de él. La regla general: **donde un doc canónico contradiga a otro, mira la tabla de
+gobernanza de abajo para saber cuál manda.**
+
+| Doc | Manda para | Tipo |
+|---|---|---|
+| [**Arquitectura**](docs/ARQUITECTURA.md) | Rutas, capas, flujo de datos, mapa de módulos | Canónico · vs código |
+| [**Modelo de datos**](docs/requirements/data-model.md) | Esquema: tablas, RLS, enums, migraciones | Canónico · vs prod |
+| [**Trampas conocidas**](docs/TRAMPAS.md) | Lo que ya ha costado horas. **Léelo antes de depurar algo raro** | Canónico |
+| [Visión y alcance](docs/requirements/vision.md) | Qué es el producto y su MVP | Canónico · estable |
+| [Backlog](docs/requirements/backlog.md) | Qué está hecho y qué queda | Estado vivo |
+| [Decisiones](docs/requirements/decisiones.md) | El porqué de cada decisión (fechado) | Historia append-only |
+| [Reactividad](docs/reactividad.md) | Cómo se refleja el estado en la UI | Convención |
+| [Testing](docs/TESTING.md) | Cómo se verifica | Convención |
+| [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño (temporal) | Iniciativa |
 
 `docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y
-congelado en el momento en que se hizo. No se mantienen al día — sirven para entender *por
-qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de la tabla, mandan
-estos.
+congelado. Explican *por qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de
+la tabla, mandan estos.
+
+### Gobernanza documental (cómo NO desincronizarse)
+
+Cuatro reglas, para que la doc no vuelva a divergir del proyecto:
+
+1. **Una fuente de verdad: el repo (git).** El Proyecto de Claude *refleja* el subconjunto
+   canónico (arquitectura, modelo de datos, visión, backlog), no lo origina.
+2. **Un trabajo por documento.** La verdad *actual* (arriba) va en docs pequeños y verificables;
+   la *historia* va en `specs/`/`plans/` y en `decisiones.md` (append-only, nunca se reescribe →
+   no puede desincronizarse).
+3. **Contrato de frescura en cada doc.** Canónico → `[Canónico · verificado contra {prod|código}
+   el AAAA-MM-DD]`. Histórico → `[Histórico · congelado el AAAA-MM-DD]`.
+4. **El esquema se verifica contra prod**, no se mantiene a ciegas. Cuando dudes, corre el
+   [chequeo de deriva](docs/DRIFT-CHECK.md).
 
 ## Entornos (Supabase)
 
