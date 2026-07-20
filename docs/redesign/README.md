@@ -24,12 +24,31 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 |---|---|---|---|
 | 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | ✅ **HECHO** (PR #44, mergeado) — lee su **regla del 404** antes de añadir cualquier `loading.tsx` |
 | 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio, bloque de hoy | ✅ **CERRADO** (T1–T6, PRs #69/#70/#71). Lee su **§6 Hallazgos**: `getFeed` devuelve `FeedEntry[]` y el filtro es `?filtro=` |
-| 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | Colección v2 = posible epic aparte (P1) |
-| 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | Escalera de hidratación ya decidida (P1/P2) |
-| 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard, **directorio de miembros**, **escritorio** | **5 sesiones** (maqueta ampliada a 12 frames, 2026-07-18); PR #13 tierlist |
-| 05 | [Perfil](./plan-05-perfil.md) | **Reescrito v2** (2026-07-17): Actividad/Estadísticas/Rincón, `/estadisticas`, Memorizar, sorteo | **6 fases, ~5 sesiones**; bloqueado por D2 (destacados en plan 02) |
+| 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | ✅ **CERRADO salvo T6** — T1–T5 (fidelidad v1) y T7 (Colección v2, 2 sesiones + PR #84) hechas. **Queda solo T6: restyle de Colas** |
+| 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | ✅ **CERRADO** (T1–T5, PR #98). Lee su §4: `Field` quedó con props **opt-in** a la espera del plan 07 |
+| 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard, directorio de miembros, escritorio | ✅ **CERRADO** — las 5 sesiones A–E entraron en la PR #76, más #77/#78/#80 |
+| 05 | [Perfil](./plan-05-perfil.md) | **Reescrito v2** (2026-07-17): Actividad/Estadísticas/Rincón, `/estadisticas`, Memorizar, sorteo | ✅ **CERRADO** — F1–F4 (PR #43) y F5+F6 (`/estadisticas` y exportar cita, PR #72) |
 | 06 | [Ficha de título](./plan-06-ficha.md) | Hero, Info, Comunidad, Registro, Episodios, Moderador, ediciones | ✅ **CERRADO** (T1–T8 + verificación, PR #68). Ojo al **choque de shells** de su §6e: el cuerpo de la ficha topa en 771px |
 | 07 | [Transversal](./plan-07-transversal.md) | Nav, notificaciones, estados, marca, onboarding, **decisiones P-T** | Base (P-T1/P-T2/P-T6) ✅ **HECHA** (PR #46) — ver su **§6 Hallazgos**; el resto sigue abierto |
+
+## Estado (2026-07-20)
+
+**De los 8 planes quedan abiertos dos frentes:**
+
+1. **Plan 07 Transversal** — la base (P-T1/P-T2/P-T6) está hecha; falta topbar contextual
+   P-T3, notificaciones, estados, iconos, onboarding y marca. Incluye una decisión heredada
+   del plan 03: si las labels mono uppercase de `Field` pasan a ser el estilo global (hoy son
+   props opt-in, porque `Field` lo usan 17 formularios).
+2. **Plan 02 · T6 (Colas)** — sesión corta. ⚠️ **Antes de restylear, responder la P3**: dejó
+   explícitamente abierto replantear si Colas sigue siendo pestaña «si molesta al integrar
+   v2», y v2 **ya está integrada**. Las subpestañas hoy son Colecciones · Todo · Sagas ·
+   Colas («General» ya no es pestaña). Restylear primero y decidir después sería el orden
+   equivocado. El fichero real es `src/app/coleccion/queues-panel.tsx`, no el que dice el plan.
+
+**Aviso general:** los planes son de mediados de julio y **varios apuntan a ficheros que se
+han movido**, o dan por ausente algo que ya existe. Ha pasado en los planes 02, 03 y 04.
+Verifica las rutas del plan contra el repo **antes** de codificar
+([Trampas §13](../TRAMPAS.md)).
 
 ## Orden sugerido
 

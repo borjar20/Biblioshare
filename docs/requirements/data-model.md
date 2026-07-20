@@ -1,64 +1,218 @@
 # Modelo de datos
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
+> **Este es el documento canónico del esquema.** Verificado contra producción el
+> **2026-07-20**: 42 tablas, todas con RLS activa. Donde otro doc lo contradiga,
+> manda este — y varios docs antiguos aún dicen `diary_entries`, que **ya no existe**
+> (ver §0).
 
-Arquitectura elegida: **"columna vertebral compartida"**. El metadata (que varía mucho por
-tipo) vive en tablas separadas y tipadas; el progreso del usuario (casi idéntico entre tipos)
-vive en una única tabla `library_entries`. Así, **añadir un hobby nuevo = 1 tabla de metadata +
-su integración de API**, reutilizando el mismo RLS, la misma query de "mi biblioteca" y la misma
-UI de progreso. Ver [decisiones registradas](./architecture-decisions.md#9-decisiones-registradas) para el razonamiento.
+## 0. Dos renombres que invalidan la doc antigua
 
-## 3.1 Catálogo (compartido entre usuarios) — *creado*
-Tablas `books`, `movies`, `series`.
-- Metadatos propios de cada tipo (autor/director/creador, portada, sinopsis, año, género...).
-- Se rellenan automáticamente vía búsqueda en APIs externas (ver [MVP §4.2](./mvp.md#42-añadir-ítems-a-tu-colección)) y se comparten entre todos los usuarios (evita duplicar/re-consultar la misma película dos veces).
-- `SELECT` abierto a cualquiera (incl. visitantes sin cuenta) — necesario para renderizar perfiles públicos; son metadatos públicos no sensibles.
-- `INSERT` restringido a usuarios autenticados (al trackear algo se añade el ítem al catálogo si no existe).
+**`diary_entries` se llama `passes` desde julio de 2026** (migración `pass_hub_c_rename`).
+Cualquier doc, plan o spec anterior que hable de `diary_entries` se refiere a esta tabla.
 
-## 3.2 Progreso unificado — *creado*
-Tabla única `library_entries` (una fila por `usuario` × `ítem de catálogo`):
-- `item_type` (`book` | `movie` | `series`, **extensible**) + `item_id` → referencia polimórfica al catálogo.
-- `status`: `planned` | `in_progress` | `completed` | `dropped`.
-- `rating` 1–10, `started_at`, `finished_at`, `notes` — comunes y tipados.
-- `position` (JSONB): el único detalle que varía por tipo. Ej: `{"page": 42}` (libros), `{"season": 2, "episode": 5}` (series). La app valida su forma con los tipos de TypeScript.
-- **Semántica del rating** (aclaración): `library_entries.rating` es la **nota actual** del ítem (la que se muestra en el perfil y en los agregados de comunidad); `diary_entries.rating` (§3.3) es la nota **de cada pase concreto**, que puede variar entre relecturas. Al registrar un pase se puede poner una nota distinta sin alterar la nota actual; son campos independientes a propósito.
-- RLS: el dueño ve/edita sus filas; cualquiera (incl. anónimo) puede **leer** las filas de un perfil público. Escritura solo el dueño.
-- Trade-off aceptado: los detalles finos de `position` no se validan a nivel de BD (viven en JSONB), a cambio de eliminar la deuda de replicar toda la vertical por cada tipo nuevo.
+**`library_entries` está CONGELADA.** Fue la tabla de progreso original, y buena parte
+de la doc vieja aún la presenta así. Ya no lo es: **el estado vivo del usuario vive en
+`passes`**. `library_entries` sigue existiendo porque conserva `pinned_order`,
+`queue_order` y `queue_id`, pero **su `status` y su `position` no se actualizan** — leerlos
+da datos de hace meses. Esto ya ha causado dos bugs reales en producción (avance de sagas
+al 0%, PR #96). Regla: **cualquier feature que necesite el estado del usuario lo deriva de
+`passes`, nunca de `library_entries`.**
 
-## 3.3 Diario de pases (relecturas / re-visionados) — *creado*
-Tabla `diary_entries` (muchas filas por `library_entry`):
-- `library_entry_id` → FK al ítem de la estantería (borrado en cascada).
-- `started_on`, `finished_on` (fecha del pase), `rating` (de ese pase), `review` (reseña de ese pase).
-- Permite registrar leer/ver el mismo ítem varias veces con sus propias fechas y valoraciones (estilo diario de Letterboxd).
-- Separación clave: `library_entries` = **estado actual** del ítem; `diary_entries` = **historial de pases**. Añadir el diario después con datos reales habría sido una migración dolorosa, por eso se modela desde el MVP.
-- RLS: mismo modelo que `library_entries` (dueño escribe; lectura pública si el perfil lo es).
+## 1. La forma general
 
-## 3.4 Perfiles — *creado*
-Tabla `profiles`:
-- `user_id` (FK a `auth.users`, PK)
-- `username` (único, `^[a-z0-9_]{3,30}$`, usado en la URL pública; **modificable** después, con unicidad garantizada)
-- `display_name`, `avatar_url`, `bio`
-- `is_public` (boolean, default `true`)
-- `created_at`, `updated_at`
-- RLS: perfiles públicos legibles por cualquiera (incl. anónimo); el dueño siempre ve el suyo. Solo el dueño inserta/edita.
+Arquitectura: **"columna vertebral compartida"**. Los metadatos, que varían mucho por tipo,
+viven en tablas separadas y tipadas (`books`/`movies`/`series`); todo lo que es del usuario
+es polimórfico vía `(item_type, item_id)`. Añadir un hobby nuevo = **1 tabla de metadata +
+su integración de API**, reutilizando RLS, queries y UI de progreso.
 
-## 3.5 Episodios de serie (catálogo + visionado por episodio) — *creado*
-Capa por episodio para series (§7.36), **aditiva**: convive con la nota global de serie
-(`library_entries.rating`) sin alterar comunidad/stats/retos, que la siguen usando.
+`item_type` es el enum `book | movie | series`. La referencia polimórfica no tiene FK real
+a catálogo (no se puede apuntar a tres tablas), así que **la integridad de `item_id` es
+responsabilidad de la app**.
 
-- **`series_episodes`** (catálogo compartido): `series_id` (FK a `series`, cascada),
-  `season_number`, `episode_number`, `title`, `synopsis`, `still_url`, `air_date`,
-  `runtime_minutes`. UNIQUE `(series_id, season_number, episode_number)`. Se rellena
-  **cache-as-you-go** desde TMDB (`/tv/{id}/season/{n}`) la primera vez que se abre la ficha,
-  igual que `credits`/sagas (§7.34); mismo RLS que el resto del catálogo (SELECT abierto,
-  INSERT/UPDATE autenticado).
-- **`episode_watches`** (contenido de perfil, público como `diary_entries`): `user_id`,
-  `series_id`, `season_number`, `episode_number`, `rating` (1–10, **nullable** = visto sin
-  nota), `review` (nullable), `watched_on`. UNIQUE `(user_id, series_id, season, episode)`.
-  **La existencia de la fila = episodio visto.** RLS idéntico a `diary_entries`: el dueño
-  siempre; cualquiera si el perfil es público; escritura solo el dueño.
-- **Semántica**: marcar un episodio visto adelanta `library_entries.position` de la serie al
-  episodio visto más avanzado (mismo "roll forward" que `addSession`, §7.14) y saca la serie
-  de `planned`. La rejilla comunidad (temporada × episodio) y las reseñas por episodio se
-  **agregan al vuelo** desde `episode_watches` (RLS filtra a públicos + propios), no hay tabla
-  de agregados.
+```mermaid
+graph TB
+    subgraph CAT["CATÁLOGO · compartido, SELECT abierto"]
+        books[books]; movies[movies]; series[series]
+        eds[book_editions]; vers[movie_versions]; eps[series_episodes]
+        people[people]; credits[credits]
+        books --> eds; movies --> vers; series --> eps
+        people --> credits
+    end
+
+    subgraph USER["DEL USUARIO · RLS por dueño + visibilidad de perfil"]
+        passes[("passes<br/>ESTADO VIVO")]
+        sessions[progress_sessions]; notes[notes]; watches[episode_watches]
+        libe["library_entries<br/>(congelada: solo colas/pines)"]
+        queues[queues]; colls[collections]; ci[collection_items]
+        passes --> sessions; passes --> notes; passes --> watches
+        queues --> passes; colls --> ci
+    end
+
+    subgraph SOCIAL["SOCIAL"]
+        profiles[profiles]; follows[follows]
+        reactions[reactions]; comments[comments]; notifs[notifications]
+    end
+
+    subgraph CLUBS["CLUBES"]
+        clubs[clubs]; cm[club_members]; cp[club_posts]
+        ca[club_activities]; cai[club_activity_items]
+        cap[club_activity_participants]; cach[club_activity_checkpoints]
+        clubs --> cm; clubs --> cp; clubs --> ca
+        ca --> cai; ca --> cap; ca --> cach
+    end
+
+    subgraph SAGAS["SAGAS"]
+        sagas[sagas]; si[saga_items]; sn[saga_nodes]; se[saga_edges]
+        sagas --> si; sagas --> sn; sn --> se
+        sagas -. jerarquía .-> sagas
+    end
+
+    CAT -. "item_type + item_id" .-> USER
+    CAT -.-> SAGAS
+    USER --> SOCIAL
+```
+
+## 2. Catálogo (compartido entre usuarios)
+
+`books`, `movies`, `series` — metadatos por tipo (autoría, portada, sinopsis, año, géneros).
+Se rellenan **cache-as-you-go** desde APIs externas (OpenLibrary/Google Books, TMDB).
+`SELECT` abierto a cualquiera, incluso anónimo — hace falta para renderizar perfiles
+públicos y son metadatos no sensibles. `INSERT`/`UPDATE` autenticado.
+
+Tres tablas de "tirada concreta" cuelgan del catálogo:
+
+| Tabla | De | Para qué |
+|---|---|---|
+| `book_editions` | `books` | ISBN, editorial, páginas, idioma, portada de **esa** edición. `is_primary` marca la canónica |
+| `movie_versions` | `movies` | Montajes/versiones |
+| `series_episodes` | `series` | Catálogo por episodio, cache-as-you-go desde TMDB |
+
+**La escalera de hidratación** (spec de 2026-07-14) manda aquí: la búsqueda **no escribe en
+BD**. Son tres peldaños — tarjeta de resultado (memoria) → ficha de obra (se crea al abrirla)
+→ edición (al registrarla). Por eso la tarjeta de búsqueda no lleva editorial ni páginas:
+son de una tirada, no de la obra.
+
+`people` + `credits` guardan autoría/dirección/reparto, también polimórfico por
+`(item_type, item_id)`.
+
+## 3. El pase: el hub del estado
+
+**`passes` es la tabla central del usuario.** Una fila por *pase* — una lectura o visionado
+concreto de un ítem. Releer un libro es un pase nuevo, no una edición del anterior.
+
+Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status`:
+`planned|in_progress|completed|dropped`), `is_active`, `position` (jsonb), `rating`,
+`review`, `is_public`, `started_on`/`finished_on`, `edition_id`, y las de organización
+(`queue_id`, `queue_order`, `pinned_order`).
+
+- **`is_active`** distingue el pase en curso de los cerrados. Solo uno activo por ítem.
+- **El pase es dueño de la nota y la reseña**, no la entrada de biblioteca: cada relectura
+  puede tener su propia valoración.
+- **`position` es jsonb** porque es lo único que varía por tipo: `{"page": 42}` en libros,
+  `{"season": 2, "episode": 5}` en series. **No se valida en BD** — es el trade-off aceptado
+  a cambio de no replicar la vertical entera por cada tipo nuevo.
+- ⚠️ **`rereadCount` NO es el ordinal del pase**: cuenta los pases CERRADOS. El actual es
+  +1. La primera lectura siempre sale bien, así que el fallo pasa desapercibido hasta que
+  alguien relee.
+
+Cuelgan del pase:
+
+- **`progress_sessions`** — sesiones de lectura/visionado. `position` es el punto
+  ALCANZADO. `started_at` (añadido en plan 05) permite saber la franja horaria real;
+  `created_at` es cuándo se registró, que no es lo mismo.
+- **`episode_watches`** — un episodio visto. **La existencia de la fila = visto**;
+  `rating`/`review` son opcionales.
+- **`notes`** — notas y citas de «Memorizar». Privadas, solo el dueño.
+
+**Las series no tienen `progress_sessions`**: se miden en episodios. Cualquier orden por
+"última sesión" las manda al final si no se contempla.
+
+## 4. Organización del usuario
+
+| Tabla | Qué |
+|---|---|
+| `queues` | Colas de prioridad nombradas |
+| `collections` | Colecciones (v2): nombre, descripción, `visibility`, orden |
+| `collection_items` | Ítems de una colección, polimórfico + `position` |
+| `challenges` | Retos con ventana y criterio. **Absorbió las metas anuales** (las 3 columnas `annual_goal_*` de `profiles` se migraron aquí y se eliminaron) |
+
+`profiles.daily_goal_minutes` **no** se fusionó: no es un reto, es el objetivo diario.
+
+## 5. Social
+
+`profiles` (username único, `is_public`, `role`), `follows` (con `follow_status`
+`pending|accepted` — a perfil público es aceptado directo), `reactions` y `comments`
+(polimórficos vía `target_kind`), `notifications`, `push_subscriptions`.
+
+`target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
+`passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
+
+## 6. Clubes
+
+`clubs` → `club_members` (rol `member|moderator|owner`, estado `invited|active|requested`),
+`club_posts` (+ `club_poll_options`/`club_poll_votes`), `club_reads` (contador de novedades).
+
+Actividades: `club_activities` (enum `activity_kind`: `buddy_read | tierlist |
+list_challenge | criteria_challenge`; ciclo `proposed → active → finished | archived`) con
+sus satélites `club_activity_items`, `_participants`, `_opinions`, `_placements`,
+`_checkpoints`, `_checkpoint_reads`.
+
+**`config` (jsonb) es opaco a la BD**: lo interpreta la app según el `kind`. Ahí viven el
+criterio del reto, los tiers de la tierlist y el `completionMode` del reto por lista.
+
+## 7. Sagas
+
+`sagas` es **jerárquica** (`parent_saga_id`): las subsagas son sagas reales anidadas.
+`saga_items` da la pertenencia (multi-membresía, con `is_primary`), y el grafo relacional
+son `saga_nodes` (mixtos: apuntan a un ítem **o** a una saga hija) + `saga_edges`
+(`principal | opcional | requisito`).
+
+**La regla de cómputo del progreso (§1.5 del spec) es una sola** y vive en
+`src/lib/sagas/main-order.ts`: el denominador es el **orden principal** — con grafo, los
+nodos con `order_no`, expandiendo recursivamente los nodos-saga; sin grafo, los miembros por
+`position`. Los opcionales no penalizan. Tenerla duplicada ya causó el issue #91 (el hero
+decía 2/7 donde la card decía 2/5).
+
+## 8. Seguridad
+
+Las 42 tablas tienen **RLS activa**. Patrones:
+
+- **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
+- **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
+- **Clubes**: `clubs.visibility` gobierna **descubrimiento**, nunca quién ve el contenido —
+  eso lo decide `is_club_member()`.
+- **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
+  actividad (un participante de perfil privado debe ser visible a sus compañeros),
+  `save_saga_graph`, `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan como
+  WARN y **está aceptado**: llevan gate interno de rol.
+- **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
+  actions, no desde el cliente.
+
+## 9. Enums
+
+| Enum | Valores |
+|---|---|
+| `item_type` | `book \| movie \| series` |
+| `media_status` | `planned \| in_progress \| completed \| dropped` |
+| `user_role` | `user \| collaborator \| admin` |
+| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge` |
+| `activity_status` | `proposed \| active \| finished \| archived` |
+| `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
+| `club_member_status` | `invited \| active \| requested` |
+| `follow_status` | `pending \| accepted` |
+| `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
+| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
+
+## 10. Migraciones
+
+76 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
+para levantar un entorno limpio.
+
+⚠️ **El orden del baseline es el de aplicación REAL en producción**
+(`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del
+pase-hub se redataron y prod las registra en otro orden.
+
+⚠️ **"No aparece en `list_migrations`" ≠ "no está en prod".** `20260716_list_challenge_completion_mode.sql`
+está aplicada pero sin registrar en el ledger. Para comprobar si algo existe de verdad,
+mirar los **objetos** (`pg_proc`, `pg_class`), no el ledger.

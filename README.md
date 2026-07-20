@@ -1,56 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Biblioshare
 
-## Getting Started
+PWA para llevar el registro de tus hobbies de consumo cultural — **libros, películas y
+series** — en un solo sitio. Un Goodreads + Letterboxd + tracker de series unificado, con
+estética centrada en portadas, perfiles públicos, clubes de lectura y sagas.
 
-First, run the development server:
+Next.js 16 (App Router) + React 19 + Supabase + Tailwind, desplegado en Vercel, con wrapper
+Android vía Capacitor.
+
+## Arranque
+
+Node **22.23.1** (está en `.nvmrc`; el shell suele arrancar en otra versión, así que
+`fnm use` antes de nada).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # y rellenar (ver «Entornos»)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` / `start` | Build de producción y arranque |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest (unidad) — **requiere Node 22** |
+| `npm run test:e2e` | Playwright (e2e) — necesita un servidor levantado; reutiliza el que haya |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Documentación
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Doc | Para qué |
+|---|---|
+| [**Arquitectura**](docs/ARQUITECTURA.md) | Cómo encaja todo: rutas, capas, flujo de datos, mapa de módulos |
+| [**Modelo de datos**](docs/requirements/data-model.md) | **Canónico** para el esquema. Verificado contra prod |
+| [**Trampas conocidas**](docs/TRAMPAS.md) | Lo que ya ha costado horas. **Léelo antes de depurar algo raro** |
+| [Requisitos y alcance](docs/REQUIREMENTS.md) | Visión, requisitos y backlog por secciones |
+| [Testing](docs/TESTING.md) | Cómo se verifica |
+| [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño, plan por pestaña |
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y
+congelado en el momento en que se hizo. No se mantienen al día — sirven para entender *por
+qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de la tabla, mandan
+estos.
 
 ## Entornos (Supabase)
 
-Hay dos proyectos de Supabase separados:
+Dos proyectos separados:
 
-- **Producción** — lo usa el deploy de Vercel (variables de entorno configuradas en Vercel).
-- **Dev (`biblioshare-dev`)** — lo usa el desarrollo local: `.env.local` apunta aquí. Todo lo que hagas con `npm run dev` (búsquedas que cachean catálogo, usuarios de prueba, imports) escribe SOLO en este proyecto.
+- **Producción** — lo usa el deploy de Vercel (variables configuradas allí).
+- **Dev** — lo usa el desarrollo local; `.env.local` apunta aquí. Todo lo que hagas con
+  `npm run dev` (búsquedas que cachean catálogo, usuarios de prueba, imports) escribe **solo**
+  en dev.
+
+⚠️ **Supabase es remoto también en desarrollo.** No hay stack local: la latencia media es de
+~240 ms por consulta, con picos de más de 1 s. Eso condiciona los timeouts de los tests y es
+la causa habitual de e2e "flaky" — ver [Trampas](docs/TRAMPAS.md).
 
 Para (re)crear el proyecto dev desde cero:
 
 1. Crear un proyecto nuevo en [supabase.com](https://supabase.com) (plan free).
-2. Aplicar [`supabase/schema-baseline.sql`](supabase/schema-baseline.sql) en el SQL editor — es el replay ordenado de todas las migraciones de producción. Las migraciones posteriores a la fecha del fichero hay que aplicarlas encima (o regenerar el fichero).
-3. Copiar URL y anon key del proyecto a `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+2. Aplicar [`supabase/schema-baseline.sql`](supabase/schema-baseline.sql) en el SQL editor —
+   es el replay ordenado de las migraciones de producción.
+3. Copiar URL y anon key a `.env.local`.
 4. Crear el usuario de prueba (`TEST_USER_*` de `.env.example`) vía `/signup` + onboarding.
 
-Regla: las migraciones nuevas se aplican primero en dev, se verifican, y después en producción. Mantener `schema-baseline.sql` como referencia del esquema (regenerable desde `supabase_migrations.schema_migrations`).
+**Regla de migraciones:** primero en dev, se verifica, y después en producción. Y anexarla a
+`schema-baseline.sql` **en el orden de aplicación real de prod**, no en orden alfabético.
 
-## Notes
+## Android (Capacitor)
 
-- Estadísticas: la UI del dashboard de estadísticas se muestra ahora en la página principal del usuario (home). La ruta dedicada `/estadisticas` fue eliminada y las referencias relevantes en la documentación y la navegación han sido actualizadas.
+El wrapper carga `server.url` apuntando a la URL de producción, así que las sesiones nativas
+se mezclan con las de web en las métricas. El escáner de ISBN (ML Kit) **solo existe en
+nativo** — en el navegador ese control no se pinta.
