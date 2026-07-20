@@ -17,9 +17,10 @@ import { ClockIcon, PencilIcon, CheckIcon } from "@/components/ui/icons";
 //                que la acción es marcar el siguiente.
 //   · Película → ni sesión ni episodios: solo Registrar.
 //
-// "Registrar" se queda como estaba en los tres: lleva a la pestaña Registro de
-// la ficha. El que va a la vista de sesión es el del cronómetro, y con el
-// tiempo puesto.
+// "Registrar" abre la hoja de sesión (modal, vía ruta interceptada) sin sacarte
+// del inicio, igual que el del cronómetro pero sin tiempo puesto. Solo cae a la
+// pestaña Registro de la ficha cuando NO hay hoja que abrir: películas, o un
+// ítem sin pase activo.
 //
 // Es cliente por el cronómetro; los textos llegan traducidos porque `t` no
 // cruza la frontera servidor→cliente.
@@ -46,9 +47,9 @@ export function TodayActions({
   itemType: "book" | "movie" | "series";
   seriesId: string;
   nextEpisode: { season: number; episode: number } | null;
-  /** La vista de añadir sesión, destino del cronómetro. */
+  /** La hoja de sesión: destino del cronómetro y también de "Registrar". */
   sessionHref: string | null;
-  /** La pestaña Registro de la ficha. */
+  /** La pestaña Registro de la ficha: solo el respaldo de "Registrar". */
   logHref: string;
   labels: TodayActionsLabels;
 }) {
@@ -77,7 +78,7 @@ export function TodayActions({
 
       {!timing && (
         <Link
-          href={logHref}
+          href={sessionHref ?? logHref}
           className={`flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold transition-colors hover:bg-surface-muted ${
             canTime || canMark ? "border-l border-border text-muted-foreground" : "text-[var(--acc)]"
           }`}

@@ -257,7 +257,7 @@ export function SessionSheet({
 
         {/* `shrink-0` por el mismo motivo que la cabecera de arriba: este
             footer no debe encogerse cuando el contenido de en medio no cabe. */}
-        <div className="sticky bottom-0 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
+        <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
           <Button type="submit" disabled={pending} className="w-full">
             {pending
               ? t("submitting")

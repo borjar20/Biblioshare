@@ -38,7 +38,18 @@ export function SessionHero({
     // del reparto de flex-shrink: pase lo que pase con el contenido de más
     // abajo, el hero conserva su altura natural y es el <form> (con su propio
     // `overflow-y-auto`, ver session-sheet.tsx) quien scrollea alrededor.
-    <div className="relative shrink-0 overflow-hidden px-4 pt-5 pb-4">
+    // `z-0` NO es decorativo y no sobra por ser "cero": es lo que confina el
+    // `z-10` de la fila de dentro. `relative` a secas deja el z-index en `auto`,
+    // que NO crea contexto de apilado, así que ese `z-10` interior subía al
+    // contexto del <form> y competía de tú a tú con el `z-10` de la cabecera
+    // pegajosa (session-sheet.tsx) — mismo número, y a igualdad gana el que va
+    // después en el DOM, o sea el hero. Resultado medido: al hacer scroll, la
+    // portada y el título se pintaban ENCIMA de "Registrar sesión" y del ✕ en
+    // vez de pasar por debajo. Con `z-0` el hero se convierte en su propio
+    // contexto de apilado: su `z-10` queda encerrado aquí dentro (sigue
+    // ordenando portada+textos sobre el tinte, que es su único cometido) y el
+    // bloque entero se sitúa por debajo de la cabecera.
+    <div className="relative z-0 shrink-0 overflow-hidden px-4 pt-5 pb-4">
       <div
         className={`absolute inset-0 z-0 bg-gradient-to-br ${accent.bgSoft} to-transparent`}
         aria-hidden
