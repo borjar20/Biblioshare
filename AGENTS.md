@@ -7,15 +7,61 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- BEGIN:biblioshare-docs -->
 # Documentación y datos — léelo antes de tocar
 
-- **Fuente de verdad = el repo.** El índice y "qué doc manda para qué" está en `README.md`
-  (sección «Gobernanza documental»). Antes de fiarte de un doc, mira su cabecera de frescura:
-  `[Canónico · verificado …]` manda; `[Histórico · congelado …]` explica el *porqué*, no el *hoy*.
-- **Esquema**: manda `docs/requirements/data-model.md` (verificado contra prod). Dos trampas que
-  ya han causado bugs reales: el estado vivo del usuario vive en **`passes`**, nunca en
-  `library_entries` (CONGELADA) ni en `diary_entries` (renombrada a `passes`).
-- **Migraciones**: "no aparece en `list_migrations`" **≠** "no está en prod" — verifica contra los
-  objetos reales (`pg_proc`/`pg_class`), no contra el ledger. Regla: dev primero, luego prod.
-- **`docs/superpowers/specs/` y `plans/` son historia** (congelados por feature), no el estado de hoy.
-- Al cambiar el esquema o cerrar una feature: actualiza el doc canónico y su fecha. Si dudas de si la
-  doc coincide con la realidad, corre el chequeo de `docs/DRIFT-CHECK.md`.
+**Fuente de verdad = el repo.** El índice y "qué doc manda para qué" está en `README.md`
+(sección «Gobernanza documental»). Antes de fiarte de un doc, mira su cabecera de frescura:
+`[Canónico · verificado …]` manda; `[Histórico · congelado …]` explica el *porqué*, no el *hoy*.
+`docs/superpowers/specs/` y `plans/` son historia congelada por feature, no el estado de hoy.
+
+**Esquema (dos trampas que ya han dado bugs en prod):** manda `docs/requirements/data-model.md`.
+El estado vivo del usuario vive en **`passes`**, nunca en `library_entries` (CONGELADA) ni en
+`diary_entries` (renombrada a `passes`).
+
+**Migraciones:** "no aparece en `list_migrations`" **≠** "no está en prod" — verifica contra los
+objetos reales (`pg_proc`/`pg_class`), no el ledger. Regla: dev primero (`supabase-dev`), luego prod.
+
+## Definición de «hecho»: no cierres un cambio sin sincronizar la doc
+
+Antes de dar por terminado cualquier cambio, repasa:
+
+1. **¿Tocaste el esquema** (tablas, columnas, RLS, enums, funciones, migraciones)**?**
+   → actualiza `docs/requirements/data-model.md` y su fecha de verificación.
+2. **¿Cerraste o cambiaste el estado de una feature?**
+   → marca la casilla en `docs/requirements/backlog.md`. La narrativa de *cómo* se hizo va en una
+   spec de `docs/superpowers/specs/`, **nunca** en el backlog (eso fue lo que lo pudrió antes).
+3. **¿Tomaste una decisión de forma/arquitectura?**
+   → añade una entrada **al final** de `docs/requirements/decisiones.md` (append-only; no reescribas
+   las anteriores).
+4. **¿Dudas de si la doc coincide con la realidad?**
+   → corre el chequeo de `docs/DRIFT-CHECK.md` (o el comando `/drift-check`).
+
+Regla de oro: un cambio no está "hecho" hasta que el doc canónico correspondiente vuelve a ser cierto.
 <!-- END:biblioshare-docs -->
+
+<!-- BEGIN:biblioshare-cleanup -->
+# Higiene del entorno — no dejes basura entre sesiones
+
+Las sesiones dejan worktrees y servidores colgados que se acumulan y provocan errores (puerto
+3000 ocupado, RAM agotada en la máquina de 8 GB, worktrees zombis). **La sesión que ensucia,
+limpia.** Y si te encuentras el entorno sucio al empezar, límpialo antes de trabajar.
+
+## Worktrees de git (viven en `.claude/worktrees/`)
+- Si creaste uno (superpowers / worktree de agente), **quítalo al acabar**:
+  `git worktree remove <ruta>` (`--force` si sus cambios ya están integrados o son descartables).
+- Barre los huérfanos: `git worktree list` → los marcados `prunable` se limpian con
+  `git worktree prune`. Las **carpetas** que sobrevivan en `.claude/worktrees/` tras el prune se
+  borran a mano (ni git ni un agente remoto las quitan).
+- No abras un worktree nuevo por costumbre: solo cuando de verdad necesites aislar cambios en paralelo.
+
+## Servidores dev y de pruebas (PowerShell)
+- **Un solo `next dev`, y en el puerto 3000.** Si 3000 está ocupado por una sesión anterior, Next
+  salta a 3001 y ahí empiezan los "errores raros": la app, los redirects de Supabase y los e2e
+  esperan 3000. Mata el viejo antes de arrancar; no levantes un segundo.
+- Ver quién ocupa el puerto:  `Get-NetTCPConnection -LocalPort 3000 | Select-Object OwningProcess`
+- Ver procesos node:          `Get-Process node`
+- Matar el que sobra:         `Stop-Process -Id <pid>`   (o `Get-Process node | Stop-Process` para todos)
+- `npm run test:e2e` (Playwright) **reutiliza el dev server que ya haya** — no arranques otro solo para probar.
+- Al cerrar la sesión, no dejes en segundo plano `next dev`, watchers de Vitest ni servidores de Playwright.
+
+Estado limpio = puerto 3000 libre (o un único `next dev` tuyo) y cero worktrees huérfanos en
+`.claude/worktrees/`.
+<!-- END:biblioshare-cleanup -->
