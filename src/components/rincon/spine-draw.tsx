@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { SorteoSheet } from "./sorteo-sheet";
-import type { SorteoItem } from "./sorteo-logic";
+import type { SorteoCollection, SorteoItem } from "./sorteo-logic";
 
 // La estantería decorativa del frame C/H: alturas y colores variados, fijos,
 // para que la tarjeta tenga cuerpo. El sorteo real vive en la hoja.
@@ -24,7 +24,13 @@ const SPINES = [
 // "Sacar un lomo": tarjeta-entrada del ritual (spec 2026-07-17). El botón abre
 // la hoja del sorteo (estantería animada + filtros). Tarjeta oscura a
 // propósito (misma en claro y oscuro). Vacío: invita a añadir pendientes.
-export function SpineDraw({ pool }: { pool: SorteoItem[] }) {
+export function SpineDraw({
+  pool,
+  collections = [],
+}: {
+  pool: SorteoItem[];
+  collections?: SorteoCollection[];
+}) {
   const t = useTranslations("rincon");
   const [open, setOpen] = useState(false);
 
@@ -80,7 +86,12 @@ export function SpineDraw({ pool }: { pool: SorteoItem[] }) {
         {t("drawButton")}
       </button>
 
-      <SorteoSheet pool={pool} open={open} onClose={() => setOpen(false)} />
+      <SorteoSheet
+        pool={pool}
+        collections={collections}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </div>
   );
 }

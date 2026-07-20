@@ -12,15 +12,28 @@ export type SorteoItem = {
   estimatedMinutes: number | null;
   estimateText: string | null;
   fresh: boolean;
+  // Colecciones **sorteables** a las que pertenece la obra (§7.28). Vacío no
+  // significa "sin colección": significa "en ninguna de las marcadas".
+  collectionIds: string[];
 };
+
+// Una colección marcada `is_sorteable`, tal cual se ofrece en el filtro.
+export type SorteoCollection = { id: string; name: string };
 
 export type SorteoFilters = {
   type: "all" | ItemType;
   dur: "any" | "short" | "med" | "long";
   state: "any" | "fresh";
+  // "all" = toda la biblioteca (comportamiento previo al filtro por colección).
+  collection: "all" | string;
 };
 
-export const DEFAULT_FILTERS: SorteoFilters = { type: "all", dur: "any", state: "any" };
+export const DEFAULT_FILTERS: SorteoFilters = {
+  type: "all",
+  dur: "any",
+  state: "any",
+  collection: "all",
+};
 
 // Tramos del mockup: ‹2 h / 2–5 h / +5 h. Sin estimación → sin bucket (solo
 // entra con el filtro "Cualquiera").
@@ -36,6 +49,8 @@ export function eligibleItems(pool: SorteoItem[], filters: SorteoFilters): Sorte
     if (filters.type !== "all" && item.itemType !== filters.type) return false;
     if (filters.dur !== "any" && durationBucket(item.estimatedMinutes) !== filters.dur) return false;
     if (filters.state === "fresh" && !item.fresh) return false;
+    if (filters.collection !== "all" && !item.collectionIds.includes(filters.collection))
+      return false;
     return true;
   });
 }

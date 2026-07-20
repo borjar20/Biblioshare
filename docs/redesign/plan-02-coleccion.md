@@ -39,7 +39,7 @@
 
 - **P1 · DECIDIDO: Colección v2 SE INCLUYE en la iniciativa.** Se planifica como **sesión(es) extra de este plan** con spec propia previa: modelo de datos (`collections` + `collection_items`, RLS, migración vía agente supabase-schema), grid de colecciones con abanico de portadas + tile crear, detalle, pestaña "Todo" (absorbe el grid actual sin bloque "en curso") y hoja "Añadir a colección" desde ficha/grid. **Ejecutar DESPUÉS de la fidelidad v1** (tareas 1–5), porque v2 reorganiza las pestañas.
 - **P2 · DECIDIDO vía P-T3 (topbar contextual): SÍ** — topbar "Mi colección" con barrita de acento + ⌕ (búsqueda en colección) y + (→ `/buscar`).
-- **P3 · Colas: se mantiene como pestaña** (no cuestionado en la sesión de decisiones; si molesta al integrar v2, replantear entonces). Restyling contra su frame en tarea propia.
+- ~~**P3 · Colas: se mantiene como pestaña**~~ — ❌ **DEROGADA 2026-07-20.** El «replantear entonces» se activó: al integrar v2, `colas` salió de las subpestañas visibles y **ningún enlace llevaba a `?tab=colas`** — llevaba semanas inalcanzable (el e2e la tapaba navegando por URL directa). Se retira la UI entera en vez de restylearla; acotar el sorteo a un subconjunto propio, su único uso vivo, pasa a las **colecciones marcadas `is_sorteable`**. Ver `docs/requirements/decisiones.md` (2026-07-20). **T6 queda sin objeto.**
 - **P4 · DECIDIDO vía P-T2: subtabs en serif Fraunces.**
 
 ## 4. Tareas
@@ -74,8 +74,8 @@
 - `GeneralOverview` en `lg:grid lg:grid-cols-[1fr_320px] lg:gap-6` (continuar izquierda, resumen derecha), recientes debajo a lo ancho.
 - Commit: `style(coleccion): general a dos columnas en escritorio (mockup C)`
 
-### Tarea 6 — (bloqueada por P3) Restyling del panel de Colas
-- Contra el frame "Colas · en Colección": filas arrastrables con portada, estimación por ítem y total por cola. Analizar `queues-panel.tsx` en su sesión (hoy fuera de alcance visual de esta pasada).
+### ~~Tarea 6 — Restyling del panel de Colas~~ ❌ SIN OBJETO (2026-07-20)
+- La P3 se derogó y las Colas se retiraron enteras: no hay panel que restylear. `queues-panel.tsx` y sus cuatro componentes hermanos están borrados. **Con esto el plan 02 queda CERRADO.**
 
 ### Tarea 7 — Colección v2 (APROBADA, tras las tareas 1–6)
 - Sesión 1: spec + migración (`collections`, `collection_items`, RLS; agente supabase-schema) + grid de colecciones y detalle (frames A/B de `Paper - Colección v2.html`).
@@ -87,4 +87,4 @@
 - [x] Modo oscuro sin hardcodes (verificado claro y oscuro; tokens de acento/estado por tema). — **T1–T5**.
 - [x] `npx playwright test` (Node 22): `coleccion-general.spec.ts` nuevo verde; happy-path/pase-hub (que tocan `/coleccion`) sin regresión.
 - [x] P1–P4 respondidas y registradas.
-- [ ] **T6 (Colas) y T7 (Colección v2, con migración)** — pendientes, sesión aparte.
+- [x] **T7 (Colección v2, con migración)** — hecha (PR #84). **T6 (Colas) sin objeto**: retiradas el 2026-07-20 (P3 derogada). Plan 02 **CERRADO**.

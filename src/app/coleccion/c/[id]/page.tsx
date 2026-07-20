@@ -73,6 +73,7 @@ export default async function CollectionDetailPage({
           collectionId={detail.id}
           name={detail.name}
           description={detail.description}
+          isSorteable={detail.isSorteable}
         />
       </div>
 

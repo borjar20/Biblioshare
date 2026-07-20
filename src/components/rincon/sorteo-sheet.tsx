@@ -15,6 +15,7 @@ import {
   spineHeight,
   SPINE_COLORS,
   TYPE_ACCENT,
+  type SorteoCollection,
   type SorteoFilters,
   type SorteoItem,
 } from "./sorteo-logic";
@@ -51,10 +52,12 @@ const CTA_KEY: Record<ItemType, string> = {
 
 export function SorteoSheet({
   pool,
+  collections,
   open,
   onClose,
 }: {
   pool: SorteoItem[];
+  collections: SorteoCollection[];
   open: boolean;
   onClose: () => void;
 }) {
@@ -171,7 +174,8 @@ export function SorteoSheet({
     else onClose();
   }
 
-  const customActive = filters.dur !== "any" || filters.state !== "any";
+  const customActive =
+    filters.dur !== "any" || filters.state !== "any" || filters.collection !== "all";
   const revealed = phase === "revealed" && picked !== null;
 
   return (
@@ -288,6 +292,40 @@ export function SorteoSheet({
                     </button>
                   ))}
                 </div>
+
+                {/* Solo si el usuario ha marcado alguna colección como
+                    sorteable: sin marcadas, este grupo no aparece y el sorteo
+                    se comporta como antes (toda la biblioteca). */}
+                {collections.length > 0 && (
+                  <>
+                    <p
+                      className="mt-4 font-mono text-[10px] tracking-widest uppercase"
+                      style={{ color: "#a99e8c" }}
+                    >
+                      {t("sorteoFilterCollectionLabel")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[
+                        { value: "all", label: t("sorteoFilterCollectionAll") },
+                        ...collections.map((c) => ({ value: c.id, label: c.name })),
+                      ].map((f) => (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onClick={() => setFilter({ collection: f.value })}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-medium"
+                          style={
+                            filters.collection === f.value
+                              ? { background: "#332b23", borderColor: "#d98a5c", color: "#d98a5c" }
+                              : { background: "#332b23", borderColor: "transparent", color: "#f0e8db" }
+                          }
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

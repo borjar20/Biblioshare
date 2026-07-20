@@ -1,14 +1,20 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { QueueItem } from "@/lib/queue/types";
-import type { SorteoItem } from "@/components/rincon/sorteo-logic";
-import { fetchCatalogMeta } from "@/lib/queue/fetch-catalog-meta";
+import type { SorteoCollection, SorteoItem } from "@/components/rincon/sorteo-logic";
+import { fetchCatalogMeta, type CatalogMeta } from "@/lib/queue/fetch-catalog-meta";
+import { backfillQueueSizes } from "@/lib/queue/backfill-queue-sizes";
 import { computeQueueEstimates } from "@/lib/queue/compute-estimates";
 import { getBookPace } from "@/lib/queue/get-reading-pace";
 import { getMoviePace } from "@/lib/queue/get-movie-cadence";
 import { formatDuration } from "@/lib/queue/format-duration";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+export type SorteoPool = {
+  items: SorteoItem[];
+  collections: SorteoCollection[];
+};
 
 // Español fijo, como formatDuration (ver su nota sobre next-intl).
 function metaText(item: QueueItem): string {
@@ -19,13 +25,19 @@ function metaText(item: QueueItem): string {
 }
 
 // El pool del sorteo (spec 2026-07-17): TODOS los pendientes del usuario (pase
-// activo planned, con o sin cola), cada uno con su estimación transparente
-// (§7.22, mismos helpers que «Para más tarde») y el flag `fresh` = sin ningún
-// pase anterior con la obra (primera vez).
+// activo planned), cada uno con su estimación transparente (§7.22) y el flag
+// `fresh` = sin ningún pase anterior con la obra (primera vez).
+//
+// Además, a qué **colecciones sorteables** pertenece cada uno. El filtro por
+// colección se resuelve en cliente como los otros tres (tipo/duración/estado):
+// la hoja carga el pool una vez y filtrar no debe costar un viaje al servidor.
+// Solo se miran las colecciones marcadas `is_sorteable` — con las 19 que puede
+// tener un usuario, el desplegable era inservible (por eso el flag, y por eso
+// se calcula la pertenencia solo de esas).
 export async function getSorteoPool(
   supabase: SupabaseServerClient,
   userId: string
-): Promise<SorteoItem[]> {
+): Promise<SorteoPool> {
   const { data: entries, error } = await supabase
     .from("passes")
     .select("id, item_type, item_id")
@@ -33,12 +45,12 @@ export async function getSorteoPool(
     .eq("is_active", true)
     .eq("status", "planned");
   if (error) throw error;
-  if (!entries || entries.length === 0) return [];
+  if (!entries || entries.length === 0) return { items: [], collections: [] };
 
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
   for (const entry of entries) idsByType[entry.item_type].push(entry.item_id);
 
-  const [metaByKey, bookPace, moviePace, previous] = await Promise.all([
+  const [metaByKey, bookPace, moviePace, previous, sorteables] = await Promise.all([
     fetchCatalogMeta(supabase, idsByType),
     getBookPace(supabase, userId),
     getMoviePace(supabase, userId),
@@ -48,29 +60,85 @@ export async function getSorteoPool(
       .select("item_type, item_id")
       .eq("user_id", userId)
       .eq("is_active", false),
+    supabase
+      .from("collections")
+      .select("id, name")
+      .eq("user_id", userId)
+      .eq("is_sorteable", true)
+      .order("position", { ascending: true })
+      .order("name", { ascending: true }),
   ]);
   if (previous.error) throw previous.error;
+  if (sorteables.error) throw sorteables.error;
   const seen = new Set((previous.data ?? []).map((p) => `${p.item_type}:${p.item_id}`));
 
+  const collections: SorteoCollection[] = (sorteables.data ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
+
+  // Pertenencia obra → colecciones sorteables. Sin sorteables no hay consulta.
+  const collectionIdsByKey = new Map<string, string[]>();
+  if (collections.length > 0) {
+    const { data: members, error: membersError } = await supabase
+      .from("collection_items")
+      .select("collection_id, item_type, item_id")
+      .in(
+        "collection_id",
+        collections.map((c) => c.id)
+      );
+    if (membersError) throw membersError;
+    for (const row of members ?? []) {
+      const key = `${row.item_type}:${row.item_id}`;
+      const list = collectionIdsByKey.get(key);
+      if (list) list.push(row.collection_id);
+      else collectionIdsByKey.set(key, [row.collection_id]);
+    }
+  }
+
   // Ítems sin obra en catálogo se descartan (mismo criterio que getQueueItems).
-  const queueItems: QueueItem[] = entries.flatMap((entry) => {
-    const meta = metaByKey.get(`${entry.item_type}:${entry.item_id}`);
-    if (!meta) return [];
-    return [
-      {
-        entryId: entry.id,
-        itemId: entry.item_id,
-        itemType: entry.item_type,
-        queueId: null,
-        queueOrder: 0,
-        ...meta,
-      } satisfies QueueItem,
-    ];
-  });
+  const build = (meta: Map<string, CatalogMeta>) =>
+    entries.flatMap((entry): QueueItem[] => {
+      const m = meta.get(`${entry.item_type}:${entry.item_id}`);
+      if (!m) return [];
+      return [
+        {
+          entryId: entry.id,
+          itemId: entry.item_id,
+          itemType: entry.item_type,
+          queueId: null,
+          queueOrder: 0,
+          ...m,
+        } satisfies QueueItem,
+      ];
+    });
+
+  let queueItems = build(metaByKey);
+
+  // El catálogo llega con huecos: TMDB trae duración y nº de episodios, pero
+  // nadie los persistía hasta que alguien abría la pantalla que los pedía.
+  // Ese backfill vivía en el panel de Colas — que dejó de ser alcanzable al
+  // integrar Colección v2, así que llevaba tiempo sin ejecutarse. Ahora cuelga
+  // del sorteo, que es quien necesita los minutos para el filtro de duración.
+  const missingMovies = queueItems
+    .filter((item) => item.itemType === "movie" && item.durationMinutes === null)
+    .map((item) => ({ id: item.itemId, tmdbId: item.tmdbId }));
+  const missingSeries = queueItems
+    .filter(
+      (item) =>
+        item.itemType === "series" &&
+        (item.totalEpisodes === null || item.episodeRuntimeMinutes === null)
+    )
+    .map((item) => ({ id: item.itemId, tmdbId: item.tmdbId }));
+
+  if (missingMovies.length > 0 || missingSeries.length > 0) {
+    await backfillQueueSizes(supabase, missingMovies, missingSeries);
+    queueItems = build(await fetchCatalogMeta(supabase, idsByType));
+  }
 
   const estimates = computeQueueEstimates(queueItems, bookPace, moviePace);
 
-  return queueItems.map((item) => {
+  const items = queueItems.map((item) => {
     const estimate = estimates.perItem[item.entryId];
     const minutes = estimate?.minutes ?? null;
     return {
@@ -83,6 +151,9 @@ export async function getSorteoPool(
       estimatedMinutes: minutes,
       estimateText: minutes !== null ? estimate.formulaText : null,
       fresh: !seen.has(`${item.itemType}:${item.itemId}`),
-    };
+      collectionIds: collectionIdsByKey.get(`${item.itemType}:${item.itemId}`) ?? [],
+    } satisfies SorteoItem;
   });
+
+  return { items, collections };
 }

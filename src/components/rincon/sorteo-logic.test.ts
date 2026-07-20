@@ -21,6 +21,7 @@ function item(overrides: Partial<SorteoItem>): SorteoItem {
     estimatedMinutes: 236,
     estimateText: "272 páginas ÷ 1.15 páginas/min ≈ 3h 56min",
     fresh: true,
+    collectionIds: [],
     ...overrides,
   };
 }
@@ -69,8 +70,49 @@ describe("eligibleItems", () => {
   });
 
   it("los filtros se combinan (AND)", () => {
-    const out = eligibleItems(pool, { type: "movie", dur: "short", state: "fresh" });
+    const out = eligibleItems(pool, {
+      type: "movie",
+      dur: "short",
+      state: "fresh",
+      collection: "all",
+    });
     expect(out).toHaveLength(0);
+  });
+});
+
+describe("eligibleItems · filtro por colección sorteable", () => {
+  const pool: SorteoItem[] = [
+    item({ itemId: "b1", collectionIds: ["c1"] }),
+    item({ itemId: "b2", collectionIds: ["c1", "c2"] }),
+    item({ itemId: "b3", collectionIds: ["c2"] }),
+    item({ itemId: "b4", collectionIds: [] }),
+  ];
+
+  it("'all' no acota: incluye también los que no están en ninguna", () => {
+    expect(eligibleItems(pool, DEFAULT_FILTERS)).toHaveLength(4);
+  });
+
+  it("acota a los miembros de la colección elegida", () => {
+    const out = eligibleItems(pool, { ...DEFAULT_FILTERS, collection: "c1" });
+    expect(out.map((i) => i.itemId)).toEqual(["b1", "b2"]);
+  });
+
+  it("la multi-pertenencia cuenta en todas sus colecciones", () => {
+    const out = eligibleItems(pool, { ...DEFAULT_FILTERS, collection: "c2" });
+    expect(out.map((i) => i.itemId)).toEqual(["b2", "b3"]);
+  });
+
+  it("se combina con los otros filtros (AND)", () => {
+    const mixed: SorteoItem[] = [
+      item({ itemId: "x1", collectionIds: ["c1"], itemType: "book" }),
+      item({ itemId: "x2", collectionIds: ["c1"], itemType: "movie" }),
+    ];
+    const out = eligibleItems(mixed, {
+      ...DEFAULT_FILTERS,
+      collection: "c1",
+      type: "movie",
+    });
+    expect(out.map((i) => i.itemId)).toEqual(["x2"]);
   });
 });
 

@@ -114,6 +114,7 @@ export type CollectionDetail = {
   description: string | null;
   items: LibraryItem[];
   avgRating: number | null;
+  isSorteable: boolean;
 };
 
 export async function getCollection(
@@ -123,7 +124,7 @@ export async function getCollection(
 ): Promise<CollectionDetail | null> {
   const { data: col } = await supabase
     .from("collections")
-    .select("id, name, description, user_id")
+    .select("id, name, description, user_id, is_sorteable")
     .eq("id", id)
     .maybeSingle();
   if (!col || col.user_id !== userId) return null; // RLS ya lo gatea; doble red.
@@ -147,5 +148,12 @@ export async function getCollection(
   const ratings = items.map((i) => i.rating).filter((r): r is number => r !== null);
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
-  return { id: col.id, name: col.name, description: col.description, items, avgRating };
+  return {
+    id: col.id,
+    name: col.name,
+    description: col.description,
+    items,
+    avgRating,
+    isSorteable: col.is_sorteable,
+  };
 }

@@ -4,14 +4,17 @@ import { getTranslations } from "next-intl/server";
 // Subpestañas VISIBLES de Mi Biblioteca (Colección v2, sesión 1; «Sagas»
 // añadida en F5 Task 4). Las píldoras por tipo (antes Libros/Películas/Series)
 // se retiran de aquí: ese filtrado vive ahora dentro de `Todo` (Sesión 2,
-// `LibraryFilters` con `showTypeFilter`). `colas` ya no es una subpestaña,
-// pero la ruta `?tab=colas` sigue viva (ver `KNOWN_TABS`) — `page.tsx` la
-// resuelve aunque no se pinte aquí.
+// `LibraryFilters` con `showTypeFilter`).
+//
+// `colas` desaparece del todo (2026-07-20): llevaba desde la integración de v2
+// sin pintarse aquí y sin que ningún enlace llevara a `?tab=colas`. `KnownTab`
+// se queda como alias de `CollectionTab` — ya no hay rutas vivas que no sean
+// subpestañas — para no tocar las firmas de `page.tsx` en el mismo cambio.
 export type CollectionTab = "colecciones" | "todo" | "sagas";
-export type KnownTab = CollectionTab | "colas";
+export type KnownTab = CollectionTab;
 
 export const COLLECTION_TABS: CollectionTab[] = ["colecciones", "todo", "sagas"];
-export const KNOWN_TABS: KnownTab[] = ["colecciones", "todo", "sagas", "colas"];
+export const KNOWN_TABS: KnownTab[] = [...COLLECTION_TABS];
 
 export async function CollectionTabs({ active }: { active: KnownTab }) {
   const t = await getTranslations("collection.tabs");

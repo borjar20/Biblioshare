@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateProfilePages } from "@/lib/reactivity/revalidate";
 import type { ItemType } from "@/lib/catalog/types";
 import {
   listCollections,
@@ -64,6 +65,27 @@ export async function updateCollectionDescription(
   if (error) return { error: "description_failed" };
   revalidatePath("/coleccion");
   revalidatePath(`/coleccion/c/${id}`);
+  return {};
+}
+
+// «Usar en el sorteo» (§7.28): marca la colección como pool acotado del sorteo.
+// Opt-in por colección — con 19 colecciones, ofrecerlas todas en el filtro lo
+// hacía inservible. Revalida también el perfil, que es donde vive el Rincón y
+// por tanto el selector del sorteo.
+export async function setCollectionSorteable(
+  id: string,
+  isSorteable: boolean,
+): Promise<{ error?: string }> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("collections")
+    .update({ is_sorteable: isSorteable, updated_at: new Date().toISOString() })
+    .eq("id", id); // RLS restringe al dueño
+  if (error) return { error: "sorteable_failed" };
+  revalidatePath(`/coleccion/c/${id}`);
+  // El Rincón (y con él el selector del sorteo) vive en el perfil, que se
+  // enruta por username — aquí solo tenemos el id, así que patrón dinámico.
+  revalidateProfilePages();
   return {};
 }
 

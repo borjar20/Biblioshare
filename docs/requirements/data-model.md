@@ -134,12 +134,26 @@ Cuelgan del pase:
 
 | Tabla | Qué |
 |---|---|
-| `queues` | Colas de prioridad nombradas |
-| `collections` | Colecciones (v2): nombre, descripción, `visibility`, orden |
+| `queues` | Colas de prioridad nombradas. ⚠️ **SIN USO desde 2026-07-20** — ver abajo |
+| `collections` | Colecciones (v2): nombre, descripción, `visibility`, orden, `is_sorteable` |
 | `collection_items` | Ítems de una colección, polimórfico + `position` |
 | `challenges` | Retos con ventana y criterio. **Absorbió las metas anuales** (las 3 columnas `annual_goal_*` de `profiles` se migraron aquí y se eliminaron) |
 
 `profiles.daily_goal_minutes` **no** se fusionó: no es un reto, es el objetivo diario.
+
+### `queues` está sin uso (2026-07-20)
+
+`queues` (y las columnas `queue_id`/`queue_order` de `library_entries`) **siguen en el
+esquema pero ninguna ruta de la app las lee ni las escribe.** Al integrar Colección v2, la
+pestaña «Colas» dejó de pintarse y quedó inalcanzable: ningún enlace llevaba a
+`?tab=colas`. Lo único que seguía aportando —acotar el sorteo a un subconjunto propio— lo
+hacen ahora las **colecciones marcadas `is_sorteable`**. La UI se retiró ese día; el `DROP`
+de la tabla va en una migración posterior.
+
+**`collections.is_sorteable`** (`boolean not null default false`, migración
+`20260720_collections_sorteable.sql`) marca qué colecciones se ofrecen en el filtro del
+sorteo (§7.28). Es opt-in porque el usuario tiene ~19 colecciones y ofrecerlas todas hacía
+el filtro inservible. El pool del sorteo es entonces **colección ∩ pases `planned` activos**.
 
 ## 5. Social
 

@@ -47,9 +47,13 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   await expect(page.getByText(`@${USERNAME}`).first()).toBeVisible();
 });
 
-// Colas múltiples (§7.22): crear una cola nombrada y borrarla. Auto-limpiante
+// Colecciones sorteables (§7.28): marcar una colección como pool del sorteo la
+// hace aparecer en el filtro por colección, y desmarcarla la retira. Sustituye
+// al test de colas nombradas (§7.22), retiradas el 2026-07-20. Auto-limpiante
 // (nombre único por ejecución) para no dejar residuo en el proyecto dev.
-test("crear y borrar una cola nombrada", async ({ page }) => {
+test("marcar una colección como sorteable la ofrece en el filtro del sorteo", async ({
+  page,
+}) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
@@ -58,23 +62,49 @@ test("crear y borrar una cola nombrada", async ({ page }) => {
   await page.click('button[type="submit"]');
   await page.waitForURL("/");
 
-  const queueName = `e2e-${Date.now()}`;
+  const collectionName = `e2e-${Date.now()}`;
 
-  // Las colas viven dentro de Colección desde el rediseño Paper.
-  await page.goto("/coleccion?tab=colas");
-  await page.getByRole("button", { name: /nueva cola/i }).click();
-  await page.getByLabel(/nombre de la nueva cola/i).fill(queueName);
+  await page.goto("/coleccion");
+  await page.getByRole("button", { name: /nueva colección/i }).click();
+  await page.getByLabel(/^nombre$/i).fill(collectionName);
   await page.getByRole("button", { name: /^crear$/i }).click();
 
-  // La cola nueva aparece como pestaña.
-  const tab = page.getByRole("link", { name: queueName });
-  await expect(tab).toBeVisible();
+  // Crear navega al detalle de la colección nueva.
+  await page.waitForURL(/\/coleccion\/c\//);
+  await expect(page.getByRole("heading", { name: collectionName })).toBeVisible();
 
-  // Seleccionarla y borrarla; la pestaña desaparece.
-  await tab.click();
-  await expect(page.getByRole("textbox", { name: /nombre de la cola/i })).toHaveValue(queueName);
-  await page.getByRole("button", { name: /^eliminar$/i }).click();
-  await expect(page.getByRole("link", { name: queueName })).toHaveCount(0);
+  // Marcarla como sorteable desde el menú «⋯».
+  await page.getByRole("button", { name: /acciones de la colección/i }).click();
+  await page.getByRole("menuitem", { name: /usar en el sorteo/i }).click();
+  // El menú refleja el estado nuevo: ahora ofrece quitarla.
+  await page.getByRole("button", { name: /acciones de la colección/i }).click();
+  await expect(page.getByRole("menuitem", { name: /quitar del sorteo/i })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Lo que de verdad importa: la colección se ofrece ya en el filtro del
+  // sorteo, que vive en el Rincón del perfil detrás del panel «⚙ Filtros».
+  await page.goto(`/u/${USERNAME}?tab=rincon`);
+  // El botón se pinta en el servidor pero abre la hoja desde estado de
+  // cliente: un clic anterior a la hidratación no hace nada y el test se
+  // quedaba esperando. Reintentar hasta que la hoja aparezca de verdad.
+  await expect(async () => {
+    await page.getByRole("button", { name: /sacar un lomo/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /deja que decida la estantería/i }),
+    ).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
+  await page.getByRole("button", { name: /filtros/i }).click();
+  await expect(page.getByRole("button", { name: collectionName })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Limpieza: borrar la colección (confirm() nativo).
+  await page.goto("/coleccion");
+  await page.getByRole("link", { name: new RegExp(collectionName) }).click();
+  await page.waitForURL(/\/coleccion\/c\//);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: /acciones de la colección/i }).click();
+  await page.getByRole("menuitem", { name: /^borrar$/i }).click();
+  await page.waitForURL(/\/coleccion$/);
 });
 
 // Retos (§7.10): crear un reto con criterio de tipo y verificar que rinde

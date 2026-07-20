@@ -24,7 +24,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 |---|---|---|---|
 | 00 | [Navegación y carga](./plan-00-navegacion.md) | Skeletons, loading.tsx, Suspense/streaming | ✅ **HECHO** (PR #44, mergeado) — lee su **regla del 404** antes de añadir cualquier `loading.tsx` |
 | 01 | [Inicio](./plan-01-inicio.md) | Feed, filtros, escritorio, bloque de hoy | ✅ **CERRADO** (T1–T6, PRs #69/#70/#71). Lee su **§6 Hallazgos**: `getFeed` devuelve `FeedEntry[]` y el filtro es `?filtro=` |
-| 02 | [Colección](./plan-02-coleccion.md) | General/tipos/colas, resumen, grid | ✅ **CERRADO salvo T6** — T1–T5 (fidelidad v1) y T7 (Colección v2, 2 sesiones + PR #84) hechas. **Queda solo T6: restyle de Colas** |
+| 02 | [Colección](./plan-02-coleccion.md) | General/tipos, resumen, grid | ✅ **CERRADO** — T1–T5 (fidelidad v1) y T7 (Colección v2, PR #84). **T6 quedó sin objeto**: la P3 se derogó y las Colas se retiraron enteras (2026-07-20) |
 | 03 | [Buscar](./plan-03-buscar.md) | Títulos, personas, alta manual, escáner | ✅ **CERRADO** (T1–T5, PR #98). Lee su §4: `Field` quedó con props **opt-in** a la espera del plan 07 |
 | 04 | [Clubes](./plan-04-clubes.md) | Landing, club, actividades, gestión, wizard, directorio de miembros, escritorio | ✅ **CERRADO** — las 5 sesiones A–E entraron en la PR #76, más #77/#78/#80 |
 | 05 | [Perfil](./plan-05-perfil.md) | **Reescrito v2** (2026-07-17): Actividad/Estadísticas/Rincón, `/estadisticas`, Memorizar, sorteo | ✅ **CERRADO** — F1–F4 (PR #43) y F5+F6 (`/estadisticas` y exportar cita, PR #72) |
@@ -33,17 +33,22 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 
 ## Estado (2026-07-20)
 
-**De los 8 planes quedan abiertos dos frentes:**
+**De los 8 planes queda abierto UN frente:**
 
 1. **Plan 07 Transversal** — la base (P-T1/P-T2/P-T6) está hecha; falta topbar contextual
-   P-T3, notificaciones, estados, iconos, onboarding y marca. Incluye una decisión heredada
-   del plan 03: si las labels mono uppercase de `Field` pasan a ser el estilo global (hoy son
-   props opt-in, porque `Field` lo usan 17 formularios).
-2. **Plan 02 · T6 (Colas)** — sesión corta. ⚠️ **Antes de restylear, responder la P3**: dejó
-   explícitamente abierto replantear si Colas sigue siendo pestaña «si molesta al integrar
-   v2», y v2 **ya está integrada**. Las subpestañas hoy son Colecciones · Todo · Sagas ·
-   Colas («General» ya no es pestaña). Restylear primero y decidir después sería el orden
-   equivocado. El fichero real es `src/app/coleccion/queues-panel.tsx`, no el que dice el plan.
+   P-T3, notificaciones, estados, iconos y marca (el onboarding se cerró el 20-jul). Incluye
+   una decisión heredada del plan 03: si las labels mono uppercase de `Field` pasan a ser el
+   estilo global (hoy son props opt-in, porque `Field` lo usan 17 formularios).
+
+**Plan 02 · T6 (Colas) — cerrado sin ejecutar (2026-07-20).** La P3 se derogó al abrirla: las
+subpestañas eran ya Colecciones · Todo · Sagas y **nada enlazaba a `?tab=colas`**, así que la
+pantalla llevaba semanas inalcanzable. Se retiró la UI entera en vez de restylearla y el
+sorteo ganó un filtro por colección (`is_sorteable`) para cubrir su único uso vivo.
+
+> **Lección de esta sesión, aplicable al plan 07:** el plan decía «restylear Colas» y la
+> respuesta correcta era «Colas ya no existe». Antes de dar por buena una tarea de fidelidad,
+> **comprueba que la pantalla es alcanzable desde la UI**, no solo que su ruta resuelve — un
+> e2e que navega por URL directa mantiene verde una pantalla muerta.
 
 **Aviso general:** los planes son de mediados de julio y **varios apuntan a ficheros que se
 han movido**, o dan por ausente algo que ya existe. Ha pasado en los planes 02, 03 y 04.

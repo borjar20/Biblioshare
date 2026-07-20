@@ -38,22 +38,3 @@ export function CollectionsGridSkeleton({ count = 4 }: { count?: number }) {
   );
 }
 
-// Skeleton del panel de colas: unas filas arrastrables con portada.
-export function QueuesSkeleton() {
-  return (
-    <div className="flex flex-col gap-3">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-card"
-        >
-          <Skeleton className="h-16 w-11 shrink-0 rounded" />
-          <div className="flex flex-1 flex-col gap-2">
-            <SkeletonLine className="w-2/3" />
-            <SkeletonLine className="w-1/3" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}

@@ -7,12 +7,13 @@ import {
   renameCollection,
   updateCollectionDescription,
   deleteCollection,
+  setCollectionSorteable,
 } from "@/lib/library/collection-actions";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
-import { PencilIcon, NoteIcon, XIcon } from "@/components/ui/icons";
+import { PencilIcon, NoteIcon, XIcon, SparklesIcon } from "@/components/ui/icons";
 
 type Mode = "rename" | "description" | null;
 
@@ -31,10 +32,12 @@ export function CollectionMenu({
   collectionId,
   name,
   description,
+  isSorteable,
 }: {
   collectionId: string;
   name: string;
   description: string | null;
+  isSorteable: boolean;
 }) {
   const t = useTranslations("collection");
   const router = useRouter();
@@ -94,6 +97,18 @@ export function CollectionMenu({
     });
   }
 
+  // Toggle inmediato, sin hoja: es una sola pregunta binaria, igual que Borrar.
+  function handleToggleSorteable() {
+    startTransition(async () => {
+      const result = await setCollectionSorteable(collectionId, !isSorteable);
+      if (result.error) {
+        alert(t(`errors.${result.error}`));
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   function handleDelete() {
     if (!confirm(t("deleteConfirm"))) return;
     startTransition(async () => {
@@ -126,6 +141,13 @@ export function CollectionMenu({
             label: t("editDescription"),
             icon: <NoteIcon className="h-4 w-4" />,
             onSelect: openDescription,
+          },
+          {
+            key: "sorteable",
+            label: isSorteable ? t("sorteableOff") : t("sorteableOn"),
+            icon: <SparklesIcon className="h-4 w-4" />,
+            onSelect: handleToggleSorteable,
+            disabled: isPending,
           },
           {
             key: "delete",

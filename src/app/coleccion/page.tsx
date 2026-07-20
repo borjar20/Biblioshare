@@ -17,7 +17,6 @@ import {
   KNOWN_TABS,
   type KnownTab,
 } from "./collection-tabs";
-import { QueuesPanel } from "./queues-panel";
 import { CollectionSummary } from "@/components/library/collection-summary";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { CollectionsGrid } from "@/components/library/collections-grid";
@@ -28,7 +27,6 @@ import { SkeletonCoverGrid } from "@/components/ui/skeleton";
 import {
   CollectionOverviewSkeleton,
   CollectionsGridSkeleton,
-  QueuesSkeleton,
 } from "@/components/library/collection-skeletons";
 
 export const metadata: Metadata = {
@@ -48,9 +46,13 @@ const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 // colecciones que crea el usuario, no a estados. Tres subpestañas visibles —
 // `Colecciones` (default, frame A), `Todo` (frame C, la biblioteca completa
 // sin el bloque «en curso», que ahora vive en Inicio/Perfil) y `Sagas` (frame
-// COL, sagas seguidas con progreso). `colas` sigue siendo una ruta viva
-// (`?tab=colas`, `happy-path.spec.ts`) pero ya no se pinta en las
-// subpestañas.
+// COL, sagas seguidas con progreso).
+//
+// Las **colas** (§7.22) se retiran aquí (2026-07-20): al integrar Colección v2
+// dejaron de pintarse en las subpestañas y quedaron inalcanzables — ningún
+// enlace llevaba a `?tab=colas`. Acotar el pool del sorteo a un subconjunto
+// propio, que era su único uso vivo, lo hacen ahora las colecciones marcadas
+// `is_sorteable`. La tabla `queues` sigue en pie hasta su migración de borrado.
 export default async function CollectionPage({
   searchParams,
 }: {
@@ -59,7 +61,6 @@ export default async function CollectionPage({
     status?: string;
     q?: string;
     sort?: string;
-    cola?: string;
     type?: string;
   }>;
 }) {
@@ -182,11 +183,6 @@ export default async function CollectionPage({
         </Suspense>
       )}
 
-      {tab === "colas" && (
-        <Suspense key={params.cola ?? "all"} fallback={<QueuesSkeleton />}>
-          <QueuesPanel userId={user.id} activeParam={params.cola} />
-        </Suspense>
-      )}
     </div>
   );
 }
