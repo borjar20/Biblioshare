@@ -16,3 +16,5 @@ export { MetadataSidebar } from "../components/detail/metadata-sidebar";
 export { EpisodeRating } from "../components/detail/episode-rating";
 export { SagaStrip } from "../components/detail/saga-strip";
 export { BackButton } from "../components/detail/back-button";
+// Pantallas (piloto): shell presentacional de la ficha, sin fetching.
+export { ItemShell } from "../components/detail/item-shell";

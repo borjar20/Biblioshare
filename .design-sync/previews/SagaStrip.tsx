@@ -18,7 +18,7 @@ export function Default() {
       currentId="m-2"
       sagaId="saga-1"
       sagaName="El señor de los anillos"
-      label="Saga"
+      positionLabel="nº 2 de 3"
     />
   );
 }

@@ -127,6 +127,101 @@ files — see above) wraps in:
 used throughout the previews instead of remote cover/avatar URLs, which the
 render sandbox likely blocks anyway.
 
+## Typecheck the previews — the render check CANNOT catch stale props
+
+**Run this before grading, every re-sync.** It is the single highest-value
+step in this repo's sync:
+
+```sh
+npx tsc -p .design-sync/.cache/tsconfig.previews.json   # config is gitignored; recreate if missing:
+# { "extends": "../../tsconfig.json",
+#   "compilerOptions": { "noEmit": true, "baseUrl": "../..", "paths": {"@/*": ["src/*"]} },
+#   "include": ["../previews/*.tsx"] }
+```
+
+The preview `.tsx` files are compiled by **esbuild, which strips types
+without checking them**. A preview passing a prop the component no longer
+has, or omitting one it gained, therefore compiles fine, renders fine, and
+passes the render check with zero flags — the extra prop is ignored and the
+missing one just doesn't draw. On the 2026-07-20 re-sync the render check
+reported `18/18 previews render cleanly` across three separate passes while
+four previews were silently wrong:
+
+- `RatingDots` — passed `fillClassName="bg-type-*"`, a prop that no longer
+  exists. The component now hardcodes `var(--gold)` **on purpose** (see its
+  source comment: the rating is gold everywhere, type colour is reserved for
+  identifying the medium). The `MediaAccent` story was rendering three
+  identical gold rows *and* advertising an API contrary to the design
+  language — replaced with a `Sizes` sweep of the real `size` prop.
+- `ItemHero` ×3 — `ratingCount` was removed; the count is now baked into
+  `ratingsLabel` by the caller (`t("ratings", {count})`), which is why the
+  cards read "valoraciones" with no number.
+- `SagaStrip` — `label` was renamed `positionLabel`, so the position text
+  rendered not at all.
+- `ActivityCard` — mock missing `config`, `spawnedFromActivityId`,
+  `spawnedFromItem`. Note `Partial<T>` spreads make *every* required field
+  the base object omits surface as `T | undefined`, so tsc reports them one
+  at a time — expect a few iterations.
+
+**`conventions.md` needs the same scrutiny and matters more**: it is inlined
+into the design agent's system prompt, so a stale prop there is copied into
+every design that agent ever builds. It carried the same `ratingCount`.
+Validate its class names against `ds-bundle/_ds_bundle.css` — but note
+Tailwind writes escaped selectors (`.hover\:bg-accent-hover`), so a naive
+`grep '\.hover:bg-...'` reports a false ABSENT.
+
+## El CSS compilado solo tiene lo que la app usa (afecta a TODO diseño)
+
+`cfg.buildCmd` corre el CLI de Tailwind sobre `src/app/globals.css`, que
+escanea **el código de la app**. Las previews y los diseños que construya el
+agente NO se escanean. Consecuencia: una utilidad que la app no use no está
+en `_ds_bundle.css`, y **no falla — no hace nada**.
+
+Verificado el 20-jul: `px-10` AUSENTE (la app usa `pl-10`, no `px-10`),
+`mb-6` AUSENTE, y **cero** valores arbitrarios (`w-[280px]` → 0 apariciones).
+La preview de `ItemShell` se escribió con `px-10`/`mb-6`/`w-[280px]` y
+renderizó sin padding y con el sidebar a ancho completo, sin una sola marca
+en el render check. Escala disponible hoy: `px-0..8` y `px-11` (sin 9/10),
+`mb-0..5` (sin 6), `w-` solo en pasos sueltos hasta `w-80`.
+
+- **Al escribir previews**: antes de usar una utilidad de layout, compruébala
+  con `grep -E "^\s*\.<clase> \{" ds-bundle/_ds_bundle.css`.
+- **Para el agente de diseño**: ya está avisado en `conventions.md` (sección
+  «la hoja es un build COMPILADO») — valores arbitrarios fuera, escala
+  incompleta, y estilo en línea para medidas exactas.
+- **Arreglo de fondo pendiente (decisión del usuario)**: un safelist en la
+  entrada CSS (`@source inline(...)` de Tailwind v4) para generar un juego
+  amplio de utilidades. Sube el peso de `_ds_bundle.css` (hoy 121 KB) a
+  cambio de que el agente pueda maquetar sin adivinar. NO se hizo en el
+  piloto.
+
+## Pantallas: el grupo del doc NO manda si la ruta ya da grupo
+
+`ItemShell` (piloto de pantallas, 20-jul) lleva
+`.design-sync/docs/ItemShell.md` con `category: Pantallas`, y el doc SÍ se
+enlaza (`docs: 1/19 — 1 via docsMap`), pero la tarjeta sale en el grupo
+`detail`. Motivo: en `package-build.mjs` el `category` del frontmatter solo
+pisa el grupo cuando este es `general`/`misc`/uniforme; el grupo real se
+deriva de la ruta en `src/` (`src/components/detail/` → `detail`).
+
+Para juntar varias pantallas bajo un grupo propio harían falta o un fork del
+lib (desaconsejado) o que los shells vivan en su propio directorio de `src/`.
+Para el piloto se aceptó `detail`, que además es un sitio coherente.
+
+## Known render warns
+
+None. As of 2026-07-20 the render check is fully clean: 18/18 render, and
+`bad`/`thin`/`blank`/`variantsIdentical`/`fallbackCard` are all empty. Any
+warn on a future run is new — investigate rather than assume it's baseline.
+
+## Preview art is inline `data:` SVG (no network in the render sandbox)
+
+Covers and avatars are inline data URIs. Keep the aspect right for the
+**shape it renders into**: the avatar photo was originally a 300×450
+cover-aspect rect, which circle-cropped to a flat purple disc
+indistinguishable from the no-photo state. It is now a 200×200 gradient with
+a head-and-shoulders silhouette. A flat colour block is not a photo story.
+
 ## Re-sync risks
 
 - `src/design-sync-shims/entry.ts` and `preview-provider.tsx` are hand
@@ -140,6 +235,22 @@ render sandbox likely blocks anyway.
 - `messages/es.json` is read at build time via a relative `import` in the
   shim — if it moves, the shim breaks with a resolution error, not a config
   warning.
+- **App-code drift is the top risk, and it is invisible to the render check**
+  — see the typecheck section above. Between 2026-07-13 and 2026-07-20,
+  15 of the 18 synced components changed and 4 previews went stale without a
+  single render failure. Always typecheck first.
+- The **claude.ai/design project is NOT sync-owned**: it also holds Borja's
+  hand-made design work (`Paper - *.html` mockups, `uploads/`, `screenshots/`,
+  `bf-*.jsx`, `handoff/`, `design_handoff_biblioshare_paper/`, `deck-stage.js`,
+  `tweaks-panel.jsx`). The atomic path's deletes come verbatim from
+  `.sync-diff.json`'s `upload.deletePaths`, which is anchor-scoped and so can
+  only ever name sync output — **never hand-derive a delete list or reuse the
+  incremental path's delete globs against this project**, and never pass a
+  glob like `guidelines/**` as a delete.
+- `guidelinesGlob` picks up whatever is in `docs/*.md`, so the 20-jul doc
+  restructure grew `guidelines/` from 3 files to 8 with no config change.
+  Additions are silent; a *removed* doc would orphan a remote file that the
+  anchor cannot see, since guidelines aren't in `sourceHashes`.
 - Font weights are hand-picked to match what the 18 synced components
   actually use today (Fraunces 600/700, Geist 400/500, Geist Mono 400) — a
   future component using a different weight will render with faux

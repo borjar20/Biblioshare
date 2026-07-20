@@ -17,12 +17,17 @@ export function Sweep() {
   );
 }
 
-export function MediaAccent() {
+export function Sizes() {
   return (
-    <div className="flex flex-col gap-2">
-      <RatingDots value={4} fillClassName="bg-type-book" />
-      <RatingDots value={3} fillClassName="bg-type-movie" />
-      <RatingDots value={5} fillClassName="bg-type-series" />
+    <div className="flex flex-col gap-3">
+      {(["sm", "md", "lg"] as const).map((size) => (
+        <div key={size} className="flex items-center gap-2">
+          <span className="w-6 font-mono text-xs text-muted-foreground">
+            {size}
+          </span>
+          <RatingDots value={7} size={size} />
+        </div>
+      ))}
     </div>
   );
 }

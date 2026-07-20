@@ -19,8 +19,7 @@ export function Book() {
         genres={["Fantasía", "Aventura", "Clásico"]}
         coverUrl={BOOK_COVER}
         avgRating={8.4}
-        ratingCount={1284}
-        ratingsLabel="valoraciones"
+        ratingsLabel="1.284 valoraciones"
         backLabel="Volver"
       />
     </PreviewProvider>
@@ -38,8 +37,7 @@ export function SeriesWithStatus() {
         genres={["Ciencia ficción"]}
         coverUrl={SERIES_COVER}
         avgRating={7.1}
-        ratingCount={342}
-        ratingsLabel="valoraciones"
+        ratingsLabel="342 valoraciones"
         backLabel="Volver"
         statusSlot={<StatusBadge status="in_progress" label="Viendo" />}
       />
@@ -58,8 +56,7 @@ export function NoCoverNoRatings() {
         genres={[]}
         coverUrl={null}
         avgRating={null}
-        ratingCount={0}
-        ratingsLabel="valoraciones"
+        ratingsLabel="sin valoraciones"
         backLabel="Volver"
       />
     </PreviewProvider>

@@ -11,12 +11,15 @@ function activity(overrides: Partial<ClubActivity>): ClubActivity {
     title: "Lectura conjunta: El nombre del viento",
     description: null,
     status: "active",
+    config: null,
     createdBy: "user-1",
     startsOn: "2026-07-01",
     endsOn: null,
     createdAt: "2026-06-20T10:00:00Z",
     viewerIsParticipant: true,
     participantCount: 6,
+    spawnedFromActivityId: null,
+    spawnedFromItem: null,
     ...overrides,
   };
 }
