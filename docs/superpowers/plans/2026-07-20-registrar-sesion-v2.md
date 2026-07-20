@@ -802,6 +802,24 @@ Parte de `src/app/sesion/[passId]/session-form.tsx` tal como quedó tras la Task
 3. **Elimina el bloque de nota entero** (`session-form.tsx:348-384`): el `<Field>` con el textarea, el toggle nota/cita y el checkbox de favorita.
 4. **Pliega el bloque de estado** dentro de un `<details>`.
 
+⚠️ **El botón ✕ NO puede llamar a `router.back()` directamente.** La Task 4 encontró en
+navegador que dos salidas compitiendo producen **dos saltos de historial** (acababas en el
+inicio en vez de en la pantalla de origen), y lo arregló con un único `closeOnce()` guardado
+por ref dentro de `SessionModal`, expuesto por `useModalClose()`. Toda salida tiene que pasar
+por ese embudo. Por eso el ✕ usa un `closeSheet` local:
+
+```tsx
+const modalClose = useModalClose();
+
+// Única salida de la hoja. En modal emboca al closeOnce() de SessionModal
+// (un solo salto de historial pase lo que pase); en la ruta directa no hay
+// a dónde volver, así que va a la ficha.
+function closeSheet() {
+  if (mode === "modal") modalClose?.();
+  else router.push(itemHref(itemType, ctx.itemId));
+}
+```
+
 Chrome:
 
 ```tsx
@@ -810,7 +828,7 @@ Chrome:
         <span className="font-serif text-[17px] font-semibold">{t("sheetTitle")}</span>
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={closeSheet}
           aria-label={t("close")}
           className="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border bg-surface text-muted-foreground"
         >
