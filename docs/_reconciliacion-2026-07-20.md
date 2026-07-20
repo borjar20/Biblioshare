@@ -32,7 +32,14 @@ a `REQUIREMENTS.md` §9** (y por tanto no están en `decisiones.md`). Con mi ver
 2. **Separar entornos dev/producción** (dos proyectos Supabase) **+ reemplazar `xlsx` por
    `exceljs`** en el importador de Bookmory.
    → **Verificado real**: existen los proyectos `biblioshare` y `biblioshare-dev`, y
-   `package.json` usa `exceljs@^4.4.0` (lo importa `parse-bookmory.ts`). Además **corrige un
+   `package.json` usaba `exceljs@^4.4.0` (lo importaba `parse-bookmory.ts`).
+   > ⚠️ **Caducado ese mismo día por la PR #101**: Bookmory se retiró y `exceljs` con él, así
+   > que hoy ni la dependencia ni `parse-bookmory.ts` existen. La decisión del 2026-07-10 sigue
+   > siendo historia válida (el reemplazo de `xlsx` por `exceljs` ocurrió), pero **no describe
+   > el estado actual**. La retirada está registrada como entrada del 2026-07-20 en
+   > `decisiones.md`.
+
+   Además **corrige un
    error del monolito**: §7.7 aún decía "dependencia `xlsx`".
 
 3. **Segregar objetivos/retos por tipo de ítem + colas múltiples nombradas.**

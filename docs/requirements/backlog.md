@@ -53,7 +53,7 @@
 - [x] **Notificaciones in-app** (EPIC-05 Bloque D) — tabla `notifications` + `NotificationBell`, sin push (push diferido, E5.D4).
 
 ### Importación
-- [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV), Letterboxd (`diary.csv`) y Bookmory (`.xlsx`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+.
+- [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.
 
 ### PWA / nativo
 - [x] **PWA instalable + offline de lectura** (§6) — manifest, iconos, service worker.
