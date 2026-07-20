@@ -15,7 +15,7 @@
 - [x] **i18n** — `next-intl` sobre App Router (idioma inicial español).
 - [x] **TMDB** — clave de API en variable de entorno.
 - [x] **Offline de solo lectura** — service worker + estrategia de cache para PWA.
-- [x] **Onboarding** — elección de `username` tras el primer login.
+- [x] **Onboarding** — asistente de 3 pasos + bienvenida tras registrarse: intereses, primeros títulos (con **importación desde Goodreads/Letterboxd** en el mismo paso) y gente/clubes. El `username` se elige ya en el registro.
 - [x] **Perfil público** `/u/[username]` con toggle público/privado.
 - [x] **Capa de dominio de `position`** (JSONB por tipo) + UI de edición de rating/progreso/notas.
 - [x] **UI del diario** de pases en "Mi biblioteca".
@@ -55,7 +55,7 @@
 - [x] **Notificaciones in-app** (EPIC-05 Bloque D) — tabla `notifications` + `NotificationBell`, sin push (push diferido, E5.D4).
 
 ### Importación
-- [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.
+- [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. También accesible **desde el paso 2 del onboarding**, donde las filas sin match se encolan solas. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.
 
 ### PWA / nativo
 - [x] **PWA instalable + offline de lectura** (§6) — manifest, iconos, service worker.
