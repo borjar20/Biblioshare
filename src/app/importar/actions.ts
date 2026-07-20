@@ -240,3 +240,39 @@ export async function dismissPendingRow(pendingId: string) {
 
   revalidatePath("/importar/pendientes");
 }
+
+export type SaveUnmatchedBatchState = { saved: number } | { error: "generic" };
+
+/**
+ * Guarda TODAS las filas sin match de una importación en la cola de revisión,
+ * en un solo insert. La variante de una en una (`saveUnmatchedForReview`) sigue
+ * existiendo para `/importar`, donde el usuario las está revisando y decidir
+ * fila a fila tiene sentido.
+ *
+ * En el onboarding no se le puede pedir que pulse N veces: quien acaba de
+ * registrarse NUNCA es colaborador, así que no podría resolver ninguna. Se
+ * guardan solas y solo se le reporta el recuento.
+ */
+export async function saveUnmatchedBatch(
+  itemType: ItemType,
+  rows: ImportRow[]
+): Promise<SaveUnmatchedBatchState> {
+  if (rows.length === 0) return { saved: 0 };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.from("pending_import_rows").insert(
+    rows.map((row) => ({
+      user_id: user.id,
+      item_type: itemType,
+      payload: row as unknown as Json,
+    }))
+  );
+
+  if (error) return { error: "generic" };
+  return { saved: rows.length };
+}
