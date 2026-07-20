@@ -1134,10 +1134,17 @@
     "stepDown": "Una página menos",
     "stepUp": "Una página más",
     "season": "Temporada",
+    "seasonsCount": "{n} temporadas",
     "episode": "Episodio",
     "episodesLabel": "Episodios vistos",
+    "episodesMark": "marca esta sesión",
     "episodesEmpty": "Todavía no hay episodios en el catálogo de esta temporada.",
     "episodesDelta": "▲ {count} episodios · vas por T{season}·E{episode}",
+    "epState": {
+      "before": "visto antes",
+      "session": "esta sesión",
+      "unseen": "sin ver"
+    },
     "note": "Nota o cita destacada",
     "noteHint": "Opcional.",
     "status": "Estado",
