@@ -216,7 +216,41 @@ borrarlos exactos. La UI es para **verificar**, no para sembrar.
 
 ---
 
-## 16. Otras dos, cortas
+## 16. «Seguir» puede no persistir: la navegación aborta la server action
+
+**Bug real, abierto** (encontrado el 2026-07-20 depurando `pase-hub.spec.ts` «Regla 1»).
+En [`use-follow.ts`](../src/components/detail/use-follow.ts) el `follow()` hace, en el
+**mismo tick**, un `router.replace(...?tab=log)` y un `startTransition(addExistingItemToLibrary(...))`.
+La navegación puede abortar la acción en vuelo — en el log del dev server sale como
+`⨯ Error: aborted` — y entonces **el pase no se crea**.
+
+Lo traicionero es que la UI no se entera: el estado «Pendiente» ya se publicó de forma
+optimista en `ItemStatusContext` y la pestaña «Mi registro» aparece por eso mismo (para eso
+existe `FollowingPlaceholder`). Así que **el badge y la pestaña NO prueban que se haya
+persistido nada**; solo lo prueba que la obra salga luego en `/coleccion?tab=todo` o una
+consulta a `passes`.
+
+Corolario de depuración: no des por bueno «se guardó» mirando un badge optimista, y
+recuerda que los e2e **se autolimpian en `afterAll`** — consultar la BD después de que el
+test termine no demuestra nada, hay que consultarla *mientras corre*.
+
+## 17. Retirar una feature: busca sus escrituras, no solo su pantalla
+
+Al quitar las colas (2026-07-20) la fase A retiró el *visor* y dio el trabajo por hecho,
+pero el *asignador* seguía vivo: las tres fichas ofrecían «añadir a cola» y escribían
+`queue_id` en una cola ya invisible. El grep de «¿quién enlaza a esta pantalla?» encuentra
+el visor y **no** encuentra a quien produce los datos.
+
+Y al revés: al borrar una pantalla, mira qué **efectos colaterales** solo ocurrían allí.
+`backfillQueueSizes` —lo único que rellenaba `movies.duration_minutes` y
+`series.total_episodes`— se invocaba solo desde el panel de Colas, así que llevaba meses
+sin ejecutarse sin que nadie lo notara.
+
+**Orden de despliegue al borrar esquema: código primero, `DROP` después.** Producción sirve
+el código anterior hasta que despliegas; si borras la tabla antes, el código viejo la sigue
+pidiendo y se lleva por delante las rutas que la usan.
+
+## 18. Otras dos, cortas
 
 - **Un `.next` a medias** (p. ej. borrar `.next/dev/types` con el server vivo) hace que
   **todas** las rutas den 404, `/` incluida. Se cura con `rm -rf .next`.

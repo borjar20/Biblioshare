@@ -52,7 +52,8 @@ const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 // dejaron de pintarse en las subpestañas y quedaron inalcanzables — ningún
 // enlace llevaba a `?tab=colas`. Acotar el pool del sorteo a un subconjunto
 // propio, que era su único uso vivo, lo hacen ahora las colecciones marcadas
-// `is_sorteable`. La tabla `queues` sigue en pie hasta su migración de borrado.
+// `is_sorteable`. La tabla `queues` y sus columnas se borraron en la fase B
+// (`20260720_drop_queues.sql`).
 export default async function CollectionPage({
   searchParams,
 }: {
