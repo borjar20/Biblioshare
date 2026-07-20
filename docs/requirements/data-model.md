@@ -1,5 +1,7 @@
 # Modelo de datos
 
+> **[Canónico · verificado contra prod el 2026-07-20]**
+
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
 > **2026-07-20**: 42 tablas, todas con RLS activa. Donde otro doc lo contradiga,
@@ -141,7 +143,11 @@ Cuelgan del pase:
 
 ## 5. Social
 
-`profiles` (username único, `is_public`, `role`), `follows` (con `follow_status`
+`profiles` (username único, `is_public`, `role`, más las dos del onboarding: **`interests`**
+`item_type[]` —los tipos que declaró en el paso 1; null = sin responder, y entonces el flujo
+asume los tres— y **`onboarded_at`**, que **ES el gate** de `/onboarding`: con valor, el
+asistente no se vuelve a mostrar. Ojo, «tener perfil» y «estar onboardeado» son cosas distintas
+desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` (con `follow_status`
 `pending|accepted` — a perfil público es aceptado directo), `reactions` y `comments`
 (polimórficos vía `target_kind`), `notifications`, `push_subscriptions`.
 

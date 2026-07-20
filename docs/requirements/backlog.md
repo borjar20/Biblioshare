@@ -1,5 +1,7 @@
 # Backlog — Biblioshare
 
+> **[Canónico · verificado contra prod el 2026-07-20]**
+
 > **[Estado vivo · actualizado 2026-07-20]** Qué está hecho y qué queda. La narrativa de *cómo* se construyó cada cosa vive en `docs/superpowers/specs/` y `plans/` (historia). Aquí solo el estado + un enlace a su spec cuando exista.
 
 > Fuente canónica: `REQUIREMENTS.md` §6 y §7. Los ficheros partidos `backlog-done.md`/`backlog-pending.md` son instantáneas más antiguas (no reflejan §7.37–§7.39 ni Sagas v2); en caso de conflicto manda §7.
@@ -53,7 +55,7 @@
 - [x] **Notificaciones in-app** (EPIC-05 Bloque D) — tabla `notifications` + `NotificationBell`, sin push (push diferido, E5.D4).
 
 ### Importación
-- [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV), Letterboxd (`diary.csv`) y Bookmory (`.xlsx`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+.
+- [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.
 
 ### PWA / nativo
 - [x] **PWA instalable + offline de lectura** (§6) — manifest, iconos, service worker.

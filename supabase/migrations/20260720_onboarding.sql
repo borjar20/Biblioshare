@@ -24,4 +24,4 @@ update public.profiles
 comment on column public.profiles.interests is
   'Tipos que le interesan al usuario (paso 1 del onboarding). Null = sin responder, y entonces el flujo asume los tres.';
 comment on column public.profiles.onboarded_at is
-  'Cuando termino el onboarding. Null = no lo ha hecho; ES el gate de /onboarding. Se escribe al llegar a la bienvenida, tanto si completo como si salto (D5).';
+  'Cuando termino el onboarding. Null = no lo ha hecho; ES el gate de /onboarding. Se escribe al llegar a la bienvenida, tanto si completo como si salto.';
