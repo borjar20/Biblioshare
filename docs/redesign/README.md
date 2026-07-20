@@ -48,7 +48,7 @@ Los mockups son **mobile-first**: casi todos los frames son de teléfono. En mó
 **Aviso general:** los planes son de mediados de julio y **varios apuntan a ficheros que se
 han movido**, o dan por ausente algo que ya existe. Ha pasado en los planes 02, 03 y 04.
 Verifica las rutas del plan contra el repo **antes** de codificar
-([Trampas §13](../TRAMPAS.md)).
+([Trampas §14](../TRAMPAS.md)).
 
 ## Orden sugerido
 

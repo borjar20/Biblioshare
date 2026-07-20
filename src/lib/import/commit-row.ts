@@ -162,7 +162,16 @@ async function commitPasses(
     };
   }
 
-  await addHistoricalPasses(supabase, userId, itemType, itemId, row, activeResult.historicalDate);
+  // El `skip` solo es legítimo cuando el pase activo se acaba de crear CON esa
+  // fecha: entonces ya la representa y duplicarla como histórico sobraría.
+  //
+  // Si el pase activo YA existía (isNew=false, reimportar sobre una biblioteca
+  // con historial), no se escribió nada para esa fecha, así que saltarla la
+  // perdía en silencio — el visionado nuevo de un reimport desaparecía. En ese
+  // caso pasan todas por el camino histórico, que ya es idempotente: comprueba
+  // si hay un pase con ese finished_on antes de insertar.
+  const skip = activeResult.isNew ? activeResult.historicalDate : null;
+  await addHistoricalPasses(supabase, userId, itemType, itemId, row, skip);
 
   return {
     rowNumber: row.rowNumber,
