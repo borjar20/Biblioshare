@@ -172,7 +172,16 @@ export function SessionSheet({
         onSubmit={handleSubmit}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between bg-background/90 px-4 py-3.5 backdrop-blur">
+        {/* `shrink-0`: cabecera, hero y footer son hermanos flex de este
+            <form> flex-col — sin esto, cuando el contenido de en medio
+            desborda el hueco disponible, flexbox reparte la compresión entre
+            TODOS los hermanos por igual (flex-shrink:1 por defecto), no solo
+            en el que tiene overflow real. Con `shrink-0` esta cabecera queda
+            fuera de ese reparto y conserva su altura natural; solo el bloque
+            de campos de más abajo (el que sí tiene `flex-1`, sin `shrink-0`)
+            absorbe el hueco que falta o sobra, y si no le basta, es el
+            <form> quien scrollea (overflow-y-auto, ver comentario de arriba). */}
+        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-background/90 px-4 py-3.5 backdrop-blur">
           <span className="font-serif text-[17px] font-semibold">{t("sheetTitle")}</span>
           <button
             type="button"
@@ -192,6 +201,12 @@ export function SessionSheet({
           statusLabel={tLibrary(`status.${ctx.status}`)}
         />
 
+        {/* Este es el único hermano SIN `shrink-0`: es el que debe absorber el
+            hueco que falte o sobre entre cabecera+hero+footer (arriba) y la
+            altura real del <form>. No necesita `min-h-0` propio — no es él
+            quien scrollea, es el <form> — así que su altura mínima natural
+            (la de su contenido) es justo lo que queremos: si no cabe, el
+            <form> se encarga con su overflow-y-auto. */}
         <div className="flex flex-1 flex-col gap-5 px-4 pb-4">
           <Field label={t("date")} htmlFor="session-date">
             <Input
@@ -240,7 +255,9 @@ export function SessionSheet({
           )}
         </div>
 
-        <div className="sticky bottom-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
+        {/* `shrink-0` por el mismo motivo que la cabecera de arriba: este
+            footer no debe encogerse cuando el contenido de en medio no cabe. */}
+        <div className="sticky bottom-0 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
           <Button type="submit" disabled={pending} className="w-full">
             {pending
               ? t("submitting")

@@ -22,7 +22,23 @@ export function SessionHero({
   const accent = MEDIA_ACCENT[itemType];
 
   return (
-    <div className="relative overflow-hidden px-4 pt-5 pb-4">
+    // `shrink-0` es la mitad que falta del fix de scroll de session-sheet.tsx:
+    // este div es hijo directo del <form> flex-col que scrollea, y aquí mismo
+    // tiene `overflow-hidden` (para recortar el tinte degradado de abajo). Esa
+    // combinación es la trampa: por la spec de flexbox, el tamaño mínimo
+    // automático de un flex item con contenido (el que normalmente le impide
+    // encogerse por debajo de su propia altura de contenido) SOLO se aplica si
+    // el item tiene `overflow: visible`. En cuanto el item tiene
+    // `overflow-hidden` (como aquí, o `auto`/`scroll`), ese suelo desaparece y
+    // pasa a valer 0 — el item queda libre para que flex-shrink lo comprima
+    // hasta lo que sobre, aunque su contenido (la portada de 104px) no quepa.
+    // Medido sin este `shrink-0`: el hero caía a 93px con la serie de 8
+    // temporadas mientras la portada de `h-[104px]` seguía fija y se salía
+    // 31px por debajo, encima del campo "Fecha". `shrink-0` saca a este div
+    // del reparto de flex-shrink: pase lo que pase con el contenido de más
+    // abajo, el hero conserva su altura natural y es el <form> (con su propio
+    // `overflow-y-auto`, ver session-sheet.tsx) quien scrollea alrededor.
+    <div className="relative shrink-0 overflow-hidden px-4 pt-5 pb-4">
       <div
         className={`absolute inset-0 z-0 bg-gradient-to-br ${accent.bgSoft} to-transparent`}
         aria-hidden
