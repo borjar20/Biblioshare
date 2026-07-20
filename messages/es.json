@@ -1252,8 +1252,7 @@
     "description": "Sube un export de Goodreads, Letterboxd o Bookmory para volcar tu historial en Biblioshare.",
     "help": {
       "goodreads": "Goodreads: exporta tu biblioteca (library_export.csv) desde Configuración → Exportar biblioteca.",
-      "letterboxd": "Letterboxd: sube el archivo diary.csv del export (no watched.csv ni ratings.csv) — es el único con fecha por visionado.",
-      "bookmory": "Bookmory: sube el .xlsx exportado. Solo se lee la hoja \"Libros\"; las notas por libro no se importan todavía."
+      "letterboxd": "Letterboxd: sube el archivo diary.csv del export (no watched.csv ni ratings.csv) — es el único con fecha por visionado."
     },
     "upload": "Subir archivo",
     "uploading": "Analizando...",

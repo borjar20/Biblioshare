@@ -2,7 +2,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import type { BookFormat } from "@/lib/library/position";
 
-export type ImportFormat = "goodreads" | "letterboxd" | "bookmory";
+export type ImportFormat = "goodreads" | "letterboxd";
 
 export type ImportDiaryDate = {
   startedOn: string | null; // YYYY-MM-DD
@@ -11,7 +11,7 @@ export type ImportDiaryDate = {
 
 // Normalized shape produced by every format-specific parser — matching and
 // commit logic (match-row.ts, commit-row.ts) work off this, never the raw
-// CSV/XLSX row, so they stay format-agnostic.
+// CSV row, so they stay format-agnostic.
 export type ImportRow = {
   rowNumber: number; // 1-based source row, for user-facing reporting
   title: string;
