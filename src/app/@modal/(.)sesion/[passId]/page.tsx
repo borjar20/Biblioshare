@@ -64,6 +64,7 @@ export default async function SessionModalPage({
             total={ctx.total}
             seriesEpisodes={ctx.seriesEpisodes}
             initialMinutes={parseMinutes(minutos)}
+            mode="modal"
           />
         </div>
       </div>

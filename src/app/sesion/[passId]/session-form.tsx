@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import type { MediaStatus } from "@/lib/library/types";
 import type { Position } from "@/lib/library/position";
 import { addSession, type AddSessionState } from "@/lib/sessions/actions";
+import { itemHref } from "@/lib/catalog/item-href";
 import { timerStorageKey } from "@/lib/sessions/timer";
 import { SessionTimer } from "./session-timer";
 
@@ -42,6 +44,7 @@ export function SessionForm({
   total,
   seriesEpisodes,
   initialMinutes,
+  mode,
 }: {
   passId: string;
   itemType: "book" | "series";
@@ -52,16 +55,32 @@ export function SessionForm({
   seriesEpisodes?: SeriesSeasonEpisodes[];
   /** Minutos que trae el cronómetro de la tarjeta de hoy (?minutos=). */
   initialMinutes?: number | null;
+  /** Dónde vive el formulario: decide a dónde ir tras guardar. */
+  mode: "modal" | "page";
 }) {
   const t = useTranslations("session");
   const tLibrary = useTranslations("library");
   const tEpisode = useTranslations("episode");
+  const router = useRouter();
 
   const boundAddSession = addSession.bind(null, passId, itemType, itemId);
   const [state, formAction, pending] = useActionState(
     boundAddSession,
     initialState,
   );
+
+  // Navegar NO es setState: un efecto aquí no choca con
+  // react-hooks/set-state-in-effect. En modal volvemos atrás (te quedas donde
+  // estabas); en la ruta directa no hay a dónde volver, así que vamos a la
+  // ficha, que es lo que hacía el redirect del servidor hasta ahora.
+  useEffect(() => {
+    if (!state.ok) return;
+    if (mode === "modal") {
+      router.back();
+    } else {
+      router.push(itemHref(itemType, itemId));
+    }
+  }, [state, mode, router, itemType, itemId]);
 
   // Opening a session on a "planned" item means you're starting it now.
   const defaultStatus = status === "planned" ? "in_progress" : status;

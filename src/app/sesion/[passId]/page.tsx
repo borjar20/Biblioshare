@@ -75,6 +75,7 @@ export default async function SessionPage({
         total={ctx.total}
         seriesEpisodes={ctx.seriesEpisodes}
         initialMinutes={parseMinutes(minutos)}
+        mode="page"
       />
     </div>
   );
