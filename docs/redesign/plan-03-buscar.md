@@ -40,6 +40,16 @@
 
 ## 4. Tareas
 
+> ✅ **PLAN 03 HECHO Y VERIFICADO EL 2026-07-20.** T1–T5 implementadas. Verificado en navegador a 940px y 400px, claro y oscuro, en los tres tipos; `tsc` limpio, 246/246 vitest, eslint sin errores nuevos, e2e 19/19 en las tandas que tocan `/buscar` y `Field`.
+>
+> **Cuatro desviaciones del plan encontradas al ejecutarlo:**
+> 1. **T5 apuntaba a `src/components/social/user-card.tsx`, que `/buscar` NO usa** — `people-results.tsx` pinta sus propias filas. `user-card.tsx` lo consumen seguidores/siguiendo/solicitudes, así que tocarlo habría restyleado listas ajenas a este plan. T5 se hizo sobre `people-results.tsx`.
+> 2. **El selector de tipo YA existía en `/buscar/manual`** (el §1 lo daba por ausente, «llega por `?type=`»). Solo le faltaban los dots.
+> 3. **Las píldoras de tipo estaban a punto de duplicarse** entre Buscar y el alta manual → extraídas a `src/app/buscar/type-pills.tsx`, con el destino como función `href`.
+> 4. **`Field` NO se cambió globalmente.** El plan pedía «revisar que `Field` pinte labels mono uppercase y el `*` requerido en accent», pero `Field` lo usan **17 formularios más** (login, signup, onboarding, clubes, retos, sesión…) y volverlo global los restylea todos de golpe — y esa decisión es del **plan 07 (transversal)**, que sigue abierto. Se añadieron dos props **opt-in** (`mono` y `required`) que solo usa el alta manual; cuando el plan 07 lo decida, la prop `mono` se cae y el estilo pasa a ser el único.
+>
+> **Trampa de medición anotada:** `getComputedStyle().borderTopWidth` devuelve **0,8px tanto para `border` (1px) como para `border-[1.5px]`** en el Chrome de Playwright, así que **no sirve para verificar anchos de borde** — casi me lleva a "arreglar" una clase que estaba bien (`border-[length:1.5px]` es peor: para esa variante Tailwind no emite regla). Lo que sí prueba que aplica: la clase está en el elemento y `.border-\[1\.5px\]{border-width:1.5px}` está en la hoja.
+
 ### Tarea 1 — Cabecera, selector de tipo y eyebrow de resultados
 - **Modificar:** `src/app/buscar/page.tsx`, `src/app/buscar/search-form.tsx`
 - h1 serif; píldoras con dot de color (quitar iconos); eyebrow "Resultados · N" (clave i18n nueva con plural → pasar por i18n-keeper).
@@ -69,8 +79,8 @@
 
 ## 5. Verificación de cierre
 
-- [ ] Frames A/B/C y `/buscar`, `/buscar/manual` lado a lado (400px y 940px); modo Personas contra frame 3.
-- [ ] El tipo activo tiñe: píldora, bordes de portadas.
-- [ ] Modo oscuro (Buscar·Personas está en Paper - Modo oscuro (resto).html).
-- [ ] `npx playwright test` verde (Node 22).
-- [ ] P1–P3 respondidas y registradas.
+- [x] Frames A/B/C y `/buscar`, `/buscar/manual` lado a lado (400px y 940px); modo Personas contra frame 3.
+- [x] El tipo activo tiñe: píldora, bordes de portadas. — medido: dots de 9px con `#a15a34` libros / `#7a5676` series / blanco en la activa, y el borde de portada en oklab del acento al 30%.
+- [x] Modo oscuro (Buscar·Personas está en Paper - Modo oscuro (resto).html). — sin hardcodes.
+- [x] `npx playwright test` verde (Node 22) — 19/19 en las tandas que tocan `/buscar` y `Field` (`busqueda-hidratacion` 7/7 con el assert nuevo del eyebrow, `happy-path` 3/3, `signup` + `propose-wizard` 2/2). ⚠️ La suite ENTERA de una tacada no es señal fiable en esta máquina (8 GB): trocearla.
+- [x] P1–P3 respondidas y registradas — ya lo estaban desde 2026-07-15; no se re-litigaron.

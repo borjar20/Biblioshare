@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { SearchResult } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { OpenResultButton } from "./open-result-button";
 
 // La tarjeta muestra portada, título, autoría y año — y nada más. Editorial y
@@ -15,7 +16,12 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
 
   const content = (
     <>
-      <div className="relative aspect-2/3 w-full overflow-hidden rounded-card border border-border bg-surface-muted">
+      {/* El borde de la portada se tiñe del tipo (`.rc .cvw`, 1.5px al 40% del
+          acento): es lo que da la lectura de tipo en la rejilla ahora que la
+          tarjeta no lleva botón de añadir. */}
+      <div
+        className={`relative aspect-2/3 w-full overflow-hidden rounded-card border-[1.5px] bg-surface-muted ${MEDIA_ACCENT[result.itemType].borderSoft}`}
+      >
         {result.coverUrl ? (
           <Image
             src={result.coverUrl}
@@ -30,7 +36,7 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
           </div>
         )}
         {editionCount > 1 && (
-          <span className="absolute right-1.5 top-1.5 rounded-full bg-surface/90 px-2 py-0.5 font-mono text-[10px] font-medium text-foreground backdrop-blur">
+          <span className="absolute right-1.5 top-1.5 rounded-full border border-border bg-surface/90 px-2 py-0.5 font-mono text-[10px] font-medium text-foreground backdrop-blur">
             {t("editions", { count: editionCount })}
           </span>
         )}
@@ -39,8 +45,10 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
         <span className="line-clamp-2 font-serif text-sm font-semibold text-foreground">
           {result.title}
         </span>
+        {/* `.mm.it`: la autoría va en serif itálica, no en la sans de los
+            metadatos sueltos. */}
         {(result.subtitle || result.year) && (
-          <span className="line-clamp-1 text-xs text-muted-foreground">
+          <span className="line-clamp-1 font-serif text-[11px] italic text-muted-foreground">
             {[result.subtitle, result.year].filter(Boolean).join(" · ")}
           </span>
         )}

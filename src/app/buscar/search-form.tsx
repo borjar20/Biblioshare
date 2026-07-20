@@ -1,17 +1,10 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  SearchIcon,
-  BookIcon,
-  FilmIcon,
-  SeriesIcon,
-} from "@/components/ui/icons";
+import { SearchIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import { BarcodeScanner } from "./barcode-scanner";
-
-const TYPES: ItemType[] = ["book", "movie", "series"];
+import { TypePills } from "./type-pills";
 
 export async function SearchForm({
   query,
@@ -24,31 +17,12 @@ export async function SearchForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        {TYPES.map((type) => {
-          const Icon =
-            type === "book"
-              ? BookIcon
-              : type === "movie"
-                ? FilmIcon
-                : SeriesIcon;
-
-          return (
-            <Link
-              key={type}
-              href={`/buscar?type=${type}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                type === itemType
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-surface-muted text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {t(`types.${type}`)}
-            </Link>
-          );
-        })}
-      </div>
+      <TypePills
+        active={itemType}
+        href={(type) =>
+          `/buscar?type=${type}${query ? `&q=${encodeURIComponent(query)}` : ""}`
+        }
+      />
 
       <form action="/buscar" className="flex gap-2">
         <input type="hidden" name="type" value={itemType} />

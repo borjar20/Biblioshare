@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { ManualAddForm } from "./manual-add-form";
+import { TypePills } from "../type-pills";
 
 export const metadata: Metadata = {
   title: "Añadir manualmente — Biblioshare",
@@ -34,25 +34,11 @@ export default async function ManualAddPage({
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">
+      <h1 className="font-serif text-[26px] font-semibold tracking-tight">
         {t("manual.title")}
       </h1>
 
-      <div className="flex gap-2">
-        {TYPES.map((type) => (
-          <Link
-            key={type}
-            href={`/buscar/manual?type=${type}`}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              type === itemType
-                ? "bg-accent text-accent-foreground"
-                : "bg-surface-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t(`types.${type}`)}
-          </Link>
-        ))}
-      </div>
+      <TypePills active={itemType} href={(type) => `/buscar/manual?type=${type}`} />
 
       <ManualAddForm itemType={itemType} />
     </div>
