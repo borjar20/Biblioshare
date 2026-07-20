@@ -32,12 +32,34 @@ export default async function SearchPage({
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
   const mode: SearchMode = params.modo === "personas" ? "people" : "titles";
-  const itemType: ItemType = VALID_TYPES.includes(params.type as ItemType)
-    ? (params.type as ItemType)
-    : "book";
-
   const t = await getTranslations("search");
   const supabase = await createClient();
+
+  // Sin ?type= explícito se abre en el primer tipo que el usuario declaró en el
+  // onboarding; con intereses null (todos los perfiles previos) sigue siendo
+  // "book", que es el comportamiento de siempre.
+  //
+  // La consulta SOLO se hace cuando falta el parámetro: con ?type= manda la URL
+  // y no hace falta preguntar nada. /buscar es pública, así que sin sesión
+  // también cae en "book".
+  const explicitType = VALID_TYPES.includes(params.type as ItemType)
+    ? (params.type as ItemType)
+    : null;
+  let preferredType: ItemType = "book";
+  if (explicitType === null) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: prefs } = await supabase
+        .from("profiles")
+        .select("interests")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      preferredType = prefs?.interests?.[0] ?? "book";
+    }
+  }
+  const itemType: ItemType = explicitType ?? preferredType;
   const [results, role] = await Promise.all([
     mode === "titles" && query
       ? searchCatalog(itemType, query)
