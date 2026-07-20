@@ -106,8 +106,15 @@ Backfill en la misma migración: `update profiles set onboarded_at = now() where
 Lo que evita que el paso 1 sea decorativo:
 
 1. **`/buscar`** abre en el primer tipo de `interests` en vez de en `book` fijo.
-2. **`/coleccion`** abre en la pestaña de ese tipo **cuando solo se marcó uno**.
+2. **`/coleccion`, pestaña «Todo»**: si no hay `?type=` explícito y el usuario marcó **exactamente un** interés, el filtro de tipo arranca en ese.
 3. El propio paso 2, que filtra la rejilla.
+
+> **Corregido durante la revisión del plan.** La versión anterior de este punto
+> decía «abre en la pestaña de ese tipo», y eso es **imposible**: Colección v2
+> reorganizó las subpestañas a `colecciones | todo | sagas | colas` — **no hay
+> pestaña por tipo**. Lo que sí existe es el filtro `?type=` dentro de «Todo»,
+> que es donde se aplica. La pestaña de entrada **no se toca**: cambiarla sería
+> un efecto mayor del pretendido para quien solo quería declarar un interés.
 
 Los tres son **lecturas opcionales**: con `interests` null, todo se comporta exactamente como
 hoy. Ninguna es un cambio de comportamiento observable para los usuarios actuales, que quedan
