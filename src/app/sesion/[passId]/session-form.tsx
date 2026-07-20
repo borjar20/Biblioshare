@@ -13,6 +13,7 @@ import { addSession, type AddSessionState } from "@/lib/sessions/actions";
 import { itemHref } from "@/lib/catalog/item-href";
 import { timerStorageKey } from "@/lib/sessions/timer";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
+import { useModalClose } from "@/components/session/session-modal";
 import { SessionTimer } from "./session-timer";
 
 const STATUSES: MediaStatus[] = [
@@ -63,6 +64,12 @@ export function SessionForm({
   const tLibrary = useTranslations("library");
   const tEpisode = useTranslations("episode");
   const router = useRouter();
+  // null en modo "page" (no hay SessionModal por encima). En modo "modal" es
+  // el único punto de salida del <dialog> exterior (ver session-modal.tsx):
+  // llamarlo aquí en vez de router.back() directamente evita que este
+  // componente y el <dialog> exterior disparen cada uno su propio salto de
+  // historial para el mismo cierre.
+  const modalClose = useModalClose();
 
   const boundAddSession = addSession.bind(null, passId, itemType, itemId);
   const [state, formAction, pending] = useActionState(
@@ -81,18 +88,21 @@ export function SessionForm({
 
   // Navegar NO es setState: un efecto aquí no choca con
   // react-hooks/set-state-in-effect. En modal volvemos atrás (te quedas donde
-  // estabas); en la ruta directa no hay a dónde volver, así que vamos a la
-  // ficha, que es lo que hacía el redirect del servidor hasta ahora. Si el
-  // pase se cerró con esta sesión, la navegación espera: primero se ve la
-  // hoja de cierre (más abajo) y es su onClose quien navega.
+  // estabas) a través de modalClose (ver arriba), NUNCA con router.back()
+  // directo — así este camino comparte el mismo guardián de "un solo salto"
+  // que Escape/backdrop y que el cierre de ClosePassSheet más abajo. En la
+  // ruta directa no hay a dónde volver, así que vamos a la ficha, que es lo
+  // que hacía el redirect del servidor hasta ahora. Si el pase se cerró con
+  // esta sesión, la navegación espera: primero se ve la hoja de cierre (más
+  // abajo) y es su onClose quien navega.
   useEffect(() => {
     if (!state.ok || state.passClosed) return;
     if (mode === "modal") {
-      router.back();
+      modalClose?.();
     } else {
       router.push(itemHref(itemType, itemId));
     }
-  }, [state, mode, router, itemType, itemId]);
+  }, [state, mode, modalClose, router, itemType, itemId]);
 
   // Opening a session on a "planned" item means you're starting it now.
   const defaultStatus = status === "planned" ? "in_progress" : status;
@@ -463,7 +473,11 @@ export function SessionForm({
         open={closingPass}
         onClose={() => {
           setClosingPass(false);
-          if (mode === "modal") router.back();
+          // Igual que arriba: en modal pasa por modalClose (guardado, un solo
+          // salto), no por router.back() directo — "Ahora no" y "Guardar" de
+          // ClosePassSheet acaban aquí, y este es el mismo punto de salida
+          // que usa el <dialog> exterior para Escape/backdrop.
+          if (mode === "modal") modalClose?.();
           else router.push(itemHref(itemType, itemId));
         }}
       />
