@@ -86,31 +86,3 @@ export async function removeFromLibrary(itemType: ItemType, itemId: string) {
   revalidateReadingLog(itemType, itemId);
 }
 
-// Moves a planned item into a named queue (or the "Sin cola" bucket when
-// queueId is null) from the item detail page (§7.22). Opera sobre el pase
-// activo planned: la cola solo significa algo ahí. queue_order is reset to
-// null so ensureQueueOrder appends it to the end of the target queue on the
-// next /cola visit. A foreign queue id is rejected by the FK + queues RLS.
-export async function moveEntryToQueue(
-  itemType: ItemType,
-  itemId: string,
-  queueId: string | null
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { error } = await supabase
-    .from("passes")
-    .update({ queue_id: queueId, queue_order: null })
-    .eq("user_id", user.id)
-    .eq("item_type", itemType)
-    .eq("item_id", itemId)
-    .eq("is_active", true)
-    .eq("status", "planned");
-  if (error) throw error;
-  revalidateReadingLog(itemType, itemId);
-  revalidateLibrary();
-}

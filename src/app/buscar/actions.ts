@@ -59,11 +59,7 @@ export async function openCatalogItem(result: SearchResult) {
   redirect(itemHref(result.itemType, itemId));
 }
 
-// queueId drops the new (planned) item straight into a named queue (§7.22);
-// null/undefined leaves it in the "Sin cola" bucket. A foreign queue id is
-// rejected by the FK + queues RLS and surfaces as a normal error, so there's
-// no need to re-check ownership here.
-export async function addToLibrary(result: SearchResult, queueId?: string | null) {
+export async function addToLibrary(result: SearchResult) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -80,18 +76,6 @@ export async function addToLibrary(result: SearchResult, queueId?: string | null
   // biblioteca (pase activo existente), la transición es un no-op.
   await applyTransition(supabase, user.id, result.itemType, itemId, "planned");
 
-  // La cola solo significa algo en el pase activo planned (§7.22).
-  if (queueId) {
-    const { error } = await supabase
-      .from("passes")
-      .update({ queue_id: queueId, queue_order: null })
-      .eq("user_id", user.id)
-      .eq("item_type", result.itemType)
-      .eq("item_id", itemId)
-      .eq("is_active", true)
-      .eq("status", "planned");
-    if (error) throw error;
-  }
 
   revalidatePath("/buscar");
 }

@@ -9,8 +9,6 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
-import { getQueues } from "@/lib/queue/get-queues";
-import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -232,7 +230,7 @@ async function MovieTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. La única
   // dependencia real aquí es que ensureItemEnriched escribe lo que
   // getItemCredits lee; el resto va en paralelo aunque se lea en orden.
-  const [watchProviders, , sagas, editions, activeRow, loadedQueues, role] =
+  const [watchProviders, , sagas, editions, activeRow, role] =
     await Promise.all([
       movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
       ensureItemEnriched(supabase, "movie", {
@@ -245,7 +243,7 @@ async function MovieTabs({
       userId
         ? supabase
             .from("passes")
-            .select("id, status, rating, position, queue_id")
+            .select("id, status, rating, position")
             .eq("user_id", userId)
             .eq("item_type", "movie")
             .eq("item_id", movie.id)
@@ -253,8 +251,7 @@ async function MovieTabs({
             .maybeSingle()
             .then(({ data }) => data)
         : null,
-      userId ? getQueues(supabase, userId) : [],
-      userId ? getCurrentUserRole(supabase) : null,
+        userId ? getCurrentUserRole(supabase) : null,
     ]);
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
@@ -262,7 +259,6 @@ async function MovieTabs({
 
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];
-  const queues: Queue[] = loadedQueues;
   if (userId && activeRow) {
     // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
     // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
@@ -285,7 +281,6 @@ async function MovieTabs({
       rating: activeRow.rating,
       position: parsePosition("movie", activeRow.position),
       notes: reviewRow?.review ?? null,
-      queueId: activeRow.queue_id,
     };
   }
 
@@ -449,7 +444,6 @@ async function MovieTabs({
           passes={passes}
           sessions={[]}
           editions={editions}
-          queues={queues}
           initialClosingPassId={initialClosingPassId}
           canContribute={canContribute}
         />

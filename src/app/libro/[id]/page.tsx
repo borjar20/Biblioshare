@@ -10,8 +10,6 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
-import { getQueues } from "@/lib/queue/get-queues";
-import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import {
@@ -270,19 +268,19 @@ async function BookTabs({
   // reales: ensureItemEnriched escribe lo que getItemCredits lee, y getSessions
   // necesita saber el pase abierto. Todo lo demás va en paralelo aunque el
   // código lo lea en orden.
-  const [, sagas, editions, activeRow, loadedQueues, role] = await Promise.all([
+  const [, sagas, editions, activeRow, role] = await Promise.all([
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
     ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
     getItemSagas(supabase, "book", book.id),
     getEditions(supabase, "book", book.id),
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
-    // status/rating/position/queue_id viven en passes, library_entries ya no
+    // status/rating/position viven en passes, library_entries ya no
     // se lee.
     userId
       ? supabase
           .from("passes")
-          .select("id, status, rating, position, queue_id")
+          .select("id, status, rating, position")
           .eq("user_id", userId)
           .eq("item_type", "book")
           .eq("item_id", book.id)
@@ -290,7 +288,6 @@ async function BookTabs({
           .maybeSingle()
           .then(({ data }) => data)
       : null,
-    userId ? getQueues(supabase, userId) : [],
     userId ? getCurrentUserRole(supabase) : null,
   ]);
 
@@ -316,7 +313,6 @@ async function BookTabs({
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
-  const queues: Queue[] = loadedQueues;
   if (userId && activeRow) {
     // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
     // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
@@ -340,7 +336,6 @@ async function BookTabs({
       rating: activeRow.rating,
       position: parsePosition("book", activeRow.position),
       notes: reviewRow?.review ?? null,
-      queueId: activeRow.queue_id,
     };
     // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo 4):
     // en una relectura, las sesiones de la lectura anterior no deben colarse
@@ -514,7 +509,6 @@ async function BookTabs({
             passes={passes}
             sessions={sessions}
             editions={editions}
-            queues={queues}
             initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />

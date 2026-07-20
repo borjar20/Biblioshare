@@ -919,8 +919,6 @@ export type Database = {
           notes: string | null
           pinned_order: number | null
           position: Json
-          queue_id: string | null
-          queue_order: number | null
           rating: number | null
           started_at: string | null
           status: Database["public"]["Enums"]["media_status"]
@@ -935,8 +933,6 @@ export type Database = {
           notes?: string | null
           pinned_order?: number | null
           position?: Json
-          queue_id?: string | null
-          queue_order?: number | null
           rating?: number | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["media_status"]
@@ -951,23 +947,13 @@ export type Database = {
           notes?: string | null
           pinned_order?: number | null
           position?: Json
-          queue_id?: string | null
-          queue_order?: number | null
           rating?: number | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "library_entries_queue_id_fkey"
-            columns: ["queue_id"]
-            isOneToOne: false
-            referencedRelation: "queues"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       movie_versions: {
         Row: {
@@ -1158,8 +1144,6 @@ export type Database = {
           item_type: Database["public"]["Enums"]["item_type"]
           pinned_order: number | null
           position: Json
-          queue_id: string | null
-          queue_order: number | null
           rating: number | null
           review: string | null
           started_on: string | null
@@ -1178,8 +1162,6 @@ export type Database = {
           item_type: Database["public"]["Enums"]["item_type"]
           pinned_order?: number | null
           position?: Json
-          queue_id?: string | null
-          queue_order?: number | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
@@ -1198,8 +1180,6 @@ export type Database = {
           item_type?: Database["public"]["Enums"]["item_type"]
           pinned_order?: number | null
           position?: Json
-          queue_id?: string | null
-          queue_order?: number | null
           rating?: number | null
           review?: string | null
           started_on?: string | null
@@ -1207,15 +1187,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "passes_queue_id_fkey"
-            columns: ["queue_id"]
-            isOneToOne: false
-            referencedRelation: "queues"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       pending_import_rows: {
         Row: {
@@ -1408,30 +1380,6 @@ export type Database = {
           created_at?: string
           credentials?: Json
           id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      queues: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          position: number
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          position?: number
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          position?: number
           user_id?: string
         }
         Relationships: []
@@ -2053,10 +2001,6 @@ export type Database = {
       }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
-        Returns: undefined
-      }
-      reorder_queue: {
-        Args: { entry_ids: string[]; target_queue: string }
         Returns: undefined
       }
       resolve_pending_import: {

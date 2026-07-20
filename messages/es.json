@@ -1336,27 +1336,6 @@
       "dismissed": "Descartada"
     }
   },
-  "queue": {
-    "title": "Tus colas",
-    "description": "Organiza tus pendientes en colas y priorízalos. Cada cola estima cuánto tardarías a tu ritmo actual.",
-    "empty": "Todavía no tienes nada pendiente que priorizar.",
-    "dragHandle": "Arrastrar para reordenar",
-    "unresolved": "{count, plural, =1 {1 ítem sin estimación suficiente} other {# ítems sin estimación suficiente}}",
-    "noQueue": "Sin cola",
-    "newQueue": "Nueva cola",
-    "newQueueLabel": "Nombre de la nueva cola",
-    "newQueuePlaceholder": "p. ej. Verano, Clásicos pendientes...",
-    "renameLabel": "Nombre de la cola",
-    "create": "Crear",
-    "rename": "Renombrar",
-    "delete": "Eliminar",
-    "saving": "Guardando...",
-    "errors": {
-      "invalidName": "El nombre no puede estar vacío (máx. 60 caracteres).",
-      "duplicateName": "Ya tienes una cola con ese nombre.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
-  },
   "users": {
     "description": "Busca a otras personas por su nombre o @usuario y explora sus bibliotecas públicas.",
     "placeholder": "Nombre o @usuario...",

@@ -25,12 +25,7 @@ import { formatPosition, type Position } from "@/lib/library/position";
 import type { ProgressSession } from "@/lib/sessions/types";
 import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
-import type { Queue } from "@/lib/queue/types";
-import {
-  updateStatus,
-  removeFromLibrary,
-  moveEntryToQueue,
-} from "@/lib/library/manage-actions";
+import { updateStatus, removeFromLibrary } from "@/lib/library/manage-actions";
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
 import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
 import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
@@ -68,7 +63,6 @@ export type ManagedEntry = {
   rating: number | null;
   position: Position;
   notes: string | null;
-  queueId: string | null;
 };
 
 // Pestaña "Registro" completa (mockup "Paper - Ficha de título completa",
@@ -82,7 +76,6 @@ export function LogPanel({
   passes,
   sessions,
   editions,
-  queues,
   initialClosingPassId,
   workTotalUnits,
   canContribute = false,
@@ -93,7 +86,6 @@ export function LogPanel({
   passes: Pass[];
   sessions: ProgressSession[];
   editions: Edition[];
-  queues: Queue[];
   /** Colaborador+: habilita "+ Es una edición nueva" en el selector. */
   canContribute?: boolean;
   // Pase a abrir en la hoja de cierre desde el primer pintado (§Tarea 7,
@@ -124,7 +116,6 @@ export function LogPanel({
       passes={passes}
       sessions={sessions}
       editions={editions}
-      queues={queues}
       initialClosingPassId={initialClosingPassId ?? null}
       canContribute={canContribute}
     />
@@ -152,7 +143,6 @@ function ManagedLog({
   passes,
   sessions,
   editions,
-  queues,
   initialClosingPassId,
   canContribute,
 }: {
@@ -163,12 +153,10 @@ function ManagedLog({
   passes: Pass[];
   sessions: ProgressSession[];
   editions: Edition[];
-  queues: Queue[];
   initialClosingPassId: string | null;
   canContribute: boolean;
 }) {
   const t = useTranslations("item");
-  const tQueue = useTranslations("queue");
   const tPasses = useTranslations("passes");
   const accent = MEDIA_ACCENT[itemType];
   const router = useRouter();
@@ -181,7 +169,6 @@ function ManagedLog({
   // quedarse sin estado que pintar mientras tanto.
   const { status: sharedStatus, setStatus } = useItemStatus();
   const status = sharedStatus ?? entry.status;
-  const [queueId, setQueueId] = useState(entry.queueId);
 
   // Pase ACTIVO de la obra (is_active): dueño de las sesiones y objetivo de
   // la hoja de cierre por URL. Se calcula arriba porque el auto-cierre por
@@ -197,7 +184,6 @@ function ManagedLog({
   const [prevEntry, setPrevEntry] = useState(entry);
   if (entry !== prevEntry) {
     setPrevEntry(entry);
-    if (entry.queueId !== queueId) setQueueId(entry.queueId);
   }
 
   // Al marcar "completado" (o "dejado") updateStatus ya cierra el pase en BD
@@ -373,38 +359,6 @@ function ManagedLog({
               disabled={isPending}
             />
           </div>
-
-          {/* Elegir cola: solo tiene sentido mientras el ítem está planificado
-          (§7.22). Al salir de "planned" el server limpia queue_id. */}
-          {status === "planned" && queues.length > 0 && (
-            <div className="order-2 flex flex-col gap-1">
-              <label
-                htmlFor={`log-queue-${entry.entryId}`}
-                className="text-sm font-medium"
-              >
-                {tQueue("title")}
-              </label>
-              <Select
-                id={`log-queue-${entry.entryId}`}
-                value={queueId ?? ""}
-                disabled={isPending}
-                onChange={(event) => {
-                  const next = event.target.value || null;
-                  setQueueId(next);
-                  startTransition(() =>
-                    moveEntryToQueue(itemType, itemId, next),
-                  );
-                }}
-              >
-                <option value="">{tQueue("noQueue")}</option>
-                {queues.map((q) => (
-                  <option key={q.id} value={q.id}>
-                    {q.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
 
           {/* La barra va FUERA del panel y encima, como el `.prg` del frame; en
           PC se queda en la columna izquierda. Necesita total conocido: sin él

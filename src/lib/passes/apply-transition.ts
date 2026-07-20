@@ -34,8 +34,6 @@ export async function applyTransition(
     resume
   );
 
-  const clearQueue = to !== "planned" ? { queue_id: null, queue_order: null } : {};
-
   if (plan.kind === "askResume") return { kind: "askResume" };
 
   if (plan.kind === "none") {
@@ -45,7 +43,7 @@ export async function applyTransition(
   if (plan.kind === "updateActive") {
     const { error } = await supabase
       .from("passes")
-      .update({ ...plan.set, ...clearQueue })
+      .update(plan.set)
       .eq("id", active!.id)
       .eq("user_id", userId);
     // 23505 = choque con passes_one_open / one_pass_per_day por doble click o
@@ -62,7 +60,7 @@ export async function applyTransition(
   if (plan.kind === "archiveAndCreate") {
     const { error: archiveError } = await supabase
       .from("passes")
-      .update({ is_active: false, queue_id: null, queue_order: null })
+      .update({ is_active: false })
       .eq("id", active!.id)
       .eq("user_id", userId);
     if (archiveError) throw archiveError;

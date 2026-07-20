@@ -9,8 +9,6 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
-import { getQueues } from "@/lib/queue/get-queues";
-import type { Queue } from "@/lib/queue/types";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -269,7 +267,7 @@ async function SeriesTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
   // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
   // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
-  const [, , watchProviders, sagas, activeRow, loadedQueues, role] =
+  const [, , watchProviders, sagas, activeRow, role] =
     await Promise.all([
       ensureItemEnriched(supabase, "series", {
         id: series.id,
@@ -286,7 +284,7 @@ async function SeriesTabs({
       userId
         ? supabase
             .from("passes")
-            .select("id, status, rating, position, queue_id")
+            .select("id, status, rating, position")
             .eq("user_id", userId)
             .eq("item_type", "series")
             .eq("item_id", series.id)
@@ -294,8 +292,7 @@ async function SeriesTabs({
             .maybeSingle()
             .then(({ data }) => data)
         : null,
-      userId ? getQueues(supabase, userId) : [],
-      userId ? getCurrentUserRole(supabase) : null,
+        userId ? getCurrentUserRole(supabase) : null,
     ]);
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
@@ -304,7 +301,6 @@ async function SeriesTabs({
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
-  const queues: Queue[] = loadedQueues;
   {
     const row = activeRow;
     if (userId && row) {
@@ -329,7 +325,6 @@ async function SeriesTabs({
         rating: row.rating,
         position: parsePosition("series", row.position),
         notes: reviewRow?.review ?? null,
-        queueId: row.queue_id,
       };
       // Las sesiones sí esperan a getPasses: son del pase ABIERTO, no de toda
       // la entrada (Hallazgo 4) — en una relectura, las sesiones de la lectura
@@ -503,7 +498,6 @@ async function SeriesTabs({
           // Las series no tienen ediciones (getEditions ni siquiera
           // consulta la BD para este tipo): no hace falta cargarlas.
           editions={[]}
-          queues={queues}
           initialClosingPassId={initialClosingPassId}
           canContribute={canContribute}
         />
