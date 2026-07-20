@@ -55,17 +55,30 @@ export async function updateSession(request: NextRequest) {
   // Fast path: la cookie confirma el onboarding de ESTE usuario → sin consulta.
   // Solo se cachea el estado positivo; el "sin perfil" siempre re-consulta,
   // así que completar el onboarding surte efecto en la siguiente navegación.
+  // Dos hechos DISTINTOS, y confundirlos rompe el asistente:
+  //   hasProfile  — tiene @usuario, o sea puede usar la app.
+  //   isOnboarded — completó el asistente (profiles.onboarded_at no es null).
+  // Antes bastaba con el primero porque "onboarding" ERA elegir el @usuario.
+  // Desde el asistente de 3 pasos (spec 2026-07-20) son cosas separadas: hay
+  // usuarios con perfil que aún no lo han hecho, y a esos NO se les puede echar
+  // de /onboarding.
   let hasProfile: boolean;
+  let isOnboarded: boolean;
   if (request.cookies.get(ONBOARDED_COOKIE)?.value === user.id) {
     hasProfile = true;
+    isOnboarded = true;
   } else {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("user_id")
+      .select("user_id, onboarded_at")
       .eq("user_id", user.id)
       .maybeSingle();
     hasProfile = profile !== null;
-    if (hasProfile) {
+    isOnboarded = profile?.onboarded_at != null;
+    // Solo se cachea el estado final. Quien tiene perfil pero no ha terminado
+    // el asistente re-consulta en cada navegación: es una ventana corta y es lo
+    // que hace que terminar surta efecto de inmediato.
+    if (isOnboarded) {
       response.cookies.set(ONBOARDED_COOKIE, user.id, {
         httpOnly: true,
         sameSite: "lax",
@@ -82,7 +95,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
   }
 
-  if (hasProfile && pathname === ONBOARDING_PATH) {
+  // Solo se echa de /onboarding a quien YA lo terminó, no a quien simplemente
+  // tiene perfil: el asistente vive precisamente en ese hueco.
+  if (isOnboarded && pathname === ONBOARDING_PATH) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

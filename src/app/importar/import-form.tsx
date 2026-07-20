@@ -57,13 +57,12 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
         <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4 text-sm text-muted-foreground">
           <p>{t("help.goodreads")}</p>
           <p>{t("help.letterboxd")}</p>
-          <p>{t("help.bookmory")}</p>
         </div>
 
         <input
           type="file"
           name="file"
-          accept=".csv,.xlsx"
+          accept=".csv"
           required
           className="text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
         />

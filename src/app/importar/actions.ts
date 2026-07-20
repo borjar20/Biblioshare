@@ -9,7 +9,6 @@ import type { Json } from "@/lib/supabase/database.types";
 import { detectFormat } from "@/lib/import/detect-format";
 import { parseGoodreads } from "@/lib/import/parse-goodreads";
 import { parseLetterboxd } from "@/lib/import/parse-letterboxd";
-import { parseBookmory } from "@/lib/import/parse-bookmory";
 import { commitImportRow, commitManualImportRow } from "@/lib/import/commit-row";
 import type { ImportFormat, ImportRow, ImportRowResult } from "@/lib/import/types";
 
@@ -25,7 +24,6 @@ const MAX_ROWS = 3000;
 const FORMAT_ITEM_TYPE: Record<ImportFormat, ItemType> = {
   goodreads: "book",
   letterboxd: "movie",
-  bookmory: "book",
 };
 
 export type ParseImportState = {
@@ -52,18 +50,15 @@ export async function parseImportFile(
   const detected = detectFormat(buffer);
   if (!detected) return { error: "unrecognizedFormat" };
 
+  const text = new TextDecoder("utf-8").decode(buffer);
   const rows =
-    detected.format === "bookmory"
-      ? await parseBookmory(buffer)
-      : detected.format === "goodreads"
-        ? parseGoodreads(new TextDecoder("utf-8").decode(buffer))
-        : parseLetterboxd(new TextDecoder("utf-8").decode(buffer));
+    detected === "goodreads" ? parseGoodreads(text) : parseLetterboxd(text);
 
   if (rows.length === 0) return { error: "unrecognizedFormat" };
   if (rows.length > MAX_ROWS) return { error: "tooManyRows" };
 
   return {
-    result: { format: detected.format, itemType: FORMAT_ITEM_TYPE[detected.format], rows },
+    result: { format: detected, itemType: FORMAT_ITEM_TYPE[detected], rows },
   };
 }
 

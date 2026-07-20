@@ -18,6 +18,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
 
   let username: string | null = null;
   let avatarUrl: string | null = null;
+  let onboarded = false;
   let unreadCount = 0;
   let notifications: Awaited<ReturnType<typeof listNotifications>> = [];
 
@@ -25,7 +26,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
     const [{ data: profile }, count, list] = await Promise.all([
       supabase
         .from("profiles")
-        .select("username, avatar_url")
+        .select("username, avatar_url, onboarded_at")
         .eq("user_id", user.id)
         .maybeSingle(),
       getUnreadCount(supabase, user.id),
@@ -33,13 +34,19 @@ export async function AppShell({ children }: { children: ReactNode }) {
     ]);
     username = profile?.username ?? null;
     avatarUrl = profile?.avatar_url ?? null;
+    onboarded = profile?.onboarded_at != null;
     unreadCount = count;
     notifications = list;
   }
 
-  // Sin username todavía no hay a dónde navegar (el usuario está en
-  // onboarding): se muestra la topbar sola.
-  const showNav = Boolean(username);
+  // El chrome se pinta cuando el usuario ya está DENTRO de la app, y estar
+  // dentro son dos cosas: tener @usuario y haber terminado el onboarding.
+  //
+  // Antes bastaba con el username porque quien estaba en el onboarding aún no
+  // lo tenía. Con el asistente de 3 pasos (spec 2026-07-20) sí lo tiene, y sin
+  // esta condición se le pintaba la barra de navegación ENCIMA del asistente:
+  // escapatorias a media configuración y el wordmark duplicado.
+  const showNav = Boolean(username) && onboarded;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">

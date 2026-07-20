@@ -80,11 +80,27 @@ export default async function CollectionPage({
   const sort: LibrarySort = VALID_SORTS.includes(params.sort as LibrarySort)
     ? (params.sort as LibrarySort)
     : "recent";
-  const itemType: ItemType | undefined = VALID_TYPES.includes(
-    params.type as ItemType,
-  )
+  // Con ?type= explícito manda la URL. Sin él, y SOLO si el usuario declaró
+  // exactamente UN interés en el onboarding, el filtro de «Todo» arranca ahí:
+  // con dos o tres no hay un tipo "obvio" y forzar uno escondería media
+  // biblioteca sin que nadie lo haya pedido.
+  //
+  // Ojo: aquí NO se toca la pestaña de entrada. Colección v2 dejó las
+  // subpestañas en colecciones|todo|sagas|colas — no hay pestaña por tipo.
+  const explicitType = VALID_TYPES.includes(params.type as ItemType)
     ? (params.type as ItemType)
-    : undefined;
+    : null;
+  let preferredType: ItemType | undefined;
+  if (explicitType === null) {
+    const { data: prefs } = await supabase
+      .from("profiles")
+      .select("interests")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const interests = prefs?.interests ?? [];
+    preferredType = interests.length === 1 ? interests[0] : undefined;
+  }
+  const itemType: ItemType | undefined = explicitType ?? preferredType;
 
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");

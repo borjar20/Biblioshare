@@ -79,7 +79,28 @@
       "usernameInvalid": "El nombre de usuario no es válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
-    "nameWasTaken": "El usuario que elegiste lo cogió otra persona mientras confirmabas el correo. Elige otro."
+    "nameWasTaken": "El usuario que elegiste lo cogió otra persona mientras confirmabas el correo. Elige otro.",
+    "wizard": {
+      "step": "Paso {current} de {total}",
+      "skip": "Saltar",
+      "continue": "Continuar",
+      "continueWithCount": "Continuar · {count} añadidos",
+      "finish": "Terminar",
+      "interestsTitle": "¿Qué te gusta seguir?",
+      "interestsHint": "Elige al menos uno. Podrás cambiarlo cuando quieras.",
+      "titlesTitle": "Añade algo para empezar",
+      "titlesHint": "Toca lo que ya hayas leído o visto, o lo que tengas pendiente.",
+      "titlesEmpty": "Todavía no hay suficiente catálogo para sugerirte nada. Puedes buscar títulos en cuanto entres.",
+      "peopleTitle": "Encuentra a tu gente",
+      "peopleHint": "Sigue a alguien o únete a un club para que tu inicio no esté vacío.",
+      "peopleFollow": "Seguir",
+      "peopleJoin": "Unirme",
+      "peopleMembers": "{count, plural, one {# miembro} other {# miembros}}",
+      "welcomeTitle": "Todo listo, {name}",
+      "welcomeWithTitles": "Ya tienes {count, plural, one {# título} other {# títulos}} esperándote.",
+      "welcomeNeutral": "Ya puedes empezar a registrar lo que leas y veas.",
+      "enter": "Entrar a Biblioshare"
+    }
   },
   "home": {
     "tagline": "Tu biblioteca de todo, compartida.",
@@ -1252,8 +1273,7 @@
     "description": "Sube un export de Goodreads, Letterboxd o Bookmory para volcar tu historial en Biblioshare.",
     "help": {
       "goodreads": "Goodreads: exporta tu biblioteca (library_export.csv) desde Configuración → Exportar biblioteca.",
-      "letterboxd": "Letterboxd: sube el archivo diary.csv del export (no watched.csv ni ratings.csv) — es el único con fecha por visionado.",
-      "bookmory": "Bookmory: sube el .xlsx exportado. Solo se lee la hoja \"Libros\"; las notas por libro no se importan todavía."
+      "letterboxd": "Letterboxd: sube el archivo diary.csv del export (no watched.csv ni ratings.csv) — es el único con fecha por visionado."
     },
     "upload": "Subir archivo",
     "uploading": "Analizando...",

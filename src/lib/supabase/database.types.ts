@@ -1296,7 +1296,9 @@ export type Database = {
           created_at: string
           daily_goal_minutes: number | null
           display_name: string | null
+          interests: Database["public"]["Enums"]["item_type"][] | null
           is_public: boolean
+          onboarded_at: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
@@ -1308,7 +1310,9 @@ export type Database = {
           created_at?: string
           daily_goal_minutes?: number | null
           display_name?: string | null
+          interests?: Database["public"]["Enums"]["item_type"][] | null
           is_public?: boolean
+          onboarded_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
@@ -1320,7 +1324,9 @@ export type Database = {
           created_at?: string
           daily_goal_minutes?: number | null
           display_name?: string | null
+          interests?: Database["public"]["Enums"]["item_type"][] | null
           is_public?: boolean
+          onboarded_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
