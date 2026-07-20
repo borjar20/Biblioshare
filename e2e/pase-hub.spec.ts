@@ -331,7 +331,11 @@ test.describe
 
     await addSessionLink.click();
     await page.waitForURL(/\/sesion\//, { timeout: 15_000 });
-    await page.locator("#session-page").fill(String(maxPage));
+    // `#session-page` ya no existe (Tarea 5 de registrar-sesion-v2 sustituyó
+    // el input por uno sin id, expuesto solo por name/aria-label — ver
+    // book-progress-field.tsx). `input[name="page"]` es el nuevo selector
+    // estable.
+    await page.locator('input[name="page"]').fill(String(maxPage));
     await page.getByRole("button", { name: "Guardar sesión" }).click();
 
     // Redirige a la ficha con `?cerrar=<passId>&tab=log`: la hoja se abre
@@ -457,11 +461,21 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
 
       // Sesión a medias: página 20 (muy lejos del total de una novela corta,
       // así que jamás dispara el auto-cierre de la Regla 2 por accidente).
+      const sheet = page.getByRole("dialog");
       await addSessionLink.click();
       await page.waitForURL(/\/sesion\//, { timeout: 15_000 });
-      await page.locator("#session-page").fill("20");
+      // `#session-page` ya no existe (ver comentario equivalente en Regla 2,
+      // arriba): `input[name="page"]` es el selector estable tras la Tarea 5.
+      await page.locator('input[name="page"]').fill("20");
       await page.getByRole("button", { name: "Guardar sesión" }).click();
-      await page.waitForURL(/\/libro\//, { timeout: 15_000 });
+      // NO esperar la navegación con waitForURL: el servidor ya no redirige
+      // (Tarea 1-7 de registrar-sesion-v2) — el modal cierra con
+      // router.back() en el cliente, y esa navegación puede completarse
+      // ANTES de que este waitForURL se registre, dejándolo esperando un
+      // evento que ya pasó (flaky: falló una vez y pasó al reintentar en una
+      // corrida completa). La condición real de "la sesión se guardó y el
+      // modal se fue" es que el <dialog> deje de estar visible.
+      await expect(sheet).toBeHidden({ timeout: 15_000 });
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
@@ -743,11 +757,17 @@ test.describe("nuevo pase", () => {
 
       // Sesión a medias (página 20, lejísimos del total): deja el pase
       // ABIERTO y con cursor, que es la rama que pregunta.
+      const sessionDialog = page.getByRole("dialog");
       await addSessionLink.click();
       await page.waitForURL(/\/sesion\//, { timeout: 15_000 });
-      await page.locator("#session-page").fill("20");
+      // `#session-page` ya no existe (ver comentario en Regla 2, arriba):
+      // `input[name="page"]` es el selector estable tras la Tarea 5.
+      await page.locator('input[name="page"]').fill("20");
       await page.getByRole("button", { name: "Guardar sesión" }).click();
-      await page.waitForURL(/\/libro\//, { timeout: 15_000 });
+      // Mismo motivo que en el spec de abandonar/retomar: sin redirect de
+      // servidor, esperar una waitForURL tras el guardado es una carrera con
+      // el router.back() del cliente. Se espera a que el <dialog> se oculte.
+      await expect(sessionDialog).toBeHidden({ timeout: 15_000 });
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
