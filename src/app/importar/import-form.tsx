@@ -1,14 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { ItemType } from "@/lib/catalog/types";
-import type { ImportRow, ImportRowResult } from "@/lib/import/types";
-import { parseImportFile, commitImportBatch, type ParseImportState } from "./actions";
+import type { ImportRow } from "@/lib/import/types";
+import { useImportRun } from "@/lib/import/use-import-run";
+import { parseImportFile, type ParseImportState } from "./actions";
 import { UnmatchedRowForm } from "./unmatched-row-form";
-
-const BATCH_SIZE = 20;
 
 const initialParseState: ParseImportState = {};
 
@@ -24,9 +23,14 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
   const [phase, setPhase] = useState<Phase>("upload");
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [itemType, setItemType] = useState<ItemType>("book");
-  const [processed, setProcessed] = useState(0);
-  const [results, setResults] = useState<ImportRowResult[]>([]);
-  const [, startProcessing] = useTransition();
+  // El bucle de lotes vive en useImportRun, compartido con el panel del
+  // onboarding: aquí solo se decide cuándo arranca y qué se pinta.
+  const run = useImportRun();
+  // Se desestructura `start` porque es lo ÚNICO que usa el efecto: así la
+  // dependencia es exactamente el valor usado (estable vía useCallback), en vez
+  // del objeto `run`, que es nuevo en cada render y reevaluaría el efecto sin
+  // parar.
+  const { start } = run;
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -38,18 +42,8 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
     setItemType(parsed.itemType);
     setPhase("processing");
 
-    startProcessing(async () => {
-      const collected: ImportRowResult[] = [];
-      for (let i = 0; i < parsed.rows.length; i += BATCH_SIZE) {
-        const chunk = parsed.rows.slice(i, i + BATCH_SIZE);
-        const chunkResults = await commitImportBatch(parsed.itemType, chunk);
-        collected.push(...chunkResults);
-        setProcessed(i + chunk.length);
-      }
-      setResults(collected);
-      setPhase("results");
-    });
-  }, [parseState.result]);
+    void start(parsed.itemType, parsed.rows).then(() => setPhase("results"));
+  }, [parseState.result, start]);
 
   if (phase === "upload") {
     return (
@@ -79,12 +73,12 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
   }
 
   if (phase === "processing") {
-    const total = rows.length;
-    const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+    const total = run.total;
+    const percent = total > 0 ? Math.round((run.processed / total) * 100) : 0;
     return (
       <div className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">
-          {t("processing", { processed, total })}
+          {t("processing", { processed: run.processed, total })}
         </p>
         <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
           <div
@@ -96,11 +90,11 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
     );
   }
 
-  const imported = results.filter((r) => r.outcome === "imported").length;
-  const duplicate = results.filter((r) => r.outcome === "duplicate").length;
-  const unmatched = results.filter((r) => r.outcome === "unmatched");
-  const errored = results.filter((r) => r.outcome === "error");
-  const unknownStatusRows = results.filter((r) => r.unknownStatus);
+  const imported = run.results.filter((r) => r.outcome === "imported").length;
+  const duplicate = run.results.filter((r) => r.outcome === "duplicate").length;
+  const unmatched = run.results.filter((r) => r.outcome === "unmatched");
+  const errored = run.results.filter((r) => r.outcome === "error");
+  const unknownStatusRows = run.results.filter((r) => r.unknownStatus);
   const rowByNumber = new Map(rows.map((row) => [row.rowNumber, row]));
 
   return (
