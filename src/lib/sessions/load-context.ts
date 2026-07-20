@@ -37,6 +37,15 @@ export type SessionContext = {
   seriesEpisodes?: SessionSeason[];
 };
 
+// Un parámetro de URL es texto de fuera: se acepta solo si es un entero de
+// minutos con sentido. Se topa a 24 h para que un valor absurdo no llegue al
+// formulario.
+export function parseMinutes(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const minutes = Number(raw);
+  return Number.isInteger(minutes) && minutes > 0 && minutes <= 24 * 60 ? minutes : null;
+}
+
 // Carga TODO lo que necesita la hoja de registrar sesión. La comparten la ruta
 // directa (/sesion/[passId], deep link y recarga) y la ruta interceptada que
 // la pinta como modal: ninguna de las dos duplica esta lógica.

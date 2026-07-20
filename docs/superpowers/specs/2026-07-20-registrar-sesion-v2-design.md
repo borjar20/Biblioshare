@@ -110,8 +110,9 @@ cabecera pegajosa `Registrar sesión ✕`, footer pegajoso con el botón de guar
   - *A mano* despliega chips `15 / 30 / 45 / 1 h / Otro`. Los chips **rellenan** el input de
     minutos que ya existe (`session-form.tsx:217`); **«Otro» lo deja vacío y enfocado**. Un
     solo `name="durationMinutes"` en el DOM — los chips son un acelerador, no un sustituto.
-  - *Cronómetro* convierte el bloque en el dial del frame B y compacta el rail de páginas a
-    su versión de una línea.
+  - *Cronómetro* convierte el bloque en el dial del frame B. El rail de páginas se construyó
+    **sin cambios entre modos** (`book-progress-field.tsx:58-76`): compactarlo a una línea en
+    cronómetro queda diferido, no se hizo en este ciclo.
 - **Fecha**, y **Estado** plegado al final (D8).
 
 ### Serie
@@ -121,7 +122,8 @@ cabecera pegajosa `Registrar sesión ✕`, footer pegajoso con el botón de guar
   ella), número y estado en **tres** valores — *visto antes* / *esta sesión* / *sin ver*. Ese
   tercer estado es nuevo; el dato ya está en `initialWatched` (`session-form.tsx:135`), que
   hoy solo se usa para contar el delta.
-  - Altura tope 4 filas con scroll propio y desvanecido arriba/abajo (D6).
+  - Altura tope 4 filas con scroll propio (D6) (`series-episode-grid.tsx:136-141`). El
+    desvanecido arriba/abajo no se construyó en este ciclo — queda diferido.
   - Al abrir, posicionada en el primer episodio sin ver.
 - **Fecha**, **Estado** plegado. Sin duración ni cronómetro (D9).
 
@@ -138,9 +140,13 @@ cabecera pegajosa `Registrar sesión ✕`, footer pegajoso con el botón de guar
 | **Auto-cierre** del pase | `{ ok: true, passClosed: true }` | El modal **no** se cierra: monta `<ClosePassSheet open>` encima. Al cerrarla, cierra todo |
 
 El auto-cierre es la rama de `actions.ts:243-253`: la sesión alcanza la última página de tu
-edición o el último episodio del pase, `applyTransition(... "completed")` cierra el pase y hoy
-redirige a `?cerrar=<passId>&tab=log`. Ese parámetro **deja de ser el mecanismo** cuando
-vienes por modal; sigue funcionando para la ruta directa y para `log-panel`.
+edición o el último episodio del pase, `applyTransition(... "completed")` cierra el pase y
+antes redirigía a `?cerrar=<passId>&tab=log`. Ese parámetro **deja de ser el mecanismo por
+completo**: la ruta de página también encadena `ClosePassSheet` en el cliente (D4), así que
+`?cerrar` **ya no tiene productor** en los caminos de libro ni de película. Sigue vivo solo
+para la serie: el toggle de episodio (`lib/series/episode-actions.ts:65`) sigue redirigiendo
+con `?cerrar=<passId>&tab=log` cuando ese toggle —no una sesión— completa el pase, así que el
+parámetro no está globalmente muerto.
 
 `revalidateReadingLog(itemType, itemId)` se sigue llamando en los tres casos, así que la
 pantalla de origen se refresca sola.

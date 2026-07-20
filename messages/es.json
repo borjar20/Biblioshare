@@ -1091,8 +1091,6 @@
     }
   },
   "session": {
-    "titleBook": "Guardar sesión de lectura",
-    "titleSeries": "Guardar sesión de visionado",
     "sheetTitle": "Registrar sesión",
     "close": "Cerrar",
     "kickerBook": "Libro · sesión de lectura",
