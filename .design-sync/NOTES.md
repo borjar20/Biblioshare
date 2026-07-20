@@ -170,6 +170,44 @@ Validate its class names against `ds-bundle/_ds_bundle.css` — but note
 Tailwind writes escaped selectors (`.hover\:bg-accent-hover`), so a naive
 `grep '\.hover:bg-...'` reports a false ABSENT.
 
+## El CSS compilado solo tiene lo que la app usa (afecta a TODO diseño)
+
+`cfg.buildCmd` corre el CLI de Tailwind sobre `src/app/globals.css`, que
+escanea **el código de la app**. Las previews y los diseños que construya el
+agente NO se escanean. Consecuencia: una utilidad que la app no use no está
+en `_ds_bundle.css`, y **no falla — no hace nada**.
+
+Verificado el 20-jul: `px-10` AUSENTE (la app usa `pl-10`, no `px-10`),
+`mb-6` AUSENTE, y **cero** valores arbitrarios (`w-[280px]` → 0 apariciones).
+La preview de `ItemShell` se escribió con `px-10`/`mb-6`/`w-[280px]` y
+renderizó sin padding y con el sidebar a ancho completo, sin una sola marca
+en el render check. Escala disponible hoy: `px-0..8` y `px-11` (sin 9/10),
+`mb-0..5` (sin 6), `w-` solo en pasos sueltos hasta `w-80`.
+
+- **Al escribir previews**: antes de usar una utilidad de layout, compruébala
+  con `grep -E "^\s*\.<clase> \{" ds-bundle/_ds_bundle.css`.
+- **Para el agente de diseño**: ya está avisado en `conventions.md` (sección
+  «la hoja es un build COMPILADO») — valores arbitrarios fuera, escala
+  incompleta, y estilo en línea para medidas exactas.
+- **Arreglo de fondo pendiente (decisión del usuario)**: un safelist en la
+  entrada CSS (`@source inline(...)` de Tailwind v4) para generar un juego
+  amplio de utilidades. Sube el peso de `_ds_bundle.css` (hoy 121 KB) a
+  cambio de que el agente pueda maquetar sin adivinar. NO se hizo en el
+  piloto.
+
+## Pantallas: el grupo del doc NO manda si la ruta ya da grupo
+
+`ItemShell` (piloto de pantallas, 20-jul) lleva
+`.design-sync/docs/ItemShell.md` con `category: Pantallas`, y el doc SÍ se
+enlaza (`docs: 1/19 — 1 via docsMap`), pero la tarjeta sale en el grupo
+`detail`. Motivo: en `package-build.mjs` el `category` del frontmatter solo
+pisa el grupo cuando este es `general`/`misc`/uniforme; el grupo real se
+deriva de la ruta en `src/` (`src/components/detail/` → `detail`).
+
+Para juntar varias pantallas bajo un grupo propio harían falta o un fork del
+lib (desaconsejado) o que los shells vivan en su propio directorio de `src/`.
+Para el piloto se aceptó `detail`, que además es un sitio coherente.
+
 ## Known render warns
 
 None. As of 2026-07-20 the render check is fully clean: 18/18 render, and

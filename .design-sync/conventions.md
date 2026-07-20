@@ -42,6 +42,14 @@ There are no component-scoped classes or a prop-based theme API — everything i
 
 Light/dark both exist as real token sets (`:root` vs `.dark`) — don't hardcode colors; always reach for a token class above.
 
+**Importante — la hoja es un build COMPILADO, no el motor de Tailwind.** `styles.css` contiene únicamente las utilidades que el código de la app ya usa. Una clase que no esté generada **no falla: simplemente no hace nada**, y el diseño sale sin ese estilo. En concreto:
+
+- **Los valores arbitrarios no existen**: `w-[280px]`, `mt-[13px]`, `text-[15px]` → cero efecto. Usa la escala (`w-64`, `mt-3`, `text-sm`) o `style={{ }}` en línea.
+- **Tampoco están todos los pasos de la escala.** Hay `px-8` y `px-11` pero no `px-10`; hay `mb-5` pero no `mb-6`. Si un espaciado concreto es crítico, `style={{ padding: … }}` es más seguro que adivinar un paso.
+- Las familias de la tabla de arriba (colores, tipos de medio, estados, fuentes) sí están completas — son las del propio sistema.
+
+Regla práctica: para los componentes, props; para tu propio layout, utilidades de la escala; para una medida exacta que no esté, estilo en línea.
+
 ### Where the truth lives
 
 Read `styles.css` (imports `_ds_bundle.css`, the compiled Tailwind output) before styling anything new, and each component's own `.prompt.md` for its exact prop shape and usage examples. `_ds_bundle.js`'s `.d.ts` files are the authoritative prop contracts.

@@ -32,6 +32,16 @@
     "MetadataSidebar": "src/components/detail/metadata-sidebar.tsx",
     "EpisodeRating": "src/components/detail/episode-rating.tsx",
     "SagaStrip": "src/components/detail/saga-strip.tsx",
-    "BackButton": "src/components/detail/back-button.tsx"
+    "BackButton": "src/components/detail/back-button.tsx",
+    "ItemShell": "src/components/detail/item-shell.tsx"
+  },
+  "docsMap": {
+    "ItemShell": ".design-sync/docs/ItemShell.md"
+  },
+  "overrides": {
+    "ItemShell": {
+      "cardMode": "column",
+      "viewport": "1240x1000"
+    }
   }
 }
