@@ -1,6 +1,20 @@
 # Biblioshare — Requisitos y alcance
 
-Última actualización: 2026-07-19
+Última actualización: 2026-07-20
+
+> **Cómo leer este documento.** Es el registro de **requisitos y alcance**, y buena parte es
+> narrativa escrita cuando cada cosa se decidió. Para saber cómo está el sistema **hoy**:
+>
+> - Esquema de BD → [modelo de datos](./requirements/data-model.md) (**canónico**, verificado
+>   contra producción)
+> - Cómo encaja todo → [arquitectura](./ARQUITECTURA.md)
+> - Por qué algo falla → [trampas conocidas](./TRAMPAS.md)
+>
+> ⚠️ **Dos renombres que este documento aún no refleja en su narrativa:**
+> **`diary_entries` se llama `passes`** desde julio de 2026 (aparece ~30 veces con el nombre
+> viejo más abajo), y **`library_entries` está congelada** — ya no es la tabla de progreso,
+> el estado vivo está en `passes`. No se han reescrito esas menciones a propósito: son el
+> relato de cuándo se decidió cada cosa. Para el estado real, el doc de modelo de datos.
 
 ## 1. Visión
 
