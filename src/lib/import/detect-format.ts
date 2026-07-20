@@ -1,26 +1,20 @@
 import type { ImportFormat } from "./types";
 
-export type FormatDetection = {
-  format: ImportFormat;
-  kind: "csv" | "xlsx";
-};
-
-// Bookmory exports .xlsx (a zip archive, "PK" signature); Goodreads/Letterboxd
-// export plain CSV, distinguished by a header column unique to each. No
-// user-facing format picker — the upload itself decides.
-export function detectFormat(buffer: ArrayBuffer): FormatDetection | null {
-  const bytes = new Uint8Array(buffer.slice(0, 2));
-  if (bytes.length === 2 && bytes[0] === 0x50 && bytes[1] === 0x4b) {
-    return { format: "bookmory", kind: "xlsx" };
-  }
-
+// Goodreads y Letterboxd exportan CSV plano, y se distinguen por una columna de
+// cabecera propia de cada uno. No hay selector de formato: lo decide el propio
+// fichero que subes.
+//
+// Bookmory (.xlsx) se retiró el 2026-07-20 — era la única fuente que obligaba a
+// leer hojas de cálculo, y con ella se fue la dependencia `exceljs`. Al quedar
+// solo CSV, el envoltorio `FormatDetection` con su campo `kind` sobraba: la
+// función devuelve directamente el formato.
+export function detectFormat(buffer: ArrayBuffer): ImportFormat | null {
   const text = new TextDecoder("utf-8").decode(buffer);
   const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
-  if (firstLine.includes("Letterboxd URI")) {
-    return { format: "letterboxd", kind: "csv" };
-  }
+
+  if (firstLine.includes("Letterboxd URI")) return "letterboxd";
   if (firstLine.includes("Exclusive Shelf") || firstLine.includes("ISBN13")) {
-    return { format: "goodreads", kind: "csv" };
+    return "goodreads";
   }
   return null;
 }
