@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 //
 // El evento nativo "close" NO es la única vía de salida, aunque lo parezca:
 // se ha comprobado en el navegador que, cuando ClosePassSheet (un <dialog>
-// anidado dentro de SessionForm, ver session-form.tsx) se cierra y navega,
+// anidado dentro de SessionSheet, ver session-sheet.tsx) se cierra y navega,
 // este <dialog> exterior también termina emitiendo su propio "close" al
 // desmontarse la ruta interceptada — dos disparos para un solo gesto de
 // usuario, y por tanto dos router.back(). No merece la pena perseguir cuál
@@ -18,16 +18,16 @@ import { useRouter } from "next/navigation";
 // desmontaje, no es algo que el código controle): en vez de eso, el salto de
 // historial vive en UN SOLO sitio (closeOnce, más abajo) protegido por un
 // ref, y tanto el "close" nativo de este <dialog> como cualquier llamada de
-// SessionForm (vía useModalClose) pasan por ahí. El primero que llega gana;
+// SessionSheet (vía useModalClose) pasan por ahí. El primero que llega gana;
 // el resto son operaciones nulas.
 const ModalCloseContext = createContext<(() => void) | null>(null);
 
-// SessionForm lo usa para que "Ahora no"/"Guardar" de ClosePassSheet, y el
+// SessionSheet lo usa para que "Ahora no"/"Guardar" de ClosePassSheet, y el
 // guardado de una sesión normal, salgan por la misma puerta que Escape y el
 // clic en el backdrop — en vez de llamar a router.back() por su cuenta y
 // arriesgar un segundo salto. En modo página (deep link a /sesion/[passId],
 // sin este componente de por medio) el contexto no tiene proveedor y esta
-// función devuelve null; SessionForm no debe usarla en ese modo.
+// función devuelve null; SessionSheet no debe usarla en ese modo.
 export function useModalClose(): (() => void) | null {
   return useContext(ModalCloseContext);
 }
@@ -39,7 +39,7 @@ export function SessionModal({ children }: { children: React.ReactNode }) {
 
   // Único punto de salida del modal: da igual cuántas veces se llame (native
   // "close" de este <dialog>, o una llamada explícita vía contexto desde
-  // SessionForm) — solo la primera ejecuta router.back().
+  // SessionSheet) — solo la primera ejecuta router.back().
   const closeOnce = useCallback(() => {
     if (closedRef.current) return;
     closedRef.current = true;
