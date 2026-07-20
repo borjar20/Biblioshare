@@ -105,21 +105,53 @@ export function groupMembers(
   return groups;
 }
 
-export function computeProgress(groups: MemberGroup[]): {
+// Avance del hero (spec §1.5). El denominador es el ORDEN PRINCIPAL —`order`,
+// claves `item_type:item_id` que produce createMainOrder—, no todos los
+// miembros del subárbol: los opcionales de un grafo no penalizan. Hasta el
+// issue #91 esta función sumaba `g.members.length` y el hero decía 2/7 donde la
+// card de biblioteca decía 2/5 sobre la misma saga.
+//
+// Una clave del orden sin miembro (nodo del grafo que apunta a una obra que no
+// es saga_item) suma al total pero nunca a un segmento: sin miembro no hay
+// estado, así que no puede estar completada.
+export function computeProgress(
+  groups: MemberGroup[],
+  order: string[],
+): {
   completed: number;
   total: number;
   pct: number;
   segments: Array<{ accent: SagaAccentToken; fraction: number }>;
 } {
-  const total = groups.reduce((n, g) => n + g.members.length, 0);
+  const total = order.length;
   if (total === 0) return { completed: 0, total: 0, pct: 0, segments: [] };
+
+  const groupOf = new Map<string, MemberGroup>();
+  for (const g of groups) {
+    for (const m of g.members) groupOf.set(`${m.itemType}:${m.itemId}`, g);
+  }
+
   let completed = 0;
+  const doneByAccent = new Map<SagaAccentToken, number>();
+  for (const k of order) {
+    const g = groupOf.get(k);
+    if (g === undefined) continue;
+    const member = g.members.find((m) => `${m.itemType}:${m.itemId}` === k);
+    if (member?.status !== "completed") continue;
+    completed++;
+    doneByAccent.set(g.accent, (doneByAccent.get(g.accent) ?? 0) + 1);
+  }
+
+  // Emitidos en orden de grupo (el mismo que pinta la pestaña Info), no en
+  // orden de compleción.
   const segments: Array<{ accent: SagaAccentToken; fraction: number }> = [];
   for (const g of groups) {
-    const done = g.members.filter((m) => m.status === "completed").length;
-    completed += done;
-    if (done > 0) segments.push({ accent: g.accent, fraction: done / total });
+    const done = doneByAccent.get(g.accent);
+    if (done === undefined) continue;
+    doneByAccent.delete(g.accent);
+    segments.push({ accent: g.accent, fraction: done / total });
   }
+
   return { completed, total, pct: Math.round((completed / total) * 100), segments };
 }
 

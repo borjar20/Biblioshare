@@ -4,13 +4,12 @@ import {
   isSagaAccentToken,
   type SagaAccentToken,
 } from "./accents";
+import { createMainOrder } from "./main-order";
 
 // Cards de la pestaña «Sagas» de Mi Biblioteca (spec §4.3, frame COL). Todo
 // puro: la capa de datos (get-followed-sagas) resuelve las filas. La regla de
-// cómputo es la de §1.5: denominador = títulos del orden principal; con grafo
-// son los nodos con order_no (nodo-saga → expansión recursiva del orden
-// principal de esa saga); sin grafo, miembros por position (directos y luego
-// hijas por menor position). Opcionales (sin order_no) nunca penalizan.
+// cómputo es la de §1.5 y vive en ./main-order (compartida con el hero desde
+// el issue #91): denominador = títulos del orden principal.
 
 export type LibSaga = { id: string; parentSagaId: string | null; name: string; accentColor: string | null };
 export type LibMembership = { sagaId: string; itemType: ItemType; itemId: string; position: number | null };
@@ -106,38 +105,7 @@ export function buildLibrarySagaCards(
     );
   const titleOf = (k: string) => metaByItem.get(k)?.title ?? "";
 
-  // Orden principal de una saga (§1.5), como lista de claves item_type:item_id.
-  function mainOrder(sagaId: string, depth: number, visited: Set<string>): string[] {
-    if (depth > MAX_DEPTH || visited.has(sagaId)) return [];
-    visited.add(sagaId);
-    const out: string[] = [];
-    const sagaNodes = nodesBySaga.get(sagaId) ?? [];
-    if (sagaNodes.length > 0) {
-      const ordered = sagaNodes
-        .filter((n) => n.orderNo !== null)
-        .sort((a, b) => a.orderNo! - b.orderNo!);
-      for (const n of ordered) {
-        if (n.itemType !== null && n.itemId !== null) out.push(key(n.itemType, n.itemId));
-        else if (n.childSagaId !== null) out.push(...mainOrder(n.childSagaId, depth + 1, visited));
-      }
-    } else {
-      const direct = [...(membersBySaga.get(sagaId) ?? [])].sort((a, b) => {
-        const pa = a.position ?? Number.MAX_SAFE_INTEGER;
-        const pb = b.position ?? Number.MAX_SAFE_INTEGER;
-        if (pa !== pb) return pa - pb;
-        return titleOf(key(a.itemType, a.itemId)).localeCompare(titleOf(key(b.itemType, b.itemId)));
-      });
-      out.push(...direct.map((m) => key(m.itemType, m.itemId)));
-      const children = [...(childrenByParent.get(sagaId) ?? [])].sort((a, b) => {
-        const pa = minPos(a.id);
-        const pb = minPos(b.id);
-        if (pa !== pb) return pa - pb;
-        return a.name.localeCompare(b.name);
-      });
-      for (const c of children) out.push(...mainOrder(c.id, depth + 1, visited));
-    }
-    return out;
-  }
+  const mainOrder = createMainOrder(sagas, memberships, nodes, titleOf);
 
   // Todos los ítems del subárbol (para «leyendo ahora» y recencia).
   function subtreeItems(sagaId: string, depth: number, visited: Set<string>): string[] {
@@ -156,7 +124,7 @@ export function buildLibrarySagaCards(
     const root = sagaById.get(followedId);
     if (!root) continue;
 
-    const order = [...new Set(mainOrder(followedId, 0, new Set()))];
+    const order = mainOrder(followedId);
     const tree = [...new Set(subtreeItems(followedId, 0, new Set()))];
     const total = order.length;
     const isCompleted = (k: string) => entryByItem.get(k)?.everCompleted === true;
