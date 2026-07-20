@@ -99,7 +99,15 @@
       "welcomeTitle": "Todo listo, {name}",
       "welcomeWithTitles": "Ya tienes {count, plural, one {# título} other {# títulos}} esperándote.",
       "welcomeNeutral": "Ya puedes empezar a registrar lo que leas y veas.",
-      "enter": "Entrar a Biblioshare"
+      "enter": "Entrar a Biblioshare",
+      "importCta": "¿Vienes de Goodreads o Letterboxd?",
+      "importAction": "Importar mi biblioteca",
+      "importOr": "o elige de aquí",
+      "importBack": "Mejor elijo de la lista",
+      "importWarning": "No cierres esta pestaña mientras importamos.",
+      "importDone": "{added, plural, one {# título añadido} other {# títulos añadidos}}",
+      "importPending": "{count, plural, one {# necesita revisión, te avisamos cuando esté} other {# necesitan revisión, te avisamos cuando estén}}",
+      "importNothing": "No hemos podido añadir nada de ese fichero."
     }
   },
   "home": {

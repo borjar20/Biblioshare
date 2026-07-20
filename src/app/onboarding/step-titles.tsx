@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import type { SuggestionCandidate } from "@/lib/onboarding/rank-suggestions";
 import { toggleTitle } from "@/lib/onboarding/actions";
+import { ImportPanel } from "./import-panel";
 
 export function StepTitles({
   suggestions,
@@ -20,6 +21,10 @@ export function StepTitles({
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, start] = useTransition();
+  // "grid" = la rejilla de siempre; "import" = el subidor ocupa su sitio dentro
+  // de la MISMA tarjeta, sin cambiar de paso ni de URL.
+  const [mode, setMode] = useState<"grid" | "import">("grid");
+  const [imported, setImported] = useState(0);
 
   function toggle(s: SuggestionCandidate) {
     const key = `${s.itemType}:${s.itemId}`;
@@ -30,6 +35,32 @@ export function StepTitles({
     start(async () => {
       await toggleTitle(s.itemType, s.itemId, willSelect);
     });
+  }
+
+  if (mode === "import") {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-serif text-[22px] font-semibold">
+            {t("titlesTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground">{t("importCta")}</p>
+        </div>
+
+        <ImportPanel
+          onDone={(added) => setImported(added)}
+          onCancel={() => setMode("grid")}
+        />
+
+        <Button
+          type="button"
+          onClick={() => router.push(nextHref)}
+          className="w-full justify-center"
+        >
+          {imported > 0 ? t("continueWithCount", { count: imported }) : t("continue")}
+        </Button>
+      </div>
+    );
   }
 
   if (suggestions.length === 0) {
@@ -58,6 +89,17 @@ export function StepTitles({
         </h1>
         <p className="text-sm text-muted-foreground">{t("titlesHint")}</p>
       </div>
+
+      <div className="flex flex-col items-start gap-2 rounded-card border border-border bg-surface p-4">
+        <p className="text-sm font-semibold">{t("importCta")}</p>
+        <Button type="button" variant="secondary" onClick={() => setMode("import")}>
+          {t("importAction")}
+        </Button>
+      </div>
+
+      <p className="text-center font-mono text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
+        {t("importOr")}
+      </p>
 
       <div className="grid grid-cols-3 gap-3">
         {suggestions.map((s) => {
