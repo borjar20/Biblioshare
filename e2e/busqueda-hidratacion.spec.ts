@@ -48,6 +48,16 @@ test.describe("búsqueda e hidratación de libros", () => {
 
     // La tarjeta NO pinta datos de edición: ni editorial ni páginas.
     await expect(page.getByText(/págs\./)).toHaveCount(0);
+
+    // Eyebrow del plan 03 (frames A/C): «Resultados · N» sobre la rejilla. El
+    // número es el de tarjetas pintadas, así que se comprueba contra el DOM en
+    // vez de fijar una cifra que dependa de lo que devuelva OpenLibrary.
+    const eyebrow = page.getByText(/^Resultados? · \d+$/);
+    await expect(eyebrow).toBeVisible();
+    const shown = Number(
+      (await eyebrow.textContent())!.match(/(\d+)$/)![1],
+    );
+    expect(shown).toBeGreaterThan(0);
   });
 
   test("abrir un resultado nuevo crea la obra y la hidrata", async ({

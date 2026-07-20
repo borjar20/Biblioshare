@@ -12,6 +12,7 @@ import { SearchIcon } from "@/components/ui/icons";
 import { SearchForm } from "./search-form";
 import { SearchResultCard } from "./search-result-card";
 import { PeopleResults } from "./people-results";
+import { ResultsEyebrow } from "./results-eyebrow";
 
 export const metadata: Metadata = {
   title: "Buscar — Biblioshare",
@@ -48,7 +49,9 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+      <h1 className="font-serif text-[26px] font-semibold tracking-tight">
+        {t("title")}
+      </h1>
 
       <ModeSwitch mode={mode} query={query} itemType={itemType} />
 
@@ -92,6 +95,8 @@ export default async function SearchPage({
 
           {results.length > 0 && (
             <>
+              <ResultsEyebrow count={results.length} />
+
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {results.map((result) => (
                   <SearchResultCard

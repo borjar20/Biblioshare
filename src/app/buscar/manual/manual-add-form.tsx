@@ -20,35 +20,49 @@ export function ManualAddForm({ itemType }: { itemType: ItemType }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <Field label={t("titleField")} htmlFor="title">
+      <Field label={t("titleField")} htmlFor="title" required mono>
         <Input id="title" name="title" type="text" required />
       </Field>
 
-      <Field label={t(`creator.${itemType}`)} htmlFor="creator">
+      <Field label={t(`creator.${itemType}`)} htmlFor="creator" mono>
         <Input id="creator" name="creator" type="text" />
       </Field>
 
-      <Field label={t("year")} htmlFor="year">
-        <Input id="year" name="year" type="number" />
-      </Field>
-
-      {itemType === "book" && (
+      {/* Año y Páginas comparten fila (`.two`) — pero Páginas solo existe en
+          libros, así que en película/serie el Año se queda a ancho completo en
+          vez de dejar media fila muerta. */}
+      {itemType === "book" ? (
         <>
-          <Field label={t("publisher")} htmlFor="publisher">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("year")} htmlFor="year" mono>
+              <Input id="year" name="year" type="number" />
+            </Field>
+
+            <Field label={t("pageCount")} htmlFor="pageCount" mono>
+              <Input id="pageCount" name="pageCount" type="number" min={0} />
+            </Field>
+          </div>
+
+          <Field label={t("publisher")} htmlFor="publisher" mono>
             <Input id="publisher" name="publisher" type="text" />
           </Field>
 
-          <Field label={t("pageCount")} htmlFor="pageCount">
-            <Input id="pageCount" name="pageCount" type="number" min={0} />
-          </Field>
-
-          <Field label={t("isbn")} htmlFor="isbn">
+          <Field label={t("isbn")} htmlFor="isbn" mono>
             <Input id="isbn" name="isbn" type="text" />
           </Field>
         </>
+      ) : (
+        <Field label={t("year")} htmlFor="year" mono>
+          <Input id="year" name="year" type="number" />
+        </Field>
       )}
 
-      <Field label={t("coverUrl")} htmlFor="coverUrl" hint={t("coverUrlHint")}>
+      <Field
+        label={t("coverUrl")}
+        htmlFor="coverUrl"
+        hint={t("coverUrlHint")}
+        mono
+      >
         <Input id="coverUrl" name="coverUrl" type="url" />
       </Field>
 
@@ -56,7 +70,7 @@ export function ManualAddForm({ itemType }: { itemType: ItemType }) {
         <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
       )}
 
-      <Button type="submit" disabled={pending} className="mt-2">
+      <Button type="submit" disabled={pending} className="mt-2 w-full justify-center">
         {pending ? t("submitting") : t("submit")}
       </Button>
     </form>

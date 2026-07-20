@@ -165,7 +165,8 @@
       "titles": "Títulos",
       "people": "Personas"
     },
-    "noResultsTitle": "Nada coincide"
+    "noResultsTitle": "Nada coincide",
+    "resultsCount": "{count, plural, one {Resultado · #} other {Resultados · #}}"
   },
   "passes": {
     "diaryTitle": "Diario",

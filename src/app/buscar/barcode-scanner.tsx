@@ -54,20 +54,21 @@ export function BarcodeScanner() {
 
   return (
     <div className="flex flex-col gap-1 self-start">
+      {/* Chip outline con etiqueta (`.scan`), no el botón redondo de solo icono:
+          el frame A lo escribe con texto. Ojo al verificarlo — este bloque solo
+          se pinta dentro del wrapper Capacitor, así que en el navegador no sale. */}
       <button
         type="button"
         onClick={handleScan}
-        aria-label={t("button")}
-        title={t("button")}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground hover:bg-surface-muted"
+        className="inline-flex items-center gap-[9px] self-start rounded-[10px] border border-border bg-surface px-[13px] py-2 text-[12.5px] text-muted-foreground hover:text-foreground"
       >
         <svg
           viewBox="0 0 24 24"
-          width="20"
-          height="20"
+          width="17"
+          height="17"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden="true"
@@ -75,6 +76,7 @@ export function BarcodeScanner() {
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z" />
           <circle cx="12" cy="13" r="4" />
         </svg>
+        {t("button")}
       </button>
       {error && <p className="text-xs text-status-dropped">{error}</p>}
     </div>

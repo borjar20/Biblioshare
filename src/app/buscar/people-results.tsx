@@ -3,7 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { searchProfiles } from "@/lib/profile/search-profiles";
 import { UserAvatar } from "@/components/social/user-avatar";
-import { UserIcon } from "@/components/ui/icons";
+import { ChevronRightIcon } from "@/components/ui/icons";
+import { ResultsEyebrow } from "./results-eyebrow";
 
 // El antiguo /usuarios, ahora el modo "Personas" de /buscar.
 export async function PeopleResults({ query }: { query: string }) {
@@ -20,7 +21,10 @@ export async function PeopleResults({ query }: { query: string }) {
   }
 
   return (
-    <ul className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <ResultsEyebrow count={results.length} />
+
+      <ul className="flex flex-col gap-2">
       {results.map((p) => {
         const name = p.displayName || p.username;
         return (
@@ -38,11 +42,14 @@ export async function PeopleResults({ query }: { query: string }) {
                   @{p.username}
                 </span>
               </div>
-              <UserIcon className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
+              {/* Chevron, no el glifo de usuario: el frame 3 marca la fila como
+                  navegable hacia el perfil. */}
+              <ChevronRightIcon className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
             </Link>
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </div>
   );
 }
