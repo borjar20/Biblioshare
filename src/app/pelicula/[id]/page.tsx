@@ -44,6 +44,7 @@ import {
   CatalogEditor,
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
+import { NotesSection } from "@/components/notes/notes-section";
 
 export async function generateMetadata({
   params,
@@ -437,16 +438,19 @@ async function MovieTabs({
         </div>
       }
       log={
-        <LogPanel
-          itemType="movie"
-          itemId={movie.id}
-          entry={entry}
-          passes={passes}
-          sessions={[]}
-          editions={editions}
-          initialClosingPassId={initialClosingPassId}
-          canContribute={canContribute}
-        />
+        <div className="flex flex-col gap-4">
+          <LogPanel
+            itemType="movie"
+            itemId={movie.id}
+            entry={entry}
+            passes={passes}
+            sessions={[]}
+            editions={editions}
+            initialClosingPassId={initialClosingPassId}
+            canContribute={canContribute}
+          />
+          {userId && <NotesSection userId={userId} itemType="movie" itemId={movie.id} />}
+        </div>
       }
     />
   );

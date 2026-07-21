@@ -1534,7 +1534,14 @@
     "saving": "Guardando…",
     "cancel": "Cancelar",
     "errorEmpty": "Escribe algo antes de guardar.",
-    "errorGeneric": "No se pudo guardar. Inténtalo de nuevo."
+    "errorGeneric": "No se pudo guardar. Inténtalo de nuevo.",
+    "sectionTitle": "Mis notas y citas",
+    "sectionEmpty": "Aún no has anotado nada de esta obra. Puedes hacerlo mientras registras una sesión.",
+    "spoilerBadge": "Spoiler",
+    "publicBadge": "Compartible",
+    "delete": "Borrar",
+    "favoriteOn": "Quitar de favoritas",
+    "favoriteOff": "Marcar como favorita"
   },
   "rincon": {
     "drawTitle": "¿No sabes qué leer?",

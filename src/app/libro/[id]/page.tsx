@@ -46,6 +46,7 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
+import { NotesSection } from "@/components/notes/notes-section";
 
 export async function generateMetadata({
   params,
@@ -512,6 +513,7 @@ async function BookTabs({
             initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />
+          {userId && <NotesSection userId={userId} itemType="book" itemId={book.id} />}
         </div>
       }
     />

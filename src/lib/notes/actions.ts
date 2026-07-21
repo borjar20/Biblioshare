@@ -81,10 +81,15 @@ export async function addNote(
   return {};
 }
 
-// Marca / desmarca una nota como favorita (RLS acota al dueño).
+// Marca / desmarca una nota como favorita (RLS acota al dueño). itemType/
+// itemId son solo para revalidar la ficha desde donde se pinta la lista
+// ("Mis notas y citas", Tarea 8) — sin esto, la tarjeta cambiaría en BD pero
+// no en pantalla hasta recargar a mano (misma clase de bug que #36/#37/#39/#66).
 export async function toggleNoteFavorite(
   noteId: string,
   next: boolean,
+  itemType: ItemType,
+  itemId: string,
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -98,10 +103,15 @@ export async function toggleNoteFavorite(
     .eq("id", noteId)
     .eq("user_id", user.id);
 
+  revalidateItemPage(itemType, itemId);
   revalidateProfilePages();
 }
 
-export async function deleteNote(noteId: string): Promise<void> {
+export async function deleteNote(
+  noteId: string,
+  itemType: ItemType,
+  itemId: string,
+): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -110,5 +120,6 @@ export async function deleteNote(noteId: string): Promise<void> {
 
   await supabase.from("notes").delete().eq("id", noteId).eq("user_id", user.id);
 
+  revalidateItemPage(itemType, itemId);
   revalidateProfilePages();
 }
