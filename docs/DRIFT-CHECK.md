@@ -1,10 +1,11 @@
 # Chequeo de deriva documental — procedimiento
 
 > **[Procedimiento · a demanda]** No corre solo. Se lanza cuando quieras verificar que los
-> docs canónicos siguen coincidiendo con la realidad (prod + repo). Última ejecución: —
+> docs canónicos siguen coincidiendo con la realidad (prod + dev + repo). Última ejecución:
+> 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122)
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
-Compara cuatro superficies y reporta solo lo que **no cuadra**.
+Compara cinco superficies y reporta solo lo que **no cuadra**.
 
 ## Qué se compara
 
@@ -47,10 +48,77 @@ contra los **objetos** (`pg_proc`, `pg_class`), no solo el ledger. (Caso conocid
   el objeto en BD, o el fichero en `src/`.
 - Ítems `[ ]` que en realidad ya existen en el código (falsos pendientes).
 
+### 5. Entornos — dev ↔ prod
+
+Que los dos proyectos Supabase tengan **el mismo esquema**. Esta superficie nació de la
+issue #118: un trigger (`promote_active_pass_after_delete`) estaba en prod y no en dev, y el
+único síntoma era **un e2e que fallaba solo en local** — indistinguible de un test *flaky*.
+El barrido posterior (#121) encontró una segunda: una policy con la rama `tierlist` en prod
+y sin ella en dev.
+
+La deriva muerde en las **dos** direcciones, y la segunda es la grave:
+
+- **prod por delante de dev** → los e2e fallan en local por algo que en producción funciona.
+- **dev por delante de prod** → se despliega código que espera un objeto que producción no
+  tiene. Puede tumbar la app.
+
+⚠️ **Hay que NORMALIZAR o el barrido es inservible.** Comparar `md5(prosrc)` en crudo dio
+**6 funciones «distintas»** que eran idénticas en lógica: una difería solo en **CRLF vs LF**
+(aplicada desde Windows en un entorno y desde otro sitio en el otro) y el resto en
+**comentarios**. Ese ruido entierra las diferencias reales. La consulta de abajo quita
+comentarios, colapsa espacios y baja a minúsculas.
+
+**Paso 1 — digest por tipo.** Lanzar en dev y en prod y comparar las cinco filas. Si las
+cinco coinciden, los esquemas son equivalentes y se acabó:
+
+```sql
+with f as (
+  select 'func' kind, p.proname as name,
+         md5(lower(regexp_replace(regexp_replace(regexp_replace(p.prosrc,'--[^\n\r]*','','g'),'\s+',' ','g'),'^ | $','','g'))) as h
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'
+), t as (
+  select 'trigger', c.relname||'.'||tg.tgname, md5(lower(regexp_replace(pg_get_triggerdef(tg.oid),'\s+',' ','g')))
+    from pg_trigger tg join pg_class c on c.oid=tg.tgrelid join pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='public' and not tg.tgisinternal
+), col as (
+  select 'columns', table_name, md5(string_agg(column_name||':'||data_type||':'||is_nullable, ',' order by column_name))
+    from information_schema.columns where table_schema='public' group by table_name
+), pol as (
+  select 'policy', tablename||'.'||policyname,
+         md5(lower(regexp_replace(cmd||'|'||array_to_string(roles,',')||'|'||coalesce(qual,'')||'|'||coalesce(with_check,''),'\s+',' ','g')))
+    from pg_policies where schemaname='public'
+), idx as (
+  select 'index', indexname, md5(lower(regexp_replace(indexdef,'\s+',' ','g'))) from pg_indexes where schemaname='public'
+), todo as (
+  select * from f union all select * from t union all select * from col
+  union all select * from pol union all select * from idx
+)
+select kind, count(*) n, md5(string_agg(name||'='||h, ',' order by name)) digest
+  from todo group by kind order by kind;
+```
+
+**Paso 2 — solo para los tipos que difieran**, cambiar el `select` final por el detalle y
+comparar las dos listas a ojo (el objeto que sobra o falta salta enseguida):
+
+```sql
+select kind, string_agg(name||'~'||left(h,6), ' ' order by name) from todo group by kind;
+```
+
+**Paso 3 — para un objeto concreto que difiera**, sacar su definición en los dos entornos
+(`prosrc` para funciones, `qual`/`with_check` de `pg_policies` para políticas) y decidir
+**cuál de los dos coincide con `supabase/migrations/`**, que es la fuente de verdad. El que
+no coincida es el que hay que poner al día.
+
+**Referencia:** el 2026-07-21, tras aplicar #118, #121 y #122, los dos entornos quedaron con
+digests idénticos: `columns` 45, `func` 57, `index` 116, `policy` 124, `trigger` 25. Si un
+barrido futuro da otros números, la diferencia es nueva.
+
 ## Salida
 Un informe corto por superficie: "coincide" o la lista de divergencias concretas, con la
-acción sugerida (actualizar doc / anexar migración / marcar checkbox). No modifica nada solo.
+acción sugerida (actualizar doc / anexar migración / marcar checkbox / aplicar al entorno
+que va por detrás). No modifica nada solo.
 
 ## Cómo pedirlo
-Basta con: *"corre el chequeo de deriva"*. Se ejecutan las cuatro comparaciones contra el
-proyecto de prod y el repo conectado, y se actualiza la fecha de "Última ejecución" de arriba.
+Basta con: *"corre el chequeo de deriva"*. Se ejecutan las cinco comparaciones contra los
+proyectos de prod y dev y el repo conectado, y se actualiza la fecha de "Última ejecución"
+de arriba.
