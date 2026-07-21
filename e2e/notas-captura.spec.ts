@@ -146,6 +146,18 @@ async function deleteNotesByBody(userId: string, body: string) {
   await assertOk(res, `deleteNotesByBody: DELETE notes?body=${body}`);
 }
 
+// La nota de una sesión se escribe TAMBIÉN en `progress_sessions.note`, así que
+// borrar solo la fila de `notes` deja media pareja detrás y `devtest` acumula
+// sesiones de prueba entre corridas. Se borra la sesión entera: es de esta
+// prueba, no del usuario.
+async function deleteSessionsByNote(userId: string, body: string) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/progress_sessions?user_id=eq.${userId}&note=eq.${encodeURIComponent(body)}`,
+    { method: "DELETE", headers: headers() },
+  );
+  await assertOk(res, `deleteSessionsByNote: DELETE progress_sessions?note=${body}`);
+}
+
 async function countNotesByBody(userId: string, body: string): Promise<number> {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&body=eq.${encodeURIComponent(body)}&select=id`,
@@ -236,6 +248,7 @@ test("el anclaje de la nota sigue a la pagina que acabo de marcar, NO a la guard
   } finally {
     await settleCleanup([
       () => deleteNotesByBody(userId, BODY),
+      () => deleteSessionsByNote(userId, BODY),
       () => restorePass(passId, snapshot),
     ]);
   }
@@ -329,5 +342,48 @@ test("guardar la sesion con el compositor vacio no crea ninguna nota", async ({ 
     expect(await countNotesByItem(userId, itemId)).toBe(countBefore);
   } finally {
     await settleCleanup([() => restorePass(passId, snapshot)]);
+  }
+});
+
+// Regresión de la issue #109: el texto de una nota tomada durante una sesión se
+// pintaba DOS veces en la pestaña Registro — una desde `progress_sessions.note`
+// (session-list) y otra desde la tabla `notes` (NotesSection). `addSession`
+// escribe en las dos, deliberadamente, así que el arreglo no es dejar de
+// escribir sino dejar de pintar la copia que ya tiene hogar.
+test("la nota de una sesion se pinta UNA sola vez en Registro", async ({ page }) => {
+  test.setTimeout(90_000);
+  await login(page);
+  const userId = await devtestId();
+  const { itemId, passId, snapshot } = await resolveBookFixture(userId);
+  const BODY = "e2e · nota que no debe salir dos veces";
+
+  try {
+    await setPassPage(passId, 150);
+    await page.goto(`/libro/${itemId}?tab=log`);
+    await sessionLink(page, passId).click();
+    await page.waitForURL(/\/sesion\//);
+
+    const dialog = page.getByRole("dialog");
+    await dialog.locator('input[name="page"]').fill("170");
+    await dialog.getByRole("button", { name: /añadir una nota o cita/i }).click();
+    await dialog.locator('textarea[name="note"]').fill(BODY);
+    await dialog.getByRole("button", { name: /guardar sesión y cita/i }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+
+    await page.goto(`/libro/${itemId}?tab=log`);
+    // Exactamente una. Antes del arreglo salían dos: la de session-list y la de
+    // «Mis notas y citas».
+    await expect(page.getByText(BODY, { exact: true })).toHaveCount(1);
+
+    // Y la que queda es la tarjeta de notas, con su anclaje — no la línea suelta
+    // de la lista de sesiones.
+    const card = page.getByText(BODY, { exact: true }).locator("xpath=ancestor::article");
+    await expect(card.getByText(/Pág\. 170/)).toBeVisible();
+  } finally {
+    await settleCleanup([
+      () => deleteNotesByBody(userId, BODY),
+      () => deleteSessionsByNote(userId, BODY),
+      () => restorePass(passId, snapshot),
+    ]);
   }
 });
