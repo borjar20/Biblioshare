@@ -192,10 +192,19 @@ export async function getNoteCounts(
 // azar entre estas, no entre todas: la tarjeta enseña UNA nota, y traerse mil
 // filas para eso es lo que este ciclo viene a arreglar. «Ver todas» lleva al
 // cuaderno, que sí las recorre enteras paginando.
+//
+// **El sorteo se hace AQUÍ, no en la tarjeta** (issue #112). En el componente de
+// cliente corría dos veces —al renderizar en servidor y al hidratar— y daba dos
+// notas distintas, así que React tumbaba la hidratación. Y tampoco puede ir en
+// el cuerpo de RinconTab: `react-hooks/purity` prohíbe llamar a una función
+// impura durante el render, con razón (un re-render movería la nota). Esta
+// función no es un componente, se ejecuta una vez por petición, y es la que ya
+// se llama "para el sorteo": aquí la aleatoriedad es su trabajo, no un efecto
+// secundario.
 export async function getNotesForSorteo(
   supabase: SupabaseServerClient,
   userId: string,
-): Promise<Note[]> {
+): Promise<{ notes: Note[]; initialIndex: number }> {
   const { data, error } = await supabase
     .from("notes")
     .select(NOTE_COLUMNS)
@@ -206,7 +215,12 @@ export async function getNotesForSorteo(
   if (error) throw error;
   const rows = (data ?? []) as Row[];
   const titleByKey = await resolveTitles(supabase, rows);
-  return rows.map((r) => toNote(r, titleByKey.get(`${r.item_type}:${r.item_id}`) ?? null));
+  const notes = rows.map((r) => toNote(r, titleByKey.get(`${r.item_type}:${r.item_id}`) ?? null));
+
+  return {
+    notes,
+    initialIndex: notes.length > 0 ? Math.floor(Math.random() * notes.length) : 0,
+  };
 }
 
 // Una nota por id, con el título de la obra resuelto. RLS la acota al dueño: si

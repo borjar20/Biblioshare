@@ -45,7 +45,7 @@ export async function RinconTab({
   // Memorizar se lleva una muestra acotada (elige UNA al azar) y los contadores
   // salen de un `count` en SQL. Antes las dos cosas se derivaban del array
   // completo de notas, que viajaba entero al cliente.
-  const [challenges, notes, counts, pool] = await Promise.all([
+  const [challenges, sorteo, counts, pool] = await Promise.all([
     getChallenges(supabase, userId, { includeArchived }),
     getNotesForSorteo(supabase, userId),
     getNoteCounts(supabase, userId),
@@ -88,7 +88,11 @@ export async function RinconTab({
       </div>
 
       <Card>
-        <MemorizeCard notes={notes} />
+        {/* La nota inicial la sortea getNotesForSorteo y viaja como prop:
+            sortearla dentro del componente de cliente daba dos resultados
+            distintos en servidor y en hidratación → error de hidratación en
+            cada visita al perfil (issue #112). */}
+        <MemorizeCard notes={sorteo.notes} initialIndex={sorteo.initialIndex} />
       </Card>
     </div>
   );

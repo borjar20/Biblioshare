@@ -14,11 +14,24 @@ import { formatPosition } from "@/lib/library/position";
 // `notes` es una MUESTRA acotada (getNotesForSorteo), no todas: por eso el
 // enlace a /notas no dice cuántas hay — el recuento de verdad lo pone el
 // cuaderno, que es quien las recorre enteras.
-export function MemorizeCard({ notes }: { notes: Note[] }) {
+//
+// La nota INICIAL la elige el servidor y llega como prop (issue #112). Antes se
+// sorteaba aquí, en el inicializador del useState: ese código corre dos veces
+// —una al renderizar en servidor y otra al hidratar— y con dos notas o más los
+// dos sorteos casi nunca coinciden, así que el HTML servido y el que React
+// esperaba diferían y saltaba un error de hidratación en CADA visita al perfil.
+// Al viajar serializada, los dos lados parten del mismo número. Sortear en un
+// efecto tras montar también lo quitaría, pero pintaría una nota y la cambiaría
+// después, que se ve como un parpadeo.
+export function MemorizeCard({
+  notes,
+  initialIndex,
+}: {
+  notes: Note[];
+  initialIndex: number;
+}) {
   const t = useTranslations("notes");
-  const [index, setIndex] = useState(() =>
-    notes.length > 0 ? Math.floor(Math.random() * notes.length) : 0,
-  );
+  const [index, setIndex] = useState(initialIndex);
 
   if (notes.length === 0) {
     return (
@@ -31,7 +44,9 @@ export function MemorizeCard({ notes }: { notes: Note[] }) {
     );
   }
 
-  const note = notes[index];
+  // El índice llega de fuera: si viniera fuera de rango, mejor la primera nota
+  // que un `undefined` que revienta al leer `note.body`.
+  const note = notes[index] ?? notes[0];
 
   function another() {
     if (notes.length < 2) return;
