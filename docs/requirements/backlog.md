@@ -39,8 +39,8 @@
 - [x] **Relecturas visibles + comparativa entre pases** (§7.13) — `rereadCount` y delta contra el pase anterior.
 - [x] ~~**Cola priorizada con tiempo estimado**~~ (§7.22) — **RETIRADA el 2026-07-20.** `/cola` reordenable (DnD), estimación por ritmo personal y colas múltiples nombradas se construyeron y funcionaron, pero al integrar Colección v2 la pantalla quedó **inalcanzable** (fuera de las subpestañas, sin ningún enlace a `?tab=colas`). Su único papel vivo —acotar el sorteo a un subconjunto— lo cubren ahora las colecciones `is_sorteable`. La UI está borrada; la tabla `queues` sigue en pie a la espera de su `DROP`. Ver `decisiones.md` (2026-07-20).
 - [x] **Random picker** (§7.28) — "sacar un lomo" con ruleta y filtros (tipo/duración/sin empezar **y colección sorteable**). Spec/plan en `docs/superpowers/` (2026-07-17); filtro por colección añadido el 2026-07-20.
-- [x] **Notas ancladas al punto de progreso** (§7.24)
-- [x] **Citas y frases destacadas, texto** (§7.27)
+- [x] **Notas ancladas al punto de progreso** (§7.24) — captura desde la hoja de sesión y desde la ficha, con el anclaje siguiendo en vivo a la página/episodio que marcas; relectura en la ficha ordenada por posición. Spec en `docs/superpowers/specs/` (2026-07-21).
+- [x] **Citas y frases destacadas, texto** (§7.27) — mismo ciclo, más el **cuaderno `/notas`**: filtros (obra, tipo, etiqueta, favoritas), búsqueda y paginación en servidor.
 
 ### Estadísticas y hábitos
 - [x] **Sesiones de progreso diarias** (§7.14) — `progress_sessions` + estadísticas diarias, calendario mensual, rachas y anuales (objetivos por tipo). Dashboard privado en el home.

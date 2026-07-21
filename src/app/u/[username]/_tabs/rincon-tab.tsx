@@ -5,7 +5,7 @@ import { getChallenges } from "@/lib/challenges/get-challenges";
 import { getChallengeProgress } from "@/lib/challenges/get-challenge-progress";
 import { ChallengeCard } from "@/components/challenges/challenge-card";
 import { NewChallenge } from "@/components/challenges/new-challenge";
-import { getNotes, countNotes } from "@/lib/notes/get-notes";
+import { getNoteCounts, getNotesForSorteo } from "@/lib/notes/get-notes";
 import { MemorizeCard } from "@/components/notes/memorize-card";
 import { NotesCountsCard } from "@/components/notes/notes-counts-card";
 import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
@@ -42,9 +42,13 @@ export async function RinconTab({
   const tChallenges = await getTranslations("challenges");
   const supabase = await createClient();
 
-  const [challenges, notes, pool] = await Promise.all([
+  // Memorizar se lleva una muestra acotada (elige UNA al azar) y los contadores
+  // salen de un `count` en SQL. Antes las dos cosas se derivaban del array
+  // completo de notas, que viajaba entero al cliente.
+  const [challenges, notes, counts, pool] = await Promise.all([
     getChallenges(supabase, userId, { includeArchived }),
-    getNotes(supabase, userId),
+    getNotesForSorteo(supabase, userId),
+    getNoteCounts(supabase, userId),
     getSorteoPool(supabase, userId),
   ]);
   const challengeProgress = await getChallengeProgress(
@@ -52,7 +56,6 @@ export async function RinconTab({
     userId,
     challenges,
   );
-  const counts = countNotes(notes);
 
   const main = (
     <div className="flex flex-col gap-4">
