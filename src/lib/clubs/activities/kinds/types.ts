@@ -52,6 +52,7 @@ export type ActivityKindDefinition = {
     viewerId: string;
     isModerator: boolean;
     onChanged: () => void;
+    clubSlug: string;
     // SIEMPRE la referencia importada `ActivityLayout`, nunca un wrapper
     // `(props) => <ActivityLayout {...props} .../>` creado inline en el
     // render del padre: una flecha inline es un tipo de componente distinto

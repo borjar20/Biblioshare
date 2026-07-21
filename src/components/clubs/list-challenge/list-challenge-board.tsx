@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ActivityDetail, ActivityItem } from "@/lib/clubs/activities/core";
@@ -13,9 +14,11 @@ import {
 import { itemHref } from "@/lib/catalog/item-href";
 import { CheckIcon, ChevronDownIcon } from "@/components/ui/icons";
 import { MemberRankRow } from "@/components/clubs/member-rank-row";
+import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { ListChallengeSummary } from "./list-challenge-summary";
 import { ListChallengeGrid } from "./list-challenge-grid";
 import { ItemConnectSheet } from "./item-connect-sheet";
+import { LinkedActivities } from "./linked-activities";
 
 // DetailExtension de list_challenge (registro de kinds, EPIC-05 Bloque H3).
 // Mismo patrón de montaje que BuddyReadCheckpoints (H1): estado propio + su
@@ -34,11 +37,17 @@ export function ListChallengeBoard({
   activity,
   viewerId,
   isModerator,
+  clubSlug,
+  Layout,
+  railExtra,
 }: {
   activity: ActivityDetail;
   viewerId: string;
   isModerator: boolean;
   onChanged: () => void;
+  clubSlug: string;
+  Layout: ComponentType<ActivityLayoutProps>;
+  railExtra: ReactNode;
 }) {
   const t = useTranslations("activity");
   const [view, setView] = useState<ListChallengeProgressView | null>(null);
@@ -91,117 +100,128 @@ export function ListChallengeBoard({
   const completionMode = readCompletionMode(activity.config);
 
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-        {t("listChallengeProgress")}
-      </h2>
-
-      <ListChallengeSummary
-        itemCount={activity.items.length}
-        viewerCompleted={viewer?.completedKeys.length ?? 0}
-        position={viewerRank}
-        participantCount={view.participants.length}
-      />
-
-      <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-        {t("listChallengeList")}
-      </h3>
-      <div className="grid grid-cols-5 gap-2">
-        {activity.items.map((item) => {
-          const done = viewer?.completedKeys.includes(itemKey(item.itemType, item.itemId)) ?? false;
-          const itemClassName =
-            "relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted";
-          const cover = (
-            <>
-              {item.itemCoverUrl && (
-                // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
-                <img
-                  src={item.itemCoverUrl}
-                  alt={item.itemTitle}
-                  className={`h-full w-full object-cover ${done ? "" : "opacity-55"}`}
-                />
-              )}
-              {done && (
-                <span className="absolute inset-0 grid place-items-center bg-status-completed/55">
-                  <CheckIcon className="h-4 w-4 text-accent-foreground" />
-                </span>
-              )}
-            </>
-          );
-          // canConnect (curador/mod + reto activo): el ítem abre la hoja de conexión (frame 14)
-          // en vez de ir directo a su ficha -- desde ahí también se puede llegar a la ficha.
-          return canConnect ? (
-            <button
-              key={item.id}
-              type="button"
-              title={item.itemTitle}
-              onClick={() => setSheetItem(item)}
-              className={itemClassName}
-            >
-              {cover}
-            </button>
-          ) : (
-            <Link
-              key={item.id}
-              href={itemHref(item.itemType, item.itemId)}
-              title={item.itemTitle}
-              className={itemClassName}
-            >
-              {cover}
-            </Link>
-          );
-        })}
-      </div>
-
-      <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-        {t("listChallengeRanking")}
-      </h3>
-      <div className="flex flex-col">
-        {ranked.map((p) => (
-          <MemberRankRow
-            key={p.userId}
-            name={p.displayName || p.username}
-            avatarUrl={p.avatarUrl}
-            isViewer={p.isViewer}
-            percent={
-              activity.items.length > 0
-                ? (p.completedKeys.length / activity.items.length) * 100
-                : 0
-            }
-            counter={`${p.completedKeys.length}/${activity.items.length}`}
-            fill="accent"
+    <Layout
+      railExtra={railExtra}
+      railTop={
+        <div className="flex flex-col gap-3">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("listChallengeProgress")}
+          </h2>
+          <ListChallengeSummary
+            itemCount={activity.items.length}
+            viewerCompleted={viewer?.completedKeys.length ?? 0}
+            position={viewerRank}
+            participantCount={view.participants.length}
           />
-        ))}
-      </div>
-
-      <details className="group">
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          <ChevronDownIcon
-            aria-hidden
-            className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
-          />
-          {t("listChallengeMatrix")}
-        </summary>
-        <div className="mt-3">
-          <ListChallengeGrid items={activity.items} participants={view.participants} />
         </div>
-      </details>
+      }
+      body={
+        <div className="flex flex-col gap-3">
+          <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("listChallengeList")}
+          </h3>
+          {/* En PC la rejilla gana ancho: 8 columnas como el frame 2 del mockup. */}
+          <div className="grid grid-cols-5 gap-2 lg:grid-cols-8">
+            {activity.items.map((item) => {
+              const done =
+                viewer?.completedKeys.includes(itemKey(item.itemType, item.itemId)) ?? false;
+              const itemClassName =
+                "relative aspect-[2/3] overflow-hidden rounded-[5px] border border-border bg-surface-muted";
+              const cover = (
+                <>
+                  {item.itemCoverUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
+                    <img
+                      src={item.itemCoverUrl}
+                      alt={item.itemTitle}
+                      className={`h-full w-full object-cover ${done ? "" : "opacity-55"}`}
+                    />
+                  )}
+                  {done && (
+                    <span className="absolute inset-0 grid place-items-center bg-status-completed/55">
+                      <CheckIcon className="h-4 w-4 text-accent-foreground" />
+                    </span>
+                  )}
+                </>
+              );
+              return canConnect ? (
+                <button
+                  key={item.id}
+                  type="button"
+                  title={item.itemTitle}
+                  onClick={() => setSheetItem(item)}
+                  className={itemClassName}
+                >
+                  {cover}
+                </button>
+              ) : (
+                <Link
+                  key={item.id}
+                  href={itemHref(item.itemType, item.itemId)}
+                  title={item.itemTitle}
+                  className={itemClassName}
+                >
+                  {cover}
+                </Link>
+              );
+            })}
+          </div>
 
-      {/* Esta línea es lo que hace legible la regla del reto: el progreso es
-          DERIVADO, no se marca a mano -- y qué lo deriva depende de la modalidad
-          (H3b). Sin ella, la rejilla es un misterio. */}
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        {completionMode === "any"
-          ? t("listChallengeRuleOpen")
-          : t("listChallengeRule", { start: view.windowStart, end: view.windowEnd })}
-      </p>
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              <ChevronDownIcon
+                aria-hidden
+                className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
+              />
+              {t("listChallengeMatrix")}
+            </summary>
+            <div className="mt-3">
+              <ListChallengeGrid items={activity.items} participants={view.participants} />
+            </div>
+          </details>
 
-      <ItemConnectSheet
-        parentActivityId={activity.id}
-        item={sheetItem}
-        open={sheetItem !== null}
-        onClose={() => setSheetItem(null)}
-      />
-    </div>
+          {/* Esta línea es lo que hace legible la regla del reto: el progreso es
+              DERIVADO, no se marca a mano -- y qué lo deriva depende de la
+              modalidad (H3b). Sin ella, la rejilla es un misterio. */}
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {completionMode === "any"
+              ? t("listChallengeRuleOpen")
+              : t("listChallengeRule", { start: view.windowStart, end: view.windowEnd })}
+          </p>
+
+          <ItemConnectSheet
+            parentActivityId={activity.id}
+            item={sheetItem}
+            open={sheetItem !== null}
+            onClose={() => setSheetItem(null)}
+          />
+        </div>
+      }
+      railBottom={
+        <div className="flex flex-col gap-3">
+          <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("listChallengeRanking")}
+          </h3>
+          <div className="flex flex-col">
+            {ranked.map((p) => (
+              <MemberRankRow
+                key={p.userId}
+                name={p.displayName || p.username}
+                avatarUrl={p.avatarUrl}
+                isViewer={p.isViewer}
+                percent={
+                  activity.items.length > 0
+                    ? (p.completedKeys.length / activity.items.length) * 100
+                    : 0
+                }
+                counter={`${p.completedKeys.length}/${activity.items.length}`}
+                fill="accent"
+              />
+            ))}
+          </div>
+          <LinkedActivities activity={activity} isCurator={isCurator} clubSlug={clubSlug} />
+        </div>
+      }
+    />
   );
 }

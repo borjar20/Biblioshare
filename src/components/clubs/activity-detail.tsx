@@ -16,7 +16,6 @@ import { ActivityChat } from "./activity-chat";
 import { ActivityItemPool } from "./activity-item-pool";
 import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
 import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
-import { LinkedActivities } from "./list-challenge/linked-activities";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ActivityLayout } from "./activity-layout";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
@@ -179,6 +178,7 @@ export function ActivityDetailView({
           viewerId={viewerId}
           isModerator={isModerator}
           onChanged={refreshActivity}
+          clubSlug={clubSlug}
           Layout={ActivityLayout}
           railExtra={participantsBlock}
         />
@@ -481,14 +481,6 @@ export function ActivityDetailView({
       )}
 
       {structureSection}
-
-      {activity.kind === "list_challenge" && (
-        <LinkedActivities
-          activity={activity}
-          isCurator={isCreator || isModerator}
-          clubSlug={clubSlug}
-        />
-      )}
 
       {/* Chat general de la actividad: no en buddy_read (que ya tiene sus
           chats por checkpoint) y solo visible/usable para participantes -- la
