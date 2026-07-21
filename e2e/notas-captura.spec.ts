@@ -28,6 +28,37 @@ function headers() {
   };
 }
 
+// PostgREST puede devolver 401/403/500 sin que fetch lance: hay que mirar
+// res.ok explícitamente o un fallo de limpieza/lectura pasa desapercibido.
+async function assertOk(res: Response, context: string): Promise<void> {
+  if (res.ok) return;
+  let body = "";
+  try {
+    body = await res.text();
+  } catch {
+    // sin cuerpo legible, se reporta solo el estado.
+  }
+  throw new Error(
+    `${context}: HTTP ${res.status} ${res.statusText}${body ? ` — ${body}` : ""}`,
+  );
+}
+
+// Ejecuta varios pasos de limpieza de forma aislada: el fallo de uno no
+// cancela los demás (a diferencia de encadenar awaits en el mismo finally).
+// Si alguno falla, se relanza al final para que el fallo sea ruidoso.
+async function settleCleanup(steps: Array<() => Promise<void>>): Promise<void> {
+  const results = await Promise.allSettled(steps.map((step) => step()));
+  const failures = results.filter(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
+  );
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures.map((f) => f.reason),
+      `fallaron ${failures.length} de ${steps.length} paso(s) de limpieza`,
+    );
+  }
+}
+
 let cachedUserId: string | null = null;
 async function devtestId(): Promise<string> {
   if (cachedUserId) return cachedUserId;
@@ -35,6 +66,7 @@ async function devtestId(): Promise<string> {
     `${SUPABASE_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(USERNAME)}&select=user_id`,
     { headers: headers() },
   );
+  await assertOk(res, `devtestId: GET profiles?username=${USERNAME}`);
   const rows = (await res.json()) as { user_id: string }[];
   if (!rows[0]) throw new Error(`no se encontró el perfil de ${USERNAME}`);
   cachedUserId = rows[0].user_id;
@@ -54,6 +86,7 @@ async function resolveBookFixture(userId: string) {
     `${SUPABASE_URL}/rest/v1/books?title=eq.${encodeURIComponent("The Final Empire")}&select=id`,
     { headers: headers() },
   );
+  await assertOk(bookRes, 'resolveBookFixture: GET books?title="The Final Empire"');
   const [book] = (await bookRes.json()) as { id: string }[];
   if (!book) throw new Error('no se encontró el libro fixture "The Final Empire"');
 
@@ -61,6 +94,7 @@ async function resolveBookFixture(userId: string) {
     `${SUPABASE_URL}/rest/v1/passes?user_id=eq.${userId}&item_type=eq.book&item_id=eq.${book.id}&is_active=eq.true&select=id,status,position`,
     { headers: headers() },
   );
+  await assertOk(passRes, `resolveBookFixture: GET passes?item_id=${book.id}`);
   const [pass] = (await passRes.json()) as {
     id: string;
     status: string;
@@ -75,37 +109,41 @@ async function resolveSeriesFixture(userId: string) {
     `${SUPABASE_URL}/rest/v1/series?title=eq.${encodeURIComponent("Juego de tronos")}&select=id`,
     { headers: headers() },
   );
+  await assertOk(seriesRes, 'resolveSeriesFixture: GET series?title="Juego de tronos"');
   const [series] = (await seriesRes.json()) as { id: string }[];
   if (!series) throw new Error('no se encontró la serie fixture "Juego de tronos"');
   return { itemId: series.id };
 }
 
 async function setPassPage(passId: string, page: number) {
-  await fetch(`${SUPABASE_URL}/rest/v1/passes?id=eq.${passId}`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/passes?id=eq.${passId}`, {
     method: "PATCH",
     headers: headers(),
     body: JSON.stringify({ position: { page }, status: "in_progress" }),
   });
+  await assertOk(res, `setPassPage: PATCH passes?id=${passId} (page=${page})`);
 }
 
 async function restorePass(
   passId: string,
   snapshot: { status: string; position: unknown },
 ) {
-  await fetch(`${SUPABASE_URL}/rest/v1/passes?id=eq.${passId}`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/passes?id=eq.${passId}`, {
     method: "PATCH",
     headers: headers(),
     body: JSON.stringify({ status: snapshot.status, position: snapshot.position }),
   });
+  await assertOk(res, `restorePass: PATCH passes?id=${passId}`);
 }
 
 // `devtest` es una cuenta persistente y compartida: toda nota creada por un
 // test se borra en su finally, o envenena las corridas siguientes.
 async function deleteNotesByBody(userId: string, body: string) {
-  await fetch(
+  const res = await fetch(
     `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&body=eq.${encodeURIComponent(body)}`,
     { method: "DELETE", headers: headers() },
   );
+  await assertOk(res, `deleteNotesByBody: DELETE notes?body=${body}`);
 }
 
 async function countNotesByBody(userId: string, body: string): Promise<number> {
@@ -113,6 +151,16 @@ async function countNotesByBody(userId: string, body: string): Promise<number> {
     `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&body=eq.${encodeURIComponent(body)}&select=id`,
     { headers: headers() },
   );
+  await assertOk(res, `countNotesByBody: GET notes?body=${body}`);
+  return ((await res.json()) as unknown[]).length;
+}
+
+async function countNotesByItem(userId: string, itemId: string): Promise<number> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&item_id=eq.${itemId}&select=id`,
+    { headers: headers() },
+  );
+  await assertOk(res, `countNotesByItem: GET notes?item_id=${itemId}`);
   return ((await res.json()) as unknown[]).length;
 }
 
@@ -122,7 +170,7 @@ async function insertNote(
   body: string,
   position: Record<string, number>,
 ) {
-  await fetch(`${SUPABASE_URL}/rest/v1/notes`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/notes`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({
@@ -134,6 +182,7 @@ async function insertNote(
       position,
     }),
   });
+  await assertOk(res, `insertNote: POST notes (body=${body})`);
 }
 
 function sessionLink(page: Page, passId: string) {
@@ -185,8 +234,10 @@ test("el anclaje de la nota sigue a la pagina que acabo de marcar, NO a la guard
     await expect(card).toBeVisible();
     await expect(card.getByText(/Pág\. 240/)).toBeVisible();
   } finally {
-    await deleteNotesByBody(userId, BODY);
-    await restorePass(passId, snapshot);
+    await settleCleanup([
+      () => deleteNotesByBody(userId, BODY),
+      () => restorePass(passId, snapshot),
+    ]);
   }
 });
 
@@ -214,7 +265,7 @@ test("capturar desde la ficha sin sesion, y borrar desde la lista", async ({ pag
     await expect(page.getByText(BODY)).toHaveCount(0, { timeout: 15_000 });
     expect(await countNotesByBody(userId, BODY)).toBe(0);
   } finally {
-    await deleteNotesByBody(userId, BODY);
+    await settleCleanup([() => deleteNotesByBody(userId, BODY)]);
   }
 });
 
@@ -247,8 +298,10 @@ test("el orden es por posicion: T1E12 va antes que T2E5", async ({ page }) => {
     // Tarea 4: antes se leía como "sin posición").
     await expect(page.getByText("T1E12")).toBeVisible();
   } finally {
-    await deleteNotesByBody(userId, EARLY);
-    await deleteNotesByBody(userId, LATE);
+    await settleCleanup([
+      () => deleteNotesByBody(userId, EARLY),
+      () => deleteNotesByBody(userId, LATE),
+    ]);
   }
 });
 
@@ -258,11 +311,7 @@ test("guardar la sesion con el compositor vacio no crea ninguna nota", async ({ 
   const userId = await devtestId();
   const { itemId, passId, snapshot } = await resolveBookFixture(userId);
 
-  const before = await fetch(
-    `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&item_id=eq.${itemId}&select=id`,
-    { headers: headers() },
-  );
-  const countBefore = ((await before.json()) as unknown[]).length;
+  const countBefore = await countNotesByItem(userId, itemId);
 
   try {
     await setPassPage(passId, 100);
@@ -277,12 +326,8 @@ test("guardar la sesion con el compositor vacio no crea ninguna nota", async ({ 
     await dialog.getByRole("button", { name: /^guardar sesión$/i }).click();
     await expect(dialog).toBeHidden({ timeout: 15_000 });
 
-    const after = await fetch(
-      `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&item_id=eq.${itemId}&select=id`,
-      { headers: headers() },
-    );
-    expect(((await after.json()) as unknown[]).length).toBe(countBefore);
+    expect(await countNotesByItem(userId, itemId)).toBe(countBefore);
   } finally {
-    await restorePass(passId, snapshot);
+    await settleCleanup([() => restorePass(passId, snapshot)]);
   }
 });
