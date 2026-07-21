@@ -34,12 +34,15 @@ export function NoteComposer({
   const [open, setOpen] = useState(defaultOpen);
   const [kind, setKind] = useState<"note" | "quote">("quote");
   const [body, setBody] = useState("");
-  // El anclaje llega sugerido pero es editable: la frase puede ser de tres
-  // páginas atrás. Se guarda como texto para no pelearse con el campo a medio
-  // escribir (mismo criterio que el stepper de BookProgressField).
-  const [page, setPage] = useState(
-    anchor.kind === "page" && anchor.page !== null ? String(anchor.page) : "",
-  );
+  // El anclaje NO se copia a estado: se deriva. `override` es null mientras el
+  // usuario no toque el campo, y entonces manda la prop —que en la hoja de
+  // sesión sigue en vivo al stepper de página—. En cuanto lo edita, manda su
+  // valor. Copiar la prop a un useState la congelaría en el montaje: el
+  // compositor se monta con la hoja y no se vuelve a montar, así que la nota
+  // se anclaría a la página GUARDADA en vez de a la que acabas de marcar.
+  const [override, setOverride] = useState<string | null>(null);
+  const page =
+    override ?? (anchor.kind === "page" && anchor.page !== null ? String(anchor.page) : "");
   const [editingAnchor, setEditingAnchor] = useState(false);
 
   function changeBody(next: string) {
@@ -125,7 +128,7 @@ export function NoteComposer({
               min={0}
               inputMode="numeric"
               value={page}
-              onChange={(e) => setPage(e.target.value)}
+              onChange={(e) => setOverride(e.target.value)}
             />
           </Field>
         ) : (
