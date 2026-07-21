@@ -75,8 +75,9 @@ export function ListChallengeBoard({
   // si `isParticipant`). Consecuencia: el early return de `!viewerIsParticipant`
   // de aquí abajo queda inalcanzable (el padre ya no monta este componente
   // para un no-participante) -- se conserva como defensa del componente, no se
-  // borra. El de `!view` sigue en `null`: mientras carga no hay nada que
-  // enseñar en ningún lado.
+  // borra. El de `!view` (mientras carga) también pasa por `Layout`, con el
+  // cuerpo vacío: los participantes llegan por props del SSR, no del fetch, así
+  // que se pintan desde el primer frame en vez de aparecer de golpe al resolver.
   if (activity.items.length === 0) {
     return (
       <Layout
