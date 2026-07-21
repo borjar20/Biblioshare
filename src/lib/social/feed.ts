@@ -39,7 +39,17 @@ export type FeedEvent = {
   rating: number | null;
   reviewExcerpt: string | null;
   episode: { season: number; episode: number; title: string | null } | null;
-  progress: { durationMinutes: number | null; note: string | null } | null;
+  // SIN el texto de la nota, a propósito. `progress_sessions.note` es la misma
+  // frase que guardas en `notes`, y esa tabla es privada del dueño: no tiene
+  // política de lectura pública y `is_public` se escribe pero todavía no se
+  // honra. El compositor promete literalmente «por ahora nadie más la ve».
+  // Servirla aquí la sacaba por la otra puerta —y por defecto, porque la
+  // casilla «Compartible» viene desmarcada—. Nadie la pintaba (feed-card solo
+  // usa los minutos), pero FeedCard es un componente de cliente, así que el
+  // texto viajaba serializado al navegador de tus seguidores. Cuando exista el
+  // muro público con filtro spoiler-safe, lo que se sirva será la fila de
+  // `notes` que el usuario haya marcado, no esta columna.
+  progress: { durationMinutes: number | null } | null;
   interactionTarget: { targetType: "diary_entry" | "episode_watch"; targetId: string } | null;
   reactionCount: number;
   viewerReacted: boolean;
@@ -227,7 +237,9 @@ export async function getFeed(
           let q = supabase
             .from("progress_sessions")
             .select(
-              "id, user_id, pass_id, session_date, duration_minutes, note, passes!inner(item_type, item_id)"
+              // `note` NO se pide: es texto privado del autor (ver el comentario
+              // del campo `progress` en FeedEvent).
+              "id, user_id, pass_id, session_date, duration_minutes, passes!inner(item_type, item_id)"
             )
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
@@ -479,7 +491,7 @@ export async function getFeed(
       rating: null,
       reviewExcerpt: null,
       episode: null,
-      progress: { durationMinutes: r.duration_minutes, note: r.note },
+      progress: { durationMinutes: r.duration_minutes },
       interactionTarget: null,
       reactionCount: 0,
       viewerReacted: false,
