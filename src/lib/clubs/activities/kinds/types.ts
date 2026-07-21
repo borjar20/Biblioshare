@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { ActivityDetail, ActivityKind } from "@/lib/clubs/activities/core";
+import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -42,11 +43,16 @@ export type ActivityKindDefinition = {
   // el pool de ítems / opiniones genéricos de G. No gateado por
   // isParticipant -- cada extensión decide qué mostrar a quién (p.ej.
   // buddy_read enseña la lista de checkpoints a todo el club, decisión 7).
+  //
+  // `Layout` es el reparto en tres ranuras (spec 2026-07-21): el tablero NO se
+  // parte en dos componentes -- los cuatro derivan de un solo fetch en estado
+  // local -- solo distribuye su propio JSX.
   DetailExtension?: ComponentType<{
     activity: ActivityDetail;
     viewerId: string;
     isModerator: boolean;
     onChanged: () => void;
+    Layout: ComponentType<ActivityLayoutProps>;
   }>;
 };
 

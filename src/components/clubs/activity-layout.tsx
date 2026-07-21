@@ -1,0 +1,49 @@
+import type { ComponentType, ReactNode } from "react";
+
+export type ActivityLayoutProps = {
+  /** En móvil va ANTES del tablero; en PC, arriba del rail derecho. */
+  railTop?: ReactNode;
+  /** El tablero del tipo de actividad. Columna izquierda en PC. */
+  body: ReactNode;
+  /** En móvil va DESPUÉS del tablero; en PC, debajo en el rail. */
+  railBottom?: ReactNode;
+  /** Piezas que aporta ActivityDetailView al rail (participantes). Solo se
+      pintan en PC: en móvil el padre ya las tiene en su posición del mockup. */
+  railExtra?: ReactNode;
+};
+
+export type ActivityLayoutComponent = ComponentType<ActivityLayoutProps>;
+
+// Tres ranuras, un solo DOM (spec, decisión 2). El orden del DOM ES el orden
+// móvil, que fluye natural; en `lg` un grid explícito recoloca:
+//
+//   railTop      -> col 2, fila 1        body -> col 1, filas 1-2
+//   railBottom   -> col 2, fila 2
+//
+// No se usa `hidden lg:block` para mover piezas: duplicaría controles y la
+// suite corre a 1280 (ver club-shell.tsx:14).
+export function ActivityLayout({
+  railTop,
+  body,
+  railBottom,
+  railExtra,
+}: ActivityLayoutProps) {
+  return (
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_296px] lg:items-start lg:gap-7">
+      {(railTop || railExtra) && (
+        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-1">
+          {/* railExtra solo existe en PC: en móvil el padre ya pintó
+              participantes en su sitio del mockup. */}
+          {railExtra && <div className="hidden lg:block">{railExtra}</div>}
+          {railTop}
+        </div>
+      )}
+
+      <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">{body}</div>
+
+      {railBottom && (
+        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-2">{railBottom}</div>
+      )}
+    </div>
+  );
+}
