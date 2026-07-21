@@ -1,5 +1,6 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { ActivityDetail, ActivityKind } from "@/lib/clubs/activities/core";
+import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -42,11 +43,28 @@ export type ActivityKindDefinition = {
   // el pool de ítems / opiniones genéricos de G. No gateado por
   // isParticipant -- cada extensión decide qué mostrar a quién (p.ej.
   // buddy_read enseña la lista de checkpoints a todo el club, decisión 7).
+  //
+  // `Layout` es el reparto en tres ranuras (spec 2026-07-21): el tablero NO se
+  // parte en dos componentes -- los cuatro derivan de un solo fetch en estado
+  // local -- solo distribuye su propio JSX.
   DetailExtension?: ComponentType<{
     activity: ActivityDetail;
     viewerId: string;
     isModerator: boolean;
     onChanged: () => void;
+    clubSlug: string;
+    // SIEMPRE la referencia importada `ActivityLayout`, nunca un wrapper
+    // `(props) => <ActivityLayout {...props} .../>` creado inline en el
+    // render del padre: una flecha inline es un tipo de componente distinto
+    // en cada render, y React, al no reconocer la identidad, desmonta y
+    // remonta todo el subárbol que cuelga de `Layout` en cada re-render del
+    // padre (aquí, cada `router.refresh()` tras una mutación). Efecto
+    // observable doble: el `<details>` de la matriz se cierra solo, y el
+    // texto a medio escribir en el chat de un hito se borra. Por eso
+    // `railExtra` viaja como prop normal en vez de ir capturado en el
+    // closure del wrapper.
+    Layout: ComponentType<ActivityLayoutProps>;
+    railExtra: ReactNode;
   }>;
 };
 

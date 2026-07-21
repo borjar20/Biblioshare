@@ -2,8 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
-import { getActivity } from "@/lib/clubs/activities/core";
+import { getActivity, listClubActivities } from "@/lib/clubs/activities/core";
 import { ActivityDetailView } from "@/components/clubs/activity-detail";
+import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
 
 export async function generateMetadata({
   params,
@@ -33,8 +34,27 @@ export default async function ActivityPage({
   const activity = await getActivity(id);
   if (!activity || activity.clubId !== club.id) notFound();
 
+  const canModerate =
+    club.viewerRole === "moderator" || club.viewerRole === "owner";
+  // El sidebar necesita el pip de propuestas pendientes, igual que miembros/page.tsx.
+  const activities = canModerate ? await listClubActivities(club.id) : [];
+  const pendingProposals = activities.filter((a) => a.status === "proposed").length;
+
+  // La actividad vive dentro del shell del club (spec 2026-07-21): sin esto la
+  // pantalla perdía el sidebar en PC y quedaba en una columna suelta. NO se pasa
+  // `desktopHeader`: la cabecera con las acciones se pinta una sola vez dentro
+  // del contenido, porque duplicarla rompería los locators del e2e.
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
+    <ClubShell
+      sidebar={
+        <ClubSidebar
+          club={club}
+          active="actividades"
+          canModerate={canModerate}
+          pendingProposals={pendingProposals}
+        />
+      }
+    >
       <ActivityDetailView
         activity={activity}
         viewerId={user.id}
@@ -42,6 +62,6 @@ export default async function ActivityPage({
         clubSlug={slug}
         clubName={club.name}
       />
-    </div>
+    </ClubShell>
   );
 }
