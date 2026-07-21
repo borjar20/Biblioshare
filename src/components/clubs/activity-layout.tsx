@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export type ActivityLayoutProps = {
   /** En móvil va ANTES del tablero; en PC, arriba del rail derecho. */
@@ -12,8 +12,6 @@ export type ActivityLayoutProps = {
   railExtra?: ReactNode;
 };
 
-export type ActivityLayoutComponent = ComponentType<ActivityLayoutProps>;
-
 // Tres ranuras, un solo DOM (spec, decisión 2). El orden del DOM ES el orden
 // móvil, que fluye natural; en `lg` un grid explícito recoloca:
 //
@@ -21,7 +19,7 @@ export type ActivityLayoutComponent = ComponentType<ActivityLayoutProps>;
 //   railBottom   -> col 2, fila 2
 //
 // No se usa `hidden lg:block` para mover piezas: duplicaría controles y la
-// suite corre a 1280 (ver club-shell.tsx:14).
+// suite corre a 1280 (ver la nota sobre duplicados en `club-shell.tsx`).
 export function ActivityLayout({
   railTop,
   body,
@@ -31,7 +29,17 @@ export function ActivityLayout({
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_296px] lg:items-start lg:gap-7">
       {(railTop || railExtra) && (
-        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-1">
+        <div
+          className={`flex-col gap-4 lg:col-start-2 lg:row-start-1 ${
+            // Si no hay `railTop`, el único contenido de esta ranura es
+            // `railExtra`, que solo se pinta en PC (`hidden lg:block` más
+            // abajo). El contenedor en sí debe seguirle el paso: si se queda
+            // `flex` a secas, en móvil es un ítem flex vacío que igual gasta
+            // el `gap-4` del padre -- un hueco de aire sin nada dentro
+            // (ocurría en buddy_read sin «Tu progreso»).
+            railTop ? "flex" : "hidden lg:flex"
+          }`}
+        >
           {/* railExtra solo existe en PC: en móvil el padre ya pintó
               participantes en su sitio del mockup. */}
           {railExtra && <div className="hidden lg:block">{railExtra}</div>}
