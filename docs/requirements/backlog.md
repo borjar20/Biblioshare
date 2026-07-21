@@ -39,6 +39,8 @@
 - [x] **Relecturas visibles + comparativa entre pases** (§7.13) — `rereadCount` y delta contra el pase anterior.
 - [x] ~~**Cola priorizada con tiempo estimado**~~ (§7.22) — **RETIRADA el 2026-07-20.** `/cola` reordenable (DnD), estimación por ritmo personal y colas múltiples nombradas se construyeron y funcionaron, pero al integrar Colección v2 la pantalla quedó **inalcanzable** (fuera de las subpestañas, sin ningún enlace a `?tab=colas`). Su único papel vivo —acotar el sorteo a un subconjunto— lo cubren ahora las colecciones `is_sorteable`. La UI está borrada; la tabla `queues` sigue en pie a la espera de su `DROP`. Ver `decisiones.md` (2026-07-20).
 - [x] **Random picker** (§7.28) — "sacar un lomo" con ruleta y filtros (tipo/duración/sin empezar **y colección sorteable**). Spec/plan en `docs/superpowers/` (2026-07-17); filtro por colección añadido el 2026-07-20.
+- [x] **Notas ancladas al punto de progreso** (§7.24) — `NoteComposer` en la hoja de registrar sesión (anclaje en vivo a la página/episodio que marcas) y en la ficha; lista "Mis notas y citas" ordenada por posición. Tabla `notes` (no `entry_notes`), no una nueva.
+- [x] **Citas y frases destacadas, texto** (§7.27) — mismo `NoteComposer`, tipo `quote`; el OCR sigue pendiente (ver Pendiente).
 
 ### Estadísticas y hábitos
 - [x] **Sesiones de progreso diarias** (§7.14) — `progress_sessions` + estadísticas diarias, calendario mensual, rachas y anuales (objetivos por tipo). Dashboard privado en el home.
@@ -75,9 +77,8 @@
 ### Estados, progreso y ejemplar
 - [ ] **Modo "en pausa"** (§7.16) — S-M. Estado `paused` explícito; §8-A resuelto.
 - [ ] **Método de adquisición y "dinero ahorrado"** (§7.29) — S-M. Va en `library_entries.copy_details`; §8-C resuelto.
-- [ ] **Notas ancladas al punto de progreso** (§7.24) — M. Tabla `entry_notes` nueva; §8-E.
 - [ ] **Modo sin spoilers global** (§7.30) — M. Utilidad spoiler-safe compartida; §8-E.
-- [ ] **Citas y frases destacadas** (§7.27) — S (texto) / M (OCR).
+- [ ] **Citas y frases destacadas, OCR** (§7.27) — M. Texto ya construido (ver Hecho); el OCR sigue sin abordarse.
 
 ### Estadísticas y retos
 - [ ] **Diario emocional/contextual** (§7.18) — M. Estado de ánimo/compañía/ubicación sobre `diary_entries`.
@@ -118,11 +119,10 @@ Orden propuesto combinando esfuerzo, valor y dependencias (tabla de §7.33, sin 
 | 7.6 Seguir editoriales | M | Riesgo de datos sin resolver | No comprometer hasta validar que hay fuente fiable de novedades |
 | 7.17 Recordatorios (pausas/estrenos) | M-L | 7.31 (Capacitor) + §8-D | Push nativo vía Capacitor para iOS+UE; Web Push + pg_cron para el resto |
 | 7.18 Diario emocional/contextual | M | — | Enriquece 7.15 ("Tu año en Biblioshare") antes de construir esa retrospectiva |
-| 7.27 Citas y frases destacadas | S (texto) / M (OCR) | — | Empezar por texto simple; OCR es una fase aparte |
+| 7.27 Citas y frases destacadas, OCR | M | — | Texto simple ya construido (ver Hecho); el OCR queda como fase aparte |
 | 7.23 Retos personalizables | L | 7.5, 7.12 | Motor de filtros compartido — construir después de esos dos |
 | 7.30 Modo sin spoilers global | M | §8-E (enfoque confirmado) | Vale la pena como utilidad compartida, no antes de tener 1–2 consumidores reales |
 | 7.21 Comparador de adaptaciones | M-L | §8-B (resuelto) | Diferenciador fuerte; ya tiene modelo de relaciones definido |
 | 7.26 Listas colaborativas | M | 7.4/7.15, modelo de permisos | Construir primero la versión de un solo dueño |
 | 7.20 Clubs con hitos anti-spoiler | L | Base de usuarios, §8-E | Necesita masa crítica para tener sentido |
-| 7.24 Notas ancladas al progreso | M | §8-E | Tabla nueva; valor real pero no urgente |
 | 7.19 Recomendaciones cruzadas | XL | §8-B (resuelto) + normalización géneros (abierta) | El más caro; empezar solo con tabla curada a mano si se aborda |
