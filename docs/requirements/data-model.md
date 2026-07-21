@@ -15,8 +15,9 @@ Cualquier doc, plan o spec anterior que hable de `diary_entries` se refiere a es
 
 **`library_entries` está CONGELADA.** Fue la tabla de progreso original, y buena parte
 de la doc vieja aún la presenta así. Ya no lo es: **el estado vivo del usuario vive en
-`passes`**. `library_entries` sigue existiendo porque conserva `pinned_order`,
-`queue_order` y `queue_id`, pero **su `status` y su `position` no se actualizan** — leerlos
+`passes`**. `library_entries` sigue existiendo porque conserva `pinned_order`
+(sus columnas de cola se borraron con la retirada de colas, ver más abajo), pero **su
+`status` y su `position` no se actualizan** — leerlos
 da datos de hace meses. Esto ya ha causado dos bugs reales en producción (avance de sagas
 al 0%, PR #96). Regla: **cualquier feature que necesite el estado del usuario lo deriva de
 `passes`, nunca de `library_entries`.**
@@ -45,10 +46,10 @@ graph TB
     subgraph USER["DEL USUARIO · RLS por dueño + visibilidad de perfil"]
         passes[("passes<br/>ESTADO VIVO")]
         sessions[progress_sessions]; notes[notes]; watches[episode_watches]
-        libe["library_entries<br/>(congelada: solo colas/pines)"]
-        queues[queues]; colls[collections]; ci[collection_items]
+        libe["library_entries<br/>(congelada: solo pines)"]
+        colls[collections]; ci[collection_items]
         passes --> sessions; passes --> notes; passes --> watches
-        queues --> passes; colls --> ci
+        colls --> ci
     end
 
     subgraph SOCIAL["SOCIAL"]
@@ -105,8 +106,8 @@ concreto de un ítem. Releer un libro es un pase nuevo, no una edición del ante
 
 Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status`:
 `planned|in_progress|completed|dropped`), `is_active`, `position` (jsonb), `rating`,
-`review`, `is_public`, `started_on`/`finished_on`, `edition_id`, y las de organización
-(`queue_id`, `queue_order`, `pinned_order`).
+`review`, `is_public`, `started_on`/`finished_on`, `edition_id`, y `pinned_order` (las de
+cola se borraron, ver «`queues` ya no existe»).
 
 - **`is_active`** distingue el pase en curso de los cerrados. Solo uno activo por ítem.
 - **El pase es dueño de la nota y la reseña**, no la entrada de biblioteca: cada relectura
@@ -150,7 +151,7 @@ Cuelgan del pase:
 
 `profiles.daily_goal_minutes` **no** se fusionó: no es un reto, es el objetivo diario.
 
-### `queues` ya no existe (2026-07-20)
+### `queues` ya no existe (dev 2026-07-20 · prod 2026-07-21)
 
 La tabla `queues`, las columnas `queue_id`/`queue_order` (de **`passes` y `library_entries`**)
 y el RPC `reorder_queue` **se borraron** en `20260720_drop_queues.sql`. Al integrar
@@ -158,10 +159,17 @@ Colección v2, la pestaña «Colas» dejó de pintarse y quedó inalcanzable: ni
 llevaba a `?tab=colas`. Lo único que seguía aportando —acotar el sorteo a un subconjunto
 propio— lo hacen ahora las **colecciones marcadas `is_sorteable`**.
 
-⚠️ **Orden de despliegue, no negociable:** el `DROP` va **después** de desplegar el código
-que deja de leer `queues`. Hasta entonces las tres fichas llaman a `getQueues()` en cada
-carga, así que borrar la tabla con el código viejo en producción rompe `/libro`, `/pelicula`
-y `/serie` enteras. Por eso esta migración se aplicó primero **solo en dev**.
+**Aplicada en los dos entornos.** Dev el 2026-07-20; **prod el 2026-07-21** (issue #122),
+una vez confirmado que el despliegue de producción (`b491279`) ya no contenía ninguna
+referencia a colas y que las 3 colas que quedaban estaban **vacías** (0 pases y 0 entradas
+con `queue_id`). Con esto dev y prod vuelven a tener el mismo esquema.
+
+⚠️ **Orden de despliegue, no negociable — la razón por la que estuvo un día a medias:** el
+`DROP` va **después** de desplegar el código que deja de leer `queues`. Mientras las tres
+fichas llamaban a `getQueues()` en cada carga, borrar la tabla en producción habría roto
+`/libro`, `/pelicula` y `/serie` enteras. Por eso se aplicó primero solo en dev y se esperó
+al despliegue. **El patrón se generaliza a cualquier `DROP`: código primero, esquema
+después** — y anotar el pendiente como issue para que no se quede a medias (`AGENTS.md`).
 
 **`collections.is_sorteable`** (`boolean not null default false`, migración
 `20260720_collections_sorteable.sql`) marca qué colecciones se ofrecen en el filtro del
