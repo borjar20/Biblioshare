@@ -19,15 +19,27 @@ No es un problema de estilo, es estructural:
 El mockup PC además parte el cuerpo en dos columnas (`1fr / 296px`) y lleva al rail
 derecho piezas que hoy viven dentro de cada tablero.
 
-## Decisión 1 — la página entra en `ClubShell`
+## Decisión 1 — la página entra en `ClubShell`, pero la cabecera NO usa `desktopHeader`
 
-`actividad/[id]/page.tsx` monta `ClubShell` con `ClubSidebar` (`active="actividades"`)
-y un `desktopHeader` nuevo: `‹ Actividades` + título + la barra de acciones
-(Salir · ◈MOD Modificar/Finalizar/Archivar).
-
+`actividad/[id]/page.tsx` monta `ClubShell` con `ClubSidebar` (`active="actividades"`).
 Necesita `listClubActivities` para el pip de propuestas pendientes del sidebar, igual
-que hace ya `miembros/page.tsx`. En móvil se conserva el topbar `‹ + nombre del club`
-que la vista ya tenía.
+que hace ya `miembros/page.tsx`.
+
+La cabecera es la trampa. El slot `desktopHeader` de `ClubShell` se pinta con
+`hidden … lg:block`: sirve para el *chrome de navegación*, que sí se desdobla (pestañas
+en móvil vs sidebar en PC, elementos distintos que no chocan). Pero la barra de acciones
+—Salir, Modificar, Finalizar, Archivar— es **el mismo control** en las dos anchuras. Si
+se pone en `desktopHeader` y se deja en el cuerpo para móvil, quedan dos botones «Salir»
+en el DOM, y `e2e/club-activity-changes.spec.ts:137` los busca por rol y nombre: dos
+coincidencias es un *strict mode violation* de Playwright. El test rompe.
+
+Por eso la cabecera (enlace de vuelta + título + acciones) se renderiza **una sola vez,
+dentro del contenido**, con `sticky lg:top-[var(--topbar-h)]` para que en PC se pegue
+como en el mockup y en móvil fluya normal. No se pasa `desktopHeader` al shell.
+
+Único desdoble admitido, y solo de texto: el enlace de vuelta muestra el nombre del club
+en móvil y «Actividades» en PC, con dos `<span>` por breakpoint dentro de **un solo**
+`<Link>`. Se duplica texto, no controles — `getByRole("link")` sigue encontrando uno.
 
 ## Decisión 2 — tres ranuras, no dos columnas
 
@@ -119,8 +131,14 @@ config congelada de la actividad (`criteria-challenge-board.tsx:17-19`).
 
 ## Verificación
 
-- La suite e2e corre a 1280 = `lg`, así que ejercita el camino de PC. Los locators no
-  deben ver DOM duplicado — es la razón de la decisión 2.
+- `vitest` aquí es solo para funciones puras en Node (`vitest.config.ts`: `include:
+  ["src/**/*.test.ts"]`, sin DOM). **No hay tests de componentes**, así que la única
+  pieza con test unitario es la derivación del próximo hito; el resto se verifica con
+  Playwright y a ojo en las dos anchuras.
+- `e2e/club-activity-changes.spec.ts` debe seguir pasando **sin tocarlo**. Es el canario
+  del DOM duplicado: busca «Salir», «Modificar», «Finalizar» y «Archivar» por rol.
+- La suite e2e corre a 1280 = `lg` (`devices["Desktop Chrome"]`), así que ejercita el
+  camino de PC. Los locators no deben ver DOM duplicado — es la razón de la decisión 2.
 - Comprobar los cuatro tipos en las dos anchuras, y en los tres estados de espectador que
   ya distingue `activity-detail.tsx`: participante, no participante de una activa
   (vista previa con teaser), y moderador.
