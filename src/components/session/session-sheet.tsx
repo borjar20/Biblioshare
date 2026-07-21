@@ -17,6 +17,7 @@ import { useModalClose } from "./session-modal";
 import { BookProgressField } from "./book-progress-field";
 import { SeriesEpisodeGrid } from "./series-episode-grid";
 import { SessionHero } from "./session-hero";
+import { NoteComposer, type NoteAnchor } from "@/components/notes/note-composer";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -33,8 +34,8 @@ function todayISO() {
 
 // Hoja de registrar sesión: dueña de su propio chrome (cabecera y footer
 // pegajosos + SessionHero) — la ruta directa y la interceptada solo cargan
-// `ctx` (Tarea 1) y la montan. La nota (textarea + nota/cita + favorita) sale
-// de aquí por completo: un ciclo futuro trae un compositor propio. El estado
+// `ctx` (Tarea 1) y la montan. El compositor de notas (NoteComposer, Tarea 7)
+// vive aquí anclado al campo VIVO de progreso, no a `position`. El estado
 // sigue disponible pero plegado en un <details> — el caso normal de "registrar
 // y seguir" no lo necesita.
 export function SessionSheet({
@@ -93,7 +94,7 @@ export function SessionSheet({
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
   useEffect(() => {
-    if (!state.ok || state.passClosed) return;
+    if (!state.ok || state.passClosed || state.noteFailed) return;
     closeSheet();
   }, [state, closeSheet]);
 
@@ -120,6 +121,23 @@ export function SessionSheet({
   })();
 
   const [newlyMarkedCount, setNewlyMarkedCount] = useState(0);
+
+  // El anclaje del compositor sigue al campo VIVO, no a `position` (la posición
+  // GUARDADA del pase). Si leyera `position`, anotarías en la 240 y se
+  // guardaría la 180: es el defecto más probable de esta pantalla y tiene e2e
+  // propio (e2e/notas-captura.spec.ts).
+  const [livePage, setLivePage] = useState<number | null>(currentPage);
+  const [lastEpisode, setLastEpisode] = useState<{ season: number; episode: number } | null>(
+    null,
+  );
+  const [noteHasBody, setNoteHasBody] = useState(false);
+
+  const noteAnchor: NoteAnchor =
+    itemType === "book"
+      ? { kind: "page", page: livePage }
+      : lastEpisode
+        ? { kind: "episode", season: lastEpisode.season, episode: lastEpisode.episode }
+        : { kind: "none" };
 
   // Al guardar, limpia siempre el localStorage del cronómetro de este pase:
   // si estaba activo, su valor ya viajó en el FormData a través del input
@@ -224,14 +242,24 @@ export function SessionSheet({
               fromPage={currentPage}
               total={total}
               initialMinutes={initialMinutes}
+              onPageChange={setLivePage}
             />
           ) : (
             <SeriesEpisodeGrid
               seasons={seriesEpisodes ?? []}
               initialSeason={defaultSeason}
-              onNewlyMarkedChange={setNewlyMarkedCount}
+              onNewlyMarkedChange={(count, last) => {
+                setNewlyMarkedCount(count);
+                setLastEpisode(last);
+              }}
             />
           )}
+
+          <NoteComposer
+            anchor={noteAnchor}
+            anchorHint={t("noteAnchorHint")}
+            onHasBodyChange={setNoteHasBody}
+          />
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
               Sigue disponible para abandonar o completar a mano sin ir a la ficha. */}
@@ -253,6 +281,9 @@ export function SessionSheet({
           {state.error && (
             <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
           )}
+          {state.noteFailed && (
+            <p className="text-sm text-status-dropped">{t("noteFailed")}</p>
+          )}
         </div>
 
         {/* `shrink-0` por el mismo motivo que la cabecera de arriba: este
@@ -261,9 +292,11 @@ export function SessionSheet({
           <Button type="submit" disabled={pending} className="w-full">
             {pending
               ? t("submitting")
-              : itemType === "series" && newlyMarkedCount > 0
-                ? t("submitEpisodes", { count: newlyMarkedCount })
-                : t("submit")}
+              : noteHasBody
+                ? t("submitWithNote")
+                : itemType === "series" && newlyMarkedCount > 0
+                  ? t("submitEpisodes", { count: newlyMarkedCount })
+                  : t("submit")}
           </Button>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
             {itemType === "book" ? t("footerHintBook") : t("footerHintSeries")}

@@ -17,10 +17,13 @@ export function SeriesEpisodeGrid({
 }: {
   seasons: SessionSeason[];
   initialSeason: number;
-  /** El footer de SessionSheet pinta «Guardar · N episodios» con este número.
-      Se llama desde los manejadores de evento, NUNCA desde un efecto: eso
-      sería setState del padre durante un efecto del hijo. */
-  onNewlyMarkedChange: (count: number) => void;
+  /** El footer de SessionSheet pinta «Guardar · N episodios» con el número, y
+      el compositor ancla la nota en `last`. Se llama desde los manejadores de
+      evento, NUNCA desde un efecto. */
+  onNewlyMarkedChange: (
+    count: number,
+    last: { season: number; episode: number } | null,
+  ) => void;
 }) {
   const t = useTranslations("session");
   const tEpisode = useTranslations("episode");
@@ -48,7 +51,7 @@ export function SeriesEpisodeGrid({
     const watched = watchedSetFor(next);
     setInitialWatched(watched);
     setSelected(watched);
-    onNewlyMarkedChange(0);
+    onNewlyMarkedChange(0, null);
   }
 
   // Manejador de evento: calcula el siguiente set a partir del `selected` del
@@ -61,7 +64,11 @@ export function SeriesEpisodeGrid({
     if (next.has(episode)) next.delete(episode);
     else next.add(episode);
     setSelected(next);
-    onNewlyMarkedChange([...next].filter((e) => !initialWatched.has(e)).length);
+    const newly = [...next].filter((e) => !initialWatched.has(e));
+    onNewlyMarkedChange(
+      newly.length,
+      newly.length > 0 ? { season, episode: Math.max(...newly) } : null,
+    );
   }
 
   // useMemo (no solo `?? []`) porque el fallback crea un array nuevo en cada

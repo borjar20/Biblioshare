@@ -14,6 +14,7 @@ import {
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { normalizeTags } from "@/lib/notes/tags";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -30,6 +31,10 @@ export type AddSessionState = {
   error?: "invalidPosition" | "invalidDuration" | "generic";
   ok?: boolean;
   passClosed?: boolean;
+  /** La sesión SÍ se guardó (progress_sessions + posición del pase); solo
+   *  falló la escritura en `notes`. El cliente no cierra la hoja para que
+   *  puedas copiar el texto. */
+  noteFailed?: boolean;
 };
 
 // Logs a reading/watching session AND rolls the PASE's current state
@@ -173,13 +178,44 @@ export async function addSession(
 
   if (insertError || !inserted) return { error: "generic" };
 
-  // Memorizar (P7): si la sesión trae nota, entra también en `notes` con su
-  // tipo (nota/cita), su página y la marca de favorita. Doble escritura durante
-  // la transición — la columna vieja progress_sessions.note sigue en su sitio.
+  // Memorizar: si la sesión trae nota, entra también en `notes`. Doble
+  // escritura deliberada — la columna vieja progress_sessions.note sigue en su
+  // sitio y es lo que pinta la lista de sesiones.
+  //
+  // El anclaje por defecto ES `sessionPosition` (la posición de esta sesión),
+  // pero el compositor puede haberlo sobrescrito: la frase puede ser de tres
+  // páginas atrás. Por eso `notePage`/`noteSeason`+`noteEpisode` mandan si
+  // vienen y son válidos.
+  let noteFailed = false;
   if (note) {
     const noteKind = formData.get("noteKind") === "quote" ? "quote" : "note";
     const noteFavorite = formData.get("noteFavorite") === "on";
-    await supabase.from("notes").insert({
+    const noteSpoiler = formData.get("noteSpoiler") === "on";
+    // Se guarda la intención; nadie ajeno lo lee todavía (sin política RLS de
+    // lectura pública). Ver la spec 2026-07-21, D3.
+    const notePublic = formData.get("notePublic") === "on";
+    const noteTags = normalizeTags(String(formData.get("noteTags") ?? ""));
+
+    let notePosition: Position = sessionPosition;
+    const notePageRaw = String(formData.get("notePage") ?? "").trim();
+    const noteSeasonRaw = String(formData.get("noteSeason") ?? "").trim();
+    const noteEpisodeRaw = String(formData.get("noteEpisode") ?? "").trim();
+    if (itemType === "book" && notePageRaw) {
+      const p = Number(notePageRaw);
+      if (Number.isInteger(p) && p >= 0) notePosition = { page: p };
+    } else if (itemType === "series" && noteSeasonRaw && noteEpisodeRaw) {
+      const s = Number(noteSeasonRaw);
+      const e = Number(noteEpisodeRaw);
+      if (Number.isInteger(s) && s >= 0 && Number.isInteger(e) && e >= 0) {
+        notePosition = { season: s, episode: e };
+      }
+    }
+
+    // La sesión MANDA: si la nota falla, NO se revierte nada. Has leído 60
+    // páginas y eso es un hecho; perder el progreso por un fallo al escribir
+    // texto es la peor de las dos pérdidas (spec D6). El fallo se devuelve
+    // aparte para que la hoja no se cierre y puedas copiar el texto.
+    const { error: noteError } = await supabase.from("notes").insert({
       user_id: user.id,
       item_type: itemType,
       item_id: itemId,
@@ -187,9 +223,13 @@ export async function addSession(
       session_id: inserted.id,
       kind: noteKind,
       body: note,
-      position: sessionPosition,
+      position: notePosition,
       is_favorite: noteFavorite,
+      is_spoiler: noteSpoiler,
+      is_public: notePublic,
+      meta: { tags: noteTags },
     });
+    if (noteError) noteFailed = true;
   }
 
   // Serie: marca cada episodio reutilizando la MISMA escritura que la
@@ -253,11 +293,11 @@ export async function addSession(
   if (reachedEnd) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);
-    return { ok: true, passClosed: true };
+    return { ok: true, passClosed: true, noteFailed };
   }
 
   revalidateReadingLog(itemType, itemId);
-  return { ok: true };
+  return { ok: true, noteFailed };
 }
 
 export async function deleteSession(
