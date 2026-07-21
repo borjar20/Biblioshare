@@ -550,6 +550,7 @@
     "itemType_movie": "Película",
     "itemType_series": "Serie",
     "checkpoints": "Hitos",
+    "nextCheckpoint": "Próximo hito",
     "checkpointLabelPlaceholder": "Nombre del hito (ej. \"Los enciclopedistas\")",
     "checkpointPositionPage": "Página",
     "checkpointPositionSeason": "Temporada",
