@@ -135,6 +135,16 @@ export function ActivityDetailView({
     </div>
   );
 
+  // ¿Monta tablero (DetailExtension)? Solo entonces existe el rail derecho
+  // que en PC ya reenvía `participantsBlock` (vía railExtra/ActivityLayout).
+  // Es la MISMA condición que decide unas líneas más abajo si se monta el
+  // DetailExtension dentro de `structureSection` -- deliberadamente extraída
+  // a una sola constante y reutilizada en ambos sitios (y en la vista previa
+  // de no-participantes, que comparte structureSection) para que no puedan
+  // divergir: si un sitio dice "hay rail" y el otro "no", el bloque de
+  // participantes se duplica o desaparece según la actividad.
+  const hasBoard = (isParticipant || activity.kind === "buddy_read") && Boolean(DetailExtension);
+
   // La "estructura" que ve cada quién, compartida por la vista principal y la
   // previa. El PARTICIPANTE ve el tablero completo (rejilla con su progreso,
   // tierlist, hitos con "Tu progreso"). El NO-PARTICIPANTE —un miembro suelto,
@@ -172,7 +182,7 @@ export function ActivityDetailView({
         </section>
       )}
 
-      {(isParticipant || activity.kind === "buddy_read") && DetailExtension && (
+      {hasBoard && DetailExtension && (
         <DetailExtension
           activity={activity}
           viewerId={viewerId}
@@ -292,8 +302,11 @@ export function ActivityDetailView({
         </div>
 
         {/* Quién participa: igual que en la vista de participante, sin la
-            fila de acciones que solo tiene sentido dentro de la actividad. */}
-        {participantsBlock}
+            fila de acciones que solo tiene sentido dentro de la actividad.
+            Se oculta en PC solo si monta tablero (hasBoard): esta rama es de
+            no-participantes, así que solo ocurre con buddy_read (lectura con
+            hitos abierta a todo el club) -- ahí el rail ya lo repite. */}
+        <div className={hasBoard ? "lg:hidden" : undefined}>{participantsBlock}</div>
 
         {error && <p className="text-xs text-status-dropped">{error}</p>}
 
@@ -399,8 +412,15 @@ export function ActivityDetailView({
         )}
       </div>
 
-      {/* Quién participa: stack de avatares + unirse/salir, como en el handoff. */}
-      {participantsBlock}
+      {/* Quién participa: stack de avatares + unirse/salir, como en el handoff.
+          En PC se oculta si hay tablero (hasBoard): ese caso ya lo repite el
+          rail derecho vía railExtra/ActivityLayout ("hidden lg:block"), y sin
+          esta condición "1 participa" saldría duplicado a 1280px. No basta
+          `lg:hidden` a secas: un moderador o creador que NO participa en un
+          reto de lista llega aquí sin tablero (no hay rail), y necesita ver
+          el bloque también en PC -- de ahí que la condición sea `hasBoard`,
+          no una simplificación fija. */}
+      <div className={hasBoard ? "lg:hidden" : undefined}>{participantsBlock}</div>
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
