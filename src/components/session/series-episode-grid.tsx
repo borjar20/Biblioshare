@@ -196,10 +196,18 @@ export function SeriesEpisodeGrid({
 
         {newlyMarked.length > 0 && (
           <span className="inline-flex w-fit items-center gap-1.5 rounded-md border border-green/25 bg-green/10 px-2.5 py-1.5 font-mono text-[11px] text-green">
+            {/* Math.max(...selected) mentía: `selected` incluye lo ya visto
+                de antes, así que en una temporada vista hasta el 10 en la
+                que marcas el 3, la chapa decía "T1·E10" mientras el
+                compositor, dos elementos más abajo, ancla en T1·E3 —
+                `newlyMarked` es lo que de verdad se marcó esta sesión.
+                Math.max() sin argumentos da -Infinity, pero este bloque ya
+                está dentro de `newlyMarked.length > 0`, así que siempre hay
+                al menos un episodio del que sacar el máximo. */}
             {t("episodesDelta", {
               count: newlyMarked.length,
               season,
-              episode: Math.max(...selected),
+              episode: Math.max(...newlyMarked),
             })}
           </span>
         )}

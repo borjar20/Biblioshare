@@ -83,7 +83,13 @@ export function SessionSheet({
   const [prevState, setPrevState] = useState(state);
   if (state !== prevState) {
     setPrevState(state);
-    if (state.passClosed) setClosingPass(true);
+    // Si la nota falló, la hoja de cierre NO se encadena: es un <dialog>
+    // nativo con showModal() que se pinta por encima, atrapa el foco y su
+    // onClose llama a closeSheet() — se llevaría el texto que el usuario
+    // todavía tiene que copiar. El pase ya quedó cerrado en el servidor; la
+    // hoja de valoración queda pendiente, se puede abrir luego desde la
+    // ficha (perder la valoración es reversible, perder el texto no).
+    if (state.passClosed && !state.noteFailed) setClosingPass(true);
   }
 
   // Navegar NO es setState: un efecto aquí no choca con
@@ -289,7 +295,11 @@ export function SessionSheet({
         {/* `shrink-0` por el mismo motivo que la cabecera de arriba: este
             footer no debe encogerse cuando el contenido de en medio no cabe. */}
         <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
-          <Button type="submit" disabled={pending} className="w-full">
+          {/* La sesión ya se guardó si `noteFailed` es cierto: reenviar
+              volvería a insertar una segunda sesión, remarcaría episodios y
+              reescribiría la posición del pase (no hay idempotencia en
+              addSession). Lo único que queda es copiar el texto y cerrar. */}
+          <Button type="submit" disabled={pending || state.noteFailed} className="w-full">
             {pending
               ? t("submitting")
               : noteHasBody

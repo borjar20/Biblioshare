@@ -28,7 +28,7 @@ const VALID_STATUSES: MediaStatus[] = [
 // directa. `passClosed` avisa de que la sesión completó el pase: el cliente
 // encadena la hoja de cierre en vez de irse (D4 de la spec).
 export type AddSessionState = {
-  error?: "invalidPosition" | "invalidDuration" | "generic";
+  error?: "invalidPosition" | "invalidDuration" | "noteTooLong" | "generic";
   ok?: boolean;
   passClosed?: boolean;
   /** La sesión SÍ se guardó (progress_sessions + posición del pase); solo
@@ -79,6 +79,13 @@ export async function addSession(
   }
 
   const note = String(formData.get("note") ?? "").trim();
+  // progress_sessions.note tiene CHECK (char_length(note) <= 2000) (migración
+  // 20260715_text_length_limits.sql) pero notes.body admite hasta 5000 y
+  // addSession escribe el MISMO texto en las dos tablas: sin este guard, una
+  // cita de más de 2000 caracteres revienta el insert de progress_sessions y
+  // la sesión entera no se guarda (con un error genérico que no explica
+  // nada). Se valida ANTES de tocar la base de datos, no después.
+  if (note.length > 2000) return { error: "noteTooLong" };
 
   // Hora real de inicio (§7.14, P8): la manda el cronómetro; la hoja a mano no,
   // y queda null. "Cuándo lees" ignora las filas sin ella — nunca se sustituye

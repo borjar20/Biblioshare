@@ -1153,9 +1153,10 @@
     "errors": {
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
+      "noteTooLong": "La nota supera los 2000 caracteres permitidos. Acórtala para poder guardar la sesión.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
-    "noteFailed": "La sesión se guardó, pero la nota no. Copia el texto antes de cerrar.",
+    "noteFailed": "La sesión se guardó, pero la nota no. Copia el texto antes de cerrar; si el pase se completó, podrás valorarlo después desde la ficha.",
     "noteKindNote": "Nota",
     "noteKindQuote": "Cita",
     "noteFavorite": "Favorita",

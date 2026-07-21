@@ -94,6 +94,7 @@ export function NoteComposer({
       <textarea
         name="note"
         rows={3}
+        maxLength={2000}
         value={body}
         onChange={(e) => changeBody(e.target.value)}
         placeholder={kind === "quote" ? t("quotePlaceholder") : t("notePlaceholder")}
