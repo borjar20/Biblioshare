@@ -261,10 +261,17 @@ export function SessionSheet({
             />
           )}
 
+          {/* maxBody=2000, no el 5000 por defecto: este texto viaja también a
+              progress_sessions.note (addSession la escribe en las dos tablas),
+              cuyo CHECK admite como mucho 2000 — es la columna más estrecha de
+              las dos, así que el tope de la hoja tiene que ser el suyo, no el
+              de `notes.body` (5000). NoteForm, en la ficha, no escribe en
+              progress_sessions y por eso no pasa esta prop. */}
           <NoteComposer
             anchor={noteAnchor}
             anchorHint={t("noteAnchorHint")}
             onHasBodyChange={setNoteHasBody}
+            maxBody={2000}
           />
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.

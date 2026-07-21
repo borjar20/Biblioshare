@@ -20,6 +20,7 @@ export function NoteComposer({
   anchorHint,
   defaultOpen = false,
   onHasBodyChange,
+  maxBody = 5000,
 }: {
   /** Anclaje sugerido. En la hoja de sesión lo manda el campo VIVO. */
   anchor: NoteAnchor;
@@ -29,6 +30,10 @@ export function NoteComposer({
   defaultOpen?: boolean;
   /** Avisa al padre de si hay texto, para que el footer cambie de rótulo. */
   onHasBodyChange?: (hasBody: boolean) => void;
+  /** Tope de caracteres del textarea. Por defecto el de `notes.body` (5000);
+   *  quien escriba también en una columna más estrecha (progress_sessions.note,
+   *  ≤2000) debe pasarlo explícito — ver session-sheet.tsx. */
+  maxBody?: number;
 }) {
   const t = useTranslations("notes");
   const [open, setOpen] = useState(defaultOpen);
@@ -94,7 +99,7 @@ export function NoteComposer({
       <textarea
         name="note"
         rows={3}
-        maxLength={2000}
+        maxLength={maxBody}
         value={body}
         onChange={(e) => changeBody(e.target.value)}
         placeholder={kind === "quote" ? t("quotePlaceholder") : t("notePlaceholder")}
@@ -103,6 +108,16 @@ export function NoteComposer({
           kind === "quote" ? "font-serif text-[15px] italic" : ""
         }`}
       />
+
+      {/* `maxLength` trunca el pegado sin avisar: pegas una cita más larga que
+          el tope y ves menos texto sin ningún indicio de que se ha perdido
+          algo. El contador solo aparece cerca del límite (90%) para no
+          ensuciar el caso normal — nadie escribe 4500 caracteres sin querer. */}
+      {body.length >= maxBody * 0.9 && (
+        <span className="self-end font-mono text-[10.5px] text-muted-foreground">
+          {t("bodyCounter", { used: body.length, max: maxBody })}
+        </span>
+      )}
 
       {/* Anclaje. En serie no es editable a mano: sale de los episodios que
           acabas de marcar y se manda en hidden — pedir "temporada y episodio"

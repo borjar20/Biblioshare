@@ -85,7 +85,13 @@ export async function addSession(
   // cita de más de 2000 caracteres revienta el insert de progress_sessions y
   // la sesión entera no se guarda (con un error genérico que no explica
   // nada). Se valida ANTES de tocar la base de datos, no después.
-  if (note.length > 2000) return { error: "noteTooLong" };
+  //
+  // `[...note].length`, no `note.length`: el CHECK de Postgres cuenta code
+  // points (char_length), pero `.length` cuenta unidades UTF-16 — un emoji o
+  // cualquier carácter fuera del BMP ocupa 2 unidades UTF-16 y 1 code point.
+  // Con `.length` a secas el guard es sobre-estricto (nunca deja pasar una
+  // violación real, pero puede rechazar una cita que a ojo no llega a 2000).
+  if ([...note].length > 2000) return { error: "noteTooLong" };
 
   // Hora real de inicio (§7.14, P8): la manda el cronómetro; la hoja a mano no,
   // y queda null. "Cuándo lees" ignora las filas sin ella — nunca se sustituye

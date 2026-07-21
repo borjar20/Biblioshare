@@ -1510,6 +1510,7 @@
     "add": "Memorizar",
     "bodyLabel": "Nota o cita",
     "bodyPlaceholder": "Escribe una cita textual o tu propia nota…",
+    "bodyCounter": "{used} / {max}",
     "pageLabel": "Página (opcional)",
     "favorite": "Marcar como favorita",
     "composerTitle": "Anota este momento",
