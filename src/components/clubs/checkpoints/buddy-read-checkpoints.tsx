@@ -110,7 +110,12 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
         </div>
       }
       railBottom={
-        upcoming ? (
+        // El `status` de un checkpoint es POR VIEWER (confirmado/pendiente es
+        // relativo a quién mira): igual que "Tu progreso" en `railTop`, "Próximo
+        // hito" solo tiene sentido gateado a participante -- si no, un no
+        // participante vería "Próximo hito: Hito 1" sin que signifique nada
+        // para él.
+        activity.viewerIsParticipant && upcoming ? (
           <div className="flex flex-col gap-2">
             <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
               {t("nextCheckpoint")}

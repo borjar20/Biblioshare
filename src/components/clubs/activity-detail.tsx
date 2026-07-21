@@ -143,16 +143,31 @@ export function ActivityDetailView({
   // de no-participantes, que comparte structureSection) para que no puedan
   // divergir: si un sitio dice "hay rail" y el otro "no", el bloque de
   // participantes se duplica o desaparece según la actividad.
-  const hasBoard = (isParticipant || activity.kind === "buddy_read") && Boolean(DetailExtension);
+  //
+  // `buddy_read` y `list_challenge` montan el tablero SIN gatear a
+  // isParticipant, cada uno por su propio motivo: buddy_read enseña sus
+  // checkpoints a todo el club para ayudar a decidir si unirse (decisión 7);
+  // list_challenge lleva `LinkedActivities` en su rail, y esa pieza la ve
+  // todo el club («Crear» solo curador/mod, linked-activities.tsx) -- un
+  // moderador o creador que no se unió al reto necesita seguir viendo la
+  // oferta de «Cerrar con tierlist» cuando el reto termina. El propio tablero
+  // (ListChallengeBoard) decide internamente qué enseña a quién no participa
+  // (un "únete para ver" en vez del progreso real).
+  const hasBoard =
+    (isParticipant || activity.kind === "buddy_read" || activity.kind === "list_challenge") &&
+    Boolean(DetailExtension);
 
   // La "estructura" que ve cada quién, compartida por la vista principal y la
   // previa. El PARTICIPANTE ve el tablero completo (rejilla con su progreso,
   // tierlist, hitos con "Tu progreso"). El NO-PARTICIPANTE —un miembro suelto,
-  // o un mod/creador que no se ha unido— no puede cargar ese tablero (se gatea a
-  // participante y solo diría "únete para ver"), así que ve las portadas de los
-  // ítems en solo lectura para saber de qué va, enlazadas a su ficha. La lectura
-  // con hitos SÍ expone sus checkpoints a todo el club, así que además monta su
-  // tablero (los "hitos previstos" del frame B).
+  // o un mod/creador que no se ha unido— ve las portadas de los ítems en solo
+  // lectura para saber de qué va, enlazadas a su ficha. La lectura con hitos
+  // SÍ expone sus checkpoints a todo el club, así que además monta su tablero
+  // (los "hitos previstos" del frame B); el reto por lista, por la misma
+  // razón (ver `hasBoard` arriba), también monta el suyo para un no
+  // participante -- pero ahí el tablero mismo decide enseñar solo un "únete
+  // para ver" en vez del progreso real, con `LinkedActivities` igualmente
+  // visible en su rail.
   const structureSection = (
     <>
       {!isParticipant && activity.items.length > 0 && (
@@ -304,8 +319,10 @@ export function ActivityDetailView({
         {/* Quién participa: igual que en la vista de participante, sin la
             fila de acciones que solo tiene sentido dentro de la actividad.
             Se oculta en PC solo si monta tablero (hasBoard): esta rama es de
-            no-participantes, así que solo ocurre con buddy_read (lectura con
-            hitos abierta a todo el club) -- ahí el rail ya lo repite. */}
+            no-participantes, así que ocurre con buddy_read (lectura con
+            hitos abierta a todo el club) y con list_challenge (su rail lleva
+            `LinkedActivities`, que ve todo el club) -- en ambos el rail ya
+            lo repite. */}
         <div className={hasBoard ? "lg:hidden" : undefined}>{participantsBlock}</div>
 
         {error && <p className="text-xs text-status-dropped">{error}</p>}
@@ -416,10 +433,13 @@ export function ActivityDetailView({
           En PC se oculta si hay tablero (hasBoard): ese caso ya lo repite el
           rail derecho vía railExtra/ActivityLayout ("hidden lg:block"), y sin
           esta condición "1 participa" saldría duplicado a 1280px. No basta
-          `lg:hidden` a secas: un moderador o creador que NO participa en un
-          reto de lista llega aquí sin tablero (no hay rail), y necesita ver
-          el bloque también en PC -- de ahí que la condición sea `hasBoard`,
-          no una simplificación fija. */}
+          `lg:hidden` a secas: para tipos que no montan tablero sin participar
+          (tierlist, criteria_challenge), un moderador o creador que NO
+          participa llega aquí sin tablero (no hay rail), y necesita ver el
+          bloque también en PC -- de ahí que la condición sea `hasBoard`, no
+          una simplificación fija. `buddy_read` y `list_challenge` sí montan
+          tablero sin participar (ver `hasBoard` más arriba), así que ahí
+          `hasBoard` es true y el rail ya lo cubre. */}
       <div className={hasBoard ? "lg:hidden" : undefined}>{participantsBlock}</div>
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}

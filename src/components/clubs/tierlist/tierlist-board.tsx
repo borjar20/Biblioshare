@@ -60,25 +60,40 @@ export function TierlistBoard({
     // Recarga también cuando cambia el pool (un curador añadió/quitó un ítem).
   }, [activity.id, activity.items.length]);
 
+  // Ambos early returns con contenido pasan por `Layout`: sin esto, a 1280 el
+  // bloque de participantes no aparece en ningún sitio -- el flujo principal
+  // lo oculta confiando en que el rail lo repite, pero sin `Layout` ese rail
+  // nunca llega a montarse. El de `!board` (más abajo) sigue en `null`: no hay
+  // absolutamente nada que enseñar en ese caso.
   if (!activity.viewerIsParticipant) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          {t("tierlistTitle")}
-        </h2>
-        <p className="text-xs text-muted-foreground">{t("tierlistJoinToSee")}</p>
-      </div>
+      <Layout
+        railExtra={railExtra}
+        body={
+          <div className="flex flex-col gap-2">
+            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              {t("tierlistTitle")}
+            </h2>
+            <p className="text-xs text-muted-foreground">{t("tierlistJoinToSee")}</p>
+          </div>
+        }
+      />
     );
   }
 
   if (!view) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          {t("tierlistTitle")}
-        </h2>
-        <p className="text-xs text-muted-foreground">{t("tierlistNoConfig")}</p>
-      </div>
+      <Layout
+        railExtra={railExtra}
+        body={
+          <div className="flex flex-col gap-2">
+            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              {t("tierlistTitle")}
+            </h2>
+            <p className="text-xs text-muted-foreground">{t("tierlistNoConfig")}</p>
+          </div>
+        }
+      />
     );
   }
 

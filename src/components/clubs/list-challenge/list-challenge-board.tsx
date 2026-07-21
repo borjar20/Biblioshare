@@ -65,25 +65,43 @@ export function ListChallengeBoard({
     // la rejilla se materializa cruzando el pool con el roster.
   }, [activity.id, activity.items.length]);
 
+  // Los dos early returns con contenido (pool vacío, no-participante) pasan
+  // por `Layout`: si no, a 1280 el bloque de participantes no aparece en
+  // ninguna parte (el flujo lo oculta confiando en el rail, pero sin `Layout`
+  // ese rail nunca llega a existir) y `LinkedActivities` -- que todo el club
+  // debe poder ver, no solo quien participa -- se pierde con él. El de `!view`
+  // sigue en `null`: mientras carga no hay nada que enseñar en ningún lado.
   if (activity.items.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          {t("listChallengeProgress")}
-        </h2>
-        <p className="text-xs text-muted-foreground">{t("listChallengeEmptyList")}</p>
-      </div>
+      <Layout
+        railExtra={railExtra}
+        body={
+          <div className="flex flex-col gap-2">
+            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              {t("listChallengeProgress")}
+            </h2>
+            <p className="text-xs text-muted-foreground">{t("listChallengeEmptyList")}</p>
+          </div>
+        }
+        railBottom={<LinkedActivities activity={activity} isCurator={isCurator} clubSlug={clubSlug} />}
+      />
     );
   }
 
   if (!activity.viewerIsParticipant) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          {t("listChallengeProgress")}
-        </h2>
-        <p className="text-xs text-muted-foreground">{t("listChallengeJoinToSee")}</p>
-      </div>
+      <Layout
+        railExtra={railExtra}
+        body={
+          <div className="flex flex-col gap-2">
+            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              {t("listChallengeProgress")}
+            </h2>
+            <p className="text-xs text-muted-foreground">{t("listChallengeJoinToSee")}</p>
+          </div>
+        }
+        railBottom={<LinkedActivities activity={activity} isCurator={isCurator} clubSlug={clubSlug} />}
+      />
     );
   }
 
