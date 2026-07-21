@@ -14,9 +14,19 @@ import { StatusBadge } from "@/components/ui/status-badge";
 //
 // null = sin pase activo (la obra no está en la biblioteca): el badge no se
 // pinta. No es un estado más, es la ausencia de todos.
+//
+// `isSaving` existe porque el optimismo se comía su propia señal (issue #106):
+// "Seguir" publica el estado aquí en el MISMO tick en que dispara la acción, y
+// HeroStatusOrFollow cambia entonces el botón —dueño de su `isPending`— por el
+// badge. Resultado: nada en el DOM decía que la escritura seguía en vuelo, así
+// que ni el usuario ni un test podían esperarla, y quien se iba a /coleccion en
+// ese medio segundo no encontraba la obra. Ahora quien muta publica también si
+// está guardando, y el badge lo expone como `aria-busy`.
 type ItemStatusValue = {
   status: MediaStatus | null;
   setStatus: (next: MediaStatus | null) => void;
+  isSaving: boolean;
+  setSaving: (next: boolean) => void;
 };
 
 const ItemStatusContext = createContext<ItemStatusValue | null>(null);
@@ -37,6 +47,7 @@ export function ItemStatusProvider({
   children: ReactNode;
 }) {
   const [status, setStatus] = useState<MediaStatus | null>(initialStatus);
+  const [isSaving, setSaving] = useState(false);
   const [prevInitial, setPrevInitial] = useState(initialStatus);
   if (initialStatus !== prevInitial) {
     setPrevInitial(initialStatus);
@@ -44,7 +55,7 @@ export function ItemStatusProvider({
   }
 
   return (
-    <ItemStatusContext.Provider value={{ status, setStatus }}>
+    <ItemStatusContext.Provider value={{ status, setStatus, isSaving, setSaving }}>
       {children}
     </ItemStatusContext.Provider>
   );
@@ -70,7 +81,13 @@ export function StatusBadgeLive({
 }: {
   labels: Record<MediaStatus, string>;
 }) {
-  const { status } = useItemStatus();
+  const { status, isSaving } = useItemStatus();
   if (!status) return null;
-  return <StatusBadge status={status} label={labels[status]} variant="hero" />;
+  // `aria-busy` mientras la escritura está en vuelo: es la señal que el badge
+  // optimista se había llevado por delante (issue #106). Sirve a los lectores
+  // de pantalla y le da a los e2e algo determinista que esperar antes de
+  // comprobar que la obra ya está en Colección.
+  return (
+    <StatusBadge status={status} label={labels[status]} variant="hero" busy={isSaving} />
+  );
 }

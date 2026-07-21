@@ -216,19 +216,37 @@ borrarlos exactos. La UI es para **verificar**, no para sembrar.
 
 ---
 
-## 16. «Seguir» puede no persistir: la navegación aborta la server action
+## 16. El badge «Pendiente» es optimista: no prueba que se haya guardado nada
 
-**Bug real, abierto** (encontrado el 2026-07-20 depurando `pase-hub.spec.ts` «Regla 1»).
-En [`use-follow.ts`](../src/components/detail/use-follow.ts) el `follow()` hace, en el
-**mismo tick**, un `router.replace(...?tab=log)` y un `startTransition(addExistingItemToLibrary(...))`.
-La navegación puede abortar la acción en vuelo — en el log del dev server sale como
-`⨯ Error: aborted` — y entonces **el pase no se crea**.
+**CERRADO el 2026-07-21 (issue #106).** El diagnóstico que estaba aquí escrito —«la
+navegación aborta la server action»— resultó **falso**, y conviene saber por qué para no
+volver a él: era una hipótesis anotada como si fuera un hecho.
 
-Lo traicionero es que la UI no se entera: el estado «Pendiente» ya se publicó de forma
-optimista en `ItemStatusContext` y la pestaña «Mi registro» aparece por eso mismo (para eso
-existe `FollowingPlaceholder`). Así que **el badge y la pestaña NO prueban que se haya
-persistido nada**; solo lo prueba que la obra salga luego en `/coleccion?tab=todo` o una
-consulta a `passes`.
+**Lo que pasaba de verdad.** Instrumentando `addExistingItemToLibrary` y `applyTransition`
+se vio que la acción **sí se ejecuta**, el plan es `createActive` y el insert devuelve fila
+con `error: null`. El pase **se crea siempre**. Lo que fallaba era el orden:
+
+```
+ENTRA addExistingItemToLibrary
+getLibraryItems pases activos= 11     ← la petición de /coleccion, ya en marcha
+insert passes -> created              ← el insert aterriza DESPUÉS
+getLibraryItems DEVUELVE 7            ← sin la obra recién seguida
+```
+
+La causa raíz es que **el optimismo se comía su propia señal**: `useFollow` publica el estado
+en el mismo tick en que dispara la acción, y `HeroStatusOrFollow` cambia entonces el botón
+«Seguir» —dueño de su `isPending`— por el badge. Resultado: **nada en el DOM decía que la
+escritura seguía en vuelo**, así que ni el usuario ni un test podían esperarla, y quien se
+iba a Colección en ese medio segundo no encontraba la obra.
+
+Arreglado publicando `isSaving` en `ItemStatusContext` y exponiéndolo como `aria-busy` en el
+badge (las dos caras, hero y rail). De paso faltaba `revalidateLibrary()` en la acción: seguir
+mete la obra en la biblioteca y `/coleccion` no se revalidaba.
+
+**Lo que sigue siendo cierto y es la trampa de verdad:** el badge «Pendiente» y la pestaña
+«Mi registro» son **optimistas** y aparecen antes de que exista la fila en `passes`. **No
+prueban que se haya persistido nada**; solo lo prueban `aria-busy="false"`, que la obra salga
+en `/coleccion?tab=todo`, o una consulta a `passes`.
 
 Corolario de depuración: no des por bueno «se guardó» mirando un badge optimista, y
 recuerda que los e2e **se autolimpian en `afterAll`** — consultar la BD después de que el

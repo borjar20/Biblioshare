@@ -19,7 +19,7 @@ export function useFollow(
   itemId: string,
   isLoggedIn: boolean,
 ): { follow: () => void; isPending: boolean } {
-  const { setStatus } = useItemStatus();
+  const { setStatus, setSaving } = useItemStatus();
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const pathname = usePathname();
@@ -34,7 +34,19 @@ export function useFollow(
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "log");
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    startTransition(() => addExistingItemToLibrary(itemType, itemId));
+    // El optimismo de arriba desmonta el botón "Seguir" —y con él su
+    // `isPending`— así que sin esto NADA en el DOM diría que la escritura sigue
+    // en vuelo: el badge ya canta "Pendiente" cuando aún no hay fila en
+    // `passes`, y quien vaya a /coleccion en ese medio segundo no ve la obra
+    // (issue #106). El badge lo expone como aria-busy.
+    setSaving(true);
+    startTransition(async () => {
+      try {
+        await addExistingItemToLibrary(itemType, itemId);
+      } finally {
+        setSaving(false);
+      }
+    });
   }
 
   return { follow, isPending };

@@ -165,6 +165,27 @@ function diaryEntry(page: Page, itemType: "book" | "series", n: number) {
 // revela "Mi registro" y salta a ella.
 async function followItem(page: Page) {
   await page.getByRole("button", { name: "Seguir" }).click();
+  // El badge "Pendiente" es OPTIMISTA: lo publica el cliente en el mismo tick
+  // en que dispara la acción, cuando todavía NO hay fila en `passes`. Verlo no
+  // prueba nada (docs/TRAMPAS.md §16). `aria-busy` baja a false cuando la
+  // escritura ha aterrizado de verdad — issue #106.
+  //
+  // Sin esta espera el test corría contra el servidor: la consulta de
+  // /coleccion caía ENTRE la entrada de la acción y su insert, y la obra no
+  // salía en la rejilla.
+  const badge = page.locator('[data-testid="status-badge"]:visible').first();
+  await expect(badge).toBeVisible({ timeout: 15_000 });
+  await expect(badge).toHaveAttribute("aria-busy", "false", { timeout: 20_000 });
+}
+
+// El botón de guardar de la HOJA DE CIERRE. Acotado al diálogo y con
+// `exact`: "Guardar" a secas casa por subcadena y desde el ciclo de notas hay
+// más de un botón que empieza así en la ficha ("Guardar sesión y cita", el
+// "Guardar" del compositor de notas), lo que rompía el modo estricto de
+// Playwright. No se veía porque estos tests llevaban tiempo sin ejecutarse:
+// «Regla 1» fallaba antes y, al ser serial, saltaba los demás.
+function closeSheetSave(page: Page) {
+  return page.getByRole("dialog").getByRole("button", { name: "Guardar", exact: true });
 }
 
 // applyTransition marca `closed` tanto para "completed" como para "dropped"
@@ -348,7 +369,7 @@ test.describe
     // La nota máxima. Las mitades de cada dot se anuncian por su valor real
     // 1-10 (RatingDots), no en estrellas: la app ya no tiene ninguna.
     await page.getByRole("button", { name: "10/10", exact: true }).click();
-    await page.getByRole("button", { name: "Guardar" }).click();
+    await closeSheetSave(page).click();
 
     await expect(
       page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
@@ -588,7 +609,7 @@ test.describe("película de un gesto", () => {
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
       ).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("button", { name: "Guardar" }).click();
+      await closeSheetSave(page).click();
 
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
@@ -664,7 +685,7 @@ test.describe("serie con revisionado", () => {
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
       ).toBeVisible({ timeout: 20_000 });
-      await page.getByRole("button", { name: "Guardar" }).click();
+      await closeSheetSave(page).click();
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
       ).toHaveCount(0);
