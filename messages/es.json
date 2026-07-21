@@ -494,8 +494,7 @@
   },
   "activity": {
     "sectionTitle": "Actividades",
-    "backToClub": "← Volver al club",
-    "backToActivities": "Actividades",
+    "backToActivities": "Volver a actividades",
     "propose": "Proponer actividad",
     "kind": "Tipo",
     "kind_buddy_read": "Lectura conjunta",
