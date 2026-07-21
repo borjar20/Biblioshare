@@ -25,6 +25,19 @@ export function NoteForm({
   const boundAdd = addNote.bind(null, itemType, itemId);
   const [state, formAction, pending] = useActionState(boundAdd, initialState);
   const [hasBody, setHasBody] = useState(false);
+  // useActionState devuelve la MISMA referencia de estado hasta que la acción
+  // resuelve; al resolver sin error, remontamos el compositor (vía `key`) para
+  // que vuelva a su estado inicial: plegado y vacío. Mismo patrón que
+  // session-sheet.tsx y close-pass-sheet.tsx.
+  const [prevState, setPrevState] = useState(state);
+  const [resetCount, setResetCount] = useState(0);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state !== initialState && !state.error) {
+      setResetCount((n) => n + 1);
+      setHasBody(false);
+    }
+  }
 
   return (
     <form
@@ -32,6 +45,7 @@ export function NoteForm({
       className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card"
     >
       <NoteComposer
+        key={resetCount}
         anchor={anchor}
         anchorHint={anchor.kind === "page" ? t("anchorFromPass") : undefined}
         onHasBodyChange={setHasBody}
