@@ -18,7 +18,7 @@ import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
 import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
 import { LinkedActivities } from "./list-challenge/linked-activities";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
-import { ActivityLayout, type ActivityLayoutProps } from "./activity-layout";
+import { ActivityLayout } from "./activity-layout";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { itemHref } from "@/lib/catalog/item-href";
 import { Button } from "@/components/ui/button";
@@ -179,9 +179,8 @@ export function ActivityDetailView({
           viewerId={viewerId}
           isModerator={isModerator}
           onChanged={refreshActivity}
-          Layout={(props: ActivityLayoutProps) => (
-            <ActivityLayout {...props} railExtra={participantsBlock} />
-          )}
+          Layout={ActivityLayout}
+          railExtra={participantsBlock}
         />
       )}
     </>

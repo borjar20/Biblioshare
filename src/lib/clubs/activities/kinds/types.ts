@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { ActivityDetail, ActivityKind } from "@/lib/clubs/activities/core";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import type { ItemType } from "@/lib/catalog/types";
@@ -52,7 +52,18 @@ export type ActivityKindDefinition = {
     viewerId: string;
     isModerator: boolean;
     onChanged: () => void;
+    // SIEMPRE la referencia importada `ActivityLayout`, nunca un wrapper
+    // `(props) => <ActivityLayout {...props} .../>` creado inline en el
+    // render del padre: una flecha inline es un tipo de componente distinto
+    // en cada render, y React, al no reconocer la identidad, desmonta y
+    // remonta todo el subárbol que cuelga de `Layout` en cada re-render del
+    // padre (aquí, cada `router.refresh()` tras una mutación). Efecto
+    // observable doble: el `<details>` de la matriz se cierra solo, y el
+    // texto a medio escribir en el chat de un hito se borra. Por eso
+    // `railExtra` viaja como prop normal en vez de ir capturado en el
+    // closure del wrapper.
     Layout: ComponentType<ActivityLayoutProps>;
+    railExtra: ReactNode;
   }>;
 };
 
