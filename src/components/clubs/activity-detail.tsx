@@ -213,18 +213,27 @@ export function ActivityDetailView({
   if (status === "active" && !isParticipant && !isModerator && !isCreator) {
     return (
       <div className="flex flex-col gap-4">
-        {/* Topbar del frame 4: «‹» + nombre del club, en vez de un enlace de texto. */}
-        <div className="flex items-center gap-2.5">
+        {/* Topbar: en móvil «‹ nombre del club» (frame 4); en PC «‹ Actividades»,
+            pegado bajo el topbar global. Un SOLO <Link> con dos textos por
+            breakpoint -- se desdobla texto, nunca el control (spec, decisión 1). */}
+        <div className="-mx-4 flex items-center gap-2.5 border-b border-border bg-background/85 px-4 py-3 backdrop-blur lg:sticky lg:top-[var(--topbar-h)] lg:z-10 lg:-mx-8 lg:px-8">
           <Link
-            href={`/club/${clubSlug}`}
-            aria-label={t("backToClub")}
-            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+            href={`/club/${clubSlug}?tab=actividades`}
+            className="flex min-w-0 items-center gap-2.5 text-foreground"
           >
-            <ChevronLeftIcon className="h-4 w-4" />
+            <span
+              aria-hidden
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface transition-colors hover:bg-surface-muted"
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </span>
+            <span className="truncate font-serif text-sm font-semibold lg:hidden">
+              {clubName}
+            </span>
+            <span className="hidden text-[13px] text-muted-foreground lg:inline">
+              {t("backToActivities")}
+            </span>
           </Link>
-          <span className="truncate font-serif text-sm font-semibold text-foreground">
-            {clubName}
-          </span>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -338,18 +347,27 @@ export function ActivityDetailView({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Topbar del frame 4: «‹» + nombre del club, en vez de un enlace de texto. */}
-      <div className="flex items-center gap-2.5">
+      {/* Topbar: en móvil «‹ nombre del club» (frame 4); en PC «‹ Actividades»,
+          pegado bajo el topbar global. Un SOLO <Link> con dos textos por
+          breakpoint -- se desdobla texto, nunca el control (spec, decisión 1). */}
+      <div className="-mx-4 flex items-center gap-2.5 border-b border-border bg-background/85 px-4 py-3 backdrop-blur lg:sticky lg:top-[var(--topbar-h)] lg:z-10 lg:-mx-8 lg:px-8">
         <Link
-          href={`/club/${clubSlug}`}
-          aria-label={t("backToClub")}
-          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+          href={`/club/${clubSlug}?tab=actividades`}
+          className="flex min-w-0 items-center gap-2.5 text-foreground"
         >
-          <ChevronLeftIcon className="h-4 w-4" />
+          <span
+            aria-hidden
+            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface transition-colors hover:bg-surface-muted"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </span>
+          <span className="truncate font-serif text-sm font-semibold lg:hidden">
+            {clubName}
+          </span>
+          <span className="hidden text-[13px] text-muted-foreground lg:inline">
+            {t("backToActivities")}
+          </span>
         </Link>
-        <span className="truncate font-serif text-sm font-semibold text-foreground">
-          {clubName}
-        </span>
       </div>
 
       <div className="flex flex-col gap-2">
