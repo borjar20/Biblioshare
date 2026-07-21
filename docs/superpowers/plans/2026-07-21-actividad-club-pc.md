@@ -12,7 +12,9 @@
 
 ## Global Constraints
 
-- **Cero DOM duplicado para controles.** Prohibido resolver el responsive con `hidden lg:block` + `lg:hidden` sobre el mismo botón o encabezado. Razón en `club-shell.tsx:14`. Solo se admite desdoblar **texto** dentro de un mismo elemento interactivo.
+- **Cero DOM duplicado para controles.** Prohibido resolver el responsive con `hidden lg:block` + `lg:hidden` sobre el mismo botón o encabezado. Razón en `club-shell.tsx:14`. Se admiten exactamente dos excepciones, ambas decididas y registradas:
+  1. Desdoblar **texto** dentro de un mismo elemento interactivo (el enlace de vuelta, Task 2).
+  2. El `railExtra` de `ActivityLayout` (Task 1), que sí usa `hidden lg:block`. Es legítimo porque su contenido son **avatares no interactivos** más un contador: ningún locator los busca por rol, así que no pueden provocar el *strict mode violation* que motiva la regla. Si algún día `railExtra` lleva un control, esta excepción deja de valer.
 - **`e2e/club-activity-changes.spec.ts` no se toca y debe seguir pasando.** Busca «Salir», «Modificar», «Finalizar», «Archivar» por rol: dos coincidencias = strict mode violation.
 - **El orden móvil no cambia.** Referencia: frames 4, 5, 7 y 8 de `Biblioshare_mockups/Paper - Clubes.html`. Orden: chip → título → descripción → participantes → acciones → progreso → tablero → clasificación.
 - **Ninguna migración, ningún dato nuevo.** Todo lo que va al rail ya lo cargan los tableros.
@@ -409,8 +411,6 @@ import { LinkedActivities } from "./linked-activities";
 Sustituir el `return` final (líneas 93-206) por:
 
 ```tsx
-  const isCuratorForLinks = isCurator;
-
   return (
     <Layout
       railTop={
@@ -530,11 +530,7 @@ Sustituir el `return` final (líneas 93-206) por:
               />
             ))}
           </div>
-          <LinkedActivities
-            activity={activity}
-            isCurator={isCuratorForLinks}
-            clubSlug={clubSlug}
-          />
+          <LinkedActivities activity={activity} isCurator={isCurator} clubSlug={clubSlug} />
         </div>
       }
     />
@@ -734,9 +730,9 @@ Sustituir el `return` (líneas 52-91) por:
       railTop={
         activity.viewerIsParticipant && item && total > 0 ? (
           <div className="flex flex-col gap-3">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-              {t("checkpoints")}
-            </h2>
+            {/* Sin encabezado propio: «Hitos» titula el tablero (body) y la
+                tarjeta ya dice «Tu progreso». Repetir el h2 aquí lo duplicaría
+                en móvil, donde las dos ranuras quedan seguidas. */}
             <div className="flex items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-card">
               {item.itemCoverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage
@@ -795,8 +791,6 @@ Sustituir el `return` (líneas 52-91) por:
     />
   );
 ```
-
-> Ojo: el encabezado «Hitos» aparece dos veces (railTop y body). Son **dos secciones distintas** en PC, pero en móvil quedarían pegadas y repetidas. Si al verificar en móvil se ve repetido, quitar el `<h2>` del `railTop` y dejar solo el del `body` — el mockup móvil (frame 4) tiene «Tu progreso» sin encabezado propio y «Hitos» justo antes de la lista.
 
 Si `upcoming.label` no existe como campo, usar el nombre real que tenga el checkpoint en `ActivityCheckpointsView` (consultar `src/lib/clubs/activities/checkpoints.ts`) y ajustar también el test de Task 5.
 
