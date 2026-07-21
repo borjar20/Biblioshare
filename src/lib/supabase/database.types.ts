@@ -1041,9 +1041,13 @@ export type Database = {
           created_at: string
           id: string
           is_favorite: boolean
+          is_public: boolean
+          is_spoiler: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           kind: string
+          meta: Json
+          parent_note_id: string | null
           pass_id: string | null
           position: Json | null
           session_id: string | null
@@ -1054,9 +1058,13 @@ export type Database = {
           created_at?: string
           id?: string
           is_favorite?: boolean
+          is_public?: boolean
+          is_spoiler?: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           kind: string
+          meta?: Json
+          parent_note_id?: string | null
           pass_id?: string | null
           position?: Json | null
           session_id?: string | null
@@ -1067,15 +1075,26 @@ export type Database = {
           created_at?: string
           id?: string
           is_favorite?: boolean
+          is_public?: boolean
+          is_spoiler?: boolean
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           kind?: string
+          meta?: Json
+          parent_note_id?: string | null
           pass_id?: string | null
           position?: Json | null
           session_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notes_parent_note_id_fkey"
+            columns: ["parent_note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notes_pass_id_fkey"
             columns: ["pass_id"]
