@@ -139,7 +139,7 @@ Y sustituir el bloque `DetailExtension` (líneas 45-50) por:
     viewerId: string;
     isModerator: boolean;
     onChanged: () => void;
-    clubSlug: string;
+    // `clubSlug` lo añade la Task 4 (solo list_challenge lo necesita).
     // `Layout` es SIEMPRE la referencia importada `ActivityLayout` -- nunca un
     // wrapper construido en el padre. Un wrapper inline cambia de identidad en
     // cada render de ActivityDetailView (que se re-renderiza con cada
