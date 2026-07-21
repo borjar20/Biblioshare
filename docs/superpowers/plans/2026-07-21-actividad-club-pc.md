@@ -55,7 +55,7 @@ Aísla toda la decisión de colocación en un componente sin lógica de negocio,
 **Interfaces:**
 - Produces: `ActivityLayout`, componente con props `{ railTop?: ReactNode; body: ReactNode; railBottom?: ReactNode; railExtra?: ReactNode }`. `railExtra` es lo que aporta el padre (participantes) y se pinta al principio del rail en PC; en móvil no se pinta aquí (el padre ya lo tiene en su sitio).
 - Produces: `ActivityLayoutProps`, tipo exportado.
-- Produces: en `types.ts`, `DetailExtension` pasa a recibir además `Layout: ComponentType<ActivityLayoutProps>`.
+- Produces: en `types.ts`, `DetailExtension` pasa a recibir además `Layout: ComponentType<ActivityLayoutProps>` y `railExtra: ReactNode`. `Layout` siempre es la referencia importada `ActivityLayout`, nunca un wrapper inline: un wrapper cambia de identidad en cada render y remonta el subárbol.
 
 - [ ] **Step 1: Crear el layout**
 
@@ -139,7 +139,18 @@ Y sustituir el bloque `DetailExtension` (líneas 45-50) por:
     viewerId: string;
     isModerator: boolean;
     onChanged: () => void;
+    clubSlug: string;
+    // `Layout` es SIEMPRE la referencia importada `ActivityLayout` -- nunca un
+    // wrapper construido en el padre. Un wrapper inline cambia de identidad en
+    // cada render de ActivityDetailView (que se re-renderiza con cada
+    // router.refresh()), y React remontaría el subárbol entero: se cerraría el
+    // <details> de la matriz y se borraría el texto a medio escribir en el chat
+    // de un hito. Por eso `railExtra` viaja como prop normal y el tablero lo
+    // reenvía, en vez de capturarse en un closure.
     Layout: ComponentType<ActivityLayoutProps>;
+    // Lo que el padre aporta al rail (participantes). El tablero no lo
+    // interpreta: solo lo reenvía a `Layout`.
+    railExtra: ReactNode;
   }>;
 ```
 
@@ -345,12 +356,17 @@ Sustituir el `DetailExtension` de `structureSection` (líneas 144-151) por:
           viewerId={viewerId}
           isModerator={isModerator}
           onChanged={refreshActivity}
-          Layout={(props: ActivityLayoutProps) => (
-            <ActivityLayout {...props} railExtra={participantsBlock} />
-          )}
+          clubSlug={clubSlug}
+          Layout={ActivityLayout}
+          railExtra={participantsBlock}
         />
       )}
 ```
+
+`Layout` es la referencia importada, sin envolver. Nada de `Layout={(props) => …}`:
+un wrapper inline cambia de identidad en cada render y React remonta el subárbol —
+se cerraría el `<details>` de la matriz y se perdería el texto a medio escribir en
+el chat de un hito.
 
 - [ ] **Step 4: Verificar tipos**
 
@@ -395,13 +411,14 @@ export function ListChallengeBoard({
   onChanged: () => void;
   clubSlug: string;
   Layout: ComponentType<ActivityLayoutProps>;
+  railExtra: ReactNode;
 }) {
 ```
 
 Con los imports:
 
 ```tsx
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { LinkedActivities } from "./linked-activities";
 ```
@@ -413,6 +430,7 @@ Sustituir el `return` final (líneas 93-206) por:
 ```tsx
   return (
     <Layout
+      railExtra={railExtra}
       railTop={
         <div className="flex flex-col gap-3">
           <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
@@ -709,13 +727,14 @@ export function BuddyReadCheckpoints({ activity, Layout }: {
   onChanged: () => void;
   clubSlug: string;
   Layout: ComponentType<ActivityLayoutProps>;
+  railExtra: ReactNode;
 }) {
 ```
 
 Imports nuevos:
 
 ```tsx
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { nextCheckpoint } from "@/lib/clubs/activities/next-checkpoint";
 ```
@@ -727,6 +746,7 @@ Sustituir el `return` (líneas 52-91) por:
 
   return (
     <Layout
+      railExtra={railExtra}
       railTop={
         activity.viewerIsParticipant && item && total > 0 ? (
           <div className="flex flex-col gap-3">
@@ -827,7 +847,7 @@ Se agrupan porque cada uno es un movimiento pequeño y ninguno introduce lógica
 
 - [ ] **Step 1: Tierlist — aceptar `Layout` y repartir**
 
-En `tierlist-board.tsx`, ampliar la firma igual que en las tareas anteriores (mismos imports de `ComponentType` y `ActivityLayoutProps`, más `clubSlug: string` en el tipo aunque no se use).
+En `tierlist-board.tsx`, ampliar la firma igual que en las tareas anteriores: imports de `ComponentType`/`ReactNode` y `ActivityLayoutProps`, más `clubSlug: string` (aunque no se use) y `railExtra: ReactNode`. La llamada a `<Layout>` debe reenviar `railExtra={railExtra}`.
 
 Sustituir el `return` (líneas 142-244) por un `<Layout>` con este reparto:
 
@@ -839,7 +859,7 @@ El JSX interior de cada pieza se copia **tal cual** está hoy; lo único que cam
 
 - [ ] **Step 2: Criteria — aceptar `Layout` y repartir**
 
-En `criteria-challenge-board.tsx`, misma ampliación de firma.
+En `criteria-challenge-board.tsx`, misma ampliación de firma, y la llamada a `<Layout>` reenvía igualmente `railExtra={railExtra}`.
 
 Sustituir el `return` (líneas 83-144) por un `<Layout>` con este reparto:
 
