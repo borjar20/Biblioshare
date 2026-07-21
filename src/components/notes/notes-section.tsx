@@ -28,7 +28,9 @@ export async function NotesSection({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-serif text-lg font-semibold tracking-tight">{t("sectionTitle")}</h2>
+      <h3 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+        {t("sectionTitle")}
+      </h3>
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("sectionEmpty")}</p>
       ) : (

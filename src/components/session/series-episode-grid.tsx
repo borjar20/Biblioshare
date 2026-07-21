@@ -198,17 +198,25 @@ export function SeriesEpisodeGrid({
           <span className="inline-flex w-fit items-center gap-1.5 rounded-md border border-green/25 bg-green/10 px-2.5 py-1.5 font-mono text-[11px] text-green">
             {/* Deliberado: Math.max(...selected), NO ...newlyMarked. El
                 literal («vas por T{season}·E{episode}») describe la posición
-                en la que QUEDA el pase, no el anclaje de la nota — y esa
-                posición sale de TODO lo seleccionado: los hidden inputs de
-                abajo emiten `selected` entero, el servidor hace Math.max sobre
-                eso (actions.ts) y rollSeriesProgress nunca retrocede. Con
+                en la que QUEDA el pase DENTRO DE ESTA TEMPORADA, no el
+                anclaje de la nota — y esa posición sale de TODO lo
+                seleccionado: los hidden inputs de abajo emiten `selected`
+                entero y el servidor hace Math.max sobre eso (actions.ts). Con
                 `newlyMarked` (revertido, era un error): en una temporada vista
                 hasta el 10 en la que marcas el 3, la chapa diría "T1·E3"
-                mientras el pase se queda en E10 — falso. El anclaje del
-                compositor ya se distingue con su propia etiqueta ("Anclada
-                a"), así que no hace falta que esta chapa haga ese trabajo.
-                `count` sí sigue siendo `newlyMarked.length`: "cuántos has
-                marcado" es otra pregunta y esa cuenta es correcta. */}
+                mientras el pase se queda en E10 — falso.
+                OJO: esto solo describe fielmente la posición GLOBAL del pase
+                si `season` es la temporada más avanzada del pase.
+                rollSeriesProgress nunca retrocede la posición derivada de
+                episode_watches, pero eso protege el estado del PASE, no esta
+                chapa — la rejilla deja elegir cualquier temporada, así que si
+                marcas un episodio suelto de la T1 con el pase ya en T2·E5, la
+                chapa dirá "vas por T1·Ex" y será falso respecto al pase real.
+                El anclaje del compositor ya se distingue con su propia
+                etiqueta ("Anclada a"), así que no hace falta que esta chapa
+                haga ese trabajo. `count` sí sigue siendo `newlyMarked.length`:
+                "cuántos has marcado" es otra pregunta y esa cuenta es
+                correcta. */}
             {t("episodesDelta", {
               count: newlyMarked.length,
               season,

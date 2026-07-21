@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { getActivePass } from "@/lib/passes/get-passes";
 import {
   revalidateProfilePages,
   revalidateItemPage,
@@ -16,8 +17,12 @@ export type AddNoteState = {
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 const MAX_BODY = 5000;
 
-// Añadir una nota o cita desde la ficha (sin sesión). El pase/sesión quedan
-// null: una película no tiene sesión y una nota suelta tampoco la necesita.
+// Añadir una nota o cita desde la ficha (sin sesión). `session_id` queda
+// siempre null: esta ruta no cuelga de ninguna sesión de progreso, ni
+// siquiera para un libro o una serie con pase activo. `pass_id` en cambio SÍ
+// se resuelve abajo: si la obra tiene un pase activo, la nota se ancla a él
+// (igual que hace addSession) para que un futuro cuaderno agrupado por pase
+// pueda atribuirla; si no hay pase activo (obra sin seguir), queda null.
 export async function addNote(
   itemType: ItemType,
   itemId: string,
@@ -33,7 +38,12 @@ export async function addNote(
   if (!VALID_TYPES.includes(itemType)) return { error: "generic" };
 
   const body = String(formData.get("note") ?? "").trim();
-  if (!body || body.length > MAX_BODY) return { error: "empty" };
+  // `[...body].length`, no `body.length`: el CHECK de Postgres (y el de
+  // addSession, que escribe la misma columna desde la otra ruta) cuenta code
+  // points, no unidades UTF-16 — ver el comentario largo en sessions/actions.ts.
+  if (!body || [...body].length > MAX_BODY) return { error: "empty" };
+
+  const pass = await getActivePass(supabase, itemType, itemId, user.id);
 
   const kind = formData.get("noteKind") === "quote" ? "quote" : "note";
   const isFavorite = formData.get("noteFavorite") === "on";
@@ -45,11 +55,13 @@ export async function addNote(
 
   // Anclaje. Un valor ilegible NO tumba el guardado: una nota sin página sigue
   // siendo una nota, y perder el texto por un número mal escrito es la peor de
-  // las dos pérdidas.
+  // las dos pérdidas. Acotado por tipo (igual que addSession): `notePage`
+  // solo cuenta para libro, `noteSeason`/`noteEpisode` solo para serie — un
+  // POST fabricado no debe poder colar un anclaje que no encaja con el medio.
   let position: Record<string, number> | null = null;
-  const pageRaw = String(formData.get("notePage") ?? "").trim();
-  const seasonRaw = String(formData.get("noteSeason") ?? "").trim();
-  const episodeRaw = String(formData.get("noteEpisode") ?? "").trim();
+  const pageRaw = itemType === "book" ? String(formData.get("notePage") ?? "").trim() : "";
+  const seasonRaw = itemType === "series" ? String(formData.get("noteSeason") ?? "").trim() : "";
+  const episodeRaw = itemType === "series" ? String(formData.get("noteEpisode") ?? "").trim() : "";
   if (pageRaw) {
     const page = Number(pageRaw);
     if (Number.isInteger(page) && page >= 0) position = { page };
@@ -65,6 +77,8 @@ export async function addNote(
     user_id: user.id,
     item_type: itemType,
     item_id: itemId,
+    pass_id: pass?.id ?? null,
+    session_id: null,
     kind,
     body,
     position,

@@ -209,18 +209,38 @@ export async function addSession(
     const notePublic = formData.get("notePublic") === "on";
     const noteTags = normalizeTags(String(formData.get("noteTags") ?? ""));
 
+    // El defecto es `sessionPosition`, pero solo cuando el compositor NO
+    // manda el campo de anclaje en absoluto (modo episodio de serie, o
+    // compositor sin anclaje que pintar). Si el campo SÍ llega —aunque llegue
+    // vacío— es que el usuario pulsó "Editar" y lo dejó en blanco a
+    // propósito: el compositor ya muestra "Sin anclar" en ese caso, y
+    // guardar `sessionPosition` igualmente ancoraría la nota a la página de
+    // la sesión en contra de lo que dice la UI (bug de la revisión final:
+    // "vaciar el anclaje a mano hace cosas distintas en cada ruta").
     let notePosition: Position = sessionPosition;
-    const notePageRaw = String(formData.get("notePage") ?? "").trim();
-    const noteSeasonRaw = String(formData.get("noteSeason") ?? "").trim();
-    const noteEpisodeRaw = String(formData.get("noteEpisode") ?? "").trim();
-    if (itemType === "book" && notePageRaw) {
-      const p = Number(notePageRaw);
-      if (Number.isInteger(p) && p >= 0) notePosition = { page: p };
-    } else if (itemType === "series" && noteSeasonRaw && noteEpisodeRaw) {
-      const s = Number(noteSeasonRaw);
-      const e = Number(noteEpisodeRaw);
-      if (Number.isInteger(s) && s >= 0 && Number.isInteger(e) && e >= 0) {
-        notePosition = { season: s, episode: e };
+    if (itemType === "book" && formData.has("notePage")) {
+      const notePageRaw = String(formData.get("notePage") ?? "").trim();
+      if (notePageRaw) {
+        const p = Number(notePageRaw);
+        if (Number.isInteger(p) && p >= 0) notePosition = { page: p };
+      } else {
+        notePosition = {};
+      }
+    } else if (
+      itemType === "series" &&
+      formData.has("noteSeason") &&
+      formData.has("noteEpisode")
+    ) {
+      const noteSeasonRaw = String(formData.get("noteSeason") ?? "").trim();
+      const noteEpisodeRaw = String(formData.get("noteEpisode") ?? "").trim();
+      if (noteSeasonRaw && noteEpisodeRaw) {
+        const s = Number(noteSeasonRaw);
+        const e = Number(noteEpisodeRaw);
+        if (Number.isInteger(s) && s >= 0 && Number.isInteger(e) && e >= 0) {
+          notePosition = { season: s, episode: e };
+        }
+      } else {
+        notePosition = {};
       }
     }
 

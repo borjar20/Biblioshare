@@ -104,7 +104,7 @@ async function resolveBookFixture(userId: string) {
   return { itemId: book.id, passId: pass.id, snapshot: pass };
 }
 
-async function resolveSeriesFixture(userId: string) {
+async function resolveSeriesFixture() {
   const seriesRes = await fetch(
     `${SUPABASE_URL}/rest/v1/series?title=eq.${encodeURIComponent("Juego de tronos")}&select=id`,
     { headers: headers() },
@@ -273,7 +273,7 @@ test("el orden es por posicion: T1E12 va antes que T2E5", async ({ page }) => {
   test.setTimeout(90_000);
   await login(page);
   const userId = await devtestId();
-  const { itemId } = await resolveSeriesFixture(userId);
+  const { itemId } = await resolveSeriesFixture();
   const EARLY = "e2e · temporada uno episodio doce";
   const LATE = "e2e · temporada dos episodio cinco";
 

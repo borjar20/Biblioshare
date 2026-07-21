@@ -290,18 +290,23 @@ export function SessionSheet({
               </Select>
             </div>
           </details>
-
-          {state.error && (
-            <p className="text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
-          )}
-          {state.noteFailed && (
-            <p className="text-sm text-status-dropped">{t("noteFailed")}</p>
-          )}
         </div>
 
         {/* `shrink-0` por el mismo motivo que la cabecera de arriba: este
-            footer no debe encogerse cuando el contenido de en medio no cabe. */}
+            footer no debe encogerse cuando el contenido de en medio no cabe.
+            Los avisos de error y de fallo de nota viven AQUÍ, no en la
+            columna de campos que scrollea de más arriba: si el usuario ya
+            hizo scroll hasta el fondo para llegar al botón, un aviso pintado
+            arriba queda fuera de vista y ve un botón deshabilitado sin
+            explicación — justo el caso que "la sesión manda, copia tu texto"
+            no puede permitirse (revisión final de rama). */}
         <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
+          {state.error && (
+            <p className="mb-2.5 text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
+          )}
+          {state.noteFailed && (
+            <p className="mb-2.5 text-sm text-status-dropped">{t("noteFailed")}</p>
+          )}
           {/* La sesión ya se guardó si `noteFailed` es cierto: reenviar
               volvería a insertar una segunda sesión, remarcaría episodios y
               reescribiría la posición del pase (no hay idempotencia en

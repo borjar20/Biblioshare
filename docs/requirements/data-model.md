@@ -131,8 +131,9 @@ Cuelgan del pase:
   (metadata libre por tipo de nota), `is_spoiler boolean not null default false`,
   `is_public boolean not null default false` y `parent_note_id uuid null references
   notes(id) on delete set null` (cita → nota hija; borrar la cita padre no arrastra la
-  hija). Índices: `idx_notes_item` (`user_id, item_type, item_id`, para la lista de la
-  ficha) e `idx_notes_parent` (parcial, `where parent_note_id is not null`). **RLS: solo
+  hija). Índices: `idx_notes_user` (`user_id, created_at desc`, preexistente),
+  `idx_notes_item` (`user_id, item_type, item_id`, para la lista de la ficha) e
+  `idx_notes_parent` (parcial, `where parent_note_id is not null`). **RLS: solo
   dueño (4 políticas). `is_public` se escribe pero no hay política de lectura pública** —
   ver `decisiones.md`.
 
