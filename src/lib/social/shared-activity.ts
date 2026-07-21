@@ -131,7 +131,8 @@ export async function resolveSharedActivity(
     // library_entry_id.
     const { data: row } = await supabase
       .from("progress_sessions")
-      .select("id, user_id, pass_id, session_date, duration_minutes, note")
+      // `note` NO se pide: texto privado del autor (ver `progress` en FeedEvent).
+      .select("id, user_id, pass_id, session_date, duration_minutes")
       .eq("id", ref.rowId)
       .maybeSingle();
     if (!row) return null;
@@ -159,7 +160,7 @@ export async function resolveSharedActivity(
       rating: null,
       reviewExcerpt: null,
       episode: null,
-      progress: { durationMinutes: row.duration_minutes, note: row.note },
+      progress: { durationMinutes: row.duration_minutes },
       interactionTarget: null,
       reactionCount: 0,
       viewerReacted: false,
