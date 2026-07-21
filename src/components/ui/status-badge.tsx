@@ -16,16 +16,21 @@ const STATUS_DOT_CLASSES = {
 // - "overlay": la píldora `.sb` sobre la portada en la rejilla de Colección
 //   (mockup "Paper - Colección" frame B) — texto + dot sobre surface translúcido
 //   con blur y borde, para leerse encima de cualquier portada.
+// `busy`: la escritura que publicó este estado sigue en vuelo. El badge de la
+// ficha es OPTIMISTA (aparece antes de que exista la fila en `passes`), así que
+// sin esto nada distinguía "ya guardado" de "guardando" — ver issue #106.
 export function StatusBadge({
   status,
   label,
   dotOnly = false,
   variant = "chip",
+  busy,
 }: {
   status: keyof typeof STATUS_DOT_CLASSES;
   label: string;
   dotOnly?: boolean;
   variant?: "chip" | "hero" | "overlay";
+  busy?: boolean;
 }) {
   if (dotOnly) {
     return (
@@ -57,6 +62,7 @@ export function StatusBadge({
     return (
       <span
         data-testid="status-badge"
+        aria-busy={busy}
         className="inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-foreground"
       >
         <span

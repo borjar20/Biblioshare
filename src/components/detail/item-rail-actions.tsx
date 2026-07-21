@@ -59,7 +59,7 @@ export function ItemRailActions({
   goToLogLabel: string;
 }) {
   const t = useTranslations("item");
-  const { status } = useItemStatus();
+  const { status, isSaving } = useItemStatus();
   const pathname = usePathname();
   const accent = MEDIA_ACCENT[itemType];
   const { follow, isPending } = useFollow(itemType, itemId, isLoggedIn);
@@ -89,6 +89,9 @@ export function ItemRailActions({
         // "el estado en modo lectura", cada una en su vista. El e2e busca la
         // que esté VISIBLE, así no depende del breakpoint en que corra.
         data-testid="status-badge"
+        // Misma señal que la píldora del hero: el estado es optimista y esto
+        // dice si la escritura que lo publicó sigue en vuelo (issue #106).
+        aria-busy={isSaving}
         className="flex items-center gap-2.5 rounded-[10px] border border-border bg-surface px-[15px] py-[13px] text-sm font-semibold text-foreground transition-colors hover:bg-surface-muted"
       >
         <span

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { revalidateItemPage } from "@/lib/reactivity/revalidate";
+import { revalidateItemPage, revalidateLibrary } from "@/lib/reactivity/revalidate";
 
 // Unlike addToLibrary in src/app/buscar/actions.ts, the item here already has
 // a catalog row (we're on its detail page) — no findOrCreate step needed.
@@ -28,4 +28,8 @@ export async function addExistingItemToLibrary(
   await applyTransition(supabase, user.id, itemType, itemId, "planned");
 
   revalidateItemPage(itemType, itemId);
+  // Seguir mete la obra en la biblioteca, así que /coleccion también cambia.
+  // Faltaba (issue #106): este módulo existe justamente para que "olvidar una
+  // ruta" no sea posible, y esta se había olvidado.
+  revalidateLibrary();
 }
