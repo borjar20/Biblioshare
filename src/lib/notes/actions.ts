@@ -7,6 +7,7 @@ import {
   revalidateProfilePages,
   revalidateItemPage,
 } from "@/lib/reactivity/revalidate";
+import { normalizeTags } from "./tags";
 
 export type AddNoteState = {
   error?: "empty" | "generic";
@@ -31,17 +32,33 @@ export async function addNote(
 
   if (!VALID_TYPES.includes(itemType)) return { error: "generic" };
 
-  const body = String(formData.get("body") ?? "").trim();
+  const body = String(formData.get("note") ?? "").trim();
   if (!body || body.length > MAX_BODY) return { error: "empty" };
 
-  const kind = formData.get("kind") === "quote" ? "quote" : "note";
-  const isFavorite = formData.get("isFavorite") === "on";
+  const kind = formData.get("noteKind") === "quote" ? "quote" : "note";
+  const isFavorite = formData.get("noteFavorite") === "on";
+  const isSpoiler = formData.get("noteSpoiler") === "on";
+  // Se guarda la intención; NADIE ajeno lo lee todavía (no hay política RLS de
+  // lectura pública). Ver la spec 2026-07-21, D3.
+  const isPublic = formData.get("notePublic") === "on";
+  const tags = normalizeTags(String(formData.get("noteTags") ?? ""));
 
-  const pageRaw = String(formData.get("page") ?? "").trim();
-  let position: { page: number } | null = null;
+  // Anclaje. Un valor ilegible NO tumba el guardado: una nota sin página sigue
+  // siendo una nota, y perder el texto por un número mal escrito es la peor de
+  // las dos pérdidas.
+  let position: Record<string, number> | null = null;
+  const pageRaw = String(formData.get("notePage") ?? "").trim();
+  const seasonRaw = String(formData.get("noteSeason") ?? "").trim();
+  const episodeRaw = String(formData.get("noteEpisode") ?? "").trim();
   if (pageRaw) {
     const page = Number(pageRaw);
     if (Number.isInteger(page) && page >= 0) position = { page };
+  } else if (seasonRaw && episodeRaw) {
+    const season = Number(seasonRaw);
+    const episode = Number(episodeRaw);
+    if (Number.isInteger(season) && season >= 0 && Number.isInteger(episode) && episode >= 0) {
+      position = { season, episode };
+    }
   }
 
   const { error } = await supabase.from("notes").insert({
@@ -52,6 +69,9 @@ export async function addNote(
     body,
     position,
     is_favorite: isFavorite,
+    is_spoiler: isSpoiler,
+    is_public: isPublic,
+    meta: { tags },
   });
 
   if (error) return { error: "generic" };

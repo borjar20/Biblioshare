@@ -10,7 +10,7 @@ import { ChevronDownIcon } from "@/components/ui/icons";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { PassProgress } from "./pass-progress";
 import { SessionList } from "@/components/session-list";
-import { AddNoteForm } from "@/components/notes/add-note-form";
+import { NoteForm } from "@/components/notes/note-form";
 import { StatusSegments } from "@/components/detail/status-segments";
 import { useItemStatus } from "@/components/detail/item-status-context";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
@@ -401,12 +401,15 @@ function ManagedLog({
             />
           </div>
 
-          {/* Añadir a Memorizar sin sesión (P7): también para películas. */}
+          {/* Añadir a Memorizar sin sesión (P7): también para películas. El
+              anclaje arranca en la posición actual del pase si es un libro. */}
           <div className="order-7">
-            <AddNoteForm
+            <NoteForm
               itemType={itemType}
               itemId={itemId}
-              showPage={itemType === "book"}
+              anchor={
+                itemType === "book" ? { kind: "page", page: page ?? null } : { kind: "none" }
+              }
             />
           </div>
         </div>
