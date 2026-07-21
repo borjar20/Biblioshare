@@ -1,6 +1,11 @@
 # Notas y citas · captura y cuaderno — diseño
 
-> **[Spec de diseño · propuesta, no construido]** Redactada el 2026-07-21.
+> **[Histórico · congelado 2026-07-21]** Redactada el 2026-07-21 y **ya construida**:
+> Plan A en la PR #110, Plan B (el cuaderno `/notas`) a continuación. Explica el
+> *porqué*, no el *hoy*: para el estado actual manda `backlog.md`, y para el
+> esquema `data-model.md`. **§4 se construyó con dos órdenes, no tres** — ver la
+> nota dentro de esa sección y la entrada de `decisiones.md` del 2026-07-21.
+>
 > Cubre la captura de notas/citas y su relectura. Avanza las entradas de backlog
 > **§7.27** (citas y frases destacadas) y **§7.24** (notas ancladas al progreso).
 >
@@ -9,8 +14,9 @@
 > las fases F2-F3 (muro público, spoiler-safe, tarjeta compartible, OCR), que esta
 > spec no toca.
 >
-> Para el esquema canónico manda [`data-model.md`](../../requirements/data-model.md);
-> esta spec **propone** una migración, no la da por aplicada.
+> Para el esquema canónico manda [`data-model.md`](../../requirements/data-model.md).
+> La migración que propone §2 se aplicó en dev y prod con Plan A; **Plan B no
+> añadió ninguna**.
 
 ## 0. Punto de partida, verificado contra prod
 
@@ -198,6 +204,14 @@ Ruta propia (D7). La tarjeta Memorizar del Rincón conserva el sorteo y gana un
 
 - **Filtros**: obra, tipo (`kind`), etiqueta. **Búsqueda** de texto sobre `body`.
   **Orden**: recientes · por obra · por posición.
+
+  > **Corregido al construir:** los órdenes acabaron siendo **dos**, no tres.
+  > «Por posición» global no significa nada (comparar «Pág. 12» con «T1·E3» es
+  > comparar dos escalas), y «por obra» no se puede ordenar en SQL porque el
+  > título vive en tres tablas según `item_type`. El orden `obra` ordena por
+  > `(item_type, item_id, created_at)` —estable, que es lo que la paginación
+  > necesita— y agrupa por obra al pintar, con `compareNotes` dentro de cada
+  > grupo. Añadido un cuarto filtro, **favoritas**.
 - **Todo en el servidor, con paginación.** Hoy `RinconTab` hace
   `getNotes(supabase, userId)` sin límite y se lleva el array entero al cliente
   para el sorteo. Con 30 notas da igual; un cuaderno con búsqueda no puede

@@ -9,8 +9,11 @@ import { formatPosition } from "@/lib/library/position";
 
 // Memorizar (frames C/H): enseña UNA nota o cita del usuario y deja cambiarla
 // con "Otra nota". La cita en serif, su meta (obra · página · tipo) en mono.
-// "Exportar tarjeta" (solo en citas, P10) abre el PNG de /api/og. "Repasar
-// todas" aún no existe, así que el recuento va como texto, no como enlace muerto.
+// "Exportar tarjeta" (solo en citas, P10) abre el PNG de /api/og.
+//
+// `notes` es una MUESTRA acotada (getNotesForSorteo), no todas: por eso el
+// enlace a /notas no dice cuántas hay — el recuento de verdad lo pone el
+// cuaderno, que es quien las recorre enteras.
 export function MemorizeCard({ notes }: { notes: Note[] }) {
   const t = useTranslations("notes");
   const [index, setIndex] = useState(() =>
@@ -53,9 +56,12 @@ export function MemorizeCard({ notes }: { notes: Note[] }) {
         <h3 className="font-serif text-sm font-semibold text-foreground">
           {t("title")}
         </h3>
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {t("countLink", { count: notes.length })}
-        </span>
+        <Link
+          href="/notas"
+          className="font-mono text-[11px] text-muted-foreground underline hover:text-foreground"
+        >
+          {t("notebookSeeAll")}
+        </Link>
       </div>
 
       <Link
