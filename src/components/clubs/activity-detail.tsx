@@ -18,6 +18,7 @@ import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
 import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
 import { LinkedActivities } from "./list-challenge/linked-activities";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
+import { ActivityLayout, type ActivityLayoutProps } from "./activity-layout";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { itemHref } from "@/lib/catalog/item-href";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,37 @@ export function ActivityDetailView({
 
   const overflow = activity.participantCount - activity.participants.length;
 
+  // Los participantes se pintan en su sitio del mockup en móvil, y además
+  // viajan al rail en PC (`railExtra`). Una sola definición para las dos.
+  const participantsBlock = (
+    <div className="flex items-center gap-3">
+      {activity.participants.length > 0 && (
+        <span className="flex" aria-hidden>
+          {activity.participants.map((participant) => (
+            <span
+              key={participant.userId}
+              className="-ml-2 rounded-full ring-2 ring-background first:ml-0"
+            >
+              <UserAvatar
+                name={participant.displayName || participant.username}
+                avatarUrl={participant.avatarUrl}
+                size={28}
+              />
+            </span>
+          ))}
+          {overflow > 0 && (
+            <span className="-ml-2 grid h-7 w-7 place-items-center rounded-full bg-surface-muted font-mono text-[10px] text-muted-foreground ring-2 ring-background">
+              +{overflow}
+            </span>
+          )}
+        </span>
+      )}
+      <span className="text-xs text-muted-foreground">
+        {t("participate", { count: activity.participantCount })}
+      </span>
+    </div>
+  );
+
   // La "estructura" que ve cada quién, compartida por la vista principal y la
   // previa. El PARTICIPANTE ve el tablero completo (rejilla con su progreso,
   // tierlist, hitos con "Tu progreso"). El NO-PARTICIPANTE —un miembro suelto,
@@ -147,6 +179,9 @@ export function ActivityDetailView({
           viewerId={viewerId}
           isModerator={isModerator}
           onChanged={refreshActivity}
+          Layout={(props: ActivityLayoutProps) => (
+            <ActivityLayout {...props} railExtra={participantsBlock} />
+          )}
         />
       )}
     </>
@@ -259,33 +294,7 @@ export function ActivityDetailView({
 
         {/* Quién participa: igual que en la vista de participante, sin la
             fila de acciones que solo tiene sentido dentro de la actividad. */}
-        <div className="flex items-center gap-3">
-          {activity.participants.length > 0 && (
-            <span className="flex" aria-hidden>
-              {activity.participants.map((participant) => (
-                <span
-                  key={participant.userId}
-                  className="-ml-2 rounded-full ring-2 ring-background first:ml-0"
-                >
-                  <UserAvatar
-                    name={participant.displayName || participant.username}
-                    avatarUrl={participant.avatarUrl}
-                    size={28}
-                  />
-                </span>
-              ))}
-              {overflow > 0 && (
-                <span className="-ml-2 grid h-7 w-7 place-items-center rounded-full bg-surface-muted font-mono text-[10px] text-muted-foreground ring-2 ring-background">
-                  +{overflow}
-                </span>
-              )}
-            </span>
-          )}
-
-          <span className="text-xs text-muted-foreground">
-            {t("participate", { count: activity.participantCount })}
-          </span>
-        </div>
+        {participantsBlock}
 
         {error && <p className="text-xs text-status-dropped">{error}</p>}
 
@@ -392,33 +401,7 @@ export function ActivityDetailView({
       </div>
 
       {/* Quién participa: stack de avatares + unirse/salir, como en el handoff. */}
-      <div className="flex items-center gap-3">
-        {activity.participants.length > 0 && (
-          <span className="flex" aria-hidden>
-            {activity.participants.map((participant) => (
-              <span
-                key={participant.userId}
-                className="-ml-2 rounded-full ring-2 ring-background first:ml-0"
-              >
-                <UserAvatar
-                  name={participant.displayName || participant.username}
-                  avatarUrl={participant.avatarUrl}
-                  size={28}
-                />
-              </span>
-            ))}
-            {overflow > 0 && (
-              <span className="-ml-2 grid h-7 w-7 place-items-center rounded-full bg-surface-muted font-mono text-[10px] text-muted-foreground ring-2 ring-background">
-                +{overflow}
-              </span>
-            )}
-          </span>
-        )}
-
-        <span className="text-xs text-muted-foreground">
-          {t("participate", { count: activity.participantCount })}
-        </span>
-      </div>
+      {participantsBlock}
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
