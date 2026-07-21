@@ -68,9 +68,15 @@ export function ListChallengeBoard({
   // Los dos early returns con contenido (pool vacío, no-participante) pasan
   // por `Layout`: si no, a 1280 el bloque de participantes no aparece en
   // ninguna parte (el flujo lo oculta confiando en el rail, pero sin `Layout`
-  // ese rail nunca llega a existir) y `LinkedActivities` -- que todo el club
-  // debe poder ver, no solo quien participa -- se pierde con él. El de `!view`
-  // sigue en `null`: mientras carga no hay nada que enseñar en ningún lado.
+  // ese rail nunca llega a existir). `LinkedActivities` NO va en su
+  // `railBottom` aquí -- ese reparto es solo del camino de participante, más
+  // abajo; para un no-participante, `activity-detail.tsx` ya la pinta directa
+  // (hasBoard es estrecho: este tablero, para `list_challenge`, solo se monta
+  // si `isParticipant`). Consecuencia: el early return de `!viewerIsParticipant`
+  // de aquí abajo queda inalcanzable (el padre ya no monta este componente
+  // para un no-participante) -- se conserva como defensa del componente, no se
+  // borra. El de `!view` sigue en `null`: mientras carga no hay nada que
+  // enseñar en ningún lado.
   if (activity.items.length === 0) {
     return (
       <Layout
@@ -83,11 +89,13 @@ export function ListChallengeBoard({
             <p className="text-xs text-muted-foreground">{t("listChallengeEmptyList")}</p>
           </div>
         }
-        railBottom={<LinkedActivities activity={activity} isCurator={isCurator} clubSlug={clubSlug} />}
       />
     );
   }
 
+  // Inalcanzable hoy: `hasBoard` en `activity-detail.tsx` ya gatea el montaje
+  // de este tablero a `isParticipant` para `list_challenge` (a diferencia de
+  // `buddy_read`). Se conserva como defensa en profundidad del componente.
   if (!activity.viewerIsParticipant) {
     return (
       <Layout
@@ -100,12 +108,11 @@ export function ListChallengeBoard({
             <p className="text-xs text-muted-foreground">{t("listChallengeJoinToSee")}</p>
           </div>
         }
-        railBottom={<LinkedActivities activity={activity} isCurator={isCurator} clubSlug={clubSlug} />}
       />
     );
   }
 
-  if (!view) return null;
+  if (!view) return <Layout railExtra={railExtra} body={null} />;
 
   const viewer = view.participants.find((p) => p.isViewer);
   // Clasificación: completados desc, desempate estable por username.

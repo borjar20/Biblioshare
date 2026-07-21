@@ -43,7 +43,13 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity.id]);
 
-  if (!view || !view.itemType) return null;
+  // `view` llega por fetch propio (useEffect): mientras está en `null` (toda
+  // carga, en cualquier viewer) hay que seguir pasando por `Layout` para que
+  // el rail exista y `railExtra` (el bloque de participantes) se pinte desde
+  // el primer frame -- si no, a 1280 "N participan" no aparece en ningún
+  // sitio durante el fetch (ni en el flujo, oculto por `hasBoard`, ni en el
+  // rail, que sin `Layout` nunca llega a montarse).
+  if (!view || !view.itemType) return <Layout railExtra={railExtra} body={null} />;
 
   // Card "Tu progreso" (mockup frame 4): posición del diario + hitos
   // confirmados. El % de la barra sale de los hitos, no de la página -- es lo

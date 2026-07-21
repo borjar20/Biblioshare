@@ -30,7 +30,7 @@ export function ActivityLayout({
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_296px] lg:items-start lg:gap-7">
       {(railTop || railExtra) && (
         <div
-          className={`flex-col gap-4 lg:col-start-2 lg:row-start-1 ${
+          className={`flex-col gap-4 empty:hidden lg:col-start-2 lg:row-start-1 ${
             // Si no hay `railTop`, el único contenido de esta ranura es
             // `railExtra`, que solo se pinta en PC (`hidden lg:block` más
             // abajo). El contenedor en sí debe seguirle el paso: si se queda
@@ -49,8 +49,16 @@ export function ActivityLayout({
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">{body}</div>
 
+      {/* `empty:hidden` en los dos contenedores de rail: cuando la pieza que
+          llega a una ranura renderiza `null` (p. ej. `LinkedActivities` sin
+          hijas ni oferta), el `<div>` se monta sin hijos y `:empty` lo
+          colapsa -- si no, ese contenedor vacío igual consume el `gap-4` del
+          padre en móvil. Resuelve estructuralmente toda la familia de casos
+          data-driven (presentes y futuros), no solo el actual. */}
       {railBottom && (
-        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-2">{railBottom}</div>
+        <div className="flex flex-col gap-4 empty:hidden lg:col-start-2 lg:row-start-2">
+          {railBottom}
+        </div>
       )}
     </div>
   );

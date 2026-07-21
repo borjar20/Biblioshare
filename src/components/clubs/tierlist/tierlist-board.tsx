@@ -63,8 +63,12 @@ export function TierlistBoard({
   // Ambos early returns con contenido pasan por `Layout`: sin esto, a 1280 el
   // bloque de participantes no aparece en ningún sitio -- el flujo principal
   // lo oculta confiando en que el rail lo repite, pero sin `Layout` ese rail
-  // nunca llega a montarse. El de `!board` (más abajo) sigue en `null`: no hay
-  // absolutamente nada que enseñar en ese caso.
+  // nunca llega a montarse.
+  //
+  // Inalcanzable hoy: `hasBoard` en `activity-detail.tsx` ya exige
+  // `isParticipant` para montar este tablero (tierlist no es `buddy_read`, la
+  // única excepción). Se conserva como defensa en profundidad del componente,
+  // por si algún día se monta desde otro sitio sin ese gateo.
   if (!activity.viewerIsParticipant) {
     return (
       <Layout
@@ -98,7 +102,9 @@ export function TierlistBoard({
   }
 
   const board = view.boards.find((b) => b.userId === shownUserId) ?? view.boards[0];
-  if (!board) return null;
+  // Igual que `!view` arriba: pasa por `Layout` para que el rail (y
+  // `railExtra`) siga existiendo mientras no hay board que mostrar.
+  if (!board) return <Layout railExtra={railExtra} body={null} />;
 
   const editable = board.isViewer;
   const itemByKey = new Map(activity.items.map((i) => [`${i.itemType}:${i.itemId}`, i]));

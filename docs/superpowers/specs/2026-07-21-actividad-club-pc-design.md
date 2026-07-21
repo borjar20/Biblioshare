@@ -113,6 +113,17 @@ return <Layout
 | `tierlist` | conmutador de participantes + `<h2>` del tablero (Tu tierlist / La de X) | tiers + pool + selector táctil | — |
 | `criteria_challenge` | chip de modo + anillo | «quién aporta» (ranking) | regla del reto |
 
+**Nota (revisión final de rama, 2026-07-21, segunda pasada):** la fila de `list_challenge` de
+esta tabla describe el reparto **cuando el tablero se monta**, y `ListChallengeBoard` **solo se
+monta para quien participa** (`hasBoard` en `activity-detail.tsx` es estrecho: únicamente
+`buddy_read` monta su tablero sin gatear a `isParticipant`; se probó ensanchar también
+`list_challenge` y se revirtió, ver la entrada de `decisiones.md` de esa fecha). Para un
+no-participante (miembro suelto, o moderador/creador que no se unió), `LinkedActivities` no vive
+en ningún rail — no hay tablero que lo monte — sino como **hermano de plano** de
+`structureSection` en la vista principal de `activity-detail.tsx`, gateado solo por
+`activity.kind === "list_challenge" && !isParticipant` (el `!isParticipant` evita que se pinte
+dos veces cuando el tablero ya la lleva en su `railBottom`).
+
 «Próximo hito» se deriva del primer checkpoint no alcanzado de la vista que el tablero ya
 carga. No hace falta dato nuevo.
 

@@ -56,6 +56,12 @@ export function CriteriaChallengeBoard({
   // bloque de participantes no aparece en ningún sitio -- el flujo principal
   // lo oculta confiando en que el rail lo repite, pero sin `Layout` ese rail
   // nunca llega a montarse.
+  //
+  // Inalcanzable hoy: `hasBoard` en `activity-detail.tsx` ya exige
+  // `isParticipant` para montar este tablero (criteria_challenge no es
+  // `buddy_read`, la única excepción). Se conserva como defensa en
+  // profundidad del componente, por si algún día se monta desde otro sitio
+  // sin ese gateo.
   if (!activity.viewerIsParticipant) {
     return (
       <Layout
