@@ -374,6 +374,17 @@ test.describe
     await expect(
       page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
     ).toHaveCount(0);
+
+    // REGRESIÓN issue #117: cerrar la hoja tiene que dejarnos EN LA FICHA.
+    // Se comprueba la URL ANTES que el badge a propósito. Cuando esto se
+    // rompió, la salida del modal acababa en el inicio y el único síntoma era
+    // "no aparece el badge Leído" — un mensaje que apunta al estado del pase
+    // (lectura, escritura, revalidación) cuando el fallo real era de
+    // navegación, y que costó una investigación entera desmontar. Con esta
+    // aserción delante, la misma rotura dice directamente dónde acabamos.
+    await expect(page).toHaveURL(new RegExp(`/libro/${bookId}`), {
+      timeout: 15_000,
+    });
     await expect(statusBadge(page, "Leído")).toBeVisible({
       timeout: 15_000,
     });
@@ -490,13 +501,21 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       await page.locator('input[name="page"]').fill("20");
       await page.getByRole("button", { name: "Guardar sesión" }).click();
       // NO esperar la navegación con waitForURL: el servidor ya no redirige
-      // (Tarea 1-7 de registrar-sesion-v2) — el modal cierra con
-      // router.back() en el cliente, y esa navegación puede completarse
-      // ANTES de que este waitForURL se registre, dejándolo esperando un
-      // evento que ya pasó (flaky: falló una vez y pasó al reintentar en una
-      // corrida completa). La condición real de "la sesión se guardó y el
-      // modal se fue" es que el <dialog> deje de estar visible.
+      // (Tarea 1-7 de registrar-sesion-v2) — el modal cierra navegando en el
+      // cliente, y esa navegación puede completarse ANTES de que este
+      // waitForURL se registre, dejándolo esperando un evento que ya pasó
+      // (flaky: falló una vez y pasó al reintentar en una corrida completa).
+      // La condición real de "la sesión se guardó y el modal se fue" es que
+      // el <dialog> deje de estar visible.
       await expect(sheet).toBeHidden({ timeout: 15_000 });
+
+      // REGRESIÓN issue #117, rama "sesión que NO cierra el pase": la otra
+      // salida del modal. La Regla 2 cubre la que pasa por la hoja de cierre;
+      // esta es la salida directa, y también tiene que dejarnos en la ficha.
+      // Va antes del goto de abajo, que la enmascararía por completo.
+      await expect(page).toHaveURL(new RegExp(`/libro/${bookId}`), {
+        timeout: 15_000,
+      });
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});

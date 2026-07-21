@@ -56,16 +56,17 @@ export function SessionSheet({
   const router = useRouter();
   // null en modo "page" (no hay SessionModal por encima). En modo "modal" es
   // el único punto de salida del <dialog> exterior (ver session-modal.tsx):
-  // llamarlo aquí en vez de router.back() directamente evita que este
-  // componente y el <dialog> exterior disparen cada uno su propio salto de
-  // historial para el mismo cierre.
+  // llamarlo aquí en vez de navegar por nuestra cuenta evita que este
+  // componente y el <dialog> exterior disparen cada uno su propia salida para
+  // el mismo cierre.
   const modalClose = useModalClose();
 
   // Única salida de la hoja. En modal emboca al closeOnce() de SessionModal
-  // (un solo salto de historial pase lo que pase); en la ruta directa no hay
-  // a dónde volver, así que va a la ficha. useCallback le da una identidad
-  // estable: la usa el useEffect de más abajo como dependencia sin
-  // reejecutarse en cada render.
+  // (una sola navegación pase lo que pase, y a la ficha por href fijo: el
+  // historial no es fiable aquí, ver issue #117 en session-modal.tsx); en la
+  // ruta directa no hay a dónde volver, así que va a la ficha. useCallback le
+  // da una identidad estable: la usa el useEffect de más abajo como
+  // dependencia sin reejecutarse en cada render.
   const closeSheet = useCallback(() => {
     if (mode === "modal") modalClose?.();
     else router.push(itemHref(itemType, itemId));
@@ -94,8 +95,8 @@ export function SessionSheet({
 
   // Navegar NO es setState: un efecto aquí no choca con
   // react-hooks/set-state-in-effect. El cierre pasa siempre por closeSheet
-  // (arriba), NUNCA por router.back() directo — así este camino comparte el
-  // mismo guardián de "un solo salto" que Escape/backdrop y que el cierre de
+  // (arriba), NUNCA navegando por su cuenta — así este camino comparte el
+  // mismo guardián de "una sola salida" que Escape/backdrop y que el cierre de
   // ClosePassSheet más abajo. Si el pase se cerró con esta sesión, la
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
