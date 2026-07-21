@@ -20,7 +20,9 @@ export async function getSessions(
 
   const { data, error } = await supabase
     .from("progress_sessions")
-    .select("id, session_date, duration_minutes, position, note")
+    // `note` NO se pide: el texto vive en la tabla `notes` y lo pinta «Mis notas
+    // y citas». Leerlo también aquí era la duplicación de la issue #109.
+    .select("id, session_date, duration_minutes, position")
     .eq("pass_id", passId)
     .order("session_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -33,6 +35,5 @@ export async function getSessions(
     sessionDate: row.session_date,
     durationMinutes: row.duration_minutes,
     position: parsePosition(itemType, row.position),
-    note: row.note,
   }));
 }

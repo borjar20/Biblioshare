@@ -139,11 +139,10 @@ export function SessionList({
                     {t("delete")}
                   </button>
                 </div>
-                {session.note && (
-                  <p className="mt-1 pl-[18px] text-xs text-muted-foreground lg:pl-[21px]">
-                    {session.note}
-                  </p>
-                )}
+                {/* Aquí NO va el texto de la nota (issue #109): su hogar es la
+                    tabla `notes` y lo pinta «Mis notas y citas», con su tipo,
+                    anclaje y acciones. Pintarlo también aquí duplicaba la misma
+                    frase en esta pestaña. */}
               </li>
             );
           })}
