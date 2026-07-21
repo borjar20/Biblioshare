@@ -13,13 +13,68 @@ import { useRouter } from "next/navigation";
 // anidado dentro de SessionSheet, ver session-sheet.tsx) se cierra y navega,
 // este <dialog> exterior también termina emitiendo su propio "close" al
 // desmontarse la ruta interceptada — dos disparos para un solo gesto de
-// usuario, y por tanto dos router.back(). No merece la pena perseguir cuál
-// de los dos dispara primero (depende del navegador y del orden exacto de
-// desmontaje, no es algo que el código controle): en vez de eso, el salto de
-// historial vive en UN SOLO sitio (closeOnce, más abajo) protegido por un
-// ref, y tanto el "close" nativo de este <dialog> como cualquier llamada de
-// SessionSheet (vía useModalClose) pasan por ahí. El primero que llega gana;
-// el resto son operaciones nulas.
+// usuario, y por tanto dos salidas. No merece la pena perseguir cuál de los
+// dos dispara primero (depende del navegador y del orden exacto de
+// desmontaje, no es algo que el código controle): en vez de eso, la salida
+// vive en UN SOLO sitio (closeOnce, más abajo) protegido por un ref, y tanto
+// el "close" nativo de este <dialog> como cualquier llamada de SessionSheet
+// (vía useModalClose) pasan por ahí. El primero que llega gana; el resto son
+// operaciones nulas.
+//
+// La salida NO puede ser siempre `router.back()` (issue #117): la entrada de
+// historial de la ficha PUEDE NO EXISTIR cuando llegamos aquí, así que
+// "atrás" no es un destino fiable:
+//
+//   Next solo crea entrada nueva al navegar si su `pushRef.pendingPush`
+//   sobrevive hasta el efecto que sincroniza el historial (ver
+//   AppRouter en next/dist/client). Si cuando el usuario pulsa "Registrar
+//   sesión" hay una actualización del router en vuelo —y en la ficha la hay
+//   muy a menudo: cambiar de estado dispara una server action que revalida—
+//   ese `pendingPush` se pierde y la navegación al modal degrada de `push` a
+//   `replace`, comiéndose la entrada de la ficha. Medido con la Navigation
+//   API: `navigate type=replace -> /sesion/...`, y `entries()` pasa de
+//   [..., /libro/X] a [..., /sesion/Y] sin rastro de la ficha.
+//
+// Consecuencia: un `back()` saltaba a lo que hubiera ANTES de la ficha (en el
+// e2e, el inicio), y el usuario terminaba fuera de la obra que acababa de
+// cerrar.
+//
+// Pero `replace` A SECAS tampoco vale, y esto costó una corrida entera de la
+// suite descubrirlo: en una navegación SOFT, Next conserva el slot paralelo
+// `@modal` (su `default.tsx` solo entra en navegación dura), así que la ruta
+// interceptada NO se desmonta y el <dialog> se queda abierto encima de la
+// ficha. `back()` sí la desmonta — de ahí que funcionara. Por eso:
+//
+//   1. Se cierra el <dialog> a mano, siempre. No depende de que la ruta se
+//      desmonte, que es justo lo que no podemos dar por hecho.
+//   2. Se vuelve con `back()` cuando la entrada anterior ES la ficha (caso
+//      sano: desmonta la ruta y conserva el scroll), y con `replace(exitHref)`
+//      solo cuando NO lo es — el caso degradado, donde back() nos echaría
+//      fuera de la obra.
+//
+// No se arregla quitando el `router.refresh()` del cambio de estado
+// (probado: sigue fallando) — la propia revalidación de la server action basta
+// para pisar `pendingPush`. Tampoco es cosa del auto-cierre: cualquiera que
+// entre a registrar una sesión pierde la entrada de la ficha.
+
+// ¿La entrada anterior del historial es la ficha a la que queremos volver?
+// Solo la Navigation API lo sabe (Chromium); donde no exista se responde que
+// sí, que es el comportamiento de siempre — este helper solo puede MEJORAR el
+// destino, nunca empeorarlo respecto a lo que había antes de la issue #117.
+function previousEntryIs(exitHref: string): boolean {
+  const nav = (
+    window as unknown as {
+      navigation?: { currentEntry?: { index: number }; entries(): { url: string }[] };
+    }
+  ).navigation;
+  if (!nav?.currentEntry) return true;
+  const previous = nav.entries()[nav.currentEntry.index - 1];
+  if (!previous) return false;
+  return (
+    new URL(previous.url).pathname ===
+    new URL(exitHref, window.location.origin).pathname
+  );
+}
 const ModalCloseContext = createContext<(() => void) | null>(null);
 
 // SessionSheet lo usa para que "Ahora no"/"Guardar" de ClosePassSheet, y el
@@ -32,19 +87,32 @@ export function useModalClose(): (() => void) | null {
   return useContext(ModalCloseContext);
 }
 
-export function SessionModal({ children }: { children: React.ReactNode }) {
+export function SessionModal({
+  children,
+  exitHref,
+}: {
+  children: React.ReactNode;
+  /** Ficha de la obra del pase: destino fijo al cerrar. Lo calcula el server
+   *  component de la ruta interceptada, que ya tiene el contexto del pase. */
+  exitHref: string;
+}) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closedRef = useRef(false);
 
   // Único punto de salida del modal: da igual cuántas veces se llame (native
   // "close" de este <dialog>, o una llamada explícita vía contexto desde
-  // SessionSheet) — solo la primera ejecuta router.back().
+  // SessionSheet) — solo la primera navega.
   const closeOnce = useCallback(() => {
     if (closedRef.current) return;
     closedRef.current = true;
-    router.back();
-  }, [router]);
+    // Idempotente: si llegamos aquí DESDE el "close" nativo, ya está cerrado;
+    // si llegamos por SessionSheet (vía contexto), lo cerramos nosotros. El
+    // close() reentrante vuelve a este callback y sale por el guard de arriba.
+    dialogRef.current?.close();
+    if (previousEntryIs(exitHref)) router.back();
+    else router.replace(exitHref);
+  }, [router, exitHref]);
 
   // showModal() es una llamada imperativa al DOM, no setState: no choca con
   // react-hooks/set-state-in-effect.
