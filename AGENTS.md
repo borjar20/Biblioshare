@@ -33,8 +33,38 @@ Antes de dar por terminado cualquier cambio, repasa:
    las anteriores).
 4. **¿Dudas de si la doc coincide con la realidad?**
    → corre el chequeo de `docs/DRIFT-CHECK.md` (o el comando `/drift-check`).
+5. **¿Queda algo pendiente, dudoso o descubierto de refilón?**
+   → **ábrelo como issue en el repo.** Ver la regla de abajo.
 
 Regla de oro: un cambio no está "hecho" hasta que el doc canónico correspondiente vuelve a ser cierto.
+
+## Todo lo pendiente vive como issue: las issues SON el backlog
+
+**Si algo queda pendiente, se abre una issue. Sin excepciones.** No vale dejarlo en el cuerpo de una
+PR, en un comentario `TODO`, en el resumen de una sesión ni en la memoria del agente: nada de eso
+sobrevive a que se cierre la conversación. El repositorio de issues es el backlog operativo del
+proyecto — `docs/requirements/backlog.md` sigue siendo el mapa de *features* a medio plazo, pero lo
+que está vivo y accionable se rastrea en issues.
+
+Aplica a todo esto, no solo a los bugs:
+
+- **Un fallo que descubres arreglando otra cosa.** No lo encadenes a la PR en curso: la hace
+  irrevisable y mezcla dos diagnósticos. Issue aparte con lo que sepas.
+- **Un arreglo parcial o con límites asumidos** (p. ej. una solución que solo cubre un navegador).
+  Que funcione hoy no lo hace cerrado.
+- **Una sospecha sin confirmar.** Vale abrirla diciendo que es una sospecha; lo que no vale es que
+  se pierda.
+- **Trabajo que decides NO hacer** y por qué. Si merece hacerse algún día, merece una issue.
+
+**Escríbela para quien la lea dentro de seis meses sin tu contexto**, y ten presente que puede ser
+lo único que quede. Como mínimo: qué falla y qué se esperaba, **cómo reproducirlo**, qué acota el
+problema (qué SÍ funciona), y las trampas que te costaron tiempo. Si tienes un baseline o una
+medición, pégalos: una tabla de «antes/después» vale más que un párrafo de prosa.
+
+**Y si el diagnóstico de una issue resulta ser falso, dilo al cerrarla.** Un diagnóstico equivocado
+que sobrevive en el repo es peor que no tener issue: manda a la siguiente persona en la dirección
+contraria. Ha pasado ya dos veces (#106 y #117): en ambas, lo que la issue daba por causa era un
+síntoma que apuntaba a otro sitio.
 <!-- END:biblioshare-docs -->
 
 <!-- BEGIN:biblioshare-cleanup -->
