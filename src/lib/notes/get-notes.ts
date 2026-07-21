@@ -13,12 +13,19 @@ type Row = {
   body: string;
   position: unknown;
   is_favorite: boolean;
+  meta: unknown;
+  is_spoiler: boolean;
+  is_public: boolean;
   created_at: string;
 };
 
-function pageOf(position: unknown, itemType: ItemType): number | null {
-  const parsed = parsePosition(itemType, position);
-  return "page" in parsed && parsed.page !== undefined ? parsed.page : null;
+// meta es jsonb opaco: lo que la BD garantiza es que es un objeto, no que
+// tenga tags ni que sean strings. Se valida aquí, en el borde de lectura.
+function tagsOf(meta: unknown): string[] {
+  if (!meta || typeof meta !== "object") return [];
+  const raw = (meta as Record<string, unknown>).tags;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((t): t is string => typeof t === "string");
 }
 
 // Las notas del usuario, más nuevas primero, con el título de la obra resuelto
@@ -30,7 +37,9 @@ export async function getNotes(
 ): Promise<Note[]> {
   const { data, error } = await supabase
     .from("notes")
-    .select("id, item_type, item_id, kind, body, position, is_favorite, created_at")
+    .select(
+      "id, item_type, item_id, kind, body, position, is_favorite, meta, is_spoiler, is_public, created_at",
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -70,8 +79,11 @@ export async function getNotes(
     itemId: r.item_id,
     kind: r.kind,
     body: r.body,
-    page: pageOf(r.position, r.item_type),
+    position: parsePosition(r.item_type, r.position),
     isFavorite: r.is_favorite,
+    tags: tagsOf(r.meta),
+    isSpoiler: r.is_spoiler,
+    isPublic: r.is_public,
     createdAt: r.created_at,
     itemTitle: titleByKey.get(`${r.item_type}:${r.item_id}`) ?? null,
   }));
@@ -85,7 +97,9 @@ export async function getNoteById(
 ): Promise<Note | null> {
   const { data, error } = await supabase
     .from("notes")
-    .select("id, item_type, item_id, kind, body, position, is_favorite, created_at")
+    .select(
+      "id, item_type, item_id, kind, body, position, is_favorite, meta, is_spoiler, is_public, created_at",
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -105,8 +119,11 @@ export async function getNoteById(
     itemId: r.item_id,
     kind: r.kind,
     body: r.body,
-    page: pageOf(r.position, r.item_type),
+    position: parsePosition(r.item_type, r.position),
     isFavorite: r.is_favorite,
+    tags: tagsOf(r.meta),
+    isSpoiler: r.is_spoiler,
+    isPublic: r.is_public,
     createdAt: r.created_at,
     itemTitle: (titleRow as { title: string } | null)?.title ?? null,
   };
@@ -123,4 +140,44 @@ export function countNotes(notes: Note[]): NoteCounts {
     if (n.isFavorite) favorites++;
   }
   return { quotes, notes: plain, favorites, total: notes.length };
+}
+
+// Las notas del usuario para UNA obra, para la lista de la ficha. Sin orden en
+// SQL: lo pone compareNotes en el cliente del servidor (src/lib/notes/sort.ts),
+// porque ordenar por un jsonb con dos formas distintas desde SQL exigiría un
+// índice de expresión por tipo de ítem para nada.
+//
+// Nota: cuelgan del ÍTEM, no del pase, así que esto trae también las notas de
+// relecturas anteriores — que es lo que queremos (cada tarjeta lleva su fecha).
+export async function getNotesForItem(
+  supabase: SupabaseServerClient,
+  userId: string,
+  itemType: ItemType,
+  itemId: string,
+): Promise<Note[]> {
+  const { data, error } = await supabase
+    .from("notes")
+    .select(
+      "id, item_type, item_id, kind, body, position, is_favorite, meta, is_spoiler, is_public, created_at",
+    )
+    .eq("user_id", userId)
+    .eq("item_type", itemType)
+    .eq("item_id", itemId);
+
+  if (error) throw error;
+
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: r.id,
+    itemType: r.item_type,
+    itemId: r.item_id,
+    kind: r.kind,
+    body: r.body,
+    position: parsePosition(r.item_type, r.position),
+    isFavorite: r.is_favorite,
+    tags: tagsOf(r.meta),
+    isSpoiler: r.is_spoiler,
+    isPublic: r.is_public,
+    createdAt: r.created_at,
+    itemTitle: null,
+  }));
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { Note } from "@/lib/notes/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { formatPosition } from "@/lib/library/position";
 
 // Memorizar (frames C/H): enseña UNA nota o cita del usuario y deja cambiarla
 // con "Otra nota". La cita en serif, su meta (obra · página · tipo) en mono.
@@ -40,7 +41,7 @@ export function MemorizeCard({ notes }: { notes: Note[] }) {
 
   const meta = [
     note.itemTitle?.toUpperCase(),
-    note.page != null ? `p. ${note.page}` : null,
+    formatPosition(note.itemType, note.position),
     note.kind === "quote" ? t("kindQuote") : t("kindNote"),
   ]
     .filter(Boolean)

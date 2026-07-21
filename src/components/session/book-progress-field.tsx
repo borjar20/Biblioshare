@@ -21,22 +21,33 @@ export function BookProgressField({
   fromPage,
   total,
   initialMinutes,
+  onPageChange,
 }: {
   passId: string;
   fromPage: number | null;
   total: number | null;
   initialMinutes?: number | null;
+  /** La página que el usuario está marcando AHORA, para que el anclaje del
+   *  compositor la siga. No se usa para enviar nada: el input `name="page"`
+   *  sigue siendo la única fuente de la posición de la sesión. */
+  onPageChange?: (page: number | null) => void;
 }) {
   const t = useTranslations("session");
   const [toPage, setToPage] = useState(fromPage !== null ? String(fromPage) : "");
   const toPageNum = toPage.trim() === "" ? null : Number(toPage);
   const { delta, remaining, readPct, sessionPct } = readProgress(fromPage, toPageNum, total);
 
+  function updatePage(next: string) {
+    setToPage(next);
+    const parsed = next.trim() === "" ? null : Number(next);
+    onPageChange?.(parsed !== null && Number.isFinite(parsed) ? parsed : null);
+  }
+
   // El clamp solo se aplica al fijar un valor por botón/chip o al salir del
   // campo (onBlur) — nunca en cada tecla, o le arrancaríamos el "24" de las
   // manos a medio escribir "240".
   function setPage(next: number) {
-    setToPage(String(clampPage(next, total)));
+    updatePage(String(clampPage(next, total)));
   }
 
   const [durationMode, setDurationMode] = useState<"manual" | "timer">("manual");
@@ -101,7 +112,7 @@ export function BookProgressField({
               inputMode="numeric"
               aria-label={t("finalPage")}
               value={toPage}
-              onChange={(e) => setToPage(e.target.value)}
+              onChange={(e) => updatePage(e.target.value)}
               onBlur={() => toPageNum !== null && setPage(toPageNum)}
               className="w-full border-0 bg-transparent text-center font-mono text-[26px] font-semibold focus:ring-0"
             />

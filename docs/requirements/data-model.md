@@ -1,10 +1,10 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-20]**
+> **[Canónico · verificado contra prod el 2026-07-21]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
-> **2026-07-20**: 42 tablas, todas con RLS activa. Donde otro doc lo contradiga,
+> **2026-07-21**: 42 tablas, todas con RLS activa. Donde otro doc lo contradiga,
 > manda este — y varios docs antiguos aún dicen `diary_entries`, que **ya no existe**
 > (ver §0).
 
@@ -125,7 +125,17 @@ Cuelgan del pase:
   `created_at` es cuándo se registró, que no es lo mismo.
 - **`episode_watches`** — un episodio visto. **La existencia de la fila = visto**;
   `rating`/`review` son opcionales.
-- **`notes`** — notas y citas de «Memorizar». Privadas, solo el dueño.
+- **`notes`** — notas y citas de «Memorizar». Además de `pass_id`/`session_id` (ambas
+  opcionales), `item_type`/`item_id`, `kind` (`note|quote`, con `CHECK`) y `body`: desde
+  `20260721_notes_social_columns.sql` suma `meta jsonb not null default '{}'::jsonb`
+  (metadata libre por tipo de nota), `is_spoiler boolean not null default false`,
+  `is_public boolean not null default false` y `parent_note_id uuid null references
+  notes(id) on delete set null` (cita → nota hija; borrar la cita padre no arrastra la
+  hija). Índices: `idx_notes_user` (`user_id, created_at desc`, preexistente),
+  `idx_notes_item` (`user_id, item_type, item_id`, para la lista de la ficha) e
+  `idx_notes_parent` (parcial, `where parent_note_id is not null`). **RLS: solo
+  dueño (4 políticas). `is_public` se escribe pero no hay política de lectura pública** —
+  ver `decisiones.md`.
 
 **Las series no tienen `progress_sessions`**: se miden en episodios. Cualquier orden por
 "última sesión" las manda al final si no se contempla.

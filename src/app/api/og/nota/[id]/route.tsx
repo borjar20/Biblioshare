@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@/lib/supabase/server";
 import { getNoteById } from "@/lib/notes/get-notes";
+import { formatPosition } from "@/lib/library/position";
 
 export const size = { width: 1080, height: 1080 };
 export const contentType = "image/png";
@@ -55,7 +56,7 @@ export async function GET(
   const themeParam = new URL(req.url).searchParams.get("theme");
   const c = themeParam === "dark" ? THEMES.dark : THEMES.light;
 
-  const meta = [note.itemTitle?.toUpperCase(), note.page != null ? `p. ${note.page}` : null]
+  const meta = [note.itemTitle?.toUpperCase(), formatPosition(note.itemType, note.position)]
     .filter(Boolean)
     .join("  ·  ");
 

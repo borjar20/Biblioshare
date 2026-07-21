@@ -47,6 +47,7 @@ import {
   CatalogEditor,
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
+import { NotesSection } from "@/components/notes/notes-section";
 
 export async function generateMetadata({
   params,
@@ -489,18 +490,21 @@ async function SeriesTabs({
         </div>
       }
       log={
-        <LogPanel
-          itemType="series"
-          itemId={series.id}
-          entry={entry}
-          passes={passes}
-          sessions={sessions}
-          // Las series no tienen ediciones (getEditions ni siquiera
-          // consulta la BD para este tipo): no hace falta cargarlas.
-          editions={[]}
-          initialClosingPassId={initialClosingPassId}
-          canContribute={canContribute}
-        />
+        <div className="flex flex-col gap-4">
+          <LogPanel
+            itemType="series"
+            itemId={series.id}
+            entry={entry}
+            passes={passes}
+            sessions={sessions}
+            // Las series no tienen ediciones (getEditions ni siquiera
+            // consulta la BD para este tipo): no hace falta cargarlas.
+            editions={[]}
+            initialClosingPassId={initialClosingPassId}
+            canContribute={canContribute}
+          />
+          {userId && <NotesSection userId={userId} itemType="series" itemId={series.id} />}
+        </div>
       }
     />
   );
