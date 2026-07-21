@@ -12,11 +12,11 @@
 
 ## Global Constraints
 
-- **Cero DOM duplicado para controles.** Prohibido resolver el responsive con `hidden lg:block` + `lg:hidden` sobre el mismo botón o encabezado. Razón en `club-shell.tsx:14`. Se admiten exactamente dos excepciones, ambas decididas y registradas:
+- **Cero DOM duplicado para controles.** Prohibido resolver el responsive con `hidden lg:block` + `lg:hidden` sobre el mismo botón o encabezado. Razón en la nota sobre duplicados de `club-shell.tsx`. Se admiten exactamente dos excepciones, ambas decididas y registradas:
   1. Desdoblar **texto** dentro de un mismo elemento interactivo (el enlace de vuelta, Task 2).
   2. El `railExtra` de `ActivityLayout` (Task 1), que sí usa `hidden lg:block`. Es legítimo porque su contenido son **avatares no interactivos** más un contador: ningún locator los busca por rol, así que no pueden provocar el *strict mode violation* que motiva la regla. Si algún día `railExtra` lleva un control, esta excepción deja de valer.
 - **`e2e/club-activity-changes.spec.ts` no se toca y debe seguir pasando.** Busca «Salir», «Modificar», «Finalizar», «Archivar» por rol: dos coincidencias = strict mode violation.
-- **El orden móvil no cambia.** Referencia: frames 4, 5, 7 y 8 de `Biblioshare_mockups/Paper - Clubes.html`. Orden: chip → título → descripción → participantes → acciones → progreso → tablero → clasificación.
+- **El orden móvil se preserva para `tierlist` y `criteria_challenge`.** Referencia: frames 4, 5, 7 y 8 de `Biblioshare_mockups/Paper - Clubes.html`. Orden: chip → título → descripción → participantes → acciones → progreso → tablero → clasificación. **Actualización (revisión final de rama, 2026-07-21):** en `list_challenge` y `buddy_read` el orden SÍ cambió, y se aceptó — ver la corrección en la spec, sección Verificación. `list_challenge`: la clasificación pasó de ir entre la rejilla y la matriz a ir después de la matriz y la regla. `buddy_read`: la tarjeta «Tu progreso» pasó a preceder al `<h2>` «Hitos» (antes era al revés), y se añadió «Próximo hito» al final.
 - **Ninguna migración, ningún dato nuevo.** Todo lo que va al rail ya lo cargan los tableros.
 - **Node 22:** el shell puede arrancar en 20.9. Activar con `fnm use 22` antes de `npx vitest` o `npm test`.
 - **Un solo `next dev`, en el puerto 3000.** `npm run test:e2e` reutiliza el que haya.
@@ -85,7 +85,7 @@ export type ActivityLayoutComponent = ComponentType<ActivityLayoutProps>;
 //   railBottom   -> col 2, fila 2
 //
 // No se usa `hidden lg:block` para mover piezas: duplicaría controles y la
-// suite corre a 1280 (ver club-shell.tsx:14).
+// suite corre a 1280 (ver la nota sobre duplicados en `club-shell.tsx`).
 export function ActivityLayout({
   railTop,
   body,
@@ -594,7 +594,10 @@ Expected: errores solo en los tres tableros restantes (falta la prop `Layout`).
 
 Abrir un reto de lista del que seas participante.
 - A 1280: «Tu avance» arriba a la derecha, rejilla ancha (8 columnas) a la izquierda, clasificación y actividades conectadas debajo en el rail.
-- A 390: orden idéntico al de antes — Tu avance → rejilla → clasificación → conectadas.
+- A 390: **actualización (revisión final de rama):** el orden real no quedó idéntico al de
+  antes — la clasificación pasó de ir justo tras la rejilla a ir después de la matriz y la
+  regla. Orden real y aceptado: Tu avance → rejilla → matriz → regla → clasificación →
+  conectadas.
 
 - [ ] **Step 7: Commit**
 
@@ -826,7 +829,10 @@ Expected: toda la suite unitaria en verde.
 
 Abrir una lectura conjunta con hitos.
 - A 1280: «Tu progreso» arriba a la derecha, hitos con sus chats a la izquierda, «Próximo hito» debajo en el rail.
-- A 390: Tu progreso → Hitos, como antes. Sin encabezado «Hitos» repetido (aplicar la nota del paso 2 si aparece).
+- A 390: **actualización (revisión final de rama):** el orden real no quedó "como antes" —
+  antes el `<h2>` «Hitos» precedía a la tarjeta; ahora la tarjeta «Tu progreso» va primero.
+  Orden real y aceptado: Tu progreso → Hitos → Próximo hito. Sin encabezado «Hitos»
+  repetido (aplicar la nota del paso 2 si aparece).
 
 - [ ] **Step 5: Commit**
 
@@ -1199,7 +1205,7 @@ El cuerpo debe enlazar la spec, resumir las tres decisiones, y enlazar las tres 
 | «Próximo hito» derivado, sin dato nuevo | Task 5 |
 | Las 3 discrepancias mockup/código → issues | Task 9 |
 | El e2e existente sigue pasando | Task 8, paso 3 |
-| Orden móvil idéntico | Verificación a ojo en Tasks 4, 6, 7 + Task 8 paso 4 |
+| Orden móvil (idéntico en tierlist/criteria_challenge; cambio aceptado en list_challenge/buddy_read, ver spec) | Verificación a ojo en Tasks 4, 6, 7 + Task 8 paso 4 |
 | Sin migraciones | — (nada que hacer) |
 
 **Riesgo conocido y aceptado:** el reparto de `tierlist` y `criteria_challenge` (Task 7) se describe por ranuras en vez de con el JSX completo, porque es mover bloques existentes sin tocarlos. Es la única desviación de «código completo en cada paso» del plan, y se compensa con el `tsc --noEmit` sin errores como criterio de cierre.

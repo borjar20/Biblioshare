@@ -56,8 +56,9 @@ columna. Eso descarta las dos soluciones fáciles:
 
 - Un `<aside>` con `lg:order-2` (el patrón del feed del club) agruparía en móvil,
   arriba del tablero, cosas que el mockup pone antes y después.
-- Duplicar DOM con `hidden lg:block` está vetado por `club-shell.tsx:14`: *«no hay
-  duplicados que confundan a los locators de la suite (que corre a 1280 = lg)»*.
+- Duplicar DOM con `hidden lg:block` está vetado por la nota sobre duplicados de
+  `club-shell.tsx`: *«no hay duplicados que confundan a los locators de la suite
+  (que corre a 1280 = lg)»*.
 
 El contrato es de tres ranuras:
 
@@ -73,6 +74,14 @@ col 2 / fila 2.
 
 Consecuencia asumida: al ser dos celdas separadas, el rail no puede ser un único bloque
 `sticky` como en el feed del club. Se acepta — el rail de una actividad es corto.
+
+Otra consecuencia conocida de la misma decisión: el orden del DOM es el móvil, así que en
+`lg` el orden de TABULACIÓN sigue siendo ese orden del DOM, no la disposición visual del
+grid (que en `lg` pone el cuerpo a la izquierda y el rail a la derecha). Así, en la tierlist
+se tabula rail-arriba → cuerpo → rail-abajo (railTop → body → railBottom), aunque
+visualmente el cuerpo esté primero. Se acepta por el mismo motivo que el resto de la
+decisión 2: partir el DOM por breakpoint para que la tabulación siguiera lo visual
+reintroduciría el problema que la decisión 2 evita (duplicar controles).
 
 ## Decisión 3 — el tablero sigue siendo un solo componente
 
@@ -101,7 +110,7 @@ return <Layout
 |---|---|---|---|
 | `buddy_read` | Tu progreso | lista de hitos + chats | próximo hito |
 | `list_challenge` | Tu avance | rejilla + matriz + regla | clasificación + actividades conectadas |
-| `tierlist` | conmutador de participantes | tiers + pool + selector táctil | — |
+| `tierlist` | conmutador de participantes + `<h2>` del tablero (Tu tierlist / La de X) | tiers + pool + selector táctil | — |
 | `criteria_challenge` | chip de modo + anillo | «quién aporta» (ranking) | regla del reto |
 
 «Próximo hito» se deriva del primer checkpoint no alcanzado de la vista que el tablero ya
@@ -142,8 +151,17 @@ config congelada de la actividad (`criteria-challenge-board.tsx:17-19`).
 - Comprobar los cuatro tipos en las dos anchuras, y en los tres estados de espectador que
   ya distingue `activity-detail.tsx`: participante, no participante de una activa
   (vista previa con teaser), y moderador.
-- El orden móvil debe quedar **idéntico** al de hoy. Es el criterio de que la decisión 2
-  se aplicó bien.
+- El orden móvil se conserva para `tierlist` y `criteria_challenge`. En `list_challenge` y
+  `buddy_read` cambió, y se ACEPTÓ el cambio (revisión final de rama, 2026-07-21):
+  - `list_challenge`: antes la clasificación iba entre la rejilla y la matriz; ahora va
+    después de la matriz y del párrafo de regla (rejilla → matriz → regla →
+    clasificación → actividades conectadas).
+  - `buddy_read`: antes el `<h2>` «Hitos» precedía a «Tu progreso»; ahora la tarjeta de
+    «Tu progreso» va primero, y se añade «Próximo hito» al final (Tu progreso → Hitos →
+    Próximo hito).
+  Los dos encajan con la tabla de reparto de la decisión 3 y con el mockup PC; el criterio
+  de que la decisión 2 se aplicó bien no es la identidad byte a byte del DOM, sino que cada
+  ranura recibió exactamente las piezas de esa tabla.
 
 ## Sin cambios de esquema
 
