@@ -35,7 +35,7 @@
 |---|---|
 | `src/lib/clubs/activities/calendar-marks.ts` | Puras: tipos, derivación de marcas, rejilla del mes, agenda, parseo del parámetro `mes` |
 | `src/lib/clubs/activities/calendar-marks.test.ts` | Vitest de todo lo anterior |
-| `src/lib/clubs/activities/calendar.ts` | Acceso a datos: `getClubCalendarMarks(clubId, clubSlug)` |
+| `src/lib/clubs/activities/calendar.ts` | Acceso a datos: `getClubCalendarMarks(clubId, clubSlug, today)` |
 | `src/components/clubs/calendar/mark-accent.ts` | `MARK_ACCENT` por clase de marca |
 | `src/components/clubs/calendar/month-grid.tsx` | Rejilla presentacional del mes |
 | `src/components/clubs/calendar/agenda-list.tsx` | Lista presentacional de la agenda |
@@ -566,7 +566,7 @@ git commit -m "feat(calendario): forma unificada CalendarMark y rejilla del mes"
 
 **Interfaces:**
 - Consumes: `buildCalendarMarks`, `CalendarActivityRow`, `CalendarCheckpointRow`, `CalendarMark` de Task 1; `createClient` de `@/lib/supabase/server`; `todayISO` de `@/lib/stats/dates`.
-- Produces: `getClubCalendarMarks(clubId: string, clubSlug: string): Promise<CalendarMark[]>`.
+- Produces: `getClubCalendarMarks(clubId: string, clubSlug: string, today: string): Promise<CalendarMark[]>`. **`today` es parametro OBLIGATORIO, no se lee dentro:** la pagina lo necesita tambien para `agendaForMonth` y `parseMonthParam`, y dos lecturas de «hoy» en la misma respuesta pueden discrepar si cruza la medianoche (es el bug que vive hoy en `upcoming.ts`).
 
 - [ ] **Step 1: Implementar**
 
@@ -1246,8 +1246,13 @@ export default async function ClubCalendarPage({
   const canModerate =
     club.viewerRole === "moderator" || club.viewerRole === "owner";
 
+  // UNA sola lectura de "hoy" por respuesta: se reparte a getClubCalendarMarks y
+  // a ClubCalendar (que lo usa para agendaForMonth y parseMonthParam). Leerlo
+  // dos veces puede discrepar si la peticion cruza la medianoche.
+  const hoy = todayISO();
+
   const [marks, activities, tt] = await Promise.all([
-    getClubCalendarMarks(club.id, club.slug),
+    getClubCalendarMarks(club.id, club.slug, hoy),
     listClubActivities(club.id),
     getTranslations("club.tabs"),
   ]);
@@ -1269,7 +1274,7 @@ export default async function ClubCalendarPage({
       <Suspense fallback={null}>
         <ClubCalendar
           marks={marks}
-          today={todayISO()}
+          today={hoy}
           clubId={club.id}
           canModerate={canModerate}
         />
@@ -1434,9 +1439,12 @@ import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
 Y en `ClubFeedSection` (líneas 177-199), cambiar la carga y la llamada:
 
 ```tsx
+  // UNA sola lectura de "hoy" por respuesta (ver Task 2).
+  const hoy = todayISO();
+
   const [initialPage, marks, viewer, t] = await Promise.all([
     listClubPosts(club.id),
-    getClubCalendarMarks(club.id, club.slug),
+    getClubCalendarMarks(club.id, club.slug, hoy),
     getViewerIdentity(),
     getTranslations("club"),
   ]);
@@ -1445,7 +1453,6 @@ Y en `ClubFeedSection` (líneas 177-199), cambiar la carga y la llamada:
   // La tira del feed lista SOLO hitos y eventos, no inicios ni cierres: justo
   // encima está "Actividades activas" hablando de esas mismas actividades. Las
   // marcas ya vienen ordenadas por fecha ascendente desde buildCalendarMarks.
-  const hoy = todayISO();
   const proximas = marks
     .filter(
       (m) => !m.past && m.date >= hoy && (m.markKind === "hito" || m.markKind === "evento"),
@@ -1717,6 +1724,6 @@ git commit -m "docs: cierra el calendario de club (backlog + decisiones)"
 | §6 Playwright | Task 7 |
 | §7 Definición de hecho | Task 8 |
 
-**Consistencia de tipos:** `CalendarMark`, `CalendarActivityRow`, `CalendarCheckpointRow`, `MonthCell` se definen en Task 1 y se consumen con esos nombres exactos en las Tasks 2, 3, 4 y 6. `getClubCalendarMarks(clubId, clubSlug)` recibe dos argumentos en su definición (Task 2) y en sus dos llamadas (Tasks 5 y 6). `MARK_ACCENT` se define en Task 3 y se consume en las Tasks 3, 4 y 6.
+**Consistencia de tipos:** `CalendarMark`, `CalendarActivityRow`, `CalendarCheckpointRow`, `MonthCell` se definen en Task 1 y se consumen con esos nombres exactos en las Tasks 2, 3, 4 y 6. `getClubCalendarMarks(clubId, clubSlug, today)` recibe tres argumentos en su definición (Task 2) y en sus dos llamadas (Tasks 5 y 6), que leen `todayISO()` UNA vez y lo reparten. `MARK_ACCENT` se define en Task 3 y se consume en las Tasks 3, 4 y 6.
 
 **Nota sobre una desviación deliberada de la spec:** la spec proponía `Date.UTC` para la aritmética de `monthGrid`. El plan usa `daysInMonth`/`shiftMonth` de `@/lib/stats/dates`, que **ya existen** y construyen `Date` desde números en hora local — igual de seguro y ya es la convención del repo. Duplicar helpers de fecha es exactamente el fallo que la rama anterior cometió con `todayISO()`.
