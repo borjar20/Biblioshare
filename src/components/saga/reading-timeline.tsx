@@ -32,7 +32,9 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
                   null, que significa "miembro directo del universo, sin
                   subsaga" — no "léelo donde quieras". Ahora solo habla el rol
                   curado, si lo hay. */}
-              <RoleChip role={section.rows[0].node.role} />
+              <span className="mt-0.5 block">
+                <RoleChip role={section.rows[0].node.role} />
+              </span>
             </span>
           </div>
         ) : (

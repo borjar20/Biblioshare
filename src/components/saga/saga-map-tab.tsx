@@ -71,7 +71,8 @@ export async function SagaMapTab({
             )}
             <MapCta graph={graph} href={`${base}/mapa`} />
             <ReadingTimeline sections={deriveTimeline(graph)} />
-            {/* «Como lista lineal» (frame B): la columna en orden de lectura. */}
+            {/* «Como lista lineal» (frame B). Desde #167 ya no es solo la
+                columna: incluye también los ítems sin orderNo, al final. */}
             <h3 className="mb-1 mt-6 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               {t("asLinearList")}
             </h3>
