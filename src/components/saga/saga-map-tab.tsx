@@ -13,7 +13,7 @@ import { RouteView } from "./route-view";
 
 // Pestaña «Mapa de lectura» (spec §2.4, frames B/E). Lectura = timeline (móvil)
 // + grafo embebido (PC). Publicación = lista lineal por año (ambos). Cualquier
-// otra ruta (curada) se delega a RouteView (stub transitorio, Task 6).
+// otra ruta (curada) se delega a RouteView.
 export async function SagaMapTab({
   detail,
   activeRoute,
