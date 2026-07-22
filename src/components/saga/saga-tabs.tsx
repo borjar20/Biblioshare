@@ -23,7 +23,7 @@ export function SagaTabs({
   const urlTab = searchParams.get("tab") === "mapa" && map ? "mapa" : "info";
   const [tab, setTab] = useState<"info" | "mapa">(urlTab);
 
-  // Re-sincroniza si la URL cambia desde fuera (deep link / toggle de orden).
+  // Re-sincroniza si la URL cambia desde fuera (deep link / toggle de orden o ruta).
   const [prevUrlTab, setPrevUrlTab] = useState(urlTab);
   if (urlTab !== prevUrlTab) {
     setPrevUrlTab(urlTab);
@@ -36,6 +36,7 @@ export function SagaTabs({
     if (next === "info") {
       params.delete("tab");
       params.delete("orden");
+      params.delete("ruta");
     } else params.set("tab", "mapa");
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
