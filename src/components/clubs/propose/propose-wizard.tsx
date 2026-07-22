@@ -184,6 +184,8 @@ export function ProposeWizard({
       <Panel title={title || t("newEvent")} onCancel={onCancel}>
         <EventForm
           clubId={clubId}
+          initialTitle={title}
+          initialDescription={description}
           onDone={onProposed}
           onCancel={() => setStep(1)}
         />

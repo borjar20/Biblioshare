@@ -13,6 +13,8 @@ import { Field } from "@/components/ui/field";
 export function EventForm({
   clubId,
   activity,
+  initialTitle,
+  initialDescription,
   onDone,
   onCancel,
 }: {
@@ -23,14 +25,21 @@ export function EventForm({
     description: string | null;
     startsOn: string | null;
   };
+  // Borrador arrastrado del paso 1 del asistente (título/descripción ya
+  // escritos antes de elegir "Evento"). Solo se usan al crear: si hay
+  // `activity` estamos editando y sus valores mandan.
+  initialTitle?: string;
+  initialDescription?: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const t = useTranslations("activity");
   const editing = Boolean(activity);
 
-  const [title, setTitle] = useState(activity?.title ?? "");
-  const [description, setDescription] = useState(activity?.description ?? "");
+  const [title, setTitle] = useState(activity?.title ?? initialTitle ?? "");
+  const [description, setDescription] = useState(
+    activity?.description ?? initialDescription ?? "",
+  );
   const [startsOn, setStartsOn] = useState(activity?.startsOn ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -104,7 +113,11 @@ export function EventForm({
         />
       </Field>
 
-      {error && <p className="text-sm text-status-dropped">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-status-dropped">
+          {error}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         <Button
@@ -114,13 +127,15 @@ export function EventForm({
           className="w-full"
         >
           {isPending
-            ? t("eventSubmitting")
+            ? editing
+              ? t("eventSaveSubmitting")
+              : t("eventSubmitting")
             : editing
               ? t("eventSaveSubmit")
               : t("eventSubmit")}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          {t("cancel")}
+          {editing ? t("cancel") : t("back")}
         </Button>
       </div>
     </div>
