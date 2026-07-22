@@ -46,6 +46,7 @@ export function MonthGrid({
         {cells.map((cell) => {
           const delDia = byDate.get(cell.date) ?? [];
           const esHoy = cell.date === today;
+          const visibles = delDia.slice(0, MAX_CHIPS);
           return (
             <div
               key={cell.date}
@@ -63,30 +64,37 @@ export function MonthGrid({
                 }`}
               >
                 {cell.day}
+                {esHoy && <span className="sr-only"> ({t("calendarToday")})</span>}
               </span>
 
               {/* Móvil: puntos. Escritorio: chips con el texto. */}
-              <div className="flex flex-wrap gap-0.5 lg:hidden">
-                {delDia.slice(0, MAX_CHIPS).map((mark, i) => (
-                  <span
-                    key={`${mark.activityId}-${mark.markKind}-${i}`}
-                    aria-hidden
-                    className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[mark.markKind].bar}`}
-                  />
-                ))}
-              </div>
+              {visibles.length > 0 && (
+                <div className="flex flex-wrap items-center gap-0.5 lg:hidden">
+                  {visibles.map((mark, i) => (
+                    <span
+                      key={`${mark.activityId}-${mark.markKind}-${i}`}
+                      aria-hidden
+                      className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[mark.markKind].bar}`}
+                    />
+                  ))}
+                  {delDia.length > MAX_CHIPS && (
+                    <span className="font-mono text-[8px] leading-none text-muted-foreground">
+                      {t("calendarMore", { count: delDia.length - MAX_CHIPS })}
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div className="hidden min-w-0 flex-col gap-0.5 lg:flex">
-                {delDia.slice(0, MAX_CHIPS).map((mark, i) => {
+                {visibles.map((mark, i) => {
                   const accent = MARK_ACCENT[mark.markKind];
                   return (
                     <span
                       key={`${mark.activityId}-${mark.markKind}-${i}`}
                       title={`${t(`markKind_${mark.markKind}`)} · ${mark.title}`}
-                      className={`truncate rounded-md border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.text} ${
+                      className={`truncate rounded-chip border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.text} ${
                         mark.past ? "opacity-50" : ""
                       }`}
-                      style={{ borderLeftColor: "currentColor" }}
                     >
                       {mark.title}
                     </span>
@@ -99,10 +107,11 @@ export function MonthGrid({
                 )}
               </div>
 
-              {/* Lectores de pantalla: el recuento del día, que los puntos y los
-                  chips truncados no transmiten. */}
+              {/* Lectores de pantalla: el recuento del día, que los puntos
+                  truncados no transmiten. Solo en móvil: en escritorio los
+                  chips ya llevan el texto y esto duplicaría el anuncio. */}
               {delDia.length > 0 && (
-                <span className="sr-only">
+                <span className="sr-only lg:hidden">
                   {delDia.map((m) => `${t(`markKind_${m.markKind}`)}: ${m.title}`).join(". ")}
                 </span>
               )}

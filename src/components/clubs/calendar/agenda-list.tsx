@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { CalendarMark } from "@/lib/clubs/activities/calendar-marks";
-import { formatDayMonth } from "@/lib/clubs/activities/format-date";
+import { formatDayMonth, formatEventDate } from "@/lib/clubs/activities/format-date";
 import { MARK_ACCENT } from "./mark-accent";
 
 export function AgendaList({ marks }: { marks: CalendarMark[] }) {
@@ -31,6 +31,7 @@ export function AgendaList({ marks }: { marks: CalendarMark[] }) {
                 {month}
               </span>
             </span>
+            <span className="sr-only">{formatEventDate(mark.date)}</span>
             <span className="flex min-w-0 flex-1 flex-col border-l border-border pl-3">
               <span
                 className={`mb-1.5 inline-flex w-fit items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
