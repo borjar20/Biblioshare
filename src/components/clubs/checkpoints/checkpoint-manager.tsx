@@ -212,7 +212,8 @@ export function CheckpointManager({
         )}
         {/* La posición dice DÓNDE está el hito en la obra; la fecha, CUÁNDO se
             espera llegar. Opcional: una lectura puede ir a ritmo libre, sin
-            calendario. Las que sí la tienen alimentan "Próximos hitos". */}
+            calendario. Las que sí la tienen alimentan la tira "Próximo" del
+            feed y el calendario del club. */}
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t("checkpointDueOn")}
           <Input

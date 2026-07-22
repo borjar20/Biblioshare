@@ -117,6 +117,21 @@ test("evento: se crea, se edita, se archiva y no tiene ficha", async ({
 
     // ...y también en el resumen del club, ahora en la tira unificada
     // "Próximo" (el calendario fundió "Próximos hitos" y "Próximas fechas").
+    //
+    // OJO, este assert es más frágil de lo que parece: antes miraba un bloque
+    // que SOLO contenía eventos, con cupo de 4. Ahora la tira mezcla hitos y
+    // eventos con cupo de 3 -- cualquier hito futuro del club de pruebas con
+    // fecha anterior a "2027-03-15" compite por ese sitio y puede desplazar a
+    // este evento fuera de la tira. Si este assert falla, la sospecha NO es
+    // necesariamente una regresión del feature: puede ser que el club de
+    // pruebas haya acumulado hitos con fecha entre hoy y esa, y ya no quepan
+    // los 3 huecos. Revisa el contenido de la tira antes de asumir lo peor.
+    //
+    // Además, `getByRole(..., { name: "Próximo" })` empareja por SUBCADENA: el
+    // encabezado real es "Próximo Ver calendario ›" (el enlace forma parte del
+    // texto accesible del heading). Si alguien lo "endurece" a `exact: true` o
+    // a un regex anclado (^Próximo$), este assert se rompe aunque nada más
+    // haya cambiado -- ya pasó exactamente este fallo con otra tarjeta.
     await page.goto(`/club/${CLUB_SLUG}`);
     const seccionProximo = page
       .locator("section")

@@ -5,6 +5,7 @@ import {
   marksByDate,
   agendaForMonth,
   parseMonthParam,
+  proximasMarcas,
   type CalendarActivityRow,
   type CalendarCheckpointRow,
 } from "./calendar-marks";
@@ -239,6 +240,86 @@ describe("agendaForMonth", () => {
     expect(agendaForMonth(marks, "2026-07", "2026-09-01").map((m) => m.date)).toEqual([
       "2026-07-04",
       "2026-07-26",
+    ]);
+  });
+});
+
+describe("proximasMarcas", () => {
+  it("descarta inicio y cierre, se queda con hito y evento", () => {
+    const checkpoint: CalendarCheckpointRow = {
+      id: "c1",
+      label: "Hito 1",
+      dueOn: "2026-07-25",
+      activityId: "a1",
+      activityTitle: "Fundación",
+      activityKind: "buddy_read",
+      activityStatus: "active",
+    };
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a-normal", startsOn: "2026-07-23", endsOn: "2026-07-30" }),
+        actividad({ id: "a-evento", kind: "evento", startsOn: "2026-07-24" }),
+      ],
+      [checkpoint],
+      HOY,
+      SLUG,
+    );
+    const proximas = proximasMarcas(marks, HOY, 10);
+    expect(proximas.map((m) => m.markKind)).toEqual(["evento", "hito"]);
+  });
+
+  it("una marca de HOY sí entra (el borde estricto)", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ id: "a-hoy", kind: "evento", startsOn: HOY })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(proximasMarcas(marks, HOY, 10).map((m) => m.activityId)).toEqual([
+      "a-hoy",
+    ]);
+  });
+
+  it("descarta lo pasado", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ id: "a-ayer", kind: "evento", startsOn: "2026-07-21" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(proximasMarcas(marks, HOY, 10)).toHaveLength(0);
+  });
+
+  it("respeta el límite", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "e1", kind: "evento", startsOn: "2026-07-23" }),
+        actividad({ id: "e2", kind: "evento", startsOn: "2026-07-24" }),
+        actividad({ id: "e3", kind: "evento", startsOn: "2026-07-25" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(proximasMarcas(marks, HOY, 2).map((m) => m.activityId)).toEqual([
+      "e1",
+      "e2",
+    ]);
+  });
+
+  it("conserva el orden ascendente que ya trae buildCalendarMarks", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "tarde", kind: "evento", startsOn: "2026-07-28" }),
+        actividad({ id: "temprano", kind: "evento", startsOn: "2026-07-23" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(proximasMarcas(marks, HOY, 10).map((m) => m.activityId)).toEqual([
+      "temprano",
+      "tarde",
     ]);
   });
 });

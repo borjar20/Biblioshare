@@ -4,8 +4,8 @@ import type { ActivityKind } from "./core";
 // Una sola forma para las TRES fuentes de fecha de un club: el due_on de los
 // hitos, el starts_on de los eventos y la ventana starts_on/ends_on de las
 // actividades. Antes cada superficie las cruzaba a mano con tres tipos
-// distintos; upcoming.ts:70 dejó escrito que unificarlas era el trabajo del
-// calendario.
+// distintos; el antiguo `upcoming.ts`, ya borrado, dejó escrito que unificarlas
+// era el trabajo del calendario.
 export type CalendarMarkKind = "evento" | "hito" | "inicio" | "cierre";
 
 export type CalendarMark = {
@@ -149,6 +149,24 @@ export function buildCalendarMarks(
       ORDEN_MARCA[a.markKind] - ORDEN_MARCA[b.markKind] ||
       a.title.localeCompare(b.title),
   );
+}
+
+// La tira "Próximo" del feed: solo hitos y eventos (los inicios/cierre de
+// actividad ya se ven en "Actividades activas", justo encima), sin lo pasado,
+// como mucho `limite`. Depende de que `marks` llegue YA ordenada por fecha
+// ascendente -- lo hace `buildCalendarMarks` (está testeado) -- así que aquí
+// NO se vuelve a ordenar.
+export function proximasMarcas(
+  marks: CalendarMark[],
+  today: string,
+  limite: number,
+): CalendarMark[] {
+  return marks
+    .filter(
+      (m) =>
+        (m.markKind === "hito" || m.markKind === "evento") && m.date >= today,
+    )
+    .slice(0, limite);
 }
 
 export type MonthCell = {

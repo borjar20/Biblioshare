@@ -55,7 +55,7 @@ export async function getClubCalendarMarks(
   const checkpointRows: CalendarCheckpointRow[] = (hitos.data ?? []).map((row) => {
     // El join !inner llega como objeto, pero postgrest-js lo tipa como array
     // cuando no puede probar la cardinalidad. Se normaliza (igual que hacía
-    // upcoming.ts:44-48).
+    // el antiguo upcoming.ts, ya borrado).
     const activity = (
       Array.isArray(row.club_activities)
         ? row.club_activities[0]
@@ -77,7 +77,7 @@ export async function getClubCalendarMarks(
   // esta función también necesita "hoy" para agendaForMonth/parseMonthParam
   // (calendar-marks.ts). Si cada función leyera su propio todayISO(), una
   // petición justo a medianoche podría dar dos nociones de "hoy" distintas en
-  // la misma respuesta (ya pasó en upcoming.ts:25 vs 79, con UTC y hora local
-  // mezcladas en el mismo fichero).
+  // la misma respuesta (ya pasó en el antiguo upcoming.ts, ya borrado, con UTC
+  // y hora local mezcladas en el mismo fichero).
   return buildCalendarMarks(activityRows, checkpointRows, today, clubSlug);
 }

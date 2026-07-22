@@ -9,6 +9,7 @@ import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
 import { listClubActivities } from "@/lib/clubs/activities/core";
 import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
+import { proximasMarcas } from "@/lib/clubs/activities/calendar-marks";
 import { todayISO } from "@/lib/stats/dates";
 import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubTabs, CLUB_TABS, type ClubTab } from "@/components/clubs/club-tabs";
@@ -189,13 +190,8 @@ async function ClubFeedSection({
   await markClubRead(club.id);
 
   // La tira del feed lista SOLO hitos y eventos, no inicios ni cierres: justo
-  // encima está "Actividades activas" hablando de esas mismas actividades. Las
-  // marcas ya vienen ordenadas por fecha ascendente desde buildCalendarMarks.
-  const proximas = marks
-    .filter(
-      (m) => !m.past && m.date >= hoy && (m.markKind === "hito" || m.markKind === "evento"),
-    )
-    .slice(0, 3);
+  // encima está "Actividades activas" hablando de esas mismas actividades.
+  const proximas = proximasMarcas(marks, hoy, 3);
 
   // Frame 10: en escritorio el hilo va a la izquierda y el resumen pasa a un
   // rail derecho sticky. Un solo árbol — el rail se coloca con `order` (el

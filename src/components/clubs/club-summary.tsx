@@ -33,6 +33,9 @@ export async function ClubSummary({
   clubSlug: string;
 }) {
   const t = await getTranslations("activity");
+  // Un evento no tiene ficha propia: si entrara aquí, su <Link> a
+  // /actividad/:id daría 404. Sus fechas ya se ven en la tira "Próximo" de
+  // más abajo (unificada con los hitos), así que quedan fuera de este bloque.
   const active = activities.filter(
     (a) => a.status === "active" && a.kind !== "evento",
   );
@@ -138,15 +141,11 @@ export async function ClubSummary({
 
               // Un evento no tiene ficha: enlazarlo daría 404.
               return mark.href ? (
-                <Link
-                  key={`${mark.activityId}-${mark.markKind}-${i}`}
-                  href={mark.href}
-                  className={`${clases} hover:opacity-80`}
-                >
+                <Link key={i} href={mark.href} className={`${clases} hover:opacity-80`}>
                   {inner}
                 </Link>
               ) : (
-                <div key={`${mark.activityId}-${mark.markKind}-${i}`} className={clases}>
+                <div key={i} className={clases}>
                   {inner}
                 </div>
               );
