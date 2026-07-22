@@ -13,6 +13,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   label: id,
   accent: "verde",
   status: null,
+  role: null,
   coverUrl: null,
   covers: [],
   href: `/libro/${id}`,

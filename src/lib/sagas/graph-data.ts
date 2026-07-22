@@ -1,7 +1,7 @@
 import { sagaHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaAccentToken } from "./accents";
-import type { DetailMember, MemberStatus } from "./types";
+import type { DetailMember, MemberStatus, SagaItemRole } from "./types";
 
 // Resolución PURA del grafo (spec §2.5): filas crudas de saga_nodes/saga_edges
 // → nodos con label/accent/status y aristas coloreadas. La subsaga de un nodo
@@ -38,6 +38,9 @@ export type SagaGraphNode = {
   label: string;
   accent: SagaAccentToken;
   status: MemberStatus;
+  /** Rol narrativo del ítem (issue #167). Siempre null en los nodos-saga: una
+   *  subsaga no es una precuela, lo son sus obras. */
+  role: SagaItemRole | null;
   coverUrl: string | null;
   covers: string[];
   href: string;
@@ -86,6 +89,7 @@ export function buildSagaGraph(
         label: raw.label_override ?? m.title,
         accent: lookup.groupAccent.get(m.groupSagaId) ?? "beige",
         status: m.status,
+        role: m.role,
         coverUrl: m.coverUrl,
         covers: [],
         href: m.href,
@@ -106,6 +110,7 @@ export function buildSagaGraph(
         label: raw.label_override ?? name,
         accent: lookup.groupAccent.get(raw.child_saga_id) ?? "beige",
         status: null,
+        role: null,
         coverUrl: null,
         covers: lookup.childCovers.get(raw.child_saga_id) ?? [],
         href: sagaHref(raw.child_saga_id),
