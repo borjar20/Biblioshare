@@ -90,7 +90,17 @@ export async function SagaHero({
         <div className="w-full max-w-sm">
           <div className="mb-1.5 flex items-baseline justify-between font-mono text-[10.5px] text-muted-foreground">
             <span>{t("yourProgress")}</span>
-            <b className="font-serif text-[15px] font-semibold text-accent">{progress.pct}%</b>
+            {/* data-testid para el e2e de itinerarios (spec 2026-07-22): el
+                avance del hero es SIEMPRE el del universo entero, mires la
+                ruta que mires — nunca el de la ruta activa (issue #91). El
+                testid deja comparar el valor EXACTO antes/después de cambiar
+                de ruta en vez de un texto ambiguo. */}
+            <b
+              data-testid="saga-hero-progress"
+              className="font-serif text-[15px] font-semibold text-accent"
+            >
+              {progress.pct}%
+            </b>
           </div>
           <div className="flex h-2 overflow-hidden rounded-full bg-surface-muted">
             {progress.segments.map((s, i) => (

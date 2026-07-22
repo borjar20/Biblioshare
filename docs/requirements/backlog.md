@@ -48,6 +48,7 @@
 
 ### Sagas
 - [x] **Sagas v2** (§7.4/§7.34) — subsagas anidadas (`parent_saga_id`), multi-membresía, grafo de lectura (`saga_nodes`/`saga_edges`), editor React Flow, seguimiento (`saga_follows`), índice público `/sagas` y pestaña "Sagas" en Mi Biblioteca (5 fases + mejoras post-v2). Spec: `docs/superpowers/specs/2026-07-19-sagas-v2-design.md`
+- [x] **Itinerarios de lectura** — rutas curadas con nombre (`saga_routes`/`saga_route_entries`) que sustituyen al toggle Lectura|Publicación cuando una saga tiene más de las dos rutas de siempre; adopción por lector (`saga_route_choices`) y curación (`/saga/[id]/rutas`, crear/renombrar/reordenar/borrar + editor de pasos con bloques-subsaga). Las rutas `lectura`/`publicacion` siguen **sintetizadas en código**, nunca materializadas (ver `decisiones.md`). **Migraciones solo en dev**: `20260723_saga_routes.sql` y `20260723_saga_route_entries_uniques.sql` quedan pendientes de aplicar a prod (fuera del alcance de esta rama, reservado al orquestador). Spec: `docs/superpowers/specs/2026-07-22-sagas-itinerarios-design.md`
 
 ### Series por episodio
 - [x] **Información y puntuación por episodio** (§7.36) — `series_episodes` + `episode_watches`, pestaña Episodios (rejilla comunidad / lista), marcar visto adelanta el progreso.

@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev el 2026-07-22, prod pendiente]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
