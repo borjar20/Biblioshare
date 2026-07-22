@@ -13,7 +13,7 @@ import {
   type MemberGroup,
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
-import { createMainOrder } from "./main-order";
+import { createMainOrder, type OrderMembership, type OrderNode, type OrderSaga } from "./main-order";
 import type { DetailMember, MemberStatus, Saga, SagaChildRef } from "./types";
 import type { SagaRoute } from "./route-types";
 
@@ -53,6 +53,15 @@ export type SagaDetail = {
   routes: SagaRoute[];
   /** Slug de ruta adoptado por el usuario para esta saga, o null. */
   routeChoice: string | null;
+  /**
+   * Insumos de `createMainOrder` ya calculados aquí (spec §1.5): RouteView
+   * (Task 6) necesita reconstruir el orden principal de una subsaga para
+   * expandir un bloque, y estos tres arrays son exactamente lo que la
+   * función pide — recalcularlos ahí sería una segunda fuente de verdad.
+   */
+  orderSagas: OrderSaga[];
+  orderMemberships: OrderMembership[];
+  orderNodes: OrderNode[];
 };
 
 type DescendantRow = {
@@ -367,30 +376,28 @@ export async function getSagaDetail(
   // Avance del hero sobre el ORDEN PRINCIPAL (§1.5), la misma regla y el mismo
   // código que las cards de Mi Biblioteca (issue #91: antes contaba todos los
   // miembros del subárbol y discrepaba de la card sobre la misma saga).
-  const mainOrder = createMainOrder(
-    [
-      { id, name: saga.name, parentSagaId: null },
-      ...[...descendants.values()].map((d) => ({
-        id: d.id,
-        name: d.name,
-        parentSagaId: d.parent_saga_id,
-      })),
-    ],
-    rows.map((r) => ({
-      sagaId: r.saga_id,
-      itemType: r.item_type,
-      itemId: r.item_id,
-      position: r.position,
+  const orderSagas = [
+    { id, name: saga.name, parentSagaId: null },
+    ...[...descendants.values()].map((d) => ({
+      id: d.id,
+      name: d.name,
+      parentSagaId: d.parent_saga_id,
     })),
-    treeNodes.map((n) => ({
-      sagaId: n.saga_id,
-      itemType: n.item_type,
-      itemId: n.item_id,
-      childSagaId: n.child_saga_id,
-      orderNo: n.order_no,
-    })),
-    (k) => meta.get(k)?.title ?? "",
-  );
+  ];
+  const orderMemberships = rows.map((r) => ({
+    sagaId: r.saga_id,
+    itemType: r.item_type,
+    itemId: r.item_id,
+    position: r.position,
+  }));
+  const orderNodes = treeNodes.map((n) => ({
+    sagaId: n.saga_id,
+    itemType: n.item_type,
+    itemId: n.item_id,
+    childSagaId: n.child_saga_id,
+    orderNo: n.order_no,
+  }));
+  const mainOrder = createMainOrder(orderSagas, orderMemberships, orderNodes, (k) => meta.get(k)?.title ?? "");
   const progress = computeProgress(groups, mainOrder(id));
 
   const rawNodes = treeNodes.filter((n) => n.saga_id === id);
@@ -433,5 +440,8 @@ export async function getSagaDetail(
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
     routes,
     routeChoice,
+    orderSagas,
+    orderMemberships,
+    orderNodes,
   };
 }
