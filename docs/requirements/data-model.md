@@ -265,9 +265,11 @@ nulo) y las tres operaciones de escritura exigen ya `collaborator`:
 | `link_tmdb_saga_item(p_saga_id, p_item_id)` | alta de una película en su colección; resuelve `is_primary` y el reintento ante carrera |
 | `sync_tmdb_saga_items(p_saga_id, p_items)` | rellenado perezoso: inserta lo que falte y corrige posiciones, sin borrar nada |
 
-**Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod pendiente.** Ojo al orden: en prod la
-migración debe aplicarse **después** de desplegar el código, no antes — cerrar el INSERT con
-el código viejo en pie rompería la hidratación TMDB para los usuarios sin rol.
+**Aplicada en dev y en prod el 2026-07-22**, en ese orden y con el código ya desplegado
+(deployment `dpl_3eLcrm…`, commit `76e1bbf`): cerrar el INSERT con el código viejo en pie
+habría roto la hidratación TMDB para los usuarios sin rol. Verificado contra `pg_policies` y
+`pg_proc` en ambos entornos, no contra `list_migrations` — mismo `md5` del cuerpo normalizado
+en dev y prod, `prosecdef`, `search_path` y ACL correctos (sin `anon`).
 
 ## 8. Seguridad
 

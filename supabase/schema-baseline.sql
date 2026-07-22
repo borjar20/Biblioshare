@@ -7277,3 +7277,86 @@ comment on function public.create_club_event(uuid, text, text, date) is
 comment on function public.update_club_event(uuid, text, text, date) is
   'Edita título/descripción/fecha de un EVENTO. Moderador+. Restringida a kind=evento y status=active a propósito.';
 
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- 20260722_saga_items_rls_hardening
+-- Issue #169: cierra el INSERT de saga_items, la última escritura abierta a
+-- cualquier `authenticated`. NO era un descuido: la migración que cerró el
+-- DELETE lo dejó así por escrito porque lo necesitaba el cache-as-you-go de
+-- persist-collection.ts. Se le quita la razón de existir moviendo la
+-- hidratación TMDB a dos funciones SECURITY DEFINER acotadas a sagas TMDB.
+-- ──────────────────────────────────────────────────────────────────────────
+
+create or replace function public.link_tmdb_saga_item(
+  p_saga_id uuid,
+  p_item_id uuid
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_has_primary boolean;
+begin
+  if not exists (
+    select 1 from sagas
+    where id = p_saga_id and source = 'tmdb' and tmdb_collection_id is not null
+  ) then
+    raise exception 'saga % is not a tmdb collection', p_saga_id;
+  end if;
+
+  select exists (
+    select 1 from saga_items
+    where item_type = 'movie' and item_id = p_item_id and is_primary
+  ) into v_has_primary;
+
+  insert into saga_items (saga_id, item_type, item_id, is_primary)
+  values (p_saga_id, 'movie', p_item_id, not v_has_primary)
+  on conflict (saga_id, item_type, item_id) do nothing;
+exception
+  when unique_violation then
+    insert into saga_items (saga_id, item_type, item_id, is_primary)
+    values (p_saga_id, 'movie', p_item_id, false)
+    on conflict (saga_id, item_type, item_id) do nothing;
+end;
+$$;
+
+create or replace function public.sync_tmdb_saga_items(
+  p_saga_id uuid,
+  p_items jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from sagas
+    where id = p_saga_id and source = 'tmdb' and tmdb_collection_id is not null
+  ) then
+    raise exception 'saga % is not a tmdb collection', p_saga_id;
+  end if;
+
+  insert into saga_items (saga_id, item_type, item_id, position, is_primary)
+  select p_saga_id, 'movie', (i->>'item_id')::uuid, (i->>'position')::integer, false
+  from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) as i
+  on conflict (saga_id, item_type, item_id)
+    do update set position = excluded.position;
+end;
+$$;
+
+revoke execute on function public.link_tmdb_saga_item(uuid, uuid) from public, anon;
+revoke execute on function public.sync_tmdb_saga_items(uuid, jsonb) from public, anon;
+grant execute on function public.link_tmdb_saga_item(uuid, uuid) to authenticated;
+grant execute on function public.sync_tmdb_saga_items(uuid, jsonb) to authenticated;
+
+drop policy "saga items insertable" on public.saga_items;
+
+create policy "saga items insertable by collaborators" on public.saga_items
+  for insert to authenticated
+  with check (public.has_min_role('collaborator'));
+
+comment on function public.link_tmdb_saga_item(uuid, uuid) is
+  'Alta de una película en su colección TMDB saltando la RLS de INSERT (collaborator+). Acotada a sagas source=tmdb.';
+comment on function public.sync_tmdb_saga_items(uuid, jsonb) is
+  'Rellenado perezoso de una colección TMDB: inserta lo que falte y corrige posiciones. Nunca borra. Acotada a sagas source=tmdb.';
