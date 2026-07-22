@@ -32,7 +32,11 @@ export async function notifyClub(
       userIds: (members ?? []).map((member) => member.user_id),
       actorId,
       type,
-      targetType: "club_activity",
+      // Un evento (kind='evento') no tiene página de detalle -- ver la nota en
+      // events.ts -- así que se marca con su propio target_type ('club_event')
+      // para que resolveTargetHrefs() (notifications.ts) lo lleve a la ficha
+      // del club en vez de a /club/[slug]/actividad/[id], que sería 404.
+      targetType: type === "club_event_created" ? "club_event" : "club_activity",
       targetId: activityId,
     });
   } catch (error) {

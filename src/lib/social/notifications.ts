@@ -184,6 +184,7 @@ async function resolveTargetHrefs(
   const clubPostIds = targets.filter((t) => t.targetType === "club_post").map((t) => t.targetId);
   const commentIds = targets.filter((t) => t.targetType === "comment").map((t) => t.targetId);
   const clubActivityIds = targets.filter((t) => t.targetType === "club_activity").map((t) => t.targetId);
+  const clubEventIds = targets.filter((t) => t.targetType === "club_event").map((t) => t.targetId);
 
   if (diaryIds.length > 0) {
     const { data: diaryRows, error } = await supabase
@@ -248,6 +249,25 @@ async function resolveTargetHrefs(
     for (const a of activityRows ?? []) {
       const slug = slugByClub.get(a.club_id);
       if (slug) hrefByKey.set(`club_activity:${a.id}`, `/club/${slug}/actividad/${a.id}`);
+    }
+  }
+
+  // club_event: misma tabla que club_activity (un evento es una fila de
+  // club_activities con kind='evento'), pero sin página de detalle -- ver
+  // notify-club.ts -- así que enlaza a la ficha del club, no a /actividad/[id].
+  if (clubEventIds.length > 0) {
+    const { data: eventRows } = await supabase
+      .from("club_activities")
+      .select("id, club_id")
+      .in("id", clubEventIds);
+    const clubIdsForEvents = [...new Set((eventRows ?? []).map((a) => a.club_id))];
+    const { data: clubRows } = clubIdsForEvents.length
+      ? await supabase.from("clubs").select("id, slug").in("id", clubIdsForEvents)
+      : { data: [] as { id: string; slug: string }[] };
+    const slugByClub = new Map((clubRows ?? []).map((c) => [c.id, c.slug]));
+    for (const a of eventRows ?? []) {
+      const slug = slugByClub.get(a.club_id);
+      if (slug) hrefByKey.set(`club_event:${a.id}`, `/club/${slug}`);
     }
   }
 

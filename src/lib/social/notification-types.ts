@@ -24,7 +24,19 @@ export type NotificationType =
   | "club_activity_spawned"
   | "club_event_created";
 
-export type ReviewTargetType = "diary_entry" | "episode_watch" | "club" | "club_post" | "comment" | "club_activity";
+export type ReviewTargetType =
+  | "diary_entry"
+  | "episode_watch"
+  | "club"
+  | "club_post"
+  | "comment"
+  | "club_activity"
+  // Igual que club_activity (fila de club_activities) pero para un evento: un
+  // evento no tiene página de detalle (/club/[slug]/actividad/[id] da 404 a
+  // propósito para kind='evento'), así que necesita su propio target_type para
+  // que resolveTargetHrefs() lo resuelva a la ficha del club en vez de a la
+  // actividad.
+  | "club_event";
 
 export type Notification = {
   id: string;
