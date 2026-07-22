@@ -583,41 +583,49 @@ import { RoleChip } from "./role-chip";
 
 - [ ] **Step 3: Partir la grid en dos secciones**
 
-Sustituye el `<ul>` completo (hoy `saga-info.tsx:125-169`, el que empieza por `<ul className="grid grid-cols-3 ...">`) por:
+Primero el sub-componente que hace el reparto. Va junto a `MemberCell`, **antes** de `export async function SagaInfo`. Es un componente y no un IIFE dentro del JSX porque el reparto es la lógica que da nombre a la feature: merece estar aislada y ser legible de un vistazo.
 
 ```tsx
-                {(() => {
-                  const numbered = group.members.filter((m) => m.position !== null);
-                  const loose = group.members.filter((m) => m.position === null);
-                  return (
-                    <>
-                      {numbered.length > 0 && (
-                        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-                          {numbered.map((m) => (
-                            <MemberCell key={`${m.itemType}-${m.itemId}`} m={m} />
-                          ))}
-                        </ul>
-                      )}
-                      {loose.length > 0 && (
-                        <div className={numbered.length > 0 ? "mt-4" : ""}>
-                          <div className="mb-2 flex items-baseline gap-2">
-                            <h4 className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                              {t("outOfMainOrder")}
-                            </h4>
-                            <span className="text-[10px] text-muted-foreground">
-                              {t("outOfMainOrderHint")}
-                            </span>
-                          </div>
-                          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-                            {loose.map((m) => (
-                              <MemberCell key={`${m.itemType}-${m.itemId}`} m={m} />
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
+// El reparto de #167, en un solo sitio: la sección la decide `position`, el
+// chip lo decide `role`. Ver el comentario de cabecera del fichero.
+async function GroupBody({ members }: { members: DetailMember[] }) {
+  const t = await getTranslations("saga");
+  const numbered = members.filter((m) => m.position !== null);
+  const loose = members.filter((m) => m.position === null);
+
+  return (
+    <>
+      {numbered.length > 0 && (
+        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+          {numbered.map((m) => (
+            <MemberCell key={`${m.itemType}-${m.itemId}`} m={m} />
+          ))}
+        </ul>
+      )}
+      {loose.length > 0 && (
+        <div data-testid="out-of-order" className={numbered.length > 0 ? "mt-4" : ""}>
+          <div className="mb-2 flex items-baseline gap-2">
+            <h4 className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              {t("outOfMainOrder")}
+            </h4>
+            <span className="text-[10px] text-muted-foreground">{t("outOfMainOrderHint")}</span>
+          </div>
+          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+            {loose.map((m) => (
+              <MemberCell key={`${m.itemType}-${m.itemId}`} m={m} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+Ahora sustituye el `<ul>` completo (hoy `saga-info.tsx:125-169`, el que empieza por `<ul className="grid grid-cols-3 ...">`) por la llamada:
+
+```tsx
+                <GroupBody members={group.members} />
 ```
 
 - [ ] **Step 4: Verificar en el navegador**
@@ -1340,23 +1348,44 @@ import { test, expect } from "@playwright/test";
 // Seed QA de dev, el mismo universo que usa e2e/sagas-v2-mapa.spec.ts:7.
 const UNIVERSE_ID = "69c07496-9b1a-4203-b3da-15d22a09c039";
 
+// El seed NO asigna roles ni deja obras sin position: ambos tests se fabrican
+// su propio estado desde la pantalla de curación. Asumir datos del seed que no
+// existen es cómo un e2e sale verde sin probar nada.
+async function curarPrimerMiembro(
+  page: import("@playwright/test").Page,
+  { position, role }: { position: string; role: string },
+) {
+  await page.goto(`/saga/${UNIVERSE_ID}/editar`);
+  await page.locator("input[name='position']").first().fill(position);
+  await page.locator("select[name='role']").first().selectOption(role);
+  await page.getByRole("button", { name: "Guardar" }).first().click();
+  await expect(page.getByText("Guardado").first()).toBeVisible();
+}
+
 test("una obra sin número aparece en «Fuera del orden principal» con su rol", async ({ page }) => {
+  await curarPrimerMiembro(page, { position: "", role: "precuela" });
+
   await page.goto(`/saga/${UNIVERSE_ID}`);
 
-  const section = page.getByRole("heading", { name: "Fuera del orden principal" });
-  await expect(section).toBeVisible();
-
-  // El chip de rol se pinta solo si alguien lo curó.
-  await expect(page.getByText("Precuela").first()).toBeVisible();
+  const section = page.getByTestId("out-of-order");
+  await expect(section.getByRole("heading", { name: "Fuera del orden principal" })).toBeVisible();
+  await expect(section.getByText("Precuela")).toBeVisible();
 });
 
 test("una obra sin número Y sin rol sale en la sección, pero sin chip", async ({ page }) => {
+  // Separa pertenencia (position === null) de decoración (role !== null): es la
+  // distinción que más fácil se rompe al refactorizar la grid, y la que hace
+  // que "sin clasificar" se vea como trabajo pendiente en vez de disfrazarse.
+  await curarPrimerMiembro(page, { position: "", role: "" });
+
   await page.goto(`/saga/${UNIVERSE_ID}`);
 
-  // Separa pertenencia (position === null) de decoración (role !== null): es
-  // la distinción que más fácil se rompe al refactorizar la grid.
-  const loose = page.locator("[data-testid='out-of-order'] li");
-  await expect(loose.first()).toBeVisible();
+  const section = page.getByTestId("out-of-order");
+  await expect(section.locator("li").first()).toBeVisible();
+  // Lo que de verdad afirma este test: está en la sección Y no lleva chip.
+  for (const label of ["Precuela", "Spin-off", "Relato", "Paralela"]) {
+    await expect(section.getByText(label)).toHaveCount(0);
+  }
 });
 
 test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
@@ -1380,13 +1409,13 @@ test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
 
 Añade los `data-testid` que el test necesita, porque hoy no existen:
 
-- En `saga-info.tsx`, al `<div>` de la sección "Fuera del orden principal" (Task 5 / Step 3): `data-testid="out-of-order"`.
+- En `saga-info.tsx`, al `<div>` de la sección "Fuera del orden principal": ya lo lleva puesto el `GroupBody` de la Task 5 / Step 3 (`data-testid="out-of-order"`). Verifica que sigue ahí; no hace falta añadirlo.
 - En el hero, **no añadas nada**: el contador ya lleva `data-testid="saga-hero-progress"` (`src/components/saga/saga-hero.tsx:99`), puesto por la spec de itinerarios como red del #91 y consumido por `e2e/sagas-itinerarios.spec.ts:71`. Reutilízalo tal cual — renombrarlo rompe ese test, que hoy pasa. Y no cambies su marcado: imprime `{progress.pct}%` (`saga-hero.tsx:102`), el baseline del seed es `"33%"`, y el tercer test compara ese texto antes y después.
 
 **Dos trampas del seed de dev**, ambas ya conocidas en `e2e/sagas-v2-mapa.spec.ts`:
 
 1. `ReadingTimeline` solo se monta dentro de un `lg:hidden`, así que cualquier aserción sobre el timeline necesita `await page.setViewportSize({ width: 390, height: 844 })`. Los tests de arriba miran la pestaña Info y el hero, que no dependen del breakpoint — pero si añades uno de timeline, fija el viewport primero.
-2. El seed **no asigna roles a nadie**: nace todo `null`. El primer y el segundo test necesitan que exista al menos una obra sin `position`; márcala desde `/saga/<id>/editar` como paso previo dentro del propio test, no a mano en la BD.
+2. El seed **no asigna roles a nadie** y no deja obras sin `position`. Por eso los tests de arriba se fabrican su estado con el helper `curarPrimerMiembro`, desde la propia UI de curación, en vez de asumir datos que no existen. No los "arregles" tocando la BD a mano: un e2e que depende de una fila que alguien sembró una vez es la deuda de #177.
 
 Y no siembres UUIDs nuevos a mano: es exactamente la deuda de #177 (cinco specs dependen de filas irreproducibles que en CI no existen). Si esta spec necesita datos propios, escribe `e2e/fixtures/seed-sagas.sql` idempotente en vez de añadir un sexto caso al problema.
 
