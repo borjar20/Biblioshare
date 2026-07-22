@@ -7,6 +7,7 @@ import { shiftMonth } from "@/lib/stats/dates";
 import {
   agendaForMonth,
   parseMonthParam,
+  ORDEN_MARCA,
   type CalendarMark,
   type CalendarMarkKind,
 } from "@/lib/clubs/activities/calendar-marks";
@@ -18,20 +19,14 @@ import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
 import { MARK_ACCENT } from "./mark-accent";
 
-// Mismo mecanismo que MARK_ACCENT: un Record<CalendarMarkKind, number> obliga
-// a que las 4 claves estén presentes, así que un tipo de marca nuevo rompe la
-// compilación aquí en vez de quedar omitido en silencio de la leyenda. El
-// orden es el canónico de desempate (ORDEN_MARCA en calendar-marks.ts):
-// inicio, hito, evento, cierre.
-const ORDEN_LEYENDA: Record<CalendarMarkKind, number> = {
-  inicio: 0,
-  hito: 1,
-  evento: 2,
-  cierre: 3,
-};
-
+// La leyenda se deriva de las claves de MARK_ACCENT (un Record sobre
+// CalendarMarkKind, así que un tipo de marca nuevo rompe la compilación allí en
+// vez de quedar omitido en silencio aquí), ordenada por el MISMO ORDEN_MARCA que
+// desempata las marcas del mismo día en la rejilla. Se importa en vez de
+// copiarse: dos constantes gemelas en dos ficheros acaban divergiendo, y la
+// leyenda contradiría a la rejilla sin que nada avisara.
 const CLASES_LEYENDA = (Object.keys(MARK_ACCENT) as CalendarMarkKind[]).sort(
-  (a, b) => ORDEN_LEYENDA[a] - ORDEN_LEYENDA[b],
+  (a, b) => ORDEN_MARCA[a] - ORDEN_MARCA[b],
 );
 
 // El mes visible vive en el search param `mes`, y se cambia con

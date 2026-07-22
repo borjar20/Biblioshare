@@ -55,7 +55,11 @@ const ESTADOS_VISIBLES = new Set(["active", "finished"]);
 
 // Orden de desempate cuando dos marcas caen el mismo día. Solo para que la
 // pantalla (y los tests) sean deterministas.
-const ORDEN_MARCA: Record<CalendarMarkKind, number> = {
+//
+// Se exporta porque la leyenda del calendario debe listar las clases en este
+// MISMO orden: si fueran dos constantes gemelas en dos ficheros, reordenar una
+// dejaría la leyenda contradiciendo a la rejilla sin que nada avisara.
+export const ORDEN_MARCA: Record<CalendarMarkKind, number> = {
   inicio: 0,
   hito: 1,
   evento: 2,
