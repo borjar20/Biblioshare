@@ -56,26 +56,17 @@ export async function persistCollectionMembership(
   // no tiene saga primary (índice parcial saga_items_primary_idx); ante una
   // carrera con otro alta, el índice rechaza el duplicado y se reintenta sin
   // primary.
-  const { data: primaryRow } = await supabase
-    .from("saga_items")
-    .select("saga_id")
-    .eq("item_type", itemType)
-    .eq("item_id", itemId)
-    .eq("is_primary", true)
-    .maybeSingle();
-
-  const { error: memberError } = await supabase.from("saga_items").insert({
-    saga_id: sagaId,
-    item_type: itemType,
-    item_id: itemId,
-    is_primary: !primaryRow,
+  //
+  // Va por RPC desde el issue #169: la RLS de saga_items exige ahora
+  // collaborator+ para escribir, y este alta la dispara cualquier lector al
+  // abrir una ficha de película. link_tmdb_saga_item es SECURITY DEFINER, está
+  // acotada a sagas TMDB y lleva dentro la lógica de primary y el reintento
+  // ante la carrera, que antes vivían aquí.
+  const { error: memberError } = await supabase.rpc("link_tmdb_saga_item", {
+    p_saga_id: sagaId,
+    p_item_id: itemId,
   });
-  if (memberError && !primaryRow) {
-    await supabase.from("saga_items").insert({
-      saga_id: sagaId,
-      item_type: itemType,
-      item_id: itemId,
-      is_primary: false,
-    });
+  if (memberError) {
+    console.error("link_tmdb_saga_item failed", { sagaId, itemId, error: memberError });
   }
 }

@@ -247,6 +247,28 @@ nodos con `order_no`, expandiendo recursivamente los nodos-saga; sin grafo, los 
 `position`. Los opcionales no penalizan. Tenerla duplicada ya causó el issue #91 (el hero
 decía 2/7 donde la card decía 2/5).
 
+Desde el issue #170, esa regla **descarta los nodos huérfanos** (nodo-ítem que apunta a algo
+que no es miembro: `saga_nodes.item_id` no tiene FK y `save_saga_graph` no valida la
+membresía). Antes contaban en el denominador pero `buildSagaGraph` no los pintaba, así que
+ese avance no podía llegar nunca al 100%.
+
+### 7.1 Escritura de `saga_items` (issue #169)
+
+`saga_items` tuvo el INSERT abierto a cualquier `authenticated` **a propósito**, porque el
+enriquecimiento automático de colecciones TMDB escribe con el cliente del usuario al abrir
+una ficha. Desde `20260722_saga_items_rls_hardening.sql` ese camino pasa por dos funciones
+`SECURITY DEFINER` **acotadas a sagas TMDB** (`source = 'tmdb'` y `tmdb_collection_id` no
+nulo) y las tres operaciones de escritura exigen ya `collaborator`:
+
+| función | qué hace |
+|---|---|
+| `link_tmdb_saga_item(p_saga_id, p_item_id)` | alta de una película en su colección; resuelve `is_primary` y el reintento ante carrera |
+| `sync_tmdb_saga_items(p_saga_id, p_items)` | rellenado perezoso: inserta lo que falte y corrige posiciones, sin borrar nada |
+
+**Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod pendiente.** Ojo al orden: en prod la
+migración debe aplicarse **después** de desplegar el código, no antes — cerrar el INSERT con
+el código viejo en pie rompería la hidratación TMDB para los usuarios sin rol.
+
 ## 8. Seguridad
 
 Las 42 tablas tienen **RLS activa**. Patrones:
@@ -257,7 +279,8 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   eso lo decide `is_club_member()`.
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
-  `save_saga_graph`, `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan como
+  `save_saga_graph`, `link_tmdb_saga_item`, `sync_tmdb_saga_items` (§7.1),
+  `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan como
   WARN y **está aceptado**: llevan gate interno de rol.
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.

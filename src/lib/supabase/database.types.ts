@@ -2010,6 +2010,10 @@ export type Database = {
         Args: { p_owner_id: string; p_row_id: string; p_source_table: string }
         Returns: boolean
       }
+      link_tmdb_saga_item: {
+        Args: { p_item_id: string; p_saga_id: string }
+        Returns: undefined
+      }
       notify_club_join_request: {
         Args: { p_club_id: string }
         Returns: undefined
@@ -2061,6 +2065,10 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      sync_tmdb_saga_items: {
+        Args: { p_items: Json; p_saga_id: string }
+        Returns: undefined
       }
       transfer_club_ownership: {
         Args: { p_club_id: string; p_new_owner_id: string }

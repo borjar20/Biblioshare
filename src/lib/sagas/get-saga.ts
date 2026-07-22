@@ -72,6 +72,12 @@ async function populateTmdbCollection(
     // corrige posiciones, sin tocar miembros manuales. is_primary=false en el
     // bulk: la primary la fija el alta con contexto (persistCollectionMembership
     // o el editor), no el rellenado perezoso.
+    //
+    // Va por RPC desde el issue #169: la RLS de saga_items exige ahora
+    // collaborator+ para escribir, y este camino lo dispara cualquier lector al
+    // abrir la ficha. sync_tmdb_saga_items es SECURITY DEFINER y está acotada a
+    // sagas TMDB. El diff se sigue calculando aquí para no llamar en vano
+    // cuando no hay nada que cambiar (el caso normal: la colección ya está).
     const { data: existingRows } = await supabase
       .from("saga_items")
       .select("item_id, position")
@@ -79,23 +85,13 @@ async function populateTmdbCollection(
       .eq("item_type", "movie");
     const plan = planCollectionSync(existingRows ?? [], desired);
 
-    if (plan.toInsert.length > 0) {
-      await supabase.from("saga_items").insert(
-        plan.toInsert.map((p) => ({
-          saga_id: saga.id,
-          item_type: "movie" as const,
-          item_id: p.itemId,
-          position: p.position,
-        }))
-      );
-    }
-    for (const p of plan.toUpdate) {
-      await supabase
-        .from("saga_items")
-        .update({ position: p.position })
-        .eq("saga_id", saga.id)
-        .eq("item_type", "movie")
-        .eq("item_id", p.itemId);
+    const changed = [...plan.toInsert, ...plan.toUpdate];
+    if (changed.length > 0) {
+      const { error } = await supabase.rpc("sync_tmdb_saga_items", {
+        p_saga_id: saga.id,
+        p_items: changed.map((p) => ({ item_id: p.itemId, position: p.position })),
+      });
+      if (error) throw error;
     }
   } catch (error) {
     console.error("populateTmdbCollection failed", { sagaId: saga.id, error });
