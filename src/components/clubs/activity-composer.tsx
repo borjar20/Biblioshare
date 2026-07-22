@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ProposeWizard } from "./propose/propose-wizard";
 
 // El botón que abre el asistente. El formulario en sí vive en ProposeWizard.
-export function ActivityComposer({ clubId }: { clubId: string }) {
+export function ActivityComposer({
+  clubId,
+  isModerator,
+}: {
+  clubId: string;
+  isModerator: boolean;
+}) {
   const t = useTranslations("activity");
   const [open, setOpen] = useState(false);
 
@@ -26,6 +32,7 @@ export function ActivityComposer({ clubId }: { clubId: string }) {
   return (
     <ProposeWizard
       clubId={clubId}
+      isModerator={isModerator}
       onProposed={() => setOpen(false)}
       onCancel={() => setOpen(false)}
     />

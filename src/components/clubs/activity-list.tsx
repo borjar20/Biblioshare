@@ -38,7 +38,7 @@ export function ActivityList({
 
   return (
     <div className="flex flex-col gap-6">
-      <ActivityComposer clubId={clubId} />
+      <ActivityComposer clubId={clubId} isModerator={isModerator} />
 
       {activities.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>

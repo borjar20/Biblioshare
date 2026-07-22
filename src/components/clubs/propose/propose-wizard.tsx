@@ -11,7 +11,7 @@ import {
   type ProposedItem,
 } from "@/lib/clubs/activities/propose";
 import {
-  ACTIVITY_KIND_ORDER,
+  visibleKindOptions,
   getActivityKindDefinition,
 } from "@/lib/clubs/activities/kinds/registry";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
@@ -25,6 +25,7 @@ import {
   toProposedCheckpoints,
   type CheckpointDraft,
 } from "./checkpoint-draft-editor";
+import { EventForm } from "./event-form";
 
 // Asistente de dos pasos:
 //   1. lo común (título, descripción) + elegir tipo con tarjetas
@@ -35,10 +36,12 @@ import {
 // ítems y los hitos. Aquí se propone ya montada.
 export function ProposeWizard({
   clubId,
+  isModerator,
   onProposed,
   onCancel,
 }: {
   clubId: string;
+  isModerator: boolean;
   onProposed: () => void;
   onCancel: () => void;
 }) {
@@ -127,7 +130,7 @@ export function ProposeWizard({
           </span>
 
           <div className="grid gap-2 sm:grid-cols-2">
-            {ACTIVITY_KIND_ORDER.map((option) => {
+            {visibleKindOptions(isModerator).map((option) => {
               const accent = ACTIVITY_ACCENT[option];
               const selected = kind === option;
               return (
@@ -173,6 +176,21 @@ export function ProposeWizard({
 
   // ── Paso 2: lo propio del tipo ──────────────────────────────────────────
   const accent = ACTIVITY_ACCENT[kind!];
+
+  // Un evento no tiene pool, ni config, ni fecha de fin: su paso 2 es solo la
+  // fecha. Y no se "propone" -- se crea ya activo por RPC.
+  if (kind === "evento") {
+    return (
+      <Panel title={title || t("newEvent")} onCancel={onCancel}>
+        <EventForm
+          clubId={clubId}
+          onDone={onProposed}
+          onCancel={() => setStep(1)}
+        />
+      </Panel>
+    );
+  }
+
   const ConfigFields = definition?.ConfigFields;
   const maxItems = definition?.maxItems ?? null;
   const canAddMore = maxItems === null || items.length < maxItems;
