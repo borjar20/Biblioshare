@@ -73,6 +73,7 @@ function RouteRow({
   // ver siempre el orden real de BD tras el intento.
   const [movePending, startMoveTransition] = useTransition();
   function move(direction: "up" | "down") {
+    resetDeleteState();
     startMoveTransition(async () => {
       await moveRoute(route.id, sagaId, direction);
       router.refresh();
@@ -86,6 +87,16 @@ function RouteRow({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const [deletePending, startDeleteTransition] = useTransition();
+
+  // El aviso de borrado no debe sobrevivir a interacciones no relacionadas
+  // (renombrar, mover). Si el usuario empieza otra acción, limpiamos ambos
+  // estados para evitar que el aviso reaparezca sin haberlo pedido (p. ej.
+  // tras cancelar un renombramiento o un reordenado).
+  function resetDeleteState() {
+    setConfirmingDelete(false);
+    setDeleteError(false);
+  }
+
   function handleDelete() {
     setDeleteError(false);
     startDeleteTransition(async () => {
@@ -166,7 +177,10 @@ function RouteRow({
         <button
           type="button"
           disabled={busy}
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            resetDeleteState();
+            setEditing(true);
+          }}
           className="shrink-0 px-2 py-1 text-[11px] text-muted-foreground disabled:opacity-40"
         >
           {t("routeRename")}
@@ -175,7 +189,10 @@ function RouteRow({
           <button
             type="button"
             disabled={busy}
-            onClick={() => setConfirmingDelete(true)}
+            onClick={() => {
+              setConfirmingDelete(true);
+              setDeleteError(false);
+            }}
             className="shrink-0 px-2 py-1 text-[11px] text-status-dropped disabled:opacity-40"
           >
             {t("routeDelete")}
