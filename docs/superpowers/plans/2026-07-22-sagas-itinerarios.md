@@ -184,7 +184,7 @@ select p.proname, p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pron
 where n.nspname='public' and p.proname='save_saga_route';
 ```
 
-Expected: 7 políticas (2 por `saga_routes`, 2 por `saga_route_entries`, 1 por `saga_route_choices` con `cmd=ALL`) y `save_saga_route` con `prosecdef = true`.
+Expected: **5** filas en `pg_policies` — 2 de `saga_routes` (SELECT + ALL), 2 de `saga_route_entries` (SELECT + ALL) y 1 de `saga_route_choices` (ALL) — y `save_saga_route` con `prosecdef = true`.
 
 - [ ] **Step 4: Añadir los tipos a `database.types.ts`**
 
