@@ -476,12 +476,13 @@ test("la rejilla de episodios de una serie va acotada (272px) con scroll propio"
 // se quedaba PINTADA en flujo normal, sin backdrop y fuera del top layer, con
 // la barra de pestañas de la ficha atravesándola.
 //
-// Este test cubre SOLO que la hoja no queda pintada. Que esa misma rama te
-// plante la ficha delante viniendo del inicio es la issue #161, todavía
-// abierta: arreglarlo pide capturar el origen antes de navegar, y relajarlo
-// aquí a botepronto rompe la Regla 2 de pase-hub.spec.ts (ver el comentario de
-// previousEntryIs en session-modal.tsx).
-test("guardar desde el inicio no deja la hoja pintada sobre la pagina", async ({
+// Y encima te dejaba en la ficha, que no es de donde venías (issue #161). El
+// destino sale ahora del ORIGEN REAL, capturado antes de navegar
+// (session-origin.tsx), no de deducirlo del historial a posteriori — que es
+// lo que no se puede hacer: cuando el push a /sesion degrada a replace, la
+// entrada de la ficha desaparece y "hay entrada anterior" deja de significar
+// "el usuario venía de ahí". Ver el comentario de previousEntryIs.
+test("guardar desde el inicio vuelve al inicio y no deja la hoja pintada", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -504,11 +505,9 @@ test("guardar desde el inicio no deja la hoja pintada sobre la pagina", async ({
     await dialog.locator('input[name="page"]').fill("5");
     await dialog.getByRole("button", { name: "Guardar sesión" }).click();
 
-    // Se sale del modal (hoy, por la rama replace, eso deja la URL en la
-    // ficha — issue #160).
-    await expect(page).toHaveURL(new RegExp(`/libro/${itemId}`), {
-      timeout: 15_000,
-    });
+    // Vuelves al INICIO, que es de donde saliste. No a la ficha.
+    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    expect(page.url()).not.toContain(`/libro/${itemId}`);
 
     // Lo que este test protege: la hoja no queda pintada. `toBeHidden` no
     // basta como red de seguridad — comprobamos el alto REAL, que es lo que
