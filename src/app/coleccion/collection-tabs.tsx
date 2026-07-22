@@ -13,7 +13,12 @@ import { getTranslations } from "next-intl/server";
 export type CollectionTab = "colecciones" | "todo" | "sagas";
 export type KnownTab = CollectionTab;
 
-export const COLLECTION_TABS: CollectionTab[] = ["colecciones", "todo", "sagas"];
+export const COLLECTION_TABS: CollectionTab[] = [
+  "colecciones",
+  "sagas",
+  "todo",
+];
+
 export const KNOWN_TABS: KnownTab[] = [...COLLECTION_TABS];
 
 export async function CollectionTabs({ active }: { active: KnownTab }) {
@@ -25,7 +30,8 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
     // una barra de scroll fantasma al desbordar el borde inferior 1px.
     <div className="flex gap-6 border-b border-border">
       {COLLECTION_TABS.map((tab) => {
-        const href = tab === "colecciones" ? "/coleccion" : `/coleccion?tab=${tab}`;
+        const href =
+          tab === "colecciones" ? "/coleccion" : `/coleccion?tab=${tab}`;
         const isActive = tab === active;
         return (
           <Link
