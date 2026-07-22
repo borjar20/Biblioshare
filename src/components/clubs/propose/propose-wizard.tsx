@@ -191,6 +191,8 @@ export function ProposeWizard({
           initialDescription={description}
           onDone={onProposed}
           onCancel={() => setStep(1)}
+          // Aquí sí hay un paso 1 al que volver de verdad -- "Atrás" es correcto.
+          hasPreviousStep
         />
       </Panel>
     );

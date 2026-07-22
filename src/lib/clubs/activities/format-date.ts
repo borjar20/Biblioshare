@@ -18,3 +18,17 @@ export function formatEventDate(iso: string): string {
   const { day, month } = formatDayMonth(iso);
   return `${day} ${month}`;
 }
+
+// Nombres largos para la cabecera del calendario ("Julio 2026"). MONTHS_ES son
+// las abreviaturas de las tarjetas de fecha; hacen falta las dos formas.
+export const MONTHS_ES_LONG = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+// month es "YYYY-MM". Se parte a mano por el mismo motivo que el resto del
+// fichero: nada de new Date() sobre una fecha de la BD.
+export function formatMonthYear(month: string): string {
+  const [year, monthNumber] = month.split("-");
+  return `${MONTHS_ES_LONG[Number(monthNumber) - 1] ?? ""} ${year}`;
+}

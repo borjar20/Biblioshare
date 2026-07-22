@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
-import type { UpcomingCheckpoint, UpcomingEvent } from "@/lib/clubs/activities/upcoming";
+import type { CalendarMark } from "@/lib/clubs/activities/calendar-marks";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
+import { MARK_ACCENT } from "./calendar/mark-accent";
 import { formatDayMonth } from "@/lib/clubs/activities/format-date";
 
 // % de tiempo transcurrido entre las fechas de la actividad. Es una barra
@@ -24,23 +25,22 @@ function timeProgress(startsOn: string | null, endsOn: string | null): number | 
 export async function ClubSummary({
   activities,
   upcoming,
-  events,
   clubSlug,
 }: {
   activities: ClubActivity[];
-  upcoming: UpcomingCheckpoint[];
-  events: UpcomingEvent[];
+  /** Las próximas marcas del club, ya recortadas por quien llama. */
+  upcoming: CalendarMark[];
   clubSlug: string;
 }) {
   const t = await getTranslations("activity");
-  // Los eventos comparten status="active" con el resto de actividades, pero
-  // no tienen página propia (ver activity-card.tsx) -- si entraran aquí, el
-  // <Link> de abajo llevaría a un 404. Van en su propio bloque, más abajo.
+  // Un evento no tiene ficha propia: si entrara aquí, su <Link> a
+  // /actividad/:id daría 404. Sus fechas ya se ven en la tira "Próximo" de
+  // más abajo (unificada con los hitos), así que quedan fuera de este bloque.
   const active = activities.filter(
     (a) => a.status === "active" && a.kind !== "evento",
   );
 
-  if (active.length === 0 && upcoming.length === 0 && events.length === 0) return null;
+  if (active.length === 0 && upcoming.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -102,60 +102,23 @@ export async function ClubSummary({
 
       {upcoming.length > 0 && (
         <section className="flex flex-col gap-2.5">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            {t("summaryUpcoming")}
+          <h2 className="flex items-center justify-between gap-2 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("summaryNext")}
+            <Link
+              href={`/club/${clubSlug}/calendario`}
+              className="font-mono text-[9.5px] tracking-wide text-accent normal-case hover:opacity-80"
+            >
+              {t("summarySeeCalendar")}
+            </Link>
           </h2>
 
           <div className="flex gap-2.5 overflow-x-auto pb-1">
-            {upcoming.map((checkpoint) => {
-              const { day, month } = formatDayMonth(checkpoint.dueOn);
-              return (
-                <Link
-                  key={checkpoint.id}
-                  href={`/club/${clubSlug}/actividad/${checkpoint.activityId}`}
-                  className="flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2 hover:opacity-80"
-                >
-                  <span
-                    aria-hidden
-                    className="flex shrink-0 flex-col items-center leading-none"
-                  >
-                    <span className="font-serif text-lg font-semibold text-foreground">
-                      {day}
-                    </span>
-                    <span className="font-mono text-[8.5px] text-muted-foreground uppercase">
-                      {month}
-                    </span>
-                  </span>
-                  <span className="flex max-w-44 min-w-0 flex-col text-xs leading-tight">
-                    <span className="truncate text-foreground">
-                      {checkpoint.label}
-                    </span>
-                    <span className="truncate text-muted-foreground">
-                      {checkpoint.activityTitle}
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
+            {upcoming.map((mark, i) => {
+              const { day, month } = formatDayMonth(mark.date);
+              const accent = MARK_ACCENT[mark.markKind];
 
-      {events.length > 0 && (
-        <section className="flex flex-col gap-2.5">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            {t("summaryDates")}
-          </h2>
-
-          {/* Sin enlace: un evento no tiene página propia. */}
-          <div className="flex gap-2.5 overflow-x-auto pb-1">
-            {events.map((event) => {
-              const { day, month } = formatDayMonth(event.startsOn);
-              return (
-                <div
-                  key={event.id}
-                  className="flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2"
-                >
+              const inner = (
+                <>
                   <span aria-hidden className="flex shrink-0 flex-col items-center leading-none">
                     <span className="font-serif text-lg font-semibold text-foreground">
                       {day}
@@ -164,9 +127,26 @@ export async function ClubSummary({
                       {month}
                     </span>
                   </span>
-                  <span className="max-w-44 truncate text-xs leading-tight text-foreground">
-                    {event.title}
+                  <span className="flex max-w-44 min-w-0 flex-col text-xs leading-tight">
+                    <span className="truncate text-foreground">{mark.title}</span>
+                    <span className={`truncate ${accent.text}`}>
+                      {mark.detail ?? t(`markKind_${mark.markKind}`)}
+                    </span>
                   </span>
+                </>
+              );
+
+              const clases =
+                "flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2";
+
+              // Un evento no tiene ficha: enlazarlo daría 404.
+              return mark.href ? (
+                <Link key={i} href={mark.href} className={`${clases} hover:opacity-80`}>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={i} className={clases}>
+                  {inner}
                 </div>
               );
             })}
