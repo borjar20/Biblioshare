@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { SYNTHETIC_SLUGS } from "./get-saga-routes";
 import {
   buildLibrarySagaCards,
   type LibCreator,
@@ -8,6 +9,7 @@ import {
   type LibMembership,
   type LibNode,
   type LibRating,
+  type LibRouteChoice,
   type LibSaga,
   type LibrarySagaCard,
 } from "./build-library-saga-cards";
@@ -221,5 +223,45 @@ export async function getFollowedSagas(
     }),
   );
 
-  return buildLibrarySagaCards(followedIds, sagas, memberships, nodes, items, entries, ratings, creators);
+  // Ruta adoptada por el usuario en cada saga seguida (Task 7). Se guarda el
+  // slug (saga_route_choices), no el nombre, así que hay que cruzarlo con
+  // saga_routes para pintarlo — y solo si NO es una de las sintéticas
+  // (`lectura`/`publicacion`, reservadas y sin fila propia): no aporta nada
+  // anunciar «vas por Publicación».
+  const { data: choices } = await supabase
+    .from("saga_route_choices")
+    .select("saga_id, route_slug")
+    .eq("user_id", userId)
+    .in("saga_id", followedIds);
+  const choiceBySaga = new Map(
+    ((choices ?? []) as Array<{ saga_id: string; route_slug: string }>).map((c) => [c.saga_id, c.route_slug]),
+  );
+  const curatedChoiceSagaIds = [...choiceBySaga.entries()]
+    .filter(([, slug]) => !(SYNTHETIC_SLUGS as readonly string[]).includes(slug))
+    .map(([sagaId]) => sagaId);
+  const routeChoices: LibRouteChoice[] = [];
+  if (curatedChoiceSagaIds.length > 0) {
+    const { data: curatedRoutes } = await supabase
+      .from("saga_routes")
+      .select("saga_id, slug, name")
+      .in("saga_id", curatedChoiceSagaIds);
+    for (const r of (curatedRoutes ?? []) as Array<{ saga_id: string; slug: string; name: string }>) {
+      // El slug adoptado puede apuntar a una ruta que el curador ya borró
+      // (degradación intencional, ver comentario de route-actions.ts): en ese
+      // caso no hay fila que la case y routeName se queda en null.
+      if (choiceBySaga.get(r.saga_id) === r.slug) routeChoices.push({ sagaId: r.saga_id, routeName: r.name });
+    }
+  }
+
+  return buildLibrarySagaCards(
+    followedIds,
+    sagas,
+    memberships,
+    nodes,
+    items,
+    entries,
+    ratings,
+    creators,
+    routeChoices,
+  );
 }

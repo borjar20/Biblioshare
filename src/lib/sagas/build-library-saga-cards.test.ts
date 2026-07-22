@@ -197,4 +197,25 @@ describe("buildLibrarySagaCards", () => {
     expect(segs.some((s) => s.accent === "beige")).toBe(true); // nexo
     expect(cards[0].progress.total).toBe(2);
   });
+
+  it("la card anuncia la ruta adoptada, pero no si es una sintética", () => {
+    const cards = buildLibrarySagaCards(
+      ["curada", "sintetica"],
+      [saga("curada", "Curada"), saga("sintetica", "Sintética")],
+      [mem("curada", "a", 1), mem("sintetica", "b", 1)],
+      [],
+      [item("a", "A"), item("b", "B")],
+      [],
+      [],
+      [],
+      [
+        { sagaId: "curada", routeName: "La Guardia" },
+        { sagaId: "sintetica", routeName: null },
+      ],
+    );
+    const curada = cards.find((c) => c.sagaId === "curada")!;
+    const sintetica = cards.find((c) => c.sagaId === "sintetica")!;
+    expect(curada.routeName).toBe("La Guardia");
+    expect(sintetica.routeName).toBeNull();
+  });
 });

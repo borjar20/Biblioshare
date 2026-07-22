@@ -1,8 +1,7 @@
-// Stub transitorio (Task 6): la implementación real llega en la Task 7.
-// Renderiza null para que RouteView compile con la firma que consumirá el
-// botón de adoptar ruta. Mismo patrón de `void` que el stub de RouteView en la
-// Task 5: el eslint de este repo no exime los identificadores con guion bajo
-// de `no-unused-vars`, así que hay que desestructurar y consumir cada prop.
+import { adoptRoute, dropRoute } from "@/lib/sagas/route-actions";
+
+// Server Component con dos <form>: sin JS de cliente, como el resto de
+// acciones simples de la ficha.
 export function AdoptRouteButton({
   sagaId,
   slug,
@@ -14,9 +13,17 @@ export function AdoptRouteButton({
   adopted: boolean;
   labels: { adopt: string; adopted: string };
 }) {
-  void sagaId;
-  void slug;
-  void adopted;
-  void labels;
-  return null;
+  const action = adopted ? dropRoute.bind(null, sagaId) : adoptRoute.bind(null, sagaId, slug);
+  return (
+    <form action={action}>
+      <button
+        type="submit"
+        className={`shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-semibold ${
+          adopted ? "bg-surface-muted text-muted-foreground" : "bg-foreground text-background"
+        }`}
+      >
+        {adopted ? labels.adopted : labels.adopt}
+      </button>
+    </form>
+  );
 }
