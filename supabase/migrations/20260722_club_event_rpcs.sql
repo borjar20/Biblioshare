@@ -55,6 +55,11 @@ grant execute on function public.create_club_event(uuid, text, text, date) to au
 -- reescribir título, descripción y fechas de cualquier buddy_read o
 -- list_challenge por la puerta de atrás. Eso es exactamente la edición arbitraria
 -- que SD-8 evitó al no crear la política.
+--
+-- Mismo motivo para `and status = 'active'`: un evento nace 'active' y solo puede
+-- pasar a 'archived' (nunca 'proposed' ni 'finished'), así que 'active' es el único
+-- estado editable -- sin este guard, un moderador podría reescribir un evento ya
+-- archivado.
 create or replace function public.update_club_event(
   p_activity_id uuid,
   p_title text,
@@ -69,8 +74,9 @@ as $$
 declare
   v_club_id uuid;
   v_kind public.activity_kind;
+  v_status public.activity_status;
 begin
-  select club_id, kind into v_club_id, v_kind
+  select club_id, kind, status into v_club_id, v_kind, v_status
   from public.club_activities where id = p_activity_id;
 
   if v_club_id is null then
@@ -78,6 +84,9 @@ begin
   end if;
   if v_kind <> 'evento' then
     raise exception 'not an event';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'event not active';
   end if;
   if not public.has_min_club_role(v_club_id, 'moderator') then
     raise exception 'forbidden';
@@ -93,7 +102,7 @@ begin
   set title = trim(p_title),
       description = nullif(trim(coalesce(p_description, '')), ''),
       starts_on = p_starts_on
-  where id = p_activity_id and kind = 'evento';
+  where id = p_activity_id and kind = 'evento' and status = 'active';
 end;
 $$;
 
@@ -103,4 +112,4 @@ grant execute on function public.update_club_event(uuid, text, text, date) to au
 comment on function public.create_club_event(uuid, text, text, date) is
   'Crea un evento de club (kind=evento, status=active) saltando la RLS de INSERT que fuerza proposed. Moderador+.';
 comment on function public.update_club_event(uuid, text, text, date) is
-  'Edita título/descripción/fecha de un EVENTO. Moderador+. Restringida a kind=evento a propósito.';
+  'Edita título/descripción/fecha de un EVENTO. Moderador+. Restringida a kind=evento y status=active a propósito.';
