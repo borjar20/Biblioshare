@@ -1000,6 +1000,24 @@ git commit -m "feat(sagas): el toggle de orden pasa a ser selector de itinerario
 
 ## Task 6: Render de una ruta curada
 
+> **Correcciones aplicadas durante la ejecución (2026-07-22).** El código de
+> abajo se implementó y luego se corrigió por tres hallazgos de revisión. Si
+> lees este plan como referencia, ten en cuenta que el estado final difiere:
+>
+> 1. **`key={i}` es incorrecto** en la lista de pasos. `RouteBlock` es cliente
+>    y guarda el plegado en `useState`: al reordenar, React reutiliza la
+>    instancia de la posición y deja abierto el bloque equivocado. La key final
+>    se deriva del contenido (`block:${sagaId}` / `item:${tipo}:${id}`).
+> 2. **`childNames`/`childAccent` no pueden salir de `detail.groups`**: un grupo
+>    solo existe si tiene miembros, así que una subsaga vacía era
+>    indistinguible de una borrada y su paso desaparecía en silencio.
+>    `getSagaDetail` expone ahora `childRefs` (todos los descendientes) y de ahí
+>    salen ambos mapas. Acento: el del grupo si existe, si no el `accent_color`
+>    persistido, si no `beige`.
+> 3. **`RouteView` no debe re-consultar `saga_routes`**: `getSagaDetail` ya lo
+>    hizo. `SagaRoute` lleva ahora `id?: string` (opcional: las sintéticas no
+>    tienen fila) y la ruta activa se localiza en `detail.routes`.
+
 **Files:**
 - Modify: `src/components/saga/route-view.tsx` (sustituye el stub)
 - Create: `src/components/saga/route-block.tsx`
