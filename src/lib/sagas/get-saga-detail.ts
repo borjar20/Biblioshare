@@ -294,7 +294,12 @@ export async function getSagaDetail(
   // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
   // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
   // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
-  const [nodesRes, edgesRes, followRow, parentRow, roleRow] = await Promise.all([
+  // Rutas curadas y elección del viewer también van en este batch: ninguna
+  // depende de graph/nodesRes/edgesRes/followRow/parentRow/roleRow, solo de
+  // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
+  // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
+  // camino caliente de la ficha de saga.
+  const [nodesRes, edgesRes, followRow, parentRow, roleRow, curated, routeChoice] = await Promise.all([
     // Nodos de TODO el subárbol, no solo los de la raíz: el orden principal
     // (§1.5) expande recursivamente los nodos-saga con el orden principal de la
     // saga hija, así que necesita sus nodos. El grafo que se pinta sigue siendo
@@ -323,6 +328,9 @@ export async function getSagaDetail(
     user
       ? supabase.from("profiles").select("role").eq("user_id", user.id).maybeSingle()
       : Promise.resolve({ data: null }),
+    getSagaRoutes(supabase, id),
+    // Sin user, se resuelve a null sin lanzar consulta (getRouteChoice exige userId).
+    user ? getRouteChoice(supabase, user.id, id) : Promise.resolve(null),
   ]);
 
   // Lookup del grafo desde los MISMOS datos de la pestaña Info (spec §1.3).
@@ -401,14 +409,13 @@ export async function getSagaDetail(
 
   // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
   // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.
+  // `curated` y `routeChoice` ya llegaron resueltos desde el batch de arriba.
   const tRoutes = await getTranslations("saga");
-  const curated = await getSagaRoutes(supabase, id);
   const routes = buildRouteList(
     curated,
     { lectura: tRoutes("orderReading"), publicacion: tRoutes("orderPublication") },
     graph !== null,
   );
-  const routeChoice = user ? await getRouteChoice(supabase, user.id, id) : null;
 
   return {
     saga,
