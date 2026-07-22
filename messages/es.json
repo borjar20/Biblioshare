@@ -448,6 +448,7 @@
     "tabs": {
       "feed": "Feed",
       "actividades": "Actividades",
+      "calendario": "Calendario",
       "gestion": "Gestión"
     },
     "memberCount": "{count, plural, one {1 miembro} other {# miembros}}",
@@ -683,7 +684,20 @@
     "eventError": "No se pudo guardar el evento. Inténtalo de nuevo.",
     "summaryDates": "Próximas fechas",
     "eventActions": "Acciones del evento",
-    "create": "Crear"
+    "create": "Crear",
+    "calendarTitle": "Calendario",
+    "calendarPrevMonth": "Mes anterior",
+    "calendarNextMonth": "Mes siguiente",
+    "calendarToday": "Hoy",
+    "calendarAgenda": "Agenda",
+    "calendarEmptyMonth": "Nada marcado en este mes.",
+    "calendarMore": "+{count}",
+    "markKind_evento": "Evento",
+    "markKind_hito": "Hito",
+    "markKind_inicio": "Empieza",
+    "markKind_cierre": "Cierre",
+    "summaryNext": "Próximo",
+    "summarySeeCalendar": "Ver calendario ›"
   },
   "sagaPicker": {
     "placeholder": "Buscar una saga…",
