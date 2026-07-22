@@ -116,6 +116,22 @@ describe("buildCalendarMarks", () => {
     expect(buildCalendarMarks([], [checkpoint], HOY, SLUG)).toHaveLength(0);
   });
 
+  it("un hito de una actividad evento no enlaza (aunque hoy sea inalcanzable)", () => {
+    const checkpoint: CalendarCheckpointRow = {
+      id: "c1",
+      label: "Hito 1",
+      dueOn: "2026-07-18",
+      activityId: "e1",
+      activityTitle: "Café literario",
+      activityKind: "evento",
+      activityStatus: "active",
+    };
+    const marks = buildCalendarMarks([], [checkpoint], HOY, SLUG);
+    expect(marks).toHaveLength(1);
+    expect(marks[0].markKind).toBe("hito");
+    expect(marks[0].href).toBeNull();
+  });
+
   it("ordena por fecha ascendente", () => {
     const marks = buildCalendarMarks(
       [
@@ -127,6 +143,33 @@ describe("buildCalendarMarks", () => {
       SLUG,
     );
     expect(marks.map((m) => m.date)).toEqual(["2026-07-04", "2026-07-26"]);
+  });
+
+  it("con varias marcas el mismo día, el orden es inicio, hito, evento, cierre", () => {
+    // Títulos elegidos a propósito para que el orden alfabético (el
+    // desempate que queda si se borra ORDEN_MARCA) NO coincida con el orden
+    // esperado: así el test detecta que ese término desaparezca.
+    const D = "2026-07-15";
+    const checkpoint: CalendarCheckpointRow = {
+      id: "c1",
+      label: "Alpha hito",
+      dueOn: D,
+      activityId: "a-hito",
+      activityTitle: "Fundación",
+      activityKind: "buddy_read",
+      activityStatus: "active",
+    };
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a-cierre", title: "Whiskey actividad", endsOn: D }),
+        actividad({ id: "a-evento", kind: "evento", title: "Mike evento", startsOn: D }),
+        actividad({ id: "a-inicio", title: "Bravo actividad", startsOn: D }),
+      ],
+      [checkpoint],
+      HOY,
+      SLUG,
+    );
+    expect(marks.map((m) => m.markKind)).toEqual(["inicio", "hito", "evento", "cierre"]);
   });
 });
 
@@ -155,6 +198,16 @@ describe("monthGrid", () => {
 
   it("febrero no bisiesto tiene 28", () => {
     expect(monthGrid("2026-02").filter((c) => !c.outside)).toHaveLength(28);
+  });
+
+  it("enero cruza el año hacia atrás: 2027-01 empieza en 2026-12-28", () => {
+    const cells = monthGrid("2027-01");
+    expect(cells[0]).toEqual({ date: "2026-12-28", day: 28, outside: true });
+  });
+
+  it("diciembre cruza el año hacia adelante: 2026-12 acaba en 2027-01-03", () => {
+    const cells = monthGrid("2026-12");
+    expect(cells[cells.length - 1]).toEqual({ date: "2027-01-03", day: 3, outside: true });
   });
 });
 
@@ -214,5 +267,8 @@ describe("parseMonthParam", () => {
     expect(parseMonthParam("no-es-un-mes", HOY)).toBe("2026-07");
     expect(parseMonthParam("2026-13", HOY)).toBe("2026-07");
     expect(parseMonthParam("2026-00", HOY)).toBe("2026-07");
+  });
+  it("rechaza un año con cero inicial (mezclaría siglos en monthGrid)", () => {
+    expect(parseMonthParam("0050-03", HOY)).toBe("2026-07");
   });
 });

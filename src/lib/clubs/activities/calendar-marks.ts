@@ -120,7 +120,12 @@ export function buildCalendarMarks(
       detail: checkpoint.activityTitle,
       activityId: checkpoint.activityId,
       activityKind: checkpoint.activityKind,
-      href: `/club/${clubSlug}/actividad/${checkpoint.activityId}`,
+      // Un evento no tiene ficha propia aunque le llegue un checkpoint: la
+      // función es pura y no debe fiarse de que hoy solo buddy_read los use.
+      href:
+        checkpoint.activityKind === "evento"
+          ? null
+          : `/club/${clubSlug}/actividad/${checkpoint.activityId}`,
       past: checkpoint.dueOn < today,
     });
   }
@@ -210,6 +215,6 @@ export function parseMonthParam(
   raw: string | null | undefined,
   today: string,
 ): string {
-  if (raw && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw)) return raw;
+  if (raw && /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(raw)) return raw;
   return today.slice(0, 7);
 }
