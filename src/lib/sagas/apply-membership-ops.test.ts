@@ -111,4 +111,44 @@ describe("rol narrativo en los movimientos de membresía (#167)", () => {
 
     expect(plan.insert!.role).toBeNull();
   });
+
+  it("arrastra el role de una fila sin position (precuela sin número)", () => {
+    // Fila única: rol PERO sin position. Si el código buscara el role en la
+    // misma fila que trae el position (o reutilizara esa búsqueda), este caso
+    // no tendría de dónde arrastrarlo y se perdería.
+    const rows: TreeMembershipRow[] = [
+      { saga_id: "origen", position: null, role: "precuela", is_primary: true },
+    ];
+
+    const plan = planMembershipOps(
+      { itemType: "book", itemId: "b1", targetSagaId: "destino" },
+      rows,
+      "destino",
+      true,
+    );
+
+    expect(plan.insert).not.toBeNull();
+    expect(plan.insert!.role).toBe("precuela");
+    expect(plan.insert!.position).toBeNull();
+  });
+
+  it("arrastra position y role cuando viven en filas distintas del árbol", () => {
+    // Dos filas de origen: una trae el number, la otra trae el rol. El plan
+    // debe recoger ambos aunque no coincidan en la misma fila.
+    const rows: TreeMembershipRow[] = [
+      { saga_id: "childA", position: 4, role: null, is_primary: false },
+      { saga_id: "childB", position: null, role: "spin_off", is_primary: true },
+    ];
+
+    const plan = planMembershipOps(
+      { itemType: "book", itemId: "b1", targetSagaId: "destino" },
+      rows,
+      "destino",
+      true,
+    );
+
+    expect(plan.insert).not.toBeNull();
+    expect(plan.insert!.position).toBe(4);
+    expect(plan.insert!.role).toBe("spin_off");
+  });
 });
