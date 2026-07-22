@@ -100,4 +100,26 @@ test.describe("itinerarios de lectura", () => {
     // La lista por año se reconoce por su numeración 01, 02…
     await expect(page.getByText("01", { exact: true })).toBeVisible();
   });
+
+  // Antes de este test, el único enlace a /rutas vivía en RouteView, que solo
+  // se monta cuando la ruta ACTIVA ya es una curada. Aterrizar en la ficha sin
+  // parámetros (pestaña Info, la que carga por defecto) deja la ruta activa
+  // fuera de la ecuación: si el enlace de saga-info.tsx no existiera, no
+  // habría ningún elemento con este rol/nombre en la página y el test
+  // fallaría por timeout. Sin teclear `/rutas` en la barra de direcciones:
+  // solo login + goto de la ficha + click.
+  test("un colaborador llega a /rutas desde la ficha sin teclear la URL", async ({ page }) => {
+    await loginAsCollaborator(page);
+    await page.goto(`/saga/${UNIVERSO_ID}`);
+
+    // Nombre exacto (con el icono "✎"): el título de una de las obras
+    // sembradas es literalmente "[QA Itinerarios] Ronda de noche", así que
+    // una coincidencia parcial (/Itinerarios/) también engancha su portada y
+    // el test se vuelve ambiguo (strict mode violation) tanto en verde como
+    // en rojo.
+    await page.getByRole("link", { name: "✎ Itinerarios", exact: true }).click();
+
+    await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/rutas`);
+    await expect(page.getByRole("heading", { name: "Itinerarios de lectura" })).toBeVisible();
+  });
 });

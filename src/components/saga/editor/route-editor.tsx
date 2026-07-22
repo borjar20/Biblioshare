@@ -5,8 +5,14 @@ import { useTranslations } from "next-intl";
 import { saveRoute } from "@/lib/sagas/route-actions";
 import type { RawRouteEntry } from "@/lib/sagas/route-types";
 import { hydrateRouteDraft, type RouteEditorItem } from "@/lib/sagas/hydrate-route-draft";
+import { Input } from "@/components/ui/input";
 
 export type { RouteEditorItem };
+
+// CHECK de BD (20260723_saga_routes.sql): char_length(note) <= 200. Se
+// respeta aquí con maxLength para que el curador vea el límite en el input
+// en vez de descubrirlo con un error de guardado.
+const NOTE_MAX_LENGTH = 200;
 
 // Editor de los PASOS de un itinerario (Task 9). Botones ↑/↓ en vez de drag &
 // drop: la lista es corta, el teclado y el lector de pantalla salen gratis, y
@@ -52,6 +58,13 @@ export function RouteEditor({
       return next;
     });
 
+  // String vacía se guarda como null, no como "": así una nota borrada por
+  // completo vuelve a ser "sin nota" en vez de una cadena vacía persistida.
+  const setNote = (key: string, note: string) =>
+    setDraft((d) =>
+      d.map((x) => (x.key === key ? { ...x, entry: { ...x.entry, note: note === "" ? null : note } } : x)),
+    );
+
   const save = () =>
     startTransition(async () => {
       // Renumerar 1..n SIEMPRE antes de enviar: así el reordenado no puede
@@ -64,39 +77,49 @@ export function RouteEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <ol className="flex flex-col gap-1">
+      <ol className="flex flex-col gap-1.5">
         {draft.map((d, i) => (
-          <li key={d.key} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5">
-            <span className="w-6 text-right font-mono text-[11px] text-muted-foreground">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[13px]">{d.label}</span>
-            <button
-              type="button"
-              onClick={() => move(i, -1)}
-              disabled={i === 0}
-              aria-label={t("routeStepUp")}
-              className="px-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              onClick={() => move(i, 1)}
-              disabled={i === draft.length - 1}
-              aria-label={t("routeStepDown")}
-              className="px-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              onClick={() => setDraft((v) => v.filter((x) => x.key !== d.key))}
-              aria-label={t("routeStepRemove")}
-              className="px-1.5 text-xs text-status-dropped"
-            >
-              ✕
-            </button>
+          <li key={d.key} className="flex flex-col gap-1.5 rounded-lg border border-border px-2 py-1.5">
+            <div className="flex items-center gap-2">
+              <span className="w-6 text-right font-mono text-[11px] text-muted-foreground">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px]">{d.label}</span>
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                aria-label={t("routeStepUp")}
+                className="px-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === draft.length - 1}
+                aria-label={t("routeStepDown")}
+                className="px-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft((v) => v.filter((x) => x.key !== d.key))}
+                aria-label={t("routeStepRemove")}
+                className="px-1.5 text-xs text-status-dropped"
+              >
+                ✕
+              </button>
+            </div>
+            <Input
+              value={d.entry.note ?? ""}
+              onChange={(e) => setNote(d.key, e.target.value)}
+              maxLength={NOTE_MAX_LENGTH}
+              placeholder={t("routeStepNotePlaceholder")}
+              aria-label={t("routeStepNoteLabel")}
+              className="ml-8 px-2 py-1 text-[11px]"
+            />
           </li>
         ))}
       </ol>

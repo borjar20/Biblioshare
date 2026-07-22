@@ -28,6 +28,11 @@ export function validateRouteDraft(
     seen.add(key);
 
     if (isBlock && !ctx.descendantIds.has(e.childSagaId!)) errors.add("foreignBlock");
+
+    // Validar que la longitud de la nota no supere 200 caracteres.
+    // Si la nota burla la validación del cliente (pegado, POST directo, etc),
+    // rechazamos la entrada en servidor antes de que falle el CHECK de BD.
+    if (e.note !== null && e.note.length > 200) errors.add("noteTooLong");
   }
 
   return [...errors];

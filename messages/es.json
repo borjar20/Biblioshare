@@ -1123,6 +1123,8 @@
     "routeStepUp": "Subir",
     "routeStepDown": "Bajar",
     "routeStepRemove": "Quitar",
+    "routeStepNoteLabel": "Nota del paso",
+    "routeStepNotePlaceholder": "Nota para este paso (opcional, máx. 200 caracteres)",
     "routeStepsSave": "Guardar itinerario",
     "routeStepsSaving": "Guardando…",
     "routeErrors": {
@@ -1133,7 +1135,8 @@
       "positions": "Las posiciones deben ir de 1 en adelante sin huecos.",
       "xor": "Cada paso es una obra o una subsaga, no las dos cosas.",
       "duplicate": "Hay un paso repetido en el itinerario.",
-      "foreignBlock": "Solo puedes usar subsagas de esta saga."
+      "foreignBlock": "Solo puedes usar subsagas de esta saga.",
+      "noteTooLong": "Una nota no puede superar 200 caracteres."
     }
   },
   "sagaIndex": {
