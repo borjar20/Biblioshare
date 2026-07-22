@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { UserRole } from "@/lib/auth/roles";
@@ -11,8 +12,10 @@ import {
   groupMembers,
   type MemberGroup,
 } from "./group-members";
+import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
 import { createMainOrder } from "./main-order";
 import type { DetailMember, MemberStatus, Saga, SagaChildRef } from "./types";
+import type { SagaRoute } from "./route-types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -46,6 +49,10 @@ export type SagaDetail = {
   hasGraph: boolean;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
+  /** Itinerarios disponibles: sintéticas (lectura/publicación) + curadas. */
+  routes: SagaRoute[];
+  /** Slug de ruta adoptado por el usuario para esta saga, o null. */
+  routeChoice: string | null;
 };
 
 type DescendantRow = {
@@ -392,6 +399,17 @@ export async function getSagaDetail(
         } satisfies GraphLookup)
       : null;
 
+  // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
+  // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.
+  const tRoutes = await getTranslations("saga");
+  const curated = await getSagaRoutes(supabase, id);
+  const routes = buildRouteList(
+    curated,
+    { lectura: tRoutes("orderReading"), publicacion: tRoutes("orderPublication") },
+    graph !== null,
+  );
+  const routeChoice = user ? await getRouteChoice(supabase, user.id, id) : null;
+
   return {
     saga,
     parent: (parentRow as { data: { id: string; name: string } | null }).data ?? null,
@@ -406,5 +424,7 @@ export async function getSagaDetail(
     graph,
     hasGraph: graph !== null,
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
+    routes,
+    routeChoice,
   };
 }
