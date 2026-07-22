@@ -41,4 +41,18 @@ describe("validateRouteDraft", () => {
   it("rechaza un bloque que no es descendiente de esta saga", () => {
     expect(validateRouteDraft([e({ position: 1, childSagaId: "ajena" })], ctx)).toContain("foreignBlock");
   });
+
+  it("rechaza una nota que supera 200 caracteres", () => {
+    const noteLongString = "x".repeat(201);
+    expect(validateRouteDraft([e({ position: 1, itemType: "book", itemId: "a", note: noteLongString })], ctx)).toContain(
+      "noteTooLong",
+    );
+  });
+
+  it("acepta una nota de exactamente 200 caracteres", () => {
+    const noteMaxString = "x".repeat(200);
+    expect(validateRouteDraft([e({ position: 1, itemType: "book", itemId: "a", note: noteMaxString })], ctx)).not.toContain(
+      "noteTooLong",
+    );
+  });
 });
