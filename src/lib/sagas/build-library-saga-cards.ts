@@ -28,6 +28,10 @@ export type LibItemMeta = { itemType: ItemType; itemId: string; title: string; c
 export type LibEntry = { itemType: ItemType; itemId: string; status: string; everCompleted: boolean; updatedAt: string };
 export type LibRating = { itemType: ItemType; itemId: string; rating: number; finishedOn: string };
 export type LibCreator = { itemType: ItemType; itemId: string; name: string };
+// Ruta adoptada por el usuario en esa saga, ya resuelta a nombre (Task 7).
+// routeName va en null cuando la elección es una ruta sintética (`lectura`,
+// `publicacion`): no aporta nada anunciar «vas por Publicación».
+export type LibRouteChoice = { sagaId: string; routeName: string | null };
 
 export type NextBlock =
   | { kind: "reading"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
@@ -44,6 +48,8 @@ export type LibrarySagaCard = {
   dominantType: ItemType | null;
   creator: string | null;
   childrenCount: number;
+  /** Ruta adoptada, ya resuelta a nombre; null sin elección o si es sintética. */
+  routeName: string | null;
   progress: {
     completed: number;
     total: number;
@@ -66,6 +72,9 @@ export function buildLibrarySagaCards(
   entries: LibEntry[],
   ratings: LibRating[],
   creators: LibCreator[],
+  // Opcional con default: parámetro añadido en la Task 7 sin romper las
+  // llamadas existentes (tests) que aún no lo pasan.
+  routeChoices: LibRouteChoice[] = [],
 ): LibrarySagaCard[] {
   const sagaById = new Map(sagas.map((s) => [s.id, s]));
   const childrenByParent = new Map<string, LibSaga[]>();
@@ -97,6 +106,7 @@ export function buildLibrarySagaCards(
     if (!prev || r.finishedOn > prev.finishedOn) ratingByItem.set(k, r);
   }
   const creatorByItem = new Map(creators.map((c) => [key(c.itemType, c.itemId), c.name]));
+  const routeNameBySaga = new Map(routeChoices.map((c) => [c.sagaId, c.routeName]));
 
   const minPos = (sagaId: string) =>
     (membersBySaga.get(sagaId) ?? []).reduce(
@@ -236,6 +246,7 @@ export function buildLibrarySagaCards(
         dominantType,
         creator,
         childrenCount: (childrenByParent.get(followedId) ?? []).length,
+        routeName: routeNameBySaga.get(followedId) ?? null,
         progress: {
           completed,
           total,

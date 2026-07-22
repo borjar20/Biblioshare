@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { UserRole } from "@/lib/auth/roles";
@@ -11,8 +12,10 @@ import {
   groupMembers,
   type MemberGroup,
 } from "./group-members";
-import { createMainOrder } from "./main-order";
+import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
+import { createMainOrder, type OrderMembership, type OrderNode, type OrderSaga } from "./main-order";
 import type { DetailMember, MemberStatus, Saga, SagaChildRef } from "./types";
+import type { SagaRoute } from "./route-types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -46,6 +49,28 @@ export type SagaDetail = {
   hasGraph: boolean;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
+  /** Itinerarios disponibles: sintéticas (lectura/publicación) + curadas. */
+  routes: SagaRoute[];
+  /** Slug de ruta adoptado por el usuario para esta saga, o null. */
+  routeChoice: string | null;
+  /**
+   * Insumos de `createMainOrder` ya calculados aquí (spec §1.5): RouteView
+   * (Task 6) necesita reconstruir el orden principal de una subsaga para
+   * expandir un bloque, y estos tres arrays son exactamente lo que la
+   * función pide — recalcularlos ahí sería una segunda fuente de verdad.
+   */
+  orderSagas: OrderSaga[];
+  orderMemberships: OrderMembership[];
+  orderNodes: OrderNode[];
+  /**
+   * TODOS los descendientes del árbol (haya o no miembros), con su nombre y
+   * accent_color persistido. `groups` (groupMembers) solo crea grupo para una
+   * hija con al menos un miembro, así que no sirve como fuente de "¿existe
+   * esta subsaga?": un bloque de ruta a una subsaga vacía desaparecía en
+   * silencio al usar `groups` como origen (hallazgo 2). RouteView construye
+   * childNames/childAccent a partir de esta lista, no de `groups`.
+   */
+  childRefs: SagaChildRef[];
 };
 
 type DescendantRow = {
@@ -287,7 +312,12 @@ export async function getSagaDetail(
   // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
   // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
   // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
-  const [nodesRes, edgesRes, followRow, parentRow, roleRow] = await Promise.all([
+  // Rutas curadas y elección del viewer también van en este batch: ninguna
+  // depende de graph/nodesRes/edgesRes/followRow/parentRow/roleRow, solo de
+  // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
+  // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
+  // camino caliente de la ficha de saga.
+  const [nodesRes, edgesRes, followRow, parentRow, roleRow, curated, routeChoice] = await Promise.all([
     // Nodos de TODO el subárbol, no solo los de la raíz: el orden principal
     // (§1.5) expande recursivamente los nodos-saga con el orden principal de la
     // saga hija, así que necesita sus nodos. El grafo que se pinta sigue siendo
@@ -316,6 +346,9 @@ export async function getSagaDetail(
     user
       ? supabase.from("profiles").select("role").eq("user_id", user.id).maybeSingle()
       : Promise.resolve({ data: null }),
+    getSagaRoutes(supabase, id),
+    // Sin user, se resuelve a null sin lanzar consulta (getRouteChoice exige userId).
+    user ? getRouteChoice(supabase, user.id, id) : Promise.resolve(null),
   ]);
 
   // Lookup del grafo desde los MISMOS datos de la pestaña Info (spec §1.3).
@@ -352,30 +385,28 @@ export async function getSagaDetail(
   // Avance del hero sobre el ORDEN PRINCIPAL (§1.5), la misma regla y el mismo
   // código que las cards de Mi Biblioteca (issue #91: antes contaba todos los
   // miembros del subárbol y discrepaba de la card sobre la misma saga).
-  const mainOrder = createMainOrder(
-    [
-      { id, name: saga.name, parentSagaId: null },
-      ...[...descendants.values()].map((d) => ({
-        id: d.id,
-        name: d.name,
-        parentSagaId: d.parent_saga_id,
-      })),
-    ],
-    rows.map((r) => ({
-      sagaId: r.saga_id,
-      itemType: r.item_type,
-      itemId: r.item_id,
-      position: r.position,
+  const orderSagas = [
+    { id, name: saga.name, parentSagaId: null },
+    ...[...descendants.values()].map((d) => ({
+      id: d.id,
+      name: d.name,
+      parentSagaId: d.parent_saga_id,
     })),
-    treeNodes.map((n) => ({
-      sagaId: n.saga_id,
-      itemType: n.item_type,
-      itemId: n.item_id,
-      childSagaId: n.child_saga_id,
-      orderNo: n.order_no,
-    })),
-    (k) => meta.get(k)?.title ?? "",
-  );
+  ];
+  const orderMemberships = rows.map((r) => ({
+    sagaId: r.saga_id,
+    itemType: r.item_type,
+    itemId: r.item_id,
+    position: r.position,
+  }));
+  const orderNodes = treeNodes.map((n) => ({
+    sagaId: n.saga_id,
+    itemType: n.item_type,
+    itemId: n.item_id,
+    childSagaId: n.child_saga_id,
+    orderNo: n.order_no,
+  }));
+  const mainOrder = createMainOrder(orderSagas, orderMemberships, orderNodes, (k) => meta.get(k)?.title ?? "");
   const progress = computeProgress(groups, mainOrder(id));
 
   const rawNodes = treeNodes.filter((n) => n.saga_id === id);
@@ -392,6 +423,25 @@ export async function getSagaDetail(
         } satisfies GraphLookup)
       : null;
 
+  // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
+  // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.
+  // `curated` y `routeChoice` ya llegaron resueltos desde el batch de arriba.
+  const tRoutes = await getTranslations("saga");
+  const routes = buildRouteList(
+    curated,
+    { lectura: tRoutes("orderReading"), publicacion: tRoutes("orderPublication") },
+    graph !== null,
+  );
+
+  // Todos los descendientes, tengan o no miembros (hallazgo 2): el origen de
+  // "esta subsaga existe" para un bloque de ruta no puede ser `groups`, que
+  // omite las hijas vacías.
+  const childRefs: SagaChildRef[] = [...descendants.values()].map((d) => ({
+    id: d.id,
+    name: d.name,
+    accentColor: d.accent_color,
+  }));
+
   return {
     saga,
     parent: (parentRow as { data: { id: string; name: string } | null }).data ?? null,
@@ -406,5 +456,11 @@ export async function getSagaDetail(
     graph,
     hasGraph: graph !== null,
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
+    routes,
+    routeChoice,
+    orderSagas,
+    orderMemberships,
+    orderNodes,
+    childRefs,
   };
 }

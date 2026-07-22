@@ -30,10 +30,10 @@ export default async function SagaDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; orden?: string }>;
+  searchParams: Promise<{ tab?: string; orden?: string; ruta?: string }>;
 }) {
   const { id } = await params;
-  const { orden } = await searchParams;
+  const { orden, ruta } = await searchParams;
   const t = await getTranslations("saga");
   const supabase = await createClient();
 
@@ -43,6 +43,18 @@ export default async function SagaDetailPage({
   // Rol del usuario: collaborator+ puede editar/configurar el grafo de lectura.
   // viewerRole viaja en el mismo batch de getSagaDetail — sin segundo auth.getUser().
   const canEditGraph = hasMinRole(detail.viewerRole, "collaborator");
+
+  // Ruta activa. Precedencia: ?ruta= explícito → compatibilidad con el viejo
+  // ?orden=publicacion (enlaces ya compartidos) → la adoptada → la primera.
+  // Un slug desconocido (ruta borrada, enlace viejo) degrada a la primera en
+  // vez de dar 404: por eso la adopción guarda el slug y no un route_id.
+  const known = new Set(detail.routes.map((r) => r.slug));
+  const activeRoute =
+    (ruta && known.has(ruta) && ruta) ||
+    (orden === "publicacion" && known.has("publicacion") && "publicacion") ||
+    (detail.routeChoice && known.has(detail.routeChoice) && detail.routeChoice) ||
+    detail.routes[0]?.slug ||
+    "publicacion";
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 py-6">
@@ -61,12 +73,8 @@ export default async function SagaDetailPage({
           />
         }
         map={
-          detail.hasGraph ? (
-            <SagaMapTab
-              detail={detail}
-              orden={orden === "publicacion" ? "publicacion" : "lectura"}
-              canEdit={canEditGraph}
-            />
+          detail.hasGraph || detail.routes.some((r) => !r.synthetic) ? (
+            <SagaMapTab detail={detail} activeRoute={activeRoute} canEdit={canEditGraph} />
           ) : null
         }
       />

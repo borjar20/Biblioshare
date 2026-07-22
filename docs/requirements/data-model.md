@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -270,6 +270,48 @@ nulo) y las tres operaciones de escritura exigen ya `collaborator`:
 habría roto la hidratación TMDB para los usuarios sin rol. Verificado contra `pg_policies` y
 `pg_proc` en ambos entornos, no contra `list_migrations` — mismo `md5` del cuerpo normalizado
 en dev y prod, `prosecdef`, `search_path` y ACL correctos (sin `anon`).
+
+### 7.2 Itinerarios de lectura: `saga_routes` / `saga_route_entries` / `saga_route_choices`
+
+Un **itinerario** es una secuencia curada (opcionalmente parcial) de obras y bloques-subsaga
+dentro de una saga. Tres tablas:
+
+- `saga_routes` — metadatos de la ruta curada (`slug`, `name`, `summary`, `position`). Los
+  slugs `lectura` y `publicacion` están RESERVADOS (`saga_routes_slug_not_reserved`): esas dos
+  son **sintéticas**, se calculan sobre el grafo/orden principal y no tienen fila aquí — una
+  fila para ellas sería una segunda fuente de verdad que resincronizar en cada edición del
+  grafo (la familia de fallo del issue #91).
+- `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), y **XOR**
+  `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos).
+  Guardado por **full-replace atómico** vía RPC `save_saga_route(p_route_id, p_entries)`
+  (`SECURITY DEFINER`, gate `collaborator+` interno) — nunca se escribe fila a fila desde el
+  cliente.
+- `saga_route_choices` — preferencia del LECTOR (qué ruta ha adoptado para esa saga), por
+  `slug` no por `route_id` (así una ruta borrada degrada sola al orden por defecto). RLS
+  solo-dueño, **sin** gate de rol: es preferencia personal, no curación.
+
+**`saga_route_entries_item_key` / `saga_route_entries_child_key`** (Task 9, 2026-07-22):
+uniques **parciales** — `(route_id, item_type, item_id) WHERE item_id IS NOT NULL` y
+`(route_id, child_saga_id) WHERE child_saga_id IS NOT NULL` — que impiden repetir la misma obra
+o la misma subsaga dentro de un itinerario. Mismo patrón que ya protegía `saga_nodes`
+(`saga_nodes_item_key` / `saga_nodes_child_key`). Sin ellos, dos pasos idénticos colisionaban en
+la key de React del editor y el estado de plegado se asociaba al bloque equivocado; la Task 1
+omitió este par al crear la tabla. `validateRouteDraft` (`src/lib/sagas/validate-route-draft.ts`)
+ya rechaza duplicados en el borrador, así que esta garantía es la del esquema, no la única.
+
+**Aplicadas en dev y en prod el 2026-07-22.** Las dos migraciones de itinerarios
+—`20260723_saga_routes.sql` (crea `saga_routes` / `saga_route_entries` / `saga_route_choices` y la
+función `save_saga_route`) y `20260723_saga_route_entries_uniques.sql` (los dos uniques parciales
+de arriba)— se aplicaron a prod **antes** de mergear la rama. Verificadas contra los objetos
+reales en ambos entornos (`pg_tables`, `pg_policies`, `pg_indexes`, `pg_proc`), no contra
+`list_migrations`: 3 tablas, 5 políticas, 2 índices únicos parciales, y el mismo `md5` del cuerpo
+normalizado de `save_saga_route` en dev y prod, con `prosecdef` correcto.
+
+Ambas son **puramente aditivas**: crean tablas, índices y una función nuevos, sin
+`ALTER`/`DROP`/`REVOKE` sobre ningún objeto existente. A diferencia del caso de #169 (§7.1), no
+tenían dependencia de orden con el despliegue del código — de hecho, si el código hubiera llegado
+antes, `getSagaRoutes`/`getRouteChoice` desestructuran `{ data }` e ignoran `error`, así que las
+tablas ausentes habrían degradado a `[]`/`null` y la feature simplemente no habría aparecido.
 
 ## 8. Seguridad
 

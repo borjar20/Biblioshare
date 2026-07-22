@@ -72,6 +72,9 @@ export async function SagaLibraryCard({ card }: { card: LibrarySagaCardData }) {
               </span>
             )}
           </div>
+          {card.routeName && (
+            <span className="block font-mono text-[9px] text-muted-foreground">{card.routeName}</span>
+          )}
           {card.creator && (
             <span className="truncate text-xs text-muted-foreground">{t("by", { name: card.creator })}</span>
           )}
