@@ -14,6 +14,7 @@ export const criteriaChallengeKind: ActivityKindDefinition = {
   maxItems: null,
   itemCuration: "participants",
   usesItemPool: false,
+  hasDetailView: true,
   ConfigFields: CriteriaChallengeFields,
   DetailExtension: CriteriaChallengeBoard,
 };

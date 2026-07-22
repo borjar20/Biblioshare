@@ -15,6 +15,7 @@ export const tierlistKind: ActivityKindDefinition = {
   maxItems: null,
   itemCuration: "curators",
   usesItemPool: true,
+  hasDetailView: true,
   ConfigFields: TierlistFields,
   DetailExtension: TierlistBoard,
 };

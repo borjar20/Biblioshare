@@ -10,5 +10,6 @@ export const buddyReadKind: ActivityKindDefinition = {
   maxItems: 1,
   itemCuration: "participants",
   usesItemPool: true,
+  hasDetailView: true,
   DetailExtension: BuddyReadCheckpoints,
 };
