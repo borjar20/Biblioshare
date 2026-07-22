@@ -61,6 +61,16 @@ import { useRouter } from "next/navigation";
 // Solo la Navigation API lo sabe (Chromium); donde no exista se responde que
 // sí, que es el comportamiento de siempre — este helper solo puede MEJORAR el
 // destino, nunca empeorarlo respecto a lo que había antes de la issue #117.
+//
+// NO relajar esto a "¿hay CUALQUIER entrada anterior? -> back()" para que
+// quien entre desde el inicio vuelva al inicio (issue #161): está probado que
+// rompe la Regla 2 de pase-hub.spec.ts, o sea la regresión de #117. Cuando el
+// push a /sesion degrada a replace —lo dispara, por ejemplo, pulsar "Leyendo"
+// justo antes: su server action revalida y se come el `pendingPush`— la
+// entrada de la ficha desaparece, y entonces "hay una entrada anterior" y "el
+// usuario venía de ahí" dejan de ser lo mismo. Los dos casos son
+// INDISTINGUIBLES desde aquí: cuando el modal se monta, el dato que hace falta
+// ya se ha perdido. Arreglarlo pide capturar el origen ANTES de navegar.
 function previousEntryIs(exitHref: string): boolean {
   const nav = (
     window as unknown as {
@@ -130,6 +140,19 @@ export function SessionModal({
       onClick={(e) => {
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
+      // `hidden open:flex`, NUNCA `flex` a secas. El navegador oculta un
+      // <dialog> cerrado con `dialog:not([open]) { display: none }`, que es
+      // una regla de su hoja de estilos por defecto: CUALQUIER `display` de
+      // autor la pisa. Con `flex` a secas, un close() dejaba el diálogo
+      // medido y PINTADO — fuera del top layer y sin backdrop, o sea en flujo
+      // normal— encima de la página, con la barra de pestañas de la ficha
+      // atravesando la hoja. Solo se notaba cuando la ruta interceptada
+      // sobrevivía al cierre (rama `replace`, donde la navegación soft
+      // conserva el slot @modal): si la ruta se desmontaba, el nodo se iba con
+      // ella y tapaba el fallo. Este es el único <dialog> del proyecto con
+      // display propio — el resto deja el del navegador y pone el `flex` en un
+      // <div> interior, que es la otra forma de no tener este problema.
+      //
       // `flex flex-col`: convierte a este <dialog> en contenedor flex para que
       // SessionSheet (su único hijo visible) reciba una altura DEFINIDA vía el
       // algoritmo de flexbox — en vez de depender de que `height: 100%` se
@@ -138,7 +161,7 @@ export function SessionModal({
       // `flex-1` + `min-h-0` para encajar exactamente en el hueco disponible
       // (100dvh en móvil, hasta 90dvh en pc) y hacer scroll interno en vez de
       // desbordar y que este `overflow-hidden` lo recorte en silencio.
-      className="m-0 flex h-full max-h-none w-full flex-col max-w-none overflow-hidden border-0 bg-background p-0 text-foreground backdrop:bg-black/50 sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:w-[min(30rem,calc(100vw-2rem))] sm:rounded-2xl sm:shadow-xl"
+      className="m-0 hidden h-full max-h-none w-full flex-col max-w-none overflow-hidden border-0 bg-background p-0 text-foreground backdrop:bg-black/50 open:flex sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:w-[min(30rem,calc(100vw-2rem))] sm:rounded-2xl sm:shadow-xl"
     >
       <ModalCloseContext.Provider value={closeOnce}>
         {children}
