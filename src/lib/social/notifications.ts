@@ -253,8 +253,9 @@ async function resolveTargetHrefs(
   }
 
   // club_event: misma tabla que club_activity (un evento es una fila de
-  // club_activities con kind='evento'), pero sin página de detalle -- ver
-  // notify-club.ts -- así que enlaza a la ficha del club, no a /actividad/[id].
+  // club_activities con kind='evento'), pero sin página de detalle propia por
+  // diseño (hasDetailView en kinds/evento.ts) -- así que enlaza a la ficha del
+  // club, no a /actividad/[id].
   if (clubEventIds.length > 0) {
     const { data: eventRows } = await supabase
       .from("club_activities")

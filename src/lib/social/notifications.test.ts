@@ -24,6 +24,7 @@ vi.mock("@/lib/push/send-push", () => ({
 }));
 
 import { listNotifications, notifyMany } from "./notifications";
+import { notifyClub } from "../clubs/activities/notify-club";
 
 type Row = Record<string, unknown>;
 
@@ -122,6 +123,10 @@ function baseTables(): Record<string, Row[]> {
       { id: "event-1", club_id: "club-1" },
       { id: "activity-1", club_id: "club-1" },
     ],
+    club_members: [
+      { user_id: "actor-1", club_id: "club-1", status: "active" },
+      { user_id: "user-2", club_id: "club-1", status: "active" },
+    ],
     profile_identities: [
       { user_id: "actor-1", username: "ana", display_name: "Ana", avatar_url: null },
     ],
@@ -196,5 +201,49 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
     expect(sendPushToUsers).toHaveBeenCalledTimes(2);
     const [, activityPayload] = sendPushToUsers.mock.calls[1];
     expect(activityPayload.url).toBe("/club/club-lectura/actividad/activity-1");
+  });
+});
+
+describe("notifyClub — target_type escrito según el tipo de notificación", () => {
+  // Cubre notify-club.ts directamente: los dos tests de arriba ejercen
+  // resolveTargetHrefs() a través de notifyMany/listNotifications con un
+  // target_type ya dado a mano, pero nunca pasan por el ternario de
+  // notify-club.ts que decide ESE target_type. Revertir ese ternario a
+  // 'club_activity' a secas deja el resto de la suite en verde -- estos tests
+  // son los que lo detectan.
+  it("club_event_created escribe target_type='club_event'", async () => {
+    const tables = baseTables();
+    const supabase = makeFakeSupabase(tables);
+
+    await notifyClub(supabase, "club-1", "actor-1", "club_event_created", "event-1");
+
+    expect(tables.notifications).toHaveLength(1);
+    expect(tables.notifications[0]).toMatchObject({
+      type: "club_event_created",
+      target_type: "club_event",
+      target_id: "event-1",
+    });
+  });
+
+  it("club_activity_proposed / activated / spawned escriben target_type='club_activity'", async () => {
+    const activityTypes = [
+      "club_activity_proposed",
+      "club_activity_activated",
+      "club_activity_spawned",
+    ] as const;
+
+    for (const type of activityTypes) {
+      const tables = baseTables();
+      const supabase = makeFakeSupabase(tables);
+
+      await notifyClub(supabase, "club-1", "actor-1", type, "activity-1");
+
+      expect(tables.notifications).toHaveLength(1);
+      expect(tables.notifications[0]).toMatchObject({
+        type,
+        target_type: "club_activity",
+        target_id: "activity-1",
+      });
+    }
   });
 });
