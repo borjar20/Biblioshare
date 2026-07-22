@@ -1607,6 +1607,36 @@ git commit -m "feat(sagas): pantalla de curación de itinerarios"
 
 ## Task 9: Curación — editor de pasos
 
+> **Añadido durante la ejecución (2026-07-22), hallazgo de la revisión de la Task 6.**
+> La Task 1 omitió los uniques de contenido de `saga_route_entries`: nada impide
+> hoy dos filas con el mismo `item_id` (o el mismo `child_saga_id`) dentro del
+> mismo itinerario. Eso rompe la key de React del render (dos pasos con la misma
+> key ⇒ el estado de plegado se asocia al bloque equivocado) y no lo cubre
+> `save_saga_route`, que hace full-replace sin validar contenido.
+>
+> `validateRouteDraft` (Step 3 de esta tarea) ya rechaza duplicados en el
+> borrador, así que cierra el camino de la UI — pero la garantía debe estar
+> también en el esquema, como ya lo está en `saga_nodes`
+> (`saga_nodes_item_key` y `saga_nodes_child_key`, uniques **parciales**).
+>
+> **Añade una migración `supabase/migrations/20260723_saga_route_entries_uniques.sql`
+> calcada de ese patrón:**
+>
+> ```sql
+> -- Un itinerario no puede repetir la misma obra ni la misma subsaga: además de
+> -- carecer de sentido, dos pasos idénticos colisionan en la key de React y el
+> -- estado de plegado se asocia al bloque equivocado. Mismo par de uniques
+> -- parciales que ya protege saga_nodes.
+> create unique index saga_route_entries_item_key
+>   on public.saga_route_entries (route_id, item_type, item_id)
+>   where item_id is not null;
+> create unique index saga_route_entries_child_key
+>   on public.saga_route_entries (route_id, child_saga_id)
+>   where child_saga_id is not null;
+> ```
+>
+> Aplícala a dev en esta tarea (prod va en la Task 10, con el resto).
+
 **Files:**
 - Create: `src/lib/sagas/validate-route-draft.ts`
 - Create: `src/lib/sagas/validate-route-draft.test.ts`
