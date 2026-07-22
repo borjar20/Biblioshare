@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { todayISO } from "@/lib/stats/dates";
 import type { ActivityKind } from "./core";
 import {
   buildCalendarMarks,
@@ -19,6 +18,7 @@ import {
 export async function getClubCalendarMarks(
   clubId: string,
   clubSlug: string,
+  today: string,
 ): Promise<CalendarMark[]> {
   const supabase = await createClient();
 
@@ -31,7 +31,7 @@ export async function getClubCalendarMarks(
     supabase
       .from("club_activity_checkpoints")
       .select(
-        "id, label, due_on, activity_id, club_activities!inner(id, title, kind, club_id, status)",
+        "id, label, due_on, club_activities!inner(id, title, kind, status)",
       )
       .eq("club_activities.club_id", clubId)
       .in("club_activities.status", ["active", "finished"])
@@ -44,9 +44,9 @@ export async function getClubCalendarMarks(
   const activityRows: CalendarActivityRow[] = (actividades.data ?? []).map(
     (row) => ({
       id: row.id,
-      kind: row.kind as ActivityKind,
+      kind: row.kind,
       title: row.title,
-      status: row.status as string,
+      status: row.status,
       startsOn: row.starts_on,
       endsOn: row.ends_on,
     }),
@@ -73,8 +73,11 @@ export async function getClubCalendarMarks(
     };
   });
 
-  // Una sola lectura de "hoy" para toda la construcción: si se leyera dentro
-  // del bucle, una petición a medianoche podría marcar unas fechas como
-  // pasadas y otras no.
-  return buildCalendarMarks(activityRows, checkpointRows, todayISO(), clubSlug);
+  // `today` entra por parámetro, no se lee aquí dentro: la página que consume
+  // esta función también necesita "hoy" para agendaForMonth/parseMonthParam
+  // (calendar-marks.ts). Si cada función leyera su propio todayISO(), una
+  // petición justo a medianoche podría dar dos nociones de "hoy" distintas en
+  // la misma respuesta (ya pasó en upcoming.ts:25 vs 79, con UTC y hora local
+  // mezcladas en el mismo fichero).
+  return buildCalendarMarks(activityRows, checkpointRows, today, clubSlug);
 }
