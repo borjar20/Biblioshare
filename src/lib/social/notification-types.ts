@@ -21,7 +21,8 @@ export type NotificationType =
   | "comment_liked"
   | "club_activity_proposed"
   | "club_activity_activated"
-  | "club_activity_spawned";
+  | "club_activity_spawned"
+  | "club_event_created";
 
 export type ReviewTargetType = "diary_entry" | "episode_watch" | "club" | "club_post" | "comment" | "club_activity";
 
@@ -58,4 +59,5 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_activity_proposed: "clubActivityProposed",
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",
+  club_event_created: "clubEventCreated",
 };
