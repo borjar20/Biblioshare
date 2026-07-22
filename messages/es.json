@@ -1123,6 +1123,8 @@
     "routeStepUp": "Subir",
     "routeStepDown": "Bajar",
     "routeStepRemove": "Quitar",
+    "routeStepNoteLabel": "Nota del paso",
+    "routeStepNotePlaceholder": "Nota para este paso (opcional, máx. 200 caracteres)",
     "routeStepsSave": "Guardar itinerario",
     "routeStepsSaving": "Guardando…",
     "routeErrors": {
