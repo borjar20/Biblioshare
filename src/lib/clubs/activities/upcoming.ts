@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { todayISO } from "@/lib/stats/dates";
 import type { ActivityKind } from "./core";
 
 export type UpcomingCheckpoint = {
@@ -55,4 +56,41 @@ export async function getUpcomingCheckpoints(
       activityKind: activity.kind,
     };
   });
+}
+
+export type UpcomingEvent = {
+  id: string;
+  title: string;
+  startsOn: string;
+};
+
+// Las próximas fechas señaladas del club (spec 2026-07-22). Mismo criterio que
+// getUpcomingCheckpoints: solo miran hacia delante -- un evento que ya pasó no
+// es "próximo". La RLS de club_activities ya limita a miembros.
+//
+// Consulta APARTE de los hitos a propósito: unir ambas fuentes en una sola
+// línea de tiempo es el trabajo del calendario, y adelantarlo aquí a medias
+// significa escribirlo dos veces.
+export async function getUpcomingEvents(
+  clubId: string,
+  limit = 4,
+): Promise<UpcomingEvent[]> {
+  const supabase = await createClient();
+  const today = todayISO();
+
+  const { data, error } = await supabase
+    .from("club_activities")
+    .select("id, title, starts_on")
+    .eq("club_id", clubId)
+    .eq("kind", "evento")
+    .eq("status", "active")
+    .gte("starts_on", today)
+    .order("starts_on", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((row): row is typeof row & { starts_on: string } => row.starts_on != null)
+    .map((row) => ({ id: row.id, title: row.title, startsOn: row.starts_on }));
 }

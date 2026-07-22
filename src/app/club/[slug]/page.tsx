@@ -8,7 +8,7 @@ import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
 import { listClubActivities } from "@/lib/clubs/activities/core";
-import { getUpcomingCheckpoints } from "@/lib/clubs/activities/upcoming";
+import { getUpcomingCheckpoints, getUpcomingEvents } from "@/lib/clubs/activities/upcoming";
 import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubTabs, CLUB_TABS, type ClubTab } from "@/components/clubs/club-tabs";
 import { ClubSummary } from "@/components/clubs/club-summary";
@@ -174,9 +174,10 @@ async function ClubFeedSection({
   userId: string;
   activities: ClubActivities;
 }) {
-  const [initialPage, upcoming, viewer, t] = await Promise.all([
+  const [initialPage, upcoming, events, viewer, t] = await Promise.all([
     listClubPosts(club.id),
     getUpcomingCheckpoints(club.id),
+    getUpcomingEvents(club.id),
     getViewerIdentity(),
     getTranslations("club"),
   ]);
@@ -193,6 +194,7 @@ async function ClubFeedSection({
         <ClubSummary
           activities={activities}
           upcoming={upcoming}
+          events={events}
           clubSlug={club.slug}
         />
         <div className="hidden rounded-card border border-border bg-surface p-4 shadow-card lg:block">
