@@ -18,7 +18,14 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
-export type ActivityKind = "buddy_read" | "tierlist" | "list_challenge" | "criteria_challenge";
+export type ActivityKind =
+  | "buddy_read"
+  | "tierlist"
+  | "list_challenge"
+  | "criteria_challenge"
+  // Evento: actividad NO participativa (spec 2026-07-22). Solo fecha, título y
+  // descripción; sin pool, sin participantes, sin vista de detalle.
+  | "evento";
 export type ActivityStatus = "proposed" | "active" | "finished" | "archived";
 
 export type ClubActivity = {

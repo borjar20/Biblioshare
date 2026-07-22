@@ -1932,6 +1932,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_club_event: {
+        Args: {
+          p_club_id: string
+          p_description: string
+          p_starts_on: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_club_poll: {
         Args: {
           p_club_id: string
@@ -2061,6 +2070,15 @@ export type Database = {
         Args: { p_activity_id: string; p_config: Json }
         Returns: undefined
       }
+      update_club_event: {
+        Args: {
+          p_activity_id: string
+          p_description: string
+          p_starts_on: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       vote_club_poll: {
         Args: { p_option_id: string; p_post_id: string }
         Returns: undefined
@@ -2072,6 +2090,7 @@ export type Database = {
         | "tierlist"
         | "list_challenge"
         | "criteria_challenge"
+        | "evento"
       activity_status: "proposed" | "active" | "finished" | "archived"
       club_member_status: "invited" | "active" | "requested"
       club_post_kind: "text" | "activity_share" | "poll"
@@ -2097,6 +2116,7 @@ export type Database = {
         | "club_activity_proposed"
         | "club_activity_activated"
         | "club_activity_spawned"
+        | "club_event_created"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       saga_edge_type: "principal" | "opcional" | "requisito"
@@ -2241,6 +2261,7 @@ export const Constants = {
         "tierlist",
         "list_challenge",
         "criteria_challenge",
+        "evento",
       ],
       activity_status: ["proposed", "active", "finished", "archived"],
       club_member_status: ["invited", "active", "requested"],
@@ -2267,6 +2288,7 @@ export const Constants = {
         "club_activity_proposed",
         "club_activity_activated",
         "club_activity_spawned",
+        "club_event_created",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],

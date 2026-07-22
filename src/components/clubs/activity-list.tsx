@@ -3,9 +3,12 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { type ClubActivity } from "@/lib/clubs/activities/core";
+import { groupActivities } from "@/lib/clubs/activities/group-activities";
+import { todayISO } from "@/lib/stats/dates";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
+import { EventCardActions } from "./event-card-actions";
 
 // Las actividades se agrupan por estado, no en una lista plana: "esperan
 // moderación" es lo que un moderador viene a resolver, y "activas" lo que un
@@ -26,19 +29,32 @@ export function ActivityList({
   // las actividades frescas. Sin espejo local ni re-fetch cliente.
   const activities = initialActivities;
 
-  const active = activities.filter((a) => a.status === "active");
-  const proposed = activities.filter((a) => a.status === "proposed");
-  const finished = activities.filter(
-    (a) => a.status === "finished" || a.status === "archived",
+  // Hoy se calcula en cliente a propósito: "pasado" depende del huso de quien
+  // mira, y este componente ya es "use client".
+  const today = todayISO();
+  const { events, active, proposed, finished } = groupActivities(
+    activities,
+    today,
   );
 
   return (
     <div className="flex flex-col gap-6">
-      <ActivityComposer clubId={clubId} />
+      <ActivityComposer clubId={clubId} isModerator={isModerator} />
 
       {activities.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       )}
+
+      <Group title={t("groupEvents")}>
+        {events.map((activity) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            clubSlug={clubSlug}
+            actions={isModerator ? <EventCardActions activity={activity} /> : undefined}
+          />
+        ))}
+      </Group>
 
       <Group title={t("groupActive", { count: active.length })}>
         {active.map((activity) => (

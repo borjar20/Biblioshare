@@ -1,31 +1,10 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
-import type { UpcomingCheckpoint } from "@/lib/clubs/activities/upcoming";
+import type { CalendarMark } from "@/lib/clubs/activities/calendar-marks";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
-
-const MONTHS = [
-  "ene",
-  "feb",
-  "mar",
-  "abr",
-  "may",
-  "jun",
-  "jul",
-  "ago",
-  "sep",
-  "oct",
-  "nov",
-  "dic",
-];
-
-// `2026-07-18` → { day: "18", month: "jul" }. Se parte la cadena a mano en vez
-// de usar new Date(): un `date` de Postgres no tiene zona, y pasarlo por Date
-// lo interpreta como UTC y puede retroceder un día según dónde estés.
-function formatDue(dueOn: string): { day: string; month: string } {
-  const [, month, day] = dueOn.split("-");
-  return { day, month: MONTHS[Number(month) - 1] ?? "" };
-}
+import { MARK_ACCENT } from "./calendar/mark-accent";
+import { formatDayMonth } from "@/lib/clubs/activities/format-date";
 
 // % de tiempo transcurrido entre las fechas de la actividad. Es una barra
 // orientativa (el progreso real por hitos costaría una query por actividad);
@@ -49,11 +28,17 @@ export async function ClubSummary({
   clubSlug,
 }: {
   activities: ClubActivity[];
-  upcoming: UpcomingCheckpoint[];
+  /** Las próximas marcas del club, ya recortadas por quien llama. */
+  upcoming: CalendarMark[];
   clubSlug: string;
 }) {
   const t = await getTranslations("activity");
-  const active = activities.filter((a) => a.status === "active");
+  // Un evento no tiene ficha propia: si entrara aquí, su <Link> a
+  // /actividad/:id daría 404. Sus fechas ya se ven en la tira "Próximo" de
+  // más abajo (unificada con los hitos), así que quedan fuera de este bloque.
+  const active = activities.filter(
+    (a) => a.status === "active" && a.kind !== "evento",
+  );
 
   if (active.length === 0 && upcoming.length === 0) return null;
 
@@ -103,7 +88,7 @@ export async function ClubSummary({
                       <>
                         {" · "}
                         {t("untilDate", {
-                          date: `${formatDue(activity.endsOn).day} ${formatDue(activity.endsOn).month}`,
+                          date: `${formatDayMonth(activity.endsOn).day} ${formatDayMonth(activity.endsOn).month}`,
                         })}
                       </>
                     )}
@@ -117,23 +102,24 @@ export async function ClubSummary({
 
       {upcoming.length > 0 && (
         <section className="flex flex-col gap-2.5">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            {t("summaryUpcoming")}
+          <h2 className="flex items-center justify-between gap-2 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("summaryNext")}
+            <Link
+              href={`/club/${clubSlug}/calendario`}
+              className="font-mono text-[9.5px] tracking-wide text-accent normal-case hover:opacity-80"
+            >
+              {t("summarySeeCalendar")}
+            </Link>
           </h2>
 
           <div className="flex gap-2.5 overflow-x-auto pb-1">
-            {upcoming.map((checkpoint) => {
-              const { day, month } = formatDue(checkpoint.dueOn);
-              return (
-                <Link
-                  key={checkpoint.id}
-                  href={`/club/${clubSlug}/actividad/${checkpoint.activityId}`}
-                  className="flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2 hover:opacity-80"
-                >
-                  <span
-                    aria-hidden
-                    className="flex shrink-0 flex-col items-center leading-none"
-                  >
+            {upcoming.map((mark, i) => {
+              const { day, month } = formatDayMonth(mark.date);
+              const accent = MARK_ACCENT[mark.markKind];
+
+              const inner = (
+                <>
+                  <span aria-hidden className="flex shrink-0 flex-col items-center leading-none">
                     <span className="font-serif text-lg font-semibold text-foreground">
                       {day}
                     </span>
@@ -142,14 +128,26 @@ export async function ClubSummary({
                     </span>
                   </span>
                   <span className="flex max-w-44 min-w-0 flex-col text-xs leading-tight">
-                    <span className="truncate text-foreground">
-                      {checkpoint.label}
-                    </span>
-                    <span className="truncate text-muted-foreground">
-                      {checkpoint.activityTitle}
+                    <span className="truncate text-foreground">{mark.title}</span>
+                    <span className={`truncate ${accent.text}`}>
+                      {mark.detail ?? t(`markKind_${mark.markKind}`)}
                     </span>
                   </span>
+                </>
+              );
+
+              const clases =
+                "flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2";
+
+              // Un evento no tiene ficha: enlazarlo daría 404.
+              return mark.href ? (
+                <Link key={i} href={mark.href} className={`${clases} hover:opacity-80`}>
+                  {inner}
                 </Link>
+              ) : (
+                <div key={i} className={clases}>
+                  {inner}
+                </div>
               );
             })}
           </div>

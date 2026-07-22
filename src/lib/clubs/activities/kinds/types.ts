@@ -31,6 +31,11 @@ export type ActivityKindDefinition = {
   // "Ítems" (y las opiniones por ítem, que sin ítems no existen) sería una sección vacía sin
   // sentido.
   usesItemPool: boolean;
+  // ¿Este kind tiene página propia en /club/[slug]/actividad/[id]? `evento` no
+  // (spec 2026-07-22): es una fecha en el calendario, no algo en lo que entrar.
+  // REQUERIDO a propósito, sin default: quien añada un kind nuevo tiene que
+  // decidirlo, no heredarlo. La tarjeta y la guardia de ruta leen esto.
+  hasDetailView: boolean;
   // Campos de configuración que este kind aporta al composer, y que se serializan a
   // club_activities.config (SD-8). Sin esto el composer solo sabe pedir título/descripción/
   // fechas. criteria_challenge (H4) es el primer kind que lo necesita -- y el primer
@@ -73,4 +78,14 @@ export const ACTIVITY_KIND_ORDER: ActivityKind[] = [
   "tierlist",
   "list_challenge",
   "criteria_challenge",
+  "evento",
 ];
+
+// Kinds ofrecibles en el asistente. `evento` solo lo crea moderador+, así que a
+// un miembro raso ni se le enseña la tarjeta. Esto es gate de UI: la autoridad
+// real es create_club_event, que valida el rol en servidor.
+export function visibleKindOptions(isModerator: boolean): ActivityKind[] {
+  return ACTIVITY_KIND_ORDER.filter(
+    (kind) => kind !== "evento" || isModerator,
+  );
+}

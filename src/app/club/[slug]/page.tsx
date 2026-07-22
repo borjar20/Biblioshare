@@ -8,7 +8,9 @@ import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
 import { listClubActivities } from "@/lib/clubs/activities/core";
-import { getUpcomingCheckpoints } from "@/lib/clubs/activities/upcoming";
+import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
+import { proximasMarcas } from "@/lib/clubs/activities/calendar-marks";
+import { todayISO } from "@/lib/stats/dates";
 import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubTabs, CLUB_TABS, type ClubTab } from "@/components/clubs/club-tabs";
 import { ClubSummary } from "@/components/clubs/club-summary";
@@ -174,15 +176,22 @@ async function ClubFeedSection({
   userId: string;
   activities: ClubActivities;
 }) {
-  const [initialPage, upcoming, viewer, t] = await Promise.all([
+  // UNA sola lectura de "hoy" por respuesta (ver Task 2).
+  const hoy = todayISO();
+
+  const [initialPage, marks, viewer, t] = await Promise.all([
     listClubPosts(club.id),
-    getUpcomingCheckpoints(club.id),
+    getClubCalendarMarks(club.id, club.slug, hoy),
     getViewerIdentity(),
     getTranslations("club"),
   ]);
   // Abrir el feed es haberlo leído: a partir de aquí, las novedades se cuentan
   // desde ahora.
   await markClubRead(club.id);
+
+  // La tira del feed lista SOLO hitos y eventos, no inicios ni cierres: justo
+  // encima está "Actividades activas" hablando de esas mismas actividades.
+  const proximas = proximasMarcas(marks, hoy, 3);
 
   // Frame 10: en escritorio el hilo va a la izquierda y el resumen pasa a un
   // rail derecho sticky. Un solo árbol — el rail se coloca con `order` (el
@@ -192,7 +201,7 @@ async function ClubFeedSection({
       <aside className="flex flex-col gap-5 lg:order-2 lg:sticky lg:top-[96px]">
         <ClubSummary
           activities={activities}
-          upcoming={upcoming}
+          upcoming={proximas}
           clubSlug={club.slug}
         />
         <div className="hidden rounded-card border border-border bg-surface p-4 shadow-card lg:block">

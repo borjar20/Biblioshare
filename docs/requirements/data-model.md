@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -195,12 +195,44 @@ desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` 
 `club_posts` (+ `club_poll_options`/`club_poll_votes`), `club_reads` (contador de novedades).
 
 Actividades: `club_activities` (enum `activity_kind`: `buddy_read | tierlist |
-list_challenge | criteria_challenge`; ciclo `proposed → active → finished | archived`) con
-sus satélites `club_activity_items`, `_participants`, `_opinions`, `_placements`,
-`_checkpoints`, `_checkpoint_reads`.
+list_challenge | criteria_challenge | evento`; ciclo `proposed → active → finished |
+archived`) con sus satélites `club_activity_items`, `_participants`, `_opinions`,
+`_placements`, `_checkpoints`, `_checkpoint_reads`.
 
 **`config` (jsonb) es opaco a la BD**: lo interpreta la app según el `kind`. Ahí viven el
 criterio del reto, los tiers de la tierlist y el `completionMode` del reto por lista.
+
+### `evento` — actividad no participativa (dev y prod, 2026-07-22)
+
+Quinto `kind` de `club_activities`, distinto de los otros cuatro en que **nace `active`
+directamente** (nunca pasa por `proposed`) y no tiene pool de ítems ni participantes: sus
+filas dejan sin usar `config`, `ends_on`, `spawned_from_*` y los tres satélites
+`club_activity_participants`/`_items`/`_opinions` (kind nuevo en vez de tabla nueva,
+aplicando SD-8 — ver `decisiones.md`). Solo usa `title`, `description` y `starts_on`.
+"Pasado" se **deriva** de `starts_on < hoy` al leer (`isPastEvent`,
+`src/lib/clubs/activities/group-activities.ts`); no hay ninguna transición ni columna que
+lo persista. Sin ficha propia (`hasDetailView: false` en su `ActivityKindDefinition`).
+
+Dos RPCs `SECURITY DEFINER`, moderador+ (`has_min_club_role(club_id, 'moderator')`),
+migración `supabase/migrations/20260722_club_event_rpcs.sql`:
+
+- **`create_club_event(p_club_id, p_title, p_description, p_starts_on) returns uuid`** —
+  necesaria porque la política de INSERT de `club_activities` fuerza `status = 'proposed'`,
+  y un evento nace `active`.
+- **`update_club_event(p_activity_id, p_title, p_description, p_starts_on)`** — el UPDATE
+  que la tabla no tiene (SD-8 la dejó sin política UPDATE, transiciones solo por RPC).
+  **Restringida a `kind = 'evento'` y a `status = 'active'`**: sin el filtro de `kind`, esta
+  RPC (gateada solo por rol) reabriría la edición arbitraria de cualquier
+  `buddy_read`/`tierlist`/`list_challenge`/`criteria_challenge` que SD-8 evitó al no crear
+  la política UPDATE; el filtro de `status = 'active'` (añadido durante la implementación,
+  no estaba en el diseño original) impide reescribir un evento ya archivado. Archivar
+  reutiliza `archive_club_activity` sin tocarla.
+
+El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
+fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.
+
+**Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod queda pendiente** — aplicación
+reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta feature.
 
 ## 7. Sagas
 
@@ -237,18 +269,25 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `item_type` | `book \| movie \| series` |
 | `media_status` | `planned \| in_progress \| completed \| dropped` |
 | `user_role` | `user \| collaborator \| admin` |
-| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge` |
+| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge \| evento` (`evento`: 2026-07-22) |
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: 2026-07-22) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
 
 ## 10. Migraciones
 
-76 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
+82 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
+
+⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
+es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos veces (notas
+2026-07-14 y 2026-07-17) por olvidar exactamente eso. Las dos migraciones de eventos
+(`20260722_activity_kind_evento.sql`, `20260722_club_event_rpcs.sql`) se aplicaron a prod el
+2026-07-22 y se anexaron al baseline en la misma pasada («ANEXO 2026-07-22»).
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del

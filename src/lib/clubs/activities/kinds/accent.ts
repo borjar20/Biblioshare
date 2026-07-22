@@ -5,6 +5,7 @@ import {
   TiersIcon,
   ListCheckIcon,
   TargetIcon,
+  CalendarIcon,
 } from "@/components/ui/icons";
 
 // Identidad visual de cada tipo de actividad: un icono y un color. Antes las
@@ -16,6 +17,7 @@ import {
 //   tierlist        → oro, el color de la valoración: una tierlist ES valorar
 //   reto de lista   → teal (el de película), una lista concreta que se tacha
 //   reto genérico   → verde (el de lo social/club), la meta común del club
+//   evento          → morado (el de serie), el único token libre de la paleta
 //
 // Ojo, mismas reglas que MEDIA_ACCENT: Tailwind necesita las clases enteras y
 // literales, no construidas por concatenación.
@@ -56,5 +58,12 @@ export const ACTIVITY_ACCENT: Record<ActivityKind, ActivityAccent> = {
     bgSoft: "bg-green/10",
     borderSoft: "border-green/30",
     bar: "bg-green",
+  },
+  evento: {
+    Icon: CalendarIcon,
+    text: "text-type-series",
+    bgSoft: "bg-type-series/10",
+    borderSoft: "border-type-series/30",
+    bar: "bg-type-series",
   },
 };

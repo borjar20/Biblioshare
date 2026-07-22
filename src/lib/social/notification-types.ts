@@ -21,9 +21,22 @@ export type NotificationType =
   | "comment_liked"
   | "club_activity_proposed"
   | "club_activity_activated"
-  | "club_activity_spawned";
+  | "club_activity_spawned"
+  | "club_event_created";
 
-export type ReviewTargetType = "diary_entry" | "episode_watch" | "club" | "club_post" | "comment" | "club_activity";
+export type ReviewTargetType =
+  | "diary_entry"
+  | "episode_watch"
+  | "club"
+  | "club_post"
+  | "comment"
+  | "club_activity"
+  // Igual que club_activity (fila de club_activities) pero para un evento: un
+  // evento no tiene página de detalle (/club/[slug]/actividad/[id] da 404 a
+  // propósito para kind='evento'), así que necesita su propio target_type para
+  // que resolveTargetHrefs() lo resuelva a la ficha del club en vez de a la
+  // actividad.
+  | "club_event";
 
 export type Notification = {
   id: string;
@@ -58,4 +71,5 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_activity_proposed: "clubActivityProposed",
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",
+  club_event_created: "clubEventCreated",
 };

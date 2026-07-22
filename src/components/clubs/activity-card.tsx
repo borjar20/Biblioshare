@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
+import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
+import { formatEventDate } from "@/lib/clubs/activities/format-date";
+import { isPastEvent } from "@/lib/clubs/activities/group-activities";
+import { todayISO } from "@/lib/stats/dates";
 
 const STATUS_STYLE: Record<ClubActivity["status"], string> = {
   proposed: "bg-surface-muted text-muted-foreground",
@@ -31,6 +35,60 @@ export function ActivityCard({
 }) {
   const t = useTranslations("activity");
   const accent = ACTIVITY_ACCENT[activity.kind];
+  const definition = getActivityKindDefinition(activity.kind);
+  // Sin página propia no hay a dónde enlazar: el mismo marcado va en un <div>.
+  // Se elige el ENVOLTORIO, no se duplica la tarjeta -- dos copias del mismo
+  // marcado divergen en cuanto alguien toca una sola.
+  const linked = definition.hasDetailView;
+
+  // La línea meta de un evento dice su fecha; "0 participantes" en algo a lo que
+  // nadie se apunta no informa de nada.
+  const meta = linked
+    ? t("participants", { count: activity.participantCount })
+    : activity.startsOn
+      ? formatEventDate(activity.startsOn)
+      : "";
+  // Gateado también a status="active": un evento archivado o finalizado ya
+  // enseña su propia píldora de estado (STATUS_STYLE), y sin este gate
+  // "Ya pasó" la tapaba -- un evento archivado en "Finalizadas" se veía
+  // idéntico a uno vivo y pasado en "Fechas señaladas".
+  const past =
+    !linked && activity.status === "active" && isPastEvent(activity.startsOn, todayISO());
+
+  const inner = (
+    <>
+      {/* El tipo se reconoce por su icono y su color, sin tener que leer.
+          Baldosa 40px teñida por tipo, como el .ic del frame 3. */}
+      <span
+        aria-hidden
+        className={`grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
+      >
+        <accent.Icon className="h-4 w-4" />
+      </span>
+
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate font-serif text-sm font-semibold text-foreground">
+          {activity.title}
+        </span>
+        {/* Sin truncate: en móvil "lectura conjunta · 0 participantes" no cabe
+            en una línea, y cortarlo a media palabra no ayuda a nadie. La meta
+            va en muted (.mm del frame 3): el color de tipo lo lleva la baldosa,
+            no el texto. */}
+        <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          {t(`kind_${activity.kind}`)}
+          {meta && ` · ${meta}`}
+        </span>
+      </span>
+
+      <span
+        className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${
+          past ? "bg-surface-muted text-muted-foreground" : STATUS_STYLE[activity.status]
+        }`}
+      >
+        {past ? t("eventPast") : t(`status_${activity.status}`)}
+      </span>
+    </>
+  );
 
   return (
     <div
@@ -38,39 +96,16 @@ export function ActivityCard({
         tint === "gold" ? "border-gold/40 bg-gold/5" : "border-border bg-surface"
       } ${muted ? "opacity-75" : ""}`}
     >
-      <Link
-        href={`/club/${clubSlug}/actividad/${activity.id}`}
-        className="flex items-center gap-3 hover:opacity-80"
-      >
-        {/* El tipo se reconoce por su icono y su color, sin tener que leer.
-            Baldosa 40px teñida por tipo, como el .ic del frame 3. */}
-        <span
-          aria-hidden
-          className={`grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
+      {linked ? (
+        <Link
+          href={`/club/${clubSlug}/actividad/${activity.id}`}
+          className="flex items-center gap-3 hover:opacity-80"
         >
-          <accent.Icon className="h-4 w-4" />
-        </span>
-
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate font-serif text-sm font-semibold text-foreground">
-            {activity.title}
-          </span>
-          {/* Sin truncate: en móvil "lectura conjunta · 0 participantes" no cabe
-              en una línea, y cortarlo a media palabra no ayuda a nadie. La meta
-              va en muted (.mm del frame 3): el color de tipo lo lleva la baldosa,
-              no el texto. */}
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-            {t(`kind_${activity.kind}`)} ·{" "}
-            {t("participants", { count: activity.participantCount })}
-          </span>
-        </span>
-
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${STATUS_STYLE[activity.status]}`}
-        >
-          {t(`status_${activity.status}`)}
-        </span>
-      </Link>
+          {inner}
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3">{inner}</div>
+      )}
 
       {actions && <div className="flex gap-2 border-t border-border pt-3">{actions}</div>}
     </div>

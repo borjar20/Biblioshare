@@ -20,6 +20,7 @@ export const listChallengeKind: ActivityKindDefinition = {
   maxItems: null,
   itemCuration: "curators",
   usesItemPool: true,
+  hasDetailView: true,
   ConfigFields: ListChallengeFields,
   DetailExtension: ListChallengeBoard,
 };
