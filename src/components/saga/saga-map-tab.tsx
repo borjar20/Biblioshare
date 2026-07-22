@@ -8,6 +8,7 @@ import { GraphLegend } from "./graph/graph-legend";
 import { SagaGraphLazy } from "./graph/saga-graph-lazy";
 import { MapCta } from "./map-cta";
 import { ReadingTimeline } from "./reading-timeline";
+import { RoleChip } from "./role-chip";
 import { RouteSelector } from "./route-selector";
 import { RouteView } from "./route-view";
 
@@ -75,8 +76,14 @@ export async function SagaMapTab({
               {t("asLinearList")}
             </h3>
             <ol className="divide-y divide-border border-t border-border">
+              {/* Issue #167: los nodos sin orderNo ya no se filtran. Antes
+                  desaparecían de esta lista por completo — una precuela curada
+                  simplemente no existía aquí. El índice impreso sigue saliendo
+                  de la posición en la lista (no de orderNo), así que los sueltos
+                  van al final numerados de corrido; el chip de rol es lo que
+                  distingue "nº 15" de "precuela". */}
               {graph.nodes
-                .filter((n) => n.kind === "item" && n.orderNo !== null)
+                .filter((n) => n.kind === "item")
                 .map((n, i) => (
                   <li key={n.id}>
                     <Link href={n.href} className="flex items-center gap-3 py-2.5">
@@ -88,6 +95,11 @@ export async function SagaMapTab({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-semibold">{n.label}</span>
+                        {n.role !== null && (
+                          <span className="mt-0.5 block">
+                            <RoleChip role={n.role} />
+                          </span>
+                        )}
                         {n.groupName && (
                           <span className="block font-mono text-[9px] text-muted-foreground">{n.groupName}</span>
                         )}

@@ -34,10 +34,14 @@ test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del 
   // Secciones del timeline (los grupos del seed)
   await expect(page.getByRole("heading", { name: "[QA Sagas v2] Era Uno" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "[QA Sagas v2] Era Dos" })).toBeVisible();
-  // El puente del nexo
-  await expect(page.getByText("Nexo entre tramos", { exact: false })).toBeVisible();
-  // La rama del spin-off (doble membresía) colgando del nodo Nº1
-  await expect(page.getByText("Spin-off · opcional")).toBeVisible();
+  // Issue #167: "Nexo entre tramos" y "Spin-off · opcional" se derogaron — se
+  // derivaban de heurísticas que etiquetaban mal (una arista `principal` salía
+  // como spin-off). El puente y la rama siguen pintándose; lo que ya no se
+  // afirma es un rol que nadie curó. El seed no asigna roles, así que aquí se
+  // comprueba la ausencia: si vuelve a aparecer, alguien reintrodujo la
+  // heurística.
+  await expect(page.getByText("Nexo entre tramos")).toHaveCount(0);
+  await expect(page.getByText("Spin-off · opcional")).toHaveCount(0);
 });
 
 test("el toggle Publicación muestra la lista lineal por año", async ({ page }) => {

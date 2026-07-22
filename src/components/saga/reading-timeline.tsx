@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineSection } from "@/lib/sagas/derive-timeline";
+import { RoleChip } from "./role-chip";
 
 // Timeline vertical ramificado (frame B): raíl coloreado por subsaga, tarjetas
 // por nodo de la columna, ramas punteadas para opcionales y tarjeta-puente
@@ -26,7 +27,12 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
               <Link href={section.rows[0].node.href} className="block font-serif text-sm font-semibold">
                 {section.rows[0].node.label}
               </Link>
-              <span className="block text-[11px] leading-snug text-muted-foreground">{t("bridgeHint")}</span>
+              {/* Issue #167: `bridgeHint` ("Nexo entre tramos · léelo en
+                  cualquier punto") se derogó. Se disparaba por groupSagaId ===
+                  null, que significa "miembro directo del universo, sin
+                  subsaga" — no "léelo donde quieras". Ahora solo habla el rol
+                  curado, si lo hay. */}
+              <RoleChip role={section.rows[0].node.role} />
             </span>
           </div>
         ) : (
@@ -97,9 +103,19 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
                             )}
                           </span>
                           <span className="min-w-0">
-                            <span className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold">
-                              {b.edgeType === "requisito" ? t("branchRequisite") : t("branchOptional")}
-                            </span>
+                            {/* Issue #167: "requisito" se mantiene porque es un
+                                dato REAL y curado (la arista dice "léelo antes").
+                                "Spin-off · opcional" se derogó: se pintaba para
+                                cualquier arista no-requisito, incluidas las
+                                `principal`, así que llamaba spin-off a lo que no
+                                lo era. Ahora, o hay rol curado, o no se dice nada. */}
+                            {b.edgeType === "requisito" ? (
+                              <span className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold">
+                                {t("branchRequisite")}
+                              </span>
+                            ) : (
+                              <RoleChip role={b.node.role} />
+                            )}
                             <span className="mt-1 block truncate text-[13px] font-semibold">{b.node.label}</span>
                           </span>
                         </Link>
