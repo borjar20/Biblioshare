@@ -13,7 +13,11 @@ export async function notifyClub(
   supabase: Awaited<ReturnType<typeof createClient>>,
   clubId: string,
   actorId: string,
-  type: "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned",
+  type:
+    | "club_activity_proposed"
+    | "club_activity_activated"
+    | "club_activity_spawned"
+    | "club_event_created",
   activityId: string,
 ): Promise<void> {
   try {
@@ -28,7 +32,12 @@ export async function notifyClub(
       userIds: (members ?? []).map((member) => member.user_id),
       actorId,
       type,
-      targetType: "club_activity",
+      // Un evento (kind='evento') no tiene página de detalle propia por
+      // diseño (hasDetailView en kinds/evento.ts) -- así que se marca con su
+      // propio target_type ('club_event') para que resolveTargetHrefs()
+      // (notifications.ts) lo lleve a la ficha del club en vez de a
+      // /club/[slug]/actividad/[id].
+      targetType: type === "club_event_created" ? "club_event" : "club_activity",
       targetId: activityId,
     });
   } catch (error) {

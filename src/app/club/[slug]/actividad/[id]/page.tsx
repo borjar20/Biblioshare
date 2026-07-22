@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
 import { getActivity, listClubActivities } from "@/lib/clubs/activities/core";
+import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ActivityDetailView } from "@/components/clubs/activity-detail";
 import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
 
@@ -33,6 +34,10 @@ export default async function ActivityPage({
 
   const activity = await getActivity(id);
   if (!activity || activity.clubId !== club.id) notFound();
+
+  // Un kind sin página propia (evento) no tiene nada que renderizar aquí: la URL
+  // es adivinable y sin esto se serviría una vista vacía y rota.
+  if (!getActivityKindDefinition(activity.kind).hasDetailView) notFound();
 
   const canModerate =
     club.viewerRole === "moderator" || club.viewerRole === "owner";

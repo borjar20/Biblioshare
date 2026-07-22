@@ -56,11 +56,16 @@ export async function getClubActivityEvents(
   if (clubIds.length === 0) return { events: [], rowCount: 0 };
 
   // Solo lo que sigue vivo: una actividad terminada o archivada no es novedad.
+  // Los eventos (kind='evento') se excluyen aparte: comparten status='active'
+  // con el resto, pero no tienen página propia -- este feed construye su
+  // propio <Link> a /club/[slug]/actividad/[id] (ClubFeedCard), que da 404
+  // para un evento. Mismo filtro que ya aplica club-summary.tsx.
   let query = supabase
     .from("club_activities")
     .select("id, club_id, kind, status, title, description, created_by, created_at")
     .in("club_id", clubIds)
     .in("status", ["proposed", "active"])
+    .neq("kind", "evento")
     .order("created_at", { ascending: false })
     .limit(options.pageSize);
   if (options.cursorUpperBound) query = query.lte("created_at", options.cursorUpperBound);

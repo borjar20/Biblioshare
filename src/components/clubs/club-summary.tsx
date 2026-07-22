@@ -1,31 +1,9 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
-import type { UpcomingCheckpoint } from "@/lib/clubs/activities/upcoming";
+import type { UpcomingCheckpoint, UpcomingEvent } from "@/lib/clubs/activities/upcoming";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
-
-const MONTHS = [
-  "ene",
-  "feb",
-  "mar",
-  "abr",
-  "may",
-  "jun",
-  "jul",
-  "ago",
-  "sep",
-  "oct",
-  "nov",
-  "dic",
-];
-
-// `2026-07-18` → { day: "18", month: "jul" }. Se parte la cadena a mano en vez
-// de usar new Date(): un `date` de Postgres no tiene zona, y pasarlo por Date
-// lo interpreta como UTC y puede retroceder un día según dónde estés.
-function formatDue(dueOn: string): { day: string; month: string } {
-  const [, month, day] = dueOn.split("-");
-  return { day, month: MONTHS[Number(month) - 1] ?? "" };
-}
+import { formatDayMonth } from "@/lib/clubs/activities/format-date";
 
 // % de tiempo transcurrido entre las fechas de la actividad. Es una barra
 // orientativa (el progreso real por hitos costaría una query por actividad);
@@ -46,16 +24,23 @@ function timeProgress(startsOn: string | null, endsOn: string | null): number | 
 export async function ClubSummary({
   activities,
   upcoming,
+  events,
   clubSlug,
 }: {
   activities: ClubActivity[];
   upcoming: UpcomingCheckpoint[];
+  events: UpcomingEvent[];
   clubSlug: string;
 }) {
   const t = await getTranslations("activity");
-  const active = activities.filter((a) => a.status === "active");
+  // Los eventos comparten status="active" con el resto de actividades, pero
+  // no tienen página propia (ver activity-card.tsx) -- si entraran aquí, el
+  // <Link> de abajo llevaría a un 404. Van en su propio bloque, más abajo.
+  const active = activities.filter(
+    (a) => a.status === "active" && a.kind !== "evento",
+  );
 
-  if (active.length === 0 && upcoming.length === 0) return null;
+  if (active.length === 0 && upcoming.length === 0 && events.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -103,7 +88,7 @@ export async function ClubSummary({
                       <>
                         {" · "}
                         {t("untilDate", {
-                          date: `${formatDue(activity.endsOn).day} ${formatDue(activity.endsOn).month}`,
+                          date: `${formatDayMonth(activity.endsOn).day} ${formatDayMonth(activity.endsOn).month}`,
                         })}
                       </>
                     )}
@@ -123,7 +108,7 @@ export async function ClubSummary({
 
           <div className="flex gap-2.5 overflow-x-auto pb-1">
             {upcoming.map((checkpoint) => {
-              const { day, month } = formatDue(checkpoint.dueOn);
+              const { day, month } = formatDayMonth(checkpoint.dueOn);
               return (
                 <Link
                   key={checkpoint.id}
@@ -150,6 +135,39 @@ export async function ClubSummary({
                     </span>
                   </span>
                 </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {events.length > 0 && (
+        <section className="flex flex-col gap-2.5">
+          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {t("summaryDates")}
+          </h2>
+
+          {/* Sin enlace: un evento no tiene página propia. */}
+          <div className="flex gap-2.5 overflow-x-auto pb-1">
+            {events.map((event) => {
+              const { day, month } = formatDayMonth(event.startsOn);
+              return (
+                <div
+                  key={event.id}
+                  className="flex shrink-0 items-center gap-2.5 rounded-[10px] border border-border bg-surface px-3 py-2"
+                >
+                  <span aria-hidden className="flex shrink-0 flex-col items-center leading-none">
+                    <span className="font-serif text-lg font-semibold text-foreground">
+                      {day}
+                    </span>
+                    <span className="font-mono text-[8.5px] text-muted-foreground uppercase">
+                      {month}
+                    </span>
+                  </span>
+                  <span className="max-w-44 truncate text-xs leading-tight text-foreground">
+                    {event.title}
+                  </span>
+                </div>
               );
             })}
           </div>
