@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Sin optimizador de Vercel: cada (src, ancho, calidad) única gasta una de
+    // las 5.000 transformaciones/mes del plan Hobby y el catálogo las agota
+    // solo. El loader pide el tamaño al CDN de origen. Ver src/lib/images/cdn-loader.ts.
+    loader: "custom",
+    loaderFile: "./src/lib/images/cdn-loader.ts",
+    // remotePatterns deja de aplicarse con loader custom, pero se conserva
+    // como documentación de los orígenes válidos y por si se revierte.
     remotePatterns: [
       { protocol: "https", hostname: "books.google.com" },
       { protocol: "https", hostname: "books.googleusercontent.com" },
