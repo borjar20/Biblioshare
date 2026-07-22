@@ -115,17 +115,13 @@ test("evento: se crea, se edita, se archiva y no tiene ficha", async ({
       .filter({ has: page.getByRole("heading", { name: "Fechas señaladas" }) });
     await expect(seccionEventos.getByText(titulo)).toBeVisible({ timeout: 15000 });
 
-    // ...y también en el resumen del club: "Próximas fechas" (spec 2026-07-22
-    // §5, issue #132). Vive en la pestaña feed (la que se abre por defecto en
-    // /club/[slug]), NO en "actividades" -- hay que navegar aparte para que
-    // ClubSummary/getUpcomingEvents se pinten; el resto del test corre en
-    // ?tab=actividades y nunca visita esta pestaña, así que este bloque era el
-    // único hueco sin ninguna cobertura en toda la rama.
+    // ...y también en el resumen del club, ahora en la tira unificada
+    // "Próximo" (el calendario fundió "Próximos hitos" y "Próximas fechas").
     await page.goto(`/club/${CLUB_SLUG}`);
-    const seccionProximasFechas = page
+    const seccionProximo = page
       .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Próximas fechas" }) });
-    await expect(seccionProximasFechas.getByText(titulo)).toBeVisible({ timeout: 15000 });
+      .filter({ has: page.getByRole("heading", { name: "Próximo" }) });
+    await expect(seccionProximo.getByText(titulo)).toBeVisible({ timeout: 15000 });
     await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
 
     // ...y NO enlaza a ninguna ficha. Se comprueba que la URL no cambia, no solo
