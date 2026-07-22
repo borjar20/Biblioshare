@@ -8,6 +8,7 @@ import { listClubActivities } from "@/lib/clubs/activities/core";
 import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
 import { todayISO } from "@/lib/stats/dates";
 import { ClubShell, ClubSidebar, ClubMainHeader } from "@/components/clubs/club-shell";
+import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubCalendar } from "@/components/clubs/calendar/club-calendar";
 
 export async function generateMetadata({
@@ -47,7 +48,11 @@ export default async function ClubCalendarPage({
 
   const [marks, activities, tt] = await Promise.all([
     getClubCalendarMarks(club.id, club.slug, hoy),
-    listClubActivities(club.id),
+    // El pip de propuestas pendientes en el sidebar solo se ve si eres
+    // moderador (club-shell.tsx: `pip: canModerate ? pendingProposals : ...`);
+    // para un miembro raso, pedir la lista entera solo para tirarla es dos
+    // consultas de balde.
+    canModerate ? listClubActivities(club.id) : Promise.resolve([]),
     getTranslations("club.tabs"),
   ]);
   const pendingProposals = activities.filter((a) => a.status === "proposed").length;
@@ -61,6 +66,15 @@ export default async function ClubCalendarPage({
           canModerate={canModerate}
           pendingProposals={pendingProposals}
         />
+      }
+      mobileHeader={
+        // Sin esto, en móvil no había ni nombre/portada del club ni forma de
+        // volver salvo el atrás del navegador (el sidebar con esa identidad
+        // solo se pinta desde `lg`). ClubHeader trae ambas cosas: identidad
+        // del club y el enlace de vuelta a /clubes. NO se añade ClubTabs
+        // aquí: el calendario es una decisión de diseño para que NO sea una
+        // pestaña más, así que no debe pintar la tabbar de pestañas.
+        <ClubHeader club={club} userId={user.id} />
       }
       desktopHeader={<ClubMainHeader title={tt("calendario")} />}
     >
