@@ -9,6 +9,7 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   coverUrl: over.coverUrl ?? "https://c/x.jpg",
   href: `/libro/${over.itemId ?? "x"}`,
   position: null,
+  role: null,
   status: null,
   groupSagaId: null,
   year: null,

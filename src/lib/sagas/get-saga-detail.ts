@@ -14,7 +14,7 @@ import {
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
 import { createMainOrder, type OrderMembership, type OrderNode, type OrderSaga } from "./main-order";
-import type { DetailMember, MemberStatus, Saga, SagaChildRef } from "./types";
+import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole } from "./types";
 import type { SagaRoute } from "./route-types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -145,7 +145,7 @@ export async function getSagaDetail(
   const sagaIds = [id, ...descendants.keys()];
   const { data: itemRows } = await supabase
     .from("saga_items")
-    .select("saga_id, item_type, item_id, position")
+    .select("saga_id, item_type, item_id, position, role")
     .in("saga_id", sagaIds)
     .order("created_at", { ascending: true });
   const rows = (itemRows ?? []) as Array<{
@@ -153,6 +153,7 @@ export async function getSagaDetail(
     item_type: ItemType;
     item_id: string;
     position: number | null;
+    role: SagaItemRole | null;
   }>;
 
   // Dedupe multi-membresía: la fila con subsaga gana sobre la directa (spec
@@ -242,6 +243,7 @@ export async function getSagaDetail(
       coverUrl: m.coverUrl,
       href: itemHref(row.item_type, row.item_id),
       position: row.position,
+      role: row.role,
       status: statusByItem.get(`${row.item_type}:${row.item_id}`) ?? null,
       groupSagaId,
       year: m.year,
