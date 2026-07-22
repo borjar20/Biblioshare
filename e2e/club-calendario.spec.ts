@@ -1,4 +1,5 @@
 import { test, expect, type Request } from "@playwright/test";
+import { formatMonthYear } from "@/lib/clubs/activities/format-date";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -6,6 +7,17 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const CLUB_SLUG = "test-public-club"; // devtest es su dueño (moderador+)
+// Privado, y devtest NO es miembro (mismo club que usa club-join-request.spec.ts).
+const PRIVATE_CLUB_SLUG = "test-private-club";
+
+// "YYYY-MM" del mes en curso, para comparar contra formatMonthYear en vez de
+// afirmar solo el año (un fallback erróneo a enero pasaría un assert que solo
+// mirara el año) o negar un mes fijo (que sería una bomba de relojería si la
+// suite corriera ese mes exacto).
+function mesActualISO(): string {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+}
 
 // Un mes lejano y fijo: así el test no depende de cuántas marcas tenga el club
 // de pruebas hoy, ni se rompe al cruzar un fin de mes.
@@ -32,6 +44,7 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
   await login(page, EMAIL, PASSWORD);
 
   let eventoId: string | null = null;
+  let tituloEvento: string | null = null;
 
   try {
     await page.goto(`/club/${CLUB_SLUG}/calendario?mes=${MES}`);
@@ -40,7 +53,33 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
     // más: si no, los asserts siguientes serían trivialmente ciertos.
     await expect(page.getByTestId("calendar-month")).toHaveText("Septiembre 2027");
 
+    // Contador de peticiones RSC del App Router (llevan el parámetro `_rsc`),
+    // acotado a la propia ruta del calendario: los prefetches de <Link> de la
+    // agenda apuntan a /actividad/... y no deben contarse aquí -- si algún día
+    // el club de pruebas siembra una lectura conjunta en estos meses, la
+    // agenda pintará esos enlaces y un filtro sin acotar contaría sus
+    // prefetches, dando el diagnóstico CONTRARIO al real más abajo.
+    //
+    // Se engancha ANTES de crear el evento (no solo antes de cambiar de mes):
+    // ClubCalendar llama a router.refresh() justo tras crear, y eso sí debe
+    // generar una petición RSC de verdad. Es el control positivo del propio
+    // contador -- sin él, un Next que renombrara `_rsc` o una errata en el
+    // filtro dejarían esto en 0 para siempre y el assert de "0 tras cambiar de
+    // mes", más abajo, sería trivialmente cierto.
+    let peticionesRsc = 0;
+    const contarRsc = (req: Request) => {
+      if (req.url().includes("_rsc=") && req.url().includes("/calendario")) {
+        peticionesRsc++;
+      }
+    };
+    page.on("request", contarRsc);
+
     const titulo = `e2e cal ${Date.now()}`;
+    // Se asigna YA, antes de crear el evento (no tras el poll de más abajo):
+    // así el `finally` siempre puede localizar la fila por título aunque el
+    // poll expire y `eventoId` nunca llegue a asignarse -- ese es justo el
+    // hueco que dejó 8 filas huérfanas, por otra puerta, en este mismo repo.
+    tituloEvento = titulo;
     await page.getByRole("button", { name: /^nuevo evento$/i }).click();
     await page.getByLabel(/^título$/i).fill(titulo);
     await page.getByLabel(/^fecha$/i).fill(FECHA);
@@ -69,6 +108,16 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
     // entero (en la celda va truncado).
     await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 15000 });
 
+    // Control positivo del contador `_rsc`: crear el evento dispara
+    // router.refresh(), que SÍ debe pedir al servidor. Si esto da 0, el
+    // contador no está midiendo nada y el assert "=== 0" de más abajo no
+    // prueba absolutamente nada tampoco.
+    expect(
+      peticionesRsc,
+      "router.refresh() tras crear el evento debe generar al menos una petición RSC -- si esto da 0, el contador de _rsc no está midiendo nada",
+    ).toBeGreaterThan(0);
+    peticionesRsc = 0;
+
     // ── Navegación de mes ──
     //
     // ESTA ES LA ASERCIÓN QUE PROTEGE LA ARQUITECTURA DE LA FEATURE. Todas las
@@ -77,12 +126,6 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
     // router.push/replace, la pantalla se vería idéntica -- solo más lenta -- y
     // ninguna otra prueba lo notaría. Contamos las peticiones RSC del App Router
     // (llevan el parámetro _rsc) y exigimos que no suban.
-    let peticionesRsc = 0;
-    const contarRsc = (req: Request) => {
-      if (req.url().includes("_rsc=")) peticionesRsc++;
-    };
-    page.on("request", contarRsc);
-
     await page.getByRole("button", { name: /mes siguiente/i }).click();
     await expect(page.getByTestId("calendar-month")).toHaveText("Octubre 2027");
     await expect(page).toHaveURL(/mes=2027-10/);
@@ -112,22 +155,31 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
     await expect(page.getByTestId("calendar-month")).toHaveText("Agosto 2027");
     await expect(page).toHaveURL(/mes=2027-08/);
 
-    // "Hoy" vuelve al mes actual.
+    // "Hoy" vuelve al mes actual. Assert en positivo (el mes actual de
+    // verdad), no por negación de "Septiembre 2027": una negación así es una
+    // bomba de relojería que fallaría sin que nada esté roto si la suite
+    // corriera durante ese mes exacto.
     await page.getByRole("button", { name: /^hoy$/i }).click();
-    await expect(page.getByTestId("calendar-month")).not.toHaveText("Septiembre 2027");
+    await expect(page.getByTestId("calendar-month")).toHaveText(
+      formatMonthYear(mesActualISO()),
+    );
 
     console.log("CALENDARIO OK:", eventoId);
   } finally {
-    if (eventoId) {
-      // fetch nativo, NO el `request` de Playwright: ese fixture muere junto con
-      // el contexto del navegador, así que si el test expira por timeout la
-      // limpieza no llega a ejecutarse y deja filas sueltas en la base (ya
-      // pasó: 8 filas huérfanas motivaron esta regla).
-      await fetch(`${SUPABASE_URL}/rest/v1/club_activities?id=eq.${eventoId}`, {
-        method: "DELETE",
-        headers: adminHeaders(),
-      });
-      console.log("LIMPIEZA OK: evento", eventoId, "borrado");
+    if (tituloEvento) {
+      // Se borra por TÍTULO (único: lleva un timestamp), no por `eventoId`:
+      // ese id no se asigna hasta después del expect.poll de arriba (15 s de
+      // timeout). Si el poll expirase, `eventoId` seguiría en null y este
+      // finally no borraría nada -- con `retries: 1` en la config, un solo
+      // fallo así deja DOS filas huérfanas. fetch nativo, NO el `request` de
+      // Playwright: ese fixture muere junto con el contexto del navegador, así
+      // que si el test expira por timeout la limpieza no llega a ejecutarse
+      // (ya pasó: 8 filas huérfanas motivaron esta regla).
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/club_activities?title=eq.${encodeURIComponent(tituloEvento)}`,
+        { method: "DELETE", headers: adminHeaders() },
+      );
+      console.log("LIMPIEZA OK: evento con título", tituloEvento, "borrado");
     }
   }
 });
@@ -135,20 +187,25 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
 // Un ?mes= con basura no debe romper: cae al mes actual, sin 404 ni error de
 // página. Es entrada controlada por el usuario, porque la URL es compartible.
 test("calendario: un ?mes= inválido cae al mes actual", async ({ page }) => {
+  await login(page, EMAIL, PASSWORD);
+
+  // El listener se engancha DESPUÉS del login, no antes: si estuviera antes,
+  // un error ajeno en /login o en "/" haría fallar este test con un mensaje
+  // que acusa al ?mes= inválido sin tener nada que ver.
   const errores: string[] = [];
   page.on("pageerror", (e) => errores.push(e.message));
 
-  await login(page, EMAIL, PASSWORD);
-
-  const anyoActual = new Date().getFullYear();
+  const mesActual = mesActualISO();
 
   for (const basura of ["pepe", "2026-13", "0050-03"]) {
     await page.goto(`/club/${CLUB_SLUG}/calendario?mes=${basura}`);
-    // Se afirma algo POSITIVO (que pintó un mes, y que es el año en curso)
-    // antes que la ausencia de errores: si la página no hubiera pintado nada,
-    // "sin errores" sería trivialmente cierto.
+    // Se afirma algo POSITIVO (que pintó el mes actual, exacto) antes que la
+    // ausencia de errores: si la página no hubiera pintado nada, "sin
+    // errores" sería trivialmente cierto. Y se compara el mes EXACTO, no solo
+    // el año: un fallback erróneo a enero pasaría un assert que solo mirara
+    // el año.
     await expect(page.getByTestId("calendar-month")).toHaveText(
-      new RegExp(String(anyoActual)),
+      formatMonthYear(mesActual),
     );
   }
 
@@ -177,10 +234,11 @@ test("calendario: un miembro raso no ve el botón de crear evento", async ({
       data: { email, password, email_confirm: true },
     });
     userId = (await res.json()).id as string;
-    await request.post(`${SUPABASE_URL}/rest/v1/profiles`, {
+    const profileRes = await request.post(`${SUPABASE_URL}/rest/v1/profiles`, {
       headers: { ...adminHeaders(), "Content-Type": "application/json" },
       data: { user_id: userId, username },
     });
+    expect(profileRes.ok(), "el perfil del usuario desechable debe crearse").toBeTruthy();
 
     const clubRows = (await (
       await request.get(
@@ -222,7 +280,27 @@ test("calendario: un miembro raso no ve el botón de crear evento", async ({
 });
 
 // Un club privado no filtra sus fechas por URL a quien no es miembro.
-test("calendario: un no-miembro recibe 404", async ({ page }) => {
+//
+// El gate real es `if (!club || !club.viewerRole) notFound();` (calendario/page.tsx).
+// Pedir un slug inexistente solo ejercita la mitad `!club`: si alguien
+// simplificara el gate a `if (!club) notFound();`, las fechas de un club
+// privado podrían quedar expuestas y este test seguiría en verde.
+//
+// OJO: un extraño con CERO filas en `club_members` no sirve para ejercitar la
+// mitad `!club.viewerRole` -- la RLS de `clubs` ("visibility = public OR
+// club_member_row_exists(id)") ya le niega la fila entera, así que `club`
+// sale null y ese caso cae en la MISMA rama que el slug inexistente de
+// arriba (se comprobó rompiendo el gate a mano: con cero filas, el test
+// seguía en verde). La única situación real en la que `club` es no-nulo pero
+// `club.viewerRole` sí lo es es la de alguien con una fila en
+// `club_members` que NO está activa -- típicamente una solicitud pendiente
+// (`status: 'requested'`, el mismo estado que deja requestJoinClub() en
+// club-join-request.spec.ts): esa fila hace que club_member_row_exists()
+// sea true (ve la identidad del club, como el "forastero" de ese spec), pero
+// su `viewerRole` es null porque su status no es 'active'.
+test("calendario: un no-miembro recibe 404", async ({ page, request }) => {
+  test.setTimeout(60_000);
+
   await login(page, EMAIL, PASSWORD);
 
   // Control positivo primero: el club del que SÍ es miembro responde 200. Sin
@@ -230,8 +308,77 @@ test("calendario: un no-miembro recibe 404", async ({ page }) => {
   const propio = await page.goto(`/club/${CLUB_SLUG}/calendario`);
   expect(propio?.status()).toBe(200);
 
-  const ajeno = await page.goto("/club/club-que-no-existe-xyz/calendario");
-  expect(ajeno?.status()).toBe(404);
+  // Barato de conservar, pero NO basta por sí solo (ver comentario de arriba):
+  // solo ejercita la rama `!club`, igual que la solicitud pendiente de abajo
+  // -- pero esta, al no tener ninguna fila en `club_members`, no distingue
+  // `!club` de `!club.viewerRole`.
+  const inexistente = await page.goto("/club/club-que-no-existe-xyz/calendario");
+  expect(inexistente?.status()).toBe(404);
+
+  // La comprobación que de verdad protege el gate: un usuario desechable con
+  // una solicitud PENDIENTE en test-private-club (privado). Mismo patrón para
+  // fabricar el usuario que "un miembro raso no ve el botón de crear evento",
+  // más arriba en este fichero.
+  const username = `e2ecalpriv${Date.now()}`.slice(0, 20);
+  const email = `${username}@example.com`;
+  const password = "TestPassword123!";
+  let userId: string | null = null;
+  let privateClubId: string | null = null;
+
+  try {
+    const res = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      headers: adminHeaders(),
+      data: { email, password, email_confirm: true },
+    });
+    userId = (await res.json()).id as string;
+    const profileRes = await request.post(`${SUPABASE_URL}/rest/v1/profiles`, {
+      headers: { ...adminHeaders(), "Content-Type": "application/json" },
+      data: { user_id: userId, username },
+    });
+    expect(profileRes.ok(), "el perfil del usuario ajeno debe crearse").toBeTruthy();
+
+    const privateClubRows = (await (
+      await request.get(
+        `${SUPABASE_URL}/rest/v1/clubs?slug=eq.${PRIVATE_CLUB_SLUG}&select=id`,
+        { headers: adminHeaders() },
+      )
+    ).json()) as { id: string }[];
+    privateClubId = privateClubRows[0].id;
+
+    const requestRes = await request.post(`${SUPABASE_URL}/rest/v1/club_members`, {
+      headers: { ...adminHeaders(), "Content-Type": "application/json" },
+      data: { club_id: privateClubId, user_id: userId, status: "requested" },
+    });
+    expect(
+      requestRes.ok(),
+      "la solicitud pendiente del usuario ajeno debe crearse",
+    ).toBeTruthy();
+
+    // Cambiar de usuario NO es solo ir a /login: el middleware rebota a "/" a
+    // quien ya tiene sesión, así que hay que tirar la del propietario primero
+    // (mismo motivo que entrarComo en club-join-request.spec.ts).
+    await page.context().clearCookies();
+    await login(page, email, password);
+
+    const ajeno = await page.goto(`/club/${PRIVATE_CLUB_SLUG}/calendario`);
+    expect(ajeno?.status()).toBe(404);
+  } finally {
+    // fetch nativo, NO el `request` de Playwright: ese fixture muere junto con
+    // el contexto del navegador, así que un timeout dejaría filas sueltas (ya
+    // pasó: 8 filas huérfanas motivaron esta regla).
+    if (privateClubId && userId) {
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/club_members?club_id=eq.${privateClubId}&user_id=eq.${userId}`,
+        { method: "DELETE", headers: adminHeaders() },
+      );
+    }
+    if (userId) {
+      await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: adminHeaders(),
+      });
+    }
+  }
 });
 
 // ── Guarda anti-historial (revisión de la Task 7, no en el brief original) ──
