@@ -8,6 +8,7 @@ import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { formatEventDate } from "@/lib/clubs/activities/format-date";
 import { isPastEvent } from "@/lib/clubs/activities/group-activities";
+import { todayISO } from "@/lib/stats/dates";
 
 const STATUS_STYLE: Record<ClubActivity["status"], string> = {
   proposed: "bg-surface-muted text-muted-foreground",
@@ -15,15 +16,6 @@ const STATUS_STYLE: Record<ClubActivity["status"], string> = {
   finished: "bg-surface-muted text-muted-foreground",
   archived: "bg-surface-muted text-muted-foreground",
 };
-
-// Hoy en formato ISO local (no UTC): toISOString() daría el día de Greenwich, que
-// de madrugada es otro día distinto del que ve quien mira la pantalla.
-function todayIso(): string {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${mm}-${dd}`;
-}
 
 export function ActivityCard({
   activity,
@@ -51,12 +43,12 @@ export function ActivityCard({
 
   // La línea meta de un evento dice su fecha; "0 participantes" en algo a lo que
   // nadie se apunta no informa de nada.
-  const meta = definition.hasDetailView
+  const meta = linked
     ? t("participants", { count: activity.participantCount })
     : activity.startsOn
       ? formatEventDate(activity.startsOn)
       : "";
-  const past = !definition.hasDetailView && isPastEvent(activity.startsOn, todayIso());
+  const past = !linked && isPastEvent(activity.startsOn, todayISO());
 
   const inner = (
     <>
