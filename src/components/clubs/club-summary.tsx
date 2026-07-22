@@ -3,29 +3,7 @@ import { getTranslations } from "next-intl/server";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
 import type { UpcomingCheckpoint } from "@/lib/clubs/activities/upcoming";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
-
-const MONTHS = [
-  "ene",
-  "feb",
-  "mar",
-  "abr",
-  "may",
-  "jun",
-  "jul",
-  "ago",
-  "sep",
-  "oct",
-  "nov",
-  "dic",
-];
-
-// `2026-07-18` → { day: "18", month: "jul" }. Se parte la cadena a mano en vez
-// de usar new Date(): un `date` de Postgres no tiene zona, y pasarlo por Date
-// lo interpreta como UTC y puede retroceder un día según dónde estés.
-function formatDue(dueOn: string): { day: string; month: string } {
-  const [, month, day] = dueOn.split("-");
-  return { day, month: MONTHS[Number(month) - 1] ?? "" };
-}
+import { formatDayMonth } from "@/lib/clubs/activities/format-date";
 
 // % de tiempo transcurrido entre las fechas de la actividad. Es una barra
 // orientativa (el progreso real por hitos costaría una query por actividad);
@@ -103,7 +81,7 @@ export async function ClubSummary({
                       <>
                         {" · "}
                         {t("untilDate", {
-                          date: `${formatDue(activity.endsOn).day} ${formatDue(activity.endsOn).month}`,
+                          date: `${formatDayMonth(activity.endsOn).day} ${formatDayMonth(activity.endsOn).month}`,
                         })}
                       </>
                     )}
@@ -123,7 +101,7 @@ export async function ClubSummary({
 
           <div className="flex gap-2.5 overflow-x-auto pb-1">
             {upcoming.map((checkpoint) => {
-              const { day, month } = formatDue(checkpoint.dueOn);
+              const { day, month } = formatDayMonth(checkpoint.dueOn);
               return (
                 <Link
                   key={checkpoint.id}
