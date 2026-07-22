@@ -48,7 +48,12 @@ export function ActivityCard({
     : activity.startsOn
       ? formatEventDate(activity.startsOn)
       : "";
-  const past = !linked && isPastEvent(activity.startsOn, todayISO());
+  // Gateado también a status="active": un evento archivado o finalizado ya
+  // enseña su propia píldora de estado (STATUS_STYLE), y sin este gate
+  // "Ya pasó" la tapaba -- un evento archivado en "Finalizadas" se veía
+  // idéntico a uno vivo y pasado en "Fechas señaladas".
+  const past =
+    !linked && activity.status === "active" && isPastEvent(activity.startsOn, todayISO());
 
   const inner = (
     <>

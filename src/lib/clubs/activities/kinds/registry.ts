@@ -19,4 +19,4 @@ export function getActivityKindDefinition(kind: ActivityKind): ActivityKindDefin
 }
 
 export type { ActivityKindDefinition } from "./types";
-export { ACTIVITY_KIND_ORDER, visibleKindOptions } from "./types";
+export { visibleKindOptions } from "./types";

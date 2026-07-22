@@ -280,8 +280,15 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 
 ## 10. Migraciones
 
-76 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
+82 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
+
+⚠️ **"prod pendiente" (§9) también significa "`schema-baseline.sql` pendiente".** Ese fichero
+es un replay de PRODUCCIÓN, no de dev: hoy excluye a propósito `20260722_activity_kind_evento.sql`
+y `20260722_club_event_rpcs.sql` porque prod aún no las tiene. Quien aplique esas dos
+migraciones a prod debe, en el mismo pase, añadir su SQL al final de `schema-baseline.sql`
+(y actualizar su cabecera) — el propio fichero registra que ya se desincronizó dos veces
+(notas 2026-07-14 y 2026-07-17) por olvidar justo este paso.
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del

@@ -682,7 +682,6 @@
     "eventDateRequired": "Un evento necesita una fecha.",
     "eventError": "No se pudo guardar el evento. Inténtalo de nuevo.",
     "summaryDates": "Próximas fechas",
-    "edit": "Editar",
     "eventActions": "Acciones del evento",
     "create": "Crear"
   },

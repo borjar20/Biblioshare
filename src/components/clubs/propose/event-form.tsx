@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { createClubEvent, updateClubEvent } from "@/lib/clubs/activities/events";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,15 @@ export function EventForm({
 }) {
   const t = useTranslations("activity");
   const editing = Boolean(activity);
+
+  // Ids por instancia: Task 10 monta este formulario una vez por tarjeta
+  // (EventCardActions), con un `editing` independiente por tarjeta -- dos
+  // ediciones pueden estar abiertas a la vez. Con ids fijos, cada <label
+  // htmlFor> se ligaba siempre al primer formulario del DOM.
+  const uid = useId();
+  const titleId = `event-title-${uid}`;
+  const descriptionId = `event-description-${uid}`;
+  const dateId = `event-date-${uid}`;
 
   const [title, setTitle] = useState(activity?.title ?? initialTitle ?? "");
   const [description, setDescription] = useState(
@@ -80,9 +89,9 @@ export function EventForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label={t("titleLabel")} htmlFor="event-title">
+      <Field label={t("titleLabel")} htmlFor={titleId}>
         <Input
-          id="event-title"
+          id={titleId}
           value={title}
           maxLength={120}
           onChange={(e) => setTitle(e.target.value)}
@@ -91,9 +100,9 @@ export function EventForm({
         />
       </Field>
 
-      <Field label={t("descriptionLabel")} htmlFor="event-description">
+      <Field label={t("descriptionLabel")} htmlFor={descriptionId}>
         <textarea
-          id="event-description"
+          id={descriptionId}
           value={description}
           maxLength={2000}
           onChange={(e) => setDescription(e.target.value)}
@@ -103,9 +112,9 @@ export function EventForm({
         />
       </Field>
 
-      <Field label={t("eventDateLabel")} htmlFor="event-date">
+      <Field label={t("eventDateLabel")} htmlFor={dateId}>
         <Input
-          id="event-date"
+          id={dateId}
           type="date"
           value={startsOn}
           onChange={(e) => setStartsOn(e.target.value)}
