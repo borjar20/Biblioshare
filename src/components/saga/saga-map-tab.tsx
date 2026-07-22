@@ -7,31 +7,32 @@ import { sagaHref } from "@/lib/catalog/item-href";
 import { GraphLegend } from "./graph/graph-legend";
 import { SagaGraphLazy } from "./graph/saga-graph-lazy";
 import { MapCta } from "./map-cta";
-import { OrderToggle } from "./order-toggle";
 import { ReadingTimeline } from "./reading-timeline";
+import { RouteSelector } from "./route-selector";
+import { RouteView } from "./route-view";
 
 // Pestaña «Mapa de lectura» (spec §2.4, frames B/E). Lectura = timeline (móvil)
-// + grafo embebido (PC). Publicación = lista lineal por año (ambos).
+// + grafo embebido (PC). Publicación = lista lineal por año (ambos). Cualquier
+// otra ruta (curada) se delega a RouteView (stub transitorio, Task 6).
 export async function SagaMapTab({
   detail,
-  orden,
+  activeRoute,
   canEdit,
 }: {
   detail: SagaDetail;
-  orden: "lectura" | "publicacion";
+  activeRoute: string;
   canEdit?: boolean;
 }) {
   const t = await getTranslations("saga");
   const graph = detail.graph;
-  if (!graph) return null;
   const base = sagaHref(detail.saga.id);
   const allMembers = detail.groups.flatMap((g) => g.members);
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-10">
-      <OrderToggle base={base} orden={orden} />
+      <RouteSelector base={base} routes={detail.routes} active={activeRoute} />
 
-      {orden === "publicacion" ? (
+      {activeRoute === "publicacion" ? (
         <ol className="divide-y divide-border border-t border-border">
           {sortByPublication(allMembers).map((m, i) => (
             <li key={`${m.itemType}-${m.itemId}`}>
@@ -52,7 +53,7 @@ export async function SagaMapTab({
             </li>
           ))}
         </ol>
-      ) : (
+      ) : activeRoute === "lectura" && graph ? (
         <>
           {/* Móvil: leyenda arriba, CTA al mapa completo y timeline. */}
           <div className="lg:hidden">
@@ -114,6 +115,8 @@ export async function SagaMapTab({
             </div>
           </div>
         </>
+      ) : (
+        <RouteView detail={detail} slug={activeRoute} canEdit={canEdit} />
       )}
     </div>
   );
