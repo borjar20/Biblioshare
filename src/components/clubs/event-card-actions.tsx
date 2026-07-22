@@ -38,7 +38,9 @@ export function EventCardActions({ activity }: { activity: ClubActivity }) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-2" aria-label={t("eventActions")}>
+    // role="group": un <div> pelado tiene rol `generic`, que no expone
+    // aria-label a los lectores de pantalla -- la etiqueta se perdía.
+    <div className="flex w-full flex-col gap-2" role="group" aria-label={t("eventActions")}>
       <div className="flex gap-2">
         <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
           {t("editEvent")}
