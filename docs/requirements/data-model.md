@@ -195,12 +195,44 @@ desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` 
 `club_posts` (+ `club_poll_options`/`club_poll_votes`), `club_reads` (contador de novedades).
 
 Actividades: `club_activities` (enum `activity_kind`: `buddy_read | tierlist |
-list_challenge | criteria_challenge`; ciclo `proposed → active → finished | archived`) con
-sus satélites `club_activity_items`, `_participants`, `_opinions`, `_placements`,
-`_checkpoints`, `_checkpoint_reads`.
+list_challenge | criteria_challenge | evento`; ciclo `proposed → active → finished |
+archived`) con sus satélites `club_activity_items`, `_participants`, `_opinions`,
+`_placements`, `_checkpoints`, `_checkpoint_reads`.
 
 **`config` (jsonb) es opaco a la BD**: lo interpreta la app según el `kind`. Ahí viven el
 criterio del reto, los tiers de la tierlist y el `completionMode` del reto por lista.
+
+### `evento` — actividad no participativa (dev 2026-07-22 · **prod pendiente**)
+
+Quinto `kind` de `club_activities`, distinto de los otros cuatro en que **nace `active`
+directamente** (nunca pasa por `proposed`) y no tiene pool de ítems ni participantes: sus
+filas dejan sin usar `config`, `ends_on`, `spawned_from_*` y los tres satélites
+`club_activity_participants`/`_items`/`_opinions` (kind nuevo en vez de tabla nueva,
+aplicando SD-8 — ver `decisiones.md`). Solo usa `title`, `description` y `starts_on`.
+"Pasado" se **deriva** de `starts_on < hoy` al leer (`isPastEvent`,
+`src/lib/clubs/activities/group-activities.ts`); no hay ninguna transición ni columna que
+lo persista. Sin ficha propia (`hasDetailView: false` en su `ActivityKindDefinition`).
+
+Dos RPCs `SECURITY DEFINER`, moderador+ (`has_min_club_role(club_id, 'moderator')`),
+migración `supabase/migrations/20260722_club_event_rpcs.sql`:
+
+- **`create_club_event(p_club_id, p_title, p_description, p_starts_on) returns uuid`** —
+  necesaria porque la política de INSERT de `club_activities` fuerza `status = 'proposed'`,
+  y un evento nace `active`.
+- **`update_club_event(p_activity_id, p_title, p_description, p_starts_on)`** — el UPDATE
+  que la tabla no tiene (SD-8 la dejó sin política UPDATE, transiciones solo por RPC).
+  **Restringida a `kind = 'evento'` y a `status = 'active'`**: sin el filtro de `kind`, esta
+  RPC (gateada solo por rol) reabriría la edición arbitraria de cualquier
+  `buddy_read`/`tierlist`/`list_challenge`/`criteria_challenge` que SD-8 evitó al no crear
+  la política UPDATE; el filtro de `status = 'active'` (añadido durante la implementación,
+  no estaba en el diseño original) impide reescribir un evento ya archivado. Archivar
+  reutiliza `archive_club_activity` sin tocarla.
+
+El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
+fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.
+
+**Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod queda pendiente** — aplicación
+reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta feature.
 
 ## 7. Sagas
 
@@ -237,10 +269,11 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `item_type` | `book \| movie \| series` |
 | `media_status` | `planned \| in_progress \| completed \| dropped` |
 | `user_role` | `user \| collaborator \| admin` |
-| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge` |
+| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge \| evento` (`evento`: dev 2026-07-22, **prod pendiente**) |
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: dev 2026-07-22, **prod pendiente**) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |

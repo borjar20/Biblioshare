@@ -55,6 +55,7 @@
 ### Social (EPIC-05)
 - [x] **Grafo social + feed** (EPIC-05 Bloques A y C) — seguir usuarios (`follows`, público=accept directo / privado=pendiente), `can_view_profile()`, feed on-read. *(Verificado contra prod: la tabla `follows` existe; la línea "pendiente" de §7.15 en el monolito estaba obsoleta.)*
 - [x] **Notificaciones in-app** (EPIC-05 Bloque D) — tabla `notifications` + `NotificationBell`, sin push (push diferido, E5.D4).
+- [x] **Eventos de club** — quinto `kind` de `club_activities` (`evento`): fecha señalada por moderador+, no participativa, sin ficha propia; grupo "Fechas señaladas" y bloque "Próximas fechas" en el resumen. Migraciones aplicadas en dev; **prod pendiente** (reservado al usuario). Spec: `docs/superpowers/specs/2026-07-22-club-eventos-design.md`
 
 ### Importación
 - [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. También accesible **desde el paso 2 del onboarding**, donde las filas sin match se encolan solas. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.
