@@ -1597,6 +1597,121 @@ export type Database = {
           },
         ]
       }
+      saga_route_choices: {
+        Row: {
+          created_at: string
+          route_slug: string
+          saga_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          route_slug: string
+          saga_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          route_slug?: string
+          saga_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_route_choices_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saga_route_entries: {
+        Row: {
+          child_saga_id: string | null
+          created_at: string
+          id: string
+          item_id: string | null
+          item_type: Database["public"]["Enums"]["item_type"] | null
+          note: string | null
+          position: number
+          route_id: string
+        }
+        Insert: {
+          child_saga_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          note?: string | null
+          position: number
+          route_id: string
+        }
+        Update: {
+          child_saga_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          note?: string | null
+          position?: number
+          route_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_route_entries_child_saga_id_fkey"
+            columns: ["child_saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_route_entries_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "saga_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saga_routes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: number
+          saga_id: string
+          slug: string
+          summary: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          saga_id: string
+          slug: string
+          summary?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          saga_id?: string
+          slug?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_routes_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sagas: {
         Row: {
           accent_color: string | null
@@ -2037,6 +2152,10 @@ export type Database = {
       }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }
+        Returns: undefined
+      }
+      save_saga_route: {
+        Args: { p_entries: Json; p_route_id: string }
         Returns: undefined
       }
       sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
