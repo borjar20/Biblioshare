@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/stats/dates";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
+import { EventCardActions } from "./event-card-actions";
 
 // Las actividades se agrupan por estado, no en una lista plana: "esperan
 // moderación" es lo que un moderador viene a resolver, y "activas" lo que un
@@ -50,6 +51,7 @@ export function ActivityList({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            actions={isModerator ? <EventCardActions activity={activity} /> : undefined}
           />
         ))}
       </Group>
