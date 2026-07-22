@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -202,7 +202,7 @@ archived`) con sus satélites `club_activity_items`, `_participants`, `_opinions
 **`config` (jsonb) es opaco a la BD**: lo interpreta la app según el `kind`. Ahí viven el
 criterio del reto, los tiers de la tierlist y el `completionMode` del reto por lista.
 
-### `evento` — actividad no participativa (dev 2026-07-22 · **prod pendiente**)
+### `evento` — actividad no participativa (dev y prod, 2026-07-22)
 
 Quinto `kind` de `club_activities`, distinto de los otros cuatro en que **nace `active`
 directamente** (nunca pasa por `proposed`) y no tiene pool de ítems ni participantes: sus
@@ -269,11 +269,11 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `item_type` | `book \| movie \| series` |
 | `media_status` | `planned \| in_progress \| completed \| dropped` |
 | `user_role` | `user \| collaborator \| admin` |
-| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge \| evento` (`evento`: dev 2026-07-22, **prod pendiente**) |
+| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge \| evento` (`evento`: 2026-07-22) |
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: dev 2026-07-22, **prod pendiente**) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: 2026-07-22) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
@@ -283,12 +283,11 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 82 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
 
-⚠️ **"prod pendiente" (§9) también significa "`schema-baseline.sql` pendiente".** Ese fichero
-es un replay de PRODUCCIÓN, no de dev: hoy excluye a propósito `20260722_activity_kind_evento.sql`
-y `20260722_club_event_rpcs.sql` porque prod aún no las tiene. Quien aplique esas dos
-migraciones a prod debe, en el mismo pase, añadir su SQL al final de `schema-baseline.sql`
-(y actualizar su cabecera) — el propio fichero registra que ya se desincronizó dos veces
-(notas 2026-07-14 y 2026-07-17) por olvidar justo este paso.
+⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
+es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos veces (notas
+2026-07-14 y 2026-07-17) por olvidar exactamente eso. Las dos migraciones de eventos
+(`20260722_activity_kind_evento.sql`, `20260722_club_event_rpcs.sql`) se aplicaron a prod el
+2026-07-22 y se anexaron al baseline en la misma pasada («ANEXO 2026-07-22»).
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del
