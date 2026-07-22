@@ -180,8 +180,11 @@ export function ProposeWizard({
   // Un evento no tiene pool, ni config, ni fecha de fin: su paso 2 es solo la
   // fecha. Y no se "propone" -- se crea ya activo por RPC.
   if (kind === "evento") {
+    // Cabecera fija, no `title`: aquí el título se sigue editando dentro del
+    // formulario, así que un eco del borrador del paso 1 se quedaría atrás en
+    // cuanto el usuario lo cambiara -- y ambos quedan a la vista a la vez.
     return (
-      <Panel title={title || t("newEvent")} onCancel={onCancel}>
+      <Panel title={t("newEvent")} onCancel={onCancel}>
         <EventForm
           clubId={clubId}
           initialTitle={title}
