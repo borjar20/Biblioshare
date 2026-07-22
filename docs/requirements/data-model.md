@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev el 2026-07-22, prod pendiente]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -299,15 +299,19 @@ la key de React del editor y el estado de plegado se asociaba al bloque equivoca
 omitió este par al crear la tabla. `validateRouteDraft` (`src/lib/sagas/validate-route-draft.ts`)
 ya rechaza duplicados en el borrador, así que esta garantía es la del esquema, no la única.
 
-⚠️ **Solo en dev por ahora.** Las dos migraciones de itinerarios —`20260723_saga_routes.sql`
-(crea `saga_routes` / `saga_route_entries` / `saga_route_choices` y la función `save_saga_route`)
-y `20260723_saga_route_entries_uniques.sql` (los dos uniques parciales de arriba)— están
-aplicadas y verificadas contra `pg_indexes` en dev el 2026-07-22, y **pendientes de aplicar en
-prod al desplegar esta rama**. Ambas son **puramente aditivas**: crean tablas, índices y una
-función nuevos, sin `ALTER`/`DROP`/`REVOKE` sobre ningún objeto existente. A diferencia del caso
-de #169 (§7.1), no hay dependencia de orden con el despliegue del código — el código nuevo no
-existe hasta desplegar esta rama, así que no puede haber una ventana con código viejo y esquema
-nuevo desincronizados. Aun así, la recomendación sigue siendo migrar primero y desplegar después.
+**Aplicadas en dev y en prod el 2026-07-22.** Las dos migraciones de itinerarios
+—`20260723_saga_routes.sql` (crea `saga_routes` / `saga_route_entries` / `saga_route_choices` y la
+función `save_saga_route`) y `20260723_saga_route_entries_uniques.sql` (los dos uniques parciales
+de arriba)— se aplicaron a prod **antes** de mergear la rama. Verificadas contra los objetos
+reales en ambos entornos (`pg_tables`, `pg_policies`, `pg_indexes`, `pg_proc`), no contra
+`list_migrations`: 3 tablas, 5 políticas, 2 índices únicos parciales, y el mismo `md5` del cuerpo
+normalizado de `save_saga_route` en dev y prod, con `prosecdef` correcto.
+
+Ambas son **puramente aditivas**: crean tablas, índices y una función nuevos, sin
+`ALTER`/`DROP`/`REVOKE` sobre ningún objeto existente. A diferencia del caso de #169 (§7.1), no
+tenían dependencia de orden con el despliegue del código — de hecho, si el código hubiera llegado
+antes, `getSagaRoutes`/`getRouteChoice` desestructuran `{ data }` e ignoran `error`, así que las
+tablas ausentes habrían degradado a `[]`/`null` y la feature simplemente no habría aparecido.
 
 ## 8. Seguridad
 
