@@ -17,6 +17,7 @@ export function EventForm({
   initialDescription,
   onDone,
   onCancel,
+  hasPreviousStep = false,
 }: {
   clubId: string;
   activity?: {
@@ -30,8 +31,19 @@ export function EventForm({
   // `activity` estamos editando y sus valores mandan.
   initialTitle?: string;
   initialDescription?: string;
-  onDone: () => void;
+  // La fecha guardada se propaga al terminar: el calendario la usa para saltar
+  // al mes del evento recién creado (si no, un evento creado fuera del mes
+  // visible no da ninguna señal de que ha pasado algo). Los demás
+  // consumidores (asistente, tarjeta) ignoran el argumento -- una función que
+  // no lo usa sigue siendo asignable a este tipo.
+  onDone: (startsOn?: string) => void;
   onCancel: () => void;
+  // Determina la copy del botón secundario: "Atrás" solo tiene sentido si
+  // quien monta el formulario tiene de verdad un paso anterior al que volver
+  // (el asistente, paso 1). `editing` no sirve como discriminador: el
+  // calendario también crea (no edita) y no tiene ningún paso previo, así que
+  // el contexto que monta el formulario es quien decide, no si se edita o no.
+  hasPreviousStep?: boolean;
 }) {
   const t = useTranslations("activity");
   const editing = Boolean(activity);
@@ -77,7 +89,7 @@ export function EventForm({
             startsOn,
           });
         }
-        onDone();
+        onDone(startsOn);
       } catch {
         // El error se MUESTRA: SD-8 ya registró "errores de mutación no
         // visibles" como hallazgo Important en este mismo motor. El caso real
@@ -144,7 +156,7 @@ export function EventForm({
               : t("eventSubmit")}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          {editing ? t("cancel") : t("back")}
+          {hasPreviousStep ? t("back") : t("cancel")}
         </Button>
       </div>
     </div>

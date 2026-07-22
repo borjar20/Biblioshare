@@ -18,7 +18,21 @@ import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
 import { MARK_ACCENT } from "./mark-accent";
 
-const CLASES_LEYENDA: CalendarMarkKind[] = ["evento", "hito", "inicio", "cierre"];
+// Mismo mecanismo que MARK_ACCENT: un Record<CalendarMarkKind, number> obliga
+// a que las 4 claves estén presentes, así que un tipo de marca nuevo rompe la
+// compilación aquí en vez de quedar omitido en silencio de la leyenda. El
+// orden es el canónico de desempate (ORDEN_MARCA en calendar-marks.ts):
+// inicio, hito, evento, cierre.
+const ORDEN_LEYENDA: Record<CalendarMarkKind, number> = {
+  inicio: 0,
+  hito: 1,
+  evento: 2,
+  cierre: 3,
+};
+
+const CLASES_LEYENDA = (Object.keys(MARK_ACCENT) as CalendarMarkKind[]).sort(
+  (a, b) => ORDEN_LEYENDA[a] - ORDEN_LEYENDA[b],
+);
 
 // El mes visible vive en el search param `mes`, y se cambia con
 // window.history.pushState -- NO con router.push/replace. El App Router
@@ -45,6 +59,9 @@ export function ClubCalendar({
   const agenda = agendaForMonth(marks, month, today);
 
   function irAlMes(destino: string) {
+    // Sin esta guarda, pulsar "Hoy" estando ya en el mes actual apila una
+    // entrada de historial idéntica: el usuario pulsa atrás y no ve pasar nada.
+    if (destino === month) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("mes", destino);
     window.history.pushState(null, "", `?${params.toString()}`);
@@ -66,8 +83,15 @@ export function ClubCalendar({
       {creando && (
         <EventForm
           clubId={clubId}
-          onDone={() => {
+          onDone={(startsOn) => {
             setCreando(false);
+            // Si el evento creado cae fuera del mes visible, saltar a su mes
+            // es la única señal de que algo ha pasado: si no, el formulario
+            // se cierra, las marcas se refrescan, y el usuario -- que sigue
+            // viendo el mes de antes -- no ve ningún cambio.
+            if (startsOn) {
+              irAlMes(startsOn.slice(0, 7));
+            }
             // Las marcas son props del server component: hay que releerlas.
             // Es una acción rara (crear un evento), así que el viaje al
             // servidor aquí no compromete la fluidez de las flechas.
