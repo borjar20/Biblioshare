@@ -81,6 +81,23 @@ export async function SagaInfo({
                 ✎ {t("configureGraph")}
               </Link>
             )}
+            {/* Punto de entrada a la curación de itinerarios, SIEMPRE visible
+                para collaborator+ (haya o no grafo, haya o no itinerarios ya
+                creados). Antes el único enlace a /rutas vivía en RouteView, y
+                RouteView solo se monta cuando la ruta activa YA es una
+                curada: en una saga sin itinerarios era inalcanzable desde la
+                interfaz — el mismo agujero que mató las colas (backlog §7.22,
+                "quedó inalcanzable, sin ningún enlace"). Se llega solo
+                tecleando la URL, así que aquí queda un enlace que no depende
+                de que ya exista nada. */}
+            {canConfigure && (
+              <Link
+                href={`/saga/${sagaId}/rutas`}
+                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              >
+                ✎ {t("routesManage")}
+              </Link>
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-5">
