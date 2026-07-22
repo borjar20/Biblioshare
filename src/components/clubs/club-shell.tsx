@@ -72,9 +72,9 @@ export function ClubMainHeader({
 }
 
 // Sidebar de navegación del club (`.cnav` del frame 10): banner + identidad +
-// las cuatro entradas (Feed · Actividades · Miembros · Gestión) + pie con el
-// estado de pertenencia. Es navegación DEL club, distinta de la nav global del
-// topbar.
+// las entradas (Feed · Actividades · Calendario · Miembros · Gestión) + pie con
+// el estado de pertenencia. Es navegación DEL club, distinta de la nav global
+// del topbar.
 export async function ClubSidebar({
   club,
   active,
@@ -82,7 +82,7 @@ export async function ClubSidebar({
   pendingProposals,
 }: {
   club: ClubDetail;
-  active: ClubTab | "miembros";
+  active: ClubTab | "miembros" | "calendario";
   canModerate: boolean;
   pendingProposals: number;
 }) {
@@ -91,7 +91,7 @@ export async function ClubSidebar({
   const base = `/club/${club.slug}`;
 
   const items: {
-    key: ClubTab | "miembros";
+    key: ClubTab | "miembros" | "calendario";
     href: string;
     label: string;
     pip?: number;
@@ -104,6 +104,11 @@ export async function ClubSidebar({
       href: `${base}?tab=actividades`,
       label: tt("actividades"),
       pip: canModerate ? pendingProposals : undefined,
+    },
+    {
+      key: "calendario",
+      href: `${base}/calendario`,
+      label: tt("calendario"),
     },
     {
       key: "miembros",
