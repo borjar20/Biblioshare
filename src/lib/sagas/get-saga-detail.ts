@@ -62,6 +62,15 @@ export type SagaDetail = {
   orderSagas: OrderSaga[];
   orderMemberships: OrderMembership[];
   orderNodes: OrderNode[];
+  /**
+   * TODOS los descendientes del árbol (haya o no miembros), con su nombre y
+   * accent_color persistido. `groups` (groupMembers) solo crea grupo para una
+   * hija con al menos un miembro, así que no sirve como fuente de "¿existe
+   * esta subsaga?": un bloque de ruta a una subsaga vacía desaparecía en
+   * silencio al usar `groups` como origen (hallazgo 2). RouteView construye
+   * childNames/childAccent a partir de esta lista, no de `groups`.
+   */
+  childRefs: SagaChildRef[];
 };
 
 type DescendantRow = {
@@ -424,6 +433,15 @@ export async function getSagaDetail(
     graph !== null,
   );
 
+  // Todos los descendientes, tengan o no miembros (hallazgo 2): el origen de
+  // "esta subsaga existe" para un bloque de ruta no puede ser `groups`, que
+  // omite las hijas vacías.
+  const childRefs: SagaChildRef[] = [...descendants.values()].map((d) => ({
+    id: d.id,
+    name: d.name,
+    accentColor: d.accent_color,
+  }));
+
   return {
     saga,
     parent: (parentRow as { data: { id: string; name: string } | null }).data ?? null,
@@ -443,5 +461,6 @@ export async function getSagaDetail(
     orderSagas,
     orderMemberships,
     orderNodes,
+    childRefs,
   };
 }

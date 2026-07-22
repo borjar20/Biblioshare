@@ -12,6 +12,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export const SYNTHETIC_SLUGS = ["lectura", "publicacion"] as const;
 
 export type CuratedRouteRow = {
+  id: string;
   slug: string;
   name: string;
   summary: string | null;
@@ -29,7 +30,10 @@ export function buildRouteList(
     out.push({ slug: "lectura", name: labels.lectura, summary: null, synthetic: true });
   }
   for (const c of [...curated].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))) {
-    out.push({ slug: c.slug, name: c.name, summary: c.summary, synthetic: false });
+    // El id viaja para que RouteView pueda localizar la fila activa en
+    // detail.routes sin volver a consultar saga_routes (hallazgo 3). Las
+    // sintéticas de abajo/arriba no llevan id: no tienen fila.
+    out.push({ id: c.id, slug: c.slug, name: c.name, summary: c.summary, synthetic: false });
   }
   out.push({ slug: "publicacion", name: labels.publicacion, summary: null, synthetic: true });
   return out;
@@ -41,7 +45,7 @@ export async function getSagaRoutes(supabase: SupabaseServerClient, sagaId: stri
     .select("id, slug, name, summary, position")
     .eq("saga_id", sagaId)
     .order("position", { ascending: true });
-  return (data ?? []) as Array<CuratedRouteRow & { id: string }>;
+  return (data ?? []) as CuratedRouteRow[];
 }
 
 export async function getRouteEntries(

@@ -42,4 +42,11 @@ export type SagaRoute = {
   summary: string | null;
   /** Las sintéticas (`lectura`, `publicacion`) no se pueden editar ni borrar. */
   synthetic: boolean;
+  /**
+   * Id de la fila en `saga_routes`. Solo las curadas tienen fila: las
+   * sintéticas (`lectura`/`publicacion`) se calculan y no la necesitan.
+   * Con esto RouteView localiza la ruta activa en `detail.routes` en vez de
+   * volver a consultar `saga_routes` solo para conseguir el id (hallazgo 3).
+   */
+  id?: string;
 };
