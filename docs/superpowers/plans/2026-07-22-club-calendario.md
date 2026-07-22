@@ -16,7 +16,7 @@
 - **No hay migración.** Esta feature no toca el esquema. `due_on` y el kind `evento` ya existen. No se edita `docs/requirements/data-model.md`.
 - **Fechas de Postgres: nunca `new Date(cadenaISO)`.** Un `date` no lleva zona; pasarlo por `Date` lo interpreta como UTC y puede retroceder un día. Para formatear se usa `format-date.ts`; para comparar, comparación de cadenas ISO (lexicográfico == cronológico).
 - **Aritmética de calendario: reutilizar `@/lib/stats/dates`.** `daysInMonth(month)`, `shiftMonth(month, delta)`, `todayISO()`, `toISODate(date)` YA EXISTEN. Construir `Date` desde **números** (`new Date(y, m - 1, d)`) es seguro y es la convención del repo. **No escribir helpers nuevos de mes ni de «hoy».**
-- **`href` es `null` exactamente cuando `markKind === "evento"`.** Un evento no tiene ficha; cualquier enlace a `/actividad/{id}` para un evento es un 404. Este fallo ya apareció tres veces en la rama anterior.
+- **`href` es `null` siempre que `activityKind === "evento"`, sea cual sea el `markKind`.** Un evento no tiene ficha; cualquier enlace a `/actividad/{id}` para un evento es un 404. Este fallo ya apareció tres veces en la rama anterior. **Los consumidores deciden mirando `href`, nunca el kind** — un hito de una actividad evento también llega sin enlace.
 - **Un `evento` ignora SIEMPRE su `ends_on`**, aunque tenga valor.
 - **`past` es estricto:** una marca de HOY no es pasado (`date < today`).
 - **Estados que entran al calendario:** `active` y `finished`. Fuera `proposed` y `archived`.

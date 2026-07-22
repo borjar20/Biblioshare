@@ -16,7 +16,15 @@ export type CalendarMark = {
   detail: string | null;
   activityId: string;
   activityKind: ActivityKind;
-  /** null EXACTAMENTE cuando markKind === "evento": no tiene ficha propia. */
+  /**
+   * null cuando la marca no tiene ficha a la que enlazar. Eso pasa siempre que
+   * `activityKind === "evento"`, sea cual sea el markKind: un evento no tiene
+   * página propia, así que enlazarlo sería un 404.
+   *
+   * Ojo: NO basta con mirar `markKind === "evento"` -- un hito de una actividad
+   * evento también viene sin enlace. Los consumidores comprueban `href`, no el
+   * kind.
+   */
   href: string | null;
   past: boolean;
 };
