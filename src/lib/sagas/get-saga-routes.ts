@@ -19,6 +19,18 @@ export type CuratedRouteRow = {
   position: number;
 };
 
+/**
+ * Orden de las rutas curadas: por `position`, y si empatan (la columna no
+ * tiene UNIQUE, a diferencia de saga_route_entries.position) por nombre, para
+ * que el resultado sea determinista en vez de depender del orden que devuelva
+ * la consulta. Único criterio de orden del dominio: lo usan buildRouteList
+ * (qué ve el lector en el selector) y computeMovedPositions (qué "arriba/
+ * abajo" ve el curador) — así los dos coinciden siempre.
+ */
+export function compareRoutePosition(a: CuratedRouteRow, b: CuratedRouteRow): number {
+  return a.position - b.position || a.name.localeCompare(b.name);
+}
+
 /** Orden del selector: lectura → curadas (por position) → publicación. */
 export function buildRouteList(
   curated: CuratedRouteRow[],
@@ -29,7 +41,7 @@ export function buildRouteList(
   if (hasGraph) {
     out.push({ slug: "lectura", name: labels.lectura, summary: null, synthetic: true });
   }
-  for (const c of [...curated].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))) {
+  for (const c of [...curated].sort(compareRoutePosition)) {
     // El id viaja para que RouteView pueda localizar la fila activa en
     // detail.routes sin volver a consultar saga_routes (hallazgo 3). Las
     // sintéticas de abajo/arriba no llevan id: no tienen fila.
@@ -46,6 +58,38 @@ export async function getSagaRoutes(supabase: SupabaseServerClient, sagaId: stri
     .eq("saga_id", sagaId)
     .order("position", { ascending: true });
   return (data ?? []) as CuratedRouteRow[];
+}
+
+/**
+ * Nuevas posiciones tras mover una ruta arriba/abajo (brecha de spec
+ * 2026-07-22, Task 8: "reordenar" faltaba). Ordena `routes` con el mismo
+ * criterio que ve el lector (compareRoutePosition) e intercambia la ruta con
+ * su vecina en ESE orden.
+ *
+ * Renumera TODA la lista a 1..n en el resultado en vez de solo el par movido:
+ * `saga_routes.position` no tiene UNIQUE, así que un empate heredado (datos
+ * antiguos, o dos `createRoute` concurrentes) podría dejar un simple
+ * intercambio de valores sin efecto visible si las dos posiciones ya
+ * coincidían. Renumerar es determinista pase lo que pase de partida y deja la
+ * tabla sin empates para el siguiente movimiento.
+ *
+ * Devuelve null si no hay nada que mover: `routeId` no está en `routes` o ya
+ * está en el extremo hacia el que se pide mover (no es "error", es "ya está
+ * ahí" — el llamador simplemente no escribe nada).
+ */
+export function computeMovedPositions(
+  routes: CuratedRouteRow[],
+  routeId: string,
+  direction: "up" | "down",
+): Array<{ id: string; position: number }> | null {
+  const ordered = [...routes].sort(compareRoutePosition);
+  const index = ordered.findIndex((r) => r.id === routeId);
+  if (index === -1) return null;
+  const target = index + (direction === "up" ? -1 : 1);
+  if (target < 0 || target >= ordered.length) return null;
+
+  [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+  return ordered.map((r, i) => ({ id: r.id, position: i + 1 }));
 }
 
 export async function getRouteEntries(

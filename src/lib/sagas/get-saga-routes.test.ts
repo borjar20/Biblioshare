@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRouteList } from "./get-saga-routes";
+import { buildRouteList, computeMovedPositions, type CuratedRouteRow } from "./get-saga-routes";
 
 const labels = { lectura: "Orden de lectura", publicacion: "Publicación" };
 
@@ -48,5 +48,56 @@ describe("buildRouteList", () => {
     const publicacion = list.find((r) => r.slug === "publicacion");
     expect(lectura?.id).toBeUndefined();
     expect(publicacion?.id).toBeUndefined();
+  });
+});
+
+// Reordenado de rutas (brecha de spec 2026-07-22, Task 8).
+describe("computeMovedPositions", () => {
+  const guardia: CuratedRouteRow = { id: "guardia", slug: "guardia", name: "La Guardia", summary: null, position: 1 };
+  const muerte: CuratedRouteRow = { id: "muerte", slug: "muerte", name: "La Muerte", summary: null, position: 2 };
+  const brujas: CuratedRouteRow = { id: "brujas", slug: "brujas", name: "Brujas", summary: null, position: 3 };
+
+  it("mover hacia abajo intercambia con la siguiente y renumera 1..n", () => {
+    const next = computeMovedPositions([guardia, muerte, brujas], "guardia", "down");
+    expect(next).toEqual([
+      { id: "muerte", position: 1 },
+      { id: "guardia", position: 2 },
+      { id: "brujas", position: 3 },
+    ]);
+  });
+
+  it("mover hacia arriba intercambia con la anterior", () => {
+    const next = computeMovedPositions([guardia, muerte, brujas], "brujas", "up");
+    expect(next).toEqual([
+      { id: "guardia", position: 1 },
+      { id: "brujas", position: 2 },
+      { id: "muerte", position: 3 },
+    ]);
+  });
+
+  it("ya en el extremo: no hay nada que mover, devuelve null", () => {
+    expect(computeMovedPositions([guardia, muerte, brujas], "guardia", "up")).toBeNull();
+    expect(computeMovedPositions([guardia, muerte, brujas], "brujas", "down")).toBeNull();
+  });
+
+  it("routeId inexistente: devuelve null", () => {
+    expect(computeMovedPositions([guardia, muerte, brujas], "no-existe", "down")).toBeNull();
+  });
+
+  it("posiciones empatadas (position no tiene UNIQUE en BD): se desempata por nombre y el resultado sale sin empates", () => {
+    // Dos rutas con la misma position, como podría dejar una carrera entre
+    // dos createRoute concurrentes o datos antiguos.
+    const a: CuratedRouteRow = { id: "a", slug: "a", name: "Ana", summary: null, position: 1 };
+    const b: CuratedRouteRow = { id: "b", slug: "b", name: "Beto", summary: null, position: 1 };
+    const c: CuratedRouteRow = { id: "c", slug: "c", name: "Ceci", summary: null, position: 1 };
+    // Orden por desempate de nombre: Ana(1), Beto(1), Ceci(1) → mover Ana
+    // hacia abajo la intercambia con Beto, y el resultado queda 1..3 sin
+    // empates.
+    const next = computeMovedPositions([a, b, c], "a", "down");
+    expect(next).toEqual([
+      { id: "b", position: 1 },
+      { id: "a", position: 2 },
+      { id: "c", position: 3 },
+    ]);
   });
 });
