@@ -1016,6 +1016,14 @@
     "mapHint": "Arrastra para explorar · pellizca para zoom",
     "mapTitle": "Mapa de lectura · {count, plural, =1 {1 título} other {# títulos}}",
     "orderNo": "Nº {n}",
+    "outOfMainOrder": "Fuera del orden principal",
+    "outOfMainOrderHint": "Sin hueco fijo en el orden. Puedes leerlas cuando quieras.",
+    "roleLabel": {
+      "precuela": "Precuela",
+      "spin_off": "Spin-off",
+      "relato": "Relato",
+      "paralela": "Paralela"
+    },
     "branchOptional": "Spin-off · opcional",
     "branchRequisite": "Requisito",
     "bridgeHint": "Nexo entre tramos · léelo en cualquier punto",
