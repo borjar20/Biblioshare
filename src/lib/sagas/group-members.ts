@@ -4,6 +4,7 @@ import {
   isSagaAccentToken,
   type SagaAccentToken,
 } from "./accents";
+import { isMemberCompleted } from "./completion";
 import type { DetailMember, SagaChildRef } from "./types";
 
 // Agrupación de la pestaña Info y progreso del hero (spec §2.1/§2.3, frames
@@ -138,7 +139,7 @@ export function computeProgress(
     const g = groupOf.get(k);
     if (g === undefined) continue;
     const member = g.members.find((m) => `${m.itemType}:${m.itemId}` === k);
-    if (member?.status !== "completed") continue;
+    if (!isMemberCompleted(member)) continue;
     completed++;
     doneByAccent.set(g.accent, (doneByAccent.get(g.accent) ?? 0) + 1);
   }
