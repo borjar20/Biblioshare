@@ -111,9 +111,10 @@ export function groupMembers(
 // issue #91 esta función sumaba `g.members.length` y el hero decía 2/7 donde la
 // card de biblioteca decía 2/5 sobre la misma saga.
 //
-// Una clave del orden sin miembro (nodo del grafo que apunta a una obra que no
-// es saga_item) suma al total pero nunca a un segmento: sin miembro no hay
-// estado, así que no puede estar completada.
+// Las claves sin miembro (nodos del grafo que apuntan a una obra que no es
+// saga_item) ya no llegan hasta aquí: createMainOrder las descarta, igual que
+// buildSagaGraph al pintar. Antes sumaban al total sin poder completarse
+// nunca, así que ese avance no podía llegar al 100% (issue #170).
 export function computeProgress(
   groups: MemberGroup[],
   order: string[],

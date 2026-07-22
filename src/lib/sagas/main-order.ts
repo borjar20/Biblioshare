@@ -64,6 +64,13 @@ export function createMainOrder(
     list.push(n);
     nodesBySaga.set(n.sagaId, list);
   }
+  // Issue #170: un nodo-ítem puede apuntar a algo que no es miembro
+  // (saga_nodes.item_id no tiene FK y save_saga_graph no valida la membresía).
+  // buildSagaGraph ya lo descarta al pintar, así que el usuario no puede verlo
+  // ni marcarlo; si contase en el denominador, el avance nunca llegaría al
+  // 100%. Mismo criterio que el lookup `members` de buildSagaGraph: la
+  // membresía puede vivir en cualquier saga del árbol, no solo en la del nodo.
+  const memberKeys = new Set(memberships.map((m) => itemKey(m.itemType, m.itemId)));
 
   const minPos = (sagaId: string) =>
     (membersBySaga.get(sagaId) ?? []).reduce(
@@ -84,8 +91,10 @@ export function createMainOrder(
         .filter((n) => n.orderNo !== null)
         .sort((a, b) => a.orderNo! - b.orderNo!);
       for (const n of ordered) {
-        if (n.itemType !== null && n.itemId !== null) out.push(itemKey(n.itemType, n.itemId));
-        else if (n.childSagaId !== null) out.push(...walk(n.childSagaId, depth + 1, visited));
+        if (n.itemType !== null && n.itemId !== null) {
+          const key = itemKey(n.itemType, n.itemId);
+          if (memberKeys.has(key)) out.push(key);
+        } else if (n.childSagaId !== null) out.push(...walk(n.childSagaId, depth + 1, visited));
       }
     } else {
       const direct = [...(membersBySaga.get(sagaId) ?? [])].sort((a, b) => {
