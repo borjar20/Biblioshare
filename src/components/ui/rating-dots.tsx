@@ -59,7 +59,7 @@ export function RatingDots({
 
   const dots = (
     <div
-      className={`inline-flex items-center gap-1 ${className}`}
+      className="inline-flex items-center gap-1"
       onMouseLeave={interactive ? () => setPreview(null) : undefined}
     >
       {Array.from({ length: 5 }).map((_, i) => {
@@ -107,10 +107,16 @@ export function RatingDots({
     </div>
   );
 
+  // `className` va SIEMPRE en el envoltorio de fuera, nunca en el div de los
+  // dots: ese ya lleva `inline-flex`, y Tailwind emite `.inline-flex` después
+  // de `.hidden`, así que un `hidden` del consumidor perdía la pelea. Por eso
+  // el resumen de «Comunidad» pintaba diez dots en móvil — sus dos instancias
+  // (`lg:hidden` y `hidden lg:flex`) se veían las dos a la vez.
   if (!interactive) {
     return (
       <div
         role="img"
+        className={className || undefined}
         aria-label={
           value === null ? "Sin valorar" : `${formatDots(value)} de 5`
         }
@@ -121,7 +127,11 @@ export function RatingDots({
   }
 
   return (
-    <div role="group" aria-label="Tu valoración">
+    <div
+      role="group"
+      className={className || undefined}
+      aria-label="Tu valoración"
+    >
       {dots}
     </div>
   );
