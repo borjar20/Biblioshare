@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/nav/app-shell";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { SessionOriginTracker } from "@/components/session/session-origin";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -54,6 +55,11 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <ServiceWorkerRegister />
+        {/* Anota la pantalla actual en cada navegación para que el modal de
+            sesión sepa a dónde volver al cerrarse (issue #161). Va aquí, en la
+            raíz, porque tiene que enterarse de TODAS las navegaciones — no
+            solo de las que pasan por la ficha. */}
+        <SessionOriginTracker />
         <NextIntlClientProvider>
           <AppShell>{children}</AppShell>
           {modal}

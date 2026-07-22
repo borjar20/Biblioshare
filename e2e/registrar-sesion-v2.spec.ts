@@ -458,3 +458,72 @@ test("la rejilla de episodios de una serie va acotada (272px) con scroll propio"
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Regresión: guardar desde una pantalla que NO es la ficha
+// ─────────────────────────────────────────────────────────────────────────
+// Los tests de arriba entran al modal con page.goto(ficha) — navegación DURA
+// con la ficha como entrada anterior, que es justo el caso sano de
+// closeOnce(): sale por router.back(), y eso DESMONTA la ruta interceptada,
+// que se llevaba el <dialog> por delante y tapaba el fallo de abajo.
+//
+// El usuario real entra a registrar desde el inicio (tarjeta de hoy /
+// now-consuming), y ahí la entrada anterior NO es la ficha: closeOnce toma la
+// rama router.replace(exitHref), una navegación SOFT que conserva el slot
+// @modal — la ruta NO se desmonta y el <dialog> sigue MONTADO. Cerrarlo con
+// close() no bastaba: su className forzaba `display:flex`, que gana a la
+// regla del navegador `dialog:not([open]) { display: none }`, así que la hoja
+// se quedaba PINTADA en flujo normal, sin backdrop y fuera del top layer, con
+// la barra de pestañas de la ficha atravesándola.
+//
+// Y encima te dejaba en la ficha, que no es de donde venías (issue #161). El
+// destino sale ahora del ORIGEN REAL, capturado antes de navegar
+// (session-origin.tsx), no de deducirlo del historial a posteriori — que es
+// lo que no se puede hacer: cuando el push a /sesion degrada a replace, la
+// entrada de la ficha desaparece y "hay entrada anterior" deja de significar
+// "el usuario venía de ahí". Ver el comentario de previousEntryIs.
+test("guardar desde el inicio vuelve al inicio y no deja la hoja pintada", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await login(page);
+  const userId = await devtestId();
+  const { itemId, passId } = await resolveBookFixture(userId);
+
+  const passSnapshot = await snapshotPass(passId);
+  const sessionsBefore = await sessionIds(passId);
+
+  try {
+    await page.goto("/");
+    await expect(page.locator(`[href^="/sesion/${passId}"]`).first()).toBeVisible();
+
+    await page.locator(`[href^="/sesion/${passId}"]`).first().click();
+    await page.waitForURL(/\/sesion\//, { timeout: 15_000 });
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[name="page"]').fill("5");
+    await dialog.getByRole("button", { name: "Guardar sesión" }).click();
+
+    // Vuelves al INICIO, que es de donde saliste. No a la ficha.
+    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    expect(page.url()).not.toContain(`/libro/${itemId}`);
+
+    // Lo que este test protege: la hoja no queda pintada. `toBeHidden` no
+    // basta como red de seguridad — comprobamos el alto REAL, que es lo que
+    // falló en producción (un <dialog> cerrado pero con display:flex sigue
+    // midiendo y pintándose, y Playwright lo daría por "hidden" solo si mira
+    // el atributo).
+    await expect(dialog).toBeHidden();
+    const painted = await page.evaluate(() => {
+      const d = [...document.querySelectorAll("dialog")].find((x) =>
+        (x.textContent ?? "").includes("Registrar sesión"),
+      );
+      return d ? d.getBoundingClientRect().height : 0;
+    });
+    expect(painted).toBe(0);
+  } finally {
+    await restorePass(passId, passSnapshot);
+    await deleteNewSessions(passId, sessionsBefore);
+  }
+});

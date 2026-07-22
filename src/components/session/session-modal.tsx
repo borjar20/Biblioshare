@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { getSessionOrigin } from "./session-origin";
 
 // Cáscara del modal de sesión. <dialog> nativo con showModal(): atrapa el foco
 // y cierra con Escape sin código propio, igual que ClosePassSheet.
@@ -57,10 +58,23 @@ import { useRouter } from "next/navigation";
 // para pisar `pendingPush`. Tampoco es cosa del auto-cierre: cualquiera que
 // entre a registrar una sesión pierde la entrada de la ficha.
 
-// ¿La entrada anterior del historial es la ficha a la que queremos volver?
+// ¿La entrada anterior del historial es el destino al que queremos volver?
 // Solo la Navigation API lo sabe (Chromium); donde no exista se responde que
 // sí, que es el comportamiento de siempre — este helper solo puede MEJORAR el
 // destino, nunca empeorarlo respecto a lo que había antes de la issue #117.
+//
+// Esto decide CÓMO se sale (back, que además desmonta la ruta interceptada y
+// conserva el scroll, frente a replace), nunca A DÓNDE: el destino lo fija
+// exitTarget() más abajo. Es una distinción que costó una regresión: mientras
+// el "a dónde" salió de aquí, un historial degradado mandaba al usuario al
+// sitio equivocado.
+//
+// NO usar esto para deducir el origen ("¿hay CUALQUIER entrada anterior? ->
+// back()"): está probado que rompe la Regla 2 de pase-hub.spec.ts, o sea la
+// regresión de #117. Cuando el push a /sesion degrada a replace —lo dispara,
+// por ejemplo, pulsar "Leyendo" justo antes: su server action revalida y se
+// come el `pendingPush`— la entrada de la ficha desaparece, y entonces "hay
+// una entrada anterior" y "el usuario venía de ahí" dejan de ser lo mismo.
 function previousEntryIs(exitHref: string): boolean {
   const nav = (
     window as unknown as {
@@ -74,6 +88,25 @@ function previousEntryIs(exitHref: string): boolean {
     new URL(previous.url).pathname ===
     new URL(exitHref, window.location.origin).pathname
   );
+}
+
+// A dónde se sale. El origen REAL lo anota SessionOriginTracker antes de
+// navegar (session-origin.tsx); `exitHref` —la ficha de la obra— es solo el
+// respaldo para cuando no hay origen, o sea al entrar por enlace directo a
+// /sesion/[passId].
+//
+// Si el origen ES la propia ficha, mandan las preferencias de la ruta
+// interceptada y no el origen tal cual: `exitHref` lleva `?tab=log` a
+// propósito, para que al volver se vea en "Mi registro" la sesión que se acaba
+// de guardar. Sin este caso, quien registrara desde la pestaña "Información"
+// volvería a "Información" y no vería nada nuevo.
+function exitTarget(exitHref: string): string {
+  const origin = getSessionOrigin();
+  if (!origin) return exitHref;
+  const samePage =
+    new URL(origin, window.location.origin).pathname ===
+    new URL(exitHref, window.location.origin).pathname;
+  return samePage ? exitHref : origin;
 }
 const ModalCloseContext = createContext<(() => void) | null>(null);
 
@@ -110,8 +143,9 @@ export function SessionModal({
     // si llegamos por SessionSheet (vía contexto), lo cerramos nosotros. El
     // close() reentrante vuelve a este callback y sale por el guard de arriba.
     dialogRef.current?.close();
-    if (previousEntryIs(exitHref)) router.back();
-    else router.replace(exitHref);
+    const target = exitTarget(exitHref);
+    if (previousEntryIs(target)) router.back();
+    else router.replace(target);
   }, [router, exitHref]);
 
   // showModal() es una llamada imperativa al DOM, no setState: no choca con
@@ -130,6 +164,19 @@ export function SessionModal({
       onClick={(e) => {
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
+      // `hidden open:flex`, NUNCA `flex` a secas. El navegador oculta un
+      // <dialog> cerrado con `dialog:not([open]) { display: none }`, que es
+      // una regla de su hoja de estilos por defecto: CUALQUIER `display` de
+      // autor la pisa. Con `flex` a secas, un close() dejaba el diálogo
+      // medido y PINTADO — fuera del top layer y sin backdrop, o sea en flujo
+      // normal— encima de la página, con la barra de pestañas de la ficha
+      // atravesando la hoja. Solo se notaba cuando la ruta interceptada
+      // sobrevivía al cierre (rama `replace`, donde la navegación soft
+      // conserva el slot @modal): si la ruta se desmontaba, el nodo se iba con
+      // ella y tapaba el fallo. Este es el único <dialog> del proyecto con
+      // display propio — el resto deja el del navegador y pone el `flex` en un
+      // <div> interior, que es la otra forma de no tener este problema.
+      //
       // `flex flex-col`: convierte a este <dialog> en contenedor flex para que
       // SessionSheet (su único hijo visible) reciba una altura DEFINIDA vía el
       // algoritmo de flexbox — en vez de depender de que `height: 100%` se
@@ -138,7 +185,7 @@ export function SessionModal({
       // `flex-1` + `min-h-0` para encajar exactamente en el hueco disponible
       // (100dvh en móvil, hasta 90dvh en pc) y hacer scroll interno en vez de
       // desbordar y que este `overflow-hidden` lo recorte en silencio.
-      className="m-0 flex h-full max-h-none w-full flex-col max-w-none overflow-hidden border-0 bg-background p-0 text-foreground backdrop:bg-black/50 sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:w-[min(30rem,calc(100vw-2rem))] sm:rounded-2xl sm:shadow-xl"
+      className="m-0 hidden h-full max-h-none w-full flex-col max-w-none overflow-hidden border-0 bg-background p-0 text-foreground backdrop:bg-black/50 open:flex sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:w-[min(30rem,calc(100vw-2rem))] sm:rounded-2xl sm:shadow-xl"
     >
       <ModalCloseContext.Provider value={closeOnce}>
         {children}
