@@ -214,23 +214,39 @@ test("evento: se crea, se edita, se archiva y no tiene ficha", async ({
       )
       .toBe("archived");
 
-    // La tarjeta sale de "Fechas señaladas" (era el único evento del club: el
-    // grupo entero desaparece, `Group` no pinta una sección vacía) y cae en
-    // "Finalizadas", donde ya no lleva acciones de edición.
-    await expect(page.getByRole("heading", { name: "Fechas señaladas" })).toHaveCount(0);
+    // La tarjeta cae en "Finalizadas", donde ya no lleva acciones de edición.
+    // Se espera PRIMERO lo positivo (misma regla que en :78-82): afirmar la
+    // ausencia de "Fechas señaladas" antes de comprobar que la tarjeta aterrizó
+    // en "Finalizadas" sería trivialmente cierto si la página aún no ha
+    // repintado nada.
     const seccionFinalizadas = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Finalizadas" }) });
     await expect(seccionFinalizadas.getByText(tituloEditado)).toBeVisible();
+    // La comprobación que de verdad importa es que ESTE evento ya no está en
+    // "Fechas señaladas" -- no que la sección entera haya desaparecido: el club
+    // acumula eventos huérfanos de otras specs, así que asumir que este era el
+    // único evento (toHaveCount(0) sobre el heading) convertiría un huérfano
+    // ajeno en un fallo permanente de este test.
+    await expect(
+      page
+        .locator("section")
+        .filter({ has: page.getByRole("heading", { name: "Fechas señaladas" }) })
+        .getByText(tituloEditado),
+    ).toHaveCount(0);
 
     console.log("EVENTO OK: creado, editado y archivado con moderador real", eventoId);
   } finally {
     if (eventoId) {
-      const del = await request.delete(
-        `${SUPABASE_URL}/rest/v1/club_activities?id=eq.${eventoId}`,
-        { headers },
-      );
-      expect(del.ok()).toBeTruthy();
+      // fetch nativo, NO el `request` de Playwright: ese fixture muere junto con
+      // el contexto del navegador, así que si el test expira por timeout la
+      // limpieza no llega a ejecutarse y deja filas sueltas en la base (mismo
+      // motivo que club-join-request.spec.ts:114-117; ya pasó -- 8 filas
+      // huérfanas motivaron este try/finally).
+      await fetch(`${SUPABASE_URL}/rest/v1/club_activities?id=eq.${eventoId}`, {
+        method: "DELETE",
+        headers,
+      });
       console.log("LIMPIEZA OK: evento", eventoId, "borrado");
     }
   }

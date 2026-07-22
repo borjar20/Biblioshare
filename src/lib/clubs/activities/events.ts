@@ -60,7 +60,8 @@ export async function updateClubEvent(input: {
 }): Promise<void> {
   const { supabase } = await requireUser();
 
-  // La RPC valida creador/moderador+, kind='evento' y status='active' (un
+  // La RPC valida moderador+ (has_min_club_role(club_id, 'moderator'); no hay
+  // rama de creador), kind='evento' y status='active' (un
   // evento archivado ya no es editable); lanza 'not found' | 'not an event' |
   // 'forbidden' | 'title required' | 'starts_on required' | 'event not active'.
   // Se relanza tal cual -- el llamante (UI) es quien traduce/pinta el error,
