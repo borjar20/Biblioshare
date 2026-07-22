@@ -299,8 +299,15 @@ la key de React del editor y el estado de plegado se asociaba al bloque equivoca
 omitió este par al crear la tabla. `validateRouteDraft` (`src/lib/sagas/validate-route-draft.ts`)
 ya rechaza duplicados en el borrador, así que esta garantía es la del esquema, no la única.
 
-⚠️ **Solo en dev por ahora.** Aplicada y verificada contra `pg_indexes` en dev el 2026-07-22;
-prod queda pendiente para la Task 10, junto con el resto de migraciones acumuladas de esta spec.
+⚠️ **Solo en dev por ahora.** Las dos migraciones de itinerarios —`20260723_saga_routes.sql`
+(crea `saga_routes` / `saga_route_entries` / `saga_route_choices` y la función `save_saga_route`)
+y `20260723_saga_route_entries_uniques.sql` (los dos uniques parciales de arriba)— están
+aplicadas y verificadas contra `pg_indexes` en dev el 2026-07-22, y **pendientes de aplicar en
+prod al desplegar esta rama**. Ambas son **puramente aditivas**: crean tablas, índices y una
+función nuevos, sin `ALTER`/`DROP`/`REVOKE` sobre ningún objeto existente. A diferencia del caso
+de #169 (§7.1), no hay dependencia de orden con el despliegue del código — el código nuevo no
+existe hasta desplegar esta rama, así que no puede haber una ventana con código viejo y esquema
+nuevo desincronizados. Aun así, la recomendación sigue siendo migrar primero y desplegar después.
 
 ## 8. Seguridad
 

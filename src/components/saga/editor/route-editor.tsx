@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { saveRoute } from "@/lib/sagas/route-actions";
 import type { RawRouteEntry } from "@/lib/sagas/route-types";
+import { hydrateRouteDraft, type RouteEditorItem } from "@/lib/sagas/hydrate-route-draft";
 
-export type RouteEditorItem = { key: string; label: string; entry: Omit<RawRouteEntry, "position"> };
+export type { RouteEditorItem };
 
 // Editor de los PASOS de un itinerario (Task 9). Botones ↑/↓ en vez de drag &
 // drop: la lista es corta, el teclado y el lector de pantalla salen gratis, y
@@ -29,22 +30,16 @@ export function RouteEditor({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const keyOf = (e: Omit<RawRouteEntry, "position">) =>
-    e.childSagaId ? `s:${e.childSagaId}` : `i:${e.itemType}:${e.itemId}`;
-
-  // La key de cada fila sale del CONTENIDO del paso (keyOf), nunca del índice:
-  // con key={i}, reordenar movería el estado de React (aquí no lo hay, pero
+  // La key de cada fila sale del CONTENIDO del paso, nunca del índice: con
+  // key={i}, reordenar movería el estado de React (aquí no lo hay, pero
   // RouteBlock sí pliega/despliega con useState) al bloque equivocado —
   // exactamente el hallazgo de la Task 6.
-  const [draft, setDraft] = useState<RouteEditorItem[]>(() =>
-    initialEntries
-      .slice()
-      .sort((a, b) => a.position - b.position)
-      .map((e) => {
-        const k = keyOf(e);
-        return palette.find((p) => p.key === k) ?? { key: k, label: k, entry: e };
-      }),
-  );
+  //
+  // La hidratación vive en hydrate-route-draft.ts (función pura, testeada
+  // aparte) porque tiene una trampa que ya causó pérdida de datos: la nota
+  // guardada en BD hay que conservarla explícitamente, no basta con coger el
+  // ítem de la paleta tal cual.
+  const [draft, setDraft] = useState<RouteEditorItem[]>(() => hydrateRouteDraft(initialEntries, palette));
 
   const inDraft = new Set(draft.map((d) => d.key));
 
