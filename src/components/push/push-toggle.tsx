@@ -105,7 +105,7 @@ export function PushToggle() {
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+          className={`absolute left-0 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
             // El knob se apoya en dos fondos distintos, así que su color va con
             // el estado: sobre bg-accent contrasta accent-foreground; sobre
             // bg-surface-muted haría falta algo más oscuro en modo oscuro.
@@ -113,6 +113,10 @@ export function PushToggle() {
               ? "bg-accent-foreground"
               : "bg-muted-foreground"
           } ${
+            // Estos offsets asumen que el knob está anclado a left-0: sin ese
+            // anclaje el absolute cae en su posición estática, que en un
+            // <button> va centrada (text-align: center del UA), y el estado
+            // "on" se salía del track y lo recortaba el overflow-hidden.
             // w-11 track (44px) minus w-5 knob (20px) minus the 2px inset used
             // on every other edge (top-0.5) leaves 22px for the "on" position
             // — translate-x-5 (20px) undershot that by 2px, so the knob never
