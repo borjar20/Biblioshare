@@ -4,6 +4,7 @@ import { planMembershipOps, type TreeMembershipRow } from "./apply-membership-op
 const row = (sagaId: string, over: Partial<TreeMembershipRow> = {}): TreeMembershipRow => ({
   saga_id: sagaId,
   position: null,
+  role: null,
   is_primary: false,
   ...over,
 });
@@ -13,7 +14,7 @@ describe("planMembershipOps", () => {
     const plan = planMembershipOps({ itemType: "book", itemId: "i", targetSagaId: null }, [], "root", false);
     expect(plan).toEqual({
       deleteFrom: [],
-      insert: { saga_id: "root", position: null, is_primary: true },
+      insert: { saga_id: "root", position: null, role: null, is_primary: true },
       promoteTarget: false,
     });
   });
@@ -37,7 +38,7 @@ describe("planMembershipOps", () => {
     );
     expect(plan).toEqual({
       deleteFrom: ["childA"],
-      insert: { saga_id: "childB", position: 3, is_primary: true },
+      insert: { saga_id: "childB", position: 3, role: null, is_primary: true },
       promoteTarget: false,
     });
   });
@@ -51,7 +52,7 @@ describe("planMembershipOps", () => {
     );
     expect(plan).toEqual({
       deleteFrom: ["childA"],
-      insert: { saga_id: "root", position: 1, is_primary: false },
+      insert: { saga_id: "root", position: 1, role: null, is_primary: false },
       promoteTarget: false,
     });
   });
@@ -74,5 +75,40 @@ describe("planMembershipOps", () => {
       true,
     );
     expect(plan).toEqual({ deleteFrom: ["childA"], insert: null, promoteTarget: true });
+  });
+});
+
+describe("rol narrativo en los movimientos de membresía (#167)", () => {
+  it("arrastra el role al mover el ítem de subsaga", () => {
+    const rows: TreeMembershipRow[] = [
+      { saga_id: "origen", position: 3, role: "precuela", is_primary: true },
+    ];
+
+    const plan = planMembershipOps(
+      { itemType: "book", itemId: "b1", targetSagaId: "destino" },
+      rows,
+      "destino",
+      true,
+    );
+
+    // Mismo criterio que `position`: el delete+insert no puede perder el dato.
+    expect(plan.insert).not.toBeNull();
+    expect(plan.insert!.role).toBe("precuela");
+    expect(plan.insert!.position).toBe(3);
+  });
+
+  it("deja role null si ninguna fila del árbol lo tenía", () => {
+    const rows: TreeMembershipRow[] = [
+      { saga_id: "origen", position: null, role: null, is_primary: false },
+    ];
+
+    const plan = planMembershipOps(
+      { itemType: "book", itemId: "b1", targetSagaId: "destino" },
+      rows,
+      "destino",
+      true,
+    );
+
+    expect(plan.insert!.role).toBeNull();
   });
 });

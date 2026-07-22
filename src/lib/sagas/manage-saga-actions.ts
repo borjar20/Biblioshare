@@ -82,12 +82,25 @@ export async function assignItemToSaga(
     .neq("saga_id", sagaId)
     .maybeSingle();
 
+  // El upsert reemplaza la fila entera, así que hay que releer el role y
+  // reenviarlo: este formulario no lo edita, y sin esto un re-submit para
+  // corregir la posición borraría el rol curado. Es el mismo modo de fallo que
+  // documenta hydrate-route-draft.ts:11-22 con las notas de itinerario.
+  const { data: existingItem } = await supabase
+    .from("saga_items")
+    .select("role")
+    .eq("saga_id", sagaId)
+    .eq("item_type", itemType)
+    .eq("item_id", itemId)
+    .maybeSingle();
+
   const { error: insertError } = await supabase.from("saga_items").upsert(
     {
       saga_id: sagaId,
       item_type: itemType,
       item_id: itemId,
       position,
+      role: existingItem?.role ?? null,
       is_primary: !primaryRow,
     },
     { onConflict: "saga_id,item_type,item_id" }

@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { MembershipOp } from "./editor-types";
+import type { SagaItemRole } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -17,12 +18,13 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type TreeMembershipRow = {
   saga_id: string;
   position: number | null;
+  role: SagaItemRole | null;
   is_primary: boolean;
 };
 
 export type MembershipPlan = {
   deleteFrom: string[];
-  insert: { saga_id: string; position: number | null; is_primary: boolean } | null;
+  insert: { saga_id: string; position: number | null; role: SagaItemRole | null; is_primary: boolean } | null;
   /** true = la fila YA existente en el destino debe pasar a is_primary=true (UPDATE, no INSERT). */
   promoteTarget: boolean;
 };
@@ -47,11 +49,16 @@ export function planMembershipOps(
   }
 
   const carried = others.find((r) => r.position !== null);
+  // El role se arrastra por separado del position: una fila puede tener rol sin
+  // número (justo el caso de una precuela), así que buscarlo en la misma fila
+  // que trae el position lo perdería.
+  const carriedRole = others.find((r) => r.role !== null);
   return {
     deleteFrom,
     insert: {
       saga_id: targetTableSagaId,
       position: carried?.position ?? null,
+      role: carriedRole?.role ?? null,
       is_primary: wasPrimaryInTree || !hasPrimaryAnywhere,
     },
     promoteTarget: false,
@@ -73,7 +80,7 @@ export async function applyMembershipOps(
 
     const { data: rows } = await supabase
       .from("saga_items")
-      .select("saga_id, position, is_primary")
+      .select("saga_id, position, role, is_primary")
       .eq("item_type", op.itemType)
       .eq("item_id", op.itemId)
       .in("saga_id", treeIds);
@@ -103,6 +110,7 @@ export async function applyMembershipOps(
         item_type: op.itemType,
         item_id: op.itemId,
         position: plan.insert.position,
+        role: plan.insert.role,
         is_primary: plan.insert.is_primary,
       });
       if (error) return "insert-failed";
