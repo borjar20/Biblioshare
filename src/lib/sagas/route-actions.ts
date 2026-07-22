@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidateSagaPage } from "@/lib/reactivity/revalidate";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { computeMovedPositions, getSagaRoutes } from "./get-saga-routes";
+import { validateRouteDraft } from "./validate-route-draft";
+import type { RawRouteEntry } from "./route-types";
 
 // Adopción de un itinerario (spec 2026-07-22). Clona el patrón de
 // follow-actions: RLS solo-dueño y sin gate de rol, porque es preferencia
@@ -175,6 +177,42 @@ export async function deleteRoute(routeId: string, sagaId: string): Promise<{ er
   // maneja su propio error.
   const { data, error } = await supabase.from("saga_routes").delete().eq("id", routeId).select("id");
   if (error || !data || data.length === 0) return { error: true };
+
+  revalidateSagaPage(sagaId);
+  return {};
+}
+
+// Guardado de los PASOS de un itinerario (Task 9): full-replace atómico vía
+// RPC save_saga_route (SECURITY DEFINER, gate collaborator+ interno — Task 1).
+// Mismo gate duplicado que el resto de este fichero: el de aquí da un error
+// legible en la UI antes de llegar a la RPC; el de la RPC es la garantía real.
+export async function saveRoute(
+  routeId: string,
+  sagaId: string,
+  entries: RawRouteEntry[],
+  descendantIds: string[],
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+
+  const problems = validateRouteDraft(entries, { descendantIds: new Set(descendantIds) });
+  if (problems.length > 0) return { error: problems[0] };
+
+  const { error } = await supabase.rpc("save_saga_route", {
+    p_route_id: routeId,
+    p_entries: entries.map((e) => ({
+      position: e.position,
+      item_type: e.itemType,
+      item_id: e.itemId,
+      child_saga_id: e.childSagaId,
+      note: e.note,
+    })),
+  });
+  if (error) return { error: "generic" };
 
   revalidateSagaPage(sagaId);
   return {};

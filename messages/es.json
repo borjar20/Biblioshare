@@ -1120,11 +1120,20 @@
     "routeDeleteWarning": "Se borran también todos sus pasos. Esto no se puede deshacer.",
     "routeDeleteConfirm": "Borrar definitivamente",
     "routeDeleting": "Borrando…",
+    "routeStepUp": "Subir",
+    "routeStepDown": "Bajar",
+    "routeStepRemove": "Quitar",
+    "routeStepsSave": "Guardar itinerario",
+    "routeStepsSaving": "Guardando…",
     "routeErrors": {
       "nameRequired": "El nombre no puede estar vacío.",
       "slugTaken": "Ya hay un itinerario con ese nombre en esta saga.",
       "forbidden": "Solo los colaboradores pueden gestionar itinerarios.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "positions": "Las posiciones deben ir de 1 en adelante sin huecos.",
+      "xor": "Cada paso es una obra o una subsaga, no las dos cosas.",
+      "duplicate": "Hay un paso repetido en el itinerario.",
+      "foreignBlock": "Solo puedes usar subsagas de esta saga."
     }
   },
   "sagaIndex": {

@@ -271,6 +271,37 @@ habría roto la hidratación TMDB para los usuarios sin rol. Verificado contra `
 `pg_proc` en ambos entornos, no contra `list_migrations` — mismo `md5` del cuerpo normalizado
 en dev y prod, `prosecdef`, `search_path` y ACL correctos (sin `anon`).
 
+### 7.2 Itinerarios de lectura: `saga_routes` / `saga_route_entries` / `saga_route_choices`
+
+Un **itinerario** es una secuencia curada (opcionalmente parcial) de obras y bloques-subsaga
+dentro de una saga. Tres tablas:
+
+- `saga_routes` — metadatos de la ruta curada (`slug`, `name`, `summary`, `position`). Los
+  slugs `lectura` y `publicacion` están RESERVADOS (`saga_routes_slug_not_reserved`): esas dos
+  son **sintéticas**, se calculan sobre el grafo/orden principal y no tienen fila aquí — una
+  fila para ellas sería una segunda fuente de verdad que resincronizar en cada edición del
+  grafo (la familia de fallo del issue #91).
+- `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), y **XOR**
+  `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos).
+  Guardado por **full-replace atómico** vía RPC `save_saga_route(p_route_id, p_entries)`
+  (`SECURITY DEFINER`, gate `collaborator+` interno) — nunca se escribe fila a fila desde el
+  cliente.
+- `saga_route_choices` — preferencia del LECTOR (qué ruta ha adoptado para esa saga), por
+  `slug` no por `route_id` (así una ruta borrada degrada sola al orden por defecto). RLS
+  solo-dueño, **sin** gate de rol: es preferencia personal, no curación.
+
+**`saga_route_entries_item_key` / `saga_route_entries_child_key`** (Task 9, 2026-07-22):
+uniques **parciales** — `(route_id, item_type, item_id) WHERE item_id IS NOT NULL` y
+`(route_id, child_saga_id) WHERE child_saga_id IS NOT NULL` — que impiden repetir la misma obra
+o la misma subsaga dentro de un itinerario. Mismo patrón que ya protegía `saga_nodes`
+(`saga_nodes_item_key` / `saga_nodes_child_key`). Sin ellos, dos pasos idénticos colisionaban en
+la key de React del editor y el estado de plegado se asociaba al bloque equivocado; la Task 1
+omitió este par al crear la tabla. `validateRouteDraft` (`src/lib/sagas/validate-route-draft.ts`)
+ya rechaza duplicados en el borrador, así que esta garantía es la del esquema, no la única.
+
+⚠️ **Solo en dev por ahora.** Aplicada y verificada contra `pg_indexes` en dev el 2026-07-22;
+prod queda pendiente para la Task 10, junto con el resto de migraciones acumuladas de esta spec.
+
 ## 8. Seguridad
 
 Las 42 tablas tienen **RLS activa**. Patrones:
