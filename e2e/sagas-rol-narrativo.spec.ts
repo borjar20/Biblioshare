@@ -11,7 +11,7 @@ import { expect, test, type Page } from "@playwright/test";
 //   Tras un guardado con éxito, volver a pulsar Guardar SIN TOCAR NADA no
 //   cambia ningún dato.
 //
-// Sin el arreglo (hallazgo 2 de la revisión, DATA-LOSS): React 19 resetea los
+// Sin el arreglo (hallazgo B-2 de la revisión, DATA-LOSS): React 19 resetea los
 // campos NO controlados de un <form action={fn}> a su `defaultValue` tras el
 // éxito. Si ese `defaultValue` sigue siendo la prop vieja (el valor con el que
 // se montó la página, antes de guardar nada), el <select> vuelve a mostrar
@@ -19,7 +19,7 @@ import { expect, test, type Page } from "@playwright/test";
 // tenga guardado — y un segundo click en "Guardar", sin que nadie toque el
 // campo, reenvía ese "" y borra el rol recién guardado.
 //
-// El escenario ejerce TAMBIÉN el hallazgo 1 de la revisión (`ownerSagaId`):
+// El escenario ejerce TAMBIÉN el hallazgo B-1 de la revisión (`ownerSagaId`):
 // se edita el rol de un miembro que en `saga_items` NO cuelga de la saga que
 // se está editando (Universo, `UNIVERSO_ID`) sino de su subsaga "Era Uno"
 // (`53118dd4-ccd9-4a9d-8241-5899816a9eab` — confirmado con
@@ -84,8 +84,18 @@ test("un segundo Guardar sin tocar nada no reenvía un rol obsoleto", async ({ p
     // <select> ya se habría reseteado a "" tras el paso 1 (reset-tras-éxito
     // de React 19 aplicado sobre el `defaultValue` obsoleto), así que este
     // click reenviaría "" y borraría el rol recién guardado.
+    //
+    // Se espera al POST del server action, NO a que "Guardado" siga visible:
+    // `useActionState` conserva el estado anterior mientras hay una acción en
+    // vuelo, así que la etiqueta del paso 1 nunca desaparece y afirmarla aquí
+    // sería un no-op. Con un no-op, un segundo POST que se cayera dejaría el
+    // `spin_off` del paso 1 en BD y el test daría VERDE sin haber probado
+    // nada — la red antipérdida dejaría de discriminar en silencio.
+    const secondSave = page.waitForResponse(
+      (r) => r.request().method() === "POST" && r.url().includes(`/saga/${UNIVERSO_ID}/editar`),
+    );
     await saveButton.click();
-    await expect(savedLabel).toBeVisible();
+    await secondSave;
 
     // 3) Recarga desde cero (fuerza traer las props del servidor, sin nada
     // de estado de cliente que pueda maquillar un reset que ya ocurrió) y

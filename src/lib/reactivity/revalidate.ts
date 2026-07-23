@@ -51,9 +51,13 @@ export function revalidateSagaPage(id: string): void {
 
 /** La pantalla de curación de miembros de una saga (/saga/[id]/editar, Task 8).
  *  Ruta DISTINTA de `revalidateSagaPage`: quien la mira puede estar editando
- *  miembros cuya fila real vive en una subsaga (ver DetailMember.ownerSagaId),
- *  así que revalidar solo la ficha de esa subsaga no basta — hay que revalidar
- *  también la página /editar que el curador tiene delante. */
+ *  miembros cuya fila real vive en una subsaga (ver DetailMember.ownerSagaId).
+ *
+ *  Ojo: en Next 16 `revalidatePath` enciende un flag global que no registra QUÉ
+ *  ruta, así que hoy CUALQUIER revalidate del mismo action ya re-renderiza esta
+ *  página y ésta es redundante. Se mantiene porque es la única que la nombra
+ *  explícitamente, para cuando Next estreche la revalidación a la ruta concreta
+ *  (anunciado en sus propios docs de `revalidatePath`). */
 export function revalidateSagaEditPage(id: string): void {
   revalidatePath(`${sagaHref(id)}/editar`);
 }

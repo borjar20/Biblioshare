@@ -105,7 +105,7 @@ export function SagaMembersEditor({
   // La saga cuya página /editar es ESTA (la raíz de la ruta /saga/<sagaId>/editar,
   // no la dueña de cada fila — eso es `EditableMember.ownerSagaId`, que puede
   // ser una subsaga distinta). Se pasa al action para que revalide esta misma
-  // ruta (hallazgo 1, revisión Task 8).
+  // ruta (hallazgo B-2, revisión Task 8).
   sagaId: string;
   members: EditableMember[];
 }) {
