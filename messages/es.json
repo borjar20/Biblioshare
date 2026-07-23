@@ -1017,7 +1017,7 @@
     "mapTitle": "Mapa de lectura · {count, plural, =1 {1 título} other {# títulos}}",
     "orderNo": "Nº {n}",
     "outOfMainOrder": "Fuera del orden principal",
-    "outOfMainOrderHint": "Sin hueco fijo en el orden. Puedes leerlas cuando quieras.",
+    "outOfMainOrderHint": "Sin número de orden asignado.",
     "roleLabel": {
       "precuela": "Precuela",
       "spin_off": "Spin-off",

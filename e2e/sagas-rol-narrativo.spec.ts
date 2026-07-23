@@ -129,20 +129,18 @@ test("un segundo Guardar sin tocar nada no reenvía un rol obsoleto", async ({ p
 // fila dificulta saber, si algo falla, cuál de los dos tests dejó el dato a
 // medias. Se elige uno distinto y se restaura en cada `finally`.
 //
-// OJO con lo que el seed YA trae hecho a mano (y que un día se revertirá,
-// según el encargo): "Trilogía La casa de los espíritus" (miembro directo del
-// Universo, position=null) ya tiene role="precuela" HOY. Por eso las
-// aserciones de chip de abajo escopan siempre al `<li>` de ESTE ítem
-// (`.locator("li").filter({ hasText: LOOSE_ITEM_TITLE })`), nunca a la
-// sección entera: `section.getByText("Precuela")` a secas daría un falso
-// positivo en el test B (sin chip) porque Trilogía ya pinta ese chip en la
-// MISMA sección "Fuera del orden principal" del grupo Nexo... salvo que aquí
-// el ítem vive en el grupo "Era Uno", una sección `data-testid="out-of-order"`
-// DISTINTA a la del grupo Nexo (cada grupo con miembros sueltos pinta la
-// suya). Por eso también hace falta filtrar `getByTestId("out-of-order")`
-// por texto: puede haber más de un nodo con ese testid en la página a la vez
-// (uno por grupo), y un locator con más de un match revienta en modo
-// estricto.
+// Las aserciones de chip escopan siempre al `<li>` de ESTE ítem
+// (`.locator("li").filter({ hasText: LOOSE_ITEM_TITLE })`), nunca a la sección
+// entera. `section.getByText("Precuela")` a secas sería frágil: cualquier otro
+// miembro suelto de la misma sección con un rol curado daría un falso positivo
+// en el test B (el que afirma AUSENCIA de chip). Hoy el seed no trae ningún
+// rol —se comprobó: cero filas con `role` en dev—, pero basta con que alguien
+// cure uno para que un locator de sección mienta.
+//
+// Por lo mismo hace falta filtrar `getByTestId("out-of-order")` por texto:
+// cada grupo con miembros sueltos pinta SU propia sección, así que puede haber
+// varios nodos con ese testid a la vez, y un locator con más de un match
+// revienta en modo estricto.
 const LOOSE_ITEM_TITLE = "Libro raro sin match";
 
 function rowByTitle(page: Page, title: string) {

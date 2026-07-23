@@ -6,8 +6,16 @@ import type { TimelineSection } from "@/lib/sagas/derive-timeline";
 import { RoleChip } from "./role-chip";
 
 // Timeline vertical ramificado (frame B): raíl coloreado por subsaga, tarjetas
-// por nodo de la columna, ramas punteadas para opcionales y tarjeta-puente
-// para los nexos.
+// por nodo de la columna, ramas para los nodos sin orderNo y tarjeta-puente
+// para los nodos-ítem sin subsaga conectados a la columna.
+//
+// Ojo con el vocabulario: este comentario decía "opcionales" y "nexos", las dos
+// palabras que la issue #167 derogó precisamente porque se derivaban de
+// heurísticas que etiquetaban mal (una arista `principal` salía como
+// "Spin-off · opcional"; "nexo" se disparaba por `groupSagaId === null`, que
+// significa "miembro directo del universo"). Una rama o un puente son
+// posiciones en el layout, no afirmaciones sobre qué es la obra: eso solo lo
+// dice el rol curado, vía RoleChip.
 export async function ReadingTimeline({ sections }: { sections: TimelineSection[] }) {
   const t = await getTranslations("saga");
   return (

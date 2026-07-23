@@ -18,8 +18,11 @@ import { RoleChip } from "./role-chip";
 // Pertenencia a la sección la decide `position === null`; el chip lo decide
 // `role !== null`. Son independientes: una obra sin número y sin rol va a la
 // sección, sin chip (es curación pendiente y debe verse como tal).
-// Vocabulario de portada calcado de CoverCard (rounded-cover + shadow-cover +
-// border-border + bg-surface-muted de reserva).
+
+/** Celda de una obra. Vocabulario de portada calcado de CoverCard
+ *  (rounded-cover + shadow-cover + border-border + bg-surface-muted de
+ *  reserva). El badge numérico y el chip de rol son independientes: ver el
+ *  comentario de cabecera del fichero. */
 async function MemberCell({ m }: { m: DetailMember }) {
   const t = await getTranslations("saga");
   return (
