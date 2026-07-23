@@ -49,6 +49,15 @@ export function revalidateSagaPage(id: string): void {
   revalidatePath(sagaHref(id));
 }
 
+/** La pantalla de curación de miembros de una saga (/saga/[id]/editar, Task 8).
+ *  Ruta DISTINTA de `revalidateSagaPage`: quien la mira puede estar editando
+ *  miembros cuya fila real vive en una subsaga (ver DetailMember.ownerSagaId),
+ *  así que revalidar solo la ficha de esa subsaga no basta — hay que revalidar
+ *  también la página /editar que el curador tiene delante. */
+export function revalidateSagaEditPage(id: string): void {
+  revalidatePath(`${sagaHref(id)}/editar`);
+}
+
 /** Fichas de club + sus actividades + el listado. Las acciones de club manejan
  *  clubId, no slug, así que se usa el patrón dinámico "/club/[slug]" en vez de
  *  la ruta literal. */

@@ -45,7 +45,17 @@ export type MemberStatus = "completed" | "in_progress" | null;
 // (hija directa bajo la que milita; null = miembro directo / nexo).
 export type DetailMember = SagaMember & {
   status: MemberStatus;
+  /** Grupo VISUAL bajo el que se pinta en la ficha: hija DIRECTA del root
+   *  (get-saga-detail.ts sube por la cadena de padres con `directChildFor`
+   *  hasta profundidad 1), o null para miembro directo del root. Para un
+   *  descendiente de profundidad >= 2 NO coincide con la saga dueña de la
+   *  fila real de `saga_items` — para eso usa `ownerSagaId`, no este campo. */
   groupSagaId: string | null;
+  /** saga_id REAL de la fila de `saga_items` que guarda esta membresía (el
+   *  valor correcto para el WHERE saga_id = ... de un UPDATE/DELETE contra esa
+   *  fila). Distinto de `groupSagaId` (agrupación visual, arriba): coinciden
+   *  solo en profundidad 0 y 1; a partir de profundidad 2 divergen. */
+  ownerSagaId: string;
   /** Año de publicación/estreno (books.published_year / movies|series.release_year); para el orden «Publicación». */
   year: number | null;
 };

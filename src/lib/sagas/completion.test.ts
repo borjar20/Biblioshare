@@ -12,6 +12,7 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   role: null,
   status: null,
   groupSagaId: null,
+  ownerSagaId: "owner",
   year: null,
   ...over,
 });

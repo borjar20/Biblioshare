@@ -246,6 +246,7 @@ export async function getSagaDetail(
       role: row.role,
       status: statusByItem.get(`${row.item_type}:${row.item_id}`) ?? null,
       groupSagaId,
+      ownerSagaId: row.saga_id,
       year: m.year,
     });
   }

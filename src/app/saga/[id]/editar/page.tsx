@@ -38,20 +38,24 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
   // no recibe userId — y devuelve `SagaDetail | null`. La saga ya se comprobó
   // con el notFound() de arriba, pero el tipo obliga a estrecharlo igual.
   //
-  // OJO con `g.sagaId`: `detail.groups` incluye miembros de TODA la subsagas
-  // (root + descendientes, ver get-saga-detail.ts), y la fila real de
-  // `saga_items` que guarda position/role vive en la saga a la que el grupo
-  // pertenece — `g.sagaId` (null = grupo de miembros directos del root) — NO
-  // siempre en `saga.id` (el root que se está editando). Bindear todas las
-  // filas al `saga.id` de arriba (como hacía un primer borrador de esta
-  // página) hace que guardar cualquier miembro de una subsaga falle en
+  // OJO con `m.ownerSagaId`: la fila real de `saga_items` que guarda
+  // position/role vive en la saga DUEÑA de la membresía (DetailMember.ownerSagaId,
+  // ver types.ts), NO en `g.sagaId` (el grupo VISUAL bajo el que se pinta:
+  // hija DIRECTA del root, calculado en get-saga-detail.ts con directChildFor
+  // subiendo por la cadena de padres). Ambos coinciden en profundidad 0 y 1,
+  // pero divergen a partir de profundidad 2: un nieto se pinta agrupado bajo
+  // la hija de nivel 1 (`g.sagaId`), aunque su fila real cuelgue más abajo.
+  // Bindear el action con `g.sagaId ?? id` (como hacía un borrador anterior de
+  // esta página) hace que guardar un miembro a esa profundidad falle en
   // silencio con `notMember`, porque el action busca la fila en el saga_id
-  // equivocado. Verificado contra la semilla QA: la mayoría de miembros de
-  // "[QA Sagas v2] Universo" en realidad cuelgan de su subsaga "Era Uno".
+  // equivocado — el MISMO fallo que esta pantalla vino a corregir, solo que
+  // más adentro del árbol. Verificado contra la semilla QA: la mayoría de
+  // miembros de "[QA Sagas v2] Universo" en realidad cuelgan de su subsaga
+  // "Era Uno" (profundidad 1, donde `ownerSagaId` y `g.sagaId` sí coinciden).
   const detail = await getSagaDetail(supabase, id);
   const editableMembers = (detail?.groups ?? []).flatMap((g) =>
     g.members.map((m) => ({
-      sagaId: g.sagaId ?? id,
+      ownerSagaId: m.ownerSagaId,
       itemType: m.itemType,
       itemId: m.itemId,
       title: m.title,
@@ -74,7 +78,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
           parent,
         }}
       />
-      <SagaMembersEditor members={editableMembers} />
+      <SagaMembersEditor sagaId={saga.id} members={editableMembers} />
     </div>
   );
 }

@@ -12,6 +12,7 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   role: null,
   status: null,
   groupSagaId: null,
+  ownerSagaId: "owner",
   year: null,
   ...over,
 });
@@ -156,11 +157,11 @@ describe("rol narrativo (#167)", () => {
   it("conserva el role al agrupar y NO lo confunde con position", () => {
     const members: DetailMember[] = [
       { itemType: "book", itemId: "a", title: "Libro 1", coverUrl: null, href: "/a",
-        position: 1, role: null, status: null, groupSagaId: null, year: 1990 },
+        position: 1, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 },
       { itemType: "book", itemId: "b", title: "Nueva Primavera", coverUrl: null, href: "/b",
-        position: null, role: "precuela", status: null, groupSagaId: null, year: 2004 },
+        position: null, role: "precuela", status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 },
       { itemType: "book", itemId: "c", title: "Sin clasificar", coverUrl: null, href: "/c",
-        position: null, role: null, status: null, groupSagaId: null, year: 2010 },
+        position: null, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2010 },
     ];
 
     const [group] = groupMembers(members, []);
