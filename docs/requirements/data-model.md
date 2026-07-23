@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev el 2026-07-23, prod pendiente]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -338,11 +338,16 @@ alter table public.saga_items add column role public.saga_item_role;
   §7.1); las funciones `SECURITY DEFINER` de TMDB siguen insertando sin mencionar la columna y
   obtienen `NULL`.
 
-**Aplicada solo en dev, el 2026-07-23** (migración `20260723_saga_item_role.sql`), verificada contra
-`pg_attribute` (no contra `list_migrations`): la columna existe, tipo `saga_item_role`, nullable.
-**Prod todavía NO la tiene** — comprobado el mismo día con la misma consulta contra el proyecto de
-producción (cero filas). Es puramente aditiva; aplicarla queda pendiente, fuera del alcance de esta
-rama.
+**Aplicada en dev y en prod el 2026-07-23** (migración `20260723_saga_item_role.sql`), y anexada a
+`supabase/schema-baseline.sql` en la misma pasada que la aplicación a producción — «aplicar» y
+«anexar» como dos pasos separados ya desincronizó el baseline dos veces (notas de 2026-07-14 y
+2026-07-17).
+
+Verificada **contra los objetos reales, no contra `list_migrations`**: en ambos entornos la columna
+sale en `pg_attribute` con tipo `saga_item_role`, `attnotnull = false` y `atthasdef = false`, y el
+enum sale en `pg_enum` con los cuatro valores en el orden `precuela, spin_off, relato, paralela`. En
+prod: **327 filas en `saga_items`, 0 con `role`** — el «sin backfill» comprobado en el dato, no solo
+en la intención del DDL.
 
 ## 8. Seguridad
 
@@ -374,7 +379,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: 2026-07-22) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
-| `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev 2026-07-23, prod pendiente) |
+| `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev y prod 2026-07-23) |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
 
 ## 10. Migraciones

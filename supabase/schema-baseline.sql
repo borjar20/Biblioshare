@@ -7487,3 +7487,25 @@ create unique index saga_route_entries_item_key
 create unique index saga_route_entries_child_key
   on public.saga_route_entries (route_id, child_saga_id)
   where child_saga_id is not null;
+
+-- Rol narrativo de un miembro de saga (issue #167, spec
+-- 2026-07-22-sagas-rol-narrativo-design.md; migración 20260723_saga_item_role.sql,
+-- aplicada a prod el 2026-07-23). Qué ES la obra dentro de ESTA saga.
+--
+-- Va en saga_items y no en saga_nodes a propósito: el grafo es opcional (una
+-- saga sin saga_nodes no tiene pestaña Mapa) mientras que toda saga tiene filas
+-- en saga_items, y el unique (saga_id, item_type, item_id) hace que el atributo
+-- sea POR SAGA — un libro puede ser precuela en una y obra principal en otra.
+--
+-- Nullable y SIN backfill: null = "sin clasificar". Es ORTOGONAL a `position`:
+-- position dice si la obra tiene hueco fijo en el orden, role dice qué es.
+--
+-- Sin política RLS propia: hereda las de saga_items (select público, escrituras
+-- collaborator+). Las SECURITY DEFINER de TMDB no mencionan la columna, así que
+-- insertan null y siguen funcionando sin tocarse.
+create type public.saga_item_role as enum ('precuela', 'spin_off', 'relato', 'paralela');
+
+alter table public.saga_items add column role public.saga_item_role;
+
+comment on column public.saga_items.role is
+  'Rol narrativo del ítem en ESTA saga. null = sin clasificar. Ortogonal a position: position dice si tiene hueco fijo, role dice qué es.';
