@@ -1013,6 +1013,12 @@ Append también esta, que se decidió en la review de la Task 5 y hoy solo vive 
 | 2026-07-26 | **El bloque «siguiente» de la card de Mi Biblioteca propone solo obras que CUENTAN**: recorre el orden curado pero se salta las marcadas `optional` | Proponer una obra que no mueve la barra es el descuadre «el número miente» (#91, #185) reentrando por el lado de la secuencia: el lector lee exactamente lo que la card le dijo y su avance no cambia. Lo opcional no se exige, así que tampoco se empuja — se descubre en la ficha de la saga. El bloque «leyendo ahora» SÍ puede mostrar una obra opcional: eso reporta un hecho (lo que tienes abierto), no propone un siguiente paso |
 ```
 
+- [ ] **Step 2c: `decisiones.md` — la tercera decisión, también tomada durante la ejecución**
+
+```markdown
+| 2026-07-26 | **Una saga cuyo contenido es todo `optional` tiene estado propio en la card de Mi Biblioteca** (`{kind:"allOptional"}`), en vez de reutilizar `empty` | Al pasar el denominador de `order.length` a `counted.length`, el guard `total === 0` dejó de significar «esta saga no tiene obras» y pasó a capturar también «tiene obras, pero ninguna cuenta». Con `empty` la card quedaba con portadas visibles, 0/0 y ningún bloque accionable; con `completed` habría dicho «completada» sin nada completado; y proponer un «siguiente» opcional reintroduce el descuadre que se acababa de quitar. Las tres alternativas mienten, cada una en una dirección distinta. El spec ya prevé el caso en «Riesgos conocidos» (un curador puede marcar media saga como opcional y vaciar el denominador; se asume sin límite técnico). La discriminación vive en el constructor puro, no en la vista, porque re-derivarla en la vista es justo el patrón que produjo tres defectos seguidos en ese mismo `if/else` |
+```
+
 - [ ] **Step 3: `backlog.md`**
 
 Marcar la fase 1 en la sección Sagas, enlazando al spec, y anotar que las fases 2 y 3 siguen abiertas.
