@@ -1005,6 +1005,14 @@ Append al final, sin reescribir nada anterior:
 | 2026-07-25 | **El progreso de una saga deja de depender del orden**: el denominador son las obras del subárbol no marcadas `optional` (`src/lib/sagas/progress.ts`), y `main-order.ts` se queda solo con la ordenación para pintar. Colocación (`placement`) y opcionalidad (`optional`) son **dos ejes ortogonales**, no uno | Acoplar el denominador a la curación produjo cuatro fallos con una sola causa: #91 (regla duplicada), #170 (nodos huérfanos en el denominador), #185 (dos ramas que se contradicen; la documentada aplicaba a 1 saga de 70) y el 0/0 de Mundodisco (26 nodos sin `order_no` → orden vacío → hero sin progreso y timeline vacío). Con el denominador en la pertenencia, esa familia entera deja de ser expresable. Los dos ejes se separan porque «se lee en cualquier momento» y «no cuenta» son hechos distintos: *Nueva Primavera* es libre y cuenta; un spin-off con hueco puede no contar. Spec: `docs/superpowers/specs/2026-07-25-sagas-orden-unificado-design.md` |
 ```
 
+- [ ] **Step 2b: `decisiones.md` — la segunda decisión, tomada durante la ejecución**
+
+Append también esta, que se decidió en la review de la Task 5 y hoy solo vive en un comentario de código:
+
+```markdown
+| 2026-07-26 | **El bloque «siguiente» de la card de Mi Biblioteca propone solo obras que CUENTAN**: recorre el orden curado pero se salta las marcadas `optional` | Proponer una obra que no mueve la barra es el descuadre «el número miente» (#91, #185) reentrando por el lado de la secuencia: el lector lee exactamente lo que la card le dijo y su avance no cambia. Lo opcional no se exige, así que tampoco se empuja — se descubre en la ficha de la saga. El bloque «leyendo ahora» SÍ puede mostrar una obra opcional: eso reporta un hecho (lo que tienes abierto), no propone un siguiente paso |
+```
+
 - [ ] **Step 3: `backlog.md`**
 
 Marcar la fase 1 en la sección Sagas, enlazando al spec, y anotar que las fases 2 y 3 siguen abiertas.
