@@ -43,6 +43,8 @@
 - `src/lib/supabase/database.types.ts` — regenerado.
 - `docs/requirements/data-model.md`, `backlog.md`, `decisiones.md`.
 
+**Prod queda sin tocar en toda la fase 1** (decisión del 2026-07-25): las migraciones se aplican solo a dev, y a prod al principio de la fase 2 junto con el arreglo de `assignItemToSaga` (#188). Ver Task 8, Step 4.
+
 **Fuera de esta fase** (fases 2 y 3): `saga_placement_windows`, la pantalla de tres zonas, el RPC `save_saga_sequence`, la retirada del editor de grafo, `assignItemToSaga`, las vistas derivadas y la migración de los 4 grafos.
 
 ---
@@ -985,11 +987,13 @@ Append al final, sin reescribir nada anterior:
 
 Marcar la fase 1 en la sección Sagas, enlazando al spec, y anotar que las fases 2 y 3 siguen abiertas.
 
-- [ ] **Step 4: Aplicar las dos migraciones a PROD y verificar**
+- [ ] **Step 4: NO aplicar a prod — dejarlo escrito**
 
-⚠️ Con el código de esta rama **ya desplegado o a punto**: las dos migraciones son puramente aditivas (columnas nullable + una con default + CHECKs), así que el código viejo sigue funcionando con ellas puestas — pero el CHECK **rompe `assignItemToSaga`** si ese formulario reenvía una posición vacía sobre una fila `fijo`. Esa es la razón de que el arreglo de #188 vaya en la fase 2 y de que esto se aplique **sabiéndolo**, no de refilón.
+**Decisión del 2026-07-25: las dos migraciones se quedan solo en dev durante toda la fase 1.**
 
-Con el MCP `supabase-prod`, `apply_migration` de las dos, en orden, y verificar con la misma consulta del Task 1 Step 3 **más** el conteo esperado en prod: `fijos = 342`, `sin_clasificar = 9`, `opcionales = 0`.
+El motivo no es prudencia genérica: el CHECK `saga_items_placement_position` **rompe `assignItemToSaga`** (el formulario «Saga» de la ficha) en cuanto alguien reenvía una posición vacía sobre una fila `fijo` — y el arreglo de ese formulario vive en la fase 2. Aplicarlo a prod antes dejaría una regresión real en producción a cambio de nada, porque en prod aún no hay ninguna UI que escriba `placement` ni `optional`.
+
+Se aplican a prod **al principio de la fase 2**, junto con el arreglo de `assignItemToSaga` y en el orden que la fase 2 fije. Anotarlo en `data-model.md` con esas palabras: *«aplicadas en dev el 2026-07-XX; prod pendiente, deliberadamente, hasta la fase 2 (#188)»* — el mismo formato que ya usa §7.1 para el caso de #169, donde el orden de despliegue también importaba.
 
 - [ ] **Step 5: Abrir las issues de lo que queda**
 
