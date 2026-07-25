@@ -422,6 +422,8 @@ contenido del mapa). Es el único paso destructivo del plan y va en su propia mi
 
 ## Dependencia
 
-Este spec **da por mergeada la PR #189** (rol narrativo, issue #167): su columna `role` ya está en
-prod, y su editor de miembros en `/saga/[id]/editar` es la semilla de la pantalla única de curación.
-Construir esto contra `main` sin mergearla antes significaría reescribir esa pantalla dos veces.
+La PR #189 (rol narrativo, issue #167) **está mergeada en `main` desde el 2026-07-25** (commit
+`2c31f93`). Su columna `role` ya estaba en prod, y su editor de miembros en `/saga/[id]/editar`
+(`saga-members-editor.tsx` + `member-actions.ts`) es la semilla sobre la que crece la pantalla única de
+curación de este spec: la fila por miembro con `position` y `role` ya existe, y lo que se le añade son
+las tres zonas, `optional` y los bloques-subsaga.
