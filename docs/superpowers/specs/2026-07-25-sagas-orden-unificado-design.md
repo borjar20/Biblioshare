@@ -233,7 +233,9 @@ secretas* (4) como `optional`, el progreso pasa a ser **sobre 12** — 11 si el 
 
 `main-order.ts` deja de ser el denominador y se queda con lo que debió ser siempre: **ordenación para
 pintar** (la columna del timeline y la expansión de bloques dentro de un itinerario), sin ninguna
-suma. Se renombra a `build-sequence.ts` para que el nombre deje de sugerir que de ahí sale un número.
+suma. El renombrado a `build-sequence.ts` —para que el nombre deje de sugerir que de ahí sale un
+número— se hace en la **fase 3**, junto con la retirada de `saga_nodes`: es cuando muere su rama de
+grafo y el fichero queda con una sola forma, en vez de tocar todos sus imports dos veces.
 
 **Lo que esto cierra por construcción, no por parche:** #185 (no puede haber dos ramas si el progreso
 no mira el grafo), #170 (los nodos huérfanos desaparecen con la tabla), el 0/0 de Mundodisco, y la
