@@ -325,4 +325,42 @@ describe("buildLibrarySagaCards", () => {
     );
     expect(cards[0].progress.total).toBe(1);
   });
+
+  it("todos los miembros optional: hay portadas y obras, pero `counted` sale vacío (Important 1, 2ª ronda review Task 5)", () => {
+    // Espejo exacto del caso Mundodisco (`order` vacío con `counted` lleno):
+    // aquí `order` y `tree` NO están vacíos (ninguno filtra por `optional`,
+    // así que las portadas y el «leyendo ahora» los siguen viendo), pero
+    // `counted` sí, porque las dos obras son optional. `total === 0` ya NO
+    // significa "saga sin obras": antes de este fix caía en la misma rama
+    // `{kind:"empty"}` que una saga genuinamente vacía, y la card se quedaba
+    // con 2 portadas, 0/0 y ningún bloque accionable.
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S")],
+      [mem("s", "a", 1, true), mem("s", "b", 2, true)],
+      [],
+      [item("a", "A"), item("b", "B")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].covers).toHaveLength(2); // hay portadas: no es una saga vacía
+    expect(cards[0].progress).toMatchObject({ completed: 0, total: 0, pct: 0 });
+    expect(cards[0].next).toEqual({ kind: "allOptional" });
+  });
+
+  it("saga genuinamente sin obras: ni `order` ni `counted` ni `tree` tienen nada → sí es «empty»", () => {
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S")],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].covers).toHaveLength(0);
+    expect(cards[0].next).toEqual({ kind: "empty" });
+  });
 });

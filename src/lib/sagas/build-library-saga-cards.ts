@@ -54,6 +54,10 @@ export type NextBlock =
   | { kind: "reading"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
   | { kind: "next"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
   | { kind: "completed"; rating: number | null }
+  // Hay obras (`order`/`tree` no vacíos) pero NINGUNA cuenta para el avance
+  // (todas `optional`, o el único bloque es `optionalInParent`): ver Important
+  // 1 del review de Task 5 (2ª ronda) junto a `total === 0` más abajo.
+  | { kind: "allOptional" }
   | { kind: "empty" };
 
 export type LibrarySagaCard = {
@@ -204,6 +208,14 @@ export function buildLibrarySagaCards(
 
     // Bloque «siguiente» (§4.3, estados excluyentes).
     let next: NextBlock;
+    // DELIBERADO (Minor 5, review de Task 5, 2ª ronda): «reading» sale de
+    // `tree` (todo el subárbol), no de `counted`, y por eso puede destacar una
+    // obra `optional` que el lector tenga empezada aunque no mueva la barra.
+    // No es la misma asimetría que se corrigió en «next» (Important 2): ahí
+    // la card SUGIERE un paso, y sugerir algo que no cuenta es el descuadre
+    // de los issues #91/#185. Aquí la card solo REPORTA un hecho (qué tienes
+    // abierto ahora mismo) — no hay «paso» que proponer mal si el lector ya
+    // lo eligió él solo.
     const reading = tree
       .map((k) => ({ k, e: entryByItem.get(k) }))
       .filter((x): x is { k: string; e: LibEntry } => x.e?.status === "in_progress")
@@ -212,8 +224,30 @@ export function buildLibrarySagaCards(
       const m = metaByItem.get(reading.k);
       const [itemType, itemId] = reading.k.split(":") as [ItemType, string];
       next = { kind: "reading", itemType, itemId, title: m?.title ?? "", coverUrl: m?.coverUrl ?? null };
-    } else if (total === 0) {
+    } else if (tree.length === 0) {
+      // Única saga genuinamente "vacía": ni siquiera `tree` (que ignora
+      // `optional`/`optionalInParent` y ve TODO el subárbol) tiene una obra.
+      // `basis` (más abajo, portadas/tipo/creador) también cae a `tree` en
+      // este caso, así que la card tampoco tiene portadas que mostrar — el
+      // "empty" es coherente con lo que se ve.
       next = { kind: "empty" };
+    } else if (total === 0) {
+      // Important 1 (review de Task 5, 2ª ronda): `total` es `counted.length`
+      // desde que el denominador dejó de salir de `order` (progress.ts). Con
+      // `tree.length > 0` ya descartado arriba, llegar aquí solo puede
+      // significar que TODAS las obras del subárbol son `optional` (o que el
+      // único bloque hijo es `optionalInParent`): hay portadas (`order`/`tree`
+      // no filtran por optional) pero ninguna obra cuenta para el avance.
+      //
+      // No es "empty" (mentiría: sí hay portadas y obras reales que mostrar,
+      // el bug que reportó el reviewer — 2 portadas, 0/0, ningún bloque). No
+      // es "completed" tampoco (mentiría en la otra dirección: nadie ha
+      // terminado nada, un "✓ completada" sería falso). Y no hay un
+      // "siguiente" honesto que proponer: proponer una obra optional es
+      // exactamente el descuadre de #91/#185 que Important 2 vino a evitar.
+      // Verdad para el lector: hay obras, pero ninguna le mueve la barra —
+      // estado propio, ni vacío ni completo.
+      next = { kind: "allOptional" };
     } else if (completed < total) {
       // El «siguiente» propone la próxima obra que ADEMÁS cuenta (decisión del
       // dueño del producto, review de Task 5, Important 2): una obra optional

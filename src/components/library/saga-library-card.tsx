@@ -112,6 +112,15 @@ async function NextBlockView({ card }: { card: LibrarySagaCardData }) {
   const t = await getTranslations("sagaLibrary");
   const next = card.next;
   if (next.kind === "empty") return null;
+  if (next.kind === "allOptional") {
+    // Hay obras, pero ninguna cuenta para el avance (Important 1, review de
+    // Task 5 2ª ronda): ni checkmark (nadie ha terminado nada) ni enlace
+    // (proponer una obra optional como CTA es el descuadre que Important 2
+    // vino a evitar).
+    return (
+      <p className="text-xs font-semibold text-muted-foreground">{t("allOptional")}</p>
+    );
+  }
   if (next.kind === "completed") {
     return (
       <p className="text-xs font-semibold text-muted-foreground">

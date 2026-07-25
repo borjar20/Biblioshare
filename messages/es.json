@@ -1512,6 +1512,7 @@
     "nextUp": "Siguiente",
     "completed": "Saga completada",
     "ratedAt": "valorada ★ {rating}",
+    "allOptional": "Todo el contenido es opcional: nada pendiente que contar",
     "emptyTitle": "Sin sagas seguidas",
     "emptyBody": "Sigue una saga desde su ficha («Seguir esta saga») o explora el catálogo.",
     "emptyCta": "Explorar sagas"
