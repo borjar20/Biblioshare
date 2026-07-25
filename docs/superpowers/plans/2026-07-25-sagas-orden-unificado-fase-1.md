@@ -780,9 +780,11 @@ En `messages/es.json`, dentro de `saga`:
 
 Y mapear `badPlacement` al texto en el mismo sitio donde el componente ya mapea `badPosition` / `badRole`.
 
-- [ ] **Step 4: Probar a mano en el navegador**
+- [ ] **Step 4: Verificar en el navegador (automatizado)**
 
-Levantar `npm run dev` (puerto 3000, y si está ocupado **matar el proceso viejo**, no arrancar un segundo) y sobre una saga de dev con rol collaborator:
+Según `docs/TESTING.md` (canónico desde 2026-07-15) la verificación de UI por defecto es **automatizada**: la conduce un agente con el navegador (`qa-verifier` o equivalente), no una persona a mano. Cuenta de desarrollo persistente con onboarding hecho: `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` en `.env.local`.
+
+Un solo `npm run dev` en el puerto 3000 — si está ocupado, **matar el proceso viejo**, no arrancar un segundo. Sobre una saga de dev, con rol collaborator, comprobar:
 
 1. Marcar un miembro como «Se lee cuando quieras» con el número vacío → guarda, y el aviso de error no aparece.
 2. Marcar «Hueco fijo» con el número vacío → aparece el texto de `errorBadPlacement` y **no** se escribe.
@@ -947,9 +949,9 @@ Con `const unclassified = groups.flatMap((g) => g.members).filter((m) => m.place
 "unclassifiedCta": "Clasificarlas"
 ```
 
-- [ ] **Step 4: Verificar en el navegador**
+- [ ] **Step 4: Verificar en el navegador (automatizado)**
 
-Con `npm run dev`, sobre la saga de dev donde se marcó un `libre` en la Task 6:
+Mismo criterio que la Task 6: lo conduce un agente con el navegador, no una persona (`docs/TESTING.md`). Reutilizando el `npm run dev` que ya haya, sobre la saga de dev donde se marcó un `libre` en la Task 6:
 
 1. La obra `libre` aparece **una sola vez**, en «Cuando quieras», y no en su grupo.
 2. Una obra `optional` lleva el chip.
@@ -973,7 +975,7 @@ git commit -m "feat(sagas): la ficha separa lo libre, marca lo opcional y avisa 
 
 - [ ] **Step 1: `data-model.md` §7**
 
-Añadir §7.3 con las columnas nuevas, el CHECK, los dos ejes ortogonales y el backfill; y **corregir la regla de cómputo del progreso** de §7 (hoy dice que el denominador es el orden principal — deja de ser cierto). Actualizar la cabecera de frescura a `[Canónico · verificado contra prod el 2026-07-25]` **solo después** del Step 4.
+Añadir §7.3 con las columnas nuevas, el CHECK, los dos ejes ortogonales y el backfill; y **corregir la regla de cómputo del progreso** de §7 (hoy dice que el denominador es el orden principal — deja de ser cierto). La cabecera de frescura **no** pasa a «verificado contra prod»: prod no se toca en esta fase. Dejar constancia explícita de que las dos migraciones están **solo en dev** y de por qué (Step 4).
 
 - [ ] **Step 2: `decisiones.md`**
 
