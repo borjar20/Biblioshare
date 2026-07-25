@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { updateSagaMember, type UpdateMemberState } from "@/lib/sagas/member-actions";
-import type { SagaItemRole } from "@/lib/sagas/types";
+import type { SagaItemRole, SagaPlacement } from "@/lib/sagas/types";
 
 export type EditableMember = {
   // La saga REAL dueña de esta membresía en `saga_items` (= DetailMember.ownerSagaId,
@@ -17,6 +17,8 @@ export type EditableMember = {
   title: string;
   position: number | null;
   role: SagaItemRole | null;
+  placement: SagaPlacement | null;
+  optional: boolean;
 };
 
 const ROLES: SagaItemRole[] = ["precuela", "spin_off", "relato", "paralela"];
@@ -41,7 +43,12 @@ function MemberRow({ member, editorSagaId }: { member: EditableMember; editorSag
   // una `key` derivada de ESE valor. Un remount siempre aplica el
   // `defaultValue` fresco, así que el reset de React ya no tiene nada
   // obsoleto que restaurar: el campo remontado YA está en el valor guardado.
-  const current = state.saved ?? { position: member.position, role: member.role };
+  const current = state.saved ?? {
+    position: member.position,
+    role: member.role,
+    placement: member.placement,
+    optional: member.optional,
+  };
 
   return (
     <form action={formAction} className="flex flex-col gap-2 border-t border-border py-3">
@@ -78,6 +85,31 @@ function MemberRow({ member, editorSagaId }: { member: EditableMember; editorSag
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            {t("memberPlacement")}
+          </span>
+          <select
+            key={`placement-${current.placement ?? ""}`}
+            name="placement"
+            defaultValue={current.placement ?? ""}
+            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-[13px]"
+          >
+            <option value="">{t("memberPlacementNone")}</option>
+            <option value="fijo">{t("memberPlacementFixed")}</option>
+            <option value="libre">{t("memberPlacementFree")}</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            key={`optional-${current.optional}`}
+            type="checkbox"
+            name="optional"
+            defaultChecked={current.optional}
+            className="h-4 w-4 rounded border-border"
+          />
+          <span className="text-[12px] text-muted-foreground">{t("memberOptional")}</span>
         </label>
         <button
           type="submit"

@@ -5,17 +5,24 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateItemPage, revalidateSagaEditPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
-import type { SagaItemRole } from "./types";
+import type { SagaItemRole, SagaPlacement } from "./types";
 
 export type UpdateMemberState = {
-  error?: "forbidden" | "notMember" | "badPosition" | "badRole" | "generic";
+  error?: "forbidden" | "notMember" | "badPosition" | "badRole" | "badPlacement" | "generic";
   ok?: true;
   /** Valores efectivamente guardados (hallazgo B-2, revisión Task 8): el cliente
    *  los usa para remontar los campos con una `key` derivada de ESTOS valores
    *  en vez de las props originales, así el reset-tras-éxito de React 19 no
    *  puede dejar el formulario mostrando (y por tanto reenviando en un
-   *  segundo Guardar) un valor obsoleto. */
-  saved?: { position: number | null; role: SagaItemRole | null };
+   *  segundo Guardar) un valor obsoleto. Los cuatro campos tienen que crecer
+   *  juntos (Task 6): si se añade un control nuevo sin sumarlo aquí, se
+   *  reintroduce el mismo reset silencioso en el campo nuevo. */
+  saved?: {
+    position: number | null;
+    role: SagaItemRole | null;
+    placement: SagaPlacement | null;
+    optional: boolean;
+  };
 };
 
 const ROLES: SagaItemRole[] = ["precuela", "spin_off", "relato", "paralela"];
@@ -77,6 +84,21 @@ export async function updateSagaMember(
     role = roleRaw;
   }
 
+  const placementRaw = String(formData.get("placement") ?? "").trim();
+  const placement: SagaPlacement | null =
+    placementRaw === "fijo" ? "fijo" : placementRaw === "libre" ? "libre" : null;
+  // Un checkbox desmarcado no manda su campo en el FormData en absoluto (no
+  // manda "off"): la ausencia ES el false, por eso se compara contra "on" en
+  // vez de comprobar truthiness de formData.get.
+  const optional = formData.get("optional") === "on";
+
+  // El mismo invariante que el CHECK saga_items_placement_position, replicado
+  // aquí para dar un error de dominio en vez de un 23514 crudo del driver.
+  const consistent =
+    (placement === "fijo" && position !== null) ||
+    (placement !== "fijo" && position === null);
+  if (!consistent) return { error: "badPlacement" };
+
   // La membresía tiene que existir ya: este action no da de alta.
   const { data: existing } = await supabase
     .from("saga_items")
@@ -89,7 +111,7 @@ export async function updateSagaMember(
 
   const { error } = await supabase
     .from("saga_items")
-    .update({ position, role })
+    .update({ position, role, placement, optional })
     .eq("saga_id", sagaId)
     .eq("item_type", itemType)
     .eq("item_id", itemId);
@@ -98,5 +120,5 @@ export async function updateSagaMember(
   revalidateItemPage(itemType, itemId);
   revalidateSagaPage(sagaId);
   revalidateSagaEditPage(editorSagaId);
-  return { ok: true, saved: { position, role } };
+  return { ok: true, saved: { position, role, placement, optional } };
 }

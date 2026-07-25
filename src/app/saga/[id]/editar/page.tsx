@@ -61,6 +61,8 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
       title: m.title,
       position: m.position,
       role: m.role,
+      placement: m.placement,
+      optional: m.optional,
     })),
   );
 

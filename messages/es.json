@@ -1062,6 +1062,11 @@
     "memberPositionNone": "Sin hueco fijo",
     "memberRole": "Rol",
     "memberRoleNone": "Sin clasificar",
+    "memberPlacement": "Colocación",
+    "memberPlacementNone": "Sin clasificar",
+    "memberPlacementFixed": "Hueco fijo",
+    "memberPlacementFree": "Se lee cuando quieras",
+    "memberOptional": "No cuenta en el progreso",
     "memberSave": "Guardar",
     "memberSaved": "Guardado",
     "memberErrors": {
@@ -1069,6 +1074,7 @@
       "notMember": "Esa obra ya no pertenece a esta saga.",
       "badPosition": "La posición tiene que ser un número entero mayor que 0, o estar vacía.",
       "badRole": "Ese rol no existe.",
+      "badPlacement": "«Hueco fijo» necesita un número, y «se lee cuando quieras» no lo admite.",
       "generic": "No se pudo guardar. Inténtalo de nuevo."
     },
     "dangerZone": "Zona de peligro",
