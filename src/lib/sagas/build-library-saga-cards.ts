@@ -225,11 +225,20 @@ export function buildLibrarySagaCards(
       const [itemType, itemId] = reading.k.split(":") as [ItemType, string];
       next = { kind: "reading", itemType, itemId, title: m?.title ?? "", coverUrl: m?.coverUrl ?? null };
     } else if (tree.length === 0) {
-      // Única saga genuinamente "vacía": ni siquiera `tree` (que ignora
-      // `optional`/`optionalInParent` y ve TODO el subárbol) tiene una obra.
-      // `basis` (más abajo, portadas/tipo/creador) también cae a `tree` en
-      // este caso, así que la card tampoco tiene portadas que mostrar — el
-      // "empty" es coherente con lo que se ve.
+      // La saga no tiene NINGÚN miembro en su propio subárbol: ni siquiera
+      // `tree` (que ignora `optional`/`optionalInParent` y ve TODO el
+      // subárbol vía membresías) encuentra una obra.
+      //
+      // Esto NO garantiza que `basis` (portadas/tipo/creador, más abajo)
+      // también caiga a `tree`: `order` podría seguir teniendo entradas por
+      // el mismo motivo que el #170 — `mainOrder` filtra sus nodos-ítem por
+      // `memberKeys` GLOBAL (main-order.ts:74: memberships de TODAS las
+      // sagas seguidas, no solo las de esta), así que un nodo de grafo de
+      // ESTA saga que apunte a un ítem miembro de OTRA saga seguida entraría
+      // en `order` aunque no esté en `tree`. Caso rebuscado y preexistente a
+      // la Task 5 (el guard viejo se comportaba igual): se documenta aquí, no
+      // se corrige — cambiar el comportamiento no es el objetivo de este
+      // guard.
       next = { kind: "empty" };
     } else if (total === 0) {
       // Important 1 (review de Task 5, 2ª ronda): `total` es `counted.length`

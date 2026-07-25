@@ -122,7 +122,10 @@ describe("computeProgress", () => {
 
   // El caso del issue #91: el hero contaba TODOS los miembros del subárbol y
   // decía 2/7 = 29% donde la card de biblioteca, que ya aplicaba §1.5, decía
-  // 2/5 = 40%. Los opcionales (fuera del orden) no penalizan.
+  // 2/5 = 40%. Las claves que no llegan en `counted` (hoy: countedKeys, spec
+  // 2026-07-25 — miembros `optional` o colgando de un bloque
+  // `optionalInParent`) no penalizan. Eso es distinto de "fuera del orden
+  // principal" (sin hueco en la SECUENCIA de mainOrder): son ejes ortogonales.
   it("los miembros fuera de `counted` no entran en el denominador", () => {
     const p = computeProgress(fourMembers(), ["book:b1", "book:b5"]);
     expect(p).toMatchObject({ completed: 2, total: 2, pct: 100 });

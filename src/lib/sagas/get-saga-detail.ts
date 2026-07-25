@@ -265,8 +265,12 @@ export async function getSagaDetail(
   }
 
   const groups = groupMembers(members, children);
-  // `progress` se calcula más abajo: necesita el orden principal (§1.5) y por
-  // tanto los nodos del grafo, que se descargan en el batch de consultas.
+  // `progress` se calcula más abajo con countedKeys (pertenencia, spec
+  // 2026-07-25): NO necesita el orden principal ni los nodos del grafo. Esos
+  // sí se descargan en el batch de consultas de más abajo, pero por otro
+  // motivo — RouteView (Task 6) los necesita para expandir bloques de un
+  // itinerario, ver el comentario de `orderSagas`/`orderMemberships`/
+  // `orderNodes` en el tipo `SagaDetail`.
 
   // Nota media comunitaria: pases puntuados de todos los miembros, sin contar
   // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase

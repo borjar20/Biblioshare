@@ -81,7 +81,10 @@ export function createMainOrder(
 
   // `visited` es compartido por toda la recursión de una llamada: impide que un
   // ciclo saga→saga cuelgue y que una saga alcanzable por dos caminos duplique
-  // sus títulos en el denominador.
+  // sus títulos en la SECUENCIA (el `new Set(...)` de `mainOrder`, abajo, ya
+  // dedupica el resultado final, pero sin `visited` la recursión ni siquiera
+  // terminaría). Esto no es el denominador del progreso: ese vive en
+  // countedKeys (./progress.ts).
   function walk(sagaId: string, depth: number, visited: Set<string>): string[] {
     if (depth > MAX_DEPTH || visited.has(sagaId)) return [];
     visited.add(sagaId);

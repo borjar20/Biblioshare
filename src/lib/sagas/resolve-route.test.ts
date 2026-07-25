@@ -65,9 +65,10 @@ describe("resolveRoute", () => {
     expect(r.completed).toBe(1);
   });
 
-  // Issue #170: en el grafo, una referencia colgante se descarta al pintar
-  // pero cuenta en el denominador, así que el avance no llega nunca al 100%.
-  // Aquí se descarta de LOS DOS sitios, a propósito.
+  // resolveRoute descarta una entrada colgante de LOS DOS sitios (render y
+  // `total`) con el mismo `continue`: no hay forma de que llegue al render
+  // pero se cuele en `counted`, a diferencia del #170 que motivó el filtro de
+  // memberKeys en createMainOrder (main-order.ts) para el ORDEN de un bloque.
   it("descarta la entrada colgante del render y del denominador", () => {
     const r = resolveRoute(
       [entry({ position: 1, itemType: "book", itemId: "a" }), entry({ position: 2, itemType: "book", itemId: "fantasma" })],
