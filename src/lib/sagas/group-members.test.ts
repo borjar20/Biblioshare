@@ -9,8 +9,10 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   coverUrl: null,
   href: "/libro/x",
   position: null,
+  role: null,
   status: null,
   groupSagaId: null,
+  ownerSagaId: "owner",
   year: null,
   ...over,
 });
@@ -148,5 +150,26 @@ describe("averageSagaRating", () => {
 
   it("null si no hay notas", () => {
     expect(averageSagaRating([])).toBeNull();
+  });
+});
+
+describe("rol narrativo (#167)", () => {
+  it("conserva el role al agrupar y NO lo confunde con position", () => {
+    const members: DetailMember[] = [
+      { itemType: "book", itemId: "a", title: "Libro 1", coverUrl: null, href: "/a",
+        position: 1, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 },
+      { itemType: "book", itemId: "b", title: "Nueva Primavera", coverUrl: null, href: "/b",
+        position: null, role: "precuela", status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 },
+      { itemType: "book", itemId: "c", title: "Sin clasificar", coverUrl: null, href: "/c",
+        position: null, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2010 },
+    ];
+
+    const [group] = groupMembers(members, []);
+
+    // Los cuatro casos del spec: numerada-sin-rol, sin-número-con-rol,
+    // sin-número-sin-rol. El orden sigue siendo por position (nulls al final),
+    // el role no lo altera.
+    expect(group.members.map((m) => m.itemId)).toEqual(["a", "b", "c"]);
+    expect(group.members.map((m) => m.role)).toEqual([null, "precuela", null]);
   });
 });

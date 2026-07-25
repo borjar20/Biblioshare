@@ -3,12 +3,107 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { MemberGroup } from "@/lib/sagas/group-members";
+import type { DetailMember } from "@/lib/sagas/types";
+import { RoleChip } from "./role-chip";
 
 // Pestaña Info (frames A/D): sinopsis + títulos agrupados por subsaga. La
-// celda replica el icell del mockup: portada, badge de orden, estado ✓/◉,
-// contorno punteado si es opcional (= sin position en fase 1, spec §2.3).
-// Vocabulario de portada calcado de CoverCard (rounded-cover + shadow-cover +
-// border-border + bg-surface-muted de reserva).
+// celda replica el icell del mockup: portada, badge de orden, estado ✓/◉.
+//
+// Issue #167: dentro de cada grupo, los miembros SIN position se separan en su
+// propia sección ("Fuera del orden principal") en vez de quedar sueltos al
+// final con un contorno punteado que decía "opcional" sin que nadie lo hubiera
+// dicho. El contorno se retiró: la sección ya comunica eso, y así el dorado
+// discontinuo deja de significar dos cosas distintas en la app.
+//
+// Pertenencia a la sección la decide `position === null`; el chip lo decide
+// `role !== null`. Son independientes: una obra sin número y sin rol va a la
+// sección, sin chip (es curación pendiente y debe verse como tal).
+
+/** Celda de una obra. Vocabulario de portada calcado de CoverCard
+ *  (rounded-cover + shadow-cover + border-border + bg-surface-muted de
+ *  reserva). El badge numérico y el chip de rol son independientes: ver el
+ *  comentario de cabecera del fichero. */
+async function MemberCell({ m }: { m: DetailMember }) {
+  const t = await getTranslations("saga");
+  return (
+    <li>
+      <Link href={m.href} className="block">
+        <div className="relative aspect-[2/3] overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover">
+          {m.coverUrl ? (
+            <Image src={m.coverUrl} alt={m.title} fill sizes="120px" className="object-cover" />
+          ) : (
+            <div className="flex h-full items-center justify-center px-1.5 text-center text-[10px] text-muted-foreground">
+              {m.title}
+            </div>
+          )}
+          {m.position !== null && (
+            <span className="absolute left-1 top-1 rounded bg-foreground/70 px-1 font-mono text-[8.5px] text-background">
+              {m.position}
+            </span>
+          )}
+          {m.status === "completed" && (
+            <span
+              aria-label={t("statusDone")}
+              className="absolute bottom-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white"
+            >
+              ✓
+            </span>
+          )}
+          {m.status === "in_progress" && (
+            <span
+              aria-label={t("statusReading")}
+              className="absolute inset-0 grid place-items-center bg-foreground/40 text-base text-white"
+            >
+              ◉
+            </span>
+          )}
+        </div>
+        <p className="mt-1.5 line-clamp-2 text-[11px] font-semibold leading-tight">{m.title}</p>
+        {m.role !== null && (
+          <p className="mt-0.5">
+            <RoleChip role={m.role} />
+          </p>
+        )}
+      </Link>
+    </li>
+  );
+}
+
+// El reparto de #167, en un solo sitio: la sección la decide `position`, el
+// chip lo decide `role`. Ver el comentario de cabecera del fichero.
+async function GroupBody({ members }: { members: DetailMember[] }) {
+  const t = await getTranslations("saga");
+  const numbered = members.filter((m) => m.position !== null);
+  const loose = members.filter((m) => m.position === null);
+
+  return (
+    <>
+      {numbered.length > 0 && (
+        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+          {numbered.map((m) => (
+            <MemberCell key={`${m.itemType}-${m.itemId}`} m={m} />
+          ))}
+        </ul>
+      )}
+      {loose.length > 0 && (
+        <div data-testid="out-of-order" className={numbered.length > 0 ? "mt-4" : ""}>
+          <div className="mb-2 flex items-baseline gap-2">
+            <h4 className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              {t("outOfMainOrder")}
+            </h4>
+            <span className="text-[10px] text-muted-foreground">{t("outOfMainOrderHint")}</span>
+          </div>
+          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+            {loose.map((m) => (
+              <MemberCell key={`${m.itemType}-${m.itemId}`} m={m} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
 export async function SagaInfo({
   overview,
   groups,
@@ -122,51 +217,7 @@ export async function SagaInfo({
                     </span>
                   </div>
                 )}
-                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-                  {group.members.map((m) => (
-                    <li key={`${m.itemType}-${m.itemId}`}>
-                      <Link href={m.href} className="block">
-                        <div
-                          className={`relative aspect-[2/3] overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover ${
-                            m.position === null ? "outline-dashed outline-1 -outline-offset-1 outline-gold" : ""
-                          }`}
-                        >
-                          {m.coverUrl ? (
-                            <Image src={m.coverUrl} alt={m.title} fill sizes="120px" className="object-cover" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center px-1.5 text-center text-[10px] text-muted-foreground">
-                              {m.title}
-                            </div>
-                          )}
-                          {m.position !== null && (
-                            <span className="absolute left-1 top-1 rounded bg-foreground/70 px-1 font-mono text-[8.5px] text-background">
-                              {m.position}
-                            </span>
-                          )}
-                          {m.status === "completed" && (
-                            <span
-                              aria-label={t("statusDone")}
-                              className="absolute bottom-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white"
-                            >
-                              ✓
-                            </span>
-                          )}
-                          {m.status === "in_progress" && (
-                            <span
-                              aria-label={t("statusReading")}
-                              className="absolute inset-0 grid place-items-center bg-foreground/40 text-base text-white"
-                            >
-                              ◉
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1.5 line-clamp-2 text-[11px] font-semibold leading-tight">
-                          {m.title}
-                        </p>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <GroupBody members={group.members} />
               </div>
             );
           })}

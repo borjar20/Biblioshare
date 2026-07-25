@@ -9,8 +9,10 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   coverUrl: over.coverUrl ?? "https://c/x.jpg",
   href: `/libro/${over.itemId ?? "x"}`,
   position: null,
+  role: null,
   status: null,
   groupSagaId: null,
+  ownerSagaId: "owner",
   year: null,
   ...over,
 });
@@ -101,5 +103,53 @@ describe("buildSagaGraph", () => {
     const nodes = [itemNode("nb", "b"), itemNode("na", "a", { order_no: 1 })];
     const g = buildSagaGraph(nodes, [], lookup());
     expect(g.nodes.map((n) => n.id)).toEqual(["na", "nb"]);
+  });
+});
+
+describe("rol narrativo en el nodo (#167)", () => {
+  it("copia el role de la membresía al nodo-ítem", () => {
+    const raw: RawSagaNode[] = [
+      { id: "n1", item_type: "book", item_id: "b1", child_saga_id: null,
+        x: 0, y: 0, level: "principal", order_no: 1, label_override: null },
+      { id: "n2", item_type: "book", item_id: "b2", child_saga_id: null,
+        x: 0, y: 0, level: "principal", order_no: null, label_override: null },
+    ];
+    const lookup: GraphLookup = {
+      members: new Map([
+        ["book:b1", { itemType: "book", itemId: "b1", title: "Uno", coverUrl: null, href: "/1",
+          position: 1, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 }],
+        ["book:b2", { itemType: "book", itemId: "b2", title: "Nueva Primavera", coverUrl: null, href: "/2",
+          position: null, role: "precuela", status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 }],
+      ]),
+      groupAccent: new Map([[null, "beige"]]),
+      groupName: new Map([[null, null]]),
+      childNames: new Map(),
+      childCovers: new Map(),
+      childCounts: new Map(),
+    };
+
+    const { nodes } = buildSagaGraph(raw, [], lookup);
+
+    expect(nodes.find((n) => n.id === "n1")!.role).toBeNull();
+    expect(nodes.find((n) => n.id === "n2")!.role).toBe("precuela");
+  });
+
+  it("deja role null en un nodo-saga (una subsaga no tiene rol narrativo)", () => {
+    const raw: RawSagaNode[] = [
+      { id: "s1", item_type: null, item_id: null, child_saga_id: "child",
+        x: 0, y: 0, level: "principal", order_no: 1, label_override: null },
+    ];
+    const lookup: GraphLookup = {
+      members: new Map(),
+      groupAccent: new Map([["child", "beige"]]),
+      groupName: new Map([["child", "Hija"]]),
+      childNames: new Map([["child", "Hija"]]),
+      childCovers: new Map(),
+      childCounts: new Map(),
+    };
+
+    const { nodes } = buildSagaGraph(raw, [], lookup);
+
+    expect(nodes[0].role).toBeNull();
   });
 });

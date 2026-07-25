@@ -10,8 +10,10 @@ const member = (id: string, status: DetailMember["status"] = null): DetailMember
   coverUrl: null,
   href: `/libro/${id}`,
   position: null,
+  role: null,
   status,
   groupSagaId: null,
+  ownerSagaId: "owner",
   year: null,
 });
 

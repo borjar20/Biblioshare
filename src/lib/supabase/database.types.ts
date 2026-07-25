@@ -1510,6 +1510,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           position: number | null
+          role: Database["public"]["Enums"]["saga_item_role"] | null
           saga_id: string
         }
         Insert: {
@@ -1519,6 +1520,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           position?: number | null
+          role?: Database["public"]["Enums"]["saga_item_role"] | null
           saga_id: string
         }
         Update: {
@@ -1528,6 +1530,7 @@ export type Database = {
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           position?: number | null
+          role?: Database["public"]["Enums"]["saga_item_role"] | null
           saga_id?: string
         }
         Relationships: [
@@ -2247,6 +2250,7 @@ export type Database = {
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       saga_edge_type: "principal" | "opcional" | "requisito"
+      saga_item_role: "precuela" | "spin_off" | "relato" | "paralela"
       saga_node_level: "principal" | "menor"
       target_kind:
         | "diary_entry"
@@ -2420,6 +2424,7 @@ export const Constants = {
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
       saga_edge_type: ["principal", "opcional", "requisito"],
+      saga_item_role: ["precuela", "spin_off", "relato", "paralela"],
       saga_node_level: ["principal", "menor"],
       target_kind: [
         "diary_entry",

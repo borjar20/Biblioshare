@@ -13,6 +13,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   label: id,
   accent: "verde",
   status: null,
+  role: null,
   coverUrl: null,
   covers: [],
   href: `/libro/${id}`,
@@ -120,10 +121,34 @@ describe("deriveTimeline", () => {
   });
 });
 
+describe("rol narrativo en las ramas (#167)", () => {
+  it("la rama conserva el role del nodo, y edgeType sigue siendo el de la arista", () => {
+    const graph: SagaGraph = {
+      nodes: [
+        { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
+          label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G" },
+        { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
+          label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G" },
+      ],
+      edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
+    };
+
+    const sections = deriveTimeline(graph);
+    const entry = sections[0].rows[0];
+    if (entry.kind !== "entry") throw new Error("se esperaba una entry");
+
+    expect(entry.branches).toHaveLength(1);
+    expect(entry.branches[0].node.role).toBe("spin_off");
+    expect(entry.branches[0].edgeType).toBe("opcional");
+  });
+});
+
 describe("sortByPublication", () => {
   const m = (itemId: string, year: number | null, title = itemId): DetailMember => ({
     itemType: "book", itemId, title, coverUrl: null, href: `/libro/${itemId}`,
-    position: null, status: null, groupSagaId: null, year,
+    position: null, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year,
   });
   it("ordena por año ascendente, nulls al final, empate por título", () => {
     expect(sortByPublication([m("b", 2001), m("d", null), m("a", 1999), m("c", 2001, "AAA")]).map((x) => x.itemId))
