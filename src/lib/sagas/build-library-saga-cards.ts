@@ -215,18 +215,31 @@ export function buildLibrarySagaCards(
     } else if (total === 0) {
       next = { kind: "empty" };
     } else if (completed < total) {
-      // `order` es la fuente preferida (secuencia curada); pero el denominador
-      // (`total`) ya no sale de `order` sino de `counted`, así que puede haber
-      // pendientes que `order` no cubre — el caso Mundodisco exacto: grafo sin
-      // ningún order_no, `order` vacío, `counted` con miembros reales. Sin este
-      // fallback, `order.find` devolvía undefined y esto reventaba en vez de
-      // mostrar el número.
-      const k = order.find((o) => !isCompleted(o)) ?? counted.find((o) => !isCompleted(o))!;
+      // El «siguiente» propone la próxima obra que ADEMÁS cuenta (decisión del
+      // dueño del producto, review de Task 5, Important 2): una obra optional
+      // no se exige, así que tampoco se empuja — proponerla es leer "b" en la
+      // card y ver que la barra no se mueve, el descuadre de los issues
+      // #91/#185. Por eso se recorre `order` (la secuencia curada) pero
+      // filtrando primero a lo que está en `counted`.
+      //
+      // Fallback a `counted` sin filtrar: `order` puede salir vacío del todo
+      // (el caso Mundodisco exacto: grafo sin ningún order_no) aunque `counted`
+      // tenga miembros reales. Sin este fallback, `.find` devolvía undefined y
+      // esto reventaba en vez de mostrar el número. Dentro del fallback no hay
+      // secuencia curada que respetar, así que el desempate es el orden de
+      // llegada de `counted` (arbitrario — ver issue de seguimiento).
+      const countedSet = new Set(counted);
+      const orderCounted = order.filter((o) => countedSet.has(o));
+      const k = orderCounted.find((o) => !isCompleted(o)) ?? counted.find((o) => !isCompleted(o))!;
       const m = metaByItem.get(k);
       const [itemType, itemId] = k.split(":") as [ItemType, string];
       next = { kind: "next", itemType, itemId, title: m?.title ?? "", coverUrl: m?.coverUrl ?? null };
     } else {
-      const rated = order
+      // Misma causa raíz que el fallback de arriba: el denominador ya no sale
+      // de `order`, así que la media tiene que leer de `counted` — con `order`
+      // vacío (grafo sin order_no) esto daba `rated: []` y la card mostraba
+      // "sin nota" tras terminar la saga entera (Important 1 del review).
+      const rated = counted
         .map((k) => ratingByItem.get(k)?.rating)
         .filter((r): r is number => r !== undefined);
       const rating = rated.length > 0
