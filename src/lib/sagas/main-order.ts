@@ -1,16 +1,14 @@
 import type { ItemType } from "@/lib/catalog/types";
 
-// Orden principal de una saga (spec §1.5) — la ÚNICA definición, compartida por
-// los tres sitios donde la spec dice que aplica la regla de cómputo: hero
-// (get-saga-detail), cards de Mi Biblioteca (build-library-saga-cards) y
-// timeline. Vivía duplicada dentro de build-library-saga-cards y el hero no la
-// tenía: contaba TODOS los miembros del subárbol, así que un grafo con
-// opcionales daba 2/7 en el hero y 2/5 en la card (issue #91).
+// Orden principal de una saga: la SECUENCIA con la que se pinta (columna del
+// timeline, expansión de bloques en un itinerario, portadas y «siguiente» de
+// las cards). NO es el denominador del progreso desde el 2026-07-25: eso vive
+// en ./progress.ts (countedKeys) y sale de la pertenencia, no del orden.
 //
-// La regla: con grafo, los nodos con order_no (un nodo-saga expande
-// recursivamente el orden principal de esa saga); sin grafo, los miembros
-// directos por position y luego las hijas por su menor position. Los opcionales
-// (nodos sin order_no) nunca entran, así que no penalizan el avance.
+// OJO con la asimetría del issue #185, que sigue viva AQUÍ aunque ya no afecte
+// a ningún número: con grafo, un nodo sin order_no no entra en la secuencia;
+// sin grafo, entran todos los miembros. Muere en la fase 3, cuando se retire
+// saga_nodes.
 
 export type OrderSaga = { id: string; name: string; parentSagaId: string | null };
 export type OrderMembership = {

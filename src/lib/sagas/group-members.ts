@@ -106,16 +106,18 @@ export function groupMembers(
   return groups;
 }
 
-// Avance del hero (spec §1.5). El denominador es el ORDEN PRINCIPAL —`order`,
-// claves `item_type:item_id` que produce createMainOrder—, no todos los
-// miembros del subárbol: los opcionales de un grafo no penalizan. Hasta el
-// issue #91 esta función sumaba `g.members.length` y el hero decía 2/7 donde la
-// card de biblioteca decía 2/5 sobre la misma saga.
+// Avance del hero (spec §1.5). El parámetro se sigue llamando `order` por
+// compatibilidad de firma, pero desde el 2026-07-25 (Task 5) NO recibe el
+// orden principal: get-saga-detail le pasa countedKeys (./progress.ts), que
+// cuenta la PERTENENCIA del subárbol (miembros no `optional`, deduplicados),
+// no la secuencia de createMainOrder. Hasta el issue #91 esta función sumaba
+// `g.members.length` y el hero decía 2/7 donde la card de biblioteca decía 2/5
+// sobre la misma saga.
 //
-// Las claves sin miembro (nodos del grafo que apuntan a una obra que no es
-// saga_item) ya no llegan hasta aquí: createMainOrder las descarta, igual que
-// buildSagaGraph al pintar. Antes sumaban al total sin poder completarse
-// nunca, así que ese avance no podía llegar al 100% (issue #170).
+// Las claves de un miembro `optional`, o de un bloque `optionalInParent`, ya
+// no llegan hasta aquí: countedKeys las descarta antes de que esta función las
+// vea. El issue #170 (nodos de grafo sin membresía real) queda resuelto de
+// otra forma: countedKeys nunca mira el grafo, así que no puede reaparecer.
 export function computeProgress(
   groups: MemberGroup[],
   order: string[],

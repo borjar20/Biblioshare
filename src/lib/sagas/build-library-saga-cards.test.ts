@@ -8,20 +8,19 @@ import {
   type LibSaga,
 } from "./build-library-saga-cards";
 
-const saga = (id: string, name: string, parent: string | null = null, accent: string | null = null): LibSaga => ({
-  id,
-  parentSagaId: parent,
-  name,
-  accentColor: accent,
-  optionalInParent: false,
-});
-const mem = (sagaId: string, itemId: string, position: number | null): LibMembership => ({
-  sagaId,
-  itemType: "book",
-  itemId,
-  position,
-  optional: false,
-});
+const saga = (
+  id: string,
+  name: string,
+  parent: string | null = null,
+  accent: string | null = null,
+  optionalInParent = false,
+): LibSaga => ({ id, parentSagaId: parent, name, accentColor: accent, optionalInParent });
+const mem = (
+  sagaId: string,
+  itemId: string,
+  position: number | null,
+  optional = false,
+): LibMembership => ({ sagaId, itemType: "book", itemId, position, optional });
 const item = (itemId: string, title: string): LibItemMeta => ({
   itemType: "book",
   itemId,
@@ -95,15 +94,18 @@ describe("buildLibrarySagaCards", () => {
       [
         node("u", { itemId: "a" }, 1),
         node("u", { childSagaId: "h" }, 2), // nodo-saga CON orderNo (Task 1)
-        node("u", { itemId: "opc" }, null), // opcional: fuera del denominador
+        node("u", { itemId: "opc" }, null), // sin hueco en el grafo, pero NO optional: sí cuenta (Task 5)
       ],
       [item("a", "A"), item("b", "B"), item("c", "C"), item("opc", "Opc")],
       [entry("a", "completed"), entry("b", "completed")],
       [],
       [],
     );
-    // orden principal: a, b, c (h expandida por position); opc no cuenta
-    expect(cards[0].progress).toMatchObject({ completed: 2, total: 3, pct: 67 });
+    // orden principal (portadas/«siguiente»): a, b, c — opc no tiene order_no,
+    // así que no entra en la SECUENCIA. Pero el denominador (Task 5) ya no
+    // sale del orden: cuenta la pertenencia, y opc es un miembro real (no
+    // marcado optional en saga_items), así que sí cuenta → total 4, no 3.
+    expect(cards[0].progress).toMatchObject({ completed: 2, total: 4, pct: 50 });
     expect(cards[0].next).toMatchObject({ kind: "next", itemId: "c" });
     expect(cards[0].hasGraph).toBe(true);
   });
@@ -219,5 +221,35 @@ describe("buildLibrarySagaCards", () => {
     const sintetica = cards.find((c) => c.sagaId === "sintetica")!;
     expect(curada.routeName).toBe("La Guardia");
     expect(sintetica.routeName).toBeNull();
+  });
+
+  it("una saga sin grafo y sin ningún position cuenta todos sus miembros (caso Mundodisco)", () => {
+    // Regresión de la fase: con el denominador viejo, una saga cuyos nodos no
+    // tenían order_no daba 0/0 y el usuario no veía avance ninguno.
+    const cards = buildLibrarySagaCards(
+      ["root"],
+      [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
+      [mem("hija", "a", null), mem("hija", "b", null)],
+      [],
+      [item("a", "A"), item("b", "B")],
+      [entry("a", "completed")],
+      [],
+      [],
+    );
+    expect(cards[0].progress).toMatchObject({ completed: 1, total: 2 });
+  });
+
+  it("un bloque optional no penaliza el avance del padre", () => {
+    const cards = buildLibrarySagaCards(
+      ["root"],
+      [saga("root", "Cosmere"), saga("secretas", "Novelas secretas", "root", null, true)],
+      [mem("root", "a", 1), mem("secretas", "s1", 1)],
+      [],
+      [item("a", "A"), item("s1", "S1")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].progress.total).toBe(1);
   });
 });

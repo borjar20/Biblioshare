@@ -5,11 +5,14 @@ import {
   type SagaAccentToken,
 } from "./accents";
 import { createMainOrder } from "./main-order";
+import { countedKeys } from "./progress";
 
 // Cards de la pestaña «Sagas» de Mi Biblioteca (spec §4.3, frame COL). Todo
-// puro: la capa de datos (get-followed-sagas) resuelve las filas. La regla de
-// cómputo es la de §1.5 y vive en ./main-order (compartida con el hero desde
-// el issue #91): denominador = títulos del orden principal.
+// puro: la capa de datos (get-followed-sagas) resuelve las filas. El
+// DENOMINADOR del progreso vive en ./progress (countedKeys, spec 2026-07-25):
+// pertenencia del subárbol, no orden. `mainOrder` (./main-order) se sigue
+// usando aquí, pero solo para cosas de SECUENCIA: portadas del abanico y el
+// bloque «siguiente».
 
 export type LibSaga = {
   id: string;
@@ -148,11 +151,12 @@ export function buildLibrarySagaCards(
     const root = sagaById.get(followedId);
     if (!root) continue;
 
-    const order = mainOrder(followedId);
+    const order = mainOrder(followedId);              // orden: portadas y «siguiente»
+    const counted = countedKeys(followedId, sagas, memberships); // denominador
     const tree = [...new Set(subtreeItems(followedId, 0, new Set()))];
-    const total = order.length;
+    const total = counted.length;
     const isCompleted = (k: string) => entryByItem.get(k)?.everCompleted === true;
-    const completed = order.filter(isCompleted).length;
+    const completed = counted.filter(isCompleted).length;
 
     // Segmentos por hija directa (universos): un ítem del orden pertenece a la
     // primera hija (por orden de grupo) en cuyo subárbol milite; el resto es
@@ -189,7 +193,7 @@ export function buildLibrarySagaCards(
         set: new Set(subtreeItems(c.id, 1, new Set())),
       }));
       const doneBy = new Map<SagaAccentToken, number>();
-      for (const k of order) {
+      for (const k of counted) {
         if (!isCompleted(k)) continue;
         const owner = childSets.find((cs) => cs.set.has(k));
         const accent: SagaAccentToken = owner ? owner.accent : "beige";
@@ -211,7 +215,13 @@ export function buildLibrarySagaCards(
     } else if (total === 0) {
       next = { kind: "empty" };
     } else if (completed < total) {
-      const k = order.find((o) => !isCompleted(o))!;
+      // `order` es la fuente preferida (secuencia curada); pero el denominador
+      // (`total`) ya no sale de `order` sino de `counted`, así que puede haber
+      // pendientes que `order` no cubre — el caso Mundodisco exacto: grafo sin
+      // ningún order_no, `order` vacío, `counted` con miembros reales. Sin este
+      // fallback, `order.find` devolvía undefined y esto reventaba en vez de
+      // mostrar el número.
+      const k = order.find((o) => !isCompleted(o)) ?? counted.find((o) => !isCompleted(o))!;
       const m = metaByItem.get(k);
       const [itemType, itemId] = k.split(":") as [ItemType, string];
       next = { kind: "next", itemType, itemId, title: m?.title ?? "", coverUrl: m?.coverUrl ?? null };

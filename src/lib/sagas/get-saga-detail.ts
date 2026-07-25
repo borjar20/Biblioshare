@@ -13,7 +13,8 @@ import {
   type MemberGroup,
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
-import { createMainOrder, type OrderMembership, type OrderNode, type OrderSaga } from "./main-order";
+import type { OrderMembership, OrderNode, OrderSaga } from "./main-order";
+import { countedKeys, type ProgressMembership, type ProgressSaga } from "./progress";
 import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole, SagaPlacement } from "./types";
 import type { SagaRoute } from "./route-types";
 
@@ -397,9 +398,11 @@ export async function getSagaDetail(
 
   const treeNodes = (nodesRes.data ?? []) as Array<RawSagaNode & { saga_id: string }>;
 
-  // Avance del hero sobre el ORDEN PRINCIPAL (§1.5), la misma regla y el mismo
-  // código que las cards de Mi Biblioteca (issue #91: antes contaba todos los
-  // miembros del subárbol y discrepaba de la card sobre la misma saga).
+  // Insumos de createMainOrder (§1.5) para reconstruir el ORDEN de una subsaga
+  // (Task 6, RouteView) — NO el denominador del avance del hero desde el
+  // 2026-07-25 (ver countedKeys más abajo). Se devuelven en SagaDetail
+  // (orderSagas/orderMemberships/orderNodes) tal cual, sin llamar aquí a
+  // createMainOrder: nada en este fichero necesita ya el orden en sí mismo.
   const orderSagas = [
     { id, name: saga.name, parentSagaId: null },
     ...[...descendants.values()].map((d) => ({
@@ -421,8 +424,29 @@ export async function getSagaDetail(
     childSagaId: n.child_saga_id,
     orderNo: n.order_no,
   }));
-  const mainOrder = createMainOrder(orderSagas, orderMemberships, orderNodes, (k) => meta.get(k)?.title ?? "");
-  const progress = computeProgress(groups, mainOrder(id));
+  // Insumos de countedKeys (el DENOMINADOR, ./progress.ts), construidos con los
+  // mismos datos ya en memoria que orderSagas/orderMemberships (sin viaje
+  // extra): optionalInParent de la raíz no se usa nunca (walk() solo la mira
+  // al descender desde un padre), pero progressSagas debe incluir la raíz o un
+  // miembro directo de la saga consultada no contaría.
+  const progressSagas: ProgressSaga[] = [
+    { id, parentSagaId: null, optionalInParent: false },
+    ...[...descendants.values()].map((d) => ({
+      id: d.id,
+      parentSagaId: d.parent_saga_id,
+      optionalInParent: d.optional_in_parent,
+    })),
+  ];
+  const progressMemberships: ProgressMembership[] = rows.map((r) => ({
+    sagaId: r.saga_id,
+    itemType: r.item_type,
+    itemId: r.item_id,
+    optional: r.optional,
+  }));
+  // El denominador ya no es el orden (spec 2026-07-25): countedKeys cuenta la
+  // PERTENENCIA. computeProgress no cambia de firma — recibe las claves que
+  // cuentan donde antes recibía las del orden principal.
+  const progress = computeProgress(groups, countedKeys(id, progressSagas, progressMemberships));
 
   const rawNodes = treeNodes.filter((n) => n.saga_id === id);
   const rawEdges = (edgesRes.data ?? []) as RawSagaEdge[];
