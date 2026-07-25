@@ -1509,6 +1509,8 @@ export type Database = {
           is_primary: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
+          optional: boolean
+          placement: Database["public"]["Enums"]["saga_placement"] | null
           position: number | null
           role: Database["public"]["Enums"]["saga_item_role"] | null
           saga_id: string
@@ -1519,6 +1521,8 @@ export type Database = {
           is_primary?: boolean
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
+          optional?: boolean
+          placement?: Database["public"]["Enums"]["saga_placement"] | null
           position?: number | null
           role?: Database["public"]["Enums"]["saga_item_role"] | null
           saga_id: string
@@ -1529,6 +1533,8 @@ export type Database = {
           is_primary?: boolean
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
+          optional?: boolean
+          placement?: Database["public"]["Enums"]["saga_placement"] | null
           position?: number | null
           role?: Database["public"]["Enums"]["saga_item_role"] | null
           saga_id?: string
@@ -1722,8 +1728,13 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          optional_in_parent: boolean
           overview: string | null
           parent_saga_id: string | null
+          placement_in_parent:
+            | Database["public"]["Enums"]["saga_placement"]
+            | null
+          position_in_parent: number | null
           source: string
           tmdb_collection_id: number | null
         }
@@ -1733,8 +1744,13 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          optional_in_parent?: boolean
           overview?: string | null
           parent_saga_id?: string | null
+          placement_in_parent?:
+            | Database["public"]["Enums"]["saga_placement"]
+            | null
+          position_in_parent?: number | null
           source?: string
           tmdb_collection_id?: number | null
         }
@@ -1744,8 +1760,13 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          optional_in_parent?: boolean
           overview?: string | null
           parent_saga_id?: string | null
+          placement_in_parent?:
+            | Database["public"]["Enums"]["saga_placement"]
+            | null
+          position_in_parent?: number | null
           source?: string
           tmdb_collection_id?: number | null
         }
@@ -2157,13 +2178,13 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
-      save_saga_route: {
-        Args: { p_entries: Json; p_route_id: string }
-        Returns: undefined
-      }
       sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
       save_saga_graph: {
         Args: { p_edges: Json; p_nodes: Json; p_saga_id: string }
+        Returns: undefined
+      }
+      save_saga_route: {
+        Args: { p_entries: Json; p_route_id: string }
         Returns: undefined
       }
       set_activity_completion_mode: {
@@ -2252,6 +2273,7 @@ export type Database = {
       saga_edge_type: "principal" | "opcional" | "requisito"
       saga_item_role: "precuela" | "spin_off" | "relato" | "paralela"
       saga_node_level: "principal" | "menor"
+      saga_placement: "fijo" | "libre"
       target_kind:
         | "diary_entry"
         | "episode_watch"
@@ -2426,6 +2448,7 @@ export const Constants = {
       saga_edge_type: ["principal", "opcional", "requisito"],
       saga_item_role: ["precuela", "spin_off", "relato", "paralela"],
       saga_node_level: ["principal", "menor"],
+      saga_placement: ["fijo", "libre"],
       target_kind: [
         "diary_entry",
         "episode_watch",

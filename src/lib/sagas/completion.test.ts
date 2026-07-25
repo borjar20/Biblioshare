@@ -10,6 +10,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   href: "/libro/x",
   position: null,
   role: null,
+  placement: null,
+  optional: false,
   status: null,
   groupSagaId: null,
   ownerSagaId: "owner",

@@ -4,7 +4,7 @@ import { itemHref } from "@/lib/catalog/item-href";
 import { getCollection } from "@/lib/catalog/tmdb";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { planCollectionSync, type DesiredPart } from "./collection-sync";
-import type { Saga, SagaItemRole, SagaMember } from "./types";
+import type { Saga, SagaItemRole, SagaMember, SagaPlacement } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -100,7 +100,14 @@ async function populateTmdbCollection(
 
 async function resolveMembers(
   supabase: SupabaseServerClient,
-  rows: Array<{ item_type: ItemType; item_id: string; position: number | null; role: SagaItemRole | null }>
+  rows: Array<{
+    item_type: ItemType;
+    item_id: string;
+    position: number | null;
+    role: SagaItemRole | null;
+    placement: SagaPlacement | null;
+    optional: boolean;
+  }>
 ): Promise<SagaMember[]> {
   const byType: Record<ItemType, Set<string>> = { book: new Set(), movie: new Set(), series: new Set() };
   for (const r of rows) byType[r.item_type].add(r.item_id);
@@ -132,6 +139,8 @@ async function resolveMembers(
       href: itemHref(r.item_type, r.item_id),
       position: r.position,
       role: r.role,
+      placement: r.placement,
+      optional: r.optional,
     });
   }
 
@@ -172,12 +181,19 @@ export async function getSaga(
 
   const { data: items } = await supabase
     .from("saga_items")
-    .select("item_type, item_id, position, role")
+    .select("item_type, item_id, position, role, placement, optional")
     .eq("saga_id", id);
 
   const members = await resolveMembers(
     supabase,
-    (items ?? []) as Array<{ item_type: ItemType; item_id: string; position: number | null; role: SagaItemRole | null }>
+    (items ?? []) as Array<{
+      item_type: ItemType;
+      item_id: string;
+      position: number | null;
+      role: SagaItemRole | null;
+      placement: SagaPlacement | null;
+      optional: boolean;
+    }>
   );
 
   return { saga, members };

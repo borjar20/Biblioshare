@@ -13,12 +13,14 @@ const saga = (id: string, name: string, parent: string | null = null, accent: st
   parentSagaId: parent,
   name,
   accentColor: accent,
+  optionalInParent: false,
 });
 const mem = (sagaId: string, itemId: string, position: number | null): LibMembership => ({
   sagaId,
   itemType: "book",
   itemId,
   position,
+  optional: false,
 });
 const item = (itemId: string, title: string): LibItemMeta => ({
   itemType: "book",

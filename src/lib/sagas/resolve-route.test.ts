@@ -11,6 +11,8 @@ const member = (id: string, status: DetailMember["status"] = null): DetailMember
   href: `/libro/${id}`,
   position: null,
   role: null,
+  placement: null,
+  optional: false,
   status,
   groupSagaId: null,
   ownerSagaId: "owner",

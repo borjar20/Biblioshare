@@ -10,6 +10,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   href: "/libro/x",
   position: null,
   role: null,
+  placement: null,
+  optional: false,
   status: null,
   groupSagaId: null,
   ownerSagaId: "owner",
@@ -18,8 +20,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
 });
 
 const children: SagaChildRef[] = [
-  { id: "vapor", name: "La Edad del Vapor", accentColor: null },
-  { id: "ceniza", name: "La Edad de Ceniza", accentColor: "verde" },
+  { id: "vapor", name: "La Edad del Vapor", accentColor: null, positionInParent: null, optionalInParent: false },
+  { id: "ceniza", name: "La Edad de Ceniza", accentColor: "verde", positionInParent: null, optionalInParent: false },
 ];
 
 describe("groupMembers", () => {
@@ -77,10 +79,12 @@ describe("groupMembers", () => {
   });
 
   it("con más de 5 subsagas sin color reutiliza la secuencia sin colgarse", () => {
-    const manyChildren = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((id) => ({
+    const manyChildren: SagaChildRef[] = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((id) => ({
       id,
       name: id,
       accentColor: null,
+      positionInParent: null,
+      optionalInParent: false,
     }));
     const groups = groupMembers(
       manyChildren.map((c, i) =>
@@ -157,11 +161,11 @@ describe("rol narrativo (#167)", () => {
   it("conserva el role al agrupar y NO lo confunde con position", () => {
     const members: DetailMember[] = [
       { itemType: "book", itemId: "a", title: "Libro 1", coverUrl: null, href: "/a",
-        position: 1, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 },
+        position: 1, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 },
       { itemType: "book", itemId: "b", title: "Nueva Primavera", coverUrl: null, href: "/b",
-        position: null, role: "precuela", status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 },
+        position: null, role: "precuela", placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 },
       { itemType: "book", itemId: "c", title: "Sin clasificar", coverUrl: null, href: "/c",
-        position: null, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2010 },
+        position: null, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2010 },
     ];
 
     const [group] = groupMembers(members, []);

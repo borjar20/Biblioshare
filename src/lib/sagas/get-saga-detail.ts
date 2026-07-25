@@ -14,7 +14,7 @@ import {
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
 import { createMainOrder, type OrderMembership, type OrderNode, type OrderSaga } from "./main-order";
-import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole } from "./types";
+import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole, SagaPlacement } from "./types";
 import type { SagaRoute } from "./route-types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -78,6 +78,8 @@ type DescendantRow = {
   name: string;
   accent_color: string | null;
   parent_saga_id: string | null;
+  position_in_parent: number | null;
+  optional_in_parent: boolean;
 };
 
 // Descendientes hasta profundidad 4 (spec §1.5: cap como cinturón frente a
@@ -91,7 +93,7 @@ async function fetchDescendants(
   for (let depth = 0; depth < 4 && frontier.length > 0; depth++) {
     const { data } = await supabase
       .from("sagas")
-      .select("id, name, accent_color, parent_saga_id")
+      .select("id, name, accent_color, parent_saga_id, position_in_parent, optional_in_parent")
       .in("parent_saga_id", frontier);
     const next: string[] = [];
     for (const row of (data ?? []) as DescendantRow[]) {
@@ -139,13 +141,19 @@ export async function getSagaDetail(
   const descendants = await fetchDescendants(supabase, id);
   const children: SagaChildRef[] = [...descendants.values()]
     .filter((d) => d.parent_saga_id === id)
-    .map((d) => ({ id: d.id, name: d.name, accentColor: d.accent_color }));
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      accentColor: d.accent_color,
+      positionInParent: d.position_in_parent,
+      optionalInParent: d.optional_in_parent,
+    }));
 
   // Membresías del root + descendientes, con su saga de origen.
   const sagaIds = [id, ...descendants.keys()];
   const { data: itemRows } = await supabase
     .from("saga_items")
-    .select("saga_id, item_type, item_id, position, role")
+    .select("saga_id, item_type, item_id, position, role, placement, optional")
     .in("saga_id", sagaIds)
     .order("created_at", { ascending: true });
   const rows = (itemRows ?? []) as Array<{
@@ -154,6 +162,8 @@ export async function getSagaDetail(
     item_id: string;
     position: number | null;
     role: SagaItemRole | null;
+    placement: SagaPlacement | null;
+    optional: boolean;
   }>;
 
   // Dedupe multi-membresía: la fila con subsaga gana sobre la directa (spec
@@ -244,6 +254,8 @@ export async function getSagaDetail(
       href: itemHref(row.item_type, row.item_id),
       position: row.position,
       role: row.role,
+      placement: row.placement,
+      optional: row.optional,
       status: statusByItem.get(`${row.item_type}:${row.item_id}`) ?? null,
       groupSagaId,
       ownerSagaId: row.saga_id,
@@ -443,6 +455,8 @@ export async function getSagaDetail(
     id: d.id,
     name: d.name,
     accentColor: d.accent_color,
+    positionInParent: d.position_in_parent,
+    optionalInParent: d.optional_in_parent,
   }));
 
   return {

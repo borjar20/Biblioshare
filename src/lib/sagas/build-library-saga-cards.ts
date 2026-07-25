@@ -11,8 +11,22 @@ import { createMainOrder } from "./main-order";
 // cómputo es la de §1.5 y vive en ./main-order (compartida con el hero desde
 // el issue #91): denominador = títulos del orden principal.
 
-export type LibSaga = { id: string; parentSagaId: string | null; name: string; accentColor: string | null };
-export type LibMembership = { sagaId: string; itemType: ItemType; itemId: string; position: number | null };
+export type LibSaga = {
+  id: string;
+  parentSagaId: string | null;
+  name: string;
+  accentColor: string | null;
+  /** true = el bloque entero sale del denominador del PADRE, no del suyo. */
+  optionalInParent: boolean;
+};
+export type LibMembership = {
+  sagaId: string;
+  itemType: ItemType;
+  itemId: string;
+  position: number | null;
+  /** true = NO cuenta en el denominador del progreso. */
+  optional: boolean;
+};
 export type LibNode = {
   sagaId: string;
   itemType: ItemType | null;
