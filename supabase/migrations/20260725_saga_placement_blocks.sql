@@ -19,6 +19,14 @@ alter table public.sagas
 -- De ahí el offset: si las hijas empezaran en 1 chocarían con los huecos de los
 -- miembros directos del padre, y un empate de position significa TÁNDEM en el
 -- modelo nuevo — escribiríamos una mentira.
+--
+-- Ese "lo que la app YA deduce" solo vale para un padre SIN grafo. Si el padre
+-- tiene filas en saga_nodes, la app no mira min(position) para nada: el orden
+-- sale de saga_nodes.order_no, y una hija sin nodo (o con order_no null) hoy no
+-- está colocada en ningún sitio. Colocarla aquí con 'fijo' sería inventar una
+-- curación que nadie deriva. Esas hijas se quedan sin clasificar (null/null) a
+-- propósito: los 4 grafos de prod se migran uno a uno y a mano en la fase 3
+-- (spec «Migración», §2).
 with base as (
   select p.id as parent_id,
          coalesce((select max(i.position) from public.saga_items i where i.saga_id = p.id), 0) as offset_pos
@@ -35,6 +43,9 @@ with base as (
   from public.sagas s
   join base b on b.parent_id = s.parent_saga_id
   where s.parent_saga_id is not null
+    and not exists (
+      select 1 from public.saga_nodes n where n.saga_id = s.parent_saga_id
+    )
 )
 update public.sagas s
    set position_in_parent = r.pos,
