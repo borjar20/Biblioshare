@@ -111,7 +111,7 @@ describe("computeProgress", () => {
     );
   const all = ["book:b1", "book:b2", "book:b4", "book:b5"];
 
-  it("cuenta completados sobre el orden principal y da segmentos por grupo", () => {
+  it("cuenta completados sobre `counted` y da segmentos por grupo", () => {
     const p = computeProgress(fourMembers(), all);
     expect(p).toMatchObject({ completed: 2, total: 4, pct: 50 });
     expect(p.segments).toEqual([
@@ -123,18 +123,18 @@ describe("computeProgress", () => {
   // El caso del issue #91: el hero contaba TODOS los miembros del subárbol y
   // decía 2/7 = 29% donde la card de biblioteca, que ya aplicaba §1.5, decía
   // 2/5 = 40%. Los opcionales (fuera del orden) no penalizan.
-  it("los miembros fuera del orden principal no entran en el denominador", () => {
+  it("los miembros fuera de `counted` no entran en el denominador", () => {
     const p = computeProgress(fourMembers(), ["book:b1", "book:b5"]);
     expect(p).toMatchObject({ completed: 2, total: 2, pct: 100 });
   });
 
-  it("una clave del orden sin miembro suma al total pero no a un segmento", () => {
+  it("una clave de `counted` sin miembro suma al total pero no a un segmento", () => {
     const p = computeProgress(fourMembers(), [...all, "book:huerfano"]);
     expect(p).toMatchObject({ completed: 2, total: 5, pct: 40 });
     expect(p.segments.reduce((n, s) => n + s.fraction, 0)).toBeCloseTo(0.4);
   });
 
-  it("orden vacío: 0% sin dividir por cero", () => {
+  it("`counted` vacío: 0% sin dividir por cero", () => {
     expect(computeProgress([], [])).toMatchObject({ completed: 0, total: 0, pct: 0, segments: [] });
     expect(computeProgress(fourMembers(), [])).toMatchObject({ total: 0, pct: 0, segments: [] });
   });

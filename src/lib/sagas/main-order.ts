@@ -65,9 +65,12 @@ export function createMainOrder(
   // Issue #170: un nodo-ítem puede apuntar a algo que no es miembro
   // (saga_nodes.item_id no tiene FK y save_saga_graph no valida la membresía).
   // buildSagaGraph ya lo descarta al pintar, así que el usuario no puede verlo
-  // ni marcarlo; si contase en el denominador, el avance nunca llegaría al
-  // 100%. Mismo criterio que el lookup `members` de buildSagaGraph: la
-  // membresía puede vivir en cualquier saga del árbol, no solo en la del nodo.
+  // ni marcarlo: se descarta aquí por lo mismo (no tiene sentido pintarlo en
+  // el abanico ni proponerlo como «siguiente»), no por proteger un
+  // denominador — ese vive en countedKeys (./progress.ts), que ni siquiera
+  // mira el grafo, así que el #170 no puede reaparecer ahí. Mismo criterio
+  // que el lookup `members` de buildSagaGraph: la membresía puede vivir en
+  // cualquier saga del árbol, no solo en la del nodo.
   const memberKeys = new Set(memberships.map((m) => itemKey(m.itemType, m.itemId)));
 
   const minPos = (sagaId: string) =>
