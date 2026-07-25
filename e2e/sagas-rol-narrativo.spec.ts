@@ -235,11 +235,14 @@ test("una obra sin número Y sin rol sale en la sección, pero sin chip", async 
 
 test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
   // Red contra el #91: el rol es puramente semántico y no toca el
-  // denominador. La saga tiene grafo (hasGraph=true), así que el denominador
-  // real sale de `saga_nodes.order_no` (main-order.ts), un campo totalmente
-  // distinto de `saga_items.position/role` que toca este test — no hay
-  // manera de que marcar un rol lo mueva, y este test lo deja fijado en rojo
-  // si algún día alguien reengancha el progreso a otra fuente.
+  // denominador. Desde el 2026-07-25 (Task 5) el denominador real sale de
+  // countedKeys (./progress.ts): pertenencia del subárbol vía
+  // `saga_items.optional`, deduplicada — ya no de `saga_nodes.order_no`
+  // (main-order.ts) ni de ningún otro campo de orden. `saga_items.role`, que
+  // es lo único que toca este test, es un campo totalmente distinto de
+  // `optional` — no hay manera de que marcar un rol lo mueva, y este test lo
+  // deja fijado en rojo si algún día alguien reengancha el progreso a otra
+  // fuente.
   //
   // OJO: el hero imprime un PORCENTAJE (`{progress.pct}%`,
   // `saga-hero.tsx:102`), no "N de M" — ese otro número es el de la ruta
