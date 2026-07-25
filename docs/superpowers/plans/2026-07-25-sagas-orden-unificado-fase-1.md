@@ -129,8 +129,14 @@ Esperado: `columnas=2`, `check_=1`, `enum_=1`, `opcionales=0`, y `fijos + sin_cl
 
 ```sql
 -- Debe FALLAR con violación de saga_items_placement_position.
+-- OJO: Postgres NO admite LIMIT en un UPDATE (da error de sintaxis, que
+-- pareceria un CHECK que no muerde). Y va envuelto en una transacción con
+-- rollback: si algún dia el CHECK no estuviera, esto NO debe dejar datos
+-- corruptos detras.
+begin;
 update public.saga_items set position = null
-where placement = 'fijo' limit 1;
+ where id = (select id from public.saga_items where placement = 'fijo' limit 1);
+rollback;
 ```
 
 Esperado: `ERROR: new row for relation "saga_items" violates check constraint "saga_items_placement_position"`. **Esto es la prueba de que #188 pasa de pérdida silenciosa a error duro** — el efecto está buscado, no es un accidente.
@@ -236,9 +242,12 @@ Esperado: **toda** saga con padre tiene `position_in_parent` no nulo y `placemen
 - [ ] **Step 3: Comprobar que el CHECK de raíz muerde**
 
 ```sql
--- Debe FALLAR: una raíz no puede estar colocada.
+-- Debe FALLAR: una raíz no puede estar colocada. Mismas dos cautelas que en
+-- la Task 1: sin LIMIT en el UPDATE (Postgres no lo admite) y con rollback.
+begin;
 update public.sagas set position_in_parent = 1, placement_in_parent = 'fijo'
-where parent_saga_id is null limit 1;
+ where id = (select id from public.sagas where parent_saga_id is null limit 1);
+rollback;
 ```
 
 Esperado: violación de `sagas_placement_needs_parent`.
