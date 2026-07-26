@@ -34,31 +34,22 @@ export function WindowEditor({
   const before = draftWindow?.before ?? null;
   const bothSet = after !== null && before !== null;
 
-  // Ancla rota = llegó con el título sin resolver (la obra o el bloque que
-  // señalaba ya no está en el árbol). Hoy `hydrateWindows` (get-saga-sequence.ts)
-  // descarta en silencio el lado que no resuelve en vez de dejar un marcador, así
-  // que esta rama es defensiva — no se alcanza con los datos de hoy, pero es lo
-  // que exige el contrato: si algún día un ancla rota SÍ llega con el título
-  // vacío en vez de desaparecer, se pinta marcada y quitable, nunca se borra
-  // sola (la obra puede volver a la saga).
-  const isBroken = (a: DraftAnchor) => a.title === "";
-
+  // Un ancla rota (la obra o el bloque al que apuntaba ya no está en el
+  // subárbol) no llega hasta aquí: `hydrateWindows` (get-saga-sequence.ts) la
+  // descarta en silencio al hidratar y queda a `null`. No hay marcador que
+  // pintar ni botón de "olvidada" que ofrecer — se pierde sin más, a cambio de
+  // no montar la maquinaria que distinguiría "rota pero ya guardada" de "ajena
+  // y nueva" (`windowForeignAnchor` ya rechaza justo eso en el guardado).
   const chip = (side: Side, anchor: DraftAnchor) => {
-    const broken = isBroken(anchor);
     const label = t(side === "after" ? "windowAfter" : "windowBefore");
-    const anchorTitle = broken ? t("windowBroken") : anchor.title;
     return (
-      <span
-        className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] ${
-          broken ? "border-status-dropped/50 bg-status-dropped/10 text-status-dropped" : "border-border bg-surface-muted text-foreground"
-        }`}
-      >
+      <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border bg-surface-muted px-2 py-1 text-[11px] text-foreground">
         <span className="font-semibold">{label}</span>
-        <span className="min-w-0 truncate">{anchorTitle}</span>
+        <span className="min-w-0 truncate">{anchor.title}</span>
         <button
           type="button"
           onClick={() => onClearAnchor(side)}
-          aria-label={t("windowRemoveAnchor", { anchor: anchorTitle, title: entry.title })}
+          aria-label={t("windowRemoveAnchor", { anchor: anchor.title, title: entry.title })}
           className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] leading-none"
         >
           ✕
@@ -75,6 +66,10 @@ export function WindowEditor({
         <button
           type="button"
           onClick={() => setPicking(after ? "before" : "after")}
+          aria-label={t(
+            draftWindow === null ? "windowAddFor" : after ? "windowAddBeforeFor" : "windowAddAfterFor",
+            { title: entry.title },
+          )}
           className="rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground"
         >
           {draftWindow === null ? t("windowAdd") : after ? t("windowAddBefore") : t("windowAddAfter")}

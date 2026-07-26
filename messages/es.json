@@ -1183,16 +1183,12 @@
     "windowBefore": "Antes de",
     "windowAddAfter": "+ A partir de…",
     "windowAddBefore": "+ Recomendable antes de…",
+    "windowAddFor": "Añadir ventana a {title}",
+    "windowAddAfterFor": "Añadir a partir de qué obra a {title}",
+    "windowAddBeforeFor": "Añadir antes de qué obra a {title}",
     "windowRemoveAnchor": "Quitar «{anchor}» de {title}",
-    "windowBroken": "Ya no está en la saga",
     "anchorPickerFilter": "Filtrar obras y bloques…",
     "anchorPickerEmpty": "No hay nada más en esta saga a lo que anclar.",
-    "windowErrors": {
-      "windowNotFree": "Solo las entradas de «Cuando quieras» pueden tener ventana.",
-      "windowNoAnchor": "Una ventana necesita al menos un ancla.",
-      "windowSelfAnchor": "Una obra no puede anclarse a sí misma.",
-      "windowForeignAnchor": "El ancla tiene que ser algo de esta saga."
-    },
     "itinerariesTitle": "Itinerarios de lectura",
     "itinerariesEmpty": "Todavía no hay ninguno.",
     "itineraryCreate": "+ Crear itinerario"
