@@ -47,6 +47,11 @@ describe("pairWith / unpair", () => {
     const d = pairWith(draft([[work("a")], [work("b")], [work("c")]]), "i:book:a", 2);
     expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["b"], ["c", "a"]]);
   });
+
+  it("emparejar una fila con su propio hueco es un no-op", () => {
+    const d = draft([[work("a"), work("b")], [work("c")]]);
+    expect(pairWith(d, "i:book:b", 0)).toEqual(d);
+  });
 });
 
 describe("sendTo", () => {
