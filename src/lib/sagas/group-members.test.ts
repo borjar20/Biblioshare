@@ -25,15 +25,91 @@ const children: SagaChildRef[] = [
 ];
 
 describe("groupMembers", () => {
-  it("agrupa por hija directa y ordena grupos por su menor position", () => {
+  it("la colocación curada manda sobre el menor `position` de los miembros", () => {
+    // El caso real del Cosmere: Elantris está curado en el hueco 2 y su única
+    // obra no tiene número; Archivo está en el 5 y su primera obra es la 1. Con
+    // el criterio viejo salía Archivo primero, contradiciendo al curador.
+    const curados: SagaChildRef[] = [
+      { id: "elantris", name: "Elantris", accentColor: null, positionInParent: 2, placementInParent: "fijo", optionalInParent: false },
+      { id: "archivo", name: "El Archivo de las Tormentas", accentColor: null, positionInParent: 5, placementInParent: "fijo", optionalInParent: false },
+    ];
     const groups = groupMembers(
       [
-        member({ itemId: "b4", groupSagaId: "vapor", position: 4 }),
-        member({ itemId: "b1", groupSagaId: "ceniza", position: 1 }),
+        member({ itemId: "elantris-1", groupSagaId: "elantris", position: null }),
+        member({ itemId: "camino", groupSagaId: "archivo", position: 1, placement: "fijo" }),
+      ],
+      curados,
+    );
+    expect(groups.map((g) => g.sagaId)).toEqual(["elantris", "archivo"]);
+  });
+
+  it("un bloque sin colocar va DETRÁS de los colocados", () => {
+    const mezcla: SagaChildRef[] = [
+      { id: "sin", name: "Sin colocar", accentColor: null, positionInParent: null, placementInParent: null, optionalInParent: false },
+      { id: "con", name: "Con hueco", accentColor: null, positionInParent: 9, placementInParent: "fijo", optionalInParent: false },
+    ];
+    const groups = groupMembers(
+      [
+        member({ itemId: "a", groupSagaId: "sin", position: 1, placement: "fijo" }),
+        member({ itemId: "b", groupSagaId: "con", position: 2, placement: "fijo" }),
+      ],
+      mezcla,
+    );
+    expect(groups.map((g) => g.sagaId)).toEqual(["con", "sin"]);
+  });
+
+  it("entre bloques sin colocar se conserva el criterio de siempre", () => {
+    // Las 6 subsagas sin colocar que hay hoy en prod no pueden moverse de sitio
+    // por este cambio. `children` (el const de la cabecera) son justo eso: dos
+    // hijas sin colocar.
+    const groups = groupMembers(
+      [
+        member({ itemId: "b4", groupSagaId: "vapor", position: 4, placement: "fijo" }),
+        member({ itemId: "b1", groupSagaId: "ceniza", position: 1, placement: "fijo" }),
       ],
       children,
     );
     expect(groups.map((g) => g.sagaId)).toEqual(["ceniza", "vapor"]);
+  });
+
+  it("cada grupo lleva SU propia colocación, no la del primero", () => {
+    // Con una sola hija esta prueba no valdría: no distinguiría «la del bloque
+    // correcto» de «siempre la del primero». Demostrado con inyección de fallo.
+    const mixtas: SagaChildRef[] = [
+      { id: "colocada", name: "Colocada", accentColor: null, positionInParent: 3, placementInParent: "fijo", optionalInParent: false },
+      { id: "secretas", name: "Novelas secretas", accentColor: null, positionInParent: null, placementInParent: "libre", optionalInParent: false },
+    ];
+    const groups = groupMembers(
+      [
+        member({ itemId: "a", groupSagaId: "colocada", position: 1, placement: "fijo" }),
+        member({ itemId: "b", groupSagaId: "secretas" }),
+      ],
+      mixtas,
+    );
+    const byId = new Map(groups.map((g) => [g.sagaId, g]));
+    expect(byId.get("colocada")).toMatchObject({ positionInParent: 3, placementInParent: "fijo" });
+    expect(byId.get("secretas")).toMatchObject({ positionInParent: null, placementInParent: "libre" });
+  });
+
+  it("dos bloques en el mismo hueco (tándem) desempatan por nombre, de forma estable", () => {
+    const tandem: SagaChildRef[] = [
+      { id: "zeta", name: "Zeta", accentColor: null, positionInParent: 4, placementInParent: "fijo", optionalInParent: false },
+      { id: "alfa", name: "Alfa", accentColor: null, positionInParent: 4, placementInParent: "fijo", optionalInParent: false },
+    ];
+    const members = [
+      member({ itemId: "z", groupSagaId: "zeta", position: 1, placement: "fijo" }),
+      member({ itemId: "a", groupSagaId: "alfa", position: 2, placement: "fijo" }),
+    ];
+    expect(groupMembers(members, tandem).map((g) => g.sagaId)).toEqual(["alfa", "zeta"]);
+    // Y el mismo resultado con las hijas en el orden contrario: el orden de
+    // salida no puede depender del orden de entrada.
+    expect(groupMembers(members, [...tandem].reverse()).map((g) => g.sagaId)).toEqual(["alfa", "zeta"]);
+  });
+
+  it("el grupo de miembros directos no es un bloque: no tiene colocación", () => {
+    const groups = groupMembers([member({ itemId: "a", position: 1, placement: "fijo" })], []);
+    expect(groups[0].sagaId).toBeNull();
+    expect(groups[0].placementInParent).toBeNull();
   });
 
   it("mete los miembros directos en un grupo nexo (sagaId null, beige) al final", () => {

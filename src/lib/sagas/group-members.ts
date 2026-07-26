@@ -5,7 +5,7 @@ import {
   type SagaAccentToken,
 } from "./accents";
 import { isMemberCompleted } from "./completion";
-import type { DetailMember, SagaChildRef } from "./types";
+import type { DetailMember, SagaChildRef, SagaPlacement } from "./types";
 
 // Agrupación de la pestaña Info y progreso del hero (spec §2.1/§2.3, frames
 // A/D). Todo puro: los datos llegan resueltos de get-saga-detail.
@@ -16,6 +16,12 @@ export type MemberGroup = {
   name: string | null;
   accent: SagaAccentToken;
   members: DetailMember[];
+  /** Colocación del bloque dentro de ESTA saga (`sagas.*_in_parent`). Las dos
+   *  son null en el grupo de miembros directos, que no es un bloque, y en un
+   *  bloque sin clasificar. El render las usa para repartir los grupos entre la
+   *  lista ordenada y «Cuando quieras» (issue #198); el progreso NO las mira. */
+  positionInParent: number | null;
+  placementInParent: SagaPlacement | null;
 };
 
 const byPositionThenTitle = (a: DetailMember, b: DetailMember) => {
@@ -46,13 +52,23 @@ export function groupMembers(
       Number.MAX_SAFE_INTEGER,
     );
 
-  // Grupos = hijas con miembros, ordenadas por su menor position (empate: nombre).
+  // La colocación curada manda (issue #198): hasta la fase 2a no había forma de
+  // expresarla, así que el orden salía del `position` MÍNIMO de los miembros
+  // del bloque — una heurística que ahora contradice al curador (Elantris,
+  // curado en el hueco 2, salía el quinto porque su única obra no tiene
+  // número). Un bloque sin colocar conserva esa heurística y cae detrás: es lo
+  // único que había antes, y en prod hay 6 bloques así que no deben moverse.
   const childGroups = children
     .filter((c) => buckets.has(c.id))
     .sort((a, b) => {
-      const pa = minPos(buckets.get(a.id)!);
-      const pb = minPos(buckets.get(b.id)!);
-      if (pa !== pb) return pa - pb;
+      if (a.positionInParent !== null && b.positionInParent !== null) {
+        return a.positionInParent - b.positionInParent || a.name.localeCompare(b.name);
+      }
+      if (a.positionInParent !== null) return -1;
+      if (b.positionInParent !== null) return 1;
+      const ma = minPos(buckets.get(a.id)!);
+      const mb = minPos(buckets.get(b.id)!);
+      if (ma !== mb) return ma - mb;
       return a.name.localeCompare(b.name);
     });
 
@@ -92,6 +108,8 @@ export function groupMembers(
     name: c.name,
     accent: accentFor(c),
     members: buckets.get(c.id)!,
+    positionInParent: c.positionInParent,
+    placementInParent: c.placementInParent,
   }));
 
   const direct = buckets.get(null);
@@ -101,6 +119,8 @@ export function groupMembers(
       name: null,
       accent: children.length > 0 ? "beige" : "terracota",
       members: direct,
+      positionInParent: null,
+      placementInParent: null,
     });
   }
   return groups;

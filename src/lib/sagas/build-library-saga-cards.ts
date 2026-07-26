@@ -166,7 +166,18 @@ export function buildLibrarySagaCards(
     // primera hija (por orden de grupo) en cuyo subárbol milite; el resto es
     // nexo (beige). Acentos: persistido manda; el fallback rota la secuencia
     // saltándose los usados, en orden de grupo (versión compacta de accentFor
-    // de group-members — puede divergir de la ficha solo sin accent persistido).
+    // de group-members).
+    //
+    // Fix revisión final #198 (Important 2): este comentario decía que la
+    // divergencia con la ficha era SOLO de acento, sin accent persistido —
+    // falso desde que la #198 hizo que `groupMembers` ordene los bloques por
+    // su colocación curada (`positionInParent`/`placementInParent`). Este
+    // `sort` sigue usando ÚNICAMENTE `minPos` (más abajo) porque `LibSaga` no
+    // trae esas dos columnas (`get-followed-sagas.ts` no las selecciona de
+    // `sagas`) — así que también diverge en el ORDEN de los bloques, no solo
+    // en su color, en cuanto un universo tenga bloques ya colocados (caso real:
+    // el Cosmere). Seguimiento en la issue #203; no se corrige aquí porque
+    // exige tocar la consulta, fuera del alcance de este fix.
     const children = [...(childrenByParent.get(followedId) ?? [])].sort((a, b) => {
       const pa = minPos(a.id);
       const pb = minPos(b.id);
