@@ -275,7 +275,7 @@ nulo) y las tres operaciones de escritura exigen ya `collaborator`:
 | función | qué hace |
 |---|---|
 | `link_tmdb_saga_item(p_saga_id, p_item_id)` | alta de una película en su colección; resuelve `is_primary` y el reintento ante carrera |
-| `sync_tmdb_saga_items(p_saga_id, p_items)` | rellenado perezoso: inserta lo que falte y corrige posiciones, sin borrar nada |
+| `sync_tmdb_saga_items(p_saga_id, p_items)` | rellenado perezoso: **solo inserta lo que falte**; una fila que ya existe no se toca (ni `position` ni `placement`) — ver §7.4b |
 
 **Aplicada en dev y en prod el 2026-07-22**, en ese orden y con el código ya desplegado
 (deployment `dpl_3eLcrm…`, commit `76e1bbf`): cerrar el INSERT con el código viejo en pie
@@ -284,14 +284,43 @@ habría roto la hidratación TMDB para los usuarios sin rol. Verificado contra `
 en dev y prod, `prosecdef`, `search_path` y ACL correctos (sin `anon`).
 
 **El cuerpo de `sync_tmdb_saga_items` se reemplazó — `create or replace` — en
-`20260726_saga_items_placement_writers_fix.sql` (§7.4): el original escribía `position` sin tocar
-`placement`, así que cualquier alta o corrección de una colección TMDB dejaba filas
-`(placement=null, position=N)` que el CHECK `saga_items_placement_position` rechaza (23514). El
-`INSERT`/`ON CONFLICT` ahora fija `placement='fijo'` siempre que `position` no sea nulo, tanto en
-el alta como en la actualización. `link_tmdb_saga_item` no tenía el mismo problema (nunca escribe
-`position`) y se dejó sin tocar. **Este `create or replace` está SOLO en dev** — mismo estado
-pendiente que el resto de §7.4, no un despliegue independiente: el `md5` del cuerpo normalizado
-YA NO coincide entre dev y prod hasta que el orquestador aplique esta migración.
+`20260726_saga_items_placement_writers_fix.sql` (§7.4), en dos revisiones sobre el mismo fichero:
+la primera (23514) hizo que el `INSERT`/`ON CONFLICT` fijara `placement='fijo'` siempre que
+`position` no fuera nulo, tanto en el alta como en la actualización — pero eso todavía dejaba el
+`ON CONFLICT ... DO UPDATE` pisando `position`/`placement` de cualquier fila existente sin
+condición. `link_tmdb_saga_item` no tenía el mismo problema (nunca escribe `position`) y se dejó
+sin tocar. **Este `create or replace` está SOLO en dev** — mismo estado pendiente que el resto de
+§7.4, no un despliegue independiente: el `md5` del cuerpo normalizado YA NO coincide entre dev y
+prod hasta que el orquestador aplique esta migración.
+
+#### 7.1b La curación manual gana sobre el sync de TMDB (2026-07-26)
+
+**Bug**: `populateTmdbCollection` (`src/lib/sagas/get-saga.ts`) se dispara al abrir la ficha de
+CUALQUIER saga TMDB, para cualquier lector (no hace falta ser curador). Si una fila ya existía en
+`saga_items`, tanto `planCollectionSync` (`src/lib/sagas/collection-sync.ts`, comparaba solo
+`position`) como el `ON CONFLICT ... DO UPDATE` de `sync_tmdb_saga_items` la trataban como
+corregible, así que una curación manual (p. ej. marcar una película como `placement='libre'` →
+`position=NULL`) se revertía sin avisar en cuanto alguien visitaba la ficha. Reproducido en dev
+con «Matrix - Colección»: curar Matrix 1 a `position=null, placement=libre` y abrir la ficha lo
+devolvía a `position=1, placement=fijo`.
+
+**Decisión del dueño del producto**: la curación manual gana. **Regla**: el sync SOLO rellena
+huecos (altas nuevas); una fila que ya existe en `saga_items` no se toca, ni en `position` ni en
+`placement`, la traiga o no `p_items`.
+
+**Dónde se implementó (los dos escritores, por separado y con razón)**:
+- **RPC `sync_tmdb_saga_items`** (`20260726_saga_items_placement_writers_fix.sql`, revisión
+  2026-07-26): `ON CONFLICT ... DO NOTHING` en vez de `DO UPDATE`. Es la barrera real — función de
+  BD, `SECURITY DEFINER`, y la única que protege también a un cliente desplegado con la lógica
+  vieja (el arreglo surte efecto sin esperar deploy de código).
+- **`planCollectionSync`** (`src/lib/sagas/collection-sync.ts`): ya no calcula `toUpdate` en
+  absoluto — el tipo `CollectionSyncPlan` solo tiene `toInsert`. No tiene sentido que el cliente
+  pida una corrección que la RPC va a ignorar.
+
+**Consecuencia asumida y deliberada**: si TMDB reordena una colección más adelante, ese reorden ya
+NO se propaga a las filas existentes de `saga_items` — ni siquiera a las que nunca tocó un
+humano, porque no hay forma fiable de distinguir "nunca curada" de "curada a propósito". Ver
+también `docs/requirements/decisiones.md`.
 
 ### 7.2 Itinerarios de lectura: `saga_routes` / `saga_route_entries` / `saga_route_choices`
 
@@ -475,7 +504,9 @@ editor de secuencia (`updateSagaMember`/`member-actions.ts`) — y cierra #188 e
 escritor en vez de parcheando el síntoma (ver `decisiones.md`, entrada 2026-07-26). El mismo commit
 destapó que #188 no era el único escritor roto: la RPC `sync_tmdb_saga_items` insertaba `position`
 sin `placement` (arreglada en `20260726_saga_items_placement_writers_fix.sql`, que sustituye el
-cuerpo de la función sin tocar el fichero ya aplicado a prod en `20260722_saga_items_rls_hardening.sql`)
+cuerpo de la función sin tocar el fichero ya aplicado a prod en `20260722_saga_items_rls_hardening.sql`
+— ese mismo fichero recibió una segunda revisión, el mismo día, para que dejara de pisar filas
+existentes: ver §7.1b)
 y `applyMembershipOps` no arrastraba `placement` al mover un ítem entre subsagas (arreglado en
 `apply-membership-ops.ts`, sin migración — es solo código de aplicación). Mismo formato que ya usa
 §7.1 para el caso de #169, donde el orden de despliegue también importaba: **las tres migraciones

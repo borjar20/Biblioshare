@@ -19,12 +19,46 @@
 --   rollback;
 --   -- ERROR: 23514 saga_items_placement_position
 --
--- Arreglo: aplicar aquí mismo el principio que ya rige el backfill de la
--- migración de placement ("tener número ES estar colocado") — toda fila que
--- esta función escribe con `position` no nulo pasa a `placement='fijo'`,
--- tanto en el INSERT inicial como en el UPDATE del `on conflict` (antes solo
--- corregía `position`, dejando cualquier fila previa con placement=null
--- igual de rota si además traía un `position` nuevo).
+-- Arreglo original: aplicar aquí mismo el principio que ya rige el backfill
+-- de la migración de placement ("tener número ES estar colocado") — toda
+-- fila que esta función escribe con `position` no nulo pasa a
+-- `placement='fijo'`, tanto en el INSERT inicial como en el UPDATE del
+-- `on conflict`.
+--
+-- REVISIÓN 2026-07-26 (issue del sync perezoso pisando curación manual): el
+-- `do update` de arriba tenía un problema más de fondo que el 23514 — para
+-- una fila que YA EXISTE, pisaba `position`/`placement` incondicionalmente
+-- cada vez que un visitante cualquiera abría la ficha (populateTmdbCollection
+-- se dispara en la lectura, no hace falta ser curador). Decisión del dueño
+-- del producto: la curación manual gana sobre el sync de TMDB. Reproducido
+-- contra dev, con «Matrix - Colección»:
+--
+--   update saga_items set position = null, placement = 'libre'
+--     where saga_id = '<matrix>' and item_id = '<matrix-1>';
+--   -- position=NULL, placement=libre (decisión del curador)
+--   select public.sync_tmdb_saga_items('<matrix>'::uuid,
+--     '[{"item_id":"<matrix-1>","position":1}]'::jsonb);
+--   -- position=1, placement=fijo  ← el sync deshizo la curación
+--
+-- Regla nueva: el sync SOLO rellena huecos (altas nuevas); una fila que ya
+-- existe en `saga_items` no se toca, ni en `position` ni en `placement`, la
+-- traiga o no el `p_items` de la llamada. `on conflict ... do nothing`
+-- expresa eso literalmente. Se arregla aquí (la RPC) y no solo en el cliente
+-- (`planCollectionSync`, src/lib/sagas/collection-sync.ts) porque esta es la
+-- función que de verdad escribe en la BD, es SECURITY DEFINER, y es la única
+-- barrera que protege también a un cliente desplegado con la lógica vieja —
+-- arreglar solo el cliente no habría cerrado el agujero para nadie que
+-- siguiera sirviendo el bundle anterior. `planCollectionSync` se corrige en
+-- el mismo commit para dejar de calcular `toUpdate` para filas existentes: ya
+-- no tiene sentido pedir una corrección que la RPC va a ignorar.
+--
+-- Consecuencia asumida (documentada también en el comentario de
+-- `planCollectionSync`): si TMDB reordena una colección más adelante, ese
+-- reorden ya NO se propaga a las filas que ya existen en `saga_items` — ni
+-- siquiera a las que nunca tocó un humano. No hay forma fiable de distinguir
+-- "nunca curada" de "curada a propósito", así que se trata toda fila
+-- existente igual. Es el precio de que la curación manual gane, y es
+-- deliberado.
 create or replace function public.sync_tmdb_saga_items(
   p_saga_id uuid,
   p_items jsonb
@@ -51,9 +85,7 @@ begin
     false
   from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) as i
   on conflict (saga_id, item_type, item_id)
-    do update set
-      position = excluded.position,
-      placement = excluded.placement;
+    do nothing;
 end;
 $$;
 

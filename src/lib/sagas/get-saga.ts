@@ -68,10 +68,16 @@ async function populateTmdbCollection(
       desired.push({ itemId, position: position++ });
     }
 
-    // Diff no destructivo (multi-saga, spec §1.2): inserta lo que falte y
-    // corrige posiciones, sin tocar miembros manuales. is_primary=false en el
-    // bulk: la primary la fija el alta con contexto (persistCollectionMembership
-    // o el editor), no el rellenado perezoso.
+    // Diff no destructivo (multi-saga, spec §1.2): SOLO inserta lo que falte,
+    // sin tocar miembros existentes (manuales o ya sincronizados). Desde
+    // 2026-07-26 la curación manual gana sobre el sync de TMDB: una fila que
+    // ya existe en saga_items no se toca aquí, ni tampoco en la RPC (ver su
+    // comentario) — antes este código también mandaba correcciones de
+    // `position` para filas existentes y la RPC las aplicaba sin condición,
+    // así que abrir la ficha podía revertir una curación (p. ej.
+    // placement=libre) con solo leerla. is_primary=false en el bulk: la
+    // primary la fija el alta con contexto (persistCollectionMembership o el
+    // editor), no el rellenado perezoso.
     //
     // Va por RPC desde el issue #169: la RLS de saga_items exige ahora
     // collaborator+ para escribir, y este camino lo dispara cualquier lector al
@@ -85,11 +91,10 @@ async function populateTmdbCollection(
       .eq("item_type", "movie");
     const plan = planCollectionSync(existingRows ?? [], desired);
 
-    const changed = [...plan.toInsert, ...plan.toUpdate];
-    if (changed.length > 0) {
+    if (plan.toInsert.length > 0) {
       const { error } = await supabase.rpc("sync_tmdb_saga_items", {
         p_saga_id: saga.id,
-        p_items: changed.map((p) => ({ item_id: p.itemId, position: p.position })),
+        p_items: plan.toInsert.map((p) => ({ item_id: p.itemId, position: p.position })),
       });
       if (error) throw error;
     }
