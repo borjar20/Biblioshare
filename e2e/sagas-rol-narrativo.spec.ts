@@ -117,8 +117,10 @@ test("un segundo Guardar sin tocar nada no reenvía un rol obsoleto", async ({ p
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-// Tests A/B/C (Task 9). Miembro sembrado con position=3 y role=null, cuya
-// fila real de saga_items cuelga de "[QA Sagas v2] Era Uno"
+// Tests A/B/C (Task 9, actualizados 2026-07-26 por la fusión de secciones —
+// Decisión 1 del encargo: "Fuera del orden principal" desaparece). Miembro
+// sembrado con position=3, placement=fijo y role=null, cuya fila real de
+// saga_items cuelga de "[QA Sagas v2] Era Uno"
 // (53118dd4-ccd9-4a9d-8241-5899816a9eab) — confirmado contra BD
 // (`saga_items` + `books`) antes de escribir este bloque. Título único en
 // todo el árbol del universo (no hay otro ítem cuyo título lo contenga), así
@@ -129,25 +131,31 @@ test("un segundo Guardar sin tocar nada no reenvía un rol obsoleto", async ({ p
 // fila dificulta saber, si algo falla, cuál de los dos tests dejó el dato a
 // medias. Se elige uno distinto y se restaura en cada `finally`.
 //
-// Las aserciones de chip escopan siempre al `<li>` de ESTE ítem
-// (`.locator("li").filter({ hasText: LOOSE_ITEM_TITLE })`), nunca a la sección
-// entera. `section.getByText("Precuela")` a secas sería frágil: cualquier otro
-// miembro suelto de la misma sección con un rol curado daría un falso positivo
-// en el test B (el que afirma AUSENCIA de chip). Hoy el seed no trae ningún
-// rol —se comprobó: cero filas con `role` en dev—, pero basta con que alguien
-// cure uno para que un locator de sección mienta.
+// Colocación: el servidor rechaza (`badPlacement`) guardar con `position`
+// vacío mientras `placement` siga en "fijo" (member-actions.ts, réplica del
+// CHECK `saga_items_placement_position`) — quien quita el número tiene que
+// declarar qué es la obra. Estos dos tests eligen "Sin clasificar" (el select
+// vuelve a `value=""`), no "Se lee cuando quieras": es la lectura fiel de lo
+// que YA probaban ("obra sin número" = curación pendiente, issue #167), y es
+// justo el estado que Decisión 1 deja DENTRO de la grid de su grupo (con el
+// contorno punteado como única señal, ya sin sección propia) en vez de
+// mandarlo a «Cuando quieras» (destino exclusivo de `placement: "libre"`,
+// cubierto por `e2e/sagas-colocacion-opcionalidad.spec.ts`).
 //
-// Por lo mismo hace falta filtrar `getByTestId("out-of-order")` por texto:
-// cada grupo con miembros sueltos pinta SU propia sección, así que puede haber
-// varios nodos con ese testid a la vez, y un locator con más de un match
-// revienta en modo estricto.
+// Las aserciones de chip escopan siempre al `<li>` de ESTE ítem
+// (`.locator("li").filter({ hasText: LOOSE_ITEM_TITLE })`), nunca a la página
+// entera. `page.getByText("Precuela")` a secas sería frágil: cualquier otro
+// miembro sin clasificar con un rol curado daría un falso positivo en el
+// test B (el que afirma AUSENCIA de chip). Hoy el seed no trae ningún rol
+// —se comprobó: cero filas con `role` en dev—, pero basta con que alguien
+// cure uno para que un locator sin escopar mienta.
 const LOOSE_ITEM_TITLE = "Libro raro sin match";
 
 function rowByTitle(page: Page, title: string) {
   return page.locator("form").filter({ hasText: title });
 }
 
-test("una obra sin número aparece en «Fuera del orden principal» con su rol", async ({ page }) => {
+test("una obra sin clasificar aparece en la grid de su grupo con su rol", async ({ page }) => {
   await loginAsCollaborator(page);
   await page.goto(`/saga/${UNIVERSO_ID}/editar`);
 
@@ -155,34 +163,41 @@ test("una obra sin número aparece en «Fuera del orden principal» con su rol",
   await expect(row).toBeVisible();
   const positionInput = row.locator('input[name="position"]');
   const roleSelect = row.locator('select[name="role"]');
+  const placementSelect = row.locator('select[name="placement"]');
   const saveButton = row.getByRole("button", { name: "Guardar" });
 
-  // Precondición del seed: position=3, sin rol.
+  // Precondición del seed: position=3, placement=fijo, sin rol.
   await expect(positionInput).toHaveValue("3");
   await expect(roleSelect).toHaveValue("");
+  await expect(placementSelect).toHaveValue("fijo");
 
   try {
     await positionInput.fill("");
+    await placementSelect.selectOption(""); // Sin clasificar: declara el hueco vacío, no lo deja inconsistente.
     await roleSelect.selectOption("precuela");
     await saveButton.click();
     await expect(row.getByText("Guardado", { exact: true })).toBeVisible();
 
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
-    // Filtra el testid duplicado (uno por grupo con sueltos) al de ESTE ítem.
-    const section = page.getByTestId("out-of-order").filter({ hasText: LOOSE_ITEM_TITLE });
-    await expect(section.getByRole("heading", { name: "Fuera del orden principal" })).toBeVisible();
-
-    // Lo que de verdad afirma este test: pertenencia (sección) Y decoración
-    // (chip), ambas sobre la fila de ESTE ítem, no sobre la sección entera.
-    const item = section.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
+    // Lo que de verdad afirma este test: pertenencia (visible en la grid,
+    // marcada como sin clasificar por el contorno) Y decoración (chip),
+    // ambas sobre la fila de ESTE ítem.
+    const item = page.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
+    await expect(item).toBeVisible();
+    // El contorno punteado dorado es, desde la fusión de secciones, la ÚNICA
+    // señal de "sin clasificar" en la grid (MemberCell, `m.placement === null`)
+    // — sin él este test dejaría de comprobar la pertenencia que antes daba
+    // el heading de la sección retirada.
+    await expect(item.locator("div").first()).toHaveClass(/outline-dashed/);
     await expect(item.getByText("Precuela")).toBeVisible();
   } finally {
-    // Deja position/role como los trajo el seed, pase o falle el test.
+    // Deja position/placement/role como los trajo el seed, pase o falle el test.
     await page.goto(`/saga/${UNIVERSO_ID}/editar`);
     const cleanupRow = rowByTitle(page, LOOSE_ITEM_TITLE);
     if ((await cleanupRow.count()) > 0) {
       await cleanupRow.locator('input[name="position"]').fill("3");
+      await cleanupRow.locator('select[name="placement"]').selectOption("fijo");
       await cleanupRow.locator('select[name="role"]').selectOption("");
       await cleanupRow.getByRole("button", { name: "Guardar" }).click();
       await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
@@ -190,35 +205,38 @@ test("una obra sin número aparece en «Fuera del orden principal» con su rol",
   }
 });
 
-test("una obra sin número Y sin rol sale en la sección, pero sin chip", async ({ page }) => {
-  // Separa pertenencia (position === null) de decoración (role !== null): es
+test("una obra sin clasificar Y sin rol sale en la grid, pero sin chip", async ({ page }) => {
+  // Separa pertenencia (placement === null) de decoración (role !== null): es
   // la distinción que más fácil se rompe al refactorizar la grid, y la que
   // hace que "sin clasificar" se vea como trabajo pendiente en vez de
   // disfrazarse. Ver el comentario de cabecera del bloque sobre por qué las
-  // aserciones de ausencia escopan al `<li>` de este ítem y no a la sección
-  // entera (Trilogía ya pinta un chip "Precuela" en su propia sección, y esa
-  // sección NO es esta).
+  // aserciones de ausencia escopan al `<li>` de este ítem y no a la página
+  // entera (Trilogía ya pinta un chip "Precuela" en su propia fila, y esa
+  // fila NO es esta).
   await loginAsCollaborator(page);
   await page.goto(`/saga/${UNIVERSO_ID}/editar`);
 
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
   const positionInput = row.locator('input[name="position"]');
   const roleSelect = row.locator('select[name="role"]');
+  const placementSelect = row.locator('select[name="placement"]');
 
   await expect(positionInput).toHaveValue("3");
   await expect(roleSelect).toHaveValue("");
+  await expect(placementSelect).toHaveValue("fijo");
 
   try {
     await positionInput.fill("");
-    // role se deja tal cual: "" ya es "sin clasificar".
+    await placementSelect.selectOption(""); // Sin clasificar, igual que el test anterior.
+    // role se deja tal cual: "" ya es "sin rol".
     await row.getByRole("button", { name: "Guardar" }).click();
     await expect(row.getByText("Guardado", { exact: true })).toBeVisible();
 
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
-    const section = page.getByTestId("out-of-order").filter({ hasText: LOOSE_ITEM_TITLE });
-    const item = section.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
+    const item = page.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
     await expect(item).toBeVisible();
+    await expect(item.locator("div").first()).toHaveClass(/outline-dashed/);
     for (const label of ["Precuela", "Spin-off", "Relato", "Paralela"]) {
       await expect(item.getByText(label)).toHaveCount(0);
     }
@@ -227,6 +245,7 @@ test("una obra sin número Y sin rol sale en la sección, pero sin chip", async 
     const cleanupRow = rowByTitle(page, LOOSE_ITEM_TITLE);
     if ((await cleanupRow.count()) > 0) {
       await cleanupRow.locator('input[name="position"]').fill("3");
+      await cleanupRow.locator('select[name="placement"]').selectOption("fijo");
       await cleanupRow.getByRole("button", { name: "Guardar" }).click();
       await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
     }

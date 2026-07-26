@@ -9,28 +9,28 @@ import { RoleChip } from "./role-chip";
 // Pestaña Info (frames A/D): sinopsis + títulos agrupados por subsaga. La
 // celda replica el icell del mockup: portada, badge de orden, estado ✓/◉.
 //
-// Issue #167: dentro de cada grupo, los miembros SIN position se separan en su
-// propia sección ("Fuera del orden principal") en vez de quedar sueltos al
-// final. Hasta la Task 7 el contorno punteado dorado se había retirado porque
-// su criterio (`position === null`) no distinguía "sin clasificar" de lo que
-// hoy es un `placement` explícito — con `placement` en el modelo, MemberCell
-// lo reintroduce con criterio propio (`placement === null`, ver más abajo).
-//
-// Pertenencia a la sección "Fuera del orden principal" la decide
-// `position === null`; el chip de rol lo decide `role !== null`. Son
-// independientes: una obra sin número y sin rol va a la sección, sin chip (es
-// curación pendiente y debe verse como tal).
+// Issue #167 introdujo la sección "Fuera del orden principal" para los
+// miembros sin `position`. El 2026-07-26 (fusión de secciones, Decisión 1) se
+// retiró: con `placement` en el modelo, esa sección duplicaba la misma señal
+// que ya daba el contorno punteado de MemberCell y el aviso de deuda de
+// curación (más abajo). Ahora una obra sin clasificar (`placement === null`)
+// se queda en la grid de su grupo, señalada solo por el contorno; una obra
+// `libre` se saca de la grid y vive únicamente en «Cuando quieras» (ver
+// `freeMembers`). El chip de rol lo decide `role !== null`, independiente de
+// `placement` — una obra sin clasificar y sin rol se ve en su grid, sin chip
+// (es curación pendiente y debe verse como tal, no disfrazarse).
 
-// La celda de portada de la grid. Extraída porque desde el 2026-07-25 se pinta
-// en dos sitios: la grid de cada grupo (numerada o "Fuera del orden
-// principal") y la sección «Cuando quieras». Vocabulario de portada calcado de
-// CoverCard (rounded-cover + shadow-cover + border-border + bg-surface-muted
-// de reserva).
+// La celda de portada de la grid, con su chip de rol debajo si lo tiene.
+// Extraída porque desde el 2026-07-25 se pinta en dos sitios: la grid de cada
+// grupo y la sección «Cuando quieras» — y desde el 2026-07-26 el chip de rol
+// vive aquí dentro (antes se repetía como hermano en cada sitio de llamada;
+// con la fusión de secciones esto habría sido una tercera copia). Vocabulario
+// de portada calcado de CoverCard (rounded-cover + shadow-cover +
+// border-border + bg-surface-muted de reserva).
 //
-// Ojo al cambio de criterio del contorno punteado dorado: antes de la Task 7
-// era `m.position === null`, ahora es `m.placement === null`. Es el arreglo de
-// fondo — significaba "sin clasificar" pero se pintaba también sobre lo que
-// ahora es un `libre` declarado, que no es deuda de nada.
+// El contorno punteado dorado usa `m.placement === null` (no `m.position`):
+// significa "sin clasificar", y no debe pintarse sobre un `libre` declarado,
+// que no es deuda de nada.
 function MemberCell({
   m,
   labels,
@@ -39,111 +39,82 @@ function MemberCell({
   labels: { done: string; reading: string; optional: string };
 }) {
   return (
-    <Link href={m.href} className="block">
-      <div
-        className={`relative aspect-[2/3] overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover ${
-          m.placement === null ? "outline-dashed outline-1 -outline-offset-1 outline-gold" : ""
-        }`}
-      >
-        {m.coverUrl ? (
-          <Image src={m.coverUrl} alt={m.title} fill sizes="120px" className="object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center px-1.5 text-center text-[10px] text-muted-foreground">
-            {m.title}
-          </div>
-        )}
-        {m.position !== null && (
-          <span className="absolute left-1 top-1 rounded bg-foreground/70 px-1 font-mono text-[8.5px] text-background">
-            {m.position}
-          </span>
-        )}
-        {m.optional && (
-          <span className="absolute bottom-1 left-1 rounded bg-foreground/70 px-1 font-mono text-[8px] uppercase text-background">
-            {labels.optional}
-          </span>
-        )}
-        {m.status === "completed" && (
-          <span
-            aria-label={labels.done}
-            className="absolute bottom-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white"
-          >
-            ✓
-          </span>
-        )}
-        {m.status === "in_progress" && (
-          <span
-            aria-label={labels.reading}
-            className="absolute inset-0 grid place-items-center bg-foreground/40 text-base text-white"
-          >
-            ◉
-          </span>
-        )}
-      </div>
-      <p className="mt-1.5 line-clamp-2 text-[11px] font-semibold leading-tight">{m.title}</p>
-    </Link>
+    <>
+      <Link href={m.href} className="block">
+        <div
+          className={`relative aspect-[2/3] overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover ${
+            m.placement === null ? "outline-dashed outline-1 -outline-offset-1 outline-gold" : ""
+          }`}
+        >
+          {m.coverUrl ? (
+            <Image src={m.coverUrl} alt={m.title} fill sizes="120px" className="object-cover" />
+          ) : (
+            <div className="flex h-full items-center justify-center px-1.5 text-center text-[10px] text-muted-foreground">
+              {m.title}
+            </div>
+          )}
+          {m.position !== null && (
+            <span className="absolute left-1 top-1 rounded bg-foreground/70 px-1 font-mono text-[8.5px] text-background">
+              {m.position}
+            </span>
+          )}
+          {m.optional && (
+            <span className="absolute bottom-1 left-1 rounded bg-foreground/70 px-1 font-mono text-[8px] uppercase text-background">
+              {labels.optional}
+            </span>
+          )}
+          {m.status === "completed" && (
+            <span
+              aria-label={labels.done}
+              className="absolute bottom-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white"
+            >
+              ✓
+            </span>
+          )}
+          {m.status === "in_progress" && (
+            <span
+              aria-label={labels.reading}
+              className="absolute inset-0 grid place-items-center bg-foreground/40 text-base text-white"
+            >
+              ◉
+            </span>
+          )}
+        </div>
+        <p className="mt-1.5 line-clamp-2 text-[11px] font-semibold leading-tight">{m.title}</p>
+      </Link>
+      {m.role !== null && (
+        <p className="mt-0.5">
+          <RoleChip role={m.role} />
+        </p>
+      )}
+    </>
   );
 }
 
-// El reparto de #167, en un solo sitio: la sección la decide `position`, el
-// chip de rol lo decide `role`. Ver el comentario de cabecera del fichero.
-//
-// Task 7: los `libre` no entran aquí — SagaInfo los saca antes (ver
-// `freeMembers`) para que vivan solo en «Cuando quieras» y no se pinten dos
-// veces. Con `libre` ya fuera, lo que queda cumple `position === null` ⇔
-// `placement === null` (el CHECK saga_items_placement_position garantiza
-// `fijo` ⇔ `position !== null`), así que "Fuera del orden principal" pasa a
-// ser exactamente "sin clasificar".
-async function GroupBody({
+// La grid de un grupo (2026-07-26, fusión de secciones): una sola lista, sin
+// separar "sin número" en su propia sección — ese hecho ya lo dice el
+// contorno punteado de MemberCell y, para collaborator+, el aviso de deuda
+// de curación de SagaInfo. Los `libre` no entran aquí: SagaInfo los saca antes
+// (ver `freeMembers`) para que vivan solo en «Cuando quieras» y no se pinten
+// dos veces.
+function GroupBody({
   members,
   labels,
 }: {
   members: DetailMember[];
   labels: { done: string; reading: string; optional: string };
 }) {
-  const t = await getTranslations("saga");
   const eligible = members.filter((m) => m.placement !== "libre");
-  const numbered = eligible.filter((m) => m.position !== null);
-  const loose = eligible.filter((m) => m.position === null);
+  if (eligible.length === 0) return null;
 
   return (
-    <>
-      {numbered.length > 0 && (
-        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-          {numbered.map((m) => (
-            <li key={`${m.itemType}-${m.itemId}`}>
-              <MemberCell m={m} labels={labels} />
-              {m.role !== null && (
-                <p className="mt-0.5">
-                  <RoleChip role={m.role} />
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      {loose.length > 0 && (
-        <div data-testid="out-of-order" className={numbered.length > 0 ? "mt-4" : ""}>
-          <div className="mb-2 flex items-baseline gap-2">
-            <h4 className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              {t("outOfMainOrder")}
-            </h4>
-            <span className="text-[10px] text-muted-foreground">{t("outOfMainOrderHint")}</span>
-          </div>
-          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-            {loose.map((m) => (
-              <li key={`${m.itemType}-${m.itemId}`}>
-                <MemberCell m={m} labels={labels} />
-                {m.role !== null && (
-                  <p className="mt-0.5">
-                    <RoleChip role={m.role} />
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </>
+    <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+      {eligible.map((m) => (
+        <li key={`${m.itemType}-${m.itemId}`}>
+          <MemberCell m={m} labels={labels} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -299,11 +270,6 @@ export async function SagaInfo({
             {freeMembers.map((m) => (
               <li key={`${m.itemType}-${m.itemId}`}>
                 <MemberCell m={m} labels={cellLabels} />
-                {m.role !== null && (
-                  <p className="mt-0.5">
-                    <RoleChip role={m.role} />
-                  </p>
-                )}
               </li>
             ))}
           </ul>
