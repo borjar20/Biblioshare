@@ -1,10 +1,34 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { MemberGroup } from "@/lib/sagas/group-members";
-import type { DetailMember } from "@/lib/sagas/types";
+import type { DetailMember, ResolvedWindow } from "@/lib/sagas/types";
 import { RoleChip } from "./role-chip";
+
+// Ventana de una entrada `libre` (fase 2b, Task 6): solo aplica a una entrada
+// realmente `libre` AHORA MISMO — el render no confía en que `windows` no
+// traiga una fila para algo que dejó de serlo (un cambio de colocación no
+// borra la fila de `saga_placement_windows`, ver el comentario de `windows`
+// en `SagaDetail`), así que las dos vías de entrada comprueban `placement`/
+// `placementInParent` ellas mismas antes de mirar el mapa, en vez de confiar
+// en que la lista que reciben ya está filtrada.
+function freeItemWindow(
+  windows: Record<string, ResolvedWindow>,
+  m: DetailMember,
+): ResolvedWindow | null {
+  if (m.placement !== "libre") return null;
+  return windows[`i:${m.itemType}:${m.itemId}`] ?? null;
+}
+
+function freeBlockWindow(
+  windows: Record<string, ResolvedWindow>,
+  group: MemberGroup,
+): ResolvedWindow | null {
+  if (group.placementInParent !== "libre" || group.sagaId === null) return null;
+  return windows[`s:${group.sagaId}`] ?? null;
+}
 
 // Pestaña Info (frames A/D): sinopsis + títulos agrupados por subsaga. La
 // celda replica el icell del mockup: portada, badge de orden, estado ✓/◉.
@@ -64,9 +88,14 @@ import { RoleChip } from "./role-chip";
 function MemberCell({
   m,
   labels,
+  windowLine,
 }: {
   m: DetailMember;
   labels: { done: string; reading: string; optional: string; noSlot: string };
+  /** Línea de ventana (fase 2b, Task 6), ya resuelta a JSX por el llamante —
+   *  `null` fuera de la zona «Cuando quieras» o sin ventana. Bajo la celda,
+   *  como pide el brief. */
+  windowLine?: ReactNode;
 }) {
   return (
     <>
@@ -118,6 +147,7 @@ function MemberCell({
           <RoleChip role={m.role} />
         </p>
       )}
+      {windowLine}
     </>
   );
 }
@@ -162,6 +192,7 @@ export async function SagaInfo({
   canConfigure,
   sagaId,
   hasParent,
+  windows,
 }: {
   overview: string | null;
   groups: MemberGroup[];
@@ -169,6 +200,10 @@ export async function SagaInfo({
   canConfigure?: boolean;
   sagaId: string;
   hasParent: boolean;
+  /** Ventana de cada entrada `libre`, resuelta a texto en `getSagaDetail`
+   *  (fase 2b, Task 6). Clave = `i:<tipo>:<uuid>` / `s:<uuid>`, ver
+   *  `SagaDetail.windows`. */
+  windows: Record<string, ResolvedWindow>;
 }) {
   const t = await getTranslations("saga");
   const cellLabels = {
@@ -176,6 +211,25 @@ export async function SagaInfo({
     reading: t("statusReading"),
     optional: t("optionalChip"),
     noSlot: t("noOrderSlotHint"),
+  };
+  // Traduce una ventana ya resuelta a la frase del brief («a partir de X ·
+  // recomendable antes de Y»), con el título en negrita — mismo patrón que
+  // `t.rich` ya usa el resto de la app (episode-panel.tsx, "watchedProgress").
+  // Con una sola ancla, media frase; `w` nunca llega con las dos a `null`
+  // (resolveWindows ya descarta ese caso, no habría entrada en el mapa).
+  const renderWindow = (w: ResolvedWindow | null): ReactNode => {
+    if (!w) return null;
+    const bold = { b: (chunks: ReactNode) => <b>{chunks}</b> };
+    const body =
+      w.afterTitle && w.beforeTitle
+        ? t.rich("windowBothText", { afterTitle: w.afterTitle, beforeTitle: w.beforeTitle, ...bold })
+        : w.afterTitle
+          ? t.rich("windowAfterText", { title: w.afterTitle, ...bold })
+          : w.beforeTitle
+            ? t.rich("windowBeforeText", { title: w.beforeTitle, ...bold })
+            : null;
+    if (!body) return null;
+    return <p className="mt-0.5 text-[10.5px] leading-tight text-muted-foreground">{body}</p>;
   };
   const freeMembers = groups.flatMap((g) => g.members.filter((m) => m.placement === "libre"));
   const unclassified = groups.flatMap((g) => g.members).filter((m) => m.placement === null).length;
@@ -363,7 +417,7 @@ export async function SagaInfo({
               <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
                 {freeMembers.map((m) => (
                   <li key={`${m.itemType}-${m.itemId}`}>
-                    <MemberCell m={m} labels={cellLabels} />
+                    <MemberCell m={m} labels={cellLabels} windowLine={renderWindow(freeItemWindow(windows, m))} />
                   </li>
                 ))}
               </ul>
@@ -384,6 +438,7 @@ export async function SagaInfo({
                       {eligible.length}
                     </span>
                   </div>
+                  {renderWindow(freeBlockWindow(windows, group))}
                   <GroupBody members={eligible} labels={cellLabels} />
                 </div>
               );

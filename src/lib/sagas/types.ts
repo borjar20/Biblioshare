@@ -74,6 +74,11 @@ export type DetailMember = SagaMember & {
   year: number | null;
 };
 
+/** Ventana de una entrada `libre` ya resuelta a texto para la ficha. Un ancla
+ *  que no resuelve contra el subárbol cargado llega como `null` y no se pinta:
+ *  mejor media frase cierta que una referencia rota (spec fase 2b). */
+export type ResolvedWindow = { afterTitle: string | null; beforeTitle: string | null };
+
 export type SagaChildRef = {
   id: string;
   name: string;

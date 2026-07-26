@@ -71,6 +71,7 @@ export default async function SagaDetailPage({
             canConfigure={canCurate}
             sagaId={detail.saga.id}
             hasParent={detail.parent !== null}
+            windows={detail.windows}
           />
         }
         map={
