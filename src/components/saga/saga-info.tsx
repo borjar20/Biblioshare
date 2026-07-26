@@ -31,12 +31,24 @@ import { RoleChip } from "./role-chip";
 // El contorno punteado dorado usa `m.placement === null` (no `m.position`):
 // significa "sin clasificar", y no debe pintarse sobre un `libre` declarado,
 // que no es deuda de nada.
+//
+// Fix Task 7 / Finding 2 (review): el punteado es la ÚNICA señal para un
+// lector sin rol desde que se fusionaron las tres secciones — el aviso de
+// deuda de curación (más abajo) vive detrás de `canConfigure`, así que un
+// lector anónimo se quedaba sin ninguna palabra que lo explicara. Además es
+// un defecto de accesibilidad por sí solo: un rasgo puramente visual, sin
+// equivalente textual, no existe para quien usa lector de pantalla (misma
+// familia que la issue #147, marcas que solo se distinguen por color). Se
+// añade un `sr-only` (mismo patrón que `agenda-list.tsx`) con `labels.noSlot`
+// — texto en `messages/es.json`, nunca embebido. La redacción evita
+// "sin clasificar" (vocabulario de curador, ya usado en el aviso de deuda) y
+// dice en su lugar el hecho llano: no tiene un hueco asignado en el orden.
 function MemberCell({
   m,
   labels,
 }: {
   m: DetailMember;
-  labels: { done: string; reading: string; optional: string };
+  labels: { done: string; reading: string; optional: string; noSlot: string };
 }) {
   return (
     <>
@@ -53,6 +65,7 @@ function MemberCell({
               {m.title}
             </div>
           )}
+          {m.placement === null && <span className="sr-only">{labels.noSlot}</span>}
           {m.position !== null && (
             <span className="absolute left-1 top-1 rounded bg-foreground/70 px-1 font-mono text-[8.5px] text-background">
               {m.position}
@@ -94,22 +107,28 @@ function MemberCell({
 // La grid de un grupo (2026-07-26, fusión de secciones): una sola lista, sin
 // separar "sin número" en su propia sección — ese hecho ya lo dice el
 // contorno punteado de MemberCell y, para collaborator+, el aviso de deuda
-// de curación de SagaInfo. Los `libre` no entran aquí: SagaInfo los saca antes
-// (ver `freeMembers`) para que vivan solo en «Cuando quieras» y no se pinten
-// dos veces.
+// de curación de SagaInfo.
+//
+// Fix Task 7 / Finding 1 (review): `members` aquí es SIEMPRE la lista ya
+// filtrada de "lo que toca pintar en esta grid" — decidida una única vez por
+// `SagaInfo` (ver `eligible` en `groups.map`) y reutilizada tanto para el
+// contador de la cabecera como para esto. Antes GroupBody filtraba los
+// `libre` por su cuenta mientras la cabecera pintaba `group.members.length`
+// sin filtrar: con un `libre` en el grupo, el número no bajaba aunque la
+// grid sí. GroupBody ya no filtra nada — solo pinta lo que recibe — así que
+// cabecera y grid no pueden volver a divergir por definición.
 function GroupBody({
   members,
   labels,
 }: {
   members: DetailMember[];
-  labels: { done: string; reading: string; optional: string };
+  labels: { done: string; reading: string; optional: string; noSlot: string };
 }) {
-  const eligible = members.filter((m) => m.placement !== "libre");
-  if (eligible.length === 0) return null;
+  if (members.length === 0) return null;
 
   return (
     <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-      {eligible.map((m) => (
+      {members.map((m) => (
         <li key={`${m.itemType}-${m.itemId}`}>
           <MemberCell m={m} labels={labels} />
         </li>
@@ -134,7 +153,12 @@ export async function SagaInfo({
   hasParent: boolean;
 }) {
   const t = await getTranslations("saga");
-  const cellLabels = { done: t("statusDone"), reading: t("statusReading"), optional: t("optionalChip") };
+  const cellLabels = {
+    done: t("statusDone"),
+    reading: t("statusReading"),
+    optional: t("optionalChip"),
+    noSlot: t("noOrderSlotHint"),
+  };
   const freeMembers = groups.flatMap((g) => g.members.filter((m) => m.placement === "libre"));
   const unclassified = groups.flatMap((g) => g.members).filter((m) => m.placement === null).length;
   return (
@@ -237,6 +261,14 @@ export async function SagaInfo({
               es de subsaga, la cabecera se mantiene como siempre. */}
           {groups.map((group) => {
             const isSoleDirectGroup = groups.length === 1 && group.sagaId === null;
+            // Fix Task 7 / Finding 1 (review): un único filtrado, reutilizado
+            // por la cabecera Y la grid — ver el comentario de `GroupBody`
+            // para el porqué. Si un grupo se queda sin nada que pintar (p.
+            // ej. todos sus miembros son `libre`), se omite el grupo entero:
+            // una cabecera con un número y una grid vacía debajo no explica
+            // nada al lector.
+            const eligible = group.members.filter((m) => m.placement !== "libre");
+            if (eligible.length === 0) return null;
             return (
               <div key={group.sagaId ?? "nexus"}>
                 {!isSoleDirectGroup && (
@@ -246,11 +278,11 @@ export async function SagaInfo({
                       {group.name ?? t("nexusGroup")}
                     </h3>
                     <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
-                      {group.members.length}
+                      {eligible.length}
                     </span>
                   </div>
                 )}
-                <GroupBody members={group.members} labels={cellLabels} />
+                <GroupBody members={eligible} labels={cellLabels} />
               </div>
             );
           })}

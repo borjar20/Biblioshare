@@ -1018,6 +1018,7 @@
     "orderNo": "Nº {n}",
     "freeSection": "Cuando quieras",
     "optionalChip": "opcional",
+    "noOrderSlotHint": "Sin hueco asignado en el orden de lectura.",
     "unclassifiedNotice": "{count, plural, one {# obra sin clasificar} other {# obras sin clasificar}}: no tienen hueco ni están marcadas como libres.",
     "unclassifiedCta": "Clasificarlas",
     "roleLabel": {
