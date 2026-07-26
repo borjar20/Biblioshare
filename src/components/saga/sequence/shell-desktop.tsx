@@ -28,14 +28,14 @@ export function ShellDesktop({
 }) {
   const t = useTranslations("sagaEditor");
 
-  const nudges = (i: number) => (
+  const nudges = (i: number, title: string) => (
     <div className="flex shrink-0 gap-0.5">
       <button
-        type="button" onClick={() => ops.moveSlot(i, -1)} disabled={i === 0} aria-label={t("moveUp")}
+        type="button" onClick={() => ops.moveSlot(i, -1)} disabled={i === 0} aria-label={t("moveUpFor", { title })}
         className="grid h-6 w-6 place-items-center rounded-lg border border-border text-[10px] text-muted-foreground disabled:opacity-40"
       >↑</button>
       <button
-        type="button" onClick={() => ops.moveSlot(i, 1)} disabled={i === draft.slots.length - 1} aria-label={t("moveDown")}
+        type="button" onClick={() => ops.moveSlot(i, 1)} disabled={i === draft.slots.length - 1} aria-label={t("moveDownFor", { title })}
         className="grid h-6 w-6 place-items-center rounded-lg border border-border text-[10px] text-muted-foreground disabled:opacity-40"
       >↓</button>
     </div>
@@ -64,16 +64,21 @@ export function ShellDesktop({
         <div className="grid gap-2">
           {draft.slots.map((slot, i) =>
             slot.length === 1 ? (
-              row(slot[0], i + 1, nudges(i))
+              row(slot[0], i + 1, nudges(i, slot[0].title))
             ) : (
-              <div key={`slot-${i}`} className="flex items-stretch gap-2">
+              // La key sale del contenido del hueco (las keys de sus entradas), nunca
+              // del índice: con key={`slot-${i}`}, reordenar hace que React desmonte y
+              // remonte el nodo, perdiendo el foco justo del botón ↑/↓ que el usuario
+              // acaba de pulsar. Mismo precedente que route-editor.tsx.
+              <div key={slot.map((e) => e.key).join("+")} className="flex items-stretch gap-2">
                 <div className="flex w-14 shrink-0 flex-col items-center gap-1 pt-2">
                   <span className="font-mono text-[15px] text-accent">{i + 1}</span>
+                  {nudges(i, slot.map((e) => e.title).join(" + "))}
                   <span className="w-0.5 flex-1 rounded bg-accent/40" aria-hidden />
                 </div>
                 <div className="grid min-w-0 flex-1 gap-1.5">
                   <p className="pl-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-accent">{t("tandemCaption")}</p>
-                  {slot.map((e) => row(e, null, nudges(i)))}
+                  {slot.map((e) => row(e, null))}
                   <button
                     type="button" onClick={() => ops.unpair(i)}
                     className="w-full rounded-lg border border-dashed border-border py-1.5 text-[11.5px] font-semibold text-muted-foreground"
@@ -91,7 +96,7 @@ export function ShellDesktop({
         {draft.unclassified.length > 0 && (
           <section className="mt-5 rounded-xl border border-gold/45 bg-gold/[0.07] p-3.5">
             <div className="mb-1 flex items-center gap-2">
-              <b className="font-serif text-[15px]">{t("zoneUnclassified")}</b>
+              <h2 className="font-serif text-[15px]">{t("zoneUnclassified")}</h2>
               <span className="ml-auto font-mono text-[10px] uppercase tracking-wide text-gold-ink">
                 {t("debtCount", { count: draft.unclassified.length })}
               </span>
@@ -101,10 +106,10 @@ export function ShellDesktop({
               {draft.unclassified.map((e) => (
                 <div key={e.key} className="flex items-center gap-2">
                   <div className="min-w-0 flex-1">{row(e, null)}</div>
-                  <button type="button" onClick={() => ops.sendTo(e.key, "sequence")} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold">
+                  <button type="button" onClick={() => ops.sendTo(e.key, "sequence")} aria-label={t("sendToSequenceFor", { title: e.title })} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold">
                     {t("sendToSequence")}
                   </button>
-                  <button type="button" onClick={() => ops.sendTo(e.key, "free")} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold">
+                  <button type="button" onClick={() => ops.sendTo(e.key, "free")} aria-label={t("sendToFreeFor", { title: e.title })} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold">
                     {t("sendToFree")}
                   </button>
                 </div>
@@ -128,10 +133,14 @@ function Zone({ title, hint, empty, emptyTitle, children }: {
   return (
     <section className={`mt-5 rounded-xl border border-dashed border-foreground/25 p-3.5 ${empty ? "bg-surface/55" : ""}`}>
       <div className="mb-1.5 flex items-center gap-2">
-        <b className="font-serif text-[15px]">{empty ? emptyTitle : title}</b>
+        <h2 className="font-serif text-[15px]">{title}</h2>
       </div>
       <p className="text-[12px] leading-relaxed text-muted-foreground">{hint}</p>
-      {!empty && <div className="mt-2.5 grid gap-2">{children}</div>}
+      {empty ? (
+        <p className="mt-1 text-[12px] text-muted-foreground">{emptyTitle}</p>
+      ) : (
+        <div className="mt-2.5 grid gap-2">{children}</div>
+      )}
     </section>
   );
 }
