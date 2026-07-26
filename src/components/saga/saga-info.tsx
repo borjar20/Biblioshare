@@ -186,6 +186,20 @@ export async function SagaInfo({
   // para emitir los segmentos de color del hero.
   const orderedGroups = groups.filter((g) => g.placementInParent !== "libre");
   const freeGroups = groups.filter((g) => g.placementInParent === "libre");
+  // Fix Task 2 / Finding 1 (review): un grupo se salta cuando su `eligible`
+  // queda vacío (todos sus miembros son `libre` sueltos), así que
+  // `orderedGroups.length === 0` no basta para decidir si hay algo que
+  // pintar aquí abajo — una saga-universo sin miembros directos con TODAS
+  // sus subsagas marcadas `libre` tiene `orderedGroups` no vacío pero cada
+  // `eligible` vacío. Se calcula una sola vez, junto al `eligible` de cada
+  // grupo, y se reutiliza tanto para decidir la sección como para el `map` —
+  // el mismo criterio que ya obligaba `GroupBody`/Fix Task 7 Finding 1: un
+  // filtrado, compartido, nunca dos que puedan divergir.
+  const orderedGroupsWithEligible = orderedGroups.map((group) => ({
+    group,
+    eligible: group.members.filter((m) => m.placement !== "libre"),
+  }));
+  const hasVisibleOrderedGroup = orderedGroupsWithEligible.some(({ eligible }) => eligible.length > 0);
   return (
     <div className="flex flex-col gap-5 px-4 pb-10">
       <section>
@@ -269,41 +283,49 @@ export async function SagaInfo({
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-5">
-          {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
-              si no. Con un único grupo directo (saga hoja, sin subsagas) la
-              cabecera "Nexo" no tiene sentido — la sección ya dice "Títulos
-              que la componen", así que aquí se omite (sin tick/nombre/contador)
-              y se pinta la grid pelada. Con 2+ grupos, o un único grupo que SÍ
-              es de subsaga, la cabecera se mantiene como siempre. */}
-          {orderedGroups.map((group) => {
-            const isSoleDirectGroup = orderedGroups.length === 1 && group.sagaId === null;
-            // Fix Task 7 / Finding 1 (review): un único filtrado, reutilizado
-            // por la cabecera Y la grid — ver el comentario de `GroupBody`
-            // para el porqué. Si un grupo se queda sin nada que pintar (p.
-            // ej. todos sus miembros son `libre`), se omite el grupo entero:
-            // una cabecera con un número y una grid vacía debajo no explica
-            // nada al lector.
-            const eligible = group.members.filter((m) => m.placement !== "libre");
-            if (eligible.length === 0) return null;
-            return (
-              <div key={group.sagaId ?? "nexus"}>
-                {!isSoleDirectGroup && (
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
-                    <h3 className="font-serif text-[15px] font-semibold">
-                      {group.name ?? t("nexusGroup")}
-                    </h3>
-                    <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
-                      {eligible.length}
-                    </span>
-                  </div>
-                )}
-                <GroupBody members={eligible} labels={cellLabels} />
-              </div>
-            );
-          })}
-        </div>
+        {hasVisibleOrderedGroup ? (
+          <div className="flex flex-col gap-5">
+            {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
+                si no. Con un único grupo directo (saga hoja, sin subsagas) la
+                cabecera "Nexo" no tiene sentido — la sección ya dice "Títulos
+                que la componen", así que aquí se omite (sin tick/nombre/contador)
+                y se pinta la grid pelada. Con 2+ grupos, o un único grupo que SÍ
+                es de subsaga, la cabecera se mantiene como siempre. */}
+            {orderedGroupsWithEligible.map(({ group, eligible }) => {
+              const isSoleDirectGroup = orderedGroups.length === 1 && group.sagaId === null;
+              // Fix Task 7 / Finding 1 (review): un único filtrado, reutilizado
+              // por la cabecera Y la grid — ver el comentario de `GroupBody`
+              // para el porqué. Si un grupo se queda sin nada que pintar (p.
+              // ej. todos sus miembros son `libre`), se omite el grupo entero:
+              // una cabecera con un número y una grid vacía debajo no explica
+              // nada al lector.
+              if (eligible.length === 0) return null;
+              return (
+                <div key={group.sagaId ?? "nexus"}>
+                  {!isSoleDirectGroup && (
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
+                      <h3 className="font-serif text-[15px] font-semibold">
+                        {group.name ?? t("nexusGroup")}
+                      </h3>
+                      <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
+                        {eligible.length}
+                      </span>
+                    </div>
+                  )}
+                  <GroupBody members={eligible} labels={cellLabels} />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Fix Task 2 / Finding 1 (review): la cabecera y la fila de botones
+          // de curación (Editar ficha / Anidar en universo / Itinerarios) se
+          // quedan SIEMPRE — son la vía de entrada a la curación para
+          // collaborator+ (issue #181). Solo se sustituye la rejilla vacía
+          // por esta línea, nunca la sección entera.
+          <p className="text-[13px] text-muted-foreground">{t("allFreeHint")}</p>
+        )}
       </section>
 
       {/* Los `libre` salen de la columna del orden y viven aquí: su «dónde» no
@@ -331,11 +353,11 @@ export async function SagaInfo({
               const eligible = group.members.filter((m) => m.placement !== "libre");
               if (eligible.length === 0) return null;
               return (
-                <div key={group.sagaId ?? "free-nexus"}>
+                <div key={group.sagaId}>
                   <div className="mb-3 flex items-center gap-2">
                     <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
                     <h3 className="font-serif text-[15px] font-semibold">
-                      {group.name ?? t("nexusGroup")}
+                      {group.name}
                     </h3>
                     <span className="font-mono text-[9px] tracking-[0.08em] text-muted-foreground uppercase">
                       {t("freeBlockHint")}

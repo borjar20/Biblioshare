@@ -1016,6 +1016,7 @@
     "mapTitle": "Mapa de lectura · {count, plural, =1 {1 título} other {# títulos}}",
     "orderNo": "Nº {n}",
     "freeSection": "Cuando quieras",
+    "allFreeHint": "Ninguna obra tiene hueco fijo en esta saga: todas viven en «Cuando quieras».",
     "freeBlockHint": "sin hueco fijo",
     "optionalChip": "opcional",
     "noOrderSlotHint": "Sin hueco asignado en esta lista.",
