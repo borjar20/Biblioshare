@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
-import type { DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
+import { WindowEditor } from "./window-editor";
+import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 
 const TABS: ZoneId[] = ["sequence", "free", "unclassified"];
 
@@ -14,7 +15,7 @@ const TABS: ZoneId[] = ["sequence", "free", "unclassified"];
 // La pestaña activa SÍ es estado local: es preferencia de vista, no borrador.
 // El borrador sigue llegando por props (restricción global del plan).
 export function ShellMobile({
-  draft, ops, onMenu, rail, itineraries,
+  draft, ops, anchors, onMenu, rail, itineraries,
 }: {
   draft: SequenceDraft;
   ops: {
@@ -23,7 +24,12 @@ export function ShellMobile({
     unpair: (i: number) => void;
     setOptional: (key: string, v: boolean) => void;
     setRole: (key: string, r: DraftEntry["role"]) => void;
+    setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) => void;
+    clearAnchor: (key: string, side: "after" | "before") => void;
   };
+  /** Subárbol entero (`getAnchorOptions`), para el selector de ancla de cada
+   *  fila de «Cuando quieras». */
+  anchors: DraftAnchor[];
   onMenu: (key: string) => void;
   /** El mismo nodo que en escritorio, aquí plegado: en 400px el buscador de
    *  catálogo y los itinerarios no pueden ocupar sitio permanente. */
@@ -104,7 +110,19 @@ export function ShellMobile({
               <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{t("zoneFreeHint")}</p>
             </div>
           ) : (
-            <div className="grid gap-2">{draft.free.map((e) => row(e, null))}</div>
+            <div className="grid gap-2">
+              {draft.free.map((e) => (
+                <div key={e.key}>
+                  {row(e, null)}
+                  <WindowEditor
+                    entry={e}
+                    anchors={anchors}
+                    onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
+                    onClearAnchor={(side) => ops.clearAnchor(e.key, side)}
+                  />
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

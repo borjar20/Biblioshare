@@ -4,8 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { saveSequence } from "@/lib/sagas/sequence-actions";
 import { validateSequenceDraft } from "@/lib/sagas/validate-sequence-draft";
 import {
-  addEntry, moveSlot, pairWith, removeEntry, sendTo, setOptional, setRole, toPayload, unpair,
-  type DraftEntry, type SequenceDraft, type ZoneId,
+  addEntry, clearAnchor, moveSlot, pairWith, removeEntry, sendTo, setAnchor, setOptional, setRole,
+  toPayload, unpair,
+  type DraftAnchor, type DraftEntry, type SequenceDraft, type ZoneId,
 } from "@/lib/sagas/sequence-draft";
 
 export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -44,6 +45,13 @@ export function useSequenceDraft(
       setRole: (key: string, r: DraftEntry["role"]) => touch((d) => setRole(d, key, r)),
       add: (e: DraftEntry) => touch((d) => addEntry(d, e)),
       remove: (key: string) => touch((d) => removeEntry(d, key)),
+      // Fase 2b: única forma de poner/quitar un ancla. Las funciones puras ya
+      // existían (sequence-draft.ts) pero ningún componente las llamaba —
+      // `WindowEditor`/`AnchorPicker` son los primeros.
+      setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) =>
+        touch((d) => setAnchor(d, key, side, anchor)),
+      clearAnchor: (key: string, side: "after" | "before") =>
+        touch((d) => clearAnchor(d, key, side)),
     }),
     [],
   );

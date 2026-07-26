@@ -19,6 +19,17 @@ export type DraftAnchor = {
  *  (lo impone también un CHECK). `null` en las dos = no hay ventana. */
 export type DraftWindow = { after: DraftAnchor | null; before: DraftAnchor | null };
 
+/** Clave de una ancla en el MISMO formato que `DraftEntry.key`
+ *  (`i:<tipo>:<uuid>` / `s:<uuid>`), para poder comparar una ancla contra el
+ *  sujeto (auto-referencia, `windowSelfAnchor`) o contra las claves vivas del
+ *  borrador. Único sitio donde vive esta conversión para el lado del cliente;
+ *  `validate-sequence-draft.ts` y `get-saga-sequence.ts` la reimplementan
+ *  sobre `SequencePayload`/`RawWindowRow`, que son formas distintas y no
+ *  pueden importar de aquí sin crear un ciclo con sus propios tipos crudos. */
+export function anchorKey(a: DraftAnchor): string {
+  return a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`;
+}
+
 export type DraftEntry = {
   /** Clave estable y única en el borrador: `i:<tipo>:<uuid>` para una obra,
    *  `s:<uuid>` para un bloque-subsaga. Es la key de React y el identificador

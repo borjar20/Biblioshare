@@ -1172,7 +1172,26 @@
       "placement": "Una fila tiene número fuera de la secuencia, o le falta dentro.",
       "foreignBlock": "Hay un bloque que no es subsaga directa de esta saga.",
       "duplicate": "Hay una obra repetida.",
-      "generic": "No se ha podido guardar."
+      "generic": "No se ha podido guardar.",
+      "windowNotFree": "Solo las entradas de «Cuando quieras» pueden tener ventana.",
+      "windowNoAnchor": "Una ventana necesita al menos un ancla.",
+      "windowSelfAnchor": "Una obra no puede anclarse a sí misma.",
+      "windowForeignAnchor": "El ancla tiene que ser algo de esta saga."
+    },
+    "windowAdd": "+ Añadir ventana",
+    "windowAfter": "A partir de",
+    "windowBefore": "Antes de",
+    "windowAddAfter": "+ A partir de…",
+    "windowAddBefore": "+ Recomendable antes de…",
+    "windowRemoveAnchor": "Quitar «{anchor}» de {title}",
+    "windowBroken": "Ya no está en la saga",
+    "anchorPickerFilter": "Filtrar obras y bloques…",
+    "anchorPickerEmpty": "No hay nada más en esta saga a lo que anclar.",
+    "windowErrors": {
+      "windowNotFree": "Solo las entradas de «Cuando quieras» pueden tener ventana.",
+      "windowNoAnchor": "Una ventana necesita al menos un ancla.",
+      "windowSelfAnchor": "Una obra no puede anclarse a sí misma.",
+      "windowForeignAnchor": "El ancla tiene que ser algo de esta saga."
     },
     "itinerariesTitle": "Itinerarios de lectura",
     "itinerariesEmpty": "Todavía no hay ninguno.",

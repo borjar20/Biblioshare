@@ -44,14 +44,16 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
   // Las tres consultas son independientes entre sí (ninguna depende del
   // resultado de otra), así que van en paralelo. `getAnchorOptions` es a
   // propósito un cargador APARTE de `getSagaSequence` — ver la cabecera de
-  // ese fichero — así que se llama aquí explícitamente para las claves que
-  // necesita `useSequenceDraft` (fase 2b: validación local de ventanas).
+  // ese fichero — así que se llama aquí explícitamente para las anclas que
+  // necesita `SequenceEditor` (fase 2b: selector de ventana y validación
+  // local). Se pasa la lista ENTERA de `DraftAnchor` —con `title` resuelto,
+  // no solo las claves— porque `AnchorPicker` la pinta; `SequenceEditor`
+  // deriva las claves de esa misma lista en vez de recibir las dos cosas.
   const [sequence, anchors, routes] = await Promise.all([
     getSagaSequence(supabase, saga.id),
     getAnchorOptions(supabase, saga.id),
     getSagaRoutes(supabase, saga.id),
   ]);
-  const anchorKeys = anchors.map((a) => (a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`));
 
   const t = await getTranslations("saga");
   return (
@@ -73,7 +75,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
         sagaId={saga.id}
         initial={sequence.draft}
         childSagas={sequence.childSagas}
-        anchorKeys={anchorKeys}
+        anchors={anchors}
         itineraries={<SequenceItineraries sagaId={saga.id} routes={routes} />}
       />
     </div>
