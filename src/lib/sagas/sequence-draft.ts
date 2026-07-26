@@ -219,12 +219,17 @@ export function clearAnchor(d: SequenceDraft, key: string, side: "after" | "befo
 }
 
 /** Alta desde el rail: al final de la secuencia, como promete la maqueta. */
-export const addEntry = (d: SequenceDraft, entry: DraftEntry): SequenceDraft =>
-  d.slots.some((s) => s.some((e) => e.key === entry.key)) ||
-  d.free.some((e) => e.key === entry.key) ||
-  d.unclassified.some((e) => e.key === entry.key)
-    ? d
-    : { ...d, slots: [...d.slots, [{ ...entry, isNew: true }]] };
+export const addEntry = (d: SequenceDraft, entry: DraftEntry): SequenceDraft => {
+  if (
+    d.slots.some((s) => s.some((e) => e.key === entry.key)) ||
+    d.free.some((e) => e.key === entry.key) ||
+    d.unclassified.some((e) => e.key === entry.key)
+  ) {
+    return d;
+  }
+  const clean = entry.window ? { ...entry, window: null } : entry;
+  return { ...d, slots: [...d.slots, [{ ...clean, isNew: true }]] };
+};
 
 export function removeEntry(d: SequenceDraft, key: string): SequenceDraft {
   const [without, entry] = extract(d, key);

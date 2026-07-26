@@ -195,4 +195,15 @@ describe("ventanas", () => {
       },
     ]);
   });
+
+  it("addEntry limpia la ventana de una entrada que viene con ella", () => {
+    const entryWithWindow: DraftEntry = {
+      ...work("nuevo"),
+      window: { after: anchor("Era 1"), before: null },
+    };
+    const d = addEntry(draft([[work("a")]]), entryWithWindow);
+    expect(d.slots).toHaveLength(2);
+    expect(d.slots[1][0].window).toBeNull();
+    expect(d.slots[1][0].itemId).toBe("nuevo");
+  });
 });
