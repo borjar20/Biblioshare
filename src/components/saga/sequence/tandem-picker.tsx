@@ -34,7 +34,10 @@ export function TandemPicker({
       onClose={onCancel}
       aria-label={t("pairPrompt")}
       onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }}
-      className="m-auto mb-0 mt-auto max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-[18px] border border-border bg-surface p-0 text-foreground backdrop:bg-scrim sm:mb-auto sm:rounded-2xl"
+      // Mismo criterio que `row-sheet.tsx`: hoja abajo con la cáscara móvil,
+      // modal centrado con la de escritorio, y el corte en `lg` — el mismo
+      // breakpoint en que se cambian las cáscaras, no uno propio.
+      className="m-auto mb-0 mt-auto max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-[18px] border border-border bg-surface p-0 text-foreground backdrop:bg-scrim lg:mb-auto lg:rounded-2xl"
     >
       <div className="p-4">
         <div className="mb-2.5 flex items-center gap-2.5">

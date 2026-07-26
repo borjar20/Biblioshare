@@ -43,10 +43,16 @@ export function RowSheet({
       onClose={onClose}
       aria-label={entry.title}
       onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }}
-      className="m-auto mb-0 mt-auto w-full max-w-lg rounded-t-[18px] border border-border bg-surface p-0 text-foreground backdrop:bg-scrim"
+      // Hoja pegada abajo con la cáscara móvil y modal centrado con la de
+      // escritorio, en el MISMO breakpoint (`lg`) en que se cambian las
+      // cáscaras. Esta hoja se monta una sola vez y la abren las dos, así que
+      // sin esto quedaba anclada al fondo también en escritorio, que es donde
+      // no significa nada: ahí no hay pulgar al que acercarla.
+      className="m-auto mb-0 mt-auto w-full max-w-lg rounded-t-[18px] border border-border bg-surface p-0 text-foreground backdrop:bg-scrim lg:mb-auto lg:rounded-2xl"
     >
       <div className="px-4 pb-5 pt-3.5">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-surface-3" aria-hidden />
+        {/* Asa de arrastre: afordancia táctil, no se pinta en el modal centrado. */}
+        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-surface-3 lg:hidden" aria-hidden />
         <div className="mb-3.5 flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <b className="block truncate font-serif text-[15px] font-semibold">{entry.title}</b>
