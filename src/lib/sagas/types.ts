@@ -80,6 +80,9 @@ export type SagaChildRef = {
   accentColor: string | null;
   /** Colocación del bloque en su padre (sagas.position_in_parent). */
   positionInParent: number | null;
+  /** Colocación del bloque en su padre (sagas.placement_in_parent). null = sin
+   *  clasificar, y entonces el bloque cae en la zona 3 del editor del padre. */
+  placementInParent: SagaPlacement | null;
   /** true = el bloque entero sale del denominador del PADRE, no del suyo. */
   optionalInParent: boolean;
 };

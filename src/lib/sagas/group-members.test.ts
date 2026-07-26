@@ -20,8 +20,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
 });
 
 const children: SagaChildRef[] = [
-  { id: "vapor", name: "La Edad del Vapor", accentColor: null, positionInParent: null, optionalInParent: false },
-  { id: "ceniza", name: "La Edad de Ceniza", accentColor: "verde", positionInParent: null, optionalInParent: false },
+  { id: "vapor", name: "La Edad del Vapor", accentColor: null, positionInParent: null, placementInParent: null, optionalInParent: false },
+  { id: "ceniza", name: "La Edad de Ceniza", accentColor: "verde", positionInParent: null, placementInParent: null, optionalInParent: false },
 ];
 
 describe("groupMembers", () => {
@@ -84,6 +84,7 @@ describe("groupMembers", () => {
       name: id,
       accentColor: null,
       positionInParent: null,
+      placementInParent: null,
       optionalInParent: false,
     }));
     const groups = groupMembers(
