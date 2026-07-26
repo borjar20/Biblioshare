@@ -6,12 +6,19 @@ const keyOf = (m: DetailMember) => `${m.itemType}:${m.itemId}`;
 
 // Resolución PURA de un itinerario: filas de saga_route_entries → pasos con
 // obra o bloque resuelto. Un bloque se expande con el ORDEN PRINCIPAL de esa
-// subsaga (la misma regla y la misma función que el hero), no con todos sus
-// miembros: si la subsaga tiene opcionales, no deben inflar el contador.
+// subsaga (mainOrderOf, createMainOrder) — la misma función de SECUENCIA que
+// usan las portadas del abanico y el «siguiente» de las cards, NO la que
+// cuenta el avance del hero (eso es countedKeys/pertenencia desde el
+// 2026-07-25, ./progress.ts). Un bloque expande «su orden principal», no
+// «todos sus miembros»: un ítem sin hueco en la secuencia (grafo con order_no
+// null) no aparece como paso. Eso NO es lo mismo que filtrar por `optional`:
+// createMainOrder ni siquiera recibe ese campo, así que un miembro `optional`
+// SÍ entra como paso, y SÍ cuenta en `total`, si tiene hueco en la secuencia.
 //
 // Una referencia colgante (item_id que ya no es miembro, subsaga inexistente)
-// se descarta del render Y del denominador. El grafo hace solo lo primero y por
-// eso su avance no puede llegar al 100% (issue #170): aquí no se replica.
+// se descarta aquí de LOS DOS sitios (render y `total`): el `continue` de
+// cada rama del for de abajo la deja fuera de `counted` antes de que pueda
+// contarse en ningún sitio.
 export function resolveRoute(entries: RawRouteEntry[], lookup: RouteLookup): ResolvedRoute {
   const ordered = [...entries].sort((a, b) => a.position - b.position);
   const steps: ResolvedStep[] = [];

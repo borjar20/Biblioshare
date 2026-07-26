@@ -151,7 +151,12 @@ test("seguir → card en Mi Biblioteca → dejar de seguir (estado final = inici
 
     // Bloque «siguiente»: exactamente uno de los dos (reading/next O
     // completada) debe estar presente — nunca ambos, nunca ninguno, dado que
-    // el universo QA tiene miembros con orden principal (total > 0).
+    // el universo QA tiene miembros que SÍ cuentan para el avance (total > 0
+    // vía countedKeys — pertenencia del subárbol, spec 2026-07-25 — no por
+    // tener "orden principal": eso ya no decide el denominador). Si todo el
+    // contenido fuera `optional`, total sería 0 y el bloque sería un tercer
+    // estado ("allOptional", ver sagaLibrary.allOptional) que este test no
+    // ejercita.
     const nextOrReading = card.getByText(/^Leyendo ahora$|^Siguiente$/);
     const completedBlock = card.getByText("Saga completada");
     const hasNext = (await nextOrReading.count()) > 0;

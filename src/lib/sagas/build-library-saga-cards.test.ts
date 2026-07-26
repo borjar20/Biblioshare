@@ -8,18 +8,19 @@ import {
   type LibSaga,
 } from "./build-library-saga-cards";
 
-const saga = (id: string, name: string, parent: string | null = null, accent: string | null = null): LibSaga => ({
-  id,
-  parentSagaId: parent,
-  name,
-  accentColor: accent,
-});
-const mem = (sagaId: string, itemId: string, position: number | null): LibMembership => ({
-  sagaId,
-  itemType: "book",
-  itemId,
-  position,
-});
+const saga = (
+  id: string,
+  name: string,
+  parent: string | null = null,
+  accent: string | null = null,
+  optionalInParent = false,
+): LibSaga => ({ id, parentSagaId: parent, name, accentColor: accent, optionalInParent });
+const mem = (
+  sagaId: string,
+  itemId: string,
+  position: number | null,
+  optional = false,
+): LibMembership => ({ sagaId, itemType: "book", itemId, position, optional });
 const item = (itemId: string, title: string): LibItemMeta => ({
   itemType: "book",
   itemId,
@@ -85,7 +86,7 @@ describe("buildLibrarySagaCards", () => {
     expect(cards[0].next).toMatchObject({ kind: "next", itemId: "nexo" });
   });
 
-  it("con grafo: solo nodos con orderNo cuentan y el nodo-saga se expande en su hueco", () => {
+  it("con grafo: el orden solo pinta nodos con orderNo, pero el denominador cuenta toda la pertenencia", () => {
     const cards = buildLibrarySagaCards(
       ["u"],
       [saga("u", "Universo"), saga("h", "Hija", "u")],
@@ -93,15 +94,18 @@ describe("buildLibrarySagaCards", () => {
       [
         node("u", { itemId: "a" }, 1),
         node("u", { childSagaId: "h" }, 2), // nodo-saga CON orderNo (Task 1)
-        node("u", { itemId: "opc" }, null), // opcional: fuera del denominador
+        node("u", { itemId: "opc" }, null), // sin hueco en el grafo, pero NO optional: sí cuenta (Task 5)
       ],
       [item("a", "A"), item("b", "B"), item("c", "C"), item("opc", "Opc")],
       [entry("a", "completed"), entry("b", "completed")],
       [],
       [],
     );
-    // orden principal: a, b, c (h expandida por position); opc no cuenta
-    expect(cards[0].progress).toMatchObject({ completed: 2, total: 3, pct: 67 });
+    // orden principal (portadas/«siguiente»): a, b, c — opc no tiene order_no,
+    // así que no entra en la SECUENCIA. Pero el denominador (Task 5) ya no
+    // sale del orden: cuenta la pertenencia, y opc es un miembro real (no
+    // marcado optional en saga_items), así que sí cuenta → total 4, no 3.
+    expect(cards[0].progress).toMatchObject({ completed: 2, total: 4, pct: 50 });
     expect(cards[0].next).toMatchObject({ kind: "next", itemId: "c" });
     expect(cards[0].hasGraph).toBe(true);
   });
@@ -217,5 +221,146 @@ describe("buildLibrarySagaCards", () => {
     const sintetica = cards.find((c) => c.sagaId === "sintetica")!;
     expect(curada.routeName).toBe("La Guardia");
     expect(sintetica.routeName).toBeNull();
+  });
+
+  it("una saga sin grafo y sin ningún position cuenta todos sus miembros (rama sin grafo)", () => {
+    // OJO: este caso NO reproduce el bug de Mundodisco. Sin nodos de grafo
+    // para la raíz, mainOrder toma la rama sin grafo (miembros directos +
+    // recursión por `childrenByParent`), que nunca descartó a nadie por falta
+    // de order_no — así que este test ya pasaba ANTES del cambio de Task 5.
+    // La reproducción real (raíz CON grafo, todo orderNo a null) está en el
+    // test siguiente.
+    const cards = buildLibrarySagaCards(
+      ["root"],
+      [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
+      [mem("hija", "a", null), mem("hija", "b", null)],
+      [],
+      [item("a", "A"), item("b", "B")],
+      [entry("a", "completed")],
+      [],
+      [],
+    );
+    expect(cards[0].progress).toMatchObject({ completed: 1, total: 2 });
+  });
+
+  it("caso Mundodisco real: raíz CON grafo y todo orderNo a null igual cuenta la pertenencia", () => {
+    // Esta es la reproducción de verdad (review de Task 5, Important 5): la
+    // raíz tiene un nodo de grafo (nodesBySaga.get("root").length > 0), así
+    // que mainOrder entra en la rama CON grafo y filtra por orderNo !== null.
+    // Como el único nodo tiene orderNo null, `ordered` sale vacío y
+    // walk("root") nunca desciende a "hija" (esa rama solo desciende vía
+    // nodos de grafo, no vía childrenByParent) — mainOrder("root") = [].
+    // Con el código VIEJO (denominador = order.length) esto daba 0/0 y
+    // {kind:"empty"}: exactamente el bug de Mundodisco. Con el código actual
+    // (denominador = countedKeys, que no mira el grafo) da progreso real.
+    const cards = buildLibrarySagaCards(
+      ["root"],
+      [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
+      [mem("hija", "a", null), mem("hija", "b", null)],
+      [node("root", { childSagaId: "hija" }, null)],
+      [item("a", "A"), item("b", "B")],
+      [entry("a", "completed")],
+      [],
+      [],
+    );
+    expect(cards[0].hasGraph).toBe(true);
+    expect(cards[0].progress).toMatchObject({ completed: 1, total: 2, pct: 50 });
+    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "b" });
+  });
+
+  it("completada con grafo sin order_no: la nota media sale de `counted`, no de un `order` vacío", () => {
+    // Important 1 del review de Task 5: la rama `else` (kind:"completed") leía
+    // `order` para la media, la misma fuente que ya reventaba dos líneas más
+    // arriba para el kind:"next". Con `order` vacío (mismo montaje que el test
+    // "caso Mundodisco real" de arriba, pero con las dos obras completadas y
+    // puntuadas) la media debía salir de `counted` = [a, b]: (9 + 7) / 2 = 8.
+    const cards = buildLibrarySagaCards(
+      ["root"],
+      [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
+      [mem("hija", "a", null), mem("hija", "b", null)],
+      [node("root", { childSagaId: "hija" }, null)],
+      [item("a", "A"), item("b", "B")],
+      [entry("a", "completed"), entry("b", "completed")],
+      [
+        { itemType: "book", itemId: "a", rating: 9, finishedOn: "2026-01-01" },
+        { itemType: "book", itemId: "b", rating: 7, finishedOn: "2026-01-01" },
+      ],
+      [],
+    );
+    expect(cards[0].next).toEqual({ kind: "completed", rating: 8 });
+  });
+
+  it("el bloque «siguiente» salta las obras optional aunque vayan primero en el orden", () => {
+    // Important 2 del review de Task 5 (decisión del dueño del producto): el
+    // «siguiente» propone la próxima obra que ADEMÁS cuenta (está en
+    // `counted`), respetando `order` para elegir entre las que cuentan. "a" es
+    // optional (fuera de `counted`) pero va primera en `order`; sin el filtro,
+    // el «siguiente» proponía "a" y el lector veía una obra que nunca mueve la
+    // barra — el descuadre de los issues #91/#185 que esta fase existe para
+    // eliminar.
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S")],
+      [mem("s", "a", 1, true), mem("s", "b", 2)],
+      [],
+      [item("a", "A"), item("b", "B")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].progress.total).toBe(1); // "a" es optional: no cuenta
+    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "b" });
+  });
+
+  it("un bloque optional no penaliza el avance del padre", () => {
+    const cards = buildLibrarySagaCards(
+      ["root"],
+      [saga("root", "Cosmere"), saga("secretas", "Novelas secretas", "root", null, true)],
+      [mem("root", "a", 1), mem("secretas", "s1", 1)],
+      [],
+      [item("a", "A"), item("s1", "S1")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].progress.total).toBe(1);
+  });
+
+  it("todos los miembros optional: hay portadas y obras, pero `counted` sale vacío (Important 1, 2ª ronda review Task 5)", () => {
+    // Espejo exacto del caso Mundodisco (`order` vacío con `counted` lleno):
+    // aquí `order` y `tree` NO están vacíos (ninguno filtra por `optional`,
+    // así que las portadas y el «leyendo ahora» los siguen viendo), pero
+    // `counted` sí, porque las dos obras son optional. `total === 0` ya NO
+    // significa "saga sin obras": antes de este fix caía en la misma rama
+    // `{kind:"empty"}` que una saga genuinamente vacía, y la card se quedaba
+    // con 2 portadas, 0/0 y ningún bloque accionable.
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S")],
+      [mem("s", "a", 1, true), mem("s", "b", 2, true)],
+      [],
+      [item("a", "A"), item("b", "B")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].covers).toHaveLength(2); // hay portadas: no es una saga vacía
+    expect(cards[0].progress).toMatchObject({ completed: 0, total: 0, pct: 0 });
+    expect(cards[0].next).toEqual({ kind: "allOptional" });
+  });
+
+  it("saga genuinamente sin obras: ni `order` ni `counted` ni `tree` tienen nada → sí es «empty»", () => {
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S")],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].covers).toHaveLength(0);
+    expect(cards[0].next).toEqual({ kind: "empty" });
   });
 });

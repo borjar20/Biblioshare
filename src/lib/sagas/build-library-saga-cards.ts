@@ -5,14 +5,31 @@ import {
   type SagaAccentToken,
 } from "./accents";
 import { createMainOrder } from "./main-order";
+import { countedKeys } from "./progress";
 
 // Cards de la pestaña «Sagas» de Mi Biblioteca (spec §4.3, frame COL). Todo
-// puro: la capa de datos (get-followed-sagas) resuelve las filas. La regla de
-// cómputo es la de §1.5 y vive en ./main-order (compartida con el hero desde
-// el issue #91): denominador = títulos del orden principal.
+// puro: la capa de datos (get-followed-sagas) resuelve las filas. El
+// DENOMINADOR del progreso vive en ./progress (countedKeys, spec 2026-07-25):
+// pertenencia del subárbol, no orden. `mainOrder` (./main-order) se sigue
+// usando aquí, pero solo para cosas de SECUENCIA: portadas del abanico y el
+// bloque «siguiente».
 
-export type LibSaga = { id: string; parentSagaId: string | null; name: string; accentColor: string | null };
-export type LibMembership = { sagaId: string; itemType: ItemType; itemId: string; position: number | null };
+export type LibSaga = {
+  id: string;
+  parentSagaId: string | null;
+  name: string;
+  accentColor: string | null;
+  /** true = el bloque entero sale del denominador del PADRE, no del suyo. */
+  optionalInParent: boolean;
+};
+export type LibMembership = {
+  sagaId: string;
+  itemType: ItemType;
+  itemId: string;
+  position: number | null;
+  /** true = NO cuenta en el denominador del progreso. */
+  optional: boolean;
+};
 export type LibNode = {
   sagaId: string;
   itemType: ItemType | null;
@@ -37,6 +54,10 @@ export type NextBlock =
   | { kind: "reading"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
   | { kind: "next"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
   | { kind: "completed"; rating: number | null }
+  // Hay obras (`order`/`tree` no vacíos) pero NINGUNA cuenta para el avance
+  // (todas `optional`, o el único bloque es `optionalInParent`): ver Important
+  // 1 del review de Task 5 (2ª ronda) junto a `total === 0` más abajo.
+  | { kind: "allOptional" }
   | { kind: "empty" };
 
 export type LibrarySagaCard = {
@@ -134,11 +155,12 @@ export function buildLibrarySagaCards(
     const root = sagaById.get(followedId);
     if (!root) continue;
 
-    const order = mainOrder(followedId);
+    const order = mainOrder(followedId);              // orden: portadas y «siguiente»
+    const counted = countedKeys(followedId, sagas, memberships); // denominador
     const tree = [...new Set(subtreeItems(followedId, 0, new Set()))];
-    const total = order.length;
+    const total = counted.length;
     const isCompleted = (k: string) => entryByItem.get(k)?.everCompleted === true;
-    const completed = order.filter(isCompleted).length;
+    const completed = counted.filter(isCompleted).length;
 
     // Segmentos por hija directa (universos): un ítem del orden pertenece a la
     // primera hija (por orden de grupo) en cuyo subárbol milite; el resto es
@@ -175,7 +197,7 @@ export function buildLibrarySagaCards(
         set: new Set(subtreeItems(c.id, 1, new Set())),
       }));
       const doneBy = new Map<SagaAccentToken, number>();
-      for (const k of order) {
+      for (const k of counted) {
         if (!isCompleted(k)) continue;
         const owner = childSets.find((cs) => cs.set.has(k));
         const accent: SagaAccentToken = owner ? owner.accent : "beige";
@@ -186,6 +208,14 @@ export function buildLibrarySagaCards(
 
     // Bloque «siguiente» (§4.3, estados excluyentes).
     let next: NextBlock;
+    // DELIBERADO (Minor 5, review de Task 5, 2ª ronda): «reading» sale de
+    // `tree` (todo el subárbol), no de `counted`, y por eso puede destacar una
+    // obra `optional` que el lector tenga empezada aunque no mueva la barra.
+    // No es la misma asimetría que se corrigió en «next» (Important 2): ahí
+    // la card SUGIERE un paso, y sugerir algo que no cuenta es el descuadre
+    // de los issues #91/#185. Aquí la card solo REPORTA un hecho (qué tienes
+    // abierto ahora mismo) — no hay «paso» que proponer mal si el lector ya
+    // lo eligió él solo.
     const reading = tree
       .map((k) => ({ k, e: entryByItem.get(k) }))
       .filter((x): x is { k: string; e: LibEntry } => x.e?.status === "in_progress")
@@ -194,15 +224,65 @@ export function buildLibrarySagaCards(
       const m = metaByItem.get(reading.k);
       const [itemType, itemId] = reading.k.split(":") as [ItemType, string];
       next = { kind: "reading", itemType, itemId, title: m?.title ?? "", coverUrl: m?.coverUrl ?? null };
-    } else if (total === 0) {
+    } else if (tree.length === 0) {
+      // La saga no tiene NINGÚN miembro en su propio subárbol: ni siquiera
+      // `tree` (que ignora `optional`/`optionalInParent` y ve TODO el
+      // subárbol vía membresías) encuentra una obra.
+      //
+      // Esto NO garantiza que `basis` (portadas/tipo/creador, más abajo)
+      // también caiga a `tree`: `order` podría seguir teniendo entradas por
+      // el mismo motivo que el #170 — `mainOrder` filtra sus nodos-ítem por
+      // `memberKeys` GLOBAL (main-order.ts:74: memberships de TODAS las
+      // sagas seguidas, no solo las de esta), así que un nodo de grafo de
+      // ESTA saga que apunte a un ítem miembro de OTRA saga seguida entraría
+      // en `order` aunque no esté en `tree`. Caso rebuscado y preexistente a
+      // la Task 5 (el guard viejo se comportaba igual): se documenta aquí, no
+      // se corrige — cambiar el comportamiento no es el objetivo de este
+      // guard.
       next = { kind: "empty" };
+    } else if (total === 0) {
+      // Important 1 (review de Task 5, 2ª ronda): `total` es `counted.length`
+      // desde que el denominador dejó de salir de `order` (progress.ts). Con
+      // `tree.length > 0` ya descartado arriba, llegar aquí solo puede
+      // significar que TODAS las obras del subárbol son `optional` (o que el
+      // único bloque hijo es `optionalInParent`): hay portadas (`order`/`tree`
+      // no filtran por optional) pero ninguna obra cuenta para el avance.
+      //
+      // No es "empty" (mentiría: sí hay portadas y obras reales que mostrar,
+      // el bug que reportó el reviewer — 2 portadas, 0/0, ningún bloque). No
+      // es "completed" tampoco (mentiría en la otra dirección: nadie ha
+      // terminado nada, un "✓ completada" sería falso). Y no hay un
+      // "siguiente" honesto que proponer: proponer una obra optional es
+      // exactamente el descuadre de #91/#185 que Important 2 vino a evitar.
+      // Verdad para el lector: hay obras, pero ninguna le mueve la barra —
+      // estado propio, ni vacío ni completo.
+      next = { kind: "allOptional" };
     } else if (completed < total) {
-      const k = order.find((o) => !isCompleted(o))!;
+      // El «siguiente» propone la próxima obra que ADEMÁS cuenta (decisión del
+      // dueño del producto, review de Task 5, Important 2): una obra optional
+      // no se exige, así que tampoco se empuja — proponerla es leer "b" en la
+      // card y ver que la barra no se mueve, el descuadre de los issues
+      // #91/#185. Por eso se recorre `order` (la secuencia curada) pero
+      // filtrando primero a lo que está en `counted`.
+      //
+      // Fallback a `counted` sin filtrar: `order` puede salir vacío del todo
+      // (el caso Mundodisco exacto: grafo sin ningún order_no) aunque `counted`
+      // tenga miembros reales. Sin este fallback, `.find` devolvía undefined y
+      // esto reventaba en vez de mostrar el número. Dentro del fallback no hay
+      // secuencia curada que respetar, así que el desempate es el orden de
+      // llegada de `counted` (arbitrario — ver issue de seguimiento).
+      const countedSet = new Set(counted);
+      const orderCounted = order.filter((o) => countedSet.has(o));
+      const k = orderCounted.find((o) => !isCompleted(o)) ?? counted.find((o) => !isCompleted(o))!;
       const m = metaByItem.get(k);
       const [itemType, itemId] = k.split(":") as [ItemType, string];
       next = { kind: "next", itemType, itemId, title: m?.title ?? "", coverUrl: m?.coverUrl ?? null };
     } else {
-      const rated = order
+      // Misma causa raíz que el fallback de arriba: el denominador ya no sale
+      // de `order`, así que la media tiene que leer de `counted` — con `order`
+      // vacío (grafo sin order_no) esto daba `rated: []` y la card mostraba
+      // "sin nota" tras terminar la saga entera (Important 1 del review).
+      const rated = counted
         .map((k) => ratingByItem.get(k)?.rating)
         .filter((r): r is number => r !== undefined);
       const rating = rated.length > 0

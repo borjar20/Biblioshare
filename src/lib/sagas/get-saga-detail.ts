@@ -13,8 +13,9 @@ import {
   type MemberGroup,
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
-import { createMainOrder, type OrderMembership, type OrderNode, type OrderSaga } from "./main-order";
-import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole } from "./types";
+import type { OrderMembership, OrderNode, OrderSaga } from "./main-order";
+import { countedKeys, type ProgressMembership, type ProgressSaga } from "./progress";
+import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole, SagaPlacement } from "./types";
 import type { SagaRoute } from "./route-types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -78,6 +79,8 @@ type DescendantRow = {
   name: string;
   accent_color: string | null;
   parent_saga_id: string | null;
+  position_in_parent: number | null;
+  optional_in_parent: boolean;
 };
 
 // Descendientes hasta profundidad 4 (spec §1.5: cap como cinturón frente a
@@ -91,7 +94,7 @@ async function fetchDescendants(
   for (let depth = 0; depth < 4 && frontier.length > 0; depth++) {
     const { data } = await supabase
       .from("sagas")
-      .select("id, name, accent_color, parent_saga_id")
+      .select("id, name, accent_color, parent_saga_id, position_in_parent, optional_in_parent")
       .in("parent_saga_id", frontier);
     const next: string[] = [];
     for (const row of (data ?? []) as DescendantRow[]) {
@@ -139,13 +142,19 @@ export async function getSagaDetail(
   const descendants = await fetchDescendants(supabase, id);
   const children: SagaChildRef[] = [...descendants.values()]
     .filter((d) => d.parent_saga_id === id)
-    .map((d) => ({ id: d.id, name: d.name, accentColor: d.accent_color }));
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      accentColor: d.accent_color,
+      positionInParent: d.position_in_parent,
+      optionalInParent: d.optional_in_parent,
+    }));
 
   // Membresías del root + descendientes, con su saga de origen.
   const sagaIds = [id, ...descendants.keys()];
   const { data: itemRows } = await supabase
     .from("saga_items")
-    .select("saga_id, item_type, item_id, position, role")
+    .select("saga_id, item_type, item_id, position, role, placement, optional")
     .in("saga_id", sagaIds)
     .order("created_at", { ascending: true });
   const rows = (itemRows ?? []) as Array<{
@@ -154,6 +163,8 @@ export async function getSagaDetail(
     item_id: string;
     position: number | null;
     role: SagaItemRole | null;
+    placement: SagaPlacement | null;
+    optional: boolean;
   }>;
 
   // Dedupe multi-membresía: la fila con subsaga gana sobre la directa (spec
@@ -244,6 +255,8 @@ export async function getSagaDetail(
       href: itemHref(row.item_type, row.item_id),
       position: row.position,
       role: row.role,
+      placement: row.placement,
+      optional: row.optional,
       status: statusByItem.get(`${row.item_type}:${row.item_id}`) ?? null,
       groupSagaId,
       ownerSagaId: row.saga_id,
@@ -252,8 +265,12 @@ export async function getSagaDetail(
   }
 
   const groups = groupMembers(members, children);
-  // `progress` se calcula más abajo: necesita el orden principal (§1.5) y por
-  // tanto los nodos del grafo, que se descargan en el batch de consultas.
+  // `progress` se calcula más abajo con countedKeys (pertenencia, spec
+  // 2026-07-25): NO necesita el orden principal ni los nodos del grafo. Esos
+  // sí se descargan en el batch de consultas de más abajo, pero por otro
+  // motivo — RouteView (Task 6) los necesita para expandir bloques de un
+  // itinerario, ver el comentario de `orderSagas`/`orderMemberships`/
+  // `orderNodes` en el tipo `SagaDetail`.
 
   // Nota media comunitaria: pases puntuados de todos los miembros, sin contar
   // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase
@@ -385,9 +402,11 @@ export async function getSagaDetail(
 
   const treeNodes = (nodesRes.data ?? []) as Array<RawSagaNode & { saga_id: string }>;
 
-  // Avance del hero sobre el ORDEN PRINCIPAL (§1.5), la misma regla y el mismo
-  // código que las cards de Mi Biblioteca (issue #91: antes contaba todos los
-  // miembros del subárbol y discrepaba de la card sobre la misma saga).
+  // Insumos de createMainOrder (§1.5) para reconstruir el ORDEN de una subsaga
+  // (Task 6, RouteView) — NO el denominador del avance del hero desde el
+  // 2026-07-25 (ver countedKeys más abajo). Se devuelven en SagaDetail
+  // (orderSagas/orderMemberships/orderNodes) tal cual, sin llamar aquí a
+  // createMainOrder: nada en este fichero necesita ya el orden en sí mismo.
   const orderSagas = [
     { id, name: saga.name, parentSagaId: null },
     ...[...descendants.values()].map((d) => ({
@@ -409,8 +428,29 @@ export async function getSagaDetail(
     childSagaId: n.child_saga_id,
     orderNo: n.order_no,
   }));
-  const mainOrder = createMainOrder(orderSagas, orderMemberships, orderNodes, (k) => meta.get(k)?.title ?? "");
-  const progress = computeProgress(groups, mainOrder(id));
+  // Insumos de countedKeys (el DENOMINADOR, ./progress.ts), construidos con los
+  // mismos datos ya en memoria que orderSagas/orderMemberships (sin viaje
+  // extra): optionalInParent de la raíz no se usa nunca (walk() solo la mira
+  // al descender desde un padre), pero progressSagas debe incluir la raíz o un
+  // miembro directo de la saga consultada no contaría.
+  const progressSagas: ProgressSaga[] = [
+    { id, parentSagaId: null, optionalInParent: false },
+    ...[...descendants.values()].map((d) => ({
+      id: d.id,
+      parentSagaId: d.parent_saga_id,
+      optionalInParent: d.optional_in_parent,
+    })),
+  ];
+  const progressMemberships: ProgressMembership[] = rows.map((r) => ({
+    sagaId: r.saga_id,
+    itemType: r.item_type,
+    itemId: r.item_id,
+    optional: r.optional,
+  }));
+  // El denominador ya no es el orden (spec 2026-07-25): countedKeys cuenta la
+  // PERTENENCIA. computeProgress no cambia de firma — recibe las claves que
+  // cuentan donde antes recibía las del orden principal.
+  const progress = computeProgress(groups, countedKeys(id, progressSagas, progressMemberships));
 
   const rawNodes = treeNodes.filter((n) => n.saga_id === id);
   const rawEdges = (edgesRes.data ?? []) as RawSagaEdge[];
@@ -443,6 +483,8 @@ export async function getSagaDetail(
     id: d.id,
     name: d.name,
     accentColor: d.accent_color,
+    positionInParent: d.position_in_parent,
+    optionalInParent: d.optional_in_parent,
   }));
 
   return {

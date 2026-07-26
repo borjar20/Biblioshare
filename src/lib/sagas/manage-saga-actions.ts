@@ -35,13 +35,6 @@ export async function assignItemToSaga(
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "nameRequired" };
 
-  const positionRaw = String(formData.get("position") ?? "").trim();
-  let position: number | null = null;
-  if (positionRaw) {
-    const parsed = Number(positionRaw);
-    if (Number.isInteger(parsed) && parsed > 0) position = parsed;
-  }
-
   // Reutilizar una saga manual homónima (case-insensitive) o crearla.
   let sagaId: string | undefined;
   const { data: existing } = await supabase
@@ -67,11 +60,10 @@ export async function assignItemToSaga(
   if (!sagaId) return { error: "generic" };
 
   // Multi-saga (spec §1.2): añadir sin tocar las membresías previas. Upsert
-  // por si el ítem ya estaba en ESTA saga (actualiza la posición). Primary solo
-  // si el ítem no tenía ninguna. `.neq("saga_id", sagaId)` excluye la propia
-  // saga destino: si el ítem ya era primary AQUÍ (p. ej. se reenvía el
-  // formulario solo para corregir la posición), no debe contar como "ya tiene
-  // primary en otro sitio" — si contara, `is_primary: !primaryRow` la
+  // por si el ítem ya estaba en ESTA saga (no toca nada si ya estaba). Primary
+  // solo si el ítem no tenía ninguna. `.neq("saga_id", sagaId)` excluye la
+  // propia saga destino: si el ítem ya era primary AQUÍ, no debe contar como
+  // "ya tiene primary en otro sitio" — si contara, `is_primary: !primaryRow` la
   // des-primariaría en el propio upsert.
   const { data: primaryRow } = await supabase
     .from("saga_items")
@@ -82,10 +74,20 @@ export async function assignItemToSaga(
     .neq("saga_id", sagaId)
     .maybeSingle();
 
-  // El upsert reemplaza la fila entera, así que hay que releer el role y
-  // reenviarlo: este formulario no lo edita, y sin esto un re-submit para
-  // corregir la posición borraría el rol curado. Es el mismo modo de fallo que
-  // documenta hydrate-route-draft.ts:11-22 con las notas de itinerario.
+  // El upsert reemplaza las columnas que manda, así que hay que releer el role
+  // y reenviarlo: este formulario no lo edita, y sin esto un re-submit
+  // borraría el rol curado. Es el mismo modo de fallo que documenta
+  // hydrate-route-draft.ts:11-22 con las notas de itinerario.
+  //
+  // Deliberadamente NO se escribe `position` aquí (issue #188, spec
+  // 2026-07-25 §«El otro escritor de `position`»): con el CHECK
+  // saga_items_placement_position, un upsert que pusiera `position` a null
+  // sobre una fila ya `fijo` rompería con 23514 (violación de constraint), y
+  // uno que la fijara sin `placement` en un alta nueva también. El hueco pasa
+  // a ser competencia exclusiva del editor de secuencia
+  // (updateSagaMember/member-actions.ts), que sí replica el invariante del
+  // CHECK en JS. Este formulario se queda solo con lo suyo: dar de alta la
+  // membresía.
   const { data: existingItem } = await supabase
     .from("saga_items")
     .select("role")
@@ -99,7 +101,6 @@ export async function assignItemToSaga(
       saga_id: sagaId,
       item_type: itemType,
       item_id: itemId,
-      position,
       role: existingItem?.role ?? null,
       is_primary: !primaryRow,
     },

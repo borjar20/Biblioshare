@@ -642,13 +642,6 @@ function CatalogEditorForm({
               defaultValue=""
               className="flex-1"
             />
-            <Input
-              name="position"
-              type="number"
-              min={1}
-              placeholder={tSaga("positionPlaceholder")}
-              className="sm:w-20"
-            />
             <Button type="submit" disabled={sagaPending} variant="secondary">
               {sagaPending ? tSaga("submitting") : tSaga("submit")}
             </Button>

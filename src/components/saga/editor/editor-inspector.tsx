@@ -104,7 +104,10 @@ export function EditorInspector({
             ))}
           </div>
         </label>
-        {/* order_no de un nodo-saga lo mete en el orden principal; su ausencia lo hace rama opcional (§1.5) */}
+        {/* order_no de un nodo-saga lo mete en la SECUENCIA del orden principal; sin
+            order_no queda fuera de ella (rama en el timeline, §2.4) — eso NO es lo
+            mismo que `optional` (denominador del progreso, §1.5): son campos aparte,
+            y este control no toca el segundo. */}
         <label className="w-[74px]">
           <span className="mb-1 block font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">{t("orderNo")}</span>
           <input

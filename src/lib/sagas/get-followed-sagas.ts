@@ -53,24 +53,36 @@ export async function getFollowedSagas(
   let frontier = followedIds;
   const { data: roots } = await supabase
     .from("sagas")
-    .select("id, name, parent_saga_id, accent_color")
+    .select("id, name, parent_saga_id, accent_color, optional_in_parent")
     .in("id", frontier);
   for (const r of roots ?? []) {
     if (seen.has(r.id)) continue;
     seen.add(r.id);
-    sagas.push({ id: r.id, name: r.name, parentSagaId: r.parent_saga_id, accentColor: r.accent_color });
+    sagas.push({
+      id: r.id,
+      name: r.name,
+      parentSagaId: r.parent_saga_id,
+      accentColor: r.accent_color,
+      optionalInParent: r.optional_in_parent,
+    });
   }
   for (let depth = 0; depth < 4 && frontier.length > 0; depth++) {
     const { data: level } = await supabase
       .from("sagas")
-      .select("id, name, parent_saga_id, accent_color")
+      .select("id, name, parent_saga_id, accent_color, optional_in_parent")
       .in("parent_saga_id", frontier)
       .order("id");
     frontier = [];
     for (const r of level ?? []) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
-      sagas.push({ id: r.id, name: r.name, parentSagaId: r.parent_saga_id, accentColor: r.accent_color });
+      sagas.push({
+        id: r.id,
+        name: r.name,
+        parentSagaId: r.parent_saga_id,
+        accentColor: r.accent_color,
+        optionalInParent: r.optional_in_parent,
+      });
       frontier.push(r.id);
     }
   }
@@ -79,7 +91,7 @@ export async function getFollowedSagas(
   const [membershipsRes, nodesRes] = await Promise.all([
     supabase
       .from("saga_items")
-      .select("saga_id, item_type, item_id, position")
+      .select("saga_id, item_type, item_id, position, optional")
       .in("saga_id", allIds)
       .order("saga_id"),
     supabase
@@ -93,6 +105,7 @@ export async function getFollowedSagas(
     itemType: m.item_type as ItemType,
     itemId: m.item_id,
     position: m.position,
+    optional: m.optional,
   }));
   const nodes: LibNode[] = (nodesRes.data ?? []).map((n) => ({
     sagaId: n.saga_id,

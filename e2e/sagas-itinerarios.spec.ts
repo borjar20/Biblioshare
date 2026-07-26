@@ -18,12 +18,13 @@ import { expect, test, type Page } from "@playwright/test";
 //
 // El tercer libro directo es la pieza que hace el test anti-#91 (más abajo)
 // capaz de detectar la regresión de verdad: si solo hubiera las 2 obras de La
-// Guardia, el denominador del universo (mainOrder del Universo) y el de la
-// ruta curada coincidirían (2 = 2) y un hero mal enganchado a la ruta activa
-// daría el mismo número por COINCIDENCIA. Con la obra directa, el universo
-// tiene denominador 3 (1 completada = 33%) y la ruta "la-guardia" tiene
-// denominador 2 (0 completadas = 0%): valores distintos a propósito, así que
-// solo el hero CORRECTO (ligado siempre al universo) se queda quieto.
+// Guardia, el denominador del universo (countedKeys del Universo, spec
+// 2026-07-25 — pertenencia del subárbol, ya no `mainOrder`) y el de la ruta
+// curada coincidirían (2 = 2) y un hero mal enganchado a la ruta activa daría
+// el mismo número por COINCIDENCIA. Con la obra directa, el universo tiene
+// denominador 3 (1 completada = 33%) y la ruta "la-guardia" tiene denominador
+// 2 (0 completadas = 0%): valores distintos a propósito, así que solo el
+// hero CORRECTO (ligado siempre al universo) se queda quieto.
 //
 // Los UUID se sembraron una vez a mano en dev vía `mcp__supabase-dev__execute_sql`
 // (ver `.superpowers/sdd/task-10-report.md`) — mismo patrón que el seed QA de

@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import { createMainOrder, itemKey } from "./main-order";
 import type { OrderMembership, OrderNode, OrderSaga } from "./main-order";
 
-// La regla del orden principal (spec §1.5) es la ÚNICA definición del
-// denominador del avance; el issue #91 nació de duplicarla. Estos tests fijan
-// su comportamiento para que el próximo consumidor (los itinerarios) la
-// reutilice en vez de reimplementarla.
+// mainOrder fija la SECUENCIA de una saga (portadas del abanico, bloque
+// «siguiente»), NO el denominador del avance: ese vive en ./progress.ts
+// (countedKeys) desde el 2026-07-25. Hasta esa fecha sí lo era — el issue #91
+// nació de duplicar esa regla en dos sitios — pero desde el cambio, mezclar
+// ambas lecturas es justo el tipo de bug que ha dado tres fallos seguidos
+// (review de Task 5, 2ª ronda). Estos tests fijan el comportamiento de
+// SECUENCIA para que itinerarios y demás consumidores lo reutilicen en vez de
+// reimplementarlo.
 
 const saga = (id: string, parentSagaId: string | null = null): OrderSaga => ({
   id,
@@ -50,7 +54,7 @@ describe("createMainOrder", () => {
     expect(order("s")).toEqual([k("b1"), k("b2")]);
   });
 
-  it("con grafo, solo entran los nodos con order_no: los opcionales no penalizan", () => {
+  it("con grafo, solo entran los nodos con order_no: el resto queda fuera de la SECUENCIA, no del denominador", () => {
     const order = createMainOrder(
       [saga("s")],
       [member("s", "b1", 1), member("s", "extra", null)],
@@ -73,8 +77,11 @@ describe("createMainOrder", () => {
   // Issue #170. Un nodo del grafo puede apuntar a un ítem que no es miembro:
   // saga_nodes.item_id no tiene FK y save_saga_graph no valida la membresía.
   // buildSagaGraph lo descarta al pintar (graph-data.ts, "nodo huérfano
-  // fuera"), así que el usuario no puede verlo ni marcarlo. Si además cuenta
-  // en el denominador, ese avance NUNCA puede llegar al 100%.
+  // fuera"), así que el usuario no puede verlo ni marcarlo. mainOrder lo
+  // descarta de la SECUENCIA por la misma razón (no tiene sentido proponerlo
+  // como «siguiente» ni pintarlo en el abanico) — no por proteger un
+  // denominador: ese vive en countedKeys (./progress.ts), que ni siquiera
+  // mira el grafo, así que el #170 no puede reaparecer ahí.
   it("descarta el nodo huérfano, igual que hace buildSagaGraph al pintar", () => {
     const order = createMainOrder(
       [saga("s")],

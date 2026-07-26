@@ -26,6 +26,11 @@ export type SagaMembership = {
  *  BD, TypeScript NO se quejará aquí — hay que actualizarlo a mano. */
 export type SagaItemRole = "precuela" | "spin_off" | "relato" | "paralela";
 
+/** Dónde se lee un miembro. null = sin clasificar (deuda de curación).
+ *  Espejo a mano de public.saga_placement, igual que SagaItemRole: si se añade
+ *  un valor en BD, TypeScript NO se queja aquí. */
+export type SagaPlacement = "fijo" | "libre";
+
 // Miembro de una saga (para la vista de saga).
 export type SagaMember = {
   itemType: ItemType;
@@ -37,6 +42,15 @@ export type SagaMember = {
   /** null = sin clasificar. Ortogonal a `position`: `position` dice si la obra
    *  tiene hueco fijo en el orden, `role` dice qué es. */
   role: SagaItemRole | null;
+  /** Dónde se lee. `fijo` ⇔ position !== null — lo garantiza el CHECK
+   *  saga_items_placement_position, que es un CASE (no un OR de tres ramas):
+   *  con `placement IS NULL` un OR de tres ramas da NULL, no FALSE, y un CHECK
+   *  solo rechaza FALSE (bug real, corregido en el review final de la rama,
+   *  2026-07-26 — ver comentario en la migración). null = sin clasificar. */
+  placement: SagaPlacement | null;
+  /** true = NO cuenta en el denominador del progreso. Ortogonal a placement:
+   *  una obra puede ser libre y contar, o fija y no contar. */
+  optional: boolean;
 };
 
 export type MemberStatus = "completed" | "in_progress" | null;
@@ -64,4 +78,8 @@ export type SagaChildRef = {
   id: string;
   name: string;
   accentColor: string | null;
+  /** Colocación del bloque en su padre (sagas.position_in_parent). */
+  positionInParent: number | null;
+  /** true = el bloque entero sale del denominador del PADRE, no del suyo. */
+  optionalInParent: boolean;
 };

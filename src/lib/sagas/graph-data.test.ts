@@ -10,6 +10,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   href: `/libro/${over.itemId ?? "x"}`,
   position: null,
   role: null,
+  placement: null,
+  optional: false,
   status: null,
   groupSagaId: null,
   ownerSagaId: "owner",
@@ -117,9 +119,9 @@ describe("rol narrativo en el nodo (#167)", () => {
     const lookup: GraphLookup = {
       members: new Map([
         ["book:b1", { itemType: "book", itemId: "b1", title: "Uno", coverUrl: null, href: "/1",
-          position: 1, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 }],
+          position: 1, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 }],
         ["book:b2", { itemType: "book", itemId: "b2", title: "Nueva Primavera", coverUrl: null, href: "/2",
-          position: null, role: "precuela", status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 }],
+          position: null, role: "precuela", placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 }],
       ]),
       groupAccent: new Map([[null, "beige"]]),
       groupName: new Map([[null, null]]),

@@ -1,16 +1,14 @@
 import type { ItemType } from "@/lib/catalog/types";
 
-// Orden principal de una saga (spec §1.5) — la ÚNICA definición, compartida por
-// los tres sitios donde la spec dice que aplica la regla de cómputo: hero
-// (get-saga-detail), cards de Mi Biblioteca (build-library-saga-cards) y
-// timeline. Vivía duplicada dentro de build-library-saga-cards y el hero no la
-// tenía: contaba TODOS los miembros del subárbol, así que un grafo con
-// opcionales daba 2/7 en el hero y 2/5 en la card (issue #91).
+// Orden principal de una saga: la SECUENCIA con la que se pinta (columna del
+// timeline, expansión de bloques en un itinerario, portadas y «siguiente» de
+// las cards). NO es el denominador del progreso desde el 2026-07-25: eso vive
+// en ./progress.ts (countedKeys) y sale de la pertenencia, no del orden.
 //
-// La regla: con grafo, los nodos con order_no (un nodo-saga expande
-// recursivamente el orden principal de esa saga); sin grafo, los miembros
-// directos por position y luego las hijas por su menor position. Los opcionales
-// (nodos sin order_no) nunca entran, así que no penalizan el avance.
+// OJO con la asimetría del issue #185, que sigue viva AQUÍ aunque ya no afecte
+// a ningún número: con grafo, un nodo sin order_no no entra en la secuencia;
+// sin grafo, entran todos los miembros. Muere en la fase 3, cuando se retire
+// saga_nodes.
 
 export type OrderSaga = { id: string; name: string; parentSagaId: string | null };
 export type OrderMembership = {
@@ -67,9 +65,12 @@ export function createMainOrder(
   // Issue #170: un nodo-ítem puede apuntar a algo que no es miembro
   // (saga_nodes.item_id no tiene FK y save_saga_graph no valida la membresía).
   // buildSagaGraph ya lo descarta al pintar, así que el usuario no puede verlo
-  // ni marcarlo; si contase en el denominador, el avance nunca llegaría al
-  // 100%. Mismo criterio que el lookup `members` de buildSagaGraph: la
-  // membresía puede vivir en cualquier saga del árbol, no solo en la del nodo.
+  // ni marcarlo: se descarta aquí por lo mismo (no tiene sentido pintarlo en
+  // el abanico ni proponerlo como «siguiente»), no por proteger un
+  // denominador — ese vive en countedKeys (./progress.ts), que ni siquiera
+  // mira el grafo, así que el #170 no puede reaparecer ahí. Mismo criterio
+  // que el lookup `members` de buildSagaGraph: la membresía puede vivir en
+  // cualquier saga del árbol, no solo en la del nodo.
   const memberKeys = new Set(memberships.map((m) => itemKey(m.itemType, m.itemId)));
 
   const minPos = (sagaId: string) =>
@@ -80,7 +81,10 @@ export function createMainOrder(
 
   // `visited` es compartido por toda la recursión de una llamada: impide que un
   // ciclo saga→saga cuelgue y que una saga alcanzable por dos caminos duplique
-  // sus títulos en el denominador.
+  // sus títulos en la SECUENCIA (el `new Set(...)` de `mainOrder`, abajo, ya
+  // dedupica el resultado final, pero sin `visited` la recursión ni siquiera
+  // terminaría). Esto no es el denominador del progreso: ese vive en
+  // countedKeys (./progress.ts).
   function walk(sagaId: string, depth: number, visited: Set<string>): string[] {
     if (depth > MAX_DEPTH || visited.has(sagaId)) return [];
     visited.add(sagaId);

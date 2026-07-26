@@ -10,6 +10,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   href: "/libro/x",
   position: null,
   role: null,
+  placement: null,
+  optional: false,
   status: null,
   groupSagaId: null,
   ownerSagaId: "owner",
@@ -18,8 +20,8 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
 });
 
 const children: SagaChildRef[] = [
-  { id: "vapor", name: "La Edad del Vapor", accentColor: null },
-  { id: "ceniza", name: "La Edad de Ceniza", accentColor: "verde" },
+  { id: "vapor", name: "La Edad del Vapor", accentColor: null, positionInParent: null, optionalInParent: false },
+  { id: "ceniza", name: "La Edad de Ceniza", accentColor: "verde", positionInParent: null, optionalInParent: false },
 ];
 
 describe("groupMembers", () => {
@@ -77,10 +79,12 @@ describe("groupMembers", () => {
   });
 
   it("con más de 5 subsagas sin color reutiliza la secuencia sin colgarse", () => {
-    const manyChildren = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((id) => ({
+    const manyChildren: SagaChildRef[] = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((id) => ({
       id,
       name: id,
       accentColor: null,
+      positionInParent: null,
+      optionalInParent: false,
     }));
     const groups = groupMembers(
       manyChildren.map((c, i) =>
@@ -107,7 +111,7 @@ describe("computeProgress", () => {
     );
   const all = ["book:b1", "book:b2", "book:b4", "book:b5"];
 
-  it("cuenta completados sobre el orden principal y da segmentos por grupo", () => {
+  it("cuenta completados sobre `counted` y da segmentos por grupo", () => {
     const p = computeProgress(fourMembers(), all);
     expect(p).toMatchObject({ completed: 2, total: 4, pct: 50 });
     expect(p.segments).toEqual([
@@ -118,19 +122,22 @@ describe("computeProgress", () => {
 
   // El caso del issue #91: el hero contaba TODOS los miembros del subárbol y
   // decía 2/7 = 29% donde la card de biblioteca, que ya aplicaba §1.5, decía
-  // 2/5 = 40%. Los opcionales (fuera del orden) no penalizan.
-  it("los miembros fuera del orden principal no entran en el denominador", () => {
+  // 2/5 = 40%. Las claves que no llegan en `counted` (hoy: countedKeys, spec
+  // 2026-07-25 — miembros `optional` o colgando de un bloque
+  // `optionalInParent`) no penalizan. Eso es distinto de "fuera del orden
+  // principal" (sin hueco en la SECUENCIA de mainOrder): son ejes ortogonales.
+  it("los miembros fuera de `counted` no entran en el denominador", () => {
     const p = computeProgress(fourMembers(), ["book:b1", "book:b5"]);
     expect(p).toMatchObject({ completed: 2, total: 2, pct: 100 });
   });
 
-  it("una clave del orden sin miembro suma al total pero no a un segmento", () => {
+  it("una clave de `counted` sin miembro suma al total pero no a un segmento", () => {
     const p = computeProgress(fourMembers(), [...all, "book:huerfano"]);
     expect(p).toMatchObject({ completed: 2, total: 5, pct: 40 });
     expect(p.segments.reduce((n, s) => n + s.fraction, 0)).toBeCloseTo(0.4);
   });
 
-  it("orden vacío: 0% sin dividir por cero", () => {
+  it("`counted` vacío: 0% sin dividir por cero", () => {
     expect(computeProgress([], [])).toMatchObject({ completed: 0, total: 0, pct: 0, segments: [] });
     expect(computeProgress(fourMembers(), [])).toMatchObject({ total: 0, pct: 0, segments: [] });
   });
@@ -157,11 +164,11 @@ describe("rol narrativo (#167)", () => {
   it("conserva el role al agrupar y NO lo confunde con position", () => {
     const members: DetailMember[] = [
       { itemType: "book", itemId: "a", title: "Libro 1", coverUrl: null, href: "/a",
-        position: 1, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 },
+        position: 1, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 1990 },
       { itemType: "book", itemId: "b", title: "Nueva Primavera", coverUrl: null, href: "/b",
-        position: null, role: "precuela", status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 },
+        position: null, role: "precuela", placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2004 },
       { itemType: "book", itemId: "c", title: "Sin clasificar", coverUrl: null, href: "/c",
-        position: null, role: null, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2010 },
+        position: null, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year: 2010 },
     ];
 
     const [group] = groupMembers(members, []);

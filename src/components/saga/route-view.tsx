@@ -56,9 +56,18 @@ export async function RouteView({
     }),
   );
 
-  // El orden principal de una subsaga se calcula con la MISMA función que el
-  // hero (spec §1.5): un bloque no expande «todos sus miembros», expande su
-  // orden principal, así que los opcionales de la subsaga no inflan el contador.
+  // El orden principal de una subsaga expande un bloque con createMainOrder —
+  // la misma función de SECUENCIA que usan las portadas del abanico y el
+  // «siguiente» de las cards (./build-library-saga-cards.ts), NO la que
+  // cuenta el avance del hero: desde el 2026-07-25 (Task 5) eso es
+  // countedKeys/pertenencia (./progress.ts), y createMainOrder ni siquiera
+  // recibe el campo `optional` (OrderMembership no lo tiene). Un bloque
+  // expande «su orden principal», no «todos sus miembros», así que un ítem
+  // sin hueco en la SECUENCIA (grafo con order_no null) queda fuera del
+  // contador de esta ruta — pero un miembro `optional` SÍ entra si tiene
+  // hueco: `optional` (denominador del progreso) y «fuera del orden» (sin
+  // position en la secuencia) son ejes distintos, y este contador solo mira
+  // el segundo.
   const mainOrder = createMainOrder(detail.orderSagas, detail.orderMemberships, detail.orderNodes, (k) =>
     members.get(k)?.title ?? "",
   );
