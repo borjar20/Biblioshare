@@ -95,8 +95,12 @@ export function planMembershipOps(
   };
 }
 
-// Aplica una lista de ops contra la BD (llamado por saveSagaGraph con el gate
-// ya pasado). Devuelve el primer error o null.
+// Aplica una lista de ops contra la BD (el llamador ya debe haber pasado su
+// propio gate collaborator+, patrón manage-saga-actions). El editor de grafo
+// que la llamaba (saveSagaGraph) se retiró en la fase 2a (Task 11): esta
+// función queda sin consumidor en el árbol hasta que la curación de
+// membresía del editor de secuencia la reconecte. Devuelve el primer error o
+// null.
 export async function applyMembershipOps(
   supabase: SupabaseServerClient,
   rootId: string,

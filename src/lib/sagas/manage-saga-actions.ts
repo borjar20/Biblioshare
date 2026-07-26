@@ -85,9 +85,10 @@ export async function assignItemToSaga(
   // sobre una fila ya `fijo` rompería con 23514 (violación de constraint), y
   // uno que la fijara sin `placement` en un alta nueva también. El hueco pasa
   // a ser competencia exclusiva del editor de secuencia
-  // (updateSagaMember/member-actions.ts), que sí replica el invariante del
-  // CHECK en JS. Este formulario se queda solo con lo suyo: dar de alta la
-  // membresía.
+  // (sequence-actions.ts/validate-sequence-draft.ts, desde la Task 9 — antes
+  // updateSagaMember/member-actions.ts, ya borrado), que sí replica el
+  // invariante del CHECK en JS. Este formulario se queda solo con lo suyo: dar
+  // de alta la membresía.
   const { data: existingItem } = await supabase
     .from("saga_items")
     .select("role")

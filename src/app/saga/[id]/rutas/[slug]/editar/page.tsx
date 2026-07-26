@@ -9,7 +9,7 @@ import { RouteEditor, type RouteEditorItem } from "@/components/saga/editor/rout
 export const metadata: Metadata = { title: "Editar itinerario — Biblioshare" };
 
 // Editor de pasos de un itinerario. Gate DURO collaborator+, igual que
-// /saga/[id]/mapa/editar.
+// /saga/[id]/editar.
 export default async function RouteEditorPage({
   params,
 }: {

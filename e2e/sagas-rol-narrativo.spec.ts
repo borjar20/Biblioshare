@@ -1,49 +1,32 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// E2E de la revisión de Task 8 (issue #167, `/saga/[id]/editar`). Contra el
-// universo QA compartido `sagas-v2*.spec.ts` (seed de fase 2) — este spec NO
-// escribe nada nuevo en BD: usa un miembro cuyo `role` el seed deja en null
-// (`Libro sin valorar`, ver más abajo) y lo devuelve a null al terminar, así
-// que relanzar la suite no acumula estado.
-//
-// Criterio de aceptación innegociable de la revisión:
-//
-//   Tras un guardado con éxito, volver a pulsar Guardar SIN TOCAR NADA no
-//   cambia ningún dato.
-//
-// Sin el arreglo (hallazgo B-2 de la revisión, DATA-LOSS): React 19 resetea los
-// campos NO controlados de un <form action={fn}> a su `defaultValue` tras el
-// éxito. Si ese `defaultValue` sigue siendo la prop vieja (el valor con el que
-// se montó la página, antes de guardar nada), el <select> vuelve a mostrar
-// "Sin clasificar" aunque el usuario acabe de elegir un rol y la BD ya lo
-// tenga guardado — y un segundo click en "Guardar", sin que nadie toque el
-// campo, reenvía ese "" y borra el rol recién guardado.
-//
-// El escenario ejerce TAMBIÉN el hallazgo B-1 de la revisión (`ownerSagaId`):
-// se edita el rol de un miembro que en `saga_items` NO cuelga de la saga que
-// se está editando (Universo, `UNIVERSO_ID`) sino de su subsaga "Era Uno"
-// (`53118dd4-ccd9-4a9d-8241-5899816a9eab` — confirmado con
-// `mcp__supabase-dev__execute_sql` contra `saga_items`). La pantalla
-// `/editar` de Universo lista igualmente ese miembro (incluye TODA la
-// subsaga, ver comentario en `src/app/saga/[id]/editar/page.tsx`), así que si
-// el action bindeara mal `ownerSagaId` (p. ej. contra la saga que se edita en
-// vez de la dueña real de la fila), el guardado fallaría en silencio con
-// "notMember" y este test no llegaría ni al primer "Guardado".
+// E2E del rol narrativo (issue #167), reescrito para el editor de secuencia
+// (Task 9/12 de la fase 2a — sustituye el formulario por fila `<form>` que
+// tenía cada miembro). Contra el universo QA compartido `sagas-v2*.spec.ts`
+// (seed de fase 2).
 //
 // Convención del repo: cada spec de e2e es autónoma, sin helpers compartidos
 // (comentario de cabecera de `e2e/sagas-itinerarios.spec.ts`) — el `loginAs`
 // de abajo está calcado de `e2e/sagas-v2-editor.spec.ts`.
 const UNIVERSO_ID = "69c07496-9b1a-4203-b3da-15d22a09c039"; // [QA Sagas v2] Universo
+// Cambio de arquitectura (Task 9, `get-saga-sequence.ts`): el editor de
+// secuencia SOLO lista y SOLO puede escribir los `saga_items` cuya `saga_id`
+// es la propia saga que se edita — ya no "toda la subsaga" como hacía el
+// formulario viejo (issue #187). Los miembros de "Era Uno" se curan ahora en
+// SU PROPIO `/editar`, nunca en el de Universo, aunque la FICHA de Universo
+// (`getSagaDetail`, sin cambios) los siga agregando para pintarlos.
+const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab"; // [QA Sagas v2] Era Uno
 
-// Miembro sembrado con role=null y position=2, cuya fila real de saga_items
-// cuelga de "[QA Sagas v2] Era Uno" (53118dd4-ccd9-4a9d-8241-5899816a9eab),
-// no de Universo — confirmado contra BD antes de escribir este test. Título
-// suficientemente específico (no coincide con ningún otro ítem del seed) para
-// localizar su `<form>` por texto sin ambigüedad.
-const MEMBER_TITLE = "Libro sin valorar";
+// Miembro DIRECTO de Era Uno, position=3 / placement=fijo / role=null en el
+// seed — confirmado contra BD dev (`saga_items`, mcp__supabase-dev) antes de
+// escribir este spec. Título suficientemente específico (no coincide con
+// ningún otro ítem del seed) para localizar su fila sin ambigüedad.
+const LOOSE_ITEM_TITLE = "Libro raro sin match";
 
 const COLLAB_EMAIL = process.env.COLLAB_USER_EMAIL ?? "borjar20+bibliosharecollab@gmail.com";
 const COLLAB_PASSWORD = process.env.COLLAB_USER_PASSWORD ?? "CollabTest1234pass";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Calcado del helper `loginAs` de sagas-v2-editor.spec.ts/sagas-itinerarios.spec.ts.
 async function loginAsCollaborator(page: Page) {
@@ -54,129 +37,128 @@ async function loginAsCollaborator(page: Page) {
   await page.waitForURL("/");
 }
 
-// Localiza la fila (el <form> de MemberRow) por el título del miembro: cada
-// fila es un <form> independiente con su propio botón "Guardar", así que
-// escopar por aquí evita ambigüedad con las demás filas de la pantalla.
-function memberRow(page: Page) {
-  return page.locator("form").filter({ hasText: MEMBER_TITLE });
+function adminHeaders() {
+  return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
 }
 
-test("un segundo Guardar sin tocar nada no reenvía un rol obsoleto", async ({ page }) => {
-  await loginAsCollaborator(page);
-  await page.goto(`/saga/${UNIVERSO_ID}/editar`);
+type ItemRow = { item_id: string; position: number | null; placement: string | null; role: string | null };
+type BlockRow = { id: string; position_in_parent: number | null; placement_in_parent: string | null };
 
-  const row = memberRow(page);
-  await expect(row).toBeVisible();
-  const roleSelect = row.locator('select[name="role"]');
-  const saveButton = row.getByRole("button", { name: "Guardar" });
-  const savedLabel = row.getByText("Guardado", { exact: true });
+async function fetchEraUnoItems(): Promise<ItemRow[]> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/saga_items?saga_id=eq.${ERA_UNO_ID}&select=item_id,position,placement,role`,
+    { headers: adminHeaders() },
+  );
+  return res.json();
+}
 
-  // Precondición del seed: sin rol asignado todavía.
-  await expect(roleSelect).toHaveValue("");
+async function fetchEraUnoBlock(): Promise<BlockRow | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/sagas?parent_saga_id=eq.${ERA_UNO_ID}&select=id,position_in_parent,placement_in_parent`,
+    { headers: adminHeaders() },
+  );
+  const rows = (await res.json()) as BlockRow[];
+  return rows[0] ?? null;
+}
 
-  try {
-    // 1) Pone un rol y guarda.
-    await roleSelect.selectOption("spin_off");
-    await saveButton.click();
-    await expect(savedLabel).toBeVisible();
-
-    // 2) Vuelve a pulsar Guardar SIN TOCAR NINGÚN CAMPO. Sin el arreglo, el
-    // <select> ya se habría reseteado a "" tras el paso 1 (reset-tras-éxito
-    // de React 19 aplicado sobre el `defaultValue` obsoleto), así que este
-    // click reenviaría "" y borraría el rol recién guardado.
-    //
-    // Se espera al POST del server action, NO a que "Guardado" siga visible:
-    // `useActionState` conserva el estado anterior mientras hay una acción en
-    // vuelo, así que la etiqueta del paso 1 nunca desaparece y afirmarla aquí
-    // sería un no-op. Con un no-op, un segundo POST que se cayera dejaría el
-    // `spin_off` del paso 1 en BD y el test daría VERDE sin haber probado
-    // nada — la red antipérdida dejaría de discriminar en silencio.
-    const secondSave = page.waitForResponse(
-      (r) => r.request().method() === "POST" && r.url().includes(`/saga/${UNIVERSO_ID}/editar`),
-    );
-    await saveButton.click();
-    await secondSave;
-
-    // 3) Recarga desde cero (fuerza traer las props del servidor, sin nada
-    // de estado de cliente que pueda maquillar un reset que ya ocurrió) y
-    // confirma que el rol sigue siendo el guardado, no el original null.
-    await page.reload();
-    const roleSelectAfterReload = memberRow(page).locator('select[name="role"]');
-    await expect(roleSelectAfterReload).toHaveValue("spin_off");
-  } finally {
-    // Limpieza: deja el seed como estaba (role=null) para no ensuciar dev de
-    // cara a la siguiente corrida, tanto si el test pasó como si no.
-    const cleanupRow = memberRow(page);
-    const cleanupSelect = cleanupRow.locator('select[name="role"]');
-    if ((await cleanupSelect.count()) > 0 && (await cleanupSelect.inputValue()) !== "") {
-      await cleanupSelect.selectOption("");
-      await cleanupRow.getByRole("button", { name: "Guardar" }).click();
-      await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
-    }
+// Restaura Era Uno tal cual estaba antes de un guardado real: el número es el
+// índice del hueco (sequence-draft.ts), así que sacar una fila de la
+// secuencia (o metérsela) renumera TODAS las que quedan detrás, incluido el
+// bloque "Nieta" — no basta con deshacer el cambio del ítem tocado a
+// propósito. Vía REST directa: la pantalla nueva no tiene campo de posición
+// que teclear (spec §«El número no se teclea»).
+async function restoreEraUno(items: ItemRow[], block: BlockRow | null) {
+  for (const r of items) {
+    await fetch(`${SUPABASE_URL}/rest/v1/saga_items?saga_id=eq.${ERA_UNO_ID}&item_id=eq.${r.item_id}`, {
+      method: "PATCH",
+      headers: { ...adminHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ position: r.position, placement: r.placement, role: r.role }),
+    });
   }
-});
+  if (block) {
+    await fetch(`${SUPABASE_URL}/rest/v1/sagas?id=eq.${block.id}`, {
+      method: "PATCH",
+      headers: { ...adminHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ position_in_parent: block.position_in_parent, placement_in_parent: block.placement_in_parent }),
+    });
+  }
+}
+
+// Localiza la fila por el título del miembro, escopada a la cáscara VISIBLE:
+// las dos se montan a la vez y se ocultan por breakpoint (regla de los dos
+// árboles), así que sin `:visible` este locator encuentra dos elementos.
+function rowByTitle(page: Page, title: string) {
+  return page.locator('[data-testid="sequence-row"]:visible').filter({ hasText: title });
+}
+
+async function save(page: Page) {
+  await page.getByRole("button", { name: "Guardar secuencia" }).click();
+  await expect(page.getByText("Guardado", { exact: true })).toBeVisible();
+}
 
 // ─────────────────────────────────────────────────────────────────────────
-// Tests A/B/C (Task 9, actualizados 2026-07-26 por la fusión de secciones —
-// Decisión 1 del encargo: "Fuera del orden principal" desaparece). Miembro
-// sembrado con position=3, placement=fijo y role=null, cuya fila real de
-// saga_items cuelga de "[QA Sagas v2] Era Uno"
-// (53118dd4-ccd9-4a9d-8241-5899816a9eab) — confirmado contra BD
-// (`saga_items` + `books`) antes de escribir este bloque. Título único en
-// todo el árbol del universo (no hay otro ítem cuyo título lo contenga), así
-// que localizar su `<form>`/`<li>` por texto no es ambiguo.
+// Test histórico OMITIDO A PROPÓSITO (no reescrito, no relajado): "un segundo
+// Guardar sin tocar nada no reenvía un rol obsoleto".
 //
-// Deliberadamente NO se reutiliza `MEMBER_TITLE`/`memberRow` de arriba: ese
-// miembro es del test antipérdida (arriba) y mezclar propósitos en la misma
-// fila dificulta saber, si algo falla, cuál de los dos tests dejó el dato a
-// medias. Se elige uno distinto y se restaura en cada `finally`.
+// Protegía el hallazgo B-2 de la revisión de Task 8: React 19 resetea los
+// campos NO controlados de un `<form action={fn}>` a su `defaultValue` tras
+// el éxito, y un `defaultValue` obsoleto hacía que un segundo "Guardar" sin
+// tocar nada reenviara "" y borrara el rol recién guardado.
 //
-// Colocación: el servidor rechaza (`badPlacement`) guardar con `position`
-// vacío mientras `placement` siga en "fijo" (member-actions.ts, réplica del
-// CHECK `saga_items_placement_position`) — quien quita el número tiene que
-// declarar qué es la obra. Estos dos tests eligen "Sin clasificar" (el select
-// vuelve a `value=""`), no "Se lee cuando quieras": es la lectura fiel de lo
-// que YA probaban ("obra sin número" = curación pendiente, issue #167), y es
-// justo el estado que Decisión 1 deja DENTRO de la grid de su grupo (con el
-// contorno punteado como única señal, ya sin sección propia) en vez de
-// mandarlo a «Cuando quieras» (destino exclusivo de `placement: "libre"`,
-// cubierto por `e2e/sagas-colocacion-opcionalidad.spec.ts`).
+// El editor de secuencia (Task 9) sustituyó ese `<form>` por defecto
+// incontrolado por estado de React explícito (`useSequenceDraft` — ver su
+// comentario de cabecera: "ÚNICA fuente de estado del editor"): el `<select>`
+// de rol es CONTROLADO (`value={entry.role ?? ""}`), y un guardado con éxito
+// no toca ningún `defaultValue` — solo limpia `removed`/`isNew` en el propio
+// estado de React (use-sequence-draft.ts:58-68). No hay ningún mecanismo por
+// el que un segundo guardado sin cambios pueda reenviar un valor viejo: la
+// clase de bug que este test protegía no tiene análogo estructural en la
+// pantalla nueva, no porque se haya arreglado aquí, sino porque la arquitectura
+// que lo causaba ya no existe. Reescribirlo forzando algo "parecido" sería
+// fabricar cobertura de un mecanismo que ya no aplica. Se documenta en el
+// informe de Task 12 en vez de borrarlo en silencio.
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// Tests A/B/C (Task 9, reescritos 2026-07-26 para el editor de secuencia —
+// Decisión 1 del encargo de Task 9: "Fuera del orden principal" desaparece).
+//
+// Colocación: el editor ya no ofrece un desplegable de `placement` con un
+// valor intermedio inconsistente — la ZONA ES la colocación (spec §«Tres
+// zonas», sequence-draft.ts:4-6). Mandar una fila a "Sin clasificar" declara
+// `placement = null` directamente, sin el rechazo `badPlacement` que existía
+// cuando el formulario permitía dejar `placement: "fijo"` con `position`
+// vacío (ese rechazo AHORA es estructuralmente imposible desde la UI: el
+// número lo deriva el índice del hueco, nunca se teclea — cubierto por
+// e2e/sagas-colocacion-opcionalidad.spec.ts, que sí ejercita el CHECK
+// directamente por REST).
 //
 // Las aserciones de chip escopan siempre al `<li>` de ESTE ítem
 // (`.locator("li").filter({ hasText: LOOSE_ITEM_TITLE })`), nunca a la página
-// entera. `page.getByText("Precuela")` a secas sería frágil: cualquier otro
-// miembro sin clasificar con un rol curado daría un falso positivo en el
-// test B (el que afirma AUSENCIA de chip). Hoy el seed no trae ningún rol
-// —se comprobó: cero filas con `role` en dev—, pero basta con que alguien
-// cure uno para que un locator sin escopar mienta.
-const LOOSE_ITEM_TITLE = "Libro raro sin match";
-
-function rowByTitle(page: Page, title: string) {
-  return page.locator("form").filter({ hasText: title });
-}
+// entera — ver razonamiento original en el historial de este fichero.
+// ─────────────────────────────────────────────────────────────────────────
 
 test("una obra sin clasificar aparece en la grid de su grupo con su rol", async ({ page }) => {
   await loginAsCollaborator(page);
-  await page.goto(`/saga/${UNIVERSO_ID}/editar`);
+  await page.goto(`/saga/${ERA_UNO_ID}/editar`);
 
+  const itemsBefore = await fetchEraUnoItems();
+  const blockBefore = await fetchEraUnoBlock();
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
   await expect(row).toBeVisible();
-  const positionInput = row.locator('input[name="position"]');
-  const roleSelect = row.locator('select[name="role"]');
-  const placementSelect = row.locator('select[name="placement"]');
-  const saveButton = row.getByRole("button", { name: "Guardar" });
-
-  // Precondición del seed: position=3, placement=fijo, sin rol.
-  await expect(positionInput).toHaveValue("3");
-  await expect(roleSelect).toHaveValue("");
-  await expect(placementSelect).toHaveValue("fijo");
 
   try {
-    await positionInput.fill("");
-    await placementSelect.selectOption(""); // Sin clasificar: declara el hueco vacío, no lo deja inconsistente.
-    await roleSelect.selectOption("precuela");
-    await saveButton.click();
-    await expect(row.getByText("Guardado", { exact: true })).toBeVisible();
+    await row.getByRole("button", { name: /^Acciones de / }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+
+    // Rol primero: el botón de zona cierra la hoja al pulsarlo (`onZone`
+    // desmonta vía `setMenuKey(null)`), así que tiene que ir el último.
+    await sheet.getByLabel("Qué es").selectOption("precuela");
+    await sheet.getByRole("button", { name: "Sin clasificar" }).click();
+    await expect(sheet).toHaveCount(0);
+
+    await save(page);
 
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
@@ -185,23 +167,13 @@ test("una obra sin clasificar aparece en la grid de su grupo con su rol", async 
     // ambas sobre la fila de ESTE ítem.
     const item = page.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
     await expect(item).toBeVisible();
-    // El contorno punteado dorado es, desde la fusión de secciones, la ÚNICA
-    // señal de "sin clasificar" en la grid (MemberCell, `m.placement === null`)
-    // — sin él este test dejaría de comprobar la pertenencia que antes daba
-    // el heading de la sección retirada.
+    // El contorno punteado dorado es la ÚNICA señal de "sin clasificar" en la
+    // grid (MemberCell, `m.placement === null`, saga-info.tsx:76).
     await expect(item.locator("div").first()).toHaveClass(/outline-dashed/);
     await expect(item.getByText("Precuela")).toBeVisible();
   } finally {
     // Deja position/placement/role como los trajo el seed, pase o falle el test.
-    await page.goto(`/saga/${UNIVERSO_ID}/editar`);
-    const cleanupRow = rowByTitle(page, LOOSE_ITEM_TITLE);
-    if ((await cleanupRow.count()) > 0) {
-      await cleanupRow.locator('input[name="position"]').fill("3");
-      await cleanupRow.locator('select[name="placement"]').selectOption("fijo");
-      await cleanupRow.locator('select[name="role"]').selectOption("");
-      await cleanupRow.getByRole("button", { name: "Guardar" }).click();
-      await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
-    }
+    await restoreEraUno(itemsBefore, blockBefore);
   }
 });
 
@@ -209,28 +181,23 @@ test("una obra sin clasificar Y sin rol sale en la grid, pero sin chip", async (
   // Separa pertenencia (placement === null) de decoración (role !== null): es
   // la distinción que más fácil se rompe al refactorizar la grid, y la que
   // hace que "sin clasificar" se vea como trabajo pendiente en vez de
-  // disfrazarse. Ver el comentario de cabecera del bloque sobre por qué las
-  // aserciones de ausencia escopan al `<li>` de este ítem y no a la página
-  // entera (Trilogía ya pinta un chip "Precuela" en su propia fila, y esa
-  // fila NO es esta).
+  // disfrazarse.
   await loginAsCollaborator(page);
-  await page.goto(`/saga/${UNIVERSO_ID}/editar`);
+  await page.goto(`/saga/${ERA_UNO_ID}/editar`);
 
+  const itemsBefore = await fetchEraUnoItems();
+  const blockBefore = await fetchEraUnoBlock();
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
-  const positionInput = row.locator('input[name="position"]');
-  const roleSelect = row.locator('select[name="role"]');
-  const placementSelect = row.locator('select[name="placement"]');
-
-  await expect(positionInput).toHaveValue("3");
-  await expect(roleSelect).toHaveValue("");
-  await expect(placementSelect).toHaveValue("fijo");
+  await expect(row).toBeVisible();
 
   try {
-    await positionInput.fill("");
-    await placementSelect.selectOption(""); // Sin clasificar, igual que el test anterior.
-    // role se deja tal cual: "" ya es "sin rol".
-    await row.getByRole("button", { name: "Guardar" }).click();
-    await expect(row.getByText("Guardado", { exact: true })).toBeVisible();
+    await row.getByRole("button", { name: /^Acciones de / }).click();
+    const sheet = page.getByRole("dialog");
+    // role se deja tal cual: sin tocar el select, "" ya es "sin rol".
+    await sheet.getByRole("button", { name: "Sin clasificar" }).click();
+    await expect(sheet).toHaveCount(0);
+
+    await save(page);
 
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
@@ -241,61 +208,48 @@ test("una obra sin clasificar Y sin rol sale en la grid, pero sin chip", async (
       await expect(item.getByText(label)).toHaveCount(0);
     }
   } finally {
-    await page.goto(`/saga/${UNIVERSO_ID}/editar`);
-    const cleanupRow = rowByTitle(page, LOOSE_ITEM_TITLE);
-    if ((await cleanupRow.count()) > 0) {
-      await cleanupRow.locator('input[name="position"]').fill("3");
-      await cleanupRow.locator('select[name="placement"]').selectOption("fijo");
-      await cleanupRow.getByRole("button", { name: "Guardar" }).click();
-      await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
-    }
+    await restoreEraUno(itemsBefore, blockBefore);
   }
 });
 
 test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
   // Red contra el #91: el rol es puramente semántico y no toca el
-  // denominador. Desde el 2026-07-25 (Task 5) el denominador real sale de
-  // countedKeys (./progress.ts): pertenencia del subárbol vía
-  // `saga_items.optional`, deduplicada — ya no de `saga_nodes.order_no`
-  // (main-order.ts) ni de ningún otro campo de orden. `saga_items.role`, que
-  // es lo único que toca este test, es un campo totalmente distinto de
-  // `optional` — no hay manera de que marcar un rol lo mueva, y este test lo
-  // deja fijado en rojo si algún día alguien reengancha el progreso a otra
-  // fuente.
+  // denominador. `saga_items.role`, que es lo único que toca este test, es un
+  // campo totalmente distinto de `optional` — no hay manera de que marcar un
+  // rol lo mueva.
   //
   // OJO: el hero imprime un PORCENTAJE (`{progress.pct}%`,
-  // `saga-hero.tsx:102`), no "N de M" — ese otro número es el de la ruta
-  // (route-view.tsx) y confundirlos es literalmente el #91. No fijamos aquí
-  // el valor baseline (a diferencia de itinerarios): esta saga puede ganar o
-  // perder pases completados entre corridas por otros specs/QA manual, así
-  // que la aserción es "no cambió", no "vale tal cosa".
+  // `saga-hero.tsx:102`), no "N de M". No fijamos aquí el valor baseline (a
+  // diferencia de itinerarios): esta saga puede ganar o perder pases
+  // completados entre corridas por otros specs/QA manual, así que la
+  // aserción es "no cambió", no "vale tal cosa".
   await loginAsCollaborator(page);
   await page.goto(`/saga/${UNIVERSO_ID}`);
   const hero = page.getByTestId("saga-hero-progress");
   await expect(hero).toBeVisible();
   const before = await hero.textContent();
 
-  await page.goto(`/saga/${UNIVERSO_ID}/editar`);
+  await page.goto(`/saga/${ERA_UNO_ID}/editar`);
+  const itemsBefore = await fetchEraUnoItems();
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
-  const roleSelect = row.locator('select[name="role"]');
-  await expect(roleSelect).toHaveValue("");
+  await expect(row).toBeVisible();
 
   try {
-    await roleSelect.selectOption("relato");
-    await row.getByRole("button", { name: "Guardar" }).click();
-    await expect(row.getByText("Guardado", { exact: true })).toBeVisible();
+    await row.getByRole("button", { name: /^Acciones de / }).click();
+    const sheet = page.getByRole("dialog");
+    await sheet.getByLabel("Qué es").selectOption("relato");
+    // Cierra con la ✕, NO con un botón de zona: este test no debe tocar la
+    // colocación, solo el rol.
+    await sheet.getByRole("button", { name: "Cerrar" }).click();
+    await expect(sheet).toHaveCount(0);
+
+    await save(page);
 
     await page.goto(`/saga/${UNIVERSO_ID}`);
     await expect(page.getByTestId("saga-hero-progress")).toHaveText(before ?? "");
   } finally {
-    await page.goto(`/saga/${UNIVERSO_ID}/editar`);
-    const cleanupRow = rowByTitle(page, LOOSE_ITEM_TITLE);
-    const cleanupRole = cleanupRow.locator('select[name="role"]');
-    if ((await cleanupRole.count()) > 0 && (await cleanupRole.inputValue()) !== "") {
-      await cleanupRole.selectOption("");
-      await cleanupRow.getByRole("button", { name: "Guardar" }).click();
-      await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
-    }
+    // No toca zonas, así que no hace falta restaurar el bloque — solo el rol.
+    await restoreEraUno(itemsBefore, null);
   }
 });
 
@@ -314,26 +268,9 @@ test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
 // que no hay forma de ejercer el badge `branchRequisite` (reading-timeline.tsx)
 // leyendo el seed tal cual.
 //
-// Fabricarla sin tocar código de producción exigiría mutar el grafo
-// compartido (`/saga/<id>/mapa/editar`), y ninguna vía es segura:
-//   - El inspector del editor (editor-inspector.tsx) NO permite cambiar el
-//     tipo de una arista existente, solo borrarla o crear una nueva con la
-//     herramienta de arista actualmente seleccionada.
-//   - El único ítem fuera de columna con groupSagaId no nulo ("Para leer a
-//     Isabel Allende", spin-off de Era Uno) YA tiene una arista `opcional`
-//     hacia el nodo orderNo=1: `earliestSpineFor` se queda con la conexión de
-//     MENOR orderNo, así que una arista `requisito` añadida hacia cualquier
-//     otro nodo de la columna (orderNo 2+) no cambiaría qué rama se pinta.
-//   - Mover "Trilogía" a una subsaga (para que groupSagaId deje de ser null y
-//     su arista requisito pase a rama) cambiaría la pertenencia estructural
-//     que otras specs hermanas asumen fija (`sagas-v2-mapa.spec.ts` la cuenta
-//     como "1 nexo puro"), y `sagas-v2-editor.spec.ts` (test "quitar el
-//     nexo…") documenta de primera mano que revertir un cambio de grafo por
-//     UI no deja el seed exactamente igual — el mismo motivo por el que ese
-//     test se queda en un ciclo quitar→descartar en vez de guardar→revertir.
-//
-// Conclusión: sin un dato reproducible que ya produzca la rama, forzar uno
-// aquí sería precisamente lo que este bloque de reglas prohíbe ("no te lo
-// inventes ni fuerces datos raros"). Se documenta el hueco en vez de fingir
-// cobertura: la guarda de `branchRequisite` sigue sin red e2e. Repórtese como
-// issue de seguimiento (ver informe de Task 9).
+// El editor de grafo se retiró en la fase 2a (Task 11, `/mapa/editar`
+// redirige a `/editar`), así que fabricar el dato ya ni siquiera es posible
+// por UI — solo quedaría una migración de datos directa sobre `saga_edges`,
+// que mutaría el grafo compartido que otras specs hermanas (`sagas-v2-mapa.spec.ts`)
+// asumen fijo. Se mantiene sin red e2e — issue de seguimiento, ver informe de
+// Task 9/12.

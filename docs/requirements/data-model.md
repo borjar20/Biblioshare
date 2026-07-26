@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_proc`), nunca contra `list_migrations`]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_proc`), nunca contra `list_migrations`]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -522,10 +522,20 @@ tres CHECK en forma `CASE`; backfill **342 `fijo` / 9 sin clasificar / 0 `libre`
 ⚠️ **Las 12 sagas con padre de producción quedaron SIN colocar (`position_in_parent` nulo), y es
 correcto**: las 12 cuelgan de un padre con grafo (Cosmere, Mundodisco, Maasverse), y ahí la
 colocación no se deduce de `min(position)` sino de `saga_nodes.order_no`. Inventarles un hueco
-habría sido escribir una curación que nadie deriva. Las cura a mano la fase 3, cuando se migren los
-cuatro grafos uno a uno. Quien mire prod y vea 12 bloques «sin clasificar» no está viendo un
-backfill fallido: está viendo deuda de curación real, que es justo lo que la feature vino a hacer
-visible.
+habría sido escribir una curación que nadie deriva. Quien mire prod y vea 12 bloques «sin
+clasificar» no está viendo un backfill fallido: está viendo deuda de curación real, que es justo lo
+que la feature vino a hacer visible.
+
+**El intento de rescate (fase 2a, `20260726_rescate_colocacion_hijas.sql`, ver §7.5) no rescató
+nada.** La premisa de este párrafo — que al menos algunas de las 12 tendrían `order_no` curado en
+su nodo-bloque dentro del grafo de su padre — resultó falsa: de los 55 nodos de `saga_nodes` en
+prod, **solo uno** tiene `child_saga_id` no nulo (el de "Trono de Cristal"), y ese tampoco tiene
+`order_no`. Las otras 11 hijas no tienen ningún nodo que las represente en el grafo de su padre. El
+`UPDATE` de rescate se aplicó a prod el 2026-07-26 y afectó **0 filas** — medido antes y después,
+tabla idéntica. Detalle y reproducción en la issue #196. La colocación de estas 12 ya **no** espera
+a la fase 3: el editor de secuencia de la fase 2a (§7.5) tiene una zona dedicada a bloques sin
+clasificar, así que se curan a mano ahí, por una persona, cuando alguien decida hacerlo — no hay
+fecha ni fase que las bloquee.
 
 **El orden importa para desplegar**: el código de esta rama **lee** `placement`/`optional`, y
 PostgREST no devuelve datos parciales — sin las columnas, la consulta entera falla y la capa de
@@ -544,8 +554,57 @@ clasificar (`placement === null`) se distingue ahora solo por un contorno puntea
 (con equivalente accesible) y por el aviso de deuda — la sección dedicada era la tercera señal
 para el mismo hecho. El chip de rol narrativo (§7.3) sobrevive, movido dentro de la celda
 compartida. La colocación de un **bloque-subsaga** (`position_in_parent`/`placement_in_parent`/
-`optional_in_parent`) todavía **no tiene UI**: solo se cura por SQL directo; el editor que la
-exponga es trabajo de la fase 3.
+`optional_in_parent`) **ya tiene UI y escritor** desde la fase 2a (§7.5): el mismo editor de
+secuencia cura obras propias y bloques-subsaga a la vez, vía `save_saga_sequence`.
+
+### 7.5 Editor único de secuencia y retirada del editor de grafo (fase 2a del orden unificado)
+
+Fase 2a de 3 (spec `docs/superpowers/specs/2026-07-26-sagas-fase-2a-editor-secuencia-design.md`):
+sustituye el formulario por fila de `/saga/[id]/editar` y el editor de grafo (`/saga/[id]/mapa/editar`,
+React Flow) por **un solo editor** con tres zonas — obras propias, bloques-subsaga (hijas directas)
+y "sin clasificar" — y guardado atómico. Dos cáscaras sobre **una capa de estado única**
+(`useSequenceDraft`): A en escritorio (grid de zonas), B en móvil (pestañas + hoja por fila). El
+gesto de "tándem" (issue #168) deja elegir un hueco compartido entre una obra y un bloque en dos
+pasos, sin teclear número — el número se deriva del hueco, nunca se escribe a mano.
+
+**RPC `save_saga_sequence(p_saga_id uuid, p_entries jsonb, p_blocks jsonb, p_removed jsonb)`**
+(`SECURITY DEFINER`, gate `collaborator+` interno vía `has_min_role`, `search_path = public`,
+`revoke` a `public`/`anon`) — guardado atómico de las tres piezas en una sola transacción:
+
+- `p_entries` — upsert de las filas de `saga_items` de ESTA saga (`position`, `placement`,
+  `optional`, `role`); `is_primary` se calcula con el mismo criterio que el resto de escritores
+  (`link_tmdb_saga_item`, `sync_tmdb_saga_items`), nunca `false` incondicional — ver
+  `decisiones.md`.
+- `p_blocks` — `UPDATE` de `position_in_parent`/`placement_in_parent`/`optional_in_parent` de las
+  hijas DIRECTAS (`parent_saga_id = p_saga_id`); nunca inserta ni borra, porque anidar/desanidar
+  sigue siendo competencia de `editor-actions.ts`.
+- `p_removed` — baja **explícita** de membresías de `saga_items`, y solo estas: a diferencia de
+  `save_saga_route`/`save_saga_graph` (full-replace por `delete` + reinsert), aquí NO hay borrado
+  por omisión, porque `saga_items` tiene un segundo escritor activo (`assignItemToSaga`, el
+  formulario «Saga» de la ficha) y un borrador rancio del editor se habría comido, en silencio,
+  cualquier alta hecha por otra persona mientras el editor estaba abierto. Ver `decisiones.md`.
+
+**`save_saga_graph` queda huérfana**: al retirarse el editor de grafo, ya no tiene ningún llamador
+en la app (verificado por grep sobre `src/` y `e2e/`). Sigue viva en prod como función `SECURITY
+DEFINER` — no se ha hecho `DROP`— porque su retirada es trabajo de la fase 3 (junto con
+`saga_nodes`/`saga_edges` y `main-order.ts`), no de esta. `apply-membership-ops.ts` queda en la
+misma situación (sin llamador real, solo su propio test) — ver issue #197.
+
+**Migraciones `20260726_save_saga_sequence.sql` y `20260726_rescate_colocacion_hijas.sql`,
+aplicadas a prod el 2026-07-26, en ese orden.** Ambas son aditivas y de bajo riesgo: la primera crea
+una función nueva sin tocar ningún objeto existente; la segunda es un `UPDATE` acotado que resultó
+ser un no-op medido (0 filas) — ver el párrafo de arriba (§7.4) y la issue #196 para el porqué.
+Verificado contra los objetos reales de prod, no contra `list_migrations`: `save_saga_sequence`
+existe con `prosecdef = true`, `search_path=public` y sus cuatro argumentos (`p_saga_id, p_entries,
+p_blocks, p_removed`); **cero** filas violando el invariante `placement/position` en `sagas` ni en
+`saga_items`; y la tabla de las 12 sagas hijas idéntica antes y después del rescate.
+
+**UI**: `/saga/[id]/editar` es ahora el editor de secuencia único (`SequenceEditor`,
+`src/components/saga/sequence/sequence-editor.tsx`, + `src/lib/sagas/sequence-actions.ts`, acción
+`saveSequence`, que llama a la RPC `save_saga_sequence`); `/saga/[id]/mapa/editar` redirige a
+`/editar` (no 404: hay enlaces vivos y gente con la URL guardada). El gate sigue siendo el mismo
+doble (RLS `collaborator+` de `saga_items`/`sagas` + comprobación en la server action) que el resto
+de escrituras de saga.
 
 ## 8. Seguridad
 
@@ -557,9 +616,11 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   eso lo decide `is_club_member()`.
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
-  `save_saga_graph`, `link_tmdb_saga_item`, `sync_tmdb_saga_items` (§7.1),
-  `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan como
-  WARN y **está aceptado**: llevan gate interno de rol.
+  `save_saga_graph`, `save_saga_sequence` (§7.5), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
+  `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan
+  como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` sigue en esta lista
+  aunque ya no tiene llamador en la app (§7.5, fase 2a retiró su editor): sigue viva en prod,
+  `DROP`-earla es trabajo de la fase 3.
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 

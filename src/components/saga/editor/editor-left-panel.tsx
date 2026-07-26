@@ -6,7 +6,6 @@ import { ItemPicker, type PickedItem } from "@/components/clubs/item-picker";
 import { SagaPicker } from "@/components/saga-picker";
 import { SAGA_ACCENT, SAGA_ACCENT_SEQUENCE, type SagaAccentToken } from "@/lib/sagas/accents";
 import { createChildSaga, nestExistingSaga, updateSagaAccent } from "@/lib/sagas/editor-actions";
-import type { EdgeTool } from "./saga-graph-editor";
 
 export type ChildSagaRef = { id: string; name: string; accentColor: string | null };
 
@@ -18,10 +17,8 @@ export function EditorLeftPanel({
   childSagas,
   accentBySaga,
   countBySaga,
-  edgeTool,
-  onEdgeTool,
   onAddItem,
-  onAddSagaNode,
+  onAddBlock,
   onChildrenChange,
   onUnnestChild,
 }: {
@@ -29,10 +26,9 @@ export function EditorLeftPanel({
   childSagas: ChildSagaRef[];
   accentBySaga: Map<string | null, SagaAccentToken>;
   countBySaga: Map<string | null, number>;
-  edgeTool: EdgeTool;
-  onEdgeTool: (t: EdgeTool) => void;
   onAddItem: (item: PickedItem) => void;
-  onAddSagaNode: (child: { id: string; name: string }) => void;
+  /** Alta de un bloque-subsaga en el borrador del editor de secuencia (Task 9). */
+  onAddBlock: (child: { id: string; name: string }) => void;
   onChildrenChange: (children: ChildSagaRef[]) => void;
   onUnnestChild: (childId: string) => Promise<{ error?: string }>;
 }) {
@@ -86,7 +82,7 @@ export function EditorLeftPanel({
       return;
     }
     onChildrenChange([...childSagas, { id: saga.id, name: saga.name, accentColor: null }]);
-    onAddSagaNode(saga);
+    onAddBlock(saga);
     setNesting(false);
     setNestValue(null);
   }
@@ -153,7 +149,7 @@ export function EditorLeftPanel({
                   onClick={() => cycleAccent(c)}
                   className={`h-3 w-3 shrink-0 rounded-sm ${SAGA_ACCENT[accentBySaga.get(c.id) ?? "terracota"].bg}`}
                 />
-                <button type="button" onClick={() => onAddSagaNode(c)} className="min-w-0 flex-1 truncate text-left text-xs font-semibold">
+                <button type="button" onClick={() => onAddBlock(c)} className="min-w-0 flex-1 truncate text-left text-xs font-semibold">
                   {c.name}
                 </button>
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{countBySaga.get(c.id) ?? 0}</span>
@@ -199,24 +195,6 @@ export function EditorLeftPanel({
             {t("nestExisting")}
           </button>
         )}
-      </section>
-
-      <section>
-        <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t("tools")}</h2>
-        <div className="space-y-1.5 rounded-xl bg-surface-muted p-2.5">
-          {(["principal", "opcional", "requisito"] as const).map((kind) => (
-            <label key={kind} className="flex cursor-pointer items-center gap-2 text-xs">
-              <input type="radio" name="edge-tool" checked={edgeTool === kind} onChange={() => onEdgeTool(kind)} className="accent-[#b0542f]" />
-              <span
-                className={`w-7 border-t-[2.5px] ${
-                  kind === "principal" ? "border-foreground" : kind === "opcional" ? "border-dashed border-gold" : "border-dotted border-spine"
-                }`}
-              />
-              {t(kind === "principal" ? "edgePrincipal" : kind === "opcional" ? "edgeOptional" : "edgeRequisite")}
-            </label>
-          ))}
-        </div>
-        <p className="mt-1.5 text-[10.5px] text-muted-foreground">{t("toolConnectHint")}</p>
       </section>
     </aside>
   );

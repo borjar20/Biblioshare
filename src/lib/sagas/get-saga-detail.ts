@@ -80,6 +80,7 @@ type DescendantRow = {
   accent_color: string | null;
   parent_saga_id: string | null;
   position_in_parent: number | null;
+  placement_in_parent: SagaPlacement | null;
   optional_in_parent: boolean;
 };
 
@@ -94,7 +95,9 @@ async function fetchDescendants(
   for (let depth = 0; depth < 4 && frontier.length > 0; depth++) {
     const { data } = await supabase
       .from("sagas")
-      .select("id, name, accent_color, parent_saga_id, position_in_parent, optional_in_parent")
+      .select(
+        "id, name, accent_color, parent_saga_id, position_in_parent, placement_in_parent, optional_in_parent",
+      )
       .in("parent_saga_id", frontier);
     const next: string[] = [];
     for (const row of (data ?? []) as DescendantRow[]) {
@@ -147,6 +150,7 @@ export async function getSagaDetail(
       name: d.name,
       accentColor: d.accent_color,
       positionInParent: d.position_in_parent,
+      placementInParent: d.placement_in_parent,
       optionalInParent: d.optional_in_parent,
     }));
 
@@ -484,6 +488,7 @@ export async function getSagaDetail(
     name: d.name,
     accentColor: d.accent_color,
     positionInParent: d.position_in_parent,
+    placementInParent: d.placement_in_parent,
     optionalInParent: d.optional_in_parent,
   }));
 

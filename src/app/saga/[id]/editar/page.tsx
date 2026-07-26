@@ -4,9 +4,11 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
-import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
+import { getSagaSequence } from "@/lib/sagas/get-saga-sequence";
+import { getSagaRoutes } from "@/lib/sagas/get-saga-routes";
 import { SagaMetaEditor } from "@/components/saga/saga-meta-editor";
-import { SagaMembersEditor } from "@/components/saga/saga-members-editor";
+import { SequenceEditor } from "@/components/saga/sequence/sequence-editor";
+import { SequenceItineraries } from "@/components/saga/sequence/sequence-itineraries";
 
 export const metadata: Metadata = { title: "Editar saga — Biblioshare" };
 
@@ -34,53 +36,35 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
     ? await supabase.from("sagas").select("id, name").eq("id", saga.parent_saga_id).maybeSingle()
     : { data: null };
 
-  // OJO con la firma: es getSagaDetail(supabase, id) — el cliente va PRIMERO y
-  // no recibe userId — y devuelve `SagaDetail | null`. La saga ya se comprobó
-  // con el notFound() de arriba, pero el tipo obliga a estrecharlo igual.
-  //
-  // OJO con `m.ownerSagaId`: la fila real de `saga_items` que guarda
-  // position/role vive en la saga DUEÑA de la membresía (DetailMember.ownerSagaId,
-  // ver types.ts), NO en `g.sagaId` (el grupo VISUAL bajo el que se pinta:
-  // hija DIRECTA del root, calculado en get-saga-detail.ts con directChildFor
-  // subiendo por la cadena de padres). Ambos coinciden en profundidad 0 y 1,
-  // pero divergen a partir de profundidad 2: un nieto se pinta agrupado bajo
-  // la hija de nivel 1 (`g.sagaId`), aunque su fila real cuelgue más abajo.
-  // Bindear el action con `g.sagaId ?? id` (como hacía un borrador anterior de
-  // esta página) hace que guardar un miembro a esa profundidad falle en
-  // silencio con `notMember`, porque el action busca la fila en el saga_id
-  // equivocado — el MISMO fallo que esta pantalla vino a corregir, solo que
-  // más adentro del árbol. Verificado contra la semilla QA: la mayoría de
-  // miembros de "[QA Sagas v2] Universo" en realidad cuelgan de su subsaga
-  // "Era Uno" (profundidad 1, donde `ownerSagaId` y `g.sagaId` sí coinciden).
-  const detail = await getSagaDetail(supabase, id);
-  const editableMembers = (detail?.groups ?? []).flatMap((g) =>
-    g.members.map((m) => ({
-      ownerSagaId: m.ownerSagaId,
-      itemType: m.itemType,
-      itemId: m.itemId,
-      title: m.title,
-      position: m.position,
-      role: m.role,
-      placement: m.placement,
-      optional: m.optional,
-    })),
-  );
+  // Sin caso null: la existencia de la saga ya se comprobó arriba con el
+  // maybeSingle() sobre `sagas` + notFound(). Una saga real sin miembros ni
+  // hijas (recién creada) es un estado legítimo, y su borrador vacío es
+  // exactamente lo que getSagaSequence devuelve en ese caso (ver su cabecera).
+  const sequence = await getSagaSequence(supabase, saga.id);
+  const routes = await getSagaRoutes(supabase, saga.id);
 
   const t = await getTranslations("saga");
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("editTitle")}</h1>
-      <SagaMetaEditor
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-8 sm:px-6 lg:max-w-none lg:px-0">
+      <div className="lg:px-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("editTitle")}</h1>
+        <SagaMetaEditor
+          sagaId={saga.id}
+          initial={{
+            name: saga.name,
+            overview: saga.overview,
+            coverUrl: saga.cover_url,
+            accent: isSagaAccentToken(saga.accent_color) ? saga.accent_color : null,
+            parent,
+          }}
+        />
+      </div>
+      <SequenceEditor
         sagaId={saga.id}
-        initial={{
-          name: saga.name,
-          overview: saga.overview,
-          coverUrl: saga.cover_url,
-          accent: isSagaAccentToken(saga.accent_color) ? saga.accent_color : null,
-          parent,
-        }}
+        initial={sequence.draft}
+        childSagas={sequence.childSagas}
+        itineraries={<SequenceItineraries sagaId={saga.id} routes={routes} />}
       />
-      <SagaMembersEditor sagaId={saga.id} members={editableMembers} />
     </div>
   );
 }

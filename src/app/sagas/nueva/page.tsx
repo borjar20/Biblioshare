@@ -7,7 +7,7 @@ import { NewSagaForm } from "@/components/saga/new-saga-form";
 
 export const metadata: Metadata = { title: "Nueva saga — Biblioshare" };
 
-// Gate duro collaborator+ (patrón saga/[id]/mapa/editar): sin sesión, a
+// Gate duro collaborator+ (patrón saga/[id]/editar): sin sesión, a
 // /login; sin rol suficiente, de vuelta al índice público.
 export default async function NewSagaPage() {
   const supabase = await createClient();

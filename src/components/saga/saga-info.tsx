@@ -44,8 +44,10 @@ import { RoleChip } from "./role-chip";
 //
 // Fix Task 7 (cierre, segunda vuelta): la redacción original decía "…en el
 // orden de lectura", y "el orden de lectura" ya es el nombre propio del
-// GRAFO (`saga_nodes`/`saga_edges`, curado en `/saga/[id]/mapa/editar` —
-// ver `t("orderReading")`/`t("graphAvailableTitle")`), un sistema distinto
+// GRAFO (`saga_nodes`/`saga_edges` — ver `t("orderReading")`/
+// `t("graphAvailableTitle")`; su editor se retiró en la fase 2a, Task 11, y
+// el grafo queda congelado en modo lectura hasta que la fase 3 lo retire del
+// todo), un sistema distinto
 // de `placement` (curado en `/saga/[id]/editar`) y sin ningún constraint que
 // los mantenga sincronizados. Cuando la saga SÍ tiene grafo, el aviso de
 // arriba (`hasGraph`) ya afirma "Orden de lectura disponible" en la misma
@@ -239,14 +241,6 @@ export async function SagaInfo({
                 className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
               >
                 ⌂ {t("nestInUniverse")}
-              </Link>
-            )}
-            {canConfigure && !hasGraph && (
-              <Link
-                href={`/saga/${sagaId}/mapa/editar`}
-                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              >
-                ✎ {t("configureGraph")}
               </Link>
             )}
             {/* Punto de entrada a la curación de itinerarios, SIEMPRE visible

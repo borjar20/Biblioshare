@@ -7759,3 +7759,144 @@ $$;
 -- (`position is null`) se cumple trivialmente. Verificado leyendo su cuerpo en
 -- 20260722_saga_items_rls_hardening.sql: no hay combinación de columnas ahí
 -- que pueda producir (placement=null, position≠null).
+
+-- =====================================================================
+-- ANEXO 2026-07-26 — Fase 2a del orden unificado de sagas (spec
+-- 2026-07-26-sagas-fase-2a-editor-secuencia-design.md). Las DOS
+-- migraciones de abajo se aplicaron a produccion el 2026-07-26, en ese
+-- orden, y se verificaron contra los objetos reales (pg_proc,
+-- pg_constraint, las filas de `sagas`), no contra list_migrations.
+-- =====================================================================
+
+-- ---------------------------------------------------------------
+-- Guardado atomico del editor de secuencia
+-- (20260726_save_saga_sequence.sql)
+-- ---------------------------------------------------------------
+-- Guardado atómico del editor de secuencia (spec 2026-07-26, fase 2a). Mismo
+-- patrón y mismas garantías que `save_saga_route` (20260723_saga_routes.sql):
+-- SECURITY DEFINER, gate de rol DENTRO de la función, revoke a public/anon.
+--
+-- DIFERENCIA DELIBERADA con save_saga_route y save_saga_graph: aquí NO hay
+-- borrado por omisión. Las dos hermanas hacen `delete ... where <padre> = ...`
+-- y reinsertan, porque sus filas solo las escribe su propio editor. `saga_items`
+-- no: el formulario «Saga» de la ficha (`assignItemToSaga`) crea membresías
+-- desde otra pantalla y otra persona. Con borrado por omisión, un curador que
+-- abriera el editor, se fuera a comer y guardara borraría la obra que otro
+-- añadió mientras tanto, sin error visible. Con `p_removed`, lo peor que pasa
+-- es que un borrador rancio no la incluya.
+create or replace function public.save_saga_sequence(
+  p_saga_id uuid,
+  p_entries jsonb,
+  p_blocks  jsonb,
+  p_removed jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_min_role('collaborator') then
+    raise exception 'forbidden';
+  end if;
+  if not exists (select 1 from sagas where id = p_saga_id) then
+    raise exception 'saga % not found', p_saga_id;
+  end if;
+
+  -- Obras de ESTA saga. El insert es lo que permite dar de alta desde el rail
+  -- sin escribir en BD hasta que se guarda.
+  insert into saga_items (saga_id, item_type, item_id, position, placement, optional, role, is_primary)
+  select
+    p_saga_id,
+    (e->>'item_type')::public.item_type,
+    (e->>'item_id')::uuid,
+    (e->>'position')::integer,
+    (e->>'placement')::public.saga_placement,
+    coalesce((e->>'optional')::boolean, false),
+    (e->>'role')::public.saga_item_role,
+    -- `is_primary` NO puede ser un `false` incondicional: el resto de escritores
+    -- (assignItemToSaga, link_tmdb_saga_item) marcan la fila como principal
+    -- cuando el ítem no tiene ya una principal en otra saga, y sin esto un alta
+    -- desde el editor deja al ítem SIN saga principal — que luego se lleva, en
+    -- silencio, la siguiente saga a la que alguien lo añada desde la ficha.
+    -- El `not exists` se evalúa contra la instantánea previa a la sentencia, lo
+    -- cual es correcto aquí porque `validateSequenceDraft` ya rechaza un payload
+    -- con el mismo ítem dos veces.
+    not exists (
+      select 1 from saga_items p
+      where p.item_type = (e->>'item_type')::public.item_type
+        and p.item_id = (e->>'item_id')::uuid
+        and p.is_primary
+    )
+  from jsonb_array_elements(coalesce(p_entries, '[]'::jsonb)) as e
+  on conflict (saga_id, item_type, item_id) do update
+    set position  = excluded.position,
+        placement = excluded.placement,
+        optional  = excluded.optional,
+        role      = excluded.role;
+
+  -- Hijas DIRECTAS. Sin insert ni delete: anidar y desanidar cambian
+  -- `parent_saga_id` y son competencia de editor-actions.ts, no de la
+  -- secuencia. El `where parent_saga_id = p_saga_id` impide que una petición
+  -- manipulada recoloque la hija de otra saga.
+  update sagas s
+     set position_in_parent  = (b->>'position_in_parent')::integer,
+         placement_in_parent = (b->>'placement_in_parent')::public.saga_placement,
+         optional_in_parent  = coalesce((b->>'optional_in_parent')::boolean, false)
+    from jsonb_array_elements(coalesce(p_blocks, '[]'::jsonb)) as b
+   where s.id = (b->>'child_saga_id')::uuid
+     and s.parent_saga_id = p_saga_id;
+
+  -- Bajas explícitas, y SOLO estas.
+  delete from saga_items si
+   using jsonb_array_elements(coalesce(p_removed, '[]'::jsonb)) as r
+   where si.saga_id = p_saga_id
+     and si.item_type = (r->>'item_type')::public.item_type
+     and si.item_id = (r->>'item_id')::uuid;
+end;
+$$;
+
+revoke execute on function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb) from public, anon;
+grant execute on function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb) to authenticated;
+
+comment on function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb) is
+  'Guardado atómico de la secuencia de una saga: obras propias, colocación de hijas directas y bajas explícitas. Collaborator+. La baja NUNCA es por omisión.';
+
+-- ---------------------------------------------------------------
+-- Rescate de la colocacion de hijas de padres con grafo
+-- (20260726_rescate_colocacion_hijas.sql)
+-- ---------------------------------------------------------------
+-- La fase 1 dejó a propósito sin `position_in_parent` a las sagas hijas cuyo
+-- padre tiene grafo: allí la colocación no se deduce de min(position) sino de
+-- `saga_nodes.order_no`, y escribir un número deducido habría sido inventar
+-- curación. Al retirar el editor de grafo (fase 2a) esa columna se queda sin
+-- escritor, así que aquí se rescata el dato al sitio donde ahora vive.
+--
+-- Las hijas cuyo nodo NO tiene `order_no` se quedan SIN CLASIFICAR a propósito:
+-- ningún nodo de Mundodisco tiene order_no (su orden vive solo en 28 aristas),
+-- que es el origen del 0/0 que arregló la fase 1. Derivarles un número de las
+-- aristas y presentarlo como curado sería exactamente el error que este diseño
+-- viene a deshacer; caen en la zona 3 del editor de su padre y las coloca una
+-- persona.
+--
+-- MEDIDO EN PROD ANTES DE APLICAR (2026-07-26) — y desmiente la premisa de
+-- arriba, así que conviene leerlo antes de fiarse de este fichero: de los 55
+-- nodos de `saga_nodes`, **solo UNO** apunta a una subsaga (`child_saga_id` no
+-- nulo), y ese no tiene `order_no`. Las otras 11 hijas no tienen ningún nodo
+-- que las represente en el grafo de su padre. Es decir: **el grafo nunca
+-- guardó la colocación de 11 de las 12 hijas**, así que aquí no hay nada que
+-- rescatar y este UPDATE es hoy un no-op (0 filas, comprobado en dev y en prod).
+--
+-- Eso NO invalida la migración, y por eso se conserva: es idempotente, cubre el
+-- caso si alguien numera ese nodo antes de la retirada, y deja escrito el
+-- intento. Lo que sí cambia es la conclusión — retirar el editor de grafo no
+-- pierde ninguna colocación, porque no había ninguna. Las 12 hijas aparecerán
+-- «Sin clasificar» en el editor de su padre, que es la primera vez que esa
+-- deuda se ve, y se cura a mano. Seguimiento en la issue #196.
+update sagas s
+   set position_in_parent = n.order_no,
+       placement_in_parent = 'fijo'
+  from saga_nodes n
+ where n.child_saga_id = s.id
+   and n.saga_id = s.parent_saga_id
+   and n.order_no is not null
+   and s.position_in_parent is null;
