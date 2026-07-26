@@ -735,7 +735,6 @@
       "title": "Saga",
       "current": "En la saga:",
       "namePlaceholder": "Nombre de la saga",
-      "positionPlaceholder": "Nº",
       "submit": "Guardar saga",
       "submitting": "Guardando...",
       "remove": "Quitar",

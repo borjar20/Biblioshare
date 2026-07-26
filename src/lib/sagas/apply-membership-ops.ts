@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { MembershipOp } from "./editor-types";
-import type { SagaItemRole } from "./types";
+import type { SagaItemRole, SagaPlacement } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -18,13 +18,20 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type TreeMembershipRow = {
   saga_id: string;
   position: number | null;
+  placement: SagaPlacement | null;
   role: SagaItemRole | null;
   is_primary: boolean;
 };
 
 export type MembershipPlan = {
   deleteFrom: string[];
-  insert: { saga_id: string; position: number | null; role: SagaItemRole | null; is_primary: boolean } | null;
+  insert: {
+    saga_id: string;
+    position: number | null;
+    placement: SagaPlacement | null;
+    role: SagaItemRole | null;
+    is_primary: boolean;
+  } | null;
   /** true = la fila YA existente en el destino debe pasar a is_primary=true (UPDATE, no INSERT). */
   promoteTarget: boolean;
 };
@@ -53,11 +60,21 @@ export function planMembershipOps(
   // número (justo el caso de una precuela), así que buscarlo en la misma fila
   // que trae el position lo perdería.
   const carriedRole = others.find((r) => r.role !== null);
+  // placement viaja PEGADO a position (issue del CHECK saga_items_placement_position,
+  // review final de la rama): toda fila de origen que cumple el CHECK con
+  // position no nulo tiene necesariamente placement='fijo', así que basta con
+  // llevarse el de la fila que aporta el hueco. Si ninguna trae hueco, se
+  // arrastra el placement no nulo que haya (el caso 'libre' sin número), igual
+  // que el role — de lo contrario el insert de abajo dejaría
+  // (placement=null, position=carried) o (placement=null tras perder un
+  // 'libre'), y el primero viola el CHECK.
+  const carriedPlacement = carried?.placement ?? others.find((r) => r.placement !== null)?.placement ?? null;
   return {
     deleteFrom,
     insert: {
       saga_id: targetTableSagaId,
       position: carried?.position ?? null,
+      placement: carriedPlacement,
       role: carriedRole?.role ?? null,
       is_primary: wasPrimaryInTree || !hasPrimaryAnywhere,
     },
@@ -80,7 +97,7 @@ export async function applyMembershipOps(
 
     const { data: rows } = await supabase
       .from("saga_items")
-      .select("saga_id, position, role, is_primary")
+      .select("saga_id, position, placement, role, is_primary")
       .eq("item_type", op.itemType)
       .eq("item_id", op.itemId)
       .in("saga_id", treeIds);
@@ -110,6 +127,7 @@ export async function applyMembershipOps(
         item_type: op.itemType,
         item_id: op.itemId,
         position: plan.insert.position,
+        placement: plan.insert.placement,
         role: plan.insert.role,
         is_primary: plan.insert.is_primary,
       });
