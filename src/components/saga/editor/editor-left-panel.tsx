@@ -6,7 +6,6 @@ import { ItemPicker, type PickedItem } from "@/components/clubs/item-picker";
 import { SagaPicker } from "@/components/saga-picker";
 import { SAGA_ACCENT, SAGA_ACCENT_SEQUENCE, type SagaAccentToken } from "@/lib/sagas/accents";
 import { createChildSaga, nestExistingSaga, updateSagaAccent } from "@/lib/sagas/editor-actions";
-import type { EdgeTool } from "./saga-graph-editor";
 
 export type ChildSagaRef = { id: string; name: string; accentColor: string | null };
 
@@ -18,11 +17,8 @@ export function EditorLeftPanel({
   childSagas,
   accentBySaga,
   countBySaga,
-  edgeTool,
-  onEdgeTool,
   onAddItem,
   onAddBlock,
-  onAddSagaNode,
   onChildrenChange,
   onUnnestChild,
 }: {
@@ -30,23 +26,14 @@ export function EditorLeftPanel({
   childSagas: ChildSagaRef[];
   accentBySaga: Map<string | null, SagaAccentToken>;
   countBySaga: Map<string | null, number>;
-  /** Solo el editor de grafo (saga-graph-editor.tsx) los usa: la sección
-   *  «Herramientas» (aristas del grafo) no tiene sentido en el editor de
-   *  secuencia (Task 9), que no pinta un lienzo. Opcionales para que un solo
-   *  panel sirva a los dos consumidores hasta que la Task 11 borre el grafo. */
-  edgeTool?: EdgeTool;
-  onEdgeTool?: (t: EdgeTool) => void;
   onAddItem: (item: PickedItem) => void;
-  /** Nombre nuevo (Task 9) del alta de un bloque-subsaga en el lienzo/borrador. */
+  /** Alta de un bloque-subsaga en el borrador del editor de secuencia (Task 9). */
   onAddBlock?: (child: { id: string; name: string }) => void;
-  /** @deprecated usa `onAddBlock`. Se conserva solo para que
-   *  saga-graph-editor.tsx siga compilando hasta que la Task 11 lo borre. */
-  onAddSagaNode?: (child: { id: string; name: string }) => void;
   onChildrenChange: (children: ChildSagaRef[]) => void;
   onUnnestChild: (childId: string) => Promise<{ error?: string }>;
 }) {
   const t = useTranslations("sagaEditor");
-  const addBlock = onAddBlock ?? onAddSagaNode ?? (() => {});
+  const addBlock = onAddBlock ?? (() => {});
   const [picking, setPicking] = useState(false);
   const [nesting, setNesting] = useState(false);
   const [nestValue, setNestValue] = useState<{ id: string; name: string } | null>(null);
@@ -210,29 +197,6 @@ export function EditorLeftPanel({
           </button>
         )}
       </section>
-
-      {/* Solo el editor de grafo pasa edgeTool/onEdgeTool: en el editor de
-       *  secuencia (Task 9) no hay lienzo que conectar, así que esta sección
-       *  simplemente no se pinta ahí. */}
-      {edgeTool !== undefined && onEdgeTool && (
-        <section>
-          <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t("tools")}</h2>
-          <div className="space-y-1.5 rounded-xl bg-surface-muted p-2.5">
-            {(["principal", "opcional", "requisito"] as const).map((kind) => (
-              <label key={kind} className="flex cursor-pointer items-center gap-2 text-xs">
-                <input type="radio" name="edge-tool" checked={edgeTool === kind} onChange={() => onEdgeTool(kind)} className="accent-[#b0542f]" />
-                <span
-                  className={`w-7 border-t-[2.5px] ${
-                    kind === "principal" ? "border-foreground" : kind === "opcional" ? "border-dashed border-gold" : "border-dotted border-spine"
-                  }`}
-                />
-                {t(kind === "principal" ? "edgePrincipal" : kind === "opcional" ? "edgeOptional" : "edgeRequisite")}
-              </label>
-            ))}
-          </div>
-          <p className="mt-1.5 text-[10.5px] text-muted-foreground">{t("toolConnectHint")}</p>
-        </section>
-      )}
     </aside>
   );
 }

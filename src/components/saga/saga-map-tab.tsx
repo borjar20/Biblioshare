@@ -61,14 +61,6 @@ export async function SagaMapTab({
             <GraphLegend graph={graph} />
           </div>
           <div className="flex flex-col lg:hidden">
-            {canEdit && (
-              <Link
-                href={`${base}/mapa/editar`}
-                className="mb-2 self-end rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              >
-                ✎ {t("editGraph")}
-              </Link>
-            )}
             <MapCta graph={graph} href={`${base}/mapa`} />
             <ReadingTimeline sections={deriveTimeline(graph)} />
             {/* «Como lista lineal» (frame B). Desde #167 ya no es solo la
@@ -119,14 +111,6 @@ export async function SagaMapTab({
           </div>
           {/* PC: grafo embebido con la leyenda como barra inferior del marco (frame E). */}
           <div className="hidden flex-col lg:flex">
-            {canEdit && (
-              <Link
-                href={`${base}/mapa/editar`}
-                className="mb-2 self-end rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              >
-                ✎ {t("editGraph")}
-              </Link>
-            )}
             <div className="overflow-hidden rounded-2xl border border-border">
               <SagaGraphLazy graph={graph} className="h-[640px] w-full" />
             </div>

@@ -9,7 +9,7 @@ import { RouteList } from "@/components/saga/route-list";
 
 // Curación de itinerarios (spec 2026-07-22, Task 8): crear, renombrar,
 // reordenar y borrar. Gate DURO collaborator+, igual que
-// /saga/[id]/mapa/editar: gestionar rutas SÍ es curación (a diferencia de
+// /saga/[id]/editar: gestionar rutas SÍ es curación (a diferencia de
 // adoptar una, que es preferencia personal).
 export default async function SagaRoutesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

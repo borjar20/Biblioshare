@@ -40,9 +40,10 @@ export default async function SagaDetailPage({
   const detail = await getSagaDetail(supabase, id);
   if (!detail) notFound();
 
-  // Rol del usuario: collaborator+ puede editar/configurar el grafo de lectura.
-  // viewerRole viaja en el mismo batch de getSagaDetail — sin segundo auth.getUser().
-  const canEditGraph = hasMinRole(detail.viewerRole, "collaborator");
+  // Rol del usuario: collaborator+ puede curar la saga (ficha, orden de
+  // lectura, itinerarios). viewerRole viaja en el mismo batch de
+  // getSagaDetail — sin segundo auth.getUser().
+  const canCurate = hasMinRole(detail.viewerRole, "collaborator");
 
   // Ruta activa. Precedencia: ?ruta= explícito → compatibilidad con el viejo
   // ?orden=publicacion (enlaces ya compartidos) → la adoptada → la primera.
@@ -67,14 +68,14 @@ export default async function SagaDetailPage({
             overview={detail.saga.overview}
             groups={detail.groups}
             hasGraph={detail.hasGraph}
-            canConfigure={canEditGraph}
+            canConfigure={canCurate}
             sagaId={detail.saga.id}
             hasParent={detail.parent !== null}
           />
         }
         map={
           detail.hasGraph || detail.routes.some((r) => !r.synthetic) ? (
-            <SagaMapTab detail={detail} activeRoute={activeRoute} canEdit={canEditGraph} />
+            <SagaMapTab detail={detail} activeRoute={activeRoute} canEdit={canCurate} />
           ) : null
         }
       />

@@ -82,7 +82,7 @@ graph TD
     root --> sg["/sagas"] --> sgn["/sagas/nueva"]
     sg --> sgd["/saga/[id]"]
     sgd --> sge["/saga/[id]/editar"]
-    sgd --> sgm["/saga/[id]/mapa"] --> sgme["/mapa/editar"]
+    sgd --> sgm["/saga/[id]/mapa"]
 
     root --> cl["/clubes"] --> cld["/club/[slug]"]
     cld --> cla["/actividad/[id]"]

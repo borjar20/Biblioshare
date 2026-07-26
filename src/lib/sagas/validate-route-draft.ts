@@ -1,6 +1,6 @@
 import type { RawRouteEntry } from "./route-types";
 
-// Validación previa al guardado, en la línea de validate-graph-draft.
+// Validación previa al guardado (mismo patrón puro que validate-sequence-draft.ts).
 // Devuelve códigos de error (el consumidor los traduce), lista vacía = válido.
 //
 // NO valida que la ruta cubra todo el orden principal: una ruta PARCIAL
