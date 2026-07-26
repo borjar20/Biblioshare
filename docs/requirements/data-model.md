@@ -456,8 +456,10 @@ El arreglo de ese formulario es trabajo de la **fase 2**, y las dos migraciones 
 **al principio** de esa fase, junto con el arreglo, no antes: aplicarlas ya dejaría una regresión
 real en producción a cambio de nada, porque en prod aún no hay ninguna UI que escriba `placement`
 ni `optional`. Mismo formato que ya usa §7.1 para el caso de #169, donde el orden de despliegue
-también importaba: **aplicadas en dev el 2026-07-25 (esquema) y 2026-07-26 (progreso/UI); prod
-pendiente, deliberadamente, hasta la fase 2 (#188)**.
+también importaba: **las dos migraciones se aplicaron a dev el 2026-07-25; prod queda pendiente,
+deliberadamente, hasta la fase 2 (#188)**. El código que las consume (progreso, curación y ficha)
+se completó el 2026-07-26 — dos fechas distintas para dos cosas distintas, que no hay que
+confundir al comparar contra `list_migrations`.
 
 **UI**: `/saga/[id]/editar` (`saga-members-editor.tsx` + `member-actions.ts`, acción
 `updateSagaMember`) cura `placement` y `optional` por miembro, junto al `position`/`role` que ya
