@@ -978,7 +978,7 @@ git commit -m "feat(sagas): carga del editor de secuencia (solo las filas de est
 
 **Interfaces:**
 - Consumes: todo `sequence-draft.ts` (Task 1), `saveSequence` (Task 3).
-- Produces: `useSequenceDraft(initial, sagaId, childIds)` → `{ draft, ops, save, error, unclassified, blocking, status }`, donde `ops` expone las ocho operaciones (`moveSlot`, `sendTo`, `pairWith`, `unpair`, `setOptional`, `setRole`, `add`, `remove`) ya ligadas al `setState`, y `status` es `"idle" | "dirty" | "saving" | "saved" | "error"`. `SequenceRow` (presentación pura, sin estado).
+- Produces: `useSequenceDraft(initial, sagaId, childIds)` → `{ draft, ops, save, error, unclassified, status }`, donde `ops` expone las ocho operaciones (`moveSlot`, `sendTo`, `pairWith`, `unpair`, `setOptional`, `setRole`, `add`, `remove`) ya ligadas al `setState`, y `status` es `"idle" | "dirty" | "saving" | "saved" | "error"`. `SequenceRow` (presentación pura, sin estado).
 
 **Es la pieza que sostiene la restricción global**: el estado vive aquí y solo aquí; `A` y `B` lo reciben.
 
@@ -1058,13 +1058,16 @@ export function useSequenceDraft(initial: SequenceDraft, sagaId: string, childId
       setStatus("saved");
     });
 
+  // No se devuelve `check.errors`: con esta interfaz esos errores son
+  // inalcanzables (el número lo deriva la posición, la zona el placement) y
+  // `saveSequence` los vuelve a validar en servidor antes del RPC. Exponerlos
+  // aquí sería API muerta.
   return {
     draft,
     ops,
     save,
     error,
     unclassified: check.unclassified,
-    blocking: check.errors,
     status: pending ? ("saving" as const) : status,
   };
 }
@@ -1227,7 +1230,7 @@ En `messages/es.json`, namespace `sagaEditor` (junto a las que ya existen):
 "addedAtEnd": "Se añade al final de la secuencia",
 "saveSequence": "Guardar secuencia",
 "saveNoChanges": "Sin cambios",
-"saveDirty": "{count} cambios sin guardar",
+"saveDirtyShort": "Cambios sin guardar",
 "saveAtomic": "Reemplazo total atómico",
 "saving": "Guardando la secuencia…",
 "savingHint": "No cierres la pantalla",
