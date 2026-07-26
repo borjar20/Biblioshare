@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { revalidateSagaEditPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
 import { validateSequenceDraft } from "./validate-sequence-draft";
+import { getAnchorOptions } from "./get-anchor-options";
 import type { SequencePayload } from "./sequence-draft";
 
 // Doble gate a propósito, no triple: la RPC es SECURITY DEFINER, así que sus
@@ -25,8 +26,16 @@ export async function saveSequence(
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
 
-  // Las claves del subárbol para `anchorKeys` llegan con el cargador de la tarea que pinte y guarde ventanas; de momento no hay ventanas que enviar.
-  const { errors } = validateSequenceDraft(payload, { childIds: new Set(childIds), anchorKeys: new Set() });
+  // Anclas válidas: TODO el subárbol (getAnchorOptions), no solo `childIds` —
+  // una ventana puede apuntar a una obra de un nieto. Es la última red antes
+  // del RPC: un ancla que apuntara a algo fuera del subárbol dispararía un
+  // 23503 en `save_saga_sequence` y abortaría la transacción entera, no solo
+  // la ventana.
+  const anchors = await getAnchorOptions(supabase, sagaId);
+  const anchorKeys = new Set(
+    anchors.map((a) => (a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`)),
+  );
+  const { errors } = validateSequenceDraft(payload, { childIds: new Set(childIds), anchorKeys });
   if (errors.length > 0) return { error: errors[0] };
 
   const { error } = await supabase.rpc("save_saga_sequence", {

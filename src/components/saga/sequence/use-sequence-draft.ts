@@ -14,7 +14,16 @@ export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
  *  cáscaras —A escritorio, B móvil— consumen esto; ninguna guarda estado del
  *  borrador por su cuenta. Duplicarlo por breakpoint serían dos borradores
  *  vivos sobre los mismos datos (regla de los dos árboles, docs/redesign). */
-export function useSequenceDraft(initial: SequenceDraft, sagaId: string, childIds: string[]) {
+export function useSequenceDraft(
+  initial: SequenceDraft,
+  sagaId: string,
+  childIds: string[],
+  // Claves del subárbol entero (`getAnchorOptions`, resuelto en servidor y
+  // pasado como array plano — "server-only" no puede cruzar al cliente).
+  // El componente las reconstruye en un Set solo para esta comprobación
+  // local; el guardado de verdad vuelve a resolverlas en `saveSequence`.
+  anchorKeys: string[],
+) {
   const [draft, setDraft] = useState(initial);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +50,10 @@ export function useSequenceDraft(initial: SequenceDraft, sagaId: string, childId
 
   // El aviso se recalcula con el borrador, no al guardar: la barra tiene que
   // decir cuántas sin clasificar quedan MIENTRAS se cura, no después.
+  const anchorKeySet = useMemo(() => new Set(anchorKeys), [anchorKeys]);
   const check = useMemo(
-    // Las claves del subárbol para `anchorKeys` llegan con el cargador de la tarea que pinte y guarde ventanas; de momento no hay ventanas que enviar.
-    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds), anchorKeys: new Set() }),
-    [draft, childIds],
+    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds), anchorKeys: anchorKeySet }),
+    [draft, childIds, anchorKeySet],
   );
 
   const save = () =>

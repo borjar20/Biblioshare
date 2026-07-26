@@ -74,7 +74,7 @@ export type SagaDetail = {
   childRefs: SagaChildRef[];
 };
 
-type DescendantRow = {
+export type DescendantRow = {
   id: string;
   name: string;
   accent_color: string | null;
@@ -86,7 +86,10 @@ type DescendantRow = {
 
 // Descendientes hasta profundidad 4 (spec §1.5: cap como cinturón frente a
 // ciclos, el trigger ya los impide). Iterativo: una query por nivel.
-async function fetchDescendants(
+// Exportada: get-anchor-options.ts (fase 2b) la reutiliza tal cual en vez de
+// reinventar el mismo recorrido — mismo cinturón de profundidad, una sola
+// fuente de verdad.
+export async function fetchDescendants(
   supabase: SupabaseServerClient,
   rootId: string,
 ): Promise<Map<string, DescendantRow>> {

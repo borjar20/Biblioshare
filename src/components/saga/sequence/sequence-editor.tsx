@@ -38,11 +38,17 @@ const entryFromChildSaga = (child: ChildSagaData): DraftEntry => ({
 // dos árboles de PRESENTACIÓN y un solo borrador. Duplicar el estado sería el
 // fallo que esa regla avisa que el patrón no cubre.
 export function SequenceEditor({
-  sagaId, initial, childSagas, itineraries,
+  sagaId, initial, childSagas, anchorKeys, itineraries,
 }: {
   sagaId: string;
   initial: SequenceDraft;
   childSagas: Array<{ id: string; name: string; accentColor: string | null; count: number }>;
+  /** Claves de ancla válidas del subárbol entero (`getAnchorOptions`, fase
+   *  2b), resueltas en servidor. Solo alimentan la comprobación local de
+   *  `useSequenceDraft` — el guardado real vuelve a resolverlas en
+   *  `saveSequence`, así que no hace falta refrescarlas tras un alta/baja de
+   *  bloque en el rail (a diferencia de `childIds`, que sí es un Set en vivo). */
+  anchorKeys: string[];
   /** Contenido de servidor sin callbacks, así que sí puede viajar como nodo
    *  (al contrario que el rail, que necesita ligar `onAddItem` al borrador). */
   itineraries: React.ReactNode;
@@ -62,7 +68,7 @@ export function SequenceEditor({
   // `useMemo` evita invalidar los memos de `useSequenceDraft` en cada render
   // pasando un array nuevo con el mismo contenido.
   const childIds = useMemo(() => children.map((c) => c.id), [children]);
-  const { draft, ops, save, status, error, unclassified } = useSequenceDraft(initial, sagaId, childIds);
+  const { draft, ops, save, status, error, unclassified } = useSequenceDraft(initial, sagaId, childIds, anchorKeys);
   const rail = (
     <EditorLeftPanel
       sagaId={sagaId}
