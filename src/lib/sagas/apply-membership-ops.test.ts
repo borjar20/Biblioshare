@@ -237,4 +237,33 @@ describe("colocación en los movimientos de membresía (CHECK saga_items_placeme
       expect(violatesCheck).toBe(false);
     }
   });
+
+  it("la fila que aporta position con placement null NO se rellena con el placement de OTRA fila (dato roto, pero dev llegó a tenerlo con el CHECK viejo en forma OR)", () => {
+    // `carried` (la fila con position) trae placement=null — una fila así no
+    // debería poder existir con el CHECK actual en forma CASE, pero el CHECK
+    // original en forma OR sí la dejaba pasar, y dev llegó a tener una. Antes
+    // del fix, `carried?.placement ?? others.find(...).placement ?? null`
+    // seguía la cadena `??` hasta la siguiente fila con placement no nulo —
+    // aquí la fila "b", con placement='libre' — y producía
+    // (position=5, placement='libre'): el CHECK lo rechaza porque 'libre'
+    // exige position null.
+    const rows: TreeMembershipRow[] = [
+      { saga_id: "a", position: 5, placement: null, role: null, is_primary: false },
+      { saga_id: "b", position: null, placement: "libre", role: null, is_primary: true },
+    ];
+
+    const plan = planMembershipOps(
+      { itemType: "book", itemId: "b1", targetSagaId: "destino" },
+      rows,
+      "destino",
+      true,
+    );
+
+    expect(plan.insert).not.toBeNull();
+    expect(plan.insert!.position).toBe(5);
+    // El placement arrastrado no puede contradecir al position arrastrado: no
+    // puede ser 'libre' (exigiría position null) ni null (el CHECK exige
+    // placement='fijo' cuando position no es null).
+    expect(plan.insert!.placement).toBe("fijo");
+  });
 });

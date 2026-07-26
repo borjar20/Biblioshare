@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada SOLO en dev el 2026-07-26, con el CHECK corregido de `OR` a `CASE` el 2026-07-26 (fix de un finding Crítico del review final — el `OR` original no rechazaba `placement=NULL` con `position` no nulo) — prod deliberadamente sin tocar hasta la fase 2, ver §7.4]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada SOLO en dev el 2026-07-26, con el CHECK corregido de `OR` a `CASE` el 2026-07-26 (fix de un finding Crítico del review final — el `OR` original no rechazaba `placement=NULL` con `position` no nulo) y los cuatro escritores de `saga_items` arreglados para respetarlo (commit `e3832ff`) — prod deliberadamente sin tocar hasta que el orquestador aplique esta rama, ver §7.4]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -283,6 +283,16 @@ habría roto la hidratación TMDB para los usuarios sin rol. Verificado contra `
 `pg_proc` en ambos entornos, no contra `list_migrations` — mismo `md5` del cuerpo normalizado
 en dev y prod, `prosecdef`, `search_path` y ACL correctos (sin `anon`).
 
+**El cuerpo de `sync_tmdb_saga_items` se reemplazó — `create or replace` — en
+`20260726_saga_items_placement_writers_fix.sql` (§7.4): el original escribía `position` sin tocar
+`placement`, así que cualquier alta o corrección de una colección TMDB dejaba filas
+`(placement=null, position=N)` que el CHECK `saga_items_placement_position` rechaza (23514). El
+`INSERT`/`ON CONFLICT` ahora fija `placement='fijo'` siempre que `position` no sea nulo, tanto en
+el alta como en la actualización. `link_tmdb_saga_item` no tenía el mismo problema (nunca escribe
+`position`) y se dejó sin tocar. **Este `create or replace` está SOLO en dev** — mismo estado
+pendiente que el resto de §7.4, no un despliegue independiente: el `md5` del cuerpo normalizado
+YA NO coincide entre dev y prod hasta que el orquestador aplique esta migración.
+
 ### 7.2 Itinerarios de lectura: `saga_routes` / `saga_route_entries` / `saga_route_choices`
 
 Un **itinerario** es una secuencia curada (opcionalmente parcial) de obras y bloques-subsaga
@@ -368,9 +378,11 @@ Fase 1 de 3 de un spec mayor —
 `docs/superpowers/specs/2026-07-25-sagas-orden-unificado-design.md`— que reemplaza los tres
 sistemas de orden que hoy coexisten (lista numerada, grafo, itinerarios) por uno solo. Esta fase
 **no** toca esa unificación todavía: solo introduce el modelo de dos ejes nuevos y desacopla el
-progreso del orden. Fases 2 y 3 (arreglo de `assignItemToSaga`/#188 + aplicar a prod, y el editor
-único de secuencia con `saga_placement_windows`/tándem/retirada del grafo) **siguen sin construir**
-— ver `backlog.md`.
+progreso del orden. El arreglo de `assignItemToSaga`/#188 que originalmente se planeó para la fase
+2 se adelantó al review final de esta misma rama (commit `e3832ff`, ver más abajo) — lo único que
+falta de esa fase es aplicar las migraciones a prod, que ya no depende de ningún arreglo de código.
+Fase 3 (el editor único de secuencia con `saga_placement_windows`/tándem/retirada del grafo)
+**sigue sin construir** — ver `backlog.md`.
 
 **Dos ejes ORTOGONALES, y ésa es la distinción que toda la fase existe para establecer:**
 
@@ -450,20 +462,26 @@ entorno:**
   (→ `null`). **Esta cifra es informativa, no aplicada**: prod no tiene ni el enum ni las columnas
   — ver más abajo.
 
-**Migraciones `20260725_saga_placement.sql` y `20260725_saga_placement_blocks.sql` — SOLO EN DEV,
-deliberadamente, durante toda la fase 1.** El motivo no es prudencia genérica: el CHECK
-`saga_items_placement_position` **rompe `assignItemToSaga`** (el formulario «Saga» de la ficha,
-`manage-saga-actions.ts`), que hace `upsert` de la membresía escribiendo `position` y lo pone a
-`null` si el campo llega vacío — sobre una fila `fijo` eso viola la restricción nueva. Antes esa
+**Migraciones `20260725_saga_placement.sql`, `20260725_saga_placement_blocks.sql` y
+`20260726_saga_items_placement_writers_fix.sql` — SOLO EN DEV, deliberadamente, hasta que el
+orquestador aplique esta rama.** El motivo original era que el CHECK
+`saga_items_placement_position` **rompía `assignItemToSaga`** (el formulario «Saga» de la ficha,
+`manage-saga-actions.ts`), que hacía `upsert` de la membresía escribiendo `position` y lo ponía a
+`null` si el campo llegaba vacío — sobre una fila `fijo` eso viola la restricción nueva. Antes esa
 pérdida era silenciosa (issue #188); con el CHECK en prod pasaría a ser un `upsert` que falla duro.
-El arreglo de ese formulario es trabajo de la **fase 2**, y las dos migraciones se aplican a prod
-**al principio** de esa fase, junto con el arreglo, no antes: aplicarlas ya dejaría una regresión
-real en producción a cambio de nada, porque en prod aún no hay ninguna UI que escriba `placement`
-ni `optional`. Mismo formato que ya usa §7.1 para el caso de #169, donde el orden de despliegue
-también importaba: **las dos migraciones se aplicaron a dev el 2026-07-25; prod queda pendiente,
-deliberadamente, hasta la fase 2 (#188)**. El código que las consume (progreso, curación y ficha)
-se completó el 2026-07-26 — dos fechas distintas para dos cosas distintas, que no hay que
-confundir al comparar contra `list_migrations`.
+**Ese arreglo ya no es trabajo de la fase 2: es el commit `e3832ff` de esta misma rama.**
+`assignItemToSaga` deja de escribir `position` — el hueco pasa a ser competencia exclusiva del
+editor de secuencia (`updateSagaMember`/`member-actions.ts`) — y cierra #188 eliminando el segundo
+escritor en vez de parcheando el síntoma (ver `decisiones.md`, entrada 2026-07-26). El mismo commit
+destapó que #188 no era el único escritor roto: la RPC `sync_tmdb_saga_items` insertaba `position`
+sin `placement` (arreglada en `20260726_saga_items_placement_writers_fix.sql`, que sustituye el
+cuerpo de la función sin tocar el fichero ya aplicado a prod en `20260722_saga_items_rls_hardening.sql`)
+y `applyMembershipOps` no arrastraba `placement` al mover un ítem entre subsagas (arreglado en
+`apply-membership-ops.ts`, sin migración — es solo código de aplicación). Mismo formato que ya usa
+§7.1 para el caso de #169, donde el orden de despliegue también importaba: **las tres migraciones
+se aplicaron a dev el 2026-07-25/2026-07-26; prod queda pendiente, deliberadamente, hasta que el
+orquestador las aplique junto con el código ya corregido** — a diferencia de la versión anterior de
+esta nota, ya no hay ningún arreglo de formulario pendiente que bloquee el despliegue a prod.
 
 **UI**: `/saga/[id]/editar` (`saga-members-editor.tsx` + `member-actions.ts`, acción
 `updateSagaMember`) cura `placement` y `optional` por miembro, junto al `position`/`role` que ya
@@ -478,7 +496,7 @@ clasificar (`placement === null`) se distingue ahora solo por un contorno puntea
 para el mismo hecho. El chip de rol narrativo (§7.3) sobrevive, movido dentro de la celda
 compartida. La colocación de un **bloque-subsaga** (`position_in_parent`/`placement_in_parent`/
 `optional_in_parent`) todavía **no tiene UI**: solo se cura por SQL directo; el editor que la
-exponga es trabajo de la fase 2/3.
+exponga es trabajo de la fase 3.
 
 ## 8. Seguridad
 
@@ -511,7 +529,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
 | `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev y prod 2026-07-23) |
-| `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — **SOLO dev, 2026-07-25**, prod pendiente hasta la fase 2) |
+| `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — **SOLO dev, 2026-07-25/26**, prod pendiente hasta que el orquestador la aplique) |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
 
 ## 10. Migraciones

@@ -68,7 +68,20 @@ export function planMembershipOps(
   // que el role — de lo contrario el insert de abajo dejaría
   // (placement=null, position=carried) o (placement=null tras perder un
   // 'libre'), y el primero viola el CHECK.
-  const carriedPlacement = carried?.placement ?? others.find((r) => r.placement !== null)?.placement ?? null;
+  //
+  // OJO con el `??` cuando SÍ hay `carried`: no puede seguir la cadena hasta
+  // OTRA fila si `carried.placement` es null. Con el CHECK viejo en forma OR
+  // (arreglado en 20260725_saga_placement.sql, ver data-model.md §7.4) una
+  // fila (position=N, placement=null) sí podía existir — dev llegó a tener
+  // una — y `others.find((r) => r.placement !== null)` podía traerse el
+  // 'libre' de una fila HERMANA, produciendo (position=carried.position,
+  // placement='libre'): el CHECK actual lo rechaza igual (esa combinación
+  // exige position null). Si `carried` existe, el placement que se arrastra
+  // sale SOLO de esa misma fila (o 'fijo' por defecto, que es lo único
+  // compatible con un position no nulo) — nunca de otra.
+  const carriedPlacement = carried
+    ? (carried.placement ?? "fijo")
+    : (others.find((r) => r.placement !== null)?.placement ?? null);
   return {
     deleteFrom,
     insert: {
