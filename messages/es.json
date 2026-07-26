@@ -1170,6 +1170,8 @@
     },
     "zoneSequence": "La secuencia",
     "zoneSequenceHint": "El orden de lectura. Reordenar renumera.",
+    "slotCount": "{count} huecos",
+    "debtCount": "{count} filas",
     "zoneFree": "Cuando quieras",
     "zoneFreeHint": "Obras que no ocupan un hueco del orden: se leen en varios puntos. Siguen contando para el progreso salvo que las marques opcional — son dos cosas distintas.",
     "zoneFreeEmpty": "Todavía no hay nada aquí",
