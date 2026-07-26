@@ -95,6 +95,17 @@ export function moveSlot(d: SequenceDraft, index: number, delta: number): Sequen
 }
 
 export function sendTo(d: SequenceDraft, key: string, zone: ZoneId): SequenceDraft {
+  // Si la fila YA está en la zona destino, no-op. La hoja móvil pinta la zona
+  // actual como pastilla seleccionada, así que tocarla parece un no-op y tiene
+  // que serlo — sin este corte, mandar "sequence" a una fila que ya vive en un
+  // hueco (quizá en tándem) la sacaba de ahí y la reinsertaba como hueco nuevo
+  // al final, deshaciendo el tándem en silencio. "Ya está en la secuencia"
+  // significa estar en CUALQUIER hueco de `slots`, no en uno concreto.
+  const alreadyThere = zone === "sequence"
+    ? d.slots.some((slot) => slot.some((e) => e.key === key))
+    : d[zone].some((e) => e.key === key);
+  if (alreadyThere) return d;
+
   const [without, entry] = extract(d, key);
   if (!entry) return d;
   if (zone === "sequence") return { ...without, slots: [...without.slots, [entry]] };

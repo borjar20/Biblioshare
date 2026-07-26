@@ -97,8 +97,15 @@ export function RowSheet({
         </label>
 
         <div className="grid grid-cols-2 gap-1.5">
-          <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} className="rounded-lg border border-border p-2.5 text-[12px] font-semibold disabled:opacity-40">↑ {t("moveUp")}</button>
-          <button type="button" disabled={!canMoveDown} onClick={() => onMove(1)} className="rounded-lg border border-border p-2.5 text-[12px] font-semibold disabled:opacity-40">↓ {t("moveDown")}</button>
+          {/* Como en shell-desktop.tsx: subir/bajar solo tiene sentido con un
+              hueco que ocupar. Fuera de la secuencia quedarían deshabilitados
+              para siempre y sin explicación. */}
+          {slotNumber !== null && (
+            <>
+              <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} className="rounded-lg border border-border p-2.5 text-[12px] font-semibold disabled:opacity-40">↑ {t("moveUp")}</button>
+              <button type="button" disabled={!canMoveDown} onClick={() => onMove(1)} className="rounded-lg border border-border p-2.5 text-[12px] font-semibold disabled:opacity-40">↓ {t("moveDown")}</button>
+            </>
+          )}
           <button type="button" onClick={onPair} className="col-span-2 rounded-lg border border-border p-2.5 text-left text-[12px] font-semibold">⇥ {t("pairPrompt")}</button>
           <button type="button" onClick={onRemove} className="col-span-2 rounded-lg border border-border p-2.5 text-left text-[12px] font-semibold text-status-dropped">✕ {t("removeFromSaga")}</button>
         </div>

@@ -80,7 +80,7 @@ export function ShellDesktop({
                   <p className="pl-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-accent">{t("tandemCaption")}</p>
                   {slot.map((e) => row(e, null))}
                   <button
-                    type="button" onClick={() => ops.unpair(i)}
+                    type="button" onClick={() => ops.unpair(i)} aria-label={t("unpairFor", { n: i + 1 })}
                     className="w-full rounded-lg border border-dashed border-border py-1.5 text-[11.5px] font-semibold text-muted-foreground"
                   >{t("unpair")}</button>
                 </div>

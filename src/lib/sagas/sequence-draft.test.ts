@@ -67,6 +67,14 @@ describe("sendTo", () => {
     expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["a"]]);
     expect(d.free.map((e) => e.itemId)).toEqual(["c"]);
   });
+
+  it("mandar a la secuencia una fila que YA está en ella no la mueve ni rompe su tándem", () => {
+    // La hoja de móvil pinta la zona actual como pastilla seleccionada: tocarla
+    // parece un no-op y tiene que serlo. Sin esto, la fila saltaba al último
+    // hueco y el tándem se deshacía.
+    const d = draft([[work("a"), work("b")], [work("c")]]);
+    expect(sendTo(d, "i:book:b", "sequence")).toEqual(d);
+  });
 });
 
 describe("removeEntry", () => {

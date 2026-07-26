@@ -49,10 +49,14 @@ export function ShellMobile({
 
   return (
     <div className="px-3.5">
-      <div role="tablist" className="flex gap-1 rounded-xl bg-surface-muted p-1">
+      {/* No es un tablist: eso exige aria-controls, role="tabpanel", navegación
+          con flechas y roving tabindex, y aquí solo hay Tab + Enter/Espacio.
+          Anotar "pestaña" sin ese comportamiento es peor que no anotar nada —
+          un grupo de botones normales es honesto con lo que hay. */}
+      <div role="group" aria-label={t("zonePickerLabel")} className="flex gap-1 rounded-xl bg-surface-muted p-1">
         {TABS.map((z) => (
           <button
-            key={z} role="tab" type="button" aria-selected={tab === z} onClick={() => setTab(z)}
+            key={z} type="button" aria-pressed={tab === z} onClick={() => setTab(z)}
             className={`flex-1 rounded-lg px-1 py-2 text-center text-[11.5px] font-semibold leading-tight ${
               tab === z ? "bg-surface text-foreground shadow-sm" : z === "unclassified" && counts.unclassified > 0 ? "text-gold-ink" : "text-muted-foreground"
             }`}
@@ -81,7 +85,7 @@ export function ShellMobile({
                   <div className="grid min-w-0 flex-1 gap-1.5">
                     <p className="pl-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-accent">{t("tandemCaption")}</p>
                     {slot.map((e) => row(e, null))}
-                    <button type="button" onClick={() => ops.unpair(i)} className="rounded-lg border border-dashed border-border py-1.5 text-[11px] font-semibold text-muted-foreground">
+                    <button type="button" onClick={() => ops.unpair(i)} aria-label={t("unpairFor", { n: i + 1 })} className="rounded-lg border border-dashed border-border py-1.5 text-[11px] font-semibold text-muted-foreground">
                       {t("unpair")}
                     </button>
                   </div>
