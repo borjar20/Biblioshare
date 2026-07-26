@@ -26,11 +26,20 @@ update public.saga_items set placement = 'fijo' where position is not null;
 
 -- El CHECK va DESPUÉS del backfill: antes, las 342 filas con position y
 -- placement null lo violarían.
+--
+-- OJO con el `OR` de tres ramas de la primera versión de este CHECK (rev.
+-- inicial de este mismo fichero): con `placement IS NULL`, las dos primeras
+-- ramas valen NULL (comparar con NULL da NULL, no FALSE) y la tercera vale
+-- FALSE, así que el `OR` entero sale NULL — y un CHECK solo rechaza FALSE, así
+-- que la fila (`placement=NULL`, `position=7`) PASABA, cuando el invariante
+-- declarado es «sin clasificar nunca lleva número». Encontrado en el review
+-- final de la rama (dev ya tenía una fila así). El CASE de abajo no tiene ese
+-- agujero: con `placement=NULL` la condición del WHEN también da NULL, pero
+-- CASE trata un WHEN que no da TRUE (NULL incluido) como "no es esta rama" y
+-- cae al ELSE — no hay tercera rama redundante que enmascare el problema.
 alter table public.saga_items
   add constraint saga_items_placement_position check (
-    (placement = 'fijo'  and position is not null) or
-    (placement = 'libre' and position is null)     or
-    (placement is null   and position is null)
+    case when placement = 'fijo' then position is not null else position is null end
   );
 
 comment on column public.saga_items.placement is

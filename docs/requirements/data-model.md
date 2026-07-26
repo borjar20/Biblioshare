@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada SOLO en dev el 2026-07-26 — prod deliberadamente sin tocar hasta la fase 2, ver §7.4]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada SOLO en dev el 2026-07-26, con el CHECK corregido de `OR` a `CASE` el 2026-07-26 (fix de un finding Crítico del review final — el `OR` original no rechazaba `placement=NULL` con `position` no nulo) — prod deliberadamente sin tocar hasta la fase 2, ver §7.4]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -392,11 +392,17 @@ alter table public.saga_items
   add column placement public.saga_placement,   -- nullable: null = sin clasificar
   add column optional boolean not null default false,
   add constraint saga_items_placement_position check (
-    (placement = 'fijo'  and position is not null) or
-    (placement = 'libre' and position is null)     or
-    (placement is null   and position is null)
+    case when placement = 'fijo' then position is not null else position is null end
   );
 ```
+
+**El CHECK es un `CASE`, no un `OR` de tres ramas — corregido en el review final de la rama
+(2026-07-26).** La primera versión escrita era el `OR` de arriba con las tres ramas comentadas, y con
+`placement IS NULL` las dos primeras ramas dan `NULL` (no `FALSE`) y la tercera `FALSE`, así que el
+`OR` entero da `NULL` — un CHECK solo rechaza `FALSE`, así que colaba `(placement=NULL,
+position=7)`, justo lo que "sin clasificar nunca lleva número" prohíbe. Dev llegó a tener una fila
+así. El `CASE` no tiene ese agujero: un `WHEN` que no da `TRUE` (`NULL` incluido) cae al `ELSE` en
+vez de propagar el `NULL`. Con esta forma sí vale `placement='fijo' ⇔ position is not null`.
 
 Mismos tres atributos, aplicados al **bloque-subsaga entero** dentro de su padre (tapa el hueco
 que deja retirar el editor de grafo en fase 3: hoy la colocación de una subsaga vive en
@@ -409,9 +415,7 @@ alter table public.sagas
   add column placement_in_parent public.saga_placement,
   add column optional_in_parent boolean not null default false,
   add constraint sagas_placement_position check (
-    (placement_in_parent = 'fijo'  and position_in_parent is not null) or
-    (placement_in_parent = 'libre' and position_in_parent is null)     or
-    (placement_in_parent is null   and position_in_parent is null)
+    case when placement_in_parent = 'fijo' then position_in_parent is not null else position_in_parent is null end
   ),
   -- Una saga raíz no está colocada en ningún sitio: sin esto, "sacar del
   -- universo" dejaría restos en las tres columnas.

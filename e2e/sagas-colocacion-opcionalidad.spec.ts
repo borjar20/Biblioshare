@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 
 // E2E de los dos ejes nuevos de `/saga/[id]/editar` (commit 2627db7, sobre el
@@ -491,4 +492,82 @@ test("el sr-only del contorno punteado sale sin sesión, solo en la obra sin hue
   await expect(classifiedItem).toBeVisible();
   await expect(classifiedItem.locator("div").first()).not.toHaveClass(/outline-dashed/);
   await expect(classifiedItem.getByText(NO_SLOT_TEXT, { exact: true })).toHaveCount(0);
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Test 7 (Crítico del review final de la rama, 2026-07-26): pin del CHECK de
+// BD `saga_items_placement_position` directamente por REST, sin pasar por
+// `member-actions.ts`.
+//
+// Los Tests 2 y 4 (arriba) ya cubren «`fijo` sin número» — la rama que el
+// CHECK original SÍ mordía. Ninguno cubre «`placement=null` con `position`
+// puesto», la rama simétrica que el CHECK original NO mordía: escrito como
+// `OR` de tres ramas, con `placement IS NULL` las dos primeras ramas dan
+// `NULL` (comparar con `NULL` da `NULL`, no `FALSE`) y la tercera da `FALSE`,
+// así que el `OR` entero da `NULL` — y un CHECK solo rechaza `FALSE`, así que
+// la combinación colaba. Ni la UI ni `member-actions.ts` pueden ejercitar esa
+// rama (el formulario no ofrece "sin clasificar" con número, y el mirror de
+// JS en `member-actions.ts` sí es correcto porque `!==` en JS no tiene lógica
+// de tres valores) — la única forma de golpear el CHECK real es un INSERT
+// directo, como hace este test.
+//
+// Va por REST con la service key (mismo patrón que `restoreFollowState` en
+// sagas-v2-biblioteca.spec.ts) contra una fila sintética en Era Uno, con un
+// `item_id` al azar: `saga_items.item_id` no lleva FK (es polimórfico:
+// book|movie|series) así que no hace falta un libro/película/serie real para
+// ejercitar el CHECK — confirmado antes de escribir este test.
+// ─────────────────────────────────────────────────────────────────────────
+test("el CHECK de BD rechaza «sin clasificar» con número puesto (placement=null, position≠null)", async () => {
+  const restUrl = `${SUPABASE_URL}/rest/v1/saga_items`;
+  const badItemId = randomUUID();
+
+  const badRes = await fetch(restUrl, {
+    method: "POST",
+    headers: { ...adminHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({
+      saga_id: ERA_UNO_ID,
+      item_type: "book",
+      item_id: badItemId,
+      position: 999,
+      placement: null,
+    }),
+  });
+
+  // 400 + código de Postgres 23514 (check_violation) sobre el constraint
+  // exacto — no basta con "no 2xx", porque un 400 por otro motivo (p. ej. un
+  // typo de columna) haría pasar el test sin que el CHECK haya intervenido.
+  expect(badRes.status).toBe(400);
+  const badBody = (await badRes.json()) as { code?: string; message?: string };
+  expect(badBody.code).toBe("23514");
+  expect(badBody.message).toContain("saga_items_placement_position");
+
+  // Confirma que no escribió nada (defensivo: si el 400 viniera de un motivo
+  // distinto al CHECK, esto lo delataría).
+  const checkRes = await fetch(
+    `${restUrl}?saga_id=eq.${ERA_UNO_ID}&item_id=eq.${badItemId}&select=id`,
+    { headers: adminHeaders() },
+  );
+  expect(((await checkRes.json()) as unknown[]).length).toBe(0);
+
+  // Control positivo, mismo request salvo `placement:'fijo'`: confirma que
+  // el rechazo de arriba es del CHECK sobre esta combinación exacta, no de
+  // algo ajeno (RLS, columna inexistente, etc.) que bloquease cualquier
+  // INSERT en `saga_items` diera igual el valor. Se limpia inmediatamente.
+  const goodItemId = randomUUID();
+  const goodRes = await fetch(restUrl, {
+    method: "POST",
+    headers: { ...adminHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({
+      saga_id: ERA_UNO_ID,
+      item_type: "book",
+      item_id: goodItemId,
+      position: 999,
+      placement: "fijo",
+    }),
+  });
+  expect(goodRes.status).toBe(201);
+  await fetch(`${restUrl}?saga_id=eq.${ERA_UNO_ID}&item_id=eq.${goodItemId}`, {
+    method: "DELETE",
+    headers: adminHeaders(),
+  });
 });

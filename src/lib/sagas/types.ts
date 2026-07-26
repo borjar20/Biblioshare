@@ -42,8 +42,11 @@ export type SagaMember = {
   /** null = sin clasificar. Ortogonal a `position`: `position` dice si la obra
    *  tiene hueco fijo en el orden, `role` dice qué es. */
   role: SagaItemRole | null;
-  /** Dónde se lee. `fijo` ⇔ position !== null (lo garantiza el CHECK
-   *  saga_items_placement_position). null = sin clasificar. */
+  /** Dónde se lee. `fijo` ⇔ position !== null — lo garantiza el CHECK
+   *  saga_items_placement_position, que es un CASE (no un OR de tres ramas):
+   *  con `placement IS NULL` un OR de tres ramas da NULL, no FALSE, y un CHECK
+   *  solo rechaza FALSE (bug real, corregido en el review final de la rama,
+   *  2026-07-26 — ver comentario en la migración). null = sin clasificar. */
   placement: SagaPlacement | null;
   /** true = NO cuenta en el denominador del progreso. Ortogonal a placement:
    *  una obra puede ser libre y contar, o fija y no contar. */

@@ -53,11 +53,14 @@ update public.sagas s
   from ranked r
  where s.id = r.id;
 
+-- Mismo CASE que saga_items_placement_position (20260725_saga_placement.sql):
+-- un OR de tres ramas con `placement_in_parent IS NULL` da NULL entero (dos
+-- ramas NULL + una FALSE), y un CHECK solo rechaza FALSE — dejaría pasar
+-- (`placement_in_parent=NULL`, `position_in_parent` con número). El CASE no
+-- tiene ese agujero: un WHEN que no da TRUE cae al ELSE, sin rama redundante.
 alter table public.sagas
   add constraint sagas_placement_position check (
-    (placement_in_parent = 'fijo'  and position_in_parent is not null) or
-    (placement_in_parent = 'libre' and position_in_parent is null)     or
-    (placement_in_parent is null   and position_in_parent is null)
+    case when placement_in_parent = 'fijo' then position_in_parent is not null else position_in_parent is null end
   ),
   -- Una saga raíz no está colocada en ningún sitio: las tres columnas no
   -- pueden llevar valor. Sin esto, «sacar del universo» dejaría restos.

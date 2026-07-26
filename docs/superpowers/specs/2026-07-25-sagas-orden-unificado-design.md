@@ -129,6 +129,24 @@ El CHECK ata colocación y hueco sin ambigüedad posible: **`placement='fijo'` �
 "sin clasificar" nunca puede llevar número, y `libre` tampoco — su *dónde* es la ventana (abajo), no
 un hueco.
 
+> **Corrección [2026-07-26, review final de la rama]**: esa era la intención, pero el CHECK de tres
+> ramas con `OR` tal como está escrito arriba **no la cumplía**. Con `placement IS NULL` las dos
+> primeras ramas dan `NULL` (comparar con `NULL` da `NULL`, no `FALSE`) y la tercera da `FALSE`, así
+> que el `OR` entero da `NULL` — y un CHECK solo rechaza `FALSE`, así que la fila
+> (`placement=NULL`, `position=7`) **pasaba**, justo la combinación que el párrafo de arriba dice
+> que es imposible. Dev llegó a tener una fila así, creada durante la propia ejecución de esta rama.
+> El CHECK realmente aplicado (`supabase/migrations/20260725_saga_placement.sql`, y su gemelo
+> `sagas_placement_position` en `_blocks.sql`) sustituye el `OR` por un `CASE`, que no tiene ese
+> agujero porque un `WHEN` que no da `TRUE` (incluido `NULL`) cae al `ELSE` en vez de propagar el
+> `NULL`. La forma final:
+>
+> ```sql
+> check (case when placement = 'fijo' then position is not null else position is null end)
+> ```
+>
+> Con esta forma sí es cierto que `placement='fijo' ⇔ position is not null`, para las tres filas del
+> dominio (`fijo`+número, `libre`+sin número, `null`+sin número) y ninguna otra.
+
 **El default `false` de `optional` es deliberado**: las 351 membresías de hoy siguen contando, así
 que ningún lector ve moverse su avance por esta migración. La única saga cuyo número cambia es
 Mundodisco, que pasa de 0/0 (roto) a 26/26 (real).
