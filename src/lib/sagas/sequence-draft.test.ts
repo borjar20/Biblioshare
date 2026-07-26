@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
-  addEntry, moveSlot, pairWith, removeEntry, sendTo, setOptional, setRole, toPayload, unpair,
-  type DraftEntry, type SequenceDraft,
+  addEntry, clearAnchor, moveSlot, pairWith, removeEntry, sendTo, setAnchor, setOptional, setRole,
+  toPayload, unpair,
+  type DraftAnchor, type DraftEntry, type SequenceDraft,
 } from "./sequence-draft";
 
 const work = (id: string, title = id): DraftEntry => ({
   key: `i:book:${id}`, kind: "item", itemType: "book", itemId: id, childSagaId: null,
-  title, coverUrl: null, accentColor: null, count: null, optional: false, role: null, isNew: false,
+  title, coverUrl: null, accentColor: null, count: null, optional: false, role: null, window: null,
+  isNew: false,
 });
 const block = (id: string): DraftEntry => ({
   key: `s:${id}`, kind: "block", itemType: null, itemId: null, childSagaId: id,
-  title: id, coverUrl: null, accentColor: "verde", count: 8, optional: false, role: null, isNew: false,
+  title: id, coverUrl: null, accentColor: "verde", count: 8, optional: false, role: null, window: null,
+  isNew: false,
 });
 const draft = (slots: DraftEntry[][], free: DraftEntry[] = [], unclassified: DraftEntry[] = []): SequenceDraft =>
   ({ slots, free, unclassified, removed: [] });
@@ -139,5 +142,47 @@ describe("setOptional / setRole", () => {
   it("un bloque nunca guarda rol: setRole lo ignora", () => {
     const d = setRole(draft([[block("g")]]), "s:g", "spin_off");
     expect(d.slots[0][0].role).toBeNull();
+  });
+});
+
+const anchor = (title: string): DraftAnchor => ({
+  kind: "block", itemType: null, itemId: null, childSagaId: `saga-${title}`, title,
+});
+
+describe("ventanas", () => {
+  it("poner un ancla la deja en la entrada", () => {
+    const d = setAnchor(draft([], [work("f")]), "i:book:f", "after", anchor("Era 1"));
+    expect(d.free[0].window).toEqual({ after: anchor("Era 1"), before: null });
+  });
+
+  it("quitar la última ancla deja la ventana en null, no en un objeto vacío", () => {
+    // Una ventana sin anclas no existe: el CHECK de BD la rechaza, así que el
+    // borrador tampoco puede tenerla.
+    const conAncla = setAnchor(draft([], [work("f")]), "i:book:f", "after", anchor("Era 1"));
+    expect(clearAnchor(conAncla, "i:book:f", "after").free[0].window).toBeNull();
+  });
+
+  it("sacar la fila de «Cuando quieras» se lleva su ventana por delante", () => {
+    // Es la coherencia que ningún CHECK entre tablas puede imponer.
+    const conAncla = setAnchor(draft([], [work("f")]), "i:book:f", "after", anchor("Era 1"));
+    const movida = sendTo(conAncla, "i:book:f", "sequence");
+    expect(movida.slots[0][0].window).toBeNull();
+  });
+
+  it("una entrada fuera de la zona libre no admite ancla", () => {
+    const d = draft([[work("a")]]);
+    expect(setAnchor(d, "i:book:a", "after", anchor("Era 1"))).toEqual(d);
+  });
+
+  it("toPayload lleva las ventanas, y solo las de la zona libre", () => {
+    const d = setAnchor(draft([[work("a")]], [work("f")]), "i:book:f", "before", anchor("Viento"));
+    const p = toPayload(d);
+    expect(p.windows).toEqual([
+      {
+        item_type: "book", item_id: "f", child_saga_id: null,
+        after_item_type: null, after_item_id: null, after_child_saga_id: null,
+        before_item_type: null, before_item_id: null, before_child_saga_id: "saga-Viento",
+      },
+    ]);
   });
 });

@@ -23,14 +23,14 @@ const entryFromPickedItem = (item: PickedItem): DraftEntry => ({
   key: `i:${item.itemType}:${item.itemId}`,
   kind: "item", itemType: item.itemType, itemId: item.itemId, childSagaId: null,
   title: item.title, coverUrl: item.coverUrl, accentColor: null, count: null,
-  optional: false, role: null, isNew: false,
+  optional: false, role: null, window: null, isNew: false,
 });
 
 const entryFromChildSaga = (child: ChildSagaData): DraftEntry => ({
   key: `s:${child.id}`,
   kind: "block", itemType: null, itemId: null, childSagaId: child.id,
   title: child.name, coverUrl: null, accentColor: child.accentColor, count: child.count,
-  optional: false, role: null, isNew: false,
+  optional: false, role: null, window: null, isNew: false,
 });
 
 // Las dos cáscaras se montan A LA VEZ y se ocultan por breakpoint (regla de los

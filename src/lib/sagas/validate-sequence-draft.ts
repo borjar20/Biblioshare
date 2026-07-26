@@ -11,10 +11,11 @@ import type { SequencePayload } from "./sequence-draft";
  *  borrado en la Task 9 junto con el formulario por fila). */
 export function validateSequenceDraft(
   payload: SequencePayload,
-  ctx: { childIds: Set<string> },
+  ctx: { childIds: Set<string>; anchorKeys?: Set<string> },
 ): { errors: string[]; unclassified: number } {
   const errors = new Set<string>();
   let unclassified = 0;
+  const anchorKeys = ctx.anchorKeys ?? new Set<string>();
 
   const positions: number[] = [];
   const seen = new Set<string>();
@@ -35,6 +36,43 @@ export function validateSequenceDraft(
     if ((b.placement_in_parent === "fijo") !== (b.position_in_parent !== null)) errors.add("placement");
     if (b.placement_in_parent === null) unclassified++;
     if (b.position_in_parent !== null) positions.push(b.position_in_parent);
+  }
+
+  // Ventanas (fase 2b): forma calcada de `saga_placement_windows`. La clave
+  // usa el mismo formato que `DraftEntry.key` (`i:<tipo>:<id>` / `s:<uuid>`)
+  // para que `ctx.anchorKeys`, que el llamante rellena con las claves del
+  // subárbol, se pueda comparar directamente.
+  const key = (itemType: string | null, itemId: string | null, childSagaId: string | null): string | null =>
+    itemId !== null && itemType !== null ? `i:${itemType}:${itemId}`
+      : childSagaId !== null ? `s:${childSagaId}`
+      : null;
+
+  const freeItemKeys = new Set(
+    payload.entries.filter((e) => e.placement === "libre").map((e) => `${e.item_type}:${e.item_id}`),
+  );
+  const freeBlockKeys = new Set(
+    payload.blocks.filter((b) => b.placement_in_parent === "libre").map((b) => b.child_saga_id),
+  );
+
+  for (const w of payload.windows) {
+    const subjectKey = key(w.item_type, w.item_id, w.child_saga_id);
+    const subjectFree = w.item_id !== null
+      ? freeItemKeys.has(`${w.item_type}:${w.item_id}`)
+      : w.child_saga_id !== null && freeBlockKeys.has(w.child_saga_id);
+    if (!subjectFree) errors.add("windowNotFree");
+
+    const afterKey = key(w.after_item_type, w.after_item_id, w.after_child_saga_id);
+    const beforeKey = key(w.before_item_type, w.before_item_id, w.before_child_saga_id);
+    if (afterKey === null && beforeKey === null) errors.add("windowNoAnchor");
+
+    if (afterKey !== null) {
+      if (afterKey === subjectKey) errors.add("windowSelfAnchor");
+      if (!anchorKeys.has(afterKey)) errors.add("windowForeignAnchor");
+    }
+    if (beforeKey !== null) {
+      if (beforeKey === subjectKey) errors.add("windowSelfAnchor");
+      if (!anchorKeys.has(beforeKey)) errors.add("windowForeignAnchor");
+    }
   }
 
   // Consecutivas desde 1 ADMITIENDO EMPATES: se comparan los huecos DISTINTOS,

@@ -11,7 +11,8 @@ import type { DraftEntry } from "./sequence-draft";
 
 const e = (id: string): DraftEntry => ({
   key: `i:book:${id}`, kind: "item", itemType: "book", itemId: id, childSagaId: null,
-  title: id, coverUrl: null, accentColor: null, count: null, optional: false, role: null, isNew: false,
+  title: id, coverUrl: null, accentColor: null, count: null, optional: false, role: null, window: null,
+  isNew: false,
 });
 
 it("dos filas con el MISMO número caen en el mismo hueco: eso es el tándem", () => {

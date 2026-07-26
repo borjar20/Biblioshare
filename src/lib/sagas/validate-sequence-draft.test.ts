@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
-const base: SequencePayload = { entries: [], blocks: [], removed: [], removedBlocks: [] };
+const base: SequencePayload = { entries: [], blocks: [], removed: [], removedBlocks: [], windows: [] };
 const ctx = { childIds: new Set(["hija-1"]) };
 const item = (id: string, position: number | null, placement: SequencePayload["entries"][number]["placement"]) =>
   ({ item_type: "book" as const, item_id: id, position, placement, optional: false, role: null });
@@ -64,4 +64,67 @@ it("los bloques sin clasificar también cuentan como aviso", () => {
   const r = validateSequenceDraft({ ...base, blocks }, ctx);
   expect(r.errors).toEqual([]);
   expect(r.unclassified).toBe(1);
+});
+
+const window = (overrides: Partial<SequencePayload["windows"][number]> = {}): SequencePayload["windows"][number] => ({
+  item_type: "book", item_id: "f", child_saga_id: null,
+  after_item_type: null, after_item_id: null, after_child_saga_id: null,
+  before_item_type: null, before_item_id: null, before_child_saga_id: null,
+  ...overrides,
+});
+
+it("rechaza la ventana de una entrada que no es `libre` en el propio payload", () => {
+  const entries = [item("f", 1, "fijo"), item("a", null, "libre")];
+  const windows = [window({ after_item_id: "a", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:a"]) });
+  expect(r.errors).toEqual(["windowNotFree"]);
+});
+
+it("acepta la ventana de una entrada que sí es `libre`", () => {
+  const entries = [item("f", null, "libre"), item("a", null, "libre")];
+  const windows = [window({ after_item_id: "a", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:a"]) });
+  expect(r.errors).toEqual([]);
+});
+
+it("rechaza una ventana sin ninguna ancla", () => {
+  const entries = [item("f", null, "libre")];
+  const windows = [window()];
+  const r = validateSequenceDraft({ ...base, entries, windows }, ctx);
+  expect(r.errors).toEqual(["windowNoAnchor"]);
+});
+
+it("acepta una ventana con al menos un ancla", () => {
+  const entries = [item("f", null, "libre"), item("a", null, "libre")];
+  const windows = [window({ after_item_id: "a", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:a"]) });
+  expect(r.errors).toEqual([]);
+});
+
+it("rechaza un ancla que apunta a su propio sujeto", () => {
+  const entries = [item("f", null, "libre")];
+  const windows = [window({ after_item_id: "f", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:f"]) });
+  expect(r.errors).toEqual(["windowSelfAnchor"]);
+});
+
+it("acepta un ancla que apunta a otra entrada", () => {
+  const entries = [item("f", null, "libre")];
+  const windows = [window({ after_item_id: "a", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:a"]) });
+  expect(r.errors).toEqual([]);
+});
+
+it("rechaza un ancla fuera del subárbol", () => {
+  const entries = [item("f", null, "libre")];
+  const windows = [window({ after_item_id: "x", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set() });
+  expect(r.errors).toEqual(["windowForeignAnchor"]);
+});
+
+it("acepta un ancla dentro del subárbol", () => {
+  const entries = [item("f", null, "libre")];
+  const windows = [window({ after_item_id: "x", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:x"]) });
+  expect(r.errors).toEqual([]);
 });

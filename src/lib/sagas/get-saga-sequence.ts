@@ -84,7 +84,7 @@ export async function getSagaSequence(
       entry: {
         key: `i:${r.item_type}:${r.item_id}`, kind: "item", itemType: r.item_type, itemId: r.item_id,
         childSagaId: null, title: m.title, coverUrl: m.coverUrl, accentColor: null, count: null,
-        optional: r.optional, role: r.role, isNew: false,
+        optional: r.optional, role: r.role, window: null, isNew: false,
       },
     });
   }
@@ -94,7 +94,7 @@ export async function getSagaSequence(
       entry: {
         key: `s:${c.id}`, kind: "block", itemType: null, itemId: null, childSagaId: c.id,
         title: c.name, coverUrl: null, accentColor: c.accent_color, count: counts.get(c.id) ?? 0,
-        optional: c.optional_in_parent, role: null, isNew: false,
+        optional: c.optional_in_parent, role: null, window: null, isNew: false,
       },
     });
   }
