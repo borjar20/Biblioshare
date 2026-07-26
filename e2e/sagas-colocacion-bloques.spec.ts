@@ -59,12 +59,20 @@ async function fetchChildren(): Promise<ChildRow[]> {
     `${SUPABASE_URL}/rest/v1/sagas?parent_saga_id=eq.${UNIVERSO}&select=id,position_in_parent,placement_in_parent`,
     { headers: adminHeaders() },
   );
+  // Fix revisión final #198 (Minor 4): sin este chequeo, un 4xx (p. ej. una
+  // service key caducada) devuelve un body de error que `res.json()` parsea
+  // igualmente como si fueran filas — `before` sale mal formado, `restore` al
+  // final del test "restaura" basura, y los dos tests siguen en verde con dev
+  // sucio. Misma familia de fallo que las issues #180/#182.
+  if (!res.ok) {
+    throw new Error(`fetchChildren: ${res.status} ${res.statusText} — ${await res.text()}`);
+  }
   return res.json();
 }
 
 async function restore(rows: ChildRow[]) {
   for (const r of rows) {
-    await fetch(`${SUPABASE_URL}/rest/v1/sagas?id=eq.${r.id}`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sagas?id=eq.${r.id}`, {
       method: "PATCH",
       headers: { ...adminHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -72,6 +80,13 @@ async function restore(rows: ChildRow[]) {
         placement_in_parent: r.placement_in_parent,
       }),
     });
+    // Fix revisión final #198 (Minor 4): sin este chequeo, un PATCH que falla
+    // (4xx) deja la fila con la colocación que puso el propio test (no la
+    // original) y el `finally` del test no se entera — dev queda sucio y el
+    // test, igualmente, en verde.
+    if (!res.ok) {
+      throw new Error(`restore(${r.id}): ${res.status} ${res.statusText} — ${await res.text()}`);
+    }
   }
 }
 

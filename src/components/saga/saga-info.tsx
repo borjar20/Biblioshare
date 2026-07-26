@@ -200,6 +200,18 @@ export async function SagaInfo({
     eligible: group.members.filter((m) => m.placement !== "libre"),
   }));
   const hasVisibleOrderedGroup = orderedGroupsWithEligible.some(({ eligible }) => eligible.length > 0);
+  // Fix revisión final #198 (Important 1): `freeGroups` puede traer bloques sin
+  // ningún miembro elegible (mismo caso que `orderedGroupsWithEligible` de
+  // arriba), así que se filtra aquí una sola vez y se reutiliza tanto para
+  // decidir si «Cuando quieras» tiene algo real como para pintarlo más abajo —
+  // el mismo criterio de "un filtrado, nunca dos que puedan divergir" que ya
+  // exigían los Fix Task 7/Task 2 de más arriba.
+  const freeGroupsWithEligible = freeGroups.map((group) => ({
+    group,
+    eligible: group.members.filter((m) => m.placement !== "libre"),
+  }));
+  const hasVisibleFreeSection =
+    freeMembers.length > 0 || freeGroupsWithEligible.some(({ eligible }) => eligible.length > 0);
   return (
     <div className="flex flex-col gap-5 px-4 pb-10">
       <section>
@@ -318,14 +330,21 @@ export async function SagaInfo({
               );
             })}
           </div>
-        ) : (
+        ) : hasVisibleFreeSection ? (
           // Fix Task 2 / Finding 1 (review): la cabecera y la fila de botones
           // de curación (Editar ficha / Anidar en universo / Itinerarios) se
           // quedan SIEMPRE — son la vía de entrada a la curación para
           // collaborator+ (issue #181). Solo se sustituye la rejilla vacía
           // por esta línea, nunca la sección entera.
+          //
+          // Fix revisión final #198 (Important 1): esta frase afirma que hay
+          // obras y todas viven en «Cuando quieras» — falso en una saga
+          // GENUINAMENTE vacía (0 miembros, 0 bloques elegibles en absoluto,
+          // caso real "[QA Sagas v2] Era Vacía" en dev). Solo se pinta cuando
+          // `hasVisibleFreeSection` confirma que esa sección va a existir de
+          // verdad más abajo; si no hay nada en ningún sitio, no se dice nada.
           <p className="text-[13px] text-muted-foreground">{t("allFreeHint")}</p>
-        )}
+        ) : null}
       </section>
 
       {/* Los `libre` salen de la columna del orden y viven aquí: su «dónde» no
@@ -334,7 +353,7 @@ export async function SagaInfo({
           ortogonales»). Desde la #198 la sección acoge dos formas: obras
           sueltas y bloques-subsaga enteros, que se pintan con su cabecera
           porque un bloque sin sus obras no dice nada. */}
-      {(freeMembers.length > 0 || freeGroups.length > 0) && (
+      {hasVisibleFreeSection && (
         <section>
           <h2 className="mb-3 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
             {t("freeSection")}
@@ -349,8 +368,7 @@ export async function SagaInfo({
                 ))}
               </ul>
             )}
-            {freeGroups.map((group) => {
-              const eligible = group.members.filter((m) => m.placement !== "libre");
+            {freeGroupsWithEligible.map(({ group, eligible }) => {
               if (eligible.length === 0) return null;
               return (
                 <div key={group.sagaId}>
