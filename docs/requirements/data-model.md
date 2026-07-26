@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada SOLO en dev el 2026-07-26 — prod deliberadamente sin tocar hasta la fase 2, ver §7.4]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -241,16 +241,28 @@ reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta
 son `saga_nodes` (mixtos: apuntan a un ítem **o** a una saga hija) + `saga_edges`
 (`principal | opcional | requisito`).
 
-**La regla de cómputo del progreso (§1.5 del spec) es una sola** y vive en
-`src/lib/sagas/main-order.ts`: el denominador es el **orden principal** — con grafo, los
-nodos con `order_no`, expandiendo recursivamente los nodos-saga; sin grafo, los miembros por
-`position`. Los opcionales no penalizan. Tenerla duplicada ya causó el issue #91 (el hero
-decía 2/7 donde la card decía 2/5).
+**⚠️ El progreso de una saga ya NO depende del orden — regla vigente desde el 2026-07-25/26
+(fase 1 del orden unificado, §7.4).** Hasta entonces el denominador *era* el orden principal:
+`createMainOrder` (`src/lib/sagas/main-order.ts`) producía una lista y `computeProgress` contaba
+sobre ella. Ahora el denominador sale de la **pertenencia**: `countedKeys`
+(`src/lib/sagas/progress.ts`) cuenta, deduplicadas por `item_type:item_id`, las obras del
+subárbol que **no** estén marcadas `optional` (ver §7.4 para el modelo completo). `main-order.ts`
+se queda solo con la **ordenación para pintar** (timeline, expansión de bloques dentro de un
+itinerario) — ninguna suma cuelga ya de él.
 
-Desde el issue #170, esa regla **descarta los nodos huérfanos** (nodo-ítem que apunta a algo
-que no es miembro: `saga_nodes.item_id` no tiene FK y `save_saga_graph` no valida la
-membresía). Antes contaban en el denominador pero `buildSagaGraph` no los pintaba, así que
-ese avance no podía llegar nunca al 100%.
+Acoplar el denominador a la curación produjo cuatro fallos con una sola causa, que este cambio
+cierra por construcción en vez de parchear uno a uno: **#91** (la regla estaba duplicada; el
+hero decía 2/7 donde la card decía 2/5), **#170** (nodos huérfanos: contaban en el denominador
+pero no se pintaban, así que el avance no podía llegar nunca al 100%), **#185** (`main-order.ts`
+tenía dos ramas que se contradicen — con grafo, lo no numerado no cuenta; sin grafo, cuenta
+todo — y la rama que esta misma sección documentaba aplicaba a 1 saga de 70) y el **0/0 de
+Mundodisco** (26 nodos sin `order_no` → orden principal vacío → hero sin progreso y timeline
+vacío, con miembros reales de sobra).
+
+La exclusión de nodos huérfanos que introdujo #170 **sigue viva**, pero desde la fase 1 solo
+afecta a la **presentación** (qué se pinta en el timeline/grafo), nunca al número: la asimetría
+de #185 en la ORDENACIÓN (no en el cómputo) sigue sin resolver y queda abierta como issue — ya no
+puede descuadrar el progreso porque el progreso no la mira.
 
 ### 7.1 Escritura de `saga_items` (issue #169)
 
@@ -331,9 +343,10 @@ alter table public.saga_items add column role public.saga_item_role;
   descuido de curación, que es literalmente la queja del issue.
 - **Por saga, no por ítem**: el unique de `saga_items` sigue siendo `(saga_id, item_type, item_id)`,
   así que un libro puede ser precuela en una saga y obra principal en otra.
-- **No toca el denominador del progreso.** La regla única de §1.5/`main-order.ts` (arriba) no cambia;
-  marcar un rol es puramente semántico. Ver `decisiones.md` (issue #167) — es la familia de fallo
-  del #91 si algún día se acoplaran.
+- **No toca el denominador del progreso** (hoy `countedKeys` en `src/lib/sagas/progress.ts`, ver
+  §7.4 — en el momento de aplicar esta migración era `main-order.ts`, pero el criterio "el rol es
+  puramente semántico y no debe entrar en el cómputo" no cambió al mudarse el denominador). Ver
+  `decisiones.md` (issue #167) — es la familia de fallo del #91 si algún día se acoplaran.
 - Hereda la RLS de `saga_items` sin trabajo adicional (SELECT público, escritura `collaborator+`,
   §7.1); las funciones `SECURITY DEFINER` de TMDB siguen insertando sin mencionar la columna y
   obtienen `NULL`.
@@ -348,6 +361,118 @@ sale en `pg_attribute` con tipo `saga_item_role`, `attnotnull = false` y `atthas
 enum sale en `pg_enum` con los cuatro valores en el orden `precuela, spin_off, relato, paralela`. En
 prod: **327 filas en `saga_items`, 0 con `role`** — el «sin backfill» comprobado en el dato, no solo
 en la intención del DDL.
+
+### 7.4 Colocación y opcionalidad: `placement` / `optional` (fase 1 del orden unificado)
+
+Fase 1 de 3 de un spec mayor —
+`docs/superpowers/specs/2026-07-25-sagas-orden-unificado-design.md`— que reemplaza los tres
+sistemas de orden que hoy coexisten (lista numerada, grafo, itinerarios) por uno solo. Esta fase
+**no** toca esa unificación todavía: solo introduce el modelo de dos ejes nuevos y desacopla el
+progreso del orden. Fases 2 y 3 (arreglo de `assignItemToSaga`/#188 + aplicar a prod, y el editor
+único de secuencia con `saga_placement_windows`/tándem/retirada del grafo) **siguen sin construir**
+— ver `backlog.md`.
+
+**Dos ejes ORTOGONALES, y ésa es la distinción que toda la fase existe para establecer:**
+
+| | cuenta en el progreso | no cuenta (`optional`) |
+|---|---|---|
+| **`fijo`** (hueco numerado) | el caso normal | un spin-off con hueco propio que no se quiere exigir |
+| **`libre`** (se lee cuando quieras) | *p. ej. una novela puente que sí se cuenta* | *p. ej. un relato suelto que no se cuenta* |
+
+`placement` dice **dónde** se lee (`fijo` = tiene hueco numerado; `libre` = en cualquier momento;
+`null` = sin clasificar). `optional` dice **si cuenta** en el progreso. Una obra puede ser libre y
+contar, o fija y no contar — la doc no debe volver a presentarlos como un solo eje, que es
+justo la confusión que #167 dejó sin resolver del todo (`role`, §7.3, es un **tercer** eje,
+ortogonal a los otros dos: qué *es* la obra).
+
+```sql
+create type public.saga_placement as enum ('fijo', 'libre');
+
+alter table public.saga_items
+  add column placement public.saga_placement,   -- nullable: null = sin clasificar
+  add column optional boolean not null default false,
+  add constraint saga_items_placement_position check (
+    (placement = 'fijo'  and position is not null) or
+    (placement = 'libre' and position is null)     or
+    (placement is null   and position is null)
+  );
+```
+
+Mismos tres atributos, aplicados al **bloque-subsaga entero** dentro de su padre (tapa el hueco
+que deja retirar el editor de grafo en fase 3: hoy la colocación de una subsaga vive en
+`saga_nodes.child_saga_id`+`order_no` si el padre tiene grafo, o se deducía del menor `position`
+de sus miembros si no):
+
+```sql
+alter table public.sagas
+  add column position_in_parent integer,
+  add column placement_in_parent public.saga_placement,
+  add column optional_in_parent boolean not null default false,
+  add constraint sagas_placement_position check (
+    (placement_in_parent = 'fijo'  and position_in_parent is not null) or
+    (placement_in_parent = 'libre' and position_in_parent is null)     or
+    (placement_in_parent is null   and position_in_parent is null)
+  ),
+  -- Una saga raíz no está colocada en ningún sitio: sin esto, "sacar del
+  -- universo" dejaría restos en las tres columnas.
+  add constraint sagas_placement_needs_parent check (
+    parent_saga_id is not null or
+    (position_in_parent is null and placement_in_parent is null and optional_in_parent = false)
+  );
+```
+
+**El progreso deja de mirar el orden** (ver también §7, arriba): el denominador sale de
+`countedKeys` (`src/lib/sagas/progress.ts`) — las obras del subárbol que **no** estén marcadas
+`optional`, deduplicadas por `item_type:item_id`, sin mirar `position` ni `saga_nodes` ni
+itinerarios. Un bloque `optional_in_parent` saca a los suyos del denominador de **su padre**, pero
+no del suyo propio (abrir la ficha de un spin-off `optional` y ver su propio progreso, no 0/0, es
+lo que un lector espera). `libre` no afecta al progreso, solo dice dónde se lee. Lo "sin
+clasificar" **cuenta** — la deuda de curación se ve, no se descuenta a escondidas.
+
+**Backfill, medido contra el dato real de cada entorno — dev y prod NO tienen el mismo tamaño de
+catálogo, y las dos filas siguientes no son comparables entre sí, cada una describe su propio
+entorno:**
+
+- **Dev** (`supabase-dev`, tras aplicar las dos migraciones, 2026-07-26): `saga_items` tiene 22
+  filas — 19 pasan a `placement='fijo'` (tenían `position`), 3 quedan `null` (sin clasificar,
+  0 marcadas `optional` tras el default). `sagas` tiene 14 filas, 5 con `parent_saga_id`; el
+  backfill coloca 2 como `placement_in_parent='fijo'` y deja 3 en `null` — **a propósito**: son
+  hijas de un padre que tiene grafo (`saga_nodes`), y ahí la app no deduce el orden de `position`
+  sino de `order_no`, así que inventar una colocación habría sido una curación que nadie hizo (se
+  migran a mano en la fase 3). `saga_placement_windows` (tabla de la fase 3, para la ventana de un
+  `libre`) **no existe todavía**, ni en dev ni en prod.
+- **Prod, medido el 2026-07-25 antes de que existieran estas columnas** (spec, sección "Modelo de
+  datos"): 342 filas de `saga_items` con `position` (→ habrían pasado a `fijo`), 9 sin `position`
+  (→ `null`). **Esta cifra es informativa, no aplicada**: prod no tiene ni el enum ni las columnas
+  — ver más abajo.
+
+**Migraciones `20260725_saga_placement.sql` y `20260725_saga_placement_blocks.sql` — SOLO EN DEV,
+deliberadamente, durante toda la fase 1.** El motivo no es prudencia genérica: el CHECK
+`saga_items_placement_position` **rompe `assignItemToSaga`** (el formulario «Saga» de la ficha,
+`manage-saga-actions.ts`), que hace `upsert` de la membresía escribiendo `position` y lo pone a
+`null` si el campo llega vacío — sobre una fila `fijo` eso viola la restricción nueva. Antes esa
+pérdida era silenciosa (issue #188); con el CHECK en prod pasaría a ser un `upsert` que falla duro.
+El arreglo de ese formulario es trabajo de la **fase 2**, y las dos migraciones se aplican a prod
+**al principio** de esa fase, junto con el arreglo, no antes: aplicarlas ya dejaría una regresión
+real en producción a cambio de nada, porque en prod aún no hay ninguna UI que escriba `placement`
+ni `optional`. Mismo formato que ya usa §7.1 para el caso de #169, donde el orden de despliegue
+también importaba: **aplicadas en dev el 2026-07-25 (esquema) y 2026-07-26 (progreso/UI); prod
+pendiente, deliberadamente, hasta la fase 2 (#188)**.
+
+**UI**: `/saga/[id]/editar` (`saga-members-editor.tsx` + `member-actions.ts`, acción
+`updateSagaMember`) cura `placement` y `optional` por miembro, junto al `position`/`role` que ya
+curaba desde #167 — un doble gate (RLS `collaborator+` de `saga_items` + comprobación en la server
+action) igual que el resto de escrituras de saga. La ficha (`saga-info.tsx`) pinta una sección
+**"Cuando quieras"** con las entradas `libre`, un chip **"opcional"** sobre la portada de las
+entradas `optional`, y — para `collaborator+` — un aviso de deuda de curación ("N obras sin
+clasificar… Clasificarlas") que enlaza a `/editar`. La sección **"Fuera del orden principal"** que
+trajo la PR #189 (§7.3) **se fundió en la grid del grupo y ya no existe**: un miembro sin
+clasificar (`placement === null`) se distingue ahora solo por un contorno punteado en su portada
+(con equivalente accesible) y por el aviso de deuda — la sección dedicada era la tercera señal
+para el mismo hecho. El chip de rol narrativo (§7.3) sobrevive, movido dentro de la celda
+compartida. La colocación de un **bloque-subsaga** (`position_in_parent`/`placement_in_parent`/
+`optional_in_parent`) todavía **no tiene UI**: solo se cura por SQL directo; el editor que la
+exponga es trabajo de la fase 2/3.
 
 ## 8. Seguridad
 
@@ -380,6 +505,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
 | `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev y prod 2026-07-23) |
+| `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — **SOLO dev, 2026-07-25**, prod pendiente hasta la fase 2) |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
 
 ## 10. Migraciones
