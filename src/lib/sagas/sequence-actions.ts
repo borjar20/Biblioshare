@@ -34,6 +34,7 @@ export async function saveSequence(
     p_entries: payload.entries,
     p_blocks: payload.blocks,
     p_removed: payload.removed,
+    p_windows: payload.windows,
   });
   if (error) return { error: "generic" };
 
