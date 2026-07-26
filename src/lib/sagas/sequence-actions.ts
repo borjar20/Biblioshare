@@ -7,9 +7,12 @@ import { revalidateSagaEditPage, revalidateSagaPage } from "@/lib/reactivity/rev
 import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
-// Doble gate a propósito: la RLS de saga_items ya exige collaborator+ y la RPC
-// lo vuelve a comprobar por dentro; aun así se comprueba aquí. Los tres, nunca
-// solo uno (mismo criterio que route-actions.ts).
+// Doble gate a propósito, no triple: la RPC es SECURITY DEFINER, así que sus
+// escrituras corren con los privilegios del dueño y SALTAN la RLS de
+// saga_items — esa política no protege nada aquí. Los gates reales son el de
+// este server action (da un error legible en la UI) y el de la RPC (la
+// garantía de verdad). Los dos, nunca solo uno (mismo criterio que
+// saveRoute en route-actions.ts).
 export async function saveSequence(
   sagaId: string,
   payload: SequencePayload,

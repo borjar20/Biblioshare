@@ -41,7 +41,20 @@ begin
     (e->>'placement')::public.saga_placement,
     coalesce((e->>'optional')::boolean, false),
     (e->>'role')::public.saga_item_role,
-    false
+    -- `is_primary` NO puede ser un `false` incondicional: el resto de escritores
+    -- (assignItemToSaga, link_tmdb_saga_item) marcan la fila como principal
+    -- cuando el ítem no tiene ya una principal en otra saga, y sin esto un alta
+    -- desde el editor deja al ítem SIN saga principal — que luego se lleva, en
+    -- silencio, la siguiente saga a la que alguien lo añada desde la ficha.
+    -- El `not exists` se evalúa contra la instantánea previa a la sentencia, lo
+    -- cual es correcto aquí porque `validateSequenceDraft` ya rechaza un payload
+    -- con el mismo ítem dos veces.
+    not exists (
+      select 1 from saga_items p
+      where p.item_type = (e->>'item_type')::public.item_type
+        and p.item_id = (e->>'item_id')::uuid
+        and p.is_primary
+    )
   from jsonb_array_elements(coalesce(p_entries, '[]'::jsonb)) as e
   on conflict (saga_id, item_type, item_id) do update
     set position  = excluded.position,
