@@ -243,6 +243,19 @@ bloques van a caer en «Sin clasificar», y eso **es el resultado correcto**: la
 inventar una colocación derivada de las aristas y presentarla como curada. Queda como trabajo humano
 explícito, anotado en su issue, no escondido en un script.
 
+> **Corrección [2026-07-26, al ejecutar la Task 10]: la premisa de esta sección era falsa, y el
+> rescate no rescata nada.** Medido contra producción antes de aplicar: de los **55** nodos de
+> `saga_nodes`, **solo 1** apunta a una subsaga (`child_saga_id` no nulo), y ese único nodo **no
+> tiene `order_no`**. Las otras 11 hijas no tienen ningún nodo que las represente en el grafo de su
+> padre. O sea que **el grafo nunca guardó la colocación de 11 de las 12 hijas**: no es que se fuera
+> a perder al retirar el editor, es que no existía. La migración se conserva —es idempotente y cubre
+> el caso si alguien numerase ese nodo antes de la retirada— pero hoy es un no-op verificado en dev
+> y en prod.
+>
+> Lo que esto cambia: retirar el editor de grafo **no pierde ninguna colocación**, así que el paso
+> deja de ser el más delicado de la fase. Y las 12 hijas aparecerán «Sin clasificar» en el editor de
+> su padre, que es la primera vez que esa deuda se hace visible. Seguimiento en la issue #196.
+
 Orden no negociable (`AGENTS.md`): **dev primero, prod después**, verificando contra `pg_proc` /
 `pg_class` / `pg_policies`, nunca contra `list_migrations`.
 
