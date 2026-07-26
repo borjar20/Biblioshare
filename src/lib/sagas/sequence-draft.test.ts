@@ -40,6 +40,13 @@ describe("pairWith / unpair", () => {
     const d = unpair(draft([[work("a"), work("c")], [work("b")]]), 0);
     expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["a"], ["c"], ["b"]]);
   });
+
+  it("emparejar desde un hueco ANTERIOR al destino no pierde la entrada", () => {
+    // Al sacar `a` del hueco 0 los índices se corren, así que resolver el
+    // destino por índice a ciegas apuntaría al hueco equivocado.
+    const d = pairWith(draft([[work("a")], [work("b")], [work("c")]]), "i:book:a", 2);
+    expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["b"], ["c", "a"]]);
+  });
 });
 
 describe("sendTo", () => {
@@ -114,5 +121,10 @@ describe("setOptional / setRole", () => {
     expect(d.free[0].optional).toBe(true);
     expect(d.slots[0][0].role).toBe("spin_off");
     expect(d.free[0].role).toBeNull();
+  });
+
+  it("un bloque nunca guarda rol: setRole lo ignora", () => {
+    const d = setRole(draft([[block("g")]]), "s:g", "spin_off");
+    expect(d.slots[0][0].role).toBeNull();
   });
 });
