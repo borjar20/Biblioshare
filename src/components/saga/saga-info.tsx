@@ -179,6 +179,13 @@ export async function SagaInfo({
   };
   const freeMembers = groups.flatMap((g) => g.members.filter((m) => m.placement === "libre"));
   const unclassified = groups.flatMap((g) => g.members).filter((m) => m.placement === null).length;
+  // Issue #198: un bloque `libre` es una entrada sin hueco, igual que una obra
+  // `libre`, así que vive en «Cuando quieras» y no en la lista ordenada. Se
+  // reparte AQUÍ y no en `groupMembers` a propósito: esa función tiene que
+  // seguir devolviendo todos los grupos porque `computeProgress` los recorre
+  // para emitir los segmentos de color del hero.
+  const orderedGroups = groups.filter((g) => g.placementInParent !== "libre");
+  const freeGroups = groups.filter((g) => g.placementInParent === "libre");
   return (
     <div className="flex flex-col gap-5 px-4 pb-10">
       <section>
@@ -269,8 +276,8 @@ export async function SagaInfo({
               que la componen", así que aquí se omite (sin tick/nombre/contador)
               y se pinta la grid pelada. Con 2+ grupos, o un único grupo que SÍ
               es de subsaga, la cabecera se mantiene como siempre. */}
-          {groups.map((group) => {
-            const isSoleDirectGroup = groups.length === 1 && group.sagaId === null;
+          {orderedGroups.map((group) => {
+            const isSoleDirectGroup = orderedGroups.length === 1 && group.sagaId === null;
             // Fix Task 7 / Finding 1 (review): un único filtrado, reutilizado
             // por la cabecera Y la grid — ver el comentario de `GroupBody`
             // para el porqué. Si un grupo se queda sin nada que pintar (p.
@@ -302,19 +309,46 @@ export async function SagaInfo({
       {/* Los `libre` salen de la columna del orden y viven aquí: su «dónde» no
           es un hueco. Ojo, esto NO es lo mismo que `optional` — un libre puede
           contar perfectamente en el progreso (spec 2026-07-25, «Dos ejes
-          ortogonales»). */}
-      {freeMembers.length > 0 && (
+          ortogonales»). Desde la #198 la sección acoge dos formas: obras
+          sueltas y bloques-subsaga enteros, que se pintan con su cabecera
+          porque un bloque sin sus obras no dice nada. */}
+      {(freeMembers.length > 0 || freeGroups.length > 0) && (
         <section>
           <h2 className="mb-3 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
             {t("freeSection")}
           </h2>
-          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-            {freeMembers.map((m) => (
-              <li key={`${m.itemType}-${m.itemId}`}>
-                <MemberCell m={m} labels={cellLabels} />
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-5">
+            {freeMembers.length > 0 && (
+              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+                {freeMembers.map((m) => (
+                  <li key={`${m.itemType}-${m.itemId}`}>
+                    <MemberCell m={m} labels={cellLabels} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {freeGroups.map((group) => {
+              const eligible = group.members.filter((m) => m.placement !== "libre");
+              if (eligible.length === 0) return null;
+              return (
+                <div key={group.sagaId ?? "free-nexus"}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
+                    <h3 className="font-serif text-[15px] font-semibold">
+                      {group.name ?? t("nexusGroup")}
+                    </h3>
+                    <span className="font-mono text-[9px] tracking-[0.08em] text-muted-foreground uppercase">
+                      {t("freeBlockHint")}
+                    </span>
+                    <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
+                      {eligible.length}
+                    </span>
+                  </div>
+                  <GroupBody members={eligible} labels={cellLabels} />
+                </div>
+              );
+            })}
+          </div>
         </section>
       )}
     </div>
