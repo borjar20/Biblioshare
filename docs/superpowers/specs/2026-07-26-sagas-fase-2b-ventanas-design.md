@@ -44,6 +44,21 @@ editar — que es exactamente el argumento con el que 2b se separó de 2a.
 > ***Nacidos de la Bruma Era 2 es opcional, a partir de Era 1, y recomendable antes de Viento y
 > Verdad***. Ese es el enunciado que hay que poder expresar. Si al curar de verdad el enunciado
 > cambia, manda el enunciado nuevo.
+>
+> ### Resultado de cruzarla, el 2026-07-26
+>
+> **Se curó.** El Cosmere quedó así: la secuencia es *Arcanum Ilimitado* → *Elantris* → *Nacidos Era
+> 1* → *El Aliento de los Dioses* → *El Archivo de las Tormentas*, y en «Cuando quieras» quedaron
+> **dos bloques `libre` + `optional`**: *Nacidos Era 2* y *Novelas secretas*. El progreso pasó de 20
+> obras a **12**, exactamente lo que predijo el spec de la fase 1, y se ve correcto en la ficha
+> (75% = 9 de 12).
+>
+> **La puerta se cruza con el resultado 1**: el curador quiere decir «a partir de Era 1, antes de
+> Viento y Verdad» y hoy no puede. La fase se construye.
+>
+> **Pero cambia dos cosas de este documento**, las dos por el mismo motivo — que las entradas `libre`
+> reales resultaron ser **bloques**: la sección «Fuera de alcance» de abajo (corregida) y la
+> dependencia de la #198, que pasa de deseable a bloqueante.
 
 ## Qué se construye
 
@@ -58,11 +73,31 @@ editar — que es exactamente el argumento con el que 2b se separó de 2a.
 
 ### Fuera de alcance
 
-- **Ventanas cuyo *sujeto* sea un bloque-subsaga.** El esquema las admite, pero la interfaz y el
+- ~~**Ventanas cuyo *sujeto* sea un bloque-subsaga.** El esquema las admite, pero la interfaz y el
   render de esta fase solo cubren **obras**, y el motivo es concreto: la issue **#198** dice que la
   colocación curada de un bloque hoy **no la lee nadie** —la ficha sigue ordenando los bloques por el
   `position` mínimo de sus miembros—, así que una ventana sobre un bloque sería curación invisible.
-  Se abre cuando #198 esté resuelta.
+  Se abre cuando #198 esté resuelta.~~
+
+  > **Corrección [2026-07-26, al cruzar la puerta de entrada]: esta decisión estaba del revés y se
+  > retira.** Al curar el Cosmere de verdad, las dos entradas que quedaron `libre` son **bloques**
+  > —*Nacidos de la Bruma Era 2* y *Novelas secretas*— y `saga_items` sigue **[MEDIDO]** con **cero**
+  > filas `libre` en toda la base de datos. El caso que motiva la fase entera, en palabras del
+  > curador, tiene también un bloque por sujeto: *«Nacidos Era 2 es opcional, **a partir de Era 1**, y
+  > recomendable **antes de Viento y Verdad**»*.
+  >
+  > Con «sujeto solo obra», esta fase entregaría un editor de ventanas **incapaz de tocar ninguna de
+  > las dos entradas que existen**. Los bloques no son el caso raro: son el caso.
+  >
+  > **Consecuencia dura: esta fase depende de la #198**, y no como una mejora deseable sino como
+  > requisito. Y de sus dos mitades, no solo de la primera:
+  > 1. la ficha ordena los bloques por el `position` mínimo de sus miembros, así que **contradice**
+  >    visiblemente el orden curado;
+  > 2. la sección «Cuando quieras» filtra sobre los **miembros**, de modo que **un bloque `libre` ni
+  >    siquiera aparece ahí** — hoy los dos del Cosmere se pintan como grupos normales.
+  >
+  > Si (2) no se resuelve, no hay dónde colgar la ventana en la ficha, y el editor de 2b escribiría
+  > un dato que ninguna pantalla enseña. **El orden correcto es #198 primero, 2b después.**
 - **Las anclas sí pueden apuntar a un bloque**, y no es una excepción caprichosa: el caso que motiva
   la fase dice *«a partir de Era 1»*, y *Era 1* **es una subsaga**. Sujeto solo obra, anclas obra o
   bloque.
@@ -269,5 +304,8 @@ pudiera colgar.
 ## Dependencia
 
 - La fase 2a, **mergeada y desplegada** el 2026-07-26.
-- La **puerta de entrada**: curar a mano las sagas que motivan la fase antes de empezar.
-- Para las ventanas con sujeto bloque, la issue **#198**.
+- ~~La **puerta de entrada**: curar a mano las sagas que motivan la fase antes de empezar.~~
+  **Cruzada el 2026-07-26** (ver el resultado arriba): la fase se construye.
+- **La issue #198, y es bloqueante**, no una mejora paralela. Las dos entradas `libre` que existen
+  son bloques; mientras la ficha no lea la colocación de un bloque ni tenga sección donde pintar un
+  bloque `libre`, esta fase escribiría un dato que ninguna pantalla enseña. **Primero #198.**
