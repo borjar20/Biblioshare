@@ -72,13 +72,38 @@ describe("groupMembers", () => {
     expect(groups.map((g) => g.sagaId)).toEqual(["ceniza", "vapor"]);
   });
 
-  it("el grupo lleva la colocación del bloque, para que el render pueda repartir", () => {
-    const libres: SagaChildRef[] = [
+  it("cada grupo lleva SU propia colocación, no la del primero", () => {
+    // Con una sola hija esta prueba no valdría: no distinguiría «la del bloque
+    // correcto» de «siempre la del primero». Demostrado con inyección de fallo.
+    const mixtas: SagaChildRef[] = [
+      { id: "colocada", name: "Colocada", accentColor: null, positionInParent: 3, placementInParent: "fijo", optionalInParent: false },
       { id: "secretas", name: "Novelas secretas", accentColor: null, positionInParent: null, placementInParent: "libre", optionalInParent: false },
     ];
-    const groups = groupMembers([member({ itemId: "a", groupSagaId: "secretas" })], libres);
-    expect(groups[0].placementInParent).toBe("libre");
-    expect(groups[0].positionInParent).toBeNull();
+    const groups = groupMembers(
+      [
+        member({ itemId: "a", groupSagaId: "colocada", position: 1, placement: "fijo" }),
+        member({ itemId: "b", groupSagaId: "secretas" }),
+      ],
+      mixtas,
+    );
+    const byId = new Map(groups.map((g) => [g.sagaId, g]));
+    expect(byId.get("colocada")).toMatchObject({ positionInParent: 3, placementInParent: "fijo" });
+    expect(byId.get("secretas")).toMatchObject({ positionInParent: null, placementInParent: "libre" });
+  });
+
+  it("dos bloques en el mismo hueco (tándem) desempatan por nombre, de forma estable", () => {
+    const tandem: SagaChildRef[] = [
+      { id: "zeta", name: "Zeta", accentColor: null, positionInParent: 4, placementInParent: "fijo", optionalInParent: false },
+      { id: "alfa", name: "Alfa", accentColor: null, positionInParent: 4, placementInParent: "fijo", optionalInParent: false },
+    ];
+    const members = [
+      member({ itemId: "z", groupSagaId: "zeta", position: 1, placement: "fijo" }),
+      member({ itemId: "a", groupSagaId: "alfa", position: 2, placement: "fijo" }),
+    ];
+    expect(groupMembers(members, tandem).map((g) => g.sagaId)).toEqual(["alfa", "zeta"]);
+    // Y el mismo resultado con las hijas en el orden contrario: el orden de
+    // salida no puede depender del orden de entrada.
+    expect(groupMembers(members, [...tandem].reverse()).map((g) => g.sagaId)).toEqual(["alfa", "zeta"]);
   });
 
   it("el grupo de miembros directos no es un bloque: no tiene colocación", () => {
