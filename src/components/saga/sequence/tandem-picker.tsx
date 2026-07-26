@@ -52,10 +52,16 @@ export function TandemPicker({
           ) : (
             <ul className="grid gap-1.5">
               {options.map(({ slot, i }) => (
-                // El índice como key es seguro aquí: la lista de huecos no se
-                // reordena mientras el selector está abierto (es una foto fija del
-                // draft en el momento de abrirlo), a diferencia de route-editor.tsx
-                // donde reordenar en vivo con key=índice mezclaba filas.
+                // El índice como key es seguro aquí, pero NO porque `slots` sea
+                // una copia: es un prop vivo del borrador. Lo que lo hace seguro
+                // es que el <dialog> está en modo modal, así que el fondo queda
+                // `inert` y no hay ningún control alcanzable que reordene los
+                // huecos mientras esto está abierto. El filtro tampoco reordena:
+                // `.filter()` conserva el orden y `i` es el índice ORIGINAL en
+                // `slots`, no la posición en la lista filtrada — por eso vale
+                // también para el número de hueco que se pinta. Distinto de
+                // route-editor.tsx, donde sí se reordena en vivo y key=índice
+                // mezclaba filas.
                 <li key={i}>
                   <label
                     className={`flex w-full items-center gap-2.5 rounded-xl border px-2 py-2 text-left ${chosen === i ? "border-accent/50" : "border-border"}`}
