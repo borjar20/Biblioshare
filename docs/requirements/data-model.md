@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada SOLO en dev el 2026-07-26, con el CHECK corregido de `OR` a `CASE` el 2026-07-26 (fix de un finding Crítico del review final — el `OR` original no rechazaba `placement=NULL` con `position` no nulo) y los cuatro escritores de `saga_items` arreglados para respetarlo (commit `e3832ff`) — prod deliberadamente sin tocar hasta que el orquestador aplique esta rama, ver §7.4]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_proc`), nunca contra `list_migrations`]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -289,7 +289,7 @@ la primera (23514) hizo que el `INSERT`/`ON CONFLICT` fijara `placement='fijo'` 
 `position` no fuera nulo, tanto en el alta como en la actualización — pero eso todavía dejaba el
 `ON CONFLICT ... DO UPDATE` pisando `position`/`placement` de cualquier fila existente sin
 condición. `link_tmdb_saga_item` no tenía el mismo problema (nunca escribe `position`) y se dejó
-sin tocar. **Este `create or replace` está SOLO en dev** — mismo estado pendiente que el resto de
+sin tocar. **Este `create or replace` está aplicado en dev y en prod (2026-07-26)** — mismo estado pendiente que el resto de
 §7.4, no un despliegue independiente: el `md5` del cuerpo normalizado YA NO coincide entre dev y
 prod hasta que el orquestador aplique esta migración.
 
@@ -509,10 +509,28 @@ cuerpo de la función sin tocar el fichero ya aplicado a prod en `20260722_saga_
 existentes: ver §7.1b)
 y `applyMembershipOps` no arrastraba `placement` al mover un ítem entre subsagas (arreglado en
 `apply-membership-ops.ts`, sin migración — es solo código de aplicación). Mismo formato que ya usa
-§7.1 para el caso de #169, donde el orden de despliegue también importaba: **las tres migraciones
-se aplicaron a dev el 2026-07-25/2026-07-26; prod queda pendiente, deliberadamente, hasta que el
-orquestador las aplique junto con el código ya corregido** — a diferencia de la versión anterior de
-esta nota, ya no hay ningún arreglo de formulario pendiente que bloquee el despliegue a prod.
+§7.1 para el caso de #169, donde el orden de despliegue también importaba: **las tres migraciones se
+aplicaron a dev el 2026-07-25/26 y a prod el 2026-07-26**, en una sola pasada y en el orden
+`20260725_saga_placement` → `20260725_saga_placement_blocks` →
+`20260726_saga_items_placement_writers_fix`.
+
+Verificado contra los objetos reales de prod, no contra `list_migrations`: enum `fijo|libre`; los
+tres CHECK en forma `CASE`; backfill **342 `fijo` / 9 sin clasificar / 0 `libre` / 0 `optional`**;
+**cero** filas violando cualquiera de los dos invariantes; y `sync_tmdb_saga_items` con
+`on conflict do nothing` y su `security definer` intacto.
+
+⚠️ **Las 12 sagas con padre de producción quedaron SIN colocar (`position_in_parent` nulo), y es
+correcto**: las 12 cuelgan de un padre con grafo (Cosmere, Mundodisco, Maasverse), y ahí la
+colocación no se deduce de `min(position)` sino de `saga_nodes.order_no`. Inventarles un hueco
+habría sido escribir una curación que nadie deriva. Las cura a mano la fase 3, cuando se migren los
+cuatro grafos uno a uno. Quien mire prod y vea 12 bloques «sin clasificar» no está viendo un
+backfill fallido: está viendo deuda de curación real, que es justo lo que la feature vino a hacer
+visible.
+
+**El orden importa para desplegar**: el código de esta rama **lee** `placement`/`optional`, y
+PostgREST no devuelve datos parciales — sin las columnas, la consulta entera falla y la capa de
+datos se traga el error, así que las sagas se verían **vacías** en vez de dar error. Por eso las
+migraciones van **antes** que el despliegue del código, nunca al revés.
 
 **UI**: `/saga/[id]/editar` (`saga-members-editor.tsx` + `member-actions.ts`, acción
 `updateSagaMember`) cura `placement` y `optional` por miembro, junto al `position`/`role` que ya
@@ -560,7 +578,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
 | `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev y prod 2026-07-23) |
-| `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — **SOLO dev, 2026-07-25/26**, prod pendiente hasta que el orquestador la aplique) |
+| `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
 
 ## 10. Migraciones

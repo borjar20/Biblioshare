@@ -7509,3 +7509,253 @@ alter table public.saga_items add column role public.saga_item_role;
 
 comment on column public.saga_items.role is
   'Rol narrativo del ítem en ESTA saga. null = sin clasificar. Ortogonal a position: position dice si tiene hueco fijo, role dice qué es.';
+
+
+-- =====================================================================
+-- Fase 1 del orden unificado de sagas (spec 2026-07-25). Las TRES
+-- migraciones de abajo se aplicaron a produccion el 2026-07-26, en una
+-- sola pasada y EN ESTE ORDEN, y se verificaron contra los objetos
+-- reales (pg_type, pg_constraint, pg_proc), no contra list_migrations.
+--
+-- OJO al replay: la tercera hace `create or replace` de
+-- `sync_tmdb_saga_items`, que ya aparece mas arriba en este mismo fichero
+-- (linea ~7324, cuerpo de 20260722_saga_items_rls_hardening.sql). Eso es
+-- correcto y deliberado: el baseline es el replay ordenado del historial
+-- real, asi que la ultima definicion es la vigente — igual que en prod.
+-- =====================================================================
+
+-- ---------------------------------------------------------------
+-- Colocacion y opcionalidad de un miembro de saga
+-- (20260725_saga_placement.sql)
+-- ---------------------------------------------------------------
+-- Colocación y opcionalidad de un miembro de saga (spec 2026-07-25).
+--
+-- DOS EJES ORTOGONALES, y ésta es la confusión que la feature deshace:
+--   placement = DÓNDE se lee (fijo | libre | null = sin clasificar)
+--   optional  = si NO cuenta en el progreso
+-- Una obra puede ser libre y contar (Nueva Primavera), o fija y no contar
+-- (un spin-off con hueco propio que no quieres exigir).
+--
+-- `role` (issue #167) es un TERCER eje ya existente: qué ES la obra.
+create type public.saga_placement as enum ('fijo', 'libre');
+
+alter table public.saga_items
+  add column placement public.saga_placement,
+  add column optional boolean not null default false;
+
+-- Backfill honesto: tener número ES estar colocado. A diferencia de `role`
+-- (issue #167, sin backfill porque el rol es genuinamente desconocido), la
+-- colocación de una obra numerada no lo es.
+--
+-- Las filas SIN position quedan en null = "sin clasificar", que es deuda de
+-- curación visible, no una tercera semántica: entre ellas está «Antes de que
+-- los Cuelguen», que es el libro 2 de La Primera Ley y está sin numerar por
+-- descuido, hoy indistinguible de «Esquirla del Amanecer», que es un relato
+-- sin hueco a propósito.
+update public.saga_items set placement = 'fijo' where position is not null;
+
+-- El CHECK va DESPUÉS del backfill: antes, las 342 filas con position y
+-- placement null lo violarían.
+--
+-- OJO con el `OR` de tres ramas de la primera versión de este CHECK (rev.
+-- inicial de este mismo fichero): con `placement IS NULL`, las dos primeras
+-- ramas valen NULL (comparar con NULL da NULL, no FALSE) y la tercera vale
+-- FALSE, así que el `OR` entero sale NULL — y un CHECK solo rechaza FALSE, así
+-- que la fila (`placement=NULL`, `position=7`) PASABA, cuando el invariante
+-- declarado es «sin clasificar nunca lleva número». Encontrado en el review
+-- final de la rama (dev ya tenía una fila así). El CASE de abajo no tiene ese
+-- agujero: con `placement=NULL` la condición del WHEN también da NULL, pero
+-- CASE trata un WHEN que no da TRUE (NULL incluido) como "no es esta rama" y
+-- cae al ELSE — no hay tercera rama redundante que enmascare el problema.
+alter table public.saga_items
+  add constraint saga_items_placement_position check (
+    case when placement = 'fijo' then position is not null else position is null end
+  );
+
+comment on column public.saga_items.placement is
+  'Dónde se lee: fijo (tiene hueco) | libre (en varios momentos) | null (sin clasificar). Ortogonal a optional.';
+comment on column public.saga_items.optional is
+  'true = NO cuenta en el denominador del progreso. Ortogonal a placement y a role.';
+
+-- ---------------------------------------------------------------
+-- Colocacion de un bloque-subsaga dentro de su padre
+-- (20260725_saga_placement_blocks.sql)
+-- ---------------------------------------------------------------
+-- La colocación de una subsaga dentro de su padre, como dato explícito
+-- (spec 2026-07-25).
+--
+-- Hasta hoy vivía en dos sitios y ninguno era propio: o en
+-- saga_nodes.child_saga_id + order_no (SOLO si la saga tiene grafo: 4 de 75 en
+-- prod), o DEDUCIDA del menor position de sus miembros (main-order.ts, rama sin
+-- grafo). Al retirarse el editor de grafo (fase 2) esa colocación se quedaba
+-- sin ningún sitio donde escribirse.
+alter table public.sagas
+  add column position_in_parent integer,
+  add column placement_in_parent public.saga_placement,
+  add column optional_in_parent boolean not null default false;
+
+-- Backfill = escribir lo que la app YA deduce hoy, para que nadie vea cambiar
+-- nada. La regla vigente (main-order.ts, rama sin grafo) es: primero TODOS los
+-- miembros directos del padre por position, y DESPUÉS las hijas ordenadas por
+-- el menor position de sus miembros, con el nombre como desempate.
+--
+-- De ahí el offset: si las hijas empezaran en 1 chocarían con los huecos de los
+-- miembros directos del padre, y un empate de position significa TÁNDEM en el
+-- modelo nuevo — escribiríamos una mentira.
+--
+-- Ese "lo que la app YA deduce" solo vale para un padre SIN grafo. Si el padre
+-- tiene filas en saga_nodes, la app no mira min(position) para nada: el orden
+-- sale de saga_nodes.order_no, y una hija sin nodo (o con order_no null) hoy no
+-- está colocada en ningún sitio. Colocarla aquí con 'fijo' sería inventar una
+-- curación que nadie deriva. Esas hijas se quedan sin clasificar (null/null) a
+-- propósito: los 4 grafos de prod se migran uno a uno y a mano en la fase 3
+-- (spec «Migración», §2).
+with base as (
+  select p.id as parent_id,
+         coalesce((select max(i.position) from public.saga_items i where i.saga_id = p.id), 0) as offset_pos
+  from public.sagas p
+), ranked as (
+  select s.id,
+         b.offset_pos + row_number() over (
+           partition by s.parent_saga_id
+           order by coalesce(
+                      (select min(i.position) from public.saga_items i where i.saga_id = s.id),
+                      2147483647),
+                    s.name
+         ) as pos
+  from public.sagas s
+  join base b on b.parent_id = s.parent_saga_id
+  where s.parent_saga_id is not null
+    and not exists (
+      select 1 from public.saga_nodes n where n.saga_id = s.parent_saga_id
+    )
+)
+update public.sagas s
+   set position_in_parent = r.pos,
+       placement_in_parent = 'fijo'
+  from ranked r
+ where s.id = r.id;
+
+-- Mismo CASE que saga_items_placement_position (20260725_saga_placement.sql):
+-- un OR de tres ramas con `placement_in_parent IS NULL` da NULL entero (dos
+-- ramas NULL + una FALSE), y un CHECK solo rechaza FALSE — dejaría pasar
+-- (`placement_in_parent=NULL`, `position_in_parent` con número). El CASE no
+-- tiene ese agujero: un WHEN que no da TRUE cae al ELSE, sin rama redundante.
+alter table public.sagas
+  add constraint sagas_placement_position check (
+    case when placement_in_parent = 'fijo' then position_in_parent is not null else position_in_parent is null end
+  ),
+  -- Una saga raíz no está colocada en ningún sitio: las tres columnas no
+  -- pueden llevar valor. Sin esto, «sacar del universo» dejaría restos.
+  add constraint sagas_placement_needs_parent check (
+    parent_saga_id is not null or
+    (position_in_parent is null and placement_in_parent is null and optional_in_parent = false)
+  );
+
+comment on column public.sagas.position_in_parent is
+  'Hueco del bloque-subsaga en la secuencia de su padre. null si es raíz o no está colocada.';
+comment on column public.sagas.optional_in_parent is
+  'true = el bloque entero sale del denominador del progreso de su PADRE (no del suyo propio).';
+
+-- ---------------------------------------------------------------
+-- sync_tmdb_saga_items deja de pisar la curacion manual
+-- (20260726_saga_items_placement_writers_fix.sql)
+-- ---------------------------------------------------------------
+-- Cierra el escritor de `saga_items` más urgente de los cuatro que el review
+-- final de la rama encontró sin respetar `saga_items_placement_position`
+-- (20260725_saga_placement.sql): la RPC `sync_tmdb_saga_items`
+-- (20260722_saga_items_rls_hardening.sql, YA aplicada en prod desde
+-- 2026-07-22, por eso el arreglo va en migración nueva y no editando aquella).
+--
+-- `sync_tmdb_saga_items` insertaba `position` sin tocar `placement`, así que
+-- cualquier alta o corrección de una colección TMDB creaba filas
+-- (placement=null, position=N) — el CHECK las rechaza (23514). Es el escritor
+-- MÁS urgente de los cuatro: es una función de BD, y la dispara cualquier
+-- lector autenticado al abrir la ficha de una saga TMDB
+-- (get-saga.ts → populateTmdbCollection), así que rompía en cuanto la
+-- migración del CHECK llegara a prod, sin esperar ningún despliegue de
+-- código. Reproducido contra dev antes de este fix:
+--
+--   begin;
+--   select public.sync_tmdb_saga_items('<saga tmdb>'::uuid,
+--     '[{"item_id":"<item>","position":99}]'::jsonb);
+--   rollback;
+--   -- ERROR: 23514 saga_items_placement_position
+--
+-- Arreglo original: aplicar aquí mismo el principio que ya rige el backfill
+-- de la migración de placement ("tener número ES estar colocado") — toda
+-- fila que esta función escribe con `position` no nulo pasa a
+-- `placement='fijo'`, tanto en el INSERT inicial como en el UPDATE del
+-- `on conflict`.
+--
+-- REVISIÓN 2026-07-26 (issue del sync perezoso pisando curación manual): el
+-- `do update` de arriba tenía un problema más de fondo que el 23514 — para
+-- una fila que YA EXISTE, pisaba `position`/`placement` incondicionalmente
+-- cada vez que un visitante cualquiera abría la ficha (populateTmdbCollection
+-- se dispara en la lectura, no hace falta ser curador). Decisión del dueño
+-- del producto: la curación manual gana sobre el sync de TMDB. Reproducido
+-- contra dev, con «Matrix - Colección»:
+--
+--   update saga_items set position = null, placement = 'libre'
+--     where saga_id = '<matrix>' and item_id = '<matrix-1>';
+--   -- position=NULL, placement=libre (decisión del curador)
+--   select public.sync_tmdb_saga_items('<matrix>'::uuid,
+--     '[{"item_id":"<matrix-1>","position":1}]'::jsonb);
+--   -- position=1, placement=fijo  ← el sync deshizo la curación
+--
+-- Regla nueva: el sync SOLO rellena huecos (altas nuevas); una fila que ya
+-- existe en `saga_items` no se toca, ni en `position` ni en `placement`, la
+-- traiga o no el `p_items` de la llamada. `on conflict ... do nothing`
+-- expresa eso literalmente. Se arregla aquí (la RPC) y no solo en el cliente
+-- (`planCollectionSync`, src/lib/sagas/collection-sync.ts) porque esta es la
+-- función que de verdad escribe en la BD, es SECURITY DEFINER, y es la única
+-- barrera que protege también a un cliente desplegado con la lógica vieja —
+-- arreglar solo el cliente no habría cerrado el agujero para nadie que
+-- siguiera sirviendo el bundle anterior. `planCollectionSync` se corrige en
+-- el mismo commit para dejar de calcular `toUpdate` para filas existentes: ya
+-- no tiene sentido pedir una corrección que la RPC va a ignorar.
+--
+-- Consecuencia asumida (documentada también en el comentario de
+-- `planCollectionSync`): si TMDB reordena una colección más adelante, ese
+-- reorden ya NO se propaga a las filas que ya existen en `saga_items` — ni
+-- siquiera a las que nunca tocó un humano. No hay forma fiable de distinguir
+-- "nunca curada" de "curada a propósito", así que se trata toda fila
+-- existente igual. Es el precio de que la curación manual gane, y es
+-- deliberado.
+create or replace function public.sync_tmdb_saga_items(
+  p_saga_id uuid,
+  p_items jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from sagas
+    where id = p_saga_id and source = 'tmdb' and tmdb_collection_id is not null
+  ) then
+    raise exception 'saga % is not a tmdb collection', p_saga_id;
+  end if;
+
+  insert into saga_items (saga_id, item_type, item_id, position, placement, is_primary)
+  select
+    p_saga_id,
+    'movie',
+    (i->>'item_id')::uuid,
+    (i->>'position')::integer,
+    case when (i->>'position') is not null then 'fijo'::saga_placement else null end,
+    false
+  from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) as i
+  on conflict (saga_id, item_type, item_id)
+    do nothing;
+end;
+$$;
+
+-- `link_tmdb_saga_item` (la hermana señalada para revisar): NO tiene el mismo
+-- problema y se deja sin tocar. Nunca escribe `position` (solo
+-- `saga_id, item_type, item_id, is_primary`), así que la fila que crea queda
+-- con `position` y `placement` en su default `NULL` — la rama ELSE del CHECK
+-- (`position is null`) se cumple trivialmente. Verificado leyendo su cuerpo en
+-- 20260722_saga_items_rls_hardening.sql: no hay combinación de columnas ahí
+-- que pueda producir (placement=null, position≠null).
