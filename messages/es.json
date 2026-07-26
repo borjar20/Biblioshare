@@ -1207,6 +1207,7 @@
     "pairPrompt": "Mismo hueco que otra obra…",
     "pairConfirm": "Emparejar en el hueco {n}",
     "pairFilter": "Filtrar obras de la secuencia…",
+    "pairNoOptions": "No hay ningún otro hueco al que emparejar esta obra.",
     "tandemCaption": "Tándem · se leen a la vez",
     "unpair": "Deshacer tándem",
     "unpairFor": "Deshacer el tándem del hueco {n}",
