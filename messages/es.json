@@ -1057,28 +1057,6 @@
       "cycle": "Ese anidamiento crearía un ciclo.",
       "generic": "No se pudo guardar. Inténtalo de nuevo."
     },
-    "membersTitle": "Miembros de la saga",
-    "membersHint": "La posición deja el hueco fijo en el orden. El rol dice qué es la obra: una precuela puede no tener número.",
-    "membersEmpty": "Esta saga aún no tiene miembros.",
-    "memberPosition": "Posición",
-    "memberPositionNone": "Sin hueco fijo",
-    "memberRole": "Rol",
-    "memberRoleNone": "Sin clasificar",
-    "memberPlacement": "Colocación",
-    "memberPlacementNone": "Sin clasificar",
-    "memberPlacementFixed": "Hueco fijo",
-    "memberPlacementFree": "Se lee cuando quieras",
-    "memberOptional": "No cuenta en el progreso",
-    "memberSave": "Guardar",
-    "memberSaved": "Guardado",
-    "memberErrors": {
-      "forbidden": "Solo los colaboradores pueden editar miembros.",
-      "notMember": "Esa obra ya no pertenece a esta saga.",
-      "badPosition": "La posición tiene que ser un número entero mayor que 0, o estar vacía.",
-      "badRole": "Ese rol no existe.",
-      "badPlacement": "«Hueco fijo» necesita un número, y «se lee cuando quieras» no lo admite.",
-      "generic": "No se pudo guardar. Inténtalo de nuevo."
-    },
     "dangerZone": "Zona de peligro",
     "deleteSaga": "Borrar saga",
     "deleteWarning": "Se borran sus membresías, su grafo y sus seguidores. Sus subsagas quedarán como sagas sueltas. Los títulos del catálogo no se tocan. Esto no se puede deshacer.",
@@ -1229,7 +1207,10 @@
       "foreignBlock": "Hay un bloque que no es subsaga directa de esta saga.",
       "duplicate": "Hay una obra repetida.",
       "generic": "No se ha podido guardar."
-    }
+    },
+    "itinerariesTitle": "Itinerarios de lectura",
+    "itinerariesEmpty": "Todavía no hay ninguno.",
+    "itineraryCreate": "+ Crear itinerario"
   },
   "sagaIndex": {
     "title": "Sagas",

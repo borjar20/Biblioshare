@@ -7,7 +7,8 @@ import type { SequencePayload } from "./sequence-draft";
  *  número lo deriva la posición y la zona determina el placement. Se validan
  *  igual porque son la última red antes del 23514 crudo de la BD, y porque un
  *  bug del cliente no debe llegar a Postgres — es exactamente el papel que
- *  cumple el mismo espejo en `member-actions.ts`. */
+ *  cumple el mismo espejo (histórico: lo comprobaba `member-actions.ts`,
+ *  borrado en la Task 9 junto con el formulario por fila). */
 export function validateSequenceDraft(
   payload: SequencePayload,
   ctx: { childIds: Set<string> },
