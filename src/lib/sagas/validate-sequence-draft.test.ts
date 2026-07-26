@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
@@ -49,4 +49,19 @@ it("los huecos de obras y bloques comparten numeración", () => {
   const entries = [item("a", 1, "fijo")];
   const blocks = [{ child_saga_id: "hija-1", position_in_parent: 2, placement_in_parent: "fijo" as const, optional_in_parent: false }];
   expect(validateSequenceDraft({ ...base, entries, blocks }, ctx).errors).toEqual([]);
+});
+
+it("un bloque que rompe la consecutividad falla, aunque las obras estén bien", () => {
+  // Contraparte negativa de la prueba de arriba: sin esta, un bug que sacara
+  // los bloques del cálculo de posiciones pasaría desapercibido.
+  const entries = [item("a", 1, "fijo")];
+  const blocks = [{ child_saga_id: "hija-1", position_in_parent: 3, placement_in_parent: "fijo" as const, optional_in_parent: false }];
+  expect(validateSequenceDraft({ ...base, entries, blocks }, ctx).errors).toContain("positions");
+});
+
+it("los bloques sin clasificar también cuentan como aviso", () => {
+  const blocks = [{ child_saga_id: "hija-1", position_in_parent: null, placement_in_parent: null, optional_in_parent: false }];
+  const r = validateSequenceDraft({ ...base, blocks }, ctx);
+  expect(r.errors).toEqual([]);
+  expect(r.unclassified).toBe(1);
 });
