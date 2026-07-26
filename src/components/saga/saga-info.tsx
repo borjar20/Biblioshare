@@ -40,9 +40,25 @@ import { RoleChip } from "./role-chip";
 // equivalente textual, no existe para quien usa lector de pantalla (misma
 // familia que la issue #147, marcas que solo se distinguen por color). Se
 // añade un `sr-only` (mismo patrón que `agenda-list.tsx`) con `labels.noSlot`
-// — texto en `messages/es.json`, nunca embebido. La redacción evita
-// "sin clasificar" (vocabulario de curador, ya usado en el aviso de deuda) y
-// dice en su lugar el hecho llano: no tiene un hueco asignado en el orden.
+// — texto en `messages/es.json`, nunca embebido.
+//
+// Fix Task 7 (cierre, segunda vuelta): la redacción original decía "…en el
+// orden de lectura", y "el orden de lectura" ya es el nombre propio del
+// GRAFO (`saga_nodes`/`saga_edges`, curado en `/saga/[id]/mapa/editar` —
+// ver `t("orderReading")`/`t("graphAvailableTitle")`), un sistema distinto
+// de `placement` (curado en `/saga/[id]/editar`) y sin ningún constraint que
+// los mantenga sincronizados. Cuando la saga SÍ tiene grafo, el aviso de
+// arriba (`hasGraph`) ya afirma "Orden de lectura disponible" en la misma
+// pantalla — con la redacción vieja, esta celda podía decir en el mismo
+// aliento que la obra NO tiene sitio en "el orden de lectura", lo cual puede
+// ser sencillamente falso (nada impide `order_no` en el grafo con
+// `placement = null` a la vez) justo debajo del cartel que dice que ese
+// orden existe y la incluye. Para quien depende de este texto, eso es peor
+// que no decir nada. La redacción actual no nombra ningún sistema: usa
+// "hueco" (vocabulario correcto — es el de `memberPlacementFixed`, "Hueco
+// fijo", en el editor de miembros) y ancla el hecho a lo que el lector tiene
+// delante ("esta lista", la propia grid donde vive la celda) en vez de a un
+// grafo que puede no ver o que puede decir otra cosa.
 function MemberCell({
   m,
   labels,

@@ -27,6 +27,11 @@ import { expect, test, type Page } from "@playwright/test";
 // edita en su campo `role`) no compite en el tiempo — cada test dejará el
 // campo que toca como lo encontró en su propio `finally`, campo por campo.
 const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab"; // [QA Sagas v2] Era Uno
+// Padre de Era Uno — solo lo usan los Tests 5/6 (abajo): la cabecera de grupo
+// de "Era Uno" (tick + nombre + contador) SOLO se pinta vista desde aquí,
+// nunca en `/saga/${ERA_UNO_ID}` a secas (ahí es `isSoleDirectGroup` y la
+// cabecera se omite, ver comentario en saga-info.tsx).
+const SAGA_UNIVERSO = "69c07496-9b1a-4203-b3da-15d22a09c039"; // [QA Sagas v2] Universo
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -122,6 +127,12 @@ function rowByTitle(page: Page, title: string) {
 
 const BAD_PLACEMENT_TEXT =
   "«Hueco fijo» necesita un número, y «se lee cuando quieras» no lo admite.";
+
+// Equivalente accesible del contorno punteado (Fix Task 7, cierre —
+// `saga.noOrderSlotHint` en messages/es.json). Se referencia por constante,
+// como `BAD_PLACEMENT_TEXT`, para que un cambio de redacción rompa el test
+// en vez de dejarlo mintiendo en verde.
+const NO_SLOT_TEXT = "Sin hueco asignado en esta lista.";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Test 1: «Se lee cuando quieras» sin número guarda y sobrevive a un reload.
@@ -343,4 +354,141 @@ test("un segundo Guardar sin tocar nada no revierte placement/optional", async (
       await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
     }
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Test 5 (review de 76a3ef8, Finding 1 — hasta ahora sin red e2e, solo
+// prosa en `.superpowers/sdd/task-7-fix-report.md`): el contador de la
+// cabecera de un grupo tiene que decir SIEMPRE lo mismo que la grid pinta
+// debajo. Antes del fix, la cabecera usaba `group.members.length` en bruto
+// mientras `GroupBody` ya excluía los `libre`: un grupo con algún `libre`
+// mostraba un número mayor que las portadas reales.
+//
+// La cabecera de "Era Uno" (tick + nombre + contador) SOLO se pinta vista
+// desde `SAGA_UNIVERSO` — `/saga/${ERA_UNO_ID}` en solitario es
+// `isSoleDirectGroup` y la omite por diseño (ver comentario en
+// saga-info.tsx) — así que este test edita en Era Uno pero verifica en
+// Universo, igual que hizo la verificación manual del fix original.
+//
+// Miembro: "Rayuela" (position=1, placement=fijo en el seed) — el mismo que
+// Test 1 alterna entre `fijo`/`libre`. La suite corre en serie (`workers: 1`
+// en playwright.config.ts), así que no hay solape entre ambos tests, y este
+// también restaura el seed en su `finally` pase o falle.
+// ─────────────────────────────────────────────────────────────────────────
+test("el contador de la cabecera de un grupo coincide con su grid, incluso con un «libre» dentro", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await loginAsDevtest(page);
+  await page.goto(`/saga/${ERA_UNO_ID}/editar`);
+
+  const row = rowByTitle(page, "Rayuela");
+  await expect(row).toBeVisible();
+
+  // Precondición del seed (igual que Test 1).
+  await expect(row.locator('select[name="placement"]')).toHaveValue("fijo");
+  await expect(row.locator('input[name="position"]')).toHaveValue("1");
+
+  // La cabecera de "Era Uno" es un `<h3>` + tick + un `<span>` con el
+  // contador (decorativo, sin rol ni etiqueta accesible — no hay forma de
+  // localizarlo por rol, así que se acota por texto puramente numérico
+  // dentro de la MISMA fila que el `<h3>`, el único nodo así en esa fila).
+  // La grid es el `<ul>` hermano inmediatamente siguiente a esa fila
+  // (estructura de saga-info.tsx: `GroupBody` se pinta justo después del
+  // `<div>` de cabecera dentro del mismo grupo).
+  const eraUnoHeading = page.getByRole("heading", {
+    level: 3,
+    name: "[QA Sagas v2] Era Uno",
+  });
+  const eraUnoHeaderRow = eraUnoHeading.locator("xpath=..");
+  const eraUnoCount = eraUnoHeaderRow.getByText(/^\d+$/);
+  const eraUnoGrid = eraUnoHeading.locator("xpath=../following-sibling::ul[1]");
+  const freeHeading = page.getByRole("heading", { level: 2, name: "Cuando quieras" });
+
+  try {
+    await page.goto(`/saga/${SAGA_UNIVERSO}`);
+    await page.waitForLoadState("networkidle").catch(() => {});
+
+    // Baseline del seed: 4 miembros directos, todos `fijo` — cabecera y grid
+    // coinciden en 4, y no hay sección «Cuando quieras» todavía (nadie es
+    // `libre` en Era Uno en este momento).
+    await expect(eraUnoCount).toHaveText("4");
+    await expect(eraUnoGrid.getByRole("listitem")).toHaveCount(4);
+    await expect(freeHeading).toHaveCount(0);
+
+    // Pone Rayuela en «Se lee cuando quieras» (mismo cambio que Test 1).
+    await page.goto(`/saga/${ERA_UNO_ID}/editar`);
+    const editRow = rowByTitle(page, "Rayuela");
+    await editRow.locator('select[name="placement"]').selectOption("libre");
+    await editRow.locator('input[name="position"]').fill("");
+    await editRow.getByRole("button", { name: "Guardar" }).click();
+    await expect(editRow.getByText("Guardado", { exact: true })).toBeVisible();
+
+    // La aserción que de verdad importa: la cabecera BAJA a 3 — no se queda
+    // huérfana en 4 — y la grid pinta exactamente esos mismos 3, nunca un
+    // número que la grid de debajo no respalde. Rayuela sale de la grid de
+    // su grupo y aparece solo en «Cuando quieras».
+    await page.goto(`/saga/${SAGA_UNIVERSO}`);
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await expect(eraUnoCount).toHaveText("3");
+    await expect(eraUnoGrid.getByRole("listitem")).toHaveCount(3);
+    await expect(eraUnoGrid.getByText("Rayuela")).toHaveCount(0);
+    const freeGrid = freeHeading.locator("xpath=following-sibling::ul[1]");
+    await expect(freeGrid.getByText("Rayuela").first()).toBeVisible();
+  } finally {
+    await page.goto(`/saga/${ERA_UNO_ID}/editar`);
+    const cleanupRow = rowByTitle(page, "Rayuela");
+    if ((await cleanupRow.count()) > 0) {
+      await cleanupRow.locator('input[name="position"]').fill("1");
+      await cleanupRow.locator('select[name="placement"]').selectOption("fijo");
+      await cleanupRow.getByRole("button", { name: "Guardar" }).click();
+      await expect(cleanupRow.getByText("Guardado", { exact: true })).toBeVisible();
+    }
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Test 6 (review de 76a3ef8, Finding 2 — hasta ahora sin red e2e): el
+// `sr-only` que explica el contorno punteado (`labels.noSlot`,
+// `saga.noOrderSlotHint`) tiene que salir SIN sesión. `MemberCell`/
+// `GroupBody` no reciben `canConfigure` en su firma (a diferencia del aviso
+// de deuda de curación, que sí), así que es estructuralmente imposible que
+// dependa del rol de quien mira — la prueba de eso es visitar la página sin
+// loguearse en absoluto, el caso más fuerte de "lector sin rol".
+//
+// Miembro read-only: "Trilogía La casa de los espíritus", miembro DIRECTO
+// de `SAGA_UNIVERSO` con `placement=null` fijo en el seed (así lo
+// documentan, sin discrepancia, `sagas-v2.spec.ts` y los comentarios de
+// `sagas-rol-narrativo.spec.ts`; ningún spec de sagas lo muta — confirmado
+// por grep de "Trilog" en `e2e/`), así que este test no toca datos y no
+// necesita `finally`.
+// ─────────────────────────────────────────────────────────────────────────
+test("el sr-only del contorno punteado sale sin sesión, solo en la obra sin hueco", async ({
+  page,
+}) => {
+  await page.goto(`/saga/${SAGA_UNIVERSO}`);
+  await page.waitForLoadState("networkidle").catch(() => {});
+
+  // Sin sesión, el aviso de deuda de curación (canConfigure-gated,
+  // `unclassifiedNotice`) nunca se pinta. Si el sr-only aparece de todos
+  // modos, queda demostrado que es independiente de ese aviso y del rol de
+  // quien mira, no solo "en teoría" sino en esta misma carga de página.
+  await expect(page.getByText(/obras? sin clasificar/)).toHaveCount(0);
+
+  const unclassifiedItem = page
+    .locator("li")
+    .filter({ hasText: "Trilogía La casa de los espíritus" });
+  await expect(unclassifiedItem).toBeVisible();
+  await expect(unclassifiedItem.locator("div").first()).toHaveClass(/outline-dashed/);
+  await expect(
+    unclassifiedItem.getByText(NO_SLOT_TEXT, { exact: true }),
+  ).toBeAttached();
+
+  // Control negativo: un miembro `fijo` normal (Rayuela, en la grid de Era
+  // Uno) no lleva ni el contorno ni el sr-only — el hint es condicional,
+  // no un texto que se cuela en toda celda.
+  const classifiedItem = page.locator("li").filter({ hasText: "Rayuela" });
+  await expect(classifiedItem).toBeVisible();
+  await expect(classifiedItem.locator("div").first()).not.toHaveClass(/outline-dashed/);
+  await expect(classifiedItem.getByText(NO_SLOT_TEXT, { exact: true })).toHaveCount(0);
 });
