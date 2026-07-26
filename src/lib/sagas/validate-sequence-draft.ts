@@ -11,11 +11,11 @@ import type { SequencePayload } from "./sequence-draft";
  *  borrado en la Task 9 junto con el formulario por fila). */
 export function validateSequenceDraft(
   payload: SequencePayload,
-  ctx: { childIds: Set<string>; anchorKeys?: Set<string> },
+  ctx: { childIds: Set<string>; anchorKeys: Set<string> },
 ): { errors: string[]; unclassified: number } {
   const errors = new Set<string>();
   let unclassified = 0;
-  const anchorKeys = ctx.anchorKeys ?? new Set<string>();
+  const anchorKeys = ctx.anchorKeys;
 
   const positions: number[] = [];
   const seen = new Set<string>();

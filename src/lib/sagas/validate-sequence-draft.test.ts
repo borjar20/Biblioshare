@@ -3,7 +3,7 @@ import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
 const base: SequencePayload = { entries: [], blocks: [], removed: [], removedBlocks: [], windows: [] };
-const ctx = { childIds: new Set(["hija-1"]) };
+const ctx = { childIds: new Set(["hija-1"]), anchorKeys: new Set<string>() };
 const item = (id: string, position: number | null, placement: SequencePayload["entries"][number]["placement"]) =>
   ({ item_type: "book" as const, item_id: id, position, placement, optional: false, role: null });
 
@@ -101,9 +101,19 @@ it("acepta una ventana con al menos un ancla", () => {
   expect(r.errors).toEqual([]);
 });
 
-it("rechaza un ancla que apunta a su propio sujeto", () => {
+it("rechaza un ancla `after` que apunta a su propio sujeto", () => {
   const entries = [item("f", null, "libre")];
   const windows = [window({ after_item_id: "f", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:f"]) });
+  expect(r.errors).toEqual(["windowSelfAnchor"]);
+});
+
+it("rechaza un ancla `before` que apunta a su propio sujeto", () => {
+  // Contraparte de la prueba de arriba por el otro lado: `windowSelfAnchor` se
+  // comprueba dos veces en el código, una por rama, y solo la de `after`
+  // estaba cubierta — desactivar la de `before` dejaba la suite en verde.
+  const entries = [item("f", null, "libre")];
+  const windows = [window({ before_item_id: "f", before_item_type: "book" })];
   const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:f"]) });
   expect(r.errors).toEqual(["windowSelfAnchor"]);
 });
@@ -115,9 +125,18 @@ it("acepta un ancla que apunta a otra entrada", () => {
   expect(r.errors).toEqual([]);
 });
 
-it("rechaza un ancla fuera del subárbol", () => {
+it("rechaza un ancla `after` fuera del subárbol", () => {
   const entries = [item("f", null, "libre")];
   const windows = [window({ after_item_id: "x", after_item_type: "book" })];
+  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set() });
+  expect(r.errors).toEqual(["windowForeignAnchor"]);
+});
+
+it("rechaza un ancla `before` fuera del subárbol", () => {
+  // Contraparte de la prueba de arriba: `windowForeignAnchor` también se
+  // comprueba dos veces, una por rama, y solo `after` estaba cubierta.
+  const entries = [item("f", null, "libre")];
+  const windows = [window({ before_item_id: "x", before_item_type: "book" })];
   const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set() });
   expect(r.errors).toEqual(["windowForeignAnchor"]);
 });

@@ -25,7 +25,8 @@ export async function saveSequence(
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
 
-  const { errors } = validateSequenceDraft(payload, { childIds: new Set(childIds) });
+  // Las claves del subárbol para `anchorKeys` llegan con el cargador de la tarea que pinte y guarde ventanas; de momento no hay ventanas que enviar.
+  const { errors } = validateSequenceDraft(payload, { childIds: new Set(childIds), anchorKeys: new Set() });
   if (errors.length > 0) return { error: errors[0] };
 
   const { error } = await supabase.rpc("save_saga_sequence", {

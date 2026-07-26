@@ -159,7 +159,11 @@ export function pairWith(d: SequenceDraft, key: string, targetSlot: number): Seq
   if (!entry) return d;
   const at = without.slots.findIndex((s) => s === target);
   if (at === -1) return d;
-  return { ...without, slots: without.slots.map((s, j) => (j === at ? [...s, entry] : s)) };
+  // Igual que `sendTo`: emparejar es OTRA vía de salida de `free` hacia
+  // `slots`, y se lleva la ventana por delante por la misma razón (ningún
+  // CHECK entre tablas puede imponer esa coherencia).
+  const clean = entry.window ? { ...entry, window: null } : entry;
+  return { ...without, slots: without.slots.map((s, j) => (j === at ? [...s, clean] : s)) };
 }
 
 export function unpair(d: SequenceDraft, index: number): SequenceDraft {

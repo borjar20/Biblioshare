@@ -174,6 +174,16 @@ describe("ventanas", () => {
     expect(setAnchor(d, "i:book:a", "after", anchor("Era 1"))).toEqual(d);
   });
 
+  it("emparejar una fila de «Cuando quieras» con un hueco fijo se lleva su ventana por delante", () => {
+    // `pairWith` es OTRA vía de salida de `free` hacia `slots`, distinta de
+    // `sendTo`. Sin esta limpieza la entrada llegaba a `d.slots` con `window`
+    // no nulo, rompiendo la invariante «solo `free` tiene ventana».
+    const conAncla = setAnchor(draft([[work("a")]], [work("f")]), "i:book:f", "after", anchor("Era 1"));
+    const emparejada = pairWith(conAncla, "i:book:f", 0);
+    expect(emparejada.slots[0].map((e) => e.itemId)).toEqual(["a", "f"]);
+    expect(emparejada.slots[0][1].window).toBeNull();
+  });
+
   it("toPayload lleva las ventanas, y solo las de la zona libre", () => {
     const d = setAnchor(draft([[work("a")]], [work("f")]), "i:book:f", "before", anchor("Viento"));
     const p = toPayload(d);

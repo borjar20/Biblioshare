@@ -42,7 +42,8 @@ export function useSequenceDraft(initial: SequenceDraft, sagaId: string, childId
   // El aviso se recalcula con el borrador, no al guardar: la barra tiene que
   // decir cuántas sin clasificar quedan MIENTRAS se cura, no después.
   const check = useMemo(
-    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds) }),
+    // Las claves del subárbol para `anchorKeys` llegan con el cargador de la tarea que pinte y guarde ventanas; de momento no hay ventanas que enviar.
+    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds), anchorKeys: new Set() }),
     [draft, childIds],
   );
 
