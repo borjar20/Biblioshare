@@ -16,6 +16,11 @@ const CATALOG_TABLE: Record<ItemType, "books" | "movies" | "series"> = {
 // pantalla puede escribir. Los miembros de una subsaga se editan en la pantalla
 // de esa subsaga (#187), y usar getSagaDetail aquí reintroduciría justo la
 // lista plana que aquella issue cerró.
+// Sin caso `null`: la existencia de la saga la comprueba la página (un
+// `maybeSingle()` sobre `sagas` seguido de `notFound()`) ANTES de llamar
+// aquí. Una saga real sin miembros ni hijas —p. ej. recién creada— es un
+// estado legítimo, y su borrador vacío (slots/free/unclassified vacíos) es
+// exactamente lo que el editor tiene que pintar en ese caso.
 export async function getSagaSequence(
   supabase: SupabaseServerClient,
   sagaId: string,
@@ -25,7 +30,7 @@ export async function getSagaSequence(
   /** Datos planos y serializables de las hijas para el rail. Nunca un `Map`:
    *  esto cruza la frontera servidor→cliente. */
   childSagas: Array<{ id: string; name: string; accentColor: string | null; count: number }>;
-} | null> {
+}> {
   const [{ data: itemRows }, { data: childRows }] = await Promise.all([
     supabase
       .from("saga_items")
@@ -38,37 +43,37 @@ export async function getSagaSequence(
       .select("id, name, accent_color, position_in_parent, placement_in_parent, optional_in_parent")
       .eq("parent_saga_id", sagaId),
   ]);
-  if (!itemRows && !childRows) return null;
 
   const rows = (itemRows ?? []) as Array<{
     item_type: ItemType; item_id: string; position: number | null;
     placement: SagaPlacement | null; optional: boolean; role: SagaItemRole | null;
   }>;
+  const children = (childRows ?? []) as Array<{
+    id: string; name: string; accent_color: string | null;
+    position_in_parent: number | null; placement_in_parent: SagaPlacement | null; optional_in_parent: boolean;
+  }>;
 
-  // Metadatos de catálogo por tipo, una consulta por tabla (mismo patrón que
-  // get-saga-detail.ts:200-216).
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
   for (const r of rows) idsByType[r.item_type].push(r.item_id);
   const meta = new Map<string, { title: string; coverUrl: string | null }>();
-  await Promise.all(
-    (Object.keys(idsByType) as ItemType[]).map(async (type) => {
+  const counts = new Map<string, number>();
+  await Promise.all([
+    // Metadatos de catálogo, una consulta por tabla (mismo patrón que
+    // get-saga-detail.ts:200-216).
+    ...(Object.keys(idsByType) as ItemType[]).map(async (type) => {
       if (idsByType[type].length === 0) return;
       const { data } = await supabase
         .from(CATALOG_TABLE[type]).select("id, title, cover_url").in("id", idsByType[type]);
       for (const r of data ?? []) meta.set(`${type}:${r.id}`, { title: r.title as string, coverUrl: (r.cover_url as string | null) ?? null });
     }),
-  );
-
-  // Recuento de obras por subsaga, para el «BLOQUE · 8 OBRAS» de su fila.
-  const children = (childRows ?? []) as Array<{
-    id: string; name: string; accent_color: string | null;
-    position_in_parent: number | null; placement_in_parent: SagaPlacement | null; optional_in_parent: boolean;
-  }>;
-  const counts = new Map<string, number>();
-  if (children.length > 0) {
-    const { data } = await supabase.from("saga_items").select("saga_id").in("saga_id", children.map((c) => c.id));
-    for (const r of data ?? []) counts.set(r.saga_id as string, (counts.get(r.saga_id as string) ?? 0) + 1);
-  }
+    // Recuento de obras por subsaga, para el «BLOQUE · 8 OBRAS» de su fila. No
+    // depende de los metadatos, así que va en la misma ronda y no detrás.
+    (async () => {
+      if (children.length === 0) return;
+      const { data } = await supabase.from("saga_items").select("saga_id").in("saga_id", children.map((c) => c.id));
+      for (const r of data ?? []) counts.set(r.saga_id as string, (counts.get(r.saga_id as string) ?? 0) + 1);
+    })(),
+  ]);
 
   const entries: Array<{ entry: DraftEntry; position: number | null; placement: SagaPlacement | null }> = [];
   for (const r of rows) {
