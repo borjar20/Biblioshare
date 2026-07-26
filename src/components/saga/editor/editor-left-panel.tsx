@@ -28,12 +28,11 @@ export function EditorLeftPanel({
   countBySaga: Map<string | null, number>;
   onAddItem: (item: PickedItem) => void;
   /** Alta de un bloque-subsaga en el borrador del editor de secuencia (Task 9). */
-  onAddBlock?: (child: { id: string; name: string }) => void;
+  onAddBlock: (child: { id: string; name: string }) => void;
   onChildrenChange: (children: ChildSagaRef[]) => void;
   onUnnestChild: (childId: string) => Promise<{ error?: string }>;
 }) {
   const t = useTranslations("sagaEditor");
-  const addBlock = onAddBlock ?? (() => {});
   const [picking, setPicking] = useState(false);
   const [nesting, setNesting] = useState(false);
   const [nestValue, setNestValue] = useState<{ id: string; name: string } | null>(null);
@@ -83,7 +82,7 @@ export function EditorLeftPanel({
       return;
     }
     onChildrenChange([...childSagas, { id: saga.id, name: saga.name, accentColor: null }]);
-    addBlock(saga);
+    onAddBlock(saga);
     setNesting(false);
     setNestValue(null);
   }
@@ -150,7 +149,7 @@ export function EditorLeftPanel({
                   onClick={() => cycleAccent(c)}
                   className={`h-3 w-3 shrink-0 rounded-sm ${SAGA_ACCENT[accentBySaga.get(c.id) ?? "terracota"].bg}`}
                 />
-                <button type="button" onClick={() => addBlock(c)} className="min-w-0 flex-1 truncate text-left text-xs font-semibold">
+                <button type="button" onClick={() => onAddBlock(c)} className="min-w-0 flex-1 truncate text-left text-xs font-semibold">
                   {c.name}
                 </button>
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{countBySaga.get(c.id) ?? 0}</span>

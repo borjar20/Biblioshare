@@ -62,7 +62,6 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
       <SequenceEditor
         sagaId={saga.id}
         initial={sequence.draft}
-        childIds={sequence.childIds}
         childSagas={sequence.childSagas}
         itineraries={<SequenceItineraries sagaId={saga.id} routes={routes} />}
       />

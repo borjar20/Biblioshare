@@ -107,7 +107,15 @@ export function RowSheet({
             </>
           )}
           <button type="button" onClick={onPair} className="col-span-2 rounded-lg border border-border p-2.5 text-left text-[12px] font-semibold">⇥ {t("pairPrompt")}</button>
-          <button type="button" onClick={onRemove} className="col-span-2 rounded-lg border border-border p-2.5 text-left text-[12px] font-semibold text-status-dropped">✕ {t("removeFromSaga")}</button>
+          {/* Un bloque NO se da de baja desde el borrador: `toPayload` solo lleva a
+           *  `removed` las claves `i:`, así que una baja de `s:<uuid>` no viajaría ni
+           *  como baja ni en `blocks` — la RPC no se enteraría y la fila de `sagas`
+           *  quedaría intacta (huecos compartidos con la fila siguiente al recargar).
+           *  Desanidar una subsaga es cambiar `parent_saga_id`, competencia del botón
+           *  ⤫ del rail (`onUnnestChild` → `setParentSaga`), no de este borrador. */}
+          {entry.kind === "item" && (
+            <button type="button" onClick={onRemove} className="col-span-2 rounded-lg border border-border p-2.5 text-left text-[12px] font-semibold text-status-dropped">✕ {t("removeFromSaga")}</button>
+          )}
         </div>
       </div>
     </dialog>

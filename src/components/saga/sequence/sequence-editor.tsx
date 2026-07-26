@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSequenceDraft } from "./use-sequence-draft";
 import { ShellDesktop } from "./shell-desktop";
 import { ShellMobile } from "./shell-mobile";
@@ -38,17 +38,15 @@ const entryFromChildSaga = (child: ChildSagaData): DraftEntry => ({
 // dos árboles de PRESENTACIÓN y un solo borrador. Duplicar el estado sería el
 // fallo que esa regla avisa que el patrón no cubre.
 export function SequenceEditor({
-  sagaId, initial, childIds, childSagas, itineraries,
+  sagaId, initial, childSagas, itineraries,
 }: {
   sagaId: string;
   initial: SequenceDraft;
-  childIds: string[];
   childSagas: Array<{ id: string; name: string; accentColor: string | null; count: number }>;
   /** Contenido de servidor sin callbacks, así que sí puede viajar como nodo
    *  (al contrario que el rail, que necesita ligar `onAddItem` al borrador). */
   itineraries: React.ReactNode;
 }) {
-  const { draft, ops, save, status, error, unclassified } = useSequenceDraft(initial, sagaId, childIds);
   const [menuKey, setMenuKey] = useState<string | null>(null);
   const [pairKey, setPairKey] = useState<string | null>(null);
 
@@ -56,6 +54,15 @@ export function SequenceEditor({
   // callbacks tienen que ligarse al borrador, y una función no cruza la
   // frontera servidor→cliente.
   const [children, setChildren] = useState(childSagas);
+  // Ids de hijas permitidos como bloque, derivados de `children` (el estado que
+  // el rail SÍ mantiene con `setChildren`), no de un prop `childIds` congelado
+  // en el primer render: crear o anidar una subsaga desde el rail actualiza
+  // `children` pero nunca actualizaba ese prop, así que `validateSequenceDraft`
+  // rechazaba con `foreignBlock` un bloque recién añadido que sí era válido.
+  // `useMemo` evita invalidar los memos de `useSequenceDraft` en cada render
+  // pasando un array nuevo con el mismo contenido.
+  const childIds = useMemo(() => children.map((c) => c.id), [children]);
+  const { draft, ops, save, status, error, unclassified } = useSequenceDraft(initial, sagaId, childIds);
   const rail = (
     <EditorLeftPanel
       sagaId={sagaId}

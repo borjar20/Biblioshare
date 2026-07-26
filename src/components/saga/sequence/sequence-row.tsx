@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Image from "next/image";
+import Link from "next/link";
 import { SAGA_ACCENT, isSagaAccentToken } from "@/lib/sagas/accents";
 import type { DraftEntry } from "@/lib/sagas/sequence-draft";
 import type { SagaItemRole } from "@/lib/sagas/types";
@@ -99,6 +100,20 @@ export function SequenceRow({
             </select>
           )}
         </>
+      )}
+
+      {/* Esta pantalla solo cura las filas de SU saga (#187 deliberado): un
+       *  bloque es una subsaga entera, y sus propias filas viven detrás de este
+       *  enlace, nunca aquí. Sin él, curar una hija sería inalcanzable desde el
+       *  padre — la misma trampa que #181 un nivel más abajo. */}
+      {isBlock && entry.childSagaId && (
+        <Link
+          href={`/saga/${entry.childSagaId}/editar`}
+          aria-label={t("blockOpenEditorFor", { title: entry.title })}
+          className="shrink-0 rounded-lg border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-surface-muted"
+        >
+          {t("blockOpenEditor")}
+        </Link>
       )}
 
       {controls}
