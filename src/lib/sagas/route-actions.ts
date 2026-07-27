@@ -1,11 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateSagaPage } from "@/lib/reactivity/revalidate";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
+import type { ItemType } from "@/lib/catalog/types";
 import { computeMovedPositions, getSagaRoutes } from "./get-saga-routes";
 import { validateRouteDraft } from "./validate-route-draft";
+import { getSagaDetail } from "./get-saga-detail";
+import { createCuratedOrder } from "./curated-order";
 import type { RawRouteEntry } from "./route-types";
 
 // Adopción de un itinerario (spec 2026-07-22). Clona el patrón de
@@ -216,4 +220,99 @@ export async function saveRoute(
 
   revalidateSagaPage(sagaId);
   return {};
+}
+
+// El generador (Task 6, fase 3): construye un itinerario recorriendo la
+// curación, en el mismo orden que el mapa. Hasta esta tarea un itinerario se
+// empieza en blanco, y por eso hay cero en producción (aparte del que ya
+// existe hecho a mano). Crea uno NUEVO; NUNCA pisa uno existente — una saga
+// admite varios, y sobrescribir el trabajo de alguien para ahorrarse un
+// nombre no compensa.
+//
+// Composición, no mecanismo nuevo: la fila se inserta con la MISMA lógica que
+// createRoute (cálculo de `position`, desvío del slug reservado) —duplicada
+// aquí porque createRoute solo devuelve `RouteFormState` (sin el id de la
+// fila creada) y aquí hace falta el id para guardar los pasos a
+// continuación—, y el guardado de los pasos es literalmente `saveRoute`: la
+// misma RPC `save_saga_route`, pasando antes por el mismo `validateRouteDraft`.
+export async function generateRoute(sagaId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+
+  // getSagaDetail ya trae `orderSagas`/`orderMemberships` (los insumos exactos
+  // de createCuratedOrder) y `groups` (para el desempate por título) — la
+  // MISMA fuente que usa el mapa derivado (fase 3). No se recalcula el orden
+  // por otra vía: si divergiera del mapa, el itinerario generado y el mapa
+  // contarían la saga distinto, que es justo lo que esta fase existe para
+  // eliminar.
+  const detail = await getSagaDetail(supabase, sagaId);
+  if (!detail) return { error: "generic" };
+
+  const titleByKey = new Map(
+    detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]),
+  );
+  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titleByKey.get(k) ?? "");
+  // `curatedOrder` deduplica por clave (el `new Set(...)` interno de
+  // createCuratedOrder): una obra miembro de dos sagas del subárbol solo
+  // aparece una vez, lo que exige validateRouteDraft más abajo.
+  const keys = mainOrder(sagaId);
+
+  // Si no hay nada curado, no se crea nada — ni la fila ni sus pasos. La
+  // lección de la #181 (un botón que promete y no cumple) y de la #198 (una
+  // pantalla vacía sin explicar es peor que no estar): mejor decir por qué
+  // que dejar un itinerario fantasma con cero pasos.
+  if (keys.length === 0) return { error: "empty" };
+
+  const t = await getTranslations("sagaEditor");
+  const name = t("itineraryGenerateName");
+  let slug = slugify(name);
+  if (!slug || slug === "lectura" || slug === "publicacion") slug = `${slug || "ruta"}-1`;
+
+  const { data: last } = await supabase
+    .from("saga_routes")
+    .select("position")
+    .eq("saga_id", sagaId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("saga_routes")
+    .insert({
+      saga_id: sagaId,
+      slug,
+      name,
+      summary: null,
+      position: ((last as { position: number } | null)?.position ?? 0) + 1,
+    })
+    .select("id")
+    .single();
+  if (insertError || !inserted) return { error: insertError?.code === "23505" ? "slugTaken" : "generic" };
+
+  // Los pasos son obras (childSagaId: null), en el mismo orden que el mapa;
+  // `note` siempre null (un generado es un punto de partida, no una curación
+  // ya anotada).
+  const entries: RawRouteEntry[] = keys.map((key, i) => {
+    const sep = key.indexOf(":");
+    return {
+      position: i + 1,
+      itemType: key.slice(0, sep) as ItemType,
+      itemId: key.slice(sep + 1),
+      childSagaId: null,
+      note: null,
+    };
+  });
+
+  // Guardado de los pasos: literalmente saveRoute, no una reimplementación de
+  // la RPC ni de validateRouteDraft.
+  return saveRoute(
+    (inserted as { id: string }).id,
+    sagaId,
+    entries,
+    detail.childRefs.map((c) => c.id),
+  );
 }

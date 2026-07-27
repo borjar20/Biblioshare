@@ -1195,7 +1195,10 @@
     "anchorPickerEmpty": "No hay nada más en esta saga a lo que anclar.",
     "itinerariesTitle": "Itinerarios de lectura",
     "itinerariesEmpty": "Todavía no hay ninguno.",
-    "itineraryCreate": "+ Crear itinerario"
+    "itineraryCreate": "+ Crear itinerario",
+    "itineraryGenerate": "Generar desde la curación",
+    "itineraryGenerateEmpty": "No hay nada curado todavía con lo que construirlo.",
+    "itineraryGenerateName": "Orden curado"
   },
   "sagaIndex": {
     "title": "Sagas",
