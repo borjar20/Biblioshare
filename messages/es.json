@@ -1083,6 +1083,11 @@
     "showMapLabel": "Enseñar el mapa de lectura",
     "showMapHint": "El mapa se genera solo con lo que cures. En una saga de pocos títulos no suele aportar.",
     "routesTitle": "Itinerarios de lectura",
+    "readingOrderTitle": "Cuál es el orden de lectura",
+    "readingOrderHint": "El que elijas ocupa el puesto de «Orden de lectura» en la ficha, y el mapa generado deja de ofrecerse como ruta aparte. Los demás itinerarios siguen ahí.",
+    "readingOrderNone": "Ninguno — que la ficha use el mapa generado",
+    "readingOrderBadge": "Orden de lectura",
+    "readingOrderSave": "Guardar elección",
     "routesEmpty": "Esta saga no tiene itinerarios curados.",
     "routeNameLabel": "Nombre",
     "routeSummaryLabel": "Para quién es",
@@ -1115,7 +1120,9 @@
       "xor": "Cada paso es una obra o una subsaga, no las dos cosas.",
       "duplicate": "Hay un paso repetido en el itinerario.",
       "foreignBlock": "Solo puedes usar subsagas de esta saga.",
-      "noteTooLong": "Una nota no puede superar 200 caracteres."
+      "noteTooLong": "Una nota no puede superar 200 caracteres.",
+      "emptyRoute": "Un itinerario sin pasos no puede ser el orden de lectura. Añádele pasos primero.",
+      "readingOrderEmpty": "Este itinerario es el orden de lectura de la saga: no puede quedarse sin pasos. Quítale antes la designación."
     },
     "zoneSequence": "La secuencia",
     "zoneSequenceHint": "El orden de lectura. Reordenar renumera.",
