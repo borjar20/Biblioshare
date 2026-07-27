@@ -48,17 +48,25 @@ export function ShellDesktop({
     </div>
   );
 
-  const row = (e: DraftEntry, slotNumber: number | null, controls?: React.ReactNode) => (
-    <div key={e.key}>
+  const row = (e: DraftEntry, slotNumber: number | null, controls?: React.ReactNode) => {
+    const sequenceRow = (
       <SequenceRow
-        entry={e} slotNumber={slotNumber} density="compact" controls={controls}
+        key={e.key} entry={e} slotNumber={slotNumber} density="compact" controls={controls}
         onOptional={(v) => ops.setOptional(e.key, v)}
         onRole={(r) => ops.setRole(e.key, r)}
         onMenu={() => onMenu(e.key)}
       />
-      {/* El cajón cuelga del bloque esté donde esté: «Novelas secretas» vive en
-          «Cuando quieras» (es `libre` en el Cosmere), no en la secuencia. */}
-      {e.kind === "block" && e.childSagaId && (
+    );
+    // Sin cajón, la fila se devuelve DESNUDA: envolverla siempre metería un
+    // `<div>` entre ella y el `WindowEditor` de la zona `free`, que se monta
+    // como su hermano inmediato (e2e/sagas-ventanas.spec.ts lo localiza por
+    // `following-sibling::div[1]`, el único selector estable que tiene).
+    if (e.kind !== "block" || !e.childSagaId) return sequenceRow;
+    return (
+      <div key={e.key}>
+        {sequenceRow}
+        {/* El cajón cuelga del bloque esté donde esté: «Novelas secretas» vive
+            en «Cuando quieras» (es `libre` en el Cosmere), no en la secuencia. */}
         <BlockWindowsDrawer
           childSagaId={e.childSagaId}
           nested={draft.nested}
@@ -66,9 +74,9 @@ export function ShellDesktop({
           onSetAnchor={ops.setAnchor}
           onClearAnchor={ops.clearAnchor}
         />
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <div className="grid grid-cols-[1fr_372px] gap-6 px-6 pb-24 pt-5">

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateSagaPage } from "@/lib/reactivity/revalidate";
+import { revalidateSagaPage, revalidateSagaRoutesPage } from "@/lib/reactivity/revalidate";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { computeMovedPositions, getSagaRoutes } from "./get-saga-routes";
@@ -242,6 +242,12 @@ export async function setReadingOrder(
   }
 
   revalidateSagaPage(sagaId);
+  // Y la propia pantalla de gestión: es la que enseña el radio y la chapa. Sin
+  // esto, volver a ella la servía con la designación ANTERIOR, y el selector
+  // arrancaba con un `current` viejo — el botón de guardar salía deshabilitado
+  // sobre lo que el curador acababa de elegir. Dentro de la pantalla no se veía:
+  // lo tapaba el `router.refresh()` del propio componente.
+  revalidateSagaRoutesPage(sagaId);
   return {};
 }
 

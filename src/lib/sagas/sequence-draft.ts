@@ -413,8 +413,23 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   // TODAS las zonas, no solo `free`: una entrada que SALE de «Cuando quieras»
   // deja de mandar su ventana pero tiene que seguir siendo sujeto, porque es lo
   // que hace que su fila se borre en la misma transacción en que se mueve.
-  const subjectOf = (e: DraftEntry) => ({
-    saga_id: e.ownerSagaId,
+  //
+  // El `saga_id` con el que se reclama NO es siempre `ownerSagaId`: una pantalla
+  // solo puede hacerse responsable de una ventana que ENSEÑA, porque el RPC
+  // borra los sujetos y reinserta `windows`, y un sujeto que se reclama sin
+  // reemitir su ventana la borra sin reponerla.
+  //
+  //  · Zona `free`: sí la enseña (lleva su `WindowEditor`), así que reclama bajo
+  //    la dueña — que con doble membresía puede ser una hija.
+  //  · Fuera de `free`: la entrada no puede tener ventana en esta pantalla, así
+  //    que reclama bajo la saga PROPIA, que es donde vive su fila. Reclamarla
+  //    bajo una hija borraría la ventana que esa hija tiene curada sobre la
+  //    misma obra — el caso de una obra con fila en el padre Y `libre` en la
+  //    hija, con `is_primary` en la hija: el cajón no la lista (es entrada
+  //    propia, `getSagaSequence` la excluye de `nested`), así que nadie la
+  //    reemitiría.
+  const subjectOf = (e: DraftEntry, zone: "free" | "own") => ({
+    saga_id: zone === "free" ? e.ownerSagaId : sagaId,
     item_type: e.kind === "item" ? e.itemType : null,
     item_id: e.kind === "item" ? e.itemId : null,
     child_saga_id: e.kind === "block" ? e.childSagaId : null,
@@ -430,9 +445,9 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   };
 
   const windowSubjects: SequencePayload["windowSubjects"] = [
-    ...d.slots.flat().map(subjectOf),
-    ...d.free.map(subjectOf),
-    ...d.unclassified.map(subjectOf),
+    ...d.slots.flat().map((e) => subjectOf(e, "own")),
+    ...d.free.map((e) => subjectOf(e, "free")),
+    ...d.unclassified.map((e) => subjectOf(e, "own")),
     ...d.removed.map(subjectFromKey),
     ...d.nested.map((n) => ({
       saga_id: n.ownerSagaId,

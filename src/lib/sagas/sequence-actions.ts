@@ -46,6 +46,26 @@ export async function saveSequence(
       anchorKeys.add(a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`);
     }
     windowOwners = owners;
+
+    // `loadWindowOwners` lee el estado ANTERIOR al guardado, así que por sí solo
+    // acusaría de `windowNotFree` a la entrada que este mismo borrador acaba de
+    // mandar a «Cuando quieras»: en BD todavía es `fijo`. Es el `foreignBlock`
+    // falso de la fase 2a otra vez, ahora del lado del servidor.
+    //
+    // Se superpone lo que el payload VA a escribir, sin pisar lo que BD ya sabe:
+    // el `if (!has)` conserva la dueña resuelta contra BD (la que decide
+    // `is_primary` con doble membresía) y solo añade los sujetos que esta saga
+    // está creando ahora, cuya fila vive por definición bajo ella.
+    for (const e of payload.entries) {
+      if (e.placement !== "libre") continue;
+      const key = `i:${e.item_type}:${e.item_id}`;
+      if (!windowOwners.has(key)) windowOwners.set(key, sagaId);
+    }
+    for (const b of payload.blocks) {
+      if (b.placement_in_parent !== "libre") continue;
+      const key = `s:${b.child_saga_id}`;
+      if (!windowOwners.has(key)) windowOwners.set(key, sagaId);
+    }
   }
   const { errors } = validateSequenceDraft(payload, {
     childIds: new Set(childIds),

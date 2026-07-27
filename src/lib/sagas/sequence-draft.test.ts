@@ -305,3 +305,25 @@ describe("toPayload: ventanas y sujetos (fase 4)", () => {
     expect(p.windowSubjects).toEqual([{ saga_id: "padre", item_type: null, item_id: null, child_saga_id: "hija" }]);
   });
 });
+
+// Regresión encontrada al inyectar fallos sobre los e2e de la fase 4: una obra
+// con fila en ESTA saga y `libre` en una hija (con `is_primary` en la hija)
+// tiene su ventana bajo la hija, pero el cajón NO la lista —`getSagaSequence`
+// excluye de `nested` lo que ya es entrada propia—, así que nadie la reemite.
+// Si esta pantalla la reclamara como sujeto bajo la hija, el RPC la borraría y
+// no repondría nada: pérdida silenciosa, justo la que la fase 4 viene a cerrar.
+describe("un sujeto solo se reclama bajo la saga cuya ventana esta pantalla enseña", () => {
+  it("fuera de «Cuando quieras», el sujeto va bajo la saga PROPIA aunque su dueña sea otra", () => {
+    const ajena = { ...work("a"), ownerSagaId: "hija" };
+    const p = toPayload(draft([[ajena]], [], [{ ...work("u"), ownerSagaId: "hija" }]), "padre");
+    expect(p.windowSubjects.map((s) => s.saga_id)).toEqual(["padre", "padre"]);
+  });
+
+  it("en «Cuando quieras» sí va bajo la dueña: ahí la pantalla la enseña y la reemite", () => {
+    const libre = { ...work("f"), ownerSagaId: "hija" };
+    const p = toPayload(draft([], [libre]), "padre");
+    expect(p.windowSubjects).toEqual([
+      { saga_id: "hija", item_type: "book", item_id: "f", child_saga_id: null },
+    ]);
+  });
+});

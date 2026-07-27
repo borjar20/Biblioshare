@@ -45,15 +45,21 @@ export function ShellMobile({
     unclassified: draft.unclassified.length,
   };
 
-  const row = (e: DraftEntry, slotNumber: number | null) => (
-    <div key={e.key}>
+  const row = (e: DraftEntry, slotNumber: number | null) => {
+    const sequenceRow = (
       <SequenceRow
-        entry={e} slotNumber={slotNumber} density="roomy"
+        key={e.key} entry={e} slotNumber={slotNumber} density="roomy"
         onOptional={(v) => ops.setOptional(e.key, v)}
         onRole={(r) => ops.setRole(e.key, r)}
         onMenu={() => onMenu(e.key)}
       />
-      {e.kind === "block" && e.childSagaId && (
+    );
+    // Igual que en la cáscara de escritorio: sin cajón, la fila va DESNUDA para
+    // no meter un `<div>` entre ella y el `WindowEditor` de la zona `free`.
+    if (e.kind !== "block" || !e.childSagaId) return sequenceRow;
+    return (
+      <div key={e.key}>
+        {sequenceRow}
         <BlockWindowsDrawer
           childSagaId={e.childSagaId}
           nested={draft.nested}
@@ -61,9 +67,9 @@ export function ShellMobile({
           onSetAnchor={ops.setAnchor}
           onClearAnchor={ops.clearAnchor}
         />
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <div className="px-3.5">
