@@ -7904,13 +7904,27 @@ update sagas s
 -- =====================================================================
 -- ANEXO 2026-07-27 — Fase 2b del orden unificado de sagas (spec
 -- docs/superpowers/specs/2026-07-26-sagas-fase-2b-ventanas-design.md).
--- Las DOS migraciones de abajo se aplicaron a DEV el 2026-07-27 y se
--- verificaron ahí contra los objetos reales (pg_constraint,
--- pg_policies, pg_proc), no contra list_migrations. Su aplicación a
--- PRODUCCIÓN es el Step 2 del plan de la Task 7 y queda fuera de esta
--- subtarea (solo documentación) — no se ha tocado prod para escribir
--- este anexo, y esta nota no debe leerse como confirmación de que ya
--- esté desplegada.
+-- Las DOS migraciones de abajo se aplicaron a DEV y a PRODUCCIÓN el
+-- 2026-07-27, en este orden, y se verificaron en las dos contra los
+-- objetos reales (pg_constraint, pg_indexes, pg_policies, pg_proc), no
+-- contra list_migrations. En prod quedaron los cuatro CHECK, los dos
+-- uniques parciales + el índice de saga_id + la PK, las dos políticas
+-- (lectura anon+authenticated, escritura authenticated con
+-- has_min_role('collaborator')) y las DOS firmas de save_saga_sequence,
+-- ambas SECURITY DEFINER y sin `execute` para anon.
+--
+-- Y no basta con que los CHECK existan: se comprobó EN PROD, dentro de
+-- una transacción revertida, que muerden. Cuatro filas imposibles
+-- rechazadas con 23514, cada una contra su constraint (sujeto obra+bloque
+-- y obra sin tipo → _subject; sin ninguna ancla → _needs_anchor; ancla
+-- «a partir de» obra+bloque → _after), la fila legítima aceptada, y el
+-- duplicado del mismo sujeto rechazado con 23505 contra _child_key. Tras
+-- el rollback, `saga_placement_windows` sigue con 0 filas.
+--
+-- El orden importa y se respetó: las migraciones van ANTES del
+-- despliegue del bundle nuevo. Al revés, el bundle nuevo manda
+-- `p_windows` contra una función que no existe y ningún guardado del
+-- editor funciona en producción.
 --
 -- La TERCERA migración del plan (`20260728_drop_save_saga_sequence_v4.sql`,
 -- que retira el envoltorio de cuatro argumentos de `save_saga_sequence`)
