@@ -1,5 +1,5 @@
 import type { SagaAccentToken } from "./accents";
-import type { SagaGraph, SagaGraphNode } from "./graph-data";
+import type { SagaGraph, SagaGraphNode } from "./map-types";
 import type { DetailMember } from "./types";
 
 // Derivación DETERMINISTA del timeline móvil (frame B, spec §2.4) a partir del

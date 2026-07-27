@@ -4,8 +4,9 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { UserRole } from "@/lib/auth/roles";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getSagaBase } from "./get-saga";
-import { buildSagaGraph, type GraphLookup, type RawSagaEdge, type RawSagaNode, type SagaGraph } from "./graph-data";
-import { isSagaAccentToken, type SagaAccentToken } from "./accents";
+import { deriveSagaMap } from "./derive-map";
+import type { SagaGraph } from "./map-types";
+import type { SagaAccentToken } from "./accents";
 import {
   averageSagaRating,
   computeProgress,
@@ -457,28 +458,13 @@ export async function getSagaDetail(
   }
 
   // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
-  // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
   // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
   // Rutas curadas y elección del viewer también van en este batch: ninguna
-  // depende de graph/nodesRes/edgesRes/followRow/parentRow/roleRow, solo de
+  // depende de graph/followRow/parentRow/roleRow, solo de
   // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
   // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
   // camino caliente de la ficha de saga.
-  const [nodesRes, edgesRes, followRow, parentRow, roleRow, curated, routeChoice, windowsRes] = await Promise.all([
-    // Nodos de TODO el subárbol, no solo los de la raíz: el orden principal
-    // (§1.5) expande recursivamente los nodos-saga con el orden principal de la
-    // saga hija, así que necesita sus nodos. El grafo que se pinta sigue siendo
-    // solo el de la raíz — se filtra abajo.
-    supabase
-      .from("saga_nodes")
-      .select("saga_id, id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
-      .in("saga_id", sagaIds)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("saga_edges")
-      .select("id, from_node, to_node, edge_type")
-      .eq("saga_id", id)
-      .order("id", { ascending: true }),
+  const [followRow, parentRow, roleRow, curated, routeChoice, windowsRes] = await Promise.all([
     user
       ? supabase
           .from("saga_follows")
@@ -514,36 +500,16 @@ export async function getSagaDetail(
       .in("saga_id", sagaIds),
   ]);
 
-  // Lookup del grafo desde los MISMOS datos de la pestaña Info (spec §1.3).
-  const membersByKey = new Map(members.map((m) => [`${m.itemType}:${m.itemId}`, m]));
+  // Lookup del mapa derivado (fase 3, Task 2): accent y nombre de cada grupo,
+  // desde los MISMOS `groups` que pinta la pestaña Info (spec §1.3). Ya no hace
+  // falta el lookup de miembros ni el de subsagas del grafo viejo: `deriveSagaMap`
+  // solo dibuja obras, nunca un nodo-bloque, así que no necesita más que esto.
   const groupAccent = new Map<string | null, SagaAccentToken>();
   const groupNameMap = new Map<string | null, string | null>();
   for (const g of groups) {
     groupAccent.set(g.sagaId, g.accent);
     groupNameMap.set(g.sagaId, g.name);
   }
-  const childNames = new Map<string, string>();
-  for (const d of descendants.values()) {
-    childNames.set(d.id, d.name);
-    // Nodo-saga de un descendiente profundo o de una hija sin miembros: usa su
-    // accent_color persistido si lo tiene (la rotación solo existe para los
-    // grupos de la ficha); sin color persistido cae al beige del fallback.
-    if (!groupAccent.has(d.id) && isSagaAccentToken(d.accent_color)) {
-      groupAccent.set(d.id, d.accent_color);
-    }
-  }
-  const childCovers = new Map<string, string[]>();
-  const childCounts = new Map<string, number>();
-  for (const g of groups) {
-    if (g.sagaId === null) continue;
-    childCovers.set(g.sagaId, g.members.flatMap((m) => (m.coverUrl ? [m.coverUrl] : [])).slice(0, 3));
-  }
-  for (const row of rows) {
-    if (row.saga_id === id) continue;
-    childCounts.set(row.saga_id, (childCounts.get(row.saga_id) ?? 0) + 1);
-  }
-
-  const treeNodes = (nodesRes.data ?? []) as Array<RawSagaNode & { saga_id: string }>;
 
   // Insumos de createMainOrder (§1.5) para reconstruir el ORDEN de una subsaga
   // (Task 6, RouteView) — NO el denominador del avance del hero desde el
@@ -564,13 +530,12 @@ export async function getSagaDetail(
     itemId: r.item_id,
     position: r.position,
   }));
-  const orderNodes = treeNodes.map((n) => ({
-    sagaId: n.saga_id,
-    itemType: n.item_type,
-    itemId: n.item_id,
-    childSagaId: n.child_saga_id,
-    orderNo: n.order_no,
-  }));
+  // Paso intermedio de la fase 3 (Task 2): la ficha ya no lee `saga_nodes`, así
+  // que no hay nodos que ofrecer aquí. `createMainOrder` cae por su rama «sin
+  // grafo» (ordena por `position`, luego título) con la lista vacía — es
+  // justo el criterio al que se va a mover cuando este fichero (main-order.ts)
+  // se retire entero en la Task 4.
+  const orderNodes: OrderNode[] = [];
   // Insumos de countedKeys (el DENOMINADOR, ./progress.ts), construidos con los
   // mismos datos ya en memoria que orderSagas/orderMemberships (sin viaje
   // extra): optionalInParent de la raíz no se usa nunca (walk() solo la mira
@@ -595,19 +560,28 @@ export async function getSagaDetail(
   // cuentan donde antes recibía las del orden principal.
   const progress = computeProgress(groups, countedKeys(id, progressSagas, progressMemberships));
 
-  const rawNodes = treeNodes.filter((n) => n.saga_id === id);
-  const rawEdges = (edgesRes.data ?? []) as RawSagaEdge[];
-  const graph =
-    rawNodes.length > 0
-      ? buildSagaGraph(rawNodes, rawEdges, {
-          members: membersByKey,
-          groupAccent,
-          groupName: groupNameMap,
-          childNames,
-          childCovers,
-          childCounts,
-        } satisfies GraphLookup)
-      : null;
+  // Títulos de ancla para las ventanas (Task 6): el subárbol entero YA está en
+  // memoria — `meta` (catálogo de toda obra que aparece en `saga_items` del
+  // árbol, sea o no ancla) y `descendants` (todo bloque del árbol) — así que se
+  // reutilizan en vez de pedirle lo mismo a getAnchorOptions con un viaje
+  // aparte. Mismas claves que `DraftEntry.key`/`hydrateWindows`. Se resuelve
+  // aquí, antes del grafo: `deriveSagaMap` necesita las ventanas ya resueltas.
+  const anchorTitles = new Map<string, string>();
+  for (const [key, m] of meta) anchorTitles.set(`i:${key}`, m.title);
+  for (const d of descendants.values()) anchorTitles.set(`s:${d.id}`, d.name);
+  const windows = resolveWindows((windowsRes.data ?? []) as RawWindowRow[], anchorTitles);
+
+  // El mapa ya no se lee: se deriva de lo curado (fase 3). Los mismos `groups`
+  // que pinta la ficha, más las ventanas, más los lookups de acento y nombre
+  // que ya estaban construidos aquí para el grafo viejo.
+  const derivedGraph = deriveSagaMap(groups, windows, {
+    groupAccent,
+    groupName: groupNameMap,
+  });
+  // `SagaDetail.graph` sigue siendo `SagaGraph | null`: null cuando no hay
+  // nada curado que pintar, para que la pestaña siga sabiendo distinguir
+  // «no hay mapa» (hasGraph). No cambia de tipo ni el de nadie que lo consume.
+  const graph = derivedGraph.nodes.length > 0 ? derivedGraph : null;
 
   // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
   // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.
@@ -630,16 +604,6 @@ export async function getSagaDetail(
     placementInParent: d.placement_in_parent,
     optionalInParent: d.optional_in_parent,
   }));
-
-  // Títulos de ancla para las ventanas (Task 6): el subárbol entero YA está en
-  // memoria — `meta` (catálogo de toda obra que aparece en `saga_items` del
-  // árbol, sea o no ancla) y `descendants` (todo bloque del árbol) — así que se
-  // reutilizan en vez de pedirle lo mismo a getAnchorOptions con un viaje
-  // aparte. Mismas claves que `DraftEntry.key`/`hydrateWindows`.
-  const anchorTitles = new Map<string, string>();
-  for (const [key, m] of meta) anchorTitles.set(`i:${key}`, m.title);
-  for (const d of descendants.values()) anchorTitles.set(`s:${d.id}`, d.name);
-  const windows = resolveWindows((windowsRes.data ?? []) as RawWindowRow[], anchorTitles);
 
   return {
     saga,

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { NodeProps, Node } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
-import type { SagaGraphNode } from "@/lib/sagas/graph-data";
+import type { SagaGraphNode } from "@/lib/sagas/map-types";
 
 // Nodos custom del mapa (frames C/E): portada 78×116 (principal), medallón
 // 58px (menor) y tarjeta de saga anidada. El lienzo es oscuro SIEMPRE (estética

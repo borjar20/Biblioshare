@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
-import type { SagaGraph } from "@/lib/sagas/graph-data";
+import type { SagaGraph } from "@/lib/sagas/map-types";
 
 // Leyenda del mapa (frames B/C/E): tipos de línea + subsagas presentes en el
 // grafo (deducidas de los propios nodos, sin prop extra).
