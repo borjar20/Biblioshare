@@ -1,0 +1,40 @@
+-- supabase/migrations/20260729_drop_saga_graph.sql
+--
+-- Último paso de la fase 3. El «Mapa de lectura» dejó de leerse de aquí: se
+-- DERIVA de lo curado (src/lib/sagas/derive-map.ts). Estas dos tablas eran una
+-- SEGUNDA VERDAD —dibujada a mano en un lienzo cuyo editor se retiró en la fase
+-- 2a— capaz de contradecir a la ficha, que es justo lo que la unificación de
+-- sagas existía para eliminar.
+--
+-- ANTES DE BORRAR se hicieron las dos cosas que hacían falta:
+--   1. Lo único que estas tablas sabían y el modelo nuevo no vive ya en
+--      itinerarios: el entrelazado de 19 obras del Cosmere y las 7 aristas que
+--      cruzan hilos en Mundodisco (20260728_migrar_grafos_a_itinerarios.sql,
+--      aplicada a producción el 2026-07-27, ANTES que este borrado).
+--      Trono de Cristal y Maasverse no se migraron: medido, el primero era
+--      redundante hasta el empate del hueco 6 y el segundo tenía un solo nodo
+--      sin orden.
+--   2. Se verificó que no queda NI UN camino de lectura de estas tablas en
+--      `src/` — ni un `.from("saga_nodes")`, ni un `.from("saga_edges")`, ni un
+--      `.rpc("save_saga_graph")`. El código nuevo lleva desplegado y sirviendo
+--      desde el 2026-07-27 (comprobado en producción: el mapa del Cosmere se
+--      dibuja compacto, 20 nodos en 7 filas, que solo produce el derivado).
+--
+-- El orden importó y se respetó: primero el código sirviendo, después el
+-- borrado. Al revés, la ficha entera se habría quedado sin datos.
+--
+-- `saga_nodes.level` guardaba un matiz (`principal`/`menor`) que el modelo
+-- nuevo expresa con `optional` y con el rol narrativo. Se comprobaron los dos
+-- únicos nodos que lo usaban —*Esquirla del Amanecer* y *La Espada de la
+-- Asesina*— y los dos ya están cubiertos, así que no se pierde nada.
+-- `label_override` no guardaba ningún valor en ninguna fila.
+drop function if exists public.save_saga_graph(uuid, jsonb, jsonb);
+drop table if exists public.saga_edges;
+drop table if exists public.saga_nodes;
+
+-- Y sus dos enums, que se quedaban huérfanos: al irse las tablas no queda
+-- ninguna columna ni ninguna función que los use (comprobado contra
+-- `pg_attribute`/`pg_proc` en dev y en prod: 0 y 0). Un tipo que no tipa nada
+-- es ruido para quien lea el esquema dentro de seis meses.
+drop type if exists public.saga_edge_type;
+drop type if exists public.saga_node_level;
