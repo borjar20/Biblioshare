@@ -82,6 +82,16 @@ export function deriveSagaMap(
   const lastOfBlock = new Map<string, string>();
   const edges: SagaGraphEdge[] = [];
 
+  // Cola de la cadena en la ZONA ORDENADA: el último hueco encadenable visto,
+  // de cualquier bloque ordenado anterior (no necesariamente el inmediatamente
+  // anterior — un bloque sin obras encadenables se salta sin romper la
+  // cadena, así que esto puede "saltar por encima" de uno o más bloques
+  // vacíos). Es un array de miembros (no una sola obra) porque un tándem en el
+  // límite tiene que conectar TODAS sus obras, igual que dentro de un bloque.
+  // Los bloques `libre` no la tocan (ni la leen ni la actualizan): flotan a
+  // propósito, fuera de la cadena.
+  let chainTail: DetailMember[] | null = null;
+
   // `x` es un contador de columnas COMPARTIDO por todo el mapa: no se
   // reinicia al cambiar de bloque, así que los bloques colocados salen en
   // columnas crecientes. Dos obras en el mismo hueco de su bloque (tándem,
@@ -185,6 +195,38 @@ export function deriveSagaMap(
 
       x++;
     });
+
+    // Cadena ENTRE bloques, solo en la zona ordenada (`y < ordered.length`,
+    // porque `blocks` es `[...ordered, ...free]`): la última obra encadenada
+    // del bloque anterior (con cola pendiente) se une con la primera de este,
+    // con las mismas reglas que dos huecos consecutivos DENTRO de un bloque
+    // (tándem → todos los pares). Un bloque `libre` nunca llega aquí (queda
+    // en la cola `free`, después de todos los `y < ordered.length`), así que
+    // no hace falta comprobación aparte para él.
+    if (y < ordered.length) {
+      if (huecos.length > 0) {
+        if (chainTail) {
+          for (const prevMember of chainTail) {
+            for (const m of huecos[0]) {
+              const source = byId.get(itemKey(prevMember))!;
+              const target = itemKey(m);
+              edges.push({
+                id: `chain:${source.id}->${target}`,
+                source: source.id,
+                target,
+                type: "principal",
+                accent: source.accent,
+              });
+            }
+          }
+        }
+        chainTail = huecos.at(-1)!;
+      }
+      // huecos.length === 0: bloque sin obras encadenables. Se salta sin
+      // romper la cadena — `chainTail` conserva el hueco del último bloque
+      // ordenado que sí tenía uno, para que el SIGUIENTE bloque ordenado con
+      // huecos se una a él.
+    }
 
     // Obras sin hueco: conservan la fila (`y`) de su bloque; su `x` va
     // después del último hueco real del bloque, de forma determinista (orden

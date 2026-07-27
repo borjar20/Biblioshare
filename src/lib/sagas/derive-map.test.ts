@@ -132,7 +132,10 @@ describe("deriveSagaMap", () => {
       { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
       lookup(),
     );
-    expect(map.edges).toEqual([]);
+    // Uno y Dos son dos bloques colocados CONSECUTIVOS: sí les toca una
+    // arista `principal` de cadena (A→Z) — la ventana rancia es la que no
+    // debe producir arista, no la cadena entre bloques.
+    expect(map.edges.filter((e) => e.type !== "principal")).toEqual([]);
   });
 
   it("una ventana cuyo sujeto NO es libre (bloque fijo) no produce arista", () => {
@@ -142,7 +145,8 @@ describe("deriveSagaMap", () => {
       { "s:saga-Dos": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
       lookup(),
     );
-    expect(map.edges).toEqual([]);
+    // Igual que arriba: Uno→Dos sí tienen cadena, la ventana rancia no.
+    expect(map.edges.filter((e) => e.type !== "principal")).toEqual([]);
   });
 
   it("una entrada libre sin ventana queda suelta, sin aristas que la unan al resto", () => {
@@ -325,5 +329,81 @@ describe("deriveSagaMap", () => {
     const a = map.nodes.find((n) => n.id === "i:book:A")!;
     const b = map.nodes.find((n) => n.id === "i:book:B")!;
     expect(b.y - a.y).toBeGreaterThanOrEqual(CARD_HEIGHT + LABEL_HEIGHT);
+  });
+
+  // Task 8: la cadena ahora cruza de un bloque colocado al siguiente, en la
+  // zona ORDENADA (`partitionGroups`). Antes cada bloque quedaba como una
+  // isla — regresión contra el grafo curado a mano que el mapa derivado
+  // sustituye.
+  describe("la cadena cruza de un bloque colocado al siguiente (zona ordenada)", () => {
+    it("dos bloques colocados consecutivos se unen: la última obra del primero con la primera del segundo", () => {
+      const map = deriveSagaMap(
+        groups([block("Uno", 1, [work("A", 1), work("B", 2)]), block("Dos", 2, [work("C", 1), work("D", 2)])]),
+        {}, lookup(),
+      );
+      const chainEdges = map.edges.filter((e) => e.type === "principal");
+      // Orden de inserción real: primero las aristas INTRA de cada bloque (se
+      // generan mientras se recorren sus huecos), luego la arista de cadena
+      // ENTRE bloques (se añade al terminar de procesar el bloque siguiente).
+      expect(chainEdges).toEqual([
+        expect.objectContaining({ source: "i:book:A", target: "i:book:B" }),
+        expect.objectContaining({ source: "i:book:C", target: "i:book:D" }),
+        expect.objectContaining({ source: "i:book:B", target: "i:book:C" }),
+      ]);
+    });
+
+    it("un bloque libre no se une a la cadena: flota, solo lo conectan sus ventanas", () => {
+      const map = deriveSagaMap(
+        groups([block("Uno", 1, [work("A", 1)]), freeBlock("Libre", [work("L", 1)])]),
+        {}, lookup(),
+      );
+      expect(map.edges.some((e) => e.type === "principal")).toBe(false);
+    });
+
+    it("un bloque sin obras encadenables se salta: el bloque anterior se une con el siguiente, sin romper la cadena", () => {
+      const map = deriveSagaMap(
+        groups([
+          block("Uno", 1, [work("A", 1)]),
+          // "Medio" solo tiene una obra suelta (sin hueco): no aporta ningún
+          // hueco a la cadena, así que no debe interrumpirla.
+          block("Medio", 2, [looseWork("Z")]),
+          block("Tres", 3, [work("C", 1)]),
+        ]),
+        {}, lookup(),
+      );
+      const chainEdges = map.edges.filter((e) => e.type === "principal");
+      expect(chainEdges).toEqual([expect.objectContaining({ source: "i:book:A", target: "i:book:C" })]);
+    });
+
+    it("un tándem en el límite conecta todos los pares, igual que dentro de un bloque", () => {
+      const map = deriveSagaMap(
+        groups([
+          block("Uno", 1, [work("A", 1), work("B", 1)]),
+          block("Dos", 2, [work("C", 1), work("D", 1)]),
+        ]),
+        {}, lookup(),
+      );
+      const chainEdges = map.edges.filter((e) => e.type === "principal");
+      const pairs = chainEdges.map((e) => `${e.source}->${e.target}`).sort();
+      expect(pairs).toEqual(
+        ["i:book:A->i:book:C", "i:book:A->i:book:D", "i:book:B->i:book:C", "i:book:B->i:book:D"].sort(),
+      );
+    });
+
+    it("los miembros directos (grupo «Nexo») entran en la cadena con la misma regla, sin caso especial", () => {
+      // Grupo de miembros directos: sagaId null, placementInParent null —
+      // partitionGroups lo mete en `ordered` (solo `libre` va a `free`).
+      const directGroup: MemberGroup = {
+        sagaId: null,
+        name: null,
+        accent: "beige",
+        members: [work("N", 1)],
+        positionInParent: null,
+        placementInParent: null,
+      };
+      const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)]), directGroup]), {}, lookup());
+      const chainEdges = map.edges.filter((e) => e.type === "principal");
+      expect(chainEdges).toEqual([expect.objectContaining({ source: "i:book:A", target: "i:book:N" })]);
+    });
   });
 });
