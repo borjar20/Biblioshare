@@ -468,6 +468,74 @@ git commit -m "feat(sagas): el orden principal sale de la curación, no del graf
 
 ---
 
+### Task 4-bis: El mapa se enseña cuando aporta
+
+> **Tarea añadida el 2026-07-27**, decidida por el responsable al revisar la Task 4. **No estaba en el plan original** y sustituye a lo que ese plan daba por bueno.
+
+**Files:** Create `supabase/migrations/20260728_sagas_show_map.sql`; modify `src/lib/sagas/get-saga.ts`, `get-saga-detail.ts`, `build-library-saga-cards.ts`, `get-followed-sagas.ts`, `manage-saga-actions.ts` (o donde vivan las acciones de meta), `src/components/saga/saga-meta-editor.tsx`, `saga-info.tsx`, `messages/es.json`.
+
+**El problema, medido:** al derivar el mapa, `hasGraph` cambió de significado sin que nadie lo pidiera. Antes era «alguien dibujó un grafo a mano» —**1 saga de 14** en dev— y ahora es «el subárbol tiene algún miembro» —**10 de 14**—. De ese booleano cuelgan tres cosas: el aviso «Orden de lectura disponible. **Un moderador configuró el recorrido** de esta saga», el badge `◆ Grafo` de las cards de Mi Biblioteca, y la propia ruta `lectura` del selector.
+
+**La decisión:** el aviso **se retira** —ya no señala nada— y en su lugar el curador **decide** si esa saga enseña mapa, con un interruptor en el editor. Porque ahora el mapa se genera solo: el de una saga de dos títulos no aporta nada, y el de Mundodisco sí. Se activa donde aporta.
+
+- [ ] **Step 1: La columna**
+
+```sql
+-- supabase/migrations/20260728_sagas_show_map.sql
+-- Hasta la fase 3, tener mapa significaba que alguien lo había DIBUJADO a
+-- mano, así que su existencia ya era la señal de que merecía enseñarse. Al
+-- derivarlo de la curación, toda saga con miembros tiene mapa y esa señal
+-- desaparece: el de una saga de dos títulos no aporta nada. Lo decide el
+-- curador.
+alter table public.sagas add column show_map boolean not null default false;
+
+-- Las sagas que HOY tienen mapa lo siguen enseñando: retirarlo en silencio
+-- sería una pérdida, no una migración.
+update public.sagas s set show_map = true
+ where exists (select 1 from public.saga_nodes n where n.saga_id = s.id);
+```
+
+Aplícala a **dev** y verifica contra `information_schema.columns` y con un `select count(*) where show_map` que salgan **exactamente las 4** sagas que tienen nodos hoy.
+
+- [ ] **Step 2: El dato llega hasta donde ya se decide**
+
+`hasGraph` ya está cableado en los cuatro sitios que importan; **no inventes un camino nuevo**, cambia su origen:
+
+- `get-saga-detail.ts`: `hasGraph: saga.showMap && graph !== null`.
+- `buildRouteList(curated, labels, hasGraph)` decide si existe la ruta `lectura`: con el interruptor apagado, el selector no la ofrece y **la pestaña sigue existiendo** para los itinerarios y para «Publicación».
+- `build-library-saga-cards.ts` / `get-followed-sagas.ts`: el badge sale del mismo dato.
+- `src/app/saga/[id]/mapa/page.tsx` ya trata el caso «sin mapa»: compruébalo y respétalo.
+
+**Comprueba qué pasa con la ruta activa** cuando alguien llega a `?ruta=lectura` de una saga con el interruptor apagado: no puede quedarse en blanco. Mira cómo se resuelve hoy una ruta que no existe y sigue ese camino.
+
+- [ ] **Step 3: Retirar el aviso**
+
+Quita el bloque de `saga-info.tsx` que pinta `graphAvailableTitle`/`graphAvailableBody` y sus dos claves de `messages/es.json`. **Comprueba con grep que no queda ningún consumidor** antes de borrarlas.
+
+- [ ] **Step 4: El interruptor**
+
+En `saga-meta-editor.tsx`, junto al resto de metadatos de la saga. Sigue **el patrón que ese componente ya usa** para guardar (mira su acción y su estado de formulario antes de escribir nada); no montes un mecanismo nuevo. Copia nueva en `sagaEditor`:
+
+```json
+"showMapLabel": "Enseñar el mapa de lectura",
+"showMapHint": "El mapa se genera solo con lo que cures. En una saga de pocos títulos no suele aportar."
+```
+
+El interruptor necesita el mismo gate que el resto del editor (`collaborator+`), tanto en la acción como en la BD.
+
+- [ ] **Step 5: Pruebas y navegador**
+
+Prueba de `buildRouteList` con `hasGraph` en `false`: la ruta `lectura` **no** está y las curadas y «Publicación» sí. Y contra dev: enciende el interruptor en una saga, comprueba que aparece la ruta `lectura` con su mapa; apágalo, comprueba que desaparece **y que la pestaña sigue viva** si hay itinerarios. Deja la semilla como estaba.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat(sagas): el curador decide si su saga enseña mapa"
+```
+
+---
+
 ### Task 5: El migrador
 
 **Files:** Create `src/lib/sagas/linearize-graph.ts` (+ test), `supabase/migrations/20260728_migrar_grafos_a_itinerarios.sql`.
