@@ -3,32 +3,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
+import { freeBlockWindow, freeItemWindow } from "@/lib/sagas/get-saga-detail";
 import type { MemberGroup } from "@/lib/sagas/group-members";
 import type { DetailMember, ResolvedWindow } from "@/lib/sagas/types";
 import { RoleChip } from "./role-chip";
 
-// Ventana de una entrada `libre` (fase 2b, Task 6): solo aplica a una entrada
-// realmente `libre` AHORA MISMO — el render no confía en que `windows` no
-// traiga una fila para algo que dejó de serlo (un cambio de colocación no
-// borra la fila de `saga_placement_windows`, ver el comentario de `windows`
-// en `SagaDetail`), así que las dos vías de entrada comprueban `placement`/
-// `placementInParent` ellas mismas antes de mirar el mapa, en vez de confiar
-// en que la lista que reciben ya está filtrada.
-function freeItemWindow(
-  windows: Record<string, ResolvedWindow>,
-  m: DetailMember,
-): ResolvedWindow | null {
-  if (m.placement !== "libre") return null;
-  return windows[`i:${m.itemType}:${m.itemId}`] ?? null;
-}
-
-function freeBlockWindow(
-  windows: Record<string, ResolvedWindow>,
-  group: MemberGroup,
-): ResolvedWindow | null {
-  if (group.placementInParent !== "libre" || group.sagaId === null) return null;
-  return windows[`s:${group.sagaId}`] ?? null;
-}
+// `freeItemWindow`/`freeBlockWindow` (la guarda «solo lo libre tiene
+// ventana») viven en get-saga-detail.ts junto a `resolveWindows` — extraídas
+// de aquí en la revisión de Task 6 para poder probarlas sin renderizar React.
+// Ver su comentario ahí para el porqué de la comprobación de `placement`/
+// `placementInParent`.
 
 // Pestaña Info (frames A/D): sinopsis + títulos agrupados por subsaga. La
 // celda replica el icell del mockup: portada, badge de orden, estado ✓/◉.
