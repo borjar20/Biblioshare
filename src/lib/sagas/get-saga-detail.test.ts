@@ -32,6 +32,8 @@ it("resuelve una ventana con las dos anclas: la frase entera", () => {
   expect(windows["i:book:n2"]).toEqual({
     afterTitle: "Nacidos de la Bruma Era 1",
     beforeTitle: "Viento y Verdad",
+    afterKey: "i:book:a",
+    beforeKey: "i:book:b",
   });
 });
 
@@ -41,7 +43,12 @@ it("resuelve una ventana con una sola ancla («after»), apuntando a un bloque",
     [w({ item_type: "book", item_id: "n2", after_child_saga_id: "sub-1" })],
     titles,
   );
-  expect(windows["i:book:n2"]).toEqual({ afterTitle: "El Archivo de las Tormentas", beforeTitle: null });
+  expect(windows["i:book:n2"]).toEqual({
+    afterTitle: "El Archivo de las Tormentas",
+    beforeTitle: null,
+    afterKey: "s:sub-1",
+    beforeKey: null,
+  });
 });
 
 it("resuelve una ventana con una sola ancla («before»), sujeto bloque", () => {
@@ -50,7 +57,12 @@ it("resuelve una ventana con una sola ancla («before»), sujeto bloque", () => 
     [w({ child_saga_id: "sub-1", before_item_type: "book", before_item_id: "b" })],
     titles,
   );
-  expect(windows["s:sub-1"]).toEqual({ afterTitle: null, beforeTitle: "Viento y Verdad" });
+  expect(windows["s:sub-1"]).toEqual({
+    afterTitle: null,
+    beforeTitle: "Viento y Verdad",
+    afterKey: null,
+    beforeKey: "i:book:b",
+  });
 });
 
 it("un ancla que ya no resuelve (fuera del subárbol cargado) queda a null: no se limpia la fila entera", () => {
@@ -65,7 +77,31 @@ it("un ancla que ya no resuelve (fuera del subárbol cargado) queda a null: no s
     ],
     titles,
   );
-  expect(windows["i:book:n2"]).toEqual({ afterTitle: null, beforeTitle: "Viento y Verdad" });
+  expect(windows["i:book:n2"]).toEqual({
+    afterTitle: null,
+    beforeTitle: "Viento y Verdad",
+    afterKey: null,
+    beforeKey: "i:book:b",
+  });
+});
+
+it("un ancla que resuelve trae clave y título; una rota, las dos a null", () => {
+  // Sujeto: el bloque `sujeto`. Ancla `after`: el bloque `saga-1`, que resuelve.
+  // Ancla `before`: una obra que ya no está en el subárbol.
+  const out = resolveWindows(
+    [
+      {
+        item_type: null, item_id: null, child_saga_id: "sujeto",
+        after_item_type: null, after_item_id: null, after_child_saga_id: "saga-1",
+        before_item_type: "book", before_item_id: "fantasma", before_child_saga_id: null,
+        created_at: "2026-07-27T00:00:00Z",
+      },
+    ],
+    new Map([["s:saga-1", "Era 1"]]),
+  );
+  expect(out["s:sujeto"]).toEqual({
+    afterTitle: "Era 1", afterKey: "s:saga-1", beforeTitle: null, beforeKey: null,
+  });
 });
 
 it("si las dos anclas dejan de resolver, el sujeto no aparece en el resultado: ninguna línea", () => {
@@ -108,7 +144,7 @@ it("dos sagas hermanas con ventana sobre la misma obra: gana siempre la más ant
     after_item_type: "book", after_item_id: "b",
     created_at: "2026-02-01T00:00:00.000Z",
   });
-  const expected = { afterTitle: "Ancla vieja", beforeTitle: null };
+  const expected = { afterTitle: "Ancla vieja", beforeTitle: null, afterKey: "i:book:a", beforeKey: null };
 
   expect(resolveWindows([older, newer], titles)["i:book:n2"]).toEqual(expected);
   // Mismas dos filas, orden invertido: el resultado tiene que ser idéntico —
@@ -148,7 +184,12 @@ const group = (over: Partial<MemberGroup>): MemberGroup => ({
   ...over,
 });
 
-const someWindow: ResolvedWindow = { afterTitle: "Antes", beforeTitle: "Después" };
+const someWindow: ResolvedWindow = {
+  afterTitle: "Antes",
+  beforeTitle: "Después",
+  afterKey: "i:book:antes",
+  beforeKey: "i:book:despues",
+};
 
 describe("freeItemWindow", () => {
   it("entrada libre CON ventana: la devuelve", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { averageSagaRating, computeProgress, groupMembers } from "./group-members";
+import { averageSagaRating, computeProgress, groupMembers, partitionGroups } from "./group-members";
+import type { MemberGroup } from "./group-members";
 import type { DetailMember, SagaChildRef } from "./types";
 
 const member = (over: Partial<DetailMember>): DetailMember => ({
@@ -172,6 +173,27 @@ describe("groupMembers", () => {
     expect(groups).toHaveLength(7);
     expect(groups[5].accent).toBe("terracota");
     expect(groups[6].accent).toBe("verde");
+  });
+});
+
+describe("partitionGroups", () => {
+  const group = (over: Partial<MemberGroup>): MemberGroup => ({
+    sagaId: over.sagaId ?? "g",
+    name: "Bloque",
+    accent: "beige",
+    members: [],
+    positionInParent: null,
+    placementInParent: null,
+    ...over,
+  });
+
+  it("reparte un grupo `libre` a «Cuando quieras», uno colocado a la lista ordenada y uno sin clasificar a la ordenada", () => {
+    const libre = group({ sagaId: "libre", placementInParent: "libre" });
+    const colocado = group({ sagaId: "colocado", placementInParent: "fijo", positionInParent: 1 });
+    const sinClasificar = group({ sagaId: "sin", placementInParent: null });
+    const { ordered, free } = partitionGroups([libre, colocado, sinClasificar]);
+    expect(ordered).toEqual([colocado, sinClasificar]);
+    expect(free).toEqual([libre]);
   });
 });
 

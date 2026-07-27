@@ -74,10 +74,17 @@ export type DetailMember = SagaMember & {
   year: number | null;
 };
 
-/** Ventana de una entrada `libre` ya resuelta a texto para la ficha. Un ancla
- *  que no resuelve contra el subárbol cargado llega como `null` y no se pinta:
- *  mejor media frase cierta que una referencia rota (spec fase 2b). */
-export type ResolvedWindow = { afterTitle: string | null; beforeTitle: string | null };
+/** Ventana de una entrada `libre` ya resuelta para la ficha. Un ancla que no
+ *  resuelve contra el subárbol cargado llega como `null` y no se pinta: mejor
+ *  media frase cierta que una referencia rota (spec fase 2b).
+ *  Las claves viajan junto a los títulos porque el mapa (fase 3) dibuja cada
+ *  ancla como una ARISTA, y para eso necesita el extremo, no su nombre. */
+export type ResolvedWindow = {
+  afterTitle: string | null;
+  beforeTitle: string | null;
+  afterKey: string | null;
+  beforeKey: string | null;
+};
 
 export type SagaChildRef = {
   id: string;

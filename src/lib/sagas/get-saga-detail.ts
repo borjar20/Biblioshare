@@ -209,7 +209,15 @@ export function resolveWindows(
     const afterTitle = resolveTitle(r.after_item_type, r.after_item_id, r.after_child_saga_id);
     const beforeTitle = resolveTitle(r.before_item_type, r.before_item_id, r.before_child_saga_id);
     if (afterTitle === null && beforeTitle === null) continue; // sin ninguna ancla que resuelva: sin ventana
-    result[subjectKey] = { afterTitle, beforeTitle };
+    // La clave solo se rellena si el título resolvió, para que afterKey/
+    // afterTitle (y beforeKey/beforeTitle) no puedan discrepar: un ancla rota
+    // es null en las dos a la vez.
+    result[subjectKey] = {
+      afterTitle,
+      beforeTitle,
+      afterKey: afterTitle === null ? null : keyOf(r.after_item_type, r.after_item_id, r.after_child_saga_id),
+      beforeKey: beforeTitle === null ? null : keyOf(r.before_item_type, r.before_item_id, r.before_child_saga_id),
+    };
   }
   return result;
 }

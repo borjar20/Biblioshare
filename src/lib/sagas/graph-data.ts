@@ -1,7 +1,8 @@
 import { sagaHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaAccentToken } from "./accents";
-import type { DetailMember, MemberStatus, SagaItemRole } from "./types";
+import type { DetailMember } from "./types";
+import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
 
 // Resolución PURA del grafo (spec §2.5): filas crudas de saga_nodes/saga_edges
 // → nodos con label/accent/status y aristas coloreadas. La subsaga de un nodo
@@ -28,36 +29,11 @@ export type RawSagaEdge = {
   edge_type: "principal" | "opcional" | "requisito";
 };
 
-export type SagaGraphNode = {
-  id: string;
-  kind: "item" | "saga";
-  x: number;
-  y: number;
-  level: "principal" | "menor";
-  orderNo: number | null;
-  label: string;
-  accent: SagaAccentToken;
-  status: MemberStatus;
-  /** Rol narrativo del ítem (issue #167). Siempre null en los nodos-saga: una
-   *  subsaga no es una precuela, lo son sus obras. */
-  role: SagaItemRole | null;
-  coverUrl: string | null;
-  covers: string[];
-  href: string;
-  memberCount: number | null;
-  groupSagaId: string | null;
-  groupName: string | null;
-};
-
-export type SagaGraphEdge = {
-  id: string;
-  source: string;
-  target: string;
-  type: "principal" | "opcional" | "requisito";
-  accent: SagaAccentToken;
-};
-
-export type SagaGraph = { nodes: SagaGraphNode[]; edges: SagaGraphEdge[] };
+// Los tipos del grafo viven ahora en map-types.ts (fase 3, Task 1): tanto este
+// fichero como el futuro derive-map.ts producen el mismo `SagaGraph`, y la
+// vista no debe depender de cuál de los dos lo construyó. Re-exportados aquí
+// para no tocar los imports existentes; graph-data.ts se borra en la Task 2.
+export type { SagaGraph, SagaGraphNode, SagaGraphEdge };
 
 export type GraphLookup = {
   /** "tipo:id" → miembro resuelto (título, cover, status, subsaga, year) */

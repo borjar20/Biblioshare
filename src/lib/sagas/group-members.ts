@@ -126,6 +126,22 @@ export function groupMembers(
   return groups;
 }
 
+/** Reparto entre la lista ordenada y «Cuando quieras», el MISMO que pinta la
+ *  ficha. Vive aquí, y no en el render, desde que el mapa (fase 3) necesita
+ *  recorrer los grupos en ese orden: dos vistas que reparten por su cuenta
+ *  acaban discrepando (issues #91 y #203).
+ *  OJO: esto NO filtra `groupMembers`, que debe seguir devolviendo todos los
+ *  grupos porque `computeProgress` los recorre para los segmentos del hero. */
+export function partitionGroups(groups: MemberGroup[]): {
+  ordered: MemberGroup[];
+  free: MemberGroup[];
+} {
+  return {
+    ordered: groups.filter((g) => g.placementInParent !== "libre"),
+    free: groups.filter((g) => g.placementInParent === "libre"),
+  };
+}
+
 // Avance del hero (spec §1.5). El parámetro se llama `counted`: desde el
 // 2026-07-25 (Task 5) NO recibe el orden principal, sino lo que get-saga-detail
 // le pasa como countedKeys (./progress.ts), que cuenta la PERTENENCIA del

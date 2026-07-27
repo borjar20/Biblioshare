@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import { freeBlockWindow, freeItemWindow } from "@/lib/sagas/get-saga-detail";
-import type { MemberGroup } from "@/lib/sagas/group-members";
+import { partitionGroups, type MemberGroup } from "@/lib/sagas/group-members";
 import type { DetailMember, ResolvedWindow } from "@/lib/sagas/types";
 import { RoleChip } from "./role-chip";
 
@@ -218,12 +218,13 @@ export async function SagaInfo({
   const freeMembers = groups.flatMap((g) => g.members.filter((m) => m.placement === "libre"));
   const unclassified = groups.flatMap((g) => g.members).filter((m) => m.placement === null).length;
   // Issue #198: un bloque `libre` es una entrada sin hueco, igual que una obra
-  // `libre`, así que vive en «Cuando quieras» y no en la lista ordenada. Se
-  // reparte AQUÍ y no en `groupMembers` a propósito: esa función tiene que
-  // seguir devolviendo todos los grupos porque `computeProgress` los recorre
-  // para emitir los segmentos de color del hero.
-  const orderedGroups = groups.filter((g) => g.placementInParent !== "libre");
-  const freeGroups = groups.filter((g) => g.placementInParent === "libre");
+  // `libre`, así que vive en «Cuando quieras» y no en la lista ordenada.
+  // Reparto delegado en `partitionGroups` (fase 3, Task 1): el mapa necesita
+  // el MISMO criterio, y dos vistas repartiendo cada una por su cuenta acaban
+  // discrepando (issues #91 y #203). `groupMembers` sigue devolviendo todos
+  // los grupos sin filtrar: `computeProgress` los recorre para emitir los
+  // segmentos de color del hero.
+  const { ordered: orderedGroups, free: freeGroups } = partitionGroups(groups);
   // Fix Task 2 / Finding 1 (review): un grupo se salta cuando su `eligible`
   // queda vacío (todos sus miembros son `libre` sueltos), así que
   // `orderedGroups.length === 0` no basta para decidir si hay algo que
