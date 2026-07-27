@@ -98,4 +98,20 @@ describe("createCuratedOrder", () => {
     );
     expect(order("uni")).toEqual([k("b1"), k("h1"), k("h2")]);
   });
+
+  // Hallazgo 3 (revisión Task 6): ninguno de los tests de arriba ejercitaba
+  // la deduplicación (el `new Set(...)` de curatedOrder), aunque hace falta
+  // — una obra puede ser miembro de dos sagas del mismo subárbol (p. ej. un
+  // crossover), y validateRouteDraft rechaza claves repetidas en un
+  // itinerario generado. Sin este test, si el `new Set(...)` desapareciera
+  // en un refactor, nadie se enteraría hasta que un guardado fallara en
+  // producción.
+  it("una obra miembro de dos sagas del subárbol no se repite en el orden", () => {
+    const order = createCuratedOrder(
+      [root("R"), child("A", "R", { positionInParent: 1 }), child("B", "R", { positionInParent: 2 })],
+      [member("A", "x", 1), member("B", "x", 1)],
+      titleOf,
+    );
+    expect(order("R")).toEqual([k("x")]);
+  });
 });

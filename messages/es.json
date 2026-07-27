@@ -1198,6 +1198,7 @@
     "itineraryCreate": "+ Crear itinerario",
     "itineraryGenerate": "Generar desde la curación",
     "itineraryGenerateEmpty": "No hay nada curado todavía con lo que construirlo.",
+    "itineraryGenerateSlugTaken": "Ya existe un itinerario generado para esta saga. Borra o renombra «Orden curado» antes de crear otro.",
     "itineraryGenerateName": "Orden curado"
   },
   "sagaIndex": {

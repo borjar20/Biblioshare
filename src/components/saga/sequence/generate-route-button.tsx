@@ -39,7 +39,15 @@ export function GenerateRouteButton({ sagaId }: { sagaId: string }) {
       </button>
       {state.error && (
         <p className="mt-1.5 text-[11px] text-status-dropped">
-          {state.error === "empty" ? t("itineraryGenerateEmpty") : t("genericError")}
+          {/* Hallazgo 2 (revisión Task 6): "slugTaken" tenía su propia copia
+              en generateRoute pero caía en el genericError de aquí, así que
+              el curador no podía distinguir "esto se ha roto" de "esto ya lo
+              generaste" — el caso natural tras curar más y volver a pulsar. */}
+          {state.error === "empty"
+            ? t("itineraryGenerateEmpty")
+            : state.error === "slugTaken"
+              ? t("itineraryGenerateSlugTaken")
+              : t("genericError")}
         </p>
       )}
     </form>
