@@ -12,6 +12,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 `[Canónico · verificado …]` manda; `[Histórico · congelado …]` explica el *porqué*, no el *hoy*.
 `docs/superpowers/specs/` y `plans/` son historia congelada por feature, no el estado de hoy.
 
+**Antes de barrer el repo buscando dónde vive algo, mira `docs/architecture/graph.json`.** Es el
+mapa de arquitectura en formato máquina: nodos por capa, dependencias y **flujos end-to-end con
+el fichero que toca cada paso** (registrar sesión, importar CSV, derivar el mapa de una saga…).
+Trae además `meta.invariants` —las reglas duras del proyecto con la evidencia en código— y las
+trampas por nodo. Es DERIVADO: si contradice al código, manda el código. Cómo consultarlo y
+regenerarlo, en `docs/architecture/README.md`.
+
 **Esquema (dos trampas que ya han dado bugs en prod):** manda `docs/requirements/data-model.md`.
 El estado vivo del usuario vive en **`passes`**, nunca en `library_entries` (CONGELADA) ni en
 `diary_entries` (renombrada a `passes`).

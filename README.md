@@ -43,6 +43,7 @@ gobernanza de abajo para saber cuál manda.**
 | [Reactividad](docs/reactividad.md) | Cómo se refleja el estado en la UI | Convención |
 | [Testing](docs/TESTING.md) | Cómo se verifica | Convención |
 | [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño (temporal) | Iniciativa |
+| [Mapa de arquitectura](docs/architecture/README.md) | Localizar dónde vive una feature: flujos end-to-end con ficheros (`graph.json`) y diagrama interactivo (`map.html`) | Derivado del código |
 
 `docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y
 congelado. Explican *por qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de
