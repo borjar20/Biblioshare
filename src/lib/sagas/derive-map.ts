@@ -30,6 +30,28 @@ const itemKey = (m: DetailMember): string => `i:${m.itemType}:${m.itemId}`;
  *  tiene forma de bloque. */
 const blockSagaId = (key: string): string | null => (key.startsWith("s:") ? key.slice(2) : null);
 
+// `deriveSagaMap` tiene que devolver coordenadas en PÍXELES, no en índice de
+// columna/fila (0, 1, 2…): `saga-graph-view.tsx` usa `n.x`/`n.y` TAL CUAL
+// como `position` de React Flow (`position: { x: n.x, y: n.y }`), sin
+// normalizar nada. La única función que normaliza escalas es `scaleNodes`
+// (derive-timeline.ts), y solo la llama el mini-preview del CTA
+// (map-cta.tsx) — la vista 2D no pasa por ahí. Si aquí se devolvieran
+// índices, todos los nodos caerían unos sobre otros en el lienzo, porque la
+// tarjeta de portada mide 78×116px (`graph-nodes.tsx`, `CoverNode`).
+//
+// Paso horizontal entre columnas: bajo cada portada cuelga una etiqueta de
+// 150px, centrada sobre la tarjeta (78px de ancho). Dos columnas contiguas
+// necesitan al menos 150px centro a centro para que sus etiquetas no se
+// toquen; 180px deja ~30px de margen.
+const NODE_STEP_X = 180;
+
+// Paso vertical entre filas (una fila = un bloque, `blocks.forEach((group,
+// y) => …)`): la portada mide 116px de alto, más la etiqueta que cuelga
+// debajo (`mt-2` = 8px + hasta dos líneas de `text-sm leading-tight`, unos
+// 40px). Una fila necesita ~164px para no invadir la portada de la fila
+// siguiente; 220px deja margen cómodo.
+const NODE_STEP_Y = 220;
+
 /**
  * Deriva PURAMENTE el `SagaGraph` de una saga a partir de lo curado (grupos,
  * ventanas). Precondición de determinismo, a cargo de quien llama: `groups`
@@ -69,12 +91,16 @@ export function deriveSagaMap(
   // Nodo de una obra, hueco o suelta: `orderNo` es la única diferencia — una
   // obra CON hueco lo hereda de `x` (entra en la columna principal de
   // deriveTimeline); una obra SIN hueco recibe `null` (activa el mecanismo de
-  // ramas/puentes de deriveTimeline en vez de la columna).
-  const makeNode = (m: DetailMember, nodeX: number, y: number, orderNo: number | null): SagaGraphNode => ({
+  // ramas/puentes de deriveTimeline en vez de la columna). `col`/`row` son
+  // índices lógicos (columna compartida, fila = bloque); aquí se escalan a
+  // píxeles (`NODE_STEP_X`/`NODE_STEP_Y`) para `x`/`y`, pero `orderNo` se
+  // queda con el índice crudo — es un orden lógico para deriveTimeline, no
+  // una coordenada de lienzo.
+  const makeNode = (m: DetailMember, col: number, row: number, orderNo: number | null): SagaGraphNode => ({
     id: itemKey(m),
     kind: "item",
-    x: nodeX,
-    y,
+    x: col * NODE_STEP_X,
+    y: row * NODE_STEP_Y,
     // Sustitución que pide el spec: "menor" para una obra optional,
     // "principal" para el resto.
     level: m.optional ? "menor" : "principal",
