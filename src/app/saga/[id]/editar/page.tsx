@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
 import { getSagaSequence } from "@/lib/sagas/get-saga-sequence";
+import { getAnchorOptions } from "@/lib/sagas/get-anchor-options";
 import { getSagaRoutes } from "@/lib/sagas/get-saga-routes";
 import { SagaMetaEditor } from "@/components/saga/saga-meta-editor";
 import { SequenceEditor } from "@/components/saga/sequence/sequence-editor";
@@ -40,8 +41,19 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
   // maybeSingle() sobre `sagas` + notFound(). Una saga real sin miembros ni
   // hijas (recién creada) es un estado legítimo, y su borrador vacío es
   // exactamente lo que getSagaSequence devuelve en ese caso (ver su cabecera).
-  const sequence = await getSagaSequence(supabase, saga.id);
-  const routes = await getSagaRoutes(supabase, saga.id);
+  // Las tres consultas son independientes entre sí (ninguna depende del
+  // resultado de otra), así que van en paralelo. `getAnchorOptions` es a
+  // propósito un cargador APARTE de `getSagaSequence` — ver la cabecera de
+  // ese fichero — así que se llama aquí explícitamente para las anclas que
+  // necesita `SequenceEditor` (fase 2b: selector de ventana y validación
+  // local). Se pasa la lista ENTERA de `DraftAnchor` —con `title` resuelto,
+  // no solo las claves— porque `AnchorPicker` la pinta; `SequenceEditor`
+  // deriva las claves de esa misma lista en vez de recibir las dos cosas.
+  const [sequence, anchors, routes] = await Promise.all([
+    getSagaSequence(supabase, saga.id),
+    getAnchorOptions(supabase, saga.id),
+    getSagaRoutes(supabase, saga.id),
+  ]);
 
   const t = await getTranslations("saga");
   return (
@@ -63,6 +75,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
         sagaId={saga.id}
         initial={sequence.draft}
         childSagas={sequence.childSagas}
+        anchors={anchors}
         itineraries={<SequenceItineraries sagaId={saga.id} routes={routes} />}
       />
     </div>

@@ -4,8 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { saveSequence } from "@/lib/sagas/sequence-actions";
 import { validateSequenceDraft } from "@/lib/sagas/validate-sequence-draft";
 import {
-  addEntry, moveSlot, pairWith, removeEntry, sendTo, setOptional, setRole, toPayload, unpair,
-  type DraftEntry, type SequenceDraft, type ZoneId,
+  addEntry, clearAnchor, moveSlot, pairWith, removeEntry, sendTo, setAnchor, setOptional, setRole,
+  toPayload, unpair,
+  type DraftAnchor, type DraftEntry, type SequenceDraft, type ZoneId,
 } from "@/lib/sagas/sequence-draft";
 
 export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -14,7 +15,16 @@ export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
  *  cáscaras —A escritorio, B móvil— consumen esto; ninguna guarda estado del
  *  borrador por su cuenta. Duplicarlo por breakpoint serían dos borradores
  *  vivos sobre los mismos datos (regla de los dos árboles, docs/redesign). */
-export function useSequenceDraft(initial: SequenceDraft, sagaId: string, childIds: string[]) {
+export function useSequenceDraft(
+  initial: SequenceDraft,
+  sagaId: string,
+  childIds: string[],
+  // Claves del subárbol entero (`getAnchorOptions`, resuelto en servidor y
+  // pasado como array plano — "server-only" no puede cruzar al cliente).
+  // El componente las reconstruye en un Set solo para esta comprobación
+  // local; el guardado de verdad vuelve a resolverlas en `saveSequence`.
+  anchorKeys: string[],
+) {
   const [draft, setDraft] = useState(initial);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -35,15 +45,23 @@ export function useSequenceDraft(initial: SequenceDraft, sagaId: string, childId
       setRole: (key: string, r: DraftEntry["role"]) => touch((d) => setRole(d, key, r)),
       add: (e: DraftEntry) => touch((d) => addEntry(d, e)),
       remove: (key: string) => touch((d) => removeEntry(d, key)),
+      // Fase 2b: única forma de poner/quitar un ancla. Las funciones puras ya
+      // existían (sequence-draft.ts) pero ningún componente las llamaba —
+      // `WindowEditor`/`AnchorPicker` son los primeros.
+      setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) =>
+        touch((d) => setAnchor(d, key, side, anchor)),
+      clearAnchor: (key: string, side: "after" | "before") =>
+        touch((d) => clearAnchor(d, key, side)),
     }),
     [],
   );
 
   // El aviso se recalcula con el borrador, no al guardar: la barra tiene que
   // decir cuántas sin clasificar quedan MIENTRAS se cura, no después.
+  const anchorKeySet = useMemo(() => new Set(anchorKeys), [anchorKeys]);
   const check = useMemo(
-    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds) }),
-    [draft, childIds],
+    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds), anchorKeys: anchorKeySet }),
+    [draft, childIds, anchorKeySet],
   );
 
   const save = () =>

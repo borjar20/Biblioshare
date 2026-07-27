@@ -11,7 +11,7 @@ import { EditorLeftPanel } from "@/components/saga/editor/editor-left-panel";
 import type { PickedItem } from "@/components/clubs/item-picker";
 import { setParentSaga } from "@/lib/sagas/curation-actions";
 import { isSagaAccentToken, type SagaAccentToken } from "@/lib/sagas/accents";
-import type { DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
+import { anchorKey, type DraftAnchor, type DraftEntry, type SequenceDraft, type ZoneId } from "@/lib/sagas/sequence-draft";
 
 type ChildSagaData = { id: string; name: string; accentColor: string | null; count: number };
 
@@ -23,14 +23,14 @@ const entryFromPickedItem = (item: PickedItem): DraftEntry => ({
   key: `i:${item.itemType}:${item.itemId}`,
   kind: "item", itemType: item.itemType, itemId: item.itemId, childSagaId: null,
   title: item.title, coverUrl: item.coverUrl, accentColor: null, count: null,
-  optional: false, role: null, isNew: false,
+  optional: false, role: null, window: null, isNew: false,
 });
 
 const entryFromChildSaga = (child: ChildSagaData): DraftEntry => ({
   key: `s:${child.id}`,
   kind: "block", itemType: null, itemId: null, childSagaId: child.id,
   title: child.name, coverUrl: null, accentColor: child.accentColor, count: child.count,
-  optional: false, role: null, isNew: false,
+  optional: false, role: null, window: null, isNew: false,
 });
 
 // Las dos cáscaras se montan A LA VEZ y se ocultan por breakpoint (regla de los
@@ -38,11 +38,24 @@ const entryFromChildSaga = (child: ChildSagaData): DraftEntry => ({
 // dos árboles de PRESENTACIÓN y un solo borrador. Duplicar el estado sería el
 // fallo que esa regla avisa que el patrón no cubre.
 export function SequenceEditor({
-  sagaId, initial, childSagas, itineraries,
+  sagaId, initial, childSagas, anchors, itineraries,
 }: {
   sagaId: string;
   initial: SequenceDraft;
   childSagas: Array<{ id: string; name: string; accentColor: string | null; count: number }>;
+  /** Anclas válidas del subárbol entero (`getAnchorOptions`, fase 2b),
+   *  resueltas en servidor — objetos planos, así que cruzan la frontera
+   *  servidor→cliente sin problema (un `Map` no lo haría). Se pasa la lista
+   *  ENTERA, no solo las claves: `AnchorPicker` necesita el `title` de cada
+   *  una para pintar el selector, y `anchorKeys` (abajo) se deriva de esta
+   *  misma lista en vez de mandar las dos cosas por separado.
+   *
+   *  Congelada del render del servidor: anidar un bloque nuevo en la misma
+   *  sesión no la actualiza (a diferencia de `childIds`, que sí es un Set en
+   *  vivo vía `children`). Aceptado — no se inventa un refresco — con tal de
+   *  no repetir el `foreignBlock` falso de la fase 2a: la comprobación local
+   *  de `useSequenceDraft` nunca debe acusar de ajena una ancla real. */
+  anchors: DraftAnchor[];
   /** Contenido de servidor sin callbacks, así que sí puede viajar como nodo
    *  (al contrario que el rail, que necesita ligar `onAddItem` al borrador). */
   itineraries: React.ReactNode;
@@ -62,7 +75,8 @@ export function SequenceEditor({
   // `useMemo` evita invalidar los memos de `useSequenceDraft` en cada render
   // pasando un array nuevo con el mismo contenido.
   const childIds = useMemo(() => children.map((c) => c.id), [children]);
-  const { draft, ops, save, status, error, unclassified } = useSequenceDraft(initial, sagaId, childIds);
+  const anchorKeys = useMemo(() => anchors.map(anchorKey), [anchors]);
+  const { draft, ops, save, status, error, unclassified } = useSequenceDraft(initial, sagaId, childIds, anchorKeys);
   const rail = (
     <EditorLeftPanel
       sagaId={sagaId}
@@ -104,10 +118,10 @@ export function SequenceEditor({
   return (
     <>
       <div className="hidden lg:block">
-        <ShellDesktop draft={draft} ops={ops} onMenu={setMenuKey} rail={rail} itineraries={itineraries} />
+        <ShellDesktop draft={draft} ops={ops} anchors={anchors} onMenu={setMenuKey} rail={rail} itineraries={itineraries} />
       </div>
       <div className="lg:hidden">
-        <ShellMobile draft={draft} ops={ops} onMenu={setMenuKey} rail={rail} itineraries={itineraries} />
+        <ShellMobile draft={draft} ops={ops} anchors={anchors} onMenu={setMenuKey} rail={rail} itineraries={itineraries} />
       </div>
 
       {active && here && (

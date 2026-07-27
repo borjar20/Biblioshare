@@ -1,8 +1,9 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import type { DraftEntry, SequenceDraft } from "./sequence-draft";
+import type { DraftAnchor, DraftEntry, DraftWindow, SequenceDraft } from "./sequence-draft";
 import type { SagaItemRole, SagaPlacement } from "./types";
+import { getAnchorOptions } from "./get-anchor-options";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -31,7 +32,7 @@ export async function getSagaSequence(
    *  esto cruza la frontera servidor→cliente. */
   childSagas: Array<{ id: string; name: string; accentColor: string | null; count: number }>;
 }> {
-  const [{ data: itemRows }, { data: childRows }] = await Promise.all([
+  const [{ data: itemRows }, { data: childRows }, { data: windowRows }] = await Promise.all([
     supabase
       .from("saga_items")
       .select("item_type, item_id, position, placement, optional, role")
@@ -42,6 +43,22 @@ export async function getSagaSequence(
       .from("sagas")
       .select("id, name, accent_color, position_in_parent, placement_in_parent, optional_in_parent")
       .eq("parent_saga_id", sagaId),
+    // Ventanas de ESTA saga (20260727_saga_placement_windows.sql). Los títulos
+    // de sus anclas NO salen de itemRows/childRows: un ancla puede apuntar a
+    // una obra de un nieto, así que se resuelven con getAnchorOptions, que
+    // recorre el subárbol entero, más abajo. `created_at` viaja en el select
+    // porque hydrateWindows desempata con ella (hoy este editor solo escribe
+    // ventanas de la saga propia, así que el unique impide que ESTA query
+    // devuelva dos filas para el mismo sujeto, pero hydrateWindows es pura y
+    // hermana de resolveWindows en get-saga-detail.ts, que sí puede
+    // recibirlas — mismo criterio ahí y aquí, ver el comentario de la
+    // función).
+    supabase
+      .from("saga_placement_windows")
+      .select(
+        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+      )
+      .eq("saga_id", sagaId),
   ]);
 
   const rows = (itemRows ?? []) as Array<{
@@ -57,6 +74,8 @@ export async function getSagaSequence(
   for (const r of rows) idsByType[r.item_type].push(r.item_id);
   const meta = new Map<string, { title: string; coverUrl: string | null }>();
   const counts = new Map<string, number>();
+  const rawWindows = (windowRows ?? []) as RawWindowRow[];
+  let windowsByKey = new Map<string, DraftWindow>();
   await Promise.all([
     // Metadatos de catálogo, una consulta por tabla (mismo patrón que
     // get-saga-detail.ts:200-216).
@@ -73,6 +92,17 @@ export async function getSagaSequence(
       const { data } = await supabase.from("saga_items").select("saga_id").in("saga_id", children.map((c) => c.id));
       for (const r of data ?? []) counts.set(r.saga_id as string, (counts.get(r.saga_id as string) ?? 0) + 1);
     })(),
+    // Anclas del subárbol entero SOLO si hay ventanas que resolver: getAnchorOptions
+    // recorre hasta profundidad 4 y no hace falta pagarlo cuando esta saga no
+    // tiene ninguna fila en saga_placement_windows.
+    (async () => {
+      if (rawWindows.length === 0) return;
+      const anchors = await getAnchorOptions(supabase, sagaId);
+      const anchorTitles = new Map(
+        anchors.map((a) => [a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`, a.title] as const),
+      );
+      windowsByKey = hydrateWindows(rawWindows, anchorTitles);
+    })(),
   ]);
 
   const entries: Array<{ entry: DraftEntry; position: number | null; placement: SagaPlacement | null }> = [];
@@ -84,7 +114,12 @@ export async function getSagaSequence(
       entry: {
         key: `i:${r.item_type}:${r.item_id}`, kind: "item", itemType: r.item_type, itemId: r.item_id,
         childSagaId: null, title: m.title, coverUrl: m.coverUrl, accentColor: null, count: null,
-        optional: r.optional, role: r.role, isNew: false,
+        optional: r.optional, role: r.role,
+        // Defensivo, como sendTo/pairWith al escribir: `window` SIEMPRE null
+        // fuera de `libre`, aunque quedara una fila huérfana en la tabla de
+        // ventanas por un cambio de placement que no pasó por el borrador.
+        window: r.placement === "libre" ? windowsByKey.get(`i:${r.item_type}:${r.item_id}`) ?? null : null,
+        isNew: false,
       },
     });
   }
@@ -94,7 +129,9 @@ export async function getSagaSequence(
       entry: {
         key: `s:${c.id}`, kind: "block", itemType: null, itemId: null, childSagaId: c.id,
         title: c.name, coverUrl: null, accentColor: c.accent_color, count: counts.get(c.id) ?? 0,
-        optional: c.optional_in_parent, role: null, isNew: false,
+        optional: c.optional_in_parent, role: null,
+        window: c.placement_in_parent === "libre" ? windowsByKey.get(`s:${c.id}`) ?? null : null,
+        isNew: false,
       },
     });
   }
@@ -129,4 +166,90 @@ export function hydrateSequenceDraft(
   }
   const slots = [...byPosition.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
   return { slots, free, unclassified, removed: [] };
+}
+
+/** Forma cruda de una fila de `saga_placement_windows`
+ *  (20260727_saga_placement_windows.sql). */
+export type RawWindowRow = {
+  item_type: ItemType | null;
+  item_id: string | null;
+  child_saga_id: string | null;
+  after_item_type: ItemType | null;
+  after_item_id: string | null;
+  after_child_saga_id: string | null;
+  before_item_type: ItemType | null;
+  before_item_id: string | null;
+  before_child_saga_id: string | null;
+  /** Para el desempate determinista entre dos sagas hermanas con ventana
+   *  sobre la misma obra, ver `hydrateWindows`. */
+  created_at: string;
+};
+
+/** Resuelve las filas crudas de `saga_placement_windows` a un mapa de
+ *  `DraftWindow` por clave de SUJETO (mismo formato que `DraftEntry.key`:
+ *  `i:<tipo>:<uuid>` / `s:<uuid>`), usando `anchorTitles` —el subárbol
+ *  ENTERO, de `getAnchorOptions`, no las filas que ya carga esta función—
+ *  para resolver el título de cada ancla. Pura y exportada aparte para
+ *  poder probarla sin Supabase, mismo patrón que `hydrateSequenceDraft`.
+ *
+ *  Un ancla rota (su clave no está en `anchorTitles`: la obra o el bloque ya
+ *  no está en el árbol) NO se limpia — queda a `null`. Si la ventana se queda
+ *  sin ninguna ancla que resuelva, el sujeto no aparece en el mapa devuelto
+ *  (equivale a `window: null` en el borrador). */
+export function hydrateWindows(
+  rows: RawWindowRow[],
+  anchorTitles: Map<string, string>,
+): Map<string, DraftWindow> {
+  const keyOf = (
+    itemType: ItemType | null,
+    itemId: string | null,
+    childSagaId: string | null,
+  ): string | null =>
+    itemId !== null && itemType !== null
+      ? `i:${itemType}:${itemId}`
+      : childSagaId !== null
+        ? `s:${childSagaId}`
+        : null;
+
+  const resolveAnchor = (
+    itemType: ItemType | null,
+    itemId: string | null,
+    childSagaId: string | null,
+  ): DraftAnchor | null => {
+    const key = keyOf(itemType, itemId, childSagaId);
+    if (key === null) return null;
+    const title = anchorTitles.get(key);
+    if (title === undefined) return null; // ancla rota: no resuelve
+    return itemId !== null && itemType !== null
+      ? { kind: "item", itemType, itemId, childSagaId: null, title }
+      : { kind: "block", itemType: null, itemId: null, childSagaId, title };
+  };
+
+  // Desempate determinista: los uniques de `saga_placement_windows` son POR
+  // SAGA (ver la migración), así que nada impide que dos sagas HERMANAS del
+  // mismo subárbol tengan cada una su propia fila de ventana para la MISMA
+  // obra compartida (multi-membership). Hoy `rows` solo trae las de ESTA
+  // saga (el unique ya lo impide dentro de una sola), pero esta función es
+  // pura y hermana de `resolveWindows` (get-saga-detail.ts), que sí puede
+  // recibir el choque — mismo criterio ahí que aquí: gana la fila más
+  // antigua (`created_at` menor) en vez de depender del orden físico que
+  // devuelva Postgres, y se ordena dentro de la función (no se confía en que
+  // el llamador ya lo haya hecho) para que el resultado sea determinista por
+  // sí solo pase lo que pase el orden en que lleguen las filas.
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
+  const seenSubjects = new Set<string>();
+  const result = new Map<string, DraftWindow>();
+  for (const r of sorted) {
+    const subjectKey = keyOf(r.item_type, r.item_id, r.child_saga_id);
+    if (subjectKey === null) continue; // fila imposible: el CHECK del sujeto lo impide
+    if (seenSubjects.has(subjectKey)) continue; // ya resuelto por la fila más antigua
+    seenSubjects.add(subjectKey);
+    const after = resolveAnchor(r.after_item_type, r.after_item_id, r.after_child_saga_id);
+    const before = resolveAnchor(r.before_item_type, r.before_item_id, r.before_child_saga_id);
+    if (after === null && before === null) continue; // sin ninguna ancla que resuelva: sin ventana
+    result.set(subjectKey, { after, before });
+  }
+  return result;
 }

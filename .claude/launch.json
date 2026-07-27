@@ -4,7 +4,7 @@
     {
       "name": "biblioshare-dev",
       "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
-      "runtimeArgs": ["/c", "C:\\Users\\borja\\Desktop\\Proyects\\Personal\\Biblioshare\\dev.cmd"],
+      "runtimeArgs": ["/c", "D:\\Proyectos\\Personal\\Biblioshare\\dev.cmd"],
       "port": 3000,
       "autoPort": true
     }

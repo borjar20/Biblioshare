@@ -1606,6 +1606,80 @@ export type Database = {
           },
         ]
       }
+      saga_placement_windows: {
+        Row: {
+          after_child_saga_id: string | null
+          after_item_id: string | null
+          after_item_type: Database["public"]["Enums"]["item_type"] | null
+          before_child_saga_id: string | null
+          before_item_id: string | null
+          before_item_type: Database["public"]["Enums"]["item_type"] | null
+          child_saga_id: string | null
+          created_at: string
+          id: string
+          item_id: string | null
+          item_type: Database["public"]["Enums"]["item_type"] | null
+          saga_id: string
+        }
+        Insert: {
+          after_child_saga_id?: string | null
+          after_item_id?: string | null
+          after_item_type?: Database["public"]["Enums"]["item_type"] | null
+          before_child_saga_id?: string | null
+          before_item_id?: string | null
+          before_item_type?: Database["public"]["Enums"]["item_type"] | null
+          child_saga_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          saga_id: string
+        }
+        Update: {
+          after_child_saga_id?: string | null
+          after_item_id?: string | null
+          after_item_type?: Database["public"]["Enums"]["item_type"] | null
+          before_child_saga_id?: string | null
+          before_item_id?: string | null
+          before_item_type?: Database["public"]["Enums"]["item_type"] | null
+          child_saga_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"] | null
+          saga_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_placement_windows_after_child_saga_id_fkey"
+            columns: ["after_child_saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_placement_windows_before_child_saga_id_fkey"
+            columns: ["before_child_saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_placement_windows_child_saga_id_fkey"
+            columns: ["child_saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saga_placement_windows_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saga_route_choices: {
         Row: {
           created_at: string
@@ -2187,10 +2261,26 @@ export type Database = {
         Args: { p_entries: Json; p_route_id: string }
         Returns: undefined
       }
-      save_saga_sequence: {
-        Args: { p_blocks: Json; p_entries: Json; p_removed: Json; p_saga_id: string }
-        Returns: undefined
-      }
+      save_saga_sequence:
+        | {
+            Args: {
+              p_blocks: Json
+              p_entries: Json
+              p_removed: Json
+              p_saga_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_blocks: Json
+              p_entries: Json
+              p_removed: Json
+              p_saga_id: string
+              p_windows: Json
+            }
+            Returns: undefined
+          }
       set_activity_completion_mode: {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined

@@ -15,8 +15,17 @@ import {
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
 import type { OrderMembership, OrderNode, OrderSaga } from "./main-order";
 import { countedKeys, type ProgressMembership, type ProgressSaga } from "./progress";
-import type { DetailMember, MemberStatus, Saga, SagaChildRef, SagaItemRole, SagaPlacement } from "./types";
+import type {
+  DetailMember,
+  MemberStatus,
+  ResolvedWindow,
+  Saga,
+  SagaChildRef,
+  SagaItemRole,
+  SagaPlacement,
+} from "./types";
 import type { SagaRoute } from "./route-types";
+import type { RawWindowRow } from "./get-saga-sequence";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -72,9 +81,19 @@ export type SagaDetail = {
    * childNames/childAccent a partir de esta lista, no de `groups`.
    */
   childRefs: SagaChildRef[];
+  /**
+   * Ventana de cada entrada `libre` que tiene una (fase 2b, Task 6), ya
+   * resuelta a texto: objeto plano, no `Map` — cruza la frontera
+   * servidor→cliente, la misma trampa que ya obligó a cambiar la forma del
+   * rail en la fase 2a. Clave = la de la entrada en el borrador
+   * (`i:<tipo>:<uuid>` / `s:<uuid>`). El render ignora la ventana de una
+   * entrada que no sea `libre` en vez de confiar en que esta tabla no tenga
+   * fila para ella.
+   */
+  windows: Record<string, ResolvedWindow>;
 };
 
-type DescendantRow = {
+export type DescendantRow = {
   id: string;
   name: string;
   accent_color: string | null;
@@ -86,7 +105,10 @@ type DescendantRow = {
 
 // Descendientes hasta profundidad 4 (spec §1.5: cap como cinturón frente a
 // ciclos, el trigger ya los impide). Iterativo: una query por nivel.
-async function fetchDescendants(
+// Exportada: get-anchor-options.ts (fase 2b) la reutiliza tal cual en vez de
+// reinventar el mismo recorrido — mismo cinturón de profundidad, una sola
+// fuente de verdad.
+export async function fetchDescendants(
   supabase: SupabaseServerClient,
   rootId: string,
 ): Promise<Map<string, DescendantRow>> {
@@ -124,6 +146,99 @@ function directChildFor(
     cur = cur.parent_saga_id ? descendants.get(cur.parent_saga_id) : undefined;
   }
   return null;
+}
+
+/** Resuelve las filas crudas de `saga_placement_windows` (todo el subárbol) a
+ *  un `Record` plano por clave de SUJETO (`i:<tipo>:<uuid>` / `s:<uuid>`,
+ *  mismo formato que `DraftEntry.key`), usando `anchorTitles` para el título
+ *  de cada ancla. Objeto plano y no `Map` a propósito: `SagaDetail.windows`
+ *  cruza la frontera servidor→cliente. Hermana de `hydrateWindows`
+ *  (get-saga-sequence.ts) pero con una forma de salida distinta —
+ *  `ResolvedWindow` es solo los dos títulos, sin el resto de `DraftAnchor`,
+ *  que la ficha (a diferencia del editor) no necesita repintar.
+ *
+ *  Un ancla rota (su clave no está en `anchorTitles`: la obra o el bloque ya
+ *  no está en el árbol) llega como `null` — no se limpia la fila. Si las dos
+ *  anclas quedan a `null`, el sujeto no aparece en el resultado (equivale a
+ *  "sin ventana"). Pura y exportada aparte para poder probarla sin Supabase,
+ *  mismo patrón que `hydrateSequenceDraft`/`hydrateWindows`. */
+export function resolveWindows(
+  rows: RawWindowRow[],
+  anchorTitles: Map<string, string>,
+): Record<string, ResolvedWindow> {
+  const keyOf = (
+    itemType: ItemType | null,
+    itemId: string | null,
+    childSagaId: string | null,
+  ): string | null =>
+    itemId !== null && itemType !== null
+      ? `i:${itemType}:${itemId}`
+      : childSagaId !== null
+        ? `s:${childSagaId}`
+        : null;
+
+  const resolveTitle = (
+    itemType: ItemType | null,
+    itemId: string | null,
+    childSagaId: string | null,
+  ): string | null => {
+    const key = keyOf(itemType, itemId, childSagaId);
+    return key === null ? null : (anchorTitles.get(key) ?? null);
+  };
+
+  // Desempate determinista: los uniques de `saga_placement_windows` son POR
+  // SAGA (ver la migración), así que nada impide que dos sagas HERMANAS del
+  // mismo subárbol tengan cada una su propia fila de ventana para la MISMA
+  // obra compartida (multi-membership) — `rows` aquí es el subárbol entero
+  // (sagaIds), no una sola saga. Mismo criterio que `byItem` más arriba: gana
+  // la fila más antigua (`created_at` menor) en vez de depender del orden
+  // físico que devuelva Postgres. A diferencia de `byItem`, que confía en el
+  // `.order()` de su query, aquí se ordena dentro de la función: es pura y se
+  // prueba sin Supabase, así que tiene que ser determinista por sí sola
+  // pase lo que pase el orden en que lleguen las filas.
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
+  const seenSubjects = new Set<string>();
+  const result: Record<string, ResolvedWindow> = {};
+  for (const r of sorted) {
+    const subjectKey = keyOf(r.item_type, r.item_id, r.child_saga_id);
+    if (subjectKey === null) continue; // fila imposible: el CHECK del sujeto lo impide
+    if (seenSubjects.has(subjectKey)) continue; // ya resuelto por la fila más antigua
+    seenSubjects.add(subjectKey);
+    const afterTitle = resolveTitle(r.after_item_type, r.after_item_id, r.after_child_saga_id);
+    const beforeTitle = resolveTitle(r.before_item_type, r.before_item_id, r.before_child_saga_id);
+    if (afterTitle === null && beforeTitle === null) continue; // sin ninguna ancla que resuelva: sin ventana
+    result[subjectKey] = { afterTitle, beforeTitle };
+  }
+  return result;
+}
+
+/** Ventana de una entrada `libre` (fase 2b, Task 6) — solo aplica a una entrada
+ *  realmente `libre` AHORA MISMO: no confía en que `windows` no traiga fila
+ *  para algo que dejó de serlo (un cambio de colocación no borra la fila de
+ *  `saga_placement_windows`, ver el comentario de `windows` en `SagaDetail`),
+ *  así que comprueba `placement` ella misma antes de mirar el mapa, en vez de
+ *  confiar en que la lista que recibe ya está filtrada. Extraída de
+ *  `saga-info.tsx` (revisión Task 6) para poder probarla sin renderizar React
+ *  — es la única guarda que sostiene «solo lo libre tiene ventana», y ningún
+ *  constraint de BD puede imponerla. */
+export function freeItemWindow(
+  windows: Record<string, ResolvedWindow>,
+  m: DetailMember,
+): ResolvedWindow | null {
+  if (m.placement !== "libre") return null;
+  return windows[`i:${m.itemType}:${m.itemId}`] ?? null;
+}
+
+/** Hermana de {@link freeItemWindow} para un bloque-subsaga: misma guarda,
+ *  sobre `placementInParent` en vez de `placement`. */
+export function freeBlockWindow(
+  windows: Record<string, ResolvedWindow>,
+  group: MemberGroup,
+): ResolvedWindow | null {
+  if (group.placementInParent !== "libre" || group.sagaId === null) return null;
+  return windows[`s:${group.sagaId}`] ?? null;
 }
 
 export async function getSagaDetail(
@@ -341,7 +456,7 @@ export async function getSagaDetail(
   // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
   // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
   // camino caliente de la ficha de saga.
-  const [nodesRes, edgesRes, followRow, parentRow, roleRow, curated, routeChoice] = await Promise.all([
+  const [nodesRes, edgesRes, followRow, parentRow, roleRow, curated, routeChoice, windowsRes] = await Promise.all([
     // Nodos de TODO el subárbol, no solo los de la raíz: el orden principal
     // (§1.5) expande recursivamente los nodos-saga con el orden principal de la
     // saga hija, así que necesita sus nodos. El grafo que se pinta sigue siendo
@@ -373,6 +488,22 @@ export async function getSagaDetail(
     getSagaRoutes(supabase, id),
     // Sin user, se resuelve a null sin lanzar consulta (getRouteChoice exige userId).
     user ? getRouteChoice(supabase, user.id, id) : Promise.resolve(null),
+    // Ventanas de TODO el subárbol (fase 2b, Task 6): una entrada `libre` puede
+    // vivir en cualquier saga del árbol, igual que `itemRows` más arriba — NO
+    // solo las de la raíz. Los títulos de sus anclas se resuelven abajo con
+    // `meta`/`descendants`, ya en memoria: sin cargador nuevo, sin llamar a
+    // getAnchorOptions desde aquí (ese cargador es del editor, que solo mira
+    // una saga a la vez más su subárbol para las OPCIONES, no para hidratar).
+    // `created_at` viaja en el select porque resolveWindows desempata con ella
+    // (dos sagas hermanas pueden compartir ventana sobre la misma obra, ver su
+    // comentario) — sin `.order()` aquí: resolveWindows ordena ella misma, no
+    // confía en que el llamador ya lo haya hecho.
+    supabase
+      .from("saga_placement_windows")
+      .select(
+        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+      )
+      .in("saga_id", sagaIds),
   ]);
 
   // Lookup del grafo desde los MISMOS datos de la pestaña Info (spec §1.3).
@@ -492,6 +623,16 @@ export async function getSagaDetail(
     optionalInParent: d.optional_in_parent,
   }));
 
+  // Títulos de ancla para las ventanas (Task 6): el subárbol entero YA está en
+  // memoria — `meta` (catálogo de toda obra que aparece en `saga_items` del
+  // árbol, sea o no ancla) y `descendants` (todo bloque del árbol) — así que se
+  // reutilizan en vez de pedirle lo mismo a getAnchorOptions con un viaje
+  // aparte. Mismas claves que `DraftEntry.key`/`hydrateWindows`.
+  const anchorTitles = new Map<string, string>();
+  for (const [key, m] of meta) anchorTitles.set(`i:${key}`, m.title);
+  for (const d of descendants.values()) anchorTitles.set(`s:${d.id}`, d.name);
+  const windows = resolveWindows((windowsRes.data ?? []) as RawWindowRow[], anchorTitles);
+
   return {
     saga,
     parent: (parentRow as { data: { id: string; name: string } | null }).data ?? null,
@@ -512,5 +653,6 @@ export async function getSagaDetail(
     orderMemberships,
     orderNodes,
     childRefs,
+    windows,
   };
 }

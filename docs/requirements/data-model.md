@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_proc`), nunca contra `list_migrations`]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) verificadas **solo en dev** el 2026-07-27 — prod pendiente, ver §7.6 —, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_policies`, `pg_proc`), nunca contra `list_migrations`]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -410,8 +410,10 @@ sistemas de orden que hoy coexisten (lista numerada, grafo, itinerarios) por uno
 progreso del orden. El arreglo de `assignItemToSaga`/#188 que originalmente se planeó para la fase
 2 se adelantó al review final de esta misma rama (commit `e3832ff`, ver más abajo) — lo único que
 falta de esa fase es aplicar las migraciones a prod, que ya no depende de ningún arreglo de código.
-Fase 3 (el editor único de secuencia con `saga_placement_windows`/tándem/retirada del grafo)
-**sigue sin construir** — ver `backlog.md`.
+Fase 2a (el editor único de secuencia, §7.5) y fase 2b (`saga_placement_windows`,
+la ventana de una entrada `libre`, §7.6) **ya están construidas** — ver más
+abajo y `backlog.md`. Queda la fase 3 (retirada de `saga_nodes`/`saga_edges`/
+`save_saga_graph`).
 
 **Dos ejes ORTOGONALES, y ésa es la distinción que toda la fase existe para establecer:**
 
@@ -484,8 +486,9 @@ entorno:**
   backfill coloca 2 como `placement_in_parent='fijo'` y deja 3 en `null` — **a propósito**: son
   hijas de un padre que tiene grafo (`saga_nodes`), y ahí la app no deduce el orden de `position`
   sino de `order_no`, así que inventar una colocación habría sido una curación que nadie hizo (se
-  migran a mano en la fase 3). `saga_placement_windows` (tabla de la fase 3, para la ventana de un
-  `libre`) **no existe todavía**, ni en dev ni en prod.
+  migran a mano en la fase 3). `saga_placement_windows` (tabla de la fase 2b, para la ventana de un
+  `libre`, §7.6) **no existía todavía cuando se midió esta cifra** (2026-07-26); existe en dev desde
+  el 2026-07-27, prod pendiente.
 - **Prod, medido el 2026-07-25 antes de que existieran estas columnas** (spec, sección "Modelo de
   datos"): 342 filas de `saga_items` con `position` (→ habrían pasado a `fijo`), 9 sin `position`
   (→ `null`). **Esta cifra es informativa, no aplicada**: prod no tiene ni el enum ni las columnas
@@ -606,6 +609,128 @@ p_blocks, p_removed`); **cero** filas violando el invariante `placement/position
 doble (RLS `collaborator+` de `saga_items`/`sagas` + comprobación en la server action) que el resto
 de escrituras de saga.
 
+### 7.6 Ventanas de colocación de una entrada `libre` (fase 2b del orden unificado)
+
+Fase 2b de 3 (spec `docs/superpowers/specs/2026-07-26-sagas-fase-2b-ventanas-design.md`): «cuándo se
+puede leer» una entrada `libre` (§7.4) — el caso que la motiva, en palabras del curador: «Nacidos Era
+2 es opcional, A PARTIR DE Era 1, y recomendable ANTES DE Viento y Verdad». El sujeto de una ventana
+puede ser una obra o un **bloque-subsaga entero** (el caso real medido en el Cosmere el 2026-07-26:
+las dos únicas entradas `libre` de producción eran bloques, no obras — ver la entrada `backlog.md`
+de la fase anterior).
+
+```sql
+create table public.saga_placement_windows (
+  id uuid primary key default gen_random_uuid(),
+  saga_id uuid not null references public.sagas(id) on delete cascade,
+
+  -- SUJETO: la entrada cuya ventana es esta. Obra XOR bloque.
+  item_type public.item_type,
+  item_id uuid,
+  child_saga_id uuid references public.sagas(id) on delete cascade,
+
+  -- ANCLA «a partir de». Obra XOR bloque, opcional.
+  after_item_type public.item_type,
+  after_item_id uuid,
+  after_child_saga_id uuid references public.sagas(id) on delete cascade,
+
+  -- ANCLA «recomendable antes de». Misma forma, opcional.
+  before_item_type public.item_type,
+  before_item_id uuid,
+  before_child_saga_id uuid references public.sagas(id) on delete cascade,
+
+  created_at timestamptz not null default now()
+);
+```
+
+**Una fila por entrada, dos anclas como máximo.** Cuatro CHECK, los cuatro escritos sobre
+`IS [NOT] NULL`, nunca sobre un `OR` de comparaciones — la misma trampa que ya obligó a reescribir
+`saga_items_placement_position` como `CASE` (§7.4, arriba): con `x IS NULL`, comparar contra `NULL` da
+`NULL`, no `FALSE`, así que un `OR` de ramas así puede dar `NULL` entero y un CHECK solo rechaza
+`FALSE` — la fila imposible cuela. `saga_placement_windows_subject` exige sujeto obra XOR bloque
+(y una obra necesita siempre su `item_type`: `item_id` es polimórfico, sin tipo no se sabe a qué tabla
+apunta); `saga_placement_windows_after`/`_before` exigen cada ancla vacía, obra, o bloque —nunca una
+mezcla—; y `saga_placement_windows_needs_anchor` exige al menos una de las dos anclas (una ventana sin
+ninguna es un `libre` sin ventana, y entonces no hay fila que crear).
+
+Dos **uniques parciales por saga** —`saga_placement_windows_item_key` (`saga_id, item_type, item_id`
+where `item_id is not null`) y `saga_placement_windows_child_key` (`saga_id, child_saga_id`)—, mismo
+patrón que ya protege `saga_nodes`/`saga_route_entries` (§7.1/§7.2). Son **por saga**, no globales:
+nada impide que dos sagas hermanas del mismo subárbol tengan cada una su propia fila de ventana sobre
+la MISMA obra compartida (multi-membresía) — `hydrateWindows`/`resolveWindows` (código, más abajo)
+desempatan por `created_at` ascendente cuando eso ocurre, mismo criterio en el editor y en la ficha.
+
+RLS: lectura pública (`anon`+`authenticated`), escritura `collaborator+` — forma calcada de
+`saga_routes`/`saga_route_entries` (§7.2).
+
+**`save_saga_sequence` crece a CINCO argumentos** (`p_saga_id, p_entries, p_blocks, p_removed,
+p_windows`); la de cuatro (§7.5) pasa a ser un **envoltorio** de la de cinco con `p_windows='[]'`, y se
+queda viva hasta que el bundle desplegado (que aún llama con cuatro) deje de usarse — ver
+`decisiones.md` para el porqué de las tres migraciones y el riesgo conocido de la ventana entre ellas.
+`p_windows` es **reemplazo total** de las ventanas de la saga (`delete ... where saga_id = p_saga_id`
+seguido de reinsert de lo que traiga el payload), a diferencia de `p_removed` (baja explícita de
+`saga_items`, §7.5) — ver `decisiones.md` para el porqué de esa asimetría deliberada.
+
+**Quién garantiza que solo una entrada `libre` tiene ventana** — ningún CHECK puede imponerlo, porque
+cruza dos tablas (`saga_placement_windows` no sabe qué vale `saga_items.placement`/
+`sagas.placement_in_parent` para su sujeto). Lo sostienen **dos piezas de código, ninguna la BD**:
+
+1. **El RPC**, por reemplazo total: `validateSequenceDraft` (`src/lib/sagas/validate-sequence-draft.ts`,
+   código `windowNotFree`) ya rechaza en el cliente un payload que intente guardar una ventana para
+   una entrada que no sea `libre` en ese mismo borrador, así que `p_windows` nunca lleva, de origen,
+   la ventana de una entrada `fijo`/sin clasificar. Y como el `DELETE` borra TODAS las filas de la
+   saga antes de reinsertar, una entrada que **deja de ser** `libre` en este mismo guardado (se mueve
+   a un hueco fijo) simplemente no aparece en `p_windows` — su fila desaparece en la MISMA transacción
+   en que cambia de zona, sin ningún paso adicional.
+2. **El render**, de forma defensiva y por si acaso quedara una fila huérfana (p. ej. un cambio de
+   `placement` que no pasara por este RPC): `hydrateSequenceDraft`/el editor
+   (`src/lib/sagas/get-saga-sequence.ts`) y `freeItemWindow`/`freeBlockWindow`
+   (`src/lib/sagas/get-saga-detail.ts`) comprueban `placement`/`placement_in_parent` ELLOS MISMOS antes
+   de mirar el mapa de ventanas — nunca confían en que la tabla no tenga fila para algo que ya no es
+   `libre`.
+
+**Un ancla rota no se limpia — salvo que sea una saga-ancla borrada, que se lleva la fila entera.**
+Dos casos, distintos de verdad:
+
+- **Ancla-obra, o ancla-bloque que se desanida o sale de alcance sin borrarse.** La fila de
+  `saga_placement_windows` **no se toca**: al hidratar, esa ancla concreta resuelve a `null`
+  (`hydrateWindows`/`resolveWindows`, título ausente en `anchorTitles` = ancla rota) y desaparece de lo
+  que ve el curador/lector. Se pierde del todo en el siguiente guardado de la saga —**cualquiera**,
+  aunque no toque esa fila— por el mismo reemplazo total del punto 1: el borrador que se sirve no
+  incluye una ancla que no resolvió, así que `p_windows` la reemplaza por una versión sin ella (o sin
+  ventana entera, si esa era su única ancla). Decisión deliberada del responsable de producto, no un
+  descuido — ver `decisiones.md`.
+- **Ancla-bloque que se BORRA.** `after_child_saga_id`/`before_child_saga_id` llevan `on delete
+  cascade` (arriba): borrar la saga-ancla se lleva **la fila entera de `saga_placement_windows` en el
+  acto**, no en el siguiente guardado — y con ella la OTRA ancla de esa misma ventana, aunque siguiera
+  siendo válida y curada. Verificado en dev: fila con `after_child_saga_id` = saga A y `before_item_id`
+  = una obra; al borrar A la fila pasa de 1 a 0. `after_item_id`/`before_item_id` no tienen este
+  problema porque no llevan FK (son polimórficos, apuntan a `books`/`movies`/`series` según
+  `item_type`): una obra-ancla borrada sigue el camino de arriba. No se ha corregido pasando esas dos
+  columnas a `set null`: chocaría con el CHECK `saga_placement_windows_needs_anchor` cuando esa fuera
+  la única ancla de la fila. Es un efecto del esquema, no una decisión de producto — no confundir con
+  el punto anterior.
+
+Verificado **solo en dev** (2026-07-27), contra los objetos reales (`pg_constraint`, `pg_policies`,
+`pg_proc`), no contra `list_migrations`: los cuatro CHECK en la forma `IS [NOT] NULL`; los dos uniques
+parciales; RLS con las dos policies (`select` pública, `all` collaborator+); y `save_saga_sequence`
+existiendo con **dos** firmas (cuatro y cinco argumentos), la de cinco con `prosecdef=true`/
+`search_path=public`. **Aplicación a producción pendiente** (Task 7, Step 2 del plan; fuera del
+alcance de esta subtarea de documentación). Cubierto por `e2e/sagas-ventanas.spec.ts` (dos anclas de
+una `libre` se guardan y persisten tras recargar; el tope de dos anclas; y —el test que más protege,
+porque es justo lo que ningún CHECK puede dar— mover una entrada con ventana a la secuencia borra su
+ventana, comprobado contra la BD).
+
+**UI**: `WindowEditor`/`AnchorPicker` (`src/components/saga/sequence/`), bajo cada fila de la zona
+«Cuando quieras» del editor de secuencia; nunca se monta fuera de ahí. Las opciones de ancla salen de
+`getAnchorOptions` (`src/lib/sagas/get-anchor-options.ts`), a propósito un cargador **aparte** de
+`getSagaSequence` y más ancho: recorre el subárbol entero (hasta profundidad 4, mismo cinturón que
+`fetchDescendants`), porque un ancla puede apuntar a una obra de un nieto. La ficha
+(`saga-info.tsx`) pinta la ventana resuelta bajo la portada de cada entrada `libre` en «Cuando
+quieras», con el título de cada ancla en negrita. Deuda menor conocida (rendimiento de
+`getAnchorOptions` llamada dos veces por render, congelación de la lista de anclas dentro de la misma
+sesión, falta de test unitario de estos dos componentes, locator e2e por XPath, estilo de la línea de
+ventana sin mockup): issue #206.
+
 ## 8. Seguridad
 
 Las 42 tablas tienen **RLS activa**. Patrones:
@@ -616,7 +741,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   eso lo decide `is_club_member()`.
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
-  `save_saga_graph`, `save_saga_sequence` (§7.5), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
+  `save_saga_graph`, `save_saga_sequence` (§7.5/§7.6), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
   `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan
   como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` sigue en esta lista
   aunque ya no tiene llamador en la app (§7.5, fase 2a retiró su editor): sigue viva en prod,

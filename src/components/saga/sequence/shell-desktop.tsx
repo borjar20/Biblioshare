@@ -2,7 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
-import type { DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
+import { WindowEditor } from "./window-editor";
+import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 
 type Ops = {
   moveSlot: (i: number, delta: number) => void;
@@ -10,6 +11,8 @@ type Ops = {
   unpair: (i: number) => void;
   setOptional: (key: string, v: boolean) => void;
   setRole: (key: string, r: DraftEntry["role"]) => void;
+  setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) => void;
+  clearAnchor: (key: string, side: "after" | "before") => void;
 };
 
 // Propuesta A (frame A3): las tres zonas a la vez. Verlas juntas es lo que
@@ -17,10 +20,13 @@ type Ops = {
 // sitio de sobra. Sin estado del borrador: todo llega por props (restricción
 // global del plan).
 export function ShellDesktop({
-  draft, ops, onMenu, rail, itineraries,
+  draft, ops, anchors, onMenu, rail, itineraries,
 }: {
   draft: SequenceDraft;
   ops: Ops;
+  /** Subárbol entero (`getAnchorOptions`), para el selector de ancla de cada
+   *  fila de «Cuando quieras». */
+  anchors: DraftAnchor[];
   onMenu: (key: string) => void;
   /** Rail ya construido por `SequenceEditor` (necesita callbacks del borrador). */
   rail: React.ReactNode;
@@ -90,7 +96,17 @@ export function ShellDesktop({
         </div>
 
         <Zone title={t("zoneFree")} hint={t("zoneFreeHint")} empty={draft.free.length === 0} emptyTitle={t("zoneFreeEmpty")}>
-          {draft.free.map((e) => row(e, null))}
+          {draft.free.map((e) => (
+            <div key={e.key}>
+              {row(e, null)}
+              <WindowEditor
+                entry={e}
+                anchors={anchors}
+                onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
+                onClearAnchor={(side) => ops.clearAnchor(e.key, side)}
+              />
+            </div>
+          ))}
         </Zone>
 
         {draft.unclassified.length > 0 && (
