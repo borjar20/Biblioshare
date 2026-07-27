@@ -90,12 +90,12 @@ it("un ancla que resuelve trae clave y título; una rota, las dos a null", () =>
   // Ancla `before`: una obra que ya no está en el subárbol.
   const out = resolveWindows(
     [
-      {
-        item_type: null, item_id: null, child_saga_id: "sujeto",
-        after_item_type: null, after_item_id: null, after_child_saga_id: "saga-1",
-        before_item_type: "book", before_item_id: "fantasma", before_child_saga_id: null,
+      w({
+        child_saga_id: "sujeto",
+        after_child_saga_id: "saga-1",
+        before_item_type: "book", before_item_id: "fantasma",
         created_at: "2026-07-27T00:00:00Z",
-      },
+      }),
     ],
     new Map([["s:saga-1", "Era 1"]]),
   );

@@ -25,6 +25,16 @@ const work = (id: string, position: number | null): DetailMember => ({
   year: null,
 });
 
+// A diferencia de `work()`, que fija `placement: "fijo"` a machamartillo, esta
+// obra no tiene hueco (`position: null`, lo impone el CHECK
+// saga_items_placement_position): `libre` por defecto, o `null` (sin
+// clasificar) si se pasa explícitamente — los dos casos que la revisión pide
+// cubrir (hallazgo 1).
+const looseWork = (id: string, placement: DetailMember["placement"] = "libre"): DetailMember => ({
+  ...work(id, null),
+  placement,
+});
+
 const block = (name: string, positionInParent: number | null, works: DetailMember[]): MemberGroup => {
   const sagaId = `saga-${name}`;
   return {
@@ -111,6 +121,56 @@ describe("deriveSagaMap", () => {
       {}, lookup(),
     );
     expect(map.edges.some((e) => e.source === "i:book:L" || e.target === "i:book:L")).toBe(false);
+  });
+
+  // Hallazgo 1 (CRITICAL) de la revisión: una obra SIN hueco (`position:
+  // null`, `libre` o sin clasificar) es un nodo, pero no participa en la
+  // cadena — antes se agrupaba como si tuviera un hueco propio y salía
+  // encadenada con aristas `principal` a sus vecinas.
+  it("un bloque [fijo(A,1), fijo(B,2), libre(Z)] da A→B y nada toca a Z, con Z.orderNo null", () => {
+    const map = deriveSagaMap(
+      groups([block("Bloque", 1, [work("A", 1), work("B", 2), looseWork("Z")])]),
+      {}, lookup(),
+    );
+    const chainEdges = map.edges.filter((e) => e.type === "principal");
+    expect(chainEdges).toEqual([
+      expect.objectContaining({ source: "i:book:A", target: "i:book:B" }),
+    ]);
+    expect(map.edges.some((e) => e.source === "i:book:Z" || e.target === "i:book:Z")).toBe(false);
+    expect(map.nodes.find((n) => n.id === "i:book:Z")!.orderNo).toBeNull();
+  });
+
+  it("una obra sin clasificar (placement null) tampoco entra en la cadena", () => {
+    const map = deriveSagaMap(
+      groups([block("Bloque", 1, [work("A", 1), looseWork("Z", null)])]),
+      {}, lookup(),
+    );
+    expect(map.nodes.find((n) => n.id === "i:book:Z")!.orderNo).toBeNull();
+    expect(map.edges).toEqual([]);
+  });
+
+  it("una obra sin hueco conserva la fila de su bloque y su x va tras el último hueco", () => {
+    const map = deriveSagaMap(
+      groups([block("Bloque", 1, [work("A", 1), work("B", 2), looseWork("Z")])]),
+      {}, lookup(),
+    );
+    const a = map.nodes.find((n) => n.id === "i:book:A")!;
+    const b = map.nodes.find((n) => n.id === "i:book:B")!;
+    const z = map.nodes.find((n) => n.id === "i:book:Z")!;
+    expect(z.y).toBe(a.y);
+    expect(z.y).toBe(b.y);
+    expect(z.x).toBeGreaterThan(b.x);
+  });
+
+  it("una obra sin hueco CON ventana sí tiene su arista (a diferencia de la cadena)", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [looseWork("Z")])]),
+      { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      lookup(),
+    );
+    expect(map.edges).toContainEqual(
+      expect.objectContaining({ source: "i:book:A", target: "i:book:Z", type: "requisito" }),
+    );
   });
 
   it("una ventana cuyo extremo no está en el mapa no pinta arista", () => {
