@@ -30,11 +30,18 @@ export async function saveSequence(
   // una ventana puede apuntar a una obra de un nieto. Es la última red antes
   // del RPC: un ancla que apuntara a algo fuera del subárbol dispararía un
   // 23503 en `save_saga_sequence` y abortaría la transacción entera, no solo
-  // la ventana.
-  const anchors = await getAnchorOptions(supabase, sagaId);
-  const anchorKeys = new Set(
-    anchors.map((a) => (a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`)),
-  );
+  // la ventana. Igual que `get-saga-sequence.ts`: SOLO si hay ventanas que
+  // validar — `validateSequenceDraft` solo toca `anchorKeys` dentro del bucle
+  // sobre `payload.windows`, así que con la lista vacía (el guardado normal,
+  // sin ninguna ventana) el `Set` nunca se consulta y no vale la pena pagar
+  // el recorrido del subárbol entero por un guardado que no lo necesita.
+  const anchorKeys = new Set<string>();
+  if (payload.windows.length > 0) {
+    const anchors = await getAnchorOptions(supabase, sagaId);
+    for (const a of anchors) {
+      anchorKeys.add(a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`);
+    }
+  }
   const { errors } = validateSequenceDraft(payload, { childIds: new Set(childIds), anchorKeys });
   if (errors.length > 0) return { error: errors[0] };
 

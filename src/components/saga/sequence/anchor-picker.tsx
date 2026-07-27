@@ -90,10 +90,12 @@ export function AnchorPicker({
         <div aria-live="polite">
           <button
             type="button" disabled={chosen === null}
-            onClick={() => {
-              const found = chosen !== null ? options.find((o) => o.i === chosen) : undefined;
-              if (found) onPick(found.anchor);
-            }}
+            // Mismo criterio que `tandem-picker.tsx`: `chosen` YA es el índice
+            // original en `anchors` (viene de `options.map`, no de la lista
+            // filtrada), así que se usa directo — buscarlo de nuevo en
+            // `options` fallaba en silencio si un filtro posterior a la
+            // elección lo dejaba fuera de la lista filtrada.
+            onClick={() => { if (chosen !== null) onPick(anchors[chosen]); }}
             className="mt-3 w-full rounded-lg bg-accent py-2.5 text-[12.5px] font-semibold text-accent-foreground disabled:opacity-50"
           >
             {label}

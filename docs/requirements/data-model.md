@@ -688,14 +688,27 @@ cruza dos tablas (`saga_placement_windows` no sabe qué vale `saga_items.placeme
    de mirar el mapa de ventanas — nunca confían en que la tabla no tenga fila para algo que ya no es
    `libre`.
 
-**Un ancla rota no se limpia.** Si la obra o el bloque al que apunta una ventana sale del subárbol
-(se borra, se desanida, se mueve fuera del alcance), la fila de `saga_placement_windows` **no se
-toca**: al hidratar, esa ancla concreta resuelve a `null` (`hydrateWindows`/`resolveWindows`, título
-ausente en `anchorTitles` = ancla rota) y desaparece de lo que ve el curador/lector. Se pierde del
-todo en el siguiente guardado de la saga —**cualquiera**, aunque no toque esa fila— por el mismo
-reemplazo total del punto 1: el borrador que se sirve no incluye una ancla que no resolvió, así que
-`p_windows` la reemplaza por una versión sin ella (o sin ventana entera, si esa era su única ancla).
-Decisión deliberada del responsable de producto, no un descuido — ver `decisiones.md`.
+**Un ancla rota no se limpia — salvo que sea una saga-ancla borrada, que se lleva la fila entera.**
+Dos casos, distintos de verdad:
+
+- **Ancla-obra, o ancla-bloque que se desanida o sale de alcance sin borrarse.** La fila de
+  `saga_placement_windows` **no se toca**: al hidratar, esa ancla concreta resuelve a `null`
+  (`hydrateWindows`/`resolveWindows`, título ausente en `anchorTitles` = ancla rota) y desaparece de lo
+  que ve el curador/lector. Se pierde del todo en el siguiente guardado de la saga —**cualquiera**,
+  aunque no toque esa fila— por el mismo reemplazo total del punto 1: el borrador que se sirve no
+  incluye una ancla que no resolvió, así que `p_windows` la reemplaza por una versión sin ella (o sin
+  ventana entera, si esa era su única ancla). Decisión deliberada del responsable de producto, no un
+  descuido — ver `decisiones.md`.
+- **Ancla-bloque que se BORRA.** `after_child_saga_id`/`before_child_saga_id` llevan `on delete
+  cascade` (arriba): borrar la saga-ancla se lleva **la fila entera de `saga_placement_windows` en el
+  acto**, no en el siguiente guardado — y con ella la OTRA ancla de esa misma ventana, aunque siguiera
+  siendo válida y curada. Verificado en dev: fila con `after_child_saga_id` = saga A y `before_item_id`
+  = una obra; al borrar A la fila pasa de 1 a 0. `after_item_id`/`before_item_id` no tienen este
+  problema porque no llevan FK (son polimórficos, apuntan a `books`/`movies`/`series` según
+  `item_type`): una obra-ancla borrada sigue el camino de arriba. No se ha corregido pasando esas dos
+  columnas a `set null`: chocaría con el CHECK `saga_placement_windows_needs_anchor` cuando esa fuera
+  la única ancla de la fila. Es un efecto del esquema, no una decisión de producto — no confundir con
+  el punto anterior.
 
 Verificado **solo en dev** (2026-07-27), contra los objetos reales (`pg_constraint`, `pg_policies`,
 `pg_proc`), no contra `list_migrations`: los cuatro CHECK en la forma `IS [NOT] NULL`; los dos uniques

@@ -448,6 +448,12 @@ Dentro de cada fila de la zona «Cuando quieras»: si no hay ventana, un «+ Añ
 
 Un ancla que llegó rota (`title` sin resolver) se pinta marcada como tal, con la opción de quitarla. No se borra sola: la obra puede volver a la saga.
 
+> **Nota añadida en la revisión final de rama (2026-07-27):** esto se revirtió a
+> propósito. El responsable de producto decidió el 2026-07-27 que un ancla rota
+> se olvida, no se conserva marcada — ver `docs/requirements/decisiones.md`
+> (entrada 2026-07-27). Este Step queda tal cual como registro histórico de lo
+> planeado; el comportamiento construido es el contrario.
+
 - [ ] **Step 3: Claves i18n**, namespace `sagaEditor`:
 
 ```json
