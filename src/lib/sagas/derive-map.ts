@@ -92,20 +92,34 @@ export function deriveSagaMap(
   // propósito, fuera de la cadena.
   let chainTail: DetailMember[] | null = null;
 
-  // `x` es un contador de columnas COMPARTIDO por todo el mapa: no se
-  // reinicia al cambiar de bloque, así que los bloques colocados salen en
-  // columnas crecientes. Dos obras en el mismo hueco de su bloque (tándem,
-  // mismo `position`) comparten `x`.
-  let x = 0;
+  // Task 9: el mapa salía como una escalera diagonal larguísima porque `x`
+  // era un contador de columnas COMPARTIDO por todo el mapa (crecía con cada
+  // hueco de CUALQUIER bloque, así que 20 obras dibujaban 20 columnas de
+  // ancho). Decisión del responsable: una fila por bloque, COMPACTA. `x` se
+  // declara DENTRO de `blocks.forEach` (más abajo) y por eso se reinicia en
+  // cada bloque — cada uno es una cadena horizontal corta que empieza en la
+  // columna 0, y el ancho del dibujo pasa a ser el del bloque más largo, no
+  // la suma de todos.
+  //
+  // `orderNo` es harina de otro costal: NO es una coordenada, es el índice
+  // lógico que consume `deriveTimeline` (derive-timeline.ts) para construir
+  // su columna del timeline móvil, y TIENE que seguir siendo global y
+  // creciente en el orden de lectura — si se acoplara a `x` (que se reinicia
+  // por bloque), dos bloques distintos producirían el mismo orderNo y el
+  // timeline de móvil confundiría su orden sin que ninguna prueba de "x" lo
+  // note. Por eso vive en su PROPIO contador, `orderCounter`, que nunca se
+  // reinicia.
+  let orderCounter = 0;
 
   // Nodo de una obra, hueco o suelta: `orderNo` es la única diferencia — una
-  // obra CON hueco lo hereda de `x` (entra en la columna principal de
-  // deriveTimeline); una obra SIN hueco recibe `null` (activa el mecanismo de
-  // ramas/puentes de deriveTimeline en vez de la columna). `col`/`row` son
-  // índices lógicos (columna compartida, fila = bloque); aquí se escalan a
-  // píxeles (`NODE_STEP_X`/`NODE_STEP_Y`) para `x`/`y`, pero `orderNo` se
-  // queda con el índice crudo — es un orden lógico para deriveTimeline, no
-  // una coordenada de lienzo.
+  // obra CON hueco lo recibe de `orderCounter` (entra en la columna principal
+  // de deriveTimeline); una obra SIN hueco recibe `null` (activa el mecanismo
+  // de ramas/puentes de deriveTimeline en vez de la columna). `col` es un
+  // índice lógico LOCAL al bloque (columna dentro de su fila); `row` es el
+  // índice del bloque. Aquí se escalan a píxeles (`NODE_STEP_X`/`NODE_STEP_Y`)
+  // para `x`/`y`, pero `orderNo` se queda con el índice crudo del contador
+  // global — es un orden lógico para deriveTimeline, no una coordenada de
+  // lienzo.
   const makeNode = (m: DetailMember, col: number, row: number, orderNo: number | null): SagaGraphNode => ({
     id: itemKey(m),
     kind: "item",
@@ -131,6 +145,12 @@ export function deriveSagaMap(
   });
 
   blocks.forEach((group, y) => {
+    // Columna LOCAL a este bloque: se reinicia en cada iteración (Task 9)
+    // porque se declara aquí dentro, no fuera del forEach. `orderCounter`, en
+    // cambio, vive fuera y no se toca en esta línea: sigue creciendo entre
+    // bloques.
+    let x = 0;
+
     // Una obra SIN hueco (`position === null`: `libre` o sin clasificar, lo
     // impone el CHECK saga_items_placement_position) SÍ es un nodo del mapa,
     // pero no forma parte de la cadena: ni abre ni cierra huecos, y ninguna
@@ -168,7 +188,7 @@ export function deriveSagaMap(
 
     huecos.forEach((hueco, huecoIdx) => {
       for (const m of hueco) {
-        const node = makeNode(m, x, y, x);
+        const node = makeNode(m, x, y, orderCounter);
         nodes.push(node);
         byId.set(node.id, node);
       }
@@ -194,6 +214,7 @@ export function deriveSagaMap(
       }
 
       x++;
+      orderCounter++;
     });
 
     // Cadena ENTRE bloques, solo en la zona ordenada (`y < ordered.length`,

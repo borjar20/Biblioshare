@@ -406,4 +406,92 @@ describe("deriveSagaMap", () => {
       expect(chainEdges).toEqual([expect.objectContaining({ source: "i:book:A", target: "i:book:N" })]);
     });
   });
+
+  // Task 9: el mapa salía como una escalera diagonal larguísima porque `x` era
+  // un contador de columnas COMPARTIDO por todo el mapa (crecía con cada
+  // hueco de CUALQUIER bloque). La decisión: una fila por bloque, compacta —
+  // `x` se reinicia en cada bloque, así que el ancho del dibujo pasa a ser el
+  // del bloque más largo, no la suma de todos. La trampa (y la razón de que
+  // esto tenga su propio describe): `orderNo` NO es una coordenada, es el
+  // índice lógico que consume `deriveTimeline` para construir su columna del
+  // timeline móvil, y TIENE que seguir siendo global y creciente en el orden
+  // de lectura — si se le acopla a `x`, el timeline de móvil se rompe sin que
+  // ninguna prueba DE ESTE fichero lo note (hay que mirar `orderNo`
+  // explícitamente, no solo `x`).
+  describe("x se reinicia por bloque; orderNo sigue siendo global y creciente (Task 9)", () => {
+    it("dos bloques de igual tamaño: x vuelve a 0 en el segundo bloque, orderNo sigue subiendo", () => {
+      const map = deriveSagaMap(
+        groups([block("Uno", 1, [work("A", 1), work("B", 2)]), block("Dos", 2, [work("C", 1), work("D", 2)])]),
+        {}, lookup(),
+      );
+      const [a, b, c, d] = ["A", "B", "C", "D"].map((id) => map.nodes.find((n) => n.id === `i:book:${id}`)!);
+
+      // x: cadena horizontal corta que EMPIEZA A LA IZQUIERDA en cada bloque —
+      // el segundo bloque repite EXACTAMENTE los mismos x que el primero, en
+      // vez de continuar donde lo dejó.
+      expect(a.x).toBe(0);
+      expect(c.x).toBe(0);
+      expect(b.x).toBe(d.x);
+      expect(b.x).toBeGreaterThan(a.x);
+
+      // orderNo: contador global, nunca se reinicia — sigue el orden de
+      // lectura completo (A, B, C, D), no el de cada bloque por separado.
+      expect([a.orderNo, b.orderNo, c.orderNo, d.orderNo]).toEqual([0, 1, 2, 3]);
+    });
+
+    it("un bloque largo seguido de uno corto: el ancho del dibujo es el del bloque MÁS LARGO, no la suma de los dos", () => {
+      const map = deriveSagaMap(
+        groups([
+          block("Largo", 1, [work("A", 1), work("B", 2), work("C", 3), work("D", 4), work("E", 5)]),
+          block("Corto", 2, [work("F", 1)]),
+        ]),
+        {}, lookup(),
+      );
+      const e = map.nodes.find((n) => n.id === "i:book:E")!;
+      const f = map.nodes.find((n) => n.id === "i:book:F")!;
+      const maxX = Math.max(...map.nodes.map((n) => n.x));
+      // Con `x` global (comportamiento viejo) el máximo lo habría marcado F
+      // (sexto hueco de todo el mapa, después de los cinco de "Largo").
+      // Reiniciado por bloque, F vuelve a x=0 y el máximo del dibujo lo sigue
+      // marcando el bloque "Largo" — el ancho es el del bloque más largo, no
+      // la suma de todos.
+      expect(f.x).toBe(0);
+      expect(maxX).toBe(e.x);
+    });
+
+    it("tándem en el segundo bloque: comparte x local (0) y hereda el orderNo global correcto", () => {
+      const map = deriveSagaMap(
+        groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("B", 1), work("C", 1)])]),
+        {}, lookup(),
+      );
+      const a = map.nodes.find((n) => n.id === "i:book:A")!;
+      const b = map.nodes.find((n) => n.id === "i:book:B")!;
+      const c = map.nodes.find((n) => n.id === "i:book:C")!;
+      expect(b.x).toBe(0);
+      expect(c.x).toBe(0);
+      // El tándem comparte orderNo entre sí, y ambos van DETRÁS de A en el
+      // contador global (A=0, B=C=1) — no 0 otra vez por haber reiniciado x.
+      expect(b.orderNo).toBe(a.orderNo! + 1);
+      expect(c.orderNo).toBe(b.orderNo);
+    });
+
+    // Inyección de fallo (parte del contrato de verificación de Task 9): si
+    // `orderNo` se acoplara de nuevo a `x` (el error que este cambio invita a
+    // cometer), esta prueba es la que tiene que caer — fija el valor exacto
+    // de orderNo, no solo que sea "creciente" en abstracto.
+    it("fija el valor exacto de orderNo del segundo bloque para atrapar un futuro acoplamiento con x", () => {
+      const map = deriveSagaMap(
+        groups([
+          block("Uno", 1, [work("A", 1), work("B", 2), work("C", 3)]),
+          block("Dos", 2, [work("D", 1)]),
+        ]),
+        {}, lookup(),
+      );
+      const d = map.nodes.find((n) => n.id === "i:book:D")!;
+      // Si orderNo copiara x (que se reinicia por bloque), D.orderNo sería 0.
+      // El valor correcto, con orderNo global, es 3 (A=0, B=1, C=2, D=3).
+      expect(d.orderNo).toBe(3);
+      expect(d.x).toBe(0);
+    });
+  });
 });
