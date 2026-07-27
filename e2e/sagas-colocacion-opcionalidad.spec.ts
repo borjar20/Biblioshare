@@ -393,7 +393,20 @@ test("el contador de la cabecera de un grupo coincide con su grid, incluso con u
     await expect(eraUnoCount).toHaveText("3");
     await expect(eraUnoGrid.getByRole("listitem")).toHaveCount(3);
     await expect(eraUnoGrid.getByText("Rayuela")).toHaveCount(0);
-    const freeGrid = freeHeading.locator("xpath=following-sibling::ul[1]");
+    // A diferencia de `eraUnoGrid` (donde `GroupBody` es el propio `<ul>`,
+    // hermano directo de la fila de cabecera), la sección «Cuando quieras»
+    // envuelve sus listas en un `<div className="flex flex-col gap-5">`
+    // (saga-info.tsx, fix issue #198: acoge tanto obras sueltas como bloques
+    // libres enteros) — el `<ul>` de los miembros sueltos es DESCENDIENTE de
+    // ese div, no hermano directo del `<h2>`. `following-sibling::ul[1]`
+    // nunca lo encuentra (hallazgo 2026-07-27, al correr la suite de sagas
+    // tras la fase 3): no es una regresión del producto — el snapshot de
+    // accesibilidad del test fallido ya mostraba a "Rayuela" pintado bajo
+    // "Cuando quieras" — es que el árbol de accesibilidad aplana los `<div>`
+    // sin rol, así que ocultaba el desajuste con el DOM real que sí sigue
+    // `xpath`. Un salto más (al div, luego a su primer `ul` descendiente)
+    // sigue exactamente la estructura real sin debilitar la comprobación.
+    const freeGrid = freeHeading.locator("xpath=following-sibling::div[1]//ul[1]");
     await expect(freeGrid.getByText("Rayuela").first()).toBeVisible();
   } finally {
     await restoreEraUno(itemsBefore, blockBefore);
