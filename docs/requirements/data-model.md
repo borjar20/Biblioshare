@@ -7,10 +7,14 @@ escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y 
 prod el 2026-07-27, fase cerrada, contra los objetos reales (`pg_type`, `pg_constraint`,
 `pg_policies`, `pg_proc`, `to_regclass`), nunca contra `list_migrations`; **fase 4 del orden
 unificado —`saga_routes.is_reading_order` (§7.2) y el borrado explícito de ventanas por lista de
-sujetos (§7.6)— verificada SOLO EN DEV el 2026-07-28 contra `information_schema.columns`,
-`pg_indexes` y `pg_proc`: en dev existen la columna, su unique parcial
-`saga_routes_reading_order_key` y las DOS sobrecargas de `save_saga_sequence` (cinco y seis
-argumentos). **En PROD no está aplicada nada de la fase 4**]**
+sujetos (§7.6)— verificada en dev y **en prod** el 2026-07-28 contra `information_schema.columns`,
+`pg_indexes` y `pg_proc`: en los dos entornos existen la columna (`boolean NO false`), su unique
+parcial `saga_routes_reading_order_key` (`(saga_id) WHERE is_reading_order`) y las DOS sobrecargas
+de `save_saga_sequence` (cinco y seis argumentos, ambas `security definer`). El «sin backfill» se
+comprobó en el DATO, no solo en el DDL: prod tiene 3 itinerarios y **0 con `is_reading_order`**, y
+sus 2 ventanas siguen diciendo exactamente lo mismo que antes de migrar. **Pendiente en prod: solo
+el `DROP` de la sobrecarga de cinco argumentos** (`20260731_drop_save_saga_sequence_v5.sql`), que
+por diseño se aplica DESPUÉS de desplegar el bundle nuevo]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
