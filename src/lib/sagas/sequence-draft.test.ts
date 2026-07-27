@@ -1,22 +1,29 @@
 import { describe, expect, it } from "vitest";
 import {
-  addEntry, clearAnchor, moveSlot, pairWith, removeEntry, sendTo, setAnchor, setOptional, setRole,
-  toPayload, unpair,
-  type DraftAnchor, type DraftEntry, type SequenceDraft,
+  addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
+  setOptional, setRole, toPayload, unpair,
+  type DraftAnchor, type DraftEntry, type NestedSubject, type SequenceDraft,
 } from "./sequence-draft";
 
+// `ownerSagaId` por defecto «saga» (fase 4): la dueña de la fila de ventana.
+// En las pruebas que no hablan de dueños es ruido de fondo, así que vive en el
+// helper y no en cada literal.
 const work = (id: string, title = id): DraftEntry => ({
   key: `i:book:${id}`, kind: "item", itemType: "book", itemId: id, childSagaId: null,
   title, coverUrl: null, accentColor: null, count: null, optional: false, role: null, window: null,
-  isNew: false,
+  ownerSagaId: "saga", isNew: false,
 });
 const block = (id: string): DraftEntry => ({
   key: `s:${id}`, kind: "block", itemType: null, itemId: null, childSagaId: id,
   title: id, coverUrl: null, accentColor: "verde", count: 8, optional: false, role: null, window: null,
-  isNew: false,
+  ownerSagaId: "saga", isNew: false,
 });
-const draft = (slots: DraftEntry[][], free: DraftEntry[] = [], unclassified: DraftEntry[] = []): SequenceDraft =>
-  ({ slots, free, unclassified, removed: [] });
+const draft = (
+  slots: DraftEntry[][],
+  free: DraftEntry[] = [],
+  unclassified: DraftEntry[] = [],
+  nested: SequenceDraft["nested"] = [],
+): SequenceDraft => ({ slots, free, unclassified, removed: [], nested });
 
 describe("moveSlot", () => {
   it("intercambia el hueco con su vecino y no toca los demás", () => {
@@ -205,5 +212,36 @@ describe("ventanas", () => {
     expect(d.slots).toHaveLength(2);
     expect(d.slots[1][0].window).toBeNull();
     expect(d.slots[1][0].itemId).toBe("nuevo");
+  });
+});
+
+describe("ventanas de sujetos anidados (fase 4)", () => {
+  const nestedSubject: NestedSubject = {
+    key: "i:book:x", ownerSagaId: "hija", childSagaId: "hija",
+    itemType: "book", itemId: "x", title: "Anidada", coverUrl: null, window: null,
+  };
+  const anchor: DraftAnchor = {
+    kind: "item", itemType: "book", itemId: "y", childSagaId: null, title: "Ancla",
+  };
+
+  it("setAnchor alcanza a un sujeto anidado", () => {
+    const next = setAnchor(draft([], [], [], [nestedSubject]), "i:book:x", "after", anchor);
+    expect(next.nested[0].window).toEqual({ after: anchor, before: null });
+  });
+
+  it("clearAnchor deja la ventana anidada a null cuando quita la última ancla", () => {
+    const d = draft([], [], [], [{ ...nestedSubject, window: { after: anchor, before: null } }]);
+    expect(clearAnchor(d, "i:book:x", "after").nested[0].window).toBeNull();
+  });
+
+  it("una clave que no está ni en `free` ni en `nested` es un no-op", () => {
+    const d = draft([], [], [], [nestedSubject]);
+    expect(setAnchor(d, "i:book:fantasma", "after", anchor)).toEqual(d);
+  });
+
+  it("draftWindowOwners junta la zona libre y los anidados, con su dueña", () => {
+    const free = { ...work("a"), ownerSagaId: "padre" };
+    const d = draft([], [free], [], [nestedSubject]);
+    expect(draftWindowOwners(d)).toEqual(new Map([["i:book:a", "padre"], ["i:book:x", "hija"]]));
   });
 });

@@ -1,9 +1,10 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import type { DraftAnchor, DraftEntry, DraftWindow, SequenceDraft } from "./sequence-draft";
+import type { DraftAnchor, DraftEntry, DraftWindow, NestedSubject, SequenceDraft } from "./sequence-draft";
 import type { SagaItemRole, SagaPlacement } from "./types";
 import { getAnchorOptions } from "./get-anchor-options";
+import { buildWindowOwners, type OwnerRow } from "./window-owners";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -76,6 +77,18 @@ export async function getSagaSequence(
   const counts = new Map<string, number>();
   const rawWindows = (windowRows ?? []) as RawWindowRow[];
   let windowsByKey = new Map<string, DraftWindow>();
+
+  type ChildItemRow = {
+    saga_id: string;
+    item_type: ItemType;
+    item_id: string;
+    placement: SagaPlacement | null;
+    is_primary: boolean;
+  };
+  const childItems: ChildItemRow[] = [];
+  let childWindows: RawWindowRow[] = [];
+  let anchorTitles = new Map<string, string>();
+
   await Promise.all([
     // Metadatos de catálogo, una consulta por tabla (mismo patrón que
     // get-saga-detail.ts:200-216).
@@ -85,25 +98,62 @@ export async function getSagaSequence(
         .from(CATALOG_TABLE[type]).select("id, title, cover_url").in("id", idsByType[type]);
       for (const r of data ?? []) meta.set(`${type}:${r.id}`, { title: r.title as string, coverUrl: (r.cover_url as string | null) ?? null });
     }),
-    // Recuento de obras por subsaga, para el «BLOQUE · 8 OBRAS» de su fila. No
-    // depende de los metadatos, así que va en la misma ronda y no detrás.
+    // Obras de las hijas DIRECTAS: alimentan el «BLOQUE · 8 OBRAS» de su fila y
+    // el cajón de ventanas anidadas (fase 4). Una sola consulta para las dos
+    // cosas — antes solo pedía `saga_id` para contar.
     (async () => {
       if (children.length === 0) return;
-      const { data } = await supabase.from("saga_items").select("saga_id").in("saga_id", children.map((c) => c.id));
-      for (const r of data ?? []) counts.set(r.saga_id as string, (counts.get(r.saga_id as string) ?? 0) + 1);
+      const { data } = await supabase
+        .from("saga_items")
+        .select("saga_id, item_type, item_id, placement, is_primary")
+        .in("saga_id", children.map((c) => c.id));
+      for (const r of (data ?? []) as ChildItemRow[]) {
+        counts.set(r.saga_id, (counts.get(r.saga_id) ?? 0) + 1);
+        childItems.push(r);
+      }
     })(),
-    // Anclas del subárbol entero SOLO si hay ventanas que resolver: getAnchorOptions
-    // recorre hasta profundidad 4 y no hace falta pagarlo cuando esta saga no
-    // tiene ninguna fila en saga_placement_windows.
+    // Anclas del subárbol entero: hacen falta para resolver los títulos de las
+    // ventanas propias Y de las anidadas. Se salta el recorrido solo cuando no
+    // puede haber ninguna ventana que resolver: ni filas propias ni hijas.
     (async () => {
-      if (rawWindows.length === 0) return;
+      if (rawWindows.length === 0 && children.length === 0) return;
       const anchors = await getAnchorOptions(supabase, sagaId);
-      const anchorTitles = new Map(
+      anchorTitles = new Map(
         anchors.map((a) => [a.kind === "item" ? `i:${a.itemType}:${a.itemId}` : `s:${a.childSagaId}`, a.title] as const),
       );
-      windowsByKey = hydrateWindows(rawWindows, anchorTitles);
+    })(),
+    // Ventanas de las hijas DIRECTAS (fase 4): el cajón tiene que ENSEÑAR la
+    // que la obra ya tenga curada desde su propia saga, en vez de dejar crear
+    // una segunda que el unique parcial no impediría (viven bajo `saga_id`
+    // distintos). Y enseñarla es además lo que hace que el padre la reemita al
+    // guardar, en vez de borrarla.
+    (async () => {
+      if (children.length === 0) return;
+      const { data } = await supabase
+        .from("saga_placement_windows")
+        .select(
+          "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+        )
+        .in("saga_id", children.map((c) => c.id));
+      childWindows = (data ?? []) as RawWindowRow[];
     })(),
   ]);
+
+  windowsByKey = hydrateWindows(rawWindows, anchorTitles);
+
+  // Dueña de cada sujeto anidado. Las MISMAS reglas que aplicará `saveSequence`
+  // en servidor: dos derivaciones distintas del dueño acabarían discrepando,
+  // que es la familia de la #203.
+  const owners = buildWindowOwners(
+    childItems.map(
+      (r): OwnerRow => ({
+        sagaId: r.saga_id, itemType: r.item_type, itemId: r.item_id,
+        placement: r.placement, isPrimary: r.is_primary,
+      }),
+    ),
+    [],
+    sagaId,
+  );
 
   const entries: Array<{ entry: DraftEntry; position: number | null; placement: SagaPlacement | null }> = [];
   for (const r of rows) {
@@ -119,6 +169,10 @@ export async function getSagaSequence(
         // fuera de `libre`, aunque quedara una fila huérfana en la tabla de
         // ventanas por un cambio de placement que no pasó por el borrador.
         window: r.placement === "libre" ? windowsByKey.get(`i:${r.item_type}:${r.item_id}`) ?? null : null,
+        // `owners` se construye SOLO con las filas de las hijas, así que una
+        // obra propia sin doble membresía no está ahí y cae en `sagaId`, que es
+        // lo correcto: su fila de `saga_items` vive bajo esta saga.
+        ownerSagaId: owners.get(`i:${r.item_type}:${r.item_id}`) ?? sagaId,
         isNew: false,
       },
     });
@@ -131,13 +185,60 @@ export async function getSagaSequence(
         title: c.name, coverUrl: null, accentColor: c.accent_color, count: counts.get(c.id) ?? 0,
         optional: c.optional_in_parent, role: null,
         window: c.placement_in_parent === "libre" ? windowsByKey.get(`s:${c.id}`) ?? null : null,
+        // La colocación de la hija en el padre es del padre: su fila de ventana
+        // vive bajo esta saga, siempre.
+        ownerSagaId: sagaId,
         isNew: false,
       },
     });
   }
 
+  // Sujetos anidados: obras `libre` de las hijas directas que NO sean ya fila
+  // propia de esta saga — esas se curan en su zona, no en el cajón. Así la
+  // clave de un `NestedSubject` nunca choca con la de una `DraftEntry`.
+  const nestedWindows = hydrateWindows(childWindows, anchorTitles);
+  const ownKeys = new Set(entries.map((e) => e.entry.key));
+  const nestedRows = childItems.filter((r) => {
+    const key = `i:${r.item_type}:${r.item_id}`;
+    return owners.has(key) && !ownKeys.has(key);
+  });
+
+  const nestedIds: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
+  for (const r of nestedRows) nestedIds[r.item_type].push(r.item_id);
+  const nestedMeta = new Map<string, { title: string; coverUrl: string | null }>();
+  await Promise.all(
+    (Object.keys(nestedIds) as ItemType[]).map(async (type) => {
+      if (nestedIds[type].length === 0) return;
+      const { data } = await supabase
+        .from(CATALOG_TABLE[type]).select("id, title, cover_url").in("id", nestedIds[type]);
+      for (const r of data ?? []) {
+        nestedMeta.set(`${type}:${r.id}`, {
+          title: r.title as string,
+          coverUrl: (r.cover_url as string | null) ?? null,
+        });
+      }
+    }),
+  );
+
+  const nested: NestedSubject[] = nestedRows.flatMap((r) => {
+    const m = nestedMeta.get(`${r.item_type}:${r.item_id}`);
+    if (!m) return []; // huérfana de catálogo: ni se pinta ni se toca
+    const key = `i:${r.item_type}:${r.item_id}`;
+    return [{
+      key,
+      ownerSagaId: owners.get(key)!,
+      childSagaId: r.saga_id,
+      itemType: r.item_type,
+      itemId: r.item_id,
+      title: m.title,
+      coverUrl: m.coverUrl,
+      window: nestedWindows.get(key) ?? null,
+    }];
+  });
+  nested.sort((a, b) => a.title.localeCompare(b.title));
+
   return {
-    draft: hydrateSequenceDraft(entries),
+    draft: hydrateSequenceDraft(entries, nested),
     childIds: children.map((c) => c.id),
     childSagas: children.map((c) => ({
       id: c.id, name: c.name, accentColor: c.accent_color, count: counts.get(c.id) ?? 0,
@@ -151,6 +252,7 @@ export async function getSagaSequence(
  *  mismo número tienen que caer en el MISMO hueco, no en dos). */
 export function hydrateSequenceDraft(
   rows: Array<{ entry: DraftEntry; position: number | null; placement: SagaPlacement | null }>,
+  nested: NestedSubject[] = [],
 ): SequenceDraft {
   const byPosition = new Map<number, DraftEntry[]>();
   const free: DraftEntry[] = [];
@@ -165,7 +267,7 @@ export function hydrateSequenceDraft(
     }
   }
   const slots = [...byPosition.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
-  return { slots, free, unclassified, removed: [] };
+  return { slots, free, unclassified, removed: [], nested };
 }
 
 /** Forma cruda de una fila de `saga_placement_windows`

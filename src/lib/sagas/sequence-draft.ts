@@ -54,9 +54,37 @@ export type DraftEntry = {
    *  mantiene `sendTo`, que la borra al sacar la fila de esa zona, porque
    *  ningún CHECK puede atar dos tablas. */
   window: DraftWindow | null;
+  /** Saga bajo la que vive la fila de ventana de esta entrada (fase 4). Para
+   *  una entrada propia es casi siempre la saga que se cura; con doble
+   *  membresía puede ser otra, y lo decide `windowOwnerFor`. Viaja en el
+   *  borrador porque `toPayload` lo necesita para escribir `saga_id` en cada
+   *  fila de ventana y en cada sujeto. */
+  ownerSagaId: string;
   /** true = alta del rail que todavía no existe en BD. Da de baja sin apuntar
    *  en `removed` (borrar algo que nunca se guardó no es un DELETE). */
   isNew: boolean;
+};
+
+/** Obra de una subsaga cuya VENTANA se cura desde el editor del padre (fase 4).
+ *  No es una `DraftEntry`: el padre no puede moverla, ni renumerarla, ni
+ *  marcarla opcional — la #187 sigue cerrada. Lo único suyo que esta pantalla
+ *  toca es la ventana. */
+export type NestedSubject = {
+  /** Mismo formato que `DraftEntry.key` (`i:<tipo>:<uuid>`), y único en todo el
+   *  borrador: `getSagaSequence` excluye de `nested` cualquier clave que ya sea
+   *  entrada propia, para que `setAnchor`/`clearAnchor` no tengan que
+   *  desempatar entre las dos colecciones. */
+  key: string;
+  /** Saga bajo la que vive su fila de ventana (`windowOwnerFor`). */
+  ownerSagaId: string;
+  /** Bloque bajo el que se despliega en el cajón. No tiene por qué coincidir
+   *  con `ownerSagaId` si la obra tuviera doble membresía. */
+  childSagaId: string;
+  itemType: ItemType;
+  itemId: string;
+  title: string;
+  coverUrl: string | null;
+  window: DraftWindow | null;
 };
 
 export type SequenceDraft = {
@@ -70,6 +98,10 @@ export type SequenceDraft = {
   /** Claves dadas de baja que SÍ existían en BD. Viaja al RPC como `p_removed`;
    *  el borrado por omisión está prohibido (spec §«Por qué la baja es explícita»). */
   removed: string[];
+  /** Sujetos anidados: obras `libre` de las hijas DIRECTAS, para el cajón bajo
+   *  la fila de su bloque (fase 4). No son filas de esta saga y no viajan en
+   *  `entries`/`blocks` del payload — solo sus ventanas. */
+  nested: NestedSubject[];
 };
 
 export type SequencePayload = {
@@ -202,15 +234,27 @@ export const setOptional = (d: SequenceDraft, key: string, optional: boolean): S
 export const setRole = (d: SequenceDraft, key: string, role: SagaItemRole | null): SequenceDraft =>
   mapEntry(d, key, (e) => (e.kind === "block" ? e : { ...e, role }));
 
-/** Pone un ancla de la ventana. Solo una entrada de la zona `free` («Cuando
- *  quieras») puede tener ventana — fuera de ahí es un no-op, porque
- *  `placement` ni siquiera tiene dónde guardarla. */
+/** Pone un ancla de la ventana. Solo puede tenerla una entrada de la zona
+ *  `free` («Cuando quieras») o un SUJETO ANIDADO (fase 4) — fuera de ahí es un
+ *  no-op, porque `placement` ni siquiera tiene dónde guardarla. Las claves de
+ *  `nested` no chocan con las de las zonas: `getSagaSequence` excluye de
+ *  `nested` lo que ya es entrada propia. */
 export function setAnchor(
   d: SequenceDraft,
   key: string,
   side: "after" | "before",
   anchor: DraftAnchor,
 ): SequenceDraft {
+  if (d.nested.some((n) => n.key === key)) {
+    return {
+      ...d,
+      nested: d.nested.map((n) =>
+        n.key === key
+          ? { ...n, window: { ...(n.window ?? { after: null, before: null }), [side]: anchor } }
+          : n,
+      ),
+    };
+  }
   if (!d.free.some((e) => e.key === key)) return d;
   return mapEntry(d, key, (e) => {
     const base = e.window ?? { after: null, before: null };
@@ -218,15 +262,32 @@ export function setAnchor(
   });
 }
 
-/** Quita un ancla. Si era la última, la ventana entera vuelve a `null` — no
- *  se deja un `{ after: null, before: null }` huérfano, que el CHECK de BD
+/** Quita un ancla. Si era la última, la ventana entera vuelve a `null` — no se
+ *  deja un `{ after: null, before: null }` huérfano, que el CHECK de BD
  *  rechazaría igualmente. */
 export function clearAnchor(d: SequenceDraft, key: string, side: "after" | "before"): SequenceDraft {
-  return mapEntry(d, key, (e) => {
-    if (!e.window) return e;
-    const next = { ...e.window, [side]: null };
-    return { ...e, window: next.after === null && next.before === null ? null : next };
-  });
+  const drop = (w: DraftWindow | null): DraftWindow | null => {
+    if (!w) return null;
+    const next = { ...w, [side]: null };
+    return next.after === null && next.before === null ? null : next;
+  };
+  if (d.nested.some((n) => n.key === key)) {
+    return { ...d, nested: d.nested.map((n) => (n.key === key ? { ...n, window: drop(n.window) } : n)) };
+  }
+  return mapEntry(d, key, (e) => ({ ...e, window: drop(e.window) }));
+}
+
+/** Sujetos que ESTE borrador puede tener con ventana, y bajo qué saga vive su
+ *  fila. Deriva del borrador VIVO —no del servidor— para no repetir el
+ *  `foreignBlock` falso de la fase 2a: una entrada que acaba de entrar en
+ *  «Cuando quieras» tiene que poder recibir ventana sin recargar la página. El
+ *  servidor lo vuelve a resolver contra BD en `saveSequence`, que es la
+ *  garantía real. */
+export function draftWindowOwners(d: SequenceDraft): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const e of d.free) out.set(e.key, e.ownerSagaId);
+  for (const n of d.nested) out.set(n.key, n.ownerSagaId);
+  return out;
 }
 
 /** Alta desde el rail: al final de la secuencia, como promete la maqueta. */
