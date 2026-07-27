@@ -4,15 +4,16 @@ import {
   isSagaAccentToken,
   type SagaAccentToken,
 } from "./accents";
-import { createMainOrder } from "./main-order";
+import { createCuratedOrder } from "./curated-order";
 import { countedKeys } from "./progress";
+import type { SagaPlacement } from "./types";
 
 // Cards de la pestaña «Sagas» de Mi Biblioteca (spec §4.3, frame COL). Todo
 // puro: la capa de datos (get-followed-sagas) resuelve las filas. El
 // DENOMINADOR del progreso vive en ./progress (countedKeys, spec 2026-07-25):
-// pertenencia del subárbol, no orden. `mainOrder` (./main-order) se sigue
-// usando aquí, pero solo para cosas de SECUENCIA: portadas del abanico y el
-// bloque «siguiente».
+// pertenencia del subárbol, no orden. `createCuratedOrder` (./curated-order)
+// se sigue usando aquí, pero solo para cosas de SECUENCIA: portadas del
+// abanico y el bloque «siguiente».
 
 export type LibSaga = {
   id: string;
@@ -21,6 +22,10 @@ export type LibSaga = {
   accentColor: string | null;
   /** true = el bloque entero sale del denominador del PADRE, no del suyo. */
   optionalInParent: boolean;
+  /** Colocación del bloque en su padre (sagas.position_in_parent). */
+  positionInParent: number | null;
+  /** Colocación del bloque en su padre (sagas.placement_in_parent). */
+  placementInParent: SagaPlacement | null;
 };
 export type LibMembership = {
   sagaId: string;
@@ -29,13 +34,6 @@ export type LibMembership = {
   position: number | null;
   /** true = NO cuenta en el denominador del progreso. */
   optional: boolean;
-};
-export type LibNode = {
-  sagaId: string;
-  itemType: ItemType | null;
-  itemId: string | null;
-  childSagaId: string | null;
-  orderNo: number | null;
 };
 export type LibItemMeta = { itemType: ItemType; itemId: string; title: string; coverUrl: string | null; year: number | null };
 // status = estado del pase ACTIVO (o "" sin pase activo); everCompleted = el
@@ -88,7 +86,6 @@ export function buildLibrarySagaCards(
   followedIds: string[],
   sagas: LibSaga[],
   memberships: LibMembership[],
-  nodes: LibNode[],
   items: LibItemMeta[],
   entries: LibEntry[],
   ratings: LibRating[],
@@ -111,12 +108,6 @@ export function buildLibrarySagaCards(
     list.push(m);
     membersBySaga.set(m.sagaId, list);
   }
-  const nodesBySaga = new Map<string, LibNode[]>();
-  for (const n of nodes) {
-    const list = nodesBySaga.get(n.sagaId) ?? [];
-    list.push(n);
-    nodesBySaga.set(n.sagaId, list);
-  }
   const metaByItem = new Map(items.map((i) => [key(i.itemType, i.itemId), i]));
   const entryByItem = new Map(entries.map((e) => [key(e.itemType, e.itemId), e]));
   // Último pase puntuado por ítem (finished_on máximo), como averageSagaRating.
@@ -136,7 +127,7 @@ export function buildLibrarySagaCards(
     );
   const titleOf = (k: string) => metaByItem.get(k)?.title ?? "";
 
-  const mainOrder = createMainOrder(sagas, memberships, nodes, titleOf);
+  const mainOrder = createCuratedOrder(sagas, memberships, titleOf);
 
   // Todos los ítems del subárbol (para «leyendo ahora» y recencia).
   function subtreeItems(sagaId: string, depth: number, visited: Set<string>): string[] {
@@ -168,17 +159,19 @@ export function buildLibrarySagaCards(
     // saltándose los usados, en orden de grupo (versión compacta de accentFor
     // de group-members).
     //
-    // Fix revisión final #198 (Important 2): este comentario decía que la
-    // divergencia con la ficha era SOLO de acento, sin accent persistido —
-    // falso desde que la #198 hizo que `groupMembers` ordene los bloques por
-    // su colocación curada (`positionInParent`/`placementInParent`). Este
-    // `sort` sigue usando ÚNICAMENTE `minPos` (más abajo) porque `LibSaga` no
-    // trae esas dos columnas (`get-followed-sagas.ts` no las selecciona de
-    // `sagas`) — así que también diverge en el ORDEN de los bloques, no solo
-    // en su color, en cuanto un universo tenga bloques ya colocados (caso real:
-    // el Cosmere). Seguimiento en la issue #203; no se corrige aquí porque
-    // exige tocar la consulta, fuera del alcance de este fix.
+    // Issue #203 cerrada (fase 3, Task 4): `LibSaga` ya trae
+    // `positionInParent`/`placementInParent` (get-followed-sagas.ts las
+    // selecciona de `sagas`), así que este `sort` es AHORA el mismo
+    // comparador que `childGroups` en group-members.ts — colocación curada
+    // primero, `minPos` (más abajo) solo como desempate entre bloques sin
+    // colocar. La card y la ficha ya no pueden discrepar en el ORDEN de los
+    // bloques.
     const children = [...(childrenByParent.get(followedId) ?? [])].sort((a, b) => {
+      if (a.positionInParent !== null && b.positionInParent !== null) {
+        return a.positionInParent - b.positionInParent || a.name.localeCompare(b.name);
+      }
+      if (a.positionInParent !== null) return -1;
+      if (b.positionInParent !== null) return 1;
       const pa = minPos(a.id);
       const pb = minPos(b.id);
       if (pa !== pb) return pa - pb;
@@ -240,16 +233,11 @@ export function buildLibrarySagaCards(
       // `tree` (que ignora `optional`/`optionalInParent` y ve TODO el
       // subárbol vía membresías) encuentra una obra.
       //
-      // Esto NO garantiza que `basis` (portadas/tipo/creador, más abajo)
-      // también caiga a `tree`: `order` podría seguir teniendo entradas por
-      // el mismo motivo que el #170 — `mainOrder` filtra sus nodos-ítem por
-      // `memberKeys` GLOBAL (main-order.ts:74: memberships de TODAS las
-      // sagas seguidas, no solo las de esta), así que un nodo de grafo de
-      // ESTA saga que apunte a un ítem miembro de OTRA saga seguida entraría
-      // en `order` aunque no esté en `tree`. Caso rebuscado y preexistente a
-      // la Task 5 (el guard viejo se comportaba igual): se documenta aquí, no
-      // se corrige — cambiar el comportamiento no es el objetivo de este
-      // guard.
+      // `order` (createCuratedOrder) tampoco puede tener nada aquí: fase 3
+      // (Task 4) retiró el grafo, así que `order` y `tree` recorren
+      // exactamente el mismo árbol (`sagas`/`memberships` desde `followedId`)
+      // — el caso viejo del #170 (un nodo de grafo de ESTA saga apuntando a
+      // un ítem miembro de OTRA saga seguida) ya no puede pasar.
       next = { kind: "empty" };
     } else if (total === 0) {
       // Important 1 (review de Task 5, 2ª ronda): `total` es `counted.length`
@@ -276,12 +264,13 @@ export function buildLibrarySagaCards(
       // #91/#185. Por eso se recorre `order` (la secuencia curada) pero
       // filtrando primero a lo que está en `counted`.
       //
-      // Fallback a `counted` sin filtrar: `order` puede salir vacío del todo
-      // (el caso Mundodisco exacto: grafo sin ningún order_no) aunque `counted`
-      // tenga miembros reales. Sin este fallback, `.find` devolvía undefined y
-      // esto reventaba en vez de mostrar el número. Dentro del fallback no hay
-      // secuencia curada que respetar, así que el desempate es el orden de
-      // llegada de `counted` (arbitrario — ver issue de seguimiento).
+      // Fallback a `counted` sin filtrar: nacido del caso Mundodisco (grafo
+      // sin ningún order_no dejaba `order` vacío con `counted` lleno). Fase 3
+      // (Task 4) retiró el grafo, así que `order` ya no puede salir vacío
+      // aquí (ya se descartó `tree.length === 0` arriba, y `order`/`tree`
+      // recorren el mismo árbol) — se conserva como cinturón, no porque el
+      // caso siga siendo alcanzable: sin él, `.find` devolvía undefined y
+      // esto reventaba en vez de mostrar el número.
       const countedSet = new Set(counted);
       const orderCounted = order.filter((o) => countedSet.has(o));
       const k = orderCounted.find((o) => !isCompleted(o)) ?? counted.find((o) => !isCompleted(o))!;
@@ -291,8 +280,9 @@ export function buildLibrarySagaCards(
     } else {
       // Misma causa raíz que el fallback de arriba: el denominador ya no sale
       // de `order`, así que la media tiene que leer de `counted` — con `order`
-      // vacío (grafo sin order_no) esto daba `rated: []` y la card mostraba
-      // "sin nota" tras terminar la saga entera (Important 1 del review).
+      // vacío (el caso Mundodisco, grafo sin order_no, ya no alcanzable desde
+      // la fase 3) esto daba `rated: []` y la card mostraba "sin nota" tras
+      // terminar la saga entera (Important 1 del review).
       const rated = counted
         .map((k) => ratingByItem.get(k)?.rating)
         .filter((r): r is number => r !== undefined);
@@ -330,7 +320,15 @@ export function buildLibrarySagaCards(
       card: {
         sagaId: followedId,
         name: root.name,
-        hasGraph: (nodesBySaga.get(followedId) ?? []).length > 0,
+        // Fase 3 (Task 4): ya no hay `saga_nodes` que consultar para saber si
+        // "hay mapa". El mapa se DERIVA de lo curado (deriveSagaMap,
+        // get-saga-detail.ts) y convierte CADA miembro del subárbol en un
+        // nodo sin filtrar ninguno — así que "el mapa tiene algún nodo" es
+        // exactamente "el subárbol tiene algún miembro", que es `tree` (ya
+        // calculado arriba). Mismo criterio que `detail.hasGraph` en la
+        // ficha (`graph !== null`), sin pagar el coste de reconstruir groups/
+        // windows aquí solo para contar nodos.
+        hasGraph: tree.length > 0,
         covers: basis
           .flatMap((k) => (metaByItem.get(k)?.coverUrl ? [metaByItem.get(k)!.coverUrl!] : []))
           .slice(0, 3),

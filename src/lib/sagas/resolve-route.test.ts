@@ -67,8 +67,10 @@ describe("resolveRoute", () => {
 
   // resolveRoute descarta una entrada colgante de LOS DOS sitios (render y
   // `total`) con el mismo `continue`: no hay forma de que llegue al render
-  // pero se cuele en `counted`, a diferencia del #170 que motivó el filtro de
-  // memberKeys en createMainOrder (main-order.ts) para el ORDEN de un bloque.
+  // pero se cuele en `counted`. El filtro de memberKeys que el #170 motivó en
+  // el viejo createMainOrder (main-order.ts, retirado en la fase 3) era para
+  // el ORDEN de un bloque cuando el grafo podía apuntar a un ítem sin
+  // membresía real; sin grafo (createCuratedOrder), ese caso ya no existe.
   it("descarta la entrada colgante del render y del denominador", () => {
     const r = resolveRoute(
       [entry({ position: 1, itemType: "book", itemId: "a" }), entry({ position: 2, itemType: "book", itemId: "fantasma" })],

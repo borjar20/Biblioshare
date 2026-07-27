@@ -7,7 +7,6 @@ import {
   type LibEntry,
   type LibItemMeta,
   type LibMembership,
-  type LibNode,
   type LibRating,
   type LibRouteChoice,
   type LibSaga,
@@ -53,7 +52,7 @@ export async function getFollowedSagas(
   let frontier = followedIds;
   const { data: roots } = await supabase
     .from("sagas")
-    .select("id, name, parent_saga_id, accent_color, optional_in_parent")
+    .select("id, name, parent_saga_id, accent_color, optional_in_parent, position_in_parent, placement_in_parent")
     .in("id", frontier);
   for (const r of roots ?? []) {
     if (seen.has(r.id)) continue;
@@ -64,12 +63,14 @@ export async function getFollowedSagas(
       parentSagaId: r.parent_saga_id,
       accentColor: r.accent_color,
       optionalInParent: r.optional_in_parent,
+      positionInParent: r.position_in_parent,
+      placementInParent: r.placement_in_parent,
     });
   }
   for (let depth = 0; depth < 4 && frontier.length > 0; depth++) {
     const { data: level } = await supabase
       .from("sagas")
-      .select("id, name, parent_saga_id, accent_color, optional_in_parent")
+      .select("id, name, parent_saga_id, accent_color, optional_in_parent, position_in_parent, placement_in_parent")
       .in("parent_saga_id", frontier)
       .order("id");
     frontier = [];
@@ -82,37 +83,31 @@ export async function getFollowedSagas(
         parentSagaId: r.parent_saga_id,
         accentColor: r.accent_color,
         optionalInParent: r.optional_in_parent,
+        positionInParent: r.position_in_parent,
+        placementInParent: r.placement_in_parent,
       });
       frontier.push(r.id);
     }
   }
   const allIds = sagas.map((s) => s.id);
 
-  const [membershipsRes, nodesRes] = await Promise.all([
-    supabase
-      .from("saga_items")
-      .select("saga_id, item_type, item_id, position, optional")
-      .in("saga_id", allIds)
-      .order("saga_id"),
-    supabase
-      .from("saga_nodes")
-      .select("saga_id, item_type, item_id, child_saga_id, order_no")
-      .in("saga_id", allIds)
-      .order("id"),
-  ]);
-  const memberships: LibMembership[] = (membershipsRes.data ?? []).map((m) => ({
+  // Fase 3 (Task 4): antes había una segunda consulta aquí, a `saga_nodes`
+  // (el grafo viejo) — su propia copia, independiente de la que hacía
+  // get-saga-detail.ts, y por eso la card de esta pestaña y la ficha podían
+  // discrepar en el orden (issue #203). Con `saga_nodes` retirado del todo,
+  // `memberships` (saga_items + sagas.position_in_parent, ya seleccionado
+  // arriba) es la ÚNICA fuente de la secuencia — la misma que usa la ficha.
+  const { data: membershipsData } = await supabase
+    .from("saga_items")
+    .select("saga_id, item_type, item_id, position, optional")
+    .in("saga_id", allIds)
+    .order("saga_id");
+  const memberships: LibMembership[] = (membershipsData ?? []).map((m) => ({
     sagaId: m.saga_id,
     itemType: m.item_type as ItemType,
     itemId: m.item_id,
     position: m.position,
     optional: m.optional,
-  }));
-  const nodes: LibNode[] = (nodesRes.data ?? []).map((n) => ({
-    sagaId: n.saga_id,
-    itemType: (n.item_type as ItemType | null) ?? null,
-    itemId: n.item_id,
-    childSagaId: n.child_saga_id,
-    orderNo: n.order_no,
   }));
 
   // Ítems por tipo → metadatos de catálogo + entradas + ratings + creadores.
@@ -123,13 +118,6 @@ export async function getFollowedSagas(
     if (seenItem.has(key)) continue;
     seenItem.add(key);
     idsByType[m.itemType].push(m.itemId);
-  }
-  for (const n of nodes) {
-    if (n.itemType === null || n.itemId === null) continue;
-    const key = `${n.itemType}:${n.itemId}`;
-    if (seenItem.has(key)) continue;
-    seenItem.add(key);
-    idsByType[n.itemType].push(n.itemId);
   }
 
   // Metadatos de catálogo por tipo, con año real de cada tabla
@@ -270,7 +258,6 @@ export async function getFollowedSagas(
     followedIds,
     sagas,
     memberships,
-    nodes,
     items,
     entries,
     ratings,

@@ -14,7 +14,7 @@ import {
   type MemberGroup,
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
-import type { OrderMembership, OrderNode, OrderSaga } from "./main-order";
+import type { OrderMembership, OrderSaga } from "./curated-order";
 import { countedKeys, type ProgressMembership, type ProgressSaga } from "./progress";
 import type {
   DetailMember,
@@ -65,14 +65,13 @@ export type SagaDetail = {
   /** Slug de ruta adoptado por el usuario para esta saga, o null. */
   routeChoice: string | null;
   /**
-   * Insumos de `createMainOrder` ya calculados aquí (spec §1.5): RouteView
+   * Insumos de `createCuratedOrder` ya calculados aquí (spec §1.5): RouteView
    * (Task 6) necesita reconstruir el orden principal de una subsaga para
-   * expandir un bloque, y estos tres arrays son exactamente lo que la
-   * función pide — recalcularlos ahí sería una segunda fuente de verdad.
+   * expandir un bloque, y estos dos arrays son exactamente lo que la función
+   * pide — recalcularlos ahí sería una segunda fuente de verdad.
    */
   orderSagas: OrderSaga[];
   orderMemberships: OrderMembership[];
-  orderNodes: OrderNode[];
   /**
    * TODOS los descendientes del árbol (haya o no miembros), con su nombre y
    * accent_color persistido. `groups` (groupMembers) solo crea grupo para una
@@ -394,11 +393,10 @@ export async function getSagaDetail(
 
   const groups = groupMembers(members, children);
   // `progress` se calcula más abajo con countedKeys (pertenencia, spec
-  // 2026-07-25): NO necesita el orden principal ni los nodos del grafo. Esos
-  // sí se descargan en el batch de consultas de más abajo, pero por otro
-  // motivo — RouteView (Task 6) los necesita para expandir bloques de un
-  // itinerario, ver el comentario de `orderSagas`/`orderMemberships`/
-  // `orderNodes` en el tipo `SagaDetail`.
+  // 2026-07-25): NO necesita el orden principal. `orderSagas`/
+  // `orderMemberships` se construyen más abajo por otro motivo — RouteView
+  // (Task 6) los necesita para expandir bloques de un itinerario, ver el
+  // comentario de esos dos campos en el tipo `SagaDetail`.
 
   // Nota media comunitaria: pases puntuados de todos los miembros, sin contar
   // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase
@@ -510,31 +508,30 @@ export async function getSagaDetail(
     groupNameMap.set(g.sagaId, g.name);
   }
 
-  // Insumos de createMainOrder (§1.5) para reconstruir el ORDEN de una subsaga
-  // (Task 6, RouteView) — NO el denominador del avance del hero desde el
-  // 2026-07-25 (ver countedKeys más abajo). Se devuelven en SagaDetail
-  // (orderSagas/orderMemberships/orderNodes) tal cual, sin llamar aquí a
-  // createMainOrder: nada en este fichero necesita ya el orden en sí mismo.
-  const orderSagas = [
-    { id, name: saga.name, parentSagaId: null },
+  // Insumos de createCuratedOrder (§1.5) para reconstruir el ORDEN de una
+  // subsaga (Task 6, RouteView) — NO el denominador del avance del hero desde
+  // el 2026-07-25 (ver countedKeys más abajo). Se devuelven en SagaDetail
+  // (orderSagas/orderMemberships) tal cual, sin llamar aquí a
+  // createCuratedOrder: nada en este fichero necesita ya el orden en sí
+  // mismo. La raíz no tiene colocación en un padre (no lo tiene: es la raíz
+  // de este árbol), así que sus dos campos van a null — createCuratedOrder
+  // solo los mira al ordenar HIJAS, y la raíz nunca es hija de nadie aquí.
+  const orderSagas: OrderSaga[] = [
+    { id, name: saga.name, parentSagaId: null, positionInParent: null, placementInParent: null },
     ...[...descendants.values()].map((d) => ({
       id: d.id,
       name: d.name,
       parentSagaId: d.parent_saga_id,
+      positionInParent: d.position_in_parent,
+      placementInParent: d.placement_in_parent,
     })),
   ];
-  const orderMemberships = rows.map((r) => ({
+  const orderMemberships: OrderMembership[] = rows.map((r) => ({
     sagaId: r.saga_id,
     itemType: r.item_type,
     itemId: r.item_id,
     position: r.position,
   }));
-  // Paso intermedio de la fase 3 (Task 2): la ficha ya no lee `saga_nodes`, así
-  // que no hay nodos que ofrecer aquí. `createMainOrder` cae por su rama «sin
-  // grafo» (ordena por `position`, luego título) con la lista vacía — es
-  // justo el criterio al que se va a mover cuando este fichero (main-order.ts)
-  // se retire entero en la Task 4.
-  const orderNodes: OrderNode[] = [];
   // Insumos de countedKeys (el DENOMINADOR, ./progress.ts), construidos con los
   // mismos datos ya en memoria que orderSagas/orderMemberships (sin viaje
   // extra): optionalInParent de la raíz no se usa nunca (walk() solo la mira
@@ -622,7 +619,6 @@ export async function getSagaDetail(
     routeChoice,
     orderSagas,
     orderMemberships,
-    orderNodes,
     childRefs,
     windows,
   };
