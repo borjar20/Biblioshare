@@ -36,6 +36,29 @@
 -- reservados por el CHECK `saga_routes_slug_not_reserved` para las rutas
 -- sintéticas que ya sintetiza el código.
 --
+-- POSICIÓN DE LA RUTA (hallazgo de la revisión de esta misma Task 5): la saga
+-- puede tener YA rutas curadas a mano por un colaborador humano — de hecho
+-- Mundodisco las tiene (`slug = 'rincewind'`, creada mientras se construía
+-- esta fase). Un literal fijo aquí las empataría en `position` con la ruta
+-- migrada, y el selector de la ficha ordena por ese campo: sin desempate
+-- definido entre ellas. En vez de un literal, cada `position` de abajo se
+-- calcula como la mayor que ya tenga esa saga más uno — el mismo criterio que
+-- `createRoute` (src/lib/sagas/route-actions.ts) usa cuando alguien crea una
+-- ruta desde la interfaz — así que la ruta migrada queda siempre DETRÁS de lo
+-- que el curador ya tenía, nunca empatada ni delante.
+--
+-- IDEMPOTENCIA: si esta migración se aplica dos veces, el INSERT de abajo
+-- choca con `saga_routes_saga_id_slug_key` (unique en `saga_id, slug`) para
+-- las dos filas. No hace falta envolver el fichero en BEGIN/COMMIT explícito:
+-- una migración se aplica como una única cadena de sentencias en un solo
+-- mensaje al servidor, y Postgres ejecuta ese mensaje como una única
+-- transacción implícita salvo BEGIN/COMMIT explícitos (protocolo simple de
+-- libpq) — comprobado contra dev con una tabla de prueba (CREATE TABLE +
+-- INSERT + una sentencia que fuerza error: al reintentar, ni la tabla ni la
+-- fila sobreviven). Como el INSERT en `saga_routes` es además la PRIMERA
+-- sentencia del fichero, un reintento falla ahí mismo, antes de tocar
+-- `saga_route_entries`: el error es limpio y no deja ninguna ruta a medias.
+--
 -- REVERSIÓN: borrar la fila de `saga_routes` de cada saga (`saga_route_entries`
 -- cuelga de `route_id` con `on delete cascade`, así que sus pasos se van solos).
 
@@ -46,7 +69,7 @@ insert into public.saga_routes (id, saga_id, slug, name, summary, position) valu
     'orden-recomendado',
     'Orden recomendado',
     'El orden de publicación curado para todo el Cosmere. Arcanum Ilimitado (recopilatorio de relatos) queda fuera: nunca tuvo un hueco fijo en el orden principal.',
-    0
+    coalesce((select max(position) from public.saga_routes where saga_id = 'ba761e54-ab39-49cd-865c-97bf6ef74d47'), 0) + 1
   ),
   (
     '8f28ec27-76d2-49b3-8a58-2366a02e557d',
@@ -54,7 +77,7 @@ insert into public.saga_routes (id, saga_id, slug, name, summary, position) valu
     'orden-recomendado',
     'Orden recomendado',
     'Lee cada sub-serie casi de un tirón (Muerte, Guardia, Magos, Revolución Industrial, Húmedo Von Mustachen), con los cruces entre ellas en su sitio.',
-    0
+    coalesce((select max(position) from public.saga_routes where saga_id = 'd4c9eb7d-2de8-459b-a8d0-d2785d406c3e'), 0) + 1
   );
 
 -- Cosmere (19 pasos = sus 19 nodos con order_no, copiados tal cual).
