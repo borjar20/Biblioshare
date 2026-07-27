@@ -457,7 +457,6 @@ export async function getSagaDetail(
     if (top && top[1] >= 2) byline = top[0];
   }
 
-  // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
   // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
   // Rutas curadas y elección del viewer también van en este batch: ninguna
   // depende de graph/followRow/parentRow/roleRow, solo de

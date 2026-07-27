@@ -9,9 +9,12 @@ import type { DetailMember } from "./types";
 // conectados a la columna se pintan como puente entre secciones. Los
 // nodos-saga solo viven en el mapa 2D. Las aristas opcional/requisito entre dos
 // nodos DE COLUMNA se ignoran a propósito: la columna ya transmite el orden.
-// El determinismo asume que graph.edges llega en orden estable (getSagaDetail
-// ordena por created_at) — saga_edges no tiene columna created_at, así que ahí
-// se ordena por id; sigue siendo un orden estable, solo no cronológico.
+// El determinismo asume que graph.edges llega en orden estable. Desde la fase 3
+// eso es gratis: las aristas ya no salen de ninguna tabla — las construye
+// deriveSagaMap en memoria, recorriendo los huecos y las ventanas en un orden
+// fijo. Antes dependía del `.order()` con que getSagaDetail leía saga_edges.
+// Los «nodos-saga» que menciona el párrafo de arriba tampoco existen ya: el
+// mapa expande los bloques en obras. El caso está muerto, no roto.
 
 export type TimelineBranch = { node: SagaGraphNode; edgeType: "opcional" | "requisito" };
 export type TimelineRow =
