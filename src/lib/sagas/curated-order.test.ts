@@ -75,6 +75,21 @@ describe("createCuratedOrder", () => {
     expect(order("R")).toEqual(["book:f", "book:l"]);
   });
 
+  it("dos hijas sin colocar van por minPos, no por orden alfabético (fallback issue #204)", () => {
+    // Ninguna de las dos tiene positionInParent: el fallback debe mirar el
+    // hueco MÍNIMO de sus miembros. "Zeta" tiene el hueco más bajo (1) pero
+    // es alfabéticamente posterior a "Alfa" (hueco 9) — si el fallback se
+    // sustituyera por MAX_SAFE_INTEGER + desempate alfabético (la
+    // "simplificación" que un refactor futuro tentaría), este test detecta
+    // el cambio: solo pasa si sigue existiendo el fallback a minPos.
+    const order = createCuratedOrder(
+      [root("R"), child("Zeta", "R"), child("Alfa", "R")],
+      [member("Zeta", "z", 1), member("Alfa", "a", 9)],
+      titleOf,
+    );
+    expect(order("R")).toEqual(["book:z", "book:a"]);
+  });
+
   it("un nodo-saga expande el orden principal de la hija", () => {
     const order = createCuratedOrder(
       [root("uni"), child("hija", "uni", { positionInParent: 1 })],

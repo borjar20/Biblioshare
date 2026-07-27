@@ -1,4 +1,5 @@
 import type { ItemType } from "@/lib/catalog/types";
+import { compareBlocksByPlacement } from "./group-members";
 import type { SagaPlacement } from "./types";
 
 // Orden principal de una saga: la SECUENCIA con la que se pinta (columna del
@@ -98,21 +99,14 @@ export function createCuratedOrder(
 
     // Colocación curada (issue #204): las hijas ya no se ordenan por el hueco
     // mínimo de sus miembros, sino por `position_in_parent` — el mismo
-    // comparador que ya usa `childGroups` en group-members.ts (verificado con
-    // 5 permutaciones, es el que la ficha enseña hoy). Una hija `libre` no
-    // tiene `positionInParent` (lo impone el CHECK de la migración), así que
-    // cae detrás de las colocadas por la misma vía: la rama del fallback.
-    const children = [...(childrenByParent.get(sagaId) ?? [])].sort((a, b) => {
-      if (a.positionInParent !== null && b.positionInParent !== null) {
-        return a.positionInParent - b.positionInParent || a.name.localeCompare(b.name);
-      }
-      if (a.positionInParent !== null) return -1;
-      if (b.positionInParent !== null) return 1;
-      const pa = minPos(a.id);
-      const pb = minPos(b.id);
-      if (pa !== pb) return pa - pb;
-      return a.name.localeCompare(b.name);
-    });
+    // comparador que usa `childGroups` en group-members.ts (`compareBlocksByPlacement`,
+    // issue #203: un solo comparador para las tres pantallas). Una hija
+    // `libre` no tiene `positionInParent` (lo impone el CHECK de la
+    // migración), así que cae detrás de las colocadas por la misma vía: la
+    // rama del fallback.
+    const children = [...(childrenByParent.get(sagaId) ?? [])].sort((a, b) =>
+      compareBlocksByPlacement(a, b, (s) => minPos(s.id)),
+    );
     for (const c of children) out.push(...walk(c.id, depth + 1, visited));
     return out;
   }

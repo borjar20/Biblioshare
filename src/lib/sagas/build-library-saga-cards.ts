@@ -5,6 +5,7 @@ import {
   type SagaAccentToken,
 } from "./accents";
 import { createCuratedOrder } from "./curated-order";
+import { compareBlocksByPlacement } from "./group-members";
 import { countedKeys } from "./progress";
 import type { SagaPlacement } from "./types";
 
@@ -161,22 +162,15 @@ export function buildLibrarySagaCards(
     //
     // Issue #203 cerrada (fase 3, Task 4): `LibSaga` ya trae
     // `positionInParent`/`placementInParent` (get-followed-sagas.ts las
-    // selecciona de `sagas`), así que este `sort` es AHORA el mismo
-    // comparador que `childGroups` en group-members.ts — colocación curada
-    // primero, `minPos` (más abajo) solo como desempate entre bloques sin
-    // colocar. La card y la ficha ya no pueden discrepar en el ORDEN de los
-    // bloques.
-    const children = [...(childrenByParent.get(followedId) ?? [])].sort((a, b) => {
-      if (a.positionInParent !== null && b.positionInParent !== null) {
-        return a.positionInParent - b.positionInParent || a.name.localeCompare(b.name);
-      }
-      if (a.positionInParent !== null) return -1;
-      if (b.positionInParent !== null) return 1;
-      const pa = minPos(a.id);
-      const pb = minPos(b.id);
-      if (pa !== pb) return pa - pb;
-      return a.name.localeCompare(b.name);
-    });
+    // selecciona de `sagas`), así que este `sort` usa el MISMO comparador
+    // exportado que `childGroups` en group-members.ts (`compareBlocksByPlacement`)
+    // — colocación curada primero, `minPos` solo como desempate entre bloques
+    // sin colocar. La card y la ficha ya no pueden discrepar en el ORDEN de
+    // los bloques (ni pueden volver a discrepar en silencio: es una sola
+    // función, no tres copias).
+    const children = [...(childrenByParent.get(followedId) ?? [])].sort((a, b) =>
+      compareBlocksByPlacement(a, b, (s) => minPos(s.id)),
+    );
     const segments: Array<{ accent: SagaAccentToken; fraction: number }> = [];
     if (children.length > 0 && total > 0) {
       const used = new Set<SagaAccentToken>(
