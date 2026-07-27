@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
 import { WindowEditor } from "./window-editor";
+import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 
 type Ops = {
@@ -48,12 +49,25 @@ export function ShellDesktop({
   );
 
   const row = (e: DraftEntry, slotNumber: number | null, controls?: React.ReactNode) => (
-    <SequenceRow
-      key={e.key} entry={e} slotNumber={slotNumber} density="compact" controls={controls}
-      onOptional={(v) => ops.setOptional(e.key, v)}
-      onRole={(r) => ops.setRole(e.key, r)}
-      onMenu={() => onMenu(e.key)}
-    />
+    <div key={e.key}>
+      <SequenceRow
+        entry={e} slotNumber={slotNumber} density="compact" controls={controls}
+        onOptional={(v) => ops.setOptional(e.key, v)}
+        onRole={(r) => ops.setRole(e.key, r)}
+        onMenu={() => onMenu(e.key)}
+      />
+      {/* El cajón cuelga del bloque esté donde esté: «Novelas secretas» vive en
+          «Cuando quieras» (es `libre` en el Cosmere), no en la secuencia. */}
+      {e.kind === "block" && e.childSagaId && (
+        <BlockWindowsDrawer
+          childSagaId={e.childSagaId}
+          nested={draft.nested}
+          anchors={anchors}
+          onSetAnchor={ops.setAnchor}
+          onClearAnchor={ops.clearAnchor}
+        />
+      )}
+    </div>
   );
 
   return (
@@ -97,10 +111,10 @@ export function ShellDesktop({
 
         <Zone title={t("zoneFree")} hint={t("zoneFreeHint")} empty={draft.free.length === 0} emptyTitle={t("zoneFreeEmpty")}>
           {draft.free.map((e) => (
-            <div key={e.key}>
+            <div key={`free-${e.key}`}>
               {row(e, null)}
               <WindowEditor
-                entry={e}
+                subject={e}
                 anchors={anchors}
                 onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
                 onClearAnchor={(side) => ops.clearAnchor(e.key, side)}

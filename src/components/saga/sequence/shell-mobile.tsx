@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
 import { WindowEditor } from "./window-editor";
+import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 
 const TABS: ZoneId[] = ["sequence", "free", "unclassified"];
@@ -45,12 +46,23 @@ export function ShellMobile({
   };
 
   const row = (e: DraftEntry, slotNumber: number | null) => (
-    <SequenceRow
-      key={e.key} entry={e} slotNumber={slotNumber} density="roomy"
-      onOptional={(v) => ops.setOptional(e.key, v)}
-      onRole={(r) => ops.setRole(e.key, r)}
-      onMenu={() => onMenu(e.key)}
-    />
+    <div key={e.key}>
+      <SequenceRow
+        entry={e} slotNumber={slotNumber} density="roomy"
+        onOptional={(v) => ops.setOptional(e.key, v)}
+        onRole={(r) => ops.setRole(e.key, r)}
+        onMenu={() => onMenu(e.key)}
+      />
+      {e.kind === "block" && e.childSagaId && (
+        <BlockWindowsDrawer
+          childSagaId={e.childSagaId}
+          nested={draft.nested}
+          anchors={anchors}
+          onSetAnchor={ops.setAnchor}
+          onClearAnchor={ops.clearAnchor}
+        />
+      )}
+    </div>
   );
 
   return (
@@ -112,10 +124,10 @@ export function ShellMobile({
           ) : (
             <div className="grid gap-2">
               {draft.free.map((e) => (
-                <div key={e.key}>
+                <div key={`free-${e.key}`}>
                   {row(e, null)}
                   <WindowEditor
-                    entry={e}
+                    subject={e}
                     anchors={anchors}
                     onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
                     onClearAnchor={(side) => ops.clearAnchor(e.key, side)}

@@ -36,7 +36,12 @@ export async function getSagaSequence(
   const [{ data: itemRows }, { data: childRows }, { data: windowRows }] = await Promise.all([
     supabase
       .from("saga_items")
-      .select("item_type, item_id, position, placement, optional, role")
+      // `is_primary` viaja porque decide la DUEÑA de la ventana (fase 4,
+      // windowOwnerFor): sin él, una obra con doble membresía se resolvería
+      // aquí distinto que en el servidor (loadWindowOwners, que sí ve las filas
+      // propias) y el guardado del padre se llevaría por delante la ventana de
+      // la hija.
+      .select("item_type, item_id, position, placement, optional, role, is_primary")
       .eq("saga_id", sagaId)
       .order("position", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
@@ -65,6 +70,7 @@ export async function getSagaSequence(
   const rows = (itemRows ?? []) as Array<{
     item_type: ItemType; item_id: string; position: number | null;
     placement: SagaPlacement | null; optional: boolean; role: SagaItemRole | null;
+    is_primary: boolean;
   }>;
   const children = (childRows ?? []) as Array<{
     id: string; name: string; accent_color: string | null;
@@ -141,16 +147,35 @@ export async function getSagaSequence(
 
   windowsByKey = hydrateWindows(rawWindows, anchorTitles);
 
-  // Dueña de cada sujeto anidado. Las MISMAS reglas que aplicará `saveSequence`
-  // en servidor: dos derivaciones distintas del dueño acabarían discrepando,
-  // que es la familia de la #203.
+  // Dueña de cada sujeto: las MISMAS reglas y los MISMOS insumos que aplicará
+  // `saveSequence` en servidor (`loadWindowOwners`) — dos derivaciones distintas
+  // del dueño acabarían discrepando, que es la familia de la #203.
+  //
+  // Por eso entran también las filas PROPIAS, no solo las de las hijas: una obra
+  // con doble membresía (fila en esta saga Y en una hija) tiene su dueña
+  // decidida por `is_primary`, y calcularla aquí sin las propias daría «la
+  // hija» donde el servidor dice «el padre». Esa discrepancia no se quedaría en
+  // un error de validación: el sujeto viaja en `windowSubjects`, que el RPC
+  // borra sin validar, así que el guardado del padre se llevaría por delante la
+  // ventana que la hija tiene curada sobre esa misma obra.
+  //
+  // `blocks` va vacío a propósito: la colocación de una hija en el padre ya se
+  // resuelve arriba con `ownerSagaId: sagaId`, y meterla aquí no cambiaría nada.
   const owners = buildWindowOwners(
-    childItems.map(
-      (r): OwnerRow => ({
-        sagaId: r.saga_id, itemType: r.item_type, itemId: r.item_id,
-        placement: r.placement, isPrimary: r.is_primary,
-      }),
-    ),
+    [
+      ...rows.map(
+        (r): OwnerRow => ({
+          sagaId, itemType: r.item_type, itemId: r.item_id,
+          placement: r.placement, isPrimary: r.is_primary,
+        }),
+      ),
+      ...childItems.map(
+        (r): OwnerRow => ({
+          sagaId: r.saga_id, itemType: r.item_type, itemId: r.item_id,
+          placement: r.placement, isPrimary: r.is_primary,
+        }),
+      ),
+    ],
     [],
     sagaId,
   );

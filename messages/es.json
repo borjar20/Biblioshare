@@ -1148,6 +1148,8 @@
     "blockMeta": "Bloque · {count} obras",
     "blockOpenEditor": "Abrir su editor",
     "blockOpenEditorFor": "Abrir el editor de {title}",
+    "blockWindowsSummary": "Ventanas de sus obras ({count})",
+    "blockWindowsEmpty": "Ninguna de sus obras está en «Cuando quieras». La ventana solo tiene sentido ahí: márcalas desde el editor de esa saga y volverán a aparecer aquí.",
     "optionalChip": "opcional",
     "roleNone": "Sin rol",
     "roleLabelFor": "Rol narrativo de {title}",
