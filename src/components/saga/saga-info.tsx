@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import { freeBlockWindow, freeItemWindow } from "@/lib/sagas/get-saga-detail";
-import type { MemberGroup } from "@/lib/sagas/group-members";
+import { partitionGroups, type MemberGroup } from "@/lib/sagas/group-members";
 import type { DetailMember, ResolvedWindow } from "@/lib/sagas/types";
 import { RoleChip } from "./role-chip";
 
@@ -52,17 +52,18 @@ import { RoleChip } from "./role-chip";
 //
 // Fix Task 7 (cierre, segunda vuelta): la redacción original decía "…en el
 // orden de lectura", y "el orden de lectura" ya es el nombre propio del
-// GRAFO (`saga_nodes`/`saga_edges` — ver `t("orderReading")`/
-// `t("graphAvailableTitle")`; su editor se retiró en la fase 2a, Task 11, y
-// el grafo queda congelado en modo lectura hasta que la fase 3 lo retire del
-// todo), un sistema distinto
-// de `placement` (curado en `/saga/[id]/editar`) y sin ningún constraint que
-// los mantenga sincronizados. Cuando la saga SÍ tiene grafo, el aviso de
-// arriba (`hasGraph`) ya afirma "Orden de lectura disponible" en la misma
-// pantalla — con la redacción vieja, esta celda podía decir en el mismo
-// aliento que la obra NO tiene sitio en "el orden de lectura", lo cual puede
-// ser sencillamente falso (nada impide `order_no` en el grafo con
-// `placement = null` a la vez) justo debajo del cartel que dice que ese
+// GRAFO (`saga_nodes`/`saga_edges` — ver `t("orderReading")`; su editor se
+// retiró en la fase 2a, Task 11, y el grafo queda congelado en modo lectura
+// hasta que la fase 3 lo retire del todo), un sistema distinto de
+// `placement` (curado en `/saga/[id]/editar`) y sin ningún constraint que los
+// mantenga sincronizados. Cuando la saga SÍ tenía grafo, un aviso arriba
+// («Orden de lectura disponible.») ya afirmaba lo mismo en la misma
+// pantalla (retirado en fase 3, Task 4-bis: al derivarse el mapa de la
+// curación, «hay grafo» dejó de ser señal de que aporte, así que el aviso
+// dejó de significar nada) — con la redacción vieja, esta celda podía decir
+// en el mismo aliento que la obra NO tiene sitio en "el orden de lectura", lo
+// cual puede ser sencillamente falso (nada impide `order_no` en el grafo con
+// `placement = null` a la vez) justo debajo del cartel que decía que ese
 // orden existe y la incluye. Para quien depende de este texto, eso es peor
 // que no decir nada. La redacción actual no nombra ningún sistema: usa
 // "hueco" (vocabulario correcto — es el de `memberPlacementFixed`, "Hueco
@@ -172,7 +173,6 @@ function GroupBody({
 export async function SagaInfo({
   overview,
   groups,
-  hasGraph,
   canConfigure,
   sagaId,
   hasParent,
@@ -180,7 +180,6 @@ export async function SagaInfo({
 }: {
   overview: string | null;
   groups: MemberGroup[];
-  hasGraph: boolean;
   canConfigure?: boolean;
   sagaId: string;
   hasParent: boolean;
@@ -218,12 +217,13 @@ export async function SagaInfo({
   const freeMembers = groups.flatMap((g) => g.members.filter((m) => m.placement === "libre"));
   const unclassified = groups.flatMap((g) => g.members).filter((m) => m.placement === null).length;
   // Issue #198: un bloque `libre` es una entrada sin hueco, igual que una obra
-  // `libre`, así que vive en «Cuando quieras» y no en la lista ordenada. Se
-  // reparte AQUÍ y no en `groupMembers` a propósito: esa función tiene que
-  // seguir devolviendo todos los grupos porque `computeProgress` los recorre
-  // para emitir los segmentos de color del hero.
-  const orderedGroups = groups.filter((g) => g.placementInParent !== "libre");
-  const freeGroups = groups.filter((g) => g.placementInParent === "libre");
+  // `libre`, así que vive en «Cuando quieras» y no en la lista ordenada.
+  // Reparto delegado en `partitionGroups` (fase 3, Task 1): el mapa necesita
+  // el MISMO criterio, y dos vistas repartiendo cada una por su cuenta acaban
+  // discrepando (issues #91 y #203). `groupMembers` sigue devolviendo todos
+  // los grupos sin filtrar: `computeProgress` los recorre para emitir los
+  // segmentos de color del hero.
+  const { ordered: orderedGroups, free: freeGroups } = partitionGroups(groups);
   // Fix Task 2 / Finding 1 (review): un grupo se salta cuando su `eligible`
   // queda vacío (todos sus miembros son `libre` sueltos), así que
   // `orderedGroups.length === 0` no basta para decidir si hay algo que
@@ -260,18 +260,6 @@ export async function SagaInfo({
           {overview ?? t("noSynopsis")}
         </p>
       </section>
-
-      {/* Infonote (spec §2.3): avisa de que hay un orden de lectura configurado
-          antes de que el usuario llegue a la grid de portadas — el enlace real
-          a la pestaña vive en SagaTabs, esto solo anuncia que existe. */}
-      {hasGraph && (
-        <aside className="flex items-start gap-2.5 rounded-xl border border-gold/30 bg-gold/10 px-3.5 py-3">
-          <span className="text-[15px] text-gold">◆</span>
-          <p className="text-xs leading-relaxed text-foreground">
-            <b>{t("graphAvailableTitle")}</b> {t("graphAvailableBody")}
-          </p>
-        </aside>
-      )}
 
       {/* Aviso de deuda de curación (Task 7): solo collaborator+ — un lector
           normal no puede resolverlo, así que no debe verlo — y solo si queda

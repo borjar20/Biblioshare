@@ -1010,6 +1010,7 @@
     "routeBlockCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "routeEmpty": "Esta ruta aún no tiene pasos.",
     "routesManage": "Itinerarios",
+    "routeMapStep": "Paso {step} del itinerario",
     "mapCtaTitle": "Grafo de lectura",
     "mapCtaDesc": "Explora el recorrido completo a pantalla completa",
     "mapHint": "Arrastra para explorar · pellizca para zoom",
@@ -1033,8 +1034,6 @@
     },
     "branchRequisite": "Requisito",
     "asLinearList": "Como lista lineal",
-    "graphAvailableTitle": "Orden de lectura disponible.",
-    "graphAvailableBody": "Un moderador configuró el recorrido de esta saga — ábrelo en la pestaña Mapa de lectura.",
     "backToSaga": "Volver a la saga",
     "follow": "＋ Seguir esta saga",
     "following": "✓ Siguiendo",
@@ -1081,6 +1080,8 @@
     "unnestConfirm": "Sacar",
     "unnestCancel": "Cancelar",
     "genericError": "No se pudo completar la acción. Inténtalo de nuevo.",
+    "showMapLabel": "Enseñar el mapa de lectura",
+    "showMapHint": "El mapa se genera solo con lo que cures. En una saga de pocos títulos no suele aportar.",
     "routesTitle": "Itinerarios de lectura",
     "routesEmpty": "Esta saga no tiene itinerarios curados.",
     "routeNameLabel": "Nombre",
@@ -1194,7 +1195,11 @@
     "anchorPickerEmpty": "No hay nada más en esta saga a lo que anclar.",
     "itinerariesTitle": "Itinerarios de lectura",
     "itinerariesEmpty": "Todavía no hay ninguno.",
-    "itineraryCreate": "+ Crear itinerario"
+    "itineraryCreate": "+ Crear itinerario",
+    "itineraryGenerate": "Generar desde la curación",
+    "itineraryGenerateEmpty": "No hay nada curado todavía con lo que construirlo.",
+    "itineraryGenerateSlugTaken": "Ya existe un itinerario generado para esta saga. Borra o renombra «Orden curado» antes de crear otro.",
+    "itineraryGenerateName": "Orden curado"
   },
   "sagaIndex": {
     "title": "Sagas",

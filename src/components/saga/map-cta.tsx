@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import { scaleNodes } from "@/lib/sagas/derive-timeline";
-import type { SagaGraph } from "@/lib/sagas/graph-data";
+import type { SagaGraph } from "@/lib/sagas/map-types";
 
 // CTA al mapa completo (frame B) con mini-preview SVG generado de las
 // coordenadas REALES del grafo.

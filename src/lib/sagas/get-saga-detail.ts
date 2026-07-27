@@ -4,8 +4,9 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { UserRole } from "@/lib/auth/roles";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getSagaBase } from "./get-saga";
-import { buildSagaGraph, type GraphLookup, type RawSagaEdge, type RawSagaNode, type SagaGraph } from "./graph-data";
-import { isSagaAccentToken, type SagaAccentToken } from "./accents";
+import { deriveSagaMap } from "./derive-map";
+import type { SagaGraph } from "./map-types";
+import type { SagaAccentToken } from "./accents";
 import {
   averageSagaRating,
   computeProgress,
@@ -13,7 +14,7 @@ import {
   type MemberGroup,
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
-import type { OrderMembership, OrderNode, OrderSaga } from "./main-order";
+import type { OrderMembership, OrderSaga } from "./curated-order";
 import { countedKeys, type ProgressMembership, type ProgressSaga } from "./progress";
 import type {
   DetailMember,
@@ -54,8 +55,19 @@ export type SagaDetail = {
   avgRating: number | null;
   isFollowing: boolean;
   isAuthenticated: boolean;
-  /** Grafo resuelto, o null si la saga no tiene nodos. hasGraph = graph !== null. */
+  /**
+   * Grafo resuelto, o null si no hay nada curado que dibujar O si el curador
+   * apagó el interruptor `show_map` (fase 3, Task 4-bis, arreglo tras
+   * revisión: `resolveSagaGraph` aplica el interruptor EN EL ORIGEN, antes de
+   * que `graph` salga de `getSagaDetail`). Todo consumidor que compruebe
+   * `graph !== null` respeta el interruptor por construcción — no hace falta
+   * que cada uno mire `hasGraph`/`saga.showMap` por su cuenta.
+   */
   graph: SagaGraph | null;
+  /** `graph !== null` (tautología, fase 3 Task 4-bis): nombre aparte porque
+   *  alimenta el aviso retirado, el badge de la card y la ruta sintética
+   *  `lectura` del selector — la intención de esos tres sitios es "¿esta saga
+   *  ENSEÑA su mapa?", no "¿hay un `SagaGraph`?", aunque hoy respondan igual. */
   hasGraph: boolean;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
@@ -64,14 +76,13 @@ export type SagaDetail = {
   /** Slug de ruta adoptado por el usuario para esta saga, o null. */
   routeChoice: string | null;
   /**
-   * Insumos de `createMainOrder` ya calculados aquí (spec §1.5): RouteView
+   * Insumos de `createCuratedOrder` ya calculados aquí (spec §1.5): RouteView
    * (Task 6) necesita reconstruir el orden principal de una subsaga para
-   * expandir un bloque, y estos tres arrays son exactamente lo que la
-   * función pide — recalcularlos ahí sería una segunda fuente de verdad.
+   * expandir un bloque, y estos dos arrays son exactamente lo que la función
+   * pide — recalcularlos ahí sería una segunda fuente de verdad.
    */
   orderSagas: OrderSaga[];
   orderMemberships: OrderMembership[];
-  orderNodes: OrderNode[];
   /**
    * TODOS los descendientes del árbol (haya o no miembros), con su nombre y
    * accent_color persistido. `groups` (groupMembers) solo crea grupo para una
@@ -209,7 +220,15 @@ export function resolveWindows(
     const afterTitle = resolveTitle(r.after_item_type, r.after_item_id, r.after_child_saga_id);
     const beforeTitle = resolveTitle(r.before_item_type, r.before_item_id, r.before_child_saga_id);
     if (afterTitle === null && beforeTitle === null) continue; // sin ninguna ancla que resuelva: sin ventana
-    result[subjectKey] = { afterTitle, beforeTitle };
+    // La clave solo se rellena si el título resolvió, para que afterKey/
+    // afterTitle (y beforeKey/beforeTitle) no puedan discrepar: un ancla rota
+    // es null en las dos a la vez.
+    result[subjectKey] = {
+      afterTitle,
+      beforeTitle,
+      afterKey: afterTitle === null ? null : keyOf(r.after_item_type, r.after_item_id, r.after_child_saga_id),
+      beforeKey: beforeTitle === null ? null : keyOf(r.before_item_type, r.before_item_id, r.before_child_saga_id),
+    };
   }
   return result;
 }
@@ -239,6 +258,34 @@ export function freeBlockWindow(
 ): ResolvedWindow | null {
   if (group.placementInParent !== "libre" || group.sagaId === null) return null;
   return windows[`s:${group.sagaId}`] ?? null;
+}
+
+/**
+ * La regla «con el interruptor apagado no hay mapa» (fase 3, Task 4-bis,
+ * arreglo tras revisión), aislada y pura: EN EL ORIGEN, no en cada
+ * consumidor. Antes `SagaDetail.graph` salía del grafo derivado sin más
+ * (`derivedGraph.nodes.length > 0 ? derivedGraph : null`) y solo `hasGraph`
+ * miraba `saga.showMap` — así que cualquier sitio que comprobara
+ * `graph !== null` en vez de `hasGraph` se saltaba el interruptor. Dos lo
+ * hacían de hecho: `/saga/[id]/mapa/page.tsx` (`if (!graph) redirect(...)`) y
+ * el panel de grafo resaltado de una ruta curada en `saga-map-tab.tsx`
+ * (`... && graph`), los dos verificados en vivo con el interruptor apagado.
+ *
+ * Con `graph` ya `null` cuando `showMap` es `false`, TODO consumidor que
+ * comprueba `graph !== null` —los dos de arriba y cualquiera que venga
+ * después— respeta el interruptor por construcción, sin tener que acordarse
+ * de mirar `showMap` en cada sitio nuevo. `hasGraph` se queda en
+ * `graph !== null`, que vuelve a ser una tautología cierta (como antes de que
+ * `showMap` existiera), así que no hace falta tocarla ni a sus consumidores.
+ *
+ * Pura y exportada para poder probarla sin Supabase — es la única función que
+ * sostiene esta regla, y ningún tipo la impone: `SagaGraph | null` acepta
+ * perfectamente un grafo no vacío con el interruptor apagado si nadie llama a
+ * esta función antes de asignarlo.
+ */
+export function resolveSagaGraph(showMap: boolean, derivedGraph: SagaGraph): SagaGraph | null {
+  if (!showMap) return null;
+  return derivedGraph.nodes.length > 0 ? derivedGraph : null;
 }
 
 export async function getSagaDetail(
@@ -385,11 +432,10 @@ export async function getSagaDetail(
 
   const groups = groupMembers(members, children);
   // `progress` se calcula más abajo con countedKeys (pertenencia, spec
-  // 2026-07-25): NO necesita el orden principal ni los nodos del grafo. Esos
-  // sí se descargan en el batch de consultas de más abajo, pero por otro
-  // motivo — RouteView (Task 6) los necesita para expandir bloques de un
-  // itinerario, ver el comentario de `orderSagas`/`orderMemberships`/
-  // `orderNodes` en el tipo `SagaDetail`.
+  // 2026-07-25): NO necesita el orden principal. `orderSagas`/
+  // `orderMemberships` se construyen más abajo por otro motivo — RouteView
+  // (Task 6) los necesita para expandir bloques de un itinerario, ver el
+  // comentario de esos dos campos en el tipo `SagaDetail`.
 
   // Nota media comunitaria: pases puntuados de todos los miembros, sin contar
   // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase
@@ -448,29 +494,13 @@ export async function getSagaDetail(
     if (top && top[1] >= 2) byline = top[0];
   }
 
-  // Orden estable: deriveTimeline y el mini-preview dependen del orden de filas (desempates y slice).
-  // saga_edges no tiene columna created_at (verificado contra el esquema real) — se ordena por id.
   // Rol del viewer en el mismo batch: evita el segundo auth.getUser() que fase 2 eliminó (los botones de edición lo consumen).
   // Rutas curadas y elección del viewer también van en este batch: ninguna
-  // depende de graph/nodesRes/edgesRes/followRow/parentRow/roleRow, solo de
+  // depende de graph/followRow/parentRow/roleRow, solo de
   // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
   // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
   // camino caliente de la ficha de saga.
-  const [nodesRes, edgesRes, followRow, parentRow, roleRow, curated, routeChoice, windowsRes] = await Promise.all([
-    // Nodos de TODO el subárbol, no solo los de la raíz: el orden principal
-    // (§1.5) expande recursivamente los nodos-saga con el orden principal de la
-    // saga hija, así que necesita sus nodos. El grafo que se pinta sigue siendo
-    // solo el de la raíz — se filtra abajo.
-    supabase
-      .from("saga_nodes")
-      .select("saga_id, id, item_type, item_id, child_saga_id, x, y, level, order_no, label_override")
-      .in("saga_id", sagaIds)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("saga_edges")
-      .select("id, from_node, to_node, edge_type")
-      .eq("saga_id", id)
-      .order("id", { ascending: true }),
+  const [followRow, parentRow, roleRow, curated, routeChoice, windowsRes] = await Promise.all([
     user
       ? supabase
           .from("saga_follows")
@@ -506,62 +536,40 @@ export async function getSagaDetail(
       .in("saga_id", sagaIds),
   ]);
 
-  // Lookup del grafo desde los MISMOS datos de la pestaña Info (spec §1.3).
-  const membersByKey = new Map(members.map((m) => [`${m.itemType}:${m.itemId}`, m]));
+  // Lookup del mapa derivado (fase 3, Task 2): accent y nombre de cada grupo,
+  // desde los MISMOS `groups` que pinta la pestaña Info (spec §1.3). Ya no hace
+  // falta el lookup de miembros ni el de subsagas del grafo viejo: `deriveSagaMap`
+  // solo dibuja obras, nunca un nodo-bloque, así que no necesita más que esto.
   const groupAccent = new Map<string | null, SagaAccentToken>();
   const groupNameMap = new Map<string | null, string | null>();
   for (const g of groups) {
     groupAccent.set(g.sagaId, g.accent);
     groupNameMap.set(g.sagaId, g.name);
   }
-  const childNames = new Map<string, string>();
-  for (const d of descendants.values()) {
-    childNames.set(d.id, d.name);
-    // Nodo-saga de un descendiente profundo o de una hija sin miembros: usa su
-    // accent_color persistido si lo tiene (la rotación solo existe para los
-    // grupos de la ficha); sin color persistido cae al beige del fallback.
-    if (!groupAccent.has(d.id) && isSagaAccentToken(d.accent_color)) {
-      groupAccent.set(d.id, d.accent_color);
-    }
-  }
-  const childCovers = new Map<string, string[]>();
-  const childCounts = new Map<string, number>();
-  for (const g of groups) {
-    if (g.sagaId === null) continue;
-    childCovers.set(g.sagaId, g.members.flatMap((m) => (m.coverUrl ? [m.coverUrl] : [])).slice(0, 3));
-  }
-  for (const row of rows) {
-    if (row.saga_id === id) continue;
-    childCounts.set(row.saga_id, (childCounts.get(row.saga_id) ?? 0) + 1);
-  }
 
-  const treeNodes = (nodesRes.data ?? []) as Array<RawSagaNode & { saga_id: string }>;
-
-  // Insumos de createMainOrder (§1.5) para reconstruir el ORDEN de una subsaga
-  // (Task 6, RouteView) — NO el denominador del avance del hero desde el
-  // 2026-07-25 (ver countedKeys más abajo). Se devuelven en SagaDetail
-  // (orderSagas/orderMemberships/orderNodes) tal cual, sin llamar aquí a
-  // createMainOrder: nada en este fichero necesita ya el orden en sí mismo.
-  const orderSagas = [
-    { id, name: saga.name, parentSagaId: null },
+  // Insumos de createCuratedOrder (§1.5) para reconstruir el ORDEN de una
+  // subsaga (Task 6, RouteView) — NO el denominador del avance del hero desde
+  // el 2026-07-25 (ver countedKeys más abajo). Se devuelven en SagaDetail
+  // (orderSagas/orderMemberships) tal cual, sin llamar aquí a
+  // createCuratedOrder: nada en este fichero necesita ya el orden en sí
+  // mismo. La raíz no tiene colocación en un padre (no lo tiene: es la raíz
+  // de este árbol), así que sus dos campos van a null — createCuratedOrder
+  // solo los mira al ordenar HIJAS, y la raíz nunca es hija de nadie aquí.
+  const orderSagas: OrderSaga[] = [
+    { id, name: saga.name, parentSagaId: null, positionInParent: null, placementInParent: null },
     ...[...descendants.values()].map((d) => ({
       id: d.id,
       name: d.name,
       parentSagaId: d.parent_saga_id,
+      positionInParent: d.position_in_parent,
+      placementInParent: d.placement_in_parent,
     })),
   ];
-  const orderMemberships = rows.map((r) => ({
+  const orderMemberships: OrderMembership[] = rows.map((r) => ({
     sagaId: r.saga_id,
     itemType: r.item_type,
     itemId: r.item_id,
     position: r.position,
-  }));
-  const orderNodes = treeNodes.map((n) => ({
-    sagaId: n.saga_id,
-    itemType: n.item_type,
-    itemId: n.item_id,
-    childSagaId: n.child_saga_id,
-    orderNo: n.order_no,
   }));
   // Insumos de countedKeys (el DENOMINADOR, ./progress.ts), construidos con los
   // mismos datos ya en memoria que orderSagas/orderMemberships (sin viaje
@@ -587,19 +595,40 @@ export async function getSagaDetail(
   // cuentan donde antes recibía las del orden principal.
   const progress = computeProgress(groups, countedKeys(id, progressSagas, progressMemberships));
 
-  const rawNodes = treeNodes.filter((n) => n.saga_id === id);
-  const rawEdges = (edgesRes.data ?? []) as RawSagaEdge[];
-  const graph =
-    rawNodes.length > 0
-      ? buildSagaGraph(rawNodes, rawEdges, {
-          members: membersByKey,
-          groupAccent,
-          groupName: groupNameMap,
-          childNames,
-          childCovers,
-          childCounts,
-        } satisfies GraphLookup)
-      : null;
+  // Títulos de ancla para las ventanas (Task 6): el subárbol entero YA está en
+  // memoria — `meta` (catálogo de toda obra que aparece en `saga_items` del
+  // árbol, sea o no ancla) y `descendants` (todo bloque del árbol) — así que se
+  // reutilizan en vez de pedirle lo mismo a getAnchorOptions con un viaje
+  // aparte. Mismas claves que `DraftEntry.key`/`hydrateWindows`. Se resuelve
+  // aquí, antes del grafo: `deriveSagaMap` necesita las ventanas ya resueltas.
+  const anchorTitles = new Map<string, string>();
+  for (const [key, m] of meta) anchorTitles.set(`i:${key}`, m.title);
+  for (const d of descendants.values()) anchorTitles.set(`s:${d.id}`, d.name);
+  const windows = resolveWindows((windowsRes.data ?? []) as RawWindowRow[], anchorTitles);
+
+  // El mapa ya no se lee: se deriva de lo curado (fase 3). Los mismos `groups`
+  // que pinta la ficha, más las ventanas, más los lookups de acento y nombre
+  // que ya estaban construidos aquí para el grafo viejo.
+  const derivedGraph = deriveSagaMap(groups, windows, {
+    groupAccent,
+    groupName: groupNameMap,
+  });
+  // `SagaDetail.graph` sigue siendo `SagaGraph | null`, y sigue siendo el
+  // origen de «/saga/[id]/mapa» (esa página redirige con `!graph`, no con
+  // `hasGraph`) y de cualquier otro consumidor que solo mire `graph !== null`
+  // — pero ahora el interruptor manda EN EL ORIGEN: `resolveSagaGraph` lo
+  // aplica antes de que `graph` salga de esta función, así que `null` cubre
+  // los dos motivos a la vez ("no hay nada curado que pintar" Y "el curador
+  // apagó el interruptor"), y ningún consumidor tiene que distinguirlos.
+  const graph = resolveSagaGraph(saga.showMap, derivedGraph);
+
+  // hasGraph (fase 3, Task 4-bis): vuelve a ser la tautología `graph !== null`
+  // — el interruptor ya no hace falta comprobarlo aquí porque `graph` ya lo
+  // respeta (ver `resolveSagaGraph`). Se mantiene como campo aparte, no
+  // inline en cada consumidor, porque sigue siendo el nombre que cuenta la
+  // intención en el aviso retirado, el badge de la card y la ruta sintética
+  // `lectura` del selector — los tres sitios listados en el brief original.
+  const hasGraph = graph !== null;
 
   // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
   // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.
@@ -608,7 +637,7 @@ export async function getSagaDetail(
   const routes = buildRouteList(
     curated,
     { lectura: tRoutes("orderReading"), publicacion: tRoutes("orderPublication") },
-    graph !== null,
+    hasGraph,
   );
 
   // Todos los descendientes, tengan o no miembros (hallazgo 2): el origen de
@@ -623,16 +652,6 @@ export async function getSagaDetail(
     optionalInParent: d.optional_in_parent,
   }));
 
-  // Títulos de ancla para las ventanas (Task 6): el subárbol entero YA está en
-  // memoria — `meta` (catálogo de toda obra que aparece en `saga_items` del
-  // árbol, sea o no ancla) y `descendants` (todo bloque del árbol) — así que se
-  // reutilizan en vez de pedirle lo mismo a getAnchorOptions con un viaje
-  // aparte. Mismas claves que `DraftEntry.key`/`hydrateWindows`.
-  const anchorTitles = new Map<string, string>();
-  for (const [key, m] of meta) anchorTitles.set(`i:${key}`, m.title);
-  for (const d of descendants.values()) anchorTitles.set(`s:${d.id}`, d.name);
-  const windows = resolveWindows((windowsRes.data ?? []) as RawWindowRow[], anchorTitles);
-
   return {
     saga,
     parent: (parentRow as { data: { id: string; name: string } | null }).data ?? null,
@@ -645,13 +664,12 @@ export async function getSagaDetail(
     isFollowing: Boolean((followRow as { data: unknown }).data),
     isAuthenticated: Boolean(user),
     graph,
-    hasGraph: graph !== null,
+    hasGraph,
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
     routes,
     routeChoice,
     orderSagas,
     orderMemberships,
-    orderNodes,
     childRefs,
     windows,
   };

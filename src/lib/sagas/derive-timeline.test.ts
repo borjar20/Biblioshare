@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { deriveTimeline, scaleNodes, sortByPublication } from "./derive-timeline";
-import type { SagaGraph, SagaGraphNode } from "./graph-data";
+import { deriveSagaMap } from "./derive-map";
+import type { MemberGroup } from "./group-members";
+import type { SagaGraph, SagaGraphNode } from "./map-types";
 import type { DetailMember } from "./types";
 
 const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => ({
@@ -20,6 +22,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   memberCount: null,
   groupSagaId: "g1",
   groupName: "Era Uno",
+  step: null,
   ...over,
 });
 
@@ -127,10 +130,10 @@ describe("rol narrativo en las ramas (#167)", () => {
       nodes: [
         { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
           label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
-          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G" },
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null },
         { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
           label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
-          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G" },
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null },
       ],
       edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
     };
@@ -169,5 +172,54 @@ describe("scaleNodes", () => {
   });
   it("un solo nodo cae centrado", () => {
     expect(scaleNodes([{ x: 42, y: 7 }], 66, 48, 4)).toEqual([{ x: 33, y: 24 }]);
+  });
+});
+
+// Integración (fase 3, Task 2): en producción `deriveTimeline` ya no recibe un
+// grafo pintado a mano — lo construye `deriveSagaMap` a partir de lo curado
+// (get-saga-detail.ts). Esta prueba junta las dos piezas de verdad, en vez de
+// montar un `SagaGraph` a mano como hacen las de arriba: es la que demuestra
+// que encajan, algo que ninguna de las dos suites por separado cubre.
+describe("integración: deriveSagaMap → deriveTimeline", () => {
+  const work = (id: string, position: number): DetailMember => ({
+    itemType: "book",
+    itemId: id,
+    title: id,
+    coverUrl: null,
+    href: `/libro/${id}`,
+    position,
+    role: null,
+    placement: "fijo",
+    optional: false,
+    status: null,
+    groupSagaId: null,
+    ownerSagaId: "owner",
+    year: null,
+  });
+
+  const block = (name: string, positionInParent: number, works: DetailMember[]): MemberGroup => {
+    const sagaId = `saga-${name}`;
+    return {
+      sagaId,
+      name,
+      accent: "beige",
+      members: works.map((w) => ({ ...w, groupSagaId: sagaId })),
+      positionInParent,
+      placementInParent: "fijo",
+    };
+  };
+
+  it("dos bloques curados producen dos secciones con sus filas en el orden curado", () => {
+    const groups: MemberGroup[] = [
+      block("Era Uno", 1, [work("A", 1), work("B", 2)]),
+      block("Era Dos", 2, [work("C", 1), work("D", 2)]),
+    ];
+    const derivedGraph = deriveSagaMap(groups, {}, { groupAccent: new Map(), groupName: new Map() });
+
+    const tl = deriveTimeline(derivedGraph);
+
+    expect(tl).toHaveLength(2);
+    expect(tl[0].rows.map((r) => r.kind === "entry" && r.node.id)).toEqual(["i:book:A", "i:book:B"]);
+    expect(tl[1].rows.map((r) => r.kind === "entry" && r.node.id)).toEqual(["i:book:C", "i:book:D"]);
   });
 });

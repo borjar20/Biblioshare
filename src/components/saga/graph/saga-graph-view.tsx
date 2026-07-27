@@ -13,7 +13,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
-import type { SagaGraph } from "@/lib/sagas/graph-data";
+import type { SagaGraph } from "@/lib/sagas/map-types";
 import { FloatingEdge } from "./floating-edge";
 import { CoverNode, MedallionNode, SagaNodeCard, type GraphFlowNode } from "./graph-nodes";
 

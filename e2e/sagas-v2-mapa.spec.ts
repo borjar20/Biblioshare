@@ -1,12 +1,36 @@
 import { expect, test } from "@playwright/test";
 
 // UUIDs del seed QA de dev (ver `.superpowers/sdd/task-6-seed-report.md`,
-// fase 2, y `task-7-seed-report.md` de fase 1). El grafo bajo el Universo
-// tiene 10 nodos / 7 aristas: columna Era Uno (1-3) + columna Era Dos (4-5) +
-// 1 spin-off (medallón, doble membresía de "Para leer a Isabel Allende") +
-// 1 nexo puro (Trilogía) + 3 nodos-saga anidados (Era Dos, Nieta, Era Vacía).
+// fase 2, y `task-7-seed-report.md` de fase 1).
+//
+// Fase 3 (Task 7, Step 1-bis — brief en `.superpowers/sdd/task-7-brief.md`):
+// este spec es PREEXISTENTE (guardaba el grafo dibujado a mano en
+// `saga_nodes`/`saga_edges`) y la fase lo dejó desactualizado en dos frentes,
+// no en lo que protegía:
+//
+//   1) el mapa ya NO se lee de esas tablas — se DERIVA de lo curado
+//      (`deriveSagaMap`, src/lib/sagas/derive-map.ts). Un nodo es SIEMPRE una
+//      obra individual, nunca un bloque/subsaga (los "3 nodos-saga anidados"
+//      que este comentario describía ya no existen). Verificado contra BD dev
+//      (2026-07-27): el Universo tiene Era Uno (4 obras, position 1-4,
+//      encadenadas), Era Dos (2 obras, position 4-5, encadenadas) y 1 obra
+//      directa del Universo sin clasificar (position null, "suelta",
+//      "Trilogía La casa de los espíritus") = 7 nodos en total, ni uno más
+//      (un bloque nunca es un nodo, Task 1).
+//   2) el aviso «Orden de lectura disponible. Un moderador configuró el
+//      recorrido» se retiró (fase 3, Task 4-bis): el mapa ahora depende del
+//      interruptor `show_map` del curador, no de un aviso fijo.
+//
+// El Universo ya tiene `show_map=true` en dev (verificado por SQL) — mismo
+// universo que ya reutiliza `e2e/sagas-mapa-derivado.spec.ts` (test 4) sin
+// tocar el interruptor, así que este spec tampoco necesita encenderlo.
 const UNIVERSE_ID = "69c07496-9b1a-4203-b3da-15d22a09c039";
 const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab";
+// "La casa de los espíritus" (segunda edición del seed, position 5 en Era
+// Dos — hay dos libros con el mismo título en el seed, así que el chequeo de
+// nodo usa el id, no el texto). Confirma que el mapa dibuja la fila de Era
+// Dos, no solo la de Era Uno.
+const ERA_DOS_ITEM_ID = "7a88b65f-d757-4cc3-a7b6-ddf2417855ce";
 
 test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del grafo", async ({ page }) => {
   // SagaMapTab bifurca por breakpoint `lg` (src/components/saga/saga-map-tab.tsx):
@@ -18,8 +42,10 @@ test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del 
   await page.goto(`/saga/${UNIVERSE_ID}`);
   const mapTab = page.getByRole("button", { name: /Mapa de lectura/ });
   await expect(mapTab).toBeVisible();
-  // Infonote dorada en Info
-  await expect(page.getByText("Orden de lectura disponible.")).toBeVisible();
+  // La infonote dorada en Info («Orden de lectura disponible. Un moderador
+  // configuró el recorrido») se retiró en la fase 3 (Task 4-bis): la pestaña
+  // Mapa es ya la única señal de que hay un recorrido que enseñar, así que no
+  // hay nada equivalente que comprobar aquí.
 
   await mapTab.click();
   await expect(page).toHaveURL(new RegExp(`tab=mapa`));
@@ -56,10 +82,14 @@ test("el toggle Publicación muestra la lista lineal por año", async ({ page })
 
 test("el mapa a pantalla completa renderiza el grafo y navega al tocar un nodo", async ({ page }) => {
   await page.goto(`/saga/${UNIVERSE_ID}/mapa`);
-  // React Flow montado con nodos custom (columna + spin-off + nexo + 3 nodos-saga)
-  await expect(page.locator(".react-flow__node")).toHaveCount(10);
-  // La tarjeta del nodo-saga
-  await expect(page.locator(".react-flow__node", { hasText: "[QA Sagas v2] Era Dos" })).toBeVisible();
+  // React Flow montado con nodos custom: cada nodo es una obra (Task 1, fase
+  // 3) — Era Uno (4) + Era Dos (2) + 1 obra directa suelta (1) = 7. Ya no hay
+  // nodo-bloque ("nodo-saga") que contar aparte.
+  await expect(page.locator(".react-flow__node")).toHaveCount(7);
+  // Un nodo de la fila de Era Dos, no solo la de Era Uno (mismo criterio de
+  // testid que `e2e/sagas-mapa-derivado.spec.ts`: React Flow lo genera desde
+  // el `id` determinista de `deriveSagaMap`, `i:<tipo>:<uuid>`).
+  await expect(page.locator(`[data-testid="rf__node-i:book:${ERA_DOS_ITEM_ID}"]`)).toBeVisible();
   // Tap en el primer nodo navega a la ficha del ítem
   await page.locator(".react-flow__node").first().click();
   await expect(page).toHaveURL(/\/(libro|pelicula|serie|saga)\//);

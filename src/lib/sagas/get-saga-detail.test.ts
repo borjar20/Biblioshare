@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { freeBlockWindow, freeItemWindow, resolveWindows } from "./get-saga-detail";
+import { freeBlockWindow, freeItemWindow, resolveSagaGraph, resolveWindows } from "./get-saga-detail";
 import type { RawWindowRow } from "./get-saga-sequence";
 import type { MemberGroup } from "./group-members";
+import type { SagaGraph, SagaGraphNode } from "./map-types";
 import type { DetailMember, ResolvedWindow } from "./types";
 
 // Mismo helper que get-saga-sequence.test.ts: una fila cruda de
@@ -32,6 +33,8 @@ it("resuelve una ventana con las dos anclas: la frase entera", () => {
   expect(windows["i:book:n2"]).toEqual({
     afterTitle: "Nacidos de la Bruma Era 1",
     beforeTitle: "Viento y Verdad",
+    afterKey: "i:book:a",
+    beforeKey: "i:book:b",
   });
 });
 
@@ -41,7 +44,12 @@ it("resuelve una ventana con una sola ancla («after»), apuntando a un bloque",
     [w({ item_type: "book", item_id: "n2", after_child_saga_id: "sub-1" })],
     titles,
   );
-  expect(windows["i:book:n2"]).toEqual({ afterTitle: "El Archivo de las Tormentas", beforeTitle: null });
+  expect(windows["i:book:n2"]).toEqual({
+    afterTitle: "El Archivo de las Tormentas",
+    beforeTitle: null,
+    afterKey: "s:sub-1",
+    beforeKey: null,
+  });
 });
 
 it("resuelve una ventana con una sola ancla («before»), sujeto bloque", () => {
@@ -50,7 +58,12 @@ it("resuelve una ventana con una sola ancla («before»), sujeto bloque", () => 
     [w({ child_saga_id: "sub-1", before_item_type: "book", before_item_id: "b" })],
     titles,
   );
-  expect(windows["s:sub-1"]).toEqual({ afterTitle: null, beforeTitle: "Viento y Verdad" });
+  expect(windows["s:sub-1"]).toEqual({
+    afterTitle: null,
+    beforeTitle: "Viento y Verdad",
+    afterKey: null,
+    beforeKey: "i:book:b",
+  });
 });
 
 it("un ancla que ya no resuelve (fuera del subárbol cargado) queda a null: no se limpia la fila entera", () => {
@@ -65,7 +78,31 @@ it("un ancla que ya no resuelve (fuera del subárbol cargado) queda a null: no s
     ],
     titles,
   );
-  expect(windows["i:book:n2"]).toEqual({ afterTitle: null, beforeTitle: "Viento y Verdad" });
+  expect(windows["i:book:n2"]).toEqual({
+    afterTitle: null,
+    beforeTitle: "Viento y Verdad",
+    afterKey: null,
+    beforeKey: "i:book:b",
+  });
+});
+
+it("un ancla que resuelve trae clave y título; una rota, las dos a null", () => {
+  // Sujeto: el bloque `sujeto`. Ancla `after`: el bloque `saga-1`, que resuelve.
+  // Ancla `before`: una obra que ya no está en el subárbol.
+  const out = resolveWindows(
+    [
+      w({
+        child_saga_id: "sujeto",
+        after_child_saga_id: "saga-1",
+        before_item_type: "book", before_item_id: "fantasma",
+        created_at: "2026-07-27T00:00:00Z",
+      }),
+    ],
+    new Map([["s:saga-1", "Era 1"]]),
+  );
+  expect(out["s:sujeto"]).toEqual({
+    afterTitle: "Era 1", afterKey: "s:saga-1", beforeTitle: null, beforeKey: null,
+  });
 });
 
 it("si las dos anclas dejan de resolver, el sujeto no aparece en el resultado: ninguna línea", () => {
@@ -108,7 +145,7 @@ it("dos sagas hermanas con ventana sobre la misma obra: gana siempre la más ant
     after_item_type: "book", after_item_id: "b",
     created_at: "2026-02-01T00:00:00.000Z",
   });
-  const expected = { afterTitle: "Ancla vieja", beforeTitle: null };
+  const expected = { afterTitle: "Ancla vieja", beforeTitle: null, afterKey: "i:book:a", beforeKey: null };
 
   expect(resolveWindows([older, newer], titles)["i:book:n2"]).toEqual(expected);
   // Mismas dos filas, orden invertido: el resultado tiene que ser idéntico —
@@ -148,7 +185,12 @@ const group = (over: Partial<MemberGroup>): MemberGroup => ({
   ...over,
 });
 
-const someWindow: ResolvedWindow = { afterTitle: "Antes", beforeTitle: "Después" };
+const someWindow: ResolvedWindow = {
+  afterTitle: "Antes",
+  beforeTitle: "Después",
+  afterKey: "i:book:antes",
+  beforeKey: "i:book:despues",
+};
 
 describe("freeItemWindow", () => {
   it("entrada libre CON ventana: la devuelve", () => {
@@ -194,5 +236,60 @@ describe("freeBlockWindow", () => {
   it("grupo nexo (sagaId null): null aunque el mapa traiga algo para 's:null'", () => {
     const g = group({ sagaId: null, placementInParent: "libre" });
     expect(freeBlockWindow({}, g)).toBeNull();
+  });
+});
+
+// Arreglo tras la revisión de Task 4-bis: el interruptor `show_map` mandaba
+// solo en `hasGraph`, no en `graph` — así que `/saga/[id]/mapa/page.tsx`
+// (que comprueba `!graph`, nunca `hasGraph`) y el panel de grafo resaltado de
+// una ruta curada en `saga-map-tab.tsx` (`... && graph`) se lo saltaban los
+// dos, verificado en vivo con el interruptor apagado. `resolveSagaGraph` es
+// la regla aislada y pura: "con el interruptor apagado no hay mapa", sin
+// Supabase de por medio. Cubre exactamente lo que antes solo se veía
+// mirando el navegador.
+const node = (over: Partial<SagaGraphNode> = {}): SagaGraphNode => ({
+  id: over.id ?? "n1",
+  kind: "item",
+  x: 0,
+  y: 0,
+  level: "principal",
+  orderNo: 1,
+  label: "Nodo",
+  accent: "beige",
+  status: null,
+  role: null,
+  coverUrl: null,
+  covers: [],
+  href: "/libro/n1",
+  memberCount: null,
+  groupSagaId: null,
+  groupName: null,
+  step: null,
+  ...over,
+});
+
+const emptyGraph: SagaGraph = { nodes: [], edges: [] };
+const graphWithNodes: SagaGraph = { nodes: [node()], edges: [] };
+
+describe("resolveSagaGraph", () => {
+  it("interruptor apagado, aunque haya nodos curados: null — el interruptor manda en el origen", () => {
+    // Este es el caso exacto de los dos bypasses: nodos curados presentes
+    // (`graphWithNodes`, no vacío) pero `showMap=false`. Antes del arreglo,
+    // el `graph` que salía de getSagaDetail conservaba estos nodos igualmente
+    // y solo `hasGraph` lo escondía — así que un consumidor que mirara
+    // `graph` directamente (las dos vías rotas) lo seguía pintando.
+    expect(resolveSagaGraph(false, graphWithNodes)).toBeNull();
+  });
+
+  it("interruptor encendido con nodos curados: el grafo tal cual, sin envolver ni copiar", () => {
+    expect(resolveSagaGraph(true, graphWithNodes)).toBe(graphWithNodes);
+  });
+
+  it("interruptor encendido pero sin nada curado que dibujar (grafo vacío): null — el interruptor no puede compensar la falta de curación", () => {
+    expect(resolveSagaGraph(true, emptyGraph)).toBeNull();
+  });
+
+  it("interruptor apagado y grafo vacío: null por las dos razones a la vez, sigue siendo null", () => {
+    expect(resolveSagaGraph(false, emptyGraph)).toBeNull();
   });
 });

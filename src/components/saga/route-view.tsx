@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { sagaHref } from "@/lib/catalog/item-href";
-import { createMainOrder } from "@/lib/sagas/main-order";
+import { createCuratedOrder } from "@/lib/sagas/curated-order";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
 import { resolveRoute } from "@/lib/sagas/resolve-route";
 import { isMemberCompleted } from "@/lib/sagas/completion";
@@ -56,19 +56,17 @@ export async function RouteView({
     }),
   );
 
-  // El orden principal de una subsaga expande un bloque con createMainOrder —
-  // la misma función de SECUENCIA que usan las portadas del abanico y el
+  // El orden principal de una subsaga expande un bloque con createCuratedOrder
+  // — la misma función de SECUENCIA que usan las portadas del abanico y el
   // «siguiente» de las cards (./build-library-saga-cards.ts), NO la que
   // cuenta el avance del hero: desde el 2026-07-25 (Task 5) eso es
-  // countedKeys/pertenencia (./progress.ts), y createMainOrder ni siquiera
+  // countedKeys/pertenencia (./progress.ts), y createCuratedOrder ni siquiera
   // recibe el campo `optional` (OrderMembership no lo tiene). Un bloque
-  // expande «su orden principal», no «todos sus miembros», así que un ítem
-  // sin hueco en la SECUENCIA (grafo con order_no null) queda fuera del
-  // contador de esta ruta — pero un miembro `optional` SÍ entra si tiene
-  // hueco: `optional` (denominador del progreso) y «fuera del orden» (sin
-  // position en la secuencia) son ejes distintos, y este contador solo mira
-  // el segundo.
-  const mainOrder = createMainOrder(detail.orderSagas, detail.orderMemberships, detail.orderNodes, (k) =>
+  // expande «su orden principal» — TODOS sus miembros directos, sin filtrar
+  // por hueco (fase 3, Task 4: ya no hay grafo que pueda dejar a alguien sin
+  // sitio) — así que este contador y el denominador del progreso pueden
+  // seguir difiriendo solo por `optional`, no por falta de position.
+  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) =>
     members.get(k)?.title ?? "",
   );
 

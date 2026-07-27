@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { CuratedRouteRow } from "@/lib/sagas/get-saga-routes";
+import { GenerateRouteButton } from "./generate-route-button";
 
 /** Itinerarios de la saga. `getSagaRoutes` consulta `saga_routes`, que SOLO
  *  guarda las rutas CURADAS: las sintéticas (`lectura`/`publicacion`) no se
@@ -33,12 +34,17 @@ export async function SequenceItineraries({ sagaId, routes }: { sagaId: string; 
           ))}
         </ul>
       )}
-      <Link
-        href={`/saga/${sagaId}/rutas`}
-        className="mt-2.5 block rounded-lg border border-border py-1.5 text-center text-[11.5px] font-semibold"
-      >
-        {t("itineraryCreate")}
-      </Link>
+      <div className="mt-2.5 flex gap-2">
+        <Link
+          href={`/saga/${sagaId}/rutas`}
+          className="flex-1 rounded-lg border border-border py-1.5 text-center text-[11.5px] font-semibold"
+        >
+          {t("itineraryCreate")}
+        </Link>
+        <div className="flex-1">
+          <GenerateRouteButton sagaId={sagaId} />
+        </div>
+      </div>
     </section>
   );
 }

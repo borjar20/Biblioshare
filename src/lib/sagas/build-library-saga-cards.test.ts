@@ -4,7 +4,6 @@ import {
   type LibEntry,
   type LibItemMeta,
   type LibMembership,
-  type LibNode,
   type LibSaga,
 } from "./build-library-saga-cards";
 
@@ -14,7 +13,22 @@ const saga = (
   parent: string | null = null,
   accent: string | null = null,
   optionalInParent = false,
-): LibSaga => ({ id, parentSagaId: parent, name, accentColor: accent, optionalInParent });
+  positionInParent: number | null = null,
+  placementInParent: LibSaga["placementInParent"] = null,
+  // Default true: la mayoría de estos tests ejercitan `tree`/`counted`, no el
+  // interruptor de Task 4-bis — mantiene su semántica ("hasGraph = ¿hay
+  // miembros?") sin tener que tocar cada llamada existente.
+  showMap = true,
+): LibSaga => ({
+  id,
+  parentSagaId: parent,
+  name,
+  accentColor: accent,
+  optionalInParent,
+  positionInParent,
+  placementInParent,
+  showMap,
+});
 const mem = (
   sagaId: string,
   itemId: string,
@@ -40,21 +54,13 @@ const entry = (
   everCompleted,
   updatedAt,
 });
-const node = (sagaId: string, ref: { itemId?: string; childSagaId?: string }, orderNo: number | null): LibNode => ({
-  sagaId,
-  itemType: ref.itemId ? "book" : null,
-  itemId: ref.itemId ?? null,
-  childSagaId: ref.childSagaId ?? null,
-  orderNo,
-});
 
 describe("buildLibrarySagaCards", () => {
-  it("saga simple sin grafo: total por position y «siguiente» = primer sin terminar", () => {
+  it("saga simple: total por position y «siguiente» = primer sin terminar", () => {
     const cards = buildLibrarySagaCards(
       ["s"],
       [saga("s", "Simple")],
       [mem("s", "a", 1), mem("s", "b", 2), mem("s", "c", 3)],
-      [],
       [item("a", "A"), item("b", "B"), item("c", "C")],
       [entry("a", "completed")],
       [],
@@ -62,10 +68,16 @@ describe("buildLibrarySagaCards", () => {
     );
     expect(cards[0].progress).toMatchObject({ completed: 1, total: 3, pct: 33 });
     expect(cards[0].next).toMatchObject({ kind: "next", itemId: "b", title: "B" });
-    expect(cards[0].hasGraph).toBe(false);
+    expect(cards[0].hasGraph).toBe(true);
   });
 
-  it("universo sin grafo: directos primero, hijas por menor position, doble membresía deduplicada", () => {
+  it("universo: hijas por menor position (sin colocar) primero, directos al final, doble membresía deduplicada", () => {
+    // Arreglo de la revisión final de rama (punto 1): createCuratedOrder ya
+    // no pone los directos primero — van AL FINAL, detrás de las hijas,
+    // igual que la ficha (group-members.ts) y el mapa derivado. "nexo" es
+    // miembro directo de "u" (position 1) Y de "h2" (position 3, doble
+    // membresía): con las hijas primero, la ocurrencia que sobrevive a la
+    // dedup es la de "h2" (después de "y", su hueco 2), no la de "u".
     const cards = buildLibrarySagaCards(
       ["u"],
       [saga("u", "Universo"), saga("h1", "Hija tardía", "u"), saga("h2", "Hija temprana", "u")],
@@ -75,39 +87,43 @@ describe("buildLibrarySagaCards", () => {
         mem("h2", "y", 2),
         mem("h2", "nexo", 3), // doble membresía: cuenta una vez
       ],
-      [],
       [item("nexo", "Nexo"), item("x", "X"), item("y", "Y")],
       [],
       [],
       [],
     );
-    // orden: directos de u → h2 (minPos 2) → h1 (minPos 9); nexo deduplicado
+    // orden: h2 (minPos 2, sin colocar) → h1 (minPos 9) → directos de u; "y" abre
     expect(cards[0].progress.total).toBe(3);
-    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "nexo" });
+    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "y" });
   });
 
-  it("con grafo: el orden solo pinta nodos con orderNo, pero el denominador cuenta toda la pertenencia", () => {
+  it("el acento por defecto de un bloque sigue su colocación curada, no el hueco mínimo de sus miembros (issue #203)", () => {
+    // El caso real del Cosmere: hasta la Task 4 esta card ordenaba sus
+    // bloques SOLO por `minPos` (el `sort` de `children`, más abajo en el
+    // fichero), mientras que la ficha (group-members.ts, childGroups) ya
+    // respetaba `position_in_parent` desde la #198 — podían discrepar. Ahora
+    // usan el mismo comparador.
     const cards = buildLibrarySagaCards(
       ["u"],
-      [saga("u", "Universo"), saga("h", "Hija", "u")],
-      [mem("u", "a", 1), mem("h", "b", 1), mem("h", "c", 2), mem("u", "opc", 9)],
       [
-        node("u", { itemId: "a" }, 1),
-        node("u", { childSagaId: "h" }, 2), // nodo-saga CON orderNo (Task 1)
-        node("u", { itemId: "opc" }, null), // sin hueco en el grafo, pero NO optional: sí cuenta (Task 5)
+        saga("u", "Universo"),
+        saga("pronto", "Colocada primero", "u", null, false, 1),
+        saga("tarde", "Colocada segundo", "u", null, false, 2),
       ],
-      [item("a", "A"), item("b", "B"), item("c", "C"), item("opc", "Opc")],
-      [entry("a", "completed"), entry("b", "completed")],
+      [mem("pronto", "z", 9), mem("tarde", "a", 1)],
+      [item("z", "Z"), item("a", "A")],
+      [entry("z", "completed")],
       [],
       [],
     );
-    // orden principal (portadas/«siguiente»): a, b, c — opc no tiene order_no,
-    // así que no entra en la SECUENCIA. Pero el denominador (Task 5) ya no
-    // sale del orden: cuenta la pertenencia, y opc es un miembro real (no
-    // marcado optional en saga_items), así que sí cuenta → total 4, no 3.
-    expect(cards[0].progress).toMatchObject({ completed: 2, total: 4, pct: 50 });
-    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "c" });
-    expect(cards[0].hasGraph).toBe(true);
+    // "pronto" está colocada PRIMERO (position_in_parent=1) aunque su único
+    // miembro tenga el hueco más alto (9). Con el comparador viejo (solo
+    // `minPos`) "tarde" (minPos=1) iba primero y se llevaba el primer acento
+    // de la rotación (terracota); con la colocación curada, "pronto" se lo
+    // lleva. Solo "z" (de "pronto") está completado, así que el único
+    // segmento revela qué bloque se llevó el primer acento.
+    const segs = cards[0].progress.segments;
+    expect(segs.map((s) => s.accent)).toEqual(["terracota"]);
   });
 
   it("«leyendo ahora» gana a «siguiente» y elige el in_progress más reciente", () => {
@@ -115,7 +131,6 @@ describe("buildLibrarySagaCards", () => {
       ["s"],
       [saga("s", "S")],
       [mem("s", "a", 1), mem("s", "b", 2), mem("s", "c", 3)],
-      [],
       [item("a", "A"), item("b", "B"), item("c", "C")],
       [
         entry("b", "in_progress", "2026-07-01T00:00:00Z"),
@@ -132,7 +147,6 @@ describe("buildLibrarySagaCards", () => {
       ["s"],
       [saga("s", "S")],
       [mem("s", "a", 1), mem("s", "b", 2)],
-      [],
       [item("a", "A"), item("b", "B")],
       [entry("a", "completed"), entry("b", "completed")],
       [
@@ -150,7 +164,6 @@ describe("buildLibrarySagaCards", () => {
       ["done", "fresh", "old", "zeta", "alfa"],
       [saga("done", "Done"), saga("fresh", "Fresh"), saga("old", "Old"), saga("zeta", "Zeta"), saga("alfa", "Alfa")],
       [mem("done", "d", 1), mem("fresh", "f", 1), mem("old", "o", 1), mem("zeta", "z", 1), mem("alfa", "al", 1)],
-      [],
       [item("d", "D"), item("f", "F"), item("o", "O"), item("z", "Z"), item("al", "AL")],
       [
         entry("d", "completed", "2026-05-01T00:00:00Z"),
@@ -168,7 +181,6 @@ describe("buildLibrarySagaCards", () => {
       ["s"],
       [saga("s", "S")],
       [mem("s", "a", 1), mem("s", "b", 2), mem("s", "c", 3)],
-      [],
       [item("a", "A"), item("b", "B"), item("c", "C")],
       [
         // a: leída antes (pase completado) y releyéndose ahora (pase activo)
@@ -182,15 +194,11 @@ describe("buildLibrarySagaCards", () => {
     expect(cards[0].next).toMatchObject({ kind: "reading", itemId: "a" });
   });
 
-  it("segmentos de universo: por hija + nexo beige; ciclo/profundidad no cuelga", () => {
+  it("segmentos de universo: por hija + nexo beige", () => {
     const cards = buildLibrarySagaCards(
       ["u"],
-      [saga("u", "U"), saga("h", "H", "u", "purpura"), saga("loop", "Loop", "u")],
+      [saga("u", "U"), saga("h", "H", "u", "purpura")],
       [mem("u", "n", 1), mem("h", "x", 2)],
-      [
-        // grafo de "loop" que se referencia a sí misma vía nodo-saga: no cuelga
-        node("loop", { childSagaId: "loop" }, 1),
-      ],
       [item("n", "N"), item("x", "X")],
       [entry("n", "completed"), entry("x", "completed")],
       [],
@@ -207,7 +215,6 @@ describe("buildLibrarySagaCards", () => {
       ["curada", "sintetica"],
       [saga("curada", "Curada"), saga("sintetica", "Sintética")],
       [mem("curada", "a", 1), mem("sintetica", "b", 1)],
-      [],
       [item("a", "A"), item("b", "B")],
       [],
       [],
@@ -223,71 +230,17 @@ describe("buildLibrarySagaCards", () => {
     expect(sintetica.routeName).toBeNull();
   });
 
-  it("una saga sin grafo y sin ningún position cuenta todos sus miembros (rama sin grafo)", () => {
-    // OJO: este caso NO reproduce el bug de Mundodisco. Sin nodos de grafo
-    // para la raíz, mainOrder toma la rama sin grafo (miembros directos +
-    // recursión por `childrenByParent`), que nunca descartó a nadie por falta
-    // de order_no — así que este test ya pasaba ANTES del cambio de Task 5.
-    // La reproducción real (raíz CON grafo, todo orderNo a null) está en el
-    // test siguiente.
+  it("una saga sin ningún position cuenta todos sus miembros", () => {
     const cards = buildLibrarySagaCards(
       ["root"],
       [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
       [mem("hija", "a", null), mem("hija", "b", null)],
-      [],
       [item("a", "A"), item("b", "B")],
       [entry("a", "completed")],
       [],
       [],
     );
     expect(cards[0].progress).toMatchObject({ completed: 1, total: 2 });
-  });
-
-  it("caso Mundodisco real: raíz CON grafo y todo orderNo a null igual cuenta la pertenencia", () => {
-    // Esta es la reproducción de verdad (review de Task 5, Important 5): la
-    // raíz tiene un nodo de grafo (nodesBySaga.get("root").length > 0), así
-    // que mainOrder entra en la rama CON grafo y filtra por orderNo !== null.
-    // Como el único nodo tiene orderNo null, `ordered` sale vacío y
-    // walk("root") nunca desciende a "hija" (esa rama solo desciende vía
-    // nodos de grafo, no vía childrenByParent) — mainOrder("root") = [].
-    // Con el código VIEJO (denominador = order.length) esto daba 0/0 y
-    // {kind:"empty"}: exactamente el bug de Mundodisco. Con el código actual
-    // (denominador = countedKeys, que no mira el grafo) da progreso real.
-    const cards = buildLibrarySagaCards(
-      ["root"],
-      [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
-      [mem("hija", "a", null), mem("hija", "b", null)],
-      [node("root", { childSagaId: "hija" }, null)],
-      [item("a", "A"), item("b", "B")],
-      [entry("a", "completed")],
-      [],
-      [],
-    );
-    expect(cards[0].hasGraph).toBe(true);
-    expect(cards[0].progress).toMatchObject({ completed: 1, total: 2, pct: 50 });
-    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "b" });
-  });
-
-  it("completada con grafo sin order_no: la nota media sale de `counted`, no de un `order` vacío", () => {
-    // Important 1 del review de Task 5: la rama `else` (kind:"completed") leía
-    // `order` para la media, la misma fuente que ya reventaba dos líneas más
-    // arriba para el kind:"next". Con `order` vacío (mismo montaje que el test
-    // "caso Mundodisco real" de arriba, pero con las dos obras completadas y
-    // puntuadas) la media debía salir de `counted` = [a, b]: (9 + 7) / 2 = 8.
-    const cards = buildLibrarySagaCards(
-      ["root"],
-      [saga("root", "Mundodisco"), saga("hija", "Guardias", "root")],
-      [mem("hija", "a", null), mem("hija", "b", null)],
-      [node("root", { childSagaId: "hija" }, null)],
-      [item("a", "A"), item("b", "B")],
-      [entry("a", "completed"), entry("b", "completed")],
-      [
-        { itemType: "book", itemId: "a", rating: 9, finishedOn: "2026-01-01" },
-        { itemType: "book", itemId: "b", rating: 7, finishedOn: "2026-01-01" },
-      ],
-      [],
-    );
-    expect(cards[0].next).toEqual({ kind: "completed", rating: 8 });
   });
 
   it("el bloque «siguiente» salta las obras optional aunque vayan primero en el orden", () => {
@@ -302,7 +255,6 @@ describe("buildLibrarySagaCards", () => {
       ["s"],
       [saga("s", "S")],
       [mem("s", "a", 1, true), mem("s", "b", 2)],
-      [],
       [item("a", "A"), item("b", "B")],
       [],
       [],
@@ -317,7 +269,6 @@ describe("buildLibrarySagaCards", () => {
       ["root"],
       [saga("root", "Cosmere"), saga("secretas", "Novelas secretas", "root", null, true)],
       [mem("root", "a", 1), mem("secretas", "s1", 1)],
-      [],
       [item("a", "A"), item("s1", "S1")],
       [],
       [],
@@ -338,7 +289,6 @@ describe("buildLibrarySagaCards", () => {
       ["s"],
       [saga("s", "S")],
       [mem("s", "a", 1, true), mem("s", "b", 2, true)],
-      [],
       [item("a", "A"), item("b", "B")],
       [],
       [],
@@ -349,7 +299,7 @@ describe("buildLibrarySagaCards", () => {
     expect(cards[0].next).toEqual({ kind: "allOptional" });
   });
 
-  it("saga genuinamente sin obras: ni `order` ni `counted` ni `tree` tienen nada → sí es «empty»", () => {
+  it("saga genuinamente sin obras: ni `order` ni `counted` ni `tree` tienen nada → sí es «empty», y hasGraph es false", () => {
     const cards = buildLibrarySagaCards(
       ["s"],
       [saga("s", "S")],
@@ -358,9 +308,23 @@ describe("buildLibrarySagaCards", () => {
       [],
       [],
       [],
-      [],
     );
     expect(cards[0].covers).toHaveLength(0);
     expect(cards[0].next).toEqual({ kind: "empty" });
+    expect(cards[0].hasGraph).toBe(false);
+  });
+
+  it("Task 4-bis: saga con miembros pero con el interruptor apagado (showMap=false) → hasGraph es false", () => {
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S", null, null, false, null, null, false)],
+      [mem("s", "a", 1), mem("s", "b", 2)],
+      [item("a", "A"), item("b", "B")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].covers).toHaveLength(2); // hay miembros: no es "empty"
+    expect(cards[0].hasGraph).toBe(false); // pero el curador no lo ha encendido
   });
 });

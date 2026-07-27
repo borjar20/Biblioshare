@@ -1809,6 +1809,7 @@ export type Database = {
             | Database["public"]["Enums"]["saga_placement"]
             | null
           position_in_parent: number | null
+          show_map: boolean
           source: string
           tmdb_collection_id: number | null
         }
@@ -1825,6 +1826,7 @@ export type Database = {
             | Database["public"]["Enums"]["saga_placement"]
             | null
           position_in_parent?: number | null
+          show_map?: boolean
           source?: string
           tmdb_collection_id?: number | null
         }
@@ -1841,6 +1843,7 @@ export type Database = {
             | Database["public"]["Enums"]["saga_placement"]
             | null
           position_in_parent?: number | null
+          show_map?: boolean
           source?: string
           tmdb_collection_id?: number | null
         }

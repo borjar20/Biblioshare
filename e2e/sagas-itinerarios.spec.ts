@@ -36,6 +36,19 @@ const UNIVERSO_ID = "33d7bb93-da3d-4453-a6da-1722beff134d";
 
 const COLLAB_EMAIL = process.env.COLLAB_USER_EMAIL ?? "borjar20+bibliosharecollab@gmail.com";
 const COLLAB_PASSWORD = process.env.COLLAB_USER_PASSWORD ?? "CollabTest1234pass";
+// Id fijo del mismo usuario de arriba (`borjar20+bibliosharecollab@gmail.com`
+// en dev, verificado por SQL 2026-07-27) — mismo patrón que el resto de UUIDs
+// de este fichero: fijos, sin resolverlos en cada test. Solo hace falta para
+// limpiar `saga_route_choices` por REST (más abajo, test "adoptar una ruta"),
+// que filtra por `user_id`, no por email.
+const COLLAB_USER_ID = "4265f51f-c784-4c5b-8153-3ef970800456";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+function adminHeaders() {
+  return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+}
 
 // Calcado del helper `loginAs` de sagas-v2-editor.spec.ts/sagas-v2-curacion.spec.ts
 // (patrón del repo: no importar entre specs de e2e, cada fichero es autónomo).
@@ -45,6 +58,27 @@ async function loginAsCollaborator(page: Page) {
   await page.fill('input[name="password"]', COLLAB_PASSWORD);
   await page.click('button[type="submit"]');
   await page.waitForURL("/");
+}
+
+// Hallazgo (2026-07-27, al correr la suite entera de sagas tras la fase 3):
+// esta ruta llevaba adoptada por `bibliosharecollab` desde el 2026-07-23
+// (verificado por SQL) — de una pasada de este mismo test que nunca limpió,
+// pese a que el comentario original del test la llamaba "idempotente". No lo
+// es: `AdoptRouteButton` pinta "Leyendo por aquí" en vez de "Leer por aquí"
+// en cuanto `detail.routeChoice === slug`, así que con la ruta YA adoptada el
+// `getByRole("button", { name: "Leer por aquí" })` de la línea de abajo nunca
+// resuelve y el test cuelga hasta el timeout — no es un fallo de fase 3 (este
+// fichero no lo tocó) ni del producto (el botón hace justo lo que su nombre
+// dice). Se limpia por REST antes de cada pasada para que la precondición del
+// test ("Leer por aquí" visible) se cumpla siempre, sin depender de qué dejó
+// la pasada anterior — el propio test ya deja la ruta adoptada al acabar
+// (diseño original), así que no hace falta un `finally` que la desadopte.
+async function clearRouteChoice(sagaId: string) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/saga_route_choices?user_id=eq.${COLLAB_USER_ID}&saga_id=eq.${sagaId}`,
+    { method: "DELETE", headers: adminHeaders() },
+  );
+  if (!res.ok) throw new Error(`clearRouteChoice: ${res.status} ${res.statusText} — ${await res.text()}`);
 }
 
 test.describe("itinerarios de lectura", () => {
@@ -84,6 +118,7 @@ test.describe("itinerarios de lectura", () => {
   });
 
   test("adoptar una ruta hace que la ficha abra por ella", async ({ page }) => {
+    await clearRouteChoice(UNIVERSO_ID);
     await loginAsCollaborator(page);
     await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=la-guardia`);
 

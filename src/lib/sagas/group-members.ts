@@ -31,6 +31,55 @@ const byPositionThenTitle = (a: DetailMember, b: DetailMember) => {
   return a.title.localeCompare(b.title);
 };
 
+/** Forma mínima que necesita `compareBlocksByPlacement`: los tres llamantes
+ *  (MemberGroup aquí, OrderSaga en curated-order.ts, LibSaga en
+ *  build-library-saga-cards.ts) ya traen estos tres campos con estos nombres,
+ *  así que ninguno tiene que construir un objeto aparte para ordenar. */
+export type BlockPlacement = {
+  /** Colocación del bloque en su padre (sagas.position_in_parent). */
+  positionInParent: number | null;
+  /** Colocación del bloque en su padre (sagas.placement_in_parent). */
+  placementInParent: SagaPlacement | null;
+  name: string;
+};
+
+/**
+ * Comparador ÚNICO del orden de los bloques (hijas) de una saga: colocación
+ * curada (`position_in_parent`) primero, desempate alfabético; un bloque sin
+ * colocar cae detrás de los colocados, y entre dos bloques SIN colocar
+ * desempata `minPos` — el hueco MÍNIMO de sus miembros (heurística vieja,
+ * issue #204), para no mover de sitio los bloques sin colocar que hoy hay en
+ * producción.
+ *
+ * Existe como función exportada, y no repetida en cada llamante, porque hasta
+ * el arreglo de la revisión de la Task 4 el MISMO comparador estaba escrito
+ * tres veces: aquí (`childGroups`, la ficha), en curated-order.ts (el orden
+ * principal) y en build-library-saga-cards.ts (el acento de los segmentos de
+ * progreso). Los tres coincidían por casualidad — tocar uno sin los otros dos
+ * reabre en silencio la issue #203 (dos pantallas discrepando sobre el mismo
+ * dato).
+ *
+ * `minPos` llega como función, no como valor, porque cada llamante lo calcula
+ * desde una colección de miembros distinta (`DetailMember[]`,
+ * `OrderMembership[]`, `LibMembership[]`); solo se invoca cuando NINGUNO de
+ * los dos bloques tiene colocación, igual que antes de la extracción.
+ */
+export function compareBlocksByPlacement<T extends BlockPlacement>(
+  a: T,
+  b: T,
+  minPos: (block: T) => number,
+): number {
+  if (a.positionInParent !== null && b.positionInParent !== null) {
+    return a.positionInParent - b.positionInParent || a.name.localeCompare(b.name);
+  }
+  if (a.positionInParent !== null) return -1;
+  if (b.positionInParent !== null) return 1;
+  const pa = minPos(a);
+  const pb = minPos(b);
+  if (pa !== pb) return pa - pb;
+  return a.name.localeCompare(b.name);
+}
+
 export function groupMembers(
   members: DetailMember[],
   children: SagaChildRef[],
@@ -58,19 +107,10 @@ export function groupMembers(
   // curado en el hueco 2, salía el quinto porque su única obra no tiene
   // número). Un bloque sin colocar conserva esa heurística y cae detrás: es lo
   // único que había antes, y en prod hay 6 bloques así que no deben moverse.
+  // Comparador compartido: ver `compareBlocksByPlacement`, arriba (issue #203).
   const childGroups = children
     .filter((c) => buckets.has(c.id))
-    .sort((a, b) => {
-      if (a.positionInParent !== null && b.positionInParent !== null) {
-        return a.positionInParent - b.positionInParent || a.name.localeCompare(b.name);
-      }
-      if (a.positionInParent !== null) return -1;
-      if (b.positionInParent !== null) return 1;
-      const ma = minPos(buckets.get(a.id)!);
-      const mb = minPos(buckets.get(b.id)!);
-      if (ma !== mb) return ma - mb;
-      return a.name.localeCompare(b.name);
-    });
+    .sort((a, b) => compareBlocksByPlacement(a, b, (c) => minPos(buckets.get(c.id)!)));
 
   // Colores: accent_color persistido manda; el resto rota SAGA_ACCENT_SEQUENCE
   // saltándose los ya usados, por orden de grupo (estable entre renders).
@@ -124,6 +164,22 @@ export function groupMembers(
     });
   }
   return groups;
+}
+
+/** Reparto entre la lista ordenada y «Cuando quieras», el MISMO que pinta la
+ *  ficha. Vive aquí, y no en el render, desde que el mapa (fase 3) necesita
+ *  recorrer los grupos en ese orden: dos vistas que reparten por su cuenta
+ *  acaban discrepando (issues #91 y #203).
+ *  OJO: esto NO filtra `groupMembers`, que debe seguir devolviendo todos los
+ *  grupos porque `computeProgress` los recorre para los segmentos del hero. */
+export function partitionGroups(groups: MemberGroup[]): {
+  ordered: MemberGroup[];
+  free: MemberGroup[];
+} {
+  return {
+    ordered: groups.filter((g) => g.placementInParent !== "libre"),
+    free: groups.filter((g) => g.placementInParent === "libre"),
+  };
 }
 
 // Avance del hero (spec §1.5). El parámetro se llama `counted`: desde el
