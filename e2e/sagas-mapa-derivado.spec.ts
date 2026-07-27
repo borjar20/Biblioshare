@@ -290,11 +290,15 @@ test("el generador crea un itinerario recorrible a partir de la curación", asyn
     expect(routeId).not.toBeNull();
 
     // La comprobación de verdad: 3 pasos, posiciones 1..3 sin huecos, en el
-    // MISMO orden que createCuratedOrder — el directo primero (Ronda de
-    // noche, único miembro directo), luego el bloque La Guardia por su propio
-    // `position` (¡Guardias! ¡Guardias!, Pies de barro).
+    // MISMO orden que createCuratedOrder — el bloque La Guardia primero, por
+    // su propio `position` (¡Guardias! ¡Guardias!, Pies de barro), y el
+    // directo (Ronda de noche, único miembro directo) AL FINAL. Arreglo de la
+    // revisión final de rama (punto 1): hasta ese arreglo el directo iba
+    // primero, un orden que discrepaba del mapa y de la ficha (que siempre
+    // pintan los directos al final, en el grupo «Nexo») — este test fijaba
+    // ese orden divergente como si fuera el correcto.
     const entries = await fetchRouteEntries(routeId!);
-    expect(entries.map((e) => e.item_id)).toEqual([RONDA_DE_NOCHE_ID, GUARDIAS_ID, PIES_DE_BARRO_ID]);
+    expect(entries.map((e) => e.item_id)).toEqual([GUARDIAS_ID, PIES_DE_BARRO_ID, RONDA_DE_NOCHE_ID]);
     expect(entries.map((e) => e.position)).toEqual([1, 2, 3]);
 
     // Recorrible: la ficha, en la ruta generada, ofrece los 3 pasos como

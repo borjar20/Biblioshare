@@ -706,7 +706,7 @@ Tras mergear y desplegar:
 2. El itinerario migrado del Cosmere se abre y sus pasos salen numerados sobre el mapa.
 3. Mundodisco enseña sus **cinco hilos paralelos sin cruces** en el mapa derivado, y sus 7 cruces dentro del itinerario. Está previsto en el spec.
 4. **El progreso del Cosmere sigue en 9 de 11.**
-5. Una saga **sin grafo** —cualquiera de las otras 77— ahora tiene mapa. Comprueba una.
+5. Una saga **sin grafo** —cualquiera de las otras 77— **puede** tener mapa en cuanto su curador encienda `sagas.show_map`: el interruptor es `false` por defecto y el backfill solo lo enciende para las 4 sagas que ya tenían nodos, así que esas 77 no lo enseñan hasta que alguien lo active a mano. Comprueba una activándolo.
 
 - [ ] **Step 4: El `drop`, solo después del paso 3**
 

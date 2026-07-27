@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createCuratedOrder } from "./curated-order";
 import { deriveSagaMap, type MapLookup } from "./derive-map";
-import type { MemberGroup } from "./group-members";
-import type { DetailMember } from "./types";
+import { groupMembers, type MemberGroup } from "./group-members";
+import type { DetailMember, SagaChildRef } from "./types";
 
 // Helpers: misma forma de MemberGroup/DetailMember que group-members.test.ts —
 // reutilizada, no reinventada. `block`/`freeBlock` fijan el sagaId del bloque
@@ -115,6 +116,35 @@ describe("deriveSagaMap", () => {
     );
   });
 
+  // Hallazgo 2 de la revisión final de rama: `derive-map.ts` recorría
+  // `Object.entries(windows)` sin mirar el `placement`/`placementInParent`
+  // del sujeto. «Solo lo `libre` tiene ventana» es una guarda que ningún
+  // CHECK de BD puede imponer entre tablas (mismo motivo que
+  // `freeItemWindow`/`freeBlockWindow` en get-saga-detail.ts, que la ficha sí
+  // aplica): con una fila rancia de un sujeto que dejó de ser `libre`, la
+  // ficha oculta la línea pero el mapa, sin esta guarda, seguiría pintando la
+  // arista.
+  it("una ventana cuyo sujeto NO es libre (obra fija) no produce arista", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("Z", 1)])]),
+      // "Z" es `fijo` (work() lo fija así): una fila rancia de ventana no
+      // debería producir arista aunque tenga anclas que sí resuelven.
+      { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      lookup(),
+    );
+    expect(map.edges).toEqual([]);
+  });
+
+  it("una ventana cuyo sujeto NO es libre (bloque fijo) no produce arista", () => {
+    const map = deriveSagaMap(
+      // block() fija placementInParent: "fijo" — un bloque colocado, no libre.
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("Z", 1)])]),
+      { "s:saga-Dos": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      lookup(),
+    );
+    expect(map.edges).toEqual([]);
+  });
+
   it("una entrada libre sin ventana queda suelta, sin aristas que la unan al resto", () => {
     const map = deriveSagaMap(
       groups([block("Uno", 1, [work("A", 1)]), freeBlock("Libre", [work("L", 1)])]),
@@ -184,6 +214,55 @@ describe("deriveSagaMap", () => {
 
   it("una saga sin nada curado no da mapa", () => {
     expect(deriveSagaMap([], {}, lookup())).toEqual({ nodes: [], edges: [] });
+  });
+
+  // Arreglo de la revisión final de rama (punto 1): `createCuratedOrder`
+  // ponía los miembros directos PRIMERO, pero `groupMembers` —de donde salen
+  // la ficha y el mapa derivado— los pinta AL FINAL, detrás de las hijas. La
+  // divergencia era observable en el Cosmere (un único miembro directo,
+  // *Arcanum Ilimitado*): el mapa lo pintaba el último y el itinerario
+  // generado lo habría abierto el primero. Ninguna prueba ataba los dos
+  // órdenes entre sí — esta lo hace: para los MISMOS datos (una saga con un
+  // bloque y un miembro directo), el orden de `createCuratedOrder` tiene que
+  // coincidir con el orden de los nodos que produce `deriveSagaMap`
+  // (traduciendo la clave `tipo:id` de uno a la `i:tipo:id` del otro).
+  it("el orden de createCuratedOrder coincide con el de los nodos del mapa, para los mismos datos", () => {
+    const directo = work("directo", 1);
+    const c1 = work("c1", 1);
+    const c2 = work("c2", 2);
+    const blockChild: SagaChildRef = {
+      id: "saga-Bloque",
+      name: "Bloque",
+      accentColor: null,
+      positionInParent: 1,
+      placementInParent: "fijo",
+      optionalInParent: false,
+    };
+
+    const memberGroups = groupMembers(
+      [directo, { ...c1, groupSagaId: "saga-Bloque" }, { ...c2, groupSagaId: "saga-Bloque" }],
+      [blockChild],
+    );
+    const map = deriveSagaMap(memberGroups, {}, lookup());
+
+    const order = createCuratedOrder(
+      [
+        { id: "R", name: "R", parentSagaId: null, positionInParent: null, placementInParent: null },
+        { id: "saga-Bloque", name: "Bloque", parentSagaId: "R", positionInParent: 1, placementInParent: "fijo" },
+      ],
+      [
+        { sagaId: "R", itemType: "book", itemId: "directo", position: 1 },
+        { sagaId: "saga-Bloque", itemType: "book", itemId: "c1", position: 1 },
+        { sagaId: "saga-Bloque", itemType: "book", itemId: "c2", position: 2 },
+      ],
+      (key) => key,
+    );
+
+    expect(map.nodes.map((n) => n.id)).toEqual(order("R").map((key) => `i:${key}`));
+    // Fija el resultado, no solo la igualdad entre los dos: si los dos
+    // volvieran a discreparse EN EL MISMO SENTIDO por un cambio futuro, la
+    // comparación relativa seguiría en verde y esta prueba no lo notaría.
+    expect(order("R")).toEqual(["book:c1", "book:c2", "book:directo"]);
   });
 
   // Task 3: el itinerario, encima del mapa.

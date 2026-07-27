@@ -71,7 +71,13 @@ describe("buildLibrarySagaCards", () => {
     expect(cards[0].hasGraph).toBe(true);
   });
 
-  it("universo: directos primero, hijas por menor position (sin colocar), doble membresía deduplicada", () => {
+  it("universo: hijas por menor position (sin colocar) primero, directos al final, doble membresía deduplicada", () => {
+    // Arreglo de la revisión final de rama (punto 1): createCuratedOrder ya
+    // no pone los directos primero — van AL FINAL, detrás de las hijas,
+    // igual que la ficha (group-members.ts) y el mapa derivado. "nexo" es
+    // miembro directo de "u" (position 1) Y de "h2" (position 3, doble
+    // membresía): con las hijas primero, la ocurrencia que sobrevive a la
+    // dedup es la de "h2" (después de "y", su hueco 2), no la de "u".
     const cards = buildLibrarySagaCards(
       ["u"],
       [saga("u", "Universo"), saga("h1", "Hija tardía", "u"), saga("h2", "Hija temprana", "u")],
@@ -86,9 +92,9 @@ describe("buildLibrarySagaCards", () => {
       [],
       [],
     );
-    // orden: directos de u → h2 (minPos 2, sin colocar) → h1 (minPos 9); nexo deduplicado
+    // orden: h2 (minPos 2, sin colocar) → h1 (minPos 9) → directos de u; "y" abre
     expect(cards[0].progress.total).toBe(3);
-    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "nexo" });
+    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "y" });
   });
 
   it("el acento por defecto de un bloque sigue su colocación curada, no el hueco mínimo de sus miembros (issue #203)", () => {

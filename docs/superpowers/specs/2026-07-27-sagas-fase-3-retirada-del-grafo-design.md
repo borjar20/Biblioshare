@@ -128,7 +128,10 @@ diagrama clásico de esa saga.
 Tres cosas que solo existían porque el grafo se curaba a mano:
 
 - **La colocación a ojo** (`x`/`y`). Se sustituye por el cálculo de arriba. Es lo que hace que el
-  mapa exista para **todas** las sagas curadas y no solo para las cuatro que alguien dibujó.
+  mapa **pueda existir** para todas las sagas curadas y no solo para las cuatro que alguien dibujó
+  a mano — "pueda", no "exista ya": el curador decide con el interruptor `sagas.show_map`
+  (`false` por defecto; el backfill solo lo enciende para esas cuatro), así que una saga curada
+  sin grafo no enseña mapa hasta que alguien lo active.
 - **`label_override`.** Un nodo podía llamarse distinto que la obra. **No se pierde nada: hay 0 de 55
   con valor** **[MEDIDO]**. El nodo es la obra y se llama como ella.
 - **`level` (`principal`/`menor`).** **53 `principal` y 2 `menor` de 55** **[MEDIDO]**. Se sustituye

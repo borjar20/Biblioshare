@@ -90,13 +90,18 @@ describe("createCuratedOrder", () => {
     expect(order("R")).toEqual(["book:z", "book:a"]);
   });
 
-  it("un nodo-saga expande el orden principal de la hija", () => {
+  it("un nodo-saga expande el orden principal de la hija, y los directos del padre van al final", () => {
+    // Arreglo de la revisión final de rama (punto 1): los miembros directos
+    // ya no van primero — van DETRÁS de las hijas, igual que `groupMembers`
+    // (group-members.ts) los pinta en la ficha y en el mapa derivado. Antes
+    // de este arreglo esta prueba esperaba [b1, h1, h2]: la divergencia que
+    // ninguna prueba ataba entre sí (ver el test de más abajo que sí lo hace).
     const order = createCuratedOrder(
       [root("uni"), child("hija", "uni", { positionInParent: 1 })],
       [member("uni", "b1", 1), member("hija", "h1", 1), member("hija", "h2", 2)],
       titleOf,
     );
-    expect(order("uni")).toEqual([k("b1"), k("h1"), k("h2")]);
+    expect(order("uni")).toEqual([k("h1"), k("h2"), k("b1")]);
   });
 
   // Hallazgo 3 (revisión Task 6): ninguno de los tests de arriba ejercitaba

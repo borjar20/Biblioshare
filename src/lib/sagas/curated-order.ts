@@ -95,7 +95,6 @@ export function createCuratedOrder(
         titleOf(itemKey(b.itemType, b.itemId)),
       );
     });
-    out.push(...direct.map((m) => itemKey(m.itemType, m.itemId)));
 
     // Colocación curada (issue #204): las hijas ya no se ordenan por el hueco
     // mínimo de sus miembros, sino por `position_in_parent` — el mismo
@@ -108,6 +107,24 @@ export function createCuratedOrder(
       compareBlocksByPlacement(a, b, (s) => minPos(s.id)),
     );
     for (const c of children) out.push(...walk(c.id, depth + 1, visited));
+
+    // Los miembros directos van AL FINAL, detrás de las hijas (arreglo de la
+    // revisión final de rama, punto 1): hasta este arreglo iban primero, y
+    // `groupMembers` (group-members.ts) —de donde salen la ficha y el mapa
+    // derivado— los pinta al final, en el grupo «Nexo». La divergencia era
+    // observable en el Cosmere, que tiene un único miembro directo
+    // (*Arcanum Ilimitado*): el mapa lo pintaba el último (como la ficha) y
+    // este orden lo abría el primero, así que el botón «Generar desde la
+    // curación» habría creado un itinerario que empieza justo por el libro
+    // que la migración de esta fase excluye a propósito por no haber tenido
+    // nunca hueco (`order_no`). Decisión del responsable del producto (issue
+    // de la revisión final de la fase 3): manda la ficha. Cambio en vivo en
+    // los tres consumidores de `createCuratedOrder` — el generador del
+    // itinerario, la expansión de un bloque dentro de un itinerario
+    // (route-view.tsx) y el «siguiente»/portadas de las cards de Mi
+    // Biblioteca (build-library-saga-cards.ts) — así que los tres coinciden
+    // ahora con la ficha y con el mapa.
+    out.push(...direct.map((m) => itemKey(m.itemType, m.itemId)));
     return out;
   }
 

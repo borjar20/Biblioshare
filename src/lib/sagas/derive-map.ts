@@ -1,7 +1,7 @@
 import type { SagaAccentToken } from "./accents";
 import { partitionGroups, type MemberGroup } from "./group-members";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
-import type { DetailMember, ResolvedWindow } from "./types";
+import type { DetailMember, ResolvedWindow, SagaPlacement } from "./types";
 
 // Derivación PURA del mapa (fase 3, Task 1): sustituye a las tablas curadas a
 // mano `saga_nodes`/`saga_edges` — el mapa se DERIVA de lo que ya está curado
@@ -210,6 +210,25 @@ export function deriveSagaMap(
     return byId.has(key) ? key : null;
   };
 
+  // Placement ACTUAL de cada posible sujeto de ventana (obra directa u obra
+  // de bloque → itemPlacement; bloque-subsaga → blockPlacement): «solo lo
+  // `libre` tiene ventana» es una guarda que NINGÚN CHECK de BD puede
+  // imponer entre `saga_items`/`sagas` y `saga_placement_windows` — misma
+  // guarda que la ficha aplica con `freeItemWindow`/`freeBlockWindow`
+  // (get-saga-detail.ts), y por el mismo motivo: `windows` no confía en que
+  // no llegue una fila rancia de un sujeto que dejó de ser `libre` (hoy no
+  // hay camino de interfaz que la deje ahí — `sendTo`/`pairWith` limpian la
+  // ventana y el RPC hace reemplazo total — pero el mapa no puede confiar en
+  // que ningún camino futuro la deje). Sin esta guarda, una fila así haría
+  // que la ficha ocultara la línea y el mapa siguiera pintando la arista:
+  // dos vistas discrepando de la misma fila.
+  const itemPlacement = new Map<string, SagaPlacement | null>();
+  const blockPlacement = new Map<string, SagaPlacement | null>();
+  for (const group of blocks) {
+    if (group.sagaId !== null) blockPlacement.set(group.sagaId, group.placementInParent);
+    for (const m of group.members) itemPlacement.set(itemKey(m), m.placement);
+  }
+
   // Aristas de ventana, una por cada entrada que tenga una. El sujeto se
   // resuelve como "first" (por donde se entra en un bloque); un ancla
   // `after` se resuelve como "last" (se puede empezar cuando ese bloque ha
@@ -217,6 +236,11 @@ export function deriveSagaMap(
   // extremos no resuelve a un nodo del mapa, no hay arista — misma regla que
   // la ficha con un ancla rota.
   for (const [subjectKey, w] of Object.entries(windows)) {
+    const subjectSagaId = blockSagaId(subjectKey);
+    const subjectPlacement =
+      subjectSagaId !== null ? (blockPlacement.get(subjectSagaId) ?? null) : (itemPlacement.get(subjectKey) ?? null);
+    if (subjectPlacement !== "libre") continue;
+
     const subject = resolveEntry(subjectKey, "first");
     if (subject === null) continue;
 
