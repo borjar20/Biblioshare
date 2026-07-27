@@ -31,3 +31,10 @@
 drop function if exists public.save_saga_graph(uuid, jsonb, jsonb);
 drop table if exists public.saga_edges;
 drop table if exists public.saga_nodes;
+
+-- Y sus dos enums, que se quedaban huérfanos: al irse las tablas no queda
+-- ninguna columna ni ninguna función que los use (comprobado contra
+-- `pg_attribute`/`pg_proc` en dev y en prod: 0 y 0). Un tipo que no tipa nada
+-- es ruido para quien lea el esquema dentro de seis meses.
+drop type if exists public.saga_edge_type;
+drop type if exists public.saga_node_level;
