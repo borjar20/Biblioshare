@@ -46,11 +46,17 @@ export async function getSagaSequence(
     // Ventanas de ESTA saga (20260727_saga_placement_windows.sql). Los títulos
     // de sus anclas NO salen de itemRows/childRows: un ancla puede apuntar a
     // una obra de un nieto, así que se resuelven con getAnchorOptions, que
-    // recorre el subárbol entero, más abajo.
+    // recorre el subárbol entero, más abajo. `created_at` viaja en el select
+    // porque hydrateWindows desempata con ella (hoy este editor solo escribe
+    // ventanas de la saga propia, así que el unique impide que ESTA query
+    // devuelva dos filas para el mismo sujeto, pero hydrateWindows es pura y
+    // hermana de resolveWindows en get-saga-detail.ts, que sí puede
+    // recibirlas — mismo criterio ahí y aquí, ver el comentario de la
+    // función).
     supabase
       .from("saga_placement_windows")
       .select(
-        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id",
+        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
       )
       .eq("saga_id", sagaId),
   ]);
@@ -174,6 +180,9 @@ export type RawWindowRow = {
   before_item_type: ItemType | null;
   before_item_id: string | null;
   before_child_saga_id: string | null;
+  /** Para el desempate determinista entre dos sagas hermanas con ventana
+   *  sobre la misma obra, ver `hydrateWindows`. */
+  created_at: string;
 };
 
 /** Resuelve las filas crudas de `saga_placement_windows` a un mapa de
@@ -216,10 +225,27 @@ export function hydrateWindows(
       : { kind: "block", itemType: null, itemId: null, childSagaId, title };
   };
 
+  // Desempate determinista: los uniques de `saga_placement_windows` son POR
+  // SAGA (ver la migración), así que nada impide que dos sagas HERMANAS del
+  // mismo subárbol tengan cada una su propia fila de ventana para la MISMA
+  // obra compartida (multi-membership). Hoy `rows` solo trae las de ESTA
+  // saga (el unique ya lo impide dentro de una sola), pero esta función es
+  // pura y hermana de `resolveWindows` (get-saga-detail.ts), que sí puede
+  // recibir el choque — mismo criterio ahí que aquí: gana la fila más
+  // antigua (`created_at` menor) en vez de depender del orden físico que
+  // devuelva Postgres, y se ordena dentro de la función (no se confía en que
+  // el llamador ya lo haya hecho) para que el resultado sea determinista por
+  // sí solo pase lo que pase el orden en que lleguen las filas.
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
+  const seenSubjects = new Set<string>();
   const result = new Map<string, DraftWindow>();
-  for (const r of rows) {
+  for (const r of sorted) {
     const subjectKey = keyOf(r.item_type, r.item_id, r.child_saga_id);
     if (subjectKey === null) continue; // fila imposible: el CHECK del sujeto lo impide
+    if (seenSubjects.has(subjectKey)) continue; // ya resuelto por la fila más antigua
+    seenSubjects.add(subjectKey);
     const after = resolveAnchor(r.after_item_type, r.after_item_id, r.after_child_saga_id);
     const before = resolveAnchor(r.before_item_type, r.before_item_id, r.before_child_saga_id);
     if (after === null && before === null) continue; // sin ninguna ancla que resuelva: sin ventana

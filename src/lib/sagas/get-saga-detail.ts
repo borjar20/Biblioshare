@@ -186,10 +186,26 @@ export function resolveWindows(
     return key === null ? null : (anchorTitles.get(key) ?? null);
   };
 
+  // Desempate determinista: los uniques de `saga_placement_windows` son POR
+  // SAGA (ver la migración), así que nada impide que dos sagas HERMANAS del
+  // mismo subárbol tengan cada una su propia fila de ventana para la MISMA
+  // obra compartida (multi-membership) — `rows` aquí es el subárbol entero
+  // (sagaIds), no una sola saga. Mismo criterio que `byItem` más arriba: gana
+  // la fila más antigua (`created_at` menor) en vez de depender del orden
+  // físico que devuelva Postgres. A diferencia de `byItem`, que confía en el
+  // `.order()` de su query, aquí se ordena dentro de la función: es pura y se
+  // prueba sin Supabase, así que tiene que ser determinista por sí sola
+  // pase lo que pase el orden en que lleguen las filas.
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
+  const seenSubjects = new Set<string>();
   const result: Record<string, ResolvedWindow> = {};
-  for (const r of rows) {
+  for (const r of sorted) {
     const subjectKey = keyOf(r.item_type, r.item_id, r.child_saga_id);
     if (subjectKey === null) continue; // fila imposible: el CHECK del sujeto lo impide
+    if (seenSubjects.has(subjectKey)) continue; // ya resuelto por la fila más antigua
+    seenSubjects.add(subjectKey);
     const afterTitle = resolveTitle(r.after_item_type, r.after_item_id, r.after_child_saga_id);
     const beforeTitle = resolveTitle(r.before_item_type, r.before_item_id, r.before_child_saga_id);
     if (afterTitle === null && beforeTitle === null) continue; // sin ninguna ancla que resuelva: sin ventana
@@ -478,10 +494,14 @@ export async function getSagaDetail(
     // `meta`/`descendants`, ya en memoria: sin cargador nuevo, sin llamar a
     // getAnchorOptions desde aquí (ese cargador es del editor, que solo mira
     // una saga a la vez más su subárbol para las OPCIONES, no para hidratar).
+    // `created_at` viaja en el select porque resolveWindows desempata con ella
+    // (dos sagas hermanas pueden compartir ventana sobre la misma obra, ver su
+    // comentario) — sin `.order()` aquí: resolveWindows ordena ella misma, no
+    // confía en que el llamador ya lo haya hecho.
     supabase
       .from("saga_placement_windows")
       .select(
-        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id",
+        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
       )
       .in("saga_id", sagaIds),
   ]);

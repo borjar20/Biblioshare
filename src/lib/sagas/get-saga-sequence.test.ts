@@ -48,6 +48,7 @@ const w = (fields: Partial<RawWindowRow>): RawWindowRow => ({
   item_type: null, item_id: null, child_saga_id: null,
   after_item_type: null, after_item_id: null, after_child_saga_id: null,
   before_item_type: null, before_item_id: null, before_child_saga_id: null,
+  created_at: "2026-01-01T00:00:00.000Z",
   ...fields,
 });
 
@@ -114,4 +115,37 @@ it("si las dos anclas dejan de resolver, el sujeto no aparece en el mapa: window
     new Map(),
   );
   expect(windows.has("i:book:n2")).toBe(false);
+});
+
+// Desempate entre dos sagas HERMANAS con ventana sobre la MISMA obra
+// compartida (revisión de Task 6): el unique de saga_placement_windows es
+// POR SAGA, así que ambas filas pueden coexistir en BD. Gana la más antigua
+// (mismo criterio que `byItem` en get-saga-detail.ts, y que resolveWindows,
+// su hermana en ese fichero), y eso tiene que valer sin importar en qué
+// orden lleguen las filas — se prueba pasándolas en los dos órdenes y
+// comprobando que el resultado no cambia.
+it("dos sagas hermanas con ventana sobre la misma obra: gana siempre la más antigua, en cualquier orden de entrada", () => {
+  const titles = new Map([
+    ["i:book:a", "Ancla vieja"],
+    ["i:book:b", "Ancla nueva"],
+  ]);
+  const older = w({
+    item_type: "book", item_id: "n2",
+    after_item_type: "book", after_item_id: "a",
+    created_at: "2026-01-01T00:00:00.000Z",
+  });
+  const newer = w({
+    item_type: "book", item_id: "n2",
+    after_item_type: "book", after_item_id: "b",
+    created_at: "2026-02-01T00:00:00.000Z",
+  });
+  const expected = {
+    after: { kind: "item", itemType: "book", itemId: "a", childSagaId: null, title: "Ancla vieja" },
+    before: null,
+  };
+
+  expect(hydrateWindows([older, newer], titles).get("i:book:n2")).toEqual(expected);
+  // Mismas dos filas, orden invertido: el resultado tiene que ser idéntico —
+  // no puede depender del orden en que Postgres las devuelva.
+  expect(hydrateWindows([newer, older], titles).get("i:book:n2")).toEqual(expected);
 });
