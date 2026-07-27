@@ -20,11 +20,13 @@ describe("buildRouteList", () => {
   });
 
   it("Task 4-bis: hasGraph=false (interruptor apagado o sin mapa) — «lectura» desaparece pero las curadas y «Publicación» siguen", () => {
-    // hasGraph ya no es "hay grafo que dibujar": desde que el mapa se deriva
-    // de la curación, es `saga.showMap && graph !== null` — el curador puede
-    // tener nodos y aun así el interruptor apagado. buildRouteList no sabe ni
-    // le importa la razón; solo que sin ese booleano no ofrece "lectura". Las
-    // curadas y "publicación" no dependen de él en absoluto.
+    // hasGraph sigue siendo "hay grafo que dibujar" (graph !== null) — pero
+    // desde el arreglo tras revisión de Task 4-bis, `graph` mismo ya incorpora
+    // el interruptor (`resolveSagaGraph` en get-saga-detail.ts): el curador
+    // puede tener nodos curados y aun así `graph === null` si apagó el
+    // interruptor. buildRouteList no sabe ni le importa la razón; solo que sin
+    // ese booleano no ofrece "lectura". Las curadas y "publicación" no
+    // dependen de él en absoluto.
     const list = buildRouteList(
       [{ id: "route-guardia", slug: "guardia", name: "La Guardia", summary: "Policíaco", position: 1 }],
       labels,

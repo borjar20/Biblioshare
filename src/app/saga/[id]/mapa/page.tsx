@@ -21,8 +21,14 @@ export async function generateMetadata({
 
 // Mapa a pantalla completa (frame C): pensado para móvil; en PC el grafo ya va
 // embebido en la ficha (frame E), pero la ruta funciona igual si se comparte
-// un link directo. Sin grafo (hasGraph=false) no hay nada que enseñar aquí:
-// redirige a la ficha en vez de dejar el visor vacío.
+// un link directo. Sin grafo no hay nada que enseñar aquí: redirige a la
+// ficha en vez de dejar el visor vacío. `detail.graph` (no `hasGraph`) es
+// aposta: desde `resolveSagaGraph` (fase 3, Task 4-bis, arreglo tras
+// revisión) `graph` ya es `null` tanto sin nada curado como con el
+// interruptor `show_map` apagado, así que un link directo a esta URL con el
+// interruptor apagado redirige igual que si la saga no tuviera nada que
+// dibujar — el interruptor manda aquí también, sin que este archivo tenga que
+// mirarlo explícitamente.
 export default async function SagaMapPage({
   params,
 }: {

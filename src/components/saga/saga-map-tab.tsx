@@ -39,6 +39,12 @@ export async function SagaMapTab({
   // `publicacion` (las sintéticas) ya tienen su propia rama más abajo y
   // nunca llegan aquí. Sin mapa (graph === null) no hay nada que resaltar —
   // la pestaña sigue pintando solo la lista de RouteView, como siempre.
+  // `graph === null` cubre las dos razones a la vez (fase 3, Task 4-bis,
+  // arreglo tras revisión): sin nada curado que dibujar, O con el interruptor
+  // `show_map` apagado — `resolveSagaGraph` (get-saga-detail.ts) ya resuelve
+  // eso antes de que `detail.graph` llegue aquí, así que este `&& graph` basta
+  // para que el panel resaltado NUNCA se pinte con el interruptor apagado, sin
+  // que este archivo tenga que consultar `showMap` por su cuenta.
   let curatedGraph: SagaGraph | null = null;
   if (activeRoute !== "publicacion" && activeRoute !== "lectura" && graph) {
     const row = detail.routes.find((r) => r.slug === activeRoute);

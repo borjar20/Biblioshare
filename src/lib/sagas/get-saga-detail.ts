@@ -55,13 +55,19 @@ export type SagaDetail = {
   avgRating: number | null;
   isFollowing: boolean;
   isAuthenticated: boolean;
-  /** Grafo resuelto, o null si no hay nada curado que dibujar. */
-  graph: SagaGraph | null;
   /**
-   * `saga.showMap && graph !== null` (fase 3, Task 4-bis): el curador decide,
-   * con el interruptor del editor, si esta saga ENSEÑA su mapa — `graph` por
-   * sí solo ya no es señal de que aporte, desde que se deriva de la curación.
+   * Grafo resuelto, o null si no hay nada curado que dibujar O si el curador
+   * apagó el interruptor `show_map` (fase 3, Task 4-bis, arreglo tras
+   * revisión: `resolveSagaGraph` aplica el interruptor EN EL ORIGEN, antes de
+   * que `graph` salga de `getSagaDetail`). Todo consumidor que compruebe
+   * `graph !== null` respeta el interruptor por construcción — no hace falta
+   * que cada uno mire `hasGraph`/`saga.showMap` por su cuenta.
    */
+  graph: SagaGraph | null;
+  /** `graph !== null` (tautología, fase 3 Task 4-bis): nombre aparte porque
+   *  alimenta el aviso retirado, el badge de la card y la ruta sintética
+   *  `lectura` del selector — la intención de esos tres sitios es "¿esta saga
+   *  ENSEÑA su mapa?", no "¿hay un `SagaGraph`?", aunque hoy respondan igual. */
   hasGraph: boolean;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
@@ -252,6 +258,34 @@ export function freeBlockWindow(
 ): ResolvedWindow | null {
   if (group.placementInParent !== "libre" || group.sagaId === null) return null;
   return windows[`s:${group.sagaId}`] ?? null;
+}
+
+/**
+ * La regla «con el interruptor apagado no hay mapa» (fase 3, Task 4-bis,
+ * arreglo tras revisión), aislada y pura: EN EL ORIGEN, no en cada
+ * consumidor. Antes `SagaDetail.graph` salía del grafo derivado sin más
+ * (`derivedGraph.nodes.length > 0 ? derivedGraph : null`) y solo `hasGraph`
+ * miraba `saga.showMap` — así que cualquier sitio que comprobara
+ * `graph !== null` en vez de `hasGraph` se saltaba el interruptor. Dos lo
+ * hacían de hecho: `/saga/[id]/mapa/page.tsx` (`if (!graph) redirect(...)`) y
+ * el panel de grafo resaltado de una ruta curada en `saga-map-tab.tsx`
+ * (`... && graph`), los dos verificados en vivo con el interruptor apagado.
+ *
+ * Con `graph` ya `null` cuando `showMap` es `false`, TODO consumidor que
+ * comprueba `graph !== null` —los dos de arriba y cualquiera que venga
+ * después— respeta el interruptor por construcción, sin tener que acordarse
+ * de mirar `showMap` en cada sitio nuevo. `hasGraph` se queda en
+ * `graph !== null`, que vuelve a ser una tautología cierta (como antes de que
+ * `showMap` existiera), así que no hace falta tocarla ni a sus consumidores.
+ *
+ * Pura y exportada para poder probarla sin Supabase — es la única función que
+ * sostiene esta regla, y ningún tipo la impone: `SagaGraph | null` acepta
+ * perfectamente un grafo no vacío con el interruptor apagado si nadie llama a
+ * esta función antes de asignarlo.
+ */
+export function resolveSagaGraph(showMap: boolean, derivedGraph: SagaGraph): SagaGraph | null {
+  if (!showMap) return null;
+  return derivedGraph.nodes.length > 0 ? derivedGraph : null;
 }
 
 export async function getSagaDetail(
@@ -579,21 +613,22 @@ export async function getSagaDetail(
     groupAccent,
     groupName: groupNameMap,
   });
-  // `SagaDetail.graph` sigue siendo `SagaGraph | null`: null cuando no hay
-  // nada curado que pintar — sigue siendo el origen de «/saga/[id]/mapa» (esa
-  // página redirige con `!graph`, no con `hasGraph`: un mapa sin nada que
-  // dibujar es un caso distinto de un mapa que el curador decidió no anunciar).
-  const graph = derivedGraph.nodes.length > 0 ? derivedGraph : null;
+  // `SagaDetail.graph` sigue siendo `SagaGraph | null`, y sigue siendo el
+  // origen de «/saga/[id]/mapa» (esa página redirige con `!graph`, no con
+  // `hasGraph`) y de cualquier otro consumidor que solo mire `graph !== null`
+  // — pero ahora el interruptor manda EN EL ORIGEN: `resolveSagaGraph` lo
+  // aplica antes de que `graph` salga de esta función, así que `null` cubre
+  // los dos motivos a la vez ("no hay nada curado que pintar" Y "el curador
+  // apagó el interruptor"), y ningún consumidor tiene que distinguirlos.
+  const graph = resolveSagaGraph(saga.showMap, derivedGraph);
 
-  // hasGraph (fase 3, Task 4-bis): ya NO es "hay algo que dibujar" —
-  // `deriveSagaMap` convierte cualquier miembro en nodo, así que eso pasó a
-  // ser casi siempre cierto y dejó de servir de señal. El curador decide con
-  // el interruptor de `saga-meta-editor.tsx` (sagas.show_map) si ESTA saga
-  // enseña su mapa; sin nada curado que dibujar (graph === null) el
-  // interruptor no puede compensarlo. Este booleano, no `graph !== null`, es
-  // el que alimenta el aviso retirado, el badge de la card y la ruta
-  // sintética `lectura` del selector — los tres sitios listados en el brief.
-  const hasGraph = saga.showMap && graph !== null;
+  // hasGraph (fase 3, Task 4-bis): vuelve a ser la tautología `graph !== null`
+  // — el interruptor ya no hace falta comprobarlo aquí porque `graph` ya lo
+  // respeta (ver `resolveSagaGraph`). Se mantiene como campo aparte, no
+  // inline en cada consumidor, porque sigue siendo el nombre que cuenta la
+  // intención en el aviso retirado, el badge de la card y la ruta sintética
+  // `lectura` del selector — los tres sitios listados en el brief original.
+  const hasGraph = graph !== null;
 
   // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
   // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { freeBlockWindow, freeItemWindow, resolveWindows } from "./get-saga-detail";
+import { freeBlockWindow, freeItemWindow, resolveSagaGraph, resolveWindows } from "./get-saga-detail";
 import type { RawWindowRow } from "./get-saga-sequence";
 import type { MemberGroup } from "./group-members";
+import type { SagaGraph, SagaGraphNode } from "./map-types";
 import type { DetailMember, ResolvedWindow } from "./types";
 
 // Mismo helper que get-saga-sequence.test.ts: una fila cruda de
@@ -235,5 +236,60 @@ describe("freeBlockWindow", () => {
   it("grupo nexo (sagaId null): null aunque el mapa traiga algo para 's:null'", () => {
     const g = group({ sagaId: null, placementInParent: "libre" });
     expect(freeBlockWindow({}, g)).toBeNull();
+  });
+});
+
+// Arreglo tras la revisión de Task 4-bis: el interruptor `show_map` mandaba
+// solo en `hasGraph`, no en `graph` — así que `/saga/[id]/mapa/page.tsx`
+// (que comprueba `!graph`, nunca `hasGraph`) y el panel de grafo resaltado de
+// una ruta curada en `saga-map-tab.tsx` (`... && graph`) se lo saltaban los
+// dos, verificado en vivo con el interruptor apagado. `resolveSagaGraph` es
+// la regla aislada y pura: "con el interruptor apagado no hay mapa", sin
+// Supabase de por medio. Cubre exactamente lo que antes solo se veía
+// mirando el navegador.
+const node = (over: Partial<SagaGraphNode> = {}): SagaGraphNode => ({
+  id: over.id ?? "n1",
+  kind: "item",
+  x: 0,
+  y: 0,
+  level: "principal",
+  orderNo: 1,
+  label: "Nodo",
+  accent: "beige",
+  status: null,
+  role: null,
+  coverUrl: null,
+  covers: [],
+  href: "/libro/n1",
+  memberCount: null,
+  groupSagaId: null,
+  groupName: null,
+  step: null,
+  ...over,
+});
+
+const emptyGraph: SagaGraph = { nodes: [], edges: [] };
+const graphWithNodes: SagaGraph = { nodes: [node()], edges: [] };
+
+describe("resolveSagaGraph", () => {
+  it("interruptor apagado, aunque haya nodos curados: null — el interruptor manda en el origen", () => {
+    // Este es el caso exacto de los dos bypasses: nodos curados presentes
+    // (`graphWithNodes`, no vacío) pero `showMap=false`. Antes del arreglo,
+    // el `graph` que salía de getSagaDetail conservaba estos nodos igualmente
+    // y solo `hasGraph` lo escondía — así que un consumidor que mirara
+    // `graph` directamente (las dos vías rotas) lo seguía pintando.
+    expect(resolveSagaGraph(false, graphWithNodes)).toBeNull();
+  });
+
+  it("interruptor encendido con nodos curados: el grafo tal cual, sin envolver ni copiar", () => {
+    expect(resolveSagaGraph(true, graphWithNodes)).toBe(graphWithNodes);
+  });
+
+  it("interruptor encendido pero sin nada curado que dibujar (grafo vacío): null — el interruptor no puede compensar la falta de curación", () => {
+    expect(resolveSagaGraph(true, emptyGraph)).toBeNull();
+  });
+
+  it("interruptor apagado y grafo vacío: null por las dos razones a la vez, sigue siendo null", () => {
+    expect(resolveSagaGraph(false, emptyGraph)).toBeNull();
   });
 });
