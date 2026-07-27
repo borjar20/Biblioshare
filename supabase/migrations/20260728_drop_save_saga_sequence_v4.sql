@@ -1,0 +1,17 @@
+-- supabase/migrations/20260728_drop_save_saga_sequence_v4.sql
+--
+-- Tercer y último paso de la danza de la fase 2b. El envoltorio de CUATRO
+-- argumentos de `save_saga_sequence` existió por una razón concreta: añadir
+-- `p_windows` no reemplazó la función vieja, creó una SOBRECARGA, y entre la
+-- migración y el despliegue el bundle que servía en producción seguía llamando
+-- con cuatro. Sin el envoltorio se habría quedado sin función.
+--
+-- Ya no lo llama nadie. Comprobado en producción antes de borrarlo: la ficha
+-- del Cosmere pinta la ventana de «Nacidos de la Bruma. Era 2» («a partir de
+-- Era 1 · recomendable antes de Viento y Verdad»), y esa fila solo pudo
+-- escribirla el bundle nuevo, que llama con cinco.
+--
+-- Se retira porque dos firmas conviviendo sin motivo son una trampa para quien
+-- venga después: no sabría cuál manda, y la de cuatro BORRA las ventanas de la
+-- saga (delega con `p_windows = '[]'`, que el RPC trata como reemplazo total).
+drop function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb);

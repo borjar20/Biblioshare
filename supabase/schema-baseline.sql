@@ -7926,13 +7926,13 @@ update sagas s
 -- `p_windows` contra una función que no existe y ningún guardado del
 -- editor funciona en producción.
 --
--- La TERCERA migración del plan (`20260728_drop_save_saga_sequence_v4.sql`,
--- que retira el envoltorio de cuatro argumentos de `save_saga_sequence`)
--- TODAVÍA NO EXISTE: se escribe y se aplica, a dev y a prod, solo
--- después de confirmar que el bundle nuevo (el que manda `p_windows`) ya
--- está sirviendo en producción — ver el Step 4 del plan y el comentario
--- del envoltorio más abajo. Se anexará aquí en una pasada futura, no en
--- esta.
+-- La TERCERA migración (`20260728_drop_save_saga_sequence_v4.sql`, al
+-- final de este anexo) retira el envoltorio de cuatro argumentos, y se
+-- aplicó a dev y a prod el 2026-07-27 DESPUÉS de comprobar que el bundle
+-- nuevo ya servía: la ficha del Cosmere en producción pinta la ventana de
+-- «Nacidos de la Bruma. Era 2», y esa fila solo pudo escribirla quien
+-- llama con cinco argumentos. Verificado contra pg_proc en las dos: queda
+-- UNA sola firma, SECURITY DEFINER, sin `execute` para anon.
 -- =====================================================================
 
 -- ---------------------------------------------------------------
@@ -8162,3 +8162,23 @@ grant execute on function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb) t
 
 comment on function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb) is
   'Envoltorio de compatibilidad para el bundle desplegado sin ventanas: delega en la versión de cinco argumentos con p_windows = ''[]''. Vivo solo hasta que el código nuevo esté desplegado; retirarlo es de otra tarea.';
+
+-- ---------------------------------------------------------------
+-- Retirada del envoltorio de cuatro argumentos
+-- (20260728_drop_save_saga_sequence_v4.sql)
+-- ---------------------------------------------------------------
+-- Tercer y último paso de la danza de la fase 2b. El envoltorio de arriba
+-- existió por una razón concreta: añadir `p_windows` no reemplazó la función
+-- vieja, creó una SOBRECARGA, y entre la migración y el despliegue el bundle
+-- que servía en producción seguía llamando con cuatro. Sin el envoltorio se
+-- habría quedado sin función.
+--
+-- Ya no lo llama nadie. Comprobado en producción antes de borrarlo: la ficha
+-- del Cosmere pinta la ventana de «Nacidos de la Bruma. Era 2» («a partir de
+-- Era 1 · recomendable antes de Viento y Verdad»), y esa fila solo pudo
+-- escribirla el bundle nuevo, que llama con cinco.
+--
+-- Se retira porque dos firmas conviviendo sin motivo son una trampa para quien
+-- venga después: no sabría cuál manda, y la de cuatro BORRA las ventanas de la
+-- saga (delega con `p_windows = '[]'`, que el RPC trata como reemplazo total).
+drop function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb);
