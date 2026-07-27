@@ -215,7 +215,7 @@
   "nodes": [
     { "id": "browser", "label": "Navegador · PWA", "layer": "client", "kind": "surface",
       "summary": "Superficie principal. Instalable, con manifiesto y modo offline.",
-      "files": ["public/manifest.webmanifest", "src/app/offline"] },
+      "files": ["src/app/manifest.ts", "src/app/offline"] },
     { "id": "sw", "label": "Service worker", "layer": "client", "kind": "surface",
       "summary": "Cachea el shell, sirve /offline cuando no hay red y recibe los push (evento 'push' → notificación del SO).",
       "files": ["public/sw.js"],
