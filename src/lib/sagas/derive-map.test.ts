@@ -202,8 +202,49 @@ describe("deriveSagaMap", () => {
   // dibuja bloques (los expande en obras), así que esa clave nunca resuelve a
   // un nodo y se ignora igual que un paso "fantasma" — el itinerario no gana
   // poder sobre el mapa, solo numera lo que ya está dibujado.
-  it("un paso que es un bloque se ignora (el mapa no dibuja bloques), sin romper la numeración", () => {
-    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup(), ["s:saga-Uno", "i:book:A"]);
-    expect(map.nodes.find((n) => n.id === "i:book:A")!.step).toBe(2);
+  it("un paso que es un bloque se ignora (el mapa no dibuja bloques): no numera la primera obra del bloque ni le contagia el número a la obra siguiente", () => {
+    // Bloque con DOS obras y un paso siguiente DISTINTO de la que resolvería
+    // `resolveEntry` (ventanas) para "s:saga-Uno": si `deriveSagaMap`
+    // resolviera indebidamente el bloque a su primera obra (A), "s:saga-Uno"
+    // le pondría step=1 a A, y luego "i:book:B" numeraría B con step=2 — un
+    // resultado que, si solo se mirase B, sería indistinguible del correcto.
+    // Por eso la prueba tiene que comprobar TAMBIÉN que A se queda sin numerar.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 2)])]),
+      {}, lookup(), ["s:saga-Uno", "i:book:B"],
+    );
+    expect(map.nodes.find((n) => n.id === "i:book:A")!.step).toBeNull();
+    expect(map.nodes.find((n) => n.id === "i:book:B")!.step).toBe(2);
+  });
+
+  // Cobertura que faltaba (revisión post Task 3): NODE_STEP_X/NODE_STEP_Y
+  // existen para que React Flow no amontone los nodos (coordenadas de índice
+  // 0,1,2… los apila), pero ninguna prueba ataba la escala al tamaño real de
+  // la tarjeta — todas las aserciones de espaciado eran relacionales
+  // (`toBeGreaterThan`, `not.toBe`) y seguían siendo ciertas con
+  // NODE_STEP_X = NODE_STEP_Y = 1. Ese fallo ocurrió de verdad en esta rama y
+  // ninguna de las 533 pruebas lo detectó, solo se vio midiendo el DOM en el
+  // navegador. Las medidas de abajo salen de `graph-nodes.tsx` (`CoverNode`):
+  // la tarjeta mide 78×116px y la etiqueta que cuelga debajo mide 150px de
+  // ancho, centrada sobre la tarjeta (`mt-2` = 8px de margen, más hasta dos
+  // líneas de `text-sm leading-tight`, unos 40px de alto en total).
+  it("el paso horizontal separa las columnas lo bastante para que sus etiquetas (150px) no se toquen", () => {
+    const LABEL_WIDTH = 150;
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1), work("B", 2)])]), {}, lookup());
+    const a = map.nodes.find((n) => n.id === "i:book:A")!;
+    const b = map.nodes.find((n) => n.id === "i:book:B")!;
+    expect(b.x - a.x).toBeGreaterThanOrEqual(LABEL_WIDTH);
+  });
+
+  it("el paso vertical separa las filas lo bastante para que la tarjeta (116px) más su etiqueta (~40px) no invada la fila siguiente", () => {
+    const CARD_HEIGHT = 116;
+    const LABEL_HEIGHT = 40; // mt-2 (8px) + hasta dos líneas de texto
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("B", 1)])]),
+      {}, lookup(),
+    );
+    const a = map.nodes.find((n) => n.id === "i:book:A")!;
+    const b = map.nodes.find((n) => n.id === "i:book:B")!;
+    expect(b.y - a.y).toBeGreaterThanOrEqual(CARD_HEIGHT + LABEL_HEIGHT);
   });
 });
