@@ -24,7 +24,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
 
   const { data: saga } = await supabase
     .from("sagas")
-    .select("id, name, overview, cover_url, accent_color, parent_saga_id")
+    .select("id, name, overview, cover_url, accent_color, parent_saga_id, show_map")
     .eq("id", id)
     .maybeSingle();
   if (!saga) notFound();
@@ -68,6 +68,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
             coverUrl: saga.cover_url,
             accent: isSagaAccentToken(saga.accent_color) ? saga.accent_color : null,
             parent,
+            showMap: saga.show_map,
           }}
         />
       </div>

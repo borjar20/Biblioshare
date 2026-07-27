@@ -15,6 +15,10 @@ const saga = (
   optionalInParent = false,
   positionInParent: number | null = null,
   placementInParent: LibSaga["placementInParent"] = null,
+  // Default true: la mayoría de estos tests ejercitan `tree`/`counted`, no el
+  // interruptor de Task 4-bis — mantiene su semántica ("hasGraph = ¿hay
+  // miembros?") sin tener que tocar cada llamada existente.
+  showMap = true,
 ): LibSaga => ({
   id,
   parentSagaId: parent,
@@ -23,6 +27,7 @@ const saga = (
   optionalInParent,
   positionInParent,
   placementInParent,
+  showMap,
 });
 const mem = (
   sagaId: string,
@@ -301,5 +306,19 @@ describe("buildLibrarySagaCards", () => {
     expect(cards[0].covers).toHaveLength(0);
     expect(cards[0].next).toEqual({ kind: "empty" });
     expect(cards[0].hasGraph).toBe(false);
+  });
+
+  it("Task 4-bis: saga con miembros pero con el interruptor apagado (showMap=false) → hasGraph es false", () => {
+    const cards = buildLibrarySagaCards(
+      ["s"],
+      [saga("s", "S", null, null, false, null, null, false)],
+      [mem("s", "a", 1), mem("s", "b", 2)],
+      [item("a", "A"), item("b", "B")],
+      [],
+      [],
+      [],
+    );
+    expect(cards[0].covers).toHaveLength(2); // hay miembros: no es "empty"
+    expect(cards[0].hasGraph).toBe(false); // pero el curador no lo ha encendido
   });
 });

@@ -52,7 +52,9 @@ export async function getFollowedSagas(
   let frontier = followedIds;
   const { data: roots } = await supabase
     .from("sagas")
-    .select("id, name, parent_saga_id, accent_color, optional_in_parent, position_in_parent, placement_in_parent")
+    .select(
+      "id, name, parent_saga_id, accent_color, optional_in_parent, position_in_parent, placement_in_parent, show_map",
+    )
     .in("id", frontier);
   for (const r of roots ?? []) {
     if (seen.has(r.id)) continue;
@@ -65,12 +67,15 @@ export async function getFollowedSagas(
       optionalInParent: r.optional_in_parent,
       positionInParent: r.position_in_parent,
       placementInParent: r.placement_in_parent,
+      showMap: r.show_map,
     });
   }
   for (let depth = 0; depth < 4 && frontier.length > 0; depth++) {
     const { data: level } = await supabase
       .from("sagas")
-      .select("id, name, parent_saga_id, accent_color, optional_in_parent, position_in_parent, placement_in_parent")
+      .select(
+        "id, name, parent_saga_id, accent_color, optional_in_parent, position_in_parent, placement_in_parent, show_map",
+      )
       .in("parent_saga_id", frontier)
       .order("id");
     frontier = [];
@@ -85,6 +90,7 @@ export async function getFollowedSagas(
         optionalInParent: r.optional_in_parent,
         positionInParent: r.position_in_parent,
         placementInParent: r.placement_in_parent,
+        showMap: r.show_map,
       });
       frontier.push(r.id);
     }

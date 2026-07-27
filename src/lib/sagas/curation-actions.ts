@@ -182,6 +182,12 @@ export async function updateSagaMeta(
       name,
       overview: overviewRaw || null,
       accent_color: parseAccent(formData.get("accent")),
+      // Interruptor del mapa (fase 3, Task 4-bis): un checkbox desmarcado no
+      // manda su campo en FormData (a diferencia de un <select>/<input
+      // type=text>), así que su AUSENCIA es "false" — no hay tercer estado
+      // que distinguir. Mismo form que name/overview/accent: un solo submit,
+      // sin mecanismo aparte (el patrón que ya usa este componente).
+      show_map: formData.get("show_map") === "on",
     })
     .eq("id", sagaId);
   if (error) return { error: "generic" };

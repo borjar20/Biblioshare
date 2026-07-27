@@ -34,9 +34,15 @@ export function SagaMetaEditor({
     coverUrl: string | null;
     accent: SagaAccentToken | null;
     parent: { id: string; name: string } | null;
+    /** El curador decide si esta saga enseña su mapa (fase 3, Task 4-bis). */
+    showMap: boolean;
   };
 }) {
   const t = useTranslations("saga");
+  // showMapLabel/showMapHint viven en "sagaEditor" (brief de la Task 4-bis),
+  // no en "saga" — mismo namespace que ya usa el resto del editor de la ficha
+  // (sequence-editor y compañía) para vocabulario de curación.
+  const tEditor = useTranslations("sagaEditor");
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateSagaMeta.bind(null, sagaId), initialState);
 
@@ -139,6 +145,18 @@ export function SagaMetaEditor({
           </span>
           <AccentRadio name="accent" defaultValue={initial.accent} />
         </div>
+        <label className="flex items-center gap-2.5 rounded-lg border border-border px-2.5 py-2.5">
+          <input
+            type="checkbox"
+            name="show_map"
+            defaultChecked={initial.showMap}
+            className="h-4 w-4 rounded border-border"
+          />
+          <span className="flex-1 text-[12.5px]">
+            {tEditor("showMapLabel")}
+            <span className="mt-0.5 block text-[10.5px] text-muted-foreground">{tEditor("showMapHint")}</span>
+          </span>
+        </label>
         <Button type="submit" disabled={pending}>
           {pending ? t("editSaving") : t("editSave")}
         </Button>

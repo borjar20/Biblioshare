@@ -27,6 +27,10 @@ export type LibSaga = {
   positionInParent: number | null;
   /** Colocación del bloque en su padre (sagas.placement_in_parent). */
   placementInParent: SagaPlacement | null;
+  /** El curador decide si ESTA saga enseña su mapa (fase 3, Task 4-bis,
+   *  sagas.show_map) — igual que `hasGraph` en get-saga-detail.ts, el badge
+   *  no puede salir solo de "el subárbol tiene miembros". */
+  showMap: boolean;
 };
 export type LibMembership = {
   sagaId: string;
@@ -319,10 +323,15 @@ export function buildLibrarySagaCards(
         // get-saga-detail.ts) y convierte CADA miembro del subárbol en un
         // nodo sin filtrar ninguno — así que "el mapa tiene algún nodo" es
         // exactamente "el subárbol tiene algún miembro", que es `tree` (ya
-        // calculado arriba). Mismo criterio que `detail.hasGraph` en la
-        // ficha (`graph !== null`), sin pagar el coste de reconstruir groups/
-        // windows aquí solo para contar nodos.
-        hasGraph: tree.length > 0,
+        // calculado arriba).
+        //
+        // Fase 3, Task 4-bis: eso dejó de ser suficiente por sí solo — "hay
+        // nodo" pasó a ser casi siempre cierto y ya no distingue qué mapa
+        // aporta. El curador decide con `root.showMap` (sagas.show_map);
+        // mismo criterio que `detail.hasGraph` en la ficha
+        // (`saga.showMap && graph !== null`), sin pagar el coste de
+        // reconstruir groups/windows aquí solo para contar nodos.
+        hasGraph: root.showMap && tree.length > 0,
         covers: basis
           .flatMap((k) => (metaByItem.get(k)?.coverUrl ? [metaByItem.get(k)!.coverUrl!] : []))
           .slice(0, 3),

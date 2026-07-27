@@ -55,8 +55,13 @@ export type SagaDetail = {
   avgRating: number | null;
   isFollowing: boolean;
   isAuthenticated: boolean;
-  /** Grafo resuelto, o null si la saga no tiene nodos. hasGraph = graph !== null. */
+  /** Grafo resuelto, o null si no hay nada curado que dibujar. */
   graph: SagaGraph | null;
+  /**
+   * `saga.showMap && graph !== null` (fase 3, Task 4-bis): el curador decide,
+   * con el interruptor del editor, si esta saga ENSEÑA su mapa — `graph` por
+   * sí solo ya no es señal de que aporte, desde que se deriva de la curación.
+   */
   hasGraph: boolean;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
@@ -575,9 +580,20 @@ export async function getSagaDetail(
     groupName: groupNameMap,
   });
   // `SagaDetail.graph` sigue siendo `SagaGraph | null`: null cuando no hay
-  // nada curado que pintar, para que la pestaña siga sabiendo distinguir
-  // «no hay mapa» (hasGraph). No cambia de tipo ni el de nadie que lo consume.
+  // nada curado que pintar — sigue siendo el origen de «/saga/[id]/mapa» (esa
+  // página redirige con `!graph`, no con `hasGraph`: un mapa sin nada que
+  // dibujar es un caso distinto de un mapa que el curador decidió no anunciar).
   const graph = derivedGraph.nodes.length > 0 ? derivedGraph : null;
+
+  // hasGraph (fase 3, Task 4-bis): ya NO es "hay algo que dibujar" —
+  // `deriveSagaMap` convierte cualquier miembro en nodo, así que eso pasó a
+  // ser casi siempre cierto y dejó de servir de señal. El curador decide con
+  // el interruptor de `saga-meta-editor.tsx` (sagas.show_map) si ESTA saga
+  // enseña su mapa; sin nada curado que dibujar (graph === null) el
+  // interruptor no puede compensarlo. Este booleano, no `graph !== null`, es
+  // el que alimenta el aviso retirado, el badge de la card y la ruta
+  // sintética `lectura` del selector — los tres sitios listados en el brief.
+  const hasGraph = saga.showMap && graph !== null;
 
   // Itinerarios (spec 2026-07-22). Las etiquetas de las rutas sintéticas se
   // resuelven aquí porque buildRouteList es puro y no debe tocar next-intl.
@@ -586,7 +602,7 @@ export async function getSagaDetail(
   const routes = buildRouteList(
     curated,
     { lectura: tRoutes("orderReading"), publicacion: tRoutes("orderPublication") },
-    graph !== null,
+    hasGraph,
   );
 
   // Todos los descendientes, tengan o no miembros (hallazgo 2): el origen de
@@ -613,7 +629,7 @@ export async function getSagaDetail(
     isFollowing: Boolean((followRow as { data: unknown }).data),
     isAuthenticated: Boolean(user),
     graph,
-    hasGraph: graph !== null,
+    hasGraph,
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
     routes,
     routeChoice,

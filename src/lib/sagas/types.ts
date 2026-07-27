@@ -9,6 +9,10 @@ export type Saga = {
   tmdbCollectionId: number | null;
   parentSagaId: string | null;
   accentColor: string | null;
+  /** El curador decide si esta saga enseña su mapa (fase 3, Task 4-bis): el
+   *  mapa se deriva de la curación, así que su existencia ya no es señal de
+   *  que aporte — una saga de dos títulos lo tiene igual que Mundodisco. */
+  showMap: boolean;
 };
 
 // Pertenencia de un ítem a una saga.

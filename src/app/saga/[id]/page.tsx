@@ -67,7 +67,6 @@ export default async function SagaDetailPage({
           <SagaInfo
             overview={detail.saga.overview}
             groups={detail.groups}
-            hasGraph={detail.hasGraph}
             canConfigure={canCurate}
             sagaId={detail.saga.id}
             hasParent={detail.parent !== null}
