@@ -337,6 +337,8 @@ git commit -m "feat(sagas): la ficha dibuja el mapa derivado y deja de consultar
 
 ---
 
+> **Corrección del 2026-07-27, tras verificar la Task 3.** Este plan afirmaba más arriba que «el consumidor no necesita un sistema concreto porque `scaleNodes` normaliza lo que le den». **Es falso para la vista 2D**: `scaleNodes` solo la llama el mini-preview del CTA; `saga-graph-view.tsx` pasa `position: { x: n.x, y: n.y }` a React Flow, que las coloca **crudas**. Con coordenadas de índice todos los nodos se apilan, y las tarjetas miden 78×116 px con una etiqueta de 150 px debajo. `deriveSagaMap` emite **píxeles** (`NODE_STEP_X = 180`, `NODE_STEP_Y = 220`); `orderNo` sigue siendo el índice lógico, sin escalar, porque lo consume `deriveTimeline`.
+
 ### Task 3: El itinerario, encima del mapa
 
 **Files:** Modify `src/lib/sagas/map-types.ts`, `src/lib/sagas/derive-map.ts` (+ test), `src/components/saga/saga-map-tab.tsx`, `src/components/saga/graph/graph-nodes.tsx`, `messages/es.json`.
