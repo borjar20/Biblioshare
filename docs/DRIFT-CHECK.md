@@ -39,9 +39,40 @@ contra los **objetos** (`pg_proc`, `pg_class`), no solo el ledger. (Caso conocid
 - Para cada fichero sin correspondencia obvia en el ledger, verificar si su **efecto** ya
   existe en prod (buscar la función/tabla/columna que crea) antes de concluir que "falta".
 
-### 3. Arquitectura — `ARQUITECTURA.md` ↔ repo
+### 3. Arquitectura — `ARQUITECTURA.md` y `architecture/graph.json` ↔ repo
 - Conteos de la cabecera (nº de ficheros TS/TSX, rutas, migraciones, tests) contra el repo real.
 - Que las rutas del mapa existan en `src/app/`.
+
+El mapa de `docs/architecture/` es **derivado del código**, así que deriva por definición.
+Dos comprobaciones, ninguna necesita conexión a Supabase:
+
+```bash
+# Integridad interna: aristas y pasos que apuntan a nodos inexistentes,
+# capas y `kind` desconocidos, ids duplicados.
+node docs/architecture/sync.mjs --check
+```
+
+```bash
+# Rutas de fichero huérfanas: lo que de verdad se pudre. `sync.mjs` NO puede
+# detectarlo — un `steps[].file` que apunta a un fichero borrado valida igual.
+node -e "const g=require('./docs/architecture/graph.json'),f=require('fs');
+  const p=new Set();
+  g.nodes.forEach(n=>(n.files||[]).forEach(x=>p.add(x)));
+  g.flows.forEach(fl=>fl.steps.forEach(s=>s.file&&p.add(s.file.split(':')[0])));
+  const bad=[...p].filter(x=>!f.existsSync(x));
+  console.log('rutas:',p.size,'| inexistentes:',bad.length);
+  bad.forEach(x=>console.log('  NO EXISTE:',x))"
+```
+
+**Referencia:** el 2026-07-27 daba `rutas: 149 | inexistentes: 0`. Si un barrido futuro
+saca alguna, hay que corregir el nodo o el paso y correr `node docs/architecture/sync.mjs`
+(sin `--check`) para re-embeber el JSON en `map.html` — el HTML es autocontenido y lleva
+una copia, y editar solo uno de los dos los desincroniza **en silencio**: el diagrama sigue
+pintando bien, con datos viejos.
+
+Lo que este chequeo **no** ve: que el mapa haya perdido una ruta, un módulo de `src/lib` o
+una tabla que sí existen en el código. Eso se detecta al añadirlos, y el disparador está en
+`docs/architecture/README.md`.
 
 ### 4. Backlog — `backlog.md` ↔ evidencia
 - Cada ítem marcado `[x]` debería tener evidencia: una spec en `docs/superpowers/specs/`, o

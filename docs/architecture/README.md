@@ -60,6 +60,33 @@ node docs/architecture/sync.mjs
 Valida integridad referencial (aristas y pasos que apuntan a nodos inexistentes, capas
 y `kind` desconocidos, ids duplicados) y regenera el HTML. `--check` valida sin escribir.
 
-Actualízalo cuando cambie **la forma**, no con cada commit: una ruta nueva, un módulo
-nuevo en `src/lib`, una tabla nueva, un flujo que cambia de camino. Al hacerlo, sube
-`meta.generatedAt` y la fecha de la cabecera de arriba.
+Actualízalo cuando cambie **la forma**, no con cada commit:
+
+- una **ruta nueva** en `src/app` (o una que desaparece) → nodo en la capa `route`;
+- un **módulo nuevo** en `src/lib` → nodo en `domain` y sus aristas;
+- una **tabla nueva** o retirada → nodo en `db` (el canónico del esquema sigue siendo
+  [data-model.md](../requirements/data-model.md); aquí solo se resume);
+- un **flujo que cambia de camino** — los `steps[].file` son lo primero que se queda
+  obsoleto, y son justo lo que hace útil el fichero;
+- un **invariante nuevo**, o uno que se rompe → `meta.invariants`.
+
+Al hacerlo, sube `meta.generatedAt` y la fecha de la cabecera de arriba.
+
+El [chequeo de deriva](../DRIFT-CHECK.md) (superficie 3) trae los dos comandos para
+detectar que este mapa ya miente.
+
+### Dos trampas
+
+- **`map.html` lleva una copia del JSON incrustada.** Tiene que ser autocontenido (se abre
+  con doble clic, sin servidor). Editar solo el HTML, o solo el JSON sin correr `sync.mjs`,
+  los desincroniza **en silencio**: el diagrama sigue pintando bien, con datos viejos.
+- **El encuadre inicial daba `scale(0)`** si la página cargaba con el contenedor a tamaño
+  cero (pestaña oculta, panel plegado), y se quedaba en blanco para siempre. Está resuelto
+  posponiendo el `fit()` y reintentándolo con un `ResizeObserver`; si alguien reescribe esa
+  función, es el fallo al que se vuelve.
+
+### Por qué no está en CI
+
+`sync.mjs --check` está listo para un hook o un workflow, pero se dejó **fuera a propósito**:
+un check que falle por un doc derivado bloquearía PRs de código que no tienen nada que ver.
+Si el mapa demuestra que se pudre igual, la alternativa es meterlo como check no bloqueante.
