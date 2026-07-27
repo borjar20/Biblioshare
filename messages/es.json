@@ -1009,6 +1009,8 @@
     "routeProgress": "Llevas {completed} de {total} de esta ruta",
     "routeBlockCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "routeEmpty": "Esta ruta aún no tiene pasos.",
+    "routeUnnamedTitle": "Sin puesto en este itinerario",
+    "routeUnnamedHint": "Forman parte de la saga, pero este itinerario no dice cuándo leerlos.",
     "routesManage": "Itinerarios",
     "routeMapStep": "Paso {step} del itinerario",
     "mapCtaTitle": "Grafo de lectura",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveRoute } from "./resolve-route";
+import { resolveRoute, unnamedMembers } from "./resolve-route";
 import type { RawRouteEntry, RouteLookup } from "./route-types";
 import type { DetailMember } from "./types";
 
@@ -129,5 +129,50 @@ describe("resolveRoute", () => {
       lookup(),
     );
     expect(r.steps[0].note).toBe("aquí puedes parar");
+  });
+});
+
+// Fase 4: lo que el itinerario DESIGNADO no nombra se lista debajo, en el
+// orden de la ficha y sin número.
+describe("unnamedMembers", () => {
+  const a = member("a");
+  const b = member("b");
+  const c = member("c");
+  const members = new Map([
+    ["book:a", a],
+    ["book:b", b],
+    ["book:c", c],
+  ]);
+
+  it("devuelve lo que la ruta no nombra, en el orden de la ficha", () => {
+    const resolved = { steps: [{ kind: "item" as const, member: b, note: null }], total: 1, completed: 0 };
+    expect(unnamedMembers(resolved, ["book:a", "book:b", "book:c"], members)).toEqual([a, c]);
+  });
+
+  it("una obra nombrada DENTRO de un bloque no se lista otra vez", () => {
+    const resolved = {
+      steps: [{ kind: "block" as const, sagaId: "s", name: "S", accent: "beige" as const, members: [a, c], note: null }],
+      total: 2,
+      completed: 0,
+    };
+    expect(unnamedMembers(resolved, ["book:a", "book:b", "book:c"], members)).toEqual([b]);
+  });
+
+  it("una ruta que lo nombra todo no deja nada debajo", () => {
+    const resolved = {
+      steps: [
+        { kind: "item" as const, member: a, note: null },
+        { kind: "item" as const, member: b, note: null },
+        { kind: "item" as const, member: c, note: null },
+      ],
+      total: 3,
+      completed: 0,
+    };
+    expect(unnamedMembers(resolved, ["book:a", "book:b", "book:c"], members)).toEqual([]);
+  });
+
+  it("una clave del orden sin miembro resuelto se descarta en silencio", () => {
+    const resolved = { steps: [], total: 0, completed: 0 };
+    expect(unnamedMembers(resolved, ["book:a", "book:fantasma"], members)).toEqual([a]);
   });
 });

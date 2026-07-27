@@ -58,3 +58,35 @@ export function resolveRoute(entries: RawRouteEntry[], lookup: RouteLookup): Res
 
   return { steps, total: counted.size, completed };
 }
+
+/**
+ * Los miembros del subárbol que el itinerario NO nombra, en el orden de la
+ * ficha (las claves que le pasen; el llamante usa `createCuratedOrder`).
+ *
+ * Solo se pinta bajo el itinerario DESIGNADO (fase 4): un itinerario parcial
+ * —«solo lo esencial»— es un caso de uso legítimo, y listarle debajo todo lo
+ * demás sería ruido. Bajo el designado sí hace falta, porque es la vista por
+ * defecto de la saga y nadie debe desaparecer de su propia saga por no tener
+ * puesto.
+ *
+ * Cuenta como nombrada la obra que aparece DENTRO de un paso-bloque, no solo la
+ * que es paso por sí misma: si no, expandir un bloque de 8 obras las listaría a
+ * las 8 otra vez debajo.
+ */
+export function unnamedMembers(
+  resolved: ResolvedRoute,
+  orderedKeys: string[],
+  members: Map<string, DetailMember>,
+): DetailMember[] {
+  const named = new Set<string>();
+  for (const step of resolved.steps) {
+    if (step.kind === "item") named.add(keyOf(step.member));
+    else for (const m of step.members) named.add(keyOf(m));
+  }
+  return orderedKeys
+    .filter((k) => !named.has(k))
+    .flatMap((k) => {
+      const m = members.get(k);
+      return m ? [m] : [];
+    });
+}
