@@ -1010,6 +1010,7 @@
     "routeBlockCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "routeEmpty": "Esta ruta aún no tiene pasos.",
     "routesManage": "Itinerarios",
+    "routeMapStep": "Paso {step} del itinerario",
     "mapCtaTitle": "Grafo de lectura",
     "mapCtaDesc": "Explora el recorrido completo a pantalla completa",
     "mapHint": "Arrastra para explorar · pellizca para zoom",

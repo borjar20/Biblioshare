@@ -43,6 +43,28 @@ function StatusBadges({ node }: { node: SagaGraphNode }) {
 
 const dimmed = (node: SagaGraphNode) => (node.status === null ? "opacity-55 saturate-50" : "");
 
+// Insignia del paso del itinerario activo (Task 3, fase 3). Mismo par
+// forma/tipografía que ya existe en dos sitios (no se inventa un tercero):
+// la FORMA (círculo, ring, esquina absoluta) es la de StatusBadges, aquí
+// mismo; la TIPOGRAFÍA (mono, tamaño pequeño) es la de la "insignia de
+// hueco" del editor de secuencia (sequence-row.tsx: `font-mono text-[15px]
+// text-accent`) y de la numeración de pasos en la ficha (route-view.tsx,
+// route-editor.tsx: `font-mono text-[11px]`). Va en la esquina
+// superior-izquierda: StatusBadges ya ocupa la inferior-derecha
+// (completado) y la superior-derecha (en curso).
+function StepBadge({ step }: { step: number | null }) {
+  const t = useTranslations("saga");
+  if (step === null) return null;
+  return (
+    <span
+      className="absolute -left-1 -top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-accent font-mono text-[10px] font-semibold text-white shadow ring-2 ring-black/50"
+      aria-label={t("routeMapStep", { step })}
+    >
+      {step}
+    </span>
+  );
+}
+
 export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
@@ -58,6 +80,7 @@ export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
           <div className="h-full w-full bg-spine/30" />
         )}
         <StatusBadges node={node} />
+        <StepBadge step={node.step} />
       </div>
       <p className="absolute left-1/2 top-full mt-2 w-[150px] -translate-x-1/2 text-center font-serif text-sm font-medium leading-tight text-[#f0e6d4] [text-shadow:0_2px_8px_rgba(0,0,0,.8)]">
         {node.label}
@@ -81,6 +104,7 @@ export function MedallionNode({ data }: NodeProps<GraphFlowNode>) {
           <div className="h-full w-full bg-spine/30" />
         )}
         <StatusBadges node={node} />
+        <StepBadge step={node.step} />
       </div>
       <p className="absolute left-1/2 top-full mt-1.5 w-max max-w-[130px] -translate-x-1/2 truncate text-center font-mono text-[9.5px] tracking-wide text-[#b9a986]">
         {node.label}

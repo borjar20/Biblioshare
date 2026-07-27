@@ -43,8 +43,9 @@ export function deriveSagaMap(
   groups: MemberGroup[],
   windows: Record<string, ResolvedWindow>,
   lookup: MapLookup,
-  // Se rellena en la Task 3 (subconjunto de una ruta curada); aquí siempre
-  // undefined — Task 1 solo produce el mapa completo.
+  // Claves de los pasos de un itinerario curado, YA EN ORDEN (Task 3): la
+  // misma forma que `RouteEditorItem.key`/`keyOfRouteEntry` — `i:<tipo>:<uuid>`
+  // para una obra, `s:<uuid>` para un bloque.
   routeKeys?: string[],
 ): SagaGraph {
   const { ordered, free } = partitionGroups(groups);
@@ -88,6 +89,9 @@ export function deriveSagaMap(
     memberCount: null,
     groupSagaId: m.groupSagaId,
     groupName: lookup.groupName.get(m.groupSagaId) ?? null,
+    // Se rellena más abajo, si hay `routeKeys`: por defecto no hay itinerario
+    // activo, o el itinerario no pasa por este nodo.
+    step: null,
   });
 
   blocks.forEach((group, y) => {
@@ -215,6 +219,27 @@ export function deriveSagaMap(
         });
       }
     }
+  }
+
+  // El itinerario, encima del mapa (Task 3): dos capas con una única regla —
+  // el itinerario manda sobre lo que dice, y el mapa sobre lo que el
+  // itinerario calla. `routeKeys` puede nombrar un bloque (`s:<uuid>`): un
+  // bloque nunca es un nodo del mapa (siempre se expande en sus obras), así
+  // que esa clave nunca está en `byId` y cae en la MISMA rama que un paso
+  // "fantasma" (obra borrada, referencia rota) — se ignora sin necesitar un
+  // caso aparte. A diferencia de `resolveEntry` (ventanas), aquí NO se
+  // resuelve un bloque a su primera/última obra: el itinerario no gana poder
+  // sobre el mapa, solo numera lo que el mapa ya dibuja.
+  //
+  // El número es la posición en `routeKeys` (1..N), no un contador de nodos
+  // vistos: si el paso 1 no se ve, el paso 2 sigue siendo el 2. Numerar solo
+  // lo visible haría que el mapa y la lista del itinerario contaran distinto
+  // — la contradicción que esta fase existe para eliminar.
+  if (routeKeys) {
+    routeKeys.forEach((key, i) => {
+      const node = byId.get(key);
+      if (node) node.step = i + 1;
+    });
   }
 
   // Mismo orden estable que buildSagaGraph: order_no (nulls al final), luego label.

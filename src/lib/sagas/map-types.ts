@@ -26,6 +26,11 @@ export type SagaGraphNode = {
   memberCount: number | null;
   groupSagaId: string | null;
   groupName: string | null;
+  /** Paso del itinerario activo que corresponde a este nodo, 1..N. `null` si el
+   *  itinerario no pasa por aquí, o si no hay itinerario activo. El mapa y el
+   *  itinerario son dos capas: el itinerario manda sobre lo que dice, y el mapa
+   *  sobre lo que el itinerario calla. */
+  step: number | null;
 };
 
 export type SagaGraphEdge = {

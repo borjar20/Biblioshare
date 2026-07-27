@@ -22,6 +22,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   memberCount: null,
   groupSagaId: "g1",
   groupName: "Era Uno",
+  step: null,
   ...over,
 });
 
@@ -129,10 +130,10 @@ describe("rol narrativo en las ramas (#167)", () => {
       nodes: [
         { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
           label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
-          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G" },
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null },
         { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
           label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
-          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G" },
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null },
       ],
       edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
     };

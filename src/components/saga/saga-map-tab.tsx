@@ -1,9 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { deriveSagaMap, type MapLookup } from "@/lib/sagas/derive-map";
 import { deriveTimeline, sortByPublication } from "@/lib/sagas/derive-timeline";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
+import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
+import { keyOfRouteEntry } from "@/lib/sagas/hydrate-route-draft";
+import type { SagaGraph } from "@/lib/sagas/map-types";
 import { sagaHref } from "@/lib/catalog/item-href";
+import { createClient } from "@/lib/supabase/server";
 import { GraphLegend } from "./graph/graph-legend";
 import { SagaGraphLazy } from "./graph/saga-graph-lazy";
 import { MapCta } from "./map-cta";
@@ -28,6 +33,30 @@ export async function SagaMapTab({
   const graph = detail.graph;
   const base = sagaHref(detail.saga.id);
   const allMembers = detail.groups.flatMap((g) => g.members);
+
+  // Ruta curada activa (Task 3, fase 3): el mismo mapa derivado, con el paso
+  // del itinerario resaltado en cada nodo por el que pasa. `lectura` y
+  // `publicacion` (las sintéticas) ya tienen su propia rama más abajo y
+  // nunca llegan aquí. Sin mapa (graph === null) no hay nada que resaltar —
+  // la pestaña sigue pintando solo la lista de RouteView, como siempre.
+  let curatedGraph: SagaGraph | null = null;
+  if (activeRoute !== "publicacion" && activeRoute !== "lectura" && graph) {
+    const row = detail.routes.find((r) => r.slug === activeRoute);
+    if (row?.id !== undefined) {
+      const supabase = await createClient();
+      const entries = await getRouteEntries(supabase, row.id);
+      const routeKeys = entries.map(keyOfRouteEntry);
+      // Mismos lookups que construye getSagaDetail para el mapa completo,
+      // reconstruidos aquí a partir de detail.groups: deriveSagaMap no exige
+      // más que sagaId → accent/name, y no tocamos get-saga-detail.ts para
+      // esto (fuera del alcance de la Task 3).
+      const lookup: MapLookup = {
+        groupAccent: new Map(detail.groups.map((g) => [g.sagaId, g.accent] as const)),
+        groupName: new Map(detail.groups.map((g) => [g.sagaId, g.name] as const)),
+      };
+      curatedGraph = deriveSagaMap(detail.groups, detail.windows, lookup, routeKeys);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-10">
@@ -120,7 +149,23 @@ export async function SagaMapTab({
           </div>
         </>
       ) : (
-        <RouteView detail={detail} slug={activeRoute} canEdit={canEdit} />
+        <>
+          {/* La pestaña GANA el mapa; no pierde la lista: el grafo derivado
+              (con el paso del itinerario resaltado) va encima, RouteView
+              sigue pintando debajo tal cual. Solo en PC — igual que la ruta
+              «lectura», el móvil no tiene el grafo embebido. */}
+          {curatedGraph && (
+            <div className="hidden flex-col lg:flex">
+              <div className="overflow-hidden rounded-2xl border border-border">
+                <SagaGraphLazy graph={curatedGraph} className="h-[640px] w-full" />
+              </div>
+              <div className="mt-3">
+                <GraphLegend graph={curatedGraph} />
+              </div>
+            </div>
+          )}
+          <RouteView detail={detail} slug={activeRoute} canEdit={canEdit} />
+        </>
       )}
     </div>
   );

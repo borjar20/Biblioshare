@@ -185,4 +185,25 @@ describe("deriveSagaMap", () => {
   it("una saga sin nada curado no da mapa", () => {
     expect(deriveSagaMap([], {}, lookup())).toEqual({ nodes: [], edges: [] });
   });
+
+  // Task 3: el itinerario, encima del mapa.
+  it("el itinerario numera los nodos por los que pasa y deja el resto a null", () => {
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1), work("B", 2)])]), {}, lookup(), ["i:book:B"]);
+    expect(map.nodes.find((n) => n.id === "i:book:B")!.step).toBe(1);
+    expect(map.nodes.find((n) => n.id === "i:book:A")!.step).toBeNull();
+  });
+
+  it("un paso que el mapa no dibuja se ignora, sin romper la numeración de los demás", () => {
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup(), ["i:book:fantasma", "i:book:A"]);
+    expect(map.nodes.find((n) => n.id === "i:book:A")!.step).toBe(2);
+  });
+
+  // Un paso del itinerario puede ser un BLOQUE entero (`s:<uuid>`): el mapa no
+  // dibuja bloques (los expande en obras), así que esa clave nunca resuelve a
+  // un nodo y se ignora igual que un paso "fantasma" — el itinerario no gana
+  // poder sobre el mapa, solo numera lo que ya está dibujado.
+  it("un paso que es un bloque se ignora (el mapa no dibuja bloques), sin romper la numeración", () => {
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup(), ["s:saga-Uno", "i:book:A"]);
+    expect(map.nodes.find((n) => n.id === "i:book:A")!.step).toBe(2);
+  });
 });
