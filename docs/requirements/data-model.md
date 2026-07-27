@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) verificadas **solo en dev** el 2026-07-27 — prod pendiente, ver §7.6 —, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_policies`, `pg_proc`), nunca contra `list_migrations`]**
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; mapa derivado y migración de grafos a itinerarios, fase 3 (§7.7) verificados **solo en dev** el 2026-07-27 — prod pendiente, ver §7.7 —, contra los objetos reales (`pg_type`, `pg_constraint`, `pg_policies`, `pg_proc`), nunca contra `list_migrations`]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -237,9 +237,11 @@ reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta
 ## 7. Sagas
 
 `sagas` es **jerárquica** (`parent_saga_id`): las subsagas son sagas reales anidadas.
-`saga_items` da la pertenencia (multi-membresía, con `is_primary`), y el grafo relacional
-son `saga_nodes` (mixtos: apuntan a un ítem **o** a una saga hija) + `saga_edges`
-(`principal | opcional | requisito`).
+`saga_items` da la pertenencia (multi-membresía, con `is_primary`). El «Mapa de lectura» que ve el
+lector **ya no lee `saga_nodes`/`saga_edges`**: se DERIVA de la curación (§7.7). Esas dos tablas y
+la función `save_saga_graph` siguen existiendo — están **en retirada**, pendientes del `DROP` que se
+aplica después de desplegar y comprobar la fase 3 (§7.7) — pero ningún camino de lectura las
+consulta ya.
 
 **⚠️ El progreso de una saga ya NO depende del orden — regla vigente desde el 2026-07-25/26
 (fase 1 del orden unificado, §7.4).** Hasta entonces el denominador *era* el orden principal:
@@ -411,9 +413,9 @@ progreso del orden. El arreglo de `assignItemToSaga`/#188 que originalmente se p
 2 se adelantó al review final de esta misma rama (commit `e3832ff`, ver más abajo) — lo único que
 falta de esa fase es aplicar las migraciones a prod, que ya no depende de ningún arreglo de código.
 Fase 2a (el editor único de secuencia, §7.5) y fase 2b (`saga_placement_windows`,
-la ventana de una entrada `libre`, §7.6) **ya están construidas** — ver más
-abajo y `backlog.md`. Queda la fase 3 (retirada de `saga_nodes`/`saga_edges`/
-`save_saga_graph`).
+la ventana de una entrada `libre`, §7.6) **ya están construidas y desplegadas**. La fase 3 (el mapa
+se deriva de la curación en vez de leerse de `saga_nodes`/`saga_edges`, §7.7) **ya está construida,
+solo en dev** — ver §7.7 y `backlog.md`.
 
 **Dos ejes ORTOGONALES, y ésa es la distinción que toda la fase existe para establecer:**
 
@@ -487,8 +489,8 @@ entorno:**
   hijas de un padre que tiene grafo (`saga_nodes`), y ahí la app no deduce el orden de `position`
   sino de `order_no`, así que inventar una colocación habría sido una curación que nadie hizo (se
   migran a mano en la fase 3). `saga_placement_windows` (tabla de la fase 2b, para la ventana de un
-  `libre`, §7.6) **no existía todavía cuando se midió esta cifra** (2026-07-26); existe en dev desde
-  el 2026-07-27, prod pendiente.
+  `libre`, §7.6) **no existía todavía cuando se midió esta cifra** (2026-07-26); existe en dev y en
+  prod desde el 2026-07-27 (§7.6).
 - **Prod, medido el 2026-07-25 antes de que existieran estas columnas** (spec, sección "Modelo de
   datos"): 342 filas de `saga_items` con `position` (→ habrían pasado a `fijo`), 9 sin `position`
   (→ `null`). **Esta cifra es informativa, no aplicada**: prod no tiene ni el enum ni las columnas
@@ -710,12 +712,13 @@ Dos casos, distintos de verdad:
   la única ancla de la fila. Es un efecto del esquema, no una decisión de producto — no confundir con
   el punto anterior.
 
-Verificado **solo en dev** (2026-07-27), contra los objetos reales (`pg_constraint`, `pg_policies`,
-`pg_proc`), no contra `list_migrations`: los cuatro CHECK en la forma `IS [NOT] NULL`; los dos uniques
-parciales; RLS con las dos policies (`select` pública, `all` collaborator+); y `save_saga_sequence`
-existiendo con **dos** firmas (cuatro y cinco argumentos), la de cinco con `prosecdef=true`/
-`search_path=public`. **Aplicación a producción pendiente** (Task 7, Step 2 del plan; fuera del
-alcance de esta subtarea de documentación). Cubierto por `e2e/sagas-ventanas.spec.ts` (dos anclas de
+Verificado **en dev y en prod** (dev el 2026-07-27; prod reverificado el 2026-07-27 al escribir esta
+subtarea, tras el ANEXO 2026-07-27 de `schema-baseline.sql`), contra los objetos reales
+(`pg_constraint`, `pg_policies`, `pg_proc`, `to_regclass`), no contra `list_migrations`: los cuatro
+CHECK en la forma `IS [NOT] NULL`; los dos uniques parciales; RLS con las dos policies (`select`
+pública, `all` collaborator+); y en prod `save_saga_sequence` con **una sola** firma (la de cinco
+argumentos, `prosecdef=true`/`search_path=public`) — el envoltorio de cuatro ya se retiró
+(`20260728_drop_save_saga_sequence_v4.sql`, ver `schema-baseline.sql`). Cubierto por `e2e/sagas-ventanas.spec.ts` (dos anclas de
 una `libre` se guardan y persisten tras recargar; el tope de dos anclas; y —el test que más protege,
 porque es justo lo que ningún CHECK puede dar— mover una entrada con ventana a la secuencia borra su
 ventana, comprobado contra la BD).
@@ -731,6 +734,127 @@ quieras», con el título de cada ancla en negrita. Deuda menor conocida (rendim
 sesión, falta de test unitario de estos dos componentes, locator e2e por XPath, estilo de la línea de
 ventana sin mockup): issue #206.
 
+### 7.7 El mapa se deriva; `saga_nodes`/`saga_edges`/`save_saga_graph` en retirada (fase 3 del orden unificado)
+
+Fase 3 de 3 (spec `docs/superpowers/specs/2026-07-27-sagas-fase-3-retirada-del-grafo-design.md`):
+cierra la unificación empezada en la fase 1. El «Mapa de lectura» de una saga (la vista 2D de
+`@xyflow/react`, el timeline móvil y el mini-preview del CTA) deja de leerse de las tablas
+`saga_nodes`/`saga_edges` — dibujadas a mano en un editor propio, ya retirado en la fase 2a — y pasa
+a **derivarse** de lo que ya está curado en el resto del producto: la secuencia (`saga_items.position`,
+`sagas.position_in_parent`), los bloques-subsaga y las ventanas de una entrada `libre` (§7.6).
+`deriveSagaMap` (`src/lib/sagas/derive-map.ts`) produce el **mismo** tipo `SagaGraph` que antes
+producía `buildSagaGraph` sobre las tablas viejas, así que la vista no cambió ni una línea de render
+— solo cambió de dónde sale el dato.
+
+**Regla de construcción del mapa derivado:**
+
+- **Un nodo es siempre una obra individual**, nunca un bloque-subsaga: un bloque se EXPANDE en las
+  obras de su subárbol (hasta profundidad 4, mismo cinturón que `fetchDescendants`). Un bloque nunca
+  es un nodo del mapa.
+- **La cadena (aristas `principal`) son los huecos consecutivos** de la secuencia curada: cada
+  `position` distinto dentro de un bloque es un hueco, y huecos consecutivos del mismo bloque quedan
+  unidos por una arista.
+- **Un tándem son dos obras en el mismo hueco** (mismo `position`): comparten columna en vez de una
+  seguir a la otra.
+- **Las ventanas de la fase 2b (§7.6) son las aristas que CRUZAN**: un ancla `after` se traduce en
+  una arista entrante de tipo `requisito`; un ancla `before`, en una arista saliente de tipo
+  `opcional`. Un ancla que apunte a un bloque se resuelve a la primera/última obra de ese bloque (un
+  bloque nunca es nodo, así que no puede ser origen/destino literal de una arista). Una ventana con
+  un ancla rota (resuelve a `null`) simplemente no produce esa arista — misma regla que ya aplicaba la
+  ficha para una ventana con ancla rota.
+- **Una obra sin hueco** (`placement` `libre`, o sin clasificar — `position === null`) **es un nodo
+  del mapa, pero no entra en la cadena**: no tiene `orderNo`, ninguna arista `principal` la toca, y
+  eso es justo lo que activa el mecanismo de ramas/puentes que `deriveTimeline` ya tenía para un nodo
+  huérfano (issue #170). Sí puede llevar una arista de ventana. Es la corrección más importante que
+  dejó la revisión de la Task 1 de esta fase: el plan original no distinguía este caso, y sin él una
+  obra suelta entraba en la cadena con aristas `principal` como si tuviera hueco — la ficha del
+  Cosmere real enseña «Sin hueco asignado en esta lista» en **siete** obras, así que no es un caso
+  raro.
+- Un itinerario curado (§7.2), si lo hay, se pinta **encima** del mapa: numera los nodos que ya
+  dibuja el mapa (`step`), pero nunca añade un nodo ni una arista que el mapa no tuviera — el
+  itinerario no gana poder sobre el mapa, solo el mapa sobre lo que el itinerario calla.
+- Las coordenadas que devuelve `deriveSagaMap` son **píxeles** (`NODE_STEP_X = 180`, `NODE_STEP_Y =
+  220`, medidos contra el tamaño real de la tarjeta de portada), no índices de columna/fila: la vista
+  2D pasa `x`/`y` crudos a React Flow, sin normalizar. `orderNo` en cambio se queda como índice
+  lógico (0, 1, 2…), sin escalar — es lo que consume `deriveTimeline`, no una coordenada de lienzo.
+  Solo `scaleNodes` (`derive-timeline.ts`) normaliza a escala relativa, y únicamente para el
+  mini-preview del CTA (`map-cta.tsx`); la vista 2D no pasa por ahí.
+
+**El curador decide si su saga enseña mapa: columna `sagas.show_map`** (`boolean not null default
+false`, migración `20260728_sagas_show_map.sql`). Hasta esta fase, tener mapa significaba que alguien
+lo había DIBUJADO a mano en el editor de grafo, así que su sola existencia (una fila en `saga_nodes`)
+ya era la señal de que merecía enseñarse. Al derivarse de la curación, **toda** saga con miembros
+tiene mapa — la señal desaparece, y el de una saga de dos títulos no aporta nada. El aviso que decía
+«Orden de lectura disponible · Un moderador configuró el recorrido» **se retiró**: con el mapa
+derivándose solo, ese aviso dejó de señalar ninguna intención humana. `resolveSagaGraph(showMap,
+derivedGraph)` (`src/lib/sagas/get-saga-detail.ts`) aplica el interruptor **en el origen**: con
+`show_map = false`, `SagaDetail.graph` es `null` y por construcción **ningún** consumidor lo enseña
+— ni la pestaña Mapa, ni la ruta `/saga/[id]/mapa`, ni el CTA — sin que cada uno tenga que comprobar
+el interruptor por su cuenta. El backfill de la migración enciende `show_map = true` para toda saga
+que **hoy** tenga alguna fila en `saga_nodes`: las sagas que ya enseñaban mapa lo siguen enseñando;
+retirarlo en silencio habría sido una pérdida, no una migración. Medido en dev tras aplicar (única base
+disponible; ver más abajo): de 14 sagas, 1 tenía grafo dibujado a mano y esa 1 quedó con
+`show_map = true`.
+
+**Migración `20260728_migrar_grafos_a_itinerarios.sql`**: antes de poder borrar `saga_nodes`/
+`saga_edges`, se rescata a `saga_routes`/`saga_route_entries` (§7.2, slug `orden-recomendado`) lo
+**único** que esas tablas sabían y el modelo nuevo no — un orden fino entre obras que la curación de
+hoy no expresa. Medido contra producción el 2026-07-27 (detalle completo en
+`.superpowers/sdd/task-5-report.md`):
+
+- **Cosmere** (19 pasos): sus 19 nodos ya tenían `order_no` 1..19 — se copian tal cual. El nodo sin
+  `order_no` (*Arcanum Ilimitado*, un recopilatorio de relatos) queda fuera: nunca tuvo hueco en el
+  orden principal, y darle uno habría sido inventar una curación que nadie hizo.
+- **Mundodisco** (26 pasos): ninguno de sus 26 nodos tenía `order_no` — el orden salía solo de sus 28
+  `saga_edges`. Se linealiza con `linearizeGraph` (`src/lib/sagas/linearize-graph.ts`, Kahn con
+  desempate determinista: hilo que se está leyendo → nombre de hilo → posición dentro del hilo → clave
+  como desempate final de un orden total).
+- **Trono de Cristal y Maasverse NO se migran.** Trono de Cristal: sus 8 nodos ya tienen `order_no`, y
+  coincide 1:1 con `saga_items.position` de su sub-saga curada (empate del hueco 6 incluido) —
+  materializar una ruta ahí sería una segunda fuente de verdad idéntica a la que ya existe. Maasverse:
+  un único nodo, sin `order_no` — no hay orden que rescatar.
+
+**Estado de despliegue, verificado hoy (2026-07-27) contra los objetos/filas reales, no contra
+`list_migrations`** — ver también el ANEXO 2026-07-27 de `schema-baseline.sql`:
+
+- `20260728_sagas_show_map.sql`: aplicada **solo en dev** (`information_schema.columns` de prod no
+  tiene `sagas.show_map`).
+- `20260728_migrar_grafos_a_itinerarios.sql`: **sin filas resultantes en ningún entorno todavía**.
+  Dev no tiene las sagas Cosmere/Mundodisco (es una base de fixtures de QA, no un espejo de prod), así
+  que la Task 5 la verificó sembrando esos dos ids TEMPORALMENTE en dev y revirtiendo la siembra al
+  terminar — el fichero quedó aplicado en el historial de migraciones de dev, pero sus dos rutas/45
+  pasos se fueron con la siembra. Prod, reconsultado hoy, solo tiene la ruta `rincewind` de Mundodisco
+  (curada a mano por el responsable de producto mientras se construía esta fase) — ninguna
+  `orden-recomendado` todavía.
+- **Ninguna de las dos está aplicada a producción.** Sigue en curso el Step 2 del plan de la Task 7
+  (aplicar el migrador a prod y verificar dos rutas de 19/26 pasos) y el Step 3 (desplegar y comprobar
+  que el mapa del Cosmere se dibuja de lo curado, que cambia de aspecto respecto al grafo dibujado a
+  mano — y que eso no es un fallo).
+- La **tercera** migración de la fase — el `DROP` de `save_saga_graph`/`saga_edges`/`saga_nodes`
+  (`supabase/migrations/20260729_drop_saga_graph.sql`) — **todavía no existe**. Se escribe y se aplica
+  DESPUÉS de comprobar en producción que el mapa derivado funciona (Task 7, Step 4): borrar esas tablas
+  con el bundle desplegado todavía leyéndolas rompería la ficha entera. Hasta entonces, `saga_nodes`/
+  `saga_edges`/`save_saga_graph` siguen existiendo — **en retirada**, sin ningún lector — tanto en dev
+  como en producción.
+
+**UI**: `SagaMetaEditor` (`/saga/[id]/editar`) gana el checkbox del interruptor, mismo doble gate
+`collaborator+` (RLS de `sagas` + comprobación en la server action `updateSagaMeta`,
+`curation-actions.ts`) que el resto de escrituras de saga. Un botón «Generar desde la curación» en el
+editor de secuencia crea un itinerario a partir de `createCuratedOrder` (§7.7 más abajo lo describe
+como consumidor del mismo orden que el mapa) en vez de empezarlo en blanco.
+
+**El orden principal deja de tener dos ramas.** `src/lib/sagas/main-order.ts` —que hasta esta fase
+mezclaba dos criterios: si la saga tenía nodos de grafo mandaba el grafo, si no mandaba `position`, la
+asimetría de la issue #185— **se borra**. Lo sustituye `src/lib/sagas/curated-order.ts`
+(`createCuratedOrder`), con un único criterio para todas las sagas: la curación
+(`saga_items`/`sagas.position_in_parent`/`placement_in_parent`). El comparador de bloques que antes
+vivía repetido en tres sitios (ficha, orden principal, card de Mi Biblioteca) queda unificado en
+`compareBlocksByPlacement` (`src/lib/sagas/group-members.ts`), consumido por los tres. Esto cierra
+por construcción las issues **#204** (el fichero que arrastraba la heurística vieja desaparece) y
+**#203** (la card y la ficha ya ordenan con el mismo comparador). La asimetría de **#185** en la
+secuencia también desaparece con `main-order.ts`; su denominador del progreso ya lo había arreglado la
+fase 1 (§7, arriba) — issue cerrada con ese matiz, no confundir las dos partes de su título.
+
 ## 8. Seguridad
 
 Las 42 tablas tienen **RLS activa**. Patrones:
@@ -744,8 +868,9 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   `save_saga_graph`, `save_saga_sequence` (§7.5/§7.6), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
   `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan
   como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` sigue en esta lista
-  aunque ya no tiene llamador en la app (§7.5, fase 2a retiró su editor): sigue viva en prod,
-  `DROP`-earla es trabajo de la fase 3.
+  aunque ya no tiene llamador en la app (§7.5, fase 2a retiró su editor) ni ningún lector del grafo la
+  necesita ya (§7.7, fase 3 deriva el mapa de la curación): sigue viva en dev y en prod, en retirada,
+  `DROP`-earla es el Step 4 de la Task 7 (después de desplegar y comprobar §7.7).
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
@@ -762,7 +887,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `club_member_status` | `invited \| active \| requested` |
 | `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: 2026-07-22) |
 | `follow_status` | `pending \| accepted` |
-| `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` |
+| `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges` en retirada, ningún lector los consulta ya — pendientes del `DROP` posterior al despliegue de la fase 3) |
 | `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev y prod 2026-07-23) |
 | `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |

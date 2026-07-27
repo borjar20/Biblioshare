@@ -117,3 +117,62 @@ Los tres fallos originales del spec del mapa y los dos roturas nuevas de la suit
 - `sagas.show_map`: `[QA Itinerarios] Universo` → `false`; `[QA Sagas v2] Universo` → `true` (los dos, igual que al empezar).
 - `saga_routes` de `[QA Itinerarios] Universo`: solo `la-guardia`.
 - `saga_route_choices` de `[QA Itinerarios] Universo` + colaborador QA: `la-guardia` (mismo valor que tenía al empezar esta subtarea — no era el baseline "limpio" que el propio test dejó ver, pero es literalmente lo que había antes de tocar nada, y es el estado que el test dice dejar aposta al acabar).
+
+## Subtarea 2: doc e issues
+
+Alcance: solo Step 5 del brief (documentación + issues). No se tocó producción, ni migraciones, ni código de producto — verificado en `git status` antes de commitear (solo ficheros de `docs/`, `supabase/schema-baseline.sql` y `.superpowers/sdd/`).
+
+### Estado real verificado antes de escribir nada
+
+Contra dev y prod (solo lectura, `mcp__supabase-dev__execute_sql` / `mcp__supabase-prod__execute_sql`), porque el brief de la Task 7 asume un estado ("con la fecha de aplicación a dev y prod") que los Steps 2-4 (aplicar a prod, desplegar, `DROP`) todavía no habían alcanzado en el momento de esta subtarea:
+
+- `sagas.show_map` (`20260728_sagas_show_map.sql`): existe en dev (1 de 14 sagas con `show_map=true`, la única que hoy tiene grafo dibujado a mano); **no existe** en `information_schema.columns` de prod.
+- `20260728_migrar_grafos_a_itinerarios.sql`: **sin filas resultantes en ningún entorno**. Dev no tiene las sagas Cosmere/Mundodisco (fixtures de QA distintas de prod); la Task 5 la verificó sembrando esos ids temporalmente y revirtiendo, así que el fichero quedó en el historial de migraciones de dev pero sin datos. Prod, reconsultado hoy, solo tiene la ruta `rincewind` de Mundodisco (curada a mano por el responsable de producto) — ninguna `orden-recomendado` de la migración.
+- `supabase/migrations/20260729_drop_saga_graph.sql` no existe todavía (confirmado por `ls`) — coherente con que el Step 4 del plan es posterior al 2-3.
+
+Por eso toda la documentación de esta subtarea dice explícitamente "solo en dev" / "pendiente de prod" para las dos migraciones de esta fase, y no anexa la tercera (todavía no escrita). Es una excepción deliberada, señalada en el propio anexo de `schema-baseline.sql`, a la regla general del §10 de `data-model.md` ("aplicar a prod y actualizar este fichero es un solo paso"): esta subtarea es solo documentación, adelantada a los Steps 2-4.
+
+**Hallazgo colateral, corregido de paso:** al verificar el estado de prod para escribir la cabecera de `data-model.md`, `saga_placement_windows`/`save_saga_sequence` (fase 2b, §7.6) resultaron **ya aplicados a prod** (`to_regclass('public.saga_placement_windows')` no nulo; una sola firma de `save_saga_sequence`, la de cinco argumentos — el envoltorio de cuatro ya se retiró), mientras que `data-model.md` y `backlog.md` todavía decían "solo en dev, prod pendiente". Corregido en los dos, con la verificación de hoy citada explícitamente, para no dejar una cabecera de "canónico" contradiciendo lo que la propia BD dice. No se tocó `decisiones.md` por esto (no hay una decisión nueva que registrar, solo un estado que se puso al día) ni se abrió issue (es del mismo fichero/sección que ya se estaba editando, no una tarea aparte).
+
+### `supabase/schema-baseline.sql`
+
+Anexadas las dos migraciones de esta rama (`20260728_sagas_show_map.sql`, `20260728_migrar_grafos_a_itinerarios.sql`) al final del fichero, con el mismo formato de cabecera `-- ---` que el resto del baseline. Un bloque `ANEXO 2026-07-27` explica el estado real (solo dev, sin filas en ningún entorno para el migrador) y por qué se anexa antes de la aplicación a prod. La tercera migración (el `DROP`) no se anexa: no existe todavía.
+
+### `docs/requirements/data-model.md`
+
+- Nueva §7.7 ("El mapa se deriva; `saga_nodes`/`saga_edges`/`save_saga_graph` en retirada"): la regla de construcción del mapa derivado (nodo=obra, cadena=huecos consecutivos, tándem=mismo hueco, ventanas=aristas que cruzan, obra sin hueco=nodo sin cadena), el interruptor `show_map` y por qué se retiró el aviso viejo, qué migra a itinerario y qué no (con las cifras del `task-5-report.md`), el estado de despliegue verificado hoy, y el cierre de `main-order.ts`/#204/#203/#185 (con el matiz de esta última).
+- Cabecera de frescura actualizada con la fecha y el alcance de §7.7 (solo dev), y corregido el dato stale de §7.6 (ver hallazgo colateral arriba).
+- §7 (intro de Sagas), §7.4 y §8 (Seguridad): actualizados para decir que `saga_nodes`/`saga_edges`/`save_saga_graph` están en retirada y ya no tienen lector, no que "siguen siendo el grafo relacional" ni que "queda la fase 3" (ya está construida).
+- §9 (Enums): nota en `saga_edge_type`/`saga_node_level` señalando la retirada, con referencia a §7.7.
+- No se tocó el conteo de "82 ficheros" de §10 (staleness ya rastreada en la issue #183, fuera de mi alcance) ni las columnas de `saga_items`/`saga_route_entries.note` (mismo #183).
+
+### `docs/requirements/backlog.md`
+
+Fase 3 movida de "Pendiente" a "Hecho", con el mismo nivel de detalle que las fases 1/2a/2b ya documentadas: qué se deriva y cómo, el interruptor, el cierre de #204/#203/#185(matiz)/#196, qué migra y qué no, y el estado de despliegue (solo dev). La entrada de "Pendiente" se reescribe como el cierre de despliegue que queda (Task 7 Steps 2-4), sin repetir #196 como deuda (se cierra en esta subtarea). De paso, la entrada de fase 2b se actualizó para decir "aplicadas en DEV y en PROD" (era el mismo hallazgo colateral de arriba).
+
+### `docs/requirements/decisiones.md`
+
+Cinco entradas nuevas al final, formato tabla `| fecha | decisión | motivo |` igual que las últimas: (1) el mapa pasa de tabla a vista, con el paralelismo a #91/#185 como la misma familia de fallo; (2) las ventanas se dibujan como aristas sin ganar poder, citando el aviso explícito del ledger de fase ("si apetece una arista más, se para y se dice en voz alta"); (3) el curador decide si se enseña el mapa, con el porqué (la señal "tiene mapa" desaparece al derivarse siempre); (4) la linealización de Mundodisco (Kahn + desempate de tres niveles) y por qué ese orden y no alfabético/cronológico puro, citando el juicio de lector de `task-5-report.md`; (5) por qué Trono de Cristal y Maasverse no se migran (redundante y vacío, respectivamente).
+
+### Issues
+
+Listadas las abiertas antes de tocar nada (`mcp__github__list_issues`, estado `open`). Cerradas con comentario explicando el porqué:
+
+- **#204** (main-order.ts con heurística vieja) — el fichero ya no existe, sustituido por `curated-order.ts` con un único criterio.
+- **#203** (card de Mi Biblioteca divergía de la ficha) — los tres consumidores (ficha, orden principal, card) usan ya `compareBlocksByPlacement`.
+- **#196** (rescate de colocación desde el grafo, no-op en prod) — la premisa deja de tener sentido: el grafo ya no es fuente de colocación de nada; la curación manual de las 12 hijas sigue disponible desde la fase 2a, sin bloqueo.
+- **#185** (asimetría del denominador) — cerrada **con el matiz que pide el brief**: su título habla del denominador, y eso lo arregló la fase 1 (2026-07-25); lo que muere aquí es la asimetría en la SECUENCIA (la otra mitad del cuerpo de la issue), al desaparecer `main-order.ts`.
+
+Abierta **#208** ("Deuda menor de la fase 3: rendimiento sin memoizar y un hueco de cobertura") con los dos MINOR que quedaron vivos en el ledger (Task 3: `saga-map-tab.tsx` sin memoizar; Task 1: sin test de dos+ obras sueltas en el mismo bloque), siguiendo el patrón de las hermanas #199/#206 — comprobado antes de abrirla que ninguno de los dos ya estaba cubierto por la #206 (que es código distinto: `getAnchorOptions`/`WindowEditor`/`AnchorPicker`).
+
+No se tocaron #197 (destino de `apply-membership-ops.ts`) ni #202 (grupo «Nexo» al final) — vivas, pero no las nombra el brief de esta subtarea, y no encontré nada en el ledger de la fase 3 que las resolviera de refilón.
+
+### Verificación
+
+`git status` tras el commit: solo `supabase/schema-baseline.sql`, `docs/requirements/{data-model,backlog,decisiones}.md`, `.superpowers/sdd/{progress,task-7-report}.md`. Cero cambios en `src/`, `e2e/`, `supabase/migrations/`. Todos los datos citados salen del código (`derive-map.ts`, `linearize-graph.ts`, `curated-order.ts`, `group-members.ts`, `get-saga-detail.ts`), del ledger (`progress.md`, `task-5-report.md`) o de consultas de solo lectura contra dev/prod citadas arriba — ninguna cifra inventada.
+
+### Dudas
+
+- El hallazgo colateral de fase 2b (§7.6/backlog ya aplicados a prod, pero sin entrada de "cierre de despliegue" en `decisiones.md`, a diferencia del patrón que sigue el resto del proyecto — p. ej. las entradas del 2026-07-22 y 2026-07-23 para eventos de club y rol narrativo) **no se documentó con una entrada nueva en `decisiones.md`**, porque el brief de esta subtarea solo pedía cinco entradas y todas sobre fase 3. Si se quiere el mismo patrón de cierre para fase 2b, es una entrada corta y aparte, no parte de esta subtarea.
+- No verifiqué si `e2e/sagas-v2-mapa.spec.ts` u otros specs de sagas siguen en verde tras estos cambios de documentación — no debería importarles (son ficheros `.md`/`.sql` de solo documentación, sin cambios de comportamiento), pero no ejecuté la suite para confirmarlo, al estar fuera del alcance de "solo doc e issues" que fija esta subtarea.
+- No comprobé si haría falta anexar también, en el mismo anexo de `schema-baseline.sql`, alguna nota sobre la Rincewind route creada a mano en prod (mencionada en `task-5-report.md`) — no es una migración, así que no le busqué hueco en el baseline, pero la cito en el cuerpo de §7.7 y en el propio anexo por si ayuda a quien aplique el migrador a prod a entender por qué la ruta migrada quedará en `position=2`.
