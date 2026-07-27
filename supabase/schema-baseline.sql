@@ -8187,35 +8187,36 @@ drop function public.save_saga_sequence(uuid, jsonb, jsonb, jsonb);
 -- ANEXO 2026-07-27 — Fase 3 del orden unificado de sagas: el mapa se deriva
 -- (spec docs/superpowers/specs/2026-07-27-sagas-fase-3-retirada-del-grafo-design.md).
 --
--- Estado real de las DOS migraciones de abajo, verificado hoy contra los
--- objetos/filas reales, no contra `list_migrations`:
---   - `20260728_sagas_show_map.sql`: aplicada SOLO EN DEV (`sagas.show_map`
---     existe en dev; `information_schema.columns` de PROD no la tiene).
---   - `20260728_migrar_grafos_a_itinerarios.sql`: NO tiene filas resultantes
---     en NINGÚN entorno todavía. Dev no tiene las sagas Cosmere/Mundodisco
---     (es una base de fixtures de QA distinta de prod), así que la Task 5 la
---     verificó sembrando esos dos ids TEMPORALMENTE en dev y revirtiendo la
---     siembra al terminar — el fichero quedó aplicado en el historial de
---     migraciones de dev, pero sus dos rutas/45 pasos se fueron con la
---     siembra (cascada de `on delete cascade`). Prod, comprobado hoy contra
---     `saga_routes`, solo tiene la ruta `rincewind` de Mundodisco (curada a
---     mano por el responsable de producto), ninguna `orden-recomendado`.
---     Detalle completo: `.superpowers/sdd/task-5-report.md`.
+-- Las TRES migraciones de la fase están aplicadas a DEV y a PRODUCCIÓN.
+-- Estado real, verificado el 2026-07-27 contra los objetos/filas reales, no
+-- solo contra `list_migrations`:
+--   - `20260728_sagas_show_map.sql`: `sagas.show_map` existe en dev y en
+--     prod (en prod, 4 de las 85 sagas lo tienen a `true`).
+--   - `20260728_migrar_grafos_a_itinerarios.sql`: aplicada a producción el
+--     2026-07-27. `saga_routes` de prod tiene las dos rutas
+--     `orden-recomendado` migradas (Cosmere, 19 pasos; Mundodisco, 26
+--     pasos), además de la `rincewind` de Mundodisco (8 pasos, curada a
+--     mano, preexistente). En DEV la migración también está en el
+--     historial, pero sin filas resultantes: esa base de fixtures de QA no
+--     tiene las sagas Cosmere/Mundodisco, así que la Task 5 la verificó
+--     sembrando esos dos ids TEMPORALMENTE y revirtiendo la siembra al
+--     terminar (sus dos rutas/45 pasos se fueron con la siembra, cascada de
+--     `on delete cascade`). Detalle completo:
+--     `.superpowers/sdd/task-5-report.md`.
+--   - `20260729_drop_saga_graph.sql` (anexada más abajo, tras la migración
+--     anterior): aplicada a dev y a producción el 2026-07-27. `saga_nodes`
+--     y `saga_edges` ya no existen (`to_regclass` devuelve `null` para las
+--     dos, en ambos entornos) y `save_saga_graph` ya no está en `pg_proc`.
+--     La ficha del Cosmere en producción sigue sirviendo tras el borrado: 7
+--     bloques, sus líneas de ventana y su pestaña de mapa.
 --
--- NINGUNA de las dos está aplicada a PRODUCCIÓN todavía — Task 7, Step 2 del
--- plan, sigue en curso. Anexar aquí antes de esa aplicación es una excepción
--- deliberada a la regla del §10 de `data-model.md` ("aplicar a prod y
--- actualizar este fichero es un solo paso, no dos"): esta subtarea es solo
--- documentación (Step 5), y el estado real de hoy es justo el que describen
--- estas líneas — no "pendiente" a secas, como habría quedado sin este anexo.
--- Quien aplique a prod (Step 2-3) debe actualizar este bloque para que dejar
--- de decir "solo en dev" sea el MISMO paso que la aplicación, como manda el
--- §10 — ver `docs/requirements/decisiones.md` (entrada 2026-07-27, fase 3).
+-- El orden importó y se respetó en los tres pasos: primero el código
+-- sirviendo el derivado, luego la migración de lo insustituible, y solo
+-- entonces el borrado — nunca al revés.
 --
--- La TERCERA migración de la fase (el DROP de `saga_nodes`/`saga_edges`/
--- `save_saga_graph`, `supabase/migrations/20260729_drop_saga_graph.sql`) NO
--- EXISTE todavía: se escribe y se aplica después de comprobar en producción
--- que el mapa derivado funciona (Task 7, Step 4) — no se anexa aquí.
+-- Con esto la fase 3 queda cerrada del todo. Ver
+-- `docs/requirements/decisiones.md` (entrada 2026-07-27, fase 3) y
+-- `docs/requirements/backlog.md`.
 -- =====================================================================
 
 -- ---------------------------------------------------------------
@@ -8370,3 +8371,46 @@ insert into public.saga_route_entries (route_id, position, item_type, item_id) v
   ('8f28ec27-76d2-49b3-8a58-2366a02e557d', 24, 'book'::public.item_type, 'cea01c73-fffd-4d30-b9ab-30a2abd39bd7'), -- Cartas en el Asunto
   ('8f28ec27-76d2-49b3-8a58-2366a02e557d', 25, 'book'::public.item_type, 'fbe19dea-83db-4909-b044-785440255734'), -- Dinero a Mansalva
   ('8f28ec27-76d2-49b3-8a58-2366a02e557d', 26, 'book'::public.item_type, '7f8fac1e-137c-463e-b56c-3ed763ef7da9'); -- A Todo Vapor
+
+-- ---------------------------------------------------------------
+-- Retirada del grafo curado a mano: saga_nodes, saga_edges, save_saga_graph
+-- (20260729_drop_saga_graph.sql)
+-- ---------------------------------------------------------------
+-- Último paso de la fase 3. El «Mapa de lectura» dejó de leerse de aquí: se
+-- DERIVA de lo curado (src/lib/sagas/derive-map.ts). Estas dos tablas eran
+-- una SEGUNDA VERDAD —dibujada a mano en un lienzo cuyo editor se retiró en
+-- la fase 2a— capaz de contradecir a la ficha, que es justo lo que la
+-- unificación de sagas existía para eliminar.
+--
+-- ANTES DE BORRAR se hicieron las dos cosas que hacían falta:
+--   1. Lo único que estas tablas sabían y el modelo nuevo no vive ya en
+--      itinerarios: el entrelazado de 19 obras del Cosmere y las 7 aristas
+--      que cruzan hilos en Mundodisco (20260728_migrar_grafos_a_itinerarios.sql,
+--      anexada arriba, aplicada a producción el 2026-07-27, ANTES que este
+--      borrado). Trono de Cristal y Maasverse no se migraron: medido, el
+--      primero era redundante hasta el empate del hueco 6 y el segundo tenía
+--      un solo nodo sin orden.
+--   2. Se verificó que no queda NI UN camino de lectura de estas tablas en
+--      `src/` — ni un `.from("saga_nodes")`, ni un `.from("saga_edges")`, ni
+--      un `.rpc("save_saga_graph")`. El código nuevo lleva desplegado y
+--      sirviendo desde el 2026-07-27 (comprobado en producción: el mapa del
+--      Cosmere se dibuja compacto, 20 nodos en 7 filas, que solo produce el
+--      derivado).
+--
+-- El orden importó y se respetó: primero el código sirviendo, después el
+-- borrado. Al revés, la ficha entera se habría quedado sin datos.
+--
+-- `saga_nodes.level` guardaba un matiz (`principal`/`menor`) que el modelo
+-- nuevo expresa con `optional` y con el rol narrativo. Se comprobaron los
+-- dos únicos nodos que lo usaban —*Esquirla del Amanecer* y *La Espada de la
+-- Asesina*— y los dos ya están cubiertos, así que no se pierde nada.
+-- `label_override` no guardaba ningún valor en ninguna fila.
+--
+-- APLICADA a dev y a producción el 2026-07-27. Verificado en ambos entornos:
+-- `to_regclass('public.saga_nodes')` y `to_regclass('public.saga_edges')`
+-- devuelven `null`, y `pg_proc` no tiene ninguna fila `save_saga_graph`. La
+-- ficha del Cosmere en producción sigue funcionando: 7 bloques, sus líneas
+-- de ventana y su pestaña de mapa.
+drop function if exists public.save_saga_graph(uuid, jsonb, jsonb);
+drop table if exists public.saga_edges;
+drop table if exists public.saga_nodes;
