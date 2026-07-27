@@ -125,11 +125,14 @@ export type SequencePayload = {
    *  devuelve el array para que el RPC tenga una forma estable y para que quede
    *  escrito que la omisión es deliberada. */
   removedBlocks: Array<{ child_saga_id: string }>;
-  /** Una fila por entrada `libre` con ventana, forma calcada de
-   *  `saga_placement_windows` (20260727_saga_placement_windows.sql). El
-   *  `saga_id` lo pone el RPC, no el payload. Recorre SOLO `d.free`: fuera de
-   *  esa zona `window` siempre es null. */
+  /** Una fila por sujeto con ventana, forma calcada de
+   *  `saga_placement_windows` (20260727_saga_placement_windows.sql). Desde la
+   *  fase 4 el `saga_id` viaja EN CADA FILA —lo pone `ownerSagaId`, no el RPC—
+   *  porque una ventana curada desde el padre sobre una obra de su hija vive
+   *  bajo la HIJA. Recorre `d.free` y `d.nested`: fuera de ahí `window` siempre
+   *  es null. */
   windows: Array<{
+    saga_id: string;
     item_type: ItemType | null;
     item_id: string | null;
     child_saga_id: string | null;
@@ -139,6 +142,22 @@ export type SequencePayload = {
     before_item_type: ItemType | null;
     before_item_id: string | null;
     before_child_saga_id: string | null;
+  }>;
+  /** Sujetos de los que ESTA pantalla se hace responsable. El RPC borra
+   *  exactamente estos y reinserta `windows`.
+   *
+   *  Por qué existe: hasta la fase 3 el RPC hacía reemplazo total por saga, y su
+   *  comentario lo justificaba con que «no hay un segundo escritor: ninguna otra
+   *  pantalla crea ventanas». Desde que el editor del padre cura la ventana de
+   *  una obra de su hija eso deja de ser cierto — dos pantallas escriben la
+   *  misma fila, y el reemplazo por saga se llevaría por delante lo que la otra
+   *  acaba de guardar. Es exactamente lo que en la fase 2a obligó a que la baja
+   *  de `saga_items` fuera explícita. */
+  windowSubjects: Array<{
+    saga_id: string;
+    item_type: ItemType | null;
+    item_id: string | null;
+    child_saga_id: string | null;
   }>;
 };
 
@@ -309,7 +328,7 @@ export function removeEntry(d: SequenceDraft, key: string): SequenceDraft {
   return entry.isNew ? without : { ...without, removed: [...without.removed, key] };
 }
 
-export function toPayload(d: SequenceDraft): SequencePayload {
+export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   const entries: SequencePayload["entries"] = [];
   const blocks: SequencePayload["blocks"] = [];
 
@@ -351,25 +370,77 @@ export function toPayload(d: SequenceDraft): SequencePayload {
     itemId: a?.kind === "item" ? a.itemId : null,
     childSagaId: a?.kind === "block" ? a.childSagaId : null,
   });
-  // Solo la zona libre puede tener ventana: recorrer `d.free` basta, no hace
-  // falta filtrar por `e.window !== null` en las otras zonas.
-  const windows: SequencePayload["windows"] = d.free
-    .filter((e) => e.window !== null)
-    .map((e) => {
-      const after = anchorColumns(e.window!.after);
-      const before = anchorColumns(e.window!.before);
-      return {
-        item_type: e.kind === "item" ? e.itemType : null,
-        item_id: e.kind === "item" ? e.itemId : null,
-        child_saga_id: e.kind === "block" ? e.childSagaId : null,
-        after_item_type: after.itemType,
-        after_item_id: after.itemId,
-        after_child_saga_id: after.childSagaId,
-        before_item_type: before.itemType,
-        before_item_id: before.itemId,
-        before_child_saga_id: before.childSagaId,
-      };
-    });
+  const windowRow = (
+    ownerSagaId: string,
+    itemType: ItemType | null,
+    itemId: string | null,
+    childSagaId: string | null,
+    w: DraftWindow,
+  ) => {
+    const after = anchorColumns(w.after);
+    const before = anchorColumns(w.before);
+    return {
+      saga_id: ownerSagaId,
+      item_type: itemType,
+      item_id: itemId,
+      child_saga_id: childSagaId,
+      after_item_type: after.itemType,
+      after_item_id: after.itemId,
+      after_child_saga_id: after.childSagaId,
+      before_item_type: before.itemType,
+      before_item_id: before.itemId,
+      before_child_saga_id: before.childSagaId,
+    };
+  };
 
-  return { entries, blocks, removed: removedItems, removedBlocks: [], windows };
+  const windows: SequencePayload["windows"] = [
+    ...d.free
+      .filter((e) => e.window !== null)
+      .map((e) =>
+        windowRow(
+          e.ownerSagaId,
+          e.kind === "item" ? e.itemType : null,
+          e.kind === "item" ? e.itemId : null,
+          e.kind === "block" ? e.childSagaId : null,
+          e.window!,
+        ),
+      ),
+    ...d.nested
+      .filter((n) => n.window !== null)
+      .map((n) => windowRow(n.ownerSagaId, n.itemType, n.itemId, null, n.window!)),
+  ];
+
+  // TODAS las zonas, no solo `free`: una entrada que SALE de «Cuando quieras»
+  // deja de mandar su ventana pero tiene que seguir siendo sujeto, porque es lo
+  // que hace que su fila se borre en la misma transacción en que se mueve.
+  const subjectOf = (e: DraftEntry) => ({
+    saga_id: e.ownerSagaId,
+    item_type: e.kind === "item" ? e.itemType : null,
+    item_id: e.kind === "item" ? e.itemId : null,
+    child_saga_id: e.kind === "block" ? e.childSagaId : null,
+  });
+  // Una baja ya no está en ninguna zona, así que su dueña no viaja en el
+  // borrador: era fila de ESTA saga, que es lo único que se puede dar de baja
+  // desde aquí (#187).
+  const subjectFromKey = (key: string) => {
+    const parts = key.split(":");
+    return key.startsWith("i:")
+      ? { saga_id: sagaId, item_type: parts[1] as ItemType, item_id: parts[2], child_saga_id: null }
+      : { saga_id: sagaId, item_type: null, item_id: null, child_saga_id: key.slice(2) };
+  };
+
+  const windowSubjects: SequencePayload["windowSubjects"] = [
+    ...d.slots.flat().map(subjectOf),
+    ...d.free.map(subjectOf),
+    ...d.unclassified.map(subjectOf),
+    ...d.removed.map(subjectFromKey),
+    ...d.nested.map((n) => ({
+      saga_id: n.ownerSagaId,
+      item_type: n.itemType as ItemType | null,
+      item_id: n.itemId as string | null,
+      child_saga_id: null,
+    })),
+  ];
+
+  return { entries, blocks, removed: removedItems, removedBlocks: [], windows, windowSubjects };
 }

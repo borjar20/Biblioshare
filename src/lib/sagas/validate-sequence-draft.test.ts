@@ -1,9 +1,19 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
-const base: SequencePayload = { entries: [], blocks: [], removed: [], removedBlocks: [], windows: [] };
-const ctx = { childIds: new Set(["hija-1"]), anchorKeys: new Set<string>() };
+const base: SequencePayload = {
+  entries: [], blocks: [], removed: [], removedBlocks: [], windows: [], windowSubjects: [],
+};
+// `windowOwners` (fase 4) responde a la vez a «¿puede este sujeto tener
+// ventana?» y «¿bajo qué saga vive su fila?». El sujeto por defecto del helper
+// `window()` de abajo es `i:book:f`, así que va aquí; las pruebas que esperan
+// que se rechace lo sobrescriben con un mapa vacío.
+const ctx = {
+  childIds: new Set(["hija-1"]),
+  anchorKeys: new Set<string>(),
+  windowOwners: new Map([["i:book:f", "saga"]]),
+};
 const item = (id: string, position: number | null, placement: SequencePayload["entries"][number]["placement"]) =>
   ({ item_type: "book" as const, item_id: id, position, placement, optional: false, role: null });
 
@@ -67,16 +77,23 @@ it("los bloques sin clasificar también cuentan como aviso", () => {
 });
 
 const window = (overrides: Partial<SequencePayload["windows"][number]> = {}): SequencePayload["windows"][number] => ({
+  saga_id: "saga",
   item_type: "book", item_id: "f", child_saga_id: null,
   after_item_type: null, after_item_id: null, after_child_saga_id: null,
   before_item_type: null, before_item_id: null, before_child_saga_id: null,
   ...overrides,
 });
 
-it("rechaza la ventana de una entrada que no es `libre` en el propio payload", () => {
+it("rechaza la ventana de un sujeto que no puede tenerla (no es `libre`)", () => {
+  // Desde la fase 4 «puede tener ventana» lo decide `windowOwners` —resuelto
+  // contra BD en servidor, contra el borrador vivo en cliente— y no el
+  // placement que venga en el propio payload.
   const entries = [item("f", 1, "fijo"), item("a", null, "libre")];
   const windows = [window({ after_item_id: "a", after_item_type: "book" })];
-  const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:a"]) });
+  const r = validateSequenceDraft(
+    { ...base, entries, windows },
+    { ...ctx, anchorKeys: new Set(["i:book:a"]), windowOwners: new Map() },
+  );
   expect(r.errors).toEqual(["windowNotFree"]);
 });
 
@@ -146,4 +163,33 @@ it("acepta un ancla dentro del subárbol", () => {
   const windows = [window({ after_item_id: "x", after_item_type: "book" })];
   const r = validateSequenceDraft({ ...base, entries, windows }, { ...ctx, anchorKeys: new Set(["i:book:x"]) });
   expect(r.errors).toEqual([]);
+});
+
+describe("ventanas con dueña (fase 4)", () => {
+  const win = (sagaId: string, itemId: string) => ({
+    saga_id: sagaId, item_type: "book" as const, item_id: itemId, child_saga_id: null,
+    after_item_type: "book" as const, after_item_id: "ancla", after_child_saga_id: null,
+    before_item_type: null, before_item_id: null, before_child_saga_id: null,
+  });
+  const ownerCtx = {
+    childIds: new Set<string>(),
+    anchorKeys: new Set(["i:book:ancla"]),
+    windowOwners: new Map([["i:book:x", "hija"]]),
+  };
+
+  it("un sujeto que no puede tener ventana se rechaza", () => {
+    expect(validateSequenceDraft({ ...base, windows: [win("hija", "z")] }, ownerCtx).errors).toEqual([
+      "windowNotFree",
+    ]);
+  });
+
+  it("el sujeto correcto bajo la saga correcta pasa", () => {
+    expect(validateSequenceDraft({ ...base, windows: [win("hija", "x")] }, ownerCtx).errors).toEqual([]);
+  });
+
+  it("el sujeto correcto bajo OTRA saga se rechaza: la fila iría al sitio equivocado", () => {
+    expect(validateSequenceDraft({ ...base, windows: [win("padre", "x")] }, ownerCtx).errors).toEqual([
+      "windowWrongOwner",
+    ]);
+  });
 });

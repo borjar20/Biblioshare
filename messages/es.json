@@ -1187,6 +1187,7 @@
       "duplicate": "Hay una obra repetida.",
       "generic": "No se ha podido guardar.",
       "windowNotFree": "Solo las entradas de «Cuando quieras» pueden tener ventana.",
+      "windowWrongOwner": "Esa ventana intenta guardarse bajo una saga que no es la dueña de la obra.",
       "windowNoAnchor": "Una ventana necesita al menos un ancla.",
       "windowSelfAnchor": "Una obra no puede anclarse a sí misma.",
       "windowForeignAnchor": "El ancla tiene que ser algo de esta saga."
