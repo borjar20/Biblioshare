@@ -5,7 +5,12 @@
 llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
 escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
 prod el 2026-07-27, fase cerrada, contra los objetos reales (`pg_type`, `pg_constraint`,
-`pg_policies`, `pg_proc`, `to_regclass`), nunca contra `list_migrations`]**
+`pg_policies`, `pg_proc`, `to_regclass`), nunca contra `list_migrations`; **fase 4 del orden
+unificado —`saga_routes.is_reading_order` (§7.2) y el borrado explícito de ventanas por lista de
+sujetos (§7.6)— verificada SOLO EN DEV el 2026-07-28 contra `information_schema.columns`,
+`pg_indexes` y `pg_proc`: en dev existen la columna, su unique parcial
+`saga_routes_reading_order_key` y las DOS sobrecargas de `save_saga_sequence` (cinco y seis
+argumentos). **En PROD no está aplicada nada de la fase 4**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -338,6 +343,14 @@ dentro de una saga. Tres tablas:
   son **sintéticas**, se calculan sobre el grafo/orden principal y no tienen fila aquí — una
   fila para ellas sería una segunda fuente de verdad que resincronizar en cada edición del
   grafo (la familia de fallo del issue #91).
+  - **`is_reading_order`** (boolean, `not null default false`; fase 4, 2026-07-28) — el curador
+    DESIGNA cuál de sus itinerarios ocupa el puesto y la etiqueta de «Orden de lectura» en la
+    ficha; con uno designado, la ruta sintética `lectura` deja de ofrecerse. **Uno como mucho por
+    saga**, y lo impone el unique parcial `saga_routes_reading_order_key` (`saga_id`
+    where `is_reading_order`). La fila **NO se renombra** en BD: la etiqueta la pone
+    `buildRouteList` — `saga_routes.name` no tiene unique, así que renombrarla dejaría dos chips
+    con el mismo texto en cuanto alguien la desdesignara. Sin backfill a propósito: designar
+    cambia la vista POR DEFECTO de esa saga y no se hace en nombre del curador.
 - `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), y **XOR**
   `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos).
   Guardado por **full-replace atómico** vía RPC `save_saga_route(p_route_id, p_entries)`
@@ -682,6 +695,26 @@ queda viva hasta que el bundle desplegado (que aún llama con cuatro) deje de us
 `p_windows` es **reemplazo total** de las ventanas de la saga (`delete ... where saga_id = p_saga_id`
 seguido de reinsert de lo que traiga el payload), a diferencia de `p_removed` (baja explícita de
 `saga_items`, §7.5) — ver `decisiones.md` para el porqué de esa asimetría deliberada.
+
+> **Desde la fase 4 (2026-07-28) esto ya no es así.** `save_saga_sequence` crece a **SEIS**
+> argumentos (`…, p_windows, p_window_subjects`) y la baja de ventanas pasa a ser **explícita, por
+> lista de sujetos**: se borran exactamente los sujetos que la pantalla declara y se reinserta
+> `p_windows`. El reemplazo por saga se justificaba con que «no hay un segundo escritor»; desde que
+> el editor del padre puede curar la ventana de una obra de su hija hay dos pantallas escribiendo la
+> misma fila, y borrar por saga se llevaría por delante lo que la otra acaba de guardar — la misma
+> razón que en la fase 2a obligó a que la baja de `saga_items` fuera explícita.
+>
+> Y el **`saga_id` viaja EN CADA FILA** de `p_windows`, ya no lo pone el RPC: la ventana pertenece a
+> la OBRA, no al contexto desde el que se cura, así que su fila vive bajo la saga **dueña de la
+> membresía** (la decide `windowOwnerFor`, `src/lib/sagas/window-owners.ts`: manda `is_primary`;
+> sin ninguna principal, la saga que se está curando si está entre las membresías; si tampoco, la de
+> id menor). El RPC acota el alcance: solo acepta `saga_id` de `p_saga_id` o de sus **hijas
+> directas**, que es lo único que su editor enseña.
+>
+> Migraciones: `20260730_save_saga_sequence_subjects.sql` (crea la sobrecarga de seis; la de cinco
+> **sigue viva** hasta que el bundle nuevo esté desplegado, porque añadir un parámetro no reemplaza
+> la función, la sobrecarga) y `20260731_drop_save_saga_sequence_v5.sql`, que la retira **después**
+> del despliegue.
 
 **Quién garantiza que solo una entrada `libre` tiene ventana** — ningún CHECK puede imponerlo, porque
 cruza dos tablas (`saga_placement_windows` no sabe qué vale `saga_items.placement`/
