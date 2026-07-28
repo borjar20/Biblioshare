@@ -13,6 +13,11 @@ export type TimelineLabels = {
   windowAfter: (title: string) => string;
   windowBefore: (title: string) => string;
   windowFree: string;
+  windowReason: (reason: "spoiler" | "contexto") => string;
+  windowNotice: (notice: "antes" | "dentro" | "pasada") => string;
+  windowTrackAria: (title: string) => string;
+  windowTrackStart: string;
+  windowTrackEnd: string;
 };
 
 type Translator = (key: string, values?: Record<string, string | number>) => string;
@@ -29,5 +34,16 @@ export function buildTimelineLabels(t: Translator): TimelineLabels {
     windowAfter: (title) => t("timelineWindowAfter", { title }),
     windowBefore: (title) => t("timelineWindowBefore", { title }),
     windowFree: t("timelineWindowFree"),
+    windowReason: (reason) =>
+      reason === "spoiler" ? t("timelineWindowReasonSpoiler") : t("timelineWindowReasonContexto"),
+    windowNotice: (notice) =>
+      notice === "antes"
+        ? t("timelineWindowNoticeAntes")
+        : notice === "dentro"
+          ? t("timelineWindowNoticeDentro")
+          : t("timelineWindowNoticePasada"),
+    windowTrackAria: (title) => t("timelineWindowTrackAria", { title }),
+    windowTrackStart: t("timelineWindowTrackStart"),
+    windowTrackEnd: t("timelineWindowTrackEnd"),
   };
 }
