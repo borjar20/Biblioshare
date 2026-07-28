@@ -65,7 +65,7 @@
 - Consumes: nada de tareas anteriores.
 - Produces: `restoreQaSeed(): Promise<void>`, `ERA_UNO_ID: string`, `NIETA_ID: string`, `ERA_UNO_BASELINE: readonly {itemId, title, position}[]` desde `e2e/support/qa-seed.ts`.
 
-- [ ] **Step 1: Escribir el módulo de semilla**
+- [x] **Step 1: Escribir el módulo de semilla**
 
 Crear `e2e/support/qa-seed.ts`:
 
@@ -170,7 +170,7 @@ export async function restoreQaSeed(): Promise<void> {
 }
 ```
 
-- [ ] **Step 2: Escribir el `globalSetup`**
+- [x] **Step 2: Escribir el `globalSetup`**
 
 Crear `e2e/global-setup.ts`:
 
@@ -185,7 +185,7 @@ export default async function globalSetup() {
 }
 ```
 
-- [ ] **Step 3: Declararlo en la config**
+- [x] **Step 3: Declararlo en la config**
 
 En `playwright.config.ts`, dentro de `defineConfig({...})`, justo después de `testDir`:
 
@@ -200,7 +200,7 @@ En `playwright.config.ts`, dentro de `defineConfig({...})`, justo después de `t
   fullyParallel: false,
 ```
 
-- [ ] **Step 4: Inyección de fallo — desviar la semilla a propósito y comprobar que la suite la recupera**
+- [x] **Step 4: Inyección de fallo — desviar la semilla a propósito y comprobar que la suite la recupera**
 
 Primero, romperla desde PowerShell (`$env:` ya lo tiene `.env.local`; si no, exporta a mano):
 
@@ -212,13 +212,13 @@ Invoke-RestMethod -Method Patch -Uri "$env:SUPABASE_URL/rest/v1/saga_items?saga_
 
 Esperado: la semilla queda con Rayuela en la posición 9.
 
-- [ ] **Step 5: Correr la suite de sagas y comprobar que pasa desde una semilla sucia**
+- [x] **Step 5: Correr la suite de sagas y comprobar que pasa desde una semilla sucia**
 
 Run: `npx playwright test e2e/sagas-ventanas.spec.ts e2e/sagas-editor-secuencia.spec.ts e2e/sagas-colocacion-opcionalidad.spec.ts e2e/sagas-colocacion-bloques.spec.ts --reporter=line`
 
 Expected: **todos pasan**. Antes de esta tarea, la #215 documenta entre 4 y 6 fallos, con `sagas-editor-secuencia.spec.ts:113` («bajar un hueco renumera») esperando *Rayuela* en la 2ª fila y encontrando *Libro raro sin match*.
 
-- [ ] **Step 6: Comprobar que la semilla quedó en su línea base**
+- [x] **Step 6: Comprobar que la semilla quedó en su línea base**
 
 Run (PowerShell):
 
@@ -228,7 +228,7 @@ Invoke-RestMethod -Uri "$env:SUPABASE_URL/rest/v1/saga_items?saga_id=eq.53118dd4
 
 Expected: cuatro filas, `position` 1,2,3,4 en el orden Rayuela / Libro sin valorar / Libro raro sin match / Para leer a Isabel Allende, todas `placement = "fijo"`, `optional = false`, `role = null`.
 
-- [ ] **Step 7: Comprobar la guarda de seguridad**
+- [x] **Step 7: Comprobar la guarda de seguridad**
 
 Corre el `globalSetup` con un UUID que no es el QA, para ver que aborta en vez de escribir:
 
@@ -236,7 +236,7 @@ Run: `node --input-type=module -e "process.env.NEXT_PUBLIC_SUPABASE_URL='https:/
 
 Expected: imprime `OK: [qa-seed] GET sagas?…` (falla en la primera petición, antes de cualquier escritura). Si tu Node no traga TypeScript directo, vale igual con comprobarlo a ojo: `restoreQaSeed` llama a `assertQaUniverse()` en su **primera** línea y todos los `PATCH`/`DELETE` van después.
 
-- [ ] **Step 8: Cerrar la issue #215 diciendo qué se hizo**
+- [x] **Step 8: Cerrar la issue #215 diciendo qué se hizo**
 
 Run:
 
@@ -246,7 +246,7 @@ gh issue close 215 --comment "Cerrada con el \`globalSetup\` de Playwright (\`e2
 La limpieza por spec NO se ha tocado: sigue siendo correcta, y ahora compone porque su estado de partida ya no puede llegar sucio."
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add e2e/support/qa-seed.ts e2e/global-setup.ts playwright.config.ts
