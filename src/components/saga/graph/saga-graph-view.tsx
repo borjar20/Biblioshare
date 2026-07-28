@@ -14,12 +14,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
-import { deriveMapOverlays } from "@/lib/sagas/map-overlays";
 import type { SagaGraph } from "@/lib/sagas/map-types";
 import type { SagaItemRole } from "@/lib/sagas/types";
 import { FloatingEdge } from "./floating-edge";
 import { CoverNode, MedallionNode, SagaNodeCard, type GraphFlowNode } from "./graph-nodes";
-import { TandemCapsuleNode, WindowFrameNode, type OverlayFlowNode } from "./overlay-nodes";
+import { MapOverlayLayer } from "./overlay-layer";
 
 // Viewer read-only del grafo (frames C/E): pan + zoom (rueda/pellizco), tap en
 // nodo navega a su ficha. El mismo componente sirve embebido en PC y a
@@ -31,13 +30,7 @@ import { TandemCapsuleNode, WindowFrameNode, type OverlayFlowNode } from "./over
 // pestaña Info y las listas; se revisará con las interacciones del editor
 // (fase 3).
 
-const NODE_TYPES = {
-  cover: CoverNode,
-  medallion: MedallionNode,
-  saga: SagaNodeCard,
-  "tandem-capsule": TandemCapsuleNode,
-  "window-frame": WindowFrameNode,
-};
+const NODE_TYPES = { cover: CoverNode, medallion: MedallionNode, saga: SagaNodeCard };
 const EDGE_TYPES = { floating: FloatingEdge };
 
 const EDGE_DASH: Record<string, string | undefined> = {
@@ -76,68 +69,19 @@ export function SagaGraphView({
   activeRole?: SagaItemRole | null;
 }) {
   const router = useRouter();
-  const t = useTranslations("saga");
 
-  const nodes = useMemo<Array<GraphFlowNode | OverlayFlowNode>>(() => {
-    // Los adornos del frame D: se derivan de las coordenadas que el grafo ya
-    // trae (map-overlays.ts) en vez de viajar en `SagaGraph`, que lo comparten
-    // tres consumidores. Van los primeros del array y con `zIndex: -1`: son
-    // fondo, detrás de nodos y aristas.
-    const { tandems, windows } = deriveMapOverlays(graph);
-
-    const capsulas: OverlayFlowNode[] = tandems.map((capsule) => ({
-      id: capsule.id,
-      type: "tandem-capsule" as const,
-      position: { x: capsule.x, y: capsule.y },
-      data: {
-        capsule,
-        // Un hueco compartido sin modo curado dice «sin declarar», no «a la
-        // vez»: afirmar un orden que nadie declaró es justo lo que esta feature
-        // vino a quitar.
-        label:
-          capsule.mode === "simultaneo"
-            ? t("timelineTandemSimultaneo")
-            : capsule.mode === "indistinto"
-              ? t("timelineTandemIndistinto")
-              : t("timelineTandemUndeclared"),
-      },
-      draggable: false,
-      selectable: false,
-      zIndex: -1,
-    }));
-
-    const marcos: OverlayFlowNode[] = windows.map((frame) => ({
-      id: frame.id,
-      type: "window-frame" as const,
-      position: { x: frame.x, y: frame.y },
-      data: {
-        frame,
-        // Las MISMAS palabras que la fila del timeline sobre la misma obra: la
-        // cabecera, más los lados que existan. Un lado abierto no se nombra.
-        label: [
-          t("timelineWindowTitle"),
-          frame.afterLabel === null ? null : t("timelineWindowAfter", { title: frame.afterLabel }),
-          frame.beforeLabel === null ? null : t("timelineWindowBefore", { title: frame.beforeLabel }),
-        ]
-          .filter((p): p is string => p !== null)
-          .join(" · "),
-      },
-      draggable: false,
-      selectable: false,
-      zIndex: -1,
-    }));
-
-    const reales: GraphFlowNode[] = graph.nodes.map((n) => ({
-      id: n.id,
-      type: n.kind === "saga" ? "saga" : n.level === "principal" ? "cover" : "medallion",
-      position: { x: n.x, y: n.y },
-      // La lente viaja EN EL DATO del nodo: React Flow no propaga props a los
-      // nodos custom.
-      data: { node: n, muted: activeRole !== null && n.role !== activeRole },
-    }));
-
-    return [...capsulas, ...marcos, ...reales];
-  }, [graph, t, activeRole]);
+  const nodes = useMemo<GraphFlowNode[]>(
+    () =>
+      graph.nodes.map((n) => ({
+        id: n.id,
+        type: n.kind === "saga" ? "saga" : n.level === "principal" ? "cover" : "medallion",
+        position: { x: n.x, y: n.y },
+        // La lente viaja EN EL DATO del nodo: React Flow no propaga props a los
+        // nodos custom.
+        data: { node: n, muted: activeRole !== null && n.role !== activeRole },
+      })),
+    [graph, activeRole],
+  );
 
   const edges = useMemo<Edge[]>(
     () =>
@@ -155,11 +99,7 @@ export function SagaGraphView({
     [graph],
   );
 
-  // Los adornos no navegan a ninguna parte: son fondo, y además no tienen
-  // `href` que seguir. (Ya llevan `pointer-events-none`, así que este descarte
-  // es el segundo cierre, no el único.)
-  const onNodeClick: NodeMouseHandler<GraphFlowNode | OverlayFlowNode> = (_event, node) => {
-    if (node.type === "tandem-capsule" || node.type === "window-frame") return;
+  const onNodeClick: NodeMouseHandler<GraphFlowNode> = (_event, node) => {
     router.push(node.data.node.href);
   };
 
@@ -186,6 +126,11 @@ export function SagaGraphView({
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={26} size={1.3} color="#d9c8a833" />
+        {/* Los adornos del frame D, en el mismo sistema de coordenadas que los
+            nodos pero SIN ser nodos: ni entran en el recuento de
+            `.react-flow__node` con el que dos e2e cuentan las obras del mapa,
+            ni reciben el `onNodeClick` que navega a una ficha. */}
+        <MapOverlayLayer graph={graph} />
         {showZoomControls && <Controls showInteractive={false} showFitView position="bottom-right" />}
       </ReactFlow>
     </div>
