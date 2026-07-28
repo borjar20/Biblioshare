@@ -93,10 +93,11 @@ export function deriveSagaMap(
   tandems?: Map<string, { mode: TandemMode | null; note: string | null }>,
 ): SagaGraph {
   const { ordered, free } = partitionGroups(groups);
-  // Orden de PINTADO (filas), que ya no es el de lectura: un bloque libre con
-  // ventana sube junto a su ancla para que esa arista no cruce el lienzo entero.
-  // El orden de LECTURA sigue siendo `[...ordered, ...free]`, y es el que usa la
-  // pre-pasada de `orderNo` unas líneas más abajo.
+  // Orden de los bloques: un bloque libre con ventana sube junto a su ancla para
+  // que esa arista no cruce el lienzo entero. Lo usan las DOS cosas —el pintado
+  // de filas y la pre-pasada de `orderNo` de más abajo— desde el 2026-07-28: que
+  // el mapa dibujara un bloque arriba mientras el timeline lo numeraba el último
+  // era la issue #245.
   const blocks = orderBlocksForLayout(ordered, free, windows);
 
   const nodes: SagaGraphNode[] = [];
@@ -131,17 +132,25 @@ export function deriveSagaMap(
   // columna del timeline móvil, y TIENE que seguir siendo global y creciente en
   // el ORDEN DE LECTURA.
   //
-  // Por eso se calcula AQUÍ, en una pre-pasada sobre `[...ordered, ...free]`, y
-  // no dentro del `forEach` de pintado: desde que `orderBlocksForLayout` puede
-  // intercalar un bloque libre entre dos colocados, el orden de pintado y el de
-  // lectura ya no son el mismo, y un contador que siguiera al `forEach` movería
-  // el timeline de móvil cada vez que alguien curara una ventana. Todos los
-  // miembros de un mismo hueco (un tándem) comparten `orderNo`: es la
+  // Por eso se calcula AQUÍ, en una pre-pasada aparte y no dentro del `forEach`
+  // de pintado: el `forEach` puede apilar un tándem en varias filas, así que un
+  // contador que lo siguiera numeraría por FILA y no por hueco.
+  //
+  // La pre-pasada recorre `blocks` —el mismo orden que el pintado— desde el
+  // 2026-07-28: hasta entonces recorría `[...ordered, ...free]`, y por eso el
+  // mapa podía dibujar un bloque libre en la fila 1 mientras el timeline de
+  // móvil lo numeraba el último (issue #245). El grano de esto es el BLOQUE, no
+  // la obra: solo se numeran las obras CON hueco, así que un bloque libre sin
+  // huecos (*El Aliento de los Dioses*, *Novelas secretas* en el Cosmere) no
+  // tiene ningún `orderNo` que mover — a sus obras las coloca el mecanismo de
+  // filas de ventana de `deriveTimeline`.
+  //
+  // Todos los miembros de un mismo hueco (un tándem) comparten `orderNo`: es la
   // pertenencia al hueco, y `deriveMapOverlays` la lee así para dibujar la
   // cápsula.
   const orderNoDeCadaObra = new Map<string, number>();
   let orderCounter = 0;
-  for (const group of [...ordered, ...free]) {
+  for (const group of blocks) {
     for (const hueco of huecosDe(group)) {
       for (const m of hueco) orderNoDeCadaObra.set(itemKey(m), orderCounter);
       orderCounter++;

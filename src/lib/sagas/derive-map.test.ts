@@ -275,11 +275,11 @@ describe("deriveSagaMap", () => {
     expect(fila("i:book:C")).toBe(3);
   });
 
-  it("subir de fila NO mueve el orderNo: el timeline de móvil sigue leyendo lo libre al final", () => {
-    // `orderNo` es orden de LECTURA, no de pintado (Task 2). Un bloque libre
-    // dibujado en la fila 1 se sigue leyendo el último: si las dos cosas se
-    // acoplaran, curar una ventana reordenaría el timeline de móvil sin que
-    // nadie lo pidiera.
+  it("subir de fila TAMBIÉN mueve el orderNo: el timeline lee lo libre en su sitio", () => {
+    // Cambio del 2026-07-28 (issue #245): hasta hoy `orderNo` recorría
+    // `[...ordered, ...free]`, así que el mapa podía pintar un bloque libre en
+    // la fila 1 mientras el timeline de móvil lo numeraba el último — la misma
+    // saga contada de dos maneras. Ahora los dos recorren `blocks`.
     const map = deriveSagaMap(
       groups([
         block("Uno", 1, [work("A", 1)]),
@@ -291,8 +291,8 @@ describe("deriveSagaMap", () => {
     );
     const orden = (id: string) => map.nodes.find((n) => n.id === id)!.orderNo;
     expect(orden("i:book:A")).toBe(0);
-    expect(orden("i:book:B")).toBe(1);
-    expect(orden("i:book:L")).toBe(2);
+    expect(orden("i:book:L")).toBe(1);
+    expect(orden("i:book:B")).toBe(2);
   });
 
   it("una obra sin hueco CON ventana sí tiene su arista (a diferencia de la cadena)", () => {
