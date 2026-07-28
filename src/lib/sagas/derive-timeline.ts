@@ -85,11 +85,33 @@ export function deriveTimeline(
   // `authenticated` por defecto FALSE a propósito: quien no lo pase obtiene la
   // vista pública, que es la segura. Nunca al revés — un olvido no puede
   // acabar afirmando «estás dentro de la ventana» a quien no ha entrado.
-  opts: { spine?: TimelineSpine; authenticated?: boolean } = {},
+  // `showOptional` por defecto TRUE, y por el criterio INVERSO al de arriba: el
+  // default seguro aquí es enseñarlo todo. Un olvido que esconde obras es
+  // silencioso —nadie echa de menos lo que no sabe que existe—; uno que las
+  // enseña se ve al instante.
+  opts: { spine?: TimelineSpine; authenticated?: boolean; showOptional?: boolean } = {},
 ): TimelineSection[] {
   const spineMode = opts.spine ?? "curation";
   const authenticated = opts.authenticated ?? false;
-  const items = graph.nodes.filter((n) => n.kind === "item");
+  const showOptional = opts.showOptional ?? true;
+  // El filtro va AQUÍ y no en los componentes: `items` alimenta la columna, las
+  // ramas, los puentes y la colocación de las ventanas, así que esconder en el
+  // render dejaría secciones vacías con su cabecera, ramas colgando de una fila
+  // que ya no se pinta y ventanas ancladas a filas invisibles.
+  //
+  // Y esconde también las opcionales CON HUECO, no solo las ramas: en
+  // producción hay dos así (Saga de los Huesos Verdes, huecos 1 y 2 de 5).
+  //
+  // Lo que NO se toca al esconder: los números. `no` sale de `orderNo + 1` (o
+  // de `step`), calculados sobre el grafo entero — si el hueco 1 desaparece, el
+  // 3 sigue siendo el 3. Es la misma regla que ya rige los pasos de un
+  // itinerario: renumerar solo lo visible haría que el timeline contara la saga
+  // distinto que el resto del producto.
+  //
+  // `graph` entero sigue llegando a `windowTrack` más abajo, a propósito: el
+  // tramo de una ventana describe el orden de lectura de la SAGA, no lo que
+  // este lector ha elegido ver.
+  const items = graph.nodes.filter((n) => n.kind === "item" && (showOptional || !n.optional));
 
   // Columna por PASOS del itinerario (spec 2026-07-28, §1): 1..N del
   // itinerario, sección única sin cabecera, y la subsaga baja de cabecera de
