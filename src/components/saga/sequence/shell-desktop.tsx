@@ -2,9 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
+import { TandemMetaEditor } from "./tandem-meta-editor";
 import { WindowEditor } from "./window-editor";
 import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
+import type { TandemMode } from "@/lib/sagas/types";
 
 type Ops = {
   moveSlot: (i: number, delta: number) => void;
@@ -14,6 +16,8 @@ type Ops = {
   setRole: (key: string, r: DraftEntry["role"]) => void;
   setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) => void;
   clearAnchor: (key: string, side: "after" | "before") => void;
+  /** Fase 2: por ÍNDICE de hueco, no por `key` — los metadatos son del hueco. */
+  setTandemMeta: (i: number, meta: { mode?: TandemMode | null; note?: string | null }) => void;
 };
 
 // Propuesta A (frame A3): las tres zonas a la vez. Verlas juntas es lo que
@@ -107,6 +111,12 @@ export function ShellDesktop({
                 <div className="grid min-w-0 flex-1 gap-1.5">
                   <p className="pl-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-accent">{t("tandemCaption")}</p>
                   {slot.entries.map((e) => row(e, null))}
+                  <TandemMetaEditor
+                    slotNumber={i + 1}
+                    mode={slot.mode}
+                    note={slot.note}
+                    onChange={(meta) => ops.setTandemMeta(i, meta)}
+                  />
                   <button
                     type="button" onClick={() => ops.unpair(i)} aria-label={t("unpairFor", { n: i + 1 })}
                     className="w-full rounded-lg border border-dashed border-border py-1.5 text-[11.5px] font-semibold text-muted-foreground"

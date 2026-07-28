@@ -1,7 +1,7 @@
 import type { SagaAccentToken } from "./accents";
 import { partitionGroups, type MemberGroup } from "./group-members";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
-import type { DetailMember, ResolvedWindow, SagaPlacement } from "./types";
+import type { DetailMember, ResolvedWindow, SagaPlacement, TandemMode } from "./types";
 
 // Derivación PURA del mapa (fase 3, Task 1): sustituye a las tablas curadas a
 // mano `saga_nodes`/`saga_edges` — el mapa se DERIVA de lo que ya está curado
@@ -69,6 +69,11 @@ export function deriveSagaMap(
   // misma forma que `RouteEditorItem.key`/`keyOfRouteEntry` — `i:<tipo>:<uuid>`
   // para una obra, `s:<uuid>` para un bloque.
   routeKeys?: string[],
+  // Metadatos de los huecos en tándem (fase 2), indexados por
+  // `<sagaId>:<position>` — la clave real de `saga_tandems`. Se resuelven AQUÍ
+  // y no en `deriveTimeline` porque aquí sí se conoce la `position` de cada
+  // miembro mientras se construyen los huecos; el nodo solo lleva `orderNo`.
+  tandems?: Map<string, { mode: TandemMode | null; note: string | null }>,
 ): SagaGraph {
   const { ordered, free } = partitionGroups(groups);
   const blocks = [...ordered, ...free];
@@ -142,6 +147,8 @@ export function deriveSagaMap(
     // Se rellena más abajo, si hay `routeKeys`: por defecto no hay itinerario
     // activo, o el itinerario no pasa por este nodo.
     step: null,
+    // Se rellena por hueco, más abajo: un nodo suelto nunca es tándem.
+    tandem: null,
   });
 
   // Fila donde EMPIEZA el bloque actual. Ya no es el índice del bloque: un
@@ -203,8 +210,14 @@ export function deriveSagaMap(
       // pintaba en el mismo punto — se veía un solo nodo, con las etiquetas
       // superpuestas, y las dos aristas de cadena que entran al hueco caían una
       // sobre otra.
+      // Solo un hueco COMPARTIDO puede tener metadatos: con una sola obra no hay
+      // tándem del que hablar, así que una fila rancia con ese número se ignora
+      // en vez de pintar una relación que no existe. La saga es la DUEÑA de la
+      // membresía (`group.sagaId`), no la que se esté pintando.
+      const tandemMeta =
+        hueco.length >= 2 && tandems ? (tandems.get(`${group.sagaId}:${hueco[0].position}`) ?? null) : null;
       hueco.forEach((m, memberIdx) => {
-        const node = makeNode(m, x, rowCursor + memberIdx, orderCounter);
+        const node = { ...makeNode(m, x, rowCursor + memberIdx, orderCounter), tandem: tandemMeta };
         nodes.push(node);
         byId.set(node.id, node);
       });

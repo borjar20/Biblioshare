@@ -3,9 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { saveSequence } from "@/lib/sagas/sequence-actions";
 import { validateSequenceDraft } from "@/lib/sagas/validate-sequence-draft";
+import type { TandemMode } from "@/lib/sagas/types";
 import {
   addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
-  setOptional, setRole, toPayload, unpair,
+  setOptional, setRole, setTandemMeta, toPayload, unpair,
   type DraftAnchor, type DraftEntry, type SequenceDraft, type ZoneId,
 } from "@/lib/sagas/sequence-draft";
 
@@ -43,6 +44,10 @@ export function useSequenceDraft(
       unpair: (i: number) => touch((d) => unpair(d, i)),
       setOptional: (key: string, v: boolean) => touch((d) => setOptional(d, key, v)),
       setRole: (key: string, r: DraftEntry["role"]) => touch((d) => setRole(d, key, r)),
+      // Fase 2: metadatos del HUECO, no de una fila — por eso va por índice de
+      // hueco y no por `key`, a diferencia de todas las de arriba.
+      setTandemMeta: (i: number, meta: { mode?: TandemMode | null; note?: string | null }) =>
+        touch((d) => setTandemMeta(d, i, meta)),
       add: (e: DraftEntry) => touch((d) => addEntry(d, e)),
       remove: (key: string) => touch((d) => removeEntry(d, key)),
       // Fase 2b: única forma de poner/quitar un ancla. Las funciones puras ya
