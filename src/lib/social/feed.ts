@@ -3,6 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { getInteractionSummary, type InteractionComment } from "./interactions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
+import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 
 // Feed de actividad personal (EPIC-05, Bloque C, SD-1). On-read fan-out sobre
 // cuatro tablas fuente ya existentes — sin tabla nueva. La RLS de cada fuente
@@ -239,7 +240,7 @@ export async function getFeed(
             .select(
               // `note` NO se pide: es texto privado del autor (ver el comentario
               // del campo `progress` en FeedEvent).
-              "id, user_id, pass_id, session_date, duration_minutes, passes!inner(item_type, item_id)"
+              "id, user_id, pass_id, session_date, duration_minutes, created_at, passes!inner(item_type, item_id)"
             )
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
@@ -487,7 +488,7 @@ export async function getFeed(
       itemCoverUrl: catalog.coverUrl,
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
-      eventDate: r.session_date,
+      eventDate: sessionRelativeBasis(r.session_date, r.created_at),
       rating: null,
       reviewExcerpt: null,
       episode: null,
