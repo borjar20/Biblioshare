@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
+import { RoleRibbon } from "./role-ribbon";
 import { SkipOptionalButton } from "./skip-optional-button";
 import { TimelineBranchRow } from "./timeline-branch";
 import type { TimelineLabels } from "./timeline-labels";
@@ -63,13 +64,21 @@ export function TimelineEntryRow({
                 <Image src={row.node.coverUrl} alt="" fill sizes="44px" className="object-cover" />
               )}
               {row.node.status === "completed" && (
-                <span className="absolute bottom-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white">
+                // Con cinta de rol el ✓ sube: la cinta ocupa el borde inferior
+                // y taparlo a medias es peor que moverlo — el estado de lectura
+                // manda sobre la etiqueta.
+                <span
+                  className={`absolute right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white ${
+                    row.node.role === null ? "bottom-0.5" : "top-0.5"
+                  }`}
+                >
                   ✓
                 </span>
               )}
               {row.node.status === "in_progress" && (
                 <span className="absolute inset-0 grid place-items-center bg-foreground/40 text-sm text-white">◉</span>
               )}
+              <RoleRibbon role={row.node.role} labels={labels} />
             </span>
             <span className="min-w-0 flex-1">
               {row.no !== null && (
