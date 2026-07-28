@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { NodeProps, Node } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
+import { NODE_BOX } from "@/lib/sagas/graph-metrics";
 import type { SagaGraphNode } from "@/lib/sagas/map-types";
 
 // Nodos custom del mapa (frames C/E): portada 78×116 (principal), medallón
@@ -85,11 +86,15 @@ function StepBadge({ step, size }: { step: number | null; size: "cover" | "medal
 export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
-    <div className="relative w-[78px]">
+    <div className="relative" style={{ width: NODE_BOX.cover.w }}>
       <Ports />
       <div
-        className={`relative h-[116px] w-[78px] overflow-hidden rounded-md border-2 shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
-        style={{ borderColor: node.status === "in_progress" ? "var(--accent)" : SAGA_ACCENT[node.accent].cssVar }}
+        className={`relative overflow-hidden rounded-md border-2 shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
+        style={{
+          width: NODE_BOX.cover.w,
+          height: NODE_BOX.cover.h,
+          borderColor: node.status === "in_progress" ? "var(--accent)" : SAGA_ACCENT[node.accent].cssVar,
+        }}
       >
         {node.coverUrl ? (
           <Image src={node.coverUrl} alt="" fill sizes="78px" className="object-cover" />
@@ -111,11 +116,15 @@ export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
 export function MedallionNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
-    <div className="relative h-[58px] w-[58px]">
+    <div className="relative" style={{ width: NODE_BOX.medallion.w, height: NODE_BOX.medallion.h }}>
       <Ports />
       <div
-        className={`relative h-[58px] w-[58px] overflow-hidden rounded-full border-[2.5px] shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
-        style={{ borderColor: SAGA_ACCENT[node.accent].cssVar }}
+        className={`relative overflow-hidden rounded-full border-[2.5px] shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
+        style={{
+          width: NODE_BOX.medallion.w,
+          height: NODE_BOX.medallion.h,
+          borderColor: SAGA_ACCENT[node.accent].cssVar,
+        }}
       >
         {node.coverUrl ? (
           <Image src={node.coverUrl} alt="" fill sizes="58px" className="object-cover" />
