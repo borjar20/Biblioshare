@@ -37,7 +37,10 @@ export type SagaGraphEdge = {
   id: string;
   source: string;
   target: string;
-  type: "principal" | "opcional" | "requisito";
+  /** `itinerario` = salto que dibuja el itinerario activo entre dos pasos
+   *  seguidos que el mapa no unía por sí solo. Solo existe con una ruta curada
+   *  activa; las otras tres salen de la curación y están siempre. */
+  type: "principal" | "opcional" | "requisito" | "itinerario";
   accent: SagaAccentToken;
 };
 

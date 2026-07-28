@@ -1001,6 +1001,7 @@
     "legendMain": "Orden principal",
     "legendOptional": "Opcional / spin-off",
     "legendRequisite": "Requisito (antes de)",
+    "legendItineraryJump": "Salto del itinerario",
     "legendReading": "Leyendo ahora",
     "orderReading": "Orden de lectura",
     "orderPublication": "Publicación",

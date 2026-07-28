@@ -382,6 +382,46 @@ export function deriveSagaMap(
       const node = byId.get(key);
       if (node) node.step = i + 1;
     });
+
+    // Saltos del itinerario. Revisa a sabiendas lo que decía el párrafo de
+    // arriba —«el itinerario solo numera lo que el mapa ya dibuja»—: un
+    // itinerario que cruza de una saga a otra dejaba un número que se
+    // interrumpía en una fila y reaparecía en otra, sin nada que dijera por
+    // dónde seguía. Decisión del responsable de producto (2026-07-28), no una
+    // inferencia: el itinerario pasa a poder dibujar SUS PROPIOS saltos.
+    //
+    // Se unen los pasos que de verdad se ven, no las claves crudas: un paso
+    // fantasma (obra borrada) o un paso que nombra un bloque entero no resuelve
+    // a ningún nodo, y si partiera la cadena el mapa se quedaría sin dibujar el
+    // salto justo donde más falta hace.
+    const visible = routeKeys.flatMap((key) => {
+      const node = byId.get(key);
+      return node ? [node] : [];
+    });
+
+    // Una arista YA existente entre los dos, EN CUALQUIER SENTIDO, cuenta como
+    // dibujada: superponer otra encima solo produce dos trazos en el mismo
+    // segmento y el par de puntas de flecha encontradas que el apilado del
+    // tándem vino a quitar.
+    const drawn = new Set(edges.map((e) => `${e.source}|${e.target}`));
+    const alreadyJoined = (a: string, b: string) => drawn.has(`${a}|${b}`) || drawn.has(`${b}|${a}`);
+
+    for (let i = 1; i < visible.length; i++) {
+      const from = visible[i - 1];
+      const to = visible[i];
+      if (from.id === to.id || alreadyJoined(from.id, to.id)) continue;
+      drawn.add(`${from.id}|${to.id}`);
+      edges.push({
+        id: `route:${from.id}->${to.id}`,
+        source: from.id,
+        target: to.id,
+        type: "itinerario",
+        // El acento no se usa para este tipo: la vista lo pinta con el color
+        // del texto a propósito, porque el salto no pertenece a ninguna saga
+        // — es de la capa del itinerario. Se rellena por tener la forma completa.
+        accent: "beige",
+      });
+    }
   }
 
   // Mismo orden estable que buildSagaGraph: order_no (nulls al final), luego label.
