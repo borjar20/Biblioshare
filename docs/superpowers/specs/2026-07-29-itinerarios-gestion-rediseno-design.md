@@ -176,8 +176,14 @@ debajo, en vez del párrafo rojo suelto al pie que hay hoy.
 | Gesto | Móvil | Escritorio |
 |---|---|---|
 | Crear | Hoja desde «+ Nuevo itinerario». Con la lista vacía, el formulario se pinta abierto en la página: es lo único que se puede hacer. | Panel del raíl, siempre abierto. |
-| Renombrar | Hoja precargada, desde ⋯. | El mismo panel del raíl cambia a modo renombrar. Sin modal. |
+| Renombrar | Hoja precargada, desde ⋯. | La misma hoja, que en `lg` se pinta como modal centrado. |
 | Borrar | Zona de peligro **dentro** de la hoja de la fila, con el nombre y las consecuencias. | Igual: el ⋯ abre la misma hoja. |
+
+El renombrado usa hoja también en escritorio, y no un segundo modo del panel
+del raíl: el mockup no dibuja el renombrado en escritorio (D1 solo tiene
+«Nuevo itinerario» en el raíl), y un raíl con dos modos añade una máquina de
+estados —y el riesgo de perder lo que se estuviera escribiendo en «crear» al
+pulsar «renombrar»— a cambio de nada visible.
 
 El aviso de que **el slug no cambia al renombrar** va bajo el campo de nombre,
 en texto pequeño, no como banda de advertencia aparte: es cierto y hay que
