@@ -186,6 +186,53 @@ describe("alignRowsToLongEdges", () => {
     expect(col(out, "a")).toBe(1);
   });
 
+  it("dos sueltas de la misma fila se ordenan por la columna de su ancla", () => {
+    // Las sueltas no tienen hueco, así que su orden entre ellas era el del
+    // título: arbitrario respecto a dónde están sus anclas. Ordenarlas por la
+    // columna del ancla evita que sus aristas se crucen entre sí.
+    const graph: SagaGraph = {
+      nodes: [
+        nodo("izq", "uno", 0, 0),
+        nodo("der", "uno", 2, 0),
+        // `a` va antes que `b` por título, pero el ancla de `a` está a la
+        // derecha y la de `b` a la izquierda: sus aristas se cruzan.
+        { ...nodo("a", "uno", 0, 1), orderNo: null },
+        { ...nodo("b", "uno", 1, 1), orderNo: null },
+      ],
+      edges: [arista("der", "a", "requisito"), arista("izq", "b", "requisito")],
+    };
+    const out = alignRowsToLongEdges(graph);
+    expect(col(out, "b")).toBe(0);
+    expect(col(out, "a")).toBe(1);
+  });
+
+  it("dos sueltas sin ancla conservan el orden que traían", () => {
+    const graph: SagaGraph = {
+      nodes: [
+        nodo("cadena", "uno", 0, 0),
+        { ...nodo("a", "uno", 0, 1), orderNo: null },
+        { ...nodo("b", "uno", 1, 1), orderNo: null },
+      ],
+      edges: [],
+    };
+    const out = alignRowsToLongEdges(graph);
+    expect(col(out, "a")).toBe(0);
+    expect(col(out, "b")).toBe(1);
+  });
+
+  it("las sueltas de bloques distintos no se mezclan entre sí", () => {
+    const graph: SagaGraph = {
+      nodes: [
+        { ...nodo("a", "uno", 0, 0), orderNo: null },
+        { ...nodo("b", "dos", 0, 1), orderNo: null },
+      ],
+      edges: [],
+    };
+    const out = alignRowsToLongEdges(graph);
+    expect(col(out, "a")).toBe(0);
+    expect(col(out, "b")).toBe(0);
+  });
+
   it("no muta el grafo que recibe", () => {
     const graph: SagaGraph = {
       nodes: [nodo("a", "uno", 2, 0), nodo("z", "dos", 0, 1)],

@@ -88,6 +88,48 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
     colocados.add(clave);
   }
 
+  // Segunda fase: dentro de una FILA DE SUELTAS, ordenar por la columna del
+  // ancla. Las sueltas no tienen hueco, así que su orden entre ellas lo fijaba
+  // el título — arbitrario respecto a dónde están sus anclas, y por tanto sus
+  // aristas de ventana se cruzaban entre sí sin ninguna razón.
+  //
+  // Se reconocen por `orderNo === null`, que es exactamente lo que
+  // `deriveSagaMap` le pone a una obra sin hueco. Su fila va siempre después de
+  // las de la cadena de su bloque, así que ninguna fila mezcla las dos cosas y
+  // agrupar por `y` es seguro.
+  const filasDeSueltas = new Map<number, SagaGraphNode[]>();
+  for (const n of graph.nodes) {
+    if (n.orderNo !== null) continue;
+    const lista = filasDeSueltas.get(n.y);
+    if (lista === undefined) filasDeSueltas.set(n.y, [n]);
+    else lista.push(n);
+  }
+
+  // Columna del ancla MÁS A LA IZQUIERDA. Una suelta sin ancla se va al final de
+  // su fila, no al principio: no tiene arista que enderezar y no debe empujar a
+  // las que sí.
+  const columnaDelAncla = (n: SagaGraphNode): number => {
+    const columnas = (vecinos.get(n.id) ?? [])
+      .map((id) => xFinal.get(id))
+      .filter((x): x is number => x !== undefined);
+    return columnas.length === 0 ? Number.MAX_SAFE_INTEGER : Math.min(...columnas);
+  };
+
+  for (const lista of filasDeSueltas.values()) {
+    // Las columnas que la fila ya ocupa se reparten entre las mismas obras, solo
+    // que en otro orden: la fila no se ensancha ni deja huecos.
+    const columnas = lista.map((n) => xFinal.get(n.id)!).sort((a, b) => a - b);
+    const ordenadas = [...lista].sort((a, b) => {
+      const ca = columnaDelAncla(a);
+      const cb = columnaDelAncla(b);
+      if (ca !== cb) return ca - cb;
+      // Desempate por título: dos sueltas sin ancla, o con la misma, tienen que
+      // salir siempre en el mismo orden o el mapa baila entre renders.
+      return a.label.localeCompare(b.label);
+    });
+    ordenadas.forEach((n, i) => xFinal.set(n.id, columnas[i]));
+  }
+
   // El mapa vuelve a empezar en la columna 0: React Flow encuadra con `fitView`,
   // pero un lienzo que empieza en la 3 desplaza también el mini-preview del CTA,
   // que no encuadra.
