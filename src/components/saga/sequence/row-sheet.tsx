@@ -3,9 +3,11 @@
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { DraftEntry, ZoneId } from "@/lib/sagas/sequence-draft";
-import type { SagaItemRole } from "@/lib/sagas/types";
+import { SAGA_ITEM_ROLES, type SagaItemRole } from "@/lib/sagas/types";
 
-const ROLES: SagaItemRole[] = ["precuela", "spin_off", "relato", "paralela"];
+// La lista viene de `roles.ts`: era una de las tres copias del mismo
+// vocabulario que la fase 5 unificó.
+const ROLES = SAGA_ITEM_ROLES;
 const ZONES: ZoneId[] = ["sequence", "free", "unclassified"];
 
 /** Hoja de una fila (frame B2). Es el gemelo pulsable y tecleable de cada

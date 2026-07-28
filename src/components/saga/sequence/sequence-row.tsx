@@ -5,9 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { SAGA_ACCENT, isSagaAccentToken } from "@/lib/sagas/accents";
 import type { DraftEntry } from "@/lib/sagas/sequence-draft";
-import type { SagaItemRole } from "@/lib/sagas/types";
+import { SAGA_ITEM_ROLES, type SagaItemRole } from "@/lib/sagas/types";
 
-const ROLES: SagaItemRole[] = ["precuela", "spin_off", "relato", "paralela"];
+// La lista viene de `roles.ts`: era una de las tres copias del mismo
+// vocabulario que la fase 5 unificó.
+const ROLES = SAGA_ITEM_ROLES;
 
 /** Fila de obra y de bloque-subsaga. Presentación pura: recibe la entrada y
  *  callbacks, no toca el borrador. `density` es lo único que cambia entre las

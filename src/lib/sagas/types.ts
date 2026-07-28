@@ -26,9 +26,16 @@ export type SagaMembership = {
 };
 
 /** Rol narrativo de un miembro dentro de una saga concreta (issue #167).
- *  Espejo a mano de public.saga_item_role: si algún día se añade un valor en
- *  BD, TypeScript NO se quejará aquí — hay que actualizarlo a mano. */
-export type SagaItemRole = "precuela" | "spin_off" | "relato" | "paralela";
+ *
+ *  La unión se declaraba AQUÍ a mano, y el editor tenía además dos copias en
+ *  forma de array: tres sitios donde escribir el mismo vocabulario y ninguno
+ *  que obligara a que coincidieran. Desde la fase 5 hay una sola lista
+ *  (`./roles`) y un test que la ata al enum de la BD. Se reexporta para no
+ *  tocar los ~10 módulos que importan `SagaItemRole` desde `./types`. */
+import type { SagaItemRole } from "./roles";
+
+export { SAGA_ITEM_ROLES } from "./roles";
+export type { SagaItemRole } from "./roles";
 
 /** Dónde se lee un miembro. null = sin clasificar (deuda de curación).
  *  Espejo a mano de public.saga_placement, igual que SagaItemRole: si se añade

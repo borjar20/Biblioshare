@@ -2337,7 +2337,7 @@ export type Database = {
         | "club_event_created"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
-      saga_item_role: "precuela" | "spin_off" | "relato" | "paralela"
+      saga_item_role: "precuela" | "novela_corta" | "relato" | "spin_off" | "companero" | "crossover"
       saga_placement: "fijo" | "libre"
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
@@ -2512,7 +2512,7 @@ export const Constants = {
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
-      saga_item_role: ["precuela", "spin_off", "relato", "paralela"],
+      saga_item_role: ["precuela", "novela_corta", "relato", "spin_off", "companero", "crossover"],
       saga_placement: ["fijo", "libre"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
+import { RoleRibbon } from "./role-ribbon";
 import { TimelineBranchRow } from "./timeline-branch";
 import type { TimelineLabels } from "./timeline-labels";
 
@@ -67,10 +68,17 @@ export function TimelineTandemRow({
                   <span className="relative h-[57px] w-[38px] shrink-0 overflow-hidden rounded shadow">
                     {n.coverUrl && <Image src={n.coverUrl} alt="" fill sizes="38px" className="object-cover" />}
                     {n.status === "completed" && (
-                      <span className="absolute bottom-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white">
+                      <span
+                        className={`absolute right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white ${
+                          n.role === null ? "bottom-0.5" : "top-0.5"
+                        }`}
+                      >
                         ✓
                       </span>
                     )}
+                    {/* La única fila donde la cinta puede salir varias veces:
+                        son obras distintas y cada una tiene su rol. */}
+                    <RoleRibbon role={n.role} labels={labels} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-serif text-[13.5px] font-semibold leading-tight">

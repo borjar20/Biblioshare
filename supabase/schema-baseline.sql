@@ -8509,3 +8509,55 @@ create policy "saga optional skips own" on public.saga_optional_skips
 -- Preferencia global del lector, mismo patron que profiles.daily_goal_minutes.
 alter table public.profiles
   add column show_optional_readings boolean not null default true;
+
+
+-- ============================================================================
+-- ANEXO 2026-07-28 - fase 5 del timeline con los cuatro estados: los roles.
+-- DOS migraciones, y NO estan en el mismo sitio:
+--   · 20260806_saga_item_role_ampliado.sql  -> dev Y PROD
+--   · 20260807_saga_item_role_sin_paralela.sql -> SOLO DEV (issue #237)
+-- La segunda entra en prod DESPUES de desplegar el bundle de la fase 5:
+-- retirar un valor rompe al bundle viejo, que sigue ofreciendo «Paralela» en el
+-- editor de secuencia y reventaria el cast de save_saga_sequence con un 22P02.
+-- Mismo baile que la sobrecarga del RPC en las fases 2b y 4.
+--
+-- Recrear el tipo NO obliga a recrear save_saga_sequence: es plpgsql con el
+-- cuerpo sin parsear (prosqlbody is null), asi que el cast se resuelve por
+-- NOMBRE en ejecucion. Verificado contra pg_enum/pg_attribute, nunca contra
+-- list_migrations. Y el progreso no se toca: countedKeys (progress.ts) sale de
+-- la fase como entro.
+-- ============================================================================
+
+alter type public.saga_item_role add value if not exists 'novela_corta';
+alter type public.saga_item_role add value if not exists 'companero';
+alter type public.saga_item_role add value if not exists 'crossover';
+
+-- --- SOLO DEV hasta el despliegue (issue #237) ------------------------------
+-- Guarda explicita: sin ella el `using` fallaria igual, pero con un error de
+-- cast que no dice de que va el problema. 0 filas `paralela` en prod [MEDIDO].
+do $$
+begin
+  if exists (select 1 from public.saga_items where role::text = 'paralela') then
+    raise exception 'Hay filas con role = paralela: decide que son antes de retirar el valor';
+  end if;
+end $$;
+
+alter type public.saga_item_role rename to saga_item_role_viejo;
+
+-- Orden de LECTURA, el mismo que src/lib/sagas/roles.ts. Nada ordena datos por
+-- este enum. `principal` no existe a proposito: es role = null.
+create type public.saga_item_role as enum (
+  'precuela',
+  'novela_corta',
+  'relato',
+  'spin_off',
+  'companero',
+  'crossover'
+);
+
+-- Unica columna del tipo en todo el esquema [MEDIDO: pg_attribute].
+alter table public.saga_items
+  alter column role type public.saga_item_role
+  using role::text::public.saga_item_role;
+
+drop type public.saga_item_role_viejo;

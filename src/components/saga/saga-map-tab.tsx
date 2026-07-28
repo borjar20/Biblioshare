@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { countRoles } from "@/lib/sagas/count-roles";
 import { deriveSagaMap, type MapLookup } from "@/lib/sagas/derive-map";
 import { deriveTimeline, sortByPublication } from "@/lib/sagas/derive-timeline";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
 import { keyOfRouteEntry } from "@/lib/sagas/hydrate-route-draft";
 import type { SagaGraph } from "@/lib/sagas/map-types";
+import type { SagaItemRole } from "@/lib/sagas/types";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { createClient } from "@/lib/supabase/server";
 import { GraphLegend } from "./graph/graph-legend";
@@ -22,10 +24,13 @@ export async function SagaMapTab({
   detail,
   activeRoute,
   canEdit,
+  activeRole,
 }: {
   detail: SagaDetail;
   activeRoute: string;
   canEdit?: boolean;
+  /** Lente por rol (`?rol=`), ya validada contra el vocabulario en la página. */
+  activeRole: SagaItemRole | null;
 }) {
   const graph = detail.graph;
   const base = sagaHref(detail.saga.id);
@@ -65,6 +70,14 @@ export async function SagaMapTab({
   // filas del timeline: contadas sobre lo visible, apagar el interruptor haría
   // desaparecer el propio interruptor y no habría forma de volver.
   const optionalCount = graph === null ? 0 : graph.nodes.filter((n) => n.kind === "item" && n.optional).length;
+
+  // Contado sobre el GRAFO, igual que optionalCount y por el mismo motivo: la
+  // barra tiene que seguir listando todos los roles mientras uno está activo, o
+  // no habría forma de volver.
+  const roleCounts = graph === null ? [] : countRoles(graph);
+  // Los enlaces del filtro conservan la pestaña y la ruta activa: la lente no
+  // puede sacarte del mapa ni cambiarte de itinerario.
+  const baseHref = `${base}?tab=mapa&ruta=${encodeURIComponent(activeRoute)}`;
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-10">
@@ -107,10 +120,14 @@ export async function SagaMapTab({
               sections={deriveTimeline(graph, {
                 authenticated: detail.isAuthenticated,
                 showOptional: detail.showOptionalReadings,
+                roleFilter: activeRole,
               })}
               sagaId={detail.isAuthenticated ? detail.saga.id : null}
               showOptional={detail.showOptionalReadings}
               optionalCount={optionalCount}
+              roleCounts={roleCounts}
+              activeRole={activeRole}
+              baseHref={baseHref}
             />
           </div>
           {/* PC: grafo embebido con la leyenda como barra inferior del marco
@@ -128,10 +145,14 @@ export async function SagaMapTab({
               sections={deriveTimeline(graph, {
                 authenticated: detail.isAuthenticated,
                 showOptional: detail.showOptionalReadings,
+                roleFilter: activeRole,
               })}
               sagaId={detail.isAuthenticated ? detail.saga.id : null}
               showOptional={detail.showOptionalReadings}
               optionalCount={optionalCount}
+              roleCounts={roleCounts}
+              activeRole={activeRole}
+              baseHref={baseHref}
             />
             </div>
           </div>
@@ -152,7 +173,13 @@ export async function SagaMapTab({
               </div>
             </div>
           )}
-          <RouteView detail={detail} slug={activeRoute} canEdit={canEdit} graph={curatedGraph} />
+          <RouteView
+            detail={detail}
+            slug={activeRoute}
+            canEdit={canEdit}
+            graph={curatedGraph}
+            activeRole={activeRole}
+          />
         </>
       )}
     </div>

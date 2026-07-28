@@ -1057,9 +1057,22 @@
     "unclassifiedCta": "Clasificarlas",
     "roleLabel": {
       "precuela": "Precuela",
-      "spin_off": "Spin-off",
+      "novela_corta": "Novela corta",
       "relato": "Relato",
-      "paralela": "Paralela"
+      "spin_off": "Spin-off",
+      "companero": "Compañero",
+      "crossover": "Crossover"
+    },
+    "timelineRoleFilterTitle": "Roles",
+    "timelineRoleFilterAll": "Todos",
+    "timelineRoleFilterAria": "Ver solo: {role}",
+    "roleShort": {
+      "precuela": "Precuela",
+      "novela_corta": "Novela",
+      "relato": "Relato",
+      "spin_off": "Spin-off",
+      "companero": "Compañero",
+      "crossover": "Crossover"
     },
     "branchRequisite": "Requisito",
     "backToSaga": "Volver a la saga",
@@ -1181,7 +1194,7 @@
     "roleLabelFor": "Rol narrativo de {title}",
     "rowMenuFor": "Acciones de {title}",
     "itemType": { "book": "Libro", "movie": "Película", "series": "Serie" },
-    "role": { "precuela": "Precuela", "spin_off": "Spin-off", "relato": "Relato", "paralela": "Paralela" },
+    "role": { "precuela": "Precuela", "novela_corta": "Novela corta", "relato": "Relato", "spin_off": "Spin-off", "companero": "Compañero", "crossover": "Crossover" },
     "moveUp": "Subir un hueco",
     "moveDown": "Bajar un hueco",
     "moveUpFor": "Subir un hueco: {title}",

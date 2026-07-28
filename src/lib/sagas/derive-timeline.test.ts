@@ -679,3 +679,82 @@ describe("deriveTimeline · el interruptor de opcionales", () => {
     expect(nums(tl)).toEqual([1, 3]);
   });
 });
+
+// Lente por rol (fase 5). Va en el MISMO sitio que el interruptor de
+// opcionales, y por el mismo motivo. La diferencia con aquel no es técnica sino
+// de naturaleza: esconder opcionales es una PREFERENCIA (vive en `profiles`),
+// filtrar por rol es una LENTE momentánea (vive en la URL, `?rol=`).
+describe("deriveTimeline · la lente por rol", () => {
+  const columna = () =>
+    graph([
+      node("uno", { orderNo: 0, role: null }),
+      node("dos", { orderNo: 1, role: "precuela" }),
+      node("tres", { orderNo: 2, role: "relato" }),
+      node("cuatro", { orderNo: 3, role: "precuela" }),
+    ]);
+  const ids = (tl: ReturnType<typeof deriveTimeline>) =>
+    tl.flatMap((s) => s.rows).map((r) => (r.kind === "entry" ? r.node.id : r.kind));
+  const nums = (tl: ReturnType<typeof deriveTimeline>) =>
+    tl.flatMap((s) => s.rows).map((r) => (r.kind === "entry" ? r.no : null));
+
+  it("con roleFilter solo quedan las obras de ese rol", () => {
+    expect(ids(deriveTimeline(columna(), { roleFilter: "precuela" }))).toEqual(["dos", "cuatro"]);
+  });
+
+  it("sin roleFilter no se esconde nada, y null equivale a omitirlo", () => {
+    expect(ids(deriveTimeline(columna()))).toHaveLength(4);
+    expect(ids(deriveTimeline(columna(), { roleFilter: null }))).toHaveLength(4);
+  });
+
+  it("las obras SIN rol se esconden al filtrar: `principal` no es un rol", () => {
+    // `principal` del mockup no se materializó como valor (es role = null), así
+    // que filtrar por un rol concreto deja fuera a la línea principal. Es lo que
+    // hace que la barra tenga que ofrecer siempre «Todos».
+    expect(ids(deriveTimeline(columna(), { roleFilter: "relato" }))).toEqual(["tres"]);
+  });
+
+  it("el filtro NO renumera: la fila 4 sigue siendo la 4", () => {
+    // Misma regla que ya rige los pasos de un itinerario y las opcionales
+    // escondidas: renumerar solo lo visible haría que el timeline contara la
+    // saga distinto que el resto del producto.
+    expect(nums(deriveTimeline(columna(), { roleFilter: "precuela" }))).toEqual([2, 4]);
+  });
+
+  it("la lente por rol y el interruptor de opcionales se aplican a la vez", () => {
+    const g = graph([
+      node("uno", { orderNo: 0, role: "relato" }),
+      node("dos", { orderNo: 1, role: "relato", optional: true }),
+    ]);
+    expect(ids(deriveTimeline(g, { roleFilter: "relato", showOptional: false }))).toEqual(["uno"]);
+  });
+
+  it("el tramo de la ventana NO se mueve al filtrar por rol", () => {
+    // Igual que con las opcionales: el tramo describe el orden de lectura de la
+    // SAGA, no la lente que este lector eligió. Si el filtro lo moviera, dos
+    // lectores verían tramos distintos para la misma ventana (#91/#185).
+    //
+    // Las anclas comparten el rol filtrado A PROPÓSITO: con anclas fuera de la
+    // lente no hay fila `window` que comparar —la ventana degrada a rama, que
+    // es consecuencia legítima de filtrar—, y lo que este test tiene que aislar
+    // es OTRA cosa: que los porcentajes salen del grafo entero. La obra `dos`
+    // se queda fuera de la lente y aun así cuenta para el tramo; si el filtro
+    // se colara en `windowTrack`, el denominador cambiaría y los pct también.
+    const g = graph(
+      [
+        node("uno", { orderNo: 0, role: "crossover" }),
+        node("dos", { orderNo: 1, role: "precuela" }),
+        node("tres", { orderNo: 2, role: "crossover" }),
+        node("libre", { orderNo: null, groupSagaId: "g1", role: "crossover" }),
+      ],
+      [
+        { id: "e1", source: "uno", target: "libre", type: "requisito", accent: "beige" },
+        { id: "e2", source: "libre", target: "tres", type: "opcional", accent: "ambar" },
+      ],
+    );
+    const track = (tl: ReturnType<typeof deriveTimeline>) =>
+      tl.flatMap((s) => s.rows).find((r) => r.kind === "window")!.track;
+    expect(track(deriveTimeline(g, { authenticated: true, roleFilter: "crossover" }))).toEqual(
+      track(deriveTimeline(g, { authenticated: true })),
+    );
+  });
+});

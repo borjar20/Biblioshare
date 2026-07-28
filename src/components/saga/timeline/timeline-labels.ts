@@ -2,6 +2,8 @@
 // reciben las etiquetas ya resueltas. La cáscara llama a `getTranslations` una
 // vez y construye esto; así una fila no dispara una resolución de traducciones
 // por cada tarjeta pintada.
+import type { SagaItemRole } from "@/lib/sagas/types";
+
 export type TimelineLabels = {
   orderNo: (n: number) => string;
   branchRequisite: string;
@@ -24,6 +26,9 @@ export type TimelineLabels = {
   unskipAria: (title: string) => string;
   optionalTag: string;
   skippedTag: string;
+  /** Forma CORTA del rol, para la cinta de la portada: «Novela corta» no cabe
+   *  en 44 px a 7.5 px. El chip usa la larga (`saga.roleLabel`). */
+  roleShort: (role: SagaItemRole) => string;
 };
 
 type Translator = (key: string, values?: Record<string, string | number>) => string;
@@ -57,5 +62,6 @@ export function buildTimelineLabels(t: Translator): TimelineLabels {
     unskipAria: (title) => t("timelineUnskipAria", { title }),
     optionalTag: t("timelineOptionalTag"),
     skippedTag: t("timelineSkippedTag"),
+    roleShort: (role) => t(`roleShort.${role}`),
   };
 }

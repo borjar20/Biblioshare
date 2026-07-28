@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasMinRole } from "@/lib/auth/roles";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
+import { SAGA_ITEM_ROLES, type SagaItemRole } from "@/lib/sagas/types";
 import { SagaHero } from "@/components/saga/saga-hero";
 import { SagaInfo } from "@/components/saga/saga-info";
 import { SagaMapTab } from "@/components/saga/saga-map-tab";
@@ -30,10 +31,10 @@ export default async function SagaDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; orden?: string; ruta?: string }>;
+  searchParams: Promise<{ tab?: string; orden?: string; ruta?: string; rol?: string }>;
 }) {
   const { id } = await params;
-  const { orden, ruta } = await searchParams;
+  const { orden, ruta, rol } = await searchParams;
   const t = await getTranslations("saga");
   const supabase = await createClient();
 
@@ -57,6 +58,14 @@ export default async function SagaDetailPage({
     detail.routes[0]?.slug ||
     "publicacion";
 
+  // Lente por rol (fase 5). Un valor desconocido —enlace viejo, el `paralela`
+  // de antes de la retirada, o algo escrito a mano— degrada a «todos» en vez de
+  // dar 404 o vaciar el timeline sin explicación. Mismo criterio que el slug de
+  // ruta desconocido, justo arriba.
+  const activeRole: SagaItemRole | null = (SAGA_ITEM_ROLES as readonly string[]).includes(rol ?? "")
+    ? (rol as SagaItemRole)
+    : null;
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 py-6">
       <SagaHero detail={detail} isAuthenticated={detail.isAuthenticated} />
@@ -75,7 +84,12 @@ export default async function SagaDetailPage({
         }
         map={
           detail.hasGraph || detail.routes.some((r) => !r.synthetic) ? (
-            <SagaMapTab detail={detail} activeRoute={activeRoute} canEdit={canCurate} />
+            <SagaMapTab
+              detail={detail}
+              activeRoute={activeRoute}
+              canEdit={canCurate}
+              activeRole={activeRole}
+            />
           ) : null
         }
       />

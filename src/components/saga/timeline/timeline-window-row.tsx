@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
 import { RoleChip } from "../role-chip";
+import { RoleRibbon } from "./role-ribbon";
 import type { TimelineLabels } from "./timeline-labels";
 import { WindowTrackBar } from "./window-track-bar";
 
@@ -40,6 +41,7 @@ export function TimelineWindowRow({ row, labels }: { row: WindowRow; labels: Tim
         <Link href={row.node.href} className="mt-2 flex items-center gap-3">
           <span className="relative h-[57px] w-[38px] shrink-0 overflow-hidden rounded shadow">
             {row.node.coverUrl && <Image src={row.node.coverUrl} alt="" fill sizes="38px" className="object-cover" />}
+            <RoleRibbon role={row.node.role} labels={labels} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate font-serif text-[13.5px] font-semibold leading-tight">{row.node.label}</span>

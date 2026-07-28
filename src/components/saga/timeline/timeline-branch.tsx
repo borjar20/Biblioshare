@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SAGA_ACCENT, type SagaAccentToken } from "@/lib/sagas/accents";
 import type { TimelineBranch } from "@/lib/sagas/derive-timeline";
 import { RoleChip } from "../role-chip";
+import { RoleRibbon } from "./role-ribbon";
 import { SkipOptionalButton } from "./skip-optional-button";
 import type { TimelineLabels } from "./timeline-labels";
 
@@ -48,22 +49,31 @@ export function TimelineBranchRow({
             {branch.node.coverUrl && (
               <Image src={branch.node.coverUrl} alt="" fill sizes="38px" className="object-cover" />
             )}
+            <RoleRibbon role={branch.node.role} labels={labels} />
           </span>
           <span className="min-w-0">
-            {branch.edgeType === "requisito" ? (
-              <span className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold">
-                {labels.branchRequisite}
-              </span>
-            ) : branch.node.optional ? (
-              <span
-                data-testid="optional-tag"
-                className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold"
-              >
-                {skipped ? labels.skippedTag : labels.optionalTag}
-              </span>
-            ) : (
+            {/* Esto era un if/else que pintaba el chip de rol SOLO si la obra no
+                era requisito ni opcional — justo al revés del caso más común:
+                un spin-off casi siempre es opcional (lo dice el propio mockup),
+                así que un spin-off opcional no decía en ninguna parte que fuera
+                un spin-off. Ahora la chapa de posición/estado y el rol conviven:
+                dicen cosas distintas. */}
+            <span className="flex flex-wrap items-center gap-1">
+              {branch.edgeType === "requisito" && (
+                <span className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold">
+                  {labels.branchRequisite}
+                </span>
+              )}
+              {branch.node.optional && (
+                <span
+                  data-testid="optional-tag"
+                  className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold"
+                >
+                  {skipped ? labels.skippedTag : labels.optionalTag}
+                </span>
+              )}
               <RoleChip role={branch.node.role} />
-            )}
+            </span>
             <span
               className={`mt-1 block truncate text-[13px] font-semibold ${
                 skipped ? "line-through decoration-muted-foreground" : ""

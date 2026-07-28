@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; motivo de la ventana, fase 3 del timeline (§7.9), aplicado en dev **y en prod** el 2026-07-28; **opcionales saltables, fase 4 del timeline (§7.10), aplicadas en dev **y en prod** el 2026-07-28 — verificadas contra `to_regclass`, `pg_policies` y `information_schema.columns`; ningún RPC cambió y `progress.ts` no se tocó** —sin backfill: las 4 ventanas de prod siguen con `motivo IS NULL`, y `save_saga_sequence` NO cambió de firma—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; motivo de la ventana, fase 3 del timeline (§7.9), aplicado en dev **y en prod** el 2026-07-28; **opcionales saltables, fase 4 del timeline (§7.10), aplicadas en dev **y en prod** el 2026-07-28 — verificadas contra `to_regclass`, `pg_policies` y `information_schema.columns`; ningún RPC cambió y `progress.ts` no se tocó**; **roles, fase 5 del timeline (§7.3), 2026-07-28: la ampliación del enum está en dev **y en prod**, y la retirada de `paralela` SOLO EN DEV a propósito —prod queda con un valor de más hasta que se despliegue el bundle, issue #237—, verificado contra `pg_enum`/`pg_attribute`; ningún RPC cambió y `progress.ts` tampoco** —sin backfill: las 4 ventanas de prod siguen con `motivo IS NULL`, y `save_saga_sequence` NO cambió de firma—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
 `saga_nodes`/`saga_edges`/`save_saga_graph` (§7.7)— **corregido aquí, 2026-07-27**: esta cabecera
 llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
 escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
@@ -397,6 +397,8 @@ puede tener las dos, una sola, o ninguna — son dos ejes independientes, no dos
 mismo.
 
 ```sql
+-- Enum original (2026-07-23). AMPLIADO Y RECORTADO en la fase 5 del timeline
+-- con estados, ver el bloque «Fase 5» al final de esta seccion.
 create type public.saga_item_role as enum ('precuela', 'spin_off', 'relato', 'paralela');
 alter table public.saga_items add column role public.saga_item_role;
 ```
@@ -425,6 +427,48 @@ sale en `pg_attribute` con tipo `saga_item_role`, `attnotnull = false` y `atthas
 enum sale en `pg_enum` con los cuatro valores en el orden `precuela, spin_off, relato, paralela`. En
 prod: **327 filas en `saga_items`, 0 con `role`** — el «sin backfill» comprobado en el dato, no solo
 en la intención del DDL.
+
+#### Fase 5 del timeline con estados (2026-07-28): el vocabulario se amplía y pierde `paralela`
+
+```sql
+-- 20260806_saga_item_role_ampliado.sql — aplicada en dev Y EN PROD el 2026-07-28
+alter type public.saga_item_role add value if not exists 'novela_corta';
+alter type public.saga_item_role add value if not exists 'companero';
+alter type public.saga_item_role add value if not exists 'crossover';
+
+-- 20260807_saga_item_role_sin_paralela.sql — aplicada SOLO EN DEV el 2026-07-28
+-- (guarda `raise exception` si hubiera filas `paralela`, rename + create + alter
+-- column + drop del tipo viejo)
+```
+
+**⚠️ Prod va POR DETRÁS del repo en este punto, a propósito** (issue **#237**): el enum de producción
+tiene **siete** valores —los seis del repo **más `paralela`**— hasta que la segunda migración se
+aplique, y eso solo puede pasar **después** de desplegar el bundle de la fase 5. Retirar un valor es
+la dirección peligrosa: el bundle viejo sigue ofreciendo «Paralela» en el `<select>` del editor de
+secuencia, y guardarlo reventaría el cast de `save_saga_sequence` con un `22P02`. Es el mismo baile
+que la sobrecarga del RPC en las fases 2b y 4 (#217, #224). **Al cerrar la #237 hay que borrar este
+aviso**, o el doc pasa a mentir en la dirección contraria.
+
+- **Vocabulario del repo y de dev (6):** `precuela, novela_corta, relato, spin_off, companero,
+  crossover`. El orden del enum recreado es el de LECTURA, el mismo que `src/lib/sagas/roles.ts`;
+  nada ordena datos por él.
+- **`principal` no existe**, y no por olvido: es exactamente lo que hoy es `role = null`, y darle un
+  valor propio serían dos formas de decir lo mismo — la familia del #91 en pequeño. Por eso el filtro
+  de la ficha ofrece siempre «Todos» en vez de un chip «Principal» como dibuja el mockup.
+- **El `nexo` del mockup se llama aquí `crossover`**: «nexo» ya nombra el grupo de miembros directos
+  del universo (`groupSagaId is null`, el punto beige de la leyenda), y usarlo como rol dejaría dos
+  «nexos» distintos en la misma pantalla.
+- **`companero` NO cambia el cómputo.** El mockup dice de él «sin progreso de lectura; se abre, no se
+  termina», y se descarta a sabiendas: `progress.ts` sale de la fase como entró. Es una etiqueta, no
+  un eje nuevo del denominador.
+- **[MEDIDO 2026-07-28, antes de tocar nada]** prod: **367 filas** en `saga_items`, **8 con rol** (4
+  `relato`, 3 `precuela`, 1 `spin_off`) y **0 `paralela`** — por eso la retirada no pierde dato
+  curado. **`saga_items.role` es la única columna del tipo** en todo el esquema (`pg_attribute`) y
+  **`save_saga_sequence/7` su único consumidor** (`pg_proc`).
+- **Recrear el tipo no rompe el RPC**: es `plpgsql` con `prosqlbody is null`, o sea cuerpo **sin
+  parsear**, así que el cast `(e->>'role')::public.saga_item_role` se resuelve **por nombre en
+  ejecución** y no por OID. No hay que recrear la función. Verificado además ejecutando el cast con
+  los valores nuevos tras la recreación.
 
 ### 7.4 Colocación y opcionalidad: `placement` / `optional` (fase 1 del orden unificado)
 
@@ -1123,7 +1167,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: 2026-07-22) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
-| `saga_item_role` | `precuela \| spin_off \| relato \| paralela` (§7.3, issue #167; nullable, sin default — dev y prod 2026-07-23) |
+| `saga_item_role` | **repo y dev (2026-07-28, fase 5):** `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover`. **prod:** los mismos **+ `paralela`** hasta que se aplique `20260807…` tras el despliegue (issue #237). §7.3, issue #167; nullable, sin default |
 | `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
 | `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
 
