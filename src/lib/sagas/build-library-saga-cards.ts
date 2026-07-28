@@ -6,6 +6,7 @@ import {
 } from "./accents";
 import { createCuratedOrder } from "./curated-order";
 import { compareBlocksByPlacement } from "./group-members";
+import type { OrderWindow } from "./place-by-window";
 import { countedKeys } from "./progress";
 import type { SagaPlacement } from "./types";
 
@@ -39,6 +40,9 @@ export type LibMembership = {
   position: number | null;
   /** true = NO cuenta en el denominador del progreso. */
   optional: boolean;
+  /** Colocación de la obra en ESA saga. La consume la guarda «solo lo `libre`
+   *  tiene ventana» de `createCuratedOrder`. */
+  placement: SagaPlacement | null;
 };
 export type LibItemMeta = { itemType: ItemType; itemId: string; title: string; coverUrl: string | null; year: number | null };
 // status = estado del pase ACTIVO (o "" sin pase activo); everCompleted = el
@@ -98,6 +102,9 @@ export function buildLibrarySagaCards(
   // Opcional con default: parámetro añadido en la Task 7 sin romper las
   // llamadas existentes (tests) que aún no lo pasan.
   routeChoices: LibRouteChoice[] = [],
+  // Ventanas del subárbol seguido, por clave de sujeto. Con `{}` el orden es
+  // exactamente el de antes de esta fase.
+  windows: Record<string, OrderWindow> = {},
 ): LibrarySagaCard[] {
   const sagaById = new Map(sagas.map((s) => [s.id, s]));
   const childrenByParent = new Map<string, LibSaga[]>();
@@ -132,7 +139,7 @@ export function buildLibrarySagaCards(
     );
   const titleOf = (k: string) => metaByItem.get(k)?.title ?? "";
 
-  const mainOrder = createCuratedOrder(sagas, memberships, titleOf);
+  const mainOrder = createCuratedOrder(sagas, memberships, titleOf, windows);
 
   // Todos los ítems del subárbol (para «leyendo ahora» y recencia).
   function subtreeItems(sagaId: string, depth: number, visited: Set<string>): string[] {

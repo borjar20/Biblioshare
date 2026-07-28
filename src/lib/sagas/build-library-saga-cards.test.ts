@@ -34,7 +34,8 @@ const mem = (
   itemId: string,
   position: number | null,
   optional = false,
-): LibMembership => ({ sagaId, itemType: "book", itemId, position, optional });
+  placement: LibMembership["placement"] = "fijo",
+): LibMembership => ({ sagaId, itemType: "book", itemId, position, optional, placement });
 const item = (itemId: string, title: string): LibItemMeta => ({
   itemType: "book",
   itemId,
@@ -326,5 +327,38 @@ describe("buildLibrarySagaCards", () => {
     );
     expect(cards[0].covers).toHaveLength(2); // hay miembros: no es "empty"
     expect(cards[0].hasGraph).toBe(false); // pero el curador no lo ha encendido
+  });
+});
+
+describe("el «siguiente» respeta la ventana curada", () => {
+  // Dos bloques colocados y un bloque libre cuya obra tiene ventana. Con la
+  // ventana, el «siguiente» de quien ya leyó el bloque 1 deja de ser la primera
+  // obra del bloque 2 y pasa a ser la libre — que es justo lo que la ventana
+  // recomienda y lo que ya dice el itinerario generado.
+  const sagas: LibSaga[] = [
+    saga("R", "Raíz"),
+    saga("b1", "Uno", "R", null, false, 1, "fijo"),
+    saga("b2", "Dos", "R", null, false, 2, "fijo"),
+    saga("lib", "Libre", "R", null, false, null, "libre"),
+  ];
+  const memberships: LibMembership[] = [
+    mem("b1", "a1", 1),
+    mem("b2", "c1", 1),
+    mem("b2", "c2", 2),
+    mem("lib", "l1", null, false, "libre"),
+  ];
+  const items: LibItemMeta[] = [item("a1", "a1"), item("c1", "c1"), item("c2", "c2"), item("l1", "l1")];
+  const entries: LibEntry[] = [entry("a1", "completed")];
+
+  it("sin ventana propone la primera obra del bloque siguiente", () => {
+    const cards = buildLibrarySagaCards(["R"], sagas, memberships, items, entries, [], [], [], {});
+    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "c1" });
+  });
+
+  it("con ventana propone la obra libre, que va antes del bloque que no puede partir", () => {
+    const cards = buildLibrarySagaCards(["R"], sagas, memberships, items, entries, [], [], [], {
+      "i:book:l1": { afterKey: "s:b1", beforeKey: "i:book:c2" },
+    });
+    expect(cards[0].next).toMatchObject({ kind: "next", itemId: "l1" });
   });
 });
