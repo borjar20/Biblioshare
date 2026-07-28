@@ -8515,11 +8515,12 @@ alter table public.profiles
 -- ANEXO 2026-07-28 - fase 5 del timeline con los cuatro estados: los roles.
 -- DOS migraciones, y NO estan en el mismo sitio:
 --   · 20260806_saga_item_role_ampliado.sql  -> dev Y PROD
---   · 20260807_saga_item_role_sin_paralela.sql -> SOLO DEV (issue #237)
--- La segunda entra en prod DESPUES de desplegar el bundle de la fase 5:
--- retirar un valor rompe al bundle viejo, que sigue ofreciendo «Paralela» en el
--- editor de secuencia y reventaria el cast de save_saga_sequence con un 22P02.
--- Mismo baile que la sobrecarga del RPC en las fases 2b y 4.
+--   · 20260807_saga_item_role_sin_paralela.sql -> dev Y PROD
+-- Las dos estan aplicadas. La segunda entro DESPUES de desplegar el bundle de
+-- la fase 5, no antes, y ese orden era el punto: retirar un valor rompe al
+-- bundle viejo, que seguia ofreciendo «Paralela» en el editor y habria reventado
+-- el cast de save_saga_sequence con un 22P02. Mismo baile que la sobrecarga del
+-- RPC en las fases 2b y 4 (#217, #224). Issue #237, cerrada.
 --
 -- Recrear el tipo NO obliga a recrear save_saga_sequence: es plpgsql con el
 -- cuerpo sin parsear (prosqlbody is null), asi que el cast se resuelve por
@@ -8532,7 +8533,7 @@ alter type public.saga_item_role add value if not exists 'novela_corta';
 alter type public.saga_item_role add value if not exists 'companero';
 alter type public.saga_item_role add value if not exists 'crossover';
 
--- --- SOLO DEV hasta el despliegue (issue #237) ------------------------------
+-- --- aplicada tras el despliegue del bundle (issue #237) --------------------
 -- Guarda explicita: sin ella el `using` fallaria igual, pero con un error de
 -- cast que no dice de que va el problema. 0 filas `paralela` en prod [MEDIDO].
 do $$
