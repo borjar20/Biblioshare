@@ -1,5 +1,5 @@
 import type { SagaAccentToken } from "./accents";
-import type { MemberStatus, SagaItemRole, TandemMode } from "./types";
+import type { MemberStatus, SagaItemRole, TandemMode, WindowReason } from "./types";
 
 // Tipos del grafo, movidos aquí desde graph-data.ts (fase 3, Task 1): tanto
 // `buildSagaGraph` (grafo curado a mano, hoy) como `deriveSagaMap` (grafo
@@ -37,6 +37,14 @@ export type SagaGraphNode = {
    *  conocer la `position` (que el nodo no lleva) ni volver a consultar nada.
    *  `null` si el nodo no comparte hueco, o si el curador no declaró nada. */
   tandem: { mode: TandemMode | null; note: string | null } | null;
+  /** Motivo de la ventana de la que este nodo es SUJETO
+   *  (`saga_placement_windows.motivo`, fase 3). `null` si el nodo no es sujeto
+   *  de ninguna ventana, o si el curador no lo declaró. Se resuelve en
+   *  `deriveSagaMap`, que es donde ya se sabe QUÉ nodo es el sujeto:
+   *  `deriveTimeline` no vuelve a mirar la tabla ni a resolver la clave, igual
+   *  que no re-resuelve las anclas. Dos resoluciones del mismo dato acaban
+   *  discrepando (#91/#185/#203). */
+  windowReason: WindowReason | null;
 };
 
 export type SagaGraphEdge = {

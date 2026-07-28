@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
-  setOptional, setRole, setTandemMeta, toPayload, unpair,
+  setOptional, setRole, setTandemMeta, setWindowReason, toPayload, unpair,
   type DraftAnchor, type DraftEntry, type NestedSubject, type SequenceDraft,
 } from "./sequence-draft";
 
@@ -168,7 +168,7 @@ const anchor = (title: string): DraftAnchor => ({
 describe("ventanas", () => {
   it("poner un ancla la deja en la entrada", () => {
     const d = setAnchor(draft([], [work("f")]), "i:book:f", "after", anchor("Era 1"));
-    expect(d.free[0].window).toEqual({ after: anchor("Era 1"), before: null });
+    expect(d.free[0].window).toEqual({ after: anchor("Era 1"), before: null, reason: null });
   });
 
   it("quitar la última ancla deja la ventana en null, no en un objeto vacío", () => {
@@ -211,6 +211,7 @@ describe("ventanas", () => {
         item_type: "book", item_id: "f", child_saga_id: null,
         after_item_type: null, after_item_id: null, after_child_saga_id: null,
         before_item_type: null, before_item_id: null, before_child_saga_id: "saga-Viento",
+        motivo: null,
       },
     ]);
   });
@@ -218,7 +219,7 @@ describe("ventanas", () => {
   it("addEntry limpia la ventana de una entrada que viene con ella", () => {
     const entryWithWindow: DraftEntry = {
       ...work("nuevo"),
-      window: { after: anchor("Era 1"), before: null },
+      window: { after: anchor("Era 1"), before: null, reason: null },
     };
     const d = addEntry(draft([[work("a")]]), entryWithWindow);
     expect(d.slots).toHaveLength(2);
@@ -238,11 +239,11 @@ describe("ventanas de sujetos anidados (fase 4)", () => {
 
   it("setAnchor alcanza a un sujeto anidado", () => {
     const next = setAnchor(draft([], [], [], [nestedSubject]), "i:book:x", "after", anchor);
-    expect(next.nested[0].window).toEqual({ after: anchor, before: null });
+    expect(next.nested[0].window).toEqual({ after: anchor, before: null, reason: null });
   });
 
   it("clearAnchor deja la ventana anidada a null cuando quita la última ancla", () => {
-    const d = draft([], [], [], [{ ...nestedSubject, window: { after: anchor, before: null } }]);
+    const d = draft([], [], [], [{ ...nestedSubject, window: { after: anchor, before: null, reason: null } }]);
     expect(clearAnchor(d, "i:book:x", "after").nested[0].window).toBeNull();
   });
 
@@ -262,11 +263,11 @@ describe("toPayload: ventanas y sujetos (fase 4)", () => {
   const anch: DraftAnchor = {
     kind: "item", itemType: "book", itemId: "y", childSagaId: null, title: "Ancla",
   };
-  const free = { ...work("a"), ownerSagaId: "padre", window: { after: anch, before: null } };
+  const free = { ...work("a"), ownerSagaId: "padre", window: { after: anch, before: null, reason: null } };
   const nested: NestedSubject = {
     key: "i:book:x", ownerSagaId: "hija", childSagaId: "hija",
     itemType: "book", itemId: "x", title: "Anidada", coverUrl: null,
-    window: { after: anch, before: null },
+    window: { after: anch, before: null, reason: null },
   };
 
   it("cada fila de ventana lleva la saga DUEÑA, no la que se cura", () => {
@@ -420,5 +421,76 @@ describe("metadatos del hueco (fase 2)", () => {
     expect(p.tandems[0].position).toBe(1);
     expect(p.entries.filter((e) => e.position === 1)).toHaveLength(2);
     expect(p.entries.filter((e) => e.position === 2)).toHaveLength(1);
+  });
+});
+
+// ── Fase 3: el motivo de la ventana ──────────────────────────────────────────
+describe("setWindowReason", () => {
+  const ancla = (title: string): DraftAnchor => ({
+    kind: "block", itemType: null, itemId: null, childSagaId: `saga-${title}`, title,
+  });
+  const conVentana = () => setAnchor(draft([], [work("f")]), "i:book:f", "after", ancla("Era 1"));
+
+  it("declara el motivo de una entrada libre que YA tiene ventana", () => {
+    const d = setWindowReason(conVentana(), "i:book:f", "spoiler");
+    expect(d.free[0].window).toEqual({ after: ancla("Era 1"), before: null, reason: "spoiler" });
+  });
+
+  it("es un no-op si el sujeto no tiene ventana: sin tramo no hay motivo del que hablar", () => {
+    const d = draft([], [work("f")]);
+    expect(setWindowReason(d, "i:book:f", "contexto").free[0].window).toBeNull();
+  });
+
+  it("vuelve a «sin declarar» con null, sin tocar las anclas", () => {
+    const d = setWindowReason(setWindowReason(conVentana(), "i:book:f", "spoiler"), "i:book:f", null);
+    expect(d.free[0].window).toEqual({ after: ancla("Era 1"), before: null, reason: null });
+  });
+
+  it("el motivo muere con la última ancla", () => {
+    // Ningún CHECK puede imponerlo: `saga_placement_windows_needs_anchor`
+    // rechaza la fila sin anclas, pero nadie borra la que ya existe.
+    const d = setWindowReason(conVentana(), "i:book:f", "spoiler");
+    expect(clearAnchor(d, "i:book:f", "after").free[0].window).toBeNull();
+  });
+
+  it("sacar la fila de «Cuando quieras» también se lleva el motivo", () => {
+    const d = setWindowReason(conVentana(), "i:book:f", "spoiler");
+    expect(sendTo(d, "i:book:f", "sequence").slots[0].entries[0].window).toBeNull();
+  });
+
+  it("una entrada fuera de la zona libre no admite motivo", () => {
+    const d = draft([[work("a")]]);
+    expect(setWindowReason(d, "i:book:a", "spoiler")).toEqual(d);
+  });
+
+  it("también vale para un sujeto anidado", () => {
+    const anclaItem: DraftAnchor = {
+      kind: "item", itemType: "book", itemId: "y", childSagaId: null, title: "Ancla",
+    };
+    const nested: NestedSubject = {
+      key: "i:book:x", ownerSagaId: "hija", childSagaId: "hija",
+      itemType: "book", itemId: "x", title: "Anidada", coverUrl: null,
+      window: { after: anclaItem, before: null, reason: null },
+    };
+    const d = setWindowReason(draft([], [], [], [nested]), "i:book:x", "contexto");
+    expect(d.nested[0].window?.reason).toBe("contexto");
+  });
+});
+
+describe("toPayload · motivo", () => {
+  const ancla = (title: string): DraftAnchor => ({
+    kind: "block", itemType: null, itemId: null, childSagaId: `saga-${title}`, title,
+  });
+  const conVentana = () => setAnchor(draft([], [work("f")]), "i:book:f", "after", ancla("Era 1"));
+
+  it("manda el motivo con su fila de ventana", () => {
+    const d = setWindowReason(conVentana(), "i:book:f", "spoiler");
+    expect(toPayload(d, "saga").windows[0].motivo).toBe("spoiler");
+  });
+
+  it("una ventana sin motivo declarado manda null, no omite la clave", () => {
+    // Omitirla dejaría al RPC leyendo `w->>'motivo'` de una clave ausente. Da
+    // NULL igual, pero entonces la forma del payload no sería la de la tabla.
+    expect(toPayload(conVentana(), "saga").windows[0]).toHaveProperty("motivo", null);
   });
 });

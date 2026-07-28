@@ -24,6 +24,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   groupName: "Era Uno",
   step: null,
   tandem: null,
+  windowReason: null,
   ...over,
 });
 
@@ -323,8 +324,12 @@ describe("deriveTimeline · ventana", () => {
     expect(win.after?.id).toBe("a");
     expect(win.before).toBeNull();
     expect(win.no).toBeNull();
+    // `reason` sigue a null: este nodo no declara motivo. `track` ya NO —
+    // desde la fase 3 la fila trae su tramo, y aquí `withWindow` no pasa
+    // `authenticated`, así que trae el del lector anónimo: tramo sí,
+    // marcador no.
     expect(win.reason).toBeNull();
-    expect(win.track).toBeNull();
+    expect(win.track).toMatchObject({ youPct: null, notice: null });
   });
 
   it("con las dos anclas, manda el «después de»", () => {
@@ -382,7 +387,7 @@ describe("deriveTimeline · ventana", () => {
     ];
     const derived = deriveSagaMap(
       groups,
-      { "i:book:L": { afterTitle: "A", beforeTitle: null, afterKey: "i:book:A", beforeKey: null } },
+      { "i:book:L": { afterTitle: "A", beforeTitle: null, afterKey: "i:book:A", beforeKey: null, reason: null } },
       { groupAccent: new Map(), groupName: new Map() },
     );
     const tl = deriveTimeline(derived);
@@ -400,10 +405,10 @@ describe("rol narrativo en las ramas (#167)", () => {
       nodes: [
         { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
           label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
-          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null },
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null },
         { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
           label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
-          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null },
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null },
       ],
       edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
     };
@@ -524,5 +529,58 @@ describe("deriveTimeline · metadatos del tándem (fase 2)", () => {
     if (row.kind !== "tandem") throw new Error("se esperaba un tándem");
     expect(row.mode).toBeNull();
     expect(row.note).toBeNull();
+  });
+});
+
+// ── Fase 3: el motivo llega a la fila ────────────────────────────────────────
+describe("motivo de la fila de ventana (fase 3)", () => {
+  it("la fila de ventana lleva el motivo del nodo sujeto", () => {
+    const tl = deriveTimeline(
+      graph(
+        [node("o1", { orderNo: 0 }), node("w", { orderNo: null, windowReason: "spoiler" })],
+        [{ id: "e1", source: "o1", target: "w", type: "requisito", accent: "beige" }],
+      ),
+    );
+    const fila = tl[0].rows.find((r) => r.kind === "window")!;
+    expect(fila.kind === "window" && fila.reason).toBe("spoiler");
+  });
+
+  it("sin motivo declarado la fila lo lleva a null, no a undefined", () => {
+    const tl = deriveTimeline(
+      graph(
+        [node("o1", { orderNo: 0 }), node("w", { orderNo: null })],
+        [{ id: "e1", source: "o1", target: "w", type: "requisito", accent: "beige" }],
+      ),
+    );
+    const fila = tl[0].rows.find((r) => r.kind === "window")!;
+    expect(fila.kind === "window" && fila.reason).toBeNull();
+  });
+});
+
+// ── Fase 3: el mini-track en la fila ─────────────────────────────────────────
+describe("track de la fila de ventana (fase 3)", () => {
+  const conVentana = () =>
+    graph(
+      [node("o1", { orderNo: 0 }), node("o2", { orderNo: 1 }), node("w", { orderNo: null })],
+      [{ id: "e1", source: "o1", target: "w", type: "requisito", accent: "beige" }],
+    );
+  const filaVentana = (secciones: ReturnType<typeof deriveTimeline>) =>
+    secciones.flatMap((s) => s.rows).find((r) => r.kind === "window")!;
+
+  it("con sesión trae el track completo, con su aviso", () => {
+    const fila = filaVentana(deriveTimeline(conVentana(), { authenticated: true }));
+    expect(fila.kind === "window" && fila.track).not.toBeNull();
+    expect(fila.kind === "window" && fila.track!.notice).not.toBeNull();
+  });
+
+  it("sin sesión sigue trayendo el tramo, pero sin marcador ni aviso", () => {
+    const fila = filaVentana(deriveTimeline(conVentana(), { authenticated: false }));
+    expect(fila.kind === "window" && fila.track!.youPct).toBeNull();
+    expect(fila.kind === "window" && fila.track!.notice).toBeNull();
+  });
+
+  it("por defecto se comporta como SIN sesión: la vista pública es la segura", () => {
+    const fila = filaVentana(deriveTimeline(conVentana()));
+    expect(fila.kind === "window" && fila.track!.youPct).toBeNull();
   });
 });

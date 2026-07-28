@@ -8454,3 +8454,20 @@ create policy "saga tandems writable by collaborators" on public.saga_tandems
 -- saga) y la sobrecarga de SEIS se retira tras el despliegue: hoy `pg_proc`
 -- devuelve una sola firma en los dos entornos. Cuerpo completo en
 -- supabase/migrations/20260801_save_saga_sequence_tandems.sql.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ANEXO 2026-07-28 (fase 3 del timeline con estados): motivo de la ventana
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Aplicado a dev y a PROD el 2026-07-28, verificado contra pg_enum /
+-- information_schema.columns / pg_proc. Sin backfill: las 4 ventanas que ya
+-- existian en prod siguen con motivo IS NULL.
+create type public.saga_window_reason as enum ('spoiler', 'contexto');
+
+alter table public.saga_placement_windows
+  add column motivo public.saga_window_reason;
+
+-- `save_saga_sequence` NO cambia de firma: sigue en SIETE argumentos. `motivo`
+-- viaja como una clave mas dentro de `p_windows`, que ya era jsonb, asi que
+-- `create or replace` con la misma lista de parametros reemplaza de verdad y no
+-- hay sobrecarga que retirar despues. Cuerpo completo en
+-- supabase/migrations/20260804_save_saga_sequence_motivo.sql.

@@ -1516,6 +1516,7 @@ export type Database = {
           id: string
           item_id: string | null
           item_type: Database["public"]["Enums"]["item_type"] | null
+          motivo: Database["public"]["Enums"]["saga_window_reason"] | null
           saga_id: string
         }
         Insert: {
@@ -1530,6 +1531,7 @@ export type Database = {
           id?: string
           item_id?: string | null
           item_type?: Database["public"]["Enums"]["item_type"] | null
+          motivo?: Database["public"]["Enums"]["saga_window_reason"] | null
           saga_id: string
         }
         Update: {
@@ -1544,6 +1546,7 @@ export type Database = {
           id?: string
           item_id?: string | null
           item_type?: Database["public"]["Enums"]["item_type"] | null
+          motivo?: Database["public"]["Enums"]["saga_window_reason"] | null
           saga_id?: string
         }
         Relationships: [
@@ -2302,6 +2305,7 @@ export type Database = {
       saga_item_role: "precuela" | "spin_off" | "relato" | "paralela"
       saga_placement: "fijo" | "libre"
       saga_tandem_mode: "simultaneo" | "indistinto"
+      saga_window_reason: "spoiler" | "contexto"
       target_kind:
         | "diary_entry"
         | "episode_watch"
@@ -2476,6 +2480,7 @@ export const Constants = {
       saga_item_role: ["precuela", "spin_off", "relato", "paralela"],
       saga_placement: ["fijo", "libre"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
+      saga_window_reason: ["spoiler", "contexto"],
       target_kind: [
         "diary_entry",
         "episode_watch",

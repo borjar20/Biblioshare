@@ -44,6 +44,12 @@ export type SagaPlacement = "fijo" | "libre";
  *  única fuente de verdad. */
 export type TandemMode = "simultaneo" | "indistinto";
 
+/** Por qué existe el tramo de una ventana recomendada. Espejo de
+ *  `public.saga_window_reason` (fase 3). Nullable en BD y aquí: las 4 ventanas
+ *  curadas antes de esta fase no lo declararon y nadie decidió por ellas, así
+ *  que no hubo backfill — el mismo criterio con que `TandemMode` puede faltar. */
+export type WindowReason = "spoiler" | "contexto";
+
 // Miembro de una saga (para la vista de saga).
 export type SagaMember = {
   itemType: ItemType;
@@ -97,6 +103,10 @@ export type ResolvedWindow = {
   beforeTitle: string | null;
   afterKey: string | null;
   beforeKey: string | null;
+  /** Motivo declarado de la ventana (fase 3), o null. A diferencia de las
+   *  anclas, NO puede «romperse»: no apunta a nada que pueda desaparecer, así
+   *  que sobrevive a que un ancla deje de resolver. */
+  reason: WindowReason | null;
 };
 
 export type SagaChildRef = {

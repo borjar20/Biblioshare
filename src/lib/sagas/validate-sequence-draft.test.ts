@@ -80,6 +80,7 @@ const window = (overrides: Partial<SequencePayload["windows"][number]> = {}): Se
   saga_id: "saga",
   item_type: "book", item_id: "f", child_saga_id: null,
   after_item_type: null, after_item_id: null, after_child_saga_id: null,
+  motivo: null,
   before_item_type: null, before_item_id: null, before_child_saga_id: null,
   ...overrides,
 });
@@ -170,6 +171,7 @@ describe("ventanas con dueña (fase 4)", () => {
     saga_id: sagaId, item_type: "book" as const, item_id: itemId, child_saga_id: null,
     after_item_type: "book" as const, after_item_id: "ancla", after_child_saga_id: null,
     before_item_type: null, before_item_id: null, before_child_saga_id: null,
+    motivo: null,
   });
   const ownerCtx = {
     childIds: new Set<string>(),

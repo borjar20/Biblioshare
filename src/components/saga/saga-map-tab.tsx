@@ -98,7 +98,7 @@ export async function SagaMapTab({
                 pinta los cuatro estados y no se deja fuera a los nodos sin
                 hueco— era un duplicado de los mismos títulos, uno debajo del
                 otro. */}
-            <ReadingTimeline sections={deriveTimeline(graph)} />
+            <ReadingTimeline sections={deriveTimeline(graph, { authenticated: detail.isAuthenticated })} />
           </div>
           {/* PC: grafo embebido con la leyenda como barra inferior del marco
               (frame E), y el MISMO componente de orden de lectura al pie — el
@@ -111,7 +111,7 @@ export async function SagaMapTab({
               <GraphLegend graph={graph} />
             </div>
             <div className="mt-4">
-              <ReadingTimeline sections={deriveTimeline(graph)} />
+              <ReadingTimeline sections={deriveTimeline(graph, { authenticated: detail.isAuthenticated })} />
             </div>
           </div>
         </>

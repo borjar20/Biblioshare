@@ -48,6 +48,7 @@ const w = (fields: Partial<RawWindowRow>): RawWindowRow => ({
   item_type: null, item_id: null, child_saga_id: null,
   after_item_type: null, after_item_id: null, after_child_saga_id: null,
   before_item_type: null, before_item_id: null, before_child_saga_id: null,
+  motivo: null,
   created_at: "2026-01-01T00:00:00.000Z",
   ...fields,
 });
@@ -70,6 +71,7 @@ it("hidrata una ventana con las dos anclas resueltas", () => {
   expect(windows.get("i:book:n2")).toEqual({
     after: { kind: "item", itemType: "book", itemId: "a", childSagaId: null, title: "Nacidos Era 1" },
     before: { kind: "item", itemType: "book", itemId: "b", childSagaId: null, title: "Viento y Verdad" },
+    reason: null,
   });
 });
 
@@ -82,6 +84,7 @@ it("hidrata una ventana con solo el ancla «after», apuntando a un bloque", () 
   expect(windows.get("i:book:n2")).toEqual({
     after: { kind: "block", itemType: null, itemId: null, childSagaId: "sub-1", title: "El Archivo de las Tormentas" },
     before: null,
+    reason: null,
   });
 });
 
@@ -100,6 +103,7 @@ it("un ancla que ya no resuelve (obra fuera del árbol) queda a null: no se limp
   expect(windows.get("i:book:n2")).toEqual({
     after: null,
     before: { kind: "item", itemType: "book", itemId: "b", childSagaId: null, title: "Viento y Verdad" },
+    reason: null,
   });
 });
 
@@ -142,10 +146,30 @@ it("dos sagas hermanas con ventana sobre la misma obra: gana siempre la más ant
   const expected = {
     after: { kind: "item", itemType: "book", itemId: "a", childSagaId: null, title: "Ancla vieja" },
     before: null,
+    reason: null,
   };
 
   expect(hydrateWindows([older, newer], titles).get("i:book:n2")).toEqual(expected);
   // Mismas dos filas, orden invertido: el resultado tiene que ser idéntico —
   // no puede depender del orden en que Postgres las devuelva.
   expect(hydrateWindows([newer, older], titles).get("i:book:n2")).toEqual(expected);
+});
+
+// ── Fase 3: el motivo de la ventana ──────────────────────────────────────────
+it("hydrateWindows trae el motivo de la fila", () => {
+  const windows = hydrateWindows(
+    [w({ item_type: "book", item_id: "n2", after_item_type: "book", after_item_id: "a", motivo: "contexto" })],
+    new Map([["i:book:a", "Nacidos Era 1"]]),
+  );
+  expect(windows.get("i:book:n2")?.reason).toBe("contexto");
+});
+
+it("una fila sin motivo hidrata a null, no a undefined", () => {
+  // `undefined` sobreviviría a `toEqual` contra `{ reason: null }` en algunos
+  // matchers y luego llegaría al payload como clave ausente.
+  const windows = hydrateWindows(
+    [w({ item_type: "book", item_id: "n2", after_item_type: "book", after_item_id: "a" })],
+    new Map([["i:book:a", "Nacidos Era 1"]]),
+  );
+  expect(windows.get("i:book:n2")).toHaveProperty("reason", null);
 });

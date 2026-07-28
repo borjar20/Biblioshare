@@ -229,12 +229,19 @@ test("las dos anclas de una entrada libre se guardan, persisten tras recargar, y
     await anchorDialog.getByRole("button", { name: "+ Recomendable antes de…", exact: true }).click();
 
     // El tope (Test 3 del brief): con `bothSet`, `WindowEditor` no pinta NINGÚN
-    // botón de alta — los dos únicos botones que quedan bajo la fila son las
-    // ✕ de cada chip (`windowRemoveAnchor`). Comprobarlo por CUENTA total, no
-    // por la ausencia de un texto concreto, es lo que de verdad demuestra que
-    // no hay ninguna vía de añadir una tercera, ni con esta redacción ni con
-    // otra futura.
-    await expect(windowEditor.getByRole("button")).toHaveCount(2);
+    // botón de alta — los dos únicos botones que quedan en la FILA DE ANCLAS
+    // son las ✕ de cada chip (`windowRemoveAnchor`). Comprobarlo por CUENTA
+    // total, no por la ausencia de un texto concreto, es lo que de verdad
+    // demuestra que no hay ninguna vía de añadir una tercera, ni con esta
+    // redacción ni con otra futura.
+    //
+    // Se cuenta esa fila, no el componente entero: desde la fase 3
+    // `WindowEditor` lleva además las tres pastillas del motivo, que no son
+    // una vía de añadir anclas. Sin acotar, este test caería por el motivo
+    // equivocado.
+    await expect(
+      windowEditor.locator('[data-testid="window-anchors"]').getByRole("button"),
+    ).toHaveCount(2);
 
     // 4) Guardar y recargar desde cero: fuerza traer las props del servidor,
     // sin nada de estado de cliente que pueda maquillar un guardado que en

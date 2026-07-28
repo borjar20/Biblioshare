@@ -4,15 +4,24 @@ import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
 import { RoleChip } from "../role-chip";
 import type { TimelineLabels } from "./timeline-labels";
+import { WindowTrackBar } from "./window-track-bar";
 
 type WindowRow = Extract<TimelineRow, { kind: "window" }>;
 
 // Estado 02 del mockup: lectura libre dentro de un tramo. Sin número: no tiene
 // puesto, y eso es justo lo que la hace ventana.
 //
-// `row.track` es null hasta la fase 3 (el mini-track y sus tres avisos) y
-// `row.reason` hasta que exista `saga_placement_windows.motivo`. Las anclas SÍ
-// llegan resueltas desde la fase 1: son las que ya resolvió `deriveSagaMap`.
+// Desde la fase 3 la fila dice las tres cosas del frame B: entre qué y qué
+// (anclas, resueltas por `deriveSagaMap` desde la fase 1), dónde estás
+// (`row.track`) y POR QUÉ existe el tramo (`row.reason`).
+//
+// Los tres son opcionales, y ninguno por el mismo motivo:
+//  · `track` es null si no hay columna sobre la que situar nada, o si la
+//    ventana está al revés (`from > to`).
+//  · `track.notice` es null SIN SESIÓN — la ficha es pública y el tramo se
+//    pinta igual; lo que desaparece es el marcador y el aviso.
+//  · `reason` es null si el curador no lo declaró, que es el estado de las 4
+//    ventanas que ya existían al llegar esta fase (no hubo backfill).
 export function TimelineWindowRow({ row, labels }: { row: WindowRow; labels: TimelineLabels }) {
   const accent = row.node.accent;
   return (
@@ -46,6 +55,24 @@ export function TimelineWindowRow({ row, labels }: { row: WindowRow; labels: Tim
           {!row.after && row.before && <>: </>}
           {row.before && labels.windowBefore(row.before.label)}
         </p>
+        {row.track && (
+          <WindowTrackBar
+            track={row.track}
+            ariaLabel={labels.windowTrackAria(row.node.label)}
+            startLabel={labels.windowTrackStart}
+            endLabel={labels.windowTrackEnd}
+          />
+        )}
+        {row.track?.notice && (
+          <p data-testid="window-notice" className="mt-1.5 text-[11px] font-semibold">
+            {labels.windowNotice(row.track.notice)}
+          </p>
+        )}
+        {row.reason && (
+          <p data-testid="window-reason-note" className="mt-1 text-[11px] text-muted-foreground">
+            {labels.windowReason(row.reason)}
+          </p>
+        )}
       </div>
     </div>
   );

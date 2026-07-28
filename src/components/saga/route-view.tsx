@@ -99,7 +99,11 @@ export async function RouteView({
   // columna con `orderNo` —el orden curado—, así que con un itinerario activo
   // la columna salía en un orden y los números en otro. Es justo lo que hace
   // que el lector se pierda.
-  const timelineSections = graph === null ? null : deriveTimeline(graph, { spine: "route" });
+  // `authenticated` viaja también aquí aunque el modo `route` no produzca
+  // hoy ninguna fila `window`: así no queda un sitio que lo olvide el día que
+  // sí las produzca.
+  const timelineSections =
+    graph === null ? null : deriveTimeline(graph, { spine: "route", authenticated: detail.isAuthenticated });
 
   return (
     <div className="flex flex-col gap-3">
