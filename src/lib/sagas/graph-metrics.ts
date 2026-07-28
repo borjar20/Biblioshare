@@ -25,3 +25,25 @@ export function nodeBoxOf(node: SagaGraphNode): { w: number; h: number } {
   if (node.kind === "saga") return NODE_BOX.saga;
   return node.level === "menor" ? NODE_BOX.medallion : NODE_BOX.cover;
 }
+
+// `deriveSagaMap` tiene que devolver coordenadas en PÍXELES, no en índice de
+// columna/fila (0, 1, 2…): `saga-graph-view.tsx` usa `n.x`/`n.y` TAL CUAL
+// como `position` de React Flow (`position: { x: n.x, y: n.y }`), sin
+// normalizar nada. La única función que normaliza escalas es `scaleNodes`
+// (derive-timeline.ts), y solo la llama el mini-preview del CTA
+// (map-cta.tsx) — la vista 2D no pasa por ahí. Si aquí se devolvieran
+// índices, todos los nodos caerían unos sobre otros en el lienzo, porque la
+// tarjeta de portada mide 78×116px (`graph-nodes.tsx`, `CoverNode`).
+//
+// Paso horizontal entre columnas: bajo cada portada cuelga una etiqueta de
+// 150px, centrada sobre la tarjeta (78px de ancho). Dos columnas contiguas
+// necesitan al menos 150px centro a centro para que sus etiquetas no se
+// toquen; 180px deja ~30px de margen.
+export const NODE_STEP_X = 180;
+
+// Paso vertical entre filas (una fila = un bloque, `blocks.forEach((group,
+// y) => …)`): la portada mide 116px de alto, más la etiqueta que cuelga
+// debajo (`mt-2` = 8px + hasta dos líneas de `text-sm leading-tight`, unos
+// 40px). Una fila necesita ~164px para no invadir la portada de la fila
+// siguiente; 220px deja margen cómodo.
+export const NODE_STEP_Y = 220;
