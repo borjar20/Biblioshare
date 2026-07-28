@@ -1,6 +1,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaAccentToken } from "./accents";
 import { orderBlocksForLayout, partitionGroups, type MemberGroup } from "./group-members";
+import { alignRowsToLongEdges } from "./layout-map";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
 import type { DetailMember, ResolvedWindow, SagaPlacement, TandemMode } from "./types";
 import { NODE_STEP_X, NODE_STEP_Y } from "./graph-metrics";
@@ -475,13 +476,19 @@ export function deriveSagaMap(
     }
   }
 
+  // Alineación de columnas, AL FINAL y no antes: necesita las aristas de ventana
+  // y de itinerario, que se acaban de construir, y necesita que `step` y
+  // `windowReason` ya estén puestos en los nodos — el post-pase devuelve nodos
+  // NUEVOS, así que cualquier mutación posterior sobre los viejos se perdería.
+  const alineado = alignRowsToLongEdges({ nodes, edges });
+
   // Mismo orden estable que buildSagaGraph: order_no (nulls al final), luego label.
-  nodes.sort((a, b) => {
+  alineado.nodes.sort((a, b) => {
     const oa = a.orderNo ?? Number.MAX_SAFE_INTEGER;
     const ob = b.orderNo ?? Number.MAX_SAFE_INTEGER;
     if (oa !== ob) return oa - ob;
     return a.label.localeCompare(b.label);
   });
 
-  return { nodes, edges };
+  return alineado;
 }

@@ -819,3 +819,38 @@ describe("parseItemKey", () => {
     expect(parseItemKey(map.nodes[0].id)).toEqual({ itemType: "book", itemId: "A" });
   });
 });
+
+describe("deriveSagaMap — alineación de columnas (el nudo de la captura)", () => {
+  it("el bloque libre sube junto a su ancla Y se alinea bajo su columna", () => {
+    // Escenario reducido de la captura del 2026-07-28: un bloque colocado de
+    // tres obras, otro detrás, y un bloque libre anclado a la ÚLTIMA obra del
+    // primero. Antes el libre se dibujaba al final y en la columna 0, así que su
+    // arista salía en diagonal desde la columna 2 de la primera fila hasta la
+    // columna 0 de la última, cruzando todo lo de en medio. Ahora sale vertical.
+    const map = deriveSagaMap(
+      groups([
+        block("Uno", 1, [work("A", 1), work("B", 2), work("C", 3)]),
+        block("Dos", 2, [work("D", 1)]),
+        freeBlock("Libre", [work("L", 1)]),
+      ]),
+      { "s:saga-Libre": { afterKey: "i:book:C", afterTitle: "C", beforeKey: null, beforeTitle: null, reason: null } },
+      lookup(),
+    );
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    const l = map.nodes.find((n) => n.id === "i:book:L")!;
+    // Misma columna que su ancla: la arista de ventana es vertical.
+    expect(l.x).toBe(c.x);
+    // Y la fila justo debajo, no el fondo del mapa.
+    expect(l.y - c.y).toBe(NODE_STEP_Y);
+  });
+
+  it("la cadena de un bloque sin aristas largas sigue empezando en la columna 0", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 2)]), block("Dos", 2, [work("C", 1)])]),
+      {},
+      lookup(),
+    );
+    expect(map.nodes.find((n) => n.id === "i:book:A")!.x).toBe(0);
+    expect(map.nodes.find((n) => n.id === "i:book:C")!.x).toBe(0);
+  });
+});
