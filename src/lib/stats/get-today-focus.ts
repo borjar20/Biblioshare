@@ -100,27 +100,30 @@ export async function getTodayFocus(
     .map((i) => i.activePassId)
     .filter((id): id is string => id !== null);
 
-  const [passes, sessions, watches] = await Promise.all([
+  const [passes, sessions, watches, notes] = await Promise.all([
     passIds.length
       ? supabase.from("passes").select("id, started_on").in("id", passIds)
       : Promise.resolve({ data: [] as { id: string; started_on: string | null }[], error: null }),
     passIds.length
-      ? supabase
-          .from("progress_sessions")
-          .select("pass_id, session_date, note")
-          .in("pass_id", passIds)
+      ? supabase.from("progress_sessions").select("pass_id, session_date").in("pass_id", passIds)
       : Promise.resolve({
-          data: [] as { pass_id: string; session_date: string; note: string | null }[],
+          data: [] as { pass_id: string; session_date: string }[],
           error: null,
         }),
     // El equivalente a "sesión" de una serie.
     passIds.length
       ? supabase.from("episode_watches").select("pass_id, watched_on").in("pass_id", passIds)
       : Promise.resolve({ data: [] as { pass_id: string | null; watched_on: string }[], error: null }),
+    // "N notas" del frame: cuenta filas de `notes`, no sesiones con texto —
+    // una sesión puede llevar varias (SessionNotebook, 2026-07-29).
+    passIds.length
+      ? supabase.from("notes").select("pass_id").in("pass_id", passIds)
+      : Promise.resolve({ data: [] as { pass_id: string | null }[], error: null }),
   ]);
   if (passes.error) throw passes.error;
   if (sessions.error) throw sessions.error;
   if (watches.error) throw watches.error;
+  if (notes.error) throw notes.error;
 
   const startedByPass = new Map((passes.data ?? []).map((p) => [p.id, p.started_on]));
   const lastByPass = new Map<string, string>();
@@ -138,11 +141,12 @@ export async function getTodayFocus(
   };
   for (const s of sessions.data ?? []) {
     touch(s.pass_id, s.session_date);
-    if (s.note && s.note.trim() !== "")
-      notesByPass.set(s.pass_id, (notesByPass.get(s.pass_id) ?? 0) + 1);
   }
   for (const w of watches.data ?? []) {
     if (w.pass_id) touch(w.pass_id, w.watched_on);
+  }
+  for (const n of notes.data ?? []) {
+    if (n.pass_id) notesByPass.set(n.pass_id, (notesByPass.get(n.pass_id) ?? 0) + 1);
   }
 
   const today = todayISO();

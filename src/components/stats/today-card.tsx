@@ -152,6 +152,7 @@ export async function TodayCard({
           log: t("log"),
           cancel: t("timerCancel"),
           register: t("timerRegister"),
+          notes: t("timerNotes"),
           timerLabel: t("timerLabel"),
           nextEpisode: nextEpisode
             ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })

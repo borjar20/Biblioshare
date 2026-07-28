@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { clampPage, readProgress } from "@/lib/sessions/page-stepper";
 import { combineStartedAt } from "@/lib/sessions/combine-started-at";
+import { hasTime, useTimerState } from "@/lib/sessions/use-timer-state";
 import { SessionTimer } from "./session-timer";
 
 const JUMPS = [10, 25, 50] as const;
@@ -55,7 +56,17 @@ export function BookProgressField({
     updatePage(String(clampPage(next, total)));
   }
 
-  const [durationMode, setDurationMode] = useState<"manual" | "timer">("manual");
+  // No fijo en "manual": si ya hay cronómetro con tiempo para este pase
+  // (arrancado desde la tarjeta de portada, misma clave de localStorage),
+  // la hoja abre directo en pestaña Cronómetro — "sigue en vivo" tiene que
+  // VERSE, no solo persistir en el estado. useTimerState, no una lectura
+  // directa de localStorage: eso desincroniza servidor/cliente en el
+  // primer render (el servidor no tiene localStorage).
+  const timerState = useTimerState(passId);
+  const [durationModeOverride, setDurationModeOverride] = useState<
+    "manual" | "timer" | null
+  >(null);
+  const durationMode = durationModeOverride ?? (hasTime(timerState) ? "timer" : "manual");
   const [manualMinutes, setManualMinutes] = useState(
     initialMinutes ? String(initialMinutes) : "",
   );
@@ -171,7 +182,7 @@ export function BookProgressField({
               key={mode}
               type="button"
               aria-pressed={durationMode === mode}
-              onClick={() => setDurationMode(mode)}
+              onClick={() => setDurationModeOverride(mode)}
               className={`flex-1 rounded-[7px] px-3 py-2 text-[12.5px] font-semibold transition-colors ${
                 durationMode === mode
                   ? "bg-surface text-foreground shadow-card"
@@ -244,7 +255,7 @@ export function BookProgressField({
             passId={passId}
             onMinutes={(m) => {
               setManualMinutes(String(m));
-              setDurationMode("manual");
+              setDurationModeOverride("manual");
             }}
           />
         )}

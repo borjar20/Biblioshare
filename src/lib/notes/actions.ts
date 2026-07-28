@@ -12,6 +12,9 @@ import { normalizeTags } from "./tags";
 
 export type AddNoteState = {
   error?: "empty" | "generic";
+  /** Id de la nota recién creada. Lo usa SessionNotebook para enlazarla a la
+   *  sesión al guardar (session_id se pone después, no aquí). */
+  id?: string;
 };
 
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
@@ -73,26 +76,42 @@ export async function addNote(
     }
   }
 
-  const { error } = await supabase.from("notes").insert({
-    user_id: user.id,
-    item_type: itemType,
-    item_id: itemId,
-    pass_id: pass?.id ?? null,
-    session_id: null,
-    kind,
-    body,
-    position,
-    is_favorite: isFavorite,
-    is_spoiler: isSpoiler,
-    is_public: isPublic,
-    meta: { tags },
-  });
+  const { data, error } = await supabase
+    .from("notes")
+    .insert({
+      user_id: user.id,
+      item_type: itemType,
+      item_id: itemId,
+      pass_id: pass?.id ?? null,
+      session_id: null,
+      kind,
+      body,
+      position,
+      is_favorite: isFavorite,
+      is_spoiler: isSpoiler,
+      is_public: isPublic,
+      meta: { tags },
+    })
+    .select("id")
+    .single();
 
-  if (error) return { error: "generic" };
+  if (error || !data) return { error: "generic" };
 
-  revalidateItemPage(itemType, itemId);
-  revalidateProfilePages();
-  return {};
+  // SessionNotebook llama esta acción varias veces MIENTRAS la hoja de
+  // sesión sigue abierta (una por nota) — revalidar aquí dispara un refresh
+  // de Next.js que, si llega mientras el usuario ya está escribiendo la
+  // SIGUIENTE nota, le pisa el texto (carrera confirmada por e2e:
+  // notas-captura.spec.ts, "varias notas..."). addSession ya revalida todo
+  // (revalidateReadingLog cubre lo mismo que las dos líneas de abajo) al
+  // guardar la sesión, así que saltarlo aquí no deja nada sin refrescar en
+  // el camino normal — solo en el caso de abandonar la hoja sin guardar
+  // (D5 de la spec 2026-07-29), donde una carga completa más tarde ya trae
+  // la nota de todos modos.
+  if (formData.get("skipRevalidate") !== "on") {
+    revalidateItemPage(itemType, itemId);
+    revalidateProfilePages();
+  }
+  return { id: data.id };
 }
 
 // Marca / desmarca una nota como favorita (RLS acota al dueño). itemType/

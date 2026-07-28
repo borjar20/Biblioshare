@@ -17,7 +17,17 @@ import { defaultNotesQuery, notesHref } from "@/lib/notes/query";
 // `showItem` lo enciende el cuaderno cuando la lista NO va agrupada por obra: en
 // «recientes» las notas de obras distintas se mezclan y sin el título no sabes
 // de qué estabas hablando. Agrupadas, el título ya lo pone la cabecera del grupo.
-export function NoteCard({ note, showItem = false }: { note: Note; showItem?: boolean }) {
+export function NoteCard({
+  note,
+  showItem = false,
+  showDelete = true,
+}: {
+  note: Note;
+  showItem?: boolean;
+  /** SessionNotebook usa su propio botón de borrar (necesita quitar la
+   *  tarjeta de su lista local, algo que el de aquí no sabe hacer). */
+  showDelete?: boolean;
+}) {
   const t = useTranslations("notes");
   const [pending, startTransition] = useTransition();
   const anchor = formatPosition(note.itemType, note.position);
@@ -83,14 +93,16 @@ export function NoteCard({ note, showItem = false }: { note: Note; showItem?: bo
         >
           {note.isFavorite ? t("favoriteOn") : t("favoriteOff")}
         </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => startTransition(() => deleteNote(note.id, note.itemType, note.itemId))}
-          className="text-status-dropped underline disabled:opacity-50"
-        >
-          {t("delete")}
-        </button>
+        {showDelete && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => startTransition(() => deleteNote(note.id, note.itemType, note.itemId))}
+            className="text-status-dropped underline disabled:opacity-50"
+          >
+            {t("delete")}
+          </button>
+        )}
       </div>
     </article>
   );

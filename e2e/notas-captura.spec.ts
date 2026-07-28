@@ -146,16 +146,32 @@ async function deleteNotesByBody(userId: string, body: string) {
   await assertOk(res, `deleteNotesByBody: DELETE notes?body=${body}`);
 }
 
-// La nota de una sesión se escribe TAMBIÉN en `progress_sessions.note`, así que
-// borrar solo la fila de `notes` deja media pareja detrás y `devtest` acumula
-// sesiones de prueba entre corridas. Se borra la sesión entera: es de esta
-// prueba, no del usuario.
-async function deleteSessionsByNote(userId: string, body: string) {
+// La nota queda enlazada a su sesión (session_id) tras guardar — se borra
+// la sesión por ahí, ya no por progress_sessions.note (columna que
+// SessionNotebook dejó de escribir, ver spec 2026-07-29 D6).
+async function deleteSessionByLinkedNote(userId: string, body: string) {
+  const noteRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&body=eq.${encodeURIComponent(body)}&select=session_id`,
+    { headers: headers() },
+  );
+  await assertOk(noteRes, `deleteSessionByLinkedNote: GET notes?body=${body}`);
+  const [note] = (await noteRes.json()) as { session_id: string | null }[];
+  if (!note?.session_id) return;
+
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/progress_sessions?user_id=eq.${userId}&note=eq.${encodeURIComponent(body)}`,
+    `${SUPABASE_URL}/rest/v1/progress_sessions?id=eq.${note.session_id}`,
     { method: "DELETE", headers: headers() },
   );
-  await assertOk(res, `deleteSessionsByNote: DELETE progress_sessions?note=${body}`);
+  await assertOk(res, `deleteSessionByLinkedNote: DELETE progress_sessions?id=${note.session_id}`);
+}
+
+// settleCleanup corre sus pasos en PARALELO (Promise.allSettled) — si
+// deleteSessionByLinkedNote y deleteNotesByBody fueran dos pasos sueltos,
+// habría carrera: la nota podría borrarse antes de que el primero la
+// consulte para encontrar su session_id. Van secuenciados en un único paso.
+async function cleanupSessionAndNote(userId: string, body: string): Promise<void> {
+  await deleteSessionByLinkedNote(userId, body);
+  await deleteNotesByBody(userId, body);
 }
 
 async function countNotesByBody(userId: string, body: string): Promise<number> {
@@ -237,6 +253,8 @@ test("el anclaje de la nota sigue a la pagina que acabo de marcar, NO a la guard
     await expect(dialog.getByText(/Pág\. 180/)).toHaveCount(0);
 
     await dialog.locator('textarea[name="note"]').fill(BODY);
+    await dialog.getByRole("button", { name: /^guardar$/i }).click();
+    await expect(dialog.getByText(BODY)).toBeVisible({ timeout: 10_000 });
     await dialog.getByRole("button", { name: /guardar sesión y cita/i }).click();
     await expect(dialog).toBeHidden({ timeout: 15_000 });
 
@@ -247,8 +265,7 @@ test("el anclaje de la nota sigue a la pagina que acabo de marcar, NO a la guard
     await expect(card.getByText(/Pág\. 240/)).toBeVisible();
   } finally {
     await settleCleanup([
-      () => deleteNotesByBody(userId, BODY),
-      () => deleteSessionsByNote(userId, BODY),
+      () => cleanupSessionAndNote(userId, BODY),
       () => restorePass(passId, snapshot),
     ]);
   }
@@ -347,9 +364,9 @@ test("guardar la sesion con el compositor vacio no crea ninguna nota", async ({ 
 
 // Regresión de la issue #109: el texto de una nota tomada durante una sesión se
 // pintaba DOS veces en la pestaña Registro — una desde `progress_sessions.note`
-// (session-list) y otra desde la tabla `notes` (NotesSection). `addSession`
-// escribe en las dos, deliberadamente, así que el arreglo no es dejar de
-// escribir sino dejar de pintar la copia que ya tiene hogar.
+// (session-list) y otra desde la tabla `notes` (NotesSection). Desde 2026-07-29
+// `progress_sessions.note` ya no se escribe (SessionNotebook, ver spec) — este
+// test se conserva como regresión de que la nota siga pintándose una sola vez.
 test("la nota de una sesion se pinta UNA sola vez en Registro", async ({ page }) => {
   test.setTimeout(90_000);
   await login(page);
@@ -367,6 +384,8 @@ test("la nota de una sesion se pinta UNA sola vez en Registro", async ({ page })
     await dialog.locator('input[name="page"]').fill("170");
     await dialog.getByRole("button", { name: /añadir una nota o cita/i }).click();
     await dialog.locator('textarea[name="note"]').fill(BODY);
+    await dialog.getByRole("button", { name: /^guardar$/i }).click();
+    await expect(dialog.getByText(BODY)).toBeVisible({ timeout: 10_000 });
     await dialog.getByRole("button", { name: /guardar sesión y cita/i }).click();
     await expect(dialog).toBeHidden({ timeout: 15_000 });
 
@@ -381,8 +400,74 @@ test("la nota de una sesion se pinta UNA sola vez en Registro", async ({ page })
     await expect(card.getByText(/Pág\. 170/)).toBeVisible();
   } finally {
     await settleCleanup([
-      () => deleteNotesByBody(userId, BODY),
-      () => deleteSessionsByNote(userId, BODY),
+      () => cleanupSessionAndNote(userId, BODY),
+      () => restorePass(passId, snapshot),
+    ]);
+  }
+});
+
+test("varias notas en la misma sesion quedan todas enlazadas al guardar", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await login(page);
+  const userId = await devtestId();
+  const { itemId, passId, snapshot } = await resolveBookFixture(userId);
+  const BODY_A = "e2e · primera nota de la sesion";
+  const BODY_B = "e2e · segunda nota de la sesion";
+
+  try {
+    await setPassPage(passId, 200);
+    await page.goto(`/libro/${itemId}?tab=log`);
+    await sessionLink(page, passId).click();
+    await page.waitForURL(/\/sesion\//);
+
+    const dialog = page.getByRole("dialog");
+    await dialog.locator('input[name="page"]').fill("220");
+    await dialog.getByRole("button", { name: /añadir una nota o cita/i }).click();
+
+    await dialog.locator('textarea[name="note"]').fill(BODY_A);
+    await dialog.getByRole("button", { name: /^guardar$/i }).click();
+    await expect(dialog.getByText(BODY_A)).toBeVisible({ timeout: 10_000 });
+
+    // Guardada la primera, el compositor se vacía pero sigue abierto — la
+    // segunda no requiere reabrirlo. Este es justo el caso que cazó la
+    // carrera arreglada en note-composer.tsx (bodyRef): guardar es async, y
+    // si se escribe la siguiente nota antes de que resuelva, el reset no
+    // debe borrar lo ya tecleado.
+    await dialog.locator('textarea[name="note"]').fill(BODY_B);
+    await dialog.getByRole("button", { name: /^guardar$/i }).click();
+    await expect(dialog.getByText(BODY_B)).toBeVisible({ timeout: 10_000 });
+
+    // Las dos ya existen en BD ANTES de guardar la sesión (persistencia
+    // inmediata, D1 de la spec) — es lo que este test cubre que los demás no.
+    // expect.poll: el insert ya resolvió en el navegador (la tarjeta se ve),
+    // pero esta lectura va por una conexión HTTP aparte contra Supabase dev
+    // (remoto) — un margen de milisegundos de propagación no es un fallo.
+    await expect.poll(() => countNotesByBody(userId, BODY_A)).toBe(1);
+    await expect.poll(() => countNotesByBody(userId, BODY_B)).toBe(1);
+
+    await dialog.getByRole("button", { name: /guardar sesión y cita/i }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+
+    // Y tras guardar la sesión, las dos quedan enlazadas a ELLA (mismo
+    // session_id), no sueltas.
+    async function fetchLinkedNotes(): Promise<{ session_id: string | null }[]> {
+      const notesRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/notes?user_id=eq.${userId}&body=in.(${encodeURIComponent(BODY_A)},${encodeURIComponent(BODY_B)})&select=session_id`,
+        { headers: headers() },
+      );
+      await assertOk(notesRes, "check session_id enlazado");
+      return (await notesRes.json()) as { session_id: string | null }[];
+    }
+    await expect.poll(async () => (await fetchLinkedNotes()).length).toBe(2);
+    const rows = await fetchLinkedNotes();
+    expect(rows[0].session_id).not.toBeNull();
+    expect(rows[0].session_id).toBe(rows[1].session_id);
+  } finally {
+    await settleCleanup([
+      () => cleanupSessionAndNote(userId, BODY_A),
+      () => deleteNotesByBody(userId, BODY_B),
       () => restorePass(passId, snapshot),
     ]);
   }

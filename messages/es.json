@@ -136,6 +136,7 @@
     "noProgress": "Sin progreso",
     "timerCancel": "Cancelar",
     "timerRegister": "Registrar",
+    "timerNotes": "+ Nota",
     "timerLabel": "Tiempo de esta sesión",
     "markEpisode": "T{season} · E{episode}",
     "focusMini": "Poner {title} arriba"
@@ -1320,6 +1321,7 @@
     "submitEpisodes": "Guardar · {count} episodios",
     "submitWithNote": "Guardar sesión y cita",
     "noteAnchorHint": "Tomada de tu marca de sesión",
+    "notePendingHint": "Guarda o borra la nota en curso antes de continuar.",
     "date": "Fecha",
     "duration": "Duración",
     "durationHint": "En minutos. Opcional.",
@@ -1374,10 +1376,8 @@
     "errors": {
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
-      "noteTooLong": "La nota supera los 2000 caracteres permitidos. Acórtala para poder guardar la sesión.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
-    "noteFailed": "La sesión se guardó, pero la nota no. Copia el texto antes de cerrar; si el pase se completó, podrás valorarlo después desde la ficha.",
     "noteKindNote": "Nota",
     "noteKindQuote": "Cita",
     "noteFavorite": "Favorita",

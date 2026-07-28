@@ -138,11 +138,17 @@ Cuelgan del pase:
 
 - **`progress_sessions`** — sesiones de lectura/visionado. `position` es el punto
   ALCANZADO. `started_at` (añadido en plan 05) permite saber la franja horaria real;
-  `created_at` es cuándo se registró, que no es lo mismo.
+  `created_at` es cuándo se registró, que no es lo mismo. `note` (texto, legacy, tope
+  2000 caracteres) ya no se escribe desde 2026-07-29 — las notas de sesión viven en
+  `notes` (varias por sesión, enlazadas por `session_id`, ver abajo); la columna se
+  queda con las filas históricas, sin migrar.
 - **`episode_watches`** — un episodio visto. **La existencia de la fila = visto**;
   `rating`/`review` son opcionales.
-- **`notes`** — notas y citas de «Memorizar». Además de `pass_id`/`session_id` (ambas
-  opcionales), `item_type`/`item_id`, `kind` (`note|quote`, con `CHECK`) y `body`: desde
+- **`notes`** — notas y citas de «Memorizar». **Varias por sesión** (no hay tope):
+  `SessionNotebook` (hoja de sesión) las guarda una a una según se escriben —
+  `session_id` queda `null` hasta que se guarda la sesión, momento en que `addSession`
+  las enlaza por id. Además de `pass_id`/`session_id` (ambas opcionales), `item_type`/
+  `item_id`, `kind` (`note|quote`, con `CHECK`) y `body`: desde
   `20260721_notes_social_columns.sql` suma `meta jsonb not null default '{}'::jsonb`
   (metadata libre por tipo de nota), `is_spoiler boolean not null default false`,
   `is_public boolean not null default false` y `parent_note_id uuid null references

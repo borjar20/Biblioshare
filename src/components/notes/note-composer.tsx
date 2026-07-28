@@ -1,14 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
 
 export type NoteAnchor =
   | { kind: "page"; page: number | null }
   | { kind: "episode"; season: number; episode: number }
   | { kind: "none" };
+
+export type NoteDraft = {
+  kind: "note" | "quote";
+  body: string;
+  tags: string;
+  favorite: boolean;
+  spoiler: boolean;
+  public: boolean;
+  page: string;
+  season: number | null;
+  episode: number | null;
+};
 
 // El compositor de notas y citas. NO renderiza <form>: dentro de la hoja de
 // sesión iría anidado dentro del <form> de la sesión, y un form dentro de otro
@@ -21,6 +34,8 @@ export function NoteComposer({
   defaultOpen = false,
   onHasBodyChange,
   maxBody = 5000,
+  onSave,
+  saveError,
 }: {
   /** Anclaje sugerido. En la hoja de sesión lo manda el campo VIVO. */
   anchor: NoteAnchor;
@@ -34,11 +49,26 @@ export function NoteComposer({
    *  quien escriba también en una columna más estrecha (progress_sessions.note,
    *  ≤2000) debe pasarlo explícito — ver session-sheet.tsx. */
   maxBody?: number;
+  /** Cuando se pasa, el compositor guarda CADA nota al momento con su propio
+   *  botón (no depende del <form> que lo envuelve) y se vacía para la
+   *  siguiente si `onSave` devuelve `true`. Lo usa SessionNotebook: la hoja
+   *  de sesión admite varias notas, no solo una — ver spec 2026-07-29. */
+  onSave?: (draft: NoteDraft) => Promise<boolean>;
+  /** Error de la ÚLTIMA nota que se intentó guardar en modo onSave — lo
+   *  decide el padre (SessionNotebook sabe si addNote falló). */
+  saveError?: string | null;
 }) {
   const t = useTranslations("notes");
   const [open, setOpen] = useState(defaultOpen);
   const [kind, setKind] = useState<"note" | "quote">("quote");
   const [body, setBody] = useState("");
+  // Espejo síncrono de `body`, para el guard de la Step de guardado (modo
+  // onSave): el guardado es async (addNote, red), así que si el usuario ya
+  // empieza a escribir la SIGUIENTE nota mientras la anterior sigue en
+  // vuelo, el reset posterior no debe borrarle lo que lleva tecleado. Leer
+  // `body` directamente ahí sería una clausura vieja del render en que se
+  // lanzó el guardado; el ref siempre tiene el valor más reciente.
+  const bodyRef = useRef(body);
   // El anclaje NO se copia a estado: se deriva. `override` es null mientras el
   // usuario no toque el campo, y entonces manda la prop —que en la hoja de
   // sesión sigue en vivo al stepper de página—. En cuanto lo edita, manda su
@@ -49,8 +79,14 @@ export function NoteComposer({
   const page =
     override ?? (anchor.kind === "page" && anchor.page !== null ? String(anchor.page) : "");
   const [editingAnchor, setEditingAnchor] = useState(false);
+  const [tags, setTags] = useState("");
+  const [favorite, setFavorite] = useState(false);
+  const [spoiler, setSpoiler] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function changeBody(next: string) {
+    bodyRef.current = next;
     setBody(next);
     onHasBodyChange?.(next.trim().length > 0);
   }
@@ -174,16 +210,30 @@ export function NoteComposer({
           name="noteTags"
           type="text"
           placeholder={t("tagsPlaceholder")}
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
         />
       </Field>
 
       <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-muted-foreground">
-        <input type="checkbox" name="noteFavorite" className="h-4 w-4 rounded border-border accent-accent" />
+        <input
+          type="checkbox"
+          name="noteFavorite"
+          checked={favorite}
+          onChange={(e) => setFavorite(e.target.checked)}
+          className="h-4 w-4 rounded border-border accent-accent"
+        />
         {t("favorite")}
       </label>
 
       <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-muted-foreground">
-        <input type="checkbox" name="noteSpoiler" className="mt-0.5 h-4 w-4 rounded border-border accent-accent" />
+        <input
+          type="checkbox"
+          name="noteSpoiler"
+          checked={spoiler}
+          onChange={(e) => setSpoiler(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-border accent-accent"
+        />
         <span>
           {t("spoilerLabel")}
           <span className="block text-[10.5px]">{t("spoilerHint")}</span>
@@ -191,12 +241,63 @@ export function NoteComposer({
       </label>
 
       <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-muted-foreground">
-        <input type="checkbox" name="notePublic" className="mt-0.5 h-4 w-4 rounded border-border accent-accent" />
+        <input
+          type="checkbox"
+          name="notePublic"
+          checked={isPublic}
+          onChange={(e) => setIsPublic(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-border accent-accent"
+        />
         <span>
           {t("publicLabel")}
           <span className="block text-[10.5px]">{t("publicHint")}</span>
         </span>
       </label>
+
+      {onSave && (
+        <>
+          {saveError && <p className="text-sm text-status-dropped">{saveError}</p>}
+          <Button
+            type="button"
+            disabled={saving || body.trim().length === 0}
+            onClick={async () => {
+              const submittedBody = body;
+              setSaving(true);
+              const ok = await onSave({
+                kind,
+                body: body.trim(),
+                tags,
+                favorite,
+                spoiler,
+                public: isPublic,
+                page,
+                season: anchor.kind === "episode" ? anchor.season : null,
+                episode: anchor.kind === "episode" ? anchor.episode : null,
+              });
+              setSaving(false);
+              // Guardar es async (addNote, red): si mientras esperaba el
+              // usuario ya empezó a escribir la SIGUIENTE nota, resetear a
+              // ciegas le borraría lo que lleva tecleado (carrera
+              // confirmada por e2e — notas-captura.spec.ts, "varias
+              // notas..."). bodyRef siempre tiene el valor más reciente,
+              // sin la clausura vieja del render en que se lanzó el guardado.
+              if (ok && bodyRef.current === submittedBody) {
+                setKind("quote");
+                changeBody("");
+                setOverride(null);
+                setEditingAnchor(false);
+                setTags("");
+                setFavorite(false);
+                setSpoiler(false);
+                setIsPublic(false);
+              }
+            }}
+            className="self-start"
+          >
+            {saving ? t("saving") : t("save")}
+          </Button>
+        </>
+      )}
     </div>
   );
 }
