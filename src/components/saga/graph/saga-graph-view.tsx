@@ -43,7 +43,11 @@ const EDGE_DASH: Record<string, string | undefined> = {
 // pertenece a ninguna, es de la capa del itinerario. Con el acento del bloque
 // de destino se confundiría con las aristas de cadena de esa misma fila, que es
 // justo lo que hay que poder distinguir.
-const ITINERARY_EDGE_COLOR = "var(--foreground)";
+//
+// Token propio y no `--foreground`: el lienzo lleva un gradiente oscuro FIJO
+// (más abajo, en `style`), así que en tema CLARO `--foreground` es casi negro
+// sobre fondo casi negro y el trazo desaparecía.
+const ITINERARY_EDGE_COLOR = "var(--map-itinerary-jump)";
 
 export function SagaGraphView({
   graph,

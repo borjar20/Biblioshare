@@ -33,7 +33,12 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
       </span>
       {hasItineraryJump && (
         <span className="flex items-center gap-2 text-[11.5px] text-foreground">
-          <i className="w-[26px] border-t-[2.5px] border-dashed border-foreground" /> {t("legendItineraryJump")}
+          {/* El MISMO color que el trazo del lienzo (`--map-itinerary-jump`),
+              no `border-foreground` como las de arriba: aquí la muestra sí
+              puede coincidir con lo que se dibuja, porque ese token no cambia
+              con el tema y contrasta también sobre `--surface`. */}
+          <i className="w-[26px] border-t-[2.5px] border-dashed border-map-itinerary-jump" />{" "}
+          {t("legendItineraryJump")}
         </span>
       )}
       {hasNexus && (
