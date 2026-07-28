@@ -70,7 +70,7 @@
 **Interfaces:**
 - Produces: tabla `public.saga_tandems`, enum `public.saga_tandem_mode`.
 
-- [ ] **Step 1: Escribir la migración**
+- [x] **Step 1: Escribir la migración**
 
 ```sql
 -- Metadatos del HUECO compartido (spec 2026-07-28, fase 2). Lo que esta tabla
@@ -118,11 +118,11 @@ create policy "saga tandems writable by collaborators" on public.saga_tandems
   with check (public.has_min_role('collaborator'));
 ```
 
-- [ ] **Step 2: Aplicarla a DEV**
+- [x] **Step 2: Aplicarla a DEV**
 
 Usa `mcp__supabase-dev__apply_migration` con el nombre `20260801_saga_tandems` y ese cuerpo. **Dev primero, prod en la Task 8.**
 
-- [ ] **Step 3: Verificar contra los objetos reales, no el ledger**
+- [x] **Step 3: Verificar contra los objetos reales, no el ledger**
 
 Run (`mcp__supabase-dev__execute_sql`):
 
@@ -135,7 +135,7 @@ select to_regclass('public.saga_tandems') as tabla,
 
 Expected: `tabla` no nula, `valores_enum = 2`, `policies = 2`, `constraints ≥ 4` (PK + FK + los dos CHECK).
 
-- [ ] **Step 4: Comprobar que los dos CHECK muerden**
+- [x] **Step 4: Comprobar que los dos CHECK muerden**
 
 Run:
 
@@ -154,14 +154,14 @@ values ('8782f667-0d83-431a-a1bf-dca0f3fad1c3', 5, repeat('x', 201));
 
 Expected: **error** `saga_tandems_nota_len`.
 
-- [ ] **Step 5: Regenerar los tipos**
+- [x] **Step 5: Regenerar los tipos**
 
 Usa `mcp__supabase-dev__generate_typescript_types` y vuelca el resultado en `src/lib/supabase/database.types.ts`. Esto además retira de ese fichero las tres definiciones muertas que el backlog ya señalaba (`saga_nodes`, `saga_edges`, `save_saga_graph`).
 
 Run: `fnm use 22; npx tsc --noEmit`
 Expected: limpio. Si algo se rompe por las definiciones retiradas, arréglalo aquí — es deuda conocida, no un daño nuevo.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add supabase/migrations/20260801_saga_tandems.sql src/lib/supabase/database.types.ts
@@ -181,7 +181,7 @@ git commit -m "feat(db): saga_tandems, metadatos del hueco compartido (solo dev)
 
 **Cómo se da de baja un tándem, y por qué así.** El cuerpo hace `delete from saga_tandems where saga_id = p_saga_id` y reinserta `p_tandems`. Es reemplazo por saga, **no** la lista de sujetos que usan las ventanas — y es correcto aquí por un motivo que hay que dejar escrito: las ventanas necesitaron sujetos explícitos en la fase 4 porque **dos pantallas escriben la misma fila** (el editor del padre cura la ventana de una obra de su hija). Un tándem no tiene ese problema: un hueco pertenece a la secuencia de UNA saga, y solo el editor de esa saga lo escribe — el editor del padre no toca la secuencia de la hija (#187 sigue cerrada). Con un único escritor por `saga_id`, el reemplazo da la garantía que pide la spec («un hueco que deja de ser tándem borra su fila en la MISMA transacción») sin inventar un octavo argumento.
 
-- [ ] **Step 1: Escribir la migración**
+- [x] **Step 1: Escribir la migración**
 
 Copia el cuerpo ACTUAL de la función (está en `pg_proc`; el fichero de referencia más cercano es `20260730_save_saga_sequence_subjects.sql`) y añádele el parámetro y el bloque nuevos. No reescribas el resto: cualquier cambio no pedido en el cuerpo viaja a producción sin que nadie lo haya revisado.
 
@@ -257,7 +257,7 @@ $function$;
 
 > **Riesgo conocido y aceptado mientras el envoltorio viva**, el mismo que documentó la 2b: un guardado desde el bundle VIEJO manda `p_tandems = '[]'` sin saberlo y borra los metadatos que el editor nuevo hubiera guardado. Ventana de minutos entre migración y despliegue, con **un solo tándem en producción**. Escríbelo en `decisiones.md` (Task 9), no solo aquí.
 
-- [ ] **Step 2: Aplicarla a DEV y verificar las dos firmas**
+- [x] **Step 2: Aplicarla a DEV y verificar las dos firmas**
 
 Run (`mcp__supabase-dev__execute_sql`):
 
@@ -269,7 +269,7 @@ where p.proname='save_saga_sequence' and n.nspname='public' order by 1;
 
 Expected: **dos** filas (6 y 7 argumentos), las dos con `prosecdef = true` y `proconfig = {search_path=public}`.
 
-- [ ] **Step 3: Probar el reemplazo con datos reales de dev**
+- [x] **Step 3: Probar el reemplazo con datos reales de dev**
 
 Run: guarda un tándem por RPC y comprueba que la segunda llamada sin él lo borra.
 
@@ -282,12 +282,12 @@ select count(*) from saga_tandems where saga_id = '<saga QA>';
 
 Expected: 1. Repite con `'[]'::jsonb` como séptimo argumento y vuelve a contar: **0**.
 
-- [ ] **Step 4: Comprobar que el envoltorio de 6 sigue funcionando**
+- [x] **Step 4: Comprobar que el envoltorio de 6 sigue funcionando**
 
 Run: la misma llamada sin el séptimo argumento.
 Expected: no falla (es lo que protege al bundle desplegado durante el despliegue).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add supabase/migrations/20260801_save_saga_sequence_tandems.sql
@@ -315,7 +315,7 @@ git commit -m "feat(db): save_saga_sequence gana p_tandems (sobrecarga, solo dev
 
 **Por qué el hueco pasa de array a objeto, y no se guarda la metadata aparte.** Guardarla en un `Map` o un array paralelo indexado por posición del hueco parece más barato, y es exactamente el error: `moveSlot`, `pairWith`, `unpair` y `extract` **cambian los índices**, y `extract` puede además eliminar un hueco entero. Cualquier estructura indexada por posición se desincroniza en el primer reordenamiento, en silencio, y el curador ve la nota de un hueco bajo otro. Con `DraftSlot`, la metadata se mueve con su hueco porque **es** su hueco.
 
-- [ ] **Step 1: Adaptar el helper del test, y escribir los tests que fallan**
+- [x] **Step 1: Adaptar el helper del test, y escribir los tests que fallan**
 
 `src/lib/sagas/sequence-draft.test.ts` ya trae los helpers `work(id)`, `block(id)` y `draft(slots, free, unclassified, nested)`, y ese último recibe hoy `DraftEntry[][]`. **Conserva esa ergonomía** y envuelve dentro — así los ~20 tests que ya existen solo cambian donde INSPECCIONAN un hueco (`d.slots[0]` → `d.slots[0].entries`), no donde lo construyen:
 
@@ -392,12 +392,12 @@ describe("metadatos del hueco (fase 2)", () => {
 });
 ```
 
-- [ ] **Step 2: Correr y ver que fallan**
+- [x] **Step 2: Correr y ver que fallan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/sequence-draft.test.ts`
 Expected: FAIL — `setTandemMeta` no existe y `slots[0].mode` es `undefined`.
 
-- [ ] **Step 3: Cambiar el tipo del hueco**
+- [x] **Step 3: Cambiar el tipo del hueco**
 
 En `src/lib/sagas/types.ts`, junto a `SagaPlacement`/`SagaItemRole`:
 
@@ -427,7 +427,7 @@ export type DraftSlot = {
 
 y `SequenceDraft.slots: DraftSlot[]`.
 
-- [ ] **Step 4: Adaptar las operaciones, una a una**
+- [x] **Step 4: Adaptar las operaciones, una a una**
 
 `extract`: al quitar una entrada, el hueco conserva su identidad **pero pierde los metadatos si deja de ser tándem**:
 
@@ -486,7 +486,7 @@ export function setTandemMeta(
 }
 ```
 
-- [ ] **Step 5: Emitir los tándems en el payload**
+- [x] **Step 5: Emitir los tándems en el payload**
 
 En `SequencePayload`:
 
@@ -513,12 +513,12 @@ y en `toPayload`, junto al recorrido de huecos:
 
 y devuélvelo en el objeto final.
 
-- [ ] **Step 6: Correr los tests**
+- [x] **Step 6: Correr los tests**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/sequence-draft.test.ts && npx tsc --noEmit`
 Expected: los nuevos PASS. `tsc` fallará en los consumidores de `slots` (editor, shells, tandem-picker, get-saga-sequence): se arreglan en las Tasks 4 y 5, y ese error es el mapa exacto de lo que queda.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/sagas/types.ts src/lib/sagas/sequence-draft.ts src/lib/sagas/sequence-draft.test.ts
@@ -538,7 +538,7 @@ git commit -m "feat(sagas): el hueco del borrador guarda qué clase de tándem e
 **Interfaces:**
 - Consumes: `DraftSlot`, `SequencePayload.tandems` (Task 3).
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 En `validate-sequence-draft.test.ts`:
 
@@ -560,12 +560,12 @@ it("acepta un tándem declarado sobre un hueco compartido", () => {
 
 En `get-saga-sequence.test.ts`, un caso que compruebe que `mode`/`note` llegan al hueco correcto por `position`.
 
-- [ ] **Step 2: Correr y ver que fallan**
+- [x] **Step 2: Correr y ver que fallan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/validate-sequence-draft.test.ts src/lib/sagas/get-saga-sequence.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Hidratar desde `saga_tandems`**
+- [x] **Step 3: Hidratar desde `saga_tandems`**
 
 En `get-saga-sequence.ts`, junto a la carga de ventanas, lee los tándems de la saga y móntalos al construir `slots`:
 
@@ -589,7 +589,7 @@ En `get-saga-sequence.ts`, junto a la carga de ventanas, lee los tándems de la 
 
 > **Trampa medida:** la `position` guardada y el índice del hueco NO tienen por qué coincidir si la secuencia tiene huecos numerados con saltos. Casar por `position` (la clave real) y no por índice es lo único correcto; el payload vuelve a numerar 1..N al guardar, que es lo que reasienta la tabla.
 
-- [ ] **Step 4: Validar**
+- [x] **Step 4: Validar**
 
 En `validate-sequence-draft.ts`, sobre `payload.tandems`:
 
@@ -610,7 +610,7 @@ En `validate-sequence-draft.ts`, sobre `payload.tandems`:
 
 (Si `countBy` no existe en el fichero, escribe el conteo a mano — no añadas una dependencia por esto.)
 
-- [ ] **Step 5: Mandar el argumento nuevo al RPC**
+- [x] **Step 5: Mandar el argumento nuevo al RPC**
 
 En `sequence-actions.ts`, en la llamada:
 
@@ -626,12 +626,12 @@ En `sequence-actions.ts`, en la llamada:
   });
 ```
 
-- [ ] **Step 6: Correr los tests**
+- [x] **Step 6: Correr los tests**
 
 Run: `fnm use 22; npx vitest run && npx tsc --noEmit`
 Expected: las unitarias PASS. `tsc` puede seguir señalando el editor (Task 5).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/sagas/get-saga-sequence.ts src/lib/sagas/validate-sequence-draft.ts src/lib/sagas/sequence-actions.ts src/lib/sagas/*.test.ts
@@ -651,7 +651,7 @@ git commit -m "feat(sagas): hidratar y validar los metadatos del tándem"
 - Consumes: `setTandemMeta` (Task 3).
 - Produces: `ops.setTandemMeta(index, meta)` en `use-sequence-draft.ts`.
 
-- [ ] **Step 1: Textos**
+- [x] **Step 1: Textos**
 
 En `messages/es.json`, namespace `saga`:
 
@@ -665,7 +665,7 @@ En `messages/es.json`, namespace `saga`:
     "tandemNotShared": "Hay metadatos de tándem en un hueco que ya no comparte dos obras",
 ```
 
-- [ ] **Step 2: Escribir el componente**
+- [x] **Step 2: Escribir el componente**
 
 Crear `src/components/saga/sequence/tandem-meta-editor.tsx` — cliente, controlado por el borrador:
 
@@ -725,7 +725,7 @@ export function TandemMetaEditor({
 }
 ```
 
-- [ ] **Step 3: Cablear la operación**
+- [x] **Step 3: Cablear la operación**
 
 En `use-sequence-draft.ts`, junto a las demás ops:
 
@@ -740,7 +740,7 @@ En `use-sequence-draft.ts`, junto a las demás ops:
         slots: d.slots.map((s) => ({ ...s, entries: s.entries.map((e) => ({ ...e, isNew: false })) })),
 ```
 
-- [ ] **Step 4: Montarlo en las dos cáscaras**
+- [x] **Step 4: Montarlo en las dos cáscaras**
 
 En `shell-desktop.tsx` y `shell-mobile.tsx`, donde hoy hacen `draft.slots.map((slot, i) => …)`, el `slot` pasa a ser objeto: recorre `slot.entries` para las filas y, **después de ellas**, monta el editor si `slot.entries.length >= 2`:
 
@@ -763,16 +763,16 @@ En `shell-desktop.tsx` y `shell-mobile.tsx`, donde hoy hacen `draft.slots.map((s
 
 En `sequence-editor.tsx` (líneas 115, 121, 140, 154) y `tandem-picker.tsx` (15, 26), cambia `slot` → `slot.entries` donde corresponda. `tandem-picker` recibe `slots: DraftSlot[]` y filtra igual que hoy.
 
-- [ ] **Step 5: Compilar, lint y unitarias**
+- [x] **Step 5: Compilar, lint y unitarias**
 
 Run: `fnm use 22; npx tsc --noEmit; npx eslint src; npx vitest run`
 Expected: todo limpio (salvo los dos avisos preexistentes de `generate-route-button.tsx` y el error preexistente de `signup-form.tsx`).
 
-- [ ] **Step 6: Verlo funcionar**
+- [x] **Step 6: Verlo funcionar**
 
 Arranca el dev server del worktree (uno solo, en 3000) y abre `/saga/<id con tándem>/editar`: bajo el hueco compartido tienen que salir las tres pastillas y el campo de nota; guardar y recargar tiene que conservarlos. Comprueba también que **deshacer el tándem** hace desaparecer el bloque de controles.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/saga/sequence messages/es.json
@@ -793,7 +793,7 @@ git commit -m "feat(sagas): el editor declara qué clase de tándem es un hueco"
 
 **Cómo llega el dato hasta la fila.** La fila `tandem` del timeline nace de un empate de `orderNo`, pero la clave de `saga_tandems` es `(saga_id, position)` — y un nodo del mapa NO lleva `position`. Antes de inventar nada: el nodo sí lleva `groupSagaId`, y `deriveSagaMap` sí conoce la `position` de cada miembro mientras construye los huecos. Así que el lookup se resuelve **dentro de `deriveSagaMap`**, que denormaliza `{mode, note}` en cada nodo del hueco; `deriveTimeline` lo lee del primero al fundir la fila. No es una segunda fuente de verdad: es dato derivado, con un solo escritor.
 
-- [ ] **Step 1: Tests que fallan**
+- [x] **Step 1: Tests que fallan**
 
 En `derive-map.test.ts`:
 
@@ -831,12 +831,12 @@ it("la fila tandem toma modo y nota del hueco", () => {
 
 (El helper `node()` del test ya acepta overrides; añade `tandem: null` a su base.)
 
-- [ ] **Step 2: Correr y ver que fallan**
+- [x] **Step 2: Correr y ver que fallan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-map.test.ts src/lib/sagas/derive-timeline.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `map-types.ts`:
 
@@ -869,7 +869,7 @@ y `makeNode` devuelve `tandem: null` por defecto.
 
 `get-saga-detail.ts`: cargar `saga_tandems` de la saga y de sus hijas directas (las mismas filas que ya se recorren para los grupos) y construir el `Map` antes de llamar a `deriveSagaMap`.
 
-- [ ] **Step 4: Pintarlo**
+- [x] **Step 4: Pintarlo**
 
 En `timeline-tandem-row.tsx`, sustituye la etiqueta fija por el modo cuando exista, y la nota ya está cableada (`row.note`):
 
@@ -883,16 +883,16 @@ En `timeline-tandem-row.tsx`, sustituye la etiqueta fija por el modo cuando exis
 
 y añade las dos etiquetas a `timeline-labels.ts`.
 
-- [ ] **Step 5: Correr todo**
+- [x] **Step 5: Correr todo**
 
 Run: `fnm use 22; npx vitest run && npx tsc --noEmit && npx eslint src`
 Expected: verde.
 
-- [ ] **Step 6: Curar el caso real y mirarlo**
+- [x] **Step 6: Curar el caso real y mirarlo**
 
 Con el dev server levantado, cura en **dev** el tándem de la saga QA (o el equivalente de Trono de Cristal si existe en dev) con modo y nota, y mira la ficha en móvil y al pie del grafo en PC. **Riesgo 4 de la spec**: esta fase se estrena con un único caso real, así que mirarlo es parte del trabajo, no un extra.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/sagas src/components/saga/timeline messages/es.json
@@ -908,7 +908,7 @@ git commit -m "feat(sagas): el timeline dice qué clase de tándem es y por qué
 
 **Universo QA:** el tándem que ya usa `e2e/sagas-editor-secuencia.spec.ts:207` («un tándem deja las dos obras en el mismo número y la siguiente en el siguiente»). Léelo antes de sembrar nada: si ya monta un tándem, este spec puede montar el suyo con el mismo patrón y limpiarlo igual. Semilla y limpieza como el resto (`fetch` nativo, `res.ok` en cada escritura, `finally` que restaura).
 
-- [ ] **Step 1: Escribir el spec**
+- [x] **Step 1: Escribir el spec**
 
 Tres casos, y ninguno redundante con las unitarias. Las aserciones decisivas, literales:
 
@@ -939,12 +939,12 @@ await expect(fila).toContainText(NOTA);
 
 `tandemMeta(page)` es `page.locator('[data-testid="tandem-meta"]:visible')` — con `:visible` porque las dos cáscaras del editor se montan a la vez y se ocultan por breakpoint (regla de los dos árboles).
 
-- [ ] **Step 2: Correr y ver que pasa**
+- [x] **Step 2: Correr y ver que pasa**
 
 Run: `npx playwright test e2e/sagas-tandem-metadatos.spec.ts --reporter=list`
 Expected: 3 passed.
 
-- [ ] **Step 3: Inyección de fallo, tres roturas de una en una**
+- [x] **Step 3: Inyección de fallo, tres roturas de una en una**
 
 | # | Rotura | Test que debe caer |
 |---|---|---|
@@ -956,12 +956,12 @@ Después de cada una: aplicar, correr, **comprobar que cae exactamente ese test*
 
 > Si alguna rotura NO tumba su test, el test no vale. Pasó en la fase 4 (#214) y volvió a pasar en la fase 1 de este mismo spec: la aserción «existe un Nº 1» seguía pasando con la numeración rota, porque el «Nº 1» era la segunda fila. Arréglalo antes de seguir.
 
-- [ ] **Step 4: Suite de sagas entera**
+- [x] **Step 4: Suite de sagas entera**
 
 Run: `npx playwright test e2e/sagas-*.spec.ts --reporter=list`
 Expected: todo verde. Ojo a `sagas-editor-secuencia.spec.ts:207`, que es el que más cerca está de lo que toca esta fase.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add e2e/sagas-tandem-metadatos.spec.ts
@@ -1036,12 +1036,12 @@ git commit -m "chore(db): retirar la sobrecarga de seis argumentos de save_saga_
 
 ## Task 9: Cerrar la doc
 
-- [ ] **Step 1: `data-model.md`** — sección nueva para `saga_tandems` (columnas, PK, CHECKs, RLS, y que la pertenencia NO vive aquí), y actualizar la firma de `save_saga_sequence` a 7 argumentos. **Sube su fecha de verificación.**
-- [ ] **Step 2: `backlog.md`** — marcar la fase 2 con lo aplicado a dev y a prod, y el estado del `drop`.
-- [ ] **Step 3: `decisiones.md`** (append-only) — tres entradas: (1) los metadatos van por HUECO y la pertenencia sigue siendo el empate de `position`, con las dos alternativas descartadas y su porqué; (2) el reemplazo por saga de `p_tandems` es correcto porque hay un único escritor, a diferencia de las ventanas desde la fase 4; (3) el riesgo aceptado del envoltorio mientras vive.
-- [ ] **Step 4: Mapa de arquitectura** — `docs/architecture/graph.json` (tabla nueva en la capa `db`, flujo del editor de secuencia) y `node docs/architecture/sync.mjs`.
-- [ ] **Step 5: Chequeo de deriva** — `/drift-check`.
-- [ ] **Step 6: Commit**
+- [x] **Step 1: `data-model.md`** — sección nueva para `saga_tandems` (columnas, PK, CHECKs, RLS, y que la pertenencia NO vive aquí), y actualizar la firma de `save_saga_sequence` a 7 argumentos. **Sube su fecha de verificación.**
+- [x] **Step 2: `backlog.md`** — marcar la fase 2 con lo aplicado a dev y a prod, y el estado del `drop`.
+- [x] **Step 3: `decisiones.md`** (append-only) — tres entradas: (1) los metadatos van por HUECO y la pertenencia sigue siendo el empate de `position`, con las dos alternativas descartadas y su porqué; (2) el reemplazo por saga de `p_tandems` es correcto porque hay un único escritor, a diferencia de las ventanas desde la fase 4; (3) el riesgo aceptado del envoltorio mientras vive.
+- [x] **Step 4: Mapa de arquitectura** — `docs/architecture/graph.json` (tabla nueva en la capa `db`, flujo del editor de secuencia) y `node docs/architecture/sync.mjs`.
+- [x] **Step 5: Chequeo de deriva** — `/drift-check`.
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/
