@@ -1,5 +1,6 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { compareBlocksByPlacement } from "./group-members";
+import { placeByWindow, type OrderUnit, type OrderWindow } from "./place-by-window";
 import type { SagaPlacement } from "./types";
 
 // Orden principal de una saga: la SECUENCIA con la que se pinta (columna del
@@ -32,6 +33,11 @@ export type OrderMembership = {
   itemType: ItemType;
   itemId: string;
   position: number | null;
+  /** Colocación de la obra en ESA saga (`saga_items.placement`). La necesita la
+   *  guarda «solo lo `libre` tiene ventana» del post-pase, la MISMA que aplican
+   *  `deriveSagaMap` y la ficha: ningún CHECK de BD puede imponerla porque cruza
+   *  dos tablas, así que una fila rancia puede llegar hasta aquí. */
+  placement: SagaPlacement | null;
 };
 
 export const itemKey = (t: ItemType, i: string) => `${t}:${i}`;
@@ -49,6 +55,11 @@ export function createCuratedOrder(
   sagas: OrderSaga[],
   memberships: OrderMembership[],
   titleOf: (key: string) => string,
+  // Ventanas del subárbol, por clave de SUJETO en formato de entrada
+  // (`i:<tipo>:<uuid>` / `s:<uuid>`). Obligatorio a propósito: un llamante que
+  // se lo dejara perdería la colocación por ventana EN SILENCIO, que es
+  // exactamente cómo nacen las issues de la familia #203.
+  windows: Record<string, OrderWindow>,
 ): (rootId: string) => string[] {
   const sagaById = new Map(sagas.map((s) => [s.id, s]));
   const childrenByParent = new Map<string, OrderSaga[]>();
@@ -83,10 +94,14 @@ export function createCuratedOrder(
   // dedupica el resultado final, pero sin `visited` la recursión ni siquiera
   // terminaría). Esto no es el denominador del progreso: ese vive en
   // countedKeys (./progress.ts).
-  function walk(sagaId: string, depth: number, visited: Set<string>): string[] {
+  /** Una clave y la saga que la emitió: el post-pase de ventanas necesita saber
+   *  dónde están los límites entre bloques, y eso solo lo sabe quien recorre. */
+  type WalkUnit = { key: string; sagaId: string };
+
+  function walk(sagaId: string, depth: number, visited: Set<string>): WalkUnit[] {
     if (depth > MAX_DEPTH || visited.has(sagaId)) return [];
     visited.add(sagaId);
-    const out: string[] = [];
+    const out: WalkUnit[] = [];
     const direct = [...(membersBySaga.get(sagaId) ?? [])].sort((a, b) => {
       const pa = a.position ?? Number.MAX_SAFE_INTEGER;
       const pb = b.position ?? Number.MAX_SAFE_INTEGER;
@@ -124,12 +139,44 @@ export function createCuratedOrder(
     // (route-view.tsx) y el «siguiente»/portadas de las cards de Mi
     // Biblioteca (build-library-saga-cards.ts) — así que los tres coinciden
     // ahora con la ficha y con el mapa.
-    out.push(...direct.map((m) => itemKey(m.itemType, m.itemId)));
+    out.push(...direct.map((m) => ({ key: itemKey(m.itemType, m.itemId), sagaId })));
     return out;
   }
 
-  /** Claves `item_type:item_id` del orden principal de `rootId`, deduplicadas. */
+  // Placement por clave de obra: basta con que UNA membresía sea `libre` para
+  // que la obra pueda tener ventana — mismo criterio que `buildWindowOwners`
+  // (window-owners.ts).
+  const obrasLibres = new Set<string>();
+  for (const m of memberships) {
+    if (m.placement === "libre") obrasLibres.add(`i:${itemKey(m.itemType, m.itemId)}`);
+  }
+  const esLibre = (subjectKey: string): boolean =>
+    subjectKey.startsWith("s:")
+      ? sagaById.get(subjectKey.slice(2))?.placementInParent === "libre"
+      : obrasLibres.has(subjectKey);
+
+  /** Claves `item_type:item_id` del orden principal de `rootId`, deduplicadas y
+   *  con los sujetos `libre` ya recolocados por su ventana. */
   return function curatedOrder(rootId: string): string[] {
-    return [...new Set(walk(rootId, 0, new Set()))];
+    // Dedup conservando la PRIMERA aparición (y con ella el bloque que la
+    // emitió): una obra miembro de dos sagas del subárbol sale una sola vez.
+    const vistas = new Set<string>();
+    const units: OrderUnit[] = [];
+    for (const wu of walk(rootId, 0, new Set())) {
+      if (vistas.has(wu.key)) continue;
+      vistas.add(wu.key);
+      units.push({
+        // `placeByWindow` habla en claves de ENTRADA; esta función habla en
+        // `<tipo>:<uuid>` de cara a sus tres consumidores. Se traduce aquí y se
+        // destraduce abajo; el prefijo mide exactamente dos caracteres.
+        key: `i:${wu.key}`,
+        // La raíz no es un bloque: sus miembros directos son el «Nexo», y para
+        // el orden eso significa "sin bloque" — igual que `groupSagaId: null`
+        // en el mapa. Sin esto, insertar delante de un miembro directo contaría
+        // como partir un bloque que no existe.
+        blockId: wu.sagaId === rootId ? null : wu.sagaId,
+      });
+    }
+    return placeByWindow(units, windows, esLibre).map((u) => u.key.slice(2));
   };
 }

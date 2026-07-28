@@ -297,11 +297,17 @@ export function deriveTimeline(
       reason: n.windowReason,
       track: windowTrack(graph, { after, before }, { authenticated }),
     };
-    // 1) justo DESPUÉS de su ancla `después de`; 2) si solo hay `antes de`,
-    // justo ANTES de esa fila; 3) si ninguna resuelve, cae a rama (abajo).
+    // 1) justo ANTES de su ancla `antes de`; 2) si solo hay `a partir de`,
+    // justo DESPUÉS de esa fila; 3) si ninguna resuelve, cae a rama (abajo).
+    //
+    // Manda el `antes de` desde el 2026-07-28 (spec §3.4), por lo mismo que en
+    // `orderBlocksForLayout` y `placeByWindow`: una sola respuesta a «¿qué ancla
+    // coloca?» en todo el proyecto. Con las cinco ventanas de producción no
+    // mueve ninguna fila —sus dos anclas son consecutivas—, pero deja de haber
+    // dos reglas conviviendo.
     const placed =
-      (after !== null && insertRelativeTo(after.id, row, "after")) ||
-      (after === null && before !== null && insertRelativeTo(before.id, row, "before"));
+      (before !== null && insertRelativeTo(before.id, row, "before")) ||
+      (before === null && after !== null && insertRelativeTo(after.id, row, "after"));
     if (placed) placedAsWindow.add(n.id);
   }
 
