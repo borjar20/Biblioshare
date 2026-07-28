@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { sagaHref } from "@/lib/catalog/item-href";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
 import { getSagaSequence } from "@/lib/sagas/get-saga-sequence";
@@ -59,7 +61,32 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-8 sm:px-6 lg:max-w-none lg:px-0">
       <div className="lg:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("editTitle")}</h1>
+        {/* Salida a la ficha, como la cabecera de /saga/[id]/rutas: esta
+            pantalla también era un callejón sin salida — se entra desde la
+            ficha y solo se salía con el botón del navegador. El ‹ y el enlace
+            de texto son la misma pareja, y el nombre de la saga hace de miga
+            para saber cuál se está editando. */}
+        <div className="mb-4 flex items-center gap-2.5">
+          <Link
+            href={sagaHref(saga.id)}
+            aria-label={t("backToSaga")}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface text-[15px]"
+          >
+            ‹
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-2xl font-semibold tracking-tight">{t("editTitle")}</h1>
+            <span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.09em] text-foreground-faint">
+              {saga.name}
+            </span>
+          </div>
+          <Link
+            href={sagaHref(saga.id)}
+            className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11.5px] font-semibold"
+          >
+            {t("backToSaga")}
+          </Link>
+        </div>
         <SagaMetaEditor
           sagaId={saga.id}
           initial={{
