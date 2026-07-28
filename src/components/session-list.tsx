@@ -8,6 +8,7 @@ import { formatPosition, type Position } from "@/lib/library/position";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { deleteSession } from "@/lib/sessions/actions";
+import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 
 // El tramo leído en una sesión ("p. 180 → 240" del frame 3).
 //
@@ -103,6 +104,10 @@ export function SessionList({
                 ? t("duration", { count: session.durationMinutes })
                 : null,
             ].filter(Boolean);
+            const relativeBasis = sessionRelativeBasis(
+              session.sessionDate,
+              session.createdAt,
+            );
 
             return (
               <li
@@ -121,10 +126,10 @@ export function SessionList({
                       que hay que restar mentalmente. El `dateTime` conserva la
                       fecha exacta para quien la necesite. */}
                   <time
-                    dateTime={session.sessionDate}
+                    dateTime={relativeBasis}
                     className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground lg:text-[11px]"
                   >
-                    {format.relativeTime(new Date(session.sessionDate))}
+                    {format.relativeTime(new Date(relativeBasis))}
                   </time>
                   <button
                     type="button"

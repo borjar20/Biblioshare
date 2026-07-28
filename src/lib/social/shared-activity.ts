@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { FeedEvent, FeedVerb } from "./feed";
+import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 
 // Resuelve UNA fila concreta (no un fan-out por seguidos) a la misma forma
 // FeedEvent que usa el feed personal (Bloque C, SD-1) -- usado por
@@ -132,7 +133,7 @@ export async function resolveSharedActivity(
     const { data: row } = await supabase
       .from("progress_sessions")
       // `note` NO se pide: texto privado del autor (ver `progress` en FeedEvent).
-      .select("id, user_id, pass_id, session_date, duration_minutes")
+      .select("id, user_id, pass_id, session_date, duration_minutes, created_at")
       .eq("id", ref.rowId)
       .maybeSingle();
     if (!row) return null;
@@ -156,7 +157,7 @@ export async function resolveSharedActivity(
       itemCoverUrl: catalog.cover_url,
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
-      eventDate: row.session_date,
+      eventDate: sessionRelativeBasis(row.session_date, row.created_at),
       rating: null,
       reviewExcerpt: null,
       episode: null,
