@@ -82,6 +82,10 @@ export function SessionSheet({
   // un useEffect con setState dispararía react-hooks/set-state-in-effect.
   const [closingPass, setClosingPass] = useState(false);
   const [prevState, setPrevState] = useState(state);
+  // Controlado (antes defaultValue-only) porque BookProgressField necesita el
+  // valor EN VIVO para combinarlo con la hora opcional en combineStartedAt —
+  // ver book-progress-field.tsx.
+  const [sessionDate, setSessionDate] = useState(todayISO());
   if (state !== prevState) {
     setPrevState(state);
     // Si la nota falló, la hoja de cierre NO se encadena: es un <dialog>
@@ -239,7 +243,8 @@ export function SessionSheet({
               name="sessionDate"
               type="date"
               required
-              defaultValue={todayISO()}
+              value={sessionDate}
+              onChange={(e) => setSessionDate(e.target.value)}
             />
           </Field>
 
@@ -250,6 +255,7 @@ export function SessionSheet({
               total={total}
               initialMinutes={initialMinutes}
               onPageChange={setLivePage}
+              sessionDate={sessionDate}
             />
           ) : (
             <SeriesEpisodeGrid
