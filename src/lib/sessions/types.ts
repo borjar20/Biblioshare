@@ -16,6 +16,10 @@ import type { Position } from "@/lib/library/position";
 export type ProgressSession = {
   id: string;
   sessionDate: string;
+  /** Cuándo se guardó la fila — timestamptz, nunca editado por el usuario
+   *  (a diferencia de sessionDate, que sí se puede backdatear). Ver
+   *  sessionRelativeBasis en session-relative-basis.ts. */
+  createdAt: string;
   durationMinutes: number | null;
   // Position REACHED in this session: {page} for books, {season, episode}
   // for series. Movies don't have sessions (see §7.14 scope decision).

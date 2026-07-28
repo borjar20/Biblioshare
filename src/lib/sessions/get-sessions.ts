@@ -22,7 +22,7 @@ export async function getSessions(
     .from("progress_sessions")
     // `note` NO se pide: el texto vive en la tabla `notes` y lo pinta «Mis notas
     // y citas». Leerlo también aquí era la duplicación de la issue #109.
-    .select("id, session_date, duration_minutes, position")
+    .select("id, session_date, duration_minutes, position, created_at")
     .eq("pass_id", passId)
     .order("session_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -33,6 +33,7 @@ export async function getSessions(
   return (data ?? []).map((row) => ({
     id: row.id,
     sessionDate: row.session_date,
+    createdAt: row.created_at,
     durationMinutes: row.duration_minutes,
     position: parsePosition(itemType, row.position),
   }));
