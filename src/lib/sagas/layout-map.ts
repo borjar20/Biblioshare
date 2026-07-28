@@ -93,19 +93,53 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
 
   const xFinal = new Map<string, number>();
   const colocados = new Set<string | null>();
+  // Columnas ya ocupadas por un nodo alineado a un ancla dada, indexadas por el
+  // id del NODO ancla. Lo consume el desempate de verticales, más abajo.
+  const columnasPorAncla = new Map<string, Set<number>>();
 
   for (const [clave, lista] of bloques) {
     const deltas: number[] = [];
+    // Los pares (nodo de este bloque, nodo ancla ya colocado) que gobiernan la
+    // alineación. Se guardan además de los deltas porque el desempate de
+    // verticales necesita saber a QUÉ ancla se alinea cada nodo, no solo cuánto
+    // hay que moverse.
+    const anclados: Array<{ n: SagaGraphNode; ancla: string }> = [];
     for (const n of lista) {
       for (const otro of vecinos.get(n.id) ?? []) {
         const suBloque = bloqueDeNodo.get(otro);
         if (suBloque === undefined || suBloque === clave || !colocados.has(suBloque)) continue;
         deltas.push((xFinal.get(otro)! - n.x) / NODE_STEP_X);
+        anclados.push({ n, ancla: otro });
       }
     }
     const bruto = deltas.length === 0 ? 0 : Math.round(mediana(deltas));
-    const offset = Math.min(Math.max(bruto, 0), MAX_COL_OFFSET);
+    let offset = Math.min(Math.max(bruto, 0), MAX_COL_OFFSET);
+
+    // Desempate de verticales. Dos bloques alineados al MISMO nodo ancla caen en
+    // su misma columna, así que sus dos aristas salen del ancla superpuestas: se
+    // leen como una sola línea, y la más larga atraviesa la portada del bloque
+    // que quede en medio. Es lo que se veía en la captura del 2026-07-28 23:00
+    // (Cosmere), con «Era 2» y «El Aliento de los Dioses» los dos bajo «El Héroe
+    // de las Eras». Correr una columna basta: la arista sale entonces en
+    // diagonal y se distingue de la vertical.
+    //
+    // El desempate es por NODO ancla y no por columna a propósito: dos aristas
+    // que salen de puntos distintos no se pisan aunque acaben en la misma
+    // vertical, y separarlas solo ensancharía el mapa sin que nadie gane nada.
+    //
+    // Si se agota el tope se acepta el solape. Ensanchar el mapa sin límite es
+    // peor que dos aristas juntas — la misma razón por la que existe el tope.
+    const ocupada = (o: number) =>
+      anclados.some(({ n, ancla }) => columnasPorAncla.get(ancla)?.has(n.x / NODE_STEP_X + o) ?? false);
+    while (offset < MAX_COL_OFFSET && ocupada(offset)) offset++;
+
     for (const n of lista) xFinal.set(n.id, n.x + offset * NODE_STEP_X);
+    for (const { n, ancla } of anclados) {
+      const columna = n.x / NODE_STEP_X + offset;
+      const ya = columnasPorAncla.get(ancla);
+      if (ya === undefined) columnasPorAncla.set(ancla, new Set([columna]));
+      else ya.add(columna);
+    }
     colocados.add(clave);
   }
 

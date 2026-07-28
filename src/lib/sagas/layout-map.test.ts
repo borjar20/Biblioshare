@@ -121,6 +121,62 @@ describe("alignRowsToLongEdges", () => {
     expect(col(alignRowsToLongEdges(graph), "z")).toBe(MAX_COL_OFFSET);
   });
 
+  it("dos bloques anclados al MISMO nodo no caen en su misma vertical", () => {
+    // El caso de la captura del 2026-07-28 23:00 (Cosmere): «Nacidos de la Bruma.
+    // Era 2» y «El Aliento de los Dioses» se alineaban los dos bajo «El Héroe de
+    // las Eras», así que sus dos aristas salían del héroe por la MISMA vertical,
+    // una encima de otra — se leían como una sola línea, y la más larga
+    // atravesaba la portada del bloque de en medio.
+    const graph: SagaGraph = {
+      nodes: [
+        nodo("a0", "uno", 0, 0),
+        nodo("ancla", "uno", 2, 0),
+        nodo("p", "dos", 0, 1),
+        nodo("q", "tres", 0, 2),
+      ],
+      edges: [arista("ancla", "p", "requisito"), arista("ancla", "q", "requisito")],
+    };
+    const out = alignRowsToLongEdges(graph);
+    expect(col(out, "p")).toBe(2);
+    expect(col(out, "q")).toBe(3);
+  });
+
+  it("dos bloques anclados a nodos DISTINTOS sí pueden compartir columna", () => {
+    // El desempate es por NODO ancla, no por columna: dos aristas que salen de
+    // puntos distintos no se solapan aunque acaben en la misma vertical, y
+    // separarlas solo ensancharía el mapa sin que nadie gane nada.
+    const graph: SagaGraph = {
+      nodes: [
+        nodo("a0", "uno", 0, 0),
+        nodo("x", "uno", 2, 0),
+        nodo("y", "uno", 2, 1),
+        nodo("p", "dos", 0, 2),
+        nodo("q", "tres", 0, 3),
+      ],
+      edges: [arista("x", "p", "requisito"), arista("y", "q", "requisito")],
+    };
+    const out = alignRowsToLongEdges(graph);
+    expect(col(out, "p")).toBe(2);
+    expect(col(out, "q")).toBe(2);
+  });
+
+  it("si desempatar la vertical se saliera del tope, se acepta el solape", () => {
+    // Ensanchar el mapa sin límite es peor que dos aristas juntas: el tope manda
+    // sobre el desempate.
+    const graph: SagaGraph = {
+      nodes: [
+        nodo("a0", "uno", 0, 0),
+        nodo("ancla", "uno", MAX_COL_OFFSET, 0),
+        nodo("p", "dos", 0, 1),
+        nodo("q", "tres", 0, 2),
+      ],
+      edges: [arista("ancla", "p", "requisito"), arista("ancla", "q", "requisito")],
+    };
+    const out = alignRowsToLongEdges(graph);
+    expect(col(out, "p")).toBe(MAX_COL_OFFSET);
+    expect(col(out, "q")).toBe(MAX_COL_OFFSET);
+  });
+
   it("con un número PAR de deltas que además alcanza el tope: mediana 3.5 → redondea a 4 = MAX_COL_OFFSET", () => {
     // Caso real de producción (Cosmere, "Novelas secretas"): la obra con
     // ventana está en su columna LOCAL 0, y sus dos anclas ya están colocadas
