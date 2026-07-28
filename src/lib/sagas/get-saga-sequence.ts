@@ -1,8 +1,8 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import type { DraftAnchor, DraftEntry, DraftWindow, NestedSubject, SequenceDraft } from "./sequence-draft";
-import type { SagaItemRole, SagaPlacement } from "./types";
+import type { DraftAnchor, DraftEntry, DraftSlot, DraftWindow, NestedSubject, SequenceDraft } from "./sequence-draft";
+import type { SagaItemRole, SagaPlacement, TandemMode } from "./types";
 import { getAnchorOptions } from "./get-anchor-options";
 import { buildWindowOwners, type OwnerRow } from "./window-owners";
 
@@ -33,7 +33,7 @@ export async function getSagaSequence(
    *  esto cruza la frontera servidor→cliente. */
   childSagas: Array<{ id: string; name: string; accentColor: string | null; count: number }>;
 }> {
-  const [{ data: itemRows }, { data: childRows }, { data: windowRows }] = await Promise.all([
+  const [{ data: itemRows }, { data: childRows }, { data: windowRows }, { data: tandemRows }] = await Promise.all([
     supabase
       .from("saga_items")
       // `is_primary` viaja porque decide la DUEÑA de la ventana (fase 4,
@@ -65,6 +65,10 @@ export async function getSagaSequence(
         "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
       )
       .eq("saga_id", sagaId),
+    // Metadatos de los huecos en tándem (20260801_saga_tandems.sql). Solo los de
+    // ESTA saga: un hueco pertenece a la secuencia de una saga, y el editor del
+    // padre no cura los huecos de su hija (#187).
+    supabase.from("saga_tandems").select("position, modo, nota").eq("saga_id", sagaId),
   ]);
 
   const rows = (itemRows ?? []) as Array<{
@@ -263,7 +267,16 @@ export async function getSagaSequence(
   nested.sort((a, b) => a.title.localeCompare(b.title));
 
   return {
-    draft: hydrateSequenceDraft(entries, nested),
+    draft: hydrateSequenceDraft(
+      entries,
+      nested,
+      new Map(
+        ((tandemRows ?? []) as Array<{ position: number; modo: TandemMode | null; nota: string | null }>).map((t) => [
+          t.position,
+          { modo: t.modo, nota: t.nota },
+        ]),
+      ),
+    ),
     childIds: children.map((c) => c.id),
     childSagas: children.map((c) => ({
       id: c.id, name: c.name, accentColor: c.accent_color, count: counts.get(c.id) ?? 0,
@@ -278,6 +291,11 @@ export async function getSagaSequence(
 export function hydrateSequenceDraft(
   rows: Array<{ entry: DraftEntry; position: number | null; placement: SagaPlacement | null }>,
   nested: NestedSubject[] = [],
+  /** Metadatos por hueco, indexados por la `position` GUARDADA — que es la clave
+   *  real de `saga_tandems`, no el índice del hueco: una secuencia con números
+   *  saltados haría que no coincidan. Entra como parámetro para que esta función
+   *  siga siendo pura y probable sin Supabase. */
+  tandemByPosition: Map<number, { modo: TandemMode | null; nota: string | null }> = new Map(),
 ): SequenceDraft {
   const byPosition = new Map<number, DraftEntry[]>();
   const free: DraftEntry[] = [];
@@ -291,7 +309,19 @@ export function hydrateSequenceDraft(
       unclassified.push(r.entry);
     }
   }
-  const slots = [...byPosition.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+  // Los metadatos se casan por `position` —la CLAVE real de `saga_tandems`—, no
+  // por el índice del hueco: si la secuencia guardada tuviera números con
+  // saltos, el índice y la position no coinciden. El payload vuelve a numerar
+  // 1..N al guardar, que es lo que reasienta la tabla.
+  const slots: DraftSlot[] = [...byPosition.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([position, entries]) => {
+      // Un hueco de una sola obra no es un tándem: si quedara una fila rancia
+      // apuntando a ese número (renumeración desde un camino que no sea el RPC),
+      // se ignora en vez de pintar metadatos de una relación que no existe.
+      const meta = entries.length >= 2 ? tandemByPosition.get(position) : undefined;
+      return { entries, mode: meta?.modo ?? null, note: meta?.nota ?? null };
+    });
   return { slots, free, unclassified, removed: [], nested };
 }
 

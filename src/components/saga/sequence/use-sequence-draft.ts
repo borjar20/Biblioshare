@@ -85,7 +85,7 @@ export function useSequenceDraft(
       setDraft((d) => ({
         ...d,
         removed: [],
-        slots: d.slots.map((s) => s.map((e) => ({ ...e, isNew: false }))),
+        slots: d.slots.map((s) => ({ ...s, entries: s.entries.map((e) => ({ ...e, isNew: false })) })),
         free: d.free.map((e) => ({ ...e, isNew: false })),
         unclassified: d.unclassified.map((e) => ({ ...e, isNew: false })),
       }));

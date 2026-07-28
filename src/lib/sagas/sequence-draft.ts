@@ -1,5 +1,5 @@
 import type { ItemType } from "@/lib/catalog/types";
-import type { SagaItemRole, SagaPlacement } from "./types";
+import type { SagaItemRole, SagaPlacement, TandemMode } from "./types";
 
 /** Las tres zonas de la pantalla. La zona ES la colocación (spec §«Tres zonas»):
  *  no hay desplegable de `placement`, se deriva de dónde vive la fila. */
@@ -87,12 +87,27 @@ export type NestedSubject = {
   window: DraftWindow | null;
 };
 
+/** UN HUECO de la secuencia: una o más entradas, más los metadatos que solo
+ *  tienen sentido cuando son varias. Dos o más entradas en el mismo hueco son
+ *  un tándem (#168), que es intención y no colisión; modelar el hueco así es lo
+ *  que hace que el empate no necesite ninguna regla especial al numerar.
+ *
+ *  Es un objeto y no un array (como era hasta la fase 2) para que `mode`/`note`
+ *  viajen CON el hueco: `moveSlot`, `pairWith`, `unpair` y `extract` cambian
+ *  los índices —y `extract` puede borrar un hueco entero—, así que cualquier
+ *  estructura paralela indexada por posición se desincroniza al primer
+ *  reordenamiento, en silencio, y el curador ve la nota de un hueco bajo otro. */
+export type DraftSlot = {
+  entries: DraftEntry[];
+  /** Qué clase de tándem es (`saga_tandems.modo`, fase 2). Un hueco de UNA sola
+   *  entrada lo tiene siempre a null: no hay tándem del que hablar. */
+  mode: TandemMode | null;
+  note: string | null;
+};
+
 export type SequenceDraft = {
-  /** La secuencia. Cada elemento es UN HUECO con una o más entradas: dos o más
-   *  entradas en el mismo hueco son un tándem (#168), que es intención y no
-   *  colisión. Modelar el hueco como array es lo que hace que el empate no
-   *  necesite ninguna regla especial al numerar. */
-  slots: DraftEntry[][];
+  /** La secuencia, hueco a hueco. */
+  slots: DraftSlot[];
   free: DraftEntry[];
   unclassified: DraftEntry[];
   /** Claves dadas de baja que SÍ existían en BD. Viaja al RPC como `p_removed`;
@@ -159,6 +174,11 @@ export type SequencePayload = {
     item_id: string | null;
     child_saga_id: string | null;
   }>;
+  /** Metadatos por HUECO compartido (`saga_tandems`, fase 2). Solo los huecos
+   *  con dos o más entradas Y con algo declarado: una fila vacía la rechazaría
+   *  el CHECK `saga_tandems_says_something` y abortaría la transacción entera,
+   *  así que un control que el curador dejó en blanco no puede llegar al RPC. */
+  tandems: Array<{ position: number; modo: TandemMode | null; nota: string | null }>;
 };
 
 const ZONES = ["free", "unclassified"] as const;
@@ -171,11 +191,16 @@ function extract(d: SequenceDraft, key: string): [SequenceDraft, DraftEntry | nu
     if (found) return [{ ...d, [zone]: d[zone].filter((e) => e.key !== key) }, found];
   }
   for (let i = 0; i < d.slots.length; i++) {
-    const found = d.slots[i].find((e) => e.key === key);
+    const found = d.slots[i].entries.find((e) => e.key === key);
     if (!found) continue;
-    const rest = d.slots[i].filter((e) => e.key !== key);
+    const rest = d.slots[i].entries.filter((e) => e.key !== key);
+    // Un hueco que baja a una sola entrada ya no es un tándem: sus metadatos
+    // hablaban de una relación que acaba de dejar de existir, y conservarlos los
+    // resucitaría en cuanto alguien emparejara ahí OTRA obra distinta.
     const slots = rest.length > 0
-      ? d.slots.map((s, j) => (j === i ? rest : s))
+      ? d.slots.map((s, j) =>
+          j === i ? { ...s, entries: rest, ...(rest.length < 2 ? { mode: null, note: null } : {}) } : s,
+        )
       : d.slots.filter((_, j) => j !== i);
     return [{ ...d, slots }, found];
   }
@@ -198,7 +223,7 @@ export function sendTo(d: SequenceDraft, key: string, zone: ZoneId): SequenceDra
   // al final, deshaciendo el tándem en silencio. "Ya está en la secuencia"
   // significa estar en CUALQUIER hueco de `slots`, no en uno concreto.
   const alreadyThere = zone === "sequence"
-    ? d.slots.some((slot) => slot.some((e) => e.key === key))
+    ? d.slots.some((slot) => slot.entries.some((e) => e.key === key))
     : d[zone].some((e) => e.key === key);
   if (alreadyThere) return d;
 
@@ -208,13 +233,15 @@ export function sendTo(d: SequenceDraft, key: string, zone: ZoneId): SequenceDra
   // porque ningún CHECK entre `saga_placement_windows` y las tablas de
   // colocación puede imponer esa coherencia.
   const clean = zone === "free" ? entry : { ...entry, window: null };
-  if (zone === "sequence") return { ...without, slots: [...without.slots, [clean]] };
+  if (zone === "sequence") {
+    return { ...without, slots: [...without.slots, { entries: [clean], mode: null, note: null }] };
+  }
   return { ...without, [zone]: [...without[zone], clean] };
 }
 
 export function pairWith(d: SequenceDraft, key: string, targetSlot: number): SequenceDraft {
   const target = d.slots[targetSlot];
-  if (!target || target.some((e) => e.key === key)) return d;
+  if (!target || target.entries.some((e) => e.key === key)) return d;
   // Se resuelve el hueco destino por IDENTIDAD y no por índice: `extract` puede
   // eliminar un hueco anterior y correr los índices una posición.
   const [without, entry] = extract(d, key);
@@ -225,13 +252,20 @@ export function pairWith(d: SequenceDraft, key: string, targetSlot: number): Seq
   // `slots`, y se lleva la ventana por delante por la misma razón (ningún
   // CHECK entre tablas puede imponer esa coherencia).
   const clean = entry.window ? { ...entry, window: null } : entry;
-  return { ...without, slots: without.slots.map((s, j) => (j === at ? [...s, clean] : s)) };
+  // Emparejar CON un tándem que ya declaró modo no lo borra: el hueco es el
+  // mismo, solo gana una obra más.
+  return {
+    ...without,
+    slots: without.slots.map((s, j) => (j === at ? { ...s, entries: [...s.entries, clean] } : s)),
+  };
 }
 
 export function unpair(d: SequenceDraft, index: number): SequenceDraft {
   const slot = d.slots[index];
-  if (!slot || slot.length < 2) return d;
-  const exploded = slot.map((e) => [e]);
+  if (!slot || slot.entries.length < 2) return d;
+  // Cada trozo nace sin metadatos: deshacer el tándem es decir que esa relación
+  // no existe, así que lo que la describía tampoco.
+  const exploded = slot.entries.map((e) => ({ entries: [e], mode: null, note: null }));
   return { ...d, slots: [...d.slots.slice(0, index), ...exploded, ...d.slots.slice(index + 1)] };
 }
 
@@ -239,7 +273,7 @@ function mapEntry(d: SequenceDraft, key: string, fn: (e: DraftEntry) => DraftEnt
   const one = (e: DraftEntry) => (e.key === key ? fn(e) : e);
   return {
     ...d,
-    slots: d.slots.map((s) => s.map(one)),
+    slots: d.slots.map((s) => ({ ...s, entries: s.entries.map(one) })),
     free: d.free.map(one),
     unclassified: d.unclassified.map(one),
   };
@@ -252,6 +286,25 @@ export const setOptional = (d: SequenceDraft, key: string, optional: boolean): S
  *  la interfaz ni siquiera ofrece el control (spec §«La fila»). */
 export const setRole = (d: SequenceDraft, key: string, role: SagaItemRole | null): SequenceDraft =>
   mapEntry(d, key, (e) => (e.kind === "block" ? e : { ...e, role }));
+
+/** Declara qué clase de tándem es un hueco, y por qué. Un hueco de una sola
+ *  entrada se ignora en silencio —igual que `setRole` ignora un rol en un
+ *  bloque—: ahí no hay tándem del que hablar, y la interfaz ni siquiera ofrece
+ *  el control. Los campos son independientes: pasar solo `mode` no pisa la nota. */
+export function setTandemMeta(
+  d: SequenceDraft,
+  index: number,
+  meta: { mode?: TandemMode | null; note?: string | null },
+): SequenceDraft {
+  const slot = d.slots[index];
+  if (!slot || slot.entries.length < 2) return d;
+  const next: DraftSlot = {
+    ...slot,
+    mode: meta.mode === undefined ? slot.mode : meta.mode,
+    note: meta.note === undefined ? slot.note : meta.note,
+  };
+  return { ...d, slots: d.slots.map((s, j) => (j === index ? next : s)) };
+}
 
 /** Pone un ancla de la ventana. Solo puede tenerla una entrada de la zona
  *  `free` («Cuando quieras») o un SUJETO ANIDADO (fase 4) — fuera de ahí es un
@@ -312,14 +365,14 @@ export function draftWindowOwners(d: SequenceDraft): Map<string, string> {
 /** Alta desde el rail: al final de la secuencia, como promete la maqueta. */
 export const addEntry = (d: SequenceDraft, entry: DraftEntry): SequenceDraft => {
   if (
-    d.slots.some((s) => s.some((e) => e.key === entry.key)) ||
+    d.slots.some((s) => s.entries.some((e) => e.key === entry.key)) ||
     d.free.some((e) => e.key === entry.key) ||
     d.unclassified.some((e) => e.key === entry.key)
   ) {
     return d;
   }
   const clean = entry.window ? { ...entry, window: null } : entry;
-  return { ...d, slots: [...d.slots, [{ ...clean, isNew: true }]] };
+  return { ...d, slots: [...d.slots, { entries: [{ ...clean, isNew: true }], mode: null, note: null }] };
 };
 
 export function removeEntry(d: SequenceDraft, key: string): SequenceDraft {
@@ -354,9 +407,19 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
 
   // El número es el índice del HUECO, no el de la entrada: por eso un tándem
   // comparte número y el hueco siguiente vale n+1, nunca n+2.
-  d.slots.forEach((slot, i) => slot.forEach((e) => push(e, i + 1, "fijo")));
+  d.slots.forEach((slot, i) => slot.entries.forEach((e) => push(e, i + 1, "fijo")));
   d.free.forEach((e) => push(e, null, "libre"));
   d.unclassified.forEach((e) => push(e, null, null));
+
+  // El número es el del HUECO, el mismo que acaba de recibir cada entrada: por
+  // eso un tándem comparte número con sus obras y no hay que casar nada después.
+  const tandems: SequencePayload["tandems"] = [];
+  d.slots.forEach((slot, i) => {
+    if (slot.entries.length < 2) return;
+    const nota = slot.note !== null && slot.note.trim() !== "" ? slot.note.trim() : null;
+    if (slot.mode === null && nota === null) return;
+    tandems.push({ position: i + 1, modo: slot.mode, nota });
+  });
 
   const removedItems: SequencePayload["removed"] = [];
   for (const key of d.removed) {
@@ -445,7 +508,7 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   };
 
   const windowSubjects: SequencePayload["windowSubjects"] = [
-    ...d.slots.flat().map((e) => subjectOf(e, "own")),
+    ...d.slots.flatMap((s) => s.entries).map((e) => subjectOf(e, "own")),
     ...d.free.map((e) => subjectOf(e, "free")),
     ...d.unclassified.map((e) => subjectOf(e, "own")),
     ...d.removed.map(subjectFromKey),
@@ -457,5 +520,5 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
     })),
   ];
 
-  return { entries, blocks, removed: removedItems, removedBlocks: [], windows, windowSubjects };
+  return { entries, blocks, removed: removedItems, removedBlocks: [], windows, windowSubjects, tandems };
 }

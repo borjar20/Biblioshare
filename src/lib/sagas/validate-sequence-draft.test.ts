@@ -3,7 +3,7 @@ import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
 const base: SequencePayload = {
-  entries: [], blocks: [], removed: [], removedBlocks: [], windows: [], windowSubjects: [],
+  entries: [], blocks: [], removed: [], removedBlocks: [], windows: [], windowSubjects: [], tandems: [],
 };
 // `windowOwners` (fase 4) responde a la vez a «¿puede este sujeto tener
 // ventana?» y «¿bajo qué saga vive su fila?». El sujeto por defecto del helper

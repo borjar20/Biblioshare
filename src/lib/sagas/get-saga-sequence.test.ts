@@ -21,7 +21,7 @@ it("dos filas con el MISMO número caen en el mismo hueco: eso es el tándem", (
     { entry: e("b"), position: 2, placement: "fijo" },
     { entry: e("c"), position: 2, placement: "fijo" },
   ]);
-  expect(d.slots.map((s) => s.map((x) => x.itemId))).toEqual([["a"], ["b", "c"]]);
+  expect(d.slots.map((s) => s.entries.map((x) => x.itemId))).toEqual([["a"], ["b", "c"]]);
 });
 
 it("reparte por zona y ordena los huecos aunque lleguen desordenados", () => {
@@ -31,7 +31,7 @@ it("reparte por zona y ordena los huecos aunque lleguen desordenados", () => {
     { entry: e("f"), position: null, placement: "libre" },
     { entry: e("u"), position: null, placement: null },
   ]);
-  expect(d.slots.map((s) => s[0].itemId)).toEqual(["a", "z"]);
+  expect(d.slots.map((s) => s.entries[0].itemId)).toEqual(["a", "z"]);
   expect(d.free.map((x) => x.itemId)).toEqual(["f"]);
   expect(d.unclassified.map((x) => x.itemId)).toEqual(["u"]);
 });

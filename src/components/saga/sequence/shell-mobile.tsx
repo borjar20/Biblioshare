@@ -40,7 +40,7 @@ export function ShellMobile({
   const t = useTranslations("sagaEditor");
   const [tab, setTab] = useState<ZoneId>("sequence");
   const counts: Record<ZoneId, number> = {
-    sequence: draft.slots.reduce((n, s) => n + s.length, 0),
+    sequence: draft.slots.reduce((n, s) => n + s.entries.length, 0),
     free: draft.free.length,
     unclassified: draft.unclassified.length,
   };
@@ -96,19 +96,19 @@ export function ShellMobile({
           <p className="mb-2.5 text-[12px] text-muted-foreground">{t("zoneSequenceHintMobile")}</p>
           <div className="grid gap-2">
             {draft.slots.map((slot, i) =>
-              slot.length === 1 ? row(slot[0], i + 1) : (
+              slot.entries.length === 1 ? row(slot.entries[0], i + 1) : (
                 // La key sale del contenido del hueco (las keys de sus entradas), nunca
                 // del índice: con key={`slot-${i}`}, reordenar hace que React desmonte y
                 // remonte el nodo, perdiendo el foco justo del control que el usuario
                 // acaba de pulsar. Mismo precedente que route-editor.tsx y shell-desktop.tsx.
-                <div key={slot.map((e) => e.key).join("+")} className="flex items-stretch gap-2">
+                <div key={slot.entries.map((e) => e.key).join("+")} className="flex items-stretch gap-2">
                   <div className="flex w-6 shrink-0 flex-col items-center gap-1 pt-2">
                     <span className="font-mono text-[15px] text-accent">{i + 1}</span>
                     <span className="w-0.5 flex-1 rounded bg-accent/40" aria-hidden />
                   </div>
                   <div className="grid min-w-0 flex-1 gap-1.5">
                     <p className="pl-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-accent">{t("tandemCaption")}</p>
-                    {slot.map((e) => row(e, null))}
+                    {slot.entries.map((e) => row(e, null))}
                     <button type="button" onClick={() => ops.unpair(i)} aria-label={t("unpairFor", { n: i + 1 })} className="rounded-lg border border-dashed border-border py-1.5 text-[11px] font-semibold text-muted-foreground">
                       {t("unpair")}
                     </button>

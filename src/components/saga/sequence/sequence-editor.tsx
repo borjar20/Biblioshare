@@ -112,13 +112,13 @@ export function SequenceEditor({
   );
 
   const locate = (key: string): { zone: ZoneId; slotNumber: number | null; slotIndex: number | null } => {
-    const i = draft.slots.findIndex((s) => s.some((e) => e.key === key));
+    const i = draft.slots.findIndex((s) => s.entries.some((e) => e.key === key));
     if (i !== -1) return { zone: "sequence", slotNumber: i + 1, slotIndex: i };
     if (draft.free.some((e) => e.key === key)) return { zone: "free", slotNumber: null, slotIndex: null };
     return { zone: "unclassified", slotNumber: null, slotIndex: null };
   };
 
-  const all = [...draft.slots.flat(), ...draft.free, ...draft.unclassified];
+  const all = [...draft.slots.flatMap((s) => s.entries), ...draft.free, ...draft.unclassified];
   const active = menuKey ? all.find((e) => e.key === menuKey) ?? null : null;
   const here = menuKey ? locate(menuKey) : null;
 
