@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Background,
   BackgroundVariant,
@@ -14,8 +15,10 @@ import {
 import "@xyflow/react/dist/style.css";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { SagaGraph } from "@/lib/sagas/map-types";
+import type { SagaItemRole } from "@/lib/sagas/types";
 import { FloatingEdge } from "./floating-edge";
 import { CoverNode, MedallionNode, SagaNodeCard, type GraphFlowNode } from "./graph-nodes";
+import { MapOverlayLayer } from "./overlay-layer";
 
 // Viewer read-only del grafo (frames C/E): pan + zoom (rueda/pellizco), tap en
 // nodo navega a su ficha. El mismo componente sirve embebido en PC y a
@@ -53,11 +56,17 @@ export function SagaGraphView({
   graph,
   className,
   showZoomControls = false,
+  activeRole = null,
 }: {
   graph: SagaGraph;
   className?: string;
   /** Botones ＋/− (frame C, mapa fullscreen móvil, donde no hay rueda). */
   showZoomControls?: boolean;
+  /** Lente por rol (`?rol=`, fase 5). ATENÚA los nodos que no son de ese rol;
+   *  no los quita. Quitarlos dejaría aristas huérfanas y partiría la cadena —
+   *  el fallo que la issue #238 documenta en el timeline. La lente cambia el
+   *  énfasis, no la estructura. */
+  activeRole?: SagaItemRole | null;
 }) {
   const router = useRouter();
 
@@ -67,9 +76,11 @@ export function SagaGraphView({
         id: n.id,
         type: n.kind === "saga" ? "saga" : n.level === "principal" ? "cover" : "medallion",
         position: { x: n.x, y: n.y },
-        data: { node: n },
+        // La lente viaja EN EL DATO del nodo: React Flow no propaga props a los
+        // nodos custom.
+        data: { node: n, muted: activeRole !== null && n.role !== activeRole },
       })),
-    [graph],
+    [graph, activeRole],
   );
 
   const edges = useMemo<Edge[]>(
@@ -115,6 +126,11 @@ export function SagaGraphView({
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={26} size={1.3} color="#d9c8a833" />
+        {/* Los adornos del frame D, en el mismo sistema de coordenadas que los
+            nodos pero SIN ser nodos: ni entran en el recuento de
+            `.react-flow__node` con el que dos e2e cuentan las obras del mapa,
+            ni reciben el `onNodeClick` que navega a una ficha. */}
+        <MapOverlayLayer graph={graph} />
         {showZoomControls && <Controls showInteractive={false} showFitView position="bottom-right" />}
       </ReactFlow>
     </div>

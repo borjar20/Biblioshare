@@ -368,7 +368,7 @@
       "files": ["src/lib/library/get-library-items.ts", "src/lib/library/collections.ts", "src/lib/library/position.ts", "src/lib/library/progress.ts"] },
     { "id": "m-sagas", "label": "lib/sagas", "layer": "domain", "kind": "module", "size": 55,
       "summary": "El módulo más grande. Jerarquía, secuencia curada, ventanas de colocación, derivación PURA del mapa y del timeline, itinerarios, progreso y cards.",
-      "files": ["src/lib/sagas/derive-map.ts", "src/lib/sagas/derive-timeline.ts", "src/lib/sagas/window-track.ts", "src/lib/sagas/group-members.ts", "src/lib/sagas/get-saga-detail.ts", "src/lib/sagas/resolve-route.ts", "src/lib/sagas/progress.ts", "src/lib/sagas/roles.ts", "src/lib/sagas/count-roles.ts"],
+      "files": ["src/lib/sagas/derive-map.ts", "src/lib/sagas/derive-timeline.ts", "src/lib/sagas/window-track.ts", "src/lib/sagas/group-members.ts", "src/lib/sagas/get-saga-detail.ts", "src/lib/sagas/resolve-route.ts", "src/lib/sagas/progress.ts", "src/lib/sagas/roles.ts", "src/lib/sagas/count-roles.ts", "src/lib/sagas/map-overlays.ts", "src/lib/sagas/graph-metrics.ts"],
       "gotchas": ["saga_nodes/saga_edges y save_saga_graph fueron RETIRADOS (fase 3, 2026-07-27): el mapa se deriva, no se cura.",
         "window-track.ts LEE lo completado con el predicado unico de completion.ts (isStatusCompleted) y NO toca el progreso: no cuenta, no divide y no aparece en ningun denominador.",
         "deriveTimeline recibe `authenticated` como flag EXPLICITO, con false por defecto: sin usuario getSagaDetail ni consulta los pases, asi que todos los nodos llegan con status null y \"hay sesion\" no se puede deducir del dato.",
@@ -376,7 +376,10 @@
         "El salto de una opcional se guarda con la saga DUENA de la fila de saga_items (ownerSagaId), no con la ficha visitada ni con groupSagaId: divergen a partir de profundidad 2. Lo sostiene markSkipped (get-saga-detail.ts), pura y probada, porque ningun tipo lo impone.",
         "deriveTimeline lleva ya TRES lentes: spine, showOptional (fase 4) y roleFilter (fase 5). Las tres filtran sobre `items` y NINGUNA redefine cantidades derivadas: no renumeran -el numero sale de orderNo/step calculados sobre el grafo entero- y no mueven el tramo de la ventana -windowTrack sigue recibiendo el grafo completo-. Dos lectores con lentes distintas no pueden ver numeros ni tramos distintos para la misma saga.",
         "El vocabulario de roles vive en UNA lista (roles.ts), no en la union de types.ts: estaba escrito tres veces -types.ts y dos arrays ROLES del editor- y roles.test.ts es lo que lo ata al enum de la BD via Constants de database.types.ts. `principal` NO es un valor: es role = null, asi que filtrar por cualquier rol esconde la linea principal, y por eso la barra ofrece siempre «Todos».",
-        "countRoles cuenta sobre el GRAFO y no sobre las filas visibles, igual que optionalCount: contadas sobre lo visible, filtrar por un rol dejaria la barra con un solo chip y no habria forma de volver."] },
+        "countRoles cuenta sobre el GRAFO y no sobre las filas visibles, igual que optionalCount: contadas sobre lo visible, filtrar por un rol dejaria la barra con un solo chip y no habria forma de volver.",
+        "map-overlays.ts (fase 6) es DIBUJO del lienzo 2D y de nadie mas: la capsula del tandem y el marco del sujeto de una ventana se derivan de las coordenadas que el grafo ya trae, y SagaGraph no gana campos. Un nodo sintetico de capsula en graph.nodes se colaria en countRoles, en el optionalCount de la pestana y en deriveTimeline, que iteran el mismo array.",
+        "La capsula agrupa por EMPATE DE orderNo, no por la fila de saga_tandems: node.tandem es null cuando el curador no declaro metadatos, y un tandem sin curar sigue siendo un tandem. Misma regla que usa deriveTimeline para fundir su fila.",
+        "El marco de ventana solo lo lleva un sujeto con orderNo === null. Un sujeto-BLOQUE lo resuelve deriveSagaMap a la primera obra del bloque, que es una fila normal de la cadena: marcarla diria que esa obra tiene ventana propia. Mismo limite con el que deriveSagaMap se niega a colgarle el windowReason (issue #221)."] },
     { "id": "m-clubs", "label": "lib/clubs", "layer": "domain", "kind": "module", "size": 25,
       "summary": "Clubes, membresía y solicitudes, muro, no leídos, calendario, checkpoints y el registro de los 5 tipos de actividad.",
       "files": ["src/lib/clubs/clubs.ts", "src/lib/clubs/membership.ts", "src/lib/clubs/activities/core.ts", "src/lib/clubs/activities/kinds/registry.ts", "src/lib/clubs/activities/notify-club.ts"] },
@@ -839,7 +842,9 @@
       "notes": [
         "deriveSagaMap devuelve coordenadas en PÍXELES (NODE_STEP_X 180, NODE_STEP_Y 220) porque la vista 2D las pasa tal cual como position de React Flow. Devolver índices apila todos los nodos.",
         "Un nodo es SIEMPRE una obra individual; un bloque es agrupación visual, no nodo.",
-        "El determinismo lo garantiza quien llama: groups y members deben llegar YA en el orden final de pintado (el que entrega groupMembers)."
+        "El determinismo lo garantiza quien llama: groups y members deben llegar YA en el orden final de pintado (el que entrega groupMembers).",
+        "Fase 6: los adornos del grafo (capsula de tandem, marco de ventana) van en un ViewportPortal de @xyflow/react, NO como nodos. `.react-flow__node` es el localizador con el que dos e2e cuentan las OBRAS del mapa (sagas-v2-mapa: 7, sagas-mapa-derivado: 3), y un adorno colado en ese recuento los deja protegiendo otra cosa; ademas un nodo recibiria el onNodeClick que navega a una ficha.",
+        "Fase 6: la ventana NO se dibuja como zona entre sus dos anclas. MEDIDO contra el layout real, esa caja envolvente ocupa el 45 % del lienzo en el mapa mas pequeno de produccion y el 60 % en Cosmere, con 12 nodos ajenos de 20 — el sujeto es siempre una obra libre y vive en la fila de sueltas, debajo de la cadena donde estan sus anclas. Se marca el sujeto; el tramo lo cuentan las dos aristas."
       ],
       "steps": [
         { "node": "r-sagas", "action": "/saga/[id]/mapa se abre", "file": "src/app/saga/[id]/mapa" },

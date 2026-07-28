@@ -5,13 +5,19 @@ import { useTranslations } from "next-intl";
 import type { NodeProps, Node } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
+import { NODE_BOX } from "@/lib/sagas/graph-metrics";
 import type { SagaGraphNode } from "@/lib/sagas/map-types";
+import { NodeTag } from "./node-tag";
 
 // Nodos custom del mapa (frames C/E): portada 78×116 (principal), medallón
 // 58px (menor) y tarjeta de saga anidada. El lienzo es oscuro SIEMPRE (estética
 // del mockup), así que los textos usan tonos crema fijos, no tokens del theme.
 
-export type GraphFlowNode = Node<{ node: SagaGraphNode }, "cover" | "medallion" | "saga">;
+// `muted` = la lente de rol (`?rol=`) está puesta y este nodo no es de ese rol
+// (fase 6). Atenúa; NO oculta — un nodo que desaparece deja sus aristas
+// colgando y parte la cadena, que es el fallo de la issue #238. Viaja en el
+// dato porque React Flow no propaga props a los nodos custom.
+export type GraphFlowNode = Node<{ node: SagaGraphNode; muted?: boolean }, "cover" | "medallion" | "saga">;
 
 // Handles invisibles: React Flow los exige para pintar aristas, el viewer no
 // permite conectar.
@@ -85,11 +91,15 @@ function StepBadge({ step, size }: { step: number | null; size: "cover" | "medal
 export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
-    <div className="relative w-[78px]">
+    <div className={`relative ${data.muted ? "opacity-30" : ""}`} style={{ width: NODE_BOX.cover.w }}>
       <Ports />
       <div
-        className={`relative h-[116px] w-[78px] overflow-hidden rounded-md border-2 shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
-        style={{ borderColor: node.status === "in_progress" ? "var(--accent)" : SAGA_ACCENT[node.accent].cssVar }}
+        className={`relative overflow-hidden rounded-md border-2 shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
+        style={{
+          width: NODE_BOX.cover.w,
+          height: NODE_BOX.cover.h,
+          borderColor: node.status === "in_progress" ? "var(--accent)" : SAGA_ACCENT[node.accent].cssVar,
+        }}
       >
         {node.coverUrl ? (
           <Image src={node.coverUrl} alt="" fill sizes="78px" className="object-cover" />
@@ -101,9 +111,18 @@ export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
       {/* Fuera del contenedor recortado (`overflow-hidden`) de arriba: la
           insignia no debe quedar recortada en la esquina (Task 9). */}
       <StepBadge step={node.step} size="cover" />
-      <p className="absolute left-1/2 top-full mt-2 w-[150px] -translate-x-1/2 text-center font-serif text-sm font-medium leading-tight text-[#f0e6d4] [text-shadow:0_2px_8px_rgba(0,0,0,.8)]">
-        {node.label}
-      </p>
+      {/* Título y etiqueta en un solo contenedor: la etiqueta se centra sola
+          bajo el rótulo en vez de calcular otra vez el mismo desplazamiento. */}
+      <div className="absolute left-1/2 top-full mt-2 flex w-[150px] -translate-x-1/2 flex-col items-center gap-1">
+        <p
+          className={`text-center font-serif text-sm font-medium leading-tight text-[#f0e6d4] [text-shadow:0_2px_8px_rgba(0,0,0,.8)] ${
+            node.skipped ? "line-through opacity-70" : ""
+          }`}
+        >
+          {node.label}
+        </p>
+        <NodeTag node={node} />
+      </div>
     </div>
   );
 }
@@ -111,11 +130,18 @@ export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
 export function MedallionNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
-    <div className="relative h-[58px] w-[58px]">
+    <div
+      className={`relative ${data.muted ? "opacity-30" : ""}`}
+      style={{ width: NODE_BOX.medallion.w, height: NODE_BOX.medallion.h }}
+    >
       <Ports />
       <div
-        className={`relative h-[58px] w-[58px] overflow-hidden rounded-full border-[2.5px] shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
-        style={{ borderColor: SAGA_ACCENT[node.accent].cssVar }}
+        className={`relative overflow-hidden rounded-full border-[2.5px] shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
+        style={{
+          width: NODE_BOX.medallion.w,
+          height: NODE_BOX.medallion.h,
+          borderColor: SAGA_ACCENT[node.accent].cssVar,
+        }}
       >
         {node.coverUrl ? (
           <Image src={node.coverUrl} alt="" fill sizes="58px" className="object-cover" />
@@ -128,9 +154,16 @@ export function MedallionNode({ data }: NodeProps<GraphFlowNode>) {
           arriba: en el medallón el recorte CIRCULAR se comía la insignia
           entera (Task 9) — el círculo no llega hasta la esquina de la caja. */}
       <StepBadge step={node.step} size="medallion" />
-      <p className="absolute left-1/2 top-full mt-1.5 w-max max-w-[130px] -translate-x-1/2 truncate text-center font-mono text-[9.5px] tracking-wide text-[#b9a986]">
-        {node.label}
-      </p>
+      <div className="absolute left-1/2 top-full mt-1.5 flex w-max max-w-[130px] -translate-x-1/2 flex-col items-center gap-1">
+        <p
+          className={`max-w-full truncate text-center font-mono text-[9.5px] tracking-wide text-[#b9a986] ${
+            node.skipped ? "line-through opacity-70" : ""
+          }`}
+        >
+          {node.label}
+        </p>
+        <NodeTag node={node} />
+      </div>
     </div>
   );
 }
@@ -142,7 +175,11 @@ export function SagaNodeCard({ data }: NodeProps<GraphFlowNode>) {
   // vez de un literal "títulos" hardcodeado.
   const t = useTranslations("saga");
   return (
-    <div className="relative w-[120px]">
+    // La lente también aquí, aunque hoy este tipo de nodo no lo produce nadie
+    // (`deriveSagaMap` marca todos sus nodos como `item`: un bloque es
+    // agrupación visual, nunca nodo). Dejar uno de los tres sin la lente sería
+    // una inconsistencia esperando a que este tipo vuelva.
+    <div className={`relative w-[120px] ${data.muted ? "opacity-30" : ""}`}>
       <Ports />
       <div
         className="rounded-xl border-2 bg-black/40 p-2 shadow-lg backdrop-blur-sm"

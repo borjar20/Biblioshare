@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
+import { deriveMapOverlays } from "@/lib/sagas/map-overlays";
 import type { SagaGraph } from "@/lib/sagas/map-types";
 
 // Leyenda del mapa (frames B/C/E): tipos de línea + subsagas presentes en el
@@ -16,6 +17,12 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
   // un itinerario activo, así que anunciarlo siempre pondría en la leyenda de
   // casi todos los mapas una línea que ese mapa no dibuja.
   const hasItineraryJump = graph.edges.some((e) => e.type === "itinerario");
+  // Condicionales por el mismo motivo, y calculadas con la MISMA función que
+  // las dibuja (fase 6): si la leyenda decidiera por su cuenta cuándo hay
+  // cápsula, acabaría anunciando una forma que el lienzo no pinta.
+  const overlays = deriveMapOverlays(graph);
+  const hasTandem = overlays.tandems.length > 0;
+  const hasWindowFrame = overlays.windows.length > 0;
   const hasNexus = graph.nodes.some((n) => n.kind === "item" && n.groupSagaId === null);
   const hasReading = graph.nodes.some((n) => n.status === "in_progress");
 
@@ -39,6 +46,24 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
               con el tema y contrasta también sobre `--surface`. */}
           <i className="w-[26px] border-t-[2.5px] border-dashed border-map-itinerary-jump" />{" "}
           {t("legendItineraryJump")}
+        </span>
+      )}
+      {hasTandem && (
+        <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+          <i className="h-[13px] w-[26px] shrink-0 rounded-md border-2 border-map-tandem bg-map-tandem/20" />{" "}
+          {t("legendTandemCapsule")}
+        </span>
+      )}
+      {hasWindowFrame && (
+        <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+          <i
+            className="h-[13px] w-[26px] shrink-0 rounded border-[1.5px] border-dashed border-map-window"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(135deg, rgba(91,152,156,.35) 0 4px, transparent 4px 8px)",
+            }}
+          />{" "}
+          {t("legendWindowFrame")}
         </span>
       )}
       {hasNexus && (
