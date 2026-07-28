@@ -1,0 +1,17 @@
+-- Retirada del envoltorio de SEIS argumentos de `save_saga_sequence`, cierre de
+-- la fase 2 del timeline con estados.
+--
+-- Aplicada a dev y a PROD el 2026-07-28, DESPUÉS de confirmar las dos cosas que
+-- hacen seguro el borrado:
+--   1. producción sirve el bundle que llama con siete argumentos (deployment
+--      `success` a las 08:29:17Z del commit 140ca98, el merge de la PR #223);
+--   2. no queda ninguna llamada con seis en `src/` (grep: una sola llamada, en
+--      `src/lib/sagas/sequence-actions.ts`, con `p_tandems`).
+--
+-- Por qué no se podía borrar antes: `create or replace function` con otra lista
+-- de parámetros crea una SOBRECARGA, no reemplaza. Borrar la de seis antes del
+-- despliegue habría dejado sin función al bundle que en ese momento seguía
+-- sirviendo. Y por qué no se podía dejar viva: su cuerpo delegaba con
+-- `p_tandems = '[]'`, así que una llamada rezagada borraba los metadatos que el
+-- editor nuevo acabara de guardar — medido en dev, no supuesto.
+drop function if exists public.save_saga_sequence(uuid, jsonb, jsonb, jsonb, jsonb, jsonb);

@@ -8414,3 +8414,43 @@ insert into public.saga_route_entries (route_id, position, item_type, item_id) v
 drop function if exists public.save_saga_graph(uuid, jsonb, jsonb);
 drop table if exists public.saga_edges;
 drop table if exists public.saga_nodes;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ANEXO 2026-07-28 — Fase 2 del timeline con estados: metadatos del hueco en
+-- tándem. Aplicado a DEV y a PROD el 2026-07-28 y verificado contra los objetos
+-- reales (to_regclass / pg_enum / pg_policies / pg_constraint / pg_proc), nunca
+-- `list_migrations`.
+--
+-- Lo que esta tabla NO hace: decir quién está en el tándem. Eso lo dice el
+-- empate de `position` en `saga_items`, y esa sigue siendo su única fuente de
+-- verdad. No hay FK posible contra `saga_items` porque la clave apunta a un
+-- empate entre N filas, no a una fila.
+-- ─────────────────────────────────────────────────────────────────────────────
+create type public.saga_tandem_mode as enum ('simultaneo', 'indistinto');
+
+create table public.saga_tandems (
+  saga_id uuid not null references public.sagas(id) on delete cascade,
+  position integer not null,
+  modo public.saga_tandem_mode,
+  nota text,
+  created_at timestamptz not null default now(),
+  primary key (saga_id, position),
+  constraint saga_tandems_says_something check (modo is not null or nota is not null),
+  constraint saga_tandems_nota_len check (nota is null or char_length(nota) <= 200)
+);
+
+create index saga_tandems_saga_idx on public.saga_tandems (saga_id);
+
+alter table public.saga_tandems enable row level security;
+
+create policy "saga tandems readable by all" on public.saga_tandems
+  for select to anon, authenticated using (true);
+create policy "saga tandems writable by collaborators" on public.saga_tandems
+  for all to authenticated
+  using (public.has_min_role('collaborator'))
+  with check (public.has_min_role('collaborator'));
+
+-- `save_saga_sequence` pasa a SIETE argumentos (`p_tandems`, reemplazo por
+-- saga) y la sobrecarga de SEIS se retira tras el despliegue: hoy `pg_proc`
+-- devuelve una sola firma en los dos entornos. Cuerpo completo en
+-- supabase/migrations/20260801_save_saga_sequence_tandems.sql.
