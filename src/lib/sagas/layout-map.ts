@@ -97,6 +97,13 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
   // `deriveSagaMap` le pone a una obra sin hueco. Su fila va siempre después de
   // las de la cadena de su bloque, así que ninguna fila mezcla las dos cosas y
   // agrupar por `y` es seguro.
+  //
+  // Y agrupar SOLO por `y` (sin mirar a qué bloque pertenece cada suelta) es
+  // seguro por un invariante que vive en OTRO fichero: `deriveSagaMap`
+  // (derive-map.ts) nunca reutiliza una fila entre bloques — `rowCursor` es
+  // estrictamente creciente, cada bloque reserva las suyas y el siguiente
+  // empieza donde el anterior terminó. Si ese invariante se rompiera, dos
+  // bloques podrían compartir `y` y esta agrupación mezclaría sus sueltas.
   const filasDeSueltas = new Map<number, SagaGraphNode[]>();
   for (const n of graph.nodes) {
     if (n.orderNo !== null) continue;

@@ -121,6 +121,28 @@ describe("alignRowsToLongEdges", () => {
     expect(col(alignRowsToLongEdges(graph), "z")).toBe(MAX_COL_OFFSET);
   });
 
+  it("con un número PAR de deltas que además alcanza el tope: mediana 3.5 → redondea a 4 = MAX_COL_OFFSET", () => {
+    // Caso real de producción (Cosmere, "Novelas secretas"): la obra con
+    // ventana está en su columna LOCAL 0, y sus dos anclas ya están colocadas
+    // arriba, en las columnas 3 y 4. Deltas [3, 4] → mediana (3+4)/2 = 3.5 →
+    // Math.round → 4, que es exactamente MAX_COL_OFFSET: cubre de una vez la
+    // rama PAR de mediana(), el redondeo de un .5, y el recorte al tope.
+    const graph: SagaGraph = {
+      // OJO con los fixtures: la normalización final resta el mínimo `x` de
+      // TODO el grafo, así que cada bloque de arriba necesita un nodo en la
+      // columna 0 (p0, q0) o el desplazamiento se perdería al normalizar.
+      nodes: [
+        nodo("p0", "uno", 0, 0),
+        nodo("p", "uno", 3, 0),
+        nodo("q0", "dos", 0, 1),
+        nodo("q", "dos", 4, 1),
+        nodo("x", "tres", 0, 2),
+      ],
+      edges: [arista("p", "x", "requisito"), arista("q", "x", "requisito")],
+    };
+    expect(col(alignRowsToLongEdges(graph), "x")).toBe(MAX_COL_OFFSET);
+  });
+
   it("un ancla a la IZQUIERDA no empuja el bloque a columnas negativas", () => {
     const graph: SagaGraph = {
       nodes: [nodo("a", "uno", 0, 0), nodo("z", "dos", 3, 1)],
@@ -206,12 +228,18 @@ describe("alignRowsToLongEdges", () => {
     expect(col(out, "a")).toBe(1);
   });
 
-  it("dos sueltas sin ancla conservan el orden que traían", () => {
+  it("dos sueltas sin ancla desempatan por título, no por el orden en que llegaron", () => {
+    // El fixture baraja adrede el orden de inserción (b antes que a) con
+    // columnas al revés del alfabético: si el resultado saliera IGUAL que el
+    // orden de entrada (col(b)=0, col(a)=1), lo que se estaría viendo sería un
+    // sort estable que conserva la posición de llegada, no un desempate por
+    // título. Con desempate por título de verdad, "a" tiene que quedar
+    // siempre antes que "b" pase lo que pase con el orden de inserción.
     const graph: SagaGraph = {
       nodes: [
         nodo("cadena", "uno", 0, 0),
-        { ...nodo("a", "uno", 0, 1), orderNo: null },
         { ...nodo("b", "uno", 1, 1), orderNo: null },
+        { ...nodo("a", "uno", 0, 1), orderNo: null },
       ],
       edges: [],
     };
@@ -220,7 +248,13 @@ describe("alignRowsToLongEdges", () => {
     expect(col(out, "b")).toBe(1);
   });
 
-  it("las sueltas de bloques distintos no se mezclan entre sí", () => {
+  it("las sueltas de dos FILAS (`y`) distintas no se mezclan entre sí", () => {
+    // El nombre importaba: `filasDeSueltas` agrupa solo por `y`, nunca mira
+    // `groupSagaId` (dos bloques con sus propias sueltas no pueden compartir
+    // fila — ver el comentario de `filasDeSueltas` en layout-map.ts), así que
+    // lo que esta prueba comprueba de verdad es separación de FILA, no de
+    // bloque. Con `y` iguales para "a" y "b" habría dado el mismo resultado
+    // aunque el código agrupara por bloque en vez de por fila.
     const graph: SagaGraph = {
       nodes: [
         { ...nodo("a", "uno", 0, 0), orderNo: null },

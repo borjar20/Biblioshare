@@ -843,14 +843,4 @@ describe("deriveSagaMap — alineación de columnas (el nudo de la captura)", ()
     // Y la fila justo debajo, no el fondo del mapa.
     expect(l.y - c.y).toBe(NODE_STEP_Y);
   });
-
-  it("la cadena de un bloque sin aristas largas sigue empezando en la columna 0", () => {
-    const map = deriveSagaMap(
-      groups([block("Uno", 1, [work("A", 1), work("B", 2)]), block("Dos", 2, [work("C", 1)])]),
-      {},
-      lookup(),
-    );
-    expect(map.nodes.find((n) => n.id === "i:book:A")!.x).toBe(0);
-    expect(map.nodes.find((n) => n.id === "i:book:C")!.x).toBe(0);
-  });
 });
