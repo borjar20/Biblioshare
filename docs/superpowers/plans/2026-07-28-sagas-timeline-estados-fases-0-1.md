@@ -286,7 +286,7 @@ git commit -m "test(e2e): restaurar la semilla QA de sagas antes de la suite (#2
 3. **Modo `route`: la columna son los pasos, y NADA más.** Nodos con `step !== null`, ordenados por `step`, en **una sola sección sin cabecera** (`groupSagaId: null`, `groupName: null`, `accent: "beige"`). Sin ramas, sin puentes: lo que el itinerario no nombra lo enseña «Sin puesto en este itinerario», que es de `RouteView` y no se toca. La subsaga baja de cabecera a etiqueta de fila y ese dato ya viaja en el nodo (`groupName`, `accent`).
 4. **Un paso que no se ve no es una fila, y no renumera.** `deriveSagaMap` solo pone `step` en nodos que existen, así que un paso fantasma (obra borrada) o un paso que nombra un bloque entero no produce nodo — y por tanto no produce fila. El número sigue siendo la posición del paso en el itinerario: **si el paso 5 no se ve, el 6 sigue siendo el 6**. Es la misma regla que ya aplica `derive-map.ts:380-384`.
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 Añadir a `src/lib/sagas/derive-timeline.test.ts`, dentro de un `describe` nuevo al final del bloque `describe("deriveTimeline", …)`:
 
@@ -356,12 +356,12 @@ describe("deriveTimeline · numeración y columna por pasos", () => {
 });
 ```
 
-- [ ] **Step 2: Correr los tests y ver que fallan**
+- [x] **Step 2: Correr los tests y ver que fallan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-timeline.test.ts`
 Expected: FAIL. El primero por `expect([undefined, undefined]).toEqual([1, 2])` (`no` no existe todavía); los de `spine` porque `deriveTimeline` solo acepta un argumento.
 
-- [ ] **Step 3: Implementar los tipos y los dos modos**
+- [x] **Step 3: Implementar los tipos y los dos modos**
 
 En `src/lib/sagas/derive-timeline.ts`, sustituir el bloque de tipos (líneas 19-28) por:
 
@@ -455,12 +455,12 @@ En el bucle de secciones (líneas 57-63), añadir `no` a la fila:
   }
 ```
 
-- [ ] **Step 4: Correr los tests y ver que pasan**
+- [x] **Step 4: Correr los tests y ver que pasan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-timeline.test.ts`
 Expected: PASS, todos. `npx tsc --noEmit` también, aunque `reading-timeline.tsx` todavía no pinte las formas nuevas: su `row.kind !== "entry" ? null` sigue compilando.
 
-- [ ] **Step 5: Abrir la issue del «Nº 0» y enlazarla**
+- [x] **Step 5: Abrir la issue del «Nº 0» y enlazarla**
 
 El off-by-one existía antes de esta feature y se ha encontrado al reescribir la numeración. Se arregla aquí porque el número es justo lo que esta tarea reescribe, pero **queda escrito** para quien lo busque:
 
@@ -483,7 +483,7 @@ Ficha de cualquier saga con \`show_map\`, móvil, pestaña «Mapa de lectura», 
 Arreglado en la fase 1 del plan \`docs/superpowers/plans/2026-07-28-sagas-timeline-estados-fases-0-1.md\` (Task 2): \`TimelineRow\` gana \`no\`, que en modo \`curation\` es \`orderNo + 1\` y en modo \`route\` es el paso del itinerario. Cubierto por la unitaria «el número que se pinta es 1..N, no el orderNo crudo»."
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/sagas/derive-timeline.ts src/lib/sagas/derive-timeline.test.ts
@@ -511,7 +511,7 @@ Va **antes** que la agrupación del tándem y la colocación de la ventana a pro
 
 **Detalle que hay que respetar:** el raíl pasa a colorearse por **`node.accent`, no por `section.accent`**. En modo `curation` es equivalente por construcción (una sección agrupa nodos con el mismo `groupSagaId`, y el acento sale del nodo), y es lo que permite que en modo `route` —sección única sin cabecera— cada fila conserve el color de SU subsaga. La cabecera de sección sigue usando `section.accent`.
 
-- [ ] **Step 1: Añadir las claves de texto**
+- [x] **Step 1: Añadir las claves de texto**
 
 En `messages/es.json`, namespace `saga`, junto a `"orderNo"`:
 
@@ -524,7 +524,7 @@ En `messages/es.json`, namespace `saga`, junto a `"orderNo"`:
     "timelineWindowFree": "Libre dentro de la ventana",
 ```
 
-- [ ] **Step 2: Escribir el constructor de etiquetas**
+- [x] **Step 2: Escribir el constructor de etiquetas**
 
 Crear `src/components/saga/timeline/timeline-labels.ts`:
 
@@ -560,7 +560,7 @@ export function buildTimelineLabels(t: Translator): TimelineLabels {
 }
 ```
 
-- [ ] **Step 3: Extraer la rama a su propia pieza**
+- [x] **Step 3: Extraer la rama a su propia pieza**
 
 Crear `src/components/saga/timeline/timeline-branch.tsx` con **exactamente** el marcado que hoy vive en `reading-timeline.tsx:103-133`, parametrizado:
 
@@ -617,7 +617,7 @@ export function TimelineBranchRow({
 }
 ```
 
-- [ ] **Step 4: Extraer la fila `entry`**
+- [x] **Step 4: Extraer la fila `entry`**
 
 Crear `src/components/saga/timeline/timeline-entry-row.tsx`. Es el marcado de `reading-timeline.tsx:59-134`, con tres cambios: el acento sale de `row.node.accent`, el número sale de `row.no` (no de `row.node.orderNo`), y la subsaga se pinta como etiqueta de fila cuando la sección no tiene cabecera:
 
@@ -699,7 +699,7 @@ export function TimelineEntryRow({
 }
 ```
 
-- [ ] **Step 5: Escribir la fila `tandem`**
+- [x] **Step 5: Escribir la fila `tandem`**
 
 Crear `src/components/saga/timeline/timeline-tandem-row.tsx`. Estado 01 del mockup: un corchete que abraza las N obras del hueco, un solo número (comparten puesto):
 
@@ -789,7 +789,7 @@ export function TimelineTandemRow({
 }
 ```
 
-- [ ] **Step 6: Escribir la fila `window`**
+- [x] **Step 6: Escribir la fila `window`**
 
 Crear `src/components/saga/timeline/timeline-window-row.tsx`. Estado 02 del mockup, sin mini-track (fase 3):
 
@@ -848,7 +848,7 @@ export function TimelineWindowRow({ row, labels }: { row: WindowRow; labels: Tim
 }
 ```
 
-- [ ] **Step 7: Reescribir la cáscara**
+- [x] **Step 7: Reescribir la cáscara**
 
 Sustituir `src/components/saga/reading-timeline.tsx` entero por:
 
@@ -943,12 +943,12 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
 }
 ```
 
-- [ ] **Step 8: Comprobar que compila y que la suite unitaria sigue verde**
+- [x] **Step 8: Comprobar que compila y que la suite unitaria sigue verde**
 
 Run: `fnm use 22; npx tsc --noEmit; npx vitest run; npx eslint src/components/saga src/lib/sagas`
 Expected: sin errores. Ninguna unitaria cambia de resultado: la Task 3 no toca el motor.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/components/saga/timeline src/components/saga/reading-timeline.tsx messages/es.json
@@ -969,7 +969,7 @@ git commit -m "feat(sagas): el timeline se parte en sub-piezas y sabe pintar tá
 
 **Regla, una sola para los dos modos:** dos o más filas **consecutivas de la columna** que comparten `orderNo` (no nulo) se funden en una fila `tandem`. En modo `curation` el empate de `orderNo` implica que salen juntas al ordenar; en modo `route`, además tienen que ser pasos consecutivos — si el itinerario mete otra obra en medio, el itinerario manda y no hay tándem que pintar. **Esto es una decisión que la spec no fijaba** (solo dice que la fila se agrupa desde la fase 1 porque el empate de `position` ya existe): queda escrita aquí, y es la lectura conservadora — el itinerario manda sobre lo que dice.
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 Añadir a `src/lib/sagas/derive-timeline.test.ts`:
 
@@ -1050,12 +1050,12 @@ describe("deriveTimeline · tándem", () => {
 });
 ```
 
-- [ ] **Step 2: Correr los tests y ver que fallan**
+- [x] **Step 2: Correr los tests y ver que fallan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-timeline.test.ts`
 Expected: FAIL — `expect(["entry","entry","entry"]).toEqual(["entry","tandem","entry"])`.
 
-- [ ] **Step 3: Implementar la agrupación**
+- [x] **Step 3: Implementar la agrupación**
 
 En `derive-timeline.ts`, el mapa `rowByNodeId` pasa a apuntar a la fila que **contiene** el nodo (`entry` o `tandem`), porque el mecanismo de ramas cuelga de ella. Sustituir el bucle de secciones por:
 
@@ -1161,12 +1161,12 @@ El `sections.findIndex` de los puentes también busca `r.kind === "entry" && r.n
       );
 ```
 
-- [ ] **Step 4: Correr los tests y ver que pasan**
+- [x] **Step 4: Correr los tests y ver que pasan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-timeline.test.ts && npx tsc --noEmit`
 Expected: PASS, incluidas las unitarias viejas (ninguna montaba dos nodos con el mismo `orderNo`, así que ninguna cambia de resultado).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/sagas/derive-timeline.ts src/lib/sagas/derive-timeline.test.ts
@@ -1198,7 +1198,7 @@ Las dos llegan **ya resueltas a nodo** por `resolveEntry` (última obra del bloq
 
 **Límite asumido y consciente:** solo son fila `window` los sujetos con `orderNo === null`, es decir las **obras** `libre`. Un **bloque** `libre` con ventana (fase 4, #216) tiene obras con `orderNo`, así que sigue viviendo en la columna como hasta ahora. Cambiar eso movería secciones enteras y no está en el alcance de la fase 1 — **ábrelo como issue** al terminar esta tarea (Step 5).
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 ```ts
 describe("deriveTimeline · ventana", () => {
@@ -1301,12 +1301,12 @@ describe("deriveTimeline · ventana", () => {
 
 > Si el tipo real de `ResolvedWindow` pide más campos que `afterKey`/`beforeKey`, quita el `as never` y rellénalos leyendo `src/lib/sagas/types.ts`. El `as never` está para que el test no invente una forma: mira el tipo antes de escribirlo.
 
-- [ ] **Step 2: Correr los tests y ver que fallan**
+- [x] **Step 2: Correr los tests y ver que fallan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-timeline.test.ts`
 Expected: FAIL — la ventana sale hoy como rama de `a`, así que la primera aserción da `["a","b","c"]`.
 
-- [ ] **Step 3: Implementar la colocación**
+- [x] **Step 3: Implementar la colocación**
 
 En `derive-timeline.ts`, **antes** del bucle «Nodos-ítem fuera de columna», añadir el reconocimiento de ventanas y su inserción; y en ese bucle, saltarse los nodos ya colocados:
 
@@ -1371,12 +1371,12 @@ Y en el bucle de nodos fuera de columna, primera línea del cuerpo:
     const conn = earliestSpineFor(n.id);
 ```
 
-- [ ] **Step 4: Correr los tests y ver que pasan**
+- [x] **Step 4: Correr los tests y ver que pasan**
 
 Run: `fnm use 22; npx vitest run src/lib/sagas/derive-timeline.test.ts && npx tsc --noEmit && npx vitest run`
 Expected: PASS. Comprueba en especial que `derive-map.test.ts` sigue verde: esta tarea no toca `derive-map.ts`.
 
-- [ ] **Step 5: Abrir la issue del límite asumido**
+- [x] **Step 5: Abrir la issue del límite asumido**
 
 ```bash
 gh issue create --title "El timeline no pinta como ventana un BLOQUE libre con ventana" --body "## Qué pasa
@@ -1397,7 +1397,7 @@ Ficha de una saga con un bloque \`libre\` con ventana (en producción: *Nacidos 
 Pintarlo como ventana implica mover una SECCIÓN entera, no una fila, y eso cambia el modelo de secciones del timeline. No cabía en una fase sin migración."
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/sagas/derive-timeline.ts src/lib/sagas/derive-timeline.test.ts
@@ -1428,7 +1428,7 @@ git commit -m "feat(sagas): la ventana cae en la columna junto a su ancla, no co
 1. `curatedGraph` ya se calcula en `saga-map-tab.tsx` (líneas 48-65) y **se calcula en el servidor pase lo que pase**, aunque hoy solo lo pinte la rama de PC: pasarlo a `RouteView` no añade ni una consulta. `RouteView` **no** debe derivarlo por su cuenta — sería un segundo `getRouteEntries` por render.
 2. Si `curatedGraph` es `null` (la saga no tiene nada curado, o tiene `show_map` apagado, que `resolveSagaGraph` ya resuelve en el origen), `RouteView` **conserva su lista de hoy**. Apagar el mapa no puede hacer desaparecer los pasos del itinerario.
 
-- [ ] **Step 1: `RouteView` acepta el grafo y pinta el timeline en vez de su lista**
+- [x] **Step 1: `RouteView` acepta el grafo y pinta el timeline en vez de su lista**
 
 En `src/components/saga/route-view.tsx`, la firma:
 
@@ -1486,7 +1486,7 @@ y calcular `timelineSections` justo antes del `return`:
   const timelineSections = graph === null ? null : deriveTimeline(graph, { spine: "route" });
 ```
 
-- [ ] **Step 2: `SagaMapTab` pasa el grafo, monta el pie de PC y retira «Como lista lineal»**
+- [x] **Step 2: `SagaMapTab` pasa el grafo, monta el pie de PC y retira «Como lista lineal»**
 
 En `src/components/saga/saga-map-tab.tsx`:
 
@@ -1528,19 +1528,19 @@ En `src/components/saga/saga-map-tab.tsx`:
 
 (d) Quedan imports sin usar (`RoleChip` y quizá `Image`/`Link` si nada más los usa en el fichero). Bórralos: `npx eslint` lo señala.
 
-- [ ] **Step 3: Retirar la clave de texto muerta**
+- [x] **Step 3: Retirar la clave de texto muerta**
 
 En `messages/es.json`, borrar la línea `"asLinearList": "Como lista lineal",`.
 
 Run: `grep -rn "asLinearList" src messages`
 Expected: sin resultados.
 
-- [ ] **Step 4: Comprobar que compila y pasa el lint**
+- [x] **Step 4: Comprobar que compila y pasa el lint**
 
 Run: `fnm use 22; npx tsc --noEmit; npx eslint src messages 2>/dev/null || npx eslint src; npx vitest run`
 Expected: sin errores, unitarias verdes.
 
-- [ ] **Step 5: Verlo funcionar de verdad**
+- [x] **Step 5: Verlo funcionar de verdad**
 
 Arranca el dev server (solo uno, en el 3000) y mira las cuatro ubicaciones de la tabla:
 
@@ -1551,7 +1551,7 @@ Mira `/saga/<id de un universo con show_map>?tab=mapa`:
 - ancho de PC: grafo, leyenda, y el timeline al pie;
 - con `?ruta=<slug>` de un itinerario: en móvil, la columna son los pasos del itinerario; en PC, lo mismo bajo el grafo.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/saga/saga-map-tab.tsx src/components/saga/route-view.tsx messages/es.json
@@ -1578,7 +1578,7 @@ El spec siembra su propio itinerario y lo borra, exactamente como `sagas-orden-d
 
 **La prueba que de verdad importa** no es «hay un timeline», es **«la columna son los pasos del itinerario, aunque contradigan la curación»**. Por eso el itinerario se siembra en el **orden inverso** al curado: si el componente cayera de nuevo en la columna por `orderNo`, el test lo caza.
 
-- [ ] **Step 1: Escribir el spec**
+- [x] **Step 1: Escribir el spec**
 
 Crear `e2e/sagas-timeline-estados.spec.ts`:
 
@@ -1733,26 +1733,26 @@ test.describe("timeline · fase 1", () => {
 });
 ```
 
-- [ ] **Step 2: Correr el spec y ver que pasa**
+- [x] **Step 2: Correr el spec y ver que pasa**
 
 Run: `npx playwright test e2e/sagas-timeline-estados.spec.ts --reporter=line`
 Expected: 4 passed.
 
-- [ ] **Step 3: Inyección de fallo nº 1 — romper la columna por pasos**
+- [x] **Step 3: Inyección de fallo nº 1 — romper la columna por pasos**
 
 En `src/components/saga/route-view.tsx`, cambia `{ spine: "route" }` por `{ spine: "curation" }`.
 
 Run: `npx playwright test e2e/sagas-timeline-estados.spec.ts --reporter=line`
 Expected: **falla exactamente** «móvil, con itinerario activo: la columna son SUS pasos, en su orden». Si pasa, el test no vale: no está mirando el orden. Deshaz el cambio.
 
-- [ ] **Step 4: Inyección de fallo nº 2 — romper la numeración**
+- [x] **Step 4: Inyección de fallo nº 2 — romper la numeración**
 
 En `src/lib/sagas/derive-timeline.ts`, cambia `no: n.orderNo! + 1` por `no: n.orderNo!`.
 
 Run: `npx playwright test e2e/sagas-timeline-estados.spec.ts --reporter=line`
 Expected: **falla exactamente** «el timeline numera desde 1…». Deshaz el cambio.
 
-- [ ] **Step 5: Inyección de fallo nº 3 — quitar el pie de PC**
+- [x] **Step 5: Inyección de fallo nº 3 — quitar el pie de PC**
 
 En `src/components/saga/saga-map-tab.tsx`, borra el `<div className="mt-4"><ReadingTimeline …/></div>` de la rama de PC.
 
@@ -1761,12 +1761,12 @@ Expected: **falla exactamente** «PC: el mismo timeline al pie del grafo». Desh
 
 > Si alguna de las tres roturas NO tumba su test, el test no vale: arréglalo antes de seguir. En la fase 4 esta técnica destapó que una de las tres roturas previstas no tumbaba ningún test (#214).
 
-- [ ] **Step 6: Correr la suite entera de sagas**
+- [x] **Step 6: Correr la suite entera de sagas**
 
 Run: `npx playwright test e2e/sagas-*.spec.ts --reporter=line`
 Expected: todo verde. Si algo falla, mira primero si es la semilla (Task 1) y no el producto.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add e2e/sagas-timeline-estados.spec.ts
@@ -1782,11 +1782,11 @@ git commit -m "test(e2e): la columna del timeline son los pasos del itinerario"
 - Modify: `docs/requirements/decisiones.md`
 - Modify: `docs/architecture/graph.json` (por el chequeo de deriva)
 
-- [ ] **Step 1: Marcar el estado en el backlog**
+- [x] **Step 1: Marcar el estado en el backlog**
 
 Marca la casilla de la feature del timeline de sagas. La narrativa de **cómo** se hizo NO va aquí: va en la spec (que ya existe) y en este plan.
 
-- [ ] **Step 2: Añadir las decisiones al final de `decisiones.md`**
+- [x] **Step 2: Añadir las decisiones al final de `decisiones.md`**
 
 Append-only, sin reescribir las anteriores. Tres entradas, cada una con su porqué:
 
@@ -1794,13 +1794,13 @@ Append-only, sin reescribir las anteriores. Tres entradas, cada una con su porqu
 2. **Un tándem se agrupa por el empate de `orderNo`, y en modo `route` además exige pasos consecutivos.** El itinerario manda sobre lo que dice; si mete una obra en medio del hueco, no hay tándem que pintar.
 3. **Las anclas de una ventana se LEEN de las aristas de `deriveSagaMap`, no se resuelven otra vez.** Dos resoluciones del mismo ancla acabarían discrepando — es la familia del #91/#185/#203.
 
-- [ ] **Step 3: Correr el chequeo de deriva**
+- [x] **Step 3: Correr el chequeo de deriva**
 
 Run: `/drift-check` (o el procedimiento de `docs/DRIFT-CHECK.md`), que incluye mantener `docs/architecture/graph.json` al día: esta fase añade nodos (`src/components/saga/timeline/*`) y cambia el flujo «derivar el mapa de una saga».
 
 Expected: sin discrepancias pendientes. `docs/requirements/data-model.md` **no** se toca: no ha habido ni un cambio de esquema.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/
