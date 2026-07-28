@@ -254,6 +254,47 @@ describe("deriveSagaMap", () => {
     expect(c.y - a.y).toBe(NODE_STEP_Y);
   });
 
+  it("un bloque libre con ancla sube a la fila siguiente a la de su ancla, en vez de al final", () => {
+    // El nudo de la captura del 2026-07-28: el bloque libre se dibujaba al final
+    // y su arista de ventana cruzaba el lienzo entero para llegar a su ancla,
+    // varias filas más arriba. Ahora la arista es corta y casi vertical.
+    const map = deriveSagaMap(
+      groups([
+        block("Uno", 1, [work("A", 1)]),
+        block("Dos", 2, [work("B", 1)]),
+        block("Tres", 3, [work("C", 1)]),
+        freeBlock("Libre", [work("L", 1)]),
+      ]),
+      { "s:saga-Libre": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
+      lookup(),
+    );
+    const fila = (id: string) => map.nodes.find((n) => n.id === id)!.y / NODE_STEP_Y;
+    expect(fila("i:book:A")).toBe(0);
+    expect(fila("i:book:L")).toBe(1);
+    expect(fila("i:book:B")).toBe(2);
+    expect(fila("i:book:C")).toBe(3);
+  });
+
+  it("subir de fila NO mueve el orderNo: el timeline de móvil sigue leyendo lo libre al final", () => {
+    // `orderNo` es orden de LECTURA, no de pintado (Task 2). Un bloque libre
+    // dibujado en la fila 1 se sigue leyendo el último: si las dos cosas se
+    // acoplaran, curar una ventana reordenaría el timeline de móvil sin que
+    // nadie lo pidiera.
+    const map = deriveSagaMap(
+      groups([
+        block("Uno", 1, [work("A", 1)]),
+        block("Dos", 2, [work("B", 1)]),
+        freeBlock("Libre", [work("L", 1)]),
+      ]),
+      { "s:saga-Libre": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
+      lookup(),
+    );
+    const orden = (id: string) => map.nodes.find((n) => n.id === id)!.orderNo;
+    expect(orden("i:book:A")).toBe(0);
+    expect(orden("i:book:B")).toBe(1);
+    expect(orden("i:book:L")).toBe(2);
+  });
+
   it("una obra sin hueco CON ventana sí tiene su arista (a diferencia de la cadena)", () => {
     const map = deriveSagaMap(
       groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [looseWork("Z")])]),

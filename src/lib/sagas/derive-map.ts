@@ -1,6 +1,6 @@
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaAccentToken } from "./accents";
-import { partitionGroups, type MemberGroup } from "./group-members";
+import { orderBlocksForLayout, partitionGroups, type MemberGroup } from "./group-members";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
 import type { DetailMember, ResolvedWindow, SagaPlacement, TandemMode } from "./types";
 
@@ -107,7 +107,11 @@ export function deriveSagaMap(
   tandems?: Map<string, { mode: TandemMode | null; note: string | null }>,
 ): SagaGraph {
   const { ordered, free } = partitionGroups(groups);
-  const blocks = [...ordered, ...free];
+  // Orden de PINTADO (filas), que ya no es el de lectura: un bloque libre con
+  // ventana sube junto a su ancla para que esa arista no cruce el lienzo entero.
+  // El orden de LECTURA sigue siendo `[...ordered, ...free]`, y es el que usa la
+  // pre-pasada de `orderNo` unas líneas más abajo.
+  const blocks = orderBlocksForLayout(ordered, free, windows);
 
   const nodes: SagaGraphNode[] = [];
   const byId = new Map<string, SagaGraphNode>();
