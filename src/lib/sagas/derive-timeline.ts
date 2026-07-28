@@ -1,6 +1,7 @@
 import type { SagaAccentToken } from "./accents";
 import type { SagaGraph, SagaGraphNode } from "./map-types";
 import type { DetailMember, TandemMode, WindowReason } from "./types";
+import { windowTrack } from "./window-track";
 
 // Derivación DETERMINISTA del timeline móvil (frame B, spec §2.4) a partir del
 // grafo. La columna son los nodos-ítem con orderNo agrupados por subsaga
@@ -79,8 +80,15 @@ export type TimelineSection = {
   rows: TimelineRow[];
 };
 
-export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine } = {}): TimelineSection[] {
+export function deriveTimeline(
+  graph: SagaGraph,
+  // `authenticated` por defecto FALSE a propósito: quien no lo pase obtiene la
+  // vista pública, que es la segura. Nunca al revés — un olvido no puede
+  // acabar afirmando «estás dentro de la ventana» a quien no ha entrado.
+  opts: { spine?: TimelineSpine; authenticated?: boolean } = {},
+): TimelineSection[] {
   const spineMode = opts.spine ?? "curation";
+  const authenticated = opts.authenticated ?? false;
   const items = graph.nodes.filter((n) => n.kind === "item");
 
   // Columna por PASOS del itinerario (spec 2026-07-28, §1): 1..N del
@@ -247,7 +255,7 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
       before,
       // Ya resuelto por `deriveSagaMap`, como las anclas: aquí solo se lee.
       reason: n.windowReason,
-      track: null,
+      track: windowTrack(graph, { after, before }, { authenticated }),
     };
     // 1) justo DESPUÉS de su ancla `después de`; 2) si solo hay `antes de`,
     // justo ANTES de esa fila; 3) si ninguna resuelve, cae a rama (abajo).

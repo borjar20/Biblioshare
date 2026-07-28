@@ -324,8 +324,12 @@ describe("deriveTimeline · ventana", () => {
     expect(win.after?.id).toBe("a");
     expect(win.before).toBeNull();
     expect(win.no).toBeNull();
+    // `reason` sigue a null: este nodo no declara motivo. `track` ya NO —
+    // desde la fase 3 la fila trae su tramo, y aquí `withWindow` no pasa
+    // `authenticated`, así que trae el del lector anónimo: tramo sí,
+    // marcador no.
     expect(win.reason).toBeNull();
-    expect(win.track).toBeNull();
+    expect(win.track).toMatchObject({ youPct: null, notice: null });
   });
 
   it("con las dos anclas, manda el «después de»", () => {
@@ -550,5 +554,33 @@ describe("motivo de la fila de ventana (fase 3)", () => {
     );
     const fila = tl[0].rows.find((r) => r.kind === "window")!;
     expect(fila.kind === "window" && fila.reason).toBeNull();
+  });
+});
+
+// ── Fase 3: el mini-track en la fila ─────────────────────────────────────────
+describe("track de la fila de ventana (fase 3)", () => {
+  const conVentana = () =>
+    graph(
+      [node("o1", { orderNo: 0 }), node("o2", { orderNo: 1 }), node("w", { orderNo: null })],
+      [{ id: "e1", source: "o1", target: "w", type: "requisito", accent: "beige" }],
+    );
+  const filaVentana = (secciones: ReturnType<typeof deriveTimeline>) =>
+    secciones.flatMap((s) => s.rows).find((r) => r.kind === "window")!;
+
+  it("con sesión trae el track completo, con su aviso", () => {
+    const fila = filaVentana(deriveTimeline(conVentana(), { authenticated: true }));
+    expect(fila.kind === "window" && fila.track).not.toBeNull();
+    expect(fila.kind === "window" && fila.track!.notice).not.toBeNull();
+  });
+
+  it("sin sesión sigue trayendo el tramo, pero sin marcador ni aviso", () => {
+    const fila = filaVentana(deriveTimeline(conVentana(), { authenticated: false }));
+    expect(fila.kind === "window" && fila.track!.youPct).toBeNull();
+    expect(fila.kind === "window" && fila.track!.notice).toBeNull();
+  });
+
+  it("por defecto se comporta como SIN sesión: la vista pública es la segura", () => {
+    const fila = filaVentana(deriveTimeline(conVentana()));
+    expect(fila.kind === "window" && fila.track!.youPct).toBeNull();
   });
 });
