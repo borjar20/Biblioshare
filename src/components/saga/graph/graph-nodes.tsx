@@ -175,7 +175,11 @@ export function SagaNodeCard({ data }: NodeProps<GraphFlowNode>) {
   // vez de un literal "títulos" hardcodeado.
   const t = useTranslations("saga");
   return (
-    <div className="relative w-[120px]">
+    // La lente también aquí, aunque hoy este tipo de nodo no lo produce nadie
+    // (`deriveSagaMap` marca todos sus nodos como `item`: un bloque es
+    // agrupación visual, nunca nodo). Dejar uno de los tres sin la lente sería
+    // una inconsistencia esperando a que este tipo vuelva.
+    <div className={`relative w-[120px] ${data.muted ? "opacity-30" : ""}`}>
       <Ports />
       <div
         className="rounded-xl border-2 bg-black/40 p-2 shadow-lg backdrop-blur-sm"
