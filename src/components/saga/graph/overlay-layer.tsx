@@ -47,7 +47,16 @@ export function MapOverlayLayer({ graph }: { graph: SagaGraph }) {
             zIndex: -1,
           }}
         >
-          <span className="absolute -top-[11px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-map-tandem bg-[#2a2027] px-2 py-px font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#e2cfe0]">
+          {/* Modo y nota en la MISMA píldora. La nota tuvo su propia píldora
+              abajo y chocaba con el rótulo del segundo miembro, que cuelga
+              justo ahí: el borde inferior de la cápsula no está libre, lo ocupa
+              la etiqueta del nodo que envuelve. Se trunca porque la nota es
+              prosa del curador y el timeline ya la enseña entera; aquí es una
+              pista, no el texto. */}
+          <span
+            className="absolute -top-[11px] left-1/2 max-w-[240px] -translate-x-1/2 truncate rounded-full border border-map-tandem bg-[#2a2027] px-2 py-px font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#e2cfe0]"
+            title={capsule.note ?? undefined}
+          >
             {/* Un hueco compartido sin modo curado dice «sin declarar», no «a la
                 vez»: afirmar un orden que nadie declaró es justo lo que esta
                 feature vino a quitar. */}
@@ -57,15 +66,8 @@ export function MapOverlayLayer({ graph }: { graph: SagaGraph }) {
               : capsule.mode === "indistinto"
                 ? t("timelineTandemIndistinto")
                 : t("timelineTandemUndeclared")}
+            {capsule.note && <span className="normal-case italic text-[#c8b3c5]"> · {capsule.note}</span>}
           </span>
-          {/* La nota del hueco, si el curador la escribió. Abajo y no arriba:
-              son dos cosas distintas —qué clase de tándem es, y qué dijo el
-              curador de él— y el borde de arriba ya está ocupado. */}
-          {capsule.note && (
-            <span className="absolute -bottom-[11px] left-1/2 max-w-[180px] -translate-x-1/2 truncate rounded-full border border-map-tandem bg-[#2a2027] px-2 py-px font-mono text-[9px] italic text-[#c8b3c5]">
-              {capsule.note}
-            </span>
-          )}
         </div>
       ))}
 
@@ -85,18 +87,26 @@ export function MapOverlayLayer({ graph }: { graph: SagaGraph }) {
             zIndex: -1,
           }}
         >
-          <span className="absolute -top-[11px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-map-window bg-[#1d2628] px-2 py-px font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#bfe0e2]">
-            {/* Las MISMAS palabras que la fila del timeline sobre la misma obra:
-                la cabecera, más los lados que existan. Un lado abierto no se
-                nombra. */}
-            ◇{" "}
-            {[
+          {/* El rótulo nombra la FORMA, no el tramo. Con títulos reales
+              («después de El Ritmo de la Guerra · antes de Viento y Verdad»)
+              el texto completo salía cuatro veces más ancho que el marco, y
+              recortarlo dejaba «· después de L…», que dice menos que la
+              leyenda. Las dos anclas ya están dibujadas: son las dos aristas
+              que entran y salen del sujeto, que es el idioma propio del mapa
+              —y el mismo argumento por el que la ventana no se pinta como zona
+              (spec de la fase 6, D3)—. El texto entero, con los dos títulos,
+              sigue en la fila del timeline y aquí en el `title`. */}
+          <span
+            className="absolute -top-[11px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-map-window bg-[#1d2628] px-2 py-px font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#bfe0e2]"
+            title={[
               t("timelineWindowTitle"),
               frame.afterLabel === null ? null : t("timelineWindowAfter", { title: frame.afterLabel }),
               frame.beforeLabel === null ? null : t("timelineWindowBefore", { title: frame.beforeLabel }),
             ]
               .filter((parte): parte is string => parte !== null)
               .join(" · ")}
+          >
+            ◇ {t("timelineWindowTitle")}
           </span>
         </div>
       ))}
