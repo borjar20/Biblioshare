@@ -41,7 +41,7 @@ export async function SagaLibraryCard({ card }: { card: LibrarySagaCardData }) {
         <Link
           href={sagaHref(card.sagaId)}
           aria-label={card.name}
-          className="relative h-[76px] w-[72px] shrink-0"
+          className="relative isolate h-[76px] w-[72px] shrink-0"
         >
           {covers.length === 0 && (
             <span

@@ -42,7 +42,7 @@ export async function CollectionDetail({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-3 text-center">
         {covers.length > 0 && (
-          <div className="relative h-[78px] w-[96px]">
+          <div className="relative isolate h-[78px] w-[96px]">
             {covers.map((cover, index) => {
               const slot = FAN_SLOTS[index];
               return (
