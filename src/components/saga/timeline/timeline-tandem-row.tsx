@@ -28,7 +28,7 @@ export function TimelineTandemRow({
    *  Hoy no hay ninguna obra opcional dentro de un tándem en producción (hay un
    *  solo tándem, y sus dos obras cuentan), así que se deja fuera en vez de
    *  inventarle un sitio a la píldora dentro de una fila que ya comparte
-   *  número. Abierto como issue. */
+   *  número. Abierto como issue #233. */
   sagaId: string | null;
 }) {
   const accent = row.nodes[0]?.accent ?? "beige";
