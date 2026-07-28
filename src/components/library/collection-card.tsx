@@ -31,7 +31,7 @@ export async function CollectionCard({ card }: { card: CollectionCardData }) {
       href={`/coleccion/c/${card.id}`}
       className="group flex flex-col gap-2.5 rounded-card border border-border bg-surface p-3 shadow-card transition-colors hover:border-accent"
     >
-      <div className="relative h-[98px] w-full">
+      <div className="relative isolate h-[98px] w-full">
         {covers.map((cover, index) => {
           const slot = FAN_SLOTS[index];
           return (

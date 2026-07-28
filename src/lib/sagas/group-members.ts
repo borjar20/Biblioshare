@@ -253,10 +253,13 @@ export function orderBlocksForLayout(
 
     for (const g of pendientes) {
       const w = ventanaDelBloque(g);
-      // `after` manda sobre `before`: «a partir de X» sitúa el bloque, mientras
-      // que «antes de Y» solo pone un techo.
-      const lado = w?.afterKey != null ? "after" : w?.beforeKey != null ? "before" : null;
-      const clave = lado === "after" ? w!.afterKey! : lado === "before" ? w!.beforeKey! : null;
+      // `before` manda sobre `after` (spec 2026-07-28, §2): «antes de Y» coloca
+      // el bloque lo más tarde que la ventana permite. Hasta el 2026-07-28 era
+      // al revés, y esa preferencia contradecía a la del orden curado
+      // (place-by-window.ts) en cuanto las dos anclas caían en bloques
+      // distintos — dos reglas para la misma pregunta es la familia #91/#203.
+      const lado = w?.beforeKey != null ? "before" : w?.afterKey != null ? "after" : null;
+      const clave = lado === "before" ? w!.beforeKey! : lado === "after" ? w!.afterKey! : null;
       const ancla = clave === null ? undefined : bloqueDeClave.get(clave);
       // -1 cubre tres casos de una vez, y a propósito: sin ventana, ancla rota
       // (apunta a algo que no está en el mapa) y ancla que todavía no se ha

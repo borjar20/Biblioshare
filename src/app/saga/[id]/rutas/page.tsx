@@ -1,20 +1,17 @@
 import { notFound, redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { getSagaRoutes } from "@/lib/sagas/get-saga-routes";
+import { getSagaRoutes, sortCuratedRoutes } from "@/lib/sagas/get-saga-routes";
+import { countRouteEntries, type RawRouteEntryCountRow } from "@/lib/sagas/count-route-entries";
 import { sagaHref } from "@/lib/catalog/item-href";
-import { CreateRouteForm } from "@/components/saga/create-route-form";
-import { RouteList } from "@/components/saga/route-list";
-import { ReadingOrderPicker } from "@/components/saga/reading-order-picker";
+import { RoutesManager } from "@/components/saga/routes/routes-manager";
+import type { RouteRowData } from "@/components/saga/routes/route-row";
 
-// Curación de itinerarios (spec 2026-07-22, Task 8): crear, renombrar,
-// reordenar y borrar. Gate DURO collaborator+, igual que
+// Curación de itinerarios. Gate DURO collaborator+, igual que
 // /saga/[id]/editar: gestionar rutas SÍ es curación (a diferencia de
 // adoptar una, que es preferencia personal).
 export default async function SagaRoutesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const t = await getTranslations("sagaEditor");
   const supabase = await createClient();
 
   const {
@@ -23,24 +20,39 @@ export default async function SagaRoutesPage({ params }: { params: Promise<{ id:
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(sagaHref(id));
 
-  const { data: saga } = await supabase.from("sagas").select("id, name").eq("id", id).maybeSingle();
+  // `show_map` decide el TEXTO de la fila del mapa generado, no si se pinta:
+  // una saga sin mapa con un itinerario ya designado necesita esa fila para
+  // poder dejar de designarlo.
+  const { data: saga } = await supabase.from("sagas").select("id, name, show_map").eq("id", id).maybeSingle();
   if (!saga) notFound();
 
-  const routes = await getSagaRoutes(supabase, id);
+  const routes = sortCuratedRoutes(await getSagaRoutes(supabase, id));
+
+  // Una consulta agregada, NO una por fila. Con cero itinerarios ni se lanza:
+  // un `.in()` con lista vacía es una ida y vuelta a BD para no traer nada.
+  let counts: Record<string, { steps: number; notes: number }> = {};
+  if (routes.length > 0) {
+    const { data } = await supabase
+      .from("saga_route_entries")
+      .select("route_id, note")
+      .in(
+        "route_id",
+        routes.map((r) => r.id),
+      );
+    counts = countRouteEntries((data ?? []) as RawRouteEntryCountRow[]);
+  }
+
+  const rows: RouteRowData[] = routes.map((r) => ({
+    ...r,
+    ...(counts[r.id] ?? { steps: 0, notes: 0 }),
+  }));
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-lg font-semibold">{t("routesTitle")}</h1>
-
-      {routes.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t("routesEmpty")}</p>
-      ) : (
-        <RouteList sagaId={id} routes={routes} />
-      )}
-
-      {routes.length > 0 && <ReadingOrderPicker sagaId={id} routes={routes} />}
-
-      <CreateRouteForm sagaId={id} />
-    </div>
+    <RoutesManager
+      sagaId={id}
+      sagaName={(saga as { name: string }).name}
+      hasMap={Boolean((saga as { show_map: boolean | null }).show_map)}
+      rows={rows}
+    />
   );
 }

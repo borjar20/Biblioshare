@@ -12,6 +12,7 @@ import {
   type LibSaga,
   type LibrarySagaCard,
 } from "./build-library-saga-cards";
+import { orderWindowsFromRows, type RawOrderWindowRow } from "./place-by-window";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -105,7 +106,7 @@ export async function getFollowedSagas(
   // arriba) es la ÚNICA fuente de la secuencia — la misma que usa la ficha.
   const { data: membershipsData } = await supabase
     .from("saga_items")
-    .select("saga_id, item_type, item_id, position, optional")
+    .select("saga_id, item_type, item_id, position, optional, placement")
     .in("saga_id", allIds)
     .order("saga_id");
   const memberships: LibMembership[] = (membershipsData ?? []).map((m) => ({
@@ -114,6 +115,7 @@ export async function getFollowedSagas(
     itemId: m.item_id,
     position: m.position,
     optional: m.optional,
+    placement: m.placement,
   }));
 
   // Ítems por tipo → metadatos de catálogo + entradas + ratings + creadores.
@@ -260,6 +262,20 @@ export async function getFollowedSagas(
     }
   }
 
+  // Ventanas del subárbol seguido, para que el ORDEN principal de estas cards
+  // sea el mismo que el de la ficha y el del itinerario generado — si no, la
+  // card diría «siguiente: X» mientras el itinerario generado dice «Y» sobre la
+  // misma saga (familia #91/#203). Sin títulos: el orden no pinta las anclas,
+  // solo las coloca, y un ancla que no esté en la secuencia la ignora
+  // `placeByWindow`.
+  const { data: windowRows } = await supabase
+    .from("saga_placement_windows")
+    .select(
+      "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+    )
+    .in("saga_id", allIds);
+  const windows = orderWindowsFromRows((windowRows ?? []) as RawOrderWindowRow[]);
+
   return buildLibrarySagaCards(
     followedIds,
     sagas,
@@ -269,5 +285,6 @@ export async function getFollowedSagas(
     ratings,
     creators,
     routeChoices,
+    windows,
   );
 }

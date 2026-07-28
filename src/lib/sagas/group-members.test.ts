@@ -311,15 +311,18 @@ describe("orderBlocksForLayout", () => {
     expect(nombres(orden)).toEqual(["Uno", "Libre", "Dos"]);
   });
 
-  it("`after` manda sobre `before` cuando la ventana trae los dos", () => {
-    // Misma preferencia que la ficha: «a partir de» sitúa, «antes de» solo acota.
+  it("`before` manda sobre `after` cuando la ventana trae los dos", () => {
+    // Cambio del 2026-07-28: «antes de Y» coloca el bloque lo más tarde que la
+    // ventana permite, y es la misma regla que sigue el orden curado
+    // (place-by-window.ts). Antes mandaba «a partir de», y las dos reglas
+    // conviviendo son la familia #91/#203.
     const uno = bloque("Uno", "fijo", ["a"]);
     const dos = bloque("Dos", "fijo", ["b"]);
     const libre = bloque("Libre", "libre", ["l"]);
     const orden = orderBlocksForLayout([uno, dos], [libre], {
       "s:saga-Libre": ventana("s:saga-Dos", "s:saga-Uno"),
     });
-    expect(nombres(orden)).toEqual(["Uno", "Dos", "Libre"]);
+    expect(nombres(orden)).toEqual(["Libre", "Uno", "Dos"]);
   });
 
   it("un libre anclado a OTRO libre espera a que el primero esté colocado", () => {

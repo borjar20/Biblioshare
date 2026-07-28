@@ -335,13 +335,16 @@ describe("deriveTimeline · ventana", () => {
     expect(win.track).toMatchObject({ youPct: null, notice: null });
   });
 
-  it("con las dos anclas, manda el «después de»", () => {
+  it("con las dos anclas, manda el «antes de»", () => {
+    // Cambio del 2026-07-28: la misma preferencia que `orderBlocksForLayout` y
+    // que `placeByWindow`. La fila cae justo DELANTE del ancla «antes de» (c)
+    // en vez de justo detrás de la «a partir de» (a).
     const tl = withWindow([
       { id: "e1", source: "a", target: "w", type: "requisito", accent: "beige" },
       { id: "e2", source: "w", target: "c", type: "opcional", accent: "ambar" },
     ]);
-    expect(shape(tl)).toEqual(["a", "window", "b", "c"]);
-    const win = tl[0].rows[1];
+    expect(shape(tl)).toEqual(["a", "b", "window", "c"]);
+    const win = tl[0].rows[2];
     if (win.kind !== "window") throw new Error("se esperaba una ventana");
     expect(win.after?.id).toBe("a");
     expect(win.before?.id).toBe("c");

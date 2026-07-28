@@ -15,6 +15,7 @@ import {
 } from "./group-members";
 import { buildRouteList, getRouteChoice, getSagaRoutes } from "./get-saga-routes";
 import type { OrderMembership, OrderSaga } from "./curated-order";
+import { entryKeyOf } from "./place-by-window";
 import { countedKeys, type ProgressMembership, type ProgressSaga } from "./progress";
 import type {
   DetailMember,
@@ -186,16 +187,10 @@ export function resolveWindows(
   rows: RawWindowRow[],
   anchorTitles: Map<string, string>,
 ): Record<string, ResolvedWindow> {
-  const keyOf = (
-    itemType: ItemType | null,
-    itemId: string | null,
-    childSagaId: string | null,
-  ): string | null =>
-    itemId !== null && itemType !== null
-      ? `i:${itemType}:${itemId}`
-      : childSagaId !== null
-        ? `s:${childSagaId}`
-        : null;
+  // La clave la construye `entryKeyOf` (place-by-window.ts), compartida con el
+  // ORDEN: las dos resoluciones tienen que producir la MISMA clave o el orden y
+  // la ficha estarían hablando de sujetos distintos sin que nada lo delate.
+  const keyOf = entryKeyOf;
 
   const resolveTitle = (
     itemType: ItemType | null,
@@ -643,6 +638,8 @@ export async function getSagaDetail(
     itemType: r.item_type,
     itemId: r.item_id,
     position: r.position,
+    // Lo consume la guarda «solo lo `libre` tiene ventana» de createCuratedOrder.
+    placement: r.placement,
   }));
   // Insumos de countedKeys (el DENOMINADOR, ./progress.ts), construidos con los
   // mismos datos ya en memoria que orderSagas/orderMemberships (sin viaje
