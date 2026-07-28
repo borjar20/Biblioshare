@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { averageSagaRating, computeProgress, groupMembers, partitionGroups } from "./group-members";
+import {
+  averageSagaRating,
+  computeProgress,
+  groupMembers,
+  orderBlocksForLayout,
+  partitionGroups,
+} from "./group-members";
 import type { MemberGroup } from "./group-members";
-import type { DetailMember, SagaChildRef } from "./types";
+import type { DetailMember, ResolvedWindow, SagaChildRef, SagaPlacement } from "./types";
 
 const member = (over: Partial<DetailMember>): DetailMember => ({
   itemType: "book",
@@ -257,6 +263,121 @@ describe("averageSagaRating", () => {
 
   it("null si no hay notas", () => {
     expect(averageSagaRating([])).toBeNull();
+  });
+});
+
+describe("orderBlocksForLayout", () => {
+  // Helpers locales: un bloque con un `sagaId` legible (`saga-<nombre>`) para
+  // poder escribir su clave de ventana (`s:saga-<nombre>`) sin inventar uuids.
+  const bloque = (name: string, placement: SagaPlacement | null, works: string[]): MemberGroup => {
+    const sagaId = `saga-${name}`;
+    return {
+      sagaId,
+      name,
+      accent: "beige",
+      members: works.map((id) => member({ itemId: id, title: id, groupSagaId: sagaId, position: 1 })),
+      positionInParent: placement === "libre" ? null : 1,
+      placementInParent: placement,
+    };
+  };
+
+  const ventana = (after: string | null, before: string | null): ResolvedWindow => ({
+    afterKey: after,
+    afterTitle: after,
+    beforeKey: before,
+    beforeTitle: before,
+    reason: null,
+  });
+
+  const nombres = (list: MemberGroup[]) => list.map((g) => g.name);
+
+  it("un libre anclado DESPUÉS de una obra se coloca detrás del bloque de esa obra", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const dos = bloque("Dos", "fijo", ["b"]);
+    const libre = bloque("Libre", "libre", ["l"]);
+    const orden = orderBlocksForLayout([uno, dos], [libre], {
+      "s:saga-Libre": ventana("i:book:a", null),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "Libre", "Dos"]);
+  });
+
+  it("un libre anclado ANTES de un bloque se coloca delante de ese bloque", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const dos = bloque("Dos", "fijo", ["b"]);
+    const libre = bloque("Libre", "libre", ["l"]);
+    const orden = orderBlocksForLayout([uno, dos], [libre], {
+      "s:saga-Libre": ventana(null, "s:saga-Dos"),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "Libre", "Dos"]);
+  });
+
+  it("`after` manda sobre `before` cuando la ventana trae los dos", () => {
+    // Misma preferencia que la ficha: «a partir de» sitúa, «antes de» solo acota.
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const dos = bloque("Dos", "fijo", ["b"]);
+    const libre = bloque("Libre", "libre", ["l"]);
+    const orden = orderBlocksForLayout([uno, dos], [libre], {
+      "s:saga-Libre": ventana("s:saga-Dos", "s:saga-Uno"),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "Dos", "Libre"]);
+  });
+
+  it("un libre anclado a OTRO libre espera a que el primero esté colocado", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const primero = bloque("Primero", "libre", ["p"]);
+    const segundo = bloque("Segundo", "libre", ["s"]);
+    // `segundo` se procesa ANTES que `primero` a propósito: su ancla todavía no
+    // está en la lista, así que solo puede colocarse en una pasada posterior.
+    const orden = orderBlocksForLayout([uno], [segundo, primero], {
+      "s:saga-Primero": ventana("i:book:a", null),
+      "s:saga-Segundo": ventana("s:saga-Primero", null),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "Primero", "Segundo"]);
+  });
+
+  it("dos libres con la MISMA ancla y el mismo lado conservan su orden relativo", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const p = bloque("P", "libre", ["p"]);
+    const q = bloque("Q", "libre", ["q"]);
+    const orden = orderBlocksForLayout([uno], [p, q], {
+      "s:saga-P": ventana("i:book:a", null),
+      "s:saga-Q": ventana("i:book:a", null),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "P", "Q"]);
+  });
+
+  it("un libre sin ventana se queda al final, como hoy", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const libre = bloque("Libre", "libre", ["l"]);
+    expect(nombres(orderBlocksForLayout([uno], [libre], {}))).toEqual(["Uno", "Libre"]);
+  });
+
+  it("un ancla rota no coloca el bloque ni rompe a los demás", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const roto = bloque("Roto", "libre", ["r"]);
+    const bueno = bloque("Bueno", "libre", ["g"]);
+    const orden = orderBlocksForLayout([uno], [roto, bueno], {
+      "s:saga-Roto": ventana("i:book:no-existe", null),
+      "s:saga-Bueno": ventana("i:book:a", null),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "Bueno", "Roto"]);
+  });
+
+  it("un ciclo de libres anclados entre sí no cuelga: los dos al final", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const x = bloque("X", "libre", ["x"]);
+    const y = bloque("Y", "libre", ["y"]);
+    const orden = orderBlocksForLayout([uno], [x, y], {
+      "s:saga-X": ventana("s:saga-Y", null),
+      "s:saga-Y": ventana("s:saga-X", null),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "X", "Y"]);
+  });
+
+  it("sin bloques libres devuelve la zona ordenada intacta", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const dos = bloque("Dos", "fijo", ["b"]);
+    expect(nombres(orderBlocksForLayout([uno, dos], [], {}))).toEqual(["Uno", "Dos"]);
   });
 });
 

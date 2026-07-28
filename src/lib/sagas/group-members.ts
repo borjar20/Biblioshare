@@ -5,7 +5,7 @@ import {
   type SagaAccentToken,
 } from "./accents";
 import { isMemberCompleted } from "./completion";
-import type { DetailMember, SagaChildRef, SagaPlacement } from "./types";
+import type { DetailMember, ResolvedWindow, SagaChildRef, SagaPlacement } from "./types";
 
 // Agrupación de la pestaña Info y progreso del hero (spec §2.1/§2.3, frames
 // A/D). Todo puro: los datos llegan resueltos de get-saga-detail.
@@ -180,6 +180,84 @@ export function partitionGroups(groups: MemberGroup[]): {
     ordered: groups.filter((g) => g.placementInParent !== "libre"),
     free: groups.filter((g) => g.placementInParent === "libre"),
   };
+}
+
+/**
+ * Orden de PINTADO de los bloques del mapa 2D, que ya no es
+ * `[...ordered, ...free]`: un bloque `libre` con ventana sube y se coloca junto
+ * a su ancla, intercalado entre los colocados.
+ *
+ * Existe para reducir cruces de aristas. Un bloque libre anclado a la fila 2
+ * dibujado en la fila 9 obliga a su arista de ventana a cruzar todo el lienzo,
+ * y esas aristas —no las de cadena— son las que hacen el nudo.
+ *
+ * NO reordena la zona ordenada: ese orden es curación del usuario. Y NO toca
+ * `orderNo`: quien pinta y quien cuenta el orden de lectura son dos cosas
+ * distintas desde que `deriveSagaMap` calcula los `orderNo` en una pre-pasada
+ * aparte (ver el comentario de `orderNoDeCadaObra` en derive-map.ts).
+ */
+export function orderBlocksForLayout(
+  ordered: MemberGroup[],
+  free: MemberGroup[],
+  windows: Record<string, ResolvedWindow>,
+): MemberGroup[] {
+  // Qué bloque contiene cada clave de entrada. Las dos formas que puede tomar
+  // un ancla: `s:<sagaId>` (el bloque entero) e `i:<tipo>:<uuid>` (una obra, que
+  // resuelve al bloque que la tiene). Las mismas claves que usan el editor de
+  // secuencia y `deriveSagaMap`.
+  const bloqueDeClave = new Map<string, MemberGroup>();
+  for (const g of [...ordered, ...free]) {
+    if (g.sagaId !== null) bloqueDeClave.set(`s:${g.sagaId}`, g);
+    for (const m of g.members) bloqueDeClave.set(`i:${m.itemType}:${m.itemId}`, g);
+  }
+
+  const resultado = [...ordered];
+  // Cuántos libres se han insertado ya DETRÁS de cada ancla. Sin esto, dos
+  // libres con la misma ancla salen en orden inverso: los dos calculan el mismo
+  // índice de inserción y el segundo se cuela delante del primero.
+  const detrasDe = new Map<MemberGroup, number>();
+  let pendientes = [...free];
+
+  // Pasadas mientras haya progreso: un libre anclado a otro libre solo se puede
+  // colocar cuando el otro ya está en `resultado`. La primera pasada sin
+  // progreso corta el bucle, y es también lo que impide que un ciclo cuelgue.
+  for (;;) {
+    const atascados: MemberGroup[] = [];
+    let huboCambios = false;
+
+    for (const g of pendientes) {
+      const w = g.sagaId === null ? undefined : windows[`s:${g.sagaId}`];
+      // `after` manda sobre `before`: «a partir de X» sitúa el bloque, mientras
+      // que «antes de Y» solo pone un techo.
+      const lado = w?.afterKey != null ? "after" : w?.beforeKey != null ? "before" : null;
+      const clave = lado === "after" ? w!.afterKey! : lado === "before" ? w!.beforeKey! : null;
+      const ancla = clave === null ? undefined : bloqueDeClave.get(clave);
+      // -1 cubre tres casos de una vez, y a propósito: sin ventana, ancla rota
+      // (apunta a algo que no está en el mapa) y ancla que todavía no se ha
+      // colocado —incluido el bloque anclado a sí mismo—.
+      const donde = ancla === undefined ? -1 : resultado.indexOf(ancla);
+      if (donde === -1) {
+        atascados.push(g);
+        continue;
+      }
+
+      if (lado === "after") {
+        const ya = detrasDe.get(ancla!) ?? 0;
+        resultado.splice(donde + 1 + ya, 0, g);
+        detrasDe.set(ancla!, ya + 1);
+      } else {
+        // `before` no necesita contador: insertar en el índice del ancla empuja
+        // el ancla hacia abajo, así que el siguiente cae detrás del anterior y
+        // el orden relativo se conserva solo.
+        resultado.splice(donde, 0, g);
+      }
+      huboCambios = true;
+    }
+
+    if (!huboCambios) return [...resultado, ...atascados];
+    if (atascados.length === 0) return resultado;
+    pendientes = atascados;
+  }
 }
 
 // Avance del hero (spec §1.5). El parámetro se llama `counted`: desde el
