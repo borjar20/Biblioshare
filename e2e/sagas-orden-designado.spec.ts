@@ -111,43 +111,54 @@ function routeChips(page: Page) {
   return page.locator('a[href*="ruta="]:visible');
 }
 
-const NINGUNO = "Ninguno — que la ficha use el mapa generado";
-
-/** La chapa «ORDEN DE LECTURA» de la fila del itinerario en `/rutas`. Solo la
- *  pinta `RouteList` para la fila designada, y su dato viene del SERVIDOR, así
- *  que aparecer/desaparecer es la única señal que no puede ser cierta sin que
- *  la escritura haya llegado a BD. Escopada a la fila para no chocar con el
- *  texto del propio selector, que también dice «orden de lectura». */
-function badge(page: Page) {
-  return page.locator("li").filter({ hasText: ROUTE_NAME }).getByText("Orden de lectura");
+/** La fila de gestión de un itinerario, en la cáscara VISIBLE. La pantalla
+ *  monta las dos cáscaras a la vez, así que sin `:visible` cada fila aparece
+ *  dos veces y el locator es ambiguo. */
+function row(page: Page, name: string) {
+  return page.locator("li:visible").filter({ hasText: name });
 }
 
-async function designar(page: Page, option: string) {
+/** La fila sintética del mapa generado: es el antiguo radio «Ninguno». */
+const MAPA_GENERADO = "Mapa generado";
+
+/** La chapa «ORDEN DE LECTURA» de la fila del itinerario en `/rutas`. Solo la
+ *  pinta la fila designada, y su dato viene del SERVIDOR, así que
+ *  aparecer/desaparecer es la única señal que no puede ser cierta sin que la
+ *  escritura haya llegado a BD.
+ *
+ *  `exact: true` NO es cosmético: `getByText` con una cadena casa por
+ *  SUBCADENA y sin distinguir mayúsculas, así que «Orden de lectura» a secas
+ *  casaba también con el botón «Usar como orden de lectura» que ahora vive
+ *  dentro de la misma fila — la chapa no desaparecía nunca al desdesignar y el
+ *  test daba un falso rojo (y el de designar, un verde por el motivo
+ *  equivocado). El rediseño metió ese texto dentro del `<li>`; antes vivía en
+ *  el selector de radios, fuera. */
+function badge(page: Page) {
+  return row(page, ROUTE_NAME).getByText("Orden de lectura", { exact: true });
+}
+
+async function designar(page: Page, target: string) {
   await page.goto(`/saga/${UNIVERSO_ID}/rutas`);
-  const guardar = page.getByRole("button", { name: "Guardar elección" });
-  const radio = page.getByRole("radio", { name: option });
+  const boton = row(page, target).getByRole("button", { name: "Usar como orden de lectura" });
 
   // IDEMPOTENTE a propósito: los dos tests comparten la fila sembrada en
   // `beforeAll` y el primero deja el itinerario designado, así que el segundo
-  // puede llegar aquí con la opción YA marcada. En ese caso `check()` es un
-  // no-op, el botón sigue deshabilitado (`chosen === current`) y esperar a que
-  // se habilite colgaba el test — que es exactamente de dónde venía la
-  // intermitencia. Si ya estamos donde queremos, no hay nada que guardar.
-  if (!(await radio.isChecked())) {
-    await radio.check();
-    // Esperar a que el botón se HABILITE antes de pulsar: es la señal de que el
-    // cambio llegó al estado de React y no solo al DOM (un `check()` que caiga
-    // antes de la hidratación se pierde al hidratar).
-    await expect(guardar).toBeEnabled();
-    await guardar.click();
+  // puede llegar aquí con el objetivo YA designado. En ese caso ese botón no
+  // existe —la fila designada pinta «Es el orden de lectura», deshabilitado—,
+  // y no hay nada que pulsar.
+  if ((await boton.count()) > 0) {
+    // Esperar a que se HABILITE antes de pulsar: es la señal de que el
+    // componente está hidratado. Un clic anterior a la hidratación se pierde.
+    await expect(boton).toBeEnabled();
+    await boton.click();
   }
-  // Esperar a que el botón se deshabilite NO sirve: también lo está mientras la
-  // transición está en vuelo y cuando el guardado falla y `chosen` vuelve a
-  // `current` — la espera pasaba antes de tiempo y el test salía intermitente.
-  // Y recargar tampoco: `revalidateSagaPage` no invalida esta pantalla, así que
-  // la recarga puede servir caché. Se espera a la chapa, que es lo que trae el
-  // `router.refresh()` del propio componente cuando el guardado ha ido bien.
-  if (option === NINGUNO) await expect(badge(page)).toHaveCount(0);
+
+  // La designación se aplica al pulsar y la confirma el `router.refresh()` del
+  // manager. Se espera a la chapa, no al botón: el botón también está
+  // deshabilitado mientras la transición está en vuelo. Y recargar no sirve:
+  // `revalidateSagaPage` no invalida esta pantalla, así que la recarga puede
+  // servir caché.
+  if (target === MAPA_GENERADO) await expect(badge(page)).toHaveCount(0);
   else await expect(badge(page)).toBeVisible();
 }
 
@@ -184,7 +195,7 @@ test("designar un itinerario le da el puesto y la etiqueta de «Orden de lectura
 test("desdesignar devuelve la ruta sintética y el nombre propio del itinerario", async ({ page }) => {
   await loginAsDevtest(page);
   await designar(page, ROUTE_NAME);
-  await designar(page, NINGUNO);
+  await designar(page, MAPA_GENERADO);
 
   await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
   const chips = routeChips(page);
