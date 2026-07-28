@@ -12,6 +12,9 @@ import { normalizeTags } from "./tags";
 
 export type AddNoteState = {
   error?: "empty" | "generic";
+  /** Id de la nota recién creada. Lo usa SessionNotebook para enlazarla a la
+   *  sesión al guardar (session_id se pone después, no aquí). */
+  id?: string;
 };
 
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
@@ -73,26 +76,30 @@ export async function addNote(
     }
   }
 
-  const { error } = await supabase.from("notes").insert({
-    user_id: user.id,
-    item_type: itemType,
-    item_id: itemId,
-    pass_id: pass?.id ?? null,
-    session_id: null,
-    kind,
-    body,
-    position,
-    is_favorite: isFavorite,
-    is_spoiler: isSpoiler,
-    is_public: isPublic,
-    meta: { tags },
-  });
+  const { data, error } = await supabase
+    .from("notes")
+    .insert({
+      user_id: user.id,
+      item_type: itemType,
+      item_id: itemId,
+      pass_id: pass?.id ?? null,
+      session_id: null,
+      kind,
+      body,
+      position,
+      is_favorite: isFavorite,
+      is_spoiler: isSpoiler,
+      is_public: isPublic,
+      meta: { tags },
+    })
+    .select("id")
+    .single();
 
-  if (error) return { error: "generic" };
+  if (error || !data) return { error: "generic" };
 
   revalidateItemPage(itemType, itemId);
   revalidateProfilePages();
-  return {};
+  return { id: data.id };
 }
 
 // Marca / desmarca una nota como favorita (RLS acota al dueño). itemType/
