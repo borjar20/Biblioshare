@@ -3,7 +3,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-07-27",
+    "generatedAt": "2026-07-28",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab)",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -169,9 +169,12 @@
       "summary": "Feed, reacciones, comentarios, botón de seguir y campana de notificaciones. Usa optimistic UI reconciliada con el servidor.",
       "files": ["src/components/social", "src/lib/reactivity/use-optimistic-action.ts"] },
     { "id": "c-saga", "label": "components/saga", "layer": "ui", "kind": "ui",
-      "summary": "Vista 2D del mapa (React Flow / @xyflow), timeline móvil, editor de secuencia y de itinerarios.",
-      "files": ["src/components/saga/graph", "src/components/saga/editor", "src/components/saga/sequence"],
-      "gotchas": ["El mapa consume coordenadas en PÍXELES tal cual (position de React Flow); devolver índices apila todos los nodos."] },
+      "summary": "Vista 2D del mapa (React Flow / @xyflow), el componente ÚNICO de orden de lectura (timeline con cuatro formas de fila), editor de secuencia y de itinerarios.",
+      "files": ["src/components/saga/graph", "src/components/saga/timeline", "src/components/saga/editor", "src/components/saga/sequence"],
+      "gotchas": [
+        "El mapa consume coordenadas en PÍXELES tal cual (position de React Flow); devolver índices apila todos los nodos.",
+        "El timeline se monta en CUATRO sitios con el mismo componente (móvil «lectura», móvil itinerario dentro de RouteView, y al pie del grafo en PC en las dos). Dos componentes se desincronizarían: si tocas una fila, la tocas para los cuatro."
+      ] },
     { "id": "c-clubs", "label": "components/clubs", "layer": "ui", "kind": "ui",
       "summary": "Muro, calendario, checkpoints y las UI de los 5 tipos de actividad (tierlist, retos, evento…).",
       "files": ["src/components/clubs"] },
@@ -708,7 +711,8 @@
         { "node": "m-sagas", "action": "groupMembers ordena grupos y miembros de forma determinista", "file": "src/lib/sagas/group-members.ts" },
         { "node": "m-sagas", "action": "deriveSagaMap produce el SagaGraph puro, en píxeles", "file": "src/lib/sagas/derive-map.ts" },
         { "node": "m-passes", "action": "El avance de la saga se calcula desde passes (nunca desde library_entries — eso fue el bug del 0%)", "file": "src/lib/sagas/progress.ts" },
-        { "node": "c-saga", "action": "La vista 2D (@xyflow/react), el timeline móvil y el mini-preview del CTA consumen el mismo SagaGraph", "file": "src/components/saga/graph" }
+        { "node": "m-sagas", "action": "deriveTimeline convierte el SagaGraph en filas: columna por curación (spine 'curation') o por los pasos del itinerario activo (spine 'route'), con las formas entry / tandem / window / bridge", "file": "src/lib/sagas/derive-timeline.ts" },
+        { "node": "c-saga", "action": "La vista 2D (@xyflow/react) y el mini-preview del CTA consumen el SagaGraph; el timeline consume las filas derivadas, con el MISMO componente en móvil y al pie del grafo en PC", "file": "src/components/saga/timeline" }
       ]
     },
     {

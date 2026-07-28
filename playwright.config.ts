@@ -16,6 +16,12 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Issue #215: la semilla QA de sagas se corrompía entre specs y ENTRE
+  // SESIONES (un spec que muere a mitad deja su `finally` sin correr, y el
+  // siguiente lee esa suciedad como su estado de partida y la restaura). Esto
+  // reimpone la línea base antes de la suite. No sustituye a la limpieza de
+  // cada spec: la hace componible.
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   reporter: "list",

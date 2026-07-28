@@ -4,10 +4,15 @@ import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineSection } from "@/lib/sagas/derive-timeline";
 import { RoleChip } from "./role-chip";
+import { TimelineEntryRow } from "./timeline/timeline-entry-row";
+import { buildTimelineLabels } from "./timeline/timeline-labels";
+import { TimelineTandemRow } from "./timeline/timeline-tandem-row";
+import { TimelineWindowRow } from "./timeline/timeline-window-row";
 
-// Timeline vertical ramificado (frame B): raíl coloreado por subsaga, tarjetas
-// por nodo de la columna, ramas para los nodos sin orderNo y tarjeta-puente
-// para los nodos-ítem sin subsaga conectados a la columna.
+// Componente ÚNICO de orden de lectura (spec 2026-07-28): las mismas cuatro
+// formas de fila en móvil y al pie del grafo de PC. Dos componentes se
+// desincronizarían — todo lo que cuesta (el render de los cuatro estados) es
+// común.
 //
 // Ojo con el vocabulario: este comentario decía "opcionales" y "nexos", las dos
 // palabras que la issue #167 derogó precisamente porque se derivaban de
@@ -18,10 +23,15 @@ import { RoleChip } from "./role-chip";
 // dice el rol curado, vía RoleChip.
 export async function ReadingTimeline({ sections }: { sections: TimelineSection[] }) {
   const t = await getTranslations("saga");
+  const labels = buildTimelineLabels(t);
+
   return (
-    <div>
-      {sections.map((section, si) =>
-        section.rows[0]?.kind === "bridge" ? (
+    <div data-testid="reading-timeline">
+      {sections.map((section, si) => {
+        // Sin cabecera de sección (modo `route`: una sola sección sin nombre),
+        // la subsaga baja a etiqueta de fila.
+        const showGroupLabel = section.groupName === null;
+        return section.rows[0]?.kind === "bridge" ? (
           <div
             key={`bridge-${section.rows[0].node.id}`}
             className="my-3.5 flex items-center gap-3 rounded-xl border border-border bg-gradient-to-r from-spine/20 to-surface px-3.5 py-3"
@@ -54,90 +64,31 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
               </div>
             )}
             <div>
-              {section.rows.map((row) =>
-                row.kind !== "entry" ? null : (
-                  <div key={row.node.id}>
-                    <div className="relative flex gap-3 py-2">
-                      <div className="relative flex w-6 shrink-0 justify-center">
-                        <span className={`absolute -bottom-2 -top-2 w-[2.5px] ${SAGA_ACCENT[section.accent].bg}`} />
-                        <span
-                          className={`z-10 mt-6 h-[15px] w-[15px] rounded-full ring-4 ring-background ${
-                            row.node.status === "in_progress"
-                              ? "border-4 border-accent bg-surface"
-                              : row.node.status === "completed"
-                                ? SAGA_ACCENT[section.accent].bg
-                                : `border-[2.5px] border-dashed bg-surface ${SAGA_ACCENT[section.accent].border}`
-                          }`}
-                        />
-                      </div>
-                      <Link
-                        href={row.node.href}
-                        className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border bg-surface px-3 py-2 ${
-                          row.node.status === "in_progress" ? "border-accent/50 shadow-md" : "border-border"
-                        } ${row.node.status === null ? "opacity-60" : ""}`}
-                      >
-                        <span className="relative h-[66px] w-[44px] shrink-0 overflow-hidden rounded shadow">
-                          {row.node.coverUrl && (
-                            <Image src={row.node.coverUrl} alt="" fill sizes="44px" className="object-cover" />
-                          )}
-                          {row.node.status === "completed" && (
-                            <span className="absolute bottom-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white">✓</span>
-                          )}
-                          {row.node.status === "in_progress" && (
-                            <span className="absolute inset-0 grid place-items-center bg-foreground/40 text-sm text-white">◉</span>
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          {row.node.orderNo !== null && (
-                            <span className="block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
-                              {t("orderNo", { n: row.node.orderNo })}
-                            </span>
-                          )}
-                          <span className="block truncate font-serif text-[14.5px] font-semibold leading-tight">
-                            {row.node.label}
-                          </span>
-                        </span>
-                        <span className="text-base text-muted-foreground">›</span>
-                      </Link>
-                    </div>
-                    {row.branches.map((b) => (
-                      <div key={b.node.id} className="relative ml-10 py-1.5 pl-6">
-                        <span className={`absolute -top-2 left-0 h-10 w-4 rounded-bl-lg border-b-[2.5px] border-l-[2.5px] border-dashed ${SAGA_ACCENT[section.accent].border}`} />
-                        <Link
-                          href={b.node.href}
-                          className="flex items-center gap-2.5 rounded-xl border border-dashed border-border bg-surface px-3 py-2"
-                        >
-                          <span className="relative h-[57px] w-[38px] shrink-0 overflow-hidden rounded">
-                            {b.node.coverUrl && (
-                              <Image src={b.node.coverUrl} alt="" fill sizes="38px" className="object-cover" />
-                            )}
-                          </span>
-                          <span className="min-w-0">
-                            {/* Issue #167: "requisito" se mantiene porque es un
-                                dato REAL y curado (la arista dice "léelo antes").
-                                "Spin-off · opcional" se derogó: se pintaba para
-                                cualquier arista no-requisito, incluidas las
-                                `principal`, así que llamaba spin-off a lo que no
-                                lo era. Ahora, o hay rol curado, o no se dice nada. */}
-                            {b.edgeType === "requisito" ? (
-                              <span className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold">
-                                {t("branchRequisite")}
-                              </span>
-                            ) : (
-                              <RoleChip role={b.node.role} />
-                            )}
-                            <span className="mt-1 block truncate text-[13px] font-semibold">{b.node.label}</span>
-                          </span>
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                ),
-              )}
+              {section.rows.map((row) => {
+                if (row.kind === "entry") {
+                  return (
+                    <TimelineEntryRow key={row.node.id} row={row} labels={labels} showGroupLabel={showGroupLabel} />
+                  );
+                }
+                if (row.kind === "tandem") {
+                  return (
+                    <TimelineTandemRow
+                      key={`tandem-${row.nodes.map((n) => n.id).join("|")}`}
+                      row={row}
+                      labels={labels}
+                      showGroupLabel={showGroupLabel}
+                    />
+                  );
+                }
+                if (row.kind === "window") {
+                  return <TimelineWindowRow key={`window-${row.node.id}`} row={row} labels={labels} />;
+                }
+                return null;
+              })}
             </div>
           </section>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }

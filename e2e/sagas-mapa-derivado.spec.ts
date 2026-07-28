@@ -341,14 +341,15 @@ test("el generador crea un itinerario recorrible a partir de la curación", asyn
 // el mismo bloque.
 //
 // El timeline móvil (`reading-timeline.tsx`) no tiene ese problema: es HTML
-// de servidor, sin geometría de lienzo. Con Isabel dentro de un bloque (Era
-// Uno) conectada a la columna, `deriveTimeline` la cuelga como RAMA de la
-// fila de Rayuela (el nodo-columna más temprano con el que tiene arista) con
-// el chip «Requisito» — visible solo si `edgeType === "requisito"`
-// (reading-timeline.tsx), nunca para una rama sin arista o `opcional`. Que
-// aparezca ese chip, sobre el enlace exacto (`href`) del libro de Isabel, es
-// tan preciso como el testid del grafo — prueba la arista `requisito`, no
-// solo que Isabel aparezca — y no depende de coordenadas de lienzo.
+// de servidor, sin geometría de lienzo.
+//
+// Actualizado en la fase 1 del timeline con estados (2026-07-28): antes esto
+// se comprobaba por el chip «Requisito» de la RAMA, porque un sujeto `libre`
+// no tenía `orderNo` y acababa colgando de su conexión más temprana. Ahora ese
+// sujeto es una fila `window` colocada junto a su ancla, y la fila NOMBRA el
+// ancla («después de Rayuela»). La prueba es más fuerte, no más débil: el chip
+// solo decía «hay una arista requisito»; el texto dice ADEMÁS con quién, que
+// es justo lo que la arista de ventana codifica.
 // ─────────────────────────────────────────────────────────────────────────
 test("una entrada libre con ventana produce la arista que cruza en el mapa", async ({ page }) => {
   const isabelBefore = await fetchIsabel();
@@ -365,24 +366,23 @@ test("una entrada libre con ventana produce la arista que cruza en el mapa", asy
     // restaura al valor real leído, no a `true` a ciegas.
     await patchShowMap(SAGAS_V2_UNIVERSO_ID, true);
 
-    // El timeline con ramas solo se monta en el bloque `lg:hidden`
-    // (saga-map-tab.tsx): viewport móvil, mismo que ya usaba
-    // sagas-v2-mapa.spec.ts para esta misma pieza.
+    // Viewport móvil, mismo que ya usaba sagas-v2-mapa.spec.ts para esta misma
+    // pieza. Desde la fase 1 el timeline se monta también al pie del grafo en
+    // PC, así que las dos cáscaras están en el DOM y hay que escopar a la
+    // VISIBLE (regla de los dos árboles) o el locator encuentra el doble.
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
     await page.goto(`/saga/${SAGAS_V2_UNIVERSO_ID}?tab=mapa&ruta=lectura`);
 
-    // El enlace a la ficha de Isabel (href estable, de itemHref) tiene que
-    // contener el chip "Requisito" — no basta con que Isabel aparezca en el
-    // timeline (issue #167: TODO nodo sin orderNo aparece también, sin
-    // ventana, en la sección "Como lista lineal" del final — de ahí
-    // `.filter({ hasText: "Requisito" })`: sin él, este locator resuelve a
-    // los DOS enlaces en modo estricto y el test falla por ambigüedad, no
-    // por lo que dice cubrir).
-    const isabelBranch = page
-      .locator(`a[href="/libro/${ISABEL_ID}"]`)
-      .filter({ hasText: "Requisito" });
-    await expect(isabelBranch).toBeVisible();
+    // La fila de ventana que contiene el enlace a la ficha de Isabel (href
+    // estable, de itemHref), y que además nombra el ancla. Que diga «Rayuela»
+    // es lo que prueba la arista: sale de `resolveEntry` en derive-map.ts, la
+    // MISMA resolución que dibuja la arista del grafo.
+    const isabelWindow = page
+      .locator('[data-testid="timeline-window"]:visible')
+      .filter({ has: page.locator(`a[href="/libro/${ISABEL_ID}"]`) });
+    await expect(isabelWindow).toBeVisible();
+    await expect(isabelWindow).toContainText("después de Rayuela");
   } finally {
     await patchIsabel(isabelBefore);
     await deleteIsabelWindow();
