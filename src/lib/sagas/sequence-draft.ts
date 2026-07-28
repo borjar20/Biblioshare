@@ -1,5 +1,5 @@
 import type { ItemType } from "@/lib/catalog/types";
-import type { SagaItemRole, SagaPlacement, TandemMode } from "./types";
+import type { SagaItemRole, SagaPlacement, TandemMode, WindowReason } from "./types";
 
 /** Las tres zonas de la pantalla. La zona ES la colocación (spec §«Tres zonas»):
  *  no hay desplegable de `placement`, se deriva de dónde vive la fila. */
@@ -17,7 +17,20 @@ export type DraftAnchor = {
 
 /** Como máximo dos anclas, y al menos una: una ventana sin ninguna no existe
  *  (lo impone también un CHECK). `null` en las dos = no hay ventana. */
-export type DraftWindow = { after: DraftAnchor | null; before: DraftAnchor | null };
+export type DraftWindow = {
+  after: DraftAnchor | null;
+  before: DraftAnchor | null;
+  /** Por qué existe el tramo (fase 3). `null` = el curador no lo declaró.
+   *  Muere CON la ventana: `clearAnchor` la devuelve entera a `null` al quitar
+   *  la última ancla, así que un motivo sin tramo del que hablar no puede
+   *  sobrevivir a la operación que lo dejaría huérfano. */
+  reason: WindowReason | null;
+};
+
+/** Una ventana recién nacida: sin anclas y sin motivo. Existe para que los
+ *  sitios que construían `{ after: null, before: null }` a mano no se olviden
+ *  de un campo la próxima vez que la forma crezca. */
+const EMPTY_WINDOW: DraftWindow = { after: null, before: null, reason: null };
 
 /** Clave de una ancla en el MISMO formato que `DraftEntry.key`
  *  (`i:<tipo>:<uuid>` / `s:<uuid>`), para poder comparar una ancla contra el
@@ -157,6 +170,10 @@ export type SequencePayload = {
     before_item_type: ItemType | null;
     before_item_id: string | null;
     before_child_saga_id: string | null;
+    /** Motivo declarado del tramo (fase 3), o null. Viaja como una clave MÁS
+     *  dentro de `p_windows`, que ya era jsonb: por eso el RPC no necesitó un
+     *  octavo argumento y esta fase se ahorró el baile de la sobrecarga. */
+    motivo: WindowReason | null;
   }>;
   /** Sujetos de los que ESTA pantalla se hace responsable. El RPC borra
    *  exactamente estos y reinserta `windows`.
@@ -322,14 +339,14 @@ export function setAnchor(
       ...d,
       nested: d.nested.map((n) =>
         n.key === key
-          ? { ...n, window: { ...(n.window ?? { after: null, before: null }), [side]: anchor } }
+          ? { ...n, window: { ...(n.window ?? EMPTY_WINDOW), [side]: anchor } }
           : n,
       ),
     };
   }
   if (!d.free.some((e) => e.key === key)) return d;
   return mapEntry(d, key, (e) => {
-    const base = e.window ?? { after: null, before: null };
+    const base = e.window ?? EMPTY_WINDOW;
     return { ...e, window: { ...base, [side]: anchor } };
   });
 }
@@ -347,6 +364,28 @@ export function clearAnchor(d: SequenceDraft, key: string, side: "after" | "befo
     return { ...d, nested: d.nested.map((n) => (n.key === key ? { ...n, window: drop(n.window) } : n)) };
   }
   return mapEntry(d, key, (e) => ({ ...e, window: drop(e.window) }));
+}
+
+/** Declara por qué existe la ventana de un sujeto (fase 3). NO crea ventana:
+ *  sin ninguna ancla no hay tramo del que hablar, y la fila ni siquiera pasaría
+ *  el CHECK `saga_placement_windows_needs_anchor`. Un sujeto sin ventana es un
+ *  no-op silencioso, igual que `setTandemMeta` con un hueco de una sola obra:
+ *  la interfaz tampoco ofrece el control ahí.
+ *
+ *  Alcanza a la zona `free` y a los sujetos anidados, exactamente los mismos
+ *  dos sitios que `setAnchor`/`clearAnchor` — que son los únicos donde una
+ *  ventana puede existir. */
+export function setWindowReason(
+  d: SequenceDraft,
+  key: string,
+  reason: WindowReason | null,
+): SequenceDraft {
+  const put = (w: DraftWindow | null): DraftWindow | null => (w === null ? null : { ...w, reason });
+  if (d.nested.some((n) => n.key === key)) {
+    return { ...d, nested: d.nested.map((n) => (n.key === key ? { ...n, window: put(n.window) } : n)) };
+  }
+  if (!d.free.some((e) => e.key === key)) return d;
+  return mapEntry(d, key, (e) => ({ ...e, window: put(e.window) }));
 }
 
 /** Sujetos que ESTE borrador puede tener con ventana, y bajo qué saga vive su
@@ -453,6 +492,7 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
       before_item_type: before.itemType,
       before_item_id: before.itemId,
       before_child_saga_id: before.childSagaId,
+      motivo: w.reason,
     };
   };
 

@@ -229,6 +229,10 @@ export function resolveWindows(
       beforeTitle,
       afterKey: afterTitle === null ? null : keyOf(r.after_item_type, r.after_item_id, r.after_child_saga_id),
       beforeKey: beforeTitle === null ? null : keyOf(r.before_item_type, r.before_item_id, r.before_child_saga_id),
+      // El motivo NO se anula con un ancla rota: no apunta a nada que pueda
+      // desaparecer, así que sigue siendo cierto aunque el tramo pierda un
+      // extremo.
+      reason: r.motivo,
     };
   }
   return result;
@@ -532,7 +536,7 @@ export async function getSagaDetail(
     supabase
       .from("saga_placement_windows")
       .select(
-        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, motivo, created_at",
       )
       .in("saga_id", sagaIds),
     // Metadatos de los huecos en tándem (fase 2). Todo el subárbol, por el

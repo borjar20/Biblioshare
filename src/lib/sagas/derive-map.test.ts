@@ -112,7 +112,7 @@ describe("deriveSagaMap", () => {
     // `after` = requisito y entra; `before` = opcional y sale.
     const map = deriveSagaMap(
       groups([block("Uno", 1, [work("A", 1)]), freeBlock("Libre", [work("L", 1)])]),
-      { "s:saga-Libre": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      { "s:saga-Libre": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
       lookup(),
     );
     expect(map.edges).toContainEqual(
@@ -125,7 +125,7 @@ describe("deriveSagaMap", () => {
     // su ÚLTIMA obra. Un bloque no es un nodo, así que no hay a qué apuntar si no.
     const map = deriveSagaMap(
       groups([block("Era 1", 1, [work("A", 1), work("B", 2)]), freeBlock("Libre", [work("L", 1)])]),
-      { "s:saga-Libre": { afterKey: "s:saga-Era 1", afterTitle: "Era 1", beforeKey: null, beforeTitle: null } },
+      { "s:saga-Libre": { afterKey: "s:saga-Era 1", afterTitle: "Era 1", beforeKey: null, beforeTitle: null, reason: null } },
       lookup(),
     );
     expect(map.edges).toContainEqual(
@@ -146,7 +146,7 @@ describe("deriveSagaMap", () => {
       groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("Z", 1)])]),
       // "Z" es `fijo` (work() lo fija así): una fila rancia de ventana no
       // debería producir arista aunque tenga anclas que sí resuelven.
-      { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
       lookup(),
     );
     // Uno y Dos son dos bloques colocados CONSECUTIVOS: sí les toca una
@@ -159,7 +159,7 @@ describe("deriveSagaMap", () => {
     const map = deriveSagaMap(
       // block() fija placementInParent: "fijo" — un bloque colocado, no libre.
       groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("Z", 1)])]),
-      { "s:saga-Dos": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      { "s:saga-Dos": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
       lookup(),
     );
     // Igual que arriba: Uno→Dos sí tienen cadena, la ventana rancia no.
@@ -256,7 +256,7 @@ describe("deriveSagaMap", () => {
   it("una obra sin hueco CON ventana sí tiene su arista (a diferencia de la cadena)", () => {
     const map = deriveSagaMap(
       groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [looseWork("Z")])]),
-      { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null } },
+      { "i:book:Z": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
       lookup(),
     );
     expect(map.edges).toContainEqual(
@@ -267,7 +267,7 @@ describe("deriveSagaMap", () => {
   it("una ventana cuyo extremo no está en el mapa no pinta arista", () => {
     const map = deriveSagaMap(
       groups([freeBlock("Libre", [work("L", 1)])]),
-      { "s:saga-Libre": { afterKey: "i:book:fantasma", afterTitle: "F", beforeKey: null, beforeTitle: null } },
+      { "s:saga-Libre": { afterKey: "i:book:fantasma", afterTitle: "F", beforeKey: null, beforeTitle: null, reason: null } },
       lookup(),
     );
     expect(map.edges).toEqual([]);

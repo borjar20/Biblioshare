@@ -1,6 +1,6 @@
 import type { SagaAccentToken } from "./accents";
 import type { SagaGraph, SagaGraphNode } from "./map-types";
-import type { DetailMember } from "./types";
+import type { DetailMember, TandemMode, WindowReason } from "./types";
 
 // Derivación DETERMINISTA del timeline móvil (frame B, spec §2.4) a partir del
 // grafo. La columna son los nodos-ítem con orderNo agrupados por subsaga
@@ -18,23 +18,27 @@ import type { DetailMember } from "./types";
 
 export type TimelineSpine = "curation" | "route";
 
-/** Modo del tándem. Vive en `saga_tandems.modo` (fase 2): en la fase 1 es
- *  SIEMPRE null — el tándem se detecta por el empate de `position`, que ya
- *  existe, pero no hay dónde curar si es «a la vez» o «cualquier orden». */
-export type TandemMode = "simultaneo" | "indistinto";
+// Las dos uniones de vocabulario de la curación viven en `types.ts`, con
+// `SagaPlacement` y `SagaItemRole`. `TandemMode` estaba declarada AQUÍ además
+// de allí, idéntica: dos definiciones de la misma unión que nada obligaba a
+// mantener iguales. Se reexportan para no romper a quien las importa de este
+// módulo.
+export type { TandemMode, WindowReason };
 
-/** Motivo de una ventana. Vive en `saga_placement_windows.motivo` (fase 3):
- *  null en la fase 1, y nullable también en BD — las 4 ventanas de producción
- *  no lo tienen declarado y nadie lo decidió por ellas. */
-export type WindowReason = "spoiler" | "contexto";
-
-/** Mini-track de la ventana (fase 3). En la fase 1 es siempre null. */
+/** Mini-track de la ventana (fase 3): dónde cae el tramo sobre la columna
+ *  curada, y dónde está el lector dentro de él.
+ *
+ *  `youPct` y `notice` son null SIN SESIÓN, y el track NO: la ficha es pública,
+ *  así que el tramo se pinta igual — lo que desaparece es el marcador y el
+ *  aviso. Deducir «hay sesión» de los estados no vale: sin usuario,
+ *  `get-saga-detail` ni siquiera consulta los pases y todos los nodos llegan
+ *  con `status: null`, indistinguible de «no ha terminado nada». */
 export type TimelineTrack = {
   fromPct: number;
   toPct: number;
   /** Posición del lector; null sin sesión — la ficha es pública. */
   youPct: number | null;
-  notice: "antes" | "dentro" | "pasada";
+  notice: "antes" | "dentro" | "pasada" | null;
 };
 
 export type TimelineBranch = { node: SagaGraphNode; edgeType: "opcional" | "requisito" };

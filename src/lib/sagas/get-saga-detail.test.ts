@@ -11,6 +11,7 @@ const w = (fields: Partial<RawWindowRow>): RawWindowRow => ({
   item_type: null, item_id: null, child_saga_id: null,
   after_item_type: null, after_item_id: null, after_child_saga_id: null,
   before_item_type: null, before_item_id: null, before_child_saga_id: null,
+  motivo: null,
   created_at: "2026-01-01T00:00:00.000Z",
   ...fields,
 });
@@ -35,6 +36,7 @@ it("resuelve una ventana con las dos anclas: la frase entera", () => {
     beforeTitle: "Viento y Verdad",
     afterKey: "i:book:a",
     beforeKey: "i:book:b",
+    reason: null,
   });
 });
 
@@ -49,6 +51,7 @@ it("resuelve una ventana con una sola ancla («after»), apuntando a un bloque",
     beforeTitle: null,
     afterKey: "s:sub-1",
     beforeKey: null,
+    reason: null,
   });
 });
 
@@ -63,6 +66,7 @@ it("resuelve una ventana con una sola ancla («before»), sujeto bloque", () => 
     beforeTitle: "Viento y Verdad",
     afterKey: null,
     beforeKey: "i:book:b",
+    reason: null,
   });
 });
 
@@ -83,6 +87,7 @@ it("un ancla que ya no resuelve (fuera del subárbol cargado) queda a null: no s
     beforeTitle: "Viento y Verdad",
     afterKey: null,
     beforeKey: "i:book:b",
+    reason: null,
   });
 });
 
@@ -101,7 +106,7 @@ it("un ancla que resuelve trae clave y título; una rota, las dos a null", () =>
     new Map([["s:saga-1", "Era 1"]]),
   );
   expect(out["s:sujeto"]).toEqual({
-    afterTitle: "Era 1", afterKey: "s:saga-1", beforeTitle: null, beforeKey: null,
+    afterTitle: "Era 1", afterKey: "s:saga-1", beforeTitle: null, beforeKey: null, reason: null,
   });
 });
 
@@ -145,7 +150,7 @@ it("dos sagas hermanas con ventana sobre la misma obra: gana siempre la más ant
     after_item_type: "book", after_item_id: "b",
     created_at: "2026-02-01T00:00:00.000Z",
   });
-  const expected = { afterTitle: "Ancla vieja", beforeTitle: null, afterKey: "i:book:a", beforeKey: null };
+  const expected = { afterTitle: "Ancla vieja", beforeTitle: null, afterKey: "i:book:a", beforeKey: null, reason: null };
 
   expect(resolveWindows([older, newer], titles)["i:book:n2"]).toEqual(expected);
   // Mismas dos filas, orden invertido: el resultado tiene que ser idéntico —
@@ -190,6 +195,7 @@ const someWindow: ResolvedWindow = {
   beforeTitle: "Después",
   afterKey: "i:book:antes",
   beforeKey: "i:book:despues",
+  reason: null,
 };
 
 describe("freeItemWindow", () => {
@@ -293,4 +299,28 @@ describe("resolveSagaGraph", () => {
   it("interruptor apagado y grafo vacío: null por las dos razones a la vez, sigue siendo null", () => {
     expect(resolveSagaGraph(false, emptyGraph)).toBeNull();
   });
+});
+
+// ── Fase 3: el motivo de la ventana ──────────────────────────────────────────
+it("resolveWindows propaga el motivo", () => {
+  const windows = resolveWindows(
+    [w({ item_type: "book", item_id: "n2", after_item_type: "book", after_item_id: "a", motivo: "spoiler" })],
+    new Map([["i:book:a", "Nacidos Era 1"]]),
+  );
+  expect(windows["i:book:n2"].reason).toBe("spoiler");
+});
+
+it("un ancla rota no se lleva el motivo por delante", () => {
+  // El motivo no apunta a nada que pueda desaparecer: a diferencia de las
+  // anclas, no puede «romperse».
+  const windows = resolveWindows(
+    [w({
+      item_type: "book", item_id: "n2",
+      after_item_type: "book", after_item_id: "roto",
+      before_item_type: "book", before_item_id: "b",
+      motivo: "contexto",
+    })],
+    new Map([["i:book:b", "Viento y Verdad"]]),
+  );
+  expect(windows["i:book:n2"]).toMatchObject({ afterTitle: null, reason: "contexto" });
 });

@@ -382,7 +382,7 @@ describe("deriveTimeline · ventana", () => {
     ];
     const derived = deriveSagaMap(
       groups,
-      { "i:book:L": { afterTitle: "A", beforeTitle: null, afterKey: "i:book:A", beforeKey: null } },
+      { "i:book:L": { afterTitle: "A", beforeTitle: null, afterKey: "i:book:A", beforeKey: null, reason: null } },
       { groupAccent: new Map(), groupName: new Map() },
     );
     const tl = deriveTimeline(derived);

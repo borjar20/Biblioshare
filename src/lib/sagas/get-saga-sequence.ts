@@ -2,7 +2,7 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { DraftAnchor, DraftEntry, DraftSlot, DraftWindow, NestedSubject, SequenceDraft } from "./sequence-draft";
-import type { SagaItemRole, SagaPlacement, TandemMode } from "./types";
+import type { SagaItemRole, SagaPlacement, TandemMode, WindowReason } from "./types";
 import { getAnchorOptions } from "./get-anchor-options";
 import { buildWindowOwners, type OwnerRow } from "./window-owners";
 
@@ -62,7 +62,7 @@ export async function getSagaSequence(
     supabase
       .from("saga_placement_windows")
       .select(
-        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+        "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, motivo, created_at",
       )
       .eq("saga_id", sagaId),
     // Metadatos de los huecos en tándem (20260801_saga_tandems.sql). Solo los de
@@ -142,7 +142,7 @@ export async function getSagaSequence(
       const { data } = await supabase
         .from("saga_placement_windows")
         .select(
-          "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
+          "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, motivo, created_at",
         )
         .in("saga_id", children.map((c) => c.id));
       childWindows = (data ?? []) as RawWindowRow[];
@@ -337,6 +337,9 @@ export type RawWindowRow = {
   before_item_type: ItemType | null;
   before_item_id: string | null;
   before_child_saga_id: string | null;
+  /** Motivo declarado del tramo (fase 3). `null` = no declarado, que es el
+   *  estado de las 4 ventanas curadas antes de que la columna existiera. */
+  motivo: WindowReason | null;
   /** Para el desempate determinista entre dos sagas hermanas con ventana
    *  sobre la misma obra, ver `hydrateWindows`. */
   created_at: string;
@@ -406,7 +409,7 @@ export function hydrateWindows(
     const after = resolveAnchor(r.after_item_type, r.after_item_id, r.after_child_saga_id);
     const before = resolveAnchor(r.before_item_type, r.before_item_id, r.before_child_saga_id);
     if (after === null && before === null) continue; // sin ninguna ancla que resuelva: sin ventana
-    result.set(subjectKey, { after, before });
+    result.set(subjectKey, { after, before, reason: r.motivo });
   }
   return result;
 }
