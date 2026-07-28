@@ -17,7 +17,8 @@ import { useModalClose } from "./session-modal";
 import { BookProgressField } from "./book-progress-field";
 import { SeriesEpisodeGrid } from "./series-episode-grid";
 import { SessionHero } from "./session-hero";
-import { NoteComposer, type NoteAnchor } from "@/components/notes/note-composer";
+import type { NoteAnchor } from "@/components/notes/note-composer";
+import { SessionNotebook } from "./session-notebook";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -34,10 +35,10 @@ function todayISO() {
 
 // Hoja de registrar sesión: dueña de su propio chrome (cabecera y footer
 // pegajosos + SessionHero) — la ruta directa y la interceptada solo cargan
-// `ctx` (Tarea 1) y la montan. El compositor de notas (NoteComposer, Tarea 7)
-// vive aquí anclado al campo VIVO de progreso, no a `position`. El estado
-// sigue disponible pero plegado en un <details> — el caso normal de "registrar
-// y seguir" no lo necesita.
+// `ctx` (Tarea 1) y la montan. El cuaderno de notas (SessionNotebook) vive
+// aquí anclado al campo VIVO de progreso, no a `position`. El estado sigue
+// disponible pero plegado en un <details> — el caso normal de "registrar y
+// seguir" no lo necesita.
 export function SessionSheet({
   ctx,
   initialMinutes,
@@ -88,13 +89,7 @@ export function SessionSheet({
   const [sessionDate, setSessionDate] = useState(todayISO());
   if (state !== prevState) {
     setPrevState(state);
-    // Si la nota falló, la hoja de cierre NO se encadena: es un <dialog>
-    // nativo con showModal() que se pinta por encima, atrapa el foco y su
-    // onClose llama a closeSheet() — se llevaría el texto que el usuario
-    // todavía tiene que copiar. El pase ya quedó cerrado en el servidor; la
-    // hoja de valoración queda pendiente, se puede abrir luego desde la
-    // ficha (perder la valoración es reversible, perder el texto no).
-    if (state.passClosed && !state.noteFailed) setClosingPass(true);
+    if (state.passClosed) setClosingPass(true);
   }
 
   // Navegar NO es setState: un efecto aquí no choca con
@@ -105,7 +100,7 @@ export function SessionSheet({
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
   useEffect(() => {
-    if (!state.ok || state.passClosed || state.noteFailed) return;
+    if (!state.ok || state.passClosed) return;
     closeSheet();
   }, [state, closeSheet]);
 
@@ -141,7 +136,8 @@ export function SessionSheet({
   const [lastEpisode, setLastEpisode] = useState<{ season: number; episode: number } | null>(
     null,
   );
-  const [noteHasBody, setNoteHasBody] = useState(false);
+  const [noteCount, setNoteCount] = useState(0);
+  const [notePending, setNotePending] = useState(false);
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -268,17 +264,13 @@ export function SessionSheet({
             />
           )}
 
-          {/* maxBody=2000, no el 5000 por defecto: este texto viaja también a
-              progress_sessions.note (addSession la escribe en las dos tablas),
-              cuyo CHECK admite como mucho 2000 — es la columna más estrecha de
-              las dos, así que el tope de la hoja tiene que ser el suyo, no el
-              de `notes.body` (5000). NoteForm, en la ficha, no escribe en
-              progress_sessions y por eso no pasa esta prop. */}
-          <NoteComposer
+          <SessionNotebook
+            itemType={itemType}
+            itemId={itemId}
             anchor={noteAnchor}
             anchorHint={t("noteAnchorHint")}
-            onHasBodyChange={setNoteHasBody}
-            maxBody={2000}
+            onPendingChange={setNotePending}
+            onCountChange={setNoteCount}
           />
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
@@ -301,27 +293,21 @@ export function SessionSheet({
 
         {/* `shrink-0` por el mismo motivo que la cabecera de arriba: este
             footer no debe encogerse cuando el contenido de en medio no cabe.
-            Los avisos de error y de fallo de nota viven AQUÍ, no en la
-            columna de campos que scrollea de más arriba: si el usuario ya
-            hizo scroll hasta el fondo para llegar al botón, un aviso pintado
-            arriba queda fuera de vista y ve un botón deshabilitado sin
-            explicación — justo el caso que "la sesión manda, copia tu texto"
-            no puede permitirse (revisión final de rama). */}
+            El aviso de error vive AQUÍ, no en la columna de campos que
+            scrollea de más arriba: si el usuario ya hizo scroll hasta el
+            fondo para llegar al botón, un aviso pintado arriba queda fuera
+            de vista y ve un botón deshabilitado sin explicación. */}
         <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
           {state.error && (
             <p className="mb-2.5 text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
           )}
-          {state.noteFailed && (
-            <p className="mb-2.5 text-sm text-status-dropped">{t("noteFailed")}</p>
+          {notePending && (
+            <p className="mb-2.5 text-sm text-status-dropped">{t("notePendingHint")}</p>
           )}
-          {/* La sesión ya se guardó si `noteFailed` es cierto: reenviar
-              volvería a insertar una segunda sesión, remarcaría episodios y
-              reescribiría la posición del pase (no hay idempotencia en
-              addSession). Lo único que queda es copiar el texto y cerrar. */}
-          <Button type="submit" disabled={pending || state.noteFailed} className="w-full">
+          <Button type="submit" disabled={pending || notePending} className="w-full">
             {pending
               ? t("submitting")
-              : noteHasBody
+              : noteCount > 0
                 ? t("submitWithNote")
                 : itemType === "series" && newlyMarkedCount > 0
                   ? t("submitEpisodes", { count: newlyMarkedCount })
