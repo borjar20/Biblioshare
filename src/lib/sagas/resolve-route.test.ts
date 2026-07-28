@@ -17,6 +17,7 @@ const member = (id: string, status: DetailMember["status"] = null): DetailMember
   groupSagaId: null,
   ownerSagaId: "owner",
   year: null,
+  skipped: false,
 });
 
 const entry = (over: Partial<RawRouteEntry> & { position: number }): RawRouteEntry => ({

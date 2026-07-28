@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; motivo de la ventana, fase 3 del timeline (§7.9), aplicado en dev **y en prod** el 2026-07-28 —sin backfill: las 4 ventanas de prod siguen con `motivo IS NULL`, y `save_saga_sequence` NO cambió de firma—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; motivo de la ventana, fase 3 del timeline (§7.9), aplicado en dev **y en prod** el 2026-07-28; **opcionales saltables, fase 4 del timeline (§7.10), aplicadas en dev **y en prod** el 2026-07-28 — verificadas contra `to_regclass`, `pg_policies` y `information_schema.columns`; ningún RPC cambió y `progress.ts` no se tocó** —sin backfill: las 4 ventanas de prod siguen con `motivo IS NULL`, y `save_saga_sequence` NO cambió de firma—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
 `saga_nodes`/`saga_edges`/`save_saga_graph` (§7.7)— **corregido aquí, 2026-07-27**: esta cabecera
 llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
 escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
@@ -1013,6 +1013,83 @@ se resuelve a la primera obra del bloque, que es una fila normal de la columna (
 con el predicado único de `completion.ts` (que gana `isStatusCompleted` sobre el estado desnudo, con
 `isMemberCompleted` delegando en él), no cuenta, no divide y no aparece en ningún denominador.
 
+### 7.10 Opcionales saltables: `saga_optional_skips` y `profiles.show_optional_readings` (fase 4 del timeline con estados)
+
+Aplicada **en dev y en prod** el 2026-07-28, verificada contra los objetos reales (`to_regclass`,
+`pg_class.relrowsecurity`, `pg_policies`, `information_schema.columns`), nunca `list_migrations`.
+Sin backfill que valga: la tabla nace vacía y la columna la rellena su `default`.
+
+```sql
+create table public.saga_optional_skips (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  saga_id uuid not null references public.sagas (id) on delete cascade,
+  item_type public.item_type not null,
+  item_id uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, saga_id, item_type, item_id)
+);
+
+alter table public.saga_optional_skips enable row level security;
+
+create policy "saga optional skips own" on public.saga_optional_skips
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+alter table public.profiles
+  add column show_optional_readings boolean not null default true;
+```
+
+**Lo que esto NO hace: mover el progreso.** Saltar es solo visual — tacha y atenúa la fila. El
+denominador lo sigue gobernando `countedKeys` (`src/lib/sagas/progress.ts`) desde
+`saga_items.optional`, y ni la tabla ni la columna entran ahí; `progress.ts` sale de la fase
+exactamente como entró. El mockup pide lo contrario en dos sitios («desaparece del cómputo», «36 %
+contando solo los principales · 31 % si incluyes opcionales») y **se descarta a sabiendas**: reabrir
+el denominador es la familia de fallo del #91 y el #185. Hay un e2e dedicado a ello
+(`e2e/sagas-opcionales-saltables.spec.ts`, test 4) que lee el porcentaje del hero antes y después de
+saltar y exige que sea idéntico.
+
+**`saga_id` es la saga DUEÑA de la fila de `saga_items`** (`DetailMember.ownerSagaId`), no la ficha
+desde la que se pulsa ni la de agrupación visual (`groupSagaId`). Los dos divergen a partir de
+profundidad 2, y con cualquiera de los otros el mismo salto se vería desde una ficha y no desde otra.
+Lo sostiene una sola función pura y probada, `markSkipped` (`get-saga-detail.ts`) — ningún tipo lo
+impone, porque los tres candidatos son `string`.
+
+**No hay FK contra `saga_items`**, y es deliberado: su PK es `(saga_id, item_type, item_id)` y una FK
+compuesta ataría el salto al ciclo de vida de la curación, de modo que retirar un miembro y volver a
+añadirlo borraría en silencio la preferencia del lector. Un salto huérfano es **inerte**:
+`deriveSagaMap` solo marca nodos que existen, así que no se pinta en ninguna parte. A cambio, nadie
+los limpia — abierto como issue.
+
+**RLS solo-dueño y SIN gate de rol**, calcada de `saga_route_choices` (§7.2): es preferencia
+personal, no curación. Un lector cualquiera puede saltarse una opcional en una saga que él no cura.
+
+**`profiles.show_optional_readings` es NOT NULL con `default true`**, mismo patrón que
+`daily_goal_minutes`: el estado por defecto es VER las opcionales, y con NOT NULL ningún perfil
+existente queda en un `null` que cada lectura tendría que interpretar. Es preferencia **global**, no
+por saga (spec §6). Sin sesión se lee `true`: esconderle obras a quien no ha elegido nada sería
+decidir por él, y en silencio.
+
+**Ningún RPC cambia.** Las tres acciones (`skipOptional`, `unskipOptional`,
+`setShowOptionalReadings`, en `src/lib/sagas/optional-actions.ts`) son escrituras de una fila con RLS,
+como `adoptRoute`: no hay atomicidad que defender, así que no hay función nueva ni baile de
+sobrecarga.
+
+Consumo: `getSagaDetail` carga los saltos de TODO el subárbol (`.in("saga_id", sagaIds)`, como las
+ventanas y los tándems) dentro del `Promise.all` que ya existía, y la preferencia viaja en el mismo
+`select` de `profiles` que ya pedía el rol del viewer — cero viajes nuevos. El filtrado lo hace
+`deriveTimeline` con su opción `showOptional`, no los componentes: `items` alimenta la columna, las
+ramas, los puentes y la colocación de las ventanas, y esconder en el render dejaría secciones vacías
+con su cabecera y ventanas ancladas a filas invisibles. **El tramo de la ventana no se mueve** al
+esconder (`windowTrack` sigue recibiendo el grafo entero): describe el orden de la SAGA, no lo que
+este lector ha elegido ver. Y **los números no se recalculan**: si el hueco 1 desaparece, el 3 sigue
+siendo el 3 — la misma regla que ya rige los pasos de un itinerario.
+
+**[MEDIDO en prod, 2026-07-28]** 6 filas con `optional = true` en 5 sagas. Cuatro son `libre` (ramas)
+y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): una opcional puede vivir
+en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
+mockup— dejaría esas dos siempre visibles.
+
 ## 8. Seguridad
 
 Las 42 tablas tienen **RLS activa**. Patrones:
@@ -1052,7 +1129,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 
 ## 10. Migraciones
 
-82 ficheros en `supabase/migrations/`. `supabase/schema-baseline.sql` es el replay ordenado
+106 ficheros en `supabase/migrations/` (recontado el 2026-07-28: esta línea decía 82, que llevaba desviado desde antes de la fase 4). `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero

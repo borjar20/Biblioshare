@@ -1294,6 +1294,7 @@ export type Database = {
           is_public: boolean
           onboarded_at: string | null
           role: Database["public"]["Enums"]["user_role"]
+          show_optional_readings: boolean
           updated_at: string
           user_id: string
           username: string
@@ -1308,6 +1309,7 @@ export type Database = {
           is_public?: boolean
           onboarded_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          show_optional_readings?: boolean
           updated_at?: string
           user_id: string
           username: string
@@ -1322,6 +1324,7 @@ export type Database = {
           is_public?: boolean
           onboarded_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          show_optional_readings?: boolean
           updated_at?: string
           user_id?: string
           username?: string
@@ -1496,6 +1499,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "saga_items_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saga_optional_skips: {
+        Row: {
+          created_at: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          saga_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          saga_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          saga_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_optional_skips_saga_id_fkey"
             columns: ["saga_id"]
             isOneToOne: false
             referencedRelation: "sagas"

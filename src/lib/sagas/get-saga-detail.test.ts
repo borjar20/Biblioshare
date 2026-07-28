@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { freeBlockWindow, freeItemWindow, resolveSagaGraph, resolveWindows } from "./get-saga-detail";
+import {
+  freeBlockWindow,
+  freeItemWindow,
+  markSkipped,
+  type RawSkipRow,
+  resolveSagaGraph,
+  resolveWindows,
+} from "./get-saga-detail";
 import type { RawWindowRow } from "./get-saga-sequence";
 import type { MemberGroup } from "./group-members";
 import type { SagaGraph, SagaGraphNode } from "./map-types";
@@ -177,6 +184,7 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   groupSagaId: null,
   ownerSagaId: "owner",
   year: null,
+  skipped: false,
   ...over,
 });
 
@@ -273,6 +281,9 @@ const node = (over: Partial<SagaGraphNode> = {}): SagaGraphNode => ({
   step: null,
   tandem: null,
   windowReason: null,
+  optional: false,
+  skipped: false,
+  ownerSagaId: "owner",
   ...over,
 });
 
@@ -324,4 +335,54 @@ it("un ancla rota no se lleva el motivo por delante", () => {
     new Map([["i:book:b", "Viento y Verdad"]]),
   );
   expect(windows["i:book:n2"]).toMatchObject({ afterTitle: null, reason: "contexto" });
+});
+
+// Saltos de opcionales (fase 4). La decisión que este describe protege: el
+// salto se guarda con la saga DUEÑA de la fila de `saga_items`
+// (`ownerSagaId`), no con la que agrupa visualmente (`groupSagaId`) ni con la
+// ficha que se está mirando. Los dos divergen a partir de profundidad 2, y
+// confundirlos hace que el mismo salto se vea desde una ficha y no desde otra.
+describe("markSkipped", () => {
+  const skip = (over: Partial<RawSkipRow>): RawSkipRow => ({
+    saga_id: "owner",
+    item_type: "book",
+    item_id: "x",
+    ...over,
+  });
+
+  it("marca el miembro cuya saga DUEÑA nombra la fila", () => {
+    const m = member({ itemId: "x", ownerSagaId: "nieta", groupSagaId: "hija" });
+    expect(markSkipped([m], [skip({ saga_id: "nieta", item_id: "x" })])[0].skipped).toBe(true);
+  });
+
+  it("NO lo marca si la fila nombra su saga de AGRUPACIÓN en vez de la dueña", () => {
+    // Sin esta distinción, un salto guardado desde la ficha del universo se
+    // vería allí y no en la de la subsaga, o al revés.
+    const m = member({ itemId: "x", ownerSagaId: "nieta", groupSagaId: "hija" });
+    expect(markSkipped([m], [skip({ saga_id: "hija", item_id: "x" })])[0].skipped).toBe(false);
+  });
+
+  it("distingue por tipo de ítem: mismo uuid, otro tipo, no es el mismo salto", () => {
+    const m = member({ itemType: "movie", itemId: "x", ownerSagaId: "owner" });
+    expect(markSkipped([m], [skip({ item_type: "book", item_id: "x" })])[0].skipped).toBe(false);
+  });
+
+  it("sin filas, nadie queda marcado", () => {
+    const ms = markSkipped([member({ itemId: "a" }), member({ itemId: "b" })], []);
+    expect(ms.every((m) => m.skipped === false)).toBe(true);
+  });
+
+  it("un salto huérfano (obra que ya no es miembro) no rompe nada", () => {
+    // Sin FK contra saga_items: la fila sobrevive a que se retire el miembro.
+    // Es inerte — no aparece en ninguna parte porque no hay a quién marcar.
+    const ms = markSkipped([member({ itemId: "a" })], [skip({ item_id: "fantasma" })]);
+    expect(ms).toHaveLength(1);
+    expect(ms[0].skipped).toBe(false);
+  });
+
+  it("no muta la entrada: devuelve miembros nuevos", () => {
+    const original = member({ itemId: "x", ownerSagaId: "owner" });
+    markSkipped([original], [skip({ item_id: "x" })]);
+    expect(original.skipped).toBe(false);
+  });
 });

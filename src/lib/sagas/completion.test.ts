@@ -16,6 +16,7 @@ const member = (over: Partial<DetailMember>): DetailMember => ({
   groupSagaId: null,
   ownerSagaId: "owner",
   year: null,
+  skipped: false,
   ...over,
 });
 

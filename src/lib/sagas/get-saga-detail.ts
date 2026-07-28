@@ -76,6 +76,14 @@ export type SagaDetail = {
   routes: SagaRoute[];
   /** Slug de ruta adoptado por el usuario para esta saga, o null. */
   routeChoice: string | null;
+  /** Preferencia GLOBAL del lector (`profiles.show_optional_readings`, fase 4):
+   *  si ve las obras opcionales en el orden de lectura. Global a propósito,
+   *  como `daily_goal_minutes`: es preferencia personal, no curación por saga.
+   *
+   *  `true` sin sesión, que es el default de la columna. Nunca `false` por
+   *  omisión: esconderle obras a quien no ha elegido nada sería decidir por él,
+   *  y además en silencio — nadie echa de menos lo que no sabe que existe. */
+  showOptionalReadings: boolean;
   /**
    * Insumos de `createCuratedOrder` ya calculados aquí (spec §1.5): RouteView
    * (Task 6) necesita reconstruir el orden principal de una subsaga para
@@ -288,6 +296,36 @@ export function freeBlockWindow(
  * perfectamente un grafo no vacío con el interruptor apagado si nadie llama a
  * esta función antes de asignarlo.
  */
+/** Fila cruda de `saga_optional_skips` tal como la devuelve el select de abajo. */
+export type RawSkipRow = { saga_id: string; item_type: string; item_id: string };
+
+/**
+ * Marca `skipped` en los miembros que el lector se ha saltado (fase 4).
+ *
+ * La clave es `<sagaId>:<itemType>:<itemId>` con la saga **DUEÑA** de la fila
+ * de `saga_items` (`ownerSagaId`), no la de agrupación visual (`groupSagaId`)
+ * ni la ficha que se esté mirando. Los dos divergen a partir de profundidad 2
+ * (ver el comentario de esos dos campos en `DetailMember`), y confundirlos hace
+ * que el mismo salto se vea desde una ficha y no desde otra.
+ *
+ * Pura y exportada para poder probarla sin Supabase: es la única función que
+ * sostiene esa correspondencia, y ningún tipo la impone — `ownerSagaId` y
+ * `groupSagaId` son los dos `string | null`-ish y el compilador acepta
+ * cualquiera de los dos.
+ *
+ * Devuelve miembros NUEVOS en vez de mutar: `members` se construye una vez y se
+ * reparte después a `groupMembers`, `computeProgress` y el grafo; mutar en
+ * medio dejaría a cada consumidor dependiendo de en qué momento lo mira.
+ */
+export function markSkipped(members: DetailMember[], rows: RawSkipRow[]): DetailMember[] {
+  if (rows.length === 0) return members.map((m) => ({ ...m, skipped: false }));
+  const keys = new Set(rows.map((r) => `${r.saga_id}:${r.item_type}:${r.item_id}`));
+  return members.map((m) => ({
+    ...m,
+    skipped: keys.has(`${m.ownerSagaId}:${m.itemType}:${m.itemId}`),
+  }));
+}
+
 export function resolveSagaGraph(showMap: boolean, derivedGraph: SagaGraph): SagaGraph | null {
   if (!showMap) return null;
   return derivedGraph.nodes.length > 0 ? derivedGraph : null;
@@ -414,11 +452,14 @@ export async function getSagaDetail(
     );
   }
 
-  const members: DetailMember[] = [];
+  // Miembros SIN el salto todavía: `saga_optional_skips` se lee en el batch de
+  // abajo, junto a las ventanas y los tándems, para no gastar un viaje propio.
+  // `markSkipped` los completa allí, antes de agruparlos.
+  const builtMembers: DetailMember[] = [];
   for (const { row, groupSagaId } of byItem.values()) {
     const m = meta.get(`${row.item_type}:${row.item_id}`);
     if (!m) continue;
-    members.push({
+    builtMembers.push({
       itemType: row.item_type,
       itemId: row.item_id,
       title: m.title,
@@ -432,10 +473,13 @@ export async function getSagaDetail(
       groupSagaId,
       ownerSagaId: row.saga_id,
       year: m.year,
+      skipped: false,
     });
   }
 
-  const groups = groupMembers(members, children);
+  // `groups` se construye DESPUÉS del batch de abajo, no aquí: agrupar antes de
+  // marcar dejaría los grupos con los miembros sin `skipped` (los objetos son
+  // los mismos, y `markSkipped` devuelve copias a propósito).
   // `progress` se calcula más abajo con countedKeys (pertenencia, spec
   // 2026-07-25): NO necesita el orden principal. `orderSagas`/
   // `orderMemberships` se construyen más abajo por otro motivo — RouteView
@@ -505,7 +549,7 @@ export async function getSagaDetail(
   // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
   // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
   // camino caliente de la ficha de saga.
-  const [followRow, parentRow, roleRow, curated, routeChoice, windowsRes, tandemsRes] = await Promise.all([
+  const [followRow, parentRow, roleRow, curated, routeChoice, windowsRes, tandemsRes, skipsRes] = await Promise.all([
     user
       ? supabase
           .from("saga_follows")
@@ -517,8 +561,11 @@ export async function getSagaDetail(
     saga.parentSagaId
       ? supabase.from("sagas").select("id, name").eq("id", saga.parentSagaId).maybeSingle()
       : Promise.resolve({ data: null }),
+    // La preferencia de opcionales (fase 4) viaja en ESTE select, no en uno
+    // propio: es la misma fila de `profiles` que ya se pide para el rol del
+    // viewer, así que sale gratis.
     user
-      ? supabase.from("profiles").select("role").eq("user_id", user.id).maybeSingle()
+      ? supabase.from("profiles").select("role, show_optional_readings").eq("user_id", user.id).maybeSingle()
       : Promise.resolve({ data: null }),
     getSagaRoutes(supabase, id),
     // Sin user, se resuelve a null sin lanzar consulta (getRouteChoice exige userId).
@@ -543,7 +590,24 @@ export async function getSagaDetail(
     // mismo motivo que las ventanas: un tándem puede vivir en cualquier saga
     // del árbol, no solo en la raíz.
     supabase.from("saga_tandems").select("saga_id, position, modo, nota").in("saga_id", sagaIds),
+    // Saltos de opcionales del lector (fase 4). Todo el subárbol, por el mismo
+    // motivo que las ventanas y los tándems: el salto se guarda con la saga
+    // DUEÑA de la fila (`ownerSagaId`), que puede ser cualquier descendiente y
+    // no solo la raíz que se está mirando. Sin usuario no se lanza la consulta.
+    user
+      ? supabase
+          .from("saga_optional_skips")
+          .select("saga_id, item_type, item_id")
+          .eq("user_id", user.id)
+          .in("saga_id", sagaIds)
+      : Promise.resolve({ data: null }),
   ]);
+
+  const members = markSkipped(
+    builtMembers,
+    ((skipsRes as { data: RawSkipRow[] | null }).data ?? []) as RawSkipRow[],
+  );
+  const groups = groupMembers(members, children);
 
   // Lookup del mapa derivado (fase 3, Task 2): accent y nombre de cada grupo,
   // desde los MISMOS `groups` que pinta la pestaña Info (spec §1.3). Ya no hace
@@ -691,6 +755,8 @@ export async function getSagaDetail(
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
     routes,
     routeChoice,
+    showOptionalReadings:
+      (roleRow as { data: { show_optional_readings: boolean } | null }).data?.show_optional_readings ?? true,
     orderSagas,
     orderMemberships,
     childRefs,

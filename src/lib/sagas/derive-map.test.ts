@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCuratedOrder } from "./curated-order";
-import { deriveSagaMap, NODE_STEP_Y, type MapLookup } from "./derive-map";
+import { deriveSagaMap, NODE_STEP_Y, parseItemKey, type MapLookup } from "./derive-map";
 import { groupMembers, type MemberGroup } from "./group-members";
 import type { DetailMember, SagaChildRef } from "./types";
 
@@ -24,6 +24,7 @@ const work = (id: string, position: number | null): DetailMember => ({
   groupSagaId: null,
   ownerSagaId: "owner",
   year: null,
+  skipped: false,
 });
 
 // A diferencia de `work()`, que fija `placement: "fijo"` a machamartillo, esta
@@ -702,5 +703,78 @@ describe("motivo de la ventana (fase 3)", () => {
   it("una obra sin ventana lleva windowReason a null", () => {
     const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
     expect(map.nodes[0].windowReason).toBeNull();
+  });
+});
+
+// Opcionales y saltos (fase 4): el nodo lleva la SEMÁNTICA, no solo el tamaño.
+describe("optional / skipped / ownerSagaId en el nodo", () => {
+  it("el nodo copia optional y skipped del miembro", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [{ ...work("A", 1), optional: true, skipped: true }])]),
+      {},
+      lookup(),
+    );
+    const n = map.nodes.find((x) => x.id === "i:book:A")!;
+    expect(n.optional).toBe(true);
+    expect(n.skipped).toBe(true);
+  });
+
+  it("`level` sigue siendo un token de TAMAÑO, no la fuente de «es opcional»", () => {
+    // Hoy los dos salen de `m.optional`, y por eso coinciden. Se guardan
+    // aparte a propósito: leer «es opcional» de `level` sería inferir
+    // semántica de un token de layout, y el día que `level` deje de
+    // depender de `optional` (un tamaño por rol, por ejemplo) el que se
+    // rompería sería el consumidor, en silencio.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [{ ...work("A", 1), optional: true }, work("B", 2)])]),
+      {},
+      lookup(),
+    );
+    expect(map.nodes.find((x) => x.id === "i:book:A")).toMatchObject({ optional: true, level: "menor" });
+    expect(map.nodes.find((x) => x.id === "i:book:B")).toMatchObject({ optional: false, level: "principal" });
+  });
+
+  it("una obra normal llega con los dos en false", () => {
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
+    expect(map.nodes[0]).toMatchObject({ optional: false, skipped: false });
+  });
+
+  it("el nodo lleva la saga DUEÑA de la fila, no la de agrupación", () => {
+    // Lo necesita el botón de saltar: `saga_optional_skips.saga_id` se guarda
+    // con `ownerSagaId`, y el nodo es lo único que llega hasta la fila pintada.
+    // `block()` reescribe `groupSagaId` a `saga-Uno` y deja `ownerSagaId` en
+    // "owner": si el nodo copiara el que no es, este test lo caza.
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
+    expect(map.nodes[0]).toMatchObject({ ownerSagaId: "owner", groupSagaId: "saga-Uno" });
+  });
+});
+
+describe("parseItemKey", () => {
+  it("deshace la clave de una obra", () => {
+    expect(parseItemKey("i:book:abc")).toEqual({ itemType: "book", itemId: "abc" });
+    expect(parseItemKey("i:movie:abc")).toEqual({ itemType: "movie", itemId: "abc" });
+    expect(parseItemKey("i:series:abc")).toEqual({ itemType: "series", itemId: "abc" });
+  });
+
+  it("un uuid con guiones sobrevive entero", () => {
+    expect(parseItemKey("i:book:53118dd4-ccd9-4a9d-8241-5899816a9eab")?.itemId).toBe(
+      "53118dd4-ccd9-4a9d-8241-5899816a9eab",
+    );
+  });
+
+  it("la clave de un BLOQUE no es una obra: null", () => {
+    expect(parseItemKey("s:saga-Uno")).toBeNull();
+  });
+
+  it("cualquier otra cosa: null, no una obra a medias", () => {
+    expect(parseItemKey("i:libro:abc")).toBeNull();
+    expect(parseItemKey("book:abc")).toBeNull();
+    expect(parseItemKey("")).toBeNull();
+  });
+
+  it("ida y vuelta: lo que produce el mapa lo deshace esta función", () => {
+    // La garantía que justifica que las dos vivan pegadas.
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
+    expect(parseItemKey(map.nodes[0].id)).toEqual({ itemType: "book", itemId: "A" });
   });
 });

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineSection } from "@/lib/sagas/derive-timeline";
 import { RoleChip } from "./role-chip";
+import { OptionalBar } from "./timeline/optional-bar";
 import { TimelineEntryRow } from "./timeline/timeline-entry-row";
 import { buildTimelineLabels } from "./timeline/timeline-labels";
 import { TimelineTandemRow } from "./timeline/timeline-tandem-row";
@@ -21,12 +22,41 @@ import { TimelineWindowRow } from "./timeline/timeline-window-row";
 // significa "miembro directo del universo"). Una rama o un puente son
 // posiciones en el layout, no afirmaciones sobre qué es la obra: eso solo lo
 // dice el rol curado, vía RoleChip.
-export async function ReadingTimeline({ sections }: { sections: TimelineSection[] }) {
+export async function ReadingTimeline({
+  sections,
+  sagaId,
+  showOptional,
+  optionalCount,
+}: {
+  sections: TimelineSection[];
+  /** Ficha que se revalida al saltar o al mover el interruptor. `null` sin
+   *  sesión: la ficha es pública y el timeline se ve ENTERO, pero sin
+   *  controles — no hay a quién guardarle la preferencia. */
+  sagaId: string | null;
+  showOptional: boolean;
+  /** Cuántas obras opcionales tiene la saga, contadas sobre el GRAFO y no sobre
+   *  las filas visibles: contadas sobre lo visible, apagar el interruptor haría
+   *  desaparecer el propio interruptor y no habría forma de volver. */
+  optionalCount: number;
+}) {
   const t = await getTranslations("saga");
   const labels = buildTimelineLabels(t);
 
   return (
     <div data-testid="reading-timeline">
+      {sagaId !== null && optionalCount > 0 && (
+        <OptionalBar
+          sagaId={sagaId}
+          showOptional={showOptional}
+          count={optionalCount}
+          labels={{
+            title: t("timelineOptionalBarTitle"),
+            show: t("timelineOptionalShow"),
+            hide: t("timelineOptionalHide"),
+            count: (n) => t("timelineOptionalCount", { count: n }),
+          }}
+        />
+      )}
       {sections.map((section, si) => {
         // Sin cabecera de sección (modo `route`: una sola sección sin nombre),
         // la subsaga baja a etiqueta de fila.
@@ -67,7 +97,13 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
               {section.rows.map((row) => {
                 if (row.kind === "entry") {
                   return (
-                    <TimelineEntryRow key={row.node.id} row={row} labels={labels} showGroupLabel={showGroupLabel} />
+                    <TimelineEntryRow
+                      key={row.node.id}
+                      row={row}
+                      labels={labels}
+                      showGroupLabel={showGroupLabel}
+                      sagaId={sagaId}
+                    />
                   );
                 }
                 if (row.kind === "tandem") {
@@ -77,6 +113,7 @@ export async function ReadingTimeline({ sections }: { sections: TimelineSection[
                       row={row}
                       labels={labels}
                       showGroupLabel={showGroupLabel}
+                      sagaId={sagaId}
                     />
                   );
                 }

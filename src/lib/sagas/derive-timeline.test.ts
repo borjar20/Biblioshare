@@ -25,6 +25,9 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   step: null,
   tandem: null,
   windowReason: null,
+  optional: false,
+  skipped: false,
+  ownerSagaId: "owner",
   ...over,
 });
 
@@ -374,6 +377,7 @@ describe("deriveTimeline · ventana", () => {
       groupSagaId: "saga-Era",
       ownerSagaId: "owner",
       year: null,
+      skipped: false,
     });
     const groups: MemberGroup[] = [
       {
@@ -405,10 +409,12 @@ describe("rol narrativo en las ramas (#167)", () => {
       nodes: [
         { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
           label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
-          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null },
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null,
+          optional: false, skipped: false, ownerSagaId: "owner" },
         { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
           label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
-          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null },
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null,
+          optional: false, skipped: false, ownerSagaId: "owner" },
       ],
       edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
     };
@@ -426,7 +432,7 @@ describe("rol narrativo en las ramas (#167)", () => {
 describe("sortByPublication", () => {
   const m = (itemId: string, year: number | null, title = itemId): DetailMember => ({
     itemType: "book", itemId, title, coverUrl: null, href: `/libro/${itemId}`,
-    position: null, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year,
+    position: null, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year, skipped: false,
   });
   it("ordena por año ascendente, nulls al final, empate por título", () => {
     expect(sortByPublication([m("b", 2001), m("d", null), m("a", 1999), m("c", 2001, "AAA")]).map((x) => x.itemId))
@@ -470,6 +476,7 @@ describe("integración: deriveSagaMap → deriveTimeline", () => {
     groupSagaId: null,
     ownerSagaId: "owner",
     year: null,
+    skipped: false,
   });
 
   const block = (name: string, positionInParent: number, works: DetailMember[]): MemberGroup => {
@@ -582,5 +589,93 @@ describe("track de la fila de ventana (fase 3)", () => {
   it("por defecto se comporta como SIN sesión: la vista pública es la segura", () => {
     const fila = filaVentana(deriveTimeline(conVentana()));
     expect(fila.kind === "window" && fila.track!.youPct).toBeNull();
+  });
+});
+
+// Interruptor de opcionales (fase 4). El filtro vive AQUÍ y no en los
+// componentes: `items` alimenta la columna, las ramas, los puentes y la
+// colocación de las ventanas, así que esconder en el render dejaría secciones
+// vacías con su cabecera y ventanas ancladas a filas invisibles.
+describe("deriveTimeline · el interruptor de opcionales", () => {
+  const columna = () =>
+    graph([
+      node("uno", { orderNo: 0 }),
+      node("dos", { orderNo: 1, optional: true }),
+      node("tres", { orderNo: 2 }),
+    ]);
+  const ids = (tl: ReturnType<typeof deriveTimeline>) =>
+    tl.flatMap((s) => s.rows).map((r) => (r.kind === "entry" ? r.node.id : r.kind));
+  const nums = (tl: ReturnType<typeof deriveTimeline>) =>
+    tl.flatMap((s) => s.rows).map((r) => (r.kind === "entry" ? r.no : null));
+
+  it("por defecto se ven: omitir showOptional equivale a true", () => {
+    // El default seguro es ENSEÑARLO todo, al revés que `authenticated`. Un
+    // olvido que esconde obras es silencioso —nadie echa de menos lo que no
+    // sabe que existe—; uno que las enseña se ve al instante.
+    expect(ids(deriveTimeline(columna()))).toEqual(["uno", "dos", "tres"]);
+    expect(ids(deriveTimeline(columna(), { showOptional: true }))).toEqual(["uno", "dos", "tres"]);
+  });
+
+  it("con showOptional=false la fila desaparece, y los números NO se recalculan", () => {
+    const tl = deriveTimeline(columna(), { showOptional: false });
+    expect(ids(tl)).toEqual(["uno", "tres"]);
+    // El 3 sigue siendo el 3: misma regla que los pasos de un itinerario.
+    // Renumerar haría que el timeline contara la saga distinto que el resto
+    // del producto.
+    expect(nums(tl)).toEqual([1, 3]);
+  });
+
+  it("esconde también una opcional que está EN LA COLUMNA, no solo las ramas", () => {
+    // El caso medido en producción: Saga de los Huesos Verdes tiene dos
+    // opcionales con hueco fijo (1 y 2 de 5). Tratar «opcional» como sinónimo
+    // de «rama punteada» las dejaría siempre visibles.
+    const tl = deriveTimeline(columna(), { showOptional: false });
+    expect(tl.flatMap((s) => s.rows).some((r) => r.kind === "entry" && r.node.optional)).toBe(false);
+  });
+
+  it("una RAMA opcional también desaparece", () => {
+    const g = graph(
+      [node("uno", { orderNo: 0 }), node("extra", { orderNo: null, optional: true })],
+      [{ id: "e", source: "uno", target: "extra", type: "opcional", accent: "ambar" }],
+    );
+    const ramas = (tl: ReturnType<typeof deriveTimeline>) =>
+      tl.flatMap((s) => s.rows).flatMap((r) => (r.kind === "entry" ? r.branches : []));
+    expect(ramas(deriveTimeline(g))).toHaveLength(1);
+    expect(ramas(deriveTimeline(g, { showOptional: false }))).toEqual([]);
+  });
+
+  it("el tramo de la ventana NO se mueve al esconder opcionales", () => {
+    // El track dice dónde cae la ventana sobre el orden de la SAGA, no sobre
+    // lo que este lector ha elegido ver. Si el filtro lo moviera, dos lectores
+    // verían tramos distintos para la misma ventana — la misma cantidad
+    // derivada con dos valores (#91/#185).
+    const g = graph(
+      [
+        node("uno", { orderNo: 0 }),
+        node("opt", { orderNo: 1, optional: true }),
+        node("tres", { orderNo: 2 }),
+        node("libre", { orderNo: null, groupSagaId: "g1" }),
+      ],
+      [
+        { id: "e1", source: "uno", target: "libre", type: "requisito", accent: "beige" },
+        { id: "e2", source: "libre", target: "tres", type: "opcional", accent: "ambar" },
+      ],
+    );
+    const track = (tl: ReturnType<typeof deriveTimeline>) =>
+      tl.flatMap((s) => s.rows).find((r) => r.kind === "window")!.track;
+    expect(track(deriveTimeline(g, { authenticated: true, showOptional: false }))).toEqual(
+      track(deriveTimeline(g, { authenticated: true })),
+    );
+  });
+
+  it("modo route: esconde igual, y el número del paso se conserva", () => {
+    const g = graph([
+      node("a", { orderNo: 0, step: 1 }),
+      node("b", { orderNo: 1, step: 2, optional: true }),
+      node("c", { orderNo: 2, step: 3 }),
+    ]);
+    const tl = deriveTimeline(g, { spine: "route", showOptional: false });
+    expect(ids(tl)).toEqual(["a", "c"]);
+    expect(nums(tl)).toEqual([1, 3]);
   });
 });

@@ -61,6 +61,11 @@ export async function SagaMapTab({
     }
   }
 
+  // Cuántas opcionales tiene la saga, contadas sobre el GRAFO y no sobre las
+  // filas del timeline: contadas sobre lo visible, apagar el interruptor haría
+  // desaparecer el propio interruptor y no habría forma de volver.
+  const optionalCount = graph === null ? 0 : graph.nodes.filter((n) => n.kind === "item" && n.optional).length;
+
   return (
     <div className="flex flex-col gap-4 px-4 pb-10">
       <RouteSelector base={base} routes={detail.routes} active={activeRoute} />
@@ -98,7 +103,15 @@ export async function SagaMapTab({
                 pinta los cuatro estados y no se deja fuera a los nodos sin
                 hueco— era un duplicado de los mismos títulos, uno debajo del
                 otro. */}
-            <ReadingTimeline sections={deriveTimeline(graph, { authenticated: detail.isAuthenticated })} />
+            <ReadingTimeline
+              sections={deriveTimeline(graph, {
+                authenticated: detail.isAuthenticated,
+                showOptional: detail.showOptionalReadings,
+              })}
+              sagaId={detail.isAuthenticated ? detail.saga.id : null}
+              showOptional={detail.showOptionalReadings}
+              optionalCount={optionalCount}
+            />
           </div>
           {/* PC: grafo embebido con la leyenda como barra inferior del marco
               (frame E), y el MISMO componente de orden de lectura al pie — el
@@ -111,7 +124,15 @@ export async function SagaMapTab({
               <GraphLegend graph={graph} />
             </div>
             <div className="mt-4">
-              <ReadingTimeline sections={deriveTimeline(graph, { authenticated: detail.isAuthenticated })} />
+              <ReadingTimeline
+              sections={deriveTimeline(graph, {
+                authenticated: detail.isAuthenticated,
+                showOptional: detail.showOptionalReadings,
+              })}
+              sagaId={detail.isAuthenticated ? detail.saga.id : null}
+              showOptional={detail.showOptionalReadings}
+              optionalCount={optionalCount}
+            />
             </div>
           </div>
         </>
