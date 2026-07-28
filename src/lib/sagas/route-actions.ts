@@ -356,7 +356,14 @@ export async function generateRoute(sagaId: string): Promise<{ error?: string }>
   const titleByKey = new Map(
     detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]),
   );
-  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titleByKey.get(k) ?? "");
+  const mainOrder = createCuratedOrder(
+    detail.orderSagas,
+    detail.orderMemberships,
+    (k) => titleByKey.get(k) ?? "",
+    // Las ventanas curadas colocan a los sujetos `libre` en el itinerario
+    // generado, en vez de mandarlos todos al final.
+    detail.windows,
+  );
   // `curatedOrder` deduplica por clave (el `new Set(...)` interno de
   // createCuratedOrder): una obra miembro de dos sagas del subárbol solo
   // aparece una vez, lo que exige validateRouteDraft más abajo.

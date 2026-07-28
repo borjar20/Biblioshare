@@ -83,8 +83,11 @@ export async function RouteView({
   // por hueco (fase 3, Task 4: ya no hay grafo que pueda dejar a alguien sin
   // sitio) — así que este contador y el denominador del progreso pueden
   // seguir difiriendo solo por `optional`, no por falta de position.
-  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) =>
-    members.get(k)?.title ?? "",
+  const mainOrder = createCuratedOrder(
+    detail.orderSagas,
+    detail.orderMemberships,
+    (k) => members.get(k)?.title ?? "",
+    detail.windows,
   );
 
   const resolved = resolveRoute(entries, {
