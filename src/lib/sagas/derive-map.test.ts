@@ -632,3 +632,35 @@ describe("deriveSagaMap — saltos del itinerario", () => {
     expect(jumps(map)).toEqual([]);
   });
 });
+
+describe("metadatos del tándem (fase 2)", () => {
+  it("los DOS nodos del hueco compartido llevan los metadatos de ese hueco", () => {
+    // Denormalizado a propósito: la fila del timeline los lee del primer nodo al
+    // fundir, y así `deriveTimeline` no necesita conocer `position` (que el nodo
+    // no lleva) ni volver a consultar nada.
+    const map = deriveSagaMap(
+      groups([block("B", 1, [work("A", 1), work("B", 1)])]),
+      {},
+      lookup(),
+      undefined,
+      new Map([["saga-B:1", { mode: "simultaneo" as const, note: "a la vez" }]]),
+    );
+    expect(map.nodes.every((n) => n.tandem?.mode === "simultaneo" && n.tandem?.note === "a la vez")).toBe(true);
+  });
+
+  it("un hueco de UNA sola obra no recibe metadatos aunque exista la fila", () => {
+    const map = deriveSagaMap(
+      groups([block("B", 1, [work("A", 1), work("B", 2)])]),
+      {},
+      lookup(),
+      undefined,
+      new Map([["saga-B:1", { mode: "simultaneo" as const, note: null }]]),
+    );
+    expect(map.nodes.every((n) => n.tandem === null)).toBe(true);
+  });
+
+  it("sin lookup de tándems, `tandem` es null en todos los nodos", () => {
+    const map = deriveSagaMap(groups([block("B", 1, [work("A", 1), work("B", 1)])]), {}, lookup());
+    expect(map.nodes.every((n) => n.tandem === null)).toBe(true);
+  });
+});

@@ -35,6 +35,15 @@ export type SagaItemRole = "precuela" | "spin_off" | "relato" | "paralela";
  *  un valor en BD, TypeScript NO se queja aquí. */
 export type SagaPlacement = "fijo" | "libre";
 
+/** Qué clase de tándem es un hueco compartido (`saga_tandems.modo`, fase 2):
+ *  `simultaneo` = «a la vez»; `indistinto` = «cualquier orden». Espejo a mano de
+ *  public.saga_tandem_mode, igual que los dos de arriba.
+ *
+ *  Ojo con el alcance: esto describe el HUECO, no a sus obras. La pertenencia al
+ *  tándem sigue siendo el empate de `position` en `saga_items`, y esa es su
+ *  única fuente de verdad. */
+export type TandemMode = "simultaneo" | "indistinto";
+
 // Miembro de una saga (para la vista de saga).
 export type SagaMember = {
   itemType: ItemType;

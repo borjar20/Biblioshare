@@ -1577,6 +1577,38 @@ export type Database = {
           },
         ]
       }
+      saga_tandems: {
+        Row: {
+          created_at: string
+          modo: Database["public"]["Enums"]["saga_tandem_mode"] | null
+          nota: string | null
+          position: number
+          saga_id: string
+        }
+        Insert: {
+          created_at?: string
+          modo?: Database["public"]["Enums"]["saga_tandem_mode"] | null
+          nota?: string | null
+          position: number
+          saga_id: string
+        }
+        Update: {
+          created_at?: string
+          modo?: Database["public"]["Enums"]["saga_tandem_mode"] | null
+          nota?: string | null
+          position?: number
+          saga_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_tandems_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saga_route_choices: {
         Row: {
           created_at: string
@@ -2167,6 +2199,7 @@ export type Database = {
               p_entries: Json
               p_removed: Json
               p_saga_id: string
+              p_window_subjects: Json
               p_windows: Json
             }
             Returns: undefined
@@ -2177,6 +2210,7 @@ export type Database = {
               p_entries: Json
               p_removed: Json
               p_saga_id: string
+              p_tandems: Json
               p_window_subjects: Json
               p_windows: Json
             }
@@ -2267,6 +2301,7 @@ export type Database = {
       push_channel: "web"
       saga_item_role: "precuela" | "spin_off" | "relato" | "paralela"
       saga_placement: "fijo" | "libre"
+      saga_tandem_mode: "simultaneo" | "indistinto"
       target_kind:
         | "diary_entry"
         | "episode_watch"
@@ -2440,6 +2475,7 @@ export const Constants = {
       push_channel: ["web"],
       saga_item_role: ["precuela", "spin_off", "relato", "paralela"],
       saga_placement: ["fijo", "libre"],
+      saga_tandem_mode: ["simultaneo", "indistinto"],
       target_kind: [
         "diary_entry",
         "episode_watch",

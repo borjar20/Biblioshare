@@ -2,9 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
+import { TandemMetaEditor } from "./tandem-meta-editor";
 import { WindowEditor } from "./window-editor";
 import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
+import type { TandemMode } from "@/lib/sagas/types";
 
 type Ops = {
   moveSlot: (i: number, delta: number) => void;
@@ -14,6 +16,8 @@ type Ops = {
   setRole: (key: string, r: DraftEntry["role"]) => void;
   setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) => void;
   clearAnchor: (key: string, side: "after" | "before") => void;
+  /** Fase 2: por ÍNDICE de hueco, no por `key` — los metadatos son del hueco. */
+  setTandemMeta: (i: number, meta: { mode?: TandemMode | null; note?: string | null }) => void;
 };
 
 // Propuesta A (frame A3): las tres zonas a la vez. Verlas juntas es lo que
@@ -91,22 +95,28 @@ export function ShellDesktop({
 
         <div className="grid gap-2">
           {draft.slots.map((slot, i) =>
-            slot.length === 1 ? (
-              row(slot[0], i + 1, nudges(i, slot[0].title))
+            slot.entries.length === 1 ? (
+              row(slot.entries[0], i + 1, nudges(i, slot.entries[0].title))
             ) : (
               // La key sale del contenido del hueco (las keys de sus entradas), nunca
               // del índice: con key={`slot-${i}`}, reordenar hace que React desmonte y
               // remonte el nodo, perdiendo el foco justo del botón ↑/↓ que el usuario
               // acaba de pulsar. Mismo precedente que route-editor.tsx.
-              <div key={slot.map((e) => e.key).join("+")} className="flex items-stretch gap-2">
+              <div key={slot.entries.map((e) => e.key).join("+")} className="flex items-stretch gap-2">
                 <div className="flex w-14 shrink-0 flex-col items-center gap-1 pt-2">
                   <span className="font-mono text-[15px] text-accent">{i + 1}</span>
-                  {nudges(i, slot.map((e) => e.title).join(" + "))}
+                  {nudges(i, slot.entries.map((e) => e.title).join(" + "))}
                   <span className="w-0.5 flex-1 rounded bg-accent/40" aria-hidden />
                 </div>
                 <div className="grid min-w-0 flex-1 gap-1.5">
                   <p className="pl-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-accent">{t("tandemCaption")}</p>
-                  {slot.map((e) => row(e, null))}
+                  {slot.entries.map((e) => row(e, null))}
+                  <TandemMetaEditor
+                    slotNumber={i + 1}
+                    mode={slot.mode}
+                    note={slot.note}
+                    onChange={(meta) => ops.setTandemMeta(i, meta)}
+                  />
                   <button
                     type="button" onClick={() => ops.unpair(i)} aria-label={t("unpairFor", { n: i + 1 })}
                     className="w-full rounded-lg border border-dashed border-border py-1.5 text-[11.5px] font-semibold text-muted-foreground"

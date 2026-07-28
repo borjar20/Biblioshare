@@ -73,6 +73,18 @@ export function validateSequenceDraft(
     }
   }
 
+  // Tándems (fase 2): los metadatos hablan de un hueco COMPARTIDO, así que un
+  // número con una sola entrada no puede llevarlos. Guardarlos ahí dejaría una
+  // fila que reaparecería sobre OTRAS obras en cuanto alguien emparejara en ese
+  // hueco. El tope de la nota es el mismo que el CHECK `saga_tandems_nota_len`:
+  // esto es la red antes del 23514 crudo, no una segunda regla.
+  const occupants = new Map<number, number>();
+  for (const p of positions) occupants.set(p, (occupants.get(p) ?? 0) + 1);
+  for (const t of payload.tandems) {
+    if ((occupants.get(t.position) ?? 0) < 2) errors.add("tandemNotShared");
+    if ((t.nota?.length ?? 0) > 200) errors.add("tandemNoteTooLong");
+  }
+
   // Consecutivas desde 1 ADMITIENDO EMPATES: se comparan los huecos DISTINTOS,
   // así que 1,2,3,3,4 es válido y 1,3 no. Comprobar la lista con duplicados
   // contra su índice rechazaría el tándem, que es justo el dato que la fase

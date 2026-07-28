@@ -1,5 +1,5 @@
 import type { SagaAccentToken } from "./accents";
-import type { MemberStatus, SagaItemRole } from "./types";
+import type { MemberStatus, SagaItemRole, TandemMode } from "./types";
 
 // Tipos del grafo, movidos aquí desde graph-data.ts (fase 3, Task 1): tanto
 // `buildSagaGraph` (grafo curado a mano, hoy) como `deriveSagaMap` (grafo
@@ -31,6 +31,12 @@ export type SagaGraphNode = {
    *  itinerario son dos capas: el itinerario manda sobre lo que dice, y el mapa
    *  sobre lo que el itinerario calla. */
   step: number | null;
+  /** Metadatos del HUECO compartido al que pertenece el nodo (`saga_tandems`,
+   *  fase 2). Denormalizado: los N nodos del mismo hueco llevan el MISMO valor,
+   *  y `deriveTimeline` lo lee del primero al fundir la fila — así no necesita
+   *  conocer la `position` (que el nodo no lleva) ni volver a consultar nada.
+   *  `null` si el nodo no comparte hueco, o si el curador no declaró nada. */
+  tandem: { mode: TandemMode | null; note: string | null } | null;
 };
 
 export type SagaGraphEdge = {

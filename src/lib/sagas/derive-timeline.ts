@@ -106,8 +106,10 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
               kind: "tandem",
               no: lastRow.no,
               nodes: [lastRow.node, n],
-              mode: null,
-              note: null,
+              // Los metadatos son del HUECO y `deriveSagaMap` los denormalizó en
+              // cada uno de sus nodos, así que basta con el que abre la fila.
+              mode: lastRow.node.tandem?.mode ?? null,
+              note: lastRow.node.tandem?.note ?? null,
               branches: lastRow.branches,
             };
           }
@@ -164,8 +166,8 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
                 kind: "tandem",
                 no: lastRow.no,
                 nodes: [lastRow.node],
-                mode: null,
-                note: null,
+                mode: lastRow.node.tandem?.mode ?? null,
+                note: lastRow.node.tandem?.note ?? null,
                 branches: lastRow.branches,
               };
         if (lastRow.kind === "entry") {

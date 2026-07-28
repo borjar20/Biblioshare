@@ -3,7 +3,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-07-28",
+    "generatedAt": "2026-07-29",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab)",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -349,8 +349,9 @@
       "summary": "Club, membresía con rol y solicitudes, y muro. create_club() y aprobaciones van por funciones SQL." },
     { "id": "t-activities", "label": "club_activities · items · participants · checkpoints", "layer": "db", "kind": "table",
       "summary": "Actividades de club y sus tablas satélite (opiniones, colocaciones, votos, lecturas de checkpoint)." },
-    { "id": "t-sagas", "label": "sagas · saga_items · saga_placement_windows", "layer": "db", "kind": "table",
-      "summary": "Saga (jerárquica consigo misma), sus miembros con orden curado y las ventanas de colocación. saga_nodes/saga_edges YA NO EXISTEN." },
+    { "id": "t-sagas", "label": "sagas · saga_items · saga_placement_windows · saga_tandems", "layer": "db", "kind": "table",
+      "summary": "Saga (jerárquica consigo misma), sus miembros con orden curado, las ventanas de colocación y los metadatos de los huecos en tándem. saga_nodes/saga_edges YA NO EXISTEN.",
+      "gotchas": ["La pertenencia a un tándem NO está en `saga_tandems`: es el empate de `position` en `saga_items`. Esa tabla solo guarda qué clase de tándem es el hueco y por qué; no hay FK posible porque la clave apunta a un empate entre N filas."] },
     { "id": "t-routes", "label": "saga_routes · route_entries · route_choices · saga_follows", "layer": "db", "kind": "table",
       "summary": "Itinerarios de lectura de una saga, sus entradas y bifurcaciones, más el seguimiento de sagas." },
     { "id": "t-challenges", "label": "challenges · pending_import_rows", "layer": "db", "kind": "table",

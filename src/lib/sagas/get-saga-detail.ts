@@ -24,6 +24,7 @@ import type {
   SagaChildRef,
   SagaItemRole,
   SagaPlacement,
+  TandemMode,
 } from "./types";
 import type { SagaRoute } from "./route-types";
 import type { RawWindowRow } from "./get-saga-sequence";
@@ -500,7 +501,7 @@ export async function getSagaDetail(
   // `id` y `user`, ya resueltos arriba — lanzarlas después del Promise.all
   // (como hacía la Task 4) añadía hasta 2 viajes de ida y vuelta en serie al
   // camino caliente de la ficha de saga.
-  const [followRow, parentRow, roleRow, curated, routeChoice, windowsRes] = await Promise.all([
+  const [followRow, parentRow, roleRow, curated, routeChoice, windowsRes, tandemsRes] = await Promise.all([
     user
       ? supabase
           .from("saga_follows")
@@ -534,6 +535,10 @@ export async function getSagaDetail(
         "item_type, item_id, child_saga_id, after_item_type, after_item_id, after_child_saga_id, before_item_type, before_item_id, before_child_saga_id, created_at",
       )
       .in("saga_id", sagaIds),
+    // Metadatos de los huecos en tándem (fase 2). Todo el subárbol, por el
+    // mismo motivo que las ventanas: un tándem puede vivir en cualquier saga
+    // del árbol, no solo en la raíz.
+    supabase.from("saga_tandems").select("saga_id, position, modo, nota").in("saga_id", sagaIds),
   ]);
 
   // Lookup del mapa derivado (fase 3, Task 2): accent y nombre de cada grupo,
@@ -609,10 +614,24 @@ export async function getSagaDetail(
   // El mapa ya no se lee: se deriva de lo curado (fase 3). Los mismos `groups`
   // que pinta la ficha, más las ventanas, más los lookups de acento y nombre
   // que ya estaban construidos aquí para el grafo viejo.
-  const derivedGraph = deriveSagaMap(groups, windows, {
-    groupAccent,
-    groupName: groupNameMap,
-  });
+  // Clave `<sagaId>:<position>`, la misma que espera `deriveSagaMap`: es la PK
+  // de `saga_tandems`, así que no puede haber dos filas para el mismo hueco.
+  const tandems = new Map(
+    ((tandemsRes.data ?? []) as Array<{
+      saga_id: string;
+      position: number;
+      modo: TandemMode | null;
+      nota: string | null;
+    }>).map((t) => [`${t.saga_id}:${t.position}`, { mode: t.modo, note: t.nota }]),
+  );
+
+  const derivedGraph = deriveSagaMap(
+    groups,
+    windows,
+    { groupAccent, groupName: groupNameMap },
+    undefined,
+    tandems,
+  );
   // `SagaDetail.graph` sigue siendo `SagaGraph | null`, y sigue siendo el
   // origen de «/saga/[id]/mapa» (esa página redirige con `!graph`, no con
   // `hasGraph`) y de cualquier otro consumidor que solo mire `graph !== null`

@@ -23,6 +23,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   groupSagaId: "g1",
   groupName: "Era Uno",
   step: null,
+  tandem: null,
   ...over,
 });
 
@@ -399,10 +400,10 @@ describe("rol narrativo en las ramas (#167)", () => {
       nodes: [
         { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
           label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
-          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null },
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null },
         { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
           label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
-          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null },
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null },
       ],
       edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
     };
@@ -490,5 +491,38 @@ describe("integración: deriveSagaMap → deriveTimeline", () => {
     expect(tl).toHaveLength(2);
     expect(tl[0].rows.map((r) => r.kind === "entry" && r.node.id)).toEqual(["i:book:A", "i:book:B"]);
     expect(tl[1].rows.map((r) => r.kind === "entry" && r.node.id)).toEqual(["i:book:C", "i:book:D"]);
+  });
+});
+
+describe("deriveTimeline · metadatos del tándem (fase 2)", () => {
+  const meta = { mode: "indistinto" as const, note: "cualquiera de los dos" };
+
+  it("la fila tandem toma modo y nota del hueco", () => {
+    const tl = deriveTimeline(graph([node("t1", { orderNo: 0, tandem: meta }), node("t2", { orderNo: 0, tandem: meta })]));
+    const row = tl[0].rows[0];
+    if (row.kind !== "tandem") throw new Error("se esperaba un tándem");
+    expect(row.mode).toBe("indistinto");
+    expect(row.note).toBe("cualquiera de los dos");
+  });
+
+  it("en la columna por pasos también", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("t1", { orderNo: 0, step: 1, tandem: meta }),
+        node("t2", { orderNo: 0, step: 2, tandem: meta }),
+      ]),
+      { spine: "route" },
+    );
+    const row = tl[0].rows[0];
+    if (row.kind !== "tandem") throw new Error("se esperaba un tándem");
+    expect(row.mode).toBe("indistinto");
+  });
+
+  it("sin metadatos declarados, la fila sigue siendo tándem con mode/note a null", () => {
+    const tl = deriveTimeline(graph([node("t1", { orderNo: 0 }), node("t2", { orderNo: 0 })]));
+    const row = tl[0].rows[0];
+    if (row.kind !== "tandem") throw new Error("se esperaba un tándem");
+    expect(row.mode).toBeNull();
+    expect(row.note).toBeNull();
   });
 });

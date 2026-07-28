@@ -10,10 +10,10 @@ type TandemRow = Extract<TimelineRow, { kind: "tandem" }>;
 // Estado 01 del mockup: N obras que comparten hueco. Un solo número, porque
 // comparten puesto — es exactamente lo que las hace tándem.
 //
-// `row.mode` y `row.note` son null hasta la fase 2 (`saga_tandems`): la fila se
-// agrupa desde la fase 1 porque el empate de `position` YA existe, pero «a la
-// vez» vs «cualquier orden» todavía no se puede curar en ningún sitio, y pintar
-// uno de los dos a ciegas sería afirmar lo que nadie ha dicho.
+// `row.mode` y `row.note` los cura el editor de secuencia desde la fase 2
+// (`saga_tandems`). Siguen pudiendo ser null —«sin declarar» es una opción de
+// verdad— y entonces la fila no dice nada sobre el orden: afirmar «se leen a la
+// vez» sin que nadie lo haya declarado es justo lo que esta fase vino a quitar.
 export function TimelineTandemRow({
   row,
   labels,
@@ -45,7 +45,10 @@ export function TimelineTandemRow({
               </span>
             )}
             <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-              {labels.tandemTitle} · {labels.tandemCount(row.nodes.length)}
+              {labels.tandemTitle}
+              {row.mode !== null &&
+                ` · ${row.mode === "simultaneo" ? labels.tandemModeSimultaneo : labels.tandemModeIndistinto}`}
+              {` · ${labels.tandemCount(row.nodes.length)}`}
             </span>
           </div>
           {row.note && <p className="mt-1 text-[11px] italic text-muted-foreground">{row.note}</p>}

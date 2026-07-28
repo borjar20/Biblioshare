@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados **solo en dev** el 2026-07-28 — prod pendiente; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
 `saga_nodes`/`saga_edges`/`save_saga_graph` (§7.7)— **corregido aquí, 2026-07-27**: esta cabecera
 llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
 escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
@@ -908,6 +908,57 @@ por construcción las issues **#204** (el fichero que arrastraba la heurística 
 **#203** (la card y la ficha ya ordenan con el mismo comparador). La asimetría de **#185** en la
 secuencia también desaparece con `main-order.ts`; su denominador del progreso ya lo había arreglado la
 fase 1 (§7, arriba) — issue cerrada con ese matiz, no confundir las dos partes de su título.
+
+### 7.8 Metadatos del hueco compartido: `saga_tandems` (fase 2 del timeline con estados)
+
+Aplicada **solo en dev** al escribir esta sección (2026-07-28); prod pendiente, ver el aviso al final.
+
+```sql
+create type public.saga_tandem_mode as enum ('simultaneo', 'indistinto');
+
+create table public.saga_tandems (
+  saga_id uuid not null references public.sagas(id) on delete cascade,
+  position integer not null,
+  modo public.saga_tandem_mode,
+  nota text,
+  created_at timestamptz not null default now(),
+  primary key (saga_id, position),
+  constraint saga_tandems_says_something check (modo is not null or nota is not null),
+  constraint saga_tandems_nota_len check (nota is null or char_length(nota) <= 200)
+);
+```
+
+**Lo que esta tabla NO hace: decir quién está en el tándem.** La pertenencia sigue siendo lo que era
+desde la fase 2a — el **empate de `position`** entre dos o más filas de `saga_items`— y esa es su
+única fuente de verdad. Aquí solo se guarda qué CLASE de tándem es ese hueco (`modo`) y por qué
+(`nota`). Descartado a sabiendas un `tandem_id` en `saga_items`: daría identidad estable a cambio de
+dos fuentes sobre la pertenencia que pueden contradecirse, y ningún CHECK puede atarlas porque cruzan
+filas — la familia del #91, el #185 y el #203.
+
+**No hay FK contra `saga_items`**, y no puede haberla: la clave apunta a un hueco, que es un empate
+entre N filas, no una fila. Lo que impide que la fila quede huérfana tras renumerar es que
+`save_saga_sequence` es, desde la fase 2a, el **único** escritor de `position`, y reescribe la
+secuencia entera y estos metadatos en la MISMA transacción.
+
+`saga_tandems_says_something` existe porque una fila que no dice nada es ruido que sobrevive a
+renumeraciones; el RPC filtra esos huecos ANTES del insert, porque el CHECK abortaría la transacción
+entera y un control que el curador dejó vacío no puede tumbar el guardado de toda la secuencia.
+
+RLS calcada de `saga_placement_windows`: lectura pública (`anon`+`authenticated`), escritura
+`collaborator+`.
+
+**`save_saga_sequence` pasa a SIETE argumentos** (`p_tandems`), con reemplazo por saga
+(`delete ... where saga_id = p_saga_id` + reinsert). El reemplazo es correcto aquí y no lo era para
+las ventanas: desde la fase 4 las ventanas tienen DOS pantallas escritoras (el editor del padre cura
+la ventana de una obra de su hija), y por eso necesitan sujetos explícitos; un hueco pertenece a la
+secuencia de UNA saga y solo el editor de esa saga lo escribe. La firma de SEIS queda viva como
+envoltorio que delega con `p_tandems = '[]'`, y se retira **después** del despliegue
+(`20260802_drop_save_saga_sequence_v6.sql`) — mismo baile que las fases 2b y 4.
+
+> ⚠️ **Riesgo mientras el envoltorio vive**, medido en dev, no supuesto: una llamada desde el bundle
+> viejo manda `p_tandems = '[]'` y **borra** los metadatos que el editor nuevo acabara de guardar.
+> Ventana de minutos entre la migración y el despliegue, con un único tándem en toda la producción
+> (Trono de Cristal, hueco 5).
 
 ## 8. Seguridad
 

@@ -7,6 +7,8 @@ export type TimelineLabels = {
   branchRequisite: string;
   tandemTitle: string;
   tandemCount: (count: number) => string;
+  tandemModeSimultaneo: string;
+  tandemModeIndistinto: string;
   windowTitle: string;
   windowAfter: (title: string) => string;
   windowBefore: (title: string) => string;
@@ -21,6 +23,8 @@ export function buildTimelineLabels(t: Translator): TimelineLabels {
     branchRequisite: t("branchRequisite"),
     tandemTitle: t("timelineTandemTitle"),
     tandemCount: (count) => t("timelineTandemCount", { count }),
+    tandemModeSimultaneo: t("timelineTandemSimultaneo"),
+    tandemModeIndistinto: t("timelineTandemIndistinto"),
     windowTitle: t("timelineWindowTitle"),
     windowAfter: (title) => t("timelineWindowAfter", { title }),
     windowBefore: (title) => t("timelineWindowBefore", { title }),

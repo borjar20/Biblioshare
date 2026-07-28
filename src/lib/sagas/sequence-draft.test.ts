@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
-  setOptional, setRole, toPayload, unpair,
+  setOptional, setRole, setTandemMeta, toPayload, unpair,
   type DraftAnchor, type DraftEntry, type NestedSubject, type SequenceDraft,
 } from "./sequence-draft";
 
@@ -18,17 +18,26 @@ const block = (id: string): DraftEntry => ({
   title: id, coverUrl: null, accentColor: "verde", count: 8, optional: false, role: null, window: null,
   ownerSagaId: "saga", isNew: false,
 });
+// Recibe los huecos como arrays de entradas —la ergonomía que tenía antes de
+// que un hueco fuera un objeto (fase 2)— y los envuelve. Así los tests que ya
+// existían solo cambian donde INSPECCIONAN un hueco, no donde lo construyen.
 const draft = (
   slots: DraftEntry[][],
   free: DraftEntry[] = [],
   unclassified: DraftEntry[] = [],
   nested: SequenceDraft["nested"] = [],
-): SequenceDraft => ({ slots, free, unclassified, removed: [], nested });
+): SequenceDraft => ({
+  slots: slots.map((entries) => ({ entries, mode: null, note: null })),
+  free,
+  unclassified,
+  removed: [],
+  nested,
+});
 
 describe("moveSlot", () => {
   it("intercambia el hueco con su vecino y no toca los demás", () => {
     const d = moveSlot(draft([[work("a")], [work("b")], [work("c")]]), 0, 1);
-    expect(d.slots.map((s) => s[0].itemId)).toEqual(["b", "a", "c"]);
+    expect(d.slots.map((s) => s.entries[0].itemId)).toEqual(["b", "a", "c"]);
   });
 
   it("es un no-op en los extremos, sin lanzar", () => {
@@ -42,20 +51,20 @@ describe("pairWith / unpair", () => {
   it("emparejar mete la obra en el hueco destino y elimina su hueco", () => {
     const d = pairWith(draft([[work("a")], [work("b")], [work("c")]]), "i:book:c", 0);
     expect(d.slots).toHaveLength(2);
-    expect(d.slots[0].map((e) => e.itemId)).toEqual(["a", "c"]);
-    expect(d.slots[1][0].itemId).toBe("b");
+    expect(d.slots[0].entries.map((e) => e.itemId)).toEqual(["a", "c"]);
+    expect(d.slots[1].entries[0].itemId).toBe("b");
   });
 
   it("deshacer un tándem devuelve huecos consecutivos en el sitio del empate", () => {
     const d = unpair(draft([[work("a"), work("c")], [work("b")]]), 0);
-    expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["a"], ["c"], ["b"]]);
+    expect(d.slots.map((s) => s.entries.map((e) => e.itemId))).toEqual([["a"], ["c"], ["b"]]);
   });
 
   it("emparejar desde un hueco ANTERIOR al destino no pierde la entrada", () => {
     // Al sacar `a` del hueco 0 los índices se corren, así que resolver el
     // destino por índice a ciegas apuntaría al hueco equivocado.
     const d = pairWith(draft([[work("a")], [work("b")], [work("c")]]), "i:book:a", 2);
-    expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["b"], ["c", "a"]]);
+    expect(d.slots.map((s) => s.entries.map((e) => e.itemId))).toEqual([["b"], ["c", "a"]]);
   });
 
   it("emparejar una fila con su propio hueco es un no-op", () => {
@@ -67,19 +76,19 @@ describe("pairWith / unpair", () => {
 describe("sendTo", () => {
   it("mover a «Cuando quieras» saca la fila de la secuencia y cierra el hueco", () => {
     const d = sendTo(draft([[work("a")], [work("b")]]), "i:book:a", "free");
-    expect(d.slots.map((s) => s[0].itemId)).toEqual(["b"]);
+    expect(d.slots.map((s) => s.entries[0].itemId)).toEqual(["b"]);
     expect(d.free.map((e) => e.itemId)).toEqual(["a"]);
   });
 
   it("mover a la secuencia añade un hueco AL FINAL", () => {
     const d = sendTo(draft([[work("a")]], [], [work("z")]), "i:book:z", "sequence");
-    expect(d.slots.map((s) => s[0].itemId)).toEqual(["a", "z"]);
+    expect(d.slots.map((s) => s.entries[0].itemId)).toEqual(["a", "z"]);
     expect(d.unclassified).toHaveLength(0);
   });
 
   it("sacar de un tándem al resto del hueco NO lo destruye", () => {
     const d = sendTo(draft([[work("a"), work("c")]]), "i:book:c", "free");
-    expect(d.slots.map((s) => s.map((e) => e.itemId))).toEqual([["a"]]);
+    expect(d.slots.map((s) => s.entries.map((e) => e.itemId))).toEqual([["a"]]);
     expect(d.free.map((e) => e.itemId)).toEqual(["c"]);
   });
 
@@ -142,13 +151,13 @@ describe("setOptional / setRole", () => {
   it("cambian solo la fila apuntada, en cualquier zona", () => {
     const d = setRole(setOptional(draft([[work("a")]], [work("f")]), "i:book:f", true), "i:book:a", "spin_off");
     expect(d.free[0].optional).toBe(true);
-    expect(d.slots[0][0].role).toBe("spin_off");
+    expect(d.slots[0].entries[0].role).toBe("spin_off");
     expect(d.free[0].role).toBeNull();
   });
 
   it("un bloque nunca guarda rol: setRole lo ignora", () => {
     const d = setRole(draft([[block("g")]]), "s:g", "spin_off");
-    expect(d.slots[0][0].role).toBeNull();
+    expect(d.slots[0].entries[0].role).toBeNull();
   });
 });
 
@@ -173,7 +182,7 @@ describe("ventanas", () => {
     // Es la coherencia que ningún CHECK entre tablas puede imponer.
     const conAncla = setAnchor(draft([], [work("f")]), "i:book:f", "after", anchor("Era 1"));
     const movida = sendTo(conAncla, "i:book:f", "sequence");
-    expect(movida.slots[0][0].window).toBeNull();
+    expect(movida.slots[0].entries[0].window).toBeNull();
   });
 
   it("una entrada fuera de la zona libre no admite ancla", () => {
@@ -187,8 +196,8 @@ describe("ventanas", () => {
     // no nulo, rompiendo la invariante «solo `free` tiene ventana».
     const conAncla = setAnchor(draft([[work("a")]], [work("f")]), "i:book:f", "after", anchor("Era 1"));
     const emparejada = pairWith(conAncla, "i:book:f", 0);
-    expect(emparejada.slots[0].map((e) => e.itemId)).toEqual(["a", "f"]);
-    expect(emparejada.slots[0][1].window).toBeNull();
+    expect(emparejada.slots[0].entries.map((e) => e.itemId)).toEqual(["a", "f"]);
+    expect(emparejada.slots[0].entries[1].window).toBeNull();
   });
 
   it("toPayload lleva las ventanas, y solo las de la zona libre", () => {
@@ -213,8 +222,8 @@ describe("ventanas", () => {
     };
     const d = addEntry(draft([[work("a")]]), entryWithWindow);
     expect(d.slots).toHaveLength(2);
-    expect(d.slots[1][0].window).toBeNull();
-    expect(d.slots[1][0].itemId).toBe("nuevo");
+    expect(d.slots[1].entries[0].window).toBeNull();
+    expect(d.slots[1].entries[0].itemId).toBe("nuevo");
   });
 });
 
@@ -269,7 +278,13 @@ describe("toPayload: ventanas y sujetos (fase 4)", () => {
     const fijo = { ...work("f"), ownerSagaId: "padre" };
     const sin = { ...work("s"), ownerSagaId: "padre" };
     const p = toPayload(
-      { slots: [[fijo]], free: [free], unclassified: [sin], removed: ["i:book:borrada"], nested: [nested] },
+      {
+        slots: [{ entries: [fijo], mode: null, note: null }],
+        free: [free],
+        unclassified: [sin],
+        removed: ["i:book:borrada"],
+        nested: [nested],
+      },
       "padre",
     );
     expect(p.windowSubjects).toEqual([
@@ -325,5 +340,85 @@ describe("un sujeto solo se reclama bajo la saga cuya ventana esta pantalla ense
     expect(p.windowSubjects).toEqual([
       { saga_id: "hija", item_type: "book", item_id: "f", child_saga_id: null },
     ]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fase 2: los metadatos del HUECO (`saga_tandems`). Lo que se prueba aquí no
+// es que se guarden, sino que VIAJAN CON SU HUECO: `moveSlot`, `pairWith`,
+// `unpair` y `extract` cambian los índices —y `extract` puede borrar un hueco
+// entero—, así que cualquier estructura paralela indexada por posición se
+// desincroniza al primer reordenamiento, en silencio.
+// ─────────────────────────────────────────────────────────────────────────
+const tandemDraft = () => draft([[work("a"), work("b")]]);
+const tandemDraftPlusOne = () => draft([[work("a"), work("b")], [work("c")]]);
+const draftWith2Slots = () => draft([[work("a"), work("b")], [work("c"), work("d")]]);
+
+describe("metadatos del hueco (fase 2)", () => {
+  it("setTandemMeta guarda modo y nota en el hueco", () => {
+    const d = setTandemMeta(draftWith2Slots(), 0, { mode: "simultaneo", note: "Dos caras del mismo asedio" });
+    expect(d.slots[0].mode).toBe("simultaneo");
+    expect(d.slots[0].note).toBe("Dos caras del mismo asedio");
+    expect(d.slots[1].mode).toBeNull();
+  });
+
+  it("un hueco de una sola obra ignora los metadatos, como setRole ignora el rol de un bloque", () => {
+    const d = setTandemMeta(draft([[work("a")]]), 0, { mode: "simultaneo", note: "no" });
+    expect(d.slots[0].mode).toBeNull();
+    expect(d.slots[0].note).toBeNull();
+  });
+
+  it("mover un hueco se lleva SUS metadatos, no los del vecino", () => {
+    const d = setTandemMeta(draftWith2Slots(), 0, { mode: "indistinto", note: "cualquiera de los dos" });
+    const moved = moveSlot(d, 0, 1);
+    expect(moved.slots[1].mode).toBe("indistinto");
+    expect(moved.slots[1].note).toBe("cualquiera de los dos");
+    expect(moved.slots[0].mode).toBeNull();
+  });
+
+  it("deshacer el tándem (unpair) descarta los metadatos: ya no hay hueco compartido", () => {
+    const d = setTandemMeta(tandemDraft(), 0, { mode: "simultaneo", note: "a la vez" });
+    const split = unpair(d, 0);
+    expect(split.slots).toHaveLength(2);
+    expect(split.slots.every((s) => s.mode === null && s.note === null)).toBe(true);
+  });
+
+  it("sacar una obra deja al hueco con una sola: los metadatos se van con el tándem", () => {
+    const d = setTandemMeta(tandemDraft(), 0, { mode: "simultaneo", note: "a la vez" });
+    const out = sendTo(d, "i:book:b", "free");
+    expect(out.slots[0].entries).toHaveLength(1);
+    expect(out.slots[0].mode).toBeNull();
+    expect(out.slots[0].note).toBeNull();
+  });
+
+  it("emparejar CON un tándem que ya declaró modo no lo borra", () => {
+    const d = setTandemMeta(draft([[work("a"), work("b")], [work("c")]]), 0, { mode: "simultaneo", note: null });
+    const paired = pairWith(d, "i:book:c", 0);
+    expect(paired.slots[0].entries).toHaveLength(3);
+    expect(paired.slots[0].mode).toBe("simultaneo");
+  });
+
+  it("toPayload emite el tándem con el número del HUECO", () => {
+    const d = setTandemMeta(tandemDraft(), 0, { mode: "simultaneo", note: "a la vez" });
+    expect(toPayload(d, "saga-1").tandems).toEqual([{ position: 1, modo: "simultaneo", nota: "a la vez" }]);
+  });
+
+  it("toPayload omite un hueco en tándem sin nada declarado", () => {
+    expect(toPayload(tandemDraft(), "saga-1").tandems).toEqual([]);
+  });
+
+  it("toPayload recorta la nota y omite la que solo tiene espacios", () => {
+    const d = setTandemMeta(tandemDraft(), 0, { mode: null, note: "   " });
+    expect(toPayload(d, "saga-1").tandems).toEqual([]);
+    const d2 = setTandemMeta(tandemDraft(), 0, { mode: null, note: "  con espacios  " });
+    expect(toPayload(d2, "saga-1").tandems).toEqual([{ position: 1, modo: null, nota: "con espacios" }]);
+  });
+
+  it("el tándem comparte número y el hueco siguiente vale n+1, nunca n+2", () => {
+    const d = setTandemMeta(tandemDraftPlusOne(), 0, { mode: "simultaneo", note: null });
+    const p = toPayload(d, "saga-1");
+    expect(p.tandems[0].position).toBe(1);
+    expect(p.entries.filter((e) => e.position === 1)).toHaveLength(2);
+    expect(p.entries.filter((e) => e.position === 2)).toHaveLength(1);
   });
 });

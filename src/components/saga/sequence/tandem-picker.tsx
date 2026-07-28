@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { DraftEntry } from "@/lib/sagas/sequence-draft";
+import type { DraftSlot } from "@/lib/sagas/sequence-draft";
 import { normalizeTitle } from "@/lib/catalog/title-match";
 
 /** Paso 2 del tándem (frame C1): elegir a QUÉ hueco se empareja. Se ofrecen los
@@ -12,7 +12,7 @@ export function TandemPicker({
   entryKey, slots, onPair, onCancel,
 }: {
   entryKey: string;
-  slots: DraftEntry[][];
+  slots: DraftSlot[];
   onPair: (slotIndex: number) => void;
   onCancel: () => void;
 }) {
@@ -25,8 +25,8 @@ export function TandemPicker({
   const normalizedFilter = normalizeTitle(filter);
   const options = slots
     .map((slot, i) => ({ slot, i }))
-    .filter(({ slot }) => !slot.some((e) => e.key === entryKey))
-    .filter(({ slot }) => slot.some((e) => normalizeTitle(e.title).includes(normalizedFilter)));
+    .filter(({ slot }) => !slot.entries.some((e) => e.key === entryKey))
+    .filter(({ slot }) => slot.entries.some((e) => normalizeTitle(e.title).includes(normalizedFilter)));
 
   return (
     <dialog
@@ -74,7 +74,7 @@ export function TandemPicker({
                       onChange={() => setChosen(i)} className="sr-only"
                     />
                     <span className="w-6 shrink-0 text-center font-mono text-[15px] text-accent">{i + 1}</span>
-                    <span className="min-w-0 flex-1 truncate text-[13px]">{slot.map((e) => e.title).join(" · ")}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{slot.entries.map((e) => e.title).join(" · ")}</span>
                   </label>
                 </li>
               ))}

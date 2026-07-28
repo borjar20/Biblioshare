@@ -3,7 +3,7 @@ import { validateSequenceDraft } from "./validate-sequence-draft";
 import type { SequencePayload } from "./sequence-draft";
 
 const base: SequencePayload = {
-  entries: [], blocks: [], removed: [], removedBlocks: [], windows: [], windowSubjects: [],
+  entries: [], blocks: [], removed: [], removedBlocks: [], windows: [], windowSubjects: [], tandems: [],
 };
 // `windowOwners` (fase 4) responde a la vez a «¿puede este sujeto tener
 // ventana?» y «¿bajo qué saga vive su fila?». El sujeto por defecto del helper
@@ -191,5 +191,37 @@ describe("ventanas con dueña (fase 4)", () => {
     expect(validateSequenceDraft({ ...base, windows: [win("padre", "x")] }, ownerCtx).errors).toEqual([
       "windowWrongOwner",
     ]);
+  });
+});
+
+describe("tándems (fase 2)", () => {
+  const entry = (id: string, position: number | null) => ({
+    item_type: "book" as const, item_id: id, position, placement: (position === null ? null : "fijo") as null | "fijo",
+    optional: false, role: null,
+  });
+
+  it("acepta metadatos sobre un hueco que de verdad comparten dos obras", () => {
+    const p: SequencePayload = { ...base, entries: [entry("a", 1), entry("b", 1)], tandems: [{ position: 1, modo: "simultaneo", nota: null }] };
+    expect(validateSequenceDraft(p, ctx).errors).toEqual([]);
+  });
+
+  it("rechaza metadatos en un hueco con una sola obra", () => {
+    const p: SequencePayload = { ...base, entries: [entry("a", 1)], tandems: [{ position: 1, modo: "simultaneo", nota: null }] };
+    expect(validateSequenceDraft(p, ctx).errors).toContain("tandemNotShared");
+  });
+
+  it("un hueco compartido entre una obra y un BLOQUE también cuenta", () => {
+    const p: SequencePayload = {
+      ...base,
+      entries: [entry("a", 1)],
+      blocks: [{ child_saga_id: "hija", position_in_parent: 1, placement_in_parent: "fijo", optional_in_parent: false }],
+      tandems: [{ position: 1, modo: null, nota: "van juntos" }],
+    };
+    expect(validateSequenceDraft(p, { ...ctx, childIds: new Set(["hija"]) }).errors).toEqual([]);
+  });
+
+  it("rechaza una nota de más de 200 caracteres, el mismo tope que el CHECK", () => {
+    const p: SequencePayload = { ...base, entries: [entry("a", 1), entry("b", 1)], tandems: [{ position: 1, modo: null, nota: "x".repeat(201) }] };
+    expect(validateSequenceDraft(p, ctx).errors).toContain("tandemNoteTooLong");
   });
 });
