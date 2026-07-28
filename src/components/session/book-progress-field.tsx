@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { clampPage, readProgress } from "@/lib/sessions/page-stepper";
+import { combineStartedAt } from "@/lib/sessions/combine-started-at";
 import { SessionTimer } from "./session-timer";
 
 const JUMPS = [10, 25, 50] as const;
@@ -22,6 +23,7 @@ export function BookProgressField({
   total,
   initialMinutes,
   onPageChange,
+  sessionDate,
 }: {
   passId: string;
   fromPage: number | null;
@@ -31,6 +33,9 @@ export function BookProgressField({
    *  compositor la siga. No se usa para enviar nada: el input `name="page"`
    *  sigue siendo la única fuente de la posición de la sesión. */
   onPageChange?: (page: number | null) => void;
+  /** Valor EN VIVO del campo Fecha del padre (session-sheet.tsx) — se
+   *  combina con la hora opcional de abajo en combineStartedAt. */
+  sessionDate: string;
 }) {
   const t = useTranslations("session");
   const [toPage, setToPage] = useState(fromPage !== null ? String(fromPage) : "");
@@ -55,6 +60,9 @@ export function BookProgressField({
     initialMinutes ? String(initialMinutes) : "",
   );
   const minutesRef = useRef<HTMLInputElement>(null);
+  // Vacío por defecto a propósito (issue #252): nunca se rellena con "ahora".
+  const [startedAtTime, setStartedAtTime] = useState("");
+  const startedAt = combineStartedAt(sessionDate, startedAtTime);
 
   // "Otro" no es un valor: vacía el campo y le lleva el foco (petición
   // explícita del diseño). Los chips numéricos son un acelerador del MISMO
@@ -213,6 +221,23 @@ export function BookProgressField({
               value={manualMinutes}
               onChange={(e) => setManualMinutes(e.target.value)}
             />
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="session-started-at-time"
+                className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground"
+              >
+                {t("startedAtTime")}
+              </label>
+              <Input
+                id="session-started-at-time"
+                type="time"
+                aria-label={t("startedAtTime")}
+                value={startedAtTime}
+                onChange={(e) => setStartedAtTime(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">{t("startedAtTimeHint")}</p>
+            </div>
+            {startedAt && <input type="hidden" name="startedAt" value={startedAt} />}
           </div>
         ) : (
           <SessionTimer
