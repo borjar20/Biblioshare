@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
+import { SkipOptionalButton } from "./skip-optional-button";
 import { TimelineBranchRow } from "./timeline-branch";
 import type { TimelineLabels } from "./timeline-labels";
 
@@ -17,14 +18,23 @@ type EntryRow = Extract<TimelineRow, { kind: "entry" }>;
 // subsaga baja de cabecera de sección a etiqueta de fila (spec §1 — repetir
 // «Magos» dos veces porque el itinerario parte el hilo rompe más de lo que
 // explica).
+//
+// Desde la fase 4, una obra opcional puede estar AQUÍ y no solo como rama: en
+// producción hay dos con hueco fijo (Saga de los Huesos Verdes, huecos 1 y 2).
+// Por eso la tarjeta deja de ser un `<Link>` a secas — el botón de saltar tiene
+// que ser HERMANO del enlace, no hijo: un <form> dentro de un <a> es HTML
+// inválido (contenido interactivo anidado) y el navegador reordena el DOM.
 export function TimelineEntryRow({
   row,
   labels,
   showGroupLabel,
+  sagaId,
 }: {
   row: EntryRow;
   labels: TimelineLabels;
   showGroupLabel: boolean;
+  /** Ficha que hay que revalidar al saltar; null sin sesión (no se pinta control). */
+  sagaId: string | null;
 }) {
   const accent = row.node.accent;
   return (
@@ -42,39 +52,57 @@ export function TimelineEntryRow({
             }`}
           />
         </div>
-        <Link
-          href={row.node.href}
+        <div
           className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border bg-surface px-3 py-2 ${
             row.node.status === "in_progress" ? "border-accent/50 shadow-md" : "border-border"
-          } ${row.node.status === null ? "opacity-60" : ""}`}
+          } ${row.node.status === null ? "opacity-60" : ""} ${row.node.skipped ? "opacity-50" : ""}`}
         >
-          <span className="relative h-[66px] w-[44px] shrink-0 overflow-hidden rounded shadow">
-            {row.node.coverUrl && <Image src={row.node.coverUrl} alt="" fill sizes="44px" className="object-cover" />}
-            {row.node.status === "completed" && (
-              <span className="absolute bottom-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white">
-                ✓
+          <Link href={row.node.href} className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="relative h-[66px] w-[44px] shrink-0 overflow-hidden rounded shadow">
+              {row.node.coverUrl && (
+                <Image src={row.node.coverUrl} alt="" fill sizes="44px" className="object-cover" />
+              )}
+              {row.node.status === "completed" && (
+                <span className="absolute bottom-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white">
+                  ✓
+                </span>
+              )}
+              {row.node.status === "in_progress" && (
+                <span className="absolute inset-0 grid place-items-center bg-foreground/40 text-sm text-white">◉</span>
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              {row.no !== null && (
+                <span className="block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                  {labels.orderNo(row.no)}
+                </span>
+              )}
+              <span
+                className={`block truncate font-serif text-[14.5px] font-semibold leading-tight ${
+                  row.node.skipped ? "line-through decoration-muted-foreground" : ""
+                }`}
+              >
+                {row.node.label}
               </span>
-            )}
-            {row.node.status === "in_progress" && (
-              <span className="absolute inset-0 grid place-items-center bg-foreground/40 text-sm text-white">◉</span>
-            )}
-          </span>
-          <span className="min-w-0 flex-1">
-            {row.no !== null && (
-              <span className="block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
-                {labels.orderNo(row.no)}
-              </span>
-            )}
-            <span className="block truncate font-serif text-[14.5px] font-semibold leading-tight">{row.node.label}</span>
-            {showGroupLabel && row.node.groupName && (
-              <span className="block truncate font-mono text-[9px] text-muted-foreground">{row.node.groupName}</span>
-            )}
-          </span>
-          <span className="text-base text-muted-foreground">›</span>
-        </Link>
+              {row.node.optional && (
+                <span
+                  data-testid="optional-tag"
+                  className="mt-0.5 block font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
+                >
+                  {row.node.skipped ? labels.skippedTag : labels.optionalTag}
+                </span>
+              )}
+              {showGroupLabel && row.node.groupName && (
+                <span className="block truncate font-mono text-[9px] text-muted-foreground">{row.node.groupName}</span>
+              )}
+            </span>
+            <span className="text-base text-muted-foreground">›</span>
+          </Link>
+          {row.node.optional && <SkipOptionalButton sagaId={sagaId} node={row.node} labels={labels} />}
+        </div>
       </div>
       {row.branches.map((b) => (
-        <TimelineBranchRow key={b.node.id} branch={b} accent={accent} labels={labels} />
+        <TimelineBranchRow key={b.node.id} branch={b} accent={accent} labels={labels} sagaId={sagaId} />
       ))}
     </div>
   );

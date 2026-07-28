@@ -18,10 +18,18 @@ export function TimelineTandemRow({
   row,
   labels,
   showGroupLabel,
+  sagaId,
 }: {
   row: TandemRow;
   labels: TimelineLabels;
   showGroupLabel: boolean;
+  /** Ficha que hay que revalidar al saltar; null sin sesión. Aquí solo viaja
+   *  hacia las RAMAS: las obras del propio tándem no llevan botón de saltar.
+   *  Hoy no hay ninguna obra opcional dentro de un tándem en producción (hay un
+   *  solo tándem, y sus dos obras cuentan), así que se deja fuera en vez de
+   *  inventarle un sitio a la píldora dentro de una fila que ya comparte
+   *  número. Abierto como issue. */
+  sagaId: string | null;
 }) {
   const accent = row.nodes[0]?.accent ?? "beige";
   return (
@@ -79,7 +87,7 @@ export function TimelineTandemRow({
         </div>
       </div>
       {row.branches.map((b) => (
-        <TimelineBranchRow key={b.node.id} branch={b} accent={accent} labels={labels} />
+        <TimelineBranchRow key={b.node.id} branch={b} accent={accent} labels={labels} sagaId={sagaId} />
       ))}
     </div>
   );

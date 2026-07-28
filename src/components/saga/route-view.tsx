@@ -103,7 +103,16 @@ export async function RouteView({
   // hoy ninguna fila `window`: así no queda un sitio que lo olvide el día que
   // sí las produzca.
   const timelineSections =
-    graph === null ? null : deriveTimeline(graph, { spine: "route", authenticated: detail.isAuthenticated });
+    graph === null
+      ? null
+      : deriveTimeline(graph, {
+          spine: "route",
+          authenticated: detail.isAuthenticated,
+          showOptional: detail.showOptionalReadings,
+        });
+  // Sobre el GRAFO, no sobre las filas: contado sobre lo visible, apagar el
+  // interruptor haría desaparecer el propio interruptor.
+  const optionalCount = graph === null ? 0 : graph.nodes.filter((n) => n.kind === "item" && n.optional).length;
 
   return (
     <div className="flex flex-col gap-3">
@@ -142,7 +151,12 @@ export async function RouteView({
         // veces seguidos es el ruido que la fase 4 evitó al no numerar por
         // duplicado. Lo que solo tiene RouteView —nombre, resumen, «Llevas X de
         // Y», adoptar y «Sin puesto en este itinerario»— se queda.
-        <ReadingTimeline sections={timelineSections} />
+        <ReadingTimeline
+          sections={timelineSections}
+          sagaId={detail.isAuthenticated ? detail.saga.id : null}
+          showOptional={detail.showOptionalReadings}
+          optionalCount={optionalCount}
+        />
       ) : (
         // Camino de respaldo, sin grafo que derivar (saga sin curar, o con el
         // mapa apagado): la lista de pasos de siempre.

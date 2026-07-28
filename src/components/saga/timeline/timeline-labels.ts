@@ -18,6 +18,12 @@ export type TimelineLabels = {
   windowTrackAria: (title: string) => string;
   windowTrackStart: string;
   windowTrackEnd: string;
+  skip: string;
+  unskip: string;
+  skipAria: (title: string) => string;
+  unskipAria: (title: string) => string;
+  optionalTag: string;
+  skippedTag: string;
 };
 
 type Translator = (key: string, values?: Record<string, string | number>) => string;
@@ -45,5 +51,11 @@ export function buildTimelineLabels(t: Translator): TimelineLabels {
     windowTrackAria: (title) => t("timelineWindowTrackAria", { title }),
     windowTrackStart: t("timelineWindowTrackStart"),
     windowTrackEnd: t("timelineWindowTrackEnd"),
+    skip: t("timelineSkip"),
+    unskip: t("timelineUnskip"),
+    skipAria: (title) => t("timelineSkipAria", { title }),
+    unskipAria: (title) => t("timelineUnskipAria", { title }),
+    optionalTag: t("timelineOptionalTag"),
+    skippedTag: t("timelineSkippedTag"),
   };
 }
