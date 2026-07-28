@@ -1,8 +1,10 @@
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaAccentToken } from "./accents";
-import { partitionGroups, type MemberGroup } from "./group-members";
+import { orderBlocksForLayout, partitionGroups, type MemberGroup } from "./group-members";
+import { alignRowsToLongEdges } from "./layout-map";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
 import type { DetailMember, ResolvedWindow, SagaPlacement, TandemMode } from "./types";
+import { NODE_STEP_X, NODE_STEP_Y } from "./graph-metrics";
 
 // Derivación PURA del mapa (fase 3, Task 1): sustituye a las tablas curadas a
 // mano `saga_nodes`/`saga_edges` — el mapa se DERIVA de lo que ya está curado
@@ -42,27 +44,30 @@ export function parseItemKey(id: string): { itemType: ItemType; itemId: string }
  *  tiene forma de bloque. */
 const blockSagaId = (key: string): string | null => (key.startsWith("s:") ? key.slice(2) : null);
 
-// `deriveSagaMap` tiene que devolver coordenadas en PÍXELES, no en índice de
-// columna/fila (0, 1, 2…): `saga-graph-view.tsx` usa `n.x`/`n.y` TAL CUAL
-// como `position` de React Flow (`position: { x: n.x, y: n.y }`), sin
-// normalizar nada. La única función que normaliza escalas es `scaleNodes`
-// (derive-timeline.ts), y solo la llama el mini-preview del CTA
-// (map-cta.tsx) — la vista 2D no pasa por ahí. Si aquí se devolvieran
-// índices, todos los nodos caerían unos sobre otros en el lienzo, porque la
-// tarjeta de portada mide 78×116px (`graph-nodes.tsx`, `CoverNode`).
-//
-// Paso horizontal entre columnas: bajo cada portada cuelga una etiqueta de
-// 150px, centrada sobre la tarjeta (78px de ancho). Dos columnas contiguas
-// necesitan al menos 150px centro a centro para que sus etiquetas no se
-// toquen; 180px deja ~30px de margen.
-export const NODE_STEP_X = 180;
+// Los pasos de rejilla viven en graph-metrics.ts, con el resto de medidas en
+// píxeles: `layout-map.ts` necesita NODE_STEP_X y si lo importara de aquí los
+// dos módulos se importarían mutuamente. Se re-exportan para no romper a quien
+// ya los importaba de este módulo.
+export { NODE_STEP_X, NODE_STEP_Y } from "./graph-metrics";
 
-// Paso vertical entre filas (una fila = un bloque, `blocks.forEach((group,
-// y) => …)`): la portada mide 116px de alto, más la etiqueta que cuelga
-// debajo (`mt-2` = 8px + hasta dos líneas de `text-sm leading-tight`, unos
-// 40px). Una fila necesita ~164px para no invadir la portada de la fila
-// siguiente; 220px deja margen cómodo.
-export const NODE_STEP_Y = 220;
+/** Reparte los miembros ENCADENABLES de un bloque en huecos: cada hueco es un
+ *  array de 1 (obra suelta dentro de la cadena) o más (tándem) miembros que
+ *  comparten `position`. Una obra sin hueco (`position === null`: `libre` o sin
+ *  clasificar) no entra: es un nodo del mapa, pero no de la cadena.
+ *
+ *  Vive fuera de `deriveSagaMap` porque hay DOS recorridos que necesitan el
+ *  mismo reparto —la pre-pasada de `orderNo`, en orden de lectura, y el pintado,
+ *  en orden de filas— y dos copias del mismo bucle acaban discrepando. */
+function huecosDe(group: MemberGroup): DetailMember[][] {
+  const huecos: DetailMember[][] = [];
+  for (const m of group.members) {
+    if (m.position === null) continue;
+    const current = huecos.at(-1);
+    if (current !== undefined && current[0].position === m.position) current.push(m);
+    else huecos.push([m]);
+  }
+  return huecos;
+}
 
 /**
  * Deriva PURAMENTE el `SagaGraph` de una saga a partir de lo curado (grupos,
@@ -88,7 +93,11 @@ export function deriveSagaMap(
   tandems?: Map<string, { mode: TandemMode | null; note: string | null }>,
 ): SagaGraph {
   const { ordered, free } = partitionGroups(groups);
-  const blocks = [...ordered, ...free];
+  // Orden de PINTADO (filas), que ya no es el de lectura: un bloque libre con
+  // ventana sube junto a su ancla para que esa arista no cruce el lienzo entero.
+  // El orden de LECTURA sigue siendo `[...ordered, ...free]`, y es el que usa la
+  // pre-pasada de `orderNo` unas líneas más abajo.
+  const blocks = orderBlocksForLayout(ordered, free, windows);
 
   const nodes: SagaGraphNode[] = [];
   const byId = new Map<string, SagaGraphNode>();
@@ -109,33 +118,44 @@ export function deriveSagaMap(
   // propósito, fuera de la cadena.
   let chainTail: DetailMember[] | null = null;
 
-  // Task 9: el mapa salía como una escalera diagonal larguísima porque `x`
-  // era un contador de columnas COMPARTIDO por todo el mapa (crecía con cada
-  // hueco de CUALQUIER bloque, así que 20 obras dibujaban 20 columnas de
-  // ancho). Decisión del responsable: una fila por bloque, COMPACTA. `x` se
-  // declara DENTRO de `blocks.forEach` (más abajo) y por eso se reinicia en
-  // cada bloque — cada uno es una cadena horizontal corta que empieza en la
-  // columna 0, y el ancho del dibujo pasa a ser el del bloque más largo, no
-  // la suma de todos.
+  // Task 9: el mapa salía como una escalera diagonal larguísima porque `x` era
+  // un contador de columnas COMPARTIDO por todo el mapa (crecía con cada hueco
+  // de CUALQUIER bloque, así que 20 obras dibujaban 20 columnas de ancho).
+  // Decisión del responsable: una fila por bloque, COMPACTA. `x` se declara
+  // DENTRO de `blocks.forEach` (más abajo) y por eso se reinicia en cada bloque
+  // — cada uno es una cadena horizontal corta que empieza en la columna 0, y el
+  // ancho del dibujo pasa a ser el del bloque más largo, no la suma de todos.
   //
   // `orderNo` es harina de otro costal: NO es una coordenada, es el índice
-  // lógico que consume `deriveTimeline` (derive-timeline.ts) para construir
-  // su columna del timeline móvil, y TIENE que seguir siendo global y
-  // creciente en el orden de lectura — si se acoplara a `x` (que se reinicia
-  // por bloque), dos bloques distintos producirían el mismo orderNo y el
-  // timeline de móvil confundiría su orden sin que ninguna prueba de "x" lo
-  // note. Por eso vive en su PROPIO contador, `orderCounter`, que nunca se
-  // reinicia.
+  // lógico que consume `deriveTimeline` (derive-timeline.ts) para construir su
+  // columna del timeline móvil, y TIENE que seguir siendo global y creciente en
+  // el ORDEN DE LECTURA.
+  //
+  // Por eso se calcula AQUÍ, en una pre-pasada sobre `[...ordered, ...free]`, y
+  // no dentro del `forEach` de pintado: desde que `orderBlocksForLayout` puede
+  // intercalar un bloque libre entre dos colocados, el orden de pintado y el de
+  // lectura ya no son el mismo, y un contador que siguiera al `forEach` movería
+  // el timeline de móvil cada vez que alguien curara una ventana. Todos los
+  // miembros de un mismo hueco (un tándem) comparten `orderNo`: es la
+  // pertenencia al hueco, y `deriveMapOverlays` la lee así para dibujar la
+  // cápsula.
+  const orderNoDeCadaObra = new Map<string, number>();
   let orderCounter = 0;
+  for (const group of [...ordered, ...free]) {
+    for (const hueco of huecosDe(group)) {
+      for (const m of hueco) orderNoDeCadaObra.set(itemKey(m), orderCounter);
+      orderCounter++;
+    }
+  }
 
   // Nodo de una obra, hueco o suelta: `orderNo` es la única diferencia — una
-  // obra CON hueco lo recibe de `orderCounter` (entra en la columna principal
-  // de deriveTimeline); una obra SIN hueco recibe `null` (activa el mecanismo
-  // de ramas/puentes de deriveTimeline en vez de la columna). `col` es un
-  // índice lógico LOCAL al bloque (columna dentro de su fila); `row` es el
-  // índice del bloque. Aquí se escalan a píxeles (`NODE_STEP_X`/`NODE_STEP_Y`)
-  // para `x`/`y`, pero `orderNo` se queda con el índice crudo del contador
-  // global — es un orden lógico para deriveTimeline, no una coordenada de
+  // obra CON hueco lo recibe de `orderNoDeCadaObra` (entra en la columna
+  // principal de deriveTimeline); una obra SIN hueco recibe `null` (activa el
+  // mecanismo de ramas/puentes de deriveTimeline en vez de la columna). `col`
+  // es un índice lógico LOCAL al bloque (columna dentro de su fila); `row` es
+  // el índice del bloque. Aquí se escalan a píxeles (`NODE_STEP_X`/`NODE_STEP_Y`)
+  // para `x`/`y`, pero `orderNo` se queda con el índice crudo de la pre-pasada
+  // — es un orden lógico para deriveTimeline, no una coordenada de
   // lienzo.
   const makeNode = (m: DetailMember, col: number, row: number, orderNo: number | null): SagaGraphNode => ({
     id: itemKey(m),
@@ -174,34 +194,20 @@ export function deriveSagaMap(
   // por lo que cada bloque gasta de verdad.
   let rowCursor = 0;
 
-  blocks.forEach((group, y) => {
+  blocks.forEach((group) => {
     // Columna LOCAL a este bloque: se reinicia en cada iteración (Task 9)
-    // porque se declara aquí dentro, no fuera del forEach. `orderCounter`, en
-    // cambio, vive fuera y no se toca en esta línea: sigue creciendo entre
-    // bloques.
+    // porque se declara aquí dentro, no fuera del forEach. `orderNo`, en
+    // cambio, ya quedó resuelto en la pre-pasada de arriba: aquí solo se lee
+    // de `orderNoDeCadaObra`, no se recalcula.
     let x = 0;
 
     // Una obra SIN hueco (`position === null`: `libre` o sin clasificar, lo
     // impone el CHECK saga_items_placement_position) SÍ es un nodo del mapa,
     // pero no forma parte de la cadena: ni abre ni cierra huecos, y ninguna
-    // arista `principal` la toca (hallazgo 1 de la revisión — antes se
-    // agrupaba una a una como si cada una fuera su propio hueco encadenado).
-    // groupMembers ya deja los miembros ordenados por `position` y luego
-    // título, con los `position: null` al final, así que basta con partir el
-    // array UNA vez: todo lo encadenable va antes que todo lo suelto.
-    const chained = group.members.filter((m) => m.position !== null);
+    // arista `principal` la toca (hallazgo 1 de la revisión — antes se agrupaba
+    // una a una como si cada una fuera su propio hueco encadenado).
     const loose = group.members.filter((m) => m.position === null);
-
-    // Reparte los miembros encadenables en huecos: cada hueco es un array de
-    // 1 (obra suelta dentro de la cadena) o más (tándem) miembros que
-    // comparten `position`.
-    const huecos: DetailMember[][] = [];
-    for (const m of chained) {
-      const current = huecos.at(-1);
-      const sameHueco = current !== undefined && current[0].position === m.position;
-      if (sameHueco) current.push(m);
-      else huecos.push([m]);
-    }
+    const huecos = huecosDe(group);
 
     if (group.sagaId !== null && huecos.length > 0) {
       // Ancla del bloque = la obra que abre/cierra su cadena. Si el hueco
@@ -233,7 +239,10 @@ export function deriveSagaMap(
       const tandemMeta =
         hueco.length >= 2 && tandems ? (tandems.get(`${group.sagaId}:${hueco[0].position}`) ?? null) : null;
       hueco.forEach((m, memberIdx) => {
-        const node = { ...makeNode(m, x, rowCursor + memberIdx, orderCounter), tandem: tandemMeta };
+        const node = {
+          ...makeNode(m, x, rowCursor + memberIdx, orderNoDeCadaObra.get(itemKey(m)) ?? null),
+          tandem: tandemMeta,
+        };
         nodes.push(node);
         byId.set(node.id, node);
       });
@@ -259,17 +268,21 @@ export function deriveSagaMap(
       }
 
       x++;
-      orderCounter++;
     });
 
-    // Cadena ENTRE bloques, solo en la zona ordenada (`y < ordered.length`,
-    // porque `blocks` es `[...ordered, ...free]`): la última obra encadenada
+    // Cadena ENTRE bloques, solo en la zona ordenada: la última obra encadenada
     // del bloque anterior (con cola pendiente) se une con la primera de este,
     // con las mismas reglas que dos huecos consecutivos DENTRO de un bloque
-    // (tándem → todos los pares). Un bloque `libre` nunca llega aquí (queda
-    // en la cola `free`, después de todos los `y < ordered.length`), así que
-    // no hace falta comprobación aparte para él.
-    if (y < ordered.length) {
+    // (tándem → todos los pares).
+    //
+    // La pregunta es por el PLACEMENT del bloque, no por su índice. Hasta la
+    // Task 2 de esta rama era `y < ordered.length`, que funcionaba solo porque
+    // `blocks` era literalmente `[...ordered, ...free]` y por tanto todos los
+    // libres estaban al final. Desde `orderBlocksForLayout` un bloque libre
+    // puede estar intercalado en la posición 2, y ese índice lo encadenaría como
+    // si fuera colocado: un bloque libre flota A PROPÓSITO, fuera de la cadena.
+    // El predicado es el mismo, exacto, que usa `partitionGroups`.
+    if (group.placementInParent !== "libre") {
       if (huecos.length > 0) {
         if (chainTail) {
           for (const prevMember of chainTail) {
@@ -463,13 +476,19 @@ export function deriveSagaMap(
     }
   }
 
+  // Alineación de columnas, AL FINAL y no antes: necesita las aristas de ventana
+  // y de itinerario, que se acaban de construir, y necesita que `step` y
+  // `windowReason` ya estén puestos en los nodos — el post-pase devuelve nodos
+  // NUEVOS, así que cualquier mutación posterior sobre los viejos se perdería.
+  const alineado = alignRowsToLongEdges({ nodes, edges });
+
   // Mismo orden estable que buildSagaGraph: order_no (nulls al final), luego label.
-  nodes.sort((a, b) => {
+  alineado.nodes.sort((a, b) => {
     const oa = a.orderNo ?? Number.MAX_SAFE_INTEGER;
     const ob = b.orderNo ?? Number.MAX_SAFE_INTEGER;
     if (oa !== ob) return oa - ob;
     return a.label.localeCompare(b.label);
   });
 
-  return { nodes, edges };
+  return alineado;
 }
