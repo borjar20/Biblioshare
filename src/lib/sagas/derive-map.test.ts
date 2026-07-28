@@ -354,11 +354,12 @@ describe("deriveSagaMap", () => {
         { id: "saga-Bloque", name: "Bloque", parentSagaId: "R", positionInParent: 1, placementInParent: "fijo" },
       ],
       [
-        { sagaId: "R", itemType: "book", itemId: "directo", position: 1 },
-        { sagaId: "saga-Bloque", itemType: "book", itemId: "c1", position: 1 },
-        { sagaId: "saga-Bloque", itemType: "book", itemId: "c2", position: 2 },
+        { sagaId: "R", itemType: "book", itemId: "directo", position: 1, placement: "fijo" },
+        { sagaId: "saga-Bloque", itemType: "book", itemId: "c1", position: 1, placement: "fijo" },
+        { sagaId: "saga-Bloque", itemType: "book", itemId: "c2", position: 2, placement: "fijo" },
       ],
       (key) => key,
+      {},
     );
 
     expect(map.nodes.map((n) => n.id)).toEqual(order("R").map((key) => `i:${key}`));
