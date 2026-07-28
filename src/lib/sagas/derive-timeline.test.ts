@@ -192,6 +192,81 @@ describe("deriveTimeline · numeración y columna por pasos", () => {
   });
 });
 
+describe("deriveTimeline · tándem", () => {
+  it("dos obras que comparten hueco producen UNA fila tandem con las dos", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("a", { orderNo: 0 }),
+        node("t1", { orderNo: 1, label: "Imperio de Tormentas" }),
+        node("t2", { orderNo: 1, label: "Torre del Alba" }),
+        node("z", { orderNo: 2 }),
+      ]),
+    );
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["entry", "tandem", "entry"]);
+    const tandem = tl[0].rows[1];
+    if (tandem.kind !== "tandem") throw new Error("se esperaba un tándem");
+    expect(tandem.nodes.map((n) => n.id)).toEqual(["t1", "t2"]);
+    expect(tandem.no).toBe(2);
+    expect(tandem.mode).toBeNull();
+    expect(tandem.note).toBeNull();
+  });
+
+  it("un tándem no cruza subsagas: el hueco pertenece a un bloque", () => {
+    // Defensa del invariante, no capricho: si dos nodos con el mismo orderNo
+    // tuvieran groupSagaId distinto, agruparlos fundiría dos secciones. Se
+    // agrupa SOLO dentro de la sección.
+    const tl = deriveTimeline(
+      graph([
+        node("a", { orderNo: 0 }),
+        node("b", { orderNo: 0, groupSagaId: "g2", groupName: "Era Dos", accent: "terracota" }),
+      ]),
+    );
+    expect(tl).toHaveLength(2);
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["entry"]);
+    expect(tl[1].rows.map((r) => r.kind)).toEqual(["entry"]);
+  });
+
+  it("modo route: dos pasos consecutivos que comparten hueco son un tándem", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("t1", { orderNo: 1, step: 1 }),
+        node("t2", { orderNo: 1, step: 2 }),
+        node("z", { orderNo: 2, step: 3 }),
+      ]),
+      { spine: "route" },
+    );
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["tandem", "entry"]);
+    const tandem = tl[0].rows[0];
+    if (tandem.kind !== "tandem") throw new Error("se esperaba un tándem");
+    expect(tandem.no).toBe(1);
+  });
+
+  it("modo route: si el itinerario mete algo en medio del hueco, NO hay tándem", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("t1", { orderNo: 1, step: 1 }),
+        node("z", { orderNo: 2, step: 2 }),
+        node("t2", { orderNo: 1, step: 3 }),
+      ]),
+      { spine: "route" },
+    );
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["entry", "entry", "entry"]);
+  });
+
+  it("las ramas de las obras del tándem cuelgan de la fila del tándem", () => {
+    const spin = node("spin", { orderNo: null, label: "Spin" });
+    const tl = deriveTimeline(
+      graph(
+        [node("t1", { orderNo: 0 }), node("t2", { orderNo: 0 }), spin],
+        [{ id: "e", source: "t1", target: "spin", type: "opcional", accent: "ambar" }],
+      ),
+    );
+    const tandem = tl[0].rows[0];
+    if (tandem.kind !== "tandem") throw new Error("se esperaba un tándem");
+    expect(tandem.branches.map((b) => b.node.id)).toEqual(["spin"]);
+  });
+});
+
 describe("rol narrativo en las ramas (#167)", () => {
   it("la rama conserva el role del nodo, y edgeType sigue siendo el de la arista", () => {
     const graph: SagaGraph = {

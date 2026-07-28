@@ -64,6 +64,10 @@ export type TimelineRow =
   /** Nexo entre secciones. */
   | { kind: "bridge"; node: SagaGraphNode };
 
+/** Las dos formas que llevan ramas colgando. El mecanismo de ramas cuelga de la
+ *  fila que CONTIENE el nodo ancla, y esa fila puede ser un tándem. */
+type RowWithBranches = Extract<TimelineRow, { kind: "entry" | "tandem" }>;
+
 export type TimelineSection = {
   groupSagaId: string | null;
   groupName: string | null;
@@ -88,7 +92,30 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
   if (spineMode === "route") {
     const steps = items.filter((n) => n.step !== null).sort((a, b) => a.step! - b.step!);
     if (steps.length === 0) return [];
-    const rows: TimelineRow[] = steps.map((n) => ({ kind: "entry", no: n.step, node: n, branches: [] }));
+    const rows: TimelineRow[] = [];
+    for (const n of steps) {
+      const lastRow = rows.at(-1);
+      // Mismo hueco (empate de `orderNo`) Y pasos consecutivos. Si el itinerario
+      // mete otra obra en medio, el itinerario manda: no hay tándem que pintar.
+      if (lastRow && lastRow.kind !== "bridge" && lastRow.kind !== "window" && n.orderNo !== null) {
+        const prevOrder = lastRow.kind === "entry" ? lastRow.node.orderNo : lastRow.nodes[0].orderNo;
+        if (prevOrder === n.orderNo) {
+          if (lastRow.kind === "tandem") lastRow.nodes.push(n);
+          else {
+            rows[rows.length - 1] = {
+              kind: "tandem",
+              no: lastRow.no,
+              nodes: [lastRow.node, n],
+              mode: null,
+              note: null,
+              branches: lastRow.branches,
+            };
+          }
+          continue;
+        }
+      }
+      rows.push({ kind: "entry", no: n.step, node: n, branches: [] });
+    }
     return [{ groupSagaId: null, groupName: null, accent: "beige", rows }];
   }
 
@@ -114,11 +141,42 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
     return best;
   };
 
-  // Secciones por subsaga consecutiva a lo largo de la columna.
+  // Secciones por subsaga consecutiva a lo largo de la columna. Dos o más nodos
+  // que comparten `orderNo` comparten hueco: eso ES un tándem (hoy uno solo en
+  // toda la producción, Trono de Cristal hueco 5), y se funden en una sola
+  // fila. `mode`/`note` llegan en la fase 2 con `saga_tandems`.
   const sections: TimelineSection[] = [];
-  const rowByNodeId = new Map<string, Extract<TimelineRow, { kind: "entry" }>>();
+  const rowByNodeId = new Map<string, RowWithBranches>();
   for (const n of spine) {
     const last = sections.at(-1);
+    const lastRow = last?.rows.at(-1);
+    // Empate de `orderNo` con la fila anterior DE LA MISMA SECCIÓN: se funde.
+    // Fuera de la sección no se mira: un hueco pertenece a un bloque, así que
+    // dos nodos con el mismo orderNo y distinto groupSagaId no pueden existir —
+    // y si existieran, fundirlos borraría el límite entre dos secciones.
+    if (last && last.groupSagaId === n.groupSagaId && lastRow && (lastRow.kind === "entry" || lastRow.kind === "tandem")) {
+      const prevOrder = lastRow.kind === "entry" ? lastRow.node.orderNo : lastRow.nodes[0].orderNo;
+      if (prevOrder === n.orderNo) {
+        const merged: Extract<TimelineRow, { kind: "tandem" }> =
+          lastRow.kind === "tandem"
+            ? lastRow
+            : {
+                kind: "tandem",
+                no: lastRow.no,
+                nodes: [lastRow.node],
+                mode: null,
+                note: null,
+                branches: lastRow.branches,
+              };
+        if (lastRow.kind === "entry") {
+          last.rows[last.rows.length - 1] = merged;
+          rowByNodeId.set(lastRow.node.id, merged);
+        }
+        merged.nodes.push(n);
+        rowByNodeId.set(n.id, merged);
+        continue;
+      }
+    }
     // `orderNo` es 0-based (deriveSagaMap arranca su `orderCounter` en 0) y no
     // tiene saltos: incrementa una vez por hueco. Así que +1 ES el rango 1..N
     // de la columna. Antes se pintaba crudo y la primera obra salía como «Nº 0».
@@ -136,7 +194,13 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
     if (n.groupSagaId === null) {
       // Nexo: puente tras la sección de su conexión más temprana; sin conexión, fuera del timeline.
       if (!conn) continue;
-      const idx = sections.findIndex((s) => s.rows.some((r) => r.kind === "entry" && r.node.id === conn.spineNode.id));
+      const idx = sections.findIndex((s) =>
+        s.rows.some(
+          (r) =>
+            (r.kind === "entry" && r.node.id === conn.spineNode.id) ||
+            (r.kind === "tandem" && r.nodes.some((x) => x.id === conn.spineNode.id)),
+        ),
+      );
       bridges.push({ node: n, afterSectionIdx: idx });
       continue;
     }
@@ -146,11 +210,16 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
     }
     // Suelto dentro de su subsaga: cuelga del último de su sección (si existe).
     const section = sections.find((s) => s.groupSagaId === n.groupSagaId);
-    const lastEntry = section?.rows.filter((r): r is Extract<TimelineRow, { kind: "entry" }> => r.kind === "entry").at(-1);
+    const lastEntry = section?.rows
+      .filter((r): r is RowWithBranches => r.kind === "entry" || r.kind === "tandem")
+      .at(-1);
     lastEntry?.branches.push({ node: n, edgeType: "opcional" });
   }
 
-  for (const row of rowByNodeId.values()) {
+  // `new Set` porque un tándem tiene DOS claves en `rowByNodeId` apuntando a la
+  // MISMA fila: sin deduplicar, sus ramas se ordenarían dos veces (idempotente,
+  // pero confunde a quien lo lea).
+  for (const row of new Set(rowByNodeId.values())) {
     row.branches.sort((a, b) => a.node.label.localeCompare(b.node.label));
   }
 
