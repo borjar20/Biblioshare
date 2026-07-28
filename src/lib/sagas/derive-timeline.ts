@@ -186,10 +186,67 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
     else sections.push({ groupSagaId: n.groupSagaId, groupName: n.groupName, accent: n.accent, rows: [row] });
   }
 
+  // Ventanas: un sujeto `libre` (sin orderNo) con al menos un ancla resuelta.
+  // Las anclas NO se resuelven aquí — se LEEN de las aristas que ya dejó
+  // resueltas `deriveSagaMap` (`resolveEntry`: última obra del bloque para un
+  // `después de`, primera para un `antes de`). Dos resoluciones distintas del
+  // mismo ancla acabarían discrepando, que es la familia del #91/#185/#203.
+  //
+  // `deriveSagaMap` es el único productor de SagaGraph y solo emite
+  // `requisito`/`opcional` para ventanas, con dirección fija:
+  //   `después de`: after → subject, tipo requisito
+  //   `antes de`:   subject → before, tipo opcional
+  // La cadena es `principal` y los saltos del itinerario `itinerario`, así que
+  // ninguna otra arista entra por aquí.
+  //
+  // Solo obras: un BLOQUE `libre` con ventana tiene obras CON `orderNo`, así
+  // que sigue viviendo en la columna como una sección normal. Límite asumido de
+  // la fase 1, abierto en su issue: pintarlo movería una sección entera.
+  const windowAnchors = (nodeId: string): { after: SagaGraphNode | null; before: SagaGraphNode | null } => {
+    let after: SagaGraphNode | null = null;
+    let before: SagaGraphNode | null = null;
+    for (const e of graph.edges) {
+      if (e.target === nodeId && e.type === "requisito") after = byId.get(e.source) ?? after;
+      if (e.source === nodeId && e.type === "opcional") before = byId.get(e.target) ?? before;
+    }
+    return { after, before };
+  };
+
+  /** Coloca una fila justo después (o justo antes) de la fila que contiene a
+   *  `anchorId`. Devuelve false si el ancla no está en ninguna sección. */
+  const insertRelativeTo = (anchorId: string, row: TimelineRow, where: "after" | "before"): boolean => {
+    for (const section of sections) {
+      const idx = section.rows.findIndex(
+        (r) =>
+          (r.kind === "entry" && r.node.id === anchorId) ||
+          (r.kind === "tandem" && r.nodes.some((x) => x.id === anchorId)),
+      );
+      if (idx === -1) continue;
+      section.rows.splice(where === "after" ? idx + 1 : idx, 0, row);
+      return true;
+    }
+    return false;
+  };
+
+  const placedAsWindow = new Set<string>();
+  for (const n of items) {
+    if (n.orderNo !== null) continue;
+    const { after, before } = windowAnchors(n.id);
+    if (after === null && before === null) continue;
+    const row: TimelineRow = { kind: "window", no: null, node: n, after, before, reason: null, track: null };
+    // 1) justo DESPUÉS de su ancla `después de`; 2) si solo hay `antes de`,
+    // justo ANTES de esa fila; 3) si ninguna resuelve, cae a rama (abajo).
+    const placed =
+      (after !== null && insertRelativeTo(after.id, row, "after")) ||
+      (after === null && before !== null && insertRelativeTo(before.id, row, "before"));
+    if (placed) placedAsWindow.add(n.id);
+  }
+
   // Nodos-ítem fuera de columna: rama o puente.
   const bridges: Array<{ node: SagaGraphNode; afterSectionIdx: number }> = [];
   for (const n of items) {
     if (n.orderNo !== null) continue;
+    if (placedAsWindow.has(n.id)) continue; // ya es una fila de la columna
     const conn = earliestSpineFor(n.id);
     if (n.groupSagaId === null) {
       // Nexo: puente tras la sección de su conexión más temprana; sin conexión, fuera del timeline.

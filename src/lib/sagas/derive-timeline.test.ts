@@ -69,7 +69,15 @@ describe("deriveTimeline", () => {
     }
   });
 
-  it("un nexo (sin grupo, sin orden) conectado a la columna se inserta como puente tras la sección de su conexión más temprana", () => {
+  // Estos dos tests afirmaban que un nexo unido a la columna por aristas
+  // `requisito` salía como PUENTE. Desde la fase 1 del timeline con estados
+  // (2026-07-28) ya no: una arista `requisito` que ENTRA en un nodo sin
+  // `orderNo` es, en el único grafo que produce el producto (`deriveSagaMap`),
+  // el ancla «después de» de una ventana — no hay ninguna otra cosa que la
+  // emita. Así que ese nodo pasa a ser fila `window`, que además enseña sus
+  // anclas; el puente no las enseñaba. Ver la issue del `bridge` casi
+  // inalcanzable.
+  it("un nexo con ancla «después de» sale como ventana colocada tras su ancla, no como puente", () => {
     const hub = node("hub", { groupSagaId: null, groupName: null, accent: "beige" });
     const tl = deriveTimeline(
       graph(
@@ -84,12 +92,16 @@ describe("deriveTimeline", () => {
         ],
       ),
     );
-    // secciones: [g1], bridge, [g2]
-    expect(tl).toHaveLength(3);
-    expect(tl[1].rows[0]).toEqual({ kind: "bridge", node: hub });
+    // Dos secciones (g1, g2) y la ventana DENTRO de la primera, tras «a».
+    expect(tl).toHaveLength(2);
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["entry", "window"]);
+    const win = tl[0].rows[1];
+    if (win.kind !== "window") throw new Error("se esperaba una ventana");
+    expect(win.node.id).toBe("hub");
+    expect(win.after?.id).toBe("a");
   });
 
-  it("dos puentes anclados a la misma sección conservan el orden alfabético", () => {
+  it("dos nexos anclados a la misma fila salen los dos como ventanas, tras esa fila", () => {
     const hubA = node("hubA", { groupSagaId: null, groupName: null, accent: "beige", label: "Alfa Nexo" });
     const hubB = node("hubB", { groupSagaId: null, groupName: null, accent: "beige", label: "Beta Nexo" });
     const tl = deriveTimeline(
@@ -106,9 +118,26 @@ describe("deriveTimeline", () => {
         ],
       ),
     );
-    expect(tl).toHaveLength(4);
-    expect(tl[1].rows[0]).toMatchObject({ kind: "bridge", node: { id: "hubA" } });
-    expect(tl[2].rows[0]).toMatchObject({ kind: "bridge", node: { id: "hubB" } });
+    expect(tl).toHaveLength(2);
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["entry", "window", "window"]);
+  });
+
+  it("el puente sobrevive para lo que NO es ventana: un nexo unido por una arista de cadena", () => {
+    // Único camino que queda al puente: una arista que no es de ventana
+    // (`principal`) tocando un nodo sin grupo y sin orden.
+    const hub = node("hub", { groupSagaId: null, groupName: null, accent: "beige" });
+    const tl = deriveTimeline(
+      graph(
+        [
+          node("a", { orderNo: 1 }),
+          node("c", { orderNo: 2, groupSagaId: "g2", groupName: "Era Dos", accent: "terracota" }),
+          hub,
+        ],
+        [{ id: "e1", source: "a", target: "hub", type: "principal", accent: "beige" }],
+      ),
+    );
+    expect(tl).toHaveLength(3);
+    expect(tl[1].rows[0]).toEqual({ kind: "bridge", node: hub });
   });
 
   it("los nodos-saga no aparecen en el timeline (solo en el mapa 2D)", () => {
@@ -264,6 +293,103 @@ describe("deriveTimeline · tándem", () => {
     const tandem = tl[0].rows[0];
     if (tandem.kind !== "tandem") throw new Error("se esperaba un tándem");
     expect(tandem.branches.map((b) => b.node.id)).toEqual(["spin"]);
+  });
+});
+
+describe("deriveTimeline · ventana", () => {
+  const withWindow = (edges: SagaGraph["edges"]) =>
+    deriveTimeline(
+      graph(
+        [
+          node("a", { orderNo: 0, label: "Uno" }),
+          node("b", { orderNo: 1, label: "Dos" }),
+          node("c", { orderNo: 2, label: "Tres" }),
+          node("w", { orderNo: null, label: "Ventana" }),
+        ],
+        edges,
+      ),
+    );
+
+  /** Etiqueta cada fila para comparar el ORDEN de la columna de un vistazo. */
+  const shape = (tl: ReturnType<typeof deriveTimeline>) =>
+    tl[0].rows.map((r) => (r.kind === "window" ? "window" : r.kind === "entry" ? r.node.id : r.kind));
+
+  it("con ancla «después de», la fila cae JUSTO DESPUÉS de esa fila", () => {
+    const tl = withWindow([{ id: "e", source: "a", target: "w", type: "requisito", accent: "beige" }]);
+    expect(shape(tl)).toEqual(["a", "window", "b", "c"]);
+    const win = tl[0].rows[1];
+    if (win.kind !== "window") throw new Error("se esperaba una ventana");
+    expect(win.after?.id).toBe("a");
+    expect(win.before).toBeNull();
+    expect(win.no).toBeNull();
+    expect(win.reason).toBeNull();
+    expect(win.track).toBeNull();
+  });
+
+  it("con las dos anclas, manda el «después de»", () => {
+    const tl = withWindow([
+      { id: "e1", source: "a", target: "w", type: "requisito", accent: "beige" },
+      { id: "e2", source: "w", target: "c", type: "opcional", accent: "ambar" },
+    ]);
+    expect(shape(tl)).toEqual(["a", "window", "b", "c"]);
+    const win = tl[0].rows[1];
+    if (win.kind !== "window") throw new Error("se esperaba una ventana");
+    expect(win.after?.id).toBe("a");
+    expect(win.before?.id).toBe("c");
+  });
+
+  it("con solo «antes de», la fila cae JUSTO ANTES de esa fila", () => {
+    const tl = withWindow([{ id: "e", source: "w", target: "c", type: "opcional", accent: "ambar" }]);
+    expect(shape(tl)).toEqual(["a", "b", "window", "c"]);
+  });
+
+  it("sin ancla que resuelva, sigue cayendo a rama como hoy", () => {
+    // Arista de la columna HACIA el nodo con tipo `opcional`: no es una ventana
+    // (una ventana `antes de` sale DEL sujeto), es el mecanismo de ramas de #167.
+    const tl = withWindow([{ id: "e", source: "a", target: "w", type: "opcional", accent: "ambar" }]);
+    expect(tl[0].rows.map((r) => r.kind)).toEqual(["entry", "entry", "entry"]);
+    const rowA = tl[0].rows[0];
+    if (rowA.kind !== "entry") throw new Error("se esperaba entry");
+    expect(rowA.branches.map((b) => b.node.id)).toEqual(["w"]);
+  });
+
+  it("integración: deriveSagaMap → deriveTimeline coloca la ventana tras su ancla", () => {
+    const w = (id: string, position: number | null, placement: "fijo" | "libre"): DetailMember => ({
+      itemType: "book",
+      itemId: id,
+      title: id,
+      coverUrl: null,
+      href: `/libro/${id}`,
+      position,
+      role: null,
+      placement,
+      optional: false,
+      status: null,
+      groupSagaId: "saga-Era",
+      ownerSagaId: "owner",
+      year: null,
+    });
+    const groups: MemberGroup[] = [
+      {
+        sagaId: "saga-Era",
+        name: "Era",
+        accent: "beige",
+        members: [w("A", 1, "fijo"), w("B", 2, "fijo"), w("L", null, "libre")],
+        positionInParent: 1,
+        placementInParent: "fijo",
+      },
+    ];
+    const derived = deriveSagaMap(
+      groups,
+      { "i:book:L": { afterTitle: "A", beforeTitle: null, afterKey: "i:book:A", beforeKey: null } },
+      { groupAccent: new Map(), groupName: new Map() },
+    );
+    const tl = deriveTimeline(derived);
+    expect(tl[0].rows.map((r) => (r.kind === "window" ? "window" : r.kind === "entry" ? r.node.id : r.kind))).toEqual([
+      "i:book:A",
+      "window",
+      "i:book:B",
+    ]);
   });
 });
 
