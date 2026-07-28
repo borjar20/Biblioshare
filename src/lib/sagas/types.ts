@@ -91,6 +91,16 @@ export type DetailMember = SagaMember & {
   ownerSagaId: string;
   /** Año de publicación/estreno (books.published_year / movies|series.release_year); para el orden «Publicación». */
   year: number | null;
+  /** El lector ha decidido saltarse esta obra (`saga_optional_skips`, fase 4).
+   *  SOLO VISUAL: tacha y atenúa la fila, y el denominador del progreso NO se
+   *  mueve — lo gobierna `countedKeys` (./progress.ts) desde
+   *  `saga_items.optional`, que esta feature no toca. Es el límite duro de la
+   *  spec 2026-07-28.
+   *
+   *  `false` sin sesión, y `false` también para una obra que no es opcional:
+   *  nada impide que sobreviva el salto de una obra que dejó de serlo, y el
+   *  criterio manda al LEER, no al guardar. */
+  skipped: boolean;
 };
 
 /** Ventana de una entrada `libre` ya resuelta para la ficha. Un ancla que no

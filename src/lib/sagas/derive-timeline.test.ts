@@ -374,6 +374,7 @@ describe("deriveTimeline · ventana", () => {
       groupSagaId: "saga-Era",
       ownerSagaId: "owner",
       year: null,
+      skipped: false,
     });
     const groups: MemberGroup[] = [
       {
@@ -426,7 +427,7 @@ describe("rol narrativo en las ramas (#167)", () => {
 describe("sortByPublication", () => {
   const m = (itemId: string, year: number | null, title = itemId): DetailMember => ({
     itemType: "book", itemId, title, coverUrl: null, href: `/libro/${itemId}`,
-    position: null, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year,
+    position: null, role: null, placement: null, optional: false, status: null, groupSagaId: null, ownerSagaId: "owner", year, skipped: false,
   });
   it("ordena por año ascendente, nulls al final, empate por título", () => {
     expect(sortByPublication([m("b", 2001), m("d", null), m("a", 1999), m("c", 2001, "AAA")]).map((x) => x.itemId))
@@ -470,6 +471,7 @@ describe("integración: deriveSagaMap → deriveTimeline", () => {
     groupSagaId: null,
     ownerSagaId: "owner",
     year: null,
+    skipped: false,
   });
 
   const block = (name: string, positionInParent: number, works: DetailMember[]): MemberGroup => {

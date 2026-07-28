@@ -24,6 +24,7 @@ const work = (id: string, position: number | null): DetailMember => ({
   groupSagaId: null,
   ownerSagaId: "owner",
   year: null,
+  skipped: false,
 });
 
 // A diferencia de `work()`, que fija `placement: "fijo"` a machamartillo, esta
