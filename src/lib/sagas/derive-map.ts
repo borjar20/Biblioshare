@@ -204,7 +204,7 @@ export function deriveSagaMap(
   // por lo que cada bloque gasta de verdad.
   let rowCursor = 0;
 
-  blocks.forEach((group, y) => {
+  blocks.forEach((group) => {
     // Columna LOCAL a este bloque: se reinicia en cada iteración (Task 9)
     // porque se declara aquí dentro, no fuera del forEach. `orderNo`, en
     // cambio, ya quedó resuelto en la pre-pasada de arriba: aquí solo se lee
@@ -280,14 +280,19 @@ export function deriveSagaMap(
       x++;
     });
 
-    // Cadena ENTRE bloques, solo en la zona ordenada (`y < ordered.length`,
-    // porque `blocks` es `[...ordered, ...free]`): la última obra encadenada
+    // Cadena ENTRE bloques, solo en la zona ordenada: la última obra encadenada
     // del bloque anterior (con cola pendiente) se une con la primera de este,
     // con las mismas reglas que dos huecos consecutivos DENTRO de un bloque
-    // (tándem → todos los pares). Un bloque `libre` nunca llega aquí (queda
-    // en la cola `free`, después de todos los `y < ordered.length`), así que
-    // no hace falta comprobación aparte para él.
-    if (y < ordered.length) {
+    // (tándem → todos los pares).
+    //
+    // La pregunta es por el PLACEMENT del bloque, no por su índice. Hasta la
+    // Task 2 de esta rama era `y < ordered.length`, que funcionaba solo porque
+    // `blocks` era literalmente `[...ordered, ...free]` y por tanto todos los
+    // libres estaban al final. Desde `orderBlocksForLayout` un bloque libre
+    // puede estar intercalado en la posición 2, y ese índice lo encadenaría como
+    // si fuera colocado: un bloque libre flota A PROPÓSITO, fuera de la cadena.
+    // El predicado es el mismo, exacto, que usa `partitionGroups`.
+    if (group.placementInParent !== "libre") {
       if (huecos.length > 0) {
         if (chainTail) {
           for (const prevMember of chainTail) {
