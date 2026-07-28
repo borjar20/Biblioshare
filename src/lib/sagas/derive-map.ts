@@ -1,3 +1,4 @@
+import type { ItemType } from "@/lib/catalog/types";
 import type { SagaAccentToken } from "./accents";
 import { partitionGroups, type MemberGroup } from "./group-members";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
@@ -25,6 +26,17 @@ export type MapLookup = {
 /** Clave de la entrada de una obra, la misma que usan el borrador de
  *  secuencia, la validación y las ventanas (`i:<tipo>:<uuid>`). */
 const itemKey = (m: DetailMember): string => `i:${m.itemType}:${m.itemId}`;
+
+/** Inversa de `itemKey`, y vive PEGADA a ella a propósito: son las dos mitades
+ *  de un mismo formato, y separarlas es cómo se desincronizan. `null` para un
+ *  id que no sea de obra (un `s:<uuid>` de bloque, o cualquier otra cosa).
+ *
+ *  La necesita quien pinta una fila del timeline y tiene que volver a la obra:
+ *  el nodo lleva la clave, no el par (tipo, id). */
+export function parseItemKey(id: string): { itemType: ItemType; itemId: string } | null {
+  const m = /^i:(book|movie|series):(.+)$/.exec(id);
+  return m === null ? null : { itemType: m[1] as ItemType, itemId: m[2] };
+}
 
 /** Clave de la entrada de un bloque (`s:<uuid>`), o null si la referencia no
  *  tiene forma de bloque. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCuratedOrder } from "./curated-order";
-import { deriveSagaMap, NODE_STEP_Y, type MapLookup } from "./derive-map";
+import { deriveSagaMap, NODE_STEP_Y, parseItemKey, type MapLookup } from "./derive-map";
 import { groupMembers, type MemberGroup } from "./group-members";
 import type { DetailMember, SagaChildRef } from "./types";
 
@@ -746,5 +746,35 @@ describe("optional / skipped / ownerSagaId en el nodo", () => {
     // "owner": si el nodo copiara el que no es, este test lo caza.
     const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
     expect(map.nodes[0]).toMatchObject({ ownerSagaId: "owner", groupSagaId: "saga-Uno" });
+  });
+});
+
+describe("parseItemKey", () => {
+  it("deshace la clave de una obra", () => {
+    expect(parseItemKey("i:book:abc")).toEqual({ itemType: "book", itemId: "abc" });
+    expect(parseItemKey("i:movie:abc")).toEqual({ itemType: "movie", itemId: "abc" });
+    expect(parseItemKey("i:series:abc")).toEqual({ itemType: "series", itemId: "abc" });
+  });
+
+  it("un uuid con guiones sobrevive entero", () => {
+    expect(parseItemKey("i:book:53118dd4-ccd9-4a9d-8241-5899816a9eab")?.itemId).toBe(
+      "53118dd4-ccd9-4a9d-8241-5899816a9eab",
+    );
+  });
+
+  it("la clave de un BLOQUE no es una obra: null", () => {
+    expect(parseItemKey("s:saga-Uno")).toBeNull();
+  });
+
+  it("cualquier otra cosa: null, no una obra a medias", () => {
+    expect(parseItemKey("i:libro:abc")).toBeNull();
+    expect(parseItemKey("book:abc")).toBeNull();
+    expect(parseItemKey("")).toBeNull();
+  });
+
+  it("ida y vuelta: lo que produce el mapa lo deshace esta función", () => {
+    // La garantía que justifica que las dos vivan pegadas.
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
+    expect(parseItemKey(map.nodes[0].id)).toEqual({ itemType: "book", itemId: "A" });
   });
 });
