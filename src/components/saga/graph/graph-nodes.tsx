@@ -7,6 +7,7 @@ import { Handle, Position } from "@xyflow/react";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import { NODE_BOX } from "@/lib/sagas/graph-metrics";
 import type { SagaGraphNode } from "@/lib/sagas/map-types";
+import { NodeTag } from "./node-tag";
 
 // Nodos custom del mapa (frames C/E): portada 78×116 (principal), medallón
 // 58px (menor) y tarjeta de saga anidada. El lienzo es oscuro SIEMPRE (estética
@@ -110,9 +111,18 @@ export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
       {/* Fuera del contenedor recortado (`overflow-hidden`) de arriba: la
           insignia no debe quedar recortada en la esquina (Task 9). */}
       <StepBadge step={node.step} size="cover" />
-      <p className="absolute left-1/2 top-full mt-2 w-[150px] -translate-x-1/2 text-center font-serif text-sm font-medium leading-tight text-[#f0e6d4] [text-shadow:0_2px_8px_rgba(0,0,0,.8)]">
-        {node.label}
-      </p>
+      {/* Título y etiqueta en un solo contenedor: la etiqueta se centra sola
+          bajo el rótulo en vez de calcular otra vez el mismo desplazamiento. */}
+      <div className="absolute left-1/2 top-full mt-2 flex w-[150px] -translate-x-1/2 flex-col items-center gap-1">
+        <p
+          className={`text-center font-serif text-sm font-medium leading-tight text-[#f0e6d4] [text-shadow:0_2px_8px_rgba(0,0,0,.8)] ${
+            node.skipped ? "line-through opacity-70" : ""
+          }`}
+        >
+          {node.label}
+        </p>
+        <NodeTag node={node} />
+      </div>
     </div>
   );
 }
@@ -144,9 +154,16 @@ export function MedallionNode({ data }: NodeProps<GraphFlowNode>) {
           arriba: en el medallón el recorte CIRCULAR se comía la insignia
           entera (Task 9) — el círculo no llega hasta la esquina de la caja. */}
       <StepBadge step={node.step} size="medallion" />
-      <p className="absolute left-1/2 top-full mt-1.5 w-max max-w-[130px] -translate-x-1/2 truncate text-center font-mono text-[9.5px] tracking-wide text-[#b9a986]">
-        {node.label}
-      </p>
+      <div className="absolute left-1/2 top-full mt-1.5 flex w-max max-w-[130px] -translate-x-1/2 flex-col items-center gap-1">
+        <p
+          className={`max-w-full truncate text-center font-mono text-[9.5px] tracking-wide text-[#b9a986] ${
+            node.skipped ? "line-through opacity-70" : ""
+          }`}
+        >
+          {node.label}
+        </p>
+        <NodeTag node={node} />
+      </div>
     </div>
   );
 }
