@@ -43,14 +43,14 @@ const blockSagaId = (key: string): string | null => (key.startsWith("s:") ? key.
 // 150px, centrada sobre la tarjeta (78px de ancho). Dos columnas contiguas
 // necesitan al menos 150px centro a centro para que sus etiquetas no se
 // toquen; 180px deja ~30px de margen.
-const NODE_STEP_X = 180;
+export const NODE_STEP_X = 180;
 
 // Paso vertical entre filas (una fila = un bloque, `blocks.forEach((group,
 // y) => …)`): la portada mide 116px de alto, más la etiqueta que cuelga
 // debajo (`mt-2` = 8px + hasta dos líneas de `text-sm leading-tight`, unos
 // 40px). Una fila necesita ~164px para no invadir la portada de la fila
 // siguiente; 220px deja margen cómodo.
-const NODE_STEP_Y = 220;
+export const NODE_STEP_Y = 220;
 
 /**
  * Deriva PURAMENTE el `SagaGraph` de una saga a partir de lo curado (grupos,
@@ -144,6 +144,13 @@ export function deriveSagaMap(
     step: null,
   });
 
+  // Fila donde EMPIEZA el bloque actual. Ya no es el índice del bloque: un
+  // bloque puede ocupar VARIAS filas —una por cada altura de tándem, más una
+  // para sus obras sueltas—, así que con `y = índice de bloque` el bloque
+  // siguiente caía encima de lo que el anterior había apilado. El cursor avanza
+  // por lo que cada bloque gasta de verdad.
+  let rowCursor = 0;
+
   blocks.forEach((group, y) => {
     // Columna LOCAL a este bloque: se reinicia en cada iteración (Task 9)
     // porque se declara aquí dentro, no fuera del forEach. `orderCounter`, en
@@ -186,12 +193,21 @@ export function deriveSagaMap(
       lastOfBlock.set(group.sagaId, itemKey(huecos.at(-1)![0]));
     }
 
+    // Alto del bloque en FILAS: el hueco más poblado manda. Un bloque sin
+    // tándems mide 1 fila; uno con un tándem de dos, 2.
+    const chainRows = huecos.reduce((max, h) => Math.max(max, h.length), 0);
+
     huecos.forEach((hueco, huecoIdx) => {
-      for (const m of hueco) {
-        const node = makeNode(m, x, y, orderCounter);
+      // Un tándem se APILA: misma columna (comparten hueco y `orderNo`), una
+      // fila por miembro. Antes todos recibían la misma fila y React Flow los
+      // pintaba en el mismo punto — se veía un solo nodo, con las etiquetas
+      // superpuestas, y las dos aristas de cadena que entran al hueco caían una
+      // sobre otra.
+      hueco.forEach((m, memberIdx) => {
+        const node = makeNode(m, x, rowCursor + memberIdx, orderCounter);
         nodes.push(node);
         byId.set(node.id, node);
-      }
+      });
 
       // Aristas de cadena: entre huecos consecutivos DEL MISMO BLOQUE, cada
       // nodo del hueco anterior con cada nodo de este (con tándem, las dos
@@ -249,17 +265,30 @@ export function deriveSagaMap(
       // huecos se una a él.
     }
 
-    // Obras sin hueco: conservan la fila (`y`) de su bloque; su `x` va
-    // después del último hueco real del bloque, de forma determinista (orden
-    // ya aplicado por groupMembers: título, al no tener `position`). Ninguna
-    // arista de cadena las toca — solo pueden llevar aristas de ventana, más
-    // abajo.
-    for (const m of loose) {
-      const node = makeNode(m, x, y, null);
+    // Obras sin hueco: fila PROPIA, justo debajo de la cadena de su bloque, y
+    // empezando por la columna 0. Antes compartían la fila de la cadena, detrás
+    // del último hueco, y eso tenía dos costes: en el lienzo parecían un paso
+    // más de la secuencia, y su arista de ventana —que por definición salta por
+    // encima de la cadena— salía como un segmento horizontal SOBRE la cadena,
+    // distinguible solo por el patrón de guiones. Con la fila propia, esa
+    // arista es diagonal y se lee sola.
+    //
+    // Empiezan por la izquierda, no detrás del último hueco: no continúan la
+    // cadena, son una estantería aparte. Su orden entre ellas ya lo fijó
+    // groupMembers (título, al no tener `position`), así que es determinista.
+    // Ninguna arista de cadena las toca — solo pueden llevar aristas de
+    // ventana, más abajo.
+    const looseRow = rowCursor + chainRows;
+    loose.forEach((m, i) => {
+      const node = makeNode(m, i, looseRow, null);
       nodes.push(node);
       byId.set(node.id, node);
-      x++;
-    }
+    });
+
+    // El bloque gasta las filas de su cadena más, si las tiene, la de sus
+    // sueltas. Un bloque sin nada no gasta ninguna: reservarle fila dejaría un
+    // hueco muerto en el dibujo.
+    rowCursor += chainRows + (loose.length > 0 ? 1 : 0);
   });
 
   // Resuelve una clave de entrada (obra o bloque) a la obra que le corresponde

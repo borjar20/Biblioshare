@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCuratedOrder } from "./curated-order";
-import { deriveSagaMap, type MapLookup } from "./derive-map";
+import { deriveSagaMap, NODE_STEP_Y, type MapLookup } from "./derive-map";
 import { groupMembers, type MemberGroup } from "./group-members";
 import type { DetailMember, SagaChildRef } from "./types";
 
@@ -74,11 +74,28 @@ describe("deriveSagaMap", () => {
     ]);
   });
 
-  it("un tándem son dos nodos en la misma columna", () => {
+  it("un tándem son dos nodos en la misma columna, APILADOS, no en el mismo punto", () => {
+    // Comparten columna y `orderNo` porque comparten hueco; se apilan en
+    // vertical porque, con el mismo `y`, React Flow los pintaba uno ENCIMA del
+    // otro y solo se veía el de arriba (con las dos etiquetas superpuestas).
     const map = deriveSagaMap(groups([block("B", 1, [work("A", 1), work("B", 1)])]), {}, lookup());
     const [a, b] = map.nodes;
     expect(a.x).toBe(b.x);
     expect(a.orderNo).toBe(b.orderNo);
+    expect(a.y).not.toBe(b.y);
+  });
+
+  it("un bloque con tándem no invade la fila del bloque siguiente", () => {
+    // El apilado del tándem gasta una fila EXTRA: si el bloque siguiente
+    // siguiera colocándose en `índice de bloque × paso`, caería justo encima
+    // del segundo miembro del tándem.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 1)]), block("Dos", 2, [work("C", 1)])]),
+      {}, lookup(),
+    );
+    const ys = ["A", "B"].map((id) => map.nodes.find((n) => n.id === `i:book:${id}`)!.y);
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    expect(c.y).toBeGreaterThan(Math.max(...ys));
   });
 
   it("cada bloque ocupa su propia fila", () => {
@@ -183,7 +200,12 @@ describe("deriveSagaMap", () => {
     expect(map.edges).toEqual([]);
   });
 
-  it("una obra sin hueco conserva la fila de su bloque y su x va tras el último hueco", () => {
+  it("una obra sin hueco baja a su PROPIA fila, no a la de la cadena de su bloque", () => {
+    // Antes se colgaba del mismo `y` que la cadena, detrás del último hueco: en
+    // el lienzo parecía un paso más de la secuencia, y su arista de ventana
+    // salía como un segmento horizontal ENCIMA de la cadena — solo la
+    // distinguía el patrón de guiones. Bajándola de fila, esa arista es
+    // diagonal y se distingue sola.
     const map = deriveSagaMap(
       groups([block("Bloque", 1, [work("A", 1), work("B", 2), looseWork("Z")])]),
       {}, lookup(),
@@ -191,9 +213,44 @@ describe("deriveSagaMap", () => {
     const a = map.nodes.find((n) => n.id === "i:book:A")!;
     const b = map.nodes.find((n) => n.id === "i:book:B")!;
     const z = map.nodes.find((n) => n.id === "i:book:Z")!;
-    expect(z.y).toBe(a.y);
-    expect(z.y).toBe(b.y);
-    expect(z.x).toBeGreaterThan(b.x);
+    expect(a.y).toBe(b.y);
+    expect(z.y).toBeGreaterThan(a.y);
+    // Empieza su propia fila por la izquierda: es una estantería aparte, no la
+    // continuación de la cadena.
+    expect(z.x).toBe(0);
+  });
+
+  it("dos obras sin hueco comparten fila y se reparten en columnas", () => {
+    const map = deriveSagaMap(
+      groups([block("Bloque", 1, [work("A", 1), looseWork("Y"), looseWork("Z")])]),
+      {}, lookup(),
+    );
+    const y = map.nodes.find((n) => n.id === "i:book:Y")!;
+    const z = map.nodes.find((n) => n.id === "i:book:Z")!;
+    expect(y.y).toBe(z.y);
+    expect(y.x).not.toBe(z.x);
+  });
+
+  it("la fila de las sueltas no invade el bloque siguiente", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), looseWork("Z")]), block("Dos", 2, [work("C", 1)])]),
+      {}, lookup(),
+    );
+    const z = map.nodes.find((n) => n.id === "i:book:Z")!;
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    expect(c.y).toBeGreaterThan(z.y);
+  });
+
+  it("un bloque SIN sueltas no deja una fila vacía detrás", () => {
+    // El alto de un bloque depende de lo que tenga: reservar siempre la fila de
+    // sueltas dejaría un hueco muerto en la inmensa mayoría de bloques.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("C", 1)])]),
+      {}, lookup(),
+    );
+    const a = map.nodes.find((n) => n.id === "i:book:A")!;
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    expect(c.y - a.y).toBe(NODE_STEP_Y);
   });
 
   it("una obra sin hueco CON ventana sí tiene su arista (a diferencia de la cadena)", () => {
