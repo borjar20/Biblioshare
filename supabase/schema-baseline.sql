@@ -8471,3 +8471,41 @@ alter table public.saga_placement_windows
 -- `create or replace` con la misma lista de parametros reemplaza de verdad y no
 -- hay sobrecarga que retirar despues. Cuerpo completo en
 -- supabase/migrations/20260804_save_saga_sequence_motivo.sql.
+
+-- ============================================================================
+-- ANEXO 2026-07-28 - fase 4 del timeline con los cuatro estados: opcionales
+-- saltables (20260805_saga_optional_skips.sql). Aplicada en dev y en PROD el
+-- 2026-07-28, ANTES del merge. Verificada contra los objetos reales
+-- (to_regclass, pg_class.relrowsecurity, pg_policies,
+-- information_schema.columns), nunca contra list_migrations.
+--
+-- Ningun RPC cambia: las tres acciones son escrituras de una fila con RLS, sin
+-- atomicidad que defender. Y el progreso NO se toca: saltar es solo visual, el
+-- denominador lo sigue gobernando countedKeys desde saga_items.optional.
+-- ============================================================================
+
+-- Sin FK contra saga_items a proposito: su PK es (saga_id, item_type, item_id)
+-- y una FK compuesta ataria el salto al ciclo de vida de la curacion, de modo
+-- que retirar un miembro y volver a anadirlo borraria en silencio la
+-- preferencia del lector. Un salto huerfano es inerte.
+create table public.saga_optional_skips (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  saga_id uuid not null references public.sagas (id) on delete cascade,
+  item_type public.item_type not null,
+  item_id uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, saga_id, item_type, item_id)
+);
+
+alter table public.saga_optional_skips enable row level security;
+
+-- Clon de saga_route_choices: preferencia PERSONAL, RLS solo-dueno y sin gate
+-- de rol.
+create policy "saga optional skips own" on public.saga_optional_skips
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+-- Preferencia global del lector, mismo patron que profiles.daily_goal_minutes.
+alter table public.profiles
+  add column show_optional_readings boolean not null default true;
