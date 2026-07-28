@@ -1,0 +1,81 @@
+import Image from "next/image";
+import Link from "next/link";
+import { SAGA_ACCENT } from "@/lib/sagas/accents";
+import type { TimelineRow } from "@/lib/sagas/derive-timeline";
+import { TimelineBranchRow } from "./timeline-branch";
+import type { TimelineLabels } from "./timeline-labels";
+
+type EntryRow = Extract<TimelineRow, { kind: "entry" }>;
+
+// Fila de una obra con puesto. El raíl se colorea con el acento del NODO, no
+// con el de la sección: en modo `curation` es equivalente por construcción (una
+// sección agrupa nodos con el mismo `groupSagaId`), y es lo que permite que en
+// modo `route` —sección única sin cabecera— cada fila conserve el color de SU
+// subsaga.
+//
+// `showGroupLabel` lo pone la cáscara cuando la sección NO lleva cabecera: la
+// subsaga baja de cabecera de sección a etiqueta de fila (spec §1 — repetir
+// «Magos» dos veces porque el itinerario parte el hilo rompe más de lo que
+// explica).
+export function TimelineEntryRow({
+  row,
+  labels,
+  showGroupLabel,
+}: {
+  row: EntryRow;
+  labels: TimelineLabels;
+  showGroupLabel: boolean;
+}) {
+  const accent = row.node.accent;
+  return (
+    <div>
+      <div className="relative flex gap-3 py-2">
+        <div className="relative flex w-6 shrink-0 justify-center">
+          <span className={`absolute -bottom-2 -top-2 w-[2.5px] ${SAGA_ACCENT[accent].bg}`} />
+          <span
+            className={`z-10 mt-6 h-[15px] w-[15px] rounded-full ring-4 ring-background ${
+              row.node.status === "in_progress"
+                ? "border-4 border-accent bg-surface"
+                : row.node.status === "completed"
+                  ? SAGA_ACCENT[accent].bg
+                  : `border-[2.5px] border-dashed bg-surface ${SAGA_ACCENT[accent].border}`
+            }`}
+          />
+        </div>
+        <Link
+          href={row.node.href}
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border bg-surface px-3 py-2 ${
+            row.node.status === "in_progress" ? "border-accent/50 shadow-md" : "border-border"
+          } ${row.node.status === null ? "opacity-60" : ""}`}
+        >
+          <span className="relative h-[66px] w-[44px] shrink-0 overflow-hidden rounded shadow">
+            {row.node.coverUrl && <Image src={row.node.coverUrl} alt="" fill sizes="44px" className="object-cover" />}
+            {row.node.status === "completed" && (
+              <span className="absolute bottom-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-green text-[9px] text-white">
+                ✓
+              </span>
+            )}
+            {row.node.status === "in_progress" && (
+              <span className="absolute inset-0 grid place-items-center bg-foreground/40 text-sm text-white">◉</span>
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            {row.no !== null && (
+              <span className="block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                {labels.orderNo(row.no)}
+              </span>
+            )}
+            <span className="block truncate font-serif text-[14.5px] font-semibold leading-tight">{row.node.label}</span>
+            {showGroupLabel && row.node.groupName && (
+              <span className="block truncate font-mono text-[9px] text-muted-foreground">{row.node.groupName}</span>
+            )}
+          </span>
+          <span className="text-base text-muted-foreground">›</span>
+        </Link>
+      </div>
+      {row.branches.map((b) => (
+        <TimelineBranchRow key={b.node.id} branch={b} accent={accent} labels={labels} />
+      ))}
+    </div>
+  );
+}
