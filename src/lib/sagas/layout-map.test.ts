@@ -163,6 +163,29 @@ describe("alignRowsToLongEdges", () => {
     expect(alignRowsToLongEdges({ nodes: [], edges: [] })).toEqual({ nodes: [], edges: [] });
   });
 
+  it("el grupo Nexo (bloque null) se mueve entero y no se mezcla con un bloque con id", () => {
+    // `groupSagaId: null` es el grupo de miembros directos («Nexo»). Antes se
+    // distinguía con un centinela de cadena; ahora es un `null` legítimo como
+    // clave de bloque, y no debe confundirse con "nodo no encontrado" ni
+    // mezclarse con las obras de un bloque real.
+    const graph: SagaGraph = {
+      nodes: [
+        nodo("a0", "uno", 0, 0),
+        nodo("a", "uno", 1, 0),
+        nodo("n1", null, 0, 1),
+        nodo("n2", null, 1, 1),
+      ],
+      edges: [arista("a", "n1", "requisito")],
+    };
+    const out = alignRowsToLongEdges(graph);
+    // El grupo Nexo entero se desplaza junto con su ancla...
+    expect(col(out, "n1")).toBe(1);
+    expect(col(out, "n2")).toBe(2);
+    // ...y el bloque con id que sigue arriba no se ve afectado.
+    expect(col(out, "a0")).toBe(0);
+    expect(col(out, "a")).toBe(1);
+  });
+
   it("no muta el grafo que recibe", () => {
     const graph: SagaGraph = {
       nodes: [nodo("a", "uno", 2, 0), nodo("z", "dos", 0, 1)],

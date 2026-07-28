@@ -26,11 +26,6 @@ export const MAX_COL_OFFSET = 4;
  *  consecutivos, que ya están al lado. */
 const TIPOS_LARGOS = new Set(["requisito", "opcional", "itinerario"]);
 
-/** Identidad del bloque al que pertenece un nodo. `groupSagaId` es null en el
- *  grupo de miembros directos («Nexo»), y solo puede haber uno, así que la
- *  cadena centinela no colisiona con ningún uuid. */
-const bloqueDe = (n: SagaGraphNode): string => n.groupSagaId ?? "\u0000nexo";
-
 /** Mediana, no media: aguanta un ancla rara en un extremo. Óptimo L1, que es la
  *  distancia que de verdad importa aquí (cuánto se desvía cada arista de la
  *  vertical). Con un número par de valores promedia los dos centrales; el
@@ -44,10 +39,10 @@ function mediana(valores: number[]): number {
 export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
   if (graph.nodes.length === 0) return graph;
 
-  const nodosDeBloque = new Map<string, SagaGraphNode[]>();
-  const bloqueDeNodo = new Map<string, string>();
+  const nodosDeBloque = new Map<string | null, SagaGraphNode[]>();
+  const bloqueDeNodo = new Map<string, string | null>();
   for (const n of graph.nodes) {
-    const clave = bloqueDe(n);
+    const clave = n.groupSagaId;
     bloqueDeNodo.set(n.id, clave);
     const lista = nodosDeBloque.get(clave);
     if (lista === undefined) nodosDeBloque.set(clave, [n]);
@@ -76,7 +71,7 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
   const bloques = [...nodosDeBloque.entries()].sort((a, b) => filaDe(a[1]) - filaDe(b[1]));
 
   const xFinal = new Map<string, number>();
-  const colocados = new Set<string>();
+  const colocados = new Set<string | null>();
 
   for (const [clave, lista] of bloques) {
     const deltas: number[] = [];
