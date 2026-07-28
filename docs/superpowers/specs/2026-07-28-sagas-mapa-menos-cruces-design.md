@@ -98,9 +98,16 @@ alternativa —que `orderNo` siga al pintado— rompería el timeline de móvil,
 `orderBlocksForLayout(ordered, free, windows): MemberGroup[]`
 
 - Parte de `ordered`, en su orden, **intocable**: ese orden es curación, no layout.
-- Ancla de un bloque libre: su ventana `s:<sagaId>` en `windows`, tomando `afterKey ?? beforeKey`. La
-  clave se resuelve al **bloque** que la contiene — una clave `s:` es el bloque; una `i:` es el
-  bloque de esa obra.
+- Ancla de un bloque libre: su ventana en `windows`, tomando `afterKey ?? beforeKey`. La ventana se
+  busca por su **sujeto**, y el sujeto puede tener dos formas: la propia entrada `s:<sagaId>` del
+  bloque, o la de cualquiera de sus obras (`i:<tipo>:<uuid>`) — en producción el sujeto de una
+  ventana es **mayoritariamente una obra**, no el bloque entero (de las 5 ventanas reales, 3 tienen
+  sujeto obra, y dos de esas obras están dentro de un bloque `libre`). La clave, sea cual sea su
+  forma, se resuelve al **bloque** que la contiene — una clave `s:` es el bloque; una `i:` es el
+  bloque de esa obra. Si más de una ventana resolviera al mismo bloque (no pasa hoy en producción),
+  el criterio es explícito y no depende del orden de `Object.entries(windows)`: la ventana `s:` del
+  propio bloque manda si existe; entre varias de obra, la de la clave `i:` menor por orden
+  lexicográfico.
 - `after` → se inserta justo **detrás** del bloque ancla. `before` → justo **delante**.
 - Pasadas repetidas mientras haya progreso, para el caso de un libre anclado a otro libre.
 - Lo que quede sin resolver —sin ventana, ancla rota, o ciclo— se añade **al final**, en su orden

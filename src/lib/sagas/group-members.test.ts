@@ -379,6 +379,43 @@ describe("orderBlocksForLayout", () => {
     const dos = bloque("Dos", "fijo", ["b"]);
     expect(nombres(orderBlocksForLayout([uno, dos], [], {}))).toEqual(["Uno", "Dos"]);
   });
+
+  // Hallazgo de la revisión de rama: en producción el sujeto de una ventana es
+  // mayoritariamente una OBRA (`i:<tipo>:<uuid>`), no el bloque entero
+  // (`s:<sagaId>`) — de las 5 ventanas reales, 3 tienen sujeto obra, y dos de
+  // esas obras están dentro de un bloque `libre`. Antes de este arreglo solo se
+  // miraba `windows[s:<sagaId>]`, así que esos libres se quedaban al fondo.
+  it("un libre cuya ventana tiene sujeto OBRA (de una de sus propias obras) se coloca junto a su ancla", () => {
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const dos = bloque("Dos", "fijo", ["b"]);
+    const libre = bloque("Libre", "libre", ["l"]);
+    const orden = orderBlocksForLayout([uno, dos], [libre], {
+      "i:book:l": ventana("i:book:a", null),
+    });
+    expect(nombres(orden)).toEqual(["Uno", "Libre", "Dos"]);
+  });
+
+  it("dos ventanas de obra que resuelven al mismo bloque dan el mismo resultado, se den en el orden que se den", () => {
+    // Determinismo: no puede depender del orden de iteración de
+    // Object.entries(windows). El criterio es la clave `i:` lexicográficamente
+    // menor, así que "i:book:l1" (ancla en "Uno") tiene que ganar siempre a
+    // "i:book:l2" (ancla en "Dos"), sea cual sea el orden en que se declaren.
+    const uno = bloque("Uno", "fijo", ["a"]);
+    const dos = bloque("Dos", "fijo", ["b"]);
+    const libre = bloque("Libre", "libre", ["l1", "l2"]);
+    const enOrden = {
+      "i:book:l1": ventana("i:book:a", null),
+      "i:book:l2": ventana("s:saga-Dos", null),
+    };
+    const alReves = {
+      "i:book:l2": ventana("s:saga-Dos", null),
+      "i:book:l1": ventana("i:book:a", null),
+    };
+    const ordenA = nombres(orderBlocksForLayout([uno, dos], [libre], enOrden));
+    const ordenB = nombres(orderBlocksForLayout([uno, dos], [libre], alReves));
+    expect(ordenA).toEqual(ordenB);
+    expect(ordenA).toEqual(["Uno", "Libre", "Dos"]);
+  });
 });
 
 describe("rol narrativo (#167)", () => {

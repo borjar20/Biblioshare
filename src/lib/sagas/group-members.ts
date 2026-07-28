@@ -211,6 +211,32 @@ export function orderBlocksForLayout(
     for (const m of g.members) bloqueDeClave.set(`i:${m.itemType}:${m.itemId}`, g);
   }
 
+  // Ventana de un bloque `free`: su propia entrada `s:<sagaId>` si existe, y
+  // si no, la de cualquier obra suya (`bloqueDeClave` ya resuelve una clave
+  // `i:` al bloque que la contiene — se reutiliza en vez de indexar dos
+  // veces). En producción el sujeto de una ventana es mayoritariamente una
+  // OBRA, no el bloque entero: de las 5 ventanas reales, 3 tienen sujeto obra,
+  // y dos de esas obras están dentro de un bloque `libre`.
+  //
+  // Determinismo si más de una ventana resolviera al mismo bloque (hoy nunca
+  // pasa en producción, pero el resultado no puede depender del orden de
+  // iteración de `Object.entries(windows)`): la ventana del propio bloque
+  // (`s:`) manda si existe; entre varias de obra, la de la clave `i:` menor
+  // por orden lexicográfico.
+  const ventanaDelBloque = (g: MemberGroup): ResolvedWindow | undefined => {
+    if (g.sagaId !== null) {
+      const propia = windows[`s:${g.sagaId}`];
+      if (propia !== undefined) return propia;
+    }
+    let mejorClave: string | null = null;
+    for (const clave of Object.keys(windows)) {
+      if (!clave.startsWith("i:")) continue;
+      if (bloqueDeClave.get(clave) !== g) continue;
+      if (mejorClave === null || clave < mejorClave) mejorClave = clave;
+    }
+    return mejorClave === null ? undefined : windows[mejorClave];
+  };
+
   const resultado = [...ordered];
   // Cuántos libres se han insertado ya DETRÁS de cada ancla. Sin esto, dos
   // libres con la misma ancla salen en orden inverso: los dos calculan el mismo
@@ -226,7 +252,7 @@ export function orderBlocksForLayout(
     let huboCambios = false;
 
     for (const g of pendientes) {
-      const w = g.sagaId === null ? undefined : windows[`s:${g.sagaId}`];
+      const w = ventanaDelBloque(g);
       // `after` manda sobre `before`: «a partir de X» sitúa el bloque, mientras
       // que «antes de Y» solo pone un techo.
       const lado = w?.afterKey != null ? "after" : w?.beforeKey != null ? "before" : null;
