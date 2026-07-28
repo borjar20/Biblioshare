@@ -7,6 +7,7 @@ const n = (id: string, orderNo: number | null, status: SagaGraphNode["status"] =
   id, kind: "item", x: 0, y: 0, level: "principal", orderNo, label: id, accent: "beige",
   status, role: null, coverUrl: null, covers: [], href: `/${id}`, memberCount: null,
   groupSagaId: "g", groupName: "G", step: null, tandem: null, windowReason: null,
+  optional: false, skipped: false, ownerSagaId: "owner",
 });
 const g = (nodes: SagaGraphNode[]): SagaGraph => ({ nodes, edges: [] });
 /** Columna de 4, con las obras nombradas ya completadas. */

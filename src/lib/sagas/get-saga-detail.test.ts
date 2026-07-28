@@ -281,6 +281,9 @@ const node = (over: Partial<SagaGraphNode> = {}): SagaGraphNode => ({
   step: null,
   tandem: null,
   windowReason: null,
+  optional: false,
+  skipped: false,
+  ownerSagaId: "owner",
   ...over,
 });
 

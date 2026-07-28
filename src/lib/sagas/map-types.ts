@@ -45,6 +45,25 @@ export type SagaGraphNode = {
    *  que no re-resuelve las anclas. Dos resoluciones del mismo dato acaban
    *  discrepando (#91/#185/#203). */
   windowReason: WindowReason | null;
+  /** La obra NO cuenta en el denominador del progreso (`saga_items.optional`).
+   *  Ortogonal a `placement`: una opcional puede tener hueco fijo — en
+   *  producción hay dos así (Saga de los Huesos Verdes, huecos 1 y 2 de 5), así
+   *  que no basta con tratarla como rama punteada.
+   *
+   *  Se guarda aparte de `level` a propósito. Hoy los dos salen de lo mismo,
+   *  pero `level` es el TAMAÑO con el que el grafo 2D pinta el nodo: leer «es
+   *  opcional» de un token de layout es inferir semántica de una decisión de
+   *  dibujo, y el día que `level` deje de depender de `optional` el que se
+   *  rompería sería el consumidor, en silencio. */
+  optional: boolean;
+  /** El lector se la ha saltado (`saga_optional_skips`, fase 4). SOLO VISUAL:
+   *  tacha y atenúa la fila; el denominador no se mueve. */
+  skipped: boolean;
+  /** Saga DUEÑA de la fila de `saga_items` (`DetailMember.ownerSagaId`), que no
+   *  es `groupSagaId` a partir de profundidad 2. Viaja hasta aquí porque el
+   *  nodo es lo único que llega a la fila pintada, y el botón de saltar
+   *  necesita esta saga —no la de la ficha— para guardar el salto. */
+  ownerSagaId: string;
 };
 
 export type SagaGraphEdge = {

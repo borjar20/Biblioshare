@@ -705,3 +705,46 @@ describe("motivo de la ventana (fase 3)", () => {
     expect(map.nodes[0].windowReason).toBeNull();
   });
 });
+
+// Opcionales y saltos (fase 4): el nodo lleva la SEMÁNTICA, no solo el tamaño.
+describe("optional / skipped / ownerSagaId en el nodo", () => {
+  it("el nodo copia optional y skipped del miembro", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [{ ...work("A", 1), optional: true, skipped: true }])]),
+      {},
+      lookup(),
+    );
+    const n = map.nodes.find((x) => x.id === "i:book:A")!;
+    expect(n.optional).toBe(true);
+    expect(n.skipped).toBe(true);
+  });
+
+  it("`level` sigue siendo un token de TAMAÑO, no la fuente de «es opcional»", () => {
+    // Hoy los dos salen de `m.optional`, y por eso coinciden. Se guardan
+    // aparte a propósito: leer «es opcional» de `level` sería inferir
+    // semántica de un token de layout, y el día que `level` deje de
+    // depender de `optional` (un tamaño por rol, por ejemplo) el que se
+    // rompería sería el consumidor, en silencio.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [{ ...work("A", 1), optional: true }, work("B", 2)])]),
+      {},
+      lookup(),
+    );
+    expect(map.nodes.find((x) => x.id === "i:book:A")).toMatchObject({ optional: true, level: "menor" });
+    expect(map.nodes.find((x) => x.id === "i:book:B")).toMatchObject({ optional: false, level: "principal" });
+  });
+
+  it("una obra normal llega con los dos en false", () => {
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
+    expect(map.nodes[0]).toMatchObject({ optional: false, skipped: false });
+  });
+
+  it("el nodo lleva la saga DUEÑA de la fila, no la de agrupación", () => {
+    // Lo necesita el botón de saltar: `saga_optional_skips.saga_id` se guarda
+    // con `ownerSagaId`, y el nodo es lo único que llega hasta la fila pintada.
+    // `block()` reescribe `groupSagaId` a `saga-Uno` y deja `ownerSagaId` en
+    // "owner": si el nodo copiara el que no es, este test lo caza.
+    const map = deriveSagaMap(groups([block("Uno", 1, [work("A", 1)])]), {}, lookup());
+    expect(map.nodes[0]).toMatchObject({ ownerSagaId: "owner", groupSagaId: "saga-Uno" });
+  });
+});

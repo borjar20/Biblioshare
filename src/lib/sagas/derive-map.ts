@@ -150,6 +150,9 @@ export function deriveSagaMap(
     // Se rellena por hueco, más abajo: un nodo suelto nunca es tándem.
     tandem: null,
     windowReason: null,
+    optional: m.optional,
+    skipped: m.skipped,
+    ownerSagaId: m.ownerSagaId,
   });
 
   // Fila donde EMPIEZA el bloque actual. Ya no es el índice del bloque: un
