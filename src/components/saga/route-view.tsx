@@ -4,9 +4,11 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { createCuratedOrder } from "@/lib/sagas/curated-order";
+import { countRoles } from "@/lib/sagas/count-roles";
 import { deriveTimeline } from "@/lib/sagas/derive-timeline";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
 import type { SagaGraph } from "@/lib/sagas/map-types";
+import type { SagaItemRole } from "@/lib/sagas/types";
 import { resolveRoute, unnamedMembers } from "@/lib/sagas/resolve-route";
 import { isMemberCompleted } from "@/lib/sagas/completion";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
@@ -23,6 +25,7 @@ export async function RouteView({
   slug,
   canEdit,
   graph,
+  activeRole,
 }: {
   detail: SagaDetail;
   slug: string;
@@ -33,6 +36,10 @@ export async function RouteView({
    *  curado o tiene el mapa apagado: entonces se conserva la lista de pasos de
    *  siempre, porque apagar el mapa no puede hacer desaparecer el itinerario. */
   graph: SagaGraph | null;
+  /** Lente por rol (`?rol=`), ya validada contra el vocabulario en la página.
+   *  Vale igual dentro de un itinerario: filtrar es una lente sobre lo que se
+   *  pinta, no una decisión sobre qué itinerario se sigue. */
+  activeRole: SagaItemRole | null;
 }) {
   const t = await getTranslations("saga");
   const supabase = await createClient();
@@ -109,10 +116,14 @@ export async function RouteView({
           spine: "route",
           authenticated: detail.isAuthenticated,
           showOptional: detail.showOptionalReadings,
+          roleFilter: activeRole,
         });
   // Sobre el GRAFO, no sobre las filas: contado sobre lo visible, apagar el
   // interruptor haría desaparecer el propio interruptor.
   const optionalCount = graph === null ? 0 : graph.nodes.filter((n) => n.kind === "item" && n.optional).length;
+  // Misma regla para los roles, y por lo mismo: contados sobre el grafo entero.
+  const roleCounts = graph === null ? [] : countRoles(graph);
+  const baseHref = `${sagaHref(detail.saga.id)}?tab=mapa&ruta=${encodeURIComponent(slug)}`;
 
   return (
     <div className="flex flex-col gap-3">
@@ -156,6 +167,9 @@ export async function RouteView({
           sagaId={detail.isAuthenticated ? detail.saga.id : null}
           showOptional={detail.showOptionalReadings}
           optionalCount={optionalCount}
+          roleCounts={roleCounts}
+          activeRole={activeRole}
+          baseHref={baseHref}
         />
       ) : (
         // Camino de respaldo, sin grafo que derivar (saga sin curar, o con el

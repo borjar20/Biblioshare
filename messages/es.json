@@ -1063,6 +1063,9 @@
       "companero": "Compañero",
       "crossover": "Crossover"
     },
+    "timelineRoleFilterTitle": "Roles",
+    "timelineRoleFilterAll": "Todos",
+    "timelineRoleFilterAria": "Ver solo: {role}",
     "roleShort": {
       "precuela": "Precuela",
       "novela_corta": "Novela",

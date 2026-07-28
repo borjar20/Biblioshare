@@ -3,8 +3,10 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineSection } from "@/lib/sagas/derive-timeline";
+import type { SagaItemRole } from "@/lib/sagas/types";
 import { RoleChip } from "./role-chip";
 import { OptionalBar } from "./timeline/optional-bar";
+import { RoleFilterBar } from "./timeline/role-filter-bar";
 import { TimelineEntryRow } from "./timeline/timeline-entry-row";
 import { buildTimelineLabels } from "./timeline/timeline-labels";
 import { TimelineTandemRow } from "./timeline/timeline-tandem-row";
@@ -27,6 +29,9 @@ export async function ReadingTimeline({
   sagaId,
   showOptional,
   optionalCount,
+  roleCounts,
+  activeRole,
+  baseHref,
 }: {
   sections: TimelineSection[];
   /** Ficha que se revalida al saltar o al mover el interruptor. `null` sin
@@ -38,12 +43,32 @@ export async function ReadingTimeline({
    *  las filas visibles: contadas sobre lo visible, apagar el interruptor haría
    *  desaparecer el propio interruptor y no habría forma de volver. */
   optionalCount: number;
+  /** Roles presentes en el GRAFO, con su cuenta. Vacío = no se pinta barra, que
+   *  es el caso de casi todas las sagas (8 filas con rol de 367 en producción). */
+  roleCounts: Array<{ role: SagaItemRole; count: number }>;
+  /** Rol activo (de `?rol=`), ya validado contra el vocabulario. */
+  activeRole: SagaItemRole | null;
+  /** URL de la ficha con sus parámetros, para construir los enlaces del filtro. */
+  baseHref: string;
 }) {
   const t = await getTranslations("saga");
   const labels = buildTimelineLabels(t);
 
   return (
     <div data-testid="reading-timeline">
+      {roleCounts.length > 0 && (
+        <RoleFilterBar
+          counts={roleCounts}
+          active={activeRole}
+          baseHref={baseHref}
+          labels={{
+            title: t("timelineRoleFilterTitle"),
+            all: t("timelineRoleFilterAll"),
+            name: (role) => t(`roleLabel.${role}`),
+            aria: (role) => t("timelineRoleFilterAria", { role }),
+          }}
+        />
+      )}
       {sagaId !== null && optionalCount > 0 && (
         <OptionalBar
           sagaId={sagaId}
