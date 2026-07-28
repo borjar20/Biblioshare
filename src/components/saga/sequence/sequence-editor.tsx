@@ -19,18 +19,20 @@ const resolveAccent = (accentColor: string | null): SagaAccentToken =>
   isSagaAccentToken(accentColor) ? accentColor : "terracota";
 
 /** Alta desde el buscador de catálogo del rail. `isNew` lo pone `addEntry`. */
-const entryFromPickedItem = (item: PickedItem): DraftEntry => ({
+/** Alta desde el buscador de catálogo del rail. `isNew` lo pone `addEntry`. La
+ *  fila se creará bajo ESTA saga, así que su dueña es esta saga. */
+const entryFromPickedItem = (item: PickedItem, sagaId: string): DraftEntry => ({
   key: `i:${item.itemType}:${item.itemId}`,
   kind: "item", itemType: item.itemType, itemId: item.itemId, childSagaId: null,
   title: item.title, coverUrl: item.coverUrl, accentColor: null, count: null,
-  optional: false, role: null, window: null, isNew: false,
+  optional: false, role: null, window: null, ownerSagaId: sagaId, isNew: false,
 });
 
-const entryFromChildSaga = (child: ChildSagaData): DraftEntry => ({
+const entryFromChildSaga = (child: ChildSagaData, sagaId: string): DraftEntry => ({
   key: `s:${child.id}`,
   kind: "block", itemType: null, itemId: null, childSagaId: child.id,
   title: child.name, coverUrl: null, accentColor: child.accentColor, count: child.count,
-  optional: false, role: null, window: null, isNew: false,
+  optional: false, role: null, window: null, ownerSagaId: sagaId, isNew: false,
 });
 
 // Las dos cáscaras se montan A LA VEZ y se ocultan por breakpoint (regla de los
@@ -83,9 +85,14 @@ export function SequenceEditor({
       childSagas={children.map((c) => ({ id: c.id, name: c.name, accentColor: c.accentColor }))}
       accentBySaga={new Map(children.map((c) => [c.id, resolveAccent(c.accentColor)]))}
       countBySaga={new Map(children.map((c) => [c.id, c.count]))}
-      onAddItem={(item: PickedItem) => ops.add(entryFromPickedItem(item))}
+      onAddItem={(item: PickedItem) => ops.add(entryFromPickedItem(item, sagaId))}
       onAddBlock={(child: { id: string; name: string }) =>
-        ops.add(entryFromChildSaga(children.find((c) => c.id === child.id) ?? { ...child, accentColor: null, count: 0 }))
+        ops.add(
+          entryFromChildSaga(
+            children.find((c) => c.id === child.id) ?? { ...child, accentColor: null, count: 0 },
+            sagaId,
+          ),
+        )
       }
       onChildrenChange={(next) =>
         setChildren(next.map((c) => ({ ...c, count: children.find((p) => p.id === c.id)?.count ?? 0 })))

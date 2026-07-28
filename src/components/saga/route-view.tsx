@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { createCuratedOrder } from "@/lib/sagas/curated-order";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
-import { resolveRoute } from "@/lib/sagas/resolve-route";
+import { resolveRoute, unnamedMembers } from "@/lib/sagas/resolve-route";
 import { isMemberCompleted } from "@/lib/sagas/completion";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
@@ -76,6 +76,14 @@ export async function RouteView({
     childAccent,
     mainOrderOf: (sagaId) => mainOrder(sagaId),
   });
+
+  // Solo bajo el DESIGNADO (fase 4): es la vista por defecto de la saga, así que
+  // lo que no nombra tiene que seguir viéndose. Sin contador («19 de 20») a
+  // propósito: sería una TERCERA regla de recuento en la ficha — el hero ya
+  // cuenta con countedKeys (que excluye lo `optional`) y la cabecera de arriba
+  // cuenta los pasos de la ruta. Enseñar la lista es honesto; enseñar un número
+  // que no cuadra con el de arriba, no.
+  const unnamed = row.isReadingOrder ? unnamedMembers(resolved, mainOrder(detail.saga.id), members) : [];
 
   return (
     <div className="flex flex-col gap-3">
@@ -150,6 +158,34 @@ export async function RouteView({
             );
           })}
         </ol>
+      )}
+
+      {unnamed.length > 0 && (
+        <section className="mt-2 border-t border-border pt-3">
+          <h4 className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            {t("routeUnnamedTitle")}
+          </h4>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{t("routeUnnamedHint")}</p>
+          <ul className="mt-2 divide-y divide-border border-t border-border">
+            {unnamed.map((m) => (
+              <li key={`${m.itemType}:${m.itemId}`}>
+                <Link href={m.href} className="flex items-center gap-3 py-2.5">
+                  {/* Sin número, con «·»: exactamente como el mapa pinta lo que
+                      no tiene hueco (#167). Numerarlos les atribuiría un puesto
+                      que el curador no les dio. */}
+                  <span className="w-6 shrink-0 text-right font-mono text-[11px] text-foreground-faint">·</span>
+                  <span className="relative h-[45px] w-[30px] shrink-0 overflow-hidden rounded">
+                    {m.coverUrl && <Image src={m.coverUrl} alt="" fill sizes="30px" className="object-cover" />}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{m.title}</span>
+                  {/* Presentación, no cómputo de avance: el predicado único vive
+                      en completion.ts (issue #91). */}
+                  {isMemberCompleted(m) && <span className="shrink-0 text-xs text-success">✓</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

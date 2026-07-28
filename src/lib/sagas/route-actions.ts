@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateSagaPage } from "@/lib/reactivity/revalidate";
+import { revalidateSagaPage, revalidateSagaRoutesPage } from "@/lib/reactivity/revalidate";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { computeMovedPositions, getSagaRoutes } from "./get-saga-routes";
@@ -191,6 +191,66 @@ export async function moveRoute(routeId: string, sagaId: string, direction: "up"
   revalidateSagaPage(sagaId);
 }
 
+// Designar el «Orden de lectura» de una saga (fase 4). Con un itinerario
+// designado, la ruta sintética «lectura» deja de ofrecerse: su puesto y su
+// etiqueta los ocupa el designado (buildRouteList). Mismo gate duro
+// collaborator+ que el resto de este fichero.
+export async function setReadingOrder(
+  sagaId: string,
+  routeId: string | null,
+): Promise<{ error?: "emptyRoute" | "forbidden" | "generic" }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+
+  if (routeId !== null) {
+    // Un itinerario SIN PASOS no puede ocupar el puesto: el flujo normal es
+    // crear la fila y editar los pasos después, así que ese estado existe de
+    // verdad — y cederle el puesto dejaría la ficha con un chip que no lleva a
+    // ninguna parte Y sin la ruta derivada, que es la que sí tiene contenido.
+    const { count, error: countError } = await supabase
+      .from("saga_route_entries")
+      .select("route_id", { count: "exact", head: true })
+      .eq("route_id", routeId);
+    if (countError) return { error: "generic" };
+    if ((count ?? 0) === 0) return { error: "emptyRoute" };
+  }
+
+  // Limpiar SIEMPRE primero. El unique parcial `(saga_id) where
+  // is_reading_order` rechaza una segunda fila en true, así que designar antes
+  // de desdesignar da 23505. Las dos escrituras no son atómicas: el peor caso
+  // es quedarse sin designado (estado válido, se reintenta), nunca con dos.
+  const { error: clearError } = await supabase
+    .from("saga_routes")
+    .update({ is_reading_order: false })
+    .eq("saga_id", sagaId)
+    .eq("is_reading_order", true);
+  if (clearError) return { error: "generic" };
+
+  if (routeId !== null) {
+    // `eq("saga_id", sagaId)` además del id: impide que una petición manipulada
+    // designe un itinerario de otra saga.
+    const { error } = await supabase
+      .from("saga_routes")
+      .update({ is_reading_order: true })
+      .eq("id", routeId)
+      .eq("saga_id", sagaId);
+    if (error) return { error: "generic" };
+  }
+
+  revalidateSagaPage(sagaId);
+  // Y la propia pantalla de gestión: es la que enseña el radio y la chapa. Sin
+  // esto, volver a ella la servía con la designación ANTERIOR, y el selector
+  // arrancaba con un `current` viejo — el botón de guardar salía deshabilitado
+  // sobre lo que el curador acababa de elegir. Dentro de la pantalla no se veía:
+  // lo tapaba el `router.refresh()` del propio componente.
+  revalidateSagaRoutesPage(sagaId);
+  return {};
+}
+
 export async function deleteRoute(routeId: string, sagaId: string): Promise<{ error?: boolean }> {
   const supabase = await createClient();
   const {
@@ -231,6 +291,21 @@ export async function saveRoute(
 
   const problems = validateRouteDraft(entries, { descendantIds: new Set(descendantIds) });
   if (problems.length > 0) return { error: problems[0] };
+
+  // La otra mitad de la guarda de `setReadingOrder`: no se puede dejar sin
+  // pasos al itinerario que ocupa el puesto de «Orden de lectura». Solo se
+  // consulta cuando el borrador se queda a cero, así que el guardado normal no
+  // paga nada.
+  if (entries.length === 0) {
+    const { data: row } = await supabase
+      .from("saga_routes")
+      .select("is_reading_order")
+      .eq("id", routeId)
+      .maybeSingle();
+    if ((row as { is_reading_order: boolean } | null)?.is_reading_order) {
+      return { error: "readingOrderEmpty" };
+    }
+  }
 
   const { error } = await supabase.rpc("save_saga_route", {
     p_route_id: routeId,

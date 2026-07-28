@@ -11,7 +11,7 @@ import type { SequencePayload } from "./sequence-draft";
  *  borrado en la Task 9 junto con el formulario por fila). */
 export function validateSequenceDraft(
   payload: SequencePayload,
-  ctx: { childIds: Set<string>; anchorKeys: Set<string> },
+  ctx: { childIds: Set<string>; anchorKeys: Set<string>; windowOwners: Map<string, string> },
 ): { errors: string[]; unclassified: number } {
   const errors = new Set<string>();
   let unclassified = 0;
@@ -47,19 +47,17 @@ export function validateSequenceDraft(
       : childSagaId !== null ? `s:${childSagaId}`
       : null;
 
-  const freeItemKeys = new Set(
-    payload.entries.filter((e) => e.placement === "libre").map((e) => `${e.item_type}:${e.item_id}`),
-  );
-  const freeBlockKeys = new Set(
-    payload.blocks.filter((b) => b.placement_in_parent === "libre").map((b) => b.child_saga_id),
-  );
-
   for (const w of payload.windows) {
     const subjectKey = key(w.item_type, w.item_id, w.child_saga_id);
-    const subjectFree = w.item_id !== null
-      ? freeItemKeys.has(`${w.item_type}:${w.item_id}`)
-      : w.child_saga_id !== null && freeBlockKeys.has(w.child_saga_id);
-    if (!subjectFree) errors.add("windowNotFree");
+    // `windowOwners` responde a las DOS preguntas de una vez: si el sujeto puede
+    // tener ventana (está `libre`) y bajo qué saga vive su fila. En servidor se
+    // resuelve contra BD (`loadWindowOwners`); en cliente, del borrador vivo
+    // (`draftWindowOwners`), para que una entrada recién movida a «Cuando
+    // quieras» no se acuse de ajena sin recargar — el `foreignBlock` falso de
+    // la fase 2a.
+    const owner = subjectKey === null ? undefined : ctx.windowOwners.get(subjectKey);
+    if (owner === undefined) errors.add("windowNotFree");
+    else if (owner !== w.saga_id) errors.add("windowWrongOwner");
 
     const afterKey = key(w.after_item_type, w.after_item_id, w.after_child_saga_id);
     const beforeKey = key(w.before_item_type, w.before_item_id, w.before_child_saga_id);

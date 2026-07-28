@@ -62,6 +62,17 @@ export function revalidateSagaEditPage(id: string): void {
   revalidatePath(`${sagaHref(id)}/editar`);
 }
 
+/** La pantalla de gestión de itinerarios de una saga (/saga/[id]/rutas). Ruta
+ *  DISTINTA de `revalidateSagaPage`, por el mismo motivo que
+ *  `revalidateSagaEditPage`: sin nombrarla, volver a ella tras designar un orden
+ *  de lectura la servía con el estado anterior — el radio marcado en lo que ya
+ *  no es, y el botón de guardar deshabilitado porque el componente creía estar
+ *  al día. Solo se notaba al NAVEGAR de vuelta: dentro de la pantalla, el
+ *  `router.refresh()` del propio selector lo tapaba. */
+export function revalidateSagaRoutesPage(id: string): void {
+  revalidatePath(`${sagaHref(id)}/rutas`);
+}
+
 /** Fichas de club + sus actividades + el listado. Las acciones de club manejan
  *  clubId, no slug, así que se usa el patrón dinámico "/club/[slug]" en vez de
  *  la ruta literal. */

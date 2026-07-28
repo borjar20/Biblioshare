@@ -49,4 +49,11 @@ export type SagaRoute = {
    * volver a consultar `saga_routes` solo para conseguir el id (hallazgo 3).
    */
   id?: string;
+  /**
+   * true = esta ruta OCUPA el puesto de «Orden de lectura» (fase 4). Siempre
+   * false en las sintéticas. La ficha lo usa para una sola cosa: listar debajo
+   * lo que el itinerario no nombra (route-view.tsx). El puesto y la etiqueta ya
+   * vienen resueltos en `name` y en el orden de la lista.
+   */
+  isReadingOrder: boolean;
 };

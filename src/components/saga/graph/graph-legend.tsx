@@ -12,6 +12,10 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
       groups.set(n.groupSagaId, { name: n.groupName, accent: n.accent });
     }
   }
+  // Condicional, a diferencia de las tres de arriba: el salto solo existe con
+  // un itinerario activo, así que anunciarlo siempre pondría en la leyenda de
+  // casi todos los mapas una línea que ese mapa no dibuja.
+  const hasItineraryJump = graph.edges.some((e) => e.type === "itinerario");
   const hasNexus = graph.nodes.some((n) => n.kind === "item" && n.groupSagaId === null);
   const hasReading = graph.nodes.some((n) => n.status === "in_progress");
 
@@ -27,6 +31,16 @@ export async function GraphLegend({ graph }: { graph: SagaGraph }) {
       <span className="flex items-center gap-2 text-[11.5px] text-foreground">
         <i className="w-[26px] border-t-[3px] border-dotted border-spine" /> {t("legendRequisite")}
       </span>
+      {hasItineraryJump && (
+        <span className="flex items-center gap-2 text-[11.5px] text-foreground">
+          {/* El MISMO color que el trazo del lienzo (`--map-itinerary-jump`),
+              no `border-foreground` como las de arriba: aquí la muestra sí
+              puede coincidir con lo que se dibuja, porque ese token no cambia
+              con el tema y contrasta también sobre `--surface`. */}
+          <i className="w-[26px] border-t-[2.5px] border-dashed border-map-itinerary-jump" />{" "}
+          {t("legendItineraryJump")}
+        </span>
+      )}
       {hasNexus && (
         <span className="flex items-center gap-2 text-[11.5px] text-foreground">
           <i className="h-[13px] w-[13px] shrink-0 rounded-full bg-spine" /> {t("nexusGroup")}

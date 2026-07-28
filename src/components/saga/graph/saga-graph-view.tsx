@@ -34,7 +34,20 @@ const EDGE_DASH: Record<string, string | undefined> = {
   principal: undefined,
   opcional: "2 7",
   requisito: "1 6",
+  // Raya larga: la más distinta de las otras dos discontinuas, que son punto
+  // corto («opcional») y punteado fino («requisito»).
+  itinerario: "10 6",
 };
+
+// El salto del itinerario NO se pinta con el acento de ninguna saga: no
+// pertenece a ninguna, es de la capa del itinerario. Con el acento del bloque
+// de destino se confundiría con las aristas de cadena de esa misma fila, que es
+// justo lo que hay que poder distinguir.
+//
+// Token propio y no `--foreground`: el lienzo lleva un gradiente oscuro FIJO
+// (más abajo, en `style`), así que en tema CLARO `--foreground` es casi negro
+// sobre fondo casi negro y el trazo desaparecía.
+const ITINERARY_EDGE_COLOR = "var(--map-itinerary-jump)";
 
 export function SagaGraphView({
   graph,
@@ -62,7 +75,7 @@ export function SagaGraphView({
   const edges = useMemo<Edge[]>(
     () =>
       graph.edges.map((e) => {
-        const color = SAGA_ACCENT[e.accent].cssVar;
+        const color = e.type === "itinerario" ? ITINERARY_EDGE_COLOR : SAGA_ACCENT[e.accent].cssVar;
         return {
           id: e.id,
           source: e.source,

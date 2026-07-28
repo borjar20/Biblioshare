@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCuratedOrder } from "./curated-order";
-import { deriveSagaMap, type MapLookup } from "./derive-map";
+import { deriveSagaMap, NODE_STEP_Y, type MapLookup } from "./derive-map";
 import { groupMembers, type MemberGroup } from "./group-members";
 import type { DetailMember, SagaChildRef } from "./types";
 
@@ -74,11 +74,28 @@ describe("deriveSagaMap", () => {
     ]);
   });
 
-  it("un tándem son dos nodos en la misma columna", () => {
+  it("un tándem son dos nodos en la misma columna, APILADOS, no en el mismo punto", () => {
+    // Comparten columna y `orderNo` porque comparten hueco; se apilan en
+    // vertical porque, con el mismo `y`, React Flow los pintaba uno ENCIMA del
+    // otro y solo se veía el de arriba (con las dos etiquetas superpuestas).
     const map = deriveSagaMap(groups([block("B", 1, [work("A", 1), work("B", 1)])]), {}, lookup());
     const [a, b] = map.nodes;
     expect(a.x).toBe(b.x);
     expect(a.orderNo).toBe(b.orderNo);
+    expect(a.y).not.toBe(b.y);
+  });
+
+  it("un bloque con tándem no invade la fila del bloque siguiente", () => {
+    // El apilado del tándem gasta una fila EXTRA: si el bloque siguiente
+    // siguiera colocándose en `índice de bloque × paso`, caería justo encima
+    // del segundo miembro del tándem.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 1)]), block("Dos", 2, [work("C", 1)])]),
+      {}, lookup(),
+    );
+    const ys = ["A", "B"].map((id) => map.nodes.find((n) => n.id === `i:book:${id}`)!.y);
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    expect(c.y).toBeGreaterThan(Math.max(...ys));
   });
 
   it("cada bloque ocupa su propia fila", () => {
@@ -183,7 +200,12 @@ describe("deriveSagaMap", () => {
     expect(map.edges).toEqual([]);
   });
 
-  it("una obra sin hueco conserva la fila de su bloque y su x va tras el último hueco", () => {
+  it("una obra sin hueco baja a su PROPIA fila, no a la de la cadena de su bloque", () => {
+    // Antes se colgaba del mismo `y` que la cadena, detrás del último hueco: en
+    // el lienzo parecía un paso más de la secuencia, y su arista de ventana
+    // salía como un segmento horizontal ENCIMA de la cadena — solo la
+    // distinguía el patrón de guiones. Bajándola de fila, esa arista es
+    // diagonal y se distingue sola.
     const map = deriveSagaMap(
       groups([block("Bloque", 1, [work("A", 1), work("B", 2), looseWork("Z")])]),
       {}, lookup(),
@@ -191,9 +213,44 @@ describe("deriveSagaMap", () => {
     const a = map.nodes.find((n) => n.id === "i:book:A")!;
     const b = map.nodes.find((n) => n.id === "i:book:B")!;
     const z = map.nodes.find((n) => n.id === "i:book:Z")!;
-    expect(z.y).toBe(a.y);
-    expect(z.y).toBe(b.y);
-    expect(z.x).toBeGreaterThan(b.x);
+    expect(a.y).toBe(b.y);
+    expect(z.y).toBeGreaterThan(a.y);
+    // Empieza su propia fila por la izquierda: es una estantería aparte, no la
+    // continuación de la cadena.
+    expect(z.x).toBe(0);
+  });
+
+  it("dos obras sin hueco comparten fila y se reparten en columnas", () => {
+    const map = deriveSagaMap(
+      groups([block("Bloque", 1, [work("A", 1), looseWork("Y"), looseWork("Z")])]),
+      {}, lookup(),
+    );
+    const y = map.nodes.find((n) => n.id === "i:book:Y")!;
+    const z = map.nodes.find((n) => n.id === "i:book:Z")!;
+    expect(y.y).toBe(z.y);
+    expect(y.x).not.toBe(z.x);
+  });
+
+  it("la fila de las sueltas no invade el bloque siguiente", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), looseWork("Z")]), block("Dos", 2, [work("C", 1)])]),
+      {}, lookup(),
+    );
+    const z = map.nodes.find((n) => n.id === "i:book:Z")!;
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    expect(c.y).toBeGreaterThan(z.y);
+  });
+
+  it("un bloque SIN sueltas no deja una fila vacía detrás", () => {
+    // El alto de un bloque depende de lo que tenga: reservar siempre la fila de
+    // sueltas dejaría un hueco muerto en la inmensa mayoría de bloques.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("C", 1)])]),
+      {}, lookup(),
+    );
+    const a = map.nodes.find((n) => n.id === "i:book:A")!;
+    const c = map.nodes.find((n) => n.id === "i:book:C")!;
+    expect(c.y - a.y).toBe(NODE_STEP_Y);
   });
 
   it("una obra sin hueco CON ventana sí tiene su arista (a diferencia de la cadena)", () => {
@@ -493,5 +550,85 @@ describe("deriveSagaMap", () => {
       expect(d.orderNo).toBe(3);
       expect(d.x).toBe(0);
     });
+  });
+});
+
+// Saltos del itinerario: cuando dos pasos SEGUIDOS no tienen ya una arista
+// entre ellos, el mapa la dibuja. Revisa a sabiendas la regla de la fase 3
+// («el itinerario solo numera lo que el mapa ya dibuja»): un itinerario que
+// cruza de una saga a otra dejaba un número que se interrumpía sin que nada
+// explicara por dónde seguía.
+describe("deriveSagaMap — saltos del itinerario", () => {
+  const jumps = (map: { edges: Array<{ type: string; source: string; target: string }> }) =>
+    map.edges.filter((e) => e.type === "itinerario").map((e) => `${e.source}->${e.target}`);
+
+  // Bloques `libre`, que es lo que son los hilos de Mundodisco en producción
+  // (los cinco: `placement_in_parent = 'libre'`). Un bloque libre no entra en
+  // la cadena entre bloques, así que sus filas quedan sueltas unas de otras —
+  // exactamente el caso donde el itinerario cruzaba sin dejar rastro.
+  it("un paso que cruza a otro bloque se dibuja", () => {
+    const map = deriveSagaMap(
+      groups([freeBlock("Uno", [work("A", 1)]), freeBlock("Dos", [work("B", 1)])]),
+      {}, lookup(), ["i:book:A", "i:book:B"],
+    );
+    expect(jumps(map)).toEqual(["i:book:A->i:book:B"]);
+  });
+
+  it("dos bloques COLOCADOS consecutivos ya están encadenados: cruzar entre ellos no dibuja salto", () => {
+    // La cadena entre bloques de la zona ordenada une el último hueco de uno
+    // con el primero del siguiente, así que ahí la línea ya está.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1)]), block("Dos", 2, [work("B", 1)])]),
+      {}, lookup(), ["i:book:A", "i:book:B"],
+    );
+    expect(jumps(map)).toEqual([]);
+  });
+
+  it("dos pasos que YA están encadenados no llevan salto encima", () => {
+    // Dibujar uno sería superponer dos líneas en el mismo segmento: el mismo
+    // defecto que el tándem apilado vino a quitar.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 2)])]),
+      {}, lookup(), ["i:book:A", "i:book:B"],
+    );
+    expect(jumps(map)).toEqual([]);
+  });
+
+  it("un salto DENTRO del mismo bloque (el itinerario se salta un hueco) también se dibuja", () => {
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 2), work("C", 3)])]),
+      {}, lookup(), ["i:book:A", "i:book:C"],
+    );
+    expect(jumps(map)).toEqual(["i:book:A->i:book:C"]);
+  });
+
+  it("un paso que el mapa no dibuja no parte el salto: une los dos que sí se ven", () => {
+    // Un paso fantasma (obra borrada) o un paso que nombra un bloque entero no
+    // resuelven a ningún nodo. Si partieran la cadena de saltos, el itinerario
+    // se quedaría sin dibujar justo donde más falta hace.
+    const map = deriveSagaMap(
+      groups([freeBlock("Uno", [work("A", 1)]), freeBlock("Dos", [work("B", 1)])]),
+      {}, lookup(), ["i:book:A", "i:book:fantasma", "i:book:B"],
+    );
+    expect(jumps(map)).toEqual(["i:book:A->i:book:B"]);
+  });
+
+  it("sin itinerario activo no hay ningún salto", () => {
+    const map = deriveSagaMap(
+      groups([freeBlock("Uno", [work("A", 1)]), freeBlock("Dos", [work("B", 1)])]),
+      {}, lookup(),
+    );
+    expect(jumps(map)).toEqual([]);
+  });
+
+  it("una arista existente en sentido CONTRARIO también cuenta: no se dibuja encima", () => {
+    // La cadena va A→B; el itinerario los recorre al revés. La línea ya está en
+    // el lienzo, así que superponer otra en sentido opuesto solo produce el par
+    // de puntas de flecha encontradas que ya se vio con el tándem.
+    const map = deriveSagaMap(
+      groups([block("Uno", 1, [work("A", 1), work("B", 2)])]),
+      {}, lookup(), ["i:book:B", "i:book:A"],
+    );
+    expect(jumps(map)).toEqual([]);
   });
 });

@@ -17,6 +17,9 @@ export type CuratedRouteRow = {
   name: string;
   summary: string | null;
   position: number;
+  /** true = ocupa el puesto de «Orden de lectura» (fase 4). Uno como mucho por
+   *  saga; lo impone el unique parcial saga_routes_reading_order_key. */
+  isReadingOrder: boolean;
 };
 
 /**
@@ -31,33 +34,97 @@ export function compareRoutePosition(a: CuratedRouteRow, b: CuratedRouteRow): nu
   return a.position - b.position || a.name.localeCompare(b.name);
 }
 
-/** Orden del selector: lectura → curadas (por position) → publicación. */
+/**
+ * Orden en que se VEN las rutas curadas: el designado ocupa el puesto de
+ * «Orden de lectura», que es el primero; el resto por `compareRoutePosition`.
+ *
+ * Función aparte, y no una rama dentro de `compareRoutePosition`, porque los
+ * dos criterios responden a preguntas distintas: `compareRoutePosition` es el
+ * orden que el curador ALMACENA (lo que mueven las flechas de /rutas, vía
+ * computeMovedPositions), y este es el orden en que se PINTA. Meter la
+ * designación en el comparador de almacenamiento dejaría las flechas moviendo
+ * `position` sin ningún efecto visible sobre el designado, que está fijado
+ * arriba por su designación y no por su número.
+ */
+export function sortCuratedRoutes(routes: CuratedRouteRow[]): CuratedRouteRow[] {
+  return [...routes].sort(
+    (a, b) => Number(b.isReadingOrder) - Number(a.isReadingOrder) || compareRoutePosition(a, b),
+  );
+}
+
+/**
+ * Orden del selector: lectura → curadas (por position) → publicación.
+ *
+ * Fase 4: si una curada está DESIGNADA (`isReadingOrder`), la sintética
+ * «lectura» no se ofrece — su puesto (el primero) y su etiqueta los ocupa la
+ * designada. La fila NO se renombra en BD: `saga_routes.name` no tiene unique,
+ * así que renombrarla dejaría dos chips con el mismo texto en cuanto alguien
+ * la desdesignara.
+ */
 export function buildRouteList(
   curated: CuratedRouteRow[],
   labels: { lectura: string; publicacion: string },
   hasGraph: boolean,
 ): SagaRoute[] {
+  const ordered = sortCuratedRoutes(curated);
+  const hasDesignated = ordered.some((c) => c.isReadingOrder);
+
   const out: SagaRoute[] = [];
-  if (hasGraph) {
-    out.push({ slug: "lectura", name: labels.lectura, summary: null, synthetic: true });
+  if (hasGraph && !hasDesignated) {
+    out.push({
+      slug: "lectura",
+      name: labels.lectura,
+      summary: null,
+      synthetic: true,
+      isReadingOrder: false,
+    });
   }
-  for (const c of [...curated].sort(compareRoutePosition)) {
+  for (const c of ordered) {
     // El id viaja para que RouteView pueda localizar la fila activa en
     // detail.routes sin volver a consultar saga_routes (hallazgo 3). Las
     // sintéticas de abajo/arriba no llevan id: no tienen fila.
-    out.push({ id: c.id, slug: c.slug, name: c.name, summary: c.summary, synthetic: false });
+    out.push({
+      id: c.id,
+      slug: c.slug,
+      name: c.isReadingOrder ? labels.lectura : c.name,
+      summary: c.summary,
+      synthetic: false,
+      isReadingOrder: c.isReadingOrder,
+    });
   }
-  out.push({ slug: "publicacion", name: labels.publicacion, summary: null, synthetic: true });
+  out.push({
+    slug: "publicacion",
+    name: labels.publicacion,
+    summary: null,
+    synthetic: true,
+    isReadingOrder: false,
+  });
   return out;
 }
 
 export async function getSagaRoutes(supabase: SupabaseServerClient, sagaId: string) {
   const { data } = await supabase
     .from("saga_routes")
-    .select("id, slug, name, summary, position")
+    .select("id, slug, name, summary, position, is_reading_order")
     .eq("saga_id", sagaId)
     .order("position", { ascending: true });
-  return (data ?? []) as CuratedRouteRow[];
+  return ((data ?? []) as Array<{
+    id: string;
+    slug: string;
+    name: string;
+    summary: string | null;
+    position: number;
+    is_reading_order: boolean;
+  }>).map(
+    (r): CuratedRouteRow => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      summary: r.summary,
+      position: r.position,
+      isReadingOrder: r.is_reading_order,
+    }),
+  );
 }
 
 /**

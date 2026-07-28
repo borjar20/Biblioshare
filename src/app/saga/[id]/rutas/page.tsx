@@ -6,6 +6,7 @@ import { getSagaRoutes } from "@/lib/sagas/get-saga-routes";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { CreateRouteForm } from "@/components/saga/create-route-form";
 import { RouteList } from "@/components/saga/route-list";
+import { ReadingOrderPicker } from "@/components/saga/reading-order-picker";
 
 // Curación de itinerarios (spec 2026-07-22, Task 8): crear, renombrar,
 // reordenar y borrar. Gate DURO collaborator+, igual que
@@ -36,6 +37,8 @@ export default async function SagaRoutesPage({ params }: { params: Promise<{ id:
       ) : (
         <RouteList sagaId={id} routes={routes} />
       )}
+
+      {routes.length > 0 && <ReadingOrderPicker sagaId={id} routes={routes} />}
 
       <CreateRouteForm sagaId={id} />
     </div>

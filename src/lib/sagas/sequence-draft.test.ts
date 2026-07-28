@@ -1,22 +1,29 @@
 import { describe, expect, it } from "vitest";
 import {
-  addEntry, clearAnchor, moveSlot, pairWith, removeEntry, sendTo, setAnchor, setOptional, setRole,
-  toPayload, unpair,
-  type DraftAnchor, type DraftEntry, type SequenceDraft,
+  addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
+  setOptional, setRole, toPayload, unpair,
+  type DraftAnchor, type DraftEntry, type NestedSubject, type SequenceDraft,
 } from "./sequence-draft";
 
+// `ownerSagaId` por defecto «saga» (fase 4): la dueña de la fila de ventana.
+// En las pruebas que no hablan de dueños es ruido de fondo, así que vive en el
+// helper y no en cada literal.
 const work = (id: string, title = id): DraftEntry => ({
   key: `i:book:${id}`, kind: "item", itemType: "book", itemId: id, childSagaId: null,
   title, coverUrl: null, accentColor: null, count: null, optional: false, role: null, window: null,
-  isNew: false,
+  ownerSagaId: "saga", isNew: false,
 });
 const block = (id: string): DraftEntry => ({
   key: `s:${id}`, kind: "block", itemType: null, itemId: null, childSagaId: id,
   title: id, coverUrl: null, accentColor: "verde", count: 8, optional: false, role: null, window: null,
-  isNew: false,
+  ownerSagaId: "saga", isNew: false,
 });
-const draft = (slots: DraftEntry[][], free: DraftEntry[] = [], unclassified: DraftEntry[] = []): SequenceDraft =>
-  ({ slots, free, unclassified, removed: [] });
+const draft = (
+  slots: DraftEntry[][],
+  free: DraftEntry[] = [],
+  unclassified: DraftEntry[] = [],
+  nested: SequenceDraft["nested"] = [],
+): SequenceDraft => ({ slots, free, unclassified, removed: [], nested });
 
 describe("moveSlot", () => {
   it("intercambia el hueco con su vecino y no toca los demás", () => {
@@ -103,12 +110,12 @@ describe("removeEntry", () => {
 describe("toPayload", () => {
   it("numera desde 1 admitiendo empates: un tándem NO salta el número siguiente", () => {
     const d = draft([[work("a")], [work("b")], [work("c"), work("d")], [work("e")]]);
-    const positions = toPayload(d).entries.map((e) => [e.item_id, e.position]);
+    const positions = toPayload(d, "saga").entries.map((e) => [e.item_id, e.position]);
     expect(positions).toEqual([["a", 1], ["b", 2], ["c", 3], ["d", 3], ["e", 4]]);
   });
 
   it("la zona determina el placement, y fuera de la secuencia no hay número", () => {
-    const p = toPayload(draft([[work("a")]], [work("f")], [work("u")]));
+    const p = toPayload(draft([[work("a")]], [work("f")], [work("u")]), "saga");
     expect(p.entries).toEqual([
       { item_type: "book", item_id: "a", position: 1, placement: "fijo", optional: false, role: null },
       { item_type: "book", item_id: "f", position: null, placement: "libre", optional: false, role: null },
@@ -117,7 +124,7 @@ describe("toPayload", () => {
   });
 
   it("los bloques van en `blocks`, nunca en `entries`, y sin rol", () => {
-    const p = toPayload(draft([[block("g")], [work("a")]]));
+    const p = toPayload(draft([[block("g")], [work("a")]]), "saga");
     expect(p.entries.map((e) => e.item_id)).toEqual(["a"]);
     expect(p.blocks).toEqual([
       { child_saga_id: "g", position_in_parent: 1, placement_in_parent: "fijo", optional_in_parent: false },
@@ -126,8 +133,8 @@ describe("toPayload", () => {
 
   it("`removed` viaja tal cual, separado por tipo", () => {
     const d = removeEntry(removeEntry(draft([[work("a")], [block("g")]]), "i:book:a"), "s:g");
-    expect(toPayload(d).removed).toEqual([{ item_type: "book", item_id: "a" }]);
-    expect(toPayload(d).removedBlocks).toEqual([]);
+    expect(toPayload(d, "saga").removed).toEqual([{ item_type: "book", item_id: "a" }]);
+    expect(toPayload(d, "saga").removedBlocks).toEqual([]);
   });
 });
 
@@ -186,9 +193,12 @@ describe("ventanas", () => {
 
   it("toPayload lleva las ventanas, y solo las de la zona libre", () => {
     const d = setAnchor(draft([[work("a")]], [work("f")]), "i:book:f", "before", anchor("Viento"));
-    const p = toPayload(d);
+    const p = toPayload(d, "saga");
     expect(p.windows).toEqual([
       {
+        // `saga_id` desde la fase 4: la fila viaja con su saga DUEÑA, ya no la
+        // pone el RPC a partir de `p_saga_id`.
+        saga_id: "saga",
         item_type: "book", item_id: "f", child_saga_id: null,
         after_item_type: null, after_item_id: null, after_child_saga_id: null,
         before_item_type: null, before_item_id: null, before_child_saga_id: "saga-Viento",
@@ -205,5 +215,115 @@ describe("ventanas", () => {
     expect(d.slots).toHaveLength(2);
     expect(d.slots[1][0].window).toBeNull();
     expect(d.slots[1][0].itemId).toBe("nuevo");
+  });
+});
+
+describe("ventanas de sujetos anidados (fase 4)", () => {
+  const nestedSubject: NestedSubject = {
+    key: "i:book:x", ownerSagaId: "hija", childSagaId: "hija",
+    itemType: "book", itemId: "x", title: "Anidada", coverUrl: null, window: null,
+  };
+  const anchor: DraftAnchor = {
+    kind: "item", itemType: "book", itemId: "y", childSagaId: null, title: "Ancla",
+  };
+
+  it("setAnchor alcanza a un sujeto anidado", () => {
+    const next = setAnchor(draft([], [], [], [nestedSubject]), "i:book:x", "after", anchor);
+    expect(next.nested[0].window).toEqual({ after: anchor, before: null });
+  });
+
+  it("clearAnchor deja la ventana anidada a null cuando quita la última ancla", () => {
+    const d = draft([], [], [], [{ ...nestedSubject, window: { after: anchor, before: null } }]);
+    expect(clearAnchor(d, "i:book:x", "after").nested[0].window).toBeNull();
+  });
+
+  it("una clave que no está ni en `free` ni en `nested` es un no-op", () => {
+    const d = draft([], [], [], [nestedSubject]);
+    expect(setAnchor(d, "i:book:fantasma", "after", anchor)).toEqual(d);
+  });
+
+  it("draftWindowOwners junta la zona libre y los anidados, con su dueña", () => {
+    const free = { ...work("a"), ownerSagaId: "padre" };
+    const d = draft([], [free], [], [nestedSubject]);
+    expect(draftWindowOwners(d)).toEqual(new Map([["i:book:a", "padre"], ["i:book:x", "hija"]]));
+  });
+});
+
+describe("toPayload: ventanas y sujetos (fase 4)", () => {
+  const anch: DraftAnchor = {
+    kind: "item", itemType: "book", itemId: "y", childSagaId: null, title: "Ancla",
+  };
+  const free = { ...work("a"), ownerSagaId: "padre", window: { after: anch, before: null } };
+  const nested: NestedSubject = {
+    key: "i:book:x", ownerSagaId: "hija", childSagaId: "hija",
+    itemType: "book", itemId: "x", title: "Anidada", coverUrl: null,
+    window: { after: anch, before: null },
+  };
+
+  it("cada fila de ventana lleva la saga DUEÑA, no la que se cura", () => {
+    const p = toPayload(draft([], [free], [], [nested]), "padre");
+    expect(p.windows.map((w) => [w.item_id, w.saga_id])).toEqual([["a", "padre"], ["x", "hija"]]);
+  });
+
+  it("los sujetos incluyen TODAS las zonas, las bajas y los anidados", () => {
+    const fijo = { ...work("f"), ownerSagaId: "padre" };
+    const sin = { ...work("s"), ownerSagaId: "padre" };
+    const p = toPayload(
+      { slots: [[fijo]], free: [free], unclassified: [sin], removed: ["i:book:borrada"], nested: [nested] },
+      "padre",
+    );
+    expect(p.windowSubjects).toEqual([
+      { saga_id: "padre", item_type: "book", item_id: "f", child_saga_id: null },
+      { saga_id: "padre", item_type: "book", item_id: "a", child_saga_id: null },
+      { saga_id: "padre", item_type: "book", item_id: "s", child_saga_id: null },
+      { saga_id: "padre", item_type: "book", item_id: "borrada", child_saga_id: null },
+      { saga_id: "hija", item_type: "book", item_id: "x", child_saga_id: null },
+    ]);
+  });
+
+  it("una entrada que sale de «Cuando quieras» sigue siendo sujeto: es lo que borra su ventana", () => {
+    // Sin ventana en `windows` pero SÍ en `windowSubjects`: el RPC borra la fila
+    // y no reinserta nada. Es la coherencia que ningún CHECK entre tablas puede
+    // dar, y la razón de que el borrado sea por sujeto y no por omisión.
+    const movida = { ...work("a"), ownerSagaId: "padre", window: null };
+    const p = toPayload(draft([[movida]]), "padre");
+    expect(p.windows).toEqual([]);
+    expect(p.windowSubjects).toEqual([{ saga_id: "padre", item_type: "book", item_id: "a", child_saga_id: null }]);
+  });
+
+  it("un BLOQUE es sujeto con child_saga_id, no con item_id", () => {
+    const blk = { ...block("hija"), ownerSagaId: "padre" };
+    const p = toPayload(draft([], [blk]), "padre");
+    expect(p.windowSubjects).toEqual([{ saga_id: "padre", item_type: null, item_id: null, child_saga_id: "hija" }]);
+  });
+
+  it("una baja de BLOQUE se apunta como sujeto de bloque", () => {
+    const p = toPayload(
+      { slots: [], free: [], unclassified: [], removed: ["s:hija"], nested: [] },
+      "padre",
+    );
+    expect(p.windowSubjects).toEqual([{ saga_id: "padre", item_type: null, item_id: null, child_saga_id: "hija" }]);
+  });
+});
+
+// Regresión encontrada al inyectar fallos sobre los e2e de la fase 4: una obra
+// con fila en ESTA saga y `libre` en una hija (con `is_primary` en la hija)
+// tiene su ventana bajo la hija, pero el cajón NO la lista —`getSagaSequence`
+// excluye de `nested` lo que ya es entrada propia—, así que nadie la reemite.
+// Si esta pantalla la reclamara como sujeto bajo la hija, el RPC la borraría y
+// no repondría nada: pérdida silenciosa, justo la que la fase 4 viene a cerrar.
+describe("un sujeto solo se reclama bajo la saga cuya ventana esta pantalla enseña", () => {
+  it("fuera de «Cuando quieras», el sujeto va bajo la saga PROPIA aunque su dueña sea otra", () => {
+    const ajena = { ...work("a"), ownerSagaId: "hija" };
+    const p = toPayload(draft([[ajena]], [], [{ ...work("u"), ownerSagaId: "hija" }]), "padre");
+    expect(p.windowSubjects.map((s) => s.saga_id)).toEqual(["padre", "padre"]);
+  });
+
+  it("en «Cuando quieras» sí va bajo la dueña: ahí la pantalla la enseña y la reemite", () => {
+    const libre = { ...work("f"), ownerSagaId: "hija" };
+    const p = toPayload(draft([], [libre]), "padre");
+    expect(p.windowSubjects).toEqual([
+      { saga_id: "hija", item_type: "book", item_id: "f", child_saga_id: null },
+    ]);
   });
 });

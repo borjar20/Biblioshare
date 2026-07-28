@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
 import { WindowEditor } from "./window-editor";
+import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 
 const TABS: ZoneId[] = ["sequence", "free", "unclassified"];
@@ -44,14 +45,31 @@ export function ShellMobile({
     unclassified: draft.unclassified.length,
   };
 
-  const row = (e: DraftEntry, slotNumber: number | null) => (
-    <SequenceRow
-      key={e.key} entry={e} slotNumber={slotNumber} density="roomy"
-      onOptional={(v) => ops.setOptional(e.key, v)}
-      onRole={(r) => ops.setRole(e.key, r)}
-      onMenu={() => onMenu(e.key)}
-    />
-  );
+  const row = (e: DraftEntry, slotNumber: number | null) => {
+    const sequenceRow = (
+      <SequenceRow
+        key={e.key} entry={e} slotNumber={slotNumber} density="roomy"
+        onOptional={(v) => ops.setOptional(e.key, v)}
+        onRole={(r) => ops.setRole(e.key, r)}
+        onMenu={() => onMenu(e.key)}
+      />
+    );
+    // Igual que en la cáscara de escritorio: sin cajón, la fila va DESNUDA para
+    // no meter un `<div>` entre ella y el `WindowEditor` de la zona `free`.
+    if (e.kind !== "block" || !e.childSagaId) return sequenceRow;
+    return (
+      <div key={e.key}>
+        {sequenceRow}
+        <BlockWindowsDrawer
+          childSagaId={e.childSagaId}
+          nested={draft.nested}
+          anchors={anchors}
+          onSetAnchor={ops.setAnchor}
+          onClearAnchor={ops.clearAnchor}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="px-3.5">
@@ -112,10 +130,10 @@ export function ShellMobile({
           ) : (
             <div className="grid gap-2">
               {draft.free.map((e) => (
-                <div key={e.key}>
+                <div key={`free-${e.key}`}>
                   {row(e, null)}
                   <WindowEditor
-                    entry={e}
+                    subject={e}
                     anchors={anchors}
                     onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
                     onClearAnchor={(side) => ops.clearAnchor(e.key, side)}

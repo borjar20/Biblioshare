@@ -4,8 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { saveSequence } from "@/lib/sagas/sequence-actions";
 import { validateSequenceDraft } from "@/lib/sagas/validate-sequence-draft";
 import {
-  addEntry, clearAnchor, moveSlot, pairWith, removeEntry, sendTo, setAnchor, setOptional, setRole,
-  toPayload, unpair,
+  addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
+  setOptional, setRole, toPayload, unpair,
   type DraftAnchor, type DraftEntry, type SequenceDraft, type ZoneId,
 } from "@/lib/sagas/sequence-draft";
 
@@ -60,14 +60,19 @@ export function useSequenceDraft(
   // decir cuántas sin clasificar quedan MIENTRAS se cura, no después.
   const anchorKeySet = useMemo(() => new Set(anchorKeys), [anchorKeys]);
   const check = useMemo(
-    () => validateSequenceDraft(toPayload(draft), { childIds: new Set(childIds), anchorKeys: anchorKeySet }),
-    [draft, childIds, anchorKeySet],
+    () =>
+      validateSequenceDraft(toPayload(draft, sagaId), {
+        childIds: new Set(childIds),
+        anchorKeys: anchorKeySet,
+        windowOwners: draftWindowOwners(draft),
+      }),
+    [draft, sagaId, childIds, anchorKeySet],
   );
 
   const save = () =>
     startTransition(async () => {
       setStatus("saving");
-      const res = await saveSequence(sagaId, toPayload(draft), childIds);
+      const res = await saveSequence(sagaId, toPayload(draft, sagaId), childIds);
       if (res.error) {
         setError(res.error);
         setStatus("error");

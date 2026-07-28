@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { deleteRoute, moveRoute, renameRoute, type RouteFormState } from "@/lib/sagas/route-actions";
-import { compareRoutePosition, type CuratedRouteRow } from "@/lib/sagas/get-saga-routes";
+import { sortCuratedRoutes, type CuratedRouteRow } from "@/lib/sagas/get-saga-routes";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,21 +19,30 @@ const initialRenameState: RouteFormState = {};
 // pasos, pending de cada transición) que un componente servidor no puede
 // llevar; page.tsx sigue siendo servidor y solo pasa `routes` ya resueltas.
 export function RouteList({ sagaId, routes }: { sagaId: string; routes: CuratedRouteRow[] }) {
-  // Mismo criterio de orden que ve el lector en el selector (buildRouteList):
-  // así "subir/bajar" aquí coincide siempre con lo que se ve en la ficha.
-  const ordered = [...routes].sort(compareRoutePosition);
+  // Mismo criterio de orden que ve el lector en el selector (buildRouteList, vía
+  // sortCuratedRoutes): así "subir/bajar" aquí coincide siempre con lo que se ve
+  // en la ficha.
+  const ordered = sortCuratedRoutes(routes);
+  // El designado está FIJADO arriba por su designación, no por su `position`:
+  // sus flechas moverían `position` sin ningún efecto visible. Así que no las
+  // lleva, y los extremos del resto se calculan sobre la sublista movible.
+  const movable = ordered.filter((r) => !r.isReadingOrder);
 
   return (
     <ul className="flex flex-col gap-2">
-      {ordered.map((route, index) => (
-        <RouteRow
-          key={route.id}
-          sagaId={sagaId}
-          route={route}
-          isFirst={index === 0}
-          isLast={index === ordered.length - 1}
-        />
-      ))}
+      {ordered.map((route) => {
+        const index = movable.findIndex((r) => r.id === route.id);
+        return (
+          <RouteRow
+            key={route.id}
+            sagaId={sagaId}
+            route={route}
+            pinned={route.isReadingOrder}
+            isFirst={index <= 0}
+            isLast={index === movable.length - 1}
+          />
+        );
+      })}
     </ul>
   );
 }
@@ -41,11 +50,13 @@ export function RouteList({ sagaId, routes }: { sagaId: string; routes: CuratedR
 function RouteRow({
   sagaId,
   route,
+  pinned,
   isFirst,
   isLast,
 }: {
   sagaId: string;
   route: CuratedRouteRow;
+  pinned: boolean;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -144,26 +155,32 @@ function RouteRow({
   return (
     <li className="flex flex-col gap-2 rounded-xl border border-border px-3 py-2">
       <div className="flex items-center gap-3">
-        <div className="flex shrink-0 flex-col">
-          <button
-            type="button"
-            disabled={busy || isFirst}
-            onClick={() => move("up")}
-            aria-label={t("routeMoveUp")}
-            className="leading-none text-muted-foreground hover:text-foreground disabled:opacity-40"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            disabled={busy || isLast}
-            onClick={() => move("down")}
-            aria-label={t("routeMoveDown")}
-            className="leading-none text-muted-foreground hover:text-foreground disabled:opacity-40"
-          >
-            ↓
-          </button>
-        </div>
+        {pinned ? (
+          <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+            {t("readingOrderBadge")}
+          </span>
+        ) : (
+          <div className="flex shrink-0 flex-col">
+            <button
+              type="button"
+              disabled={busy || isFirst}
+              onClick={() => move("up")}
+              aria-label={t("routeMoveUp")}
+              className="leading-none text-muted-foreground hover:text-foreground disabled:opacity-40"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={busy || isLast}
+              onClick={() => move("down")}
+              aria-label={t("routeMoveDown")}
+              className="leading-none text-muted-foreground hover:text-foreground disabled:opacity-40"
+            >
+              ↓
+            </button>
+          </div>
+        )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-semibold">{route.name}</span>
           {route.summary && <span className="block truncate text-[11px] text-muted-foreground">{route.summary}</span>}

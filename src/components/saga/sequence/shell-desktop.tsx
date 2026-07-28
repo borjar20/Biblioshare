@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SequenceRow } from "./sequence-row";
 import { WindowEditor } from "./window-editor";
+import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 
 type Ops = {
@@ -47,14 +48,35 @@ export function ShellDesktop({
     </div>
   );
 
-  const row = (e: DraftEntry, slotNumber: number | null, controls?: React.ReactNode) => (
-    <SequenceRow
-      key={e.key} entry={e} slotNumber={slotNumber} density="compact" controls={controls}
-      onOptional={(v) => ops.setOptional(e.key, v)}
-      onRole={(r) => ops.setRole(e.key, r)}
-      onMenu={() => onMenu(e.key)}
-    />
-  );
+  const row = (e: DraftEntry, slotNumber: number | null, controls?: React.ReactNode) => {
+    const sequenceRow = (
+      <SequenceRow
+        key={e.key} entry={e} slotNumber={slotNumber} density="compact" controls={controls}
+        onOptional={(v) => ops.setOptional(e.key, v)}
+        onRole={(r) => ops.setRole(e.key, r)}
+        onMenu={() => onMenu(e.key)}
+      />
+    );
+    // Sin cajón, la fila se devuelve DESNUDA: envolverla siempre metería un
+    // `<div>` entre ella y el `WindowEditor` de la zona `free`, que se monta
+    // como su hermano inmediato (e2e/sagas-ventanas.spec.ts lo localiza por
+    // `following-sibling::div[1]`, el único selector estable que tiene).
+    if (e.kind !== "block" || !e.childSagaId) return sequenceRow;
+    return (
+      <div key={e.key}>
+        {sequenceRow}
+        {/* El cajón cuelga del bloque esté donde esté: «Novelas secretas» vive
+            en «Cuando quieras» (es `libre` en el Cosmere), no en la secuencia. */}
+        <BlockWindowsDrawer
+          childSagaId={e.childSagaId}
+          nested={draft.nested}
+          anchors={anchors}
+          onSetAnchor={ops.setAnchor}
+          onClearAnchor={ops.clearAnchor}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="grid grid-cols-[1fr_372px] gap-6 px-6 pb-24 pt-5">
@@ -97,10 +119,10 @@ export function ShellDesktop({
 
         <Zone title={t("zoneFree")} hint={t("zoneFreeHint")} empty={draft.free.length === 0} emptyTitle={t("zoneFreeEmpty")}>
           {draft.free.map((e) => (
-            <div key={e.key}>
+            <div key={`free-${e.key}`}>
               {row(e, null)}
               <WindowEditor
-                entry={e}
+                subject={e}
                 anchors={anchors}
                 onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
                 onClearAnchor={(side) => ops.clearAnchor(e.key, side)}

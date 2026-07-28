@@ -54,9 +54,37 @@ export type DraftEntry = {
    *  mantiene `sendTo`, que la borra al sacar la fila de esa zona, porque
    *  ningún CHECK puede atar dos tablas. */
   window: DraftWindow | null;
+  /** Saga bajo la que vive la fila de ventana de esta entrada (fase 4). Para
+   *  una entrada propia es casi siempre la saga que se cura; con doble
+   *  membresía puede ser otra, y lo decide `windowOwnerFor`. Viaja en el
+   *  borrador porque `toPayload` lo necesita para escribir `saga_id` en cada
+   *  fila de ventana y en cada sujeto. */
+  ownerSagaId: string;
   /** true = alta del rail que todavía no existe en BD. Da de baja sin apuntar
    *  en `removed` (borrar algo que nunca se guardó no es un DELETE). */
   isNew: boolean;
+};
+
+/** Obra de una subsaga cuya VENTANA se cura desde el editor del padre (fase 4).
+ *  No es una `DraftEntry`: el padre no puede moverla, ni renumerarla, ni
+ *  marcarla opcional — la #187 sigue cerrada. Lo único suyo que esta pantalla
+ *  toca es la ventana. */
+export type NestedSubject = {
+  /** Mismo formato que `DraftEntry.key` (`i:<tipo>:<uuid>`), y único en todo el
+   *  borrador: `getSagaSequence` excluye de `nested` cualquier clave que ya sea
+   *  entrada propia, para que `setAnchor`/`clearAnchor` no tengan que
+   *  desempatar entre las dos colecciones. */
+  key: string;
+  /** Saga bajo la que vive su fila de ventana (`windowOwnerFor`). */
+  ownerSagaId: string;
+  /** Bloque bajo el que se despliega en el cajón. No tiene por qué coincidir
+   *  con `ownerSagaId` si la obra tuviera doble membresía. */
+  childSagaId: string;
+  itemType: ItemType;
+  itemId: string;
+  title: string;
+  coverUrl: string | null;
+  window: DraftWindow | null;
 };
 
 export type SequenceDraft = {
@@ -70,6 +98,10 @@ export type SequenceDraft = {
   /** Claves dadas de baja que SÍ existían en BD. Viaja al RPC como `p_removed`;
    *  el borrado por omisión está prohibido (spec §«Por qué la baja es explícita»). */
   removed: string[];
+  /** Sujetos anidados: obras `libre` de las hijas DIRECTAS, para el cajón bajo
+   *  la fila de su bloque (fase 4). No son filas de esta saga y no viajan en
+   *  `entries`/`blocks` del payload — solo sus ventanas. */
+  nested: NestedSubject[];
 };
 
 export type SequencePayload = {
@@ -93,11 +125,14 @@ export type SequencePayload = {
    *  devuelve el array para que el RPC tenga una forma estable y para que quede
    *  escrito que la omisión es deliberada. */
   removedBlocks: Array<{ child_saga_id: string }>;
-  /** Una fila por entrada `libre` con ventana, forma calcada de
-   *  `saga_placement_windows` (20260727_saga_placement_windows.sql). El
-   *  `saga_id` lo pone el RPC, no el payload. Recorre SOLO `d.free`: fuera de
-   *  esa zona `window` siempre es null. */
+  /** Una fila por sujeto con ventana, forma calcada de
+   *  `saga_placement_windows` (20260727_saga_placement_windows.sql). Desde la
+   *  fase 4 el `saga_id` viaja EN CADA FILA —lo pone `ownerSagaId`, no el RPC—
+   *  porque una ventana curada desde el padre sobre una obra de su hija vive
+   *  bajo la HIJA. Recorre `d.free` y `d.nested`: fuera de ahí `window` siempre
+   *  es null. */
   windows: Array<{
+    saga_id: string;
     item_type: ItemType | null;
     item_id: string | null;
     child_saga_id: string | null;
@@ -107,6 +142,22 @@ export type SequencePayload = {
     before_item_type: ItemType | null;
     before_item_id: string | null;
     before_child_saga_id: string | null;
+  }>;
+  /** Sujetos de los que ESTA pantalla se hace responsable. El RPC borra
+   *  exactamente estos y reinserta `windows`.
+   *
+   *  Por qué existe: hasta la fase 3 el RPC hacía reemplazo total por saga, y su
+   *  comentario lo justificaba con que «no hay un segundo escritor: ninguna otra
+   *  pantalla crea ventanas». Desde que el editor del padre cura la ventana de
+   *  una obra de su hija eso deja de ser cierto — dos pantallas escriben la
+   *  misma fila, y el reemplazo por saga se llevaría por delante lo que la otra
+   *  acaba de guardar. Es exactamente lo que en la fase 2a obligó a que la baja
+   *  de `saga_items` fuera explícita. */
+  windowSubjects: Array<{
+    saga_id: string;
+    item_type: ItemType | null;
+    item_id: string | null;
+    child_saga_id: string | null;
   }>;
 };
 
@@ -202,15 +253,27 @@ export const setOptional = (d: SequenceDraft, key: string, optional: boolean): S
 export const setRole = (d: SequenceDraft, key: string, role: SagaItemRole | null): SequenceDraft =>
   mapEntry(d, key, (e) => (e.kind === "block" ? e : { ...e, role }));
 
-/** Pone un ancla de la ventana. Solo una entrada de la zona `free` («Cuando
- *  quieras») puede tener ventana — fuera de ahí es un no-op, porque
- *  `placement` ni siquiera tiene dónde guardarla. */
+/** Pone un ancla de la ventana. Solo puede tenerla una entrada de la zona
+ *  `free` («Cuando quieras») o un SUJETO ANIDADO (fase 4) — fuera de ahí es un
+ *  no-op, porque `placement` ni siquiera tiene dónde guardarla. Las claves de
+ *  `nested` no chocan con las de las zonas: `getSagaSequence` excluye de
+ *  `nested` lo que ya es entrada propia. */
 export function setAnchor(
   d: SequenceDraft,
   key: string,
   side: "after" | "before",
   anchor: DraftAnchor,
 ): SequenceDraft {
+  if (d.nested.some((n) => n.key === key)) {
+    return {
+      ...d,
+      nested: d.nested.map((n) =>
+        n.key === key
+          ? { ...n, window: { ...(n.window ?? { after: null, before: null }), [side]: anchor } }
+          : n,
+      ),
+    };
+  }
   if (!d.free.some((e) => e.key === key)) return d;
   return mapEntry(d, key, (e) => {
     const base = e.window ?? { after: null, before: null };
@@ -218,15 +281,32 @@ export function setAnchor(
   });
 }
 
-/** Quita un ancla. Si era la última, la ventana entera vuelve a `null` — no
- *  se deja un `{ after: null, before: null }` huérfano, que el CHECK de BD
+/** Quita un ancla. Si era la última, la ventana entera vuelve a `null` — no se
+ *  deja un `{ after: null, before: null }` huérfano, que el CHECK de BD
  *  rechazaría igualmente. */
 export function clearAnchor(d: SequenceDraft, key: string, side: "after" | "before"): SequenceDraft {
-  return mapEntry(d, key, (e) => {
-    if (!e.window) return e;
-    const next = { ...e.window, [side]: null };
-    return { ...e, window: next.after === null && next.before === null ? null : next };
-  });
+  const drop = (w: DraftWindow | null): DraftWindow | null => {
+    if (!w) return null;
+    const next = { ...w, [side]: null };
+    return next.after === null && next.before === null ? null : next;
+  };
+  if (d.nested.some((n) => n.key === key)) {
+    return { ...d, nested: d.nested.map((n) => (n.key === key ? { ...n, window: drop(n.window) } : n)) };
+  }
+  return mapEntry(d, key, (e) => ({ ...e, window: drop(e.window) }));
+}
+
+/** Sujetos que ESTE borrador puede tener con ventana, y bajo qué saga vive su
+ *  fila. Deriva del borrador VIVO —no del servidor— para no repetir el
+ *  `foreignBlock` falso de la fase 2a: una entrada que acaba de entrar en
+ *  «Cuando quieras» tiene que poder recibir ventana sin recargar la página. El
+ *  servidor lo vuelve a resolver contra BD en `saveSequence`, que es la
+ *  garantía real. */
+export function draftWindowOwners(d: SequenceDraft): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const e of d.free) out.set(e.key, e.ownerSagaId);
+  for (const n of d.nested) out.set(n.key, n.ownerSagaId);
+  return out;
 }
 
 /** Alta desde el rail: al final de la secuencia, como promete la maqueta. */
@@ -248,7 +328,7 @@ export function removeEntry(d: SequenceDraft, key: string): SequenceDraft {
   return entry.isNew ? without : { ...without, removed: [...without.removed, key] };
 }
 
-export function toPayload(d: SequenceDraft): SequencePayload {
+export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   const entries: SequencePayload["entries"] = [];
   const blocks: SequencePayload["blocks"] = [];
 
@@ -290,25 +370,92 @@ export function toPayload(d: SequenceDraft): SequencePayload {
     itemId: a?.kind === "item" ? a.itemId : null,
     childSagaId: a?.kind === "block" ? a.childSagaId : null,
   });
-  // Solo la zona libre puede tener ventana: recorrer `d.free` basta, no hace
-  // falta filtrar por `e.window !== null` en las otras zonas.
-  const windows: SequencePayload["windows"] = d.free
-    .filter((e) => e.window !== null)
-    .map((e) => {
-      const after = anchorColumns(e.window!.after);
-      const before = anchorColumns(e.window!.before);
-      return {
-        item_type: e.kind === "item" ? e.itemType : null,
-        item_id: e.kind === "item" ? e.itemId : null,
-        child_saga_id: e.kind === "block" ? e.childSagaId : null,
-        after_item_type: after.itemType,
-        after_item_id: after.itemId,
-        after_child_saga_id: after.childSagaId,
-        before_item_type: before.itemType,
-        before_item_id: before.itemId,
-        before_child_saga_id: before.childSagaId,
-      };
-    });
+  const windowRow = (
+    ownerSagaId: string,
+    itemType: ItemType | null,
+    itemId: string | null,
+    childSagaId: string | null,
+    w: DraftWindow,
+  ) => {
+    const after = anchorColumns(w.after);
+    const before = anchorColumns(w.before);
+    return {
+      saga_id: ownerSagaId,
+      item_type: itemType,
+      item_id: itemId,
+      child_saga_id: childSagaId,
+      after_item_type: after.itemType,
+      after_item_id: after.itemId,
+      after_child_saga_id: after.childSagaId,
+      before_item_type: before.itemType,
+      before_item_id: before.itemId,
+      before_child_saga_id: before.childSagaId,
+    };
+  };
 
-  return { entries, blocks, removed: removedItems, removedBlocks: [], windows };
+  const windows: SequencePayload["windows"] = [
+    ...d.free
+      .filter((e) => e.window !== null)
+      .map((e) =>
+        windowRow(
+          e.ownerSagaId,
+          e.kind === "item" ? e.itemType : null,
+          e.kind === "item" ? e.itemId : null,
+          e.kind === "block" ? e.childSagaId : null,
+          e.window!,
+        ),
+      ),
+    ...d.nested
+      .filter((n) => n.window !== null)
+      .map((n) => windowRow(n.ownerSagaId, n.itemType, n.itemId, null, n.window!)),
+  ];
+
+  // TODAS las zonas, no solo `free`: una entrada que SALE de «Cuando quieras»
+  // deja de mandar su ventana pero tiene que seguir siendo sujeto, porque es lo
+  // que hace que su fila se borre en la misma transacción en que se mueve.
+  //
+  // El `saga_id` con el que se reclama NO es siempre `ownerSagaId`: una pantalla
+  // solo puede hacerse responsable de una ventana que ENSEÑA, porque el RPC
+  // borra los sujetos y reinserta `windows`, y un sujeto que se reclama sin
+  // reemitir su ventana la borra sin reponerla.
+  //
+  //  · Zona `free`: sí la enseña (lleva su `WindowEditor`), así que reclama bajo
+  //    la dueña — que con doble membresía puede ser una hija.
+  //  · Fuera de `free`: la entrada no puede tener ventana en esta pantalla, así
+  //    que reclama bajo la saga PROPIA, que es donde vive su fila. Reclamarla
+  //    bajo una hija borraría la ventana que esa hija tiene curada sobre la
+  //    misma obra — el caso de una obra con fila en el padre Y `libre` en la
+  //    hija, con `is_primary` en la hija: el cajón no la lista (es entrada
+  //    propia, `getSagaSequence` la excluye de `nested`), así que nadie la
+  //    reemitiría.
+  const subjectOf = (e: DraftEntry, zone: "free" | "own") => ({
+    saga_id: zone === "free" ? e.ownerSagaId : sagaId,
+    item_type: e.kind === "item" ? e.itemType : null,
+    item_id: e.kind === "item" ? e.itemId : null,
+    child_saga_id: e.kind === "block" ? e.childSagaId : null,
+  });
+  // Una baja ya no está en ninguna zona, así que su dueña no viaja en el
+  // borrador: era fila de ESTA saga, que es lo único que se puede dar de baja
+  // desde aquí (#187).
+  const subjectFromKey = (key: string) => {
+    const parts = key.split(":");
+    return key.startsWith("i:")
+      ? { saga_id: sagaId, item_type: parts[1] as ItemType, item_id: parts[2], child_saga_id: null }
+      : { saga_id: sagaId, item_type: null, item_id: null, child_saga_id: key.slice(2) };
+  };
+
+  const windowSubjects: SequencePayload["windowSubjects"] = [
+    ...d.slots.flat().map((e) => subjectOf(e, "own")),
+    ...d.free.map((e) => subjectOf(e, "free")),
+    ...d.unclassified.map((e) => subjectOf(e, "own")),
+    ...d.removed.map(subjectFromKey),
+    ...d.nested.map((n) => ({
+      saga_id: n.ownerSagaId,
+      item_type: n.itemType as ItemType | null,
+      item_id: n.itemId as string | null,
+      child_saga_id: null,
+    })),
+  ];
+
+  return { entries, blocks, removed: removedItems, removedBlocks: [], windows, windowSubjects };
 }

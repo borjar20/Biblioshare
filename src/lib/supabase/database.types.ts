@@ -1658,6 +1658,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_reading_order: boolean
           name: string
           position: number
           saga_id: string
@@ -1667,6 +1668,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_reading_order?: boolean
           name: string
           position?: number
           saga_id: string
@@ -1676,6 +1678,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_reading_order?: boolean
           name?: string
           position?: number
           saga_id?: string
@@ -2157,16 +2160,28 @@ export type Database = {
         Args: { p_entries: Json; p_route_id: string }
         Returns: undefined
       }
-      save_saga_sequence: {
-        Args: {
-          p_blocks: Json
-          p_entries: Json
-          p_removed: Json
-          p_saga_id: string
-          p_windows: Json
-        }
-        Returns: undefined
-      }
+      save_saga_sequence:
+        | {
+            Args: {
+              p_blocks: Json
+              p_entries: Json
+              p_removed: Json
+              p_saga_id: string
+              p_windows: Json
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_blocks: Json
+              p_entries: Json
+              p_removed: Json
+              p_saga_id: string
+              p_window_subjects: Json
+              p_windows: Json
+            }
+            Returns: undefined
+          }
       set_activity_completion_mode: {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
