@@ -1331,6 +1331,8 @@
     "durationOther": "Otro",
     "durationMinutes": "{n} min",
     "durationHour": "1 h",
+    "startedAtTime": "¿A qué hora empezaste?",
+    "startedAtTimeHint": "Opcional. Ayuda a saber cuándo sueles leer.",
     "stepDown": "Una página menos",
     "stepUp": "Una página más",
     "season": "Temporada",
