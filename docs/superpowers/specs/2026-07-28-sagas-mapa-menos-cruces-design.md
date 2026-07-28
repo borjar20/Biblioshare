@@ -117,6 +117,11 @@ Las obras `loose` (las de la fila propia dentro de un bloque, `derive-map.ts:311
 columna de su ancla, con el título como desempate. Pierden el orden alfabético puro; a cambio su
 arista de ventana deja de cruzar la fila entera.
 
+Esta pieza es de B conceptualmente —reordenar lo que no tiene orden semántico— pero **se implementa
+como segunda fase de A**: necesita la columna FINAL del ancla, que no se sabe hasta que A ha colocado
+los bloques. Una fila de sueltas se reconoce sin ambigüedad por `orderNo === null`, que es
+exactamente lo que `deriveSagaMap` le pone a una obra sin hueco.
+
 ## A — alineación de columnas
 
 `alignRowsToLongEdges(graph: SagaGraph): SagaGraph`. Puro, sin React, sin conocer bloques ni
