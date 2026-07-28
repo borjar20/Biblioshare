@@ -3,10 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { saveSequence } from "@/lib/sagas/sequence-actions";
 import { validateSequenceDraft } from "@/lib/sagas/validate-sequence-draft";
-import type { TandemMode } from "@/lib/sagas/types";
+import type { TandemMode, WindowReason } from "@/lib/sagas/types";
 import {
   addEntry, clearAnchor, draftWindowOwners, moveSlot, pairWith, removeEntry, sendTo, setAnchor,
-  setOptional, setRole, setTandemMeta, toPayload, unpair,
+  setOptional, setRole, setTandemMeta, setWindowReason, toPayload, unpair,
   type DraftAnchor, type DraftEntry, type SequenceDraft, type ZoneId,
 } from "@/lib/sagas/sequence-draft";
 
@@ -57,6 +57,10 @@ export function useSequenceDraft(
         touch((d) => setAnchor(d, key, side, anchor)),
       clearAnchor: (key: string, side: "after" | "before") =>
         touch((d) => clearAnchor(d, key, side)),
+      // Fase 3: por qué existe el tramo. Va por `key` como las dos de arriba
+      // —es del SUJETO, no del hueco— y es un no-op si no hay ventana viva.
+      setWindowReason: (key: string, reason: WindowReason | null) =>
+        touch((d) => setWindowReason(d, key, reason)),
     }),
     [],
   );

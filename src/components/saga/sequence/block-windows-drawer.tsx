@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { DraftAnchor, NestedSubject } from "@/lib/sagas/sequence-draft";
+import type { WindowReason } from "@/lib/sagas/types";
 import { WindowEditor } from "./window-editor";
 
 /** Cajón bajo la fila de un bloque (fase 4): las ventanas de las obras `libre`
@@ -17,7 +18,7 @@ import { WindowEditor } from "./window-editor";
  *  deja editarla ahí mismo. No es cosmético: al enseñarla, el borrador la lleva,
  *  y al guardar el padre la reemite en vez de borrarla. */
 export function BlockWindowsDrawer({
-  childSagaId, nested, anchors, onSetAnchor, onClearAnchor,
+  childSagaId, nested, anchors, onSetAnchor, onClearAnchor, onSetReason,
 }: {
   childSagaId: string;
   /** Todos los sujetos anidados del borrador; el cajón filtra los suyos. */
@@ -25,6 +26,7 @@ export function BlockWindowsDrawer({
   anchors: DraftAnchor[];
   onSetAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) => void;
   onClearAnchor: (key: string, side: "after" | "before") => void;
+  onSetReason: (key: string, reason: WindowReason | null) => void;
 }) {
   const t = useTranslations("sagaEditor");
   const subjects = nested.filter((n) => n.childSagaId === childSagaId);
@@ -46,6 +48,7 @@ export function BlockWindowsDrawer({
                 anchors={anchors}
                 onSetAnchor={(side, anchor) => onSetAnchor(n.key, side, anchor)}
                 onClearAnchor={(side) => onClearAnchor(n.key, side)}
+                onSetReason={(reason) => onSetReason(n.key, reason)}
               />
             </li>
           ))}

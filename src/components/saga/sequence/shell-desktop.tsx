@@ -6,7 +6,7 @@ import { TandemMetaEditor } from "./tandem-meta-editor";
 import { WindowEditor } from "./window-editor";
 import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
-import type { TandemMode } from "@/lib/sagas/types";
+import type { TandemMode, WindowReason } from "@/lib/sagas/types";
 
 type Ops = {
   moveSlot: (i: number, delta: number) => void;
@@ -16,6 +16,7 @@ type Ops = {
   setRole: (key: string, r: DraftEntry["role"]) => void;
   setAnchor: (key: string, side: "after" | "before", anchor: DraftAnchor) => void;
   clearAnchor: (key: string, side: "after" | "before") => void;
+  setWindowReason: (key: string, reason: WindowReason | null) => void;
   /** Fase 2: por ÍNDICE de hueco, no por `key` — los metadatos son del hueco. */
   setTandemMeta: (i: number, meta: { mode?: TandemMode | null; note?: string | null }) => void;
 };
@@ -77,6 +78,7 @@ export function ShellDesktop({
           anchors={anchors}
           onSetAnchor={ops.setAnchor}
           onClearAnchor={ops.clearAnchor}
+          onSetReason={ops.setWindowReason}
         />
       </div>
     );
@@ -136,6 +138,7 @@ export function ShellDesktop({
                 anchors={anchors}
                 onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
                 onClearAnchor={(side) => ops.clearAnchor(e.key, side)}
+                onSetReason={(reason) => ops.setWindowReason(e.key, reason)}
               />
             </div>
           ))}
