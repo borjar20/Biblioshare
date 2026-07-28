@@ -1,6 +1,6 @@
 import type { SagaAccentToken } from "./accents";
 import type { SagaGraph, SagaGraphNode } from "./map-types";
-import type { DetailMember, TandemMode, WindowReason } from "./types";
+import type { DetailMember, SagaItemRole, TandemMode, WindowReason } from "./types";
 import { windowTrack } from "./window-track";
 
 // Derivación DETERMINISTA del timeline móvil (frame B, spec §2.4) a partir del
@@ -89,11 +89,21 @@ export function deriveTimeline(
   // default seguro aquí es enseñarlo todo. Un olvido que esconde obras es
   // silencioso —nadie echa de menos lo que no sabe que existe—; uno que las
   // enseña se ve al instante.
-  opts: { spine?: TimelineSpine; authenticated?: boolean; showOptional?: boolean } = {},
+  opts: {
+    spine?: TimelineSpine;
+    authenticated?: boolean;
+    showOptional?: boolean;
+    /** Lente por rol (fase 5). `null` o ausente = todos. No es preferencia
+     *  persistente, al revés que `showOptional`: viaja en la URL (`?rol=`)
+     *  porque filtrar es un gesto momentáneo, no una decisión sobre cómo se
+     *  quiere leer siempre. */
+    roleFilter?: SagaItemRole | null;
+  } = {},
 ): TimelineSection[] {
   const spineMode = opts.spine ?? "curation";
   const authenticated = opts.authenticated ?? false;
   const showOptional = opts.showOptional ?? true;
+  const roleFilter = opts.roleFilter ?? null;
   // El filtro va AQUÍ y no en los componentes: `items` alimenta la columna, las
   // ramas, los puentes y la colocación de las ventanas, así que esconder en el
   // render dejaría secciones vacías con su cabecera, ramas colgando de una fila
@@ -111,7 +121,15 @@ export function deriveTimeline(
   // `graph` entero sigue llegando a `windowTrack` más abajo, a propósito: el
   // tramo de una ventana describe el orden de lectura de la SAGA, no lo que
   // este lector ha elegido ver.
-  const items = graph.nodes.filter((n) => n.kind === "item" && (showOptional || !n.optional));
+  //
+  // La lente por rol (fase 5) entra en el MISMO sitio y hereda las dos reglas
+  // de arriba: no renumera y no mueve el tramo de la ventana. Una obra sin rol
+  // se esconde al filtrar, porque `principal` no llegó a ser un valor: es
+  // `role = null`. Por eso la barra ofrece siempre «Todos».
+  const items = graph.nodes.filter(
+    (n) =>
+      n.kind === "item" && (showOptional || !n.optional) && (roleFilter === null || n.role === roleFilter),
+  );
 
   // Columna por PASOS del itinerario (spec 2026-07-28, §1): 1..N del
   // itinerario, sección única sin cabecera, y la subsaga baja de cabecera de
