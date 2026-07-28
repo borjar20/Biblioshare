@@ -87,6 +87,7 @@ export async function saveSequence(
     p_removed: payload.removed,
     p_windows: payload.windows,
     p_window_subjects: payload.windowSubjects,
+    p_tandems: payload.tandems,
   });
   if (error) return { error: "generic" };
 
