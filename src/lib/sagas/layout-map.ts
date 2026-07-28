@@ -1,5 +1,5 @@
 import { NODE_STEP_X } from "./graph-metrics";
-import type { SagaGraph, SagaGraphNode } from "./map-types";
+import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
 
 // Post-pase de layout del mapa 2D: alinea las columnas de los bloques que una
 // arista LARGA conecta, para que esa arista salga corta y casi vertical en vez
@@ -16,15 +16,30 @@ import type { SagaGraph, SagaGraphNode } from "./map-types";
  *  el bloque 2 se alinea con la última columna del 1, y el 3 con la última del
  *  2, los offsets se acumulan y el ancho del dibujo vuelve a ser la suma de
  *  todos los bloques — exactamente lo que quitó la decisión de `derive-map.ts:113`
- *  («una fila por bloque, compacta»). Con el tope, el ancho
- *  es «el del bloque más largo, más 4». */
+ *  («una fila por bloque, compacta»).
+ *
+ *  El valor, 4, sale de elegirlo A OJO, no de un razonamiento: no hay todavía
+ *  con qué medir «mejor» (ver issue de `countEdgeCrossings`, más abajo en este
+ *  fichero). El único dato real que lo respalda: en la única saga de producción
+ *  que lo ejercita (Cosmere), el bloque *Novelas secretas* da deltas `[3, 4]` y
+ *  queda CLAVADO en el tope, sin holgura — con MAX_COL_OFFSET=4 el ancho del
+ *  mapa pasa de 5 a 8 columnas (+60 %) para la misma altura. Un tope más bajo lo
+ *  recortaría más; uno más alto no tiene ningún caso real que lo justifique hoy.
+ *  Para dejar de elegirlo a ojo haría falta contar cruces de aristas con un
+ *  barrido de `MAX_COL_OFFSET ∈ {0,1,2,3,4,6,8}` sobre la forma real de las
+ *  sagas de producción, tabulando (cruces, ancho en columnas) por cada valor. */
 export const MAX_COL_OFFSET = 4;
 
 /** Aristas que cruzan el lienzo, y por tanto las únicas que vale la pena
  *  enderezar. `principal` (la cadena) queda fuera a propósito: alinear por ella
  *  reproduce esa misma escalera, y además casi nunca cruza — une huecos
- *  consecutivos, que ya están al lado. */
-const TIPOS_LARGOS = new Set(["requisito", "opcional", "itinerario"]);
+ *  consecutivos, que ya están al lado.
+ *
+ *  Tipado explícito contra `SagaGraphEdge["type"]`, no inferido: un `Set<string>`
+ *  seguiría compilando si mañana se renombra `"requisito"` en el tipo, y la
+ *  alineación dejaría de funcionar EN SILENCIO — ningún error, solo aristas que
+ *  dejan de enderezarse. */
+const TIPOS_LARGOS = new Set<SagaGraphEdge["type"]>(["requisito", "opcional", "itinerario"]);
 
 /** Mediana, no media: aguanta un ancla rara en un extremo. Óptimo L1, que es la
  *  distancia que de verdad importa aquí (cuánto se desvía cada arista de la
@@ -37,7 +52,13 @@ function mediana(valores: number[]): number {
 }
 
 export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
-  if (graph.nodes.length === 0) return graph;
+  // Objeto NUEVO también aquí, no el mismo que se recibió: `deriveSagaMap`
+  // hace `alineado.nodes.sort(...)` justo después de llamar a esta función, y
+  // devolver el `graph` del llamante haría que ese sort ordenara IN SITU el
+  // array de quien invoca `alignRowsToLongEdges` con un grafo vacío — hoy
+  // inocuo (no hay nada que ordenar), pero contradice el contrato de «esta
+  // función no muta lo que recibe» que sí cumple el camino no vacío.
+  if (graph.nodes.length === 0) return { nodes: [], edges: graph.edges };
 
   const nodosDeBloque = new Map<string | null, SagaGraphNode[]>();
   const bloqueDeNodo = new Map<string, string | null>();
@@ -137,9 +158,12 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
     ordenadas.forEach((n, i) => xFinal.set(n.id, columnas[i]));
   }
 
-  // El mapa vuelve a empezar en la columna 0: React Flow encuadra con `fitView`,
-  // pero un lienzo que empieza en la 3 desplaza también el mini-preview del CTA,
-  // que no encuadra.
+  // El mapa vuelve a empezar en la columna 0. En la práctica es una red por si
+  // algún día un bloque de la primera fila se desplazara: hoy `minimo` siempre
+  // vale 0, porque el bloque más alto (el primero que procesa el bucle de
+  // arriba) nunca tiene vecinos ya colocados y su offset sale 0 sí o sí. (El
+  // mini-preview del CTA NO depende de esto: se normaliza por su cuenta en
+  // `scaleNodes`, derive-timeline.ts, que es el único camino que recorre.)
   const minimo = Math.min(...graph.nodes.map((n) => xFinal.get(n.id)!));
   return {
     nodes: graph.nodes.map((n) => ({ ...n, x: xFinal.get(n.id)! - minimo })),
