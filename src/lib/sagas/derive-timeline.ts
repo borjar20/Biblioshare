@@ -239,7 +239,16 @@ export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine }
     if (n.orderNo !== null) continue;
     const { after, before } = windowAnchors(n.id);
     if (after === null && before === null) continue;
-    const row: TimelineRow = { kind: "window", no: null, node: n, after, before, reason: null, track: null };
+    const row: TimelineRow = {
+      kind: "window",
+      no: null,
+      node: n,
+      after,
+      before,
+      // Ya resuelto por `deriveSagaMap`, como las anclas: aquí solo se lee.
+      reason: n.windowReason,
+      track: null,
+    };
     // 1) justo DESPUÉS de su ancla `después de`; 2) si solo hay `antes de`,
     // justo ANTES de esa fila; 3) si ninguna resuelve, cae a rama (abajo).
     const placed =

@@ -149,6 +149,7 @@ export function deriveSagaMap(
     step: null,
     // Se rellena por hueco, más abajo: un nodo suelto nunca es tándem.
     tandem: null,
+    windowReason: null,
   });
 
   // Fila donde EMPIEZA el bloque actual. Ya no es el índice del bloque: un
@@ -348,6 +349,16 @@ export function deriveSagaMap(
 
     const subject = resolveEntry(subjectKey, "first");
     if (subject === null) continue;
+
+    // El motivo se cuelga del nodo SUJETO, y SOLO si el sujeto es una obra. Un
+    // sujeto BLOQUE se resuelve a la primera obra del bloque, que es una fila
+    // normal de la columna: colgarle ahí el motivo pintaría una ventana donde
+    // no la hay. Mismo límite que la fase 1 asumió al no producir fila
+    // `window` para un bloque, abierto en la issue #221.
+    if (subjectSagaId === null) {
+      const subjectNode = byId.get(subject);
+      if (subjectNode) subjectNode.windowReason = w.reason;
+    }
 
     if (w.afterKey !== null) {
       const after = resolveEntry(w.afterKey, "last");

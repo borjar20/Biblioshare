@@ -24,6 +24,7 @@ const node = (id: string, over: Partial<SagaGraphNode> = {}): SagaGraphNode => (
   groupName: "Era Uno",
   step: null,
   tandem: null,
+  windowReason: null,
   ...over,
 });
 
@@ -400,10 +401,10 @@ describe("rol narrativo en las ramas (#167)", () => {
       nodes: [
         { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
           label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
-          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null },
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null },
         { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
           label: "Spin", accent: "beige", status: null, role: "spin_off", coverUrl: null,
-          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null },
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null },
       ],
       edges: [{ id: "e1", source: "n1", target: "n2", type: "opcional", accent: "ambar" }],
     };
@@ -524,5 +525,30 @@ describe("deriveTimeline · metadatos del tándem (fase 2)", () => {
     if (row.kind !== "tandem") throw new Error("se esperaba un tándem");
     expect(row.mode).toBeNull();
     expect(row.note).toBeNull();
+  });
+});
+
+// ── Fase 3: el motivo llega a la fila ────────────────────────────────────────
+describe("motivo de la fila de ventana (fase 3)", () => {
+  it("la fila de ventana lleva el motivo del nodo sujeto", () => {
+    const tl = deriveTimeline(
+      graph(
+        [node("o1", { orderNo: 0 }), node("w", { orderNo: null, windowReason: "spoiler" })],
+        [{ id: "e1", source: "o1", target: "w", type: "requisito", accent: "beige" }],
+      ),
+    );
+    const fila = tl[0].rows.find((r) => r.kind === "window")!;
+    expect(fila.kind === "window" && fila.reason).toBe("spoiler");
+  });
+
+  it("sin motivo declarado la fila lo lleva a null, no a undefined", () => {
+    const tl = deriveTimeline(
+      graph(
+        [node("o1", { orderNo: 0 }), node("w", { orderNo: null })],
+        [{ id: "e1", source: "o1", target: "w", type: "requisito", accent: "beige" }],
+      ),
+    );
+    const fila = tl[0].rows.find((r) => r.kind === "window")!;
+    expect(fila.kind === "window" && fila.reason).toBeNull();
   });
 });
