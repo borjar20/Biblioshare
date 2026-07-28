@@ -29,6 +29,7 @@ export type TodayActionsLabels = {
   log: string;
   cancel: string;
   register: string;
+  notes: string;
   timerLabel: string;
   nextEpisode: string | null;
 };
@@ -194,6 +195,16 @@ function BookTimer({
         >
           {labels.cancel}
         </button>
+        {/* Sin clearTimer ni ?minutos=: navegación pura. El reloj compartido
+            (misma clave de localStorage que la hoja de sesión, ver timer.ts)
+            sigue corriendo al llegar — BookProgressField lo detecta y abre
+            ya en pestaña Cronómetro. */}
+        <Link
+          href={sessionHref}
+          className="flex flex-1 items-center justify-center rounded-[8px] border border-border px-3 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-surface-muted"
+        >
+          {labels.notes}
+        </Link>
         <button
           type="button"
           onClick={() => {

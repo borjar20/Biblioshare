@@ -136,6 +136,7 @@
     "noProgress": "Sin progreso",
     "timerCancel": "Cancelar",
     "timerRegister": "Registrar",
+    "timerNotes": "+ Nota",
     "timerLabel": "Tiempo de esta sesión",
     "markEpisode": "T{season} · E{episode}",
     "focusMini": "Poner {title} arriba"
