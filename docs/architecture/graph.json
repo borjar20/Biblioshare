@@ -242,7 +242,7 @@
       "files": ["src/lib/library/get-library-items.ts", "src/lib/library/collections.ts", "src/lib/library/position.ts", "src/lib/library/progress.ts"] },
     { "id": "m-sagas", "label": "lib/sagas", "layer": "domain", "kind": "module", "size": 55,
       "summary": "El módulo más grande. Jerarquía, secuencia curada, ventanas de colocación, derivación PURA del mapa y del timeline, itinerarios, progreso y cards.",
-      "files": ["src/lib/sagas/derive-map.ts", "src/lib/sagas/derive-timeline.ts", "src/lib/sagas/window-track.ts", "src/lib/sagas/group-members.ts", "src/lib/sagas/get-saga-detail.ts", "src/lib/sagas/resolve-route.ts", "src/lib/sagas/progress.ts", "src/lib/sagas/roles.ts", "src/lib/sagas/count-roles.ts", "src/lib/sagas/map-overlays.ts", "src/lib/sagas/graph-metrics.ts"],
+      "files": ["src/lib/sagas/derive-map.ts", "src/lib/sagas/derive-timeline.ts", "src/lib/sagas/window-track.ts", "src/lib/sagas/group-members.ts", "src/lib/sagas/get-saga-detail.ts", "src/lib/sagas/resolve-route.ts", "src/lib/sagas/progress.ts", "src/lib/sagas/roles.ts", "src/lib/sagas/count-roles.ts", "src/lib/sagas/map-overlays.ts", "src/lib/sagas/graph-metrics.ts", "src/lib/sagas/layout-map.ts"],
       "gotchas": ["saga_nodes/saga_edges y save_saga_graph fueron RETIRADOS (fase 3, 2026-07-27): el mapa se deriva, no se cura.",
         "window-track.ts LEE lo completado con el predicado unico de completion.ts (isStatusCompleted) y NO toca el progreso: no cuenta, no divide y no aparece en ningun denominador.",
         "deriveTimeline recibe `authenticated` como flag EXPLICITO, con false por defecto: sin usuario getSagaDetail ni consulta los pases, asi que todos los nodos llegan con status null y \"hay sesion\" no se puede deducir del dato.",
@@ -725,7 +725,9 @@
         { "node": "m-sagas", "action": "getSagaDetail carga miembros, bloques y ventanas de colocación", "file": "src/lib/sagas/get-saga-detail.ts" },
         { "node": "t-sagas", "action": "sagas + saga_items + saga_placement_windows" },
         { "node": "m-sagas", "action": "groupMembers ordena grupos y miembros de forma determinista", "file": "src/lib/sagas/group-members.ts" },
+        { "node": "m-sagas", "action": "orderBlocksForLayout intercala cada bloque libre junto a su ancla (por ventana de bloque o de obra), antes del reparto de filas", "file": "src/lib/sagas/group-members.ts" },
         { "node": "m-sagas", "action": "deriveSagaMap produce el SagaGraph puro, en píxeles", "file": "src/lib/sagas/derive-map.ts" },
+        { "node": "m-sagas", "action": "alignRowsToLongEdges desplaza bloques enteros bajo la columna de su ancla (aristas requisito/opcional/itinerario) y reordena las obras sueltas de cada fila por la columna de la suya", "file": "src/lib/sagas/layout-map.ts" },
         { "node": "m-passes", "action": "El avance de la saga se calcula desde passes (nunca desde library_entries — eso fue el bug del 0%)", "file": "src/lib/sagas/progress.ts" },
         { "node": "m-sagas", "action": "deriveTimeline convierte el SagaGraph en filas: columna por curación (spine 'curation') o por los pasos del itinerario activo (spine 'route'), con las formas entry / tandem / window / bridge", "file": "src/lib/sagas/derive-timeline.ts" },
         { "node": "c-saga", "action": "La vista 2D (@xyflow/react) y el mini-preview del CTA consumen el SagaGraph; el timeline consume las filas derivadas, con el MISMO componente en móvil y al pie del grafo en PC", "file": "src/components/saga/timeline" }
