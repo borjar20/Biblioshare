@@ -64,6 +64,25 @@ export const NODE_STEP_X = 180;
 // siguiente; 220px deja margen cómodo.
 export const NODE_STEP_Y = 220;
 
+/** Reparte los miembros ENCADENABLES de un bloque en huecos: cada hueco es un
+ *  array de 1 (obra suelta dentro de la cadena) o más (tándem) miembros que
+ *  comparten `position`. Una obra sin hueco (`position === null`: `libre` o sin
+ *  clasificar) no entra: es un nodo del mapa, pero no de la cadena.
+ *
+ *  Vive fuera de `deriveSagaMap` porque hay DOS recorridos que necesitan el
+ *  mismo reparto —la pre-pasada de `orderNo`, en orden de lectura, y el pintado,
+ *  en orden de filas— y dos copias del mismo bucle acaban discrepando. */
+function huecosDe(group: MemberGroup): DetailMember[][] {
+  const huecos: DetailMember[][] = [];
+  for (const m of group.members) {
+    if (m.position === null) continue;
+    const current = huecos.at(-1);
+    if (current !== undefined && current[0].position === m.position) current.push(m);
+    else huecos.push([m]);
+  }
+  return huecos;
+}
+
 /**
  * Deriva PURAMENTE el `SagaGraph` de una saga a partir de lo curado (grupos,
  * ventanas). Precondición de determinismo, a cargo de quien llama: `groups`
@@ -109,33 +128,44 @@ export function deriveSagaMap(
   // propósito, fuera de la cadena.
   let chainTail: DetailMember[] | null = null;
 
-  // Task 9: el mapa salía como una escalera diagonal larguísima porque `x`
-  // era un contador de columnas COMPARTIDO por todo el mapa (crecía con cada
-  // hueco de CUALQUIER bloque, así que 20 obras dibujaban 20 columnas de
-  // ancho). Decisión del responsable: una fila por bloque, COMPACTA. `x` se
-  // declara DENTRO de `blocks.forEach` (más abajo) y por eso se reinicia en
-  // cada bloque — cada uno es una cadena horizontal corta que empieza en la
-  // columna 0, y el ancho del dibujo pasa a ser el del bloque más largo, no
-  // la suma de todos.
+  // Task 9: el mapa salía como una escalera diagonal larguísima porque `x` era
+  // un contador de columnas COMPARTIDO por todo el mapa (crecía con cada hueco
+  // de CUALQUIER bloque, así que 20 obras dibujaban 20 columnas de ancho).
+  // Decisión del responsable: una fila por bloque, COMPACTA. `x` se declara
+  // DENTRO de `blocks.forEach` (más abajo) y por eso se reinicia en cada bloque
+  // — cada uno es una cadena horizontal corta que empieza en la columna 0, y el
+  // ancho del dibujo pasa a ser el del bloque más largo, no la suma de todos.
   //
   // `orderNo` es harina de otro costal: NO es una coordenada, es el índice
-  // lógico que consume `deriveTimeline` (derive-timeline.ts) para construir
-  // su columna del timeline móvil, y TIENE que seguir siendo global y
-  // creciente en el orden de lectura — si se acoplara a `x` (que se reinicia
-  // por bloque), dos bloques distintos producirían el mismo orderNo y el
-  // timeline de móvil confundiría su orden sin que ninguna prueba de "x" lo
-  // note. Por eso vive en su PROPIO contador, `orderCounter`, que nunca se
-  // reinicia.
+  // lógico que consume `deriveTimeline` (derive-timeline.ts) para construir su
+  // columna del timeline móvil, y TIENE que seguir siendo global y creciente en
+  // el ORDEN DE LECTURA.
+  //
+  // Por eso se calcula AQUÍ, en una pre-pasada sobre `[...ordered, ...free]`, y
+  // no dentro del `forEach` de pintado: desde que `orderBlocksForLayout` puede
+  // intercalar un bloque libre entre dos colocados, el orden de pintado y el de
+  // lectura ya no son el mismo, y un contador que siguiera al `forEach` movería
+  // el timeline de móvil cada vez que alguien curara una ventana. Todos los
+  // miembros de un mismo hueco (un tándem) comparten `orderNo`: es la
+  // pertenencia al hueco, y `deriveMapOverlays` la lee así para dibujar la
+  // cápsula.
+  const orderNoDeCadaObra = new Map<string, number>();
   let orderCounter = 0;
+  for (const group of [...ordered, ...free]) {
+    for (const hueco of huecosDe(group)) {
+      for (const m of hueco) orderNoDeCadaObra.set(itemKey(m), orderCounter);
+      orderCounter++;
+    }
+  }
 
   // Nodo de una obra, hueco o suelta: `orderNo` es la única diferencia — una
-  // obra CON hueco lo recibe de `orderCounter` (entra en la columna principal
-  // de deriveTimeline); una obra SIN hueco recibe `null` (activa el mecanismo
-  // de ramas/puentes de deriveTimeline en vez de la columna). `col` es un
-  // índice lógico LOCAL al bloque (columna dentro de su fila); `row` es el
-  // índice del bloque. Aquí se escalan a píxeles (`NODE_STEP_X`/`NODE_STEP_Y`)
-  // para `x`/`y`, pero `orderNo` se queda con el índice crudo del contador
-  // global — es un orden lógico para deriveTimeline, no una coordenada de
+  // obra CON hueco lo recibe de `orderNoDeCadaObra` (entra en la columna
+  // principal de deriveTimeline); una obra SIN hueco recibe `null` (activa el
+  // mecanismo de ramas/puentes de deriveTimeline en vez de la columna). `col`
+  // es un índice lógico LOCAL al bloque (columna dentro de su fila); `row` es
+  // el índice del bloque. Aquí se escalan a píxeles (`NODE_STEP_X`/`NODE_STEP_Y`)
+  // para `x`/`y`, pero `orderNo` se queda con el índice crudo de la pre-pasada
+  // — es un orden lógico para deriveTimeline, no una coordenada de
   // lienzo.
   const makeNode = (m: DetailMember, col: number, row: number, orderNo: number | null): SagaGraphNode => ({
     id: itemKey(m),
@@ -176,32 +206,18 @@ export function deriveSagaMap(
 
   blocks.forEach((group, y) => {
     // Columna LOCAL a este bloque: se reinicia en cada iteración (Task 9)
-    // porque se declara aquí dentro, no fuera del forEach. `orderCounter`, en
-    // cambio, vive fuera y no se toca en esta línea: sigue creciendo entre
-    // bloques.
+    // porque se declara aquí dentro, no fuera del forEach. `orderNo`, en
+    // cambio, ya quedó resuelto en la pre-pasada de arriba: aquí solo se lee
+    // de `orderNoDeCadaObra`, no se recalcula.
     let x = 0;
 
     // Una obra SIN hueco (`position === null`: `libre` o sin clasificar, lo
     // impone el CHECK saga_items_placement_position) SÍ es un nodo del mapa,
     // pero no forma parte de la cadena: ni abre ni cierra huecos, y ninguna
-    // arista `principal` la toca (hallazgo 1 de la revisión — antes se
-    // agrupaba una a una como si cada una fuera su propio hueco encadenado).
-    // groupMembers ya deja los miembros ordenados por `position` y luego
-    // título, con los `position: null` al final, así que basta con partir el
-    // array UNA vez: todo lo encadenable va antes que todo lo suelto.
-    const chained = group.members.filter((m) => m.position !== null);
+    // arista `principal` la toca (hallazgo 1 de la revisión — antes se agrupaba
+    // una a una como si cada una fuera su propio hueco encadenado).
     const loose = group.members.filter((m) => m.position === null);
-
-    // Reparte los miembros encadenables en huecos: cada hueco es un array de
-    // 1 (obra suelta dentro de la cadena) o más (tándem) miembros que
-    // comparten `position`.
-    const huecos: DetailMember[][] = [];
-    for (const m of chained) {
-      const current = huecos.at(-1);
-      const sameHueco = current !== undefined && current[0].position === m.position;
-      if (sameHueco) current.push(m);
-      else huecos.push([m]);
-    }
+    const huecos = huecosDe(group);
 
     if (group.sagaId !== null && huecos.length > 0) {
       // Ancla del bloque = la obra que abre/cierra su cadena. Si el hueco
@@ -233,7 +249,10 @@ export function deriveSagaMap(
       const tandemMeta =
         hueco.length >= 2 && tandems ? (tandems.get(`${group.sagaId}:${hueco[0].position}`) ?? null) : null;
       hueco.forEach((m, memberIdx) => {
-        const node = { ...makeNode(m, x, rowCursor + memberIdx, orderCounter), tandem: tandemMeta };
+        const node = {
+          ...makeNode(m, x, rowCursor + memberIdx, orderNoDeCadaObra.get(itemKey(m)) ?? null),
+          tandem: tandemMeta,
+        };
         nodes.push(node);
         byId.set(node.id, node);
       });
@@ -259,7 +278,6 @@ export function deriveSagaMap(
       }
 
       x++;
-      orderCounter++;
     });
 
     // Cadena ENTRE bloques, solo en la zona ordenada (`y < ordered.length`,
