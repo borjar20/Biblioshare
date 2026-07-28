@@ -14,7 +14,6 @@ import {
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
-import { normalizeTags } from "@/lib/notes/tags";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -28,13 +27,9 @@ const VALID_STATUSES: MediaStatus[] = [
 // directa. `passClosed` avisa de que la sesión completó el pase: el cliente
 // encadena la hoja de cierre en vez de irse (D4 de la spec).
 export type AddSessionState = {
-  error?: "invalidPosition" | "invalidDuration" | "noteTooLong" | "generic";
+  error?: "invalidPosition" | "invalidDuration" | "generic";
   ok?: boolean;
   passClosed?: boolean;
-  /** La sesión SÍ se guardó (progress_sessions + posición del pase); solo
-   *  falló la escritura en `notes`. El cliente no cierra la hoja para que
-   *  puedas copiar el texto. */
-  noteFailed?: boolean;
 };
 
 // Logs a reading/watching session AND rolls the PASE's current state
@@ -77,21 +72,6 @@ export async function addSession(
       return { error: "invalidDuration" };
     }
   }
-
-  const note = String(formData.get("note") ?? "").trim();
-  // progress_sessions.note tiene CHECK (char_length(note) <= 2000) (migración
-  // 20260715_text_length_limits.sql) pero notes.body admite hasta 5000 y
-  // addSession escribe el MISMO texto en las dos tablas: sin este guard, una
-  // cita de más de 2000 caracteres revienta el insert de progress_sessions y
-  // la sesión entera no se guarda (con un error genérico que no explica
-  // nada). Se valida ANTES de tocar la base de datos, no después.
-  //
-  // `[...note].length`, no `note.length`: el CHECK de Postgres cuenta code
-  // points (char_length), pero `.length` cuenta unidades UTF-16 — un emoji o
-  // cualquier carácter fuera del BMP ocupa 2 unidades UTF-16 y 1 code point.
-  // Con `.length` a secas el guard es sobre-estricto (nunca deja pasar una
-  // violación real, pero puede rechazar una cita que a ojo no llega a 2000).
-  if ([...note].length > 2000) return { error: "noteTooLong" };
 
   // Hora real de inicio (§7.14, P8): la manda el cronómetro; la hoja a mano no,
   // y queda null. "Cuándo lees" ignora las filas sin ella — nunca se sustituye
@@ -183,7 +163,6 @@ export async function addSession(
       ...(sessionDate && { session_date: sessionDate }),
       duration_minutes: durationMinutes,
       position: sessionPosition,
-      note: note || null,
       started_at: startedAt,
     })
     .select("id")
@@ -191,78 +170,20 @@ export async function addSession(
 
   if (insertError || !inserted) return { error: "generic" };
 
-  // Memorizar: si la sesión trae nota, entra también en `notes`. Doble
-  // escritura deliberada — la columna vieja progress_sessions.note sigue en su
-  // sitio y es lo que pinta la lista de sesiones.
-  //
-  // El anclaje por defecto ES `sessionPosition` (la posición de esta sesión),
-  // pero el compositor puede haberlo sobrescrito: la frase puede ser de tres
-  // páginas atrás. Por eso `notePage`/`noteSeason`+`noteEpisode` mandan si
-  // vienen y son válidos.
-  let noteFailed = false;
-  if (note) {
-    const noteKind = formData.get("noteKind") === "quote" ? "quote" : "note";
-    const noteFavorite = formData.get("noteFavorite") === "on";
-    const noteSpoiler = formData.get("noteSpoiler") === "on";
-    // Se guarda la intención; nadie ajeno lo lee todavía (sin política RLS de
-    // lectura pública). Ver la spec 2026-07-21, D3.
-    const notePublic = formData.get("notePublic") === "on";
-    const noteTags = normalizeTags(String(formData.get("noteTags") ?? ""));
-
-    // El defecto es `sessionPosition`, pero solo cuando el compositor NO
-    // manda el campo de anclaje en absoluto (modo episodio de serie, o
-    // compositor sin anclaje que pintar). Si el campo SÍ llega —aunque llegue
-    // vacío— es que el usuario pulsó "Editar" y lo dejó en blanco a
-    // propósito: el compositor ya muestra "Sin anclar" en ese caso, y
-    // guardar `sessionPosition` igualmente ancoraría la nota a la página de
-    // la sesión en contra de lo que dice la UI (bug de la revisión final:
-    // "vaciar el anclaje a mano hace cosas distintas en cada ruta").
-    let notePosition: Position = sessionPosition;
-    if (itemType === "book" && formData.has("notePage")) {
-      const notePageRaw = String(formData.get("notePage") ?? "").trim();
-      if (notePageRaw) {
-        const p = Number(notePageRaw);
-        if (Number.isInteger(p) && p >= 0) notePosition = { page: p };
-      } else {
-        notePosition = {};
-      }
-    } else if (
-      itemType === "series" &&
-      formData.has("noteSeason") &&
-      formData.has("noteEpisode")
-    ) {
-      const noteSeasonRaw = String(formData.get("noteSeason") ?? "").trim();
-      const noteEpisodeRaw = String(formData.get("noteEpisode") ?? "").trim();
-      if (noteSeasonRaw && noteEpisodeRaw) {
-        const s = Number(noteSeasonRaw);
-        const e = Number(noteEpisodeRaw);
-        if (Number.isInteger(s) && s >= 0 && Number.isInteger(e) && e >= 0) {
-          notePosition = { season: s, episode: e };
-        }
-      } else {
-        notePosition = {};
-      }
-    }
-
-    // La sesión MANDA: si la nota falla, NO se revierte nada. Has leído 60
-    // páginas y eso es un hecho; perder el progreso por un fallo al escribir
-    // texto es la peor de las dos pérdidas (spec D6). El fallo se devuelve
-    // aparte para que la hoja no se cierre y puedas copiar el texto.
-    const { error: noteError } = await supabase.from("notes").insert({
-      user_id: user.id,
-      item_type: itemType,
-      item_id: itemId,
-      pass_id: passId,
-      session_id: inserted.id,
-      kind: noteKind,
-      body: note,
-      position: notePosition,
-      is_favorite: noteFavorite,
-      is_spoiler: noteSpoiler,
-      is_public: notePublic,
-      meta: { tags: noteTags },
-    });
-    if (noteError) noteFailed = true;
+  // Las notas de esta sesión ya se guardaron sueltas (SessionNotebook,
+  // session_id null) mientras la hoja estaba abierta — aquí solo se
+  // enlazan a la sesión recién creada. Best-effort a propósito (D4 de la
+  // spec 2026-07-29): si falla, la sesión y las notas siguen existiendo,
+  // solo queda sin poner la etiqueta de agrupación.
+  const noteIds = formData.getAll("noteIds").map(String).filter(Boolean);
+  if (noteIds.length > 0) {
+    await supabase
+      .from("notes")
+      .update({ session_id: inserted.id })
+      .eq("user_id", user.id)
+      .eq("pass_id", passId)
+      .is("session_id", null)
+      .in("id", noteIds);
   }
 
   // Serie: marca cada episodio reutilizando la MISMA escritura que la
@@ -326,11 +247,11 @@ export async function addSession(
   if (reachedEnd) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);
-    return { ok: true, passClosed: true, noteFailed };
+    return { ok: true, passClosed: true };
   }
 
   revalidateReadingLog(itemType, itemId);
-  return { ok: true, noteFailed };
+  return { ok: true };
 }
 
 export async function deleteSession(
