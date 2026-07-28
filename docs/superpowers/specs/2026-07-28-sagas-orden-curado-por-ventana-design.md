@@ -26,8 +26,9 @@ se *propone* leerlo.
   falta; lo que faltaba era leerlo desde el orden.
 - **El progreso.** El denominador sale de la PERTENENCIA (`countedKeys`, progress.ts), no
   del orden. Reordenar no cambia ningún porcentaje.
-- **La geometría del mapa.** Con los datos de producción de hoy el mapa 2D queda idéntico
-  al píxel (ver §6).
+- **El modelo del mapa.** Sigue habiendo una fila por bloque y el orden de filas lo sigue
+  decidiendo `orderBlocksForLayout`. Lo que sí se mueve con estos datos es UNA fila
+  (*Novelas secretas*), por el cambio de preferencia de ancla — ver §6, y hay que mirarlo.
 
 ## 2. La regla
 
@@ -105,9 +106,14 @@ sigue haciendo falta solo para la rama `after`. Con los datos de hoy no mueve na
 ### 3.3 `deriveSagaMap` (derive-map.ts): `orderNo` deja de ir por `[...ordered, ...free]`
 
 La pre-pasada que numera el orden de lectura recorre el resultado de
-`orderBlocksForLayout` —el mismo array `blocks` que ya usa para pintar—. Esto **cierra la
-issue #245**: hasta hoy el mapa podía pintar un bloque libre en la fila 3 mientras el
-timeline móvil lo numeraba el último.
+`orderBlocksForLayout` —el mismo array `blocks` que ya usa para pintar— en vez de
+`[...ordered, ...free]`. Esto **cierra el caso real de la issue #245**: hasta hoy el mapa
+pintaba *Era 2* en la fila 3 mientras el timeline móvil la numeraba la última.
+
+La pre-pasada solo numera obras CON hueco (`position` no nulo), así que el grano de este
+cambio es el bloque, no la obra: un bloque libre sin huecos (*El Aliento de los Dioses*,
+*Novelas secretas*) no tiene `orderNo` que mover, y sus obras las sigue colocando el
+mecanismo de filas de ventana de `deriveTimeline` (§3.4).
 
 El comentario largo de `derive-map.ts` que explica por qué pintado y lectura son dos
 órdenes distintos deja de ser cierto y hay que reescribirlo, no borrarlo: sigue siendo
@@ -168,7 +174,9 @@ generado dice «El Aliento de los Dioses» — dos pantallas discrepando sobre e
 
 Todos decididos; ninguno queda abierto.
 
-- **Ancla rota** (apunta a algo que no está en la secuencia) → el sujeto no se mueve.
+- **Ancla que no aparece en la secuencia** (rota, o fuera de este subárbol) → se ignora esa
+  ancla y manda la otra. Si ninguna de las dos aparece, el sujeto no se mueve. Un sujeto
+  anclado a sí mismo cae aquí: sus anclas se buscan sobre la secuencia SIN él.
 - **Sujeto sin ventana** → no se mueve.
 - **Ventana rancia** sobre algo que ya no es `libre` → se ignora. Misma guarda que
   `derive-map.ts` (`subjectPlacement !== "libre"`).
@@ -182,15 +190,23 @@ Todos decididos; ninguno queda abierto.
 - **No cabe sin cortar y retroceder incumple el `a partir de`** → se corta. Cortar es peor
   que no cortar; incumplir la ventana es lo único inaceptable.
 
-## 5. Límite asumido: un bloque libre no puede partir otro bloque
+## 5. Límite asumido: el mapa y el orden de lectura no mueven la misma unidad
 
-Un sujeto BLOQUE solo aterriza en límites entre bloques (§2). Si su ventana viviera ENTERA
-dentro de otro bloque —`a partir de` y `antes de` en el mismo bloque—, el orden curado lo
-colocaría al principio de ese bloque, incumpliendo el `a partir de`, en vez de partirlo.
+Son dos preguntas distintas y se responden a distinta granularidad, a propósito:
 
-No hay ningún caso así en producción. Se asume a propósito y no por descuido: es lo que
-mantiene el mapa 2D y el orden curado de acuerdo por construcción, porque
-`orderBlocksForLayout` ordena BLOQUES y no sabe partir uno. Queda **abierto como issue**.
+- **El mapa 2D ordena BLOQUES.** Una fila es un bloque, así que cuando una obra suelta
+  tiene ventana, `orderBlocksForLayout` arrastra el bloque ENTERO junto al ancla — es lo
+  que acorta la arista, que es para lo que existe.
+- **El orden curado ordena OBRAS.** Mueve solo el sujeto de la ventana.
+
+En el Cosmere eso se ve así: el mapa pega *Novelas secretas* a *El Archivo* (porque *El
+Hombre Iluminado* tiene ventana), mientras que el orden curado saca solo a *El Hombre
+Iluminado* y deja a sus tres hermanas al final. Ninguna de las dos está mal; responden a
+preguntas distintas. Queda **abierto como issue** por si algún día conviene unificarlo.
+
+Consecuencia adicional del §2 para un sujeto BLOQUE: si su ventana viviera ENTERA dentro de
+otro bloque, el orden curado lo colocaría al principio de ese bloque —incumpliendo el
+`a partir de`— en vez de partirlo. No hay ningún caso así en producción.
 
 ## 6. Efecto medido en producción
 
@@ -239,19 +255,33 @@ Lo que se lee en la columna derecha:
   propia y sus tres hermanas no. Un bloque libre deja de ser atómico cuando una de sus
   obras tiene ventana.
 
-**Orden de bloques del mapa 2D**, antes y después: `Elantris · Era 1 · Era 2 · El Aliento ·
-El Archivo · Novelas secretas`. Idéntico — la vuelta del §3.2 no mueve nada con estos datos,
-porque *Era 1* y *El Archivo* son adyacentes. Lo que sí cambia es la **numeración del
-timeline móvil**: *Era 2* pasa a ser 5-8 en vez de 11-14, que es justamente el #245.
+**Orden de bloques del mapa 2D:**
+
+- antes: `Elantris · Era 1 · Era 2 · El Aliento · El Archivo · Novelas secretas`
+- después: `Elantris · Era 1 · Era 2 · El Aliento · Novelas secretas · El Archivo`
+
+Único cambio: *Novelas secretas* pasa de detrás a delante de *El Archivo*, porque su ancla
+`antes de` (Viento y Verdad) manda ahora sobre la `a partir de` (El Ritmo de la Guerra) y
+las dos viven en ese mismo bloque. Visualmente es neutro: su arista de ventana llega al
+Archivo igual de cerca por arriba que por abajo. Hay que **verificarlo a ojo** de todos
+modos, porque la geometría de columnas la calcula `alignRowsToLongEdges` a partir del orden
+de filas y un cambio de fila puede mover columnas.
+
+**Numeración del timeline móvil:** *Era 2* pasa a ser 5-8 en vez de 11-14. Es el caso real
+de la issue #245.
 
 ## 7. Pruebas
 
 - **`place-by-window.test.ts`** — la regla. Los cuatro casos reales del Cosmere como fixture
   (bloque que retrocede a un límite; obra que corta; obra que no puede retroceder; bloque
   atómico) más los ocho casos límite del §4.
-- **Invariante mapa ↔ orden curado** — para la forma del Cosmere, el orden de BLOQUES que
-  produce `orderBlocksForLayout` y el que produce `createCuratedOrder` coinciden. Es lo
-  único que impide que la #245 se reabra en silencio.
+- **Invariante columna ↔ orden curado** — para la forma del Cosmere: si se filtra el orden
+  curado dejando solo las obras que tienen `orderNo`, sale exactamente la columna del
+  timeline. Dicho de otro modo, la columna numerada y el itinerario generado no pueden
+  contradecirse. Es lo único que impide que la #245 se reabra en silencio.
+
+  No se prueba «mapa ↔ orden curado» porque no es cierto ni pretende serlo: el mapa ordena
+  bloques y el orden curado obras (§5).
 - **`group-members.test.ts` y `layout-map.test.ts`** — actualizar lo que asume `after` manda.
 - **`curated-order.test.ts`** — el post-pase, y que sin ventanas el orden es exactamente el
   de hoy (garantía de no-regresión para las sagas sin ventana, que son casi todas).
