@@ -124,6 +124,74 @@ describe("deriveTimeline", () => {
   });
 });
 
+describe("deriveTimeline · numeración y columna por pasos", () => {
+  it("modo curation: el número que se pinta es 1..N, no el orderNo crudo (que empieza en 0)", () => {
+    const tl = deriveTimeline(graph([node("a", { orderNo: 0 }), node("b", { orderNo: 1 })]));
+    expect(tl[0].rows.map((r) => r.kind === "entry" && r.no)).toEqual([1, 2]);
+  });
+
+  it("modo route: la columna son los pasos, en su orden, aunque contradiga la curación", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("a", { orderNo: 0, step: 3 }),
+        node("b", { orderNo: 1, step: 1 }),
+        node("c", { orderNo: 2, step: 2 }),
+      ]),
+      { spine: "route" },
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0].rows.map((r) => r.kind === "entry" && r.node.id)).toEqual(["b", "c", "a"]);
+    expect(tl[0].rows.map((r) => r.kind === "entry" && r.no)).toEqual([1, 2, 3]);
+  });
+
+  it("modo route: una sola sección, sin cabecera de subsaga", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("a", { orderNo: 0, step: 1 }),
+        node("c", { orderNo: 1, step: 2, groupSagaId: "g2", groupName: "Era Dos", accent: "terracota" }),
+      ]),
+      { spine: "route" },
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0].groupName).toBeNull();
+    expect(tl[0].groupSagaId).toBeNull();
+  });
+
+  it("modo route: un paso que no resuelve a nodo no produce fila, y el resto conserva SU número", () => {
+    // El paso 2 es una obra borrada: deriveSagaMap nunca le puso `step` a nadie.
+    const tl = deriveTimeline(graph([node("a", { orderNo: 0, step: 1 }), node("c", { orderNo: 1, step: 3 })]), {
+      spine: "route",
+    });
+    expect(tl[0].rows.map((r) => r.kind === "entry" && r.no)).toEqual([1, 3]);
+  });
+
+  it("modo route: lo que el itinerario no nombra no aparece (ni rama ni puente)", () => {
+    const tl = deriveTimeline(
+      graph(
+        [
+          node("a", { orderNo: 0, step: 1 }),
+          node("spin", { orderNo: null }),
+          node("hub", { orderNo: null, groupSagaId: null, groupName: null, accent: "beige" }),
+        ],
+        [{ id: "e", source: "a", target: "spin", type: "opcional", accent: "ambar" }],
+      ),
+      { spine: "route" },
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0].rows).toHaveLength(1);
+  });
+
+  it("modo curation por defecto: sin opts se comporta como hoy", () => {
+    const tl = deriveTimeline(
+      graph([
+        node("a", { orderNo: 0 }),
+        node("c", { orderNo: 1, groupSagaId: "g2", groupName: "Era Dos", accent: "terracota" }),
+      ]),
+    );
+    expect(tl).toHaveLength(2);
+  });
+});
+
 describe("rol narrativo en las ramas (#167)", () => {
   it("la rama conserva el role del nodo, y edgeType sigue siendo el de la arista", () => {
     const graph: SagaGraph = {

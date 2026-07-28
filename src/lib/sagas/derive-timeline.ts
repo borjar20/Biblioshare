@@ -16,10 +16,54 @@ import type { DetailMember } from "./types";
 // Los «nodos-saga» que menciona el párrafo de arriba tampoco existen ya: el
 // mapa expande los bloques en obras. El caso está muerto, no roto.
 
+export type TimelineSpine = "curation" | "route";
+
+/** Modo del tándem. Vive en `saga_tandems.modo` (fase 2): en la fase 1 es
+ *  SIEMPRE null — el tándem se detecta por el empate de `position`, que ya
+ *  existe, pero no hay dónde curar si es «a la vez» o «cualquier orden». */
+export type TandemMode = "simultaneo" | "indistinto";
+
+/** Motivo de una ventana. Vive en `saga_placement_windows.motivo` (fase 3):
+ *  null en la fase 1, y nullable también en BD — las 4 ventanas de producción
+ *  no lo tienen declarado y nadie lo decidió por ellas. */
+export type WindowReason = "spoiler" | "contexto";
+
+/** Mini-track de la ventana (fase 3). En la fase 1 es siempre null. */
+export type TimelineTrack = {
+  fromPct: number;
+  toPct: number;
+  /** Posición del lector; null sin sesión — la ficha es pública. */
+  youPct: number | null;
+  notice: "antes" | "dentro" | "pasada";
+};
+
 export type TimelineBranch = { node: SagaGraphNode; edgeType: "opcional" | "requisito" };
+
 export type TimelineRow =
-  | { kind: "entry"; node: SagaGraphNode; branches: TimelineBranch[] }
+  /** Obra con puesto. */
+  | { kind: "entry"; no: number | null; node: SagaGraphNode; branches: TimelineBranch[] }
+  /** N obras que comparten hueco. `mode`/`note` llegan en la fase 2. */
+  | {
+      kind: "tandem";
+      no: number | null;
+      nodes: SagaGraphNode[];
+      mode: TandemMode | null;
+      note: string | null;
+      branches: TimelineBranch[];
+    }
+  /** Sujeto `libre` con ventana; anclas YA resueltas a nodo. `reason`/`track`, fase 3. */
+  | {
+      kind: "window";
+      no: number | null;
+      node: SagaGraphNode;
+      after: SagaGraphNode | null;
+      before: SagaGraphNode | null;
+      reason: WindowReason | null;
+      track: TimelineTrack | null;
+    }
+  /** Nexo entre secciones. */
   | { kind: "bridge"; node: SagaGraphNode };
+
 export type TimelineSection = {
   groupSagaId: string | null;
   groupName: string | null;
@@ -27,8 +71,27 @@ export type TimelineSection = {
   rows: TimelineRow[];
 };
 
-export function deriveTimeline(graph: SagaGraph): TimelineSection[] {
+export function deriveTimeline(graph: SagaGraph, opts: { spine?: TimelineSpine } = {}): TimelineSection[] {
+  const spineMode = opts.spine ?? "curation";
   const items = graph.nodes.filter((n) => n.kind === "item");
+
+  // Columna por PASOS del itinerario (spec 2026-07-28, §1): 1..N del
+  // itinerario, sección única sin cabecera, y la subsaga baja de cabecera de
+  // sección a etiqueta de fila (el dato ya viaja en el nodo:
+  // `groupName`/`accent`). Sin ramas ni puentes: lo que el itinerario no nombra
+  // lo enseña «Sin puesto en este itinerario», que es de RouteView.
+  //
+  // El número es el paso, no un contador de filas visibles: un paso fantasma
+  // (obra borrada) o uno que nombra un bloque entero no resuelve a ningún nodo
+  // —`deriveSagaMap` solo pone `step` en nodos que existen— así que no produce
+  // fila, y si el paso 5 no se ve, el 6 sigue siendo el 6.
+  if (spineMode === "route") {
+    const steps = items.filter((n) => n.step !== null).sort((a, b) => a.step! - b.step!);
+    if (steps.length === 0) return [];
+    const rows: TimelineRow[] = steps.map((n) => ({ kind: "entry", no: n.step, node: n, branches: [] }));
+    return [{ groupSagaId: null, groupName: null, accent: "beige", rows }];
+  }
+
   const spine = items
     .filter((n) => n.orderNo !== null)
     .sort((a, b) => (a.orderNo! - b.orderNo!) || a.label.localeCompare(b.label));
@@ -56,7 +119,10 @@ export function deriveTimeline(graph: SagaGraph): TimelineSection[] {
   const rowByNodeId = new Map<string, Extract<TimelineRow, { kind: "entry" }>>();
   for (const n of spine) {
     const last = sections.at(-1);
-    const row: Extract<TimelineRow, { kind: "entry" }> = { kind: "entry", node: n, branches: [] };
+    // `orderNo` es 0-based (deriveSagaMap arranca su `orderCounter` en 0) y no
+    // tiene saltos: incrementa una vez por hueco. Así que +1 ES el rango 1..N
+    // de la columna. Antes se pintaba crudo y la primera obra salía como «Nº 0».
+    const row: Extract<TimelineRow, { kind: "entry" }> = { kind: "entry", no: n.orderNo! + 1, node: n, branches: [] };
     rowByNodeId.set(n.id, row);
     if (last && last.groupSagaId === n.groupSagaId) last.rows.push(row);
     else sections.push({ groupSagaId: n.groupSagaId, groupName: n.groupName, accent: n.accent, rows: [row] });
