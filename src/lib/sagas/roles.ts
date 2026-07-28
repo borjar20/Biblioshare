@@ -22,10 +22,6 @@ export const SAGA_ITEM_ROLES = [
   "spin_off",
   "companero",
   "crossover",
-  // Sale del vocabulario en la migración 20260807 (0 filas en producción). Se
-  // mantiene aquí mientras el enum de la BD lo tenga: la lista tiene que ser el
-  // enum, y `roles.test.ts` lo exige.
-  "paralela",
 ] as const;
 
 export type SagaItemRole = (typeof SAGA_ITEM_ROLES)[number];
