@@ -81,6 +81,10 @@ export function SessionNotebook({
     const formData = new FormData();
     formData.set("note", draft.body);
     formData.set("noteKind", draft.kind);
+    // addSession ya revalida todo al guardar la sesión — revalidar en cada
+    // nota individual, mientras la hoja sigue abierta, corre con guardar la
+    // SIGUIENTE nota y puede pisar su texto (ver comentario en addNote).
+    formData.set("skipRevalidate", "on");
     if (draft.favorite) formData.set("noteFavorite", "on");
     if (draft.spoiler) formData.set("noteSpoiler", "on");
     if (draft.public) formData.set("notePublic", "on");

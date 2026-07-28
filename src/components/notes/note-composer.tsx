@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
@@ -62,6 +62,13 @@ export function NoteComposer({
   const [open, setOpen] = useState(defaultOpen);
   const [kind, setKind] = useState<"note" | "quote">("quote");
   const [body, setBody] = useState("");
+  // Espejo síncrono de `body`, para el guard de la Step de guardado (modo
+  // onSave): el guardado es async (addNote, red), así que si el usuario ya
+  // empieza a escribir la SIGUIENTE nota mientras la anterior sigue en
+  // vuelo, el reset posterior no debe borrarle lo que lleva tecleado. Leer
+  // `body` directamente ahí sería una clausura vieja del render en que se
+  // lanzó el guardado; el ref siempre tiene el valor más reciente.
+  const bodyRef = useRef(body);
   // El anclaje NO se copia a estado: se deriva. `override` es null mientras el
   // usuario no toque el campo, y entonces manda la prop —que en la hoja de
   // sesión sigue en vivo al stepper de página—. En cuanto lo edita, manda su
@@ -79,6 +86,7 @@ export function NoteComposer({
   const [saving, setSaving] = useState(false);
 
   function changeBody(next: string) {
+    bodyRef.current = next;
     setBody(next);
     onHasBodyChange?.(next.trim().length > 0);
   }
@@ -253,6 +261,7 @@ export function NoteComposer({
             type="button"
             disabled={saving || body.trim().length === 0}
             onClick={async () => {
+              const submittedBody = body;
               setSaving(true);
               const ok = await onSave({
                 kind,
@@ -266,7 +275,13 @@ export function NoteComposer({
                 episode: anchor.kind === "episode" ? anchor.episode : null,
               });
               setSaving(false);
-              if (ok) {
+              // Guardar es async (addNote, red): si mientras esperaba el
+              // usuario ya empezó a escribir la SIGUIENTE nota, resetear a
+              // ciegas le borraría lo que lleva tecleado (carrera
+              // confirmada por e2e — notas-captura.spec.ts, "varias
+              // notas..."). bodyRef siempre tiene el valor más reciente,
+              // sin la clausura vieja del render en que se lanzó el guardado.
+              if (ok && bodyRef.current === submittedBody) {
                 setKind("quote");
                 changeBody("");
                 setOverride(null);

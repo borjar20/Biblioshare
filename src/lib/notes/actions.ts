@@ -97,8 +97,20 @@ export async function addNote(
 
   if (error || !data) return { error: "generic" };
 
-  revalidateItemPage(itemType, itemId);
-  revalidateProfilePages();
+  // SessionNotebook llama esta acción varias veces MIENTRAS la hoja de
+  // sesión sigue abierta (una por nota) — revalidar aquí dispara un refresh
+  // de Next.js que, si llega mientras el usuario ya está escribiendo la
+  // SIGUIENTE nota, le pisa el texto (carrera confirmada por e2e:
+  // notas-captura.spec.ts, "varias notas..."). addSession ya revalida todo
+  // (revalidateReadingLog cubre lo mismo que las dos líneas de abajo) al
+  // guardar la sesión, así que saltarlo aquí no deja nada sin refrescar en
+  // el camino normal — solo en el caso de abandonar la hoja sin guardar
+  // (D5 de la spec 2026-07-29), donde una carga completa más tarde ya trae
+  // la nota de todos modos.
+  if (formData.get("skipRevalidate") !== "on") {
+    revalidateItemPage(itemType, itemId);
+    revalidateProfilePages();
+  }
   return { id: data.id };
 }
 
