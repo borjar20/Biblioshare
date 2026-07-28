@@ -135,7 +135,11 @@ export async function SagaMapTab({
               impacto gráfico que el móvil recupera, aquí debajo del grafo. */}
           <div className="hidden flex-col lg:flex">
             <div className="overflow-hidden rounded-2xl border border-border">
-              <SagaGraphLazy graph={graph} className="h-[640px] w-full" />
+              {/* La lente de rol llega también al grafo (fase 6): la fase 5 la
+                  dejó gobernando solo el timeline, y con `?rol=` puesto las dos
+                  mitades de la misma pestaña contaban cosas distintas. Aquí
+                  ATENÚA, no filtra. */}
+              <SagaGraphLazy graph={graph} className="h-[640px] w-full" activeRole={activeRole} />
             </div>
             <div className="mt-3">
               <GraphLegend graph={graph} />
@@ -166,7 +170,7 @@ export async function SagaMapTab({
           {curatedGraph && (
             <div className="hidden flex-col lg:flex">
               <div className="overflow-hidden rounded-2xl border border-border">
-                <SagaGraphLazy graph={curatedGraph} className="h-[640px] w-full" />
+                <SagaGraphLazy graph={curatedGraph} className="h-[640px] w-full" activeRole={activeRole} />
               </div>
               <div className="mt-3">
                 <GraphLegend graph={curatedGraph} />

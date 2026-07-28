@@ -12,7 +12,11 @@ import type { SagaGraphNode } from "@/lib/sagas/map-types";
 // 58px (menor) y tarjeta de saga anidada. El lienzo es oscuro SIEMPRE (estética
 // del mockup), así que los textos usan tonos crema fijos, no tokens del theme.
 
-export type GraphFlowNode = Node<{ node: SagaGraphNode }, "cover" | "medallion" | "saga">;
+// `muted` = la lente de rol (`?rol=`) está puesta y este nodo no es de ese rol
+// (fase 6). Atenúa; NO oculta — un nodo que desaparece deja sus aristas
+// colgando y parte la cadena, que es el fallo de la issue #238. Viaja en el
+// dato porque React Flow no propaga props a los nodos custom.
+export type GraphFlowNode = Node<{ node: SagaGraphNode; muted?: boolean }, "cover" | "medallion" | "saga">;
 
 // Handles invisibles: React Flow los exige para pintar aristas, el viewer no
 // permite conectar.
@@ -86,7 +90,7 @@ function StepBadge({ step, size }: { step: number | null; size: "cover" | "medal
 export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
-    <div className="relative" style={{ width: NODE_BOX.cover.w }}>
+    <div className={`relative ${data.muted ? "opacity-30" : ""}`} style={{ width: NODE_BOX.cover.w }}>
       <Ports />
       <div
         className={`relative overflow-hidden rounded-md border-2 shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}
@@ -116,7 +120,10 @@ export function CoverNode({ data }: NodeProps<GraphFlowNode>) {
 export function MedallionNode({ data }: NodeProps<GraphFlowNode>) {
   const { node } = data;
   return (
-    <div className="relative" style={{ width: NODE_BOX.medallion.w, height: NODE_BOX.medallion.h }}>
+    <div
+      className={`relative ${data.muted ? "opacity-30" : ""}`}
+      style={{ width: NODE_BOX.medallion.w, height: NODE_BOX.medallion.h }}
+    >
       <Ports />
       <div
         className={`relative overflow-hidden rounded-full border-[2.5px] shadow-lg ${dimmed(node)} ${node.status === null ? "border-dashed" : ""}`}

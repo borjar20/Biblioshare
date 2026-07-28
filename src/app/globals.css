@@ -62,6 +62,13 @@
      luminancia también contrasta sobre --surface, que es donde va su muestra
      en la leyenda. */
   --map-itinerary-jump: #5b8dbf;
+  /* Los dos adornos del grafo 2D (fase 6, frame D): la cápsula que envuelve un
+     tándem y el marco del sujeto de una ventana. Fijos entre temas por el mismo
+     motivo que --map-itinerary-jump —el lienzo es oscuro siempre—, y valores
+     del mockup: violeta apagado para el tándem, teal para la ventana. Van
+     también en las dos muestras de la leyenda, que sí vive sobre --surface. */
+  --map-tandem: #7a5676;
+  --map-window: #5b989c;
 
   --status-planned: #b3a894;
   --status-in-progress: #c98a2b;
@@ -184,6 +191,8 @@
   --color-green: var(--green);
   --color-spine: var(--spine);
   --color-map-itinerary-jump: var(--map-itinerary-jump);
+  --color-map-tandem: var(--map-tandem);
+  --color-map-window: var(--map-window);
 
   --color-status-planned: var(--status-planned);
   --color-status-in-progress: var(--status-in-progress);
