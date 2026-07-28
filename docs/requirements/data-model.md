@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados **solo en dev** el 2026-07-28 — prod pendiente; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
 `saga_nodes`/`saga_edges`/`save_saga_graph` (§7.7)— **corregido aquí, 2026-07-27**: esta cabecera
 llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
 escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
@@ -911,7 +911,8 @@ fase 1 (§7, arriba) — issue cerrada con ese matiz, no confundir las dos parte
 
 ### 7.8 Metadatos del hueco compartido: `saga_tandems` (fase 2 del timeline con estados)
 
-Aplicada **solo en dev** al escribir esta sección (2026-07-28); prod pendiente, ver el aviso al final.
+Aplicada **en dev y en prod** el 2026-07-28, verificada contra los objetos reales (`to_regclass`, `pg_enum`,
+`pg_policies`, `pg_constraint`, `pg_proc`), nunca `list_migrations`. Sin backfill: la tabla nació vacía en prod.
 
 ```sql
 create type public.saga_tandem_mode as enum ('simultaneo', 'indistinto');
@@ -955,10 +956,19 @@ secuencia de UNA saga y solo el editor de esa saga lo escribe. La firma de SEIS 
 envoltorio que delega con `p_tandems = '[]'`, y se retira **después** del despliegue
 (`20260802_drop_save_saga_sequence_v6.sql`) — mismo baile que las fases 2b y 4.
 
-> ⚠️ **Riesgo mientras el envoltorio vive**, medido en dev, no supuesto: una llamada desde el bundle
-> viejo manda `p_tandems = '[]'` y **borra** los metadatos que el editor nuevo acabara de guardar.
-> Ventana de minutos entre la migración y el despliegue, con un único tándem en toda la producción
-> (Trono de Cristal, hueco 5).
+El envoltorio **ya se retiró** (`20260802_drop_save_saga_sequence_v6.sql`, dev y prod el 2026-07-28), después de
+confirmar que producción servía el bundle de siete argumentos. Mientras vivió, el riesgo era real y está medido en
+dev: una llamada del bundle viejo manda `p_tandems = '[]'` y **borra** los metadatos recién guardados.
+
+> ⚠️ **Lo que de verdad pasó en el despliegue, y conviene no repetir.** El orden correcto es migrar ANTES de
+> desplegar. Aquí fue al revés: el merge desplegó el bundle de siete argumentos a las 08:29:17Z y las migraciones
+> llegaron después, así que hubo una ventana en la que un guardado de secuencia en producción habría fallado con
+> «function does not exist» — el error opuesto al que documenta el párrafo de arriba. No hubo pérdida de datos
+> posible (el RPC es transaccional: o entra entero o no entra), pero el guardado habría rebotado.
+
+Primer dato real: el tándem de **Trono de Cristal** (hueco 5, *Imperio de Tormentas* + *Torre del Alba*) se curó
+desde la app desplegada nada más aplicar las migraciones, con `modo = 'simultaneo'` y sin nota — prueba en vivo de
+que producción escribe por la firma de siete.
 
 ## 8. Seguridad
 
