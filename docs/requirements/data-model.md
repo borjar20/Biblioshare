@@ -8,13 +8,14 @@ prod el 2026-07-27, fase cerrada, contra los objetos reales (`pg_type`, `pg_cons
 `pg_policies`, `pg_proc`, `to_regclass`), nunca contra `list_migrations`; **fase 4 del orden
 unificado —`saga_routes.is_reading_order` (§7.2) y el borrado explícito de ventanas por lista de
 sujetos (§7.6)— verificada en dev y **en prod** el 2026-07-28 contra `information_schema.columns`,
-`pg_indexes` y `pg_proc`: en los dos entornos existen la columna (`boolean NO false`), su unique
-parcial `saga_routes_reading_order_key` (`(saga_id) WHERE is_reading_order`) y las DOS sobrecargas
-de `save_saga_sequence` (cinco y seis argumentos, ambas `security definer`). El «sin backfill» se
-comprobó en el DATO, no solo en el DDL: prod tiene 3 itinerarios y **0 con `is_reading_order`**, y
-sus 2 ventanas siguen diciendo exactamente lo mismo que antes de migrar. **Pendiente en prod: solo
-el `DROP` de la sobrecarga de cinco argumentos** (`20260731_drop_save_saga_sequence_v5.sql`), que
-por diseño se aplica DESPUÉS de desplegar el bundle nuevo]**
+`pg_indexes` y `pg_proc`: en los dos entornos existen la columna (`boolean NO false`) y su unique
+parcial `saga_routes_reading_order_key` (`(saga_id) WHERE is_reading_order`). El «sin backfill» se
+comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y **0 con
+`is_reading_order`**, y sus 2 ventanas seguían diciendo exactamente lo mismo que antes.
+**Fase 4 CERRADA el 2026-07-28**: retirada también la sobrecarga de cinco argumentos
+(`20260731_drop_save_saga_sequence_v5.sql`), aplicada DESPUÉS de confirmar que el bundle nuevo
+servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
+argumentos, en dev y en prod]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -716,9 +717,10 @@ seguido de reinsert de lo que traiga el payload), a diferencia de `p_removed` (b
 > directas**, que es lo único que su editor enseña.
 >
 > Migraciones: `20260730_save_saga_sequence_subjects.sql` (crea la sobrecarga de seis; la de cinco
-> **sigue viva** hasta que el bundle nuevo esté desplegado, porque añadir un parámetro no reemplaza
-> la función, la sobrecarga) y `20260731_drop_save_saga_sequence_v5.sql`, que la retira **después**
-> del despliegue.
+> se quedó viva hasta que el bundle nuevo estuvo desplegado, porque añadir un parámetro no reemplaza
+> la función, la sobrecarga) y `20260731_drop_save_saga_sequence_v5.sql`, que la retiró **después**
+> del despliegue. **Las dos están aplicadas en dev y en prod (2026-07-28)** y hoy `pg_proc` devuelve
+> UNA sola firma, la de seis argumentos: ya no queda ningún camino que borre ventanas por saga.
 
 **Quién garantiza que solo una entrada `libre` tiene ventana** — ningún CHECK puede imponerlo, porque
 cruza dos tablas (`saga_placement_windows` no sabe qué vale `saga_items.placement`/

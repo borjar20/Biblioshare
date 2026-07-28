@@ -1,0 +1,16 @@
+-- supabase/migrations/20260731_drop_save_saga_sequence_v5.sql
+--
+-- Retirada de la sobrecarga de CINCO argumentos de `save_saga_sequence`, que
+-- vivía solo para que el bundle desplegado sin `p_window_subjects` no se
+-- quedara sin función entre la migración de la fase 4 y su despliegue. A partir
+-- del despliegue todo el mundo llama con seis.
+--
+-- ⚠️ Su cuerpo hacía `delete from saga_placement_windows where saga_id =
+-- p_saga_id` — reemplazo total por saga. Mientras siguiera viva, cualquier
+-- llamada con cinco argumentos borraría en silencio la ventana que la hija (o
+-- el padre) tuviera curada sobre la misma obra. Por eso se retira, no se deja
+-- «por si acaso».
+--
+-- Se verificó antes de aplicar que el bundle nuevo lleva sirviendo y que no
+-- queda ni una llamada con cinco argumentos en `src/`.
+drop function if exists public.save_saga_sequence(uuid, jsonb, jsonb, jsonb, jsonb);
