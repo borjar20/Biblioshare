@@ -4,12 +4,15 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { createCuratedOrder } from "@/lib/sagas/curated-order";
+import { deriveTimeline } from "@/lib/sagas/derive-timeline";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
+import type { SagaGraph } from "@/lib/sagas/map-types";
 import { resolveRoute, unnamedMembers } from "@/lib/sagas/resolve-route";
 import { isMemberCompleted } from "@/lib/sagas/completion";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
 import { AdoptRouteButton } from "./adopt-route-button";
+import { ReadingTimeline } from "./reading-timeline";
 import { RouteBlock } from "./route-block";
 
 // Una ruta curada: cabecera (nombre, resumen, contador PROPIO) + pasos.
@@ -19,10 +22,17 @@ export async function RouteView({
   detail,
   slug,
   canEdit,
+  graph,
 }: {
   detail: SagaDetail;
   slug: string;
   canEdit?: boolean;
+  /** Grafo del itinerario activo (con `step` en cada nodo por el que pasa), ya
+   *  derivado por `SagaMapTab` — no se deriva aquí para no repetir su
+   *  `getRouteEntries` en cada render. `null` cuando la saga no tiene nada
+   *  curado o tiene el mapa apagado: entonces se conserva la lista de pasos de
+   *  siempre, porque apagar el mapa no puede hacer desaparecer el itinerario. */
+  graph: SagaGraph | null;
 }) {
   const t = await getTranslations("saga");
   const supabase = await createClient();
@@ -85,6 +95,12 @@ export async function RouteView({
   // que no cuadra con el de arriba, no.
   const unnamed = row.isReadingOrder ? unnamedMembers(resolved, mainOrder(detail.saga.id), members) : [];
 
+  // Columna por PASOS (spec 2026-07-28, §1): `deriveTimeline` construía la
+  // columna con `orderNo` —el orden curado—, así que con un itinerario activo
+  // la columna salía en un orden y los números en otro. Es justo lo que hace
+  // que el lector se pierda.
+  const timelineSections = graph === null ? null : deriveTimeline(graph, { spine: "route" });
+
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-xl border border-border p-3">
@@ -117,7 +133,15 @@ export async function RouteView({
 
       {resolved.steps.length === 0 ? (
         <p className="py-6 text-center text-xs text-muted-foreground">{t("routeEmpty")}</p>
+      ) : timelineSections !== null ? (
+        // El timeline SUSTITUYE la lista de pasos, no se suma a ella: verlos dos
+        // veces seguidos es el ruido que la fase 4 evitó al no numerar por
+        // duplicado. Lo que solo tiene RouteView —nombre, resumen, «Llevas X de
+        // Y», adoptar y «Sin puesto en este itinerario»— se queda.
+        <ReadingTimeline sections={timelineSections} />
       ) : (
+        // Camino de respaldo, sin grafo que derivar (saga sin curar, o con el
+        // mapa apagado): la lista de pasos de siempre.
         <ol className="flex flex-col gap-2">
           {resolved.steps.map((step, i) => {
             // Key estable derivada del contenido, no del índice: RouteBlock es
