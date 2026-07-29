@@ -54,6 +54,7 @@ export default async function SagasIndexPage({
 
   const filtered = filterSagaIndex(data.cards, filterParams);
   const visible = filtered.slice(0, n);
+  const universeCount = data.cards.filter((c) => c.children.length > 0).length;
 
   function loadMoreHref() {
     const qs = new URLSearchParams();
@@ -69,8 +70,16 @@ export default async function SagasIndexPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        {/* «38 SAGAS · 6 UNIVERSOS · SIGUES 4»: el pulso del catálogo entero,
+            no el del filtro activo (ese va en el pie). */}
+        <p className="font-mono text-[10.5px] tracking-[0.06em] text-foreground-faint uppercase">
+          {t("headCountSagas", { count: data.cards.length })}
+          {` · ${t("headCountUniverses", { count: universeCount })}`}
+          {data.isAuthenticated && ` · ${t("headCountFollowing", { count: data.followedIds.size })}`}
+        </p>
+        <span className="ml-auto" />
         {canCurate && (
           <Link
             href="/sagas/nueva"
@@ -91,9 +100,14 @@ export default async function SagasIndexPage({
         />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* «El universo manda» (decisión 4 del rediseño): la tarjeta de una
+              saga con subsagas ocupa las dos columnas, porque encierra a sus
+              hijas y necesita sitio para sus chips. */}
+          <div className="grid gap-2.5 sm:grid-cols-2">
             {visible.map((card) => (
-              <SagaIndexCard key={card.id} card={card} isAuthenticated={data.isAuthenticated} />
+              <div key={card.id} className={card.children.length > 0 ? "sm:col-span-2" : undefined}>
+                <SagaIndexCard card={card} isAuthenticated={data.isAuthenticated} />
+              </div>
             ))}
           </div>
           <div className="flex items-center gap-3 border-t border-border pt-4">

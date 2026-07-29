@@ -1334,9 +1334,14 @@
       "movie": "{count, plural, =1 {1 película} other {# películas}}",
       "series": "{count, plural, =1 {1 serie} other {# series}}"
     },
-    "moreSubsagas": "{count, plural, =1 {+1 más} other {+# más}}",
+    "moreSubsagas": "{count, plural, =1 {+1 subsaga} other {+# subsagas}}",
     "ownedCount": "{count, plural, =1 {◐ 1 en tu colección} other {◐ # en tu colección}}",
-    "readingLabel": "leyendo «{name}»",
+    "readingLabel": "leyendo por «{name}»",
+    "followAria": "Seguir esta saga",
+    "followingAria": "Sigues esta saga",
+    "headCountSagas": "{count, plural, =1 {1 saga} other {# sagas}}",
+    "headCountUniverses": "{count, plural, =1 {1 universo} other {# universos}}",
+    "headCountFollowing": "sigues {count}",
     "view": {
       "todas": "Todas",
       "sigo": "Las que sigo",
