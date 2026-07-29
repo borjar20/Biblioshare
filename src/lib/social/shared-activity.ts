@@ -119,6 +119,7 @@ export async function resolveSharedActivity(
       reviewExcerpt: null,
       episode: null,
       progress: null,
+      reviewMeta: null,
       interactionTarget: null,
       reactionCount: 0,
       viewerReacted: false,
@@ -166,6 +167,7 @@ export async function resolveSharedActivity(
       // solo toca el fan-out de `getFeed`, no este resolver de una fila
       // suelta para compartir en clubes) — ver issue de seguimiento.
       progress: { durationMinutes: row.duration_minutes, page: null, percent: null, note: null },
+      reviewMeta: null,
       interactionTarget: null,
       reactionCount: 0,
       viewerReacted: false,
@@ -228,6 +230,7 @@ export async function resolveSharedActivity(
       reviewExcerpt: excerpt(row.review),
       episode: null,
       progress: null,
+      reviewMeta: null,
       interactionTarget: { targetType: "diary_entry", targetId: row.id },
       reactionCount: 0,
       viewerReacted: false,
@@ -274,6 +277,7 @@ export async function resolveSharedActivity(
     reviewExcerpt: excerpt(row.review),
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },
     progress: null,
+    reviewMeta: null,
     interactionTarget: { targetType: "episode_watch", targetId: row.id },
     reactionCount: 0,
     viewerReacted: false,

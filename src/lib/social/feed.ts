@@ -41,6 +41,9 @@ export type FeedEvent = {
   rating: number | null;
   reviewExcerpt: string | null;
   episode: { season: number; episode: number; title: string | null } | null;
+  // Meta de la tarjeta de reseña (variant C): solo se rellena para
+  // finished/rated/reviewed (bucle de diary). El resto de verbos van a null.
+  reviewMeta: { readingDays: number | null; totalPages: number | null } | null;
   // `progress_sessions.note` (la copia privada) NUNCA se sirve aquí, a
   // propósito: sigue sin política de lectura pública — es el "por ahora nadie
   // más la ve" que promete el compositor. El texto que SÍ se sirve es la fila
@@ -264,7 +267,7 @@ export async function getFeed(
           // después vía pass_reviews.
           let q = supabase
             .from("passes")
-            .select("id, user_id, item_type, item_id, finished_on, rating")
+            .select("id, user_id, item_type, item_id, finished_on, started_on, rating")
             .in("user_id", followedIds)
             // Un pase abierto no es actividad terminada: no aparece en el
             // feed social de gente a la que sigues.
@@ -487,6 +490,7 @@ export async function getFeed(
       reviewExcerpt: null,
       episode: null,
       progress: null,
+      reviewMeta: null,
       interactionTarget: { targetType: "pass", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,
@@ -530,6 +534,7 @@ export async function getFeed(
           note: noteBySession.get(r.id) ?? null,
         };
       })(),
+      reviewMeta: null,
       interactionTarget: { targetType: "progress_session", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,
@@ -567,6 +572,13 @@ export async function getFeed(
       reviewExcerpt: excerpt(reviewText),
       episode: null,
       progress: null,
+      reviewMeta: {
+        readingDays:
+          r.started_on && r.finished_on
+            ? Math.max(1, Math.round((Date.parse(r.finished_on) - Date.parse(r.started_on)) / 86_400_000) + 1)
+            : null,
+        totalPages: catalogByKey.get(`${r.item_type}:${r.item_id}`)?.totalPages ?? null,
+      },
       interactionTarget: { targetType: "diary_entry", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,
@@ -602,6 +614,7 @@ export async function getFeed(
           titleByEpisode.get(`${r.series_id}:${r.season_number}:${r.episode_number}`) ?? null,
       },
       progress: null,
+      reviewMeta: null,
       interactionTarget: { targetType: "episode_watch", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,
