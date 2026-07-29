@@ -30,6 +30,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
+import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
@@ -298,6 +299,16 @@ async function MovieTabs({
   // El rol ya viaja resuelto desde el bloque paralelo de arriba.
   const canContribute = role ? hasMinRole(role, "collaborator") : false;
 
+  // Mismo criterio que en la ficha de libro (borrado rápido de versiones): solo
+  // colaborador+ paga la consulta. Aquí las ediciones ya vienen resueltas —no
+  // hay sync externo que esperar—, así que la promesa es directa.
+  const usedEditionIdsPromise = canContribute
+    ? getUsedEditionIds(
+        supabase,
+        editions.map((e) => e.id),
+      )
+    : Promise.resolve<string[]>([]);
+
   const metaRows: MetaRow[] = [];
   if (movie.director)
     metaRows.push({ label: tMeta("director"), value: movie.director });
@@ -409,6 +420,7 @@ async function MovieTabs({
                   itemType="movie"
                   itemId={movie.id}
                   editionsPromise={Promise.resolve(editions)}
+                  usedEditionIdsPromise={usedEditionIdsPromise}
                   editionsFallback={<EditionsLoading />}
                   selectedEditionId={
                     passes.find((p) => !p.finishedOn)?.editionId ?? null

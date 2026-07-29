@@ -20,6 +20,7 @@ export function EditionsSection({
   itemType,
   itemId,
   editionsPromise,
+  usedEditionIdsPromise,
   selectedEditionId,
   canContribute,
   editionsFallback,
@@ -29,6 +30,10 @@ export function EditionsSection({
   /** Se resuelve con las ediciones (posible sync desde OpenLibrary): llega por
    *  streaming, resuelto con use() dentro del <Suspense>. */
   editionsPromise: Promise<Edition[]>;
+  /** Ediciones con pases, que NO se pueden borrar. Se encadena sobre
+   *  editionsPromise en la página, así que llega por el mismo streaming y no
+   *  retrasa la tira. Es `[]` para quien no puede contribuir. */
+  usedEditionIdsPromise: Promise<string[]>;
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
   canContribute: boolean;
@@ -41,6 +46,7 @@ export function EditionsSection({
         itemType={itemType}
         itemId={itemId}
         editionsPromise={editionsPromise}
+        usedEditionIdsPromise={usedEditionIdsPromise}
         selectedEditionId={selectedEditionId}
         canContribute={canContribute}
       />
@@ -52,14 +58,23 @@ export function EditionsSection({
 // están.
 function ResolvedEditionStrip({
   editionsPromise,
+  usedEditionIdsPromise,
   ...props
 }: {
   itemType: ItemType;
   itemId: string;
   editionsPromise: Promise<Edition[]>;
+  usedEditionIdsPromise: Promise<string[]>;
   selectedEditionId: string | null;
   canContribute: boolean;
 }) {
   const editions = use(editionsPromise);
-  return <EditionStrip editions={editions} {...props} />;
+  const usedEditionIds = use(usedEditionIdsPromise);
+  return (
+    <EditionStrip
+      editions={editions}
+      usedEditionIds={usedEditionIds}
+      {...props}
+    />
+  );
 }

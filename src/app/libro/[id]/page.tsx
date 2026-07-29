@@ -32,6 +32,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getCommunity } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
 import { loadBookEditions } from "@/lib/editions/load-editions";
+import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
@@ -367,6 +368,20 @@ async function BookTabs({
   // ya viaja resuelto desde el bloque paralelo de arriba.
   const canContribute = role ? hasMinRole(role, "collaborator") : false;
 
+  // Borrado rápido de ediciones (colaborador+): saber cuáles tienen pases para
+  // no ofrecer un borrado que el trigger va a rechazar. Solo se paga la
+  // consulta si quien mira puede borrar. Se ENCADENA sobre editionsPromise en
+  // vez de esperarla: así el dato viaja por el mismo <Suspense> que la tira y
+  // no bloquea la página.
+  const usedEditionIdsPromise = canContribute
+    ? editionsPromise.then((eds) =>
+        getUsedEditionIds(
+          supabase,
+          eds.map((e) => e.id),
+        ),
+      )
+    : Promise.resolve<string[]>([]);
+
   const authorNames =
     authorCredits.length > 0
       ? authorCredits.map((a) => a.name)
@@ -475,6 +490,7 @@ async function BookTabs({
                 itemType="book"
                 itemId={book.id}
                 editionsPromise={editionsPromise}
+                usedEditionIdsPromise={usedEditionIdsPromise}
                 editionsFallback={<EditionsLoading />}
                 selectedEditionId={
                   passes.find((p) => !p.finishedOn)?.editionId ?? null

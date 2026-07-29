@@ -34,6 +34,7 @@ export function EditionStrip({
   itemId,
   editions,
   selectedEditionId,
+  usedEditionIds,
   canContribute,
 }: {
   itemType: ItemType;
@@ -41,6 +42,8 @@ export function EditionStrip({
   editions: Edition[];
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
+  /** Ediciones con pases registrados: no se ofrece borrarlas. */
+  usedEditionIds: string[];
   canContribute: boolean;
 }) {
   const t = useTranslations("editions");
