@@ -62,7 +62,7 @@ export default function RootLayout({
             solo de las que pasan por la ficha. */}
         <SessionOriginTracker />
         <NextIntlClientProvider>
-          <SplashScreen />
+          {/* <SplashScreen /> */}
           <AppShell>{children}</AppShell>
           {modal}
         </NextIntlClientProvider>
