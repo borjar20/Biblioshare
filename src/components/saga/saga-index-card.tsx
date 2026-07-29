@@ -47,7 +47,9 @@ export async function SagaIndexCard({
 
   return (
     <article
-      className={`group relative flex gap-3 rounded-xl border border-border bg-surface p-3 ${
+      // h-full: la tarjeta llena la celda de la rejilla, para que las de una
+      // misma fila queden a la misma altura aunque tengan distintas líneas.
+      className={`group relative flex h-full gap-3 rounded-xl border border-border bg-surface p-3 ${
         card.isFollowed ? "pl-[15px] shadow-[inset_3px_0_0_var(--accent)]" : ""
       }`}
     >

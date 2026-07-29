@@ -13,7 +13,7 @@ const VIEWS: SagaIndexView[] = ["todas", "sigo", "universos"];
 const TYPES: SagaIndexType[] = ["libro", "pelicula", "serie"];
 
 function segClass(active: boolean) {
-  return `flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium transition-colors ${
+  return `flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium whitespace-nowrap transition-colors ${
     active ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
   }`;
 }
@@ -63,9 +63,12 @@ export async function SagaIndexFilters({
     (params.min5 ? 1 : 0);
 
   return (
-    <div className="flex flex-col gap-2.5">
+    // Una sola fila a partir de `sm`, como la barra del mockup: buscador
+    // acotado + vista + Filtros. A ancho completo (1152 px) un buscador
+    // estirado de lado a lado desperdicia la fila y desequilibra la barra.
+    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
       {/* Búsqueda server por query param (GET), patrón /buscar. */}
-      <form action="/sagas" className="relative">
+      <form action="/sagas" className="relative sm:w-[280px] sm:shrink-0">
         <SearchIcon
           aria-hidden
           className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -80,8 +83,8 @@ export async function SagaIndexFilters({
       </form>
 
       {/* En móvil (<sm) apila: segmentado ancho completo, luego Filtros —
-          spec Fase 5. En sm+ van en la misma fila. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          spec Fase 5. En sm+ comparten fila con el buscador. */}
+      <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex w-full rounded-lg bg-surface-muted p-1 sm:w-auto">
           {VIEWS.map((v) => (
             <Link key={v} href={buildHref({ vista: v })} className={segClass(params.vista === v)}>
