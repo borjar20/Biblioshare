@@ -1326,6 +1326,31 @@
     "accentAuto": "Automático",
     "create": "Crear saga",
     "creating": "Creando…",
+    "badgeUniverse": "Universo",
+    "badgeGraph": "◆ Grafo",
+    "badgeItineraries": "{count, plural, =1 {✦ 1 itinerario} other {✦ # itinerarios}}",
+    "typeCount": {
+      "book": "{count, plural, =1 {1 libro} other {# libros}}",
+      "movie": "{count, plural, =1 {1 película} other {# películas}}",
+      "series": "{count, plural, =1 {1 serie} other {# series}}"
+    },
+    "moreSubsagas": "{count, plural, =1 {+1 más} other {+# más}}",
+    "ownedCount": "{count, plural, =1 {◐ 1 en tu colección} other {◐ # en tu colección}}",
+    "readingLabel": "leyendo «{name}»",
+    "view": {
+      "todas": "Todas",
+      "sigo": "Las que sigo",
+      "universos": "Universos"
+    },
+    "filtersLabel": "Filtros",
+    "filterTypeLabel": "Tipo",
+    "filterOtherLabel": "Otros",
+    "filterItineraries": "✦ Con itinerarios",
+    "filterCollection": "◐ En mi colección",
+    "filterMin5": "≥ 5 títulos",
+    "clearFilters": "Limpiar",
+    "showingCount": "Mostrando {shown} de {total} sagas con los filtros activos.",
+    "loadMore": "Cargar más",
     "errors": {
       "forbidden": "Solo los colaboradores pueden crear sagas.",
       "nameRequired": "El nombre es obligatorio.",
