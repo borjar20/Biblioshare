@@ -158,4 +158,35 @@ test.describe("itinerarios de lectura", () => {
     await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/rutas`);
     await expect(page.getByRole("heading", { name: "Itinerarios de lectura" })).toBeVisible();
   });
+
+  // Editor de PASOS (issue #261, rediseño M5-M7+D2). El viewport por defecto
+  // de Playwright (Desktop Chrome) cae en la cáscara de escritorio: el
+  // buscador de añadir vive directo en el raíl, sin hoja que abrir. Usa el
+  // mismo seed que el resto del fichero: la subsaga "[QA Itinerarios] La
+  // Guardia" (2 obras) es hoy el único paso de "la-guardia"; añadir "[QA
+  // Itinerarios] Ronda de noche" y quitarla dentro del mismo test deja el
+  // seed intacto para la próxima pasada.
+  test("anadir un paso desde el buscador y quitarlo deja el borrador limpio", async ({ page }) => {
+    await loginAsCollaborator(page);
+    await page.goto(`/saga/${UNIVERSO_ID}/rutas/la-guardia/editar`);
+
+    await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
+
+    await page.getByPlaceholder("Buscar en la saga…").fill("Ronda de noche");
+    await page.getByRole("button", { name: /Ronda de noche/ }).click();
+
+    // `:visible`/`locator("visible=true")`: las dos cáscaras se montan a la
+    // vez y se ocultan por breakpoint (regla de los dos árboles, ya
+    // documentada en sagas-colocacion-opcionalidad.spec.ts) — sin esto el
+    // locator encuentra dos elementos, uno por cáscara.
+    await expect(page.getByText("1 añadido").locator("visible=true")).toBeVisible();
+
+    await page
+      .locator("li:visible")
+      .filter({ hasText: "Ronda de noche" })
+      .getByRole("button", { name: "Quitar" })
+      .click();
+
+    await expect(page.getByText("Sin cambios").locator("visible=true")).toBeVisible();
+  });
 });

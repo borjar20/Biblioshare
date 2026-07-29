@@ -1,67 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
+import { SheetShell } from "../sheet-shell";
 import { RouteForm } from "./route-form";
 import type { RouteRowData } from "./route-row";
-
-/** Chasis común de las dos hojas. `<dialog>` nativo con `showModal()`, como el
- *  resto de hojas del repo (`sequence/row-sheet.tsx`, `item-connect-sheet.tsx`):
- *  trae gratis el cierre con Escape, la trampa de foco y el `inert` del fondo.
- *  Reimplementarlo con un div superpuesto sería perder las tres cosas.
- *
- *  Pegada abajo en móvil y modal centrado en `lg`, el mismo breakpoint en que
- *  se cambian las cáscaras: en escritorio no hay pulgar al que acercarla. */
-function SheetShell({
-  title,
-  caption,
-  onClose,
-  children,
-}: {
-  title: string;
-  caption?: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  const t = useTranslations("sagaEditor");
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
-
-  return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      aria-label={title}
-      onClick={(e) => {
-        if (e.target === ref.current) ref.current?.close();
-      }}
-      className="m-auto mb-0 mt-auto w-full max-w-lg rounded-t-[18px] border border-border bg-surface p-0 text-foreground backdrop:bg-scrim lg:mb-auto lg:rounded-2xl"
-    >
-      <div className="px-4 pb-5 pt-3.5">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-surface-3 lg:hidden" aria-hidden />
-        <div className="mb-3.5 flex items-baseline gap-2.5">
-          <b className="min-w-0 flex-1 truncate font-serif text-[16px] font-semibold">{title}</b>
-          {caption && (
-            <span className="font-mono text-[9px] uppercase tracking-wide text-foreground-faint">{caption}</span>
-          )}
-          <button
-            type="button"
-            onClick={() => ref.current?.close()}
-            aria-label={t("close")}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border"
-          >
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </dialog>
-  );
-}
 
 /** Menú de una fila y, dentro, la zona de peligro del borrado — la misma
  *  confirmación en dos pasos de `saga-meta-editor.tsx`, porque es el mismo tipo
