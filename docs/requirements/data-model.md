@@ -21,13 +21,16 @@ toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path`
 `save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
 defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
 `list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
-`anon`]**
+`anon`; `target_kind` ampliado con `pass`/`progress_session` para el feed agrupado de Inicio
+(§5), aplicado y verificado en dev y en prod el 2026-07-29 (migraciones
+`20260812_feed_targets_enum.sql` y `20260813_feed_targets_can_view.sql`)]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
-> **2026-07-21**: 42 tablas, todas con RLS activa. Donde otro doc lo contradiga,
-> manda este — y varios docs antiguos aún dicen `diary_entries`, que **ya no existe**
-> (ver §0).
+> **2026-07-29** (delta de `target_kind`/`can_view_target` del feed agrupado de Inicio;
+> el resto del esquema sigue verificado el 2026-07-21): 42 tablas, todas con RLS activa.
+> Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
+> `diary_entries`, que **ya no existe** (ver §0).
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -215,6 +218,18 @@ desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` 
 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
+
+**Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
+`20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
+el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor+día y
+actor+obra+día respectivamente, ver `decisiones.md`), pero cada reacción/comentario sigue
+apuntando a la fila real — `passes` o `progress_sessions` — nunca a un id sintético del grupo;
+de ahí que hicieran falta valores de enum nuevos en vez de reutilizar el `diary_entry` legado.
+`can_view_target()` gana dos ramas con el mismo patrón que las demás: `pass` resuelve vía
+`exists(select 1 from passes p where p.id = target_id and can_view_profile(p.user_id))`, y
+`progress_session` vía `progress_sessions s`/`s.user_id`. Con esto, los eventos `added` (pase
+nuevo) y `progressed` (sesión de progreso) del feed pasan a ser reaccionables/comentables —
+antes no tenían ningún target.
 
 ## 6. Clubes
 
