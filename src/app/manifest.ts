@@ -7,8 +7,13 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Tu biblioteca de libros, películas y series en un solo lugar.",
     start_url: "/",
     display: "standalone",
-    // Espejo manual de --background y --accent (modo claro) de globals.css.
-    background_color: "#f3ece1",
+    // theme_color = --accent (modo claro) de globals.css.
+    // background_color = --accent a propósito (NO --background): es el fondo del
+    // splash nativo de Android (icono de la marca centrado sobre él) y del
+    // primer paint de la PWA. En terracota casa con el overlay `SplashScreen`,
+    // así que el arranque nativo y el web se ven iguales, sin flash de papel
+    // antes de la marca.
+    background_color: "#b0542f",
     theme_color: "#b0542f",
     icons: [
       {
