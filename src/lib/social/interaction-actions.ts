@@ -61,6 +61,11 @@ const LIKE_NOTIFICATION_TYPE: Record<ReactableTargetType, NotificationType | nul
   comment: "comment_liked",
   activity_checkpoint: null,
   club_activity: null,
+  // Reaccionar/comentar una actividad del feed (alta o sesión) NO notifica en
+  // este MVP — no hay tipo de notificación para ello (como activity_checkpoint).
+  // → issue "notificaciones para reacciones en added/progressed".
+  pass: null,
+  progress_session: null,
 };
 const COMMENT_NOTIFICATION_TYPE: Record<TargetType, NotificationType | null> = {
   diary_entry: "review_commented",
@@ -68,6 +73,11 @@ const COMMENT_NOTIFICATION_TYPE: Record<TargetType, NotificationType | null> = {
   club_post: "club_post_commented",
   activity_checkpoint: null,
   club_activity: null,
+  // Reaccionar/comentar una actividad del feed (alta o sesión) NO notifica en
+  // este MVP — no hay tipo de notificación para ello (como activity_checkpoint).
+  // → issue "notificaciones para reacciones en added/progressed".
+  pass: null,
+  progress_session: null,
 };
 
 export async function toggleReaction(
@@ -106,7 +116,14 @@ export async function toggleReaction(
     if (error) throw error;
 
     const notificationType = LIKE_NOTIFICATION_TYPE[targetType];
-    if (notificationType && targetType !== "activity_checkpoint") {
+    // pass/progress_session (como activity_checkpoint) no notifican en este
+    // MVP -- se excluyen también del tipo para que encaje en ReviewTargetType.
+    if (
+      notificationType &&
+      targetType !== "activity_checkpoint" &&
+      targetType !== "pass" &&
+      targetType !== "progress_session"
+    ) {
       try {
         const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
         if (ownerId && ownerId !== user.id) {
@@ -151,7 +168,14 @@ export async function addComment(
   if (error) throw error;
 
   const notificationType = COMMENT_NOTIFICATION_TYPE[targetType];
-  if (notificationType && targetType !== "activity_checkpoint") {
+  // pass/progress_session (como activity_checkpoint) no notifican en este
+  // MVP -- se excluyen también del tipo para que encaje en ReviewTargetType.
+  if (
+    notificationType &&
+    targetType !== "activity_checkpoint" &&
+    targetType !== "pass" &&
+    targetType !== "progress_session"
+  ) {
     try {
       const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
       if (ownerId && ownerId !== user.id) {

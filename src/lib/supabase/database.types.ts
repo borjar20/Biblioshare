@@ -2348,6 +2348,8 @@ export type Database = {
         | "comment"
         | "activity_checkpoint"
         | "club_activity"
+        | "pass"
+        | "progress_session"
       user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
@@ -2523,6 +2525,8 @@ export const Constants = {
         "comment",
         "activity_checkpoint",
         "club_activity",
+        "pass",
+        "progress_session",
       ],
       user_role: ["user", "collaborator", "admin"],
     },

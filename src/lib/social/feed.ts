@@ -51,7 +51,7 @@ export type FeedEvent = {
   // muro público con filtro spoiler-safe, lo que se sirva será la fila de
   // `notes` que el usuario haya marcado, no esta columna.
   progress: { durationMinutes: number | null } | null;
-  interactionTarget: { targetType: "diary_entry" | "episode_watch"; targetId: string } | null;
+  interactionTarget: { targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session"; targetId: string } | null;
   reactionCount: number;
   viewerReacted: boolean;
   commentCount: number;
@@ -461,7 +461,7 @@ export async function getFeed(
       reviewExcerpt: null,
       episode: null,
       progress: null,
-      interactionTarget: null,
+      interactionTarget: { targetType: "pass", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -493,7 +493,7 @@ export async function getFeed(
       reviewExcerpt: null,
       episode: null,
       progress: { durationMinutes: r.duration_minutes },
-      interactionTarget: null,
+      interactionTarget: { targetType: "progress_session", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -615,14 +615,25 @@ export async function getFeed(
   const episodeTargetIds = personEvents
     .filter((e) => e.interactionTarget?.targetType === "episode_watch")
     .map((e) => e.interactionTarget!.targetId);
-  const [diarySummaries, episodeSummaries] = await Promise.all([
+  const passTargetIds = personEvents
+    .filter((e) => e.interactionTarget?.targetType === "pass")
+    .map((e) => e.interactionTarget!.targetId);
+  const sessionTargetIds = personEvents
+    .filter((e) => e.interactionTarget?.targetType === "progress_session")
+    .map((e) => e.interactionTarget!.targetId);
+  const [diarySummaries, episodeSummaries, passSummaries, sessionSummaries] = await Promise.all([
     getInteractionSummary(supabase, "diary_entry", diaryTargetIds),
     getInteractionSummary(supabase, "episode_watch", episodeTargetIds),
+    getInteractionSummary(supabase, "pass", passTargetIds),
+    getInteractionSummary(supabase, "progress_session", sessionTargetIds),
   ]);
   for (const e of personEvents) {
     if (!e.interactionTarget) continue;
     const summaries =
-      e.interactionTarget.targetType === "diary_entry" ? diarySummaries : episodeSummaries;
+      e.interactionTarget.targetType === "diary_entry" ? diarySummaries
+      : e.interactionTarget.targetType === "episode_watch" ? episodeSummaries
+      : e.interactionTarget.targetType === "pass" ? passSummaries
+      : sessionSummaries;
     const s = summaries.get(e.interactionTarget.targetId);
     if (s) {
       e.reactionCount = s.reactionCount;
