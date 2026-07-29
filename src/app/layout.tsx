@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/nav/app-shell";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { SplashScreen } from "@/components/splash/splash-screen";
 import { SessionOriginTracker } from "@/components/session/session-origin";
 import "./globals.css";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
             solo de las que pasan por la ficha. */}
         <SessionOriginTracker />
         <NextIntlClientProvider>
+          <SplashScreen />
           <AppShell>{children}</AppShell>
           {modal}
         </NextIntlClientProvider>
