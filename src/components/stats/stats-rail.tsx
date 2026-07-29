@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getAnnualGoals } from "@/lib/challenges/annual-goals";
@@ -27,6 +28,7 @@ import { GoalRows } from "./goal-rows";
 export async function StatsRail({ userId }: { userId: string }) {
   const supabase = await createClient();
   const year = new Date().getFullYear();
+  const tRail = await getTranslations("statsRail");
   const [profile, weekly, streaks, annual, annualGoals] = await Promise.all([
     getOwnProfile(supabase, userId),
     getWeeklyActivity(supabase, userId),
@@ -45,17 +47,15 @@ export async function StatsRail({ userId }: { userId: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          <StreakCard streaks={streaks} />
-        </div>
-        <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          <BookGoalCard completed={annual.byType.book} goal={annualGoals.book} />
-        </div>
-      </div>
-
       <div className="rounded-card border border-border bg-surface shadow-card p-4">
-        <GoalRows annual={annual} annualGoals={annualGoals} />
+        <p className="mb-3 font-serif text-[15px] font-semibold">{tRail("year2026")}</p>
+        <div className="flex flex-col gap-3">
+          <BookGoalCard completed={annual.byType.book} goal={annualGoals.book} />
+          <GoalRows annual={annual} annualGoals={annualGoals} />
+          <div className="border-t border-border pt-3">
+            <StreakCard streaks={streaks} />
+          </div>
+        </div>
       </div>
     </div>
   );

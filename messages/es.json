@@ -1535,6 +1535,9 @@
     "decadesTitle": "Décadas de publicación",
     "decadesEmpty": "Sin fechas de publicación que mostrar."
   },
+  "statsRail": {
+    "year2026": "Tu 2026"
+  },
   "admin": {
     "navLabel": "Admin",
     "title": "Gestión de usuarios",

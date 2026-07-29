@@ -65,7 +65,7 @@ export default async function Home({
   // comparte pantalla con tus stats y la página deja de ser solo una lista.
   // Duplicados sin estado, así que el patrón de dos árboles es seguro.
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1080px] lg:px-7 lg:pt-[26px]">
+    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1200px] lg:px-7 lg:pt-[26px]">
       <div className="hidden pb-2.5 lg:block">
         <h1 className="font-serif text-[30px] leading-none font-semibold tracking-tight">
           {t("home.greeting", { name: profile?.displayName || profile?.username || "" })}
@@ -91,7 +91,7 @@ export default async function Home({
         <TodayBlock userId={user.id} />
       </Suspense>
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_312px] lg:items-start lg:gap-7">
+      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_328px] lg:items-start lg:gap-7">
         <div className="min-w-0">
           {/* En móvil "Novedades" encabeza el FEED, no la página: encima está
               el bloque de hoy, que es quien abre el Inicio (frame G). Es la
