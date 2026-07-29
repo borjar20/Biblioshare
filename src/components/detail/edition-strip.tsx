@@ -1,15 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
 import { formatEdition, formatEditionMeta } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { createEdition, type CreateEditionState } from "@/lib/editions/actions";
+import {
+  deleteEdition,
+  type DeleteEditionState,
+} from "@/lib/catalog/edit-actions";
 import { EditionFields } from "./edition-fields";
 import { Button } from "@/components/ui/button";
-import { CheckIcon, PlusIcon } from "@/components/ui/icons";
+import { CheckIcon, PlusIcon, XIcon } from "@/components/ui/icons";
 
 const initialState: CreateEditionState = {};
 
@@ -34,6 +38,7 @@ export function EditionStrip({
   itemId,
   editions,
   selectedEditionId,
+  usedEditionIds,
   canContribute,
 }: {
   itemType: ItemType;
@@ -41,6 +46,8 @@ export function EditionStrip({
   editions: Edition[];
   /** La edición del pase abierto del que mira, si tiene. */
   selectedEditionId: string | null;
+  /** Ediciones con pases registrados: no se ofrece borrarlas. */
+  usedEditionIds: string[];
   canContribute: boolean;
 }) {
   const t = useTranslations("editions");
@@ -75,6 +82,41 @@ export function EditionStrip({
 
   const [expanded, setExpanded] = useState(false);
   const hasMore = ordered.length > PC_PREVIEW;
+
+  // Borrado rápido (colaborador+): un único <dialog> reutilizado, con la
+  // edición pendiente en estado. Mismo patrón que hero-menu.tsx — el <dialog>
+  // nativo ya da foco, Escape y cierre por clic fuera.
+  const used = new Set(usedEditionIds);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
+  const [pendingDelete, setPendingDelete] = useState<Edition | null>(null);
+  const [deleteState, setDeleteState] = useState<DeleteEditionState>({});
+  const [deletePending, startDeleteTransition] = useTransition();
+
+  useEffect(() => {
+    const dialog = deleteDialogRef.current;
+    if (!dialog) return;
+    if (pendingDelete && !dialog.open) dialog.showModal();
+    if (!pendingDelete && dialog.open) dialog.close();
+  }, [pendingDelete]);
+
+  function askDelete(edition: Edition) {
+    // El error de un intento anterior no puede sobrevivir a abrir otra
+    // edición: diría "en uso" de algo que sí se puede borrar.
+    setDeleteState({});
+    setPendingDelete(edition);
+  }
+
+  function confirmDelete() {
+    const edition = pendingDelete;
+    if (!edition) return;
+    startDeleteTransition(async () => {
+      const result = await deleteEdition(edition.id, itemType, itemId);
+      setDeleteState(result);
+      // Con error el diálogo SE QUEDA abierto: `inUse` es información útil
+      // (hay pases contra esa edición), no un fallo que esconder.
+      if (result.ok) setPendingDelete(null);
+    });
+  }
 
   if (editions.length === 0 && !canContribute) return null;
 
@@ -135,6 +177,20 @@ export function EditionStrip({
                 >
                   <CheckIcon className="h-3.5 w-3.5" />
                 </span>
+              )}
+              {/* El × no compite con el ✓ por la esquina: la edición marcada
+                  como «La tuya» es la del pase abierto de quien mira, así que
+                  siempre está en uso y nunca ofrece borrado. */}
+              {canContribute && !used.has(edition.id) && (
+                <button
+                  type="button"
+                  data-testid="delete-edition"
+                  aria-label={t("delete", { label: edition.label })}
+                  onClick={() => askDelete(edition)}
+                  className="absolute top-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-status-dropped"
+                >
+                  <XIcon aria-hidden className="h-3 w-3" />
+                </button>
               )}
               <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                 <span
@@ -212,6 +268,59 @@ export function EditionStrip({
           )}
         </form>
       )}
+
+      <dialog
+        ref={deleteDialogRef}
+        data-testid="delete-edition-dialog"
+        onClose={() => setPendingDelete(null)}
+        aria-label={t("confirmTitle")}
+        className="m-auto w-[min(360px,92vw)] rounded-card border border-border bg-surface p-0 text-foreground shadow-card backdrop:bg-scrim"
+        onClick={(event) => {
+          if (event.target === deleteDialogRef.current) setPendingDelete(null);
+        }}
+      >
+        <div className="flex flex-col gap-3 p-5">
+          <p className="text-sm font-semibold">{t("confirmTitle")}</p>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-mono text-xs uppercase">
+              {pendingDelete?.label}
+            </span>
+            {" — "}
+            {t("confirmBody")}
+          </p>
+
+          {deleteState.error && (
+            <p className="text-sm text-status-dropped">
+              {t(
+                deleteState.error === "inUse"
+                  ? "errors.inUse"
+                  : deleteState.error === "forbidden"
+                    ? "errors.deleteForbidden"
+                    : "errors.deleteFailed",
+              )}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setPendingDelete(null)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={deletePending}
+              onClick={confirmDelete}
+              className="text-status-dropped"
+            >
+              {deletePending ? t("deleting") : t("confirmDelete")}
+            </Button>
+          </div>
+        </div>
+      </dialog>
     </section>
   );
 }
