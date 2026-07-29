@@ -60,6 +60,28 @@ describe("groupPersonEntries", () => {
     expect(out.filter((e) => e.source === "person")).toHaveLength(1);
   });
 
+  it("agrupa progressed de la misma obra dentro de 7 días", () => {
+    const entries = [
+      person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
+      person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-25", itemId: "b1" })),
+      person(ev({ id: "progress_sessions:c", verb: "progressed", actorId: "x", eventDate: "2026-07-23", itemId: "b1" })),
+    ];
+    const out = groupPersonEntries(entries);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("person-group");
+    if (out[0].source === "person-group") expect(out[0].items).toHaveLength(3);
+  });
+
+  it("NO agrupa progressed de la misma obra separados >7 días", () => {
+    const entries = [
+      person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
+      person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-10", itemId: "b1" })),
+    ];
+    const out = groupPersonEntries(entries);
+    expect(out).toHaveLength(2);
+    expect(out.every((e) => e.source === "person")).toBe(true);
+  });
+
   it("no agrupa verbos no agrupables (finished/reviewed)", () => {
     const entries = [
       person(ev({ id: "diary_entries:a", verb: "finished", actorId: "x", eventDate: "2026-07-29" })),
