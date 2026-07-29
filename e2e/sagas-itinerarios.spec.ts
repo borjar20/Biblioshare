@@ -30,8 +30,15 @@ import { expect, test, type Page } from "@playwright/test";
 // (ver `.superpowers/sdd/task-10-report.md`) — mismo patrón que el seed QA de
 // sagas-v2 (UUID fijos, sin helper de siembra por test: este dominio de e2e no
 // escribe en BD desde Playwright, solo hace login + navega + interactúa con la
-// UI). Esta suite NO muta el seed salvo la adopción de ruta del test 3, que es
-// idempotente (relanzar la suite vuelve a adoptar la misma ruta).
+// UI).
+//
+// Esta suite NO muta el seed salvo la adopción de ruta del test 3, que SÍ deja
+// fila en `saga_route_choices` y por eso se limpia por REST al empezar ese test
+// (`clearRouteChoice`, más abajo). La cabecera decía antes que esa adopción era
+// "idempotente"; no lo era, y esa frase costó tiempo dos veces (issues #180 y
+// #182): idempotente en BD (el `upsert` no duplica) NO es idempotente en UI —
+// con la fila ya puesta, el botón que el test busca ("Leer por aquí") ya no
+// existe, porque pasa a decir "Leyendo por aquí".
 const UNIVERSO_ID = "33d7bb93-da3d-4453-a6da-1722beff134d";
 
 const COLLAB_EMAIL = process.env.COLLAB_USER_EMAIL ?? "borjar20+bibliosharecollab@gmail.com";

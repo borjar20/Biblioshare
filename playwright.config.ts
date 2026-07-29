@@ -48,6 +48,14 @@ export default defineConfig({
   // ven también en GETs y en el proxy, que no revalidan nada). Subirlo aquí, y
   // no assert a assert, es lo que corresponde: afecta a todos por igual.
   expect: { timeout: 20_000 },
+  // El timeout de TEST (por defecto 30 s) tiene que dejar sitio al de `expect`,
+  // que aquí son 20 s. Con 30/20, una sola aserción que agota su presupuesto
+  // deja 10 s para todo lo demás y el test muere con `Test timeout of 30000ms
+  // exceeded` en vez de con la aserción concreta que falló — el reintento, que
+  // es justo la pasada que graba la traza, pierde la señal de QUÉ falló
+  // (issue #219). Subirlo no arregla ningún fallo ni tapa ninguno: no relaja
+  // ninguna aserción, solo evita que el reloj del test se coma el diagnóstico.
+  timeout: 60_000,
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
