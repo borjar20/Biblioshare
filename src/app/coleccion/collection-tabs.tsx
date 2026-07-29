@@ -14,9 +14,9 @@ export type CollectionTab = "colecciones" | "todo" | "sagas";
 export type KnownTab = CollectionTab;
 
 export const COLLECTION_TABS: CollectionTab[] = [
+  "todo",
   "colecciones",
   "sagas",
-  "todo",
 ];
 
 export const KNOWN_TABS: KnownTab[] = [...COLLECTION_TABS];
