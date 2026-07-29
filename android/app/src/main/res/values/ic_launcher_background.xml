@@ -3,4 +3,5 @@
 <!-- Ojo: XML prohibe la secuencia de dos guiones dentro de un comentario, asi que el token no se escribe con su prefijo. -->
 <resources>
     <color name="ic_launcher_background">#b0542f</color>
+    <color name="splash_background">#b0542f</color>
 </resources>
