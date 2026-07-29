@@ -64,3 +64,8 @@ next-env.d.ts
 
 # Playwright MCP artefactos de verificacion
 .playwright-mcp/
+
+# Andamiaje efimero de sesiones de agente (informes/briefs por task). Se
+# reescribe entre ramas con el mismo nombre de fichero: versionarlo ensucia
+# los diffs y no aporta historia. Lo que SI es historia vive en docs/superpowers/.
+.superpowers/

@@ -1421,8 +1421,6 @@
       "session": "esta sesión",
       "unseen": "sin ver"
     },
-    "note": "Nota o cita destacada",
-    "noteHint": "Opcional.",
     "status": "Estado",
     "submit": "Guardar sesión",
     "submitting": "Guardando...",
@@ -1430,11 +1428,7 @@
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
-    },
-    "noteKindNote": "Nota",
-    "noteKindQuote": "Cita",
-    "noteFavorite": "Favorita",
-    "noteKindLabel": "Tipo"
+    }
   },
   "stats": {
     "navLabel": "Estadísticas",

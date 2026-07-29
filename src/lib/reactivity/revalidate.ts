@@ -53,11 +53,14 @@ export function revalidateSagaPage(id: string): void {
  *  Ruta DISTINTA de `revalidateSagaPage`: quien la mira puede estar editando
  *  miembros cuya fila real vive en una subsaga (ver DetailMember.ownerSagaId).
  *
- *  Ojo: en Next 16 `revalidatePath` enciende un flag global que no registra QUÉ
- *  ruta, así que hoy CUALQUIER revalidate del mismo action ya re-renderiza esta
- *  página y ésta es redundante. Se mantiene porque es la única que la nombra
- *  explícitamente, para cuando Next estreche la revalidación a la ruta concreta
- *  (anunciado en sus propios docs de `revalidatePath`). */
+ *  NO es redundante (verificado 2026-07-29 contra los docs de Next 16.2.10,
+ *  `node_modules/next/dist/docs/.../revalidatePath.md`): desde una server
+ *  function, `revalidatePath` "updates the UI immediately **if viewing the
+ *  affected path**" — la ruta SÍ importa para el refresco inmediato. Lo que sí
+ *  es global (y temporal, según esos mismos docs) es que las páginas ya
+ *  visitadas se refrescan al NAVEGAR a ellas de nuevo. O sea: si mutas algo
+ *  estando en /saga/[id]/editar y solo llamas a `revalidateSagaPage`, esta
+ *  pantalla no se refresca hasta que salgas y vuelvas. Hay que nombrarla. */
 export function revalidateSagaEditPage(id: string): void {
   revalidatePath(`${sagaHref(id)}/editar`);
 }
