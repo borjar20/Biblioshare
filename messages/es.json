@@ -768,6 +768,12 @@
     "add": "Añadir edición",
     "addMovie": "Añadir versión",
     "yours": "La tuya",
+    "delete": "Borrar {label}",
+    "confirmTitle": "¿Borrar esta edición?",
+    "confirmBody": "Se borra del catálogo para toda la comunidad. No se puede deshacer.",
+    "confirmDelete": "Borrar",
+    "deleting": "Borrando…",
+    "cancel": "Cancelar",
     "showAll": "Ver todas ({count})",
     "showLess": "Ver menos",
     "label": "Nombre",
@@ -783,7 +789,10 @@
     "errors": {
       "forbidden": "Necesitas ser colaborador para añadir ediciones.",
       "invalidLabel": "Pon un nombre a la edición.",
-      "generic": "No se pudo guardar la edición."
+      "generic": "No se pudo guardar la edición.",
+      "deleteForbidden": "Necesitas ser colaborador para borrar ediciones.",
+      "inUse": "No se puede borrar: hay pases registrados contra esta edición.",
+      "deleteFailed": "No se pudo borrar la edición."
     },
     "whichEdition": "¿Qué edición tienes?",
     "usedBefore": "Ya las has usado",
