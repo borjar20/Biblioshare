@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "./notifications";
-import { revalidateProfilePages } from "@/lib/reactivity/revalidate";
+import {
+  revalidateFeed,
+  revalidateProfilePages,
+} from "@/lib/reactivity/revalidate";
 
 // Mutaciones del grafo social (EPIC-05, Bloque A). El status correcto
 // (accepted vs pending) lo decide la regla de auto-accept según si el perfil
@@ -49,6 +52,10 @@ export async function followUser(targetUserId: string): Promise<void> {
     });
   }
   revalidateProfiles();
+  // La card "A quién seguir" del home vive fuera de /u/[username]: sin esto,
+  // el botón "Seguir" desde la sidebar del feed no se refresca hasta navegar
+  // fuera y volver (hallazgo de la review de la Task 8).
+  revalidateFeed();
 }
 
 export async function unfollowUser(targetUserId: string): Promise<void> {
