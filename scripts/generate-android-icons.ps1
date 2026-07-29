@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
-    Genera los iconos de launcher de Android a partir de la marca de Biblioshare.
+    Genera los iconos de launcher y el splash de Android a partir de la marca
+    de Biblioshare.
 
 .DESCRIPTION
     La marca del icono vive en `src/lib/app-icon.tsx` como componente React, que
@@ -201,7 +202,64 @@ function New-BackgroundColor([string]$path) {
         '<!-- Ojo: XML prohibe la secuencia de dos guiones dentro de un comentario, asi que el token no se escribe con su prefijo. -->',
         '<resources>',
         "    <color name=`"ic_launcher_background`">$Accent</color>",
+        "    <color name=`"splash_background`">$Accent</color>",
         '</resources>'
+    )
+    Write-Host "  $path"
+}
+
+# --- Splash de arranque ------------------------------------------------------
+# El template de Capacitor trae 11 `splash.png` con SU logo (la cruz azul sobre
+# blanco) a pantalla completa. Se sustituyen por vectores: un PNG a pantalla
+# completa se estira o se recorta en cuanto la relacion de aspecto del
+# dispositivo no coincide con la suya, y ademas obligaria a mantener once
+# ficheros binarios.
+function New-SplashMarkVector([string]$path) {
+    # Viewport ajustado a la marca, sin margen: quien lo coloca decide el tamano.
+    $markHeight = 100.0
+    $spineWidth = $markHeight * $SpineWidthRatio
+    $gap        = $markHeight * $GapRatio
+    $totalWidth = ($Spines.Count * $spineWidth) + (($Spines.Count - 1) * $gap)
+
+    $fmt = { param($n) ([Math]::Round($n, 2)).ToString([System.Globalization.CultureInfo]::InvariantCulture) }
+
+    $lines = @(
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<!-- Generado por scripts/generate-android-icons.ps1 a partir de src/lib/app-icon.tsx. No editar a mano. -->',
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"',
+        "    android:width=`"$(& $fmt $totalWidth)dp`"",
+        "    android:height=`"$(& $fmt $markHeight)dp`"",
+        "    android:viewportWidth=`"$(& $fmt $totalWidth)`"",
+        "    android:viewportHeight=`"$(& $fmt $markHeight)`">"
+    )
+    for ($i = 0; $i -lt $Spines.Count; $i++) {
+        $h = $markHeight * $Spines[$i].Height
+        $x = $i * ($spineWidth + $gap)
+        $y = $markHeight - $h          # linea de base comun, abajo del viewport
+        $d = Get-RoundedPathData $x $y $spineWidth $h ($spineWidth * $CornerRatio)
+        $lines += '    <path'
+        $lines += "        android:fillColor=`"$($Spines[$i].Color)`""
+        $lines += "        android:pathData=`"$d`" />"
+    }
+    $lines += '</vector>'
+
+    Write-Utf8NoBom $path $lines
+    Write-Host "  $path"
+}
+
+function New-SplashLayerList([string]$path) {
+    # `android:width/height` dentro de un <item> exige API 23; minSdk es 24.
+    Write-Utf8NoBom $path @(
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<!-- Generado por scripts/generate-android-icons.ps1. No editar a mano. -->',
+        '<layer-list xmlns:android="http://schemas.android.com/apk/res/android">',
+        '    <item android:drawable="@color/splash_background" />',
+        '    <item',
+        '        android:gravity="center"',
+        '        android:width="132dp"',
+        '        android:height="121dp"',
+        '        android:drawable="@drawable/splash_mark" />',
+        '</layer-list>'
     )
     Write-Host "  $path"
 }
@@ -229,6 +287,18 @@ foreach ($d in $densities.Keys) {
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     New-LauncherPng -size $densities[$d] -path (Join-Path $dir "ic_launcher.png")       -round $false
     New-LauncherPng -size $densities[$d] -path (Join-Path $dir "ic_launcher_round.png") -round $true
+}
+
+Write-Host "Splash de arranque:"
+New-SplashMarkVector (Join-Path $ResDir "drawable/splash_mark.xml")
+New-SplashLayerList  (Join-Path $ResDir "drawable/splash.xml")
+
+# Los `splash.png` del template conviven con `splash.xml` bajo el mismo nombre
+# de recurso, y aapt2 aborta por recurso duplicado. Hay que quitarlos.
+$stale = Get-ChildItem -Path $ResDir -Recurse -Filter "splash.png" -ErrorAction SilentlyContinue
+foreach ($f in $stale) {
+    Remove-Item $f.FullName -Force
+    Write-Host "  eliminado $($f.Directory.Name)/$($f.Name)"
 }
 
 Write-Host ""

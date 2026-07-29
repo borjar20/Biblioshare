@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/generate-android-icons.ps1 a partir de src/lib/app-icon.tsx. No editar a mano. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="109.09dp"
+    android:height="100dp"
+    android:viewportWidth="109.09"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="#e8b06a"
+        android:pathData="M10.91,30.3h5.45a10.91,10.91 0 0 1 10.91,10.91v47.88a10.91,10.91 0 0 1 -10.91,10.91h-5.45a10.91,10.91 0 0 1 -10.91,-10.91v-47.88a10.91,10.91 0 0 1 10.91,-10.91z" />
+    <path
+        android:fillColor="#7fc6c9"
+        android:pathData="M51.82,0h5.45a10.91,10.91 0 0 1 10.91,10.91v78.18a10.91,10.91 0 0 1 -10.91,10.91h-5.45a10.91,10.91 0 0 1 -10.91,-10.91v-78.18a10.91,10.91 0 0 1 10.91,-10.91z" />
+    <path
+        android:fillColor="#caa2d0"
+        android:pathData="M92.73,48.48h5.45a10.91,10.91 0 0 1 10.91,10.91v29.7a10.91,10.91 0 0 1 -10.91,10.91h-5.45a10.91,10.91 0 0 1 -10.91,-10.91v-29.7a10.91,10.91 0 0 1 10.91,-10.91z" />
+</vector>

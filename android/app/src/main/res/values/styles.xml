@@ -16,7 +16,23 @@
     </style>
 
 
+    <!--
+      El splash de arranque. Dos caminos, y el sistema elige por version:
+
+      - Android 12+ (API 31+) dibuja SU propio splash y no mira
+        `android:background`: usa `windowSplashScreenBackground` con el icono
+        dentro de un circulo. Sin estos dos atributos salia el terracota con el
+        icono por defecto.
+      - Android 11 y anteriores caen en `android:background`, que es
+        `@drawable/splash` (terracota + la marca, ya en vectores).
+
+      El terracota es el mismo `background_color` del manifest de la PWA, para
+      que el arranque nativo y el web se vean iguales. Ver
+      docs/requirements/decisiones.md.
+    -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
     </style>
 </resources>
