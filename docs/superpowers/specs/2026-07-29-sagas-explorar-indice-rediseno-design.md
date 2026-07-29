@@ -36,7 +36,8 @@ type SagaIndexCard = {
   coverUrl: string | null;
   accent: SagaAccentToken;
   titleCount: number;
-  children: { id: string; name: string; accent: SagaAccentToken }[];
+  children: { id: string; name: string; accent: SagaAccentToken; titleCount: number }[];
+  creator: string | null;   // autor/director dominante del subárbol
   typeBreakdown: { book: number; movie: number; series: number };
   hasGraph: boolean;            // showMap && subárbol no vacío (mismo criterio que get-saga-detail.ts:707-715 y build-library-saga-cards.ts:341)
   routeCount: number;           // nº de saga_routes para esta saga
@@ -75,6 +76,16 @@ Además de las dos ya existentes (`sagas`, `saga_items`), en paralelo:
   curso como fallback (eso es una decisión de `next.reading` en la ficha de saga, un campo
   distinto que este índice no necesita).
 
+- `credits` (añadido en la revisión del 2026-07-29): la línea meta del Denso lleva el autor
+  (`20 TÍTULOS · 6 SUBSAGAS · BRANDON SANDERSON`). Una consulta por tipo a `credits` con
+  `AUTHORSHIP_ROLES` (`author|director|creator`, misma lista y mismo motivo que
+  `get-saga-detail.ts:46` — «writer» fuera a propósito, diluye el dominante), en un **segundo
+  viaje** porque las claves salen de `saga_items`. El dominante se calcula en memoria; empate,
+  el primero alfabéticamente, para que dos cargas de la misma saga no muestren autores
+  distintos. Es lo más caro que añade este rediseño, asumido por el tamaño del catálogo.
+
+`children[].titleCount`: obras distintas del subárbol de cada subsaga, para el chip `Nombre · N`.
+
 `hasGraph`: `sagas.show_map` ya viene en el `select` de `sagas` (falta añadir la columna al
 `select` de `get-saga-index.ts:26`); el subárbol no vacío ya se conoce por construcción de
 `buildSagaIndex` (si la saga tiene 0 títulos en su subárbol, `titleCount === 0`).
@@ -86,21 +97,39 @@ premisa (siguen siendo O(1) roundtrips, no O(n) por saga).
 
 ## Fase 2 — Tarjeta (desktop)
 
-Por tarjeta, siguiendo el mockup:
+**Revisado el 2026-07-29 tras una primera implementación que el dueño del producto rechazó por
+no parecerse al Denso.** La referencia mandataria es `Rediseño - Explorar sagas (1).html`,
+dirección **A · Denso**, y su frame **E · Anatomía y estados**, cuyas cinco decisiones son el
+contrato de esta fase — en particular «la tarjeta INFORMA, no vende» y «sin portada ≠ sin
+identidad». Lo que sigue ya recoge esa revisión.
 
-- Badge `Universo` si `children.length > 0`.
-- Badge `◆ Grafo` si `hasGraph`.
-- Badge `✦ N itinerarios` si `routeCount > 0` (singular si `routeCount === 1`).
-- Línea de tipos con icono+color (`i-b`/`i-m`/`i-s`) desde `typeBreakdown`, omitiendo los tipos
-  en 0.
-- Chips de subsaga: se muestran las 2 primeras (orden alfabético, igual que `children` ya
-  viene ordenado), el resto colapsa en un único chip `+N más` — mismo patrón que se validó en
-  el mockup para Cosmere, aplicado aquí como regla general (no solo a Cosmere/Mundodisco): con
-  ≤3 subsagas se muestran todas sin chip "más".
-- Barra de progreso solo si `progress !== null` (usuario autenticado) y `progress.total > 0`;
-  si `readingLabel` es `null` se omite la segunda línea (solo `completed/total`).
-- Chip `◐ N en tu colección` solo si `ownedCount > 0` y usuario autenticado.
-- Botón seguir: ya existe (`SagaFollowButton`), sin cambios de comportamiento.
+- Badge `Universo` (verde) si `children.length > 0`, `◆ Grafo` (dorado) si `hasGraph`,
+  `✦ N itinerarios` (acento) si `routeCount > 0`. Nunca más de tres.
+- Línea meta en mono/versalitas: `N TÍTULOS · M SUBSAGAS · AUTOR`. El autor es el `creator`
+  dominante del subárbol (§Fase 1).
+- Línea de tipos con punto de color `--type-*` desde `typeBreakdown`, omitiendo los tipos en 0.
+- Chips de subsaga con **su propio recuento** (`Nombre · N`, de `children[].titleCount`):
+  5 visibles en escritorio, 2 en móvil, y un `+N subsagas` por breakpoint. Se renderiza una sola
+  lista y los chips 3-5 se ocultan por CSS.
+- **Seguir es un icono de 25 px en la esquina superior derecha**, no un botón a ancho completo:
+  invisible (`opacity-0`, no `hidden` — sigue siendo enfocable) hasta el hover de la tarjeta o
+  el foco de teclado, y `✓` verde permanente si ya la sigues. En móvil no hay hover, así que
+  ahí es visible siempre. Variante `icon` de `SagaFollowButton`.
+- **Las seguidas se distinguen por una barra de acento de 3 px en el canto izquierdo**
+  (`shadow-[inset_3px_0_0_var(--accent)]`), y por nada más.
+- **Portada sin imagen**: `SagaSpineCover` — cuatro lomos de anchos distintos generados del
+  acento de la saga + su inicial en serif. Nunca un rectángulo de color plano. Los lomos mezclan
+  el acento contra `--surface` (no contra blanco), o en tema oscuro los cuatro salen igual de
+  lavados. La inicial salta caracteres no alfanuméricos (`[QA] Universo` → `Q`, no `[`).
+- **Progreso y colección son excluyentes** (regla del frame E): la barra de progreso solo se
+  pinta en las sagas que **sigues**; el chip `◐ N en tu colección` solo en las que **no** sigues,
+  porque en las seguidas ya manda la barra.
+- Densidad: `p-3`, `gap-1.5` en el cuerpo, portada 52×78 (64×96 en universo), título 15.5 px
+  serif. El objetivo de la maqueta es «cuatro veces más información en la mitad de alto».
+- La tarjeta de universo ocupa **las dos columnas** de la rejilla (`sm:col-span-2`): «el universo
+  manda», encierra a sus hijas y necesita sitio para sus chips.
+- Cabecera de página con el pulso del catálogo completo (`N SAGAS · M UNIVERSOS · SIGUES K`),
+  no el del filtro activo — ese va en el pie.
 
 ## Fase 3 — Toolbar y filtros
 
