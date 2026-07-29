@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/generate-android-icons.ps1. El terracota de la marca (el token accent de globals.css). -->
+<!-- Ojo: XML prohibe la secuencia de dos guiones dentro de un comentario, asi que el token no se escribe con su prefijo. -->
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_background">#b0542f</color>
+    <color name="splash_background">#b0542f</color>
 </resources>
