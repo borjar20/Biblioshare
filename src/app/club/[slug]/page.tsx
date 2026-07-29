@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
@@ -51,9 +51,7 @@ export default async function ClubPage({
   const { slug } = await params;
   const { tab: tabParam } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const club = await getClub(slug);

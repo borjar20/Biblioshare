@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "@/components/social/notification-bell";
-import type { listNotifications } from "@/lib/social/notifications";
 import { Wordmark } from "@/components/ui/wordmark";
 import { TopNav } from "@/components/nav/top-nav";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -16,14 +15,12 @@ export async function Header({
   username,
   avatarUrl,
   unreadCount,
-  notifications,
 }: {
   loggedIn: boolean;
   /** null mientras el usuario no tiene perfil (onboarding): topbar sin nav. */
   username: string | null;
   avatarUrl: string | null;
   unreadCount: number;
-  notifications: Awaited<ReturnType<typeof listNotifications>>;
 }) {
   const t = await getTranslations("nav.items");
 
@@ -40,12 +37,7 @@ export async function Header({
       </div>
 
       <div className="flex items-center gap-1">
-        {loggedIn && (
-          <NotificationBell
-            initialUnreadCount={unreadCount}
-            initialNotifications={notifications}
-          />
-        )}
+        {loggedIn && <NotificationBell initialUnreadCount={unreadCount} />}
         <ThemeToggle />
         {/* El avatar es la entrada a Perfil en escritorio. En móvil sobra:
             Perfil ya tiene su sitio en la barra inferior. */}

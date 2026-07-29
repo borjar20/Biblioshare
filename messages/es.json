@@ -354,6 +354,7 @@
   },
   "notifications": {
     "title": "Notificaciones",
+    "loading": "Cargando…",
     "empty": "Todavía no tienes notificaciones.",
     "followRequest": "{name} quiere seguirte",
     "newFollower": "{name} ha empezado a seguirte",

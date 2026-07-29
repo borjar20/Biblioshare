@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { getFeed, parseFeedFilter, type FeedFilter } from "@/lib/social/feed";
 import { getFollowCounts } from "@/lib/social/follows";
@@ -11,6 +11,7 @@ import { TodayBlock } from "@/components/stats/today-block";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
+import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
@@ -25,10 +26,10 @@ export default async function Home({
 }) {
   const { filtro } = await searchParams;
   const t = await getTranslations();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // `getCurrentUser()` está memoizada por petición: AppShell ya la ha llamado
+  // al pintar el chrome, así que aquí no hay un segundo viaje de red al
+  // servidor de auth (issue #283).
+  const user = await getCurrentUser();
 
   if (!user) {
     return (
@@ -48,6 +49,7 @@ export default async function Home({
   }
 
   const filter = parseFeedFilter(filtro);
+  const supabase = await createClient();
 
   // Shell inmediato (título + contador + filtros); el feed —la consulta lenta—
   // llega por streaming detrás de su <Suspense> (Fase B). El contador de
@@ -79,8 +81,13 @@ export default async function Home({
           feed: primero lo tuyo a medias, después lo de los demás. En escritorio
           cruza las DOS columnas (decisión del usuario) — el frame G solo está
           dibujado para móvil. Detrás de su propio <Suspense> para no retrasar
-          el shell, igual que el feed y el rail. */}
-      <Suspense fallback={null}>
+          el shell, igual que el feed y el rail.
+
+          El fallback RESERVA su alto. Con `fallback={null}` no reservaba nada y,
+          como el bloque encabeza la página, al llegar empujaba el feed entero
+          hacia abajo: 0.51 de CLS en móvil, la peor métrica de la app
+          (issue #284). */}
+      <Suspense fallback={<TodayBlockSkeleton />}>
         <TodayBlock userId={user.id} />
       </Suspense>
 

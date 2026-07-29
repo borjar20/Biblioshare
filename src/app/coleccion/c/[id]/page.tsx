@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getCollection } from "@/lib/library/collections";
 import { CollectionDetail } from "@/components/library/collection-detail";
 import { CollectionMenu } from "@/components/library/collection-menu";
@@ -15,9 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { title: "Colección — Biblioshare" };
 
   // Solo el nombre: no hidratamos la colección entera (portadas/pases/notas)
@@ -44,9 +42,7 @@ export default async function CollectionDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const detail = await getCollection(supabase, user.id, id);

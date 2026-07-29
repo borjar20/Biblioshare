@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { searchCatalog } from "@/lib/catalog/search";
 import type { ItemType } from "@/lib/catalog/types";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
@@ -47,9 +47,7 @@ export default async function SearchPage({
     : null;
   let preferredType: ItemType = "book";
   if (explicitType === null) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     if (user) {
       const { data: prefs } = await supabase
         .from("profiles")

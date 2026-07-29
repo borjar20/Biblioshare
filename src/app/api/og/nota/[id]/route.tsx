@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getNoteById } from "@/lib/notes/get-notes";
 import { formatPosition } from "@/lib/library/position";
 
@@ -45,9 +45,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return new Response("No autorizado", { status: 401 });
 
   const note = await getNoteById(supabase, id);
