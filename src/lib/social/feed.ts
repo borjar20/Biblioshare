@@ -4,6 +4,7 @@ import type { MediaStatus } from "@/lib/library/types";
 import { getInteractionSummary, type InteractionComment } from "./interactions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
+import type { PersonGroupEntry } from "./group-feed-entries";
 
 // Feed de actividad personal (EPIC-05, Bloque C, SD-1). On-read fan-out sobre
 // cuatro tablas fuente ya existentes — sin tabla nueva. La RLS de cada fuente
@@ -64,6 +65,7 @@ export type FeedEvent = {
 // evento de club, la lista transporta la unión y cada tarjeta lee lo suyo.
 export type FeedEntry =
   | { source: "person"; id: string; eventDate: string; event: FeedEvent }
+  | PersonGroupEntry
   | { source: "club"; id: string; eventDate: string; event: ClubFeedEvent };
 
 export type FeedPage = {
