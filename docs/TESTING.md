@@ -159,6 +159,46 @@ Ver `docs/REQUIREMENTS.md` §8-F / §7.31 para el porqué. Estado actual:
   - Como el `server.url` apunta a Vercel, el APK **no empaqueta la app web**:
     `webDir: "public"` solo aporta un puñado de assets estáticos. Un cambio en
     el front no requiere recompilar el APK, basta con desplegar en Vercel.
+  - Los iconos de launcher y el splash **no se editan a mano**: los genera
+    `scripts/generate-android-icons.ps1` a partir de `src/lib/app-icon.tsx`, que
+    es la definición de la marca. Si cambias colores o proporciones allí, ajusta
+    las constantes del script y vuelve a ejecutarlo. Solo corre en Windows
+    (System.Drawing) — límite aceptado a sabiendas, issue #287.
+
+### Sacar un APK de release firmado
+
+El de debug **no sirve** para distribuir: va con la keystore de depuración
+genérica (contraseña pública) y con `android:debuggable="true"`, y no es
+actualizable a uno firmado de verdad — al cambiar la firma Android obliga a
+desinstalar.
+
+La clave de release vive **fuera del repo**, en `C:\Users\borja\.keystores\`
+(RSA 4096, validez 10.000 días). Ni ella ni sus contraseñas se versionan: van en
+`android/keystore.properties`, gitignorado, que `app/build.gradle` lee al
+configurar. **Perder esa keystore significa no poder volver a publicar una
+actualización** que los dispositivos acepten como la misma app — respáldala.
+
+Si `keystore.properties` no existe, `assembleRelease` sigue funcionando pero
+saca un APK **sin firmar** (avisa por log), que Android no instala. Es
+deliberado: clonar el repo no rompe el build de debug.
+
+```powershell
+# mismas variables de entorno que arriba
+.\android\gradlew.bat -p android assembleRelease --no-daemon
+# -> android/app/build/outputs/apk/release/app-release.apk
+```
+
+Comprueba siempre antes de publicar — que compile no implica que esté firmado:
+
+```powershell
+$bt = "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0"
+& "$bt\apksigner.bat" verify --print-certs <apk>   # debe decir "Verifies"
+& "$bt\aapt2.exe" dump badging <apk>               # NO debe aparecer "debuggable"
+```
+
+La versión sale de `versionCode` / `versionName` en `android/app/build.gradle`;
+súbelos antes de publicar una nueva. La release 1.0 (`versionCode 1`) está
+publicada como tag `v1.0` con el APK adjunto.
 - **iOS no es viable en este entorno**: Xcode solo corre en macOS. Compilar
   y probar la plataforma iOS requiere una Mac o un runner de CI en la nube
   (Codemagic, GitHub Actions con runner `macos-latest`, etc.). No hay
