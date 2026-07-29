@@ -15,7 +15,13 @@ comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y 
 **Fase 4 CERRADA el 2026-07-28**: retirada también la sobrecarga de cinco argumentos
 (`20260731_drop_save_saga_sequence_v5.sql`), aplicada DESPUÉS de confirmar que el bundle nuevo
 servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
-argumentos, en dev y en prod]**
+argumentos, en dev y en prod; **tanda de seguridad del 2026-07-29 (issues #130, #176, #133)
+aplicada y verificada en dev Y EN PROD** — cuatro migraciones (`20260808`…`20260811`), ninguna
+toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` (§8),
+`save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
+defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
+`list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
+`anon`]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -237,10 +243,10 @@ lo persista. Sin ficha propia (`hasDetailView: false` en su `ActivityKindDefinit
 Dos RPCs `SECURITY DEFINER`, moderador+ (`has_min_club_role(club_id, 'moderator')`),
 migración `supabase/migrations/20260722_club_event_rpcs.sql`:
 
-- **`create_club_event(p_club_id, p_title, p_description, p_starts_on) returns uuid`** —
+- **`create_club_event(p_club_id, p_title, p_description default null, p_starts_on default null) returns uuid`** —
   necesaria porque la política de INSERT de `club_activities` fuerza `status = 'proposed'`,
   y un evento nace `active`.
-- **`update_club_event(p_activity_id, p_title, p_description, p_starts_on)`** — el UPDATE
+- **`update_club_event(p_activity_id, p_title, p_description default null, p_starts_on default null)`** — el UPDATE
   que la tabla no tiene (SD-8 la dejó sin política UPDATE, transiciones solo por RPC).
   **Restringida a `kind = 'evento'` y a `status = 'active'`**: sin el filtro de `kind`, esta
   RPC (gateada solo por rol) reabriría la edición arbitraria de cualquier
@@ -248,6 +254,32 @@ migración `supabase/migrations/20260722_club_event_rpcs.sql`:
   la política UPDATE; el filtro de `status = 'active'` (añadido durante la implementación,
   no estaba en el diseño original) impide reescribir un evento ya archivado. Archivar
   reutiliza `archive_club_activity` sin tocarla.
+
+**Endurecimiento del 2026-07-29 (issue #133, dev y prod, `20260810_club_event_validacion.sql`
+y `20260811_spawn_linked_activity_defaults.sql`).** Cuatro huecos de la misma capa:
+
+- **Las dos RPCs validan ahora la LONGITUD** de título (≤ 120) y descripción (≤ 2000) y
+  devuelven `title_too_long`/`description_too_long`. Los números NO son nuevos: son los del
+  CHECK que la tabla ya tenía desde `20260715_text_length_limits.sql`
+  (`club_activities_title_len` 1..120, `club_activities_description_len` ≤ 2000). El hueco
+  era que la RPC no lo comprobaba y dejaba salir un `23514` crudo que el cliente no traduce.
+  **La issue daba por hipótesis que el CHECK podía no existir; existe, y en los dos entornos.**
+- **`p_description` (y `p_from_item_type`/`p_from_item_id` de `spawn_linked_activity`) tienen
+  `default null`.** Sin default, el generador de tipos los marcaba no-nulables aunque la
+  función aceptara NULL a propósito, y cada call site necesitaba un `as string` mintiendo
+  sobre el tipo. Efecto lateral asumido: Postgres exige default en todo parámetro posterior
+  a uno con default, así que `p_starts_on` también lo lleva — el guard `starts_on_required`
+  de la propia RPC, y la validación de cliente, cubren lo que el tipo dejó de cubrir.
+- **Los errores de dominio de estas dos RPCs pasaron a snake_case** (`not_found`,
+  `not_an_event`, `event_not_active`, `title_required`, `starts_on_required`), que es la
+  convención que ya usaban el cliente y `spawn_linked_activity`. Ningún consumidor los
+  mapeaba (la UI los captura en bloque), así que el cambio no rompió nada.
+- **`finish_club_activity` rechaza `kind = 'evento'`** (`events cannot be finished`). El
+  comentario de `update_club_event` afirmaba como invariante que un evento nunca pasa a
+  `finished`, pero **nada lo forzaba**: la RPC solo miraba estado y rol. No era alcanzable
+  desde la UI (`finishActivity` solo se llama desde la ficha de actividad, y un evento no
+  tiene ficha: `hasDetailView: false`), pero sí por la puerta de atrás. Ahora el invariante
+  es del esquema, no del comentario.
 
 El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
 fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.
@@ -366,7 +398,17 @@ dentro de una saga. Tres tablas:
   `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos).
   Guardado por **full-replace atómico** vía RPC `save_saga_route(p_route_id, p_entries)`
   (`SECURITY DEFINER`, gate `collaborator+` interno) — nunca se escribe fila a fila desde el
-  cliente.
+  cliente. **Desde el 2026-07-29 (issue #176, `20260809_save_saga_route_valida_subarbol.sql`,
+  dev y prod) la RPC valida también la PERTENENCIA**: calcula el subárbol de la saga en
+  servidor (recursiva sobre `sagas.parent_saga_id`, partiendo de `saga_routes.saga_id` — la
+  saga real de la ruta, no la que diga el cliente) y rechaza con `foreign block` un
+  `child_saga_id` que no esté en él (o que sea la propia saga) y con `foreign item` una obra
+  que no pertenezca a ninguna saga del subárbol. Antes esa comprobación vivía SOLO en
+  `validateRouteDraft`, contra un `descendantIds` que llegaba del cliente: se validaba
+  contra un dato que el atacante controla. `validateRouteDraft` sigue existiendo y sigue
+  siendo optimista (da mensajes concretos en el editor sin roundtrip), pero ya no es la
+  única. Verificado sobre los datos reales antes de endurecer: **cero** entradas fuera del
+  subárbol en dev y en prod, así que no rompe ningún itinerario existente.
 - `saga_route_choices` — preferencia del LECTOR (qué ruta ha adoptado para esa saga), por
   `slug` no por `route_id` (así una ruta borrada degrada sola al orden por defecto). RLS
   solo-dueño, **sin** gate de rol: es preferencia personal, no curación.
@@ -1160,6 +1202,18 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   hasta la fase 3: dejó de tener llamador en la app cuando la fase 2a retiró su editor (§7.5), y una
   vez la fase 3 derivó el mapa de la curación (§7.7) tampoco quedaba ya ningún lector del grafo que la
   necesitara — se retiró con `DROP` el 2026-07-27, junto con `saga_nodes`/`saga_edges`.
+- **`search_path = public, pg_temp` en TODA función `SECURITY DEFINER`** (issue #130,
+  `20260808_secdef_search_path_pg_temp.sql`, dev y prod el 2026-07-29). Postgres busca el
+  esquema temporal **antes** que los esquemas listados salvo que `pg_temp` aparezca
+  explícitamente en la lista; con `set search_path = public` a secas, quien pueda crear una
+  tabla o un tipo temporal con el nombre de algo que la función referencie sin cualificar la
+  secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda. **Estado medido en
+  los dos entornos: 55 funciones `SECURITY DEFINER`, 55 con `pg_temp`.** Tres
+  (`approve_club_join_request`, `club_is_private`, `notify_club_join_request`) conservan su
+  `search_path` vacío — más estricto — y quedaron como `"", pg_temp`; la migración preserva
+  el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
+  `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
+  pg_temp`, pero si alguna se escapa, volver a correr la migración la arregla.
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
@@ -1183,7 +1237,8 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 
 ## 10. Migraciones
 
-106 ficheros en `supabase/migrations/` (recontado el 2026-07-28: esta línea decía 82, que llevaba desviado desde antes de la fase 4). `supabase/schema-baseline.sql` es el replay ordenado
+112 ficheros en `supabase/migrations/` (recontado el 2026-07-29; el 2026-07-28 decía 106, y
+antes de la fase 4 llevaba desviado desde 82). `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero

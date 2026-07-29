@@ -2121,8 +2121,8 @@ export type Database = {
       create_club_event: {
         Args: {
           p_club_id: string
-          p_description: string
-          p_starts_on: string
+          p_description?: string
+          p_starts_on?: string
           p_title: string
         }
         Returns: string
@@ -2268,8 +2268,8 @@ export type Database = {
       }
       spawn_linked_activity: {
         Args: {
-          p_from_item_id: string
-          p_from_item_type: Database["public"]["Enums"]["item_type"]
+          p_from_item_id?: string
+          p_from_item_type?: Database["public"]["Enums"]["item_type"]
           p_kind: Database["public"]["Enums"]["activity_kind"]
           p_parent_activity_id: string
           p_title: string
@@ -2291,8 +2291,8 @@ export type Database = {
       update_club_event: {
         Args: {
           p_activity_id: string
-          p_description: string
-          p_starts_on: string
+          p_description?: string
+          p_starts_on?: string
           p_title: string
         }
         Returns: undefined

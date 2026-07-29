@@ -227,10 +227,12 @@ export async function spawnLinkedActivity(input: {
     p_parent_activity_id: input.parentActivityId,
     p_kind: input.kind,
     p_title: input.title,
-    // El generador de tipos marca estos dos como no-nulos (la función no tiene DEFAULT), pero
-    // sí acepta NULL a propósito: la tierlist de cierre no lleva ítem de origen (§ RPC arriba).
-    p_from_item_type: (input.fromItemType ?? null) as ItemType,
-    p_from_item_id: (input.fromItemId ?? null) as string,
+    // Sin cast: desde la migración 20260811 los dos tienen `default null`, que es
+    // lo que la función siempre aceptó a propósito -- la tierlist de cierre no
+    // lleva ítem de origen (§ RPC arriba). Antes el tipo generado los marcaba
+    // no-nulables y había que mentirle con un `as` (#133).
+    p_from_item_type: input.fromItemType ?? undefined,
+    p_from_item_id: input.fromItemId ?? undefined,
   });
   if (error) throw error;
 

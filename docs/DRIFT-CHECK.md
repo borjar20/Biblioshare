@@ -144,6 +144,44 @@ no coincida es el que hay que poner al día.
 digests idénticos: `columns` 45, `func` 57, `index` 116, `policy` 124, `trigger` 25. Si un
 barrido futuro da otros números, la diferencia es nueva.
 
+**Paso 4 — enums.** El digest de arriba NO los mira (fue el hueco por el que se coló la
+#145: se descubrió a mano al desplegar eventos de club, no por el barrido). Se comparan por
+**conjunto de etiquetas, no por orden** — a propósito, ver la diferencia conocida de abajo:
+
+```sql
+select t.typname, count(*) as n,
+       md5(string_agg(e.enumlabel, ',' order by e.enumlabel)) as etiquetas
+  from pg_type t join pg_enum e on e.enumtypid = t.oid
+  join pg_namespace n on n.oid = t.typnamespace
+ where n.nspname = 'public'
+ group by t.typname order by t.typname;
+```
+
+Si a un enum le falta una etiqueta en un entorno, esta consulta lo caza. Un `add value` que
+falte en prod es de los que tumban la app: el código lo escribe y Postgres lo rechaza.
+
+### Diferencias conocidas y aceptadas (dev ↔ prod)
+
+Se listan aquí para que el siguiente barrido no tenga que volver a decidir si una línea es
+la de siempre o una nueva. Si aparece algo que NO está en esta lista, es nuevo.
+
+| Objeto | Diferencia | Decidido | Por qué se acepta |
+|---|---|---|---|
+| `public.notification_type` | Mismas 17 etiquetas, distinto `enumsortorder`: `club_join_request`/`club_join_approved` van en posición 6-7 en dev y 14-15 en prod | 2026-07-29 (#145) | Se añadieron en momentos distintos en cada entorno. El orden de un enum solo importa para `order by` sobre la columna y para `<`/`>`; hoy **ningún** consumidor ordena por `notifications.type` (todo va por `created_at` — comprobado en `src/lib/social/`). Y **no se puede reordenar un enum in situ**: no hay `ALTER TYPE ... SET ORDER`. La única vía es recrear el tipo y hacer `ALTER TABLE ... ALTER COLUMN ... TYPE` con `USING` sobre `notifications` **en producción**, coste que no justifica un problema sin síntoma |
+
+Lo que **invalidaría** esa decisión: que alguien escriba un `order by type` (o un `<`/`>`)
+sobre `notifications.type`. Ese día el resultado diferiría entre local y producción de una
+forma difícil de sospechar, y tocaría pagar la recreación del tipo.
+
+Reproducir la deriva:
+
+```sql
+select t.typname, string_agg(e.enumlabel, ',' order by e.enumsortorder) as labels
+  from pg_type t join pg_enum e on e.enumtypid = t.oid
+ where t.typname = 'notification_type'
+ group by t.typname;
+```
+
 ## Salida
 Un informe corto por superficie: "coincide" o la lista de divergencias concretas, con la
 acción sugerida (actualizar doc / anexar migración / marcar checkbox / aplicar al entorno

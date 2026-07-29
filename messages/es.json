@@ -1207,6 +1207,8 @@
       "xor": "Cada paso es una obra o una subsaga, no las dos cosas.",
       "duplicate": "Hay un paso repetido en el itinerario.",
       "foreignBlock": "Solo puedes usar subsagas de esta saga.",
+      "foreignItem": "Solo puedes usar obras de esta saga o de sus subsagas.",
+      "notFound": "Ese itinerario no existe en esta saga.",
       "noteTooLong": "Una nota no puede superar 200 caracteres.",
       "emptyRoute": "Un itinerario sin pasos no puede ser el orden de lectura. Añádele pasos primero.",
       "readingOrderEmpty": "Este itinerario es el orden de lectura de la saga: no puede quedarse sin pasos. Quítale antes la designación."
