@@ -145,9 +145,14 @@ test("una obra sin clasificar aparece en la grid de su grupo con su rol", async 
   const itemsBefore = await fetchEraUnoItems();
   const blockBefore = await fetchEraUnoBlock();
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
-  await expect(row).toBeVisible();
 
   try {
+    // La precondición va DENTRO del `try` (issue #182): fuera, una pasada que
+    // llegase con el dato desviado moría aquí sin ejecutar el `finally`, y el
+    // desvío se quedaba puesto para siempre. `itemsBefore` ya está leído, así
+    // que restaurar desde el `finally` es correcto aunque falle esta línea.
+    await expect(row).toBeVisible();
+
     await row.getByRole("button", { name: /^Acciones de / }).click();
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
@@ -188,9 +193,11 @@ test("una obra sin clasificar Y sin rol sale en la grid, pero sin chip", async (
   const itemsBefore = await fetchEraUnoItems();
   const blockBefore = await fetchEraUnoBlock();
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
-  await expect(row).toBeVisible();
 
   try {
+    // Precondición dentro del `try` — ver la nota del primer test (#182).
+    await expect(row).toBeVisible();
+
     await row.getByRole("button", { name: /^Acciones de / }).click();
     const sheet = page.getByRole("dialog");
     // role se deja tal cual: sin tocar el select, "" ya es "sin rol".
@@ -232,9 +239,11 @@ test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
   await page.goto(`/saga/${ERA_UNO_ID}/editar`);
   const itemsBefore = await fetchEraUnoItems();
   const row = rowByTitle(page, LOOSE_ITEM_TITLE);
-  await expect(row).toBeVisible();
 
   try {
+    // Precondición dentro del `try` — ver la nota del primer test (#182).
+    await expect(row).toBeVisible();
+
     await row.getByRole("button", { name: /^Acciones de / }).click();
     const sheet = page.getByRole("dialog");
     await sheet.getByLabel("Qué es").selectOption("relato");

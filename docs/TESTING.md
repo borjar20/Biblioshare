@@ -27,6 +27,37 @@ navegador, usa la cuenta ya creada y con onboarding completo:
 - Deja `devtest.is_public = true` al terminar (es su estado por defecto);
   si una prueba lo cambia a privado, reviértelo antes de acabar.
 
+### Un e2e que escribe limpia por REST, ANTES y DESPUÉS, nunca por la UI
+
+Convención obligatoria para los specs de `e2e/` (issues #180, #182, #215, #228):
+
+1. **Antes y después, no solo después.** Limpiar solo en un `finally` no basta:
+   el día que una pasada muera por timeout, Playwright derriba el contexto, el
+   `finally` no termina y la suciedad queda puesta *para siempre* — la pasada
+   siguiente la lee como su estado de partida. Limpiar también **al principio**
+   (dentro del `try`) es lo que rompe ese ciclo de auto-envenenamiento.
+2. **Por REST con la service key, no por la UI.** Un `finally` que necesita
+   navegar y pulsar «Guardar» no se ejecuta si el navegador ya no está. Un
+   `DELETE`/`PATCH` a PostgREST no depende de nada del navegador.
+3. **Las precondiciones van DENTRO del `try`.** Si la aserción que comprueba el
+   estado de partida vive fuera, una pasada sucia muere ahí y el `finally` ni se
+   ejecuta.
+4. **Siembra tu propia precondición; no la asumas del entorno.** Si el test
+   necesita que exista un dato (un pendiente para que el sorteo tenga pool, una
+   ruta sin adoptar…), créalo por REST con UUID fijo y bórralo al acabar. Dar
+   por bueno lo que hubiera en dev es lo que dejó `happy-path` en rojo
+   permanente cuando esos datos se evaporaron (#228).
+5. **No claves datos que sean de una API externa.** Un locator que fija el
+   número de ediciones que devuelve OpenLibrary convierte un cambio de ranking
+   suyo en un rojo tuyo — pasó en `busqueda-hidratacion` (#228). Comprueba la
+   FORMA (`/\d+ ediciones/`, «es un enlace y no un botón»), no la cifra.
+
+Ejemplos vivos: `e2e/sagas-v2.spec.ts` (`adminHeaders`/`deleteSagaFollow`,
+limpieza antes y después), `e2e/sagas-itinerarios.spec.ts` (`clearRouteChoice`),
+`e2e/happy-path.spec.ts` (`seedPendingPass`/`clearPendingPass`) y el
+`globalSetup` de `e2e/support/qa-seed.ts`, que reimpone la línea base de la
+semilla QA de sagas antes de toda la suite.
+
 ## Verificación de UI: E2E automático con Playwright (por defecto desde 2026-07-15)
 
 **Metodología actual**: tras implementar algo con UI, el camino por defecto

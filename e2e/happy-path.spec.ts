@@ -3,6 +3,82 @@ import { test, expect } from "@playwright/test";
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
 const USERNAME = process.env.TEST_USER_USERNAME!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+function adminHeaders() {
+  return {
+    apikey: SERVICE_KEY,
+    Authorization: `Bearer ${SERVICE_KEY}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function rest(path: string, init?: RequestInit) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: { ...adminHeaders(), ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    throw new Error(`REST ${init?.method ?? "GET"} ${path}: ${res.status} — ${await res.text()}`);
+  }
+  return res;
+}
+
+// Precondición del sorteo (issue #228). La tarjeta «Sacar un lomo» solo existe
+// si el pool tiene algo: con cero pendientes, `SpineDraw` pinta el estado vacío
+// («Tu estantería de pendientes está vacía») y NO hay botón que pulsar
+// (spine-draw.tsx:44). Y el pool no son los pases `planned` a secas:
+// `getSorteoPool` descarta los que no tienen fila en catálogo
+// (get-sorteo-pool.ts:103, «Ítems sin obra en catálogo se descartan»).
+//
+// Eso es justo lo que dejó este test en rojo permanente: devtest tenía 3 pases
+// `planned` activos cuyos `item_id` ya no existían en `books` (no hay FK: la
+// referencia es polimórfica `item_type`/`item_id`), así que la cuenta de
+// pendientes decía 3 y el pool salía vacío. Depender de ese dato ambiente es lo
+// que hace que el test mienta; ahora se siembra su propia precondición.
+//
+// UUID fijos —como el resto de semillas QA del repo— para poder limpiar ANTES y
+// DESPUÉS (docs/TESTING.md): si una pasada muere a mitad, la siguiente arranca
+// limpia igual.
+const SORTEO_BOOK_ID = "12b43d1b-60d4-4ce6-bd38-1bdf729d4193"; // "The Dispossessed" en el catálogo dev
+const SORTEO_PASS_ID = "f0e2e501-0000-4000-8000-000000000001";
+
+async function seedPendingPass(): Promise<void> {
+  // Guarda de dato (mismo patrón que `assertQaUniverse` en e2e/support/qa-seed.ts):
+  // esto escribe con la service key, así que antes comprueba que el libro sigue
+  // existiendo en vez de sembrar un pase huérfano — el fallo que arregla.
+  const rows = (await (await rest(`books?id=eq.${SORTEO_BOOK_ID}&select=id`)).json()) as unknown[];
+  if (rows.length === 0) {
+    throw new Error(
+      `[happy-path] el libro ${SORTEO_BOOK_ID} ya no está en \`books\`: elige otro para SORTEO_BOOK_ID ` +
+        "(cualquier fila de `books` vale; solo tiene que existir).",
+    );
+  }
+
+  const profiles = (await (
+    await rest(`profiles?username=eq.${USERNAME}&select=user_id`)
+  ).json()) as Array<{ user_id: string }>;
+  const userId = profiles[0]?.user_id;
+  if (!userId) throw new Error(`[happy-path] no hay perfil con username=${USERNAME}`);
+
+  await clearPendingPass();
+  await rest("passes", {
+    method: "POST",
+    body: JSON.stringify({
+      id: SORTEO_PASS_ID,
+      user_id: userId,
+      item_type: "book",
+      item_id: SORTEO_BOOK_ID,
+      status: "planned",
+      is_active: true,
+    }),
+  });
+}
+
+async function clearPendingPass(): Promise<void> {
+  await rest(`passes?id=eq.${SORTEO_PASS_ID}`, { method: "DELETE" });
+}
 
 // Happy path de lectura (no mutación): login → home → buscar → ficha →
 // perfil. Cubre auth, middleware, RLS de lectura y el enrutado principal.
@@ -56,6 +132,11 @@ test("marcar una colección como sorteable la ofrece en el filtro del sorteo", a
 }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
+  // Precondición sembrada por REST, no asumida del entorno — ver comentario de
+  // `seedPendingPass`. Va ANTES del login: la hoja del sorteo se pinta en el
+  // servidor con lo que haya en ese momento.
+  await seedPendingPass();
+
   await page.goto("/login");
   await page.fill('input[name="email"]', EMAIL);
   await page.fill('input[name="password"]', PASSWORD);
@@ -64,47 +145,53 @@ test("marcar una colección como sorteable la ofrece en el filtro del sorteo", a
 
   const collectionName = `e2e-${Date.now()}`;
 
-  await page.goto("/coleccion");
-  await page.getByRole("button", { name: /nueva colección/i }).click();
-  await page.getByLabel(/^nombre$/i).fill(collectionName);
-  await page.getByRole("button", { name: /^crear$/i }).click();
+  try {
+    await page.goto("/coleccion");
+    await page.getByRole("button", { name: /nueva colección/i }).click();
+    await page.getByLabel(/^nombre$/i).fill(collectionName);
+    await page.getByRole("button", { name: /^crear$/i }).click();
 
-  // Crear navega al detalle de la colección nueva.
-  await page.waitForURL(/\/coleccion\/c\//);
-  await expect(page.getByRole("heading", { name: collectionName })).toBeVisible();
+    // Crear navega al detalle de la colección nueva.
+    await page.waitForURL(/\/coleccion\/c\//);
+    await expect(page.getByRole("heading", { name: collectionName })).toBeVisible();
 
-  // Marcarla como sorteable desde el menú «⋯».
-  await page.getByRole("button", { name: /acciones de la colección/i }).click();
-  await page.getByRole("menuitem", { name: /usar en el sorteo/i }).click();
-  // El menú refleja el estado nuevo: ahora ofrece quitarla.
-  await page.getByRole("button", { name: /acciones de la colección/i }).click();
-  await expect(page.getByRole("menuitem", { name: /quitar del sorteo/i })).toBeVisible();
-  await page.keyboard.press("Escape");
+    // Marcarla como sorteable desde el menú «⋯».
+    await page.getByRole("button", { name: /acciones de la colección/i }).click();
+    await page.getByRole("menuitem", { name: /usar en el sorteo/i }).click();
+    // El menú refleja el estado nuevo: ahora ofrece quitarla.
+    await page.getByRole("button", { name: /acciones de la colección/i }).click();
+    await expect(page.getByRole("menuitem", { name: /quitar del sorteo/i })).toBeVisible();
+    await page.keyboard.press("Escape");
 
-  // Lo que de verdad importa: la colección se ofrece ya en el filtro del
-  // sorteo, que vive en el Rincón del perfil detrás del panel «⚙ Filtros».
-  await page.goto(`/u/${USERNAME}?tab=rincon`);
-  // El botón se pinta en el servidor pero abre la hoja desde estado de
-  // cliente: un clic anterior a la hidratación no hace nada y el test se
-  // quedaba esperando. Reintentar hasta que la hoja aparezca de verdad.
-  await expect(async () => {
-    await page.getByRole("button", { name: /sacar un lomo/i }).click();
-    await expect(
-      page.getByRole("heading", { name: /deja que decida la estantería/i }),
-    ).toBeVisible({ timeout: 2000 });
-  }).toPass({ timeout: 15000 });
-  await page.getByRole("button", { name: /filtros/i }).click();
-  await expect(page.getByRole("button", { name: collectionName })).toBeVisible();
-  await page.keyboard.press("Escape");
+    // Lo que de verdad importa: la colección se ofrece ya en el filtro del
+    // sorteo, que vive en el Rincón del perfil detrás del panel «⚙ Filtros».
+    await page.goto(`/u/${USERNAME}?tab=rincon`);
+    // El botón se pinta en el servidor pero abre la hoja desde estado de
+    // cliente: un clic anterior a la hidratación no hace nada y el test se
+    // quedaba esperando. Reintentar hasta que la hoja aparezca de verdad.
+    await expect(async () => {
+      await page.getByRole("button", { name: /sacar un lomo/i }).click();
+      await expect(
+        page.getByRole("heading", { name: /deja que decida la estantería/i }),
+      ).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 15000 });
+    await page.getByRole("button", { name: /filtros/i }).click();
+    await expect(page.getByRole("button", { name: collectionName })).toBeVisible();
+    await page.keyboard.press("Escape");
 
-  // Limpieza: borrar la colección (confirm() nativo).
-  await page.goto("/coleccion");
-  await page.getByRole("link", { name: new RegExp(collectionName) }).click();
-  await page.waitForURL(/\/coleccion\/c\//);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: /acciones de la colección/i }).click();
-  await page.getByRole("menuitem", { name: /^borrar$/i }).click();
-  await page.waitForURL(/\/coleccion$/);
+    // Limpieza: borrar la colección (confirm() nativo).
+    await page.goto("/coleccion");
+    await page.getByRole("link", { name: new RegExp(collectionName) }).click();
+    await page.waitForURL(/\/coleccion\/c\//);
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: /acciones de la colección/i }).click();
+    await page.getByRole("menuitem", { name: /^borrar$/i }).click();
+    await page.waitForURL(/\/coleccion$/);
+  } finally {
+    // El pase sembrado se va SIEMPRE: es biblioteca del usuario de pruebas, no
+    // catálogo, y dejarlo puesto cambiaría el estado de partida de otros specs.
+    await clearPendingPass();
+  }
 });
 
 // Retos (§7.10): crear un reto con criterio de tipo y verificar que rinde
