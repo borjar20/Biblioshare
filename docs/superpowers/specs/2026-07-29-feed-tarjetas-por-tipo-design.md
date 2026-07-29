@@ -106,9 +106,14 @@ su `percent`, su `note` pública y su `eventDate`/hora.
   `decisiones.md` (append). No hay cambio de RLS: la fila ya es legible; solo se
   empieza a *servir* un campo que antes se ocultaba.
 - **Nota** solo cuando su fila de `notes` es `is_public = true`. Esto por fin
-  **honra `is_public`** en el feed (lo que `feed.ts` decía pendiente). Se sirve con
-  `case when is_public then body else null end`-style para que una nota privada
-  **nunca** viaje al cliente.
+  **honra `is_public`** en el feed (lo que `feed.ts` decía pendiente).
+  **Requiere migración de RLS** (verificado en dev 2026-07-29: `notes` solo tiene
+  la política `own notes select` = `auth.uid() = user_id`, así que hoy el viewer
+  NO puede leer notas públicas ajenas). Se añade una política SELECT aditiva:
+  `is_public = true AND public.can_view_profile(user_id)` — misma puerta de
+  visibilidad que ya usa el feed para las sesiones. La consulta del feed pide solo
+  `body`/`is_spoiler` de notas que pasan esa política; una nota privada nunca sale
+  de la BD. **dev primero, prod al fusionar** (AGENTS.md).
 - **Spoiler**: si la nota pública es `is_spoiler`, el timeline la pinta tras un
   "Mostrar spoiler" (oculta por defecto, revela al pulsar). No se sirve distinto;
   el gate es de UI.
@@ -206,5 +211,7 @@ Nuevas claves (`i18n-keeper`): badges `feed.kind.collection/progress/review`;
 
 - La doble reacción hito-vs-reseña del mockup (variante C) — descartada (D-C1).
 - Servir la nota privada de `progress_sessions.note` — nunca.
-- Cambiar la RLS de `progress_sessions`/`notes` — no hace falta (solo se sirven
-  campos ya legibles, condicionados por `is_public`).
+- Cambiar la RLS de `progress_sessions` — no hace falta (la fila ya es legible;
+  solo se empieza a servir `position`). **La RLS de `notes` SÍ cambia**: política
+  SELECT aditiva para notas públicas de perfiles visibles (ver D-B3) — es el único
+  cambio de esquema de esta feature.
