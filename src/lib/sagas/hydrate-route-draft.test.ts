@@ -10,6 +10,33 @@ const entry = (over: Partial<RawRouteEntry> & { position: number }): RawRouteEnt
   ...over,
 });
 
+const itemPaletteEntry = (
+  key: string,
+  label: string,
+  itemType: RawRouteEntry["itemType"],
+  itemId: string,
+): RouteEditorItem => ({
+  key,
+  label,
+  coverUrl: null,
+  itemType,
+  role: null,
+  accent: null,
+  memberCount: null,
+  entry: { itemType, itemId, childSagaId: null, note: null },
+});
+
+const blockPaletteEntry = (key: string, label: string, childSagaId: string): RouteEditorItem => ({
+  key,
+  label,
+  coverUrl: null,
+  itemType: null,
+  role: null,
+  accent: "beige",
+  memberCount: 3,
+  entry: { itemType: null, itemId: null, childSagaId, note: null },
+});
+
 describe("hydrateRouteDraft", () => {
   // Hallazgo Important de la revisión final de rama: la paleta se construye
   // en page.tsx SIEMPRE con note: null (es un placeholder para pasos que aún
@@ -18,9 +45,7 @@ describe("hydrateRouteDraft", () => {
   // paleta tal cual, la nota real de BD se pierde en cuanto el curador pulsa
   // Guardar sin tocar nada — pérdida de datos silenciosa.
   it("conserva la note real de la entrada guardada aunque case con la paleta", () => {
-    const palette: RouteEditorItem[] = [
-      { key: "i:book:a", label: "Libro A", entry: { itemType: "book", itemId: "a", childSagaId: null, note: null } },
-    ];
+    const palette = [itemPaletteEntry("i:book:a", "Libro A", "book", "a")];
     const entries: RawRouteEntry[] = [
       entry({ position: 1, itemType: "book", itemId: "a", note: "aquí puedes parar" }),
     ];
@@ -29,26 +54,24 @@ describe("hydrateRouteDraft", () => {
 
     expect(draft).toHaveLength(1);
     expect(draft[0].entry.note).toBe("aquí puedes parar");
-    // El resto de la entrada (label, itemType/itemId) sigue viniendo de la
-    // paleta: solo la nota se sobreescribe con el valor real.
+    // El resto de la entrada (label, itemType/itemId, coverUrl…) sigue
+    // viniendo de la paleta: solo la nota se sobreescribe con el valor real.
     expect(draft[0].label).toBe("Libro A");
   });
 
-  it("conserva la note de un bloque-subsaga que casa con la paleta", () => {
-    const palette: RouteEditorItem[] = [
-      { key: "s:guardia", label: "La Guardia", entry: { itemType: null, itemId: null, childSagaId: "guardia", note: null } },
-    ];
+  it("conserva la note de un bloque-subsaga que casa con la paleta, y sus metadatos de bloque", () => {
+    const palette = [blockPaletteEntry("s:guardia", "La Guardia", "guardia")];
     const entries: RawRouteEntry[] = [entry({ position: 1, childSagaId: "guardia", note: "empieza aquí" })];
 
     const draft = hydrateRouteDraft(entries, palette);
 
     expect(draft[0].entry.note).toBe("empieza aquí");
+    expect(draft[0].accent).toBe("beige");
+    expect(draft[0].memberCount).toBe(3);
   });
 
   it("una entrada sin nota se hidrata con note: null aunque la paleta también lo traiga null", () => {
-    const palette: RouteEditorItem[] = [
-      { key: "i:book:a", label: "Libro A", entry: { itemType: "book", itemId: "a", childSagaId: null, note: null } },
-    ];
+    const palette = [itemPaletteEntry("i:book:a", "Libro A", "book", "a")];
     const entries: RawRouteEntry[] = [entry({ position: 1, itemType: "book", itemId: "a", note: null })];
 
     const draft = hydrateRouteDraft(entries, palette);
@@ -66,6 +89,17 @@ describe("hydrateRouteDraft", () => {
     expect(draft).toHaveLength(1);
     expect(draft[0].key).toBe("i:book:borrado");
     expect(draft[0].entry.note).toBe("nota huérfana");
+    expect(draft[0].coverUrl).toBeNull();
+    expect(draft[0].memberCount).toBeNull();
+  });
+
+  it("un bloque huérfano (subsaga ya no está en la paleta) usa memberCount 0, no null", () => {
+    const entries: RawRouteEntry[] = [entry({ position: 1, childSagaId: "borrada", note: null })];
+
+    const draft = hydrateRouteDraft(entries, []);
+
+    expect(draft[0].key).toBe("s:borrada");
+    expect(draft[0].memberCount).toBe(0);
   });
 
   it("ordena por position independientemente del orden de entrada", () => {
