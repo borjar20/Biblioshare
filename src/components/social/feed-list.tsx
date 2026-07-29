@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { UsersIcon } from "@/components/ui/icons";
 import { FeedCard } from "./feed-card";
 import { ClubFeedCard } from "./club-feed-card";
+import { FeedGroupCard } from "./feed-group-card";
 
 // Lista del feed con paginación "Cargar más" (EPIC-05, Bloque C). Los eventos
 // de la primera página llegan siempre frescos vía `initialEvents` (Next.js
@@ -78,6 +79,8 @@ export function FeedList({
       {events.map((entry) =>
         entry.source === "club" ? (
           <ClubFeedCard key={entry.id} event={entry.event} />
+        ) : entry.source === "person-group" ? (
+          <FeedGroupCard key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} />
         ) : (
           <FeedCard key={entry.id} event={entry.event} viewerLoggedIn={viewerLoggedIn} />
         ),

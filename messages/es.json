@@ -332,6 +332,11 @@
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
     "quickAdd": "Añadir",
     "alreadyInLibrary": "En tu biblioteca",
+    "grouped": {
+      "addedCount": "añadió {count, plural, one {# libro} other {# libros}}",
+      "progressedIn": "avanzó en {title}",
+      "saveAllToQueue": "＋ Guardar {count, plural, one {el libro} other {los # libros}} en mi cola"
+    },
     "filters": {
       "all": "Todo",
       "reviews": "Reseñas",
