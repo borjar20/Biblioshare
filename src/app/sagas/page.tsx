@@ -12,6 +12,7 @@ import {
 } from "@/lib/sagas/filter-saga-index";
 import { SagaIndexFilters } from "@/components/saga/saga-index-filters";
 import { SagaIndexCard } from "@/components/saga/saga-index-card";
+import { SagaLoadMore } from "@/components/saga/saga-load-more";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchIcon } from "@/components/ui/icons";
 
@@ -110,19 +111,20 @@ export default async function SagasIndexPage({
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-3 border-t border-border pt-4">
-            <p className="text-[12.5px] text-muted-foreground">
-              {t("showingCount", { shown: visible.length, total: filtered.length })}
-            </p>
-            {filtered.length > visible.length && (
-              <Link
-                href={loadMoreHref()}
-                className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-foreground"
-              >
-                {t("loadMore")}
-              </Link>
-            )}
-          </div>
+          {filtered.length > visible.length ? (
+            <SagaLoadMore
+              href={loadMoreHref()}
+              label={t("loadMore")}
+              showingLabel={t("showingCount", { shown: visible.length, total: filtered.length })}
+              skeletonCount={Math.min(PAGE_SIZE, filtered.length - visible.length)}
+            />
+          ) : (
+            <div className="flex items-center gap-3 border-t border-border pt-4">
+              <p className="text-[12.5px] text-muted-foreground">
+                {t("showingCount", { shown: visible.length, total: filtered.length })}
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>
