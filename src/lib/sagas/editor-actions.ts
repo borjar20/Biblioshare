@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { revalidateSagaPage } from "@/lib/reactivity/revalidate";
+import { revalidateSagaEditPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
 import { SAGA_ACCENT, type SagaAccentToken } from "./accents";
 
 // Server actions de curación de sagas (spec §3). Gate collaborator+ en todas
@@ -37,6 +37,9 @@ export async function createChildSaga(
     .single();
   if (error || !data) return { error: "generic" };
   revalidateSagaPage(parentSagaId);
+  // Quien crea una subsaga esta EN /saga/[id]/editar: sin nombrar esa ruta no
+  // se refresca hasta salir y volver (ver comentario de revalidateSagaEditPage).
+  revalidateSagaEditPage(parentSagaId);
   return data;
 }
 
@@ -50,6 +53,7 @@ export async function nestExistingSaga(parentSagaId: string, childSagaId: string
   if (error) return { error: error.message.includes("cycle") ? "cycle" : "generic" };
   revalidateSagaPage(parentSagaId);
   revalidateSagaPage(childSagaId);
+  revalidateSagaEditPage(parentSagaId);
   return {};
 }
 

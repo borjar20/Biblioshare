@@ -1615,38 +1615,6 @@ export type Database = {
           },
         ]
       }
-      saga_tandems: {
-        Row: {
-          created_at: string
-          modo: Database["public"]["Enums"]["saga_tandem_mode"] | null
-          nota: string | null
-          position: number
-          saga_id: string
-        }
-        Insert: {
-          created_at?: string
-          modo?: Database["public"]["Enums"]["saga_tandem_mode"] | null
-          nota?: string | null
-          position: number
-          saga_id: string
-        }
-        Update: {
-          created_at?: string
-          modo?: Database["public"]["Enums"]["saga_tandem_mode"] | null
-          nota?: string | null
-          position?: number
-          saga_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "saga_tandems_saga_id_fkey"
-            columns: ["saga_id"]
-            isOneToOne: false
-            referencedRelation: "sagas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       saga_route_choices: {
         Row: {
           created_at: string
@@ -1758,6 +1726,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "saga_routes_saga_id_fkey"
+            columns: ["saga_id"]
+            isOneToOne: false
+            referencedRelation: "sagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saga_tandems: {
+        Row: {
+          created_at: string
+          modo: Database["public"]["Enums"]["saga_tandem_mode"] | null
+          nota: string | null
+          position: number
+          saga_id: string
+        }
+        Insert: {
+          created_at?: string
+          modo?: Database["public"]["Enums"]["saga_tandem_mode"] | null
+          nota?: string | null
+          position: number
+          saga_id: string
+        }
+        Update: {
+          created_at?: string
+          modo?: Database["public"]["Enums"]["saga_tandem_mode"] | null
+          nota?: string | null
+          position?: number
+          saga_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saga_tandems_saga_id_fkey"
             columns: ["saga_id"]
             isOneToOne: false
             referencedRelation: "sagas"

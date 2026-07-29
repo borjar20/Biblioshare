@@ -15,20 +15,32 @@ export function SignupForm() {
   const t = useTranslations("auth");
   const [state, formAction, pending] = useActionState(signup, initialState);
   const [username, setUsername] = useState("");
-  const [status, setStatus] = useState<UsernameStatus | "checking" | null>(null);
+  // Guardamos junto al veredicto el nombre que se consultó: así "¿este
+  // resultado es del texto que hay ahora en el campo?" se responde al pintar,
+  // sin tener que poner el estado a null/"checking" desde dentro del efecto
+  // (setState síncrono en un efecto encadena renders — regla set-state-in-effect).
+  const [checked, setChecked] = useState<{
+    username: string;
+    status: UsernameStatus;
+  } | null>(null);
 
   // Comprobación en vivo, con 400 ms de espera para no consultar en cada tecla.
   useEffect(() => {
-    if (username.length < 3) {
-      setStatus(null);
-      return;
-    }
-    setStatus("checking");
+    if (username.length < 3) return;
     const timer = setTimeout(() => {
-      checkUsername(username).then(setStatus);
+      checkUsername(username).then((status) => setChecked({ username, status }));
     }, 400);
     return () => clearTimeout(timer);
   }, [username]);
+
+  // Derivado, no estado: menos de 3 letras no dice nada, y mientras el veredicto
+  // que tenemos sea de otro texto seguimos "comprobando".
+  const status: UsernameStatus | "checking" | null =
+    username.length < 3
+      ? null
+      : checked?.username === username
+        ? checked.status
+        : "checking";
 
   if (state.checkEmail) {
     return (
