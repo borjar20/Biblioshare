@@ -121,8 +121,19 @@ sobre las cards ya enriquecidas (Fase 1), en una función pura nueva
 `SagaIndexCard[]` filtradas/ordenadas) — mantiene `build-saga-index.ts` enfocado en construir el
 catálogo, no en filtrarlo.
 
-El segmentado Todas/Sigo/Universos y los pills son enlaces `<Link>` que preservan el resto de
-params (igual que `library-filters.tsx`), sin JS de estado cliente.
+**Mecanismo del panel de filtros (revisado tras mapear el código real, sustituye la idea
+original de `<details>`+CSS calcada del mockup estático):** se reutiliza
+`FiltersDropdown` (`src/components/library/filters-dropdown.tsx`), el mismo componente cliente
+que ya usa `/coleccion` vía `LibraryFilters` — panel flotante con badge de contador de
+activos, cierre por click-fuera/Escape ya resuelto. Los pills de tipo/itinerarios/colección/
+mínimo-títulos son el `children` del dropdown, igual que hace `LibraryFilters` con sus grupos
+Tipo/Estado/Orden. Se descarta el sheet deslizante-desde-abajo del mockup: introduciría un
+segundo mecanismo de filtros en la app (hoy solo hay uno) por un efecto visual que no compensa
+la divergencia — decisión tomada explícitamente, no un olvido.
+
+El segmentado Todas/Sigo/Universos son enlaces `<Link>` que preservan el resto de params
+(igual que `library-filters.tsx`), sin JS de estado cliente — el único componente cliente de
+esta página sigue siendo `FiltersDropdown` (ya existente) y `SagaFollowButton` (ya existente).
 
 ## Fase 4 — Paginación
 
@@ -135,22 +146,19 @@ catálogo de ~85 filas y consistente con el resto de la página (todo servidor, 
 
 ## Fase 5 — Móvil
 
-Reutiliza el patrón ya validado en el mockup:
+`FiltersDropdown` (Fase 3) ya es responsive por sí solo (`w-[min(280px,92vw)]`): no hace falta
+mecanismo aparte para el panel de filtros en móvil, solo ajustar el layout del toolbar que lo
+contiene:
 
-- Toolbar colapsa a: buscador ancho completo, segmentado Todas/Sigo/Universos ancho completo,
-  fila `Filtros · N` (N = nº de filtros activos, cuenta `tipo` como 1 si tiene algún valor,
-  más `itinerarios`+`coleccion`+`min5`) + `↕ Orden`.
-- `Filtros · N` abre un `<details>` con el panel de filtros como bottom sheet (mismo CSS que el
-  mockup: `position:fixed` al abrir, scrim vía `body:has(.fsheet[open])::after`, sin JS).
-  Aplicar/Limpiar son botones normales dentro del `<form>` (ver nota abajo).
+- Toolbar en columna a `max-width:720px` (mismo breakpoint que ya usa la página hoy): buscador
+  ancho completo, segmentado Todas/Sigo/Universos ancho completo, fila con `FiltersDropdown`
+  (`label="Filtros"`, badge de activos) + control de orden.
 - Chips de subsaga: mismo colapso a 2 + "+N más" que en desktop (Fase 2), no hace falta
   tratamiento aparte — ya es responsive por construcción (no se duplica markup por breakpoint,
   al contrario que el mockup estático).
 
-**Nota de implementación (a resolver en el plan, no aquí):** el mockup no tiene comportamiento
-real de "Aplicar" (es HTML estático). En la app real, los filtros son la página completa
-(server-rendered), así que el sheet necesita ser un `<form>` cuyo submit navegue a `/sagas` con
-los params marcados — el botón "Aplicar" es un submit normal, no hace falta JS.
+Con esto la Fase 5 deja de ser un componente nuevo y pasa a ser CSS de layout sobre componentes
+que Fase 3 ya deja funcionando (`FiltersDropdown` + `Link`s de vista/segmento).
 
 ## Fuera de alcance (decisiones explícitas, no huecos)
 
