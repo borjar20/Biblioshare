@@ -1538,6 +1538,10 @@
   "statsRail": {
     "year2026": "Tu 2026"
   },
+  "whoToFollow": {
+    "title": "A quién seguir",
+    "follow": "Seguir"
+  },
   "admin": {
     "navLabel": "Admin",
     "title": "Gestión de usuarios",

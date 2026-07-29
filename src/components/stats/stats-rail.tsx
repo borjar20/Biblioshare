@@ -5,10 +5,12 @@ import { getAnnualGoals } from "@/lib/challenges/annual-goals";
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getAnnualCompleted } from "@/lib/stats/get-annual-completed";
+import { getWhoToFollow } from "@/lib/social/get-who-to-follow";
 import { WeeklyStrip } from "./weekly-strip";
 import { StreakCard } from "./streak-card";
 import { BookGoalCard } from "./book-goal-card";
 import { GoalRows } from "./goal-rows";
+import { WhoToFollowCard } from "./who-to-follow-card";
 
 // La barra lateral del frame B: en escritorio el feed manda, pero sobra ancho,
 // así que tus stats viven al lado en vez de obligarte a ir a Perfil.
@@ -29,12 +31,13 @@ export async function StatsRail({ userId }: { userId: string }) {
   const supabase = await createClient();
   const year = new Date().getFullYear();
   const tRail = await getTranslations("statsRail");
-  const [profile, weekly, streaks, annual, annualGoals] = await Promise.all([
+  const [profile, weekly, streaks, annual, annualGoals, whoToFollow] = await Promise.all([
     getOwnProfile(supabase, userId),
     getWeeklyActivity(supabase, userId),
     getStreaks(supabase, userId),
     getAnnualCompleted(supabase, userId, year),
     getAnnualGoals(supabase, userId, year),
+    getWhoToFollow(supabase, userId),
   ]);
 
   return (
@@ -57,6 +60,8 @@ export async function StatsRail({ userId }: { userId: string }) {
           </div>
         </div>
       </div>
+
+      <WhoToFollowCard suggestions={whoToFollow} />
     </div>
   );
 }
