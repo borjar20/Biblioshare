@@ -41,17 +41,18 @@ export type FeedEvent = {
   rating: number | null;
   reviewExcerpt: string | null;
   episode: { season: number; episode: number; title: string | null } | null;
-  // SIN el texto de la nota, a propósito. `progress_sessions.note` es la misma
-  // frase que guardas en `notes`, y esa tabla es privada del dueño: no tiene
-  // política de lectura pública y `is_public` se escribe pero todavía no se
-  // honra. El compositor promete literalmente «por ahora nadie más la ve».
-  // Servirla aquí la sacaba por la otra puerta —y por defecto, porque la
-  // casilla «Compartible» viene desmarcada—. Nadie la pintaba (feed-card solo
-  // usa los minutos), pero FeedCard es un componente de cliente, así que el
-  // texto viajaba serializado al navegador de tus seguidores. Cuando exista el
-  // muro público con filtro spoiler-safe, lo que se sirva será la fila de
-  // `notes` que el usuario haya marcado, no esta columna.
-  progress: { durationMinutes: number | null } | null;
+  // `progress_sessions.note` (la copia privada) NUNCA se sirve aquí, a
+  // propósito: sigue sin política de lectura pública — es el "por ahora nadie
+  // más la ve" que promete el compositor. El texto que SÍ se sirve es la fila
+  // de `notes` que el usuario haya marcado pública (`notes.is_public = true`,
+  // política de Task 1), resuelta en un batch aparte por `session_id` — nunca
+  // esta columna.
+  progress: {
+    durationMinutes: number | null;
+    page: number | null;      // position.page de la sesión (libros)
+    percent: number | null;   // page / books.total_pages * 100, si ambos existen
+    note: { body: string; isSpoiler: boolean } | null; // nota PÚBLICA (notes.is_public)
+  } | null;
   interactionTarget: { targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session"; targetId: string } | null;
   reactionCount: number;
   viewerReacted: boolean;
@@ -241,8 +242,9 @@ export async function getFeed(
             .from("progress_sessions")
             .select(
               // `note` NO se pide: es texto privado del autor (ver el comentario
-              // del campo `progress` en FeedEvent).
-              "id, user_id, pass_id, session_date, duration_minutes, created_at, passes!inner(item_type, item_id)"
+              // del campo `progress` en FeedEvent). `position` sí, para
+              // derivar page/percent (libros).
+              "id, user_id, pass_id, session_date, duration_minutes, created_at, position, passes!inner(item_type, item_id)"
             )
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
@@ -313,6 +315,27 @@ export async function getFeed(
   if (reviewError) throw reviewError;
   const reviewById = new Map((reviewRows ?? []).map((r) => [r.id, r.review]));
 
+  // Nota pública por sesión (Task 1: política RLS `public notes select` en
+  // `notes`). El `.eq("is_public", true)` es cinturón-y-tirantes sobre la
+  // RLS: nunca debe salir una fila privada de aquí, ni siquiera en el feed
+  // propio del dueño.
+  const sessionIds = progressedRows.map((r) => r.id);
+  const { data: publicNotes, error: notesError } = sessionIds.length
+    ? await supabase
+        .from("notes")
+        .select("session_id, body, is_spoiler")
+        .in("session_id", sessionIds)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false })
+    : { data: [] as { session_id: string | null; body: string | null; is_spoiler: boolean | null }[], error: null };
+  if (notesError) throw notesError;
+  // Una nota por sesión: la más reciente pública (el order desc + first-wins).
+  const noteBySession = new Map<string, { body: string; isSpoiler: boolean }>();
+  for (const n of publicNotes ?? []) {
+    if (!n.session_id || n.body == null || noteBySession.has(n.session_id)) continue;
+    noteBySession.set(n.session_id, { body: n.body, isSpoiler: n.is_spoiler ?? false });
+  }
+
   // "Solo reseñas" ya no puede filtrarse en la query (review no es una
   // columna filtrable desde diary_entries): se aplica aquí, sobre el texto
   // ya resuelto con privacidad.
@@ -365,8 +388,8 @@ export async function getFeed(
 
   const [books, movies, series] = await Promise.all([
     idsByType.book.size
-      ? supabase.from("books").select("id, title, author, cover_url").in("id", [...idsByType.book])
-      : Promise.resolve({ data: [] as { id: string; title: string; author: string | null; cover_url: string | null }[], error: null }),
+      ? supabase.from("books").select("id, title, author, cover_url, total_pages").in("id", [...idsByType.book])
+      : Promise.resolve({ data: [] as { id: string; title: string; author: string | null; cover_url: string | null; total_pages: number | null }[], error: null }),
     idsByType.movie.size
       ? supabase.from("movies").select("id, title, cover_url").in("id", [...idsByType.movie])
       : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
@@ -379,13 +402,14 @@ export async function getFeed(
   if (series.error) throw series.error;
   const catalogByKey = new Map<
     string,
-    { title: string; coverUrl: string | null; subtitle: string | null }
+    { title: string; coverUrl: string | null; subtitle: string | null; totalPages?: number | null }
   >();
   for (const r of books.data ?? [])
     catalogByKey.set(`book:${r.id}`, {
       title: r.title,
       coverUrl: r.cover_url,
       subtitle: r.author,
+      totalPages: r.total_pages,
     });
   for (const r of movies.data ?? [])
     catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
@@ -494,7 +518,18 @@ export async function getFeed(
       rating: null,
       reviewExcerpt: null,
       episode: null,
-      progress: { durationMinutes: r.duration_minutes },
+      progress: (() => {
+        const pos = (r.position ?? {}) as { page?: number };
+        const page = typeof pos.page === "number" ? pos.page : null;
+        const total = catalog.totalPages ?? null;
+        const percent = page != null && total ? Math.min(100, Math.round((page / total) * 100)) : null;
+        return {
+          durationMinutes: r.duration_minutes,
+          page,
+          percent,
+          note: noteBySession.get(r.id) ?? null,
+        };
+      })(),
       interactionTarget: { targetType: "progress_session", targetId: r.id },
       reactionCount: 0,
       viewerReacted: false,

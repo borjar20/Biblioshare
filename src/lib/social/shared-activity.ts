@@ -161,7 +161,11 @@ export async function resolveSharedActivity(
       rating: null,
       reviewExcerpt: null,
       episode: null,
-      progress: { durationMinutes: row.duration_minutes },
+      // page/percent/note se quedan sin resolver aquí, a propósito y fuera
+      // del alcance de esta tarea (Task 3 del plan "feed tarjetas por tipo"
+      // solo toca el fan-out de `getFeed`, no este resolver de una fila
+      // suelta para compartir en clubes) — ver issue de seguimiento.
+      progress: { durationMinutes: row.duration_minutes, page: null, percent: null, note: null },
       interactionTarget: null,
       reactionCount: 0,
       viewerReacted: false,
