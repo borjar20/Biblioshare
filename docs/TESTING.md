@@ -123,14 +123,42 @@ Ver `docs/REQUIREMENTS.md` §8-F / §7.31 para el porqué. Estado actual:
   cambiar temporalmente a `http://10.0.2.2:3000` (alias de loopback del
   emulador Android hacia el `localhost` de esta máquina) + `cleartext: true`.
 - Carpeta `android/` generada y comiteada (proyecto Gradle nativo estándar de
-  Capacitor). **No se ha podido compilar ni probar todavía en esta máquina**:
-  no hay JDK ni Android SDK instalados en este entorno Windows.
-  - Para poder compilar/ejecutar: instalar Android Studio (incluye JDK y
-    SDK) o al menos un JDK 17+ y el Android SDK con `ANDROID_HOME` apuntando
-    a él, y un emulador o dispositivo conectado.
-  - Con eso instalado: `npx cap sync android` tras cualquier cambio en
-    `capacitor.config.ts` o en las dependencias de Capacitor, y
-    `npx cap open android` para abrir el proyecto en Android Studio.
+  Capacitor). **El APK de debug compila en esta máquina Windows** (verificado
+  el 2026-07-29: `BUILD SUCCESSFUL`, `android/app/build/outputs/apk/debug/app-debug.apk`,
+  ~27 MB). Todavía no se ha instalado ni ejecutado en un dispositivo o emulador.
+  - Toolchain requerido y ya instalado en esta máquina:
+    - **JDK 21** (Temurin, `C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot`).
+      AGP 8.13 exige JDK 17+; el JDK 11 que trae el Android Studio 2021 instalado
+      aquí **no vale**, y el `java` que hay en el `PATH` es un JRE 8 — hay que
+      apuntar `JAVA_HOME` al JDK 21 explícitamente.
+    - **Android SDK** en `%LOCALAPPDATA%\Android\Sdk` con `platforms;android-36`
+      y `build-tools;36.0.0` (`variables.gradle` fija `compileSdkVersion = 36`).
+      El SDK que quedaba de 2021 solo llegaba a la 32.
+    - `cmdline-tools` actualizado a la 22.0. La 5.0 que había no entiende el
+      repositorio actual («*This version only understands SDK XML versions up to 2*»).
+      Trampa: `sdkmanager --install "cmdline-tools;latest"` **falla al
+      autoactualizarse** (`Failed to delete …\cmdline-tools\latest`, no puede
+      borrarse a sí mismo mientras corre); hay que lanzarlo desde una copia del
+      directorio fuera del SDK.
+  - Compilar (PowerShell, desde la raíz del repo):
+
+    ```powershell
+    $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot'
+    $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+    $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+    npx cap sync android
+    .\android\gradlew.bat -p android assembleDebug --no-daemon
+    ```
+
+    `--no-daemon` a propósito: esta máquina tiene 8 GB de RAM y el daemon de
+    Gradle se queda residente entre sesiones.
+  - `npx cap sync android` tras cualquier cambio en `capacitor.config.ts` o en
+    las dependencias de Capacitor. `npx cap open android` abre el proyecto en
+    Android Studio (el instalado aquí es de 2021 y no soporta AGP 8.13: sirve
+    para el emulador, no para compilar).
+  - Como el `server.url` apunta a Vercel, el APK **no empaqueta la app web**:
+    `webDir: "public"` solo aporta un puñado de assets estáticos. Un cambio en
+    el front no requiere recompilar el APK, basta con desplegar en Vercel.
 - **iOS no es viable en este entorno**: Xcode solo corre en macOS. Compilar
   y probar la plataforma iOS requiere una Mac o un runner de CI en la nube
   (Codemagic, GitHub Actions con runner `macos-latest`, etc.). No hay
