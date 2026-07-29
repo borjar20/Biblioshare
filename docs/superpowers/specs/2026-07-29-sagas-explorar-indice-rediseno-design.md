@@ -37,7 +37,6 @@ type SagaIndexCard = {
   accent: SagaAccentToken;
   titleCount: number;
   children: { id: string; name: string; accent: SagaAccentToken }[];
-  isTopLevel: boolean;          // parent_saga_id === null
   typeBreakdown: { book: number; movie: number; series: number };
   hasGraph: boolean;            // showMap && subárbol no vacío (mismo criterio que get-saga-detail.ts:707-715 y build-library-saga-cards.ts:341)
   routeCount: number;           // nº de saga_routes para esta saga
@@ -47,11 +46,14 @@ type SagaIndexCard = {
 };
 ```
 
-`isUniverse` NO es un campo persistido: se deriva en el momento de filtrar como
-`isTopLevel && children.length > 0` (ver Fase 3). No se añade columna `sagas.is_universe`:
-descartado explícitamente porque el criterio derivado ya reproduce el mockup (Cosmere y
-Mundodisco son top-level con subsagas) y añadir una columna exigiría migración + UI de
-curación para un criterio que hoy no diverge del derivado.
+`isUniverse` NO es un campo persistido ni siquiera calculado: el índice YA solo genera tarjetas
+para raíces (`build-saga-index.ts:55`, invariante existente, no algo que esta fase introduzca),
+así que "Universo" es simplemente `children.length > 0` sobre una card que por construcción ya
+es de una raíz — no hace falta un campo `isTopLevel` aparte, sería siempre `true` y por tanto
+código muerto. No se añade columna `sagas.is_universe`: descartado explícitamente porque el
+criterio derivado ya reproduce el mockup (Cosmere y Mundodisco son raíces con subsagas) y añadir
+una columna exigiría migración + UI de curación para un criterio que hoy no diverge del
+derivado.
 
 ### Queries nuevas (`get-saga-index.ts`)
 
@@ -86,7 +88,7 @@ premisa (siguen siendo O(1) roundtrips, no O(n) por saga).
 
 Por tarjeta, siguiendo el mockup:
 
-- Badge `Universo` si `isTopLevel && children.length > 0`.
+- Badge `Universo` si `children.length > 0`.
 - Badge `◆ Grafo` si `hasGraph`.
 - Badge `✦ N itinerarios` si `routeCount > 0` (singular si `routeCount === 1`).
 - Línea de tipos con icono+color (`i-b`/`i-m`/`i-s`) desde `typeBreakdown`, omitiendo los tipos
@@ -107,7 +109,7 @@ Contrato de querystring (todo opcional, todo combinable por AND salvo donde se i
 | Param | Valores | Efecto |
 |---|---|---|
 | `q` | texto | ya existe, búsqueda por nombre |
-| `vista` | `todas` \| `sigo` \| `universos` | `sigo`: solo `isFollowed`. `universos`: solo `isTopLevel && children.length>0`. Default `todas`. |
+| `vista` | `todas` \| `sigo` \| `universos` | `sigo`: solo `isFollowed`. `universos`: solo `children.length>0`. Default `todas`. |
 | `tipo` | csv de `libro,pelicula,serie` | OR entre valores marcados, AND con el resto de filtros — saga pasa si `typeBreakdown[tipo] > 0` para algún tipo marcado |
 | `itinerarios` | `1` | solo `routeCount > 0` |
 | `coleccion` | `1` | solo `ownedCount > 0`; el pill no se muestra si no hay usuario autenticado (mismo criterio que hoy oculta el botón seguir) |
