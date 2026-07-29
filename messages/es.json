@@ -1541,6 +1541,9 @@
     "retry": "Reintentar",
     "backHome": "Ir al inicio"
   },
+  "splash": {
+    "tagline": "Tu biblioteca de todo, compartida"
+  },
   "library": {
     "empty": "Aún no has añadido nada a tu biblioteca.",
     "emptyCta": "Buscar algo",
