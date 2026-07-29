@@ -109,13 +109,19 @@ de `list_migrations`.
 
 ### D4 — Quick-add reusa la máquina de estados
 
-Acción nueva `quickAddToLibrary(itemType, itemId)` (`"use server"`):
-`applyTransition(..., "planned")` + `revalidatePath("/")`. Idempotente: si ya
-hay pase activo, la transición es no-op (mismo comportamiento que `addToLibrary`).
-"Guardar los N en mi cola" = bucle sobre los ítems del grupo llamando a la misma
-acción (o una variante batch que reciba la lista). El botón vive en un
-componente de cliente por portada; refleja "ya en tu biblioteca" cuando el
-evento ya está en tu colección.
+Dos acciones `"use server"`:
+
+- `quickAddToLibrary(itemType, itemId)` — alta de un ítem (botón "+" por
+  portada): `applyTransition(..., "planned")` + `revalidatePath("/")`.
+- `quickAddManyToLibrary(items)` — "Guardar los N en mi cola": **una sola**
+  acción que recibe la lista entera y aplica las transiciones server-side (un
+  round-trip, no N desde el cliente), en paralelo (`Promise.all`), con un único
+  `revalidatePath("/")` al final. Elegida sobre el bucle cliente por rendimiento
+  (decisión del usuario, 2026-07-29).
+
+Ambas idempotentes: si ya hay pase activo, la transición es no-op (mismo
+comportamiento que `addToLibrary`). El botón vive en un componente de cliente por
+portada; refleja "ya en tu biblioteca" cuando el evento ya está en tu colección.
 
 ### D5 — Ancho PC y sidebar consolidada
 
