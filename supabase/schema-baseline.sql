@@ -8562,3 +8562,501 @@ alter table public.saga_items
   using role::text::public.saga_item_role;
 
 drop type public.saga_item_role_viejo;
+
+-- ============================================================================
+-- ANEXO 2026-07-29 - cierre de cinco issues P1 de seguridad (#130, #176, #133).
+-- CUATRO migraciones, todas aplicadas a dev Y PROD en este orden:
+--   1. 20260808_secdef_search_path_pg_temp.sql
+--   2. 20260809_save_saga_route_valida_subarbol.sql
+--   3. 20260810_club_event_validacion.sql
+--   4. 20260811_spawn_linked_activity_defaults.sql
+--
+-- Ninguna toca datos: la 1 solo reescribe proconfig, las otras tres son
+-- create-or-replace de funciones. Verificado contra pg_proc en los dos
+-- entornos (nunca contra list_migrations): 55 funciones SECURITY DEFINER, 55
+-- con pg_temp, mismo digest normalizado de las cinco funciones tocadas en dev y
+-- en prod, y cero ACL con anon.
+--
+-- Las dos issues restantes de la tanda no dejan SQL: #148 (salvaguarda de
+-- truncado de PostgREST) es solo cliente, y #145 (deriva de orden del enum
+-- notification_type) se decidio ACEPTAR y documentar en docs/DRIFT-CHECK.md;
+-- reordenar un enum in situ no existe en Postgres y recrear el tipo sobre
+-- notifications en produccion no lo justifica un problema sin sintoma.
+-- ============================================================================
+
+-- 1. #130: pg_temp al FINAL del search_path de toda funcion SECURITY DEFINER.
+-- Postgres busca el esquema temporal ANTES que los esquemas listados salvo que
+-- pg_temp aparezca explicitamente; sin el, quien pueda crear una tabla o un tipo
+-- temporal con el nombre de algo que la funcion referencie sin cualificar la
+-- secuestra. Barrido generico y idempotente, no una lista a mano: las funciones
+-- vienen de ~40 migraciones y una lista literal caduca con la siguiente.
+-- Preserva el search_path que cada funcion ya tuviera (tres tienen '' - las de
+-- club_join - y NO deben pasar a public).
+do $$
+declare
+  r record;
+  v_actual text;
+  v_lista text;
+begin
+  for r in
+    select
+      quote_ident(n.nspname) || '.' || quote_ident(p.proname)
+        || '(' || pg_get_function_identity_arguments(p.oid) || ')' as sig,
+      (select c from unnest(coalesce(p.proconfig, '{}'::text[])) c
+        where c like 'search_path=%') as cfg
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prosecdef
+      and p.prokind = 'f'
+  loop
+    v_actual := coalesce(substring(r.cfg from 'search_path=(.*)$'), 'public');
+    continue when v_actual ~ '(^|,)\s*"?pg_temp"?\s*(,|$)';
+
+    -- Cada elemento se reemite como literal: pg_proc guarda el search_path
+    -- vacio como "", y `set search_path to ""` es un error de sintaxis
+    -- (zero-length delimited identifier); '' si vale.
+    select string_agg(quote_literal(btrim(btrim(e), '"')), ', ' order by o)
+      into v_lista
+      from unnest(string_to_array(v_actual, ',')) with ordinality as t(e, o);
+
+    execute format('alter function %s set search_path to %s, pg_temp', r.sig, v_lista);
+  end loop;
+end;
+$$;
+
+do $$
+declare
+  v_faltan int;
+begin
+  select count(*) into v_faltan
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.prosecdef
+    and p.prokind = 'f'
+    and not exists (
+      select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) c
+      where c like 'search_path=%pg_temp%');
+
+  if v_faltan > 0 then
+    raise exception '% funciones SECURITY DEFINER siguen sin pg_temp en search_path', v_faltan;
+  end if;
+end;
+$$;
+
+-- 2. #176 -- 20260809_save_saga_route_valida_subarbol.sql
+-- #176 (2): `save_saga_route` se fiaba de que el cliente dijera la verdad.
+--
+-- Hasta aquí, la única comprobación de "este bloque apunta a una subsaga de
+-- ESTA saga" vivía en `validateRouteDraft`, y el conjunto contra el que
+-- comparaba (`descendantIds`) llegaba desde el cliente por el server action.
+-- Es decir: la validación se hacía contra un dato que el atacante controla.
+-- Fabricando `descendantIds` se colaba un `child_saga_id` de una saga ajena.
+--
+-- El techo del abuso era bajo (`resolveRoute` descarta al leer cualquier
+-- `child_saga_id` que no esté en el árbol real, así que quedaba una fila
+-- inerte), pero la frontera estaba en el sitio equivocado. Aquí el subárbol se
+-- calcula EN SERVIDOR a partir de `saga_routes.saga_id` -- la saga real de la
+-- ruta, no la que dijo el cliente -- y `parent_saga_id`.
+--
+-- `validateRouteDraft` sigue existiendo y sigue haciendo la comprobación
+-- optimista: da mensajes concretos en el editor sin roundtrip. Lo que cambia es
+-- que ya no es la ÚNICA.
+create or replace function public.save_saga_route(
+  p_route_id uuid,
+  p_entries jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_saga_id uuid;
+  v_bloques_ajenos int;
+  v_items_ajenos int;
+begin
+  if not public.has_min_role('collaborator') then
+    raise exception 'forbidden';
+  end if;
+
+  -- La saga de la ruta se LEE, no se recibe: es la que gobierna qué puede
+  -- contener el itinerario.
+  select saga_id into v_saga_id from public.saga_routes where id = p_route_id;
+  if v_saga_id is null then
+    raise exception 'route % not found', p_route_id;
+  end if;
+
+  delete from public.saga_route_entries where route_id = p_route_id;
+
+  insert into public.saga_route_entries (route_id, position, item_type, item_id, child_saga_id, note)
+  select
+    p_route_id,
+    (e->>'position')::integer,
+    (e->>'item_type')::public.item_type,
+    (e->>'item_id')::uuid,
+    (e->>'child_saga_id')::uuid,
+    nullif(e->>'note', '')
+  from jsonb_array_elements(coalesce(p_entries, '[]'::jsonb)) as e;
+
+  -- Se valida DESPUÉS de insertar, a propósito: así se comprueba contra las
+  -- columnas ya tipadas en vez de volver a castear el jsonb, y la función es
+  -- una sola transacción -- el `raise` de abajo revierte el delete y el insert
+  -- enteros. El full-replace sigue siendo atómico.
+  with recursive subarbol as (
+    select id from public.sagas where id = v_saga_id
+    union all
+    select s.id from public.sagas s join subarbol d on s.parent_saga_id = d.id
+  )
+  select
+    (select count(*)
+       from public.saga_route_entries e
+      where e.route_id = p_route_id
+        and e.child_saga_id is not null
+        and (e.child_saga_id = v_saga_id
+             or not exists (select 1 from subarbol d where d.id = e.child_saga_id))),
+    (select count(*)
+       from public.saga_route_entries e
+      where e.route_id = p_route_id
+        and e.item_id is not null
+        and not exists (
+          select 1
+            from public.saga_items si
+            join subarbol d on d.id = si.saga_id
+           where si.item_type = e.item_type and si.item_id = e.item_id))
+  into v_bloques_ajenos, v_items_ajenos;
+
+  -- Un bloque a la PROPIA saga también se rechaza: un itinerario que se
+  -- contiene a sí mismo no tiene lectura posible.
+  if v_bloques_ajenos > 0 then
+    raise exception 'foreign block';
+  end if;
+  -- Hueco gemelo que la validación de cliente ni siquiera intentaba cubrir: una
+  -- obra que no pertenece a ninguna saga del subárbol.
+  if v_items_ajenos > 0 then
+    raise exception 'foreign item';
+  end if;
+end;
+$$;
+
+revoke execute on function public.save_saga_route(uuid, jsonb) from public, anon;
+grant execute on function public.save_saga_route(uuid, jsonb) to authenticated;
+
+comment on function public.save_saga_route(uuid, jsonb) is
+  'Full-replace atómico de los pasos de un itinerario. Collaborator+. Valida en servidor que bloques y obras pertenezcan al subárbol de la saga de la ruta (#176).';
+
+-- 3. #133 -- 20260810_club_event_validacion.sql
+-- #133: validación floja y gating incompleto en la capa de RPC de eventos de club.
+--
+-- Cuatro huecos de la misma capa, arreglados juntos porque se pisan entre sí:
+--   1. Las RPCs no acotaban la longitud de título/descripción.
+--   2. `p_description` sin DEFAULT obligaba a un `as string` en cada call site
+--      para colar un null que la función sí acepta.
+--   3. Los errores de dominio de estas dos RPCs usaban frases con espacios
+--      ('title required') mientras el cliente y `spawn_linked_activity` ya
+--      usaban snake_case ('title_required').
+--   4. `finish_club_activity` no excluía `kind = 'evento'`, así que el
+--      invariante que el comentario de `update_club_event` daba por cierto
+--      ("un evento nunca pasa a finished") no lo forzaba nadie.
+
+-- (1) NOTA sobre el diagnóstico de la issue: daba por hipótesis ("si
+-- club_activities tiene un check de longitud...") algo que YA existe --
+-- `club_activities_title_len` (1..120) y `club_activities_description_len`
+-- (<=2000), puestos en `20260715_text_length_limits.sql`, y presentes tanto en
+-- dev como en prod. Así que el hueco no era la falta de techo en la tabla: era
+-- que las RPCs de evento no lo comprobaban y dejaban que el CHECK saltara como
+-- un 23514 crudo que el cliente no traduce. Los números de aquí abajo son
+-- EXACTAMENTE los del CHECK a propósito: si divergieran, volvería a haber un
+-- rango de longitudes que pasa la RPC y muere en Postgres.
+
+-- (1 y 2 y 3) create_club_event: mismos límites que el CHECK de la tabla, para
+-- que el camino de evento devuelva SIEMPRE un error de dominio traducible y
+-- nunca un 23514 crudo de Postgres. `p_description` gana `default null`: sin él
+-- el generador de tipos de Supabase lo marcaba no-nulable y cada call site
+-- necesitaba un `as string` mintiendo sobre el tipo.
+--
+-- `p_starts_on` también gana `default null`, y no por gusto: Postgres exige que
+-- todo parámetro POSTERIOR a uno con default tenga default. Reordenarlos para
+-- evitarlo cambiaría la firma (uuid,text,text,date -> uuid,text,date,text) y
+-- dejaría dos sobrecargas conviviendo. El coste es que el tipo generado lo
+-- marca opcional; se compensa con el guard `starts_on_required` de aquí abajo y
+-- con la validación de cliente en `createClubEvent`/`updateClubEvent`.
+create or replace function public.create_club_event(
+  p_club_id uuid,
+  p_title text,
+  p_description text default null,
+  p_starts_on date default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid;
+  v_title text := trim(p_title);
+  v_description text := nullif(trim(coalesce(p_description, '')), '');
+begin
+  if not public.has_min_club_role(p_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if p_starts_on is null then
+    raise exception 'starts_on_required';
+  end if;
+  if coalesce(v_title, '') = '' then
+    raise exception 'title_required';
+  end if;
+  if char_length(v_title) > 120 then
+    raise exception 'title_too_long';
+  end if;
+  if char_length(coalesce(v_description, '')) > 2000 then
+    raise exception 'description_too_long';
+  end if;
+
+  insert into public.club_activities
+    (club_id, kind, title, description, status, created_by, starts_on)
+  values
+    (p_club_id, 'evento', v_title, v_description, 'active', auth.uid(), p_starts_on)
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+revoke execute on function public.create_club_event(uuid, text, text, date) from public, anon;
+grant execute on function public.create_club_event(uuid, text, text, date) to authenticated;
+
+-- update_club_event: el UPDATE que club_activities no tiene -- Bloque G dejó la
+-- tabla sin política UPDATE a propósito, con las transiciones encapsuladas en RPCs.
+--
+-- OJO: el `and kind = 'evento'` del UPDATE es OBLIGATORIO, no defensivo. Sin él,
+-- esta función -- SECURITY DEFINER y gateada solo por rol -- deja a un moderador
+-- reescribir título, descripción y fechas de cualquier buddy_read o
+-- list_challenge por la puerta de atrás.
+--
+-- Mismo motivo para `and status = 'active'`: un evento nace 'active' y solo puede
+-- pasar a 'archived'. Eso ya NO es solo un comentario: desde esta migración
+-- `finish_club_activity` rechaza los eventos (ver abajo), así que el invariante
+-- lo fuerza el esquema y no la buena voluntad del llamante.
+create or replace function public.update_club_event(
+  p_activity_id uuid,
+  p_title text,
+  p_description text default null,
+  p_starts_on date default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_club_id uuid;
+  v_kind public.activity_kind;
+  v_status public.activity_status;
+  v_title text := trim(p_title);
+  v_description text := nullif(trim(coalesce(p_description, '')), '');
+begin
+  select club_id, kind, status into v_club_id, v_kind, v_status
+  from public.club_activities where id = p_activity_id;
+
+  if v_club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v_kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  if not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if p_starts_on is null then
+    raise exception 'starts_on_required';
+  end if;
+  if coalesce(v_title, '') = '' then
+    raise exception 'title_required';
+  end if;
+  if char_length(v_title) > 120 then
+    raise exception 'title_too_long';
+  end if;
+  if char_length(coalesce(v_description, '')) > 2000 then
+    raise exception 'description_too_long';
+  end if;
+
+  update public.club_activities
+  set title = v_title,
+      description = v_description,
+      starts_on = p_starts_on
+  where id = p_activity_id and kind = 'evento' and status = 'active';
+end;
+$$;
+
+revoke execute on function public.update_club_event(uuid, text, text, date) from public, anon;
+grant execute on function public.update_club_event(uuid, text, text, date) to authenticated;
+
+comment on function public.create_club_event(uuid, text, text, date) is
+  'Crea un evento de club (kind=evento, status=active) saltando la RLS de INSERT que fuerza proposed. Moderador+. Errores de dominio en snake_case.';
+comment on function public.update_club_event(uuid, text, text, date) is
+  'Edita título/descripción/fecha de un EVENTO. Moderador+. Restringida a kind=evento y status=active a propósito. Errores de dominio en snake_case.';
+
+-- (4) finish_club_activity: un evento NO se termina, se archiva. Sin este
+-- filtro, cualquier creador o moderador podía mover un evento a 'finished'
+-- llamando a la RPC con su uuid, sin ningún error -- y `update_club_event`
+-- dejaba de aceptarlo para siempre (solo edita 'active') sin que nadie
+-- entendiera por qué. Hoy no se ve en la UI porque `groupActivities` mete
+-- 'finished' y 'archived' en el mismo grupo "Finalizadas"; el arreglo es para
+-- que el invariante exista de verdad, no solo en un comentario.
+create or replace function public.finish_club_activity(p_activity_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_club_id uuid;
+  v_status public.activity_status;
+  v_kind public.activity_kind;
+  v_created_by uuid;
+begin
+  select club_id, status, kind, created_by into v_club_id, v_status, v_kind, v_created_by
+    from public.club_activities where id = p_activity_id;
+  if v_club_id is null then
+    raise exception 'not found';
+  end if;
+  if v_created_by <> auth.uid() and not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if v_kind = 'evento' then
+    raise exception 'events cannot be finished';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'activity is not active';
+  end if;
+  update public.club_activities set status = 'finished' where id = p_activity_id;
+end;
+$$;
+
+revoke execute on function public.finish_club_activity(uuid) from public, anon;
+grant execute on function public.finish_club_activity(uuid) to authenticated;
+
+comment on function public.finish_club_activity(uuid) is
+  'Termina una actividad (creador o moderador+). Rechaza kind=evento: un evento solo pasa a archived (#133).';
+
+-- 4. #133 (tercer call site) -- 20260811_spawn_linked_activity_defaults.sql
+-- #133 (2), tercer call site: `spawn_linked_activity` tenía el mismo síntoma que
+-- las RPCs de evento -- `p_from_item_type`/`p_from_item_id` sin DEFAULT, así que
+-- el generador de tipos los marcaba no-nulables aunque la función acepte NULL a
+-- propósito (la tierlist de cierre no lleva ítem de origen). Eso obligaba a un
+-- `as ItemType` / `as string` en `core.ts` mintiendo sobre el tipo.
+--
+-- El cuerpo se reproduce SIN CAMBIOS (no se puede añadir un default con ALTER
+-- FUNCTION; hay que reescribir la función entera). Lo único que cambia respecto
+-- a `20260713_club_activities.sql` son los dos `default null` y el `pg_temp` del
+-- search_path (#130).
+create or replace function public.spawn_linked_activity(
+  p_parent_activity_id uuid,
+  p_kind public.activity_kind,
+  p_title text,
+  p_from_item_type public.item_type default null,
+  p_from_item_id uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_club_id uuid;
+  v_parent_kind public.activity_kind;
+  v_parent_status public.activity_status;
+  v_created_by uuid;
+  v_child_id uuid;
+  v_title text := trim(p_title);
+  v_config jsonb;
+begin
+  -- FOR UPDATE serializa los spawns concurrentes sobre el mismo padre: cierra tanto la carrera
+  -- de la "oferta única" de tierlist como la de un cambio de estado del padre a mitad de spawn.
+  select club_id, kind, status, created_by
+    into v_club_id, v_parent_kind, v_parent_status, v_created_by
+    from public.club_activities where id = p_parent_activity_id
+    for update;
+  if v_club_id is null then
+    raise exception 'not found';
+  end if;
+  if v_created_by <> auth.uid() and not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if v_title is null or v_title = '' then
+    raise exception 'title_required';
+  end if;
+  if v_parent_kind <> 'list_challenge' then
+    raise exception 'unsupported parent kind';
+  end if;
+
+  if p_kind = 'buddy_read' then
+    if v_parent_status <> 'active' then
+      raise exception 'parent must be active';
+    end if;
+    if p_from_item_type is null or p_from_item_id is null then
+      raise exception 'from item required';
+    end if;
+    if p_from_item_type not in ('book', 'series') then
+      raise exception 'buddy read only for book or series';
+    end if;
+    if not exists (
+      select 1 from public.club_activity_items
+      where activity_id = p_parent_activity_id
+        and item_type = p_from_item_type and item_id = p_from_item_id
+    ) then
+      raise exception 'item not in parent pool';
+    end if;
+  elsif p_kind = 'tierlist' then
+    if v_parent_status <> 'finished' then
+      raise exception 'parent must be finished';
+    end if;
+    if exists (
+      select 1 from public.club_activities
+      where spawned_from_activity_id = p_parent_activity_id and kind = 'tierlist'
+    ) then
+      raise exception 'tierlist already linked';
+    end if;
+    -- Niveles por defecto (espejo de DEFAULT_TIERS, ver cabecera).
+    v_config := jsonb_build_object('tiers', jsonb_build_array(
+      jsonb_build_object('label', 'S', 'color', 'var(--status-dropped)'),
+      jsonb_build_object('label', 'A', 'color', 'var(--gold)'),
+      jsonb_build_object('label', 'B', 'color', 'var(--status-completed)'),
+      jsonb_build_object('label', 'C', 'color', 'var(--type-movie)'),
+      jsonb_build_object('label', 'D', 'color', 'var(--muted-foreground)')
+    ));
+  else
+    raise exception 'unsupported child kind';
+  end if;
+
+  insert into public.club_activities (
+    club_id, kind, title, status, created_by, config,
+    spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id
+  ) values (
+    v_club_id, p_kind, v_title, 'active', auth.uid(), v_config,
+    p_parent_activity_id,
+    case when p_kind = 'buddy_read' then p_from_item_type else null end,
+    case when p_kind = 'buddy_read' then p_from_item_id else null end
+  )
+  returning id into v_child_id;
+
+  if p_kind = 'buddy_read' then
+    insert into public.club_activity_items (activity_id, item_type, item_id, added_by, position)
+    values (v_child_id, p_from_item_type, p_from_item_id, auth.uid(), 0);
+  else -- tierlist: copia todos los ítems del padre conservando el orden
+    insert into public.club_activity_items (activity_id, item_type, item_id, added_by, position)
+    select v_child_id, item_type, item_id, auth.uid(), position
+      from public.club_activity_items
+      where activity_id = p_parent_activity_id;
+  end if;
+
+  return v_child_id;
+end;
+$$;
+
+revoke execute on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) from public, anon;
+grant execute on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) to authenticated;

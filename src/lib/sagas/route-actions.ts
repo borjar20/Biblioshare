@@ -50,7 +50,19 @@ export async function dropRoute(sagaId: string): Promise<void> {
 // curación: gate collaborator+ en el server action, además del de RLS que ya
 // lleva la tabla (política "saga routes writable by collaborators"). Los
 // dos, nunca solo uno.
-export type RouteFormState = { error?: "nameRequired" | "slugTaken" | "forbidden" | "generic" };
+export type RouteFormState = {
+  error?: "nameRequired" | "slugTaken" | "forbidden" | "notFound" | "generic";
+};
+
+// #176: `routeId` y `sagaId` llegan los DOS del cliente, y hasta esta issue
+// nadie comprobaba que el primero perteneciera al segundo. Un colaborador podía
+// renombrar o borrar la ruta de OTRA saga y, de paso, revalidar la página
+// equivocada (la de la saga que dijo, no la que tocó). El patrón correcto ya
+// estaba en `setReadingOrder` y en la página del editor: filtrar TAMBIÉN por
+// `saga_id` en la propia escritura, no en una consulta previa — así no hay
+// ventana entre comprobar y escribir, y no cuesta un viaje extra.
+//
+// No sustituye al gate de rol: esto es pertenencia, aquello es autoridad.
 
 /** Slug a partir del nombre: minúsculas, sin acentos, separadores simples. */
 function slugify(name: string): string {
@@ -157,8 +169,19 @@ export async function renameRoute(
   // esos enlaces y desharía en silencio las adopciones existentes de quien ya
   // había elegido esta ruta. Renombrar es cosmético: solo toca `name` y
   // `summary`, nunca `slug`.
-  const { error } = await supabase.from("saga_routes").update({ name, summary }).eq("id", routeId);
+  //
+  // `.eq("saga_id", sagaId)` + `.select("id")`: el filtro impide renombrar la
+  // ruta de otra saga (#176) y las filas devueltas distinguen "no era tuya" de
+  // un error real — sin ellas, un routeId ajeno "tenía éxito" en silencio y
+  // revalidaba la página equivocada.
+  const { data, error } = await supabase
+    .from("saga_routes")
+    .update({ name, summary })
+    .eq("id", routeId)
+    .eq("saga_id", sagaId)
+    .select("id");
   if (error) return { error: "generic" };
+  if (!data || data.length === 0) return { error: "notFound" };
 
   revalidateSagaPage(sagaId);
   return {};
@@ -265,7 +288,15 @@ export async function deleteRoute(routeId: string, sagaId: string): Promise<{ er
   // hace que Postgrest devuelva las filas borradas, para poder distinguir
   // "0 filas borradas" de un error real — coherente con cómo createRoute ya
   // maneja su propio error.
-  const { data, error } = await supabase.from("saga_routes").delete().eq("id", routeId).select("id");
+  //
+  // `.eq("saga_id", sagaId)` (#176): sin él, un routeId de otra saga se borraba
+  // — y con él sus pasos, por el `on delete cascade` de saga_route_entries.
+  const { data, error } = await supabase
+    .from("saga_routes")
+    .delete()
+    .eq("id", routeId)
+    .eq("saga_id", sagaId)
+    .select("id");
   if (error || !data || data.length === 0) return { error: true };
 
   revalidateSagaPage(sagaId);
@@ -289,22 +320,28 @@ export async function saveRoute(
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
 
+  // Comprobación OPTIMISTA, no la garantía: `descendantIds` llega del cliente,
+  // así que esto solo sirve para dar un mensaje concreto en el editor sin
+  // roundtrip. Quien decide de verdad qué bloques y qué obras caben es la RPC,
+  // que recalcula el subárbol en servidor (#176, migración 20260809).
   const problems = validateRouteDraft(entries, { descendantIds: new Set(descendantIds) });
   if (problems.length > 0) return { error: problems[0] };
 
-  // La otra mitad de la guarda de `setReadingOrder`: no se puede dejar sin
-  // pasos al itinerario que ocupa el puesto de «Orden de lectura». Solo se
-  // consulta cuando el borrador se queda a cero, así que el guardado normal no
-  // paga nada.
-  if (entries.length === 0) {
-    const { data: row } = await supabase
-      .from("saga_routes")
-      .select("is_reading_order")
-      .eq("id", routeId)
-      .maybeSingle();
-    if ((row as { is_reading_order: boolean } | null)?.is_reading_order) {
-      return { error: "readingOrderEmpty" };
-    }
+  // Dos cosas en una consulta:
+  //   - pertenencia (#176): la ruta tiene que ser de ESTA saga. Antes esta
+  //     consulta solo se hacía con el borrador vacío, así que un guardado
+  //     normal ni miraba a qué saga pertenecía la ruta que estaba pisando.
+  //   - la otra mitad de la guarda de `setReadingOrder`: no se puede dejar sin
+  //     pasos al itinerario que ocupa el puesto de «Orden de lectura».
+  const { data: row } = await supabase
+    .from("saga_routes")
+    .select("is_reading_order")
+    .eq("id", routeId)
+    .eq("saga_id", sagaId)
+    .maybeSingle();
+  if (!row) return { error: "notFound" };
+  if (entries.length === 0 && (row as { is_reading_order: boolean }).is_reading_order) {
+    return { error: "readingOrderEmpty" };
   }
 
   const { error } = await supabase.rpc("save_saga_route", {
@@ -317,7 +354,16 @@ export async function saveRoute(
       note: e.note,
     })),
   });
-  if (error) return { error: "generic" };
+  if (error) {
+    // Los dos rechazos de frontera de la RPC se traducen al MISMO código que
+    // usa la validación optimista de arriba: si el cliente mintió sobre
+    // `descendantIds`, el curador ve el mensaje que le corresponde ("solo
+    // subsagas de esta saga") y no un "algo salió mal" genérico.
+    const message = error.message ?? "";
+    if (message.includes("foreign block")) return { error: "foreignBlock" };
+    if (message.includes("foreign item")) return { error: "foreignItem" };
+    return { error: "generic" };
+  }
 
   revalidateSagaPage(sagaId);
   return {};
