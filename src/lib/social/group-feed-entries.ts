@@ -54,7 +54,11 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     const newest = items[0];
     result.push({
       source: "person-group",
-      id: `group:${key}`,
+      // id único por página: `key` (actor+verbo+día, y para progressed también
+      // obra) se repite entre páginas de "Cargar más"; el id real de `newest`
+      // (único por fila) evita que FeedList colisione claves de React entre
+      // grupos de páginas distintas con el mismo actor+día.
+      id: `group:${key}:${newest.id}`,
       eventDate: newest.eventDate,
       verb: newest.verb as PersonGroupEntry["verb"],
       actor: {

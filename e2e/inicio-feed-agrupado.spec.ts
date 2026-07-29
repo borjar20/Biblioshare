@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 //
 // Cubre las tres piezas de la feature:
 //   1. Tarjeta de grupo: un seguido que dio de alta ≥2 obras el MISMO día se pinta
-//      como UNA tarjeta ("añadió N libros") con N ítems, no N tarjetas sueltas
+//      como UNA tarjeta ("añadió N títulos") con N ítems, no N tarjetas sueltas
 //      (src/lib/social/group-feed-entries.ts → src/components/social/feed-group-card.tsx).
 //   2. Alta rápida "＋": pulsar "Añadir" en un ítem del feed lo mete en la cola del
 //      visitante; el botón vira a "En tu biblioteca" y la BD gana el pase planned
@@ -207,7 +207,7 @@ test("un seguido con altas del mismo día se agrupa en una tarjeta y el ＋ mete
     await expect(card).toHaveCount(1);
 
     // Headline agrupado (NO tres tarjetas sueltas de "añadió a su biblioteca").
-    await expect(card.getByText(/añadió 3 libros/i)).toBeVisible();
+    await expect(card.getByText(/añadió 3 títulos/i)).toBeVisible();
 
     // N ítems dentro: un botón "Añadir" por obra y una portada (<img>) por obra.
     const addButtons = card.getByRole("button", { name: /^añadir$/i });
