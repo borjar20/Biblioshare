@@ -9,6 +9,7 @@ import { timeAgo } from "@/lib/relative-time";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ReviewInteractions } from "@/components/social/review-interactions";
+import { QuickAddButton } from "@/components/library/quick-add-button";
 import { itemHref } from "@/lib/catalog/item-href";
 
 const STATUS_BG: Record<MediaStatus, string> = {
@@ -133,6 +134,10 @@ export function FeedCard({
               />
               {tLibrary(`status.${event.entryStatus}`)}
             </span>
+          )}
+
+          {event.verb === "added" && (
+            <QuickAddButton itemType={event.itemType} itemId={event.itemId} />
           )}
 
           {event.reviewExcerpt && (

@@ -330,6 +330,8 @@
       "watchedEpisode": "marcó un episodio de"
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
+    "quickAdd": "Añadir",
+    "alreadyInLibrary": "En tu biblioteca",
     "filters": {
       "all": "Todo",
       "reviews": "Reseñas",
