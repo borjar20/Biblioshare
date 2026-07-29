@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { availableYears, resolvePeriod } from "@/lib/stats/period";
 import { getRatingDistribution } from "@/lib/stats/get-rating-distribution";
@@ -56,9 +56,7 @@ export default async function FullStatsPage({
   searchParams: Promise<{ periodo?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const t = await getTranslations("stats");

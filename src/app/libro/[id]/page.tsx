@@ -8,7 +8,7 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
@@ -92,12 +92,10 @@ export default async function BookDetailPage({
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
-  const [
-    { data: book },
-    {
-      data: { user },
-    },
-  ] = await Promise.all([fetchBook(supabase, id), supabase.auth.getUser()]);
+  const [{ data: book }, user] = await Promise.all([
+    fetchBook(supabase, id),
+    getCurrentUser(),
+  ]);
 
   if (!book) notFound();
 

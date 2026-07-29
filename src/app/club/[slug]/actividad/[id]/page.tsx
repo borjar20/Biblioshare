@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
 import { getActivity, listClubActivities } from "@/lib/clubs/activities/core";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
@@ -24,9 +24,7 @@ export default async function ActivityPage({
 }) {
   const { slug, id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const club = await getClub(slug);

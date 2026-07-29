@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
@@ -18,9 +18,7 @@ export const metadata: Metadata = { title: "Editar saga — Biblioshare" };
 export default async function EditSagaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${id}`);
 

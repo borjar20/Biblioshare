@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import {
   getProfileByUsername,
   getProfileIdentity,
@@ -68,14 +68,9 @@ export default async function PublicProfilePage({
 
   const supabase = await createClient();
 
-  const [
-    profile,
-    {
-      data: { user },
-    },
-  ] = await Promise.all([
+  const [profile, user] = await Promise.all([
     getProfileByUsername(supabase, username),
-    supabase.auth.getUser(),
+    getCurrentUser(),
   ]);
 
   // Perfil privado no visible para este visitante (ni dueño ni seguidor

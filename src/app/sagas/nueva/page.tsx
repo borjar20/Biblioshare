@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { NewSagaForm } from "@/components/saga/new-saga-form";
 
@@ -11,9 +11,7 @@ export const metadata: Metadata = { title: "Nueva saga — Biblioshare" };
 // /login; sin rol suficiente, de vuelta al índice público.
 export default async function NewSagaPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect("/sagas");
 

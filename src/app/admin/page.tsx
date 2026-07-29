@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole, type UserRole } from "@/lib/auth/roles";
 import { RoleSelect } from "./role-select";
 
@@ -14,9 +14,7 @@ export default async function AdminPage() {
   const t = await getTranslations("admin");
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!hasMinRole(await getCurrentUserRole(supabase), "admin")) redirect("/");
 

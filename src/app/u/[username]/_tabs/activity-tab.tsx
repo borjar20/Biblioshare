@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getFeed } from "@/lib/social/feed";
 import { ProfileActivityFeed } from "@/components/social/profile-activity-feed";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,9 +22,7 @@ export async function ActivityTab({
 }) {
   const supabase = await createClient();
   const t = await getTranslations("profile");
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const page = await getFeed(supabase, user?.id ?? userId, { actorId: userId });
 

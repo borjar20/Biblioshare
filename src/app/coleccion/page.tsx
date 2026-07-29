@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
@@ -66,9 +66,7 @@ export default async function CollectionPage({
   }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const params = await searchParams;

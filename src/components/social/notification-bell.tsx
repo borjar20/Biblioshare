@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { markAllNotificationsRead } from "@/lib/social/notification-actions";
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+} from "@/lib/social/notification-actions";
 import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notification-types";
 import { timeAgo } from "@/lib/relative-time";
 import { UserAvatar } from "./user-avatar";
@@ -13,18 +16,21 @@ import { PushToggle } from "@/components/push/push-toggle";
 // Campana con contador de no leídas + dropdown (EPIC-05, Bloque D, SD-5). Al
 // abrir, marca todo como leído (sin selección fila a fila, mismo espíritu
 // simple que el resto de toggles de la app).
+//
+// La LISTA se pide al abrir, no al cargar la página: viajaba en cada render de
+// cada ruta desde AppShell, que bloquea el primer byte (issue #283). Solo el
+// contador llega con el chrome, porque es lo único que se ve sin abrir.
 export function NotificationBell({
   initialUnreadCount,
-  initialNotifications,
 }: {
   initialUnreadCount: number;
-  initialNotifications: Notification[];
 }) {
   const t = useTranslations("notifications");
   const tTime = useTranslations("time");
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [, startTransition] = useTransition();
+  // null = todavía no se ha pedido nunca (o está en vuelo la primera vez).
+  const [notifications, setNotifications] = useState<Notification[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,13 +42,26 @@ export function NotificationBell({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
-  function toggle() {
+  async function toggle() {
     const next = !open;
     setOpen(next);
-    if (next && unreadCount > 0) {
-      setUnreadCount(0);
-      startTransition(() => markAllNotificationsRead());
-    }
+    if (!next) return;
+
+    // El contador baja a 0 en cuanto se abre, sin esperar al servidor: es lo
+    // que ve el usuario y la acción no puede fallar de forma interesante.
+    const hadUnread = unreadCount > 0;
+    if (hadUnread) setUnreadCount(0);
+
+    // Se pide SIEMPRE al abrir (no solo la primera vez): entre una apertura y
+    // otra pueden haber llegado notificaciones nuevas, y antes esto se
+    // refrescaba solo porque la lista viajaba en cada render de página.
+    const list = await fetchNotifications();
+    setNotifications(list);
+
+    // Marcar como leído va DESPUÉS de traer la lista, no en paralelo: son dos
+    // peticiones distintas y si el update ganase la carrera, la lista llegaría
+    // ya toda leída y ninguna fila enseñaría su punto de no leída.
+    if (hadUnread) await markAllNotificationsRead();
   }
 
   return (
@@ -50,7 +69,7 @@ export function NotificationBell({
       <button
         type="button"
         aria-label={t("title")}
-        onClick={toggle}
+        onClick={() => void toggle()}
         className="relative inline-flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
       >
         <BellIcon className="h-5 w-5" />
@@ -66,14 +85,25 @@ export function NotificationBell({
           <div className="border-b border-border px-4 py-2 font-serif text-sm font-semibold text-foreground">
             {t("title")}
           </div>
-          {initialNotifications.length === 0 ? (
+          {notifications === null ? (
+            // Mismo alto que el estado vacío para que el desplegable no pegue
+            // un salto al llegar la lista. Es un panel `absolute`, así que esto
+            // no mueve la página, pero sí lo que el usuario está mirando.
+            <div
+              className="flex flex-col items-center gap-2 px-4 py-8 text-center"
+              aria-busy="true"
+            >
+              <BellIcon className="h-6 w-6 animate-pulse text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{t("loading")}</p>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
               <BellIcon className="h-6 w-6 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">{t("empty")}</p>
             </div>
           ) : (
             <ul className="flex max-h-96 flex-col overflow-y-auto">
-              {initialNotifications.map((n) => (
+              {notifications.map((n) => (
                 <li key={n.id}>
                   <Link
                     href={n.href}
@@ -104,10 +134,10 @@ export function NotificationBell({
                       </span>
                     </div>
 
-                    {/* Punto de no leída. Se calcula sobre `initialNotifications`,
-                        que es el estado del servidor al renderizar: abrir la
-                        campana marca todo como leído, pero las que llegaron sin
-                        leer siguen señaladas hasta el próximo refresco. */}
+                    {/* Punto de no leída. Se calcula sobre la lista que se trajo
+                        al ABRIR, antes de marcar nada: abrir la campana marca
+                        todo como leído, pero las que llegaron sin leer siguen
+                        señaladas mientras el desplegable está abierto. */}
                     {!n.readAt && (
                       <span
                         aria-hidden

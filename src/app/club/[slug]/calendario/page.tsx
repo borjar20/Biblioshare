@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
 import { listClubActivities } from "@/lib/clubs/activities/core";
 import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
@@ -28,9 +28,7 @@ export default async function ClubCalendarPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const club = await getClub(slug);

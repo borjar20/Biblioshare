@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getClub } from "@/lib/clubs/clubs";
 import { getClubIdentity, hasPendingRequest } from "@/lib/clubs/join-requests";
 import { PrivateClubStub } from "@/components/clubs/private-club-stub";
@@ -30,9 +30,7 @@ export default async function ClubMembersPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const club = await getClub(slug);
