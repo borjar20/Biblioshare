@@ -173,6 +173,64 @@ describe("buildSagaIndex", () => {
     expect(sintetica[0].progress?.readingLabel).toBeNull();
   });
 
+  it("cada chip de subsaga trae su propio recuento de títulos", () => {
+    const cards = buildSagaIndex(
+      [saga("u", "Universo"), saga("a", "A", "u"), saga("b", "B", "u"), saga("n", "Nieta", "a")],
+      [
+        member("u", "book", "raiz"),
+        member("a", "book", "a1"),
+        // la nieta cuenta dentro de A (subárbol), no solo los miembros directos
+        member("n", "book", "n1"),
+        member("b", "book", "b1"),
+      ],
+    );
+    expect(cards[0].children.map((c) => [c.name, c.titleCount])).toEqual([
+      ["A", 2],
+      ["B", 1],
+    ]);
+  });
+
+  it("creator es el autor dominante del subárbol, sin depender de la sesión", () => {
+    const cards = buildSagaIndex(
+      [saga("u", "Universo"), saga("c", "Hija", "u")],
+      [member("u", "book", "b1"), member("u", "book", "b2"), member("c", "book", "b3")],
+      "",
+      {
+        isAuthenticated: false,
+        routes: [],
+        passes: [],
+        routeChoices: [],
+        followedIds: new Set(),
+        credits: [
+          { item_type: "book", item_id: "b1", name: "Sanderson" },
+          { item_type: "book", item_id: "b2", name: "Sanderson" },
+          { item_type: "book", item_id: "b3", name: "Otro" },
+          // crédito de una obra que no es de esta saga: se ignora
+          { item_type: "book", item_id: "zzz", name: "Intruso" },
+        ],
+      },
+    );
+    expect(cards[0].creator).toBe("Sanderson");
+  });
+
+  it("creator es null sin créditos, y el empate se rompe alfabéticamente", () => {
+    const sinCreditos = buildSagaIndex([saga("u", "U")], [member("u", "book", "b1")]);
+    expect(sinCreditos[0].creator).toBeNull();
+
+    const empate = buildSagaIndex([saga("u", "U")], [member("u", "book", "b1"), member("u", "book", "b2")], "", {
+      isAuthenticated: false,
+      routes: [],
+      passes: [],
+      routeChoices: [],
+      followedIds: new Set(),
+      credits: [
+        { item_type: "book", item_id: "b2", name: "Zafón" },
+        { item_type: "book", item_id: "b1", name: "Allende" },
+      ],
+    });
+    expect(empate[0].creator).toBe("Allende");
+  });
+
   it("isFollowed refleja extras.followedIds", () => {
     const cards = buildSagaIndex([saga("u", "U"), saga("v", "V")], [], "", {
       isAuthenticated: true,

@@ -17,6 +17,7 @@ const card = (overrides: Partial<SagaIndexCard>): SagaIndexCard => ({
   accent: "terracota",
   titleCount: 3,
   children: [],
+  creator: null,
   typeBreakdown: { book: 3, movie: 0, series: 0 },
   hasGraph: false,
   routeCount: 0,
@@ -39,7 +40,7 @@ describe("filterSagaIndex", () => {
 
   it("vista=universos deja solo sagas con subsagas", () => {
     const cards = [
-      card({ id: "a", children: [{ id: "x", name: "X", accent: "verde" }] }),
+      card({ id: "a", children: [{ id: "x", name: "X", accent: "verde", titleCount: 1 }] }),
       card({ id: "b", children: [] }),
     ];
     expect(filterSagaIndex(cards, { ...baseParams, vista: "universos" }).map((c) => c.id)).toEqual(["a"]);
