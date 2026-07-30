@@ -13,12 +13,25 @@ export type CatalogCard = {
 };
 
 const PAGE_SIZE = 24;
+// Tope de seguridad por tabla: sin `.order`/`.range` en la query, un género
+// patológicamente popular podría traer toda la tabla. SAFETY_LIMIT acota el
+// fetch; el total mostrado sigue siendo exacto (viene de `count`), solo el
+// material paginable se recorta. Con el catálogo actual ningún género se
+// acerca a esta cifra, pero si algún día la supera, un ítem podría quedar
+// fuera de todas las páginas otra vez (mismo síntoma, umbral más alto) —
+// haría falta paginación keyset de verdad. Seguimiento: issue #305.
+const SAFETY_LIMIT = 500;
 
 // Obras del CATÁLOGO (no solo del usuario) con un género, mezclando los tres
 // tipos. `genres @> ARRAY[label]` vía .contains, apoyado en el índice GIN
-// (20260730_genres_gin_indexes.sql). Solo se consultan las tablas cuyo tipo está
-// en appliesTo del género — buscar "Ensayo" en movies no tiene sentido. Orden
-// alfabético por título (estable, sin depender de agregados); popularidad → issue.
+// (20260815_genres_gin_indexes.sql). Solo se consultan las tablas cuyo tipo está
+// en appliesTo del género — buscar "Ensayo" en movies no tiene sentido.
+// Orden y paginación se hacen ENTERAMENTE en JS (localeCompare "es") sobre el
+// conjunto completo de matches por tabla (hasta SAFETY_LIMIT filas): el orden
+// por defecto de Postgres (`.order`) diverge del orden de locale español,
+// sobre todo con diacríticos (á/é/í/ó/ú/ñ), así que paginar en la query con
+// `.range` podía dejar un ítem fuera de TODAS las páginas. Sin `.order` ni
+// `.range` per-page aquí a propósito.
 export async function getCatalogByGenre(
   supabase: SupabaseServerClient,
   slug: string,
@@ -39,24 +52,21 @@ export async function getCatalogByGenre(
           .from("books")
           .select("id, title, cover_url, published_year", { count: "exact" })
           .contains("genres", [label])
-          .order("title", { ascending: true })
-          .range(0, PAGE_SIZE * page - 1)
+          .limit(SAFETY_LIMIT)
       : empty,
     wantMovie
       ? supabase
           .from("movies")
           .select("id, title, cover_url, release_year", { count: "exact" })
           .contains("genres", [label])
-          .order("title", { ascending: true })
-          .range(0, PAGE_SIZE * page - 1)
+          .limit(SAFETY_LIMIT)
       : empty,
     wantSeries
       ? supabase
           .from("series")
           .select("id, title, cover_url, release_year", { count: "exact" })
           .contains("genres", [label])
-          .order("title", { ascending: true })
-          .range(0, PAGE_SIZE * page - 1)
+          .limit(SAFETY_LIMIT)
       : empty,
   ]);
 
