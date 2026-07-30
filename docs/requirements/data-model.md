@@ -30,8 +30,10 @@ migración `20260814_notes_public_select.sql`) está aplicada y verificada **SOL
 prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`; **normalización de géneros
 del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gin`
 (`20260815_genres_gin_indexes.sql`) y backfill de `movies`/`series` a labels canónicas
-aplicados y verificados **SOLO EN DEV**; `books` no necesita backfill (las labels ya
-coincidían); prod queda pendiente a deploy]**
+aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_indexes`;
+backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
+divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
+`books` no necesita backfill (las labels ya coincidían)]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -40,8 +42,8 @@ coincidían); prod queda pendiente a deploy]**
 > **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
 > select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
 > pendiente del merge de `feat/feed-tarjetas-por-tipo`.
-> **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico e índices
-> GIN verificados solo en DEV** — prod pendiente a deploy.
+> **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico, índices
+> GIN y backfill aplicados y verificados en DEV **y en PROD** el 2026-07-30 (PR #312).
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -124,8 +126,8 @@ Los `genres` de las tres tablas usan un **vocabulario canónico único** definid
 (`src/lib/catalog/genre-vocab.ts`). Libros mapean subjects de OpenLibrary (`genres.ts`);
 pelis/series mapean **ids** de TMDB (`tmdb-genres.ts`), nunca el nombre localizado. Índices
 GIN `{books,movies,series}_genres_gin` sirven `genres @> ARRAY[label]` (`/genero/[slug]` y
-el filtro de biblioteca). Migración `20260815_genres_gin_indexes.sql`. Verificado 2026-07-30
-en dev; prod pendiente a deploy.
+el filtro de biblioteca). Migración `20260815_genres_gin_indexes.sql`. Verificado en dev
+y en prod el 2026-07-30.
 
 Tres tablas de "tirada concreta" cuelgan del catálogo:
 
