@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getLibraryItems, getUserGenres } from "@/lib/library/get-library-items";
 import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
+import { resolveEffectiveType, ALL_TYPES_PARAM } from "@/lib/library/effective-type";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
@@ -88,24 +89,27 @@ export default async function CollectionPage({
   // Con ?type= explícito manda la URL. Sin él, y SOLO si el usuario declaró
   // exactamente UN interés en el onboarding, el filtro de «Todo» arranca ahí:
   // con dos o tres no hay un tipo "obvio" y forzar uno escondería media
-  // biblioteca sin que nadie lo haya pedido.
+  // biblioteca sin que nadie lo haya pedido. El centinela `type=todos` es la vía
+  // para pedir "todos los tipos" de forma distinguible del arranque por defecto
+  // —sin él, el pill «Todos los tipos» no podía escapar del preferido (issue #313).
   //
   // Ojo: aquí NO se toca la pestaña de entrada. Colección v2 dejó las
   // subpestañas en colecciones|todo|sagas|colas — no hay pestaña por tipo.
-  const explicitType = VALID_TYPES.includes(params.type as ItemType)
-    ? (params.type as ItemType)
-    : null;
-  let preferredType: ItemType | undefined;
-  if (explicitType === null) {
+  //
+  // `interests` solo se consulta en el caso por defecto (ni tipo válido ni
+  // `todos`): es la única rama que los necesita, y así se ahorra la query.
+  const isExplicitType =
+    VALID_TYPES.includes(params.type as ItemType) || params.type === ALL_TYPES_PARAM;
+  let interests: ItemType[] = [];
+  if (!isExplicitType) {
     const { data: prefs } = await supabase
       .from("profiles")
       .select("interests")
       .eq("user_id", user.id)
       .maybeSingle();
-    const interests = prefs?.interests ?? [];
-    preferredType = interests.length === 1 ? interests[0] : undefined;
+    interests = (prefs?.interests ?? []) as ItemType[];
   }
-  const itemType: ItemType | undefined = explicitType ?? preferredType;
+  const itemType: ItemType | undefined = resolveEffectiveType(params.type, interests);
 
   // Géneros del selector: solo se consultan en la pestaña `todo`, donde vive
   // `LibraryFilters` — evita la query extra en `colecciones`/`sagas`. Se acota
