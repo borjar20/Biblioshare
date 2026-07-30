@@ -43,6 +43,7 @@ gobernanza de abajo para saber cuál manda.**
 | [Reactividad](docs/reactividad.md) | Cómo se refleja el estado en la UI | Convención |
 | [Testing](docs/TESTING.md) | Cómo se verifica | Convención |
 | [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño (temporal) | Iniciativa |
+| [Referencia visual para prototipos](docs/REFERENCIA-VISUAL.md) | Sistema visual actual y capturas base para nuevos prototipos | Canónico · vs código/capturas |
 | [Mapa de arquitectura](docs/architecture/README.md) | Localizar dónde vive una feature: flujos end-to-end con ficheros (`graph.json`) y diagrama interactivo (`map.html`) | Derivado del código |
 
 `docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y

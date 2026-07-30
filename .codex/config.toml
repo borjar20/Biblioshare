@@ -1,0 +1,24 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+CLAUDE_CODE_USE_POWERSHELL_TOOL = "1"
+CLAUDE_CODE_ENABLE_AUTO_MODE = "1"
+
+[mcp_servers.supabase-dev]
+command = "npx"
+args = [
+    "-y",
+    "@supabase/mcp-server-supabase@latest",
+    "--project-ref=tyvzpuhxfwxrnkcpzxyg",
+]
+env_vars = ["SUPABASE_ACCESS_TOKEN"]
+
+[mcp_servers.supabase-prod]
+command = "npx"
+args = [
+    "-y",
+    "@supabase/mcp-server-supabase@latest",
+    "--project-ref=vmutcradmodhiltuohys",
+]
+env_vars = ["SUPABASE_ACCESS_TOKEN"]
