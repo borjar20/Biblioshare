@@ -3,6 +3,8 @@ import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "./position";
 import { keepLatestClosedPass } from "@/lib/community/latest-rating";
 import type { LibraryItem, LibrarySort, MediaStatus } from "./types";
+import { loadGenres } from "@/lib/challenges/load-catalog-facets";
+import { labelForSlug, slugForLabel } from "@/lib/catalog/genre-vocab";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -217,6 +219,19 @@ export async function hydrateItems(
     .filter((item): item is LibraryItem => item !== null);
 }
 
+// Conserva los items cuyo array de géneros (del catálogo) contiene la label. El
+// género vive en catálogo, no en passes, así que —igual que search/sort— se
+// aplica en memoria tras la hidratación, no en el SQL de passes.
+export function filterByGenre<T extends { itemType: ItemType; itemId: string }>(
+  items: T[],
+  wantedLabel: string,
+  genresByKey: Map<string, string[]>,
+): T[] {
+  return items.filter((i) =>
+    (genresByKey.get(`${i.itemType}:${i.itemId}`) ?? []).includes(wantedLabel),
+  );
+}
+
 export async function getLibraryItems(
   supabase: SupabaseServerClient,
   userId: string,
@@ -226,6 +241,8 @@ export async function getLibraryItems(
     search?: string;
     sort?: LibrarySort;
     favoritesOnly?: boolean;
+    /** Slug del género (@/lib/catalog/genre-vocab); filtra por su label canónica. */
+    genre?: string;
     /** Recorta a los N primeros tras aplicar orden (General = recientes). */
     limit?: number;
   }
@@ -274,6 +291,20 @@ export async function getLibraryItems(
     items = items.filter((item) => item.title.toLowerCase().includes(needle));
   }
 
+  // Género también vive en catálogo, no en passes: mismo motivo que search
+  // arriba, se resuelve en memoria tras hidratar. Slug inválido -> sin
+  // resultados (no la biblioteca entera): evita que una URL manipulada
+  // silenciosamente ignore el filtro.
+  if (filters.genre) {
+    const wanted = labelForSlug(filters.genre);
+    if (!wanted) return [];
+    const genresByKey = await loadGenres(
+      supabase,
+      items.map((i) => ({ itemType: i.itemType, itemId: i.itemId }))
+    );
+    items = filterByGenre(items, wanted, genresByKey);
+  }
+
   if (filters.sort === "rating") {
     items = items.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
   } else if (filters.sort === "title") {
@@ -284,4 +315,46 @@ export async function getLibraryItems(
   if (filters.limit !== undefined) items = items.slice(0, filters.limit);
 
   return items;
+}
+
+// Géneros presentes en la biblioteca del usuario (para poblar el selector: solo
+// los que tiene, no los ~45 del vocabulario entero). Cuenta obras distintas por
+// género — una obra con varios géneros suma 1 a cada uno, no se pesa por total.
+//
+// `itemType` opcional: cuando la página bloquea implícitamente un tipo (lock de
+// onboarding con un único interés, o `?type=` explícito) hay que pasar ese
+// MISMO tipo aquí para que la faceta no ofrezca chips de un tipo que la rejilla
+// no está mostrando (si no, un chip filtra a 0 resultados). Sin él, se cuenta
+// la biblioteca activa completa (comportamiento previo, sin cambios).
+// La faceta no refleja el filtro de estado activo — ver issue #306.
+export async function getUserGenres(
+  supabase: SupabaseServerClient,
+  userId: string,
+  itemType?: ItemType
+): Promise<{ slug: string; label: string; count: number }[]> {
+  let query = supabase
+    .from("passes")
+    .select("item_type, item_id")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  if (itemType) query = query.eq("item_type", itemType);
+  const { data: entries } = await query;
+
+  const refs = (entries ?? []).map((e) => ({
+    itemType: e.item_type as ItemType,
+    itemId: e.item_id,
+  }));
+  if (refs.length === 0) return [];
+
+  const genresByKey = await loadGenres(supabase, refs);
+  const count = new Map<string, number>();
+  for (const labels of genresByKey.values()) {
+    for (const label of new Set(labels)) {
+      const slug = slugForLabel(label);
+      if (slug) count.set(slug, (count.get(slug) ?? 0) + 1);
+    }
+  }
+  return [...count.entries()]
+    .map(([slug, c]) => ({ slug, label: labelForSlug(slug)!, count: c }))
+    .sort((a, b) => b.count - a.count);
 }

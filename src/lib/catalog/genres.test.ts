@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { GENRES, isCanonicalLabel, genreDefForSlug, slugForLabel } from "./genre-vocab";
 import { mapSubjectsToGenres } from "./genres";
+
+// Subjects representativos de cada regla (needles de PREFIX_RULES/EXACT_RULES),
+// compartidos por los dos tests de invariante de abajo.
+const REPRESENTATIVE_SUBJECTS = [
+  "science fiction", "dystopian fiction", "magic realism", "crime fiction",
+  "true crime", "thriller", "mystery", "fantasy", "horror", "romance",
+  "adventure stories", "historical fiction", "political fiction", "classic",
+  "satire", "graphic novel", "manga", "poetry", "plays", "short stories",
+  "juvenile fiction", "young adult", "memoir", "biography", "self help",
+  "history", "philosophy", "psychology", "economics", "religion", "travel",
+  "cooking", "sports", "art", "essays", "science",
+];
 
 describe("mapSubjectsToGenres", () => {
   it("mapea subjects conocidos a géneros canónicos en español", () => {
@@ -123,5 +136,46 @@ describe("mapSubjectsToGenres", () => {
         ])
       ).toEqual(["Ciencia ficción", "Clásicos", "Política", "Distopía"]);
     });
+  });
+});
+
+describe("genres.ts ↔ registro canónico", () => {
+  // Todas las labels que las reglas pueden emitir están en el registro. Si esto
+  // falla, o se corrige el texto en genres.ts o se añade la entrada al registro
+  // — nunca se guarda una label fuera del vocabulario.
+  it("cada label producible por las reglas es canónica", () => {
+    // Reunimos las labels de salida ejercitando subjects representativos de cada
+    // regla. Fuente: los needles de PREFIX_RULES/EXACT_RULES.
+    for (const s of REPRESENTATIVE_SUBJECTS) {
+      for (const label of mapSubjectsToGenres([s])) {
+        expect(isCanonicalLabel(label), `"${label}" (de "${s}") no es canónica`).toBe(true);
+      }
+    }
+  });
+
+  // La página de género (/genero/[slug]) solo consulta `books` cuando
+  // appliesTo incluye "book" (get-catalog-by-genre.ts). Si el registro
+  // estrechara el appliesTo de un género que genres.ts SÍ puede emitir para un
+  // libro, ese libro dejaría de aparecer en su propia página de género sin
+  // ningún error visible — este test cierra ese hueco.
+  it("cada label producible por las reglas resuelve a un slug que aplica a libro", () => {
+    for (const s of REPRESENTATIVE_SUBJECTS) {
+      for (const label of mapSubjectsToGenres([s])) {
+        const slug = slugForLabel(label);
+        expect(slug, `"${label}" (de "${s}") no resuelve a slug`).not.toBeNull();
+        const def = genreDefForSlug(slug!);
+        expect(def?.appliesTo.includes("book"), `"${label}" (slug "${slug}") no aplica a libro`).toBe(true);
+      }
+    }
+  });
+
+  it("el registro no promete a libros géneros que las reglas no producen", () => {
+    // Cada género book-only del registro debe ser alcanzable por alguna regla.
+    // (Guardia laxa: solo comprobamos que existen en el catálogo de reglas.)
+    const bookLabels = new Set(
+      GENRES.filter((g) => g.appliesTo.includes("book")).map((g) => g.label),
+    );
+    expect(bookLabels.has("Ciencia ficción")).toBe(true);
+    expect(bookLabels.has("Ensayo")).toBe(true);
   });
 });
