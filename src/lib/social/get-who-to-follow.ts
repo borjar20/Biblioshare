@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { getSocialSuggestions, type PersonSuggestion } from "@/lib/onboarding/get-social-suggestions";
+import { filterUnblockedUserIds } from "./block-state";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -15,5 +16,12 @@ export async function getWhoToFollow(
     supabase.from("follows").select("followee_id").eq("follower_id", userId),
   ]);
   const excluded = new Set((following.data ?? []).map((f) => f.followee_id));
-  return profiles.filter((p) => !excluded.has(p.userId));
+  const candidates = profiles.filter((p) => !excluded.has(p.userId));
+  const unblockedIds = new Set(
+    await filterUnblockedUserIds(
+      supabase,
+      candidates.map((profile) => profile.userId),
+    ),
+  );
+  return candidates.filter((profile) => unblockedIds.has(profile.userId));
 }
