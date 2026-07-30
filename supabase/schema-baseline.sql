@@ -6492,6 +6492,7 @@ $$;
 revoke execute on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) from public, anon;
 grant execute on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) to authenticated;
 
+
 comment on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) is
   'Crea una actividad hija ya active enlazada a un reto por lista: buddy_read desde un ítem (book/series, padre active) o tierlist con todos los ítems (padre finished, oferta única). Solo creador del padre o moderator+.';
 
@@ -9060,3 +9061,991 @@ $$;
 
 revoke execute on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) from public, anon;
 grant execute on function public.spawn_linked_activity(uuid, public.activity_kind, text, public.item_type, uuid) to authenticated;
+
+-- ============================================================================
+-- ANEXO 2026-07-30 — Social fase 0 (aplicado en producción)
+-- En producción, integridad + compatibilidad se aplicaron en una transacción
+-- atómica antes del bundle 8589601; el cierre de INSERT y el índice de reviewer,
+-- después de verificar ese bundle. El replay limpio conserva el orden equivalente.
+-- ============================================================================
+
+-- 20260730190602_social_phase0_integrity.sql
+
+-- The application currently exposes one reaction semantic. Keep the database
+-- contract aligned so direct Data API writes cannot invent unsupported kinds.
+alter table public.reactions
+  add constraint reactions_kind_like
+  check (kind = 'like');
+
+-- Replace the older upper-bound-only check with the complete body contract.
+alter table public.comments
+  drop constraint comments_body_len,
+  add constraint comments_body_nonempty
+  check (char_length(btrim(body)) between 1 and 2000);
+
+-- Notification fan-out is a trusted server-side effect. Recipients retain the
+-- existing privileges needed to read, mark and clean up their own rows via RLS.
+revoke insert on table public.notifications from anon, authenticated;
+
+-- 20260730190801_social_phase0_notification_compat.sql
+
+-- Deployment bridge: the dev application still runs the pre-Phase-0 writer.
+-- Keep authenticated inserts available until the server code using service
+-- role has been deployed. The final notification-cutover migration revokes it.
+grant insert on table public.notifications to authenticated;
+
+-- Persist the same canonical form already produced by the server action, so
+-- direct Data API writes cannot store whitespace-padded comments.
+alter table public.comments
+  drop constraint comments_body_nonempty,
+  add constraint comments_body_canonical
+  check (body = btrim(body) and char_length(body) between 1 and 2000);
+
+-- 20260730191652_social_phase0_user_blocks.sql
+
+-- Social Phase 0: bidirectional blocking and block-aware social policies.
+-- Security-control rows are intentionally visible to both parties, but only
+-- the blocker can create or remove them.
+
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to anon, authenticated;
+
+create table public.user_blocks (
+  blocker_id uuid not null references auth.users(id) on delete cascade,
+  blocked_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  constraint user_blocks_distinct_users check (blocker_id <> blocked_id)
+);
+
+create index user_blocks_blocked_idx
+  on public.user_blocks (blocked_id, blocker_id);
+
+alter table public.user_blocks enable row level security;
+
+revoke all on table public.user_blocks from anon, authenticated;
+grant select, insert, delete on table public.user_blocks to authenticated;
+
+create policy "user blocks select parties" on public.user_blocks
+  for select to authenticated
+  using ((select auth.uid()) in (blocker_id, blocked_id));
+
+create policy "user blocks insert blocker" on public.user_blocks
+  for insert to authenticated
+  with check ((select auth.uid()) = blocker_id);
+
+create policy "user blocks delete blocker" on public.user_blocks
+  for delete to authenticated
+  using ((select auth.uid()) = blocker_id);
+
+-- Public RPCs stay SECURITY INVOKER: user_blocks RLS exposes exactly the two
+-- directions relevant to the signed-in caller, so no privileged wrapper is
+-- necessary and the functions add no SECURITY DEFINER advisor warning.
+create or replace function public.users_are_blocked(other_user_id uuid)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as $function$
+  select case
+    when (select auth.uid()) is null or other_user_id is null then false
+    else exists (
+      select 1
+      from public.user_blocks ub
+      where (
+        ub.blocker_id = (select auth.uid())
+        and ub.blocked_id = other_user_id
+      ) or (
+        ub.blocker_id = other_user_id
+        and ub.blocked_id = (select auth.uid())
+      )
+    )
+  end;
+$function$;
+
+revoke execute on function public.users_are_blocked(uuid) from public, anon;
+grant execute on function public.users_are_blocked(uuid) to authenticated;
+
+create or replace function public.filter_unblocked_user_ids(candidate_ids uuid[])
+returns uuid[]
+language sql
+stable
+security invoker
+set search_path = ''
+as $function$
+  select case
+    when (select auth.uid()) is null then '{}'::uuid[]
+    else coalesce(array_agg(c.candidate_id order by c.first_ordinality), '{}'::uuid[])
+  end
+  from (
+    select candidate_id, min(ord) as first_ordinality
+    from unnest(coalesce(candidate_ids, '{}'::uuid[])) with ordinality as u(candidate_id, ord)
+    where candidate_id is not null
+      and not public.users_are_blocked(candidate_id)
+    group by candidate_id
+  ) c;
+$function$;
+
+revoke execute on function public.filter_unblocked_user_ids(uuid[]) from public, anon;
+grant execute on function public.filter_unblocked_user_ids(uuid[]) to authenticated;
+
+-- Resolve the accountable user behind every interaction target. It lives in a
+-- non-exposed schema because it bypasses target-table RLS solely for policies.
+create or replace function private.social_target_owner_id(
+  p_target_type public.target_kind,
+  p_target_id uuid
+)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case p_target_type
+    when 'diary_entry' then (select p.user_id from public.passes p where p.id = p_target_id)
+    when 'pass' then (select p.user_id from public.passes p where p.id = p_target_id)
+    when 'episode_watch' then (select e.user_id from public.episode_watches e where e.id = p_target_id)
+    when 'progress_session' then (select s.user_id from public.progress_sessions s where s.id = p_target_id)
+    when 'club_post' then (select cp.author_id from public.club_posts cp where cp.id = p_target_id)
+    when 'comment' then (select c.author_id from public.comments c where c.id = p_target_id)
+    when 'activity_checkpoint' then (
+      select cc.created_by from public.club_activity_checkpoints cc where cc.id = p_target_id
+    )
+    when 'club_activity' then (
+      select ca.created_by from public.club_activities ca where ca.id = p_target_id
+    )
+  end;
+$function$;
+
+revoke execute on function private.social_target_owner_id(public.target_kind, uuid) from public;
+grant execute on function private.social_target_owner_id(public.target_kind, uuid) to anon, authenticated;
+
+-- Blocking severs relationship state and stale notification affordances in
+-- both directions. Trigger functions use an empty search_path and qualify all
+-- referenced objects explicitly.
+create or replace function private.cleanup_relationships_on_block()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  delete from public.follows f
+  where (f.follower_id = new.blocker_id and f.followee_id = new.blocked_id)
+     or (f.follower_id = new.blocked_id and f.followee_id = new.blocker_id);
+
+  delete from public.notifications n
+  where (n.user_id = new.blocker_id and n.actor_id = new.blocked_id)
+     or (n.user_id = new.blocked_id and n.actor_id = new.blocker_id);
+
+  return new;
+end;
+$function$;
+
+revoke execute on function private.cleanup_relationships_on_block() from public, anon, authenticated;
+
+create trigger trg_user_blocks_cleanup_relationships
+  after insert on public.user_blocks
+  for each row execute function private.cleanup_relationships_on_block();
+
+-- can_view_profile is the transversal visibility gate for profile-owned data.
+-- Ownership wins; every other path is cut off by a block in either direction.
+create or replace function public.can_view_profile(target_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+  select
+    coalesce((select auth.uid()) = target_user_id, false)
+    or (
+      not public.users_are_blocked(target_user_id)
+      and (
+        public.profile_is_public(target_user_id)
+        or exists (
+          select 1 from public.follows f
+          where f.follower_id = (select auth.uid())
+            and f.followee_id = target_user_id
+            and f.status = 'accepted'
+        )
+      )
+    );
+$function$;
+
+comment on function public.can_view_profile(uuid) is
+  'True for own content, or for public/accepted-follow content when neither user blocks the other.';
+
+-- A club share is an audience override, never a block override. The block gate
+-- wraps the complete previous OR in all four policies.
+drop policy "library entries select visible" on public.library_entries;
+create policy "library entries select visible" on public.library_entries
+  for select to anon, authenticated
+  using (
+    not public.users_are_blocked(user_id)
+    and (
+      public.can_view_profile(user_id)
+      or public.is_visible_via_club_share('library_entries', id, user_id)
+    )
+  );
+
+drop policy "diary entries select visible" on public.passes;
+create policy "diary entries select visible" on public.passes
+  for select to anon, authenticated
+  using (
+    not public.users_are_blocked(user_id)
+    and (
+      public.can_view_profile(user_id)
+      or public.is_visible_via_club_share('diary_entries', id, user_id)
+    )
+  );
+
+drop policy "progress sessions select visible" on public.progress_sessions;
+create policy "progress sessions select visible" on public.progress_sessions
+  for select to anon, authenticated
+  using (
+    not public.users_are_blocked(user_id)
+    and (
+      public.can_view_profile(user_id)
+      or public.is_visible_via_club_share('progress_sessions', id, user_id)
+    )
+  );
+
+drop policy "episode_watches select visible" on public.episode_watches;
+create policy "episode_watches select visible" on public.episode_watches
+  for select to anon, authenticated
+  using (
+    not public.users_are_blocked(user_id)
+    and (
+      public.can_view_profile(user_id)
+      or public.is_visible_via_club_share('episode_watches', id, user_id)
+    )
+  );
+
+-- Existing follows cannot cross a block; DELETE remains available so either
+-- party can still remove stale rows during races.
+drop policy "follows visible to parties or public accepted" on public.follows;
+create policy "follows visible to parties or public accepted" on public.follows
+  for select to anon, authenticated
+  using (
+    not public.users_are_blocked(follower_id)
+    and not public.users_are_blocked(followee_id)
+    and (
+      (select auth.uid()) = follower_id
+      or (select auth.uid()) = followee_id
+      or (status = 'accepted' and public.profile_is_public(followee_id))
+    )
+  );
+
+drop policy "follows insert own with accept rule" on public.follows;
+create policy "follows insert own with accept rule" on public.follows
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = follower_id
+    and not public.users_are_blocked(followee_id)
+    and (
+      (status = 'accepted' and public.profile_is_public(followee_id))
+      or (status = 'pending' and not public.profile_is_public(followee_id))
+    )
+  );
+
+drop policy "follows update by followee" on public.follows;
+create policy "follows update by followee" on public.follows
+  for update to authenticated
+  using (
+    (select auth.uid()) = followee_id
+    and not public.users_are_blocked(follower_id)
+  )
+  with check (
+    (select auth.uid()) = followee_id
+    and not public.users_are_blocked(follower_id)
+  );
+
+-- Interaction rows are hidden when either their author or their target owner
+-- is blocked. New writes must satisfy the same target-owner gate.
+drop policy "reactions select visible" on public.reactions;
+create policy "reactions select visible" on public.reactions
+  for select to anon, authenticated
+  using (
+    public.can_view_target(target_type, target_id)
+    and not public.users_are_blocked(user_id)
+    and not public.users_are_blocked(private.social_target_owner_id(target_type, target_id))
+  );
+
+drop policy "reactions insert own on visible target" on public.reactions;
+create policy "reactions insert own on visible target" on public.reactions
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and public.can_view_target(target_type, target_id)
+    and not public.users_are_blocked(private.social_target_owner_id(target_type, target_id))
+  );
+
+drop policy "comments select visible" on public.comments;
+create policy "comments select visible" on public.comments
+  for select to anon, authenticated
+  using (
+    public.can_view_target(target_type, target_id)
+    and not public.users_are_blocked(author_id)
+    and not public.users_are_blocked(private.social_target_owner_id(target_type, target_id))
+  );
+
+drop policy "comments insert own on visible target" on public.comments;
+create policy "comments insert own on visible target" on public.comments
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = author_id
+    and public.can_view_target(target_type, target_id)
+    and not public.users_are_blocked(private.social_target_owner_id(target_type, target_id))
+  );
+
+-- Club targets stay visible to moderators for safety even when a moderator has
+-- personally blocked the author.
+drop policy "club_posts select member" on public.club_posts;
+create policy "club_posts select member" on public.club_posts
+  for select to authenticated
+  using (
+    public.is_club_member(club_id)
+    and (
+      not public.users_are_blocked(author_id)
+      or public.has_min_club_role(club_id, 'moderator')
+    )
+  );
+
+drop policy "club_activities select member" on public.club_activities;
+create policy "club_activities select member" on public.club_activities
+  for select to authenticated
+  using (
+    public.is_club_member(club_id)
+    and (
+      not public.users_are_blocked(created_by)
+      or public.has_min_club_role(club_id, 'moderator')
+    )
+  );
+
+drop policy "club_activity_checkpoints select member" on public.club_activity_checkpoints;
+create policy "club_activity_checkpoints select member" on public.club_activity_checkpoints
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.club_activities ca
+      where ca.id = activity_id
+        and public.is_club_member(ca.club_id)
+        and (
+          not public.users_are_blocked(created_by)
+          or public.has_min_club_role(ca.club_id, 'moderator')
+        )
+    )
+  );
+
+-- 20260730191702_social_phase0_moderation_reports.sql
+
+-- Social Phase 0: comment moderation and immutable content-report evidence.
+
+create type public.content_report_reason as enum (
+  'spam',
+  'harassment',
+  'spoiler',
+  'hate',
+  'other'
+);
+
+-- Resolve the club that owns a target. Comments cannot nest, but the helper is
+-- recursive defensively and remains private because it bypasses source RLS.
+create or replace function private.social_target_club_id(
+  p_target_type public.target_kind,
+  p_target_id uuid
+)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_parent_type public.target_kind;
+  v_parent_id uuid;
+  v_club_id uuid;
+begin
+  case p_target_type
+    when 'club_post' then
+      select cp.club_id into v_club_id
+      from public.club_posts cp where cp.id = p_target_id;
+    when 'club_activity' then
+      select ca.club_id into v_club_id
+      from public.club_activities ca where ca.id = p_target_id;
+    when 'activity_checkpoint' then
+      select ca.club_id into v_club_id
+      from public.club_activity_checkpoints cc
+      join public.club_activities ca on ca.id = cc.activity_id
+      where cc.id = p_target_id;
+    when 'comment' then
+      select c.target_type, c.target_id into v_parent_type, v_parent_id
+      from public.comments c where c.id = p_target_id;
+      if v_parent_type is not null then
+        v_club_id := private.social_target_club_id(v_parent_type, v_parent_id);
+      end if;
+    else
+      v_club_id := null;
+  end case;
+  return v_club_id;
+end;
+$function$;
+
+revoke execute on function private.social_target_club_id(public.target_kind, uuid) from public;
+grant execute on function private.social_target_club_id(public.target_kind, uuid) to authenticated;
+
+-- May the current user delete comments attached to this target? Target owners,
+-- club moderator+, and global admins qualify. Comment authors are handled by
+-- the comments policy itself because the batch DTO already knows isOwn.
+create or replace function private.can_moderate_target(
+  p_target_type public.target_kind,
+  p_target_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case
+    when (select auth.uid()) is null then false
+    when public.has_min_role('admin') then true
+    when private.social_target_owner_id(p_target_type, p_target_id) = (select auth.uid()) then true
+    else coalesce(
+      public.has_min_club_role(
+        private.social_target_club_id(p_target_type, p_target_id),
+        'moderator'
+      ),
+      false
+    )
+  end;
+$function$;
+
+revoke execute on function private.can_moderate_target(public.target_kind, uuid) from public;
+grant execute on function private.can_moderate_target(public.target_kind, uuid) to authenticated;
+
+create or replace function private.can_moderate_comment(p_comment_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+    from public.comments c
+    where c.id = p_comment_id
+      and (
+        c.author_id = (select auth.uid())
+        or private.can_moderate_target(c.target_type, c.target_id)
+      )
+  );
+$function$;
+
+revoke execute on function private.can_moderate_comment(uuid) from public;
+grant execute on function private.can_moderate_comment(uuid) to authenticated;
+
+-- Batch interface consumed by InteractionComment.canDelete. It returns target
+-- IDs (not comment IDs): the caller combines the result with its local isOwn.
+create or replace function public.moderatable_target_ids(
+  candidate_target_type public.target_kind,
+  candidate_target_ids uuid[]
+)
+returns setof uuid
+language sql
+stable
+security invoker
+set search_path = ''
+as $function$
+  select distinct candidate_id
+  from unnest(coalesce(candidate_target_ids, '{}'::uuid[])) as candidates(candidate_id)
+  where candidate_id is not null
+    and private.can_moderate_target(candidate_target_type, candidate_id);
+$function$;
+
+revoke execute on function public.moderatable_target_ids(public.target_kind, uuid[]) from public, anon;
+grant execute on function public.moderatable_target_ids(public.target_kind, uuid[]) to authenticated;
+
+-- Keep the ordinary visibility policy block-aware, but add a narrow moderator
+-- SELECT path so owners/moderators can locate content they are allowed to delete.
+create policy "comments select moderate" on public.comments
+  for select to authenticated
+  using (private.can_moderate_comment(id));
+
+drop policy "comments delete own" on public.comments;
+create policy "comments delete own or moderate" on public.comments
+  for delete to authenticated
+  using (private.can_moderate_comment(id));
+
+create table public.content_reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter_id uuid not null references auth.users(id) on delete cascade,
+  reported_user_id uuid references auth.users(id) on delete set null,
+  target_type public.target_kind not null,
+  target_id uuid not null,
+  reason public.content_report_reason not null,
+  details text,
+  snapshot jsonb not null,
+  status text not null default 'pending',
+  resolution_note text,
+  reviewed_by uuid references auth.users(id) on delete set null,
+  reviewed_at timestamptz,
+  target_deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint content_reports_details_canonical check (
+    details is null
+    or (details = btrim(details) and char_length(details) between 1 and 2000)
+  ),
+  constraint content_reports_status_valid check (
+    status in ('pending', 'actioned', 'dismissed')
+  ),
+  constraint content_reports_resolution_note_canonical check (
+    resolution_note is null
+    or (
+      resolution_note = btrim(resolution_note)
+      and char_length(resolution_note) between 1 and 2000
+    )
+  ),
+  constraint content_reports_review_shape check (
+    (status = 'pending' and reviewed_by is null and reviewed_at is null)
+    or (status in ('actioned', 'dismissed') and reviewed_at is not null)
+  )
+);
+
+create unique index content_reports_one_pending_per_reporter_target
+  on public.content_reports (reporter_id, target_type, target_id)
+  where status = 'pending';
+
+create index content_reports_pending_created_idx
+  on public.content_reports (created_at)
+  where status = 'pending';
+
+create index content_reports_reported_user_idx
+  on public.content_reports (reported_user_id, created_at desc);
+
+alter table public.content_reports enable row level security;
+
+revoke all on table public.content_reports from anon, authenticated;
+grant select, insert on table public.content_reports to authenticated;
+grant update (status, resolution_note) on table public.content_reports to authenticated;
+
+-- Snapshot and accountable user always come from the real target. Client values
+-- are overwritten, including on direct Data API inserts.
+create or replace function private.prepare_content_report()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_reported_user_id uuid;
+  v_snapshot jsonb;
+begin
+  case new.target_type
+    when 'diary_entry' then
+      select p.user_id, jsonb_build_object(
+        'review', p.review,
+        'item_type', p.item_type,
+        'item_id', p.item_id,
+        'created_at', p.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.passes p where p.id = new.target_id;
+    when 'pass' then
+      select p.user_id, jsonb_build_object(
+        'review', p.review,
+        'item_type', p.item_type,
+        'item_id', p.item_id,
+        'created_at', p.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.passes p where p.id = new.target_id;
+    when 'episode_watch' then
+      select e.user_id, jsonb_build_object(
+        'review', e.review,
+        'series_id', e.series_id,
+        'created_at', e.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.episode_watches e where e.id = new.target_id;
+    when 'progress_session' then
+      select s.user_id, jsonb_build_object(
+        'note', s.note,
+        'pass_id', s.pass_id,
+        'created_at', s.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.progress_sessions s where s.id = new.target_id;
+    when 'club_post' then
+      select cp.author_id, jsonb_build_object(
+        'body', cp.body,
+        'kind', cp.kind,
+        'club_id', cp.club_id,
+        'created_at', cp.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.club_posts cp where cp.id = new.target_id;
+    when 'comment' then
+      select c.author_id, jsonb_build_object(
+        'body', c.body,
+        'target_type', c.target_type,
+        'target_id', c.target_id,
+        'created_at', c.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.comments c where c.id = new.target_id;
+    when 'activity_checkpoint' then
+      select cc.created_by, jsonb_build_object(
+        'label', cc.label,
+        'position', cc.position,
+        'activity_id', cc.activity_id,
+        'created_at', cc.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.club_activity_checkpoints cc where cc.id = new.target_id;
+    when 'club_activity' then
+      select ca.created_by, jsonb_build_object(
+        'title', ca.title,
+        'description', ca.description,
+        'kind', ca.kind,
+        'club_id', ca.club_id,
+        'created_at', ca.created_at
+      ) into v_reported_user_id, v_snapshot
+      from public.club_activities ca where ca.id = new.target_id;
+  end case;
+
+  if v_reported_user_id is null or v_snapshot is null then
+    raise exception 'invalid_report_target' using errcode = '23503';
+  end if;
+
+  new.reported_user_id := v_reported_user_id;
+  new.snapshot := v_snapshot;
+  return new;
+end;
+$function$;
+
+revoke execute on function private.prepare_content_report() from public, anon, authenticated;
+
+create trigger trg_content_reports_prepare
+  before insert on public.content_reports
+  for each row execute function private.prepare_content_report();
+
+-- Only admins and club moderator+ review reports. Target ownership alone never
+-- reveals who reported the content.
+create or replace function private.can_review_report_target(
+  p_target_type public.target_kind,
+  p_target_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select case
+    when (select auth.uid()) is null then false
+    when public.has_min_role('admin') then true
+    else coalesce(
+      public.has_min_club_role(
+        private.social_target_club_id(p_target_type, p_target_id),
+        'moderator'
+      ),
+      false
+    )
+  end;
+$function$;
+
+revoke execute on function private.can_review_report_target(public.target_kind, uuid) from public;
+grant execute on function private.can_review_report_target(public.target_kind, uuid) to authenticated;
+
+create policy "content reports select own" on public.content_reports
+  for select to authenticated
+  using (reporter_id = (select auth.uid()));
+
+create policy "content reports select reviewer" on public.content_reports
+  for select to authenticated
+  using (private.can_review_report_target(target_type, target_id));
+
+create policy "content reports insert own visible target" on public.content_reports
+  for insert to authenticated
+  with check (
+    reporter_id = (select auth.uid())
+    and status = 'pending'
+    and reviewed_by is null
+    and reviewed_at is null
+    and target_deleted_at is null
+    and public.can_view_target(target_type, target_id)
+    and private.social_target_owner_id(target_type, target_id) <> (select auth.uid())
+  );
+
+create policy "content reports update reviewer" on public.content_reports
+  for update to authenticated
+  using (private.can_review_report_target(target_type, target_id))
+  with check (private.can_review_report_target(target_type, target_id));
+
+-- Reviewers may only transition a pending report. Evidence and reporter fields
+-- are immutable; nested trigger updates from target cleanup are allowed.
+create or replace function private.guard_content_report_review()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if pg_trigger_depth() > 1 then
+    return new;
+  end if;
+
+  if row(
+    new.reporter_id,
+    new.reported_user_id,
+    new.target_type,
+    new.target_id,
+    new.reason,
+    new.details,
+    new.snapshot,
+    new.created_at,
+    new.target_deleted_at
+  ) is distinct from row(
+    old.reporter_id,
+    old.reported_user_id,
+    old.target_type,
+    old.target_id,
+    old.reason,
+    old.details,
+    old.snapshot,
+    old.created_at,
+    old.target_deleted_at
+  ) then
+    raise exception 'report_evidence_is_immutable' using errcode = '22000';
+  end if;
+
+  if old.status <> 'pending' or new.status not in ('actioned', 'dismissed') then
+    raise exception 'invalid_report_transition' using errcode = '22000';
+  end if;
+
+  new.reviewed_by := (select auth.uid());
+  new.reviewed_at := now();
+  return new;
+end;
+$function$;
+
+revoke execute on function private.guard_content_report_review() from public, anon, authenticated;
+
+create trigger trg_content_reports_guard_review
+  before update on public.content_reports
+  for each row execute function private.guard_content_report_review();
+
+-- Narrow comment-reporting RPC used by moderation-actions.ts. The trigger above
+-- derives all evidence; this wrapper only fixes identity and canonical text.
+create or replace function public.report_comment(
+  p_comment_id uuid,
+  p_reason text,
+  p_details text default null
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = ''
+as $function$
+declare
+  v_report_id uuid;
+  v_reason public.content_report_reason;
+  v_details text;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'authentication_required' using errcode = '42501';
+  end if;
+
+  v_reason := p_reason::public.content_report_reason;
+  v_details := nullif(btrim(p_details), '');
+
+  insert into public.content_reports (
+    reporter_id,
+    target_type,
+    target_id,
+    reason,
+    details,
+    snapshot
+  ) values (
+    (select auth.uid()),
+    'comment',
+    p_comment_id,
+    v_reason,
+    v_details,
+    '{}'::jsonb
+  )
+  returning id into v_report_id;
+
+  return v_report_id;
+end;
+$function$;
+
+revoke execute on function public.report_comment(uuid, text, text) from public, anon;
+grant execute on function public.report_comment(uuid, text, text) to authenticated;
+
+-- 20260730191708_social_phase0_polymorphic_cleanup.sql
+
+-- Social Phase 0: remove existing inert polymorphic orphans and prevent new
+-- ones. Reports are audit evidence: target deletion resolves them but never
+-- deletes them.
+
+-- Remove reactions whose target row no longer exists. Visibility is not used
+-- here: valid private targets must survive the cleanup.
+delete from public.reactions r
+where not case r.target_type
+  when 'diary_entry' then exists (select 1 from public.passes p where p.id = r.target_id)
+  when 'pass' then exists (select 1 from public.passes p where p.id = r.target_id)
+  when 'episode_watch' then exists (select 1 from public.episode_watches e where e.id = r.target_id)
+  when 'progress_session' then exists (select 1 from public.progress_sessions s where s.id = r.target_id)
+  when 'club_post' then exists (select 1 from public.club_posts cp where cp.id = r.target_id)
+  when 'comment' then exists (select 1 from public.comments c where c.id = r.target_id)
+  when 'activity_checkpoint' then exists (
+    select 1 from public.club_activity_checkpoints cc where cc.id = r.target_id
+  )
+  when 'club_activity' then exists (
+    select 1 from public.club_activities ca where ca.id = r.target_id
+  )
+  else false
+end;
+
+delete from public.comments c
+where not case c.target_type
+  when 'diary_entry' then exists (select 1 from public.passes p where p.id = c.target_id)
+  when 'pass' then exists (select 1 from public.passes p where p.id = c.target_id)
+  when 'episode_watch' then exists (select 1 from public.episode_watches e where e.id = c.target_id)
+  when 'progress_session' then exists (select 1 from public.progress_sessions s where s.id = c.target_id)
+  when 'club_post' then exists (select 1 from public.club_posts cp where cp.id = c.target_id)
+  when 'activity_checkpoint' then exists (
+    select 1 from public.club_activity_checkpoints cc where cc.id = c.target_id
+  )
+  when 'club_activity' then exists (
+    select 1 from public.club_activities ca where ca.id = c.target_id
+  )
+  else false
+end;
+
+-- The previous DELETE may itself orphan reactions on deleted comments.
+delete from public.reactions r
+where r.target_type = 'comment'
+  and not exists (select 1 from public.comments c where c.id = r.target_id);
+
+-- Notification target_type is intentionally text rather than target_kind; only
+-- purge the known target labels when their referenced row is gone.
+delete from public.notifications n
+where n.target_id is not null
+  and (
+    (n.target_type = 'diary_entry' and not exists (
+      select 1 from public.passes p where p.id = n.target_id
+    ))
+    or (n.target_type = 'pass' and not exists (
+      select 1 from public.passes p where p.id = n.target_id
+    ))
+    or (n.target_type = 'episode_watch' and not exists (
+      select 1 from public.episode_watches e where e.id = n.target_id
+    ))
+    or (n.target_type = 'progress_session' and not exists (
+      select 1 from public.progress_sessions s where s.id = n.target_id
+    ))
+    or (n.target_type = 'club' and not exists (
+      select 1 from public.clubs c where c.id = n.target_id
+    ))
+    or (n.target_type = 'club_post' and not exists (
+      select 1 from public.club_posts cp where cp.id = n.target_id
+    ))
+    or (n.target_type = 'comment' and not exists (
+      select 1 from public.comments c where c.id = n.target_id
+    ))
+    or (n.target_type = 'activity_checkpoint' and not exists (
+      select 1 from public.club_activity_checkpoints cc where cc.id = n.target_id
+    ))
+    or (n.target_type in ('club_activity', 'club_event') and not exists (
+      select 1 from public.club_activities ca where ca.id = n.target_id
+    ))
+  );
+
+create or replace function private.cleanup_social_target()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_target_type text;
+begin
+  foreach v_target_type in array tg_argv loop
+    -- Deleting comments first intentionally fires this same cleanup function on
+    -- each comment, removing likes/notifications about that comment too.
+    delete from public.comments c
+    where c.target_type::text = v_target_type
+      and c.target_id = old.id;
+
+    delete from public.reactions r
+    where r.target_type::text = v_target_type
+      and r.target_id = old.id;
+
+    delete from public.notifications n
+    where n.target_type = v_target_type
+      and n.target_id = old.id;
+
+    update public.content_reports cr
+    set status = 'actioned',
+        target_deleted_at = coalesce(cr.target_deleted_at, now()),
+        reviewed_at = coalesce(cr.reviewed_at, now())
+    where cr.target_type::text = v_target_type
+      and cr.target_id = old.id
+      and cr.target_deleted_at is null;
+  end loop;
+
+  return old;
+end;
+$function$;
+
+revoke execute on function private.cleanup_social_target() from public, anon, authenticated;
+
+create trigger trg_passes_cleanup_social_target
+  after delete on public.passes
+  for each row execute function private.cleanup_social_target('diary_entry', 'pass');
+
+create trigger trg_episode_watches_cleanup_social_target
+  after delete on public.episode_watches
+  for each row execute function private.cleanup_social_target('episode_watch');
+
+create trigger trg_progress_sessions_cleanup_social_target
+  after delete on public.progress_sessions
+  for each row execute function private.cleanup_social_target('progress_session');
+
+create trigger trg_clubs_cleanup_social_target
+  after delete on public.clubs
+  for each row execute function private.cleanup_social_target('club');
+
+create trigger trg_club_posts_cleanup_social_target
+  after delete on public.club_posts
+  for each row execute function private.cleanup_social_target('club_post');
+
+create trigger trg_comments_cleanup_social_target
+  after delete on public.comments
+  for each row execute function private.cleanup_social_target('comment');
+
+create trigger trg_activity_checkpoints_cleanup_social_target
+  after delete on public.club_activity_checkpoints
+  for each row execute function private.cleanup_social_target('activity_checkpoint');
+
+create trigger trg_club_activities_cleanup_social_target
+  after delete on public.club_activities
+  for each row execute function private.cleanup_social_target('club_activity', 'club_event');
+
+-- 20260730194407_social_phase0_close_notification_inserts.sql
+
+-- Deploy only after notify()/notifyMany() write with the server-side service
+-- role client. Recipients keep SELECT/UPDATE/DELETE under their existing RLS.
+drop policy if exists "notifications insert as actor"
+  on public.notifications;
+
+revoke insert on table public.notifications from anon, authenticated;
+
+-- 20260730200000_social_phase0_report_reviewer_index.sql
+
+-- Social Phase 0: cover the reviewer FK used by moderation audit lookups and
+-- cascades. Kept separate because the base moderation migration was already
+-- applied to biblioshare-dev before the performance advisor pass.
+
+create index content_reports_reviewed_by_idx
+  on public.content_reports (reviewed_by)
+  where reviewed_by is not null;
