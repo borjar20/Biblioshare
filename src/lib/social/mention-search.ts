@@ -2,41 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { searchProfiles, type ProfileSearchResult } from "@/lib/profile/search-profiles";
+import { mergeCandidates, type MentionCandidate, type MentionScope } from "./mention-candidates";
 
-export type MentionCandidate = {
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  isInGraph: boolean;
-};
-
-export type MentionScope = { scope: "club"; clubId: string } | { scope: "profile" };
-
+// mergeCandidates y los tipos viven en ./mention-candidates (módulo puro): este
+// fichero es "use server", así que solo puede exportar server actions async.
 const LIMIT = 6;
-
-// Grafo primero, relleno global después, dedup por username. Puro: testeable
-// sin red (ver mention-search.test.ts).
-export function mergeCandidates(
-  graph: ProfileSearchResult[],
-  global: ProfileSearchResult[],
-  limit: number,
-): MentionCandidate[] {
-  const seen = new Set<string>();
-  const out: MentionCandidate[] = [];
-  for (const p of graph) {
-    if (seen.has(p.username)) continue;
-    seen.add(p.username);
-    out.push({ ...p, isInGraph: true });
-    if (out.length >= limit) return out;
-  }
-  for (const p of global) {
-    if (seen.has(p.username)) continue;
-    seen.add(p.username);
-    out.push({ ...p, isInGraph: false });
-    if (out.length >= limit) return out;
-  }
-  return out;
-}
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 

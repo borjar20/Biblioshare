@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeCandidates } from "./mention-search";
+import { mergeCandidates } from "./mention-candidates";
 
 describe("mergeCandidates", () => {
   it("pone el grafo primero y rellena con global, dedup por username", () => {

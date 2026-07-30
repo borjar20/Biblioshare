@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { searchMentionCandidates } from "@/lib/social/mention-search";
-import type { MentionCandidate, MentionScope } from "@/lib/social/mention-search";
+import type { MentionCandidate, MentionScope } from "@/lib/social/mention-candidates";
 
 // Detecta el token @… que contiene el cursor. Devuelve null si no hay uno
 // activo (no hay @, hay espacio entre el @ y el cursor, o el @ va pegado a un
