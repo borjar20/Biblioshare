@@ -177,18 +177,22 @@ export async function addComment(
   // Gate de visibilidad del comentario = el del PADRE (lo que se comenta).
   let mentioned: string[] = [];
   if (targetType === "club_post") {
-    const { data: post } = await supabase
-      .from("club_posts")
-      .select("club_id")
-      .eq("id", targetId)
-      .maybeSingle();
-    if (post?.club_id) {
-      mentioned = await notifyMentions(supabase, {
-        authorId: user.id,
-        text: trimmed,
-        target: { type: "comment", id: inserted.id },
-        gate: { kind: "club", clubId: post.club_id },
-      });
+    try {
+      const { data: post } = await supabase
+        .from("club_posts")
+        .select("club_id")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (post?.club_id) {
+        mentioned = await notifyMentions(supabase, {
+          authorId: user.id,
+          text: trimmed,
+          target: { type: "comment", id: inserted.id },
+          gate: { kind: "club", clubId: post.club_id },
+        });
+      }
+    } catch (error) {
+      console.error(error);
     }
   } else if (targetType === "diary_entry" || targetType === "episode_watch") {
     try {
