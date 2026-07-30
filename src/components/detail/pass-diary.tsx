@@ -14,6 +14,7 @@ import { formatEdition } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
+import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 
 const initialState: ClosePassState = {};
 
@@ -138,6 +139,12 @@ function PassCard({
   const [editing, setEditing] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [rating, setRating] = useState<number | null>(pass.rating);
+  const [review, setReview] = useState(pass.review ?? "");
+  const mention = useMentionAutocomplete({
+    value: review,
+    onChange: setReview,
+    scope: { scope: "profile" },
+  });
   const [state, formAction, pending] = useActionState(
     updatePass.bind(null, pass.id, itemType, itemId),
     initialState,
@@ -267,12 +274,18 @@ function PassCard({
             <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
               {t("review")}
             </span>
-            <textarea
-              name="review"
-              defaultValue={pass.review ?? ""}
-              rows={2}
-              className="resize-none rounded-md border border-border bg-surface-muted px-2 py-1.5 text-xs text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+            <div className="relative">
+              <textarea
+                name="review"
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                onInput={mention.onInput}
+                onKeyDown={mention.onKeyDown}
+                rows={2}
+                className="w-full resize-none rounded-md border border-border bg-surface-muted px-2 py-1.5 text-xs text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              {mention.dropdown}
+            </div>
           </label>
 
           <label className="flex items-center justify-between gap-2">

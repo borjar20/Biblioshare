@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { formatEdition } from "@/lib/editions/edition-label";
 import { latestRatingPerUser, type RatedPass } from "./latest-rating";
 
@@ -25,6 +26,10 @@ export type Community = {
   ratingCount: number;
   distribution: number[]; // porcentajes [5★, 4★, 3★, 2★, 1★]
   reviews: CommunityReview[];
+  // Usernames @mencionados en `reviews` (texto + comentarios) que existen de
+  // verdad — resuelto en UNA query (resolveKnownMentions) para que
+  // CommunityPanel linkifique sin volver a tocar la BD.
+  knownUsernames: string[];
 };
 
 const MAX_REVIEWS = 10;
@@ -228,5 +233,10 @@ export async function getCommunity(
     }
   }
 
-  return { avgRating, ratingCount: ratings.length, distribution, reviews };
+  const knownUsernames = await resolveKnownMentions(supabase, [
+    ...reviews.map((r) => r.text),
+    ...reviews.flatMap((r) => r.comments.map((c) => c.body)),
+  ]);
+
+  return { avgRating, ratingCount: ratings.length, distribution, reviews, knownUsernames };
 }

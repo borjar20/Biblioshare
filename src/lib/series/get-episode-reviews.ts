@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -20,6 +21,13 @@ export type EpisodeReview = {
   comments: InteractionComment[];
 };
 
+export type EpisodeReviewsResult = {
+  reviews: EpisodeReview[];
+  // Usernames @mencionados en `reviews` (texto + comentarios) que existen de
+  // verdad — mismo patrón que Community.knownUsernames en get-community.ts.
+  knownUsernames: string[];
+};
+
 const MAX_REVIEWS = 20;
 
 function initials(name: string): string {
@@ -37,7 +45,7 @@ function initials(name: string): string {
 export async function getEpisodeReviews(
   supabase: SupabaseServerClient,
   seriesId: string
-): Promise<EpisodeReview[]> {
+): Promise<EpisodeReviewsResult> {
   const { data: rows } = await supabase
     .from("episode_watches")
     .select("id, user_id, season_number, episode_number, rating, review, watched_on")
@@ -47,7 +55,7 @@ export async function getEpisodeReviews(
     .limit(MAX_REVIEWS);
 
   const withText = (rows ?? []).filter((r) => (r.review ?? "").trim() !== "");
-  if (withText.length === 0) return [];
+  if (withText.length === 0) return { reviews: [], knownUsernames: [] };
 
   const userIds = [...new Set(withText.map((r) => r.user_id))];
   const [{ data: profiles }, { data: episodes }] = await Promise.all([
@@ -92,5 +100,12 @@ export async function getEpisodeReviews(
     "episode_watch",
     reviews.map((r) => r.id),
   );
-  return reviews.map((r) => ({ ...r, ...summaries.get(r.id) }));
+  const resolved = reviews.map((r) => ({ ...r, ...summaries.get(r.id) }));
+
+  const knownUsernames = await resolveKnownMentions(supabase, [
+    ...resolved.map((r) => r.text),
+    ...resolved.flatMap((r) => r.comments.map((c) => c.body)),
+  ]);
+
+  return { reviews: resolved, knownUsernames };
 }

@@ -15,6 +15,8 @@ import type {
 } from "@/lib/social/interactions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
+import { useMentionAutocomplete } from "./use-mention-autocomplete";
+import { MentionText } from "./mention-text";
 
 // Like + hilo de comentarios bajo una reseña (EPIC-05, Bloque B, SD-3). El
 // estado real deriva de las props que el servidor revalida tras cada acción
@@ -30,6 +32,8 @@ export function ReviewInteractions({
   comments,
   viewerLoggedIn,
   showTargetReaction = true,
+  clubId,
+  knownUsernames = [],
 }: {
   targetType: TargetType;
   targetId: string;
@@ -42,6 +46,15 @@ export function ReviewInteractions({
   // de buddy_read, EPIC-05 Bloque H1) -- el like en comentarios individuales
   // no se ve afectado, es un target distinto ("comment").
   showTargetReaction?: boolean;
+  // Scope de @menciones del comentario: si el target vive dentro de un post
+  // de club, el caller pasa el clubId para acotar el autocompletar a los
+  // miembros del club; si se omite, el scope cae a "profile" (grafo social).
+  clubId?: string;
+  // Usernames @mencionados en `comments` que existen de verdad (resueltos
+  // por el server parent con resolveKnownMentions) — linkifica el cuerpo de
+  // cada comentario. Opcional: los callers que aún no la resuelven (fuera
+  // del alcance de la Tarea 7) simplemente no linkifican, sin romper nada.
+  knownUsernames?: string[];
 }) {
   const t = useTranslations("social");
   const { state, isPending, run } = useOptimisticAction({
@@ -50,6 +63,11 @@ export function ReviewInteractions({
   });
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
+  const mention = useMentionAutocomplete({
+    value: draft,
+    onChange: setDraft,
+    scope: clubId ? { scope: "club", clubId } : { scope: "profile" },
+  });
 
   if (!viewerLoggedIn) {
     return (
@@ -139,7 +157,9 @@ export function ReviewInteractions({
             >
               <p className="text-foreground">
                 <span className="font-medium">{c.author}</span>{" "}
-                <span className="text-muted-foreground">{c.body}</span>
+                <span className="text-muted-foreground">
+                  <MentionText text={c.body} knownUsernames={knownUsernames} />
+                </span>
               </p>
               <div className="flex shrink-0 items-center gap-2">
                 <button
@@ -182,13 +202,18 @@ export function ReviewInteractions({
             }}
             className="flex items-center gap-2"
           >
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={t("writeComment")}
-              className="flex-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs outline-none focus:border-accent"
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onInput={mention.onInput}
+                onKeyDown={mention.onKeyDown}
+                placeholder={t("writeComment")}
+                className="w-full rounded-full border border-border bg-surface px-3 py-1.5 text-xs outline-none focus:border-accent"
+              />
+              {mention.dropdown}
+            </div>
             <button
               type="submit"
               disabled={isPending || !draft.trim()}

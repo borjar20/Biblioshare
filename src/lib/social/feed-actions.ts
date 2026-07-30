@@ -16,7 +16,7 @@ export async function loadMoreFeed(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { events: [], nextCursor: null };
+  if (!user) return { events: [], nextCursor: null, knownUsernames: [] };
 
   return getFeed(supabase, user.id, {
     cursor: cursor ?? undefined,

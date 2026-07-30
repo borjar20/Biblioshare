@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { notifyMentions } from "@/lib/social/notify-mentions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -52,7 +53,7 @@ async function savePassFields(
   passId: string,
   userId: string,
   formData: FormData
-): Promise<ClosePassState> {
+): Promise<ClosePassState & { review?: string | null; isPublic?: boolean }> {
   const finishedOn = parseFinishedOn(formData.get("finishedOn"));
   if (finishedOn === undefined) return { error: "invalidDate" };
 
@@ -75,7 +76,10 @@ async function savePassFields(
     .eq("id", passId)
     .eq("user_id", userId);
 
-  return error ? { error: "generic" } : {};
+  // review/isPublic se devuelven también en éxito: closePass los necesita
+  // para decidir si notifica menciones (solo alta, nunca en updatePass — ver
+  // llamadas más abajo) sin tener que releer la fila recién escrita.
+  return error ? { error: "generic" } : { review: review || null, isPublic };
 }
 
 // openPass ya no existe: abrir un pase es una transición de estado y pasa
@@ -98,6 +102,19 @@ export async function closePass(
 
   const result = await savePassFields(supabase, passId, user.id, formData);
   if (result.error) return result;
+
+  // Menciones en la reseña, SOLO en alta (nunca en updatePass — editar no
+  // debe re-notificar). Solo tiene sentido si hay texto y la reseña es
+  // pública (el destinatario debe poder verla) -- el gate 'profile' con el
+  // propio autor como owner reutiliza la visibilidad de su perfil.
+  if (result.review && result.isPublic) {
+    await notifyMentions(supabase, {
+      authorId: user.id,
+      text: result.review,
+      target: { type: "diary_entry", id: passId },
+      gate: { kind: "profile", ownerId: user.id },
+    });
+  }
 
   revalidateReadingLog(itemType, itemId);
   return {};

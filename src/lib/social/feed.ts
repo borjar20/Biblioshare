@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { getInteractionSummary, type InteractionComment } from "./interactions";
+import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 import { groupPersonEntries, type PersonGroupEntry } from "./group-feed-entries";
@@ -82,6 +83,11 @@ export type FeedEntry =
 export type FeedPage = {
   events: FeedEntry[];
   nextCursor: string | null;
+  // Usernames @mencionados (en reviewExcerpt y en los comentarios de los
+  // eventos de persona de esta página) que existen de verdad — resuelto en
+  // UNA query. Los eventos de club (ClubFeedCard) no están cableados a
+  // MentionText (fuera de alcance de la Tarea 7).
+  knownUsernames: string[];
 };
 
 // El set del frame A. Es de selección única: "Reseñas" ya no se combina con un
@@ -214,7 +220,7 @@ export async function getFeed(
   // Seguir a nadie ya no vacía el feed: puedes tener clubes igualmente.
   const includePerson = includePeople && followedIds.length > 0;
   if (!includePerson && clubResult.events.length === 0) {
-    return { events: [], nextCursor: null };
+    return { events: [], nextCursor: null, knownUsernames: [] };
   }
 
   // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin el
@@ -708,9 +714,14 @@ export async function getFeed(
     ? null
     : `${last.eventDate}${CURSOR_SEPARATOR}${last.id}`;
 
+  const knownUsernames = await resolveKnownMentions(supabase, [
+    ...personEvents.map((e) => e.reviewExcerpt).filter((t): t is string => t !== null),
+    ...personEvents.flatMap((e) => e.comments.map((c) => c.body)),
+  ]);
+
   // La agrupación es solo de presentación y se aplica DESPUÉS de fijar el
   // cursor: nextCursor apunta a un evento real de `page`, no a un grupo
   // sintético. Un grupo partido en el borde de página reaparece como grupo
   // propio en la siguiente tanda (limitación conocida → issue).
-  return { events: groupPersonEntries(page), nextCursor };
+  return { events: groupPersonEntries(page), nextCursor, knownUsernames };
 }

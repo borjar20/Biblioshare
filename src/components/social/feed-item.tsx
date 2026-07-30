@@ -5,7 +5,16 @@ import { ProgressTimelineCard } from "./progress-timeline-card";
 import { ReviewCard } from "./review-card";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 
-export function FeedItem({ entry, viewerLoggedIn }: { entry: FeedEntry; viewerLoggedIn: boolean }) {
+export function FeedItem({
+  entry,
+  viewerLoggedIn,
+  knownUsernames,
+}: {
+  entry: FeedEntry;
+  viewerLoggedIn: boolean;
+  /** Usernames @mencionados que existen de verdad (solo lo usa la variante Reseña). */
+  knownUsernames: string[];
+}) {
   if (entry.source === "club") return <ClubFeedCard event={entry.event} />;
 
   // Un evento singleton se envuelve como grupo de 1 para las variantes A/B, que
@@ -32,5 +41,5 @@ export function FeedItem({ entry, viewerLoggedIn }: { entry: FeedEntry; viewerLo
       : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} />;
   }
   // finished / rated / reviewed / watchedEpisode → Reseña
-  return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} />;
+  return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
 }

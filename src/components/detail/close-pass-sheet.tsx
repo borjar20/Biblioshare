@@ -6,6 +6,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { closePass, type ClosePassState } from "@/lib/passes/actions";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
+import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 
 const initialState: ClosePassState = {};
 
@@ -41,6 +42,12 @@ export function ClosePassSheet({
   const t = useTranslations("passes");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [rating, setRating] = useState<number | null>(null);
+  const [review, setReview] = useState("");
+  const mention = useMentionAutocomplete({
+    value: review,
+    onChange: setReview,
+    scope: { scope: "profile" },
+  });
   const [state, formAction, pending] = useActionState(
     closePass.bind(null, passId, itemType, itemId),
     initialState
@@ -134,12 +141,19 @@ export function ClosePassSheet({
             <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
               {t("review")}
             </span>
-            <textarea
-              name="review"
-              placeholder={t("reviewPlaceholder")}
-              rows={3}
-              className="resize-none rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+            <div className="relative">
+              <textarea
+                name="review"
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                onInput={mention.onInput}
+                onKeyDown={mention.onKeyDown}
+                placeholder={t("reviewPlaceholder")}
+                rows={3}
+                className="w-full resize-none rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              {mention.dropdown}
+            </div>
           </label>
 
           <label className="flex items-center justify-between gap-3 text-sm">

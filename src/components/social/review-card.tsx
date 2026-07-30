@@ -7,6 +7,7 @@ import { timeAgo } from "@/lib/relative-time";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ReviewInteractions } from "@/components/social/review-interactions";
+import { MentionText } from "@/components/social/mention-text";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
 
@@ -20,10 +21,13 @@ export function ReviewCard({
   event,
   viewerLoggedIn,
   hideActor = false,
+  knownUsernames,
 }: {
   event: FeedEvent;
   viewerLoggedIn: boolean;
   hideActor?: boolean;
+  /** Usernames @mencionados que existen de verdad (extracto + comentarios). */
+  knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
   const tTime = useTranslations("time");
@@ -67,7 +71,9 @@ export function ReviewCard({
       </div>
 
       {event.reviewExcerpt && (
-        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed">{event.reviewExcerpt}</p>
+        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed">
+          <MentionText text={event.reviewExcerpt} knownUsernames={knownUsernames} />
+        </p>
       )}
 
       {event.interactionTarget && (
@@ -79,6 +85,7 @@ export function ReviewCard({
           commentCount={event.commentCount}
           comments={event.comments}
           viewerLoggedIn={viewerLoggedIn}
+          knownUsernames={knownUsernames}
         />
       )}
       {hideActor && (

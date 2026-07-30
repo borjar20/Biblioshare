@@ -2335,6 +2335,7 @@ export type Database = {
         | "club_activity_activated"
         | "club_activity_spawned"
         | "club_event_created"
+        | "mentioned"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       saga_item_role: "precuela" | "novela_corta" | "relato" | "spin_off" | "companero" | "crossover"
@@ -2511,6 +2512,7 @@ export const Constants = {
         "club_activity_activated",
         "club_activity_spawned",
         "club_event_created",
+        "mentioned",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],

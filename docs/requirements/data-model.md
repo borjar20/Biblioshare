@@ -44,6 +44,14 @@ divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas 
 > pendiente del merge de `feat/feed-tarjetas-por-tipo`.
 > **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico, índices
 > GIN y backfill aplicados y verificados en DEV **y en PROD** el 2026-07-30 (PR #312).
+> **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §9): valor `mentioned` del enum
+> `notification_type` aplicado y verificado en DEV **y en PROD** contra `pg_enum` (sin
+> tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
+> `decisiones.md`). Las políticas RLS de `notifications` (`select own`/`insert as
+> actor`/`update own`/`delete own`) no referencian `type`, así que `mentioned` queda
+> cubierto por la misma RLS que el resto de tipos sin cambio alguno — confirmado
+> re-listando `pg_policies` en dev el 2026-07-30. Spec:
+> `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -1273,7 +1281,7 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created` (`club_event_created`: 2026-07-22) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod — `target_type` reutiliza `diary_entry`/`comment`/`club_post` de `target_kind`, sin valor nuevo) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |

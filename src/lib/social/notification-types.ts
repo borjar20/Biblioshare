@@ -22,7 +22,8 @@ export type NotificationType =
   | "club_activity_proposed"
   | "club_activity_activated"
   | "club_activity_spawned"
-  | "club_event_created";
+  | "club_event_created"
+  | "mentioned";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -72,4 +73,5 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",
   club_event_created: "clubEventCreated",
+  mentioned: "mentioned",
 };

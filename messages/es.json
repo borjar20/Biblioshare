@@ -396,7 +396,8 @@
     "clubActivitySpawned": "{name} enlazó una actividad nueva en el club",
     "clubEventCreated": "{name} marcó una fecha en el club",
     "clubJoinRequest": "{name} quiere unirse a tu club",
-    "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club"
+    "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
+    "mentioned": "{name} te mencionó"
   },
   "time": {
     "justNow": "ahora mismo",

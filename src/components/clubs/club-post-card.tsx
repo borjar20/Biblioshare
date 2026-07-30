@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import type { ClubPost } from "@/lib/clubs/posts";
 import { votePoll, deletePost } from "@/lib/clubs/posts";
 import { ReviewInteractions } from "@/components/social/review-interactions";
+import { MentionText } from "@/components/social/mention-text";
 import { itemHref } from "@/lib/catalog/item-href";
 import { Button } from "@/components/ui/button";
 
@@ -13,10 +14,13 @@ export function ClubPostCard({
   post,
   viewerLoggedIn,
   canDelete,
+  knownUsernames,
 }: {
   post: ClubPost;
   viewerLoggedIn: boolean;
   canDelete: boolean;
+  /** Usernames @mencionados (post + sus comentarios) que existen de verdad. */
+  knownUsernames: string[];
 }) {
   const t = useTranslations("clubPost");
   const [selectedOption, setSelectedOption] = useState(post.poll?.viewerOptionId ?? null);
@@ -66,7 +70,9 @@ export function ClubPostCard({
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-      <p className="whitespace-pre-wrap text-sm text-foreground">{post.body}</p>
+      <p className="whitespace-pre-wrap text-sm text-foreground">
+        <MentionText text={post.body} knownUsernames={knownUsernames} />
+      </p>
 
       {post.kind === "activity_share" && (
         post.sharedActivity ? (
@@ -148,6 +154,8 @@ export function ClubPostCard({
         commentCount={post.commentCount}
         comments={post.comments}
         viewerLoggedIn={viewerLoggedIn}
+        clubId={post.clubId}
+        knownUsernames={knownUsernames}
       />
     </div>
   );

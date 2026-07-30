@@ -48,6 +48,7 @@ export async function ActivityTab({
       actorId={userId}
       initialEvents={page.events}
       initialCursor={page.nextCursor}
+      initialKnownUsernames={page.knownUsernames}
       viewerLoggedIn={viewerLoggedIn}
     />
   );
