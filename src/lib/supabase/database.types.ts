@@ -784,6 +784,57 @@ export type Database = {
         }
         Relationships: []
       }
+      content_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: Database["public"]["Enums"]["content_report_reason"]
+          reported_user_id: string | null
+          reporter_id: string
+          resolution_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          snapshot: Json
+          status: string
+          target_deleted_at: string | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["content_report_reason"]
+          reported_user_id?: string | null
+          reporter_id: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          snapshot: Json
+          status?: string
+          target_deleted_at?: string | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["content_report_reason"]
+          reported_user_id?: string | null
+          reporter_id?: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          snapshot?: Json
+          status?: string
+          target_deleted_at?: string | null
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["target_kind"]
+        }
+        Relationships: []
+      }
       credits: {
         Row: {
           billing_order: number | null
@@ -1919,6 +1970,24 @@ export type Database = {
           },
         ]
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       club_identities: {
@@ -2140,6 +2209,10 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      filter_unblocked_user_ids: {
+        Args: { candidate_ids: string[] }
+        Returns: string[]
+      }
       finish_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined
@@ -2200,6 +2273,13 @@ export type Database = {
         Args: { p_item_id: string; p_saga_id: string }
         Returns: undefined
       }
+      moderatable_target_ids: {
+        Args: {
+          candidate_target_ids: string[]
+          candidate_target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Returns: string[]
+      }
       notify_club_join_request: {
         Args: { p_club_id: string }
         Returns: undefined
@@ -2220,6 +2300,10 @@ export type Database = {
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
         Returns: undefined
+      }
+      report_comment: {
+        Args: { p_comment_id: string; p_details?: string | null; p_reason: string }
+        Returns: string
       }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }
@@ -2297,6 +2381,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      users_are_blocked: { Args: { other_user_id: string }; Returns: boolean }
       vote_club_poll: {
         Args: { p_option_id: string; p_post_id: string }
         Returns: undefined
@@ -2314,6 +2399,12 @@ export type Database = {
       club_post_kind: "text" | "activity_share" | "poll"
       club_role: "member" | "moderator" | "owner"
       club_visibility: "public" | "private"
+      content_report_reason:
+        | "spam"
+        | "harassment"
+        | "spoiler"
+        | "hate"
+        | "other"
       follow_status: "pending" | "accepted"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
@@ -2491,6 +2582,7 @@ export const Constants = {
       club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
+      content_report_reason: ["spam", "harassment", "spoiler", "hate", "other"],
       follow_status: ["pending", "accepted"],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],

@@ -26,6 +26,7 @@ export function FollowButton({
   const {
     state: current,
     isPending,
+    failed,
     run,
   } = useOptimisticAction({ state, reducer: followReducer });
 
@@ -46,26 +47,30 @@ export function FollowButton({
       current === "none" ? followUser(targetUserId) : unfollowUser(targetUserId),
     );
 
-  if (current === "accepted") {
-    return (
-      <Button type="button" variant="secondary" disabled={isPending} onClick={toggle}>
-        {t("following")}
-      </Button>
-    );
-  }
+  const label =
+    current === "accepted"
+      ? t("following")
+      : current === "pending"
+        ? t("requested")
+        : targetIsPublic
+          ? t("follow")
+          : t("requestFollow");
 
-  if (current === "pending") {
-    return (
-      <Button type="button" variant="secondary" disabled={isPending} onClick={toggle}>
-        {t("requested")}
-      </Button>
-    );
-  }
-
-  // current === "none"
   return (
-    <Button type="button" variant="primary" disabled={isPending} onClick={toggle}>
-      {targetIsPublic ? t("follow") : t("requestFollow")}
-    </Button>
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        type="button"
+        variant={current === "none" ? "primary" : "secondary"}
+        disabled={isPending}
+        onClick={toggle}
+      >
+        {label}
+      </Button>
+      {failed && (
+        <p role="alert" className="max-w-48 text-right text-xs text-destructive">
+          {t("actionError")}
+        </p>
+      )}
+    </div>
   );
 }

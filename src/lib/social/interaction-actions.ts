@@ -274,8 +274,7 @@ export async function deleteComment(commentId: string): Promise<void> {
   const { error } = await supabase
     .from("comments")
     .delete()
-    .eq("id", commentId)
-    .eq("author_id", user.id);
+    .eq("id", commentId);
   if (error) throw error;
   revalidateInteraction();
 }

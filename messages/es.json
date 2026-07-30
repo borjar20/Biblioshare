@@ -318,6 +318,26 @@
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
     "deleteComment": "Borrar",
+    "deleteCommentConfirm": "¿Borrar este comentario? Esta acción no se puede deshacer.",
+    "reportComment": "Reportar",
+    "reportReasonLabel": "Motivo",
+    "reportDetailsLabel": "Detalles opcionales",
+    "reportReason": {
+      "spam": "Spam",
+      "harassment": "Acoso",
+      "spoiler": "Spoiler sin avisar",
+      "hate": "Odio o discriminación",
+      "other": "Otro"
+    },
+    "sendReport": "Enviar reporte",
+    "reportSent": "Reporte enviado",
+    "cancel": "Cancelar",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "blockConfirm": "¿Bloquear a esta persona? Dejaréis de seguiros y no veréis vuestra actividad.",
+    "blockedTitle": "Usuario bloqueado",
+    "blockedDescription": "Has ocultado este perfil y su actividad. Puedes desbloquearlo cuando quieras.",
+    "actionError": "No se pudo guardar el cambio. Inténtalo de nuevo.",
     "you": "Tú"
   },
   "feed": {

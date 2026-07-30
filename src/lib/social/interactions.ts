@@ -16,10 +16,13 @@ export type InteractionComment = {
   id: string;
   authorId: string;
   author: string;
+  authorUsername: string | null;
+  authorAvatarUrl: string | null;
   initials: string;
   body: string;
   createdAt: string;
   isOwn: boolean;
+  canDelete: boolean;
   reactionCount: number;
   viewerReacted: boolean;
 };
@@ -46,11 +49,13 @@ function initials(name: string): string {
 async function resolveAuthorNames(
   supabase: SupabaseServerClient,
   userIds: string[],
-): Promise<Map<string, string>> {
+): Promise<
+  Map<string, { name: string; username: string | null; avatarUrl: string | null }>
+> {
   if (userIds.length === 0) return new Map();
   const { data, error } = await supabase
     .from("profile_identities")
-    .select("user_id, username, display_name")
+    .select("user_id, username, display_name, avatar_url")
     .in("user_id", userIds);
   if (error) throw error;
   return new Map(
@@ -58,7 +63,14 @@ async function resolveAuthorNames(
       .filter(
         (p): p is typeof p & { user_id: string } => p.user_id != null,
       )
-      .map((p) => [p.user_id, p.display_name || p.username || "—"]),
+      .map((p) => [
+        p.user_id,
+        {
+          name: p.display_name || p.username || "—",
+          username: p.username ?? null,
+          avatarUrl: p.avatar_url ?? null,
+        },
+      ]),
   );
 }
 
@@ -110,6 +122,18 @@ export async function getInteractionSummary(
   const commentRows = commentsResult.data ?? [];
   const authorIds = [...new Set(commentRows.map((c) => c.author_id))];
   const nameByAuthor = await resolveAuthorNames(supabase, authorIds);
+  let moderatableTargetIds = new Set<string>();
+  if (user) {
+    const { data: ids, error: moderationError } = await supabase.rpc(
+      "moderatable_target_ids",
+      {
+        candidate_target_type: targetType,
+        candidate_target_ids: targetIds,
+      },
+    );
+    if (moderationError) throw moderationError;
+    moderatableTargetIds = new Set((ids ?? []) as string[]);
+  }
 
   const seenPerTarget = new Map<string, number>();
   for (const c of commentRows) {
@@ -119,15 +143,22 @@ export async function getInteractionSummary(
     const seen = (seenPerTarget.get(c.target_id) ?? 0) + 1;
     seenPerTarget.set(c.target_id, seen);
     if (seen > COMMENT_PREFETCH_LIMIT) continue;
-    const author = nameByAuthor.get(c.author_id) ?? "—";
+    const identity = nameByAuthor.get(c.author_id) ?? {
+      name: "—",
+      username: null,
+      avatarUrl: null,
+    };
     s.comments.push({
       id: c.id,
       authorId: c.author_id,
-      author,
-      initials: initials(author) || "?",
+      author: identity.name,
+      authorUsername: identity.username,
+      authorAvatarUrl: identity.avatarUrl,
+      initials: initials(identity.name) || "?",
       body: c.body,
       createdAt: c.created_at,
       isOwn: user?.id === c.author_id,
+      canDelete: user?.id === c.author_id || moderatableTargetIds.has(c.target_id),
       reactionCount: 0,
       viewerReacted: false,
     });

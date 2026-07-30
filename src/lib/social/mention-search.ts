@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { searchProfiles, type ProfileSearchResult } from "@/lib/profile/search-profiles";
+import { filterUnblockedUserIds } from "./block-state";
 import { mergeCandidates, type MentionCandidate, type MentionScope } from "./mention-candidates";
 
 // mergeCandidates y los tipos viven en ./mention-candidates (módulo puro): este
@@ -26,12 +27,13 @@ async function searchClubMemberCandidates(
     .eq("status", "active");
   if (membersError) throw membersError;
   const ids = (members ?? []).map((m) => m.user_id as string);
-  if (ids.length === 0) return [];
+  const unblockedIds = await filterUnblockedUserIds(supabase, ids);
+  if (unblockedIds.length === 0) return [];
 
   const { data: identities, error: identitiesError } = await supabase
     .from("profile_identities")
     .select("username, display_name, avatar_url")
-    .in("user_id", ids)
+    .in("user_id", unblockedIds)
     .or(`username.ilike.${prefix}%,display_name.ilike.${prefix}%`)
     .order("username", { ascending: true })
     .limit(LIMIT);
@@ -69,10 +71,13 @@ async function searchProfileGraphCandidates(
   }
   if (ids.size === 0) return [];
 
+  const unblockedIds = await filterUnblockedUserIds(supabase, [...ids]);
+  if (unblockedIds.length === 0) return [];
+
   const { data: identities, error: identitiesError } = await supabase
     .from("profile_identities")
     .select("username, display_name, avatar_url")
-    .in("user_id", [...ids])
+    .in("user_id", unblockedIds)
     .or(`username.ilike.${prefix}%,display_name.ilike.${prefix}%`)
     .order("username", { ascending: true })
     .limit(LIMIT);

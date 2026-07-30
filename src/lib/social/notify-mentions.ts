@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { filterUnblockedUserIds } from "./block-state";
 import { extractMentions } from "./mentions";
 import { notifyMany } from "./notifications";
 
@@ -17,7 +18,6 @@ export type MentionNotifyTarget = {
 // notificación, aplicando el gate de visibilidad en capa de app (sin función
 // SQL nueva). Se exporta aparte de notifyMentions porque los call sites
 // necesitan el conjunto para el supersede del ruido (ver interaction-actions).
-// TODO(E5.J1): filtrar user_blocks (cuando exista), restando los bloqueos bidireccionales.
 export async function resolveDeliverableMentions(
   supabase: SupabaseServerClient,
   params: { authorId: string; text: string; gate: MentionGate },
@@ -39,13 +39,16 @@ export async function resolveDeliverableMentions(
   ];
   if (mentionedIds.length === 0) return [];
 
+  const unblockedIds = await filterUnblockedUserIds(supabase, mentionedIds);
+  if (unblockedIds.length === 0) return [];
+
   if (params.gate.kind === "club") {
     const { data: members } = await supabase
       .from("club_members")
       .select("user_id")
       .eq("club_id", params.gate.clubId)
       .eq("status", "active")
-      .in("user_id", mentionedIds);
+      .in("user_id", unblockedIds);
     return (members ?? []).map((m) => m.user_id as string);
   }
 
@@ -56,7 +59,7 @@ export async function resolveDeliverableMentions(
     .eq("user_id", params.gate.ownerId)
     .maybeSingle();
 
-  if (owner?.is_public) return mentionedIds;
+  if (owner?.is_public) return unblockedIds;
 
   // Perfil privado (o dueño no resoluble): solo seguidores aceptados del dueño.
   const { data: followers } = await supabase
@@ -64,7 +67,7 @@ export async function resolveDeliverableMentions(
     .select("follower_id")
     .eq("followee_id", params.gate.ownerId)
     .eq("status", "accepted")
-    .in("follower_id", mentionedIds);
+    .in("follower_id", unblockedIds);
   return (followers ?? []).map((f) => f.follower_id as string);
 }
 
