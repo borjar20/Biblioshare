@@ -695,12 +695,15 @@ forma incremental (uno por uno).
   común) — absorbe la idea 7.15 "comparar bibliotecas"; social-lite, buen gancho para
   seguir a alguien.
 - [x] **E5.K3** **Menciones `@usuario`** en reseñas, comentarios y posts de club (genera
-  notificación). **Cerrado 2026-07-30, dev+prod** — texto crudo con `@usuario` como fuente
-  de verdad (sin tabla sidecar, solo `notification_type += 'mentioned'`), autocompletar en
-  los 3 composers, render como enlace solo si el username existe, filtro de entregabilidad
-  en capa de app (perfil público → todos; privado → solo seguidores aceptados; post de
-  club → solo miembros activos) y supersede de la notificación genérica cuando el dueño del
-  contenido está entre los mencionados. Spec:
+  notificación). **Código completo dev+prod, 2026-07-30** — texto crudo con `@usuario` como
+  fuente de verdad (sin tabla sidecar, solo `notification_type += 'mentioned'`),
+  autocompletar en los 3 composers, render como enlace solo si el username existe, filtro
+  de entregabilidad en capa de app (perfil público → todos; privado → solo seguidores
+  aceptados; post de club → solo miembros activos) y supersede de la notificación genérica
+  cuando el dueño del contenido está entre los mencionados. Unit tests verdes (parser, gate
+  de entregabilidad, tokenizer, detección de token en autocompletar), pero **verificación
+  manual en navegador pendiente de ejecutar** (checklist en
+  `docs/superpowers/plans/2026-07-30-menciones-usuario-manual-test.md`, issue #323). Spec:
   `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`; plan:
   `docs/superpowers/plans/2026-07-30-menciones-usuario.md`.
 - [ ] **E5.K4** **Eventos de club** (discusión programada / fecha límite de la lectura
