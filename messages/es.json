@@ -1742,6 +1742,11 @@
   },
   "collection": {
     "title": "Mi Biblioteca",
+    "desktopRail": {
+      "title": "Tu biblioteca",
+      "browse": "Buscar títulos",
+      "collections": "Ver colecciones"
+    },
     "tabs": {
       "colecciones": "Colecciones",
       "todo": "Todo",

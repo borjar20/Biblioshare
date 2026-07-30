@@ -30,6 +30,8 @@ import {
   CollectionOverviewSkeleton,
   CollectionsGridSkeleton,
 } from "@/components/library/collection-skeletons";
+import { DesktopEditorialLayout } from "@/components/layout/desktop-editorial-layout";
+import { CollectionDesktopRail } from "@/components/library/collection-desktop-rail";
 
 export const metadata: Metadata = {
   title: "Mi Biblioteca — Biblioshare",
@@ -126,7 +128,8 @@ export default async function CollectionPage({
   // navegación). El `key` de los boundaries es la consulta: al cambiar un
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <DesktopEditorialLayout
+      main={<div className="flex min-w-0 flex-col gap-6 py-2 lg:py-4">
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
           da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
@@ -201,7 +204,13 @@ export default async function CollectionPage({
         </Suspense>
       )}
 
-    </div>
+      </div>}
+      rail={
+        <Suspense fallback={null}>
+          <CollectionDesktopRail userId={user.id} tab={tab} />
+        </Suspense>
+      }
+    />
   );
 }
 
