@@ -246,7 +246,9 @@ async function TodoOverview({ userId }: { userId: string }) {
 
   return (
     <>
-      <CollectionSummary summary={summary} />
+      <div className="lg:hidden">
+        <CollectionSummary summary={summary} />
+      </div>
       <FavoritesShelf items={favorites} />
     </>
   );

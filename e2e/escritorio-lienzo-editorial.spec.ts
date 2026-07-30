@@ -27,6 +27,26 @@ test("Mi Biblioteca muestra el raíl contextual en escritorio", async ({ page })
   ).toHaveAttribute("href", "/buscar");
 });
 
+test("Mi Biblioteca muestra un solo resumen visible en escritorio", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  await page.goto("/coleccion?tab=todo");
+
+  await expect
+    .poll(async () =>
+      page.locator("span").evaluateAll((elements) =>
+        elements.filter(
+          (element) =>
+            element.textContent?.trim() === "Resumen" &&
+            element.getClientRects().length > 0,
+        ).length,
+      ),
+    )
+    .toBe(1);
+});
+
 test("Estadísticas muestra el raíl de período en escritorio", async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
