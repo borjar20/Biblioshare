@@ -24,6 +24,8 @@ import { DecadesCard } from "@/components/stats/decades-card";
 import { HabitsCard } from "@/components/stats/habits-card";
 import { RecordsCard } from "@/components/stats/records-card";
 import { TbrCard } from "@/components/stats/tbr-card";
+import { DesktopEditorialLayout } from "@/components/layout/desktop-editorial-layout";
+import { StatsDesktopRail } from "@/components/stats/stats-desktop-rail";
 import { PeriodPills } from "./period-pills";
 
 export const metadata: Metadata = {
@@ -120,9 +122,13 @@ export default async function FullStatsPage({
     </Card>,
   ];
 
+  const years = availableYears();
+
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-4 pb-24 sm:px-6">
-      <header className="mb-4 flex items-center gap-3">
+    <DesktopEditorialLayout
+      className="pb-24"
+      header={<>
+      <header className="flex items-center gap-3">
         <Link
           href={backHref}
           aria-label={t("back")}
@@ -135,13 +141,14 @@ export default async function FullStatsPage({
         </h1>
       </header>
 
-      <div className="mb-4">
-        <PeriodPills current={period} years={availableYears()} />
+      <div className="mt-4 lg:hidden">
+        <PeriodPills current={period} years={years} />
       </div>
-
-      <div className="columns-1 lg:columns-2 xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
+      </>}
+      main={<div className="columns-1 lg:columns-2 xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
         {cards}
-      </div>
-    </main>
+      </div>}
+      rail={<StatsDesktopRail period={period} years={years} />}
+    />
   );
 }

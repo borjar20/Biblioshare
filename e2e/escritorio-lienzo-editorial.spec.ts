@@ -26,3 +26,16 @@ test("Mi Biblioteca muestra el raíl contextual en escritorio", async ({ page })
       .getByRole("link", { name: /buscar títulos/i }),
   ).toHaveAttribute("href", "/buscar");
 });
+
+test("Estadísticas muestra el raíl de período en escritorio", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const rail = page.locator("[data-editorial-rail]");
+  await expect(rail).toBeVisible();
+  await expect(rail).toContainText(/período/i);
+  await expect(rail.locator('a[aria-current="page"]')).toBeVisible();
+});

@@ -1530,6 +1530,9 @@
     "fullStatsTitle": "Estadísticas",
     "back": "Atrás",
     "periodAll": "Todo",
+    "desktopRail": {
+      "period": "Período"
+    },
     "typeTitle": "Distribución por tipo",
     "typeBooks": "Libros",
     "typeMovies": "Películas",
