@@ -574,7 +574,7 @@ export async function getFeed(
       progress: null,
       reviewMeta: {
         readingDays:
-          r.started_on && r.finished_on
+          r.item_type === "book" && r.started_on && r.finished_on
             ? Math.max(1, Math.round((Date.parse(r.finished_on) - Date.parse(r.started_on)) / 86_400_000) + 1)
             : null,
         totalPages: catalogByKey.get(`${r.item_type}:${r.item_id}`)?.totalPages ?? null,

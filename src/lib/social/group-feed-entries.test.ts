@@ -48,7 +48,7 @@ describe("groupPersonEntries", () => {
     expect(out[0].source).toBe("person");
   });
 
-  it("agrupa progressed por actor+obra+día, no mezcla obras", () => {
+  it("agrupa progressed de la misma obra el mismo día (dentro de la ventana)", () => {
     const entries = [
       person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
       person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
@@ -70,6 +70,17 @@ describe("groupPersonEntries", () => {
     expect(out).toHaveLength(1);
     expect(out[0].source).toBe("person-group");
     if (out[0].source === "person-group") expect(out[0].items).toHaveLength(3);
+  });
+
+  it("agrupa progressed de la misma obra separados exactamente 7 días (borde de la ventana)", () => {
+    const entries = [
+      person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
+      person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-22", itemId: "b1" })),
+    ];
+    const out = groupPersonEntries(entries);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("person-group");
+    if (out[0].source === "person-group") expect(out[0].items).toHaveLength(2);
   });
 
   it("NO agrupa progressed de la misma obra separados >7 días", () => {
