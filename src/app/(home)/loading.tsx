@@ -2,6 +2,7 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
+import { DesktopEditorialLayout } from "@/components/layout/desktop-editorial-layout";
 
 // Skeleton del Inicio (feed).
 //
@@ -16,19 +17,21 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // no hay `src/app/loading.tsx`.)
 export default function Loading() {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1080px] lg:px-7 lg:pt-[26px]">
-      <LoadingAnnounce />
+    <DesktopEditorialLayout
+      className="pt-[18px] pb-[22px] lg:pt-[26px]"
+      header={<>
+        <LoadingAnnounce />
 
       {/* Saludo de escritorio (frame B). En móvil no existe. */}
       <div className="hidden pb-2.5 lg:block">
         <Skeleton className="h-[30px] w-72 max-w-full rounded-md" />
         <SkeletonLine className="mt-[5px] h-3 w-48" />
       </div>
+      </>}
 
-      <TodayBlockSkeleton />
+      focus={<TodayBlockSkeleton />}
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_312px] lg:items-start lg:gap-7">
-        <div className="min-w-0">
+      main={<div className="min-w-0">
           {/* "Novedades" + contador de seguidos: solo móvil. */}
           <div className="flex items-baseline justify-between gap-3 pb-4 lg:hidden">
             <Skeleton className="h-6 w-40 rounded-md" />
@@ -46,10 +49,9 @@ export default function Loading() {
           </div>
 
           <FeedListSkeleton count={4} />
-        </div>
+        </div>}
 
-        <aside className="hidden lg:block" />
-      </div>
-    </div>
+      rail={<div />}
+    />
   );
 }

@@ -12,6 +12,7 @@ import { FeedFilters } from "@/components/social/feed-filters";
 import { FeedList } from "@/components/social/feed-list";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
+import { DesktopEditorialLayout } from "@/components/layout/desktop-editorial-layout";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
@@ -65,8 +66,9 @@ export default async function Home({
   // comparte pantalla con tus stats y la página deja de ser solo una lista.
   // Duplicados sin estado, así que el patrón de dos árboles es seguro.
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1200px] lg:px-7 lg:pt-[26px]">
-      <div className="hidden pb-2.5 lg:block">
+    <DesktopEditorialLayout
+      className="pt-[18px] pb-[22px] lg:pt-[26px]"
+      header={<div className="hidden pb-2.5 lg:block">
         <h1 className="font-serif text-[30px] leading-none font-semibold tracking-tight">
           {t("home.greeting", { name: profile?.displayName || profile?.username || "" })}
         </h1>
@@ -75,9 +77,10 @@ export default async function Home({
             {`@${profile.username} · ${t("feed.followingPeople", { count: counts.following })}`}
           </p>
         )}
-      </div>
+      </div>}
 
-      {/* "¿Qué has disfrutado hoy?" (frame G) encabeza el Inicio, sobre el
+      focus={<>
+        {/* "¿Qué has disfrutado hoy?" (frame G) encabeza el Inicio, sobre el
           feed: primero lo tuyo a medias, después lo de los demás. En escritorio
           cruza las DOS columnas (decisión del usuario) — el frame G solo está
           dibujado para móvil. Detrás de su propio <Suspense> para no retrasar
@@ -87,12 +90,12 @@ export default async function Home({
           como el bloque encabeza la página, al llegar empujaba el feed entero
           hacia abajo: 0.51 de CLS en móvil, la peor métrica de la app
           (issue #284). */}
-      <Suspense fallback={<TodayBlockSkeleton />}>
+        <Suspense fallback={<TodayBlockSkeleton />}>
         <TodayBlock userId={user.id} />
-      </Suspense>
+        </Suspense>
+      </>}
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_328px] lg:items-start lg:gap-7">
-        <div className="min-w-0">
+      main={<div className="min-w-0">
           {/* En móvil "Novedades" encabeza el FEED, no la página: encima está
               el bloque de hoy, que es quien abre el Inicio (frame G). Es la
               misma estructura que ya tenía el escritorio con "Actividad de tu
@@ -118,17 +121,16 @@ export default async function Home({
           <Suspense key={filter ?? "all"} fallback={<FeedListSkeleton count={4} />}>
             <FeedSection filter={filter} userId={user.id} />
           </Suspense>
-        </div>
+        </div>}
 
+      rail={<div className="sticky top-[calc(var(--topbar-h)+16px)]">
         {/* El rail se pega bajo la topbar, que mide --topbar-h y también es
             sticky: sin el calc se metería debajo. */}
-        <aside className="hidden lg:sticky lg:top-[calc(var(--topbar-h)+16px)] lg:block">
           <Suspense fallback={null}>
             <StatsRail userId={user.id} />
           </Suspense>
-        </aside>
-      </div>
-    </div>
+      </div>}
+    />
   );
 }
 

@@ -272,6 +272,9 @@ test("la sidebar de escritorio muestra los tres bloques (esta semana, tu 2026, a
     await login(page);
     await page.goto("/");
 
+    await expect(page.locator("[data-editorial-main]")).toBeVisible();
+    await expect(page.locator("[data-editorial-rail]")).toBeVisible();
+
     const aside = page.locator("aside");
     // "Lectura esta semana" (WeeklyStrip) — llega por streaming tras su Suspense.
     await expect(aside.getByRole("heading", { name: /esta semana/i })).toBeVisible();
