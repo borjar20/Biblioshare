@@ -320,15 +320,24 @@ export async function getLibraryItems(
 // Géneros presentes en la biblioteca del usuario (para poblar el selector: solo
 // los que tiene, no los ~45 del vocabulario entero). Cuenta obras distintas por
 // género — una obra con varios géneros suma 1 a cada uno, no se pesa por total.
+//
+// `itemType` opcional: cuando la página bloquea implícitamente un tipo (lock de
+// onboarding con un único interés, o `?type=` explícito) hay que pasar ese
+// MISMO tipo aquí para que la faceta no ofrezca chips de un tipo que la rejilla
+// no está mostrando (si no, un chip filtra a 0 resultados). Sin él, se cuenta
+// la biblioteca activa completa (comportamiento previo, sin cambios).
 export async function getUserGenres(
   supabase: SupabaseServerClient,
-  userId: string
+  userId: string,
+  itemType?: ItemType
 ): Promise<{ slug: string; label: string; count: number }[]> {
-  const { data: entries } = await supabase
+  let query = supabase
     .from("passes")
     .select("item_type, item_id")
     .eq("user_id", userId)
     .eq("is_active", true);
+  if (itemType) query = query.eq("item_type", itemType);
+  const { data: entries } = await query;
 
   const refs = (entries ?? []).map((e) => ({
     itemType: e.item_type as ItemType,

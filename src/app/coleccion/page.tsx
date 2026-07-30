@@ -108,8 +108,11 @@ export default async function CollectionPage({
   const itemType: ItemType | undefined = explicitType ?? preferredType;
 
   // Géneros del selector: solo se consultan en la pestaña `todo`, donde vive
-  // `LibraryFilters` — evita la query extra en `colecciones`/`sagas`.
-  const genres = tab === "todo" ? await getUserGenres(supabase, user.id) : [];
+  // `LibraryFilters` — evita la query extra en `colecciones`/`sagas`. Se acota
+  // al MISMO `itemType` efectivo (lock de onboarding o `?type=`) que recibe
+  // `getLibraryItems` más abajo: si no, un chip de género de un tipo bloqueado
+  // filtraría la rejilla a 0 resultados.
+  const genres = tab === "todo" ? await getUserGenres(supabase, user.id, itemType) : [];
 
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
