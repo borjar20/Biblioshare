@@ -35,11 +35,17 @@ export function CheckpointList({
   checkpoints,
   groupSafeOrder,
   onChanged,
+  clubId,
+  knownUsernames,
 }: {
   itemType: ItemType;
   checkpoints: CheckpointViewModel[];
   groupSafeOrder: number | null;
   onChanged: () => void;
+  /** Club de la actividad -- acota el autocompletar de @menciones a sus miembros. */
+  clubId: string;
+  /** Usernames @mencionados que existen de verdad, resueltos server-side (resolveKnownMentions). */
+  knownUsernames: string[];
 }) {
   const t = useTranslations("activity");
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +141,13 @@ export function CheckpointList({
                       ? t("checkpointChatLabel", { label: c.label, position: positionLabel })
                       : c.label}
                   </p>
-                  <CheckpointChat checkpointId={c.id} summary={c.chat} viewerLoggedIn />
+                  <CheckpointChat
+                    checkpointId={c.id}
+                    summary={c.chat}
+                    viewerLoggedIn
+                    clubId={clubId}
+                    knownUsernames={knownUsernames}
+                  />
                 </div>
               ) : (
                 <div

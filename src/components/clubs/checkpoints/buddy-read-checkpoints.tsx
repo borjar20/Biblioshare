@@ -112,6 +112,8 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
             checkpoints={view.checkpoints}
             groupSafeOrder={view.groupSafeOrder}
             onChanged={refresh}
+            clubId={activity.clubId}
+            knownUsernames={view.knownUsernames}
           />
         </div>
       }

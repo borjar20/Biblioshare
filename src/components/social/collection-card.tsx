@@ -17,9 +17,12 @@ import { itemHref } from "@/lib/catalog/item-href";
 export function CollectionCard({
   entry,
   viewerLoggedIn,
+  knownUsernames,
 }: {
   entry: PersonGroupEntry; // verb === "added"
   viewerLoggedIn: boolean;
+  /** Usernames @mencionados que existen de verdad (comentarios), resueltos server-side. */
+  knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
   const tTime = useTranslations("time");
@@ -58,6 +61,7 @@ export function CollectionCard({
                   commentCount={item.commentCount}
                   comments={item.comments}
                   viewerLoggedIn={viewerLoggedIn}
+                  knownUsernames={knownUsernames}
                 />
               )}
             </div>

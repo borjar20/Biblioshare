@@ -6,6 +6,7 @@ import { getActivity, listClubActivities } from "@/lib/clubs/activities/core";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { ActivityDetailView } from "@/components/clubs/activity-detail";
 import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
+import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
 export async function generateMetadata({
   params,
@@ -43,6 +44,13 @@ export default async function ActivityPage({
   const activities = canModerate ? await listClubActivities(club.id) : [];
   const pendingProposals = activities.filter((a) => a.status === "proposed").length;
 
+  // Chat general de la actividad (Bloque B): una sola query batched sobre los
+  // cuerpos de sus comentarios para linkificar @menciones reales (issue #321).
+  const knownUsernames = await resolveKnownMentions(
+    supabase,
+    activity.chat.comments.map((c) => c.body),
+  );
+
   // La actividad vive dentro del shell del club (spec 2026-07-21): sin esto la
   // pantalla perdía el sidebar en PC y quedaba en una columna suelta. NO se pasa
   // `desktopHeader`: la cabecera con las acciones se pinta una sola vez dentro
@@ -64,6 +72,7 @@ export default async function ActivityPage({
         viewerRole={club.viewerRole}
         clubSlug={slug}
         clubName={club.name}
+        knownUsernames={knownUsernames}
       />
     </ClubShell>
   );

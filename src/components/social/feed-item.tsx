@@ -12,7 +12,7 @@ export function FeedItem({
 }: {
   entry: FeedEntry;
   viewerLoggedIn: boolean;
-  /** Usernames @mencionados que existen de verdad (solo lo usa la variante Reseña). */
+  /** Usernames @mencionados que existen de verdad (Reseña, Colección, Avances). */
   knownUsernames: string[];
 }) {
   if (entry.source === "club") return <ClubFeedCard event={entry.event} />;
@@ -21,8 +21,8 @@ export function FeedItem({
   // ya manejan items.length === 1 (sin pie "Guardar los N", timeline de 1 paso).
   if (entry.source === "person-group") {
     return entry.verb === "added"
-      ? <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} />
-      : <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} />;
+      ? <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />
+      : <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
   }
 
   // source === "person": elegir por verbo del evento.
@@ -37,8 +37,8 @@ export function FeedItem({
       items: [e],
     };
     return e.verb === "added"
-      ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} />
-      : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} />;
+      ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />
+      : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
   }
   // finished / rated / reviewed / watchedEpisode → Reseña
   return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;

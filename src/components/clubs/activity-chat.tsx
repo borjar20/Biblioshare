@@ -11,10 +11,16 @@ export function ActivityChat({
   activityId,
   summary,
   viewerLoggedIn,
+  clubId,
+  knownUsernames,
 }: {
   activityId: string;
   summary: InteractionSummary;
   viewerLoggedIn: boolean;
+  /** Club de la actividad -- acota el autocompletar de @menciones a sus miembros. */
+  clubId: string;
+  /** Usernames @mencionados que existen de verdad, resueltos server-side (resolveKnownMentions). */
+  knownUsernames: string[];
 }) {
   return (
     <ReviewInteractions
@@ -26,6 +32,8 @@ export function ActivityChat({
       comments={summary.comments}
       viewerLoggedIn={viewerLoggedIn}
       showTargetReaction={false}
+      clubId={clubId}
+      knownUsernames={knownUsernames}
     />
   );
 }

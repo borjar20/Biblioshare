@@ -14,9 +14,12 @@ import { splitProgressSteps } from "./progress-collapse";
 export function ProgressTimelineCard({
   entry,
   viewerLoggedIn,
+  knownUsernames,
 }: {
   entry: PersonGroupEntry; // verb === "progressed", items = pasos desc
   viewerLoggedIn: boolean;
+  /** Usernames @mencionados que existen de verdad (comentarios), resueltos server-side. */
+  knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
   const tTime = useTranslations("time");
@@ -83,6 +86,7 @@ export function ProgressTimelineCard({
                       commentCount={step.commentCount}
                       comments={step.comments}
                       viewerLoggedIn={viewerLoggedIn}
+                      knownUsernames={knownUsernames}
                     />
                   </div>
                 )}
