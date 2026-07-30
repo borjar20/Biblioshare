@@ -20,11 +20,14 @@ export async function CommunityPanel({
   itemType,
   community,
   episodeReviews,
+  episodeKnownUsernames,
   viewerLoggedIn,
 }: {
   itemType: ItemType;
   community: Community;
   episodeReviews?: EpisodeReview[];
+  /** Espejo de `community.knownUsernames` pero para `episodeReviews` (fuente distinta). */
+  episodeKnownUsernames?: string[];
   viewerLoggedIn: boolean;
 }) {
   const t = await getTranslations("detail");
@@ -70,6 +73,7 @@ export async function CommunityPanel({
                 dateLabel={shortDate(review.watchedOn)}
                 rating={review.rating}
                 text={review.text}
+                knownUsernames={episodeKnownUsernames ?? []}
                 chip={
                   <span className={chipClass}>
                     {`S${review.season}E${review.episode}`}
@@ -84,6 +88,7 @@ export async function CommunityPanel({
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}
                   comments={review.comments}
+                  knownUsernames={episodeKnownUsernames ?? []}
                   viewerLoggedIn={viewerLoggedIn}
                 />
               </ReviewRow>
@@ -99,6 +104,7 @@ export async function CommunityPanel({
                 dateLabel={shortDate(review.finishedOn)}
                 rating={review.rating}
                 text={review.text}
+                knownUsernames={community.knownUsernames}
                 chip={
                   review.editionLabel !== null ? (
                     <span className={chipClass}>{review.editionLabel}</span>
@@ -112,6 +118,7 @@ export async function CommunityPanel({
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}
                   comments={review.comments}
+                  knownUsernames={community.knownUsernames}
                   viewerLoggedIn={viewerLoggedIn}
                 />
               </ReviewRow>

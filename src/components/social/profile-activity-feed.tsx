@@ -23,17 +23,21 @@ export function ProfileActivityFeed({
   actorId,
   initialEvents,
   initialCursor,
+  initialKnownUsernames,
   viewerLoggedIn,
 }: {
   actorId: string;
   initialEvents: FeedEntry[];
   initialCursor: string | null;
+  /** Usernames @mencionados que existen de verdad, resueltos server-side (resolveKnownMentions). */
+  initialKnownUsernames: string[];
   viewerLoggedIn: boolean;
 }) {
   const t = useTranslations("profile");
   const tFeed = useTranslations("feed");
   const [extraEvents, setExtraEvents] = useState<FeedEntry[]>([]);
   const [cursor, setCursor] = useState(initialCursor);
+  const [known, setKnown] = useState(initialKnownUsernames);
   const [isPending, startTransition] = useTransition();
 
   const events = [...initialEvents, ...extraEvents];
@@ -57,6 +61,7 @@ export function ProfileActivityFeed({
       const page = await loadMoreProfileFeed(actorId, cursor);
       setExtraEvents((prev) => [...prev, ...page.events]);
       setCursor(page.nextCursor);
+      setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
     });
   }
 
@@ -90,7 +95,7 @@ export function ProfileActivityFeed({
             // (siempre pintan su propio actor), así que esta vista ya no
             // oculta el avatar del dueño — el encabezado del día basta para
             // dar contexto de todos modos.
-            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} />
+            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
           ))}
         </div>
       ))}

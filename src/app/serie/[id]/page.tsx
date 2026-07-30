@@ -367,10 +367,11 @@ async function SeriesTabs({
   // El pase activo ya se calculó arriba (`activePassId`) para validar
   // `?cerrar`: la pestaña Episodios lo reutiliza para separar la capa cursor
   // (este pase) de "visto alguna vez" (Tarea 8, hub).
-  const [episodeData, episodeReviews] = await Promise.all([
+  const [episodeData, episodeReviewsResult] = await Promise.all([
     getEpisodeData(supabase, series.id, userId, activePassId),
     getEpisodeReviews(supabase, series.id),
   ]);
+  const { reviews: episodeReviews, knownUsernames: episodeKnownUsernames } = episodeReviewsResult;
 
   // La rejilla y la lista comparten datos; la lista necesita un array
   // serializable (el Map de EpisodeData no cruza el límite RSC).
@@ -483,6 +484,7 @@ async function SeriesTabs({
             itemType="series"
             community={community}
             episodeReviews={episodeReviews}
+            episodeKnownUsernames={episodeKnownUsernames}
             viewerLoggedIn={Boolean(userId)}
           />
         </div>

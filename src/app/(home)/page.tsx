@@ -148,6 +148,7 @@ async function FeedSection({
     <FeedList
       initialEvents={feedPage.events}
       initialCursor={feedPage.nextCursor}
+      initialKnownUsernames={feedPage.knownUsernames}
       filter={filter}
       viewerLoggedIn={true}
     />

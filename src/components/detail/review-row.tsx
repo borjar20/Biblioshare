@@ -1,4 +1,5 @@
 import { RatingDots } from "@/components/ui/rating-dots";
+import { MentionText } from "@/components/social/mention-text";
 
 // Una reseña de la comunidad (`.review` del frame 2, `.desk-review` del 9).
 //
@@ -11,6 +12,7 @@ export function ReviewRow({
   dateLabel,
   rating,
   text,
+  knownUsernames,
   chip,
   children,
 }: {
@@ -19,6 +21,8 @@ export function ReviewRow({
   dateLabel: string;
   rating: number | null;
   text: string;
+  /** Usernames @mencionados en `text` que existen de verdad — ver MentionText. */
+  knownUsernames: string[];
   /** Etiqueta a la izquierda de la fecha: la edición leída, o el episodio. */
   chip?: React.ReactNode;
   /** Reacciones y comentarios (`.rx` del frame). */
@@ -56,7 +60,7 @@ export function ReviewRow({
       {/* `.tx`: prosa, no metadato — en --foreground-soft (el #584f43 del
           handoff), no en el gris de las etiquetas. */}
       <p className="text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
-        {text}
+        <MentionText text={text} knownUsernames={knownUsernames} />
       </p>
 
       {children}

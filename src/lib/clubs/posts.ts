@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notifyMany } from "@/lib/social/notifications";
 import { notifyMentions } from "@/lib/social/notify-mentions";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
 import type { FeedEvent } from "@/lib/social/feed";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
@@ -53,6 +54,10 @@ export type ClubPost = {
 export type ClubPostsPage = {
   posts: ClubPost[];
   nextCursor: string | null;
+  // Usernames @mencionados (en `body` de los posts y de sus comentarios) que
+  // existen de verdad — resuelto en UNA query, para linkificar sin volver a
+  // tocar la BD desde el cliente.
+  knownUsernames: string[];
 };
 
 const PAGE_SIZE = 20;
@@ -230,7 +235,7 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
 
   const { data: rows, error } = await query;
   if (error) throw error;
-  if (!rows || rows.length === 0) return { posts: [], nextCursor: null };
+  if (!rows || rows.length === 0) return { posts: [], nextCursor: null, knownUsernames: [] };
 
   const authorIds = [...new Set(rows.map((r) => r.author_id))];
   const { data: authors } = await supabase
@@ -338,5 +343,11 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
     .filter((p): p is ClubPost => p !== null);
 
   const nextCursor = rows.length === PAGE_SIZE ? rows[rows.length - 1].created_at : null;
-  return { posts, nextCursor };
+
+  const knownUsernames = await resolveKnownMentions(supabase, [
+    ...posts.map((p) => p.body),
+    ...posts.flatMap((p) => p.comments.map((c) => c.body)),
+  ]);
+
+  return { posts, nextCursor, knownUsernames };
 }

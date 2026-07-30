@@ -26,6 +26,7 @@ export function ClubFeed({
   const t = useTranslations("clubPost");
   const [posts, setPosts] = useState(initialPage.posts);
   const [cursor, setCursor] = useState(initialPage.nextCursor);
+  const [known, setKnown] = useState(initialPage.knownUsernames);
   const [isPending, startTransition] = useTransition();
 
   // Página 1 server-authoritative: cuando una mutación revalida el club (Fase 1)
@@ -41,6 +42,7 @@ export function ClubFeed({
     setSeededPage(initialPage);
     setPosts(initialPage.posts);
     setCursor(initialPage.nextCursor);
+    setKnown(initialPage.knownUsernames);
   }
 
   function loadMore() {
@@ -49,6 +51,9 @@ export function ClubFeed({
       const page = await loadMoreClubPosts(clubId, cursor);
       setPosts((prev) => [...prev, ...page.posts]);
       setCursor(page.nextCursor);
+      // Se acumula (no se resiembra): los posts ya pintados de páginas
+      // anteriores siguen necesitando su set de known para no perder enlaces.
+      setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
     });
   }
 
@@ -74,6 +79,7 @@ export function ClubFeed({
               post={post}
               viewerLoggedIn
               canDelete={canDelete(post)}
+              knownUsernames={known}
             />
           ))}
         </div>

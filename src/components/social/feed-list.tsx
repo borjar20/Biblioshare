@@ -23,17 +23,21 @@ import { FeedItem } from "./feed-item";
 export function FeedList({
   initialEvents,
   initialCursor,
+  initialKnownUsernames,
   filter,
   viewerLoggedIn,
 }: {
   initialEvents: FeedEntry[];
   initialCursor: string | null;
+  /** Usernames @mencionados que existen de verdad, resueltos server-side (resolveKnownMentions). */
+  initialKnownUsernames: string[];
   filter?: FeedFilter;
   viewerLoggedIn: boolean;
 }) {
   const t = useTranslations("feed");
   const [extraEvents, setExtraEvents] = useState<FeedEntry[]>([]);
   const [cursor, setCursor] = useState(initialCursor);
+  const [known, setKnown] = useState(initialKnownUsernames);
   const [isPending, startTransition] = useTransition();
 
   const events = [...initialEvents, ...extraEvents];
@@ -43,6 +47,9 @@ export function FeedList({
       const page = await loadMoreFeed(cursor, filter);
       setExtraEvents((prev) => [...prev, ...page.events]);
       setCursor(page.nextCursor);
+      // Se acumula: los eventos ya pintados de páginas anteriores siguen
+      // necesitando su set de known para no perder enlaces.
+      setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
     });
   }
 
@@ -75,7 +82,7 @@ export function FeedList({
   return (
     <div className="flex flex-col gap-3">
       {events.map((entry) => (
-        <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} />
+        <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
       ))}
       {cursor && (
         <button
