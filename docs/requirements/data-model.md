@@ -27,7 +27,11 @@ defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos
 de `notes` para el feed de tarjetas por tipo (§3) — corregido aquí, 2026-07-30**: la política
 aditiva `"public notes select"` (`is_public = true and public.can_view_profile(user_id)`,
 migración `20260814_notes_public_select.sql`) está aplicada y verificada **SOLO EN DEV**;
-prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`]**
+prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`; **normalización de géneros
+del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gin`
+(`20260815_genres_gin_indexes.sql`) y backfill de `movies`/`series` a labels canónicas
+aplicados y verificados **SOLO EN DEV**; `books` no necesita backfill (las labels ya
+coincidían); prod queda pendiente a deploy]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -36,6 +40,8 @@ prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`]**
 > **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
 > select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
 > pendiente del merge de `feat/feed-tarjetas-por-tipo`.
+> **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico e índices
+> GIN verificados solo en DEV** — prod pendiente a deploy.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -113,6 +119,13 @@ graph TB
 Se rellenan **cache-as-you-go** desde APIs externas (OpenLibrary/Google Books, TMDB).
 `SELECT` abierto a cualquiera, incluso anónimo — hace falta para renderizar perfiles
 públicos y son metadatos no sensibles. `INSERT`/`UPDATE` autenticado.
+
+Los `genres` de las tres tablas usan un **vocabulario canónico único** definido en código
+(`src/lib/catalog/genre-vocab.ts`). Libros mapean subjects de OpenLibrary (`genres.ts`);
+pelis/series mapean **ids** de TMDB (`tmdb-genres.ts`), nunca el nombre localizado. Índices
+GIN `{books,movies,series}_genres_gin` sirven `genres @> ARRAY[label]` (`/genero/[slug]` y
+el filtro de biblioteca). Migración `20260815_genres_gin_indexes.sql`. Verificado 2026-07-30
+en dev; prod pendiente a deploy.
 
 Tres tablas de "tirada concreta" cuelgan del catálogo:
 
