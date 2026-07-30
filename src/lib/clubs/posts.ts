@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notifyMany } from "@/lib/social/notifications";
+import { notifyMentions } from "@/lib/social/notify-mentions";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
 import type { FeedEvent } from "@/lib/social/feed";
@@ -72,10 +73,21 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Fan-out a los miembros activos, excepto el autor — vía notifyMany(): un solo
 // INSERT multi-fila + push en lote, en vez de notify() por miembro (EPIC-05
 // Bloque F; se acepta el ruido temporal, silenciar-club queda diferido a E5.J).
+// postId es opcional: cuando se conoce (texto/compartido, Task 4) target_type/
+// target_id apuntan al post concreto ('club_post'), más preciso que antes.
+// createPoll no lo pasa porque create_club_poll() (RPC) no devuelve el id del
+// post creado (returns void) — se mantiene el target_type='club' original
+// (apunta al club, resuelve al mismo href) para no romper su comportamiento
+// existente. Ver limitación anotada en createPoll: sin menciones tampoco por
+// el mismo motivo.
+// excludeUserIds: los ya notificados por @mención (Task 4) para no duplicar
+// aviso — se suman a la exclusión del propio autor.
 async function notifyNewPost(
   supabase: Awaited<ReturnType<typeof createClient>>,
   clubId: string,
   authorId: string,
+  postId?: string,
+  excludeUserIds: string[] = [],
 ): Promise<void> {
   try {
     const { data: members } = await supabase
@@ -84,12 +96,16 @@ async function notifyNewPost(
       .eq("club_id", clubId)
       .eq("status", "active")
       .neq("user_id", authorId);
+    const exclude = new Set(excludeUserIds);
+    const userIds = (members ?? [])
+      .map((m) => m.user_id as string)
+      .filter((id) => !exclude.has(id));
     await notifyMany(supabase, {
-      userIds: (members ?? []).map((m) => m.user_id),
+      userIds,
       actorId: authorId,
       type: "club_post",
-      targetType: "club",
-      targetId: clubId,
+      targetType: postId ? "club_post" : "club",
+      targetId: postId ?? clubId,
     });
   } catch (error) {
     console.error("notifyNewPost failed", error);
@@ -102,12 +118,20 @@ export async function createTextPost(clubId: string, body: string): Promise<void
   if (!trimmed) throw new Error("body_required");
   if (trimmed.length > MAX_BODY_LENGTH) throw new Error("body_too_long");
 
-  const { error } = await supabase
+  const { data: post, error } = await supabase
     .from("club_posts")
-    .insert({ club_id: clubId, author_id: userId, kind: "text", body: trimmed });
+    .insert({ club_id: clubId, author_id: userId, kind: "text", body: trimmed })
+    .select("id")
+    .single();
   if (error) throw error;
 
-  await notifyNewPost(supabase, clubId, userId);
+  const mentioned = await notifyMentions(supabase, {
+    authorId: userId,
+    text: trimmed,
+    target: { type: "club_post", id: post.id },
+    gate: { kind: "club", clubId },
+  });
+  await notifyNewPost(supabase, clubId, userId, post.id, mentioned);
   revalidateClubPages();
 }
 
@@ -129,12 +153,20 @@ export async function createShareActivityPost(
   }
   const cleanRef: ShareRef = { sourceTable: ref.sourceTable, rowId: ref.rowId };
 
-  const { error } = await supabase
+  const { data: post, error } = await supabase
     .from("club_posts")
-    .insert({ club_id: clubId, author_id: userId, kind: "activity_share", body: trimmed, ref: cleanRef });
+    .insert({ club_id: clubId, author_id: userId, kind: "activity_share", body: trimmed, ref: cleanRef })
+    .select("id")
+    .single();
   if (error) throw error;
 
-  await notifyNewPost(supabase, clubId, userId);
+  const mentioned = await notifyMentions(supabase, {
+    authorId: userId,
+    text: trimmed,
+    target: { type: "club_post", id: post.id },
+    gate: { kind: "club", clubId },
+  });
+  await notifyNewPost(supabase, clubId, userId, post.id, mentioned);
   revalidateClubPages();
 }
 
@@ -152,6 +184,13 @@ export async function createPoll(
   if (trimmedOptions.length < 2) throw new Error("at_least_two_options_required");
   if (trimmedOptions.some((o) => o.length > MAX_OPTION_LENGTH)) throw new Error("option_too_long");
 
+  // LÍMITE CONOCIDO (Task 4 de menciones): create_club_poll() (SECURITY
+  // DEFINER, schema-baseline.sql) devuelve `void`, no el id del post creado —
+  // sin él no hay target_id para notifyMentions() ni forma de apuntar el
+  // fan-out genérico al post concreto. La pregunta del poll SÍ es texto libre
+  // y podría llevar @menciones, pero se quedan sin notificar aquí. Arreglo
+  // correcto: hacer que la RPC devuelva el id (`returns uuid`) — pendiente,
+  // issue a abrir en Task 8.
   const { error } = await supabase.rpc("create_club_poll", {
     p_club_id: clubId,
     p_question: trimmedQuestion,

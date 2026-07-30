@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
+import { notifyMentions } from "./notify-mentions";
 import type { NotificationType } from "./notification-types";
 import type { ReactableTargetType, TargetType } from "./interactions";
 
@@ -159,13 +160,47 @@ export async function addComment(
   // Espejo del CHECK comments_body_len (20260715_text_length_limits.sql).
   if (trimmed.length > 2000) throw new Error("comment_too_long");
 
-  const { error } = await supabase.from("comments").insert({
-    target_type: targetType,
-    target_id: targetId,
-    author_id: user.id,
-    body: trimmed,
-  });
+  // Insert devolviendo el id: lo necesita el target de la notificación de
+  // mención (target_type='comment' → resolveTargetHrefs lo lleva al padre).
+  const { data: inserted, error } = await supabase
+    .from("comments")
+    .insert({
+      target_type: targetType,
+      target_id: targetId,
+      author_id: user.id,
+      body: trimmed,
+    })
+    .select("id")
+    .single();
   if (error) throw error;
+
+  // Gate de visibilidad del comentario = el del PADRE (lo que se comenta).
+  let mentioned: string[] = [];
+  if (targetType === "club_post") {
+    const { data: post } = await supabase
+      .from("club_posts")
+      .select("club_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (post?.club_id) {
+      mentioned = await notifyMentions(supabase, {
+        authorId: user.id,
+        text: trimmed,
+        target: { type: "comment", id: inserted.id },
+        gate: { kind: "club", clubId: post.club_id },
+      });
+    }
+  } else if (targetType === "diary_entry" || targetType === "episode_watch") {
+    const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
+    if (ownerId) {
+      mentioned = await notifyMentions(supabase, {
+        authorId: user.id,
+        text: trimmed,
+        target: { type: "comment", id: inserted.id },
+        gate: { kind: "profile", ownerId },
+      });
+    }
+  }
 
   const notificationType = COMMENT_NOTIFICATION_TYPE[targetType];
   // pass/progress_session (como activity_checkpoint) no notifican en este
@@ -178,7 +213,9 @@ export async function addComment(
   ) {
     try {
       const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
-      if (ownerId && ownerId !== user.id) {
+      // Supersede: si el dueño del contenido ya fue notificado como mención,
+      // no se le duplica con review_commented/club_post_commented.
+      if (ownerId && ownerId !== user.id && !mentioned.includes(ownerId)) {
         await notify(supabase, {
           userId: ownerId,
           actorId: user.id,
