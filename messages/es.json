@@ -339,11 +339,17 @@
     },
     "kind": {
       "collection": "Colección",
-      "progress": "Avances"
+      "progress": "Avances",
+      "review": "Reseña"
     },
     "progress": {
       "reachedPage": "Llegó a la pág. {page}",
       "showSpoiler": "Mostrar spoiler"
+    },
+    "review": {
+      "finished": "Finalizado",
+      "metaDays": "{count, plural, one {# día} other {# días}}",
+      "metaPages": "{count} pág."
     },
     "filters": {
       "all": "Todo",
