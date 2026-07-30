@@ -2,7 +2,10 @@ import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-export const USERNAME_PATTERN = /^[a-z0-9_]{3,30}$/;
+// Cuerpo compartido de la forma de un username: lo reutiliza mentions.ts para
+// construir MENTION_RE y evitar que las dos formas diverjan (issue #322).
+export const USERNAME_BODY = "[a-z0-9_]{3,30}";
+export const USERNAME_PATTERN = new RegExp(`^${USERNAME_BODY}$`);
 
 export function normalizeUsername(raw: string): string {
   return raw.trim().toLowerCase();

@@ -194,7 +194,32 @@ export async function addComment(
     } catch (error) {
       console.error(error);
     }
-  } else if (targetType === "diary_entry" || targetType === "episode_watch") {
+  } else if (targetType === "diary_entry") {
+    // El gate de perfil no basta: un pase puede ser privado bajo un perfil
+    // público (issue #324). Sin is_public=true en el pase comentado, ninguno
+    // de los mencionados puede llegar a verlo (RLS de `passes`), así que no
+    // se les notifica -- mismo criterio que closePass con la reseña propia.
+    try {
+      const { data: pass, error: passError } = await supabase
+        .from("passes")
+        .select("user_id, is_public")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (passError) throw passError;
+      if (pass?.is_public && pass.user_id) {
+        mentioned = await notifyMentions(supabase, {
+          authorId: user.id,
+          text: trimmed,
+          target: { type: "comment", id: inserted.id },
+          gate: { kind: "profile", ownerId: pass.user_id },
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  } else if (targetType === "episode_watch") {
+    // episode_watches no tiene columna is_public propia (a diferencia de
+    // passes) -- el gate de perfil es la única visibilidad aplicable aquí.
     try {
       const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
       if (ownerId) {

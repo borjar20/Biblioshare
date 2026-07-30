@@ -55,12 +55,15 @@ export function ActivityDetailView({
   viewerRole,
   clubSlug,
   clubName,
+  knownUsernames,
 }: {
   activity: ActivityDetail;
   viewerId: string;
   viewerRole: "member" | "moderator" | "owner";
   clubSlug: string;
   clubName: string;
+  /** Usernames @mencionados en el chat de la actividad que existen de verdad, resueltos server-side. */
+  knownUsernames: string[];
 }) {
   const t = useTranslations("activity");
   const router = useRouter();
@@ -529,7 +532,13 @@ export function ActivityDetailView({
           <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
             {t("activityChat")}
           </h2>
-          <ActivityChat activityId={activity.id} summary={activity.chat} viewerLoggedIn />
+          <ActivityChat
+            activityId={activity.id}
+            summary={activity.chat}
+            viewerLoggedIn
+            clubId={activity.clubId}
+            knownUsernames={knownUsernames}
+          />
         </section>
       )}
     </div>

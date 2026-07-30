@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getInteractionSummary } from "@/lib/social/interactions";
 import type { InteractionSummary } from "@/lib/social/interactions";
+import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { parsePosition, hasReachedPosition } from "@/lib/library/position";
 import type { Position } from "@/lib/library/position";
 import type { ItemType } from "@/lib/catalog/types";
@@ -50,6 +51,8 @@ export type ActivityCheckpointsView = {
   // Posición del viewer en la obra según su diario (ya se consultaba para
   // derivar el status "suggested"); null si no la tiene en la biblioteca.
   viewerPosition: Position | null;
+  /** Usernames @mencionados que existen de verdad en los chats de los checkpoints. */
+  knownUsernames: string[];
 };
 
 const EMPTY_SUMMARY: InteractionSummary = {
@@ -79,7 +82,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
 
   const checkpoints = checkpointRows ?? [];
   if (checkpoints.length === 0) {
-    return { itemType, checkpoints: [], groupSafeOrder: null, viewerPosition: null };
+    return { itemType, checkpoints: [], groupSafeOrder: null, viewerPosition: null, knownUsernames: [] };
   }
 
   const checkpointIds = checkpoints.map((c) => c.id);
@@ -155,7 +158,14 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
     };
   });
 
-  return { itemType, checkpoints: view, groupSafeOrder, viewerPosition };
+  // Batch único sobre los comentarios de TODOS los checkpoints de la
+  // actividad para linkificar @menciones reales (issue #321).
+  const knownUsernames = await resolveKnownMentions(
+    supabase,
+    view.flatMap((c) => c.chat.comments.map((comment) => comment.body)),
+  );
+
+  return { itemType, checkpoints: view, groupSafeOrder, viewerPosition, knownUsernames };
 }
 
 export async function createCheckpoint(

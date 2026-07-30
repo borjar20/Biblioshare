@@ -12,10 +12,16 @@ export function CheckpointChat({
   checkpointId,
   summary,
   viewerLoggedIn,
+  clubId,
+  knownUsernames,
 }: {
   checkpointId: string;
   summary: InteractionSummary;
   viewerLoggedIn: boolean;
+  /** Club de la actividad del checkpoint -- acota el autocompletar de @menciones a sus miembros. */
+  clubId: string;
+  /** Usernames @mencionados que existen de verdad, resueltos server-side (resolveKnownMentions). */
+  knownUsernames: string[];
 }) {
   return (
     <ReviewInteractions
@@ -27,6 +33,8 @@ export function CheckpointChat({
       comments={summary.comments}
       viewerLoggedIn={viewerLoggedIn}
       showTargetReaction={false}
+      clubId={clubId}
+      knownUsernames={knownUsernames}
     />
   );
 }
