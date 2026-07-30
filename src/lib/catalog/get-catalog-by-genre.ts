@@ -12,7 +12,7 @@ export type CatalogCard = {
   year: number | null;
 };
 
-const PAGE_SIZE = 24;
+export const PAGE_SIZE = 24;
 // Tope de seguridad por tabla: sin `.order`/`.range` en la query, un género
 // patológicamente popular podría traer toda la tabla. SAFETY_LIMIT acota el
 // fetch; el total mostrado sigue siendo exacto (viene de `count`), solo el
@@ -81,6 +81,13 @@ export async function getCatalogByGenre(
   cards.sort((a, b) => a.title.localeCompare(b.title, "es"));
 
   const total = (books.count ?? 0) + (movies.count ?? 0) + (series.count ?? 0);
-  const from = (page - 1) * PAGE_SIZE;
+  // La página pedida puede venir de una URL manipulada (?pagina=999 en un
+  // género con 1 sola página): se acota a [1, totalPages] para no devolver un
+  // slice vacío cuando SÍ hay resultados en páginas anteriores. La página del
+  // caller (server component) recalcula el mismo clamp con el `total` de
+  // aquí y el PAGE_SIZE exportado, así ambos coinciden sin una segunda query.
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const clampedPage = Math.min(Math.max(1, page), totalPages);
+  const from = (clampedPage - 1) * PAGE_SIZE;
   return { items: cards.slice(from, from + PAGE_SIZE), total };
 }

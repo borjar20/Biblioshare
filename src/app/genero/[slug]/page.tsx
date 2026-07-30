@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { genreDefForSlug, labelForSlug } from "@/lib/catalog/genre-vocab";
-import { getCatalogByGenre } from "@/lib/catalog/get-catalog-by-genre";
+import { getCatalogByGenre, PAGE_SIZE } from "@/lib/catalog/get-catalog-by-genre";
 import { itemHref } from "@/lib/catalog/item-href";
 import { CoverCard } from "@/components/ui/cover-card";
+import { GenrePager } from "./genre-pager";
 
 // Página de un género: lista el catálogo (los tres tipos) que lo lleva. slug
 // inválido → 404. Server component puro; el filtro va por la URL (?pagina=N).
@@ -25,6 +26,11 @@ export default async function GeneroPage({
 
   const supabase = await createClient();
   const { items, total } = await getCatalogByGenre(supabase, slug, { page });
+  // El mismo clamp que aplica getCatalogByGenre internamente al recortar
+  // (misma fórmula, mismo total): así el número que se muestra y los botones
+  // prev/next concuerdan con la página que realmente se sirvió.
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
@@ -48,6 +54,10 @@ export default async function GeneroPage({
           ))}
         </div>
       )}
+
+      {total > PAGE_SIZE ? (
+        <GenrePager slug={slug} page={currentPage} totalPages={totalPages} />
+      ) : null}
     </main>
   );
 }
