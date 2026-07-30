@@ -338,7 +338,12 @@
       "saveAllToQueue": "＋ Guardar {count, plural, one {el libro} other {los # libros}} en mi cola"
     },
     "kind": {
-      "collection": "Colección"
+      "collection": "Colección",
+      "progress": "Avances"
+    },
+    "progress": {
+      "reachedPage": "Llegó a la pág. {page}",
+      "showSpoiler": "Mostrar spoiler"
     },
     "filters": {
       "all": "Todo",
