@@ -337,6 +337,9 @@
       "progressedIn": "avanzó en {title}",
       "saveAllToQueue": "＋ Guardar {count, plural, one {el libro} other {los # libros}} en mi cola"
     },
+    "kind": {
+      "collection": "Colección"
+    },
     "filters": {
       "all": "Todo",
       "reviews": "Reseñas",
