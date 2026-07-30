@@ -46,4 +46,9 @@ describe("genre-vocab", () => {
     expect(isCanonicalLabel("Ciencia ficción")).toBe(true);
     expect(slugForLabel("Ciencia ficción")).toBe("ciencia-ficcion");
   });
+
+  it("Historia aplica a los tres tipos (libro, peli y serie)", () => {
+    const historia = GENRES.find((g) => g.slug === "historia");
+    expect(historia?.appliesTo).toEqual(["book", "movie", "series"]);
+  });
 });

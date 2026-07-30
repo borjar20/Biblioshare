@@ -45,7 +45,7 @@ export const GENRES: GenreDef[] = [
   { slug: "memorias", label: "Memorias", appliesTo: B },
   { slug: "biografia", label: "Biografía", appliesTo: B },
   { slug: "autoayuda", label: "Autoayuda", appliesTo: B },
-  { slug: "historia", label: "Historia", appliesTo: B },
+  { slug: "historia", label: "Historia", appliesTo: ALL },
   { slug: "filosofia", label: "Filosofía", appliesTo: B },
   { slug: "psicologia", label: "Psicología", appliesTo: B },
   { slug: "economia", label: "Economía", appliesTo: B },
