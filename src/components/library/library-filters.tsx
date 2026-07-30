@@ -39,6 +39,8 @@ export async function LibraryFilters({
   status,
   search,
   sort = "recent",
+  genre,
+  genres,
   basePath,
   showTypeFilter = true,
   extraParams,
@@ -47,6 +49,10 @@ export async function LibraryFilters({
   status?: MediaStatus;
   search?: string;
   sort?: LibrarySort;
+  /** Slug del género activo (@/lib/catalog/genre-vocab). */
+  genre?: string;
+  /** Géneros presentes en la biblioteca del usuario, ya cargados por la page (getUserGenres). */
+  genres?: { slug: string; label: string; count: number }[];
   basePath: string;
   showTypeFilter?: boolean;
   extraParams?: Record<string, string>;
@@ -57,21 +63,24 @@ export async function LibraryFilters({
     type?: ItemType;
     status?: MediaStatus;
     sort?: LibrarySort;
+    genre?: string;
   }) {
     const params = new URLSearchParams(extraParams);
     const nextType = "type" in next ? next.type : itemType;
     const nextStatus = "status" in next ? next.status : status;
     const nextSort = "sort" in next ? next.sort : sort;
+    const nextGenre = "genre" in next ? next.genre : genre;
     if (nextType) params.set("type", nextType);
     if (nextStatus) params.set("status", nextStatus);
     if (nextSort && nextSort !== "recent") params.set("sort", nextSort);
+    if (nextGenre) params.set("genero", nextGenre);
     if (search) params.set("q", search);
     const qs = params.toString();
     return `${basePath}${qs ? `?${qs}` : ""}`;
   }
 
   // «Limpiar»: conserva la búsqueda (y extraParams como la pestaña), quita
-  // tipo/estado/orden.
+  // tipo/estado/orden/género.
   function clearHref() {
     const params = new URLSearchParams(extraParams);
     if (search) params.set("q", search);
@@ -82,7 +91,8 @@ export async function LibraryFilters({
   const activeCount =
     (showTypeFilter && itemType ? 1 : 0) +
     (status ? 1 : 0) +
-    (sort !== "recent" ? 1 : 0);
+    (sort !== "recent" ? 1 : 0) +
+    (genre ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -92,6 +102,7 @@ export async function LibraryFilters({
         {itemType && <input type="hidden" name="type" value={itemType} />}
         {status && <input type="hidden" name="status" value={status} />}
         {sort !== "recent" && <input type="hidden" name="sort" value={sort} />}
+        {genre && <input type="hidden" name="genero" value={genre} />}
         {extraParams &&
           Object.entries(extraParams).map(([key, value]) => (
             <input key={key} type="hidden" name={key} value={value} />
@@ -151,6 +162,24 @@ export async function LibraryFilters({
             ))}
           </div>
         </div>
+
+        {genres && genres.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+              {t("collection.filterGenre")}
+            </span>
+            <div className="flex flex-wrap items-center gap-0.5">
+              <Link href={buildHref({ genre: undefined })} className={segClass(!genre)}>
+                {t("library.filters.allGenres")}
+              </Link>
+              {genres.map((g) => (
+                <Link key={g.slug} href={buildHref({ genre: g.slug })} className={segClass(genre === g.slug)}>
+                  {g.label} <span className="opacity-60">{g.count}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">

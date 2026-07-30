@@ -1589,7 +1589,8 @@
     "diaryTitle": "Revisionados",
     "filters": {
       "allTypes": "Todo",
-      "allStatuses": "Todos los estados"
+      "allStatuses": "Todos los estados",
+      "allGenres": "Todos los géneros"
     },
     "search": {
       "placeholder": "Buscar en tu biblioteca...",
@@ -1754,6 +1755,7 @@
     "filters": "Filtros",
     "filterType": "Tipo",
     "filterStatus": "Estado",
+    "filterGenre": "Género",
     "filterSort": "Orden",
     "filterCount": "{shown} de {total}",
     "clearFilters": "Limpiar",

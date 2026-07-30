@@ -4,7 +4,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getLibraryItems, getUserGenres } from "@/lib/library/get-library-items";
+import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
@@ -63,6 +64,7 @@ export default async function CollectionPage({
     q?: string;
     sort?: string;
     type?: string;
+    genero?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -80,6 +82,9 @@ export default async function CollectionPage({
   const sort: LibrarySort = VALID_SORTS.includes(params.sort as LibrarySort)
     ? (params.sort as LibrarySort)
     : "recent";
+  // Slug inválido -> se trata como si no hubiera filtro (no se propaga a
+  // getLibraryItems, que devolvería la biblioteca vacía para un slug basura).
+  const genre = params.genero && genreDefForSlug(params.genero) ? params.genero : undefined;
   // Con ?type= explícito manda la URL. Sin él, y SOLO si el usuario declaró
   // exactamente UN interés en el onboarding, el filtro de «Todo» arranca ahí:
   // con dos o tres no hay un tipo "obvio" y forzar uno escondería media
@@ -101,6 +106,10 @@ export default async function CollectionPage({
     preferredType = interests.length === 1 ? interests[0] : undefined;
   }
   const itemType: ItemType | undefined = explicitType ?? preferredType;
+
+  // Géneros del selector: solo se consultan en la pestaña `todo`, donde vive
+  // `LibraryFilters` — evita la query extra en `colecciones`/`sagas`.
+  const genres = tab === "todo" ? await getUserGenres(supabase, user.id) : [];
 
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
@@ -144,7 +153,7 @@ export default async function CollectionPage({
               destacados del dueño viven aquí, no en su perfil: el perfil
               propio pierde la pestaña Colección (plan 05, P2) y sin esta
               casa se quedarían sin sitio (D2). */}
-          {!status && !search && !itemType && (
+          {!status && !search && !itemType && !genre && (
             <Suspense fallback={<CollectionOverviewSkeleton />}>
               <TodoOverview userId={user.id} />
             </Suspense>
@@ -154,12 +163,14 @@ export default async function CollectionPage({
             status={status}
             search={search}
             sort={sort}
+            genre={genre}
+            genres={genres}
             basePath="/coleccion"
             showTypeFilter
             extraParams={{ tab: "todo" }}
           />
           <Suspense
-            key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}`}
+            key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}:${genre ?? ""}`}
             fallback={<SkeletonCoverGrid count={10} />}
           >
             <LibraryGrid
@@ -168,6 +179,7 @@ export default async function CollectionPage({
               status={status}
               search={search}
               sort={sort}
+              genre={genre}
               emptyTitle={tLibrary("emptyTitle")}
               emptyLabel={tLibrary("empty")}
               emptyCta={tLibrary("emptyCta")}
@@ -230,6 +242,7 @@ async function LibraryGrid({
   status,
   search,
   sort,
+  genre,
   limit,
   emptyTitle,
   emptyLabel,
@@ -240,6 +253,7 @@ async function LibraryGrid({
   status?: MediaStatus;
   search?: string;
   sort: LibrarySort;
+  genre?: string;
   limit?: number;
   emptyTitle: string;
   emptyLabel: string;
@@ -251,6 +265,7 @@ async function LibraryGrid({
     status,
     search,
     sort,
+    genre,
     limit,
   });
 
