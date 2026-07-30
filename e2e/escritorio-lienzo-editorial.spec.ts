@@ -39,3 +39,19 @@ test("Estadísticas muestra el raíl de período en escritorio", async ({ page }
   await expect(rail).toContainText(/período/i);
   await expect(rail.locator('a[aria-current="page"]')).toBeVisible();
 });
+
+test("El rail editorial se oculta y el lienzo no desborda en móvil", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+
+  for (const path of ["/coleccion?tab=todo", "/", "/estadisticas"]) {
+    await page.goto(path);
+    await expect(page.locator("[data-editorial-main]")).toBeVisible();
+    await expect(page.locator("[data-editorial-rail]")).not.toBeVisible();
+    await expect(page.locator("body")).toEvaluate(
+      (body) => body.scrollWidth <= window.innerWidth,
+    );
+  }
+});
