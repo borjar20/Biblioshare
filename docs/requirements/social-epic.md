@@ -694,8 +694,15 @@ forma incremental (uno por uno).
 - [ ] **E5.K2** **Comparar bibliotecas** entre dos perfiles (solape de ítems, gustos en
   común) — absorbe la idea 7.15 "comparar bibliotecas"; social-lite, buen gancho para
   seguir a alguien.
-- [ ] **E5.K3** **Menciones `@usuario`** en reseñas, comentarios y posts de club (genera
-  notificación).
+- [x] **E5.K3** **Menciones `@usuario`** en reseñas, comentarios y posts de club (genera
+  notificación). **Cerrado 2026-07-30, dev+prod** — texto crudo con `@usuario` como fuente
+  de verdad (sin tabla sidecar, solo `notification_type += 'mentioned'`), autocompletar en
+  los 3 composers, render como enlace solo si el username existe, filtro de entregabilidad
+  en capa de app (perfil público → todos; privado → solo seguidores aceptados; post de
+  club → solo miembros activos) y supersede de la notificación genérica cuando el dueño del
+  contenido está entre los mencionados. Spec:
+  `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`; plan:
+  `docs/superpowers/plans/2026-07-30-menciones-usuario.md`.
 - [ ] **E5.K4** **Eventos de club** (discusión programada / fecha límite de la lectura
   conjunta) — se apoya en la infra de recordatorios de §8-D cuando exista.
 - [ ] **E5.K5** **Estados de club** ("estamos leyendo *X*", encuestas para elegir la
