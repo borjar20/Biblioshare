@@ -37,7 +37,6 @@
   - `slugForLabel(label: string): string | null`
   - `isCanonicalLabel(label: string): boolean`
   - `genreDefForSlug(slug: string): GenreDef | null`
-  - `userGenreSlug(slug: string): boolean` (alias de `genreDefForSlug(slug) !== null`, para claridad en las páginas)
 
 - [ ] **Step 1: Write the failing test**
 

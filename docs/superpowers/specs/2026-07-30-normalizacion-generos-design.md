@@ -124,22 +124,29 @@ Reemplaza a `getGenreMap`/`resolveGenres` de `tmdb.ts`.
 
 ### 1.4 Migración / backfill (dev primero, luego prod)
 
-Las tablas de catálogo son **compartidas** (`SELECT` abierto). Recalcular `genres`:
+Las tablas de catálogo son **compartidas** (`SELECT` abierto). Hechos del schema
+verificados (2026-07-30, `database.types.ts`):
 
-- **`movies` / `series`**: es el backfill real. Sus filas actuales guardan labels TMDB
-  crudas. No se puede recalcular en SQL puro (el mapeo vive en TS). Estrategia: **script
-  de recompute** (Node, con service role) que lee cada fila, remapea desde su
-  `genre_ids` de TMDB si está disponible, o —si solo tiene labels— traduce label TMDB
-  conocida → slug canónico con una tabla puente. **A verificar en implementación**: si
-  `movies`/`series` NO guardan los `genre_ids` originales, se necesita una tabla
-  auxiliar label-TMDB→slug para el backfill (los nombres es-ES de TMDB son estables y
-  finitos). Documentar cuál de las dos vías se usó.
-- **`books`**: su vocab ya era cerrado. Solo hace falta backfill si alguna label del
-  registro cambió de texto respecto a lo que `genres.ts` emitía antes. Si `books` guarda
-  los `subject` crudos, re-mapear; si no, mapear label-vieja→label-nueva solo para las
-  que cambiaron. **A verificar**: ¿existe columna de subjects crudos en `books`?
+- `movies`/`series` tienen `tmdb_id` pero **NO** guardan `genre_ids`. Su `genres text[]`
+  contiene las **labels es-ES crudas** que devolvió TMDB.
+- `books` **NO** guarda los `subject` crudos: `ensureBookHydrated` (`hydrate-book.ts`)
+  solo persiste `genres` ya mapeado por `mapSubjectsToGenres`.
+
+Recalcular `genres`:
+
+- **`books`: sin backfill.** El registro usa **exactamente las mismas labels** (texto
+  idéntico) que hoy emite `genres.ts`, así que las filas de libros ya son canónicas. Es
+  una **restricción del diseño del registro**, no un supuesto: si una label del registro
+  difiere en texto de la que `genres.ts` emite, el test de invariante (§1.2) falla.
+- **`movies`/`series`: backfill vía puente label-es-ES → slug.** Como no hay `genre_ids`
+  guardados, no se remapea por id. Se traduce la label es-ES almacenada → slug canónico
+  con un puente **derivado del mismo mapa de ids** de `tmdb-genres.ts` (los nombres
+  es-ES de TMDB son finitos y estables). `tmdb-genres.ts` exporta también
+  `tmdbLabelEsToSlugs` para esto. Estrategia: **script de recompute** (Node, service
+  role) que lee cada fila de `movies`/`series`, traduce cada label por el puente,
+  dedupe + cap 5, y reescribe `genres`. Labels es-ES desconocidas (ruido) se descartan.
 - Regla del repo: **"no aparece en `list_migrations` ≠ no está en prod"** — verificar el
-  estado real de las columnas/filas, no el ledger.
+  estado real de las columnas/filas, no el ledger. Correr en `supabase-dev` primero.
 
 ## Sección 2 — Navegación
 
@@ -221,9 +228,10 @@ Las tablas de catálogo son **compartidas** (`SELECT` abierto). Recalcular `genr
 
 ## Riesgos / trampas
 
-- **TMDB label sin id en backfill**: si las filas viejas no guardan `genre_ids`, el
-  backfill depende de una tabla puente label-es-ES→slug. Confirmar la vía antes de
-  correr el script (§1.4).
+- **Backfill de movies/series por label, no por id** (no hay `genre_ids` guardados,
+  verificado): depende del puente label-es-ES→slug de `tmdb-genres.ts`. El puente debe
+  cubrir TODAS las labels es-ES que TMDB haya podido devolver; una no cubierta se
+  descarta silenciosamente. Enumerar la lista es-ES completa en el plan.
 - **Índice GIN**: sin él, `@>` sobre `text[]` hace scan completo del catálogo. Va en la
   misma migración que habilita la página.
 - **Labels que cambian de texto** rompen criterios de reto guardados y conteos
