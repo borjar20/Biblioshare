@@ -326,6 +326,7 @@ export async function getLibraryItems(
 // MISMO tipo aquí para que la faceta no ofrezca chips de un tipo que la rejilla
 // no está mostrando (si no, un chip filtra a 0 resultados). Sin él, se cuenta
 // la biblioteca activa completa (comportamiento previo, sin cambios).
+// La faceta no refleja el filtro de estado activo — ver issue #306.
 export async function getUserGenres(
   supabase: SupabaseServerClient,
   userId: string,
