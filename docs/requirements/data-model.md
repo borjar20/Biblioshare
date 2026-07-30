@@ -47,11 +47,28 @@ divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas 
 > **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §9): valor `mentioned` del enum
 > `notification_type` aplicado y verificado en DEV **y en PROD** contra `pg_enum` (sin
 > tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
-> `decisiones.md`). Las políticas RLS de `notifications` (`select own`/`insert as
-> actor`/`update own`/`delete own`) no referencian `type`, así que `mentioned` queda
-> cubierto por la misma RLS que el resto de tipos sin cambio alguno — confirmado
-> re-listando `pg_policies` en dev el 2026-07-30. Spec:
+> `decisiones.md`). Al entrar esta mejora, las políticas RLS de `notifications` aún incluían
+> `insert as actor` y no referenciaban `type`, por lo que `mentioned` quedó cubierto sin
+> cambio específico. **Social fase 0 supersede esa puerta solo en dev**: ya no existe ninguna
+> política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
+> servidor usa `service_role`. Spec:
 > `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
+> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado SOLO EN DEV.**
+> `user_blocks` y `content_reports` elevan dev a 47 tablas públicas, todas con RLS; prod
+> conserva las 42 verificadas arriba hasta el despliegue. Son siete migraciones:
+> `20260730190602_social_phase0_integrity.sql`,
+> `20260730190801_social_phase0_notification_compat.sql`,
+> `20260730191652_social_phase0_user_blocks.sql`,
+> `20260730191702_social_phase0_moderation_reports.sql`,
+> `20260730191708_social_phase0_polymorphic_cleanup.sql`,
+> `20260730194407_social_phase0_close_notification_inserts.sql` y
+> `20260730200000_social_phase0_report_reviewer_index.sql`. Pasaron la matriz transaccional
+> `supabase/tests/social_phase0_rls.sql`; el barrido dejó 0 comentarios, 0 reacciones y 0
+> notificaciones huérfanos. En dev, INSERT sobre `notifications` queda permitido solo a
+> `service_role` (`anon=false`, `authenticated=false`, 0 políticas INSERT); las cuatro RPC
+> públicas nuevas son `SECURITY INVOKER`. Advisors de seguridad: 66 antes y 66 después, sin
+> hallazgos nuevos. Producción sigue pendiente en
+> [#332](https://github.com/borjar20/Biblioshare/issues/332).
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -102,6 +119,7 @@ graph TB
     subgraph SOCIAL["SOCIAL"]
         profiles[profiles]; follows[follows]
         reactions[reactions]; comments[comments]; notifs[notifications]
+        blocks[user_blocks]; reports[content_reports]
     end
 
     subgraph CLUBS["CLUBES"]
@@ -268,6 +286,30 @@ de ahí que hicieran falta valores de enum nuevos en vez de reutilizar el `diary
 `progress_session` vía `progress_sessions s`/`s.user_id`. Con esto, los eventos `added` (pase
 nuevo) y `progressed` (sesión de progreso) del feed pasan a ser reaccionables/comentables —
 antes no tenían ningún target.
+
+**Social fase 0 (solo dev, 2026-07-30).** `user_blocks` guarda pares dirigidos
+`(blocker_id, blocked_id)`: ambos extremos pueden leer la fila, solo quien bloqueó puede
+crearla o retirarla. Crear un bloqueo borra follows y notificaciones entre ambos y el gate
+bidireccional se aplica a perfiles, contenido compartido a clubes, follows, comentarios,
+reacciones y feed de club. Las RPC públicas `users_are_blocked(other_user_id)` y
+`filter_unblocked_user_ids(candidate_ids)` son `SECURITY INVOKER`; la segunda filtra un lote
+sin perder el orden de la primera aparición. Retirar el bloqueo no reconstruye follows ni
+notificaciones borrados.
+
+Las notificaciones sociales se escriben desde servidor con `service_role`; el cliente ya no
+puede hacer INSERT directo (`anon` y `authenticated` sin privilegio, y 0 políticas INSERT).
+La migración de compatibilidad mantiene el orden de despliegue seguro hasta que
+`20260730194407_social_phase0_close_notification_inserts.sql` cierra definitivamente la puerta.
+
+`content_reports` conserva evidencia de moderación: reporter, usuario responsable derivado,
+target polimórfico, razón, detalle, snapshot, estado y revisión. El cliente no decide ni
+`reported_user_id` ni `snapshot`: un trigger los deriva del target real antes del INSERT.
+Solo el reporter ve su reporte; admins globales y moderadores/owners del club del target
+pueden verlo y resolverlo. Ser autor del target, por sí solo, no revela el reporte.
+`report_comment(comment_id, reason, details)` es el punto de escritura para comentarios y
+`moderatable_target_ids(target_kind, ids[])` permite resolver capacidades por lote. Al borrar
+un target, los comentarios/reacciones/notificaciones asociados se eliminan, pero los reportes
+se preservan como auditoría y pasan a `actioned` con `target_deleted_at`.
 
 ## 6. Clubes
 
@@ -1241,7 +1283,8 @@ mockup— dejaría esas dos siempre visibles.
 
 ## 8. Seguridad
 
-Las 42 tablas tienen **RLS activa**. Patrones:
+Las 42 tablas de prod tienen **RLS activa**. Dev tiene 47, también todas con RLS; las dos
+tablas nuevas de Social fase 0 siguen pendientes de producción. Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
@@ -1267,6 +1310,10 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
   `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
   pg_temp`, pero si alguna se escapa, volver a correr la migración la arregla.
+- **Helpers privados de Social fase 0**: las funciones `SECURITY DEFINER` nuevas viven en el
+  esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
+  Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
+  `search_path = ''`. Ninguna añadió avisos al advisor de seguridad (delta 66 → 66 en dev).
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
@@ -1281,17 +1328,18 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
+| `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, solo dev, 2026-07-30) |
 | `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod — `target_type` reutiliza `diary_entry`/`comment`/`club_post` de `target_kind`, sin valor nuevo) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
 | `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
-| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
+| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session` |
 
 ## 10. Migraciones
 
-112 ficheros en `supabase/migrations/` (recontado el 2026-07-29; el 2026-07-28 decía 106, y
-antes de la fase 4 llevaba desviado desde 82). `supabase/schema-baseline.sql` es el replay ordenado
+123 ficheros en `supabase/migrations/` (recontado el 2026-07-30; incluye los deltas que aún
+están solo en dev). `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
@@ -1299,6 +1347,10 @@ es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos v
 2026-07-14 y 2026-07-17) por olvidar exactamente eso. Las dos migraciones de eventos
 (`20260722_activity_kind_evento.sql`, `20260722_club_event_rpcs.sql`) se aplicaron a prod el
 2026-07-22 y se anexaron al baseline en la misma pasada («ANEXO 2026-07-22»).
+Por esa misma regla, las siete migraciones de Social fase 0 **no se anexan aún**: están
+aplicadas solo en dev y el baseline debe seguir describiendo producción. Su despliegue y la
+actualización simultánea del baseline se rastrean en
+[#332](https://github.com/borjar20/Biblioshare/issues/332).
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del

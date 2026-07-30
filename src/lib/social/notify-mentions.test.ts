@@ -54,9 +54,51 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     from: (table: string) => queryBuilder(table) as any,
+    rpc: async (name: string, args: { candidate_ids: string[] }) => {
+      if (name !== "filter_unblocked_user_ids") {
+        return { data: null, error: { message: `RPC inesperada: ${name}` } };
+      }
+      const blocks = tables.user_blocks ?? [];
+      const blockedIds = new Set(
+        blocks
+          .filter((row) => row.blocker_id === "author" || row.blocked_id === "author")
+          .map((row) =>
+            row.blocker_id === "author" ? row.blocked_id : row.blocker_id,
+          ),
+      );
+      return {
+        data: args.candidate_ids.filter((id) => !blockedIds.has(id)),
+        error: null,
+      };
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
+
+describe("resolveDeliverableMentions — bloqueos", () => {
+  it("excluye bloqueos en cualquiera de las dos direcciones", async () => {
+    const supabase = makeFakeSupabase({
+      profile_identities: [
+        { user_id: "blocked", username: "bloqueado" },
+        { user_id: "blocked-by", username: "mebloqueo" },
+        { user_id: "ok", username: "visible" },
+      ],
+      profiles: [{ user_id: "author", is_public: true }],
+      user_blocks: [
+        { blocker_id: "author", blocked_id: "blocked" },
+        { blocker_id: "blocked-by", blocked_id: "author" },
+      ],
+    });
+
+    const out = await resolveDeliverableMentions(supabase, {
+      authorId: "author",
+      text: "@bloqueado @mebloqueo @visible",
+      gate: { kind: "profile", ownerId: "author" },
+    });
+
+    expect(out).toEqual(["ok"]);
+  });
+});
 
 describe("resolveDeliverableMentions — perfil público", () => {
   it("entrega a todos los mencionados existentes menos el autor", async () => {

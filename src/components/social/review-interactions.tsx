@@ -17,6 +17,8 @@ import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
 import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { MentionText } from "./mention-text";
+import { UserAvatar } from "./user-avatar";
+import { CommentActions } from "./comment-actions";
 
 // Like + hilo de comentarios bajo una reseña (EPIC-05, Bloque B, SD-3). El
 // estado real deriva de las props que el servidor revalida tras cada acción
@@ -57,7 +59,7 @@ export function ReviewInteractions({
   knownUsernames?: string[];
 }) {
   const t = useTranslations("social");
-  const { state, isPending, run } = useOptimisticAction({
+  const { state, isPending, failed, run } = useOptimisticAction({
     state: { reactionCount, viewerReacted, commentCount, comments },
     reducer: interactionReducer,
   });
@@ -98,10 +100,13 @@ export function ReviewInteractions({
       id: `optimistic-${Date.now()}`,
       authorId: "",
       author: t("you"),
+      authorUsername: null,
+      authorAvatarUrl: null,
       initials: "",
       body: value,
       createdAt: new Date().toISOString(),
       isOwn: true,
+      canDelete: true,
       reactionCount: 0,
       viewerReacted: false,
     };
@@ -153,15 +158,23 @@ export function ReviewInteractions({
           {state.comments.map((c) => (
             <div
               key={c.id}
-              className="flex items-start justify-between gap-2 text-xs"
+              className="flex items-start gap-2 text-xs"
             >
-              <p className="text-foreground">
-                <span className="font-medium">{c.author}</span>{" "}
-                <span className="text-muted-foreground">
-                  <MentionText text={c.body} knownUsernames={knownUsernames} />
-                </span>
-              </p>
-              <div className="flex shrink-0 items-center gap-2">
+              <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={24} />
+              <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                <p className="min-w-0 text-foreground">
+                  {c.authorUsername ? (
+                    <Link href={`/u/${c.authorUsername}`} className="font-medium hover:underline">
+                      {c.author}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{c.author}</span>
+                  )}{" "}
+                  <span className="text-muted-foreground">
+                    <MentionText text={c.body} knownUsernames={knownUsernames} />
+                  </span>
+                </p>
+                <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   disabled={isPending}
@@ -178,20 +191,16 @@ export function ReviewInteractions({
                   <HeartIcon className="h-3 w-3" fill={c.viewerReacted ? "currentColor" : "none"} />
                   {c.reactionCount > 0 && c.reactionCount}
                 </button>
-                {c.isOwn && (
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() =>
-                      run({ type: "deleteComment", id: c.id }, () =>
-                        deleteComment(c.id),
-                      )
+                  <CommentActions
+                    commentId={c.id}
+                    canDelete={c.canDelete}
+                    isOwn={c.isOwn}
+                    isBusy={isPending}
+                    onDelete={() =>
+                      run({ type: "deleteComment", id: c.id }, () => deleteComment(c.id))
                     }
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {t("deleteComment")}
-                  </button>
-                )}
+                  />
+                </div>
               </div>
             </div>
           ))}
@@ -203,15 +212,19 @@ export function ReviewInteractions({
             className="flex items-center gap-2"
           >
             <div className="relative flex-1">
-              <input
-                type="text"
+              <textarea
                 value={draft}
+                maxLength={2000}
+                rows={2}
                 onChange={(e) => setDraft(e.target.value)}
                 onInput={mention.onInput}
                 onKeyDown={mention.onKeyDown}
                 placeholder={t("writeComment")}
-                className="w-full rounded-full border border-border bg-surface px-3 py-1.5 text-xs outline-none focus:border-accent"
+                className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 pr-12 text-xs outline-none focus:border-accent"
               />
+              <span className="pointer-events-none absolute right-2 bottom-1.5 font-mono text-[9px] text-muted-foreground">
+                {draft.length}/2000
+              </span>
               {mention.dropdown}
             </div>
             <button
@@ -223,6 +236,11 @@ export function ReviewInteractions({
             </button>
           </form>
         </div>
+      )}
+      {failed && (
+        <p role="alert" className="text-xs text-destructive">
+          {t("actionError")}
+        </p>
       )}
     </div>
   );

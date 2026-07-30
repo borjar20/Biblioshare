@@ -3,12 +3,14 @@ import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import { sendPushToUser, sendPushToUsers, type PushPayload } from "@/lib/push/send-push";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   NOTIFICATION_TYPE_KEY,
   type Notification,
   type NotificationType,
   type ReviewTargetType,
 } from "./notification-types";
+import { filterUnblockedUserIds, usersAreBlocked } from "./block-state";
 
 export type { NotificationType, ReviewTargetType, Notification };
 export { NOTIFICATION_TYPE_KEY };
@@ -32,7 +34,15 @@ export async function notify(
     targetId?: string;
   },
 ): Promise<void> {
-  const { error } = await supabase.from("notifications").insert({
+  try {
+    if (await usersAreBlocked(supabase, params.userId)) return;
+  } catch (blockError) {
+    console.error("notify() block check failed", blockError);
+    return;
+  }
+
+  const notificationWriter = createServiceRoleClient();
+  const { error } = await notificationWriter.from("notifications").insert({
     user_id: params.userId,
     actor_id: params.actorId,
     type: params.type,
@@ -125,10 +135,18 @@ export async function notifyMany(
     targetId?: string;
   },
 ): Promise<void> {
-  const userIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
+  const candidateIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
+  let userIds: string[];
+  try {
+    userIds = await filterUnblockedUserIds(supabase, candidateIds);
+  } catch (blockError) {
+    console.error("notifyMany() block check failed", blockError);
+    return;
+  }
   if (userIds.length === 0) return;
 
-  const { error } = await supabase.from("notifications").insert(
+  const notificationWriter = createServiceRoleClient();
+  const { error } = await notificationWriter.from("notifications").insert(
     userIds.map((userId) => ({
       user_id: userId,
       actor_id: params.actorId,

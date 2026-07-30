@@ -16,12 +16,14 @@ export async function ProfileHeader({
   isOwner,
   counts,
   followButton,
+  safetyActions,
 }: {
   profile: Profile;
   stats: LibraryStats;
   isOwner: boolean;
   counts: FollowCounts;
   followButton?: ReactNode;
+  safetyActions?: ReactNode;
 }) {
   const t = await getTranslations("profile");
   const tSocial = await getTranslations("social");
@@ -67,6 +69,7 @@ export async function ProfileHeader({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {followButton}
+            {safetyActions}
             {isOwner && (
               <>
                 <EditProfileForm profile={profile} />

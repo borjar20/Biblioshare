@@ -2,7 +2,7 @@
 
 > **[Canónico · verificado contra prod el 2026-07-20]**
 
-> **[Estado vivo · actualizado 2026-07-29]** Qué está hecho y qué queda. La narrativa de *cómo* se construyó cada cosa vive en `docs/superpowers/specs/` y `plans/` (historia). Aquí solo el estado + un enlace a su spec cuando exista.
+> **[Estado vivo · actualizado 2026-07-30]** Qué está hecho y qué queda. La narrativa de *cómo* se construyó cada cosa vive en `docs/superpowers/specs/` y `plans/` (historia). Aquí solo el estado + un enlace a su spec cuando exista.
 
 > Fuente canónica: `REQUIREMENTS.md` §6 y §7. Los ficheros partidos `backlog-done.md`/`backlog-pending.md` son instantáneas más antiguas (no reflejan §7.37–§7.39 ni Sagas v2); en caso de conflicto manda §7.
 
@@ -76,6 +76,7 @@
 ### Social (EPIC-05)
 - [x] **Grafo social + feed** (EPIC-05 Bloques A y C) — seguir usuarios (`follows`, público=accept directo / privado=pendiente), `can_view_profile()`, feed on-read. *(Verificado contra prod: la tabla `follows` existe; la línea "pendiente" de §7.15 en el monolito estaba obsoleta.)*
 - [x] **Notificaciones in-app** (EPIC-05 Bloque D) — tabla `notifications` + `NotificationBell`, sin push (push diferido, E5.D4).
+- [x] **Social fase 0: integridad, bloqueos y moderación — hecho y verificado en dev** (2026-07-30) — siete migraciones endurecen comentarios/reacciones/notificaciones, añaden `user_blocks` y `content_reports`, limpian targets polimórficos huérfanos y optimizan la revisión de reportes; la aplicación filtra bloqueos de forma bidireccional, escribe notificaciones mediante un writer confiable y permite reportar/eliminar comentarios según capacidad. Dev queda con 47/47 tablas públicas bajo RLS, 0 huérfanos, 945 tests unitarios y 3/3 e2e sociales verdes. **Producción no está marcada como completada**: despliegue y verificación pendientes en [#332](https://github.com/borjar20/Biblioshare/issues/332). Esta entrega parte del código y esquema actuales, no de las propuestas históricas de `social-epic`.
 - [x] **Eventos de club** — quinto `kind` de `club_activities` (`evento`): fecha señalada por moderador+, no participativa, sin ficha propia; grupo "Fechas señaladas" en la lista de actividades. Migraciones aplicadas en dev y prod. Spec: `docs/superpowers/specs/2026-07-22-club-eventos-design.md`
 - [x] **Calendario de club** — vista `/club/[slug]/calendario` (rejilla del mes + agenda) que funde hitos, eventos e inicio/cierre de actividad en una sola línea de tiempo; ranura "Calendario" en el rail de PC entre Actividades y Miembros. El bloque "Próximas fechas" del resumen del club se funde con "Próximos hitos" en una sola tira "Próximo" que enlaza al calendario. Sin migración. Spec: `docs/superpowers/specs/2026-07-22-club-calendario-design.md`
 

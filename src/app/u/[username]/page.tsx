@@ -12,6 +12,8 @@ import {
   getPendingRequests,
 } from "@/lib/social/follows";
 import { FollowButton } from "@/components/social/follow-button";
+import { ProfileSafetyActions } from "@/components/social/profile-safety-actions";
+import { getBlockState } from "@/lib/social/block-state";
 import { FollowRequests } from "@/components/social/follow-requests";
 import { PrivateProfileStub } from "@/components/social/private-profile-stub";
 import { getLibraryStats } from "@/lib/library/get-library-stats";
@@ -78,16 +80,20 @@ export default async function PublicProfilePage({
   if (!profile) {
     const identity = await getProfileIdentity(supabase, username);
     if (!identity) notFound();
-    const followState = await getFollowState(
-      supabase,
-      user?.id ?? null,
-      identity.userId,
-    );
+    const blockState = user
+      ? await getBlockState(supabase, user.id, identity.userId)
+      : "none";
+    if (blockState === "blocked_by") notFound();
+    const followState =
+      blockState === "none"
+        ? await getFollowState(supabase, user?.id ?? null, identity.userId)
+        : "none";
     return (
       <PrivateProfileStub
         identity={identity}
         followState={followState}
         viewerLoggedIn={!!user}
+        blockState={blockState}
       />
     );
   }
@@ -119,11 +125,12 @@ export default async function PublicProfilePage({
 
   // Solo lo que necesita la cabecera se espera aquí; el contenido de cada
   // pestaña llega por streaming detrás de su <Suspense> (Fase B).
-  const [counts, followState, pendingRequests, stats] = await Promise.all([
+  const [counts, followState, pendingRequests, stats, blockState] = await Promise.all([
     getFollowCounts(supabase, profile.userId),
     getFollowState(supabase, user?.id ?? null, profile.userId),
     isOwner ? getPendingRequests(supabase, profile.userId) : Promise.resolve([]),
     getLibraryStats(supabase, profile.userId),
+    user ? getBlockState(supabase, user.id, profile.userId) : Promise.resolve("none" as const),
   ]);
 
   return (
@@ -134,13 +141,18 @@ export default async function PublicProfilePage({
         isOwner={isOwner}
         counts={counts}
         followButton={
-          !isOwner ? (
+          !isOwner && blockState === "none" ? (
             <FollowButton
               targetUserId={profile.userId}
               targetIsPublic={profile.isPublic}
               state={followState}
               viewerLoggedIn={!!user}
             />
+          ) : undefined
+        }
+        safetyActions={
+          user && !isOwner && blockState !== "blocked_by" ? (
+            <ProfileSafetyActions targetUserId={profile.userId} initialState={blockState} />
           ) : undefined
         }
       />

@@ -23,7 +23,14 @@ vi.mock("@/lib/push/send-push", () => ({
   sendPushToUsers: (...args: unknown[]) => sendPushToUsers(...args),
 }));
 
-import { listNotifications, notifyMany } from "./notifications";
+const trustedWriter = vi.hoisted(() => ({
+  create: vi.fn(),
+}));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: () => trustedWriter.create(),
+}));
+
+import { listNotifications, notify, notifyMany } from "./notifications";
 import { notifyClub } from "../clubs/activities/notify-club";
 
 type Row = Record<string, unknown>;
@@ -112,6 +119,26 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     from: (table: string) => queryBuilder(table) as any,
+    rpc: async (name: string, args: { other_user_id?: string; candidate_ids?: string[] }) => {
+      const blocks = tables.user_blocks ?? [];
+      const actorId = "actor-1";
+      const isBlocked = (otherId: string) =>
+        blocks.some(
+          (row) =>
+            (row.blocker_id === actorId && row.blocked_id === otherId) ||
+            (row.blocker_id === otherId && row.blocked_id === actorId),
+        );
+      if (name === "users_are_blocked") {
+        return { data: isBlocked(args.other_user_id ?? ""), error: null };
+      }
+      if (name === "filter_unblocked_user_ids") {
+        return {
+          data: (args.candidate_ids ?? []).filter((id) => !isBlocked(id)),
+          error: null,
+        };
+      }
+      return { data: null, error: { message: `RPC inesperada: ${name}` } };
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -137,6 +164,105 @@ function baseTables(): Record<string, Row[]> {
 beforeEach(() => {
   sendPushToUser.mockClear();
   sendPushToUsers.mockClear();
+  trustedWriter.create.mockReset();
+});
+
+describe("notificaciones — frontera de bloqueo", () => {
+  it("notify no escribe ni entrega push a una pareja bloqueada", async () => {
+    const callerTables = baseTables();
+    callerTables.user_blocks = [{ blocker_id: "actor-1", blocked_id: "blocked" }];
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notify(caller, {
+      userId: "blocked",
+      actorId: "actor-1",
+      type: "new_follower",
+    });
+
+    expect(writerTables.notifications).toHaveLength(0);
+    expect(sendPushToUser).not.toHaveBeenCalled();
+  });
+
+  it("notifyMany elimina ambas direcciones bloqueadas antes del insert y del push", async () => {
+    const callerTables = baseTables();
+    callerTables.user_blocks = [
+      { blocker_id: "actor-1", blocked_id: "blocked" },
+      { blocker_id: "blocked-by", blocked_id: "actor-1" },
+    ];
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notifyMany(caller, {
+      userIds: ["blocked", "blocked-by", "visible"],
+      actorId: "actor-1",
+      type: "club_event_created",
+      targetType: "club_event",
+      targetId: "event-1",
+    });
+
+    expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["visible"]);
+    expect(sendPushToUsers).toHaveBeenCalledWith(
+      ["visible"],
+      expect.objectContaining({ url: "/club/club-lectura" }),
+    );
+  });
+});
+
+describe("escritura confiable de notificaciones", () => {
+  it("notify escribe con service role y conserva el cliente del usuario para resolver el push", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notify(caller, {
+      userId: "user-2",
+      actorId: "actor-1",
+      type: "club_event_created",
+      targetType: "club_event",
+      targetId: "event-1",
+    });
+
+    expect(callerTables.notifications).toHaveLength(0);
+    expect(writerTables.notifications).toEqual([
+      expect.objectContaining({
+        user_id: "user-2",
+        actor_id: "actor-1",
+        target_type: "club_event",
+        target_id: "event-1",
+      }),
+    ]);
+    expect(sendPushToUser).toHaveBeenCalledWith(
+      "user-2",
+      expect.objectContaining({ url: "/club/club-lectura" }),
+    );
+  });
+
+  it("notifyMany escribe el lote con service role sin delegar el fan-out al cliente del usuario", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notifyMany(caller, {
+      userIds: ["user-2", "user-3", "user-2", "actor-1"],
+      actorId: "actor-1",
+      type: "club_event_created",
+      targetType: "club_event",
+      targetId: "event-1",
+    });
+
+    expect(callerTables.notifications).toHaveLength(0);
+    expect(writerTables.notifications).toHaveLength(2);
+    expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["user-2", "user-3"]);
+    expect(sendPushToUsers).toHaveBeenCalledWith(
+      ["user-2", "user-3"],
+      expect.objectContaining({ url: "/club/club-lectura" }),
+    );
+  });
 });
 
 describe("resolución de href de notificaciones — club_event vs club_activity", () => {
@@ -179,6 +305,7 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
   it("notifyMany (payload push): comparte la misma resolución que la campana", async () => {
     const tables = baseTables();
     const supabase = makeFakeSupabase(tables);
+    trustedWriter.create.mockReturnValue(supabase);
 
     await notifyMany(supabase, {
       userIds: ["user-2"],
@@ -215,6 +342,7 @@ describe("notifyClub — target_type escrito según el tipo de notificación", (
     const tables = baseTables();
     const supabase = makeFakeSupabase(tables);
 
+    trustedWriter.create.mockReturnValue(supabase);
     await notifyClub(supabase, "club-1", "actor-1", "club_event_created", "event-1");
 
     expect(tables.notifications).toHaveLength(1);
@@ -236,6 +364,7 @@ describe("notifyClub — target_type escrito según el tipo de notificación", (
       const tables = baseTables();
       const supabase = makeFakeSupabase(tables);
 
+      trustedWriter.create.mockReturnValue(supabase);
       await notifyClub(supabase, "club-1", "actor-1", type, "activity-1");
 
       expect(tables.notifications).toHaveLength(1);
