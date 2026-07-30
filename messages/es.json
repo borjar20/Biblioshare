@@ -344,7 +344,9 @@
     },
     "progress": {
       "reachedPage": "Llegó a la pág. {page}",
-      "showSpoiler": "Mostrar spoiler"
+      "showSpoiler": "Mostrar spoiler",
+      "showOlder": "ver {count, plural, one {# sesión anterior} other {# sesiones anteriores}}",
+      "showLess": "ver menos"
     },
     "review": {
       "finished": "Finalizado",
