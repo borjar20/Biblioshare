@@ -5,6 +5,7 @@ import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { SearchIcon } from "@/components/ui/icons";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
+import { ALL_TYPES_PARAM } from "@/lib/library/effective-type";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = [
@@ -60,7 +61,10 @@ export async function LibraryFilters({
   const t = await getTranslations();
 
   function buildHref(next: {
-    type?: ItemType;
+    // `ALL_TYPES_PARAM` ("todos") es el centinela explícito de «todos los tipos»
+    // (issue #313): distinto de omitir `type`, que la página interpreta como
+    // arranque por defecto (posible tipo preferido del onboarding).
+    type?: ItemType | typeof ALL_TYPES_PARAM;
     status?: MediaStatus;
     sort?: LibrarySort;
     genre?: string;
@@ -99,7 +103,10 @@ export async function LibraryFilters({
       {/* Búsqueda: píldora con la lupa dentro y SIN botón aparte (Enter envía) —
           ocupa una fila menos. */}
       <form action={basePath} className="relative">
-        {itemType && <input type="hidden" name="type" value={itemType} />}
+        {/* Buscar conserva el ámbito de tipo actual: el tipo concreto, o el
+            centinela `todos` cuando la vista es «todos los tipos» — si no,
+            buscar desde «Todo» revertiría al tipo preferido (issue #313). */}
+        <input type="hidden" name="type" value={itemType ?? ALL_TYPES_PARAM} />
         {status && <input type="hidden" name="status" value={status} />}
         {sort !== "recent" && <input type="hidden" name="sort" value={sort} />}
         {genre && <input type="hidden" name="genero" value={genre} />}
@@ -131,7 +138,10 @@ export async function LibraryFilters({
               {t("collection.filterType")}
             </span>
             <div className="flex flex-wrap gap-1.5">
-              <Link href={buildHref({ type: undefined })} className={pillClass(!itemType)}>
+              {/* «Todos los tipos» emite el centinela `type=todos`, no la
+                  ausencia de `type`: solo así escapa del tipo preferido del
+                  onboarding en la pestaña Todo (issue #313). */}
+              <Link href={buildHref({ type: ALL_TYPES_PARAM })} className={pillClass(!itemType)}>
                 {t("library.filters.allTypes")}
               </Link>
               {TYPES.map((type) => (
