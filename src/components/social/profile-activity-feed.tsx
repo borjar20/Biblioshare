@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { FeedEntry } from "@/lib/social/feed";
 import { loadMoreProfileFeed } from "@/lib/social/feed-actions";
-import { FeedCard } from "./feed-card";
+import { FeedItem } from "./feed-item";
 
 // Agrupa por día natural. La clave es la parte de fecha (los eventos "added"
 // traen timestamp completo; los demás, date), para no partir un mismo día por
@@ -14,9 +14,11 @@ function dayKey(eventDate: string): string {
 }
 
 // La Actividad del perfil (plan 05, P4/P5): el mismo feed que ve un visitante,
-// agrupado por día. Todos los eventos son del dueño del perfil, así que las
-// tarjetas ocultan el actor (`hideActor`) y el contexto lo da la cabecera del
-// día. La paginación arrastra el actor, no tus seguidos.
+// agrupado por día — cada tarjeta se despacha con FeedItem, igual que el feed
+// general. Todos los eventos son del dueño del perfil; la cabecera del día ya
+// da ese contexto (las tarjetas siguen pintando su propio actor: ninguna de
+// las tres variantes por verbo soporta ocultarlo). La paginación arrastra el
+// actor, no tus seguidos.
 export function ProfileActivityFeed({
   actorId,
   initialEvents,
@@ -78,18 +80,18 @@ export function ProfileActivityFeed({
           >
             {labelFor(group.key)}
           </h5>
-          {group.entries.map((entry) =>
+          {group.entries.map((entry) => (
             // El feed de actor no trae eventos de club (getFeed los apaga),
-            // pero el tipo es la unión: se descarta cualquier no-persona.
-            entry.source === "person" ? (
-              <FeedCard
-                key={entry.id}
-                event={entry.event}
-                viewerLoggedIn={viewerLoggedIn}
-                hideActor
-              />
-            ) : null,
-          )}
+            // pero puede traer "person-group" (altas/avances agrupados del
+            // propio dueño) además de "person" sueltos — FeedItem despacha
+            // por verbo y cubre ambos, a diferencia del FeedCard viejo que
+            // solo sabía pintar "person" (los grupos quedaban invisibles
+            // aquí). Sin `hideActor`: ni Colección ni Avances lo soportan
+            // (siempre pintan su propio actor), así que esta vista ya no
+            // oculta el avatar del dueño — el encabezado del día basta para
+            // dar contexto de todos modos.
+            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} />
+          ))}
         </div>
       ))}
       {cursor && (

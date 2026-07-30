@@ -8,14 +8,12 @@ import { loadMoreFeed } from "@/lib/social/feed-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { UsersIcon } from "@/components/ui/icons";
-import { FeedCard } from "./feed-card";
-import { ClubFeedCard } from "./club-feed-card";
-import { FeedGroupCard } from "./feed-group-card";
+import { FeedItem } from "./feed-item";
 
 // Lista del feed con paginación "Cargar más" (EPIC-05, Bloque C). Los eventos
 // de la primera página llegan siempre frescos vía `initialEvents` (Next.js
 // refresca el árbol de Server Components de la ruta actual tras cualquier
-// Server Action, incluida una reacción/comentario dentro de un FeedCard) — el
+// Server Action, incluida una reacción/comentario dentro de una tarjeta) — el
 // estado cliente solo acumula los eventos cargados con "Cargar más"
 // (`extraEvents`), nunca los iniciales, para que interactuar con un evento de
 // la primera página se refleje sin recargar. `itemType`/`reviewsOnly` viven
@@ -76,15 +74,9 @@ export function FeedList({
 
   return (
     <div className="flex flex-col gap-3">
-      {events.map((entry) =>
-        entry.source === "club" ? (
-          <ClubFeedCard key={entry.id} event={entry.event} />
-        ) : entry.source === "person-group" ? (
-          <FeedGroupCard key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} />
-        ) : (
-          <FeedCard key={entry.id} event={entry.event} viewerLoggedIn={viewerLoggedIn} />
-        ),
-      )}
+      {events.map((entry) => (
+        <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} />
+      ))}
       {cursor && (
         <button
           type="button"
