@@ -23,12 +23,19 @@ defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos
 `list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
 `anon`; `target_kind` ampliado con `pass`/`progress_session` para el feed agrupado de Inicio
 (§5), aplicado y verificado en dev y en prod el 2026-07-29 (migraciones
-`20260812_feed_targets_enum.sql` y `20260813_feed_targets_can_view.sql`)]**
+`20260812_feed_targets_enum.sql` y `20260813_feed_targets_can_view.sql`); **lectura pública
+de `notes` para el feed de tarjetas por tipo (§3) — corregido aquí, 2026-07-30**: la política
+aditiva `"public notes select"` (`is_public = true and public.can_view_profile(user_id)`,
+migración `20260814_notes_public_select.sql`) está aplicada y verificada **SOLO EN DEV**;
+prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
 > **2026-07-29** (delta de `target_kind`/`can_view_target` del feed agrupado de Inicio;
 > el resto del esquema sigue verificado el 2026-07-21): 42 tablas, todas con RLS activa.
+> **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
+> select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
+> pendiente del merge de `feat/feed-tarjetas-por-tipo`.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -164,9 +171,17 @@ Cuelgan del pase:
   notes(id) on delete set null` (cita → nota hija; borrar la cita padre no arrastra la
   hija). Índices: `idx_notes_user` (`user_id, created_at desc`, preexistente),
   `idx_notes_item` (`user_id, item_type, item_id`, para la lista de la ficha) e
-  `idx_notes_parent` (parcial, `where parent_note_id is not null`). **RLS: solo
-  dueño (4 políticas). `is_public` se escribe pero no hay política de lectura pública** —
-  ver `decisiones.md`.
+  `idx_notes_parent` (parcial, `where parent_note_id is not null`). **RLS: dueño (4
+  políticas) + lectura pública desde el 2026-07-30** — política aditiva `"public
+  notes select"` (`is_public = true and public.can_view_profile(user_id)`, migración
+  `20260814_notes_public_select.sql`, **solo en dev**, prod pendiente del merge de
+  `feat/feed-tarjetas-por-tipo`): un visitante que puede ver el perfil del autor lee
+  sus notas PÚBLICAS; la nota privada sigue oculta a todos menos su dueño. El feed de
+  tarjetas por tipo (`getFeed`, tarjeta de avance/`progressed`) se apoya en esta
+  política para servir `notes.body` (spoiler-aware) junto a `progress_sessions.position`
+  (la página) y un `percent` derivado (`position / books.total_pages`) — el `note` legacy
+  de `progress_sessions` (ver arriba) **nunca** se sirve, solo `notes.body` pública. Ver
+  `decisiones.md`.
 
 **Las series no tienen `progress_sessions`**: se miden en episodios. Cualquier orden por
 "última sesión" las manda al final si no se contempla.
