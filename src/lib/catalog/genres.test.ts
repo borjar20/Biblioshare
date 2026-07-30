@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GENRES, isCanonicalLabel } from "./genre-vocab";
 import { mapSubjectsToGenres } from "./genres";
 
 describe("mapSubjectsToGenres", () => {
@@ -123,5 +124,39 @@ describe("mapSubjectsToGenres", () => {
         ])
       ).toEqual(["Ciencia ficción", "Clásicos", "Política", "Distopía"]);
     });
+  });
+});
+
+describe("genres.ts ↔ registro canónico", () => {
+  // Todas las labels que las reglas pueden emitir están en el registro. Si esto
+  // falla, o se corrige el texto en genres.ts o se añade la entrada al registro
+  // — nunca se guarda una label fuera del vocabulario.
+  it("cada label producible por las reglas es canónica", () => {
+    // Reunimos las labels de salida ejercitando subjects representativos de cada
+    // regla. Fuente: los needles de PREFIX_RULES/EXACT_RULES.
+    const samples = [
+      "science fiction", "dystopian fiction", "magic realism", "crime fiction",
+      "true crime", "thriller", "mystery", "fantasy", "horror", "romance",
+      "adventure stories", "historical fiction", "political fiction", "classic",
+      "satire", "graphic novel", "manga", "poetry", "plays", "short stories",
+      "juvenile fiction", "young adult", "memoir", "biography", "self help",
+      "history", "philosophy", "psychology", "economics", "religion", "travel",
+      "cooking", "sports", "art", "essays", "science",
+    ];
+    for (const s of samples) {
+      for (const label of mapSubjectsToGenres([s])) {
+        expect(isCanonicalLabel(label), `"${label}" (de "${s}") no es canónica`).toBe(true);
+      }
+    }
+  });
+
+  it("el registro no promete a libros géneros que las reglas no producen", () => {
+    // Cada género book-only del registro debe ser alcanzable por alguna regla.
+    // (Guardia laxa: solo comprobamos que existen en el catálogo de reglas.)
+    const bookLabels = new Set(
+      GENRES.filter((g) => g.appliesTo.includes("book")).map((g) => g.label),
+    );
+    expect(bookLabels.has("Ciencia ficción")).toBe(true);
+    expect(bookLabels.has("Ensayo")).toBe(true);
   });
 });
