@@ -88,6 +88,16 @@ reset role;
 
 select pg_temp.expect_sqlstate($$insert into public.comments (target_type, target_id, interaction_target_id, author_id, body) values ('club_post', '00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-0000000001b2', 'Bad target')$$, '23503', 'comment rejects unknown target UUID');
 select pg_temp.expect_sqlstate($$insert into public.reactions (target_type, target_id, interaction_target_id, user_id, kind) values ('club_post', '00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-0000000001b2', 'like')$$, '23503', 'reaction rejects unknown target UUID');
+update public.reactions
+set interaction_target_id = '00000000-0000-4000-8000-000000000999'
+where id = '00000000-0000-4000-8000-000000000109';
+select pg_temp.assert_true(
+  (select r.interaction_target_id = t.id
+   from public.reactions r
+   join public.interaction_targets t on t.kind = 'club_post' and t.source_id = '00000000-0000-4000-8000-000000000105'
+   where r.id = '00000000-0000-4000-8000-000000000109'),
+  'updating only canonical id is overwritten from legacy target pair'
+);
 
 delete from public.club_posts where id = '00000000-0000-4000-8000-000000000105';
 select pg_temp.assert_true(not exists (select 1 from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'), 'deleting post deletes its target');

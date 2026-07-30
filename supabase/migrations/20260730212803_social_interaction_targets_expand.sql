@@ -232,9 +232,20 @@ begin
 end;
 $function$;
 
-create trigger trg_comments_resolve_interaction_target before insert or update of target_type, target_id on public.comments for each row execute function private.resolve_comment_interaction_target();
-create trigger trg_reactions_resolve_interaction_target before insert or update of target_type, target_id on public.reactions for each row execute function private.resolve_reaction_interaction_target();
-create trigger trg_notifications_resolve_interaction_target before insert or update of target_type, target_id on public.notifications for each row execute function private.resolve_notification_interaction_target();
+revoke execute on function private.sync_pass_interaction_targets() from public, anon, authenticated;
+revoke execute on function private.sync_episode_watch_interaction_target() from public, anon, authenticated;
+revoke execute on function private.sync_progress_session_interaction_target() from public, anon, authenticated;
+revoke execute on function private.sync_club_post_interaction_target() from public, anon, authenticated;
+revoke execute on function private.sync_club_activity_interaction_target() from public, anon, authenticated;
+revoke execute on function private.sync_checkpoint_interaction_target() from public, anon, authenticated;
+revoke execute on function private.sync_comment_interaction_target() from public, anon, authenticated;
+revoke execute on function private.resolve_comment_interaction_target() from public, anon, authenticated;
+revoke execute on function private.resolve_reaction_interaction_target() from public, anon, authenticated;
+revoke execute on function private.resolve_notification_interaction_target() from public, anon, authenticated;
+
+create trigger trg_comments_resolve_interaction_target before insert or update of target_type, target_id, interaction_target_id on public.comments for each row execute function private.resolve_comment_interaction_target();
+create trigger trg_reactions_resolve_interaction_target before insert or update of target_type, target_id, interaction_target_id on public.reactions for each row execute function private.resolve_reaction_interaction_target();
+create trigger trg_notifications_resolve_interaction_target before insert or update of target_type, target_id, interaction_target_id on public.notifications for each row execute function private.resolve_notification_interaction_target();
 
 create trigger trg_passes_sync_interaction_targets after insert or update of user_id, item_type, item_id on public.passes for each row execute function private.sync_pass_interaction_targets();
 create trigger trg_episode_watches_sync_interaction_target after insert or update of user_id, series_id on public.episode_watches for each row execute function private.sync_episode_watch_interaction_target();
@@ -290,6 +301,8 @@ language sql stable security definer set search_path = '' as $function$
   );
 $function$;
 revoke execute on function private.can_view_interaction_target(uuid) from public;
+-- Required only because the public SECURITY INVOKER wrapper below executes
+-- this non-exposed RLS helper on behalf of anon/authenticated readers.
 grant execute on function private.can_view_interaction_target(uuid) to anon, authenticated;
 create or replace function public.can_view_interaction_target(p_interaction_target_id uuid)
 returns boolean

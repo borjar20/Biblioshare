@@ -16,6 +16,8 @@ language sql stable security definer set search_path = '' as $function$
   );
 $function$;
 revoke execute on function private.can_view_interaction_target(uuid) from public;
+-- Required by the public SECURITY INVOKER wrapper; private is not exposed by
+-- the Data API and no client-facing RPC is granted here.
 grant execute on function private.can_view_interaction_target(uuid) to anon, authenticated;
 
 create or replace function public.can_view_interaction_target(p_interaction_target_id uuid)
