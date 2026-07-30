@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { PollIcon, ListCheckIcon } from "@/components/ui/icons";
+import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 
 type Mode = "closed" | "text" | "pick_activity" | "share_activity" | "poll";
 
@@ -31,6 +32,19 @@ export function ClubPostComposer({
   const [pollEndsAt, setPollEndsAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Ambos hooks se llaman siempre (no tras los `if (mode === ...) return`
+  // de más abajo) para respetar las reglas de hooks; solo se usa uno según
+  // el modo activo, pero declararlos condicionalmente rompería el orden.
+  const textMention = useMentionAutocomplete({
+    value: text,
+    onChange: setText,
+    scope: { scope: "club", clubId },
+  });
+  const captionMention = useMentionAutocomplete({
+    value: shareCaption,
+    onChange: setShareCaption,
+    scope: { scope: "club", clubId },
+  });
 
   function reset() {
     setMode("closed");
@@ -120,13 +134,18 @@ export function ClubPostComposer({
   if (mode === "text") {
     return (
       <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t("composerPlaceholderText")}
-          rows={3}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
+        <div className="relative">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onInput={textMention.onInput}
+            onKeyDown={textMention.onKeyDown}
+            placeholder={t("composerPlaceholderText")}
+            rows={3}
+            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          {textMention.dropdown}
+        </div>
         {error && <p className="text-xs text-status-dropped">{error}</p>}
         <div className="flex gap-2">
           <Button type="button" disabled={isPending || !text.trim()} onClick={submitText}>
@@ -156,13 +175,18 @@ export function ClubPostComposer({
     return (
       <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
         <span className="text-sm text-foreground">{pickedActivity?.itemTitle}</span>
-        <textarea
-          value={shareCaption}
-          onChange={(e) => setShareCaption(e.target.value)}
-          placeholder={t("captionPlaceholder")}
-          rows={2}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
+        <div className="relative">
+          <textarea
+            value={shareCaption}
+            onChange={(e) => setShareCaption(e.target.value)}
+            onInput={captionMention.onInput}
+            onKeyDown={captionMention.onKeyDown}
+            placeholder={t("captionPlaceholder")}
+            rows={2}
+            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          {captionMention.dropdown}
+        </div>
         {error && <p className="text-xs text-status-dropped">{error}</p>}
         <div className="flex gap-2">
           <Button type="button" disabled={isPending || !shareCaption.trim()} onClick={submitShare}>
