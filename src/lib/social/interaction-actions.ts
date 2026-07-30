@@ -191,14 +191,18 @@ export async function addComment(
       });
     }
   } else if (targetType === "diary_entry" || targetType === "episode_watch") {
-    const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
-    if (ownerId) {
-      mentioned = await notifyMentions(supabase, {
-        authorId: user.id,
-        text: trimmed,
-        target: { type: "comment", id: inserted.id },
-        gate: { kind: "profile", ownerId },
-      });
+    try {
+      const ownerId = await resolveTargetOwner(supabase, targetType, targetId);
+      if (ownerId) {
+        mentioned = await notifyMentions(supabase, {
+          authorId: user.id,
+          text: trimmed,
+          target: { type: "comment", id: inserted.id },
+          gate: { kind: "profile", ownerId },
+        });
+      }
+    } catch (error) {
+      console.error(error);
     }
   }
 
