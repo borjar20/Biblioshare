@@ -5,7 +5,8 @@ import { test, expect } from "@playwright/test";
 // Cubre las tres piezas de la feature:
 //   1. Tarjeta de grupo: un seguido que dio de alta ≥2 obras el MISMO día se pinta
 //      como UNA tarjeta ("añadió N títulos") con N ítems, no N tarjetas sueltas
-//      (src/lib/social/group-feed-entries.ts → src/components/social/feed-group-card.tsx).
+//      (src/lib/social/group-feed-entries.ts → src/components/social/collection-card.tsx,
+//       despachada por src/components/social/feed-item.tsx tras el rediseño de tarjetas por tipo).
 //   2. Alta rápida "＋": pulsar "Añadir" en un ítem del feed lo mete en la cola del
 //      visitante; el botón vira a "En tu biblioteca" y la BD gana el pase planned
 //      (src/components/library/quick-add-button.tsx → quick-add-actions.ts).
