@@ -11,6 +11,11 @@ const STATUS_ORDER: MediaStatus[] = [
   "dropped",
 ];
 
+// Las películas se registran de un gesto: o están pendientes o vistas — no hay
+// "en curso" ni "abandonado" (una peli se ve de una sentada, ver §7.14 y la
+// decisión de forma en docs/requirements/decisiones.md). Solo dos pastillas.
+const MOVIE_STATUS_ORDER: MediaStatus[] = ["planned", "completed"];
+
 const STATUS_DOT_CLASSES: Record<MediaStatus, string> = {
   planned: "bg-status-planned",
   in_progress: "bg-status-in-progress",
@@ -46,13 +51,23 @@ export function StatusSegments({
   const tLibrary = useTranslations("library");
   const tSegments = useTranslations("detail.statusSegments");
 
+  // Películas: dos pastillas. Si un pase heredado quedó "en curso"/"abandonado"
+  // (posible antes de este cambio), añadimos su pastilla al final para no dejar
+  // el control sin selección — al mover a Pendiente/Vista vuelve a las dos.
+  const order =
+    itemType === "movie"
+      ? MOVIE_STATUS_ORDER.includes(status)
+        ? MOVIE_STATUS_ORDER
+        : [...MOVIE_STATUS_ORDER, status]
+      : STATUS_ORDER;
+
   return (
     <div
       role="group"
       aria-label={tSegments("groupLabel")}
       className="flex gap-1.5 rounded-[10px] bg-surface-muted p-1"
     >
-      {STATUS_ORDER.map((option) => {
+      {order.map((option) => {
         const isActive = option === status;
         const verbKey = VERB_KEY[option];
         const label = verbKey

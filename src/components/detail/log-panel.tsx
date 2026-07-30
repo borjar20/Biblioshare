@@ -237,6 +237,22 @@ function ManagedLog({
       setNewPassOpen(true);
       return;
     }
+    // Películas: un revisionado es otro pase "vista" directo, sin pasar por "en
+    // curso" (ese estado no existe para pelis, ver StatusSegments). Se archiva
+    // el anterior y se crea uno nuevo que se cierra en el acto como vista;
+    // encadenamos la hoja de cierre para puntuarlo, igual que marcar "Vista".
+    if (itemType === "movie") {
+      setStatus("completed");
+      startTransition(async () => {
+        await updateStatus(itemType, itemId, "in_progress", "restart");
+        const outcome = await updateStatus(itemType, itemId, "completed");
+        router.refresh();
+        if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+          setClosingPassId(outcome.passId);
+        }
+      });
+      return;
+    }
     setStatus("in_progress");
     startTransition(async () => {
       await updateStatus(itemType, itemId, "in_progress", "restart");

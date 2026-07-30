@@ -14,6 +14,9 @@ const STATUSES: MediaStatus[] = [
   "completed",
   "dropped",
 ];
+// Las películas solo tienen dos estados (pendiente/vista, ver StatusSegments):
+// al filtrar por tipo "movie" no ofrecemos "en curso" ni "abandonado".
+const MOVIE_STATUSES: MediaStatus[] = ["planned", "completed"];
 const SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 // Píldora de tipo (prominente): la elección más "de un vistazo".
@@ -165,9 +168,17 @@ export async function LibraryFilters({
             <Link href={buildHref({ status: undefined })} className={segClass(!status)}>
               {t("library.filters.allStatuses")}
             </Link>
-            {STATUSES.map((s) => (
+            {(itemType === "movie" ? MOVIE_STATUSES : STATUSES).map((s) => (
               <Link key={s} href={buildHref({ status: s })} className={segClass(status === s)}>
-                {t(`library.status.${s}`)}
+                {/* El verbo "completado" cambia por medio: en película es
+                    "Vista", igual que el control de Registro (StatusSegments) y
+                    el badge del hero. El filtro genérico usa library.status.*
+                    para el resto; solo "completed" de película se traduce con
+                    la clave por-medio para no decir "Completado" donde toda la
+                    UI de pelis dice "Vista". */}
+                {itemType === "movie" && s === "completed"
+                  ? t("detail.statusSegments.completed.movie")
+                  : t(`library.status.${s}`)}
               </Link>
             ))}
           </div>
