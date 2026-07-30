@@ -58,9 +58,17 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     // Los de progressed se parten en sub-grupos cuya distancia entre sesiones
     // consecutivas no supere PROGRESS_WINDOW_DAYS; added es un único sub-grupo.
     const isProgressed = key.startsWith("progressed:");
-    const sorted = [...items].sort((a, b) =>
-      a.eventDate < b.eventDate ? 1 : a.eventDate > b.eventDate ? -1 : a.id < b.id ? 1 : -1,
-    );
+    // eventDate desc; empate (mismo día en sesiones backdateadas) → sortDate
+    // (created_at, hora real de registro) desc; último recurso el id. Sin el
+    // paso por sortDate, N sesiones del mismo día caían al id (uuid aleatorio)
+    // y salían desordenadas en la tarjeta.
+    const sorted = [...items].sort((a, b) => {
+      if (a.eventDate !== b.eventDate) return a.eventDate < b.eventDate ? 1 : -1;
+      const sa = a.sortDate ?? a.eventDate;
+      const sb = b.sortDate ?? b.eventDate;
+      if (sa !== sb) return sa < sb ? 1 : -1;
+      return a.id < b.id ? 1 : -1;
+    });
     const chunks: FeedEvent[][] = [];
     for (const ev of sorted) {
       const last = chunks[chunks.length - 1];

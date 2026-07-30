@@ -60,6 +60,25 @@ describe("groupPersonEntries", () => {
     expect(out.filter((e) => e.source === "person")).toHaveLength(1);
   });
 
+  it("ordena las sesiones del mismo día por sortDate (created_at) desc, no por id", () => {
+    // Sesiones backdateadas al mismo día: eventDate empata (date-only). El
+    // desempate debe ser la hora real de registro (sortDate=created_at), no el
+    // uuid del id — que es aleatorio. Ids en orden inverso a created_at para
+    // que un desempate por id daría el orden equivocado.
+    const entries = [
+      person(ev({ id: "progress_sessions:zzz", verb: "progressed", actorId: "x", eventDate: "2026-07-28", itemId: "b1", sortDate: "2026-07-28T08:00:00+00:00", progress: { durationMinutes: null, page: 121, percent: 33, note: null } })),
+      person(ev({ id: "progress_sessions:mmm", verb: "progressed", actorId: "x", eventDate: "2026-07-28", itemId: "b1", sortDate: "2026-07-28T12:00:00+00:00", progress: { durationMinutes: null, page: 144, percent: 39, note: null } })),
+      person(ev({ id: "progress_sessions:aaa", verb: "progressed", actorId: "x", eventDate: "2026-07-28", itemId: "b1", sortDate: "2026-07-28T20:00:00+00:00", progress: { durationMinutes: null, page: 210, percent: 56, note: null } })),
+    ];
+    const out = groupPersonEntries(entries);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("person-group");
+    if (out[0].source === "person-group") {
+      // created_at desc: 20h (210) → 12h (144) → 08h (121)
+      expect(out[0].items.map((i) => i.progress?.page)).toEqual([210, 144, 121]);
+    }
+  });
+
   it("agrupa progressed de la misma obra dentro de 7 días", () => {
     const entries = [
       person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),

@@ -38,6 +38,13 @@ export type FeedEvent = {
   // Estado del pase; solo informa el verbo "added".
   entryStatus: MediaStatus | null;
   eventDate: string;
+  // Clave de orden fina, solo para desempatar dentro de un grupo. eventDate de
+  // progressed es date-only para sesiones backdateadas (ver
+  // sessionRelativeBasis), así que N sesiones del mismo día empatan y caían al
+  // desempate por id (uuid = aleatorio). sortDate lleva el created_at preciso
+  // para ordenarlas por hora real de registro. Opcional: solo progressed lo
+  // rellena; el resto cae a eventDate.
+  sortDate?: string;
   rating: number | null;
   reviewExcerpt: string | null;
   episode: { season: number; episode: number; title: string | null } | null;
@@ -519,6 +526,9 @@ export async function getFeed(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: sessionRelativeBasis(r.session_date, r.created_at),
+      // Hora real de registro: desempata sesiones backdateadas del mismo día
+      // dentro del grupo (ver comentario del campo en FeedEvent).
+      sortDate: r.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
