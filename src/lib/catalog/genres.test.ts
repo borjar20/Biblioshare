@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { GENRES, isCanonicalLabel } from "./genre-vocab";
+import { GENRES, isCanonicalLabel, genreDefForSlug, slugForLabel } from "./genre-vocab";
 import { mapSubjectsToGenres } from "./genres";
+
+// Subjects representativos de cada regla (needles de PREFIX_RULES/EXACT_RULES),
+// compartidos por los dos tests de invariante de abajo.
+const REPRESENTATIVE_SUBJECTS = [
+  "science fiction", "dystopian fiction", "magic realism", "crime fiction",
+  "true crime", "thriller", "mystery", "fantasy", "horror", "romance",
+  "adventure stories", "historical fiction", "political fiction", "classic",
+  "satire", "graphic novel", "manga", "poetry", "plays", "short stories",
+  "juvenile fiction", "young adult", "memoir", "biography", "self help",
+  "history", "philosophy", "psychology", "economics", "religion", "travel",
+  "cooking", "sports", "art", "essays", "science",
+];
 
 describe("mapSubjectsToGenres", () => {
   it("mapea subjects conocidos a géneros canónicos en español", () => {
@@ -134,18 +146,25 @@ describe("genres.ts ↔ registro canónico", () => {
   it("cada label producible por las reglas es canónica", () => {
     // Reunimos las labels de salida ejercitando subjects representativos de cada
     // regla. Fuente: los needles de PREFIX_RULES/EXACT_RULES.
-    const samples = [
-      "science fiction", "dystopian fiction", "magic realism", "crime fiction",
-      "true crime", "thriller", "mystery", "fantasy", "horror", "romance",
-      "adventure stories", "historical fiction", "political fiction", "classic",
-      "satire", "graphic novel", "manga", "poetry", "plays", "short stories",
-      "juvenile fiction", "young adult", "memoir", "biography", "self help",
-      "history", "philosophy", "psychology", "economics", "religion", "travel",
-      "cooking", "sports", "art", "essays", "science",
-    ];
-    for (const s of samples) {
+    for (const s of REPRESENTATIVE_SUBJECTS) {
       for (const label of mapSubjectsToGenres([s])) {
         expect(isCanonicalLabel(label), `"${label}" (de "${s}") no es canónica`).toBe(true);
+      }
+    }
+  });
+
+  // La página de género (/genero/[slug]) solo consulta `books` cuando
+  // appliesTo incluye "book" (get-catalog-by-genre.ts). Si el registro
+  // estrechara el appliesTo de un género que genres.ts SÍ puede emitir para un
+  // libro, ese libro dejaría de aparecer en su propia página de género sin
+  // ningún error visible — este test cierra ese hueco.
+  it("cada label producible por las reglas resuelve a un slug que aplica a libro", () => {
+    for (const s of REPRESENTATIVE_SUBJECTS) {
+      for (const label of mapSubjectsToGenres([s])) {
+        const slug = slugForLabel(label);
+        expect(slug, `"${label}" (de "${s}") no resuelve a slug`).not.toBeNull();
+        const def = genreDefForSlug(slug!);
+        expect(def?.appliesTo.includes("book"), `"${label}" (slug "${slug}") no aplica a libro`).toBe(true);
       }
     }
   });

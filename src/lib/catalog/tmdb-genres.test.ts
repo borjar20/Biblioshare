@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveGenresFromIds, resolveGenresFromEsLabels } from "./tmdb-genres";
-import { isCanonicalLabel } from "./genre-vocab";
+import { resolveGenresFromIds, resolveGenresFromEsLabels, TMDB_GENRE_TO_SLUGS } from "./tmdb-genres";
+import { isCanonicalLabel, genreDefForSlug } from "./genre-vocab";
 
 describe("tmdb-genres por id", () => {
   it("mapea ids simples a su label canónica", () => {
@@ -49,5 +49,29 @@ describe("tmdb-genres por label es-ES (backfill)", () => {
 
   it("descarta labels de ruido y desconocidas", () => {
     expect(resolveGenresFromEsLabels(["Película de TV", "Kids", "Xyz"])).toEqual([]);
+  });
+});
+
+describe("invariante TMDB_GENRE_TO_SLUGS ↔ appliesTo", () => {
+  // La página de género (/genero/[slug]) solo consulta movies/series cuando
+  // appliesTo incluye ese tipo (get-catalog-by-genre.ts). Si un id de TMDB
+  // mapeara a un slug cuyo appliesTo NO cubre "movie" y "series", esa obra
+  // dejaría de aparecer en su propia página de género sin ningún error
+  // visible. Este test asegura que todo slug alcanzable desde TMDB soporta
+  // ambos tipos audiovisuales.
+  const allSlugs = Object.values(TMDB_GENRE_TO_SLUGS).flat();
+
+  it("todo slug de TMDB_GENRE_TO_SLUGS existe en el registro", () => {
+    for (const slug of allSlugs) {
+      expect(genreDefForSlug(slug), `slug "${slug}" no está en GENRES`).not.toBeNull();
+    }
+  });
+
+  it("todo slug de TMDB_GENRE_TO_SLUGS aplica a movie Y a series", () => {
+    for (const slug of allSlugs) {
+      const def = genreDefForSlug(slug);
+      expect(def?.appliesTo.includes("movie"), `"${slug}" no aplica a movie`).toBe(true);
+      expect(def?.appliesTo.includes("series"), `"${slug}" no aplica a series`).toBe(true);
+    }
   });
 });
