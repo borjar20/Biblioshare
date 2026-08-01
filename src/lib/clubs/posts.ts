@@ -117,6 +117,32 @@ async function notifyNewPost(
   }
 }
 
+async function notifyPostMentions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  authorId: string,
+  text: string,
+  postId: string,
+): Promise<string[]> {
+  try {
+    const { data: target, error } = await supabase
+      .from("interaction_targets")
+      .select("id")
+      .eq("kind", "club_post")
+      .eq("source_id", postId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!target) return [];
+    return await notifyMentions(supabase, {
+      authorId,
+      text,
+      interactionTargetId: target.id,
+    });
+  } catch (error) {
+    console.error("notifyPostMentions failed", error);
+    return [];
+  }
+}
+
 export async function createTextPost(clubId: string, body: string): Promise<void> {
   const { supabase, userId } = await requireUser();
   const trimmed = body.trim();
@@ -130,12 +156,7 @@ export async function createTextPost(clubId: string, body: string): Promise<void
     .single();
   if (error) throw error;
 
-  const mentioned = await notifyMentions(supabase, {
-    authorId: userId,
-    text: trimmed,
-    target: { type: "club_post", id: post.id },
-    gate: { kind: "club", clubId },
-  });
+  const mentioned = await notifyPostMentions(supabase, userId, trimmed, post.id);
   await notifyNewPost(supabase, clubId, userId, post.id, mentioned);
   revalidateClubPages();
 }
@@ -165,12 +186,7 @@ export async function createShareActivityPost(
     .single();
   if (error) throw error;
 
-  const mentioned = await notifyMentions(supabase, {
-    authorId: userId,
-    text: trimmed,
-    target: { type: "club_post", id: post.id },
-    gate: { kind: "club", clubId },
-  });
+  const mentioned = await notifyPostMentions(supabase, userId, trimmed, post.id);
   await notifyNewPost(supabase, clubId, userId, post.id, mentioned);
   revalidateClubPages();
 }
