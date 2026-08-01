@@ -58,7 +58,7 @@ Spec: `docs/superpowers/specs/2026-08-01-feed-ocultar-anadir-items-existentes-de
 - Produce: `FeedEvent.viewerHasActivePass?: boolean`, inicialmente sin poblar hasta Task 2.
 - `CollectionCard` usa exactamente el array devuelto para el recuento y para los argumentos de `quickAddManyToLibrary`.
 
-- [ ] **Step 1: Analizar el impacto antes de editar**
+- [x] **Step 1: Analizar el impacto antes de editar**
 
 Ejecutar:
 
@@ -68,7 +68,7 @@ node .gitnexus/run.cjs impact CollectionCard --direction upstream
 
 Revisar dependientes directos y procesos afectados. Riesgo esperado: LOW, limitado al despacho `FeedItem` y al render del feed.
 
-- [ ] **Step 2: Escribir el test unitario que falla**
+- [x] **Step 2: Escribir el test unitario que falla**
 
 Crear `src/components/social/collection-card-items.test.ts`:
 
@@ -94,7 +94,7 @@ describe("itemsMissingFromLibrary", () => {
 
 Mutación que debe detectar: quitar el filtro o invertir la condición volvería a incluir `owned`.
 
-- [ ] **Step 3: Ejecutar y observar RED**
+- [x] **Step 3: Ejecutar y observar RED**
 
 Run:
 
@@ -104,7 +104,7 @@ npm test -- src/components/social/collection-card-items.test.ts
 
 Expected: FAIL porque `./collection-card-items` todavía no existe.
 
-- [ ] **Step 4: Implementar el helper mínimo**
+- [x] **Step 4: Implementar el helper mínimo**
 
 Crear `src/components/social/collection-card-items.ts`:
 
@@ -116,7 +116,7 @@ export function itemsMissingFromLibrary<
 }
 ```
 
-- [ ] **Step 5: Conectar `CollectionCard` al helper**
+- [x] **Step 5: Conectar `CollectionCard` al helper**
 
 En `FeedEvent` (`src/lib/social/feed.ts`) declarar primero la marca que consume la tarjeta:
 
@@ -165,7 +165,7 @@ Cambiar el pie para que su guarda, recuento y payload compartan `missingItems`:
 )}
 ```
 
-- [ ] **Step 6: Verificar GREEN y tipos**
+- [x] **Step 6: Verificar GREEN y tipos**
 
 Run:
 
@@ -176,7 +176,7 @@ npx tsc --noEmit
 
 Expected: 1 test PASS y TypeScript exit 0. En este punto la UI sigue mostrando botones hasta que Task 2 suministre la marca del servidor.
 
-- [ ] **Step 7: Commit acotado**
+- [x] **Step 7: Commit acotado**
 
 ```powershell
 git add src/components/social/collection-card-items.ts src/components/social/collection-card-items.test.ts src/components/social/collection-card.tsx src/lib/social/feed.ts
@@ -201,7 +201,7 @@ git commit -m "feat(feed): filtra acciones de coleccion disponibles"
 - `FeedEvent.viewerHasActivePass?: boolean` solo informa la presentación del visitante; no altera identidad, orden ni agrupación.
 - La query lee `passes(item_type,item_id)` con `user_id`, `is_active` e `item_id` filtrados.
 
-- [ ] **Step 1: Analizar el impacto antes de editar**
+- [x] **Step 1: Analizar el impacto antes de editar**
 
 Ejecutar individualmente:
 
@@ -213,7 +213,7 @@ node .gitnexus/run.cjs impact loadMoreProfileFeed --direction upstream
 
 Revisar primero los dependientes de profundidad 1. Riesgo esperado: MEDIUM por compartir `getFeed` entre Inicio, Actividad de perfil y ambas paginaciones; si GitNexus devuelve HIGH/CRITICAL, parar y avisar antes de editar.
 
-- [ ] **Step 2: Escribir el E2E que reproduce el fallo**
+- [x] **Step 2: Escribir el E2E que reproduce el fallo**
 
 En `e2e/feed-tarjetas-por-tipo.spec.ts`, añadir un UUID fijo:
 
@@ -277,7 +277,7 @@ await expect(missingRow.getByRole("button", { name: /^añadir$/i })).toHaveCount
 await expect(card.getByRole("button", { name: /guardar los 2/i })).toHaveCount(0);
 ```
 
-- [ ] **Step 3: Ejecutar y observar RED**
+- [x] **Step 3: Ejecutar y observar RED**
 
 Comprobar primero que no haya un servidor ajeno en 3000 y ejecutar:
 
@@ -287,7 +287,7 @@ npm run test:e2e -- feed-tarjetas-por-tipo --grep "un seguido con altas"
 
 Expected: FAIL porque la fila `owned` todavía muestra «Añadir». La limpieza del fixture debe terminar tanto al principio como en `finally`.
 
-- [ ] **Step 4: Hacer nullable el identificador del visitante**
+- [x] **Step 4: Hacer nullable el identificador del visitante**
 
 Cambiar la firma:
 
@@ -301,7 +301,7 @@ export async function getFeed(
 
 Las ramas que consultan `follows` o clubes deben exigir `viewerId !== null`. Un feed sin `actorId` y sin visitante devuelve la página vacía; un feed con `actorId` sigue leyendo la actividad pública.
 
-- [ ] **Step 5: Resolver los pases activos tras fijar la página**
+- [x] **Step 5: Resolver los pases activos tras fijar la página**
 
 Inmediatamente después de `const page = fresh.slice(0, pageSize);`, añadir:
 
@@ -340,7 +340,7 @@ for (const event of addedPageEvents) {
 
 La pareja tipo/id se conserva en el `Set`; el `.in()` solo acota UUIDs y nunca se llama con una lista vacía.
 
-- [ ] **Step 6: Corregir el visitante anónimo del perfil**
+- [x] **Step 6: Corregir el visitante anónimo del perfil**
 
 En `ActivityTab`:
 
@@ -359,7 +359,7 @@ return getFeed(supabase, user?.id ?? null, {
 
 Inicio y `loadMoreFeed` mantienen `user.id`, porque ambas rutas requieren sesión.
 
-- [ ] **Step 7: Verificar GREEN en unitario, E2E y tipos**
+- [x] **Step 7: Verificar GREEN en unitario, E2E y tipos**
 
 Run:
 
@@ -372,17 +372,17 @@ npx eslint src/lib/social/feed.ts src/lib/social/feed-actions.ts src/components/
 
 Expected: todas las pruebas PASS, TypeScript exit 0 y ESLint sin errores.
 
-- [ ] **Step 8: Verificación UI y cobertura duradera**
+- [x] **Step 8: Verificación UI y cobertura duradera**
 
 1. Ejecutar el agente `qa-verifier` sobre Inicio con el fixture del E2E, comprobando que la fila poseída carece de botón y la pendiente conserva uno; revisar consola/red.
 2. Ejecutar `test-author` después de QA para revisar que el unitario y el E2E protegen el comportamiento sin duplicar cobertura.
 3. Limpiar fixtures, servidor de desarrollo y cualquier worktree huérfano conforme a `docs/TESTING.md` y `AGENTS.md`.
 
-- [ ] **Step 9: Sincronización documental**
+- [x] **Step 9: Sincronización documental**
 
 Ejecutar `backlog-scribe` para auditar la definición de hecho. Resultado esperado: no cambia `data-model.md` (sin esquema), no cambia el estado de una feature en `backlog.md`, y la decisión queda documentada por la spec aprobada; solo editar documentos canónicos si el agente encuentra una afirmación que haya dejado de ser cierta.
 
-- [ ] **Step 10: Detectar alcance y crear el commit final**
+- [x] **Step 10: Detectar alcance y crear el commit final**
 
 Preparar solo los ficheros de esta tarea, preservando las ediciones concurrentes:
 
