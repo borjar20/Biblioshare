@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { filterUnblockedUserIds } from "./block-state";
 import { extractMentions } from "./mentions";
 import { notifyMany } from "./notifications";
@@ -77,7 +78,11 @@ export async function resolveDeliverableMentions(
   if (ownerError) throw ownerError;
   if (owner?.is_public) return unblockedIds;
 
-  const { data: followers, error: followersError } = await supabase
+  // La RLS de follows solo deja ver relaciones donde el actor es una de las
+  // partes. Esta lectura server-only se acota al owner y a los candidatos ya
+  // identificados y desbloqueados para no perder seguidores privados ajenos.
+  const followerReader = createServiceRoleClient();
+  const { data: followers, error: followersError } = await followerReader
     .from("follows")
     .select("follower_id")
     .eq("followee_id", target.audience_id)
@@ -95,13 +100,12 @@ export async function notifyMentions(
   try {
     const deliverables = await resolveDeliverableMentions(supabase, params);
     if (deliverables.length === 0) return [];
-    await notifyMany(supabase, {
+    return await notifyMany(supabase, {
       userIds: deliverables,
       actorId: params.authorId,
       type: "mentioned",
       interactionTargetId: params.interactionTargetId,
     });
-    return deliverables;
   } catch (error) {
     console.error("notifyMentions failed", error);
     return [];

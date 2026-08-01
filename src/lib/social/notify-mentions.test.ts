@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ notifyMany: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  notifyMany: vi.fn(),
+  createServiceRoleClient: vi.fn(),
+}));
 vi.mock("./notifications", () => ({ notifyMany: mocks.notifyMany }));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: mocks.createServiceRoleClient,
+}));
 
 import { notifyMentions, resolveDeliverableMentions } from "./notify-mentions";
 
@@ -84,7 +90,12 @@ function canonicalTarget(audienceKind: string, audienceId: string): Row {
   };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.notifyMany.mockImplementation(
+    async (_supabase: unknown, params: { userIds: string[] }) => params.userIds,
+  );
+});
 
 describe("resolveDeliverableMentions — bloqueos", () => {
   it("excluye bloqueos en cualquiera de las dos direcciones", async () => {
@@ -146,6 +157,14 @@ describe("resolveDeliverableMentions — perfil", () => {
         { follower_id: "pending", followee_id: "owner", status: "pending" },
       ],
     });
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({
+        follows: [
+          { follower_id: "accepted", followee_id: "owner", status: "accepted" },
+          { follower_id: "pending", followee_id: "owner", status: "pending" },
+        ],
+      }),
+    );
 
     const out = await resolveDeliverableMentions(supabase, {
       authorId: "author",
@@ -154,6 +173,34 @@ describe("resolveDeliverableMentions — perfil", () => {
     });
 
     expect(out).toEqual(["accepted"]);
+  });
+
+  it("usa service role para ver al otro seguidor aceptado de un owner privado", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "other-follower", username: "otra" }],
+      profiles: [{ user_id: "owner", is_public: false }],
+      follows: [
+        { follower_id: "author", followee_id: "owner", status: "accepted" },
+      ],
+    });
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({
+        follows: [
+          { follower_id: "author", followee_id: "owner", status: "accepted" },
+          { follower_id: "other-follower", followee_id: "owner", status: "accepted" },
+          { follower_id: "outsider", followee_id: "elsewhere", status: "accepted" },
+        ],
+      }),
+    );
+
+    const out = await resolveDeliverableMentions(supabase, {
+      authorId: "author",
+      text: "@otra",
+      interactionTargetId: "target-1",
+    });
+
+    expect(out).toEqual(["other-follower"]);
   });
 });
 
@@ -244,6 +291,23 @@ describe("notifyMentions", () => {
       type: "mentioned",
       interactionTargetId: "target-1",
     });
+  });
+
+  it("devuelve vacío si el insert no confirma destinatarios", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "owner", username: "duena" }],
+      profiles: [{ user_id: "owner", is_public: true }],
+    });
+    mocks.notifyMany.mockResolvedValue([]);
+
+    const notified = await notifyMentions(supabase, {
+      authorId: "author",
+      text: "hola @duena",
+      interactionTargetId: "target-1",
+    });
+
+    expect(notified).toEqual([]);
   });
 
   it("sale sin consultar si no hay menciones", async () => {

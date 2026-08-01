@@ -318,7 +318,7 @@ describe("escritura confiable de notificaciones", () => {
     const caller = makeFakeSupabase(callerTables);
     trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
 
-    await notifyMany(caller, {
+    const confirmed = await notifyMany(caller, {
       userIds: ["user-2", "user-3", "user-2", "actor-1"],
       actorId: "actor-1",
       type: "club_event_created",
@@ -326,6 +326,7 @@ describe("escritura confiable de notificaciones", () => {
       targetId: "event-1",
     });
 
+    expect(confirmed).toEqual(["user-2", "user-3"]);
     expect(callerTables.notifications).toHaveLength(0);
     expect(writerTables.notifications).toHaveLength(2);
     expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["user-2", "user-3"]);
@@ -333,6 +334,26 @@ describe("escritura confiable de notificaciones", () => {
       ["user-2", "user-3"],
       expect.objectContaining({ url: "/club/club-lectura" }),
     );
+  });
+
+  it("notifyMany no confirma destinatarios si falla el insert in-app", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    trustedWriter.create.mockReturnValue({
+      from: () => ({
+        insert: async () => ({ error: { message: "insert failed" } }),
+      }),
+    });
+
+    const confirmed = await notifyMany(caller, {
+      userIds: ["user-2", "user-3"],
+      actorId: "actor-1",
+      type: "club_event_created",
+      targetType: "club_event",
+      targetId: "event-1",
+    });
+
+    expect(confirmed).toEqual([]);
+    expect(sendPushToUsers).not.toHaveBeenCalled();
   });
 
   it("notify escribe el target canónico y usa su href para el push", async () => {

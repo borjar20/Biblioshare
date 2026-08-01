@@ -244,6 +244,21 @@ describe("addComment", () => {
     expect(mocks.notifyMentions).toHaveBeenCalledOnce();
     expect(mocks.notify).not.toHaveBeenCalled();
   });
+
+  it("mantiene el aviso normal al owner si la mención no llegó a insertarse", async () => {
+    const fake = makeActionClient({ target: passTarget, commentTarget });
+    mocks.createClient.mockResolvedValue(fake.client);
+    mocks.notifyMentions.mockResolvedValue([]);
+
+    await addComment("target-pass", "@owner gran reseña");
+
+    expect(mocks.notify).toHaveBeenCalledWith(fake.client, {
+      userId: "owner",
+      actorId: "actor",
+      type: "activity_commented",
+      interactionTargetId: "target-pass",
+    });
+  });
 });
 
 describe("deleteComment", () => {

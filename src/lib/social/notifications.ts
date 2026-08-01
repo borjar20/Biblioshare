@@ -144,16 +144,16 @@ export async function notifyMany(
     targetId?: string;
     interactionTargetId?: string;
   },
-): Promise<void> {
+): Promise<string[]> {
   const candidateIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
   let userIds: string[];
   try {
     userIds = await filterUnblockedUserIds(supabase, candidateIds);
   } catch (blockError) {
     console.error("notifyMany() block check failed", blockError);
-    return;
+    return [];
   }
-  if (userIds.length === 0) return;
+  if (userIds.length === 0) return [];
 
   const notificationWriter = createServiceRoleClient();
   const { error } = await notificationWriter.from("notifications").insert(
@@ -168,7 +168,7 @@ export async function notifyMany(
   );
   if (error) {
     console.error("notifyMany() failed", error);
-    return;
+    return [];
   }
 
   try {
@@ -177,6 +177,7 @@ export async function notifyMany(
   } catch (pushError) {
     console.error("notifyMany() push delivery failed", pushError);
   }
+  return userIds;
 }
 
 export async function getUnreadCount(
