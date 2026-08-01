@@ -20,9 +20,9 @@ import { test, expect } from "@playwright/test";
 //        badge "Finalizado", dots de valoración y el texto de la reseña.
 //
 // Convención de datos (docs/TESTING.md): siembra por REST con la service key,
-// limpia ANTES (dentro del try) y DESPUÉS (finally) con UUIDs fijos, y NO toca
-// la biblioteca real de devtest — aquí no se ejercita el alta rápida (eso lo
-// cubre inicio-feed-agrupado.spec.ts), así que devtest no gana ningún pase.
+// limpia ANTES (dentro del try) y DESPUÉS (finally) con UUIDs fijos. El caso
+// Colección siembra temporalmente un pase activo de devtest para comprobar la
+// pertenencia del visitante; cleanFixtures lo retira en ambos extremos.
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -43,6 +43,7 @@ const COL_PASSES = [
   "e2fc0a01-0000-4000-8000-000000000001",
   "e2fc0a02-0000-4000-8000-000000000002",
 ];
+const VIEWER_COL_PASS = "e2fc0a09-0000-4000-8000-000000000009";
 const PROG_BOOK = "e2fc0b03-0000-4000-8000-000000000003";
 const PROG_PASS = "e2fc0a03-0000-4000-8000-000000000003";
 const PROG_SESSIONS = [
@@ -59,7 +60,12 @@ const REV_BOOK = "e2fc0b04-0000-4000-8000-000000000004";
 const REV_PASS = "e2fc0a04-0000-4000-8000-000000000004";
 
 const ALL_BOOKS = [...COL_BOOKS, PROG_BOOK, REV_BOOK];
-const ALL_PASSES = [...COL_PASSES, PROG_PASS, REV_PASS];
+const ALL_PASSES = [
+  ...COL_PASSES,
+  VIEWER_COL_PASS,
+  PROG_PASS,
+  REV_PASS,
+];
 
 const COVER_URL = "https://covers.openlibrary.org/b/id/12627383-M.jpg";
 
@@ -175,6 +181,7 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     });
     followeeId = followee.id;
     await followFromDevtest(followee.id);
+    const viewerId = await devtestId();
 
     const now = new Date().toISOString();
     await rest("books", {
@@ -190,17 +197,26 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     });
     await rest("passes", {
       method: "POST",
-      body: JSON.stringify(
-        COL_PASSES.map((id, i) => ({
+      body: JSON.stringify([
+        ...COL_PASSES.map((id, index) => ({
           id,
           user_id: followee.id,
           item_type: "book",
-          item_id: COL_BOOKS[i],
+          item_id: COL_BOOKS[index],
           status: "planned",
           is_active: true,
           created_at: now,
         })),
-      ),
+        {
+          id: VIEWER_COL_PASS,
+          user_id: viewerId,
+          item_type: "book",
+          item_id: COL_BOOKS[0],
+          status: "planned",
+          is_active: true,
+          created_at: now,
+        },
+      ]),
     });
 
     await login(page);
@@ -218,7 +234,18 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     await expect(card.getByText(`[E2E] Colección 2 · ${ts}`)).toBeVisible();
     await expect(card.getByText("[E2E] Autor 1")).toBeVisible();
     await expect(card.getByText("[E2E] Autor 2")).toBeVisible();
-    await expect(card.getByRole("button", { name: /^añadir$/i })).toHaveCount(2);
+    const ownedRow = card
+      .getByRole("link", { name: `[E2E] Colección 1 · ${ts}` })
+      .first()
+      .locator("..");
+    const missingRow = card
+      .getByRole("link", { name: `[E2E] Colección 2 · ${ts}` })
+      .first()
+      .locator("..");
+
+    await expect(ownedRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(0);
+    await expect(missingRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(1);
+    await expect(card.getByRole("button", { name: /guardar los 2/i })).toHaveCount(0);
   } finally {
     await cleanFixtures();
     if (followeeId) {

@@ -178,7 +178,7 @@ function verbForReviewable(rating: number | null, review: string | null, floor: 
 
 export async function getFeed(
   supabase: SupabaseServerClient,
-  viewerId: string,
+  viewerId: string | null,
   options: FeedOptions = {},
 ): Promise<FeedPage> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
@@ -196,10 +196,13 @@ export async function getFeed(
   // Los eventos de club no son de un tipo de ítem, así que no sobreviven a
   // "Libros" ni a "Pantalla"; y no son reseñas. En el feed de un actor tampoco:
   // los clubes son del visitante, no de la persona del perfil.
-  const includeClubs = !isActorFeed && (filter === undefined || filter === "clubs");
+  const includeClubs =
+    viewerId !== null &&
+    !isActorFeed &&
+    (filter === undefined || filter === "clubs");
 
   const [followResult, clubResult] = await Promise.all([
-    includePeople && !isActorFeed
+    includePeople && !isActorFeed && viewerId !== null
       ? supabase
           .from("follows")
           .select("followee_id")
@@ -672,6 +675,37 @@ export async function getFeed(
   // en páginas anteriores — incluido el propio evento del cursor.
   const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
   const page = fresh.slice(0, pageSize);
+
+  const addedPageEvents = page.flatMap((entry) =>
+    entry.source === "person" && entry.event.verb === "added"
+      ? [entry.event]
+      : [],
+  );
+  const addedItemIds = [
+    ...new Set(addedPageEvents.map((event) => event.itemId)),
+  ];
+  const { data: viewerPasses, error: viewerPassesError } =
+    viewerId && addedItemIds.length > 0
+      ? await supabase
+          .from("passes")
+          .select("item_type, item_id")
+          .eq("user_id", viewerId)
+          .eq("is_active", true)
+          .in("item_id", addedItemIds)
+      : {
+          data: [] as { item_type: ItemType; item_id: string }[],
+          error: null,
+        };
+  if (viewerPassesError) throw viewerPassesError;
+
+  const viewerPassKeys = new Set(
+    (viewerPasses ?? []).map((pass) => `${pass.item_type}:${pass.item_id}`),
+  );
+  for (const event of addedPageEvents) {
+    event.viewerHasActivePass = viewerPassKeys.has(
+      `${event.itemType}:${event.itemId}`,
+    );
+  }
 
   // Interacciones de Bloque B, batch por tipo, solo para los eventos de esta
   // página que tienen target real. Las actividades de club no son un target de
