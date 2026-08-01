@@ -41,7 +41,7 @@ insert into public.clubs (id, slug, name, visibility, owner_id) values
   ('00000000-0000-4000-8000-000000000104', 'phase1-targets', 'Phase 1 targets', 'public', '00000000-0000-4000-8000-0000000001a1');
 insert into public.club_members (club_id, user_id, role, status) values
   ('00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-0000000001a1', 'owner', 'active'),
-  ('00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-0000000001b2', 'member', 'active');
+  ('00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-0000000001b2', 'moderator', 'active');
 insert into public.club_posts (id, club_id, author_id, kind, body) values
   ('00000000-0000-4000-8000-000000000105', '00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-0000000001a1', 'text', 'Phase 1 cleanup post');
 insert into public.club_activities (id, club_id, kind, title, created_by) values
@@ -49,7 +49,9 @@ insert into public.club_activities (id, club_id, kind, title, created_by) values
 insert into public.club_activity_participants (activity_id, user_id) values
   ('00000000-0000-4000-8000-000000000106', '00000000-0000-4000-8000-0000000001a1');
 insert into public.club_activity_checkpoints (id, activity_id, label, position, "order", created_by) values
-  ('00000000-0000-4000-8000-000000000107', '00000000-0000-4000-8000-000000000106', 'Checkpoint', '{}'::jsonb, 1, '00000000-0000-4000-8000-0000000001a1');
+  ('00000000-0000-4000-8000-000000000107', '00000000-0000-4000-8000-000000000106', 'Checkpoint', '{}'::jsonb, 1, '00000000-0000-4000-8000-0000000001b2');
+insert into public.club_activity_checkpoint_reads (checkpoint_id, user_id) values
+  ('00000000-0000-4000-8000-000000000107', '00000000-0000-4000-8000-0000000001a1');
 
 select pg_temp.assert_true(to_regclass('public.interaction_targets') is not null, 'interaction_targets exists');
 select pg_temp.assert_true(exists (select 1 from public.interaction_targets where kind = 'pass' and source_id = '00000000-0000-4000-8000-000000000102'), 'pass source gets canonical target');
@@ -59,6 +61,12 @@ select pg_temp.assert_true(
   and (select audience_kind = 'activity_participant' from public.interaction_targets where kind = 'club_activity' and source_id = '00000000-0000-4000-8000-000000000106')
   and (select audience_kind = 'checkpoint_reached' from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107'),
   'all four audience kinds are materialized'
+);
+select pg_temp.assert_true(
+  (select owner_id = '00000000-0000-4000-8000-0000000001b2'
+   from public.interaction_targets
+   where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107'),
+  'checkpoint target owner is the checkpoint creator, not the activity creator'
 );
 
 insert into public.comments (id, target_type, target_id, author_id, body) values
@@ -75,11 +83,30 @@ set local role authenticated;
 select pg_temp.assert_true(public.can_view_interaction_target((select id from public.interaction_targets where kind = 'pass' and source_id = '00000000-0000-4000-8000-000000000102')), 'public profile audience is visible');
 select pg_temp.assert_true(public.can_view_interaction_target((select id from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105')), 'club member audience is visible');
 select pg_temp.assert_true(not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'club_activity' and source_id = '00000000-0000-4000-8000-000000000106')), 'non-participant cannot view activity audience');
-select pg_temp.assert_true(not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107')), 'unreached checkpoint is hidden');
+select pg_temp.assert_true(not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107')), 'viewer who has not reached checkpoint cannot view it');
+reset role;
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001a1","role":"authenticated"}', true);
+set local role authenticated;
+select pg_temp.assert_true(public.can_view_interaction_target((select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107')), 'viewer who reached checkpoint can view it before blocking');
+reset role;
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001b2","role":"authenticated"}', true);
+set local role authenticated;
+insert into public.user_blocks (blocker_id, blocked_id) values ('00000000-0000-4000-8000-0000000001b2', '00000000-0000-4000-8000-0000000001a1');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001a1","role":"authenticated"}', true);
 set local role authenticated;
+select pg_temp.assert_true(not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107')), 'checkpoint owner blocking viewer hides checkpoint');
+reset role;
+delete from public.user_blocks
+where blocker_id = '00000000-0000-4000-8000-0000000001b2'
+  and blocked_id = '00000000-0000-4000-8000-0000000001a1';
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001a1","role":"authenticated"}', true);
+set local role authenticated;
 insert into public.user_blocks (blocker_id, blocked_id) values ('00000000-0000-4000-8000-0000000001a1', '00000000-0000-4000-8000-0000000001b2');
+select pg_temp.assert_true(not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107')), 'viewer blocking checkpoint owner hides checkpoint');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001b2","role":"authenticated"}', true);
 set local role authenticated;

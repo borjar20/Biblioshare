@@ -69,6 +69,14 @@ divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas 
 > públicas nuevas son `SECURITY INVOKER`. Advisors de seguridad: 66 antes y 66 después, sin
 > hallazgos nuevos. Producción sigue pendiente en
 > [#332](https://github.com/borjar20/Biblioshare/issues/332).
+> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado SOLO EN DEV.**
+> `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
+> `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
+> `activity_checkpoint` desde `club_activity_checkpoints.created_by`, repara el registro ya
+> materializado y añade el índice `interaction_targets_owner_id_idx`. La matriz transaccional
+> `supabase/tests/social_phase1_interaction_targets.sql` pasó completa y los advisors de seguridad
+> siguen en 66, sin findings nuevos. Producción y `schema-baseline.sql` siguen intactos y pendientes
+> de la tarea de despliegue de la fase.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -118,8 +126,10 @@ graph TB
 
     subgraph SOCIAL["SOCIAL"]
         profiles[profiles]; follows[follows]
+        targets[interaction_targets]
         reactions[reactions]; comments[comments]; notifs[notifications]
         blocks[user_blocks]; reports[content_reports]
+        comments --> targets; reactions --> targets; notifs --> targets
     end
 
     subgraph CLUBS["CLUBES"]
@@ -310,6 +320,42 @@ pueden verlo y resolverlo. Ser autor del target, por sí solo, no revela el repo
 `moderatable_target_ids(target_kind, ids[])` permite resolver capacidades por lote. Al borrar
 un target, los comentarios/reacciones/notificaciones asociados se eliminan, pero los reportes
 se preservan como auditoría y pasan a `actioned` con `target_deleted_at`.
+
+### Registro canónico `interaction_targets` (Social fase 1, solo dev, 2026-08-01)
+
+`interaction_targets` desacopla las interacciones de siete tablas fuente y materializa ocho tipos.
+Su contrato vivo es:
+
+| Columna | Contrato |
+|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` |
+| `kind`, `source_id` | `target_kind` + `uuid`, ambos `not null`, con `unique(kind, source_id)` |
+| `owner_id` | `uuid not null references auth.users(id) on delete cascade`; índice `interaction_targets_owner_id_idx` |
+| `audience_kind`, `audience_id` | `interaction_audience_kind` + `uuid`, ambos `not null`; `audience_id` es polimórfico y no tiene FK |
+| `href` | `text not null`, siempre ruta interna (`href like '/%'`) |
+| capacidades | `commentable`/`reactable` `not null`; cada booleano equivale exactamente a que su tipo de aviso no sea `null` |
+| avisos | `comment_notification_type` y `reaction_notification_type`, ambos `notification_type` nullable |
+
+La matriz materializada por triggers es `diary_entry`, `episode_watch`, `club_post`, `comment`,
+`pass`, `progress_session`, `club_activity` y `activity_checkpoint`; `passes` emite dos targets
+distintos (`diary_entry` y `pass`). Un comentario hereda audiencia y `href` del padre. En un
+`activity_checkpoint`, el owner es **quien creó el checkpoint**
+(`club_activity_checkpoints.created_by`), no quien creó la actividad; la migración correctiva del
+2026-08-01 también repara con ese valor los targets existentes.
+
+RLS está activa. `anon` y `authenticated` tienen exclusivamente `SELECT`; no hay concesión de
+escritura de cliente. La policy de lectura delega en `can_view_interaction_target(id)`, que resuelve
+dinámicamente `profile`, `club_member`, `activity_participant` o `checkpoint_reached` y aplica el
+bloqueo bidireccional contra `owner_id`. Las policies de `comments` y `reactions` delegan en ese
+mismo helper y exigen además `commentable`/`reactable`.
+
+`comments.interaction_target_id`, `reactions.interaction_target_id` y
+`notifications.interaction_target_id` son nullable y tienen FK a `interaction_targets(id) on delete
+cascade`. Mientras dura la compatibilidad, los pares legacy `(target_type, target_id)` se conservan
+y triggers `BEFORE INSERT/UPDATE` vuelven a derivar el ID canónico, ignorando el enviado por el
+cliente. Los triggers de limpieza de fuente eliminan el target canónico; sus tres FKs eliminan
+comentarios, reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y
+queda `actioned` con `target_deleted_at`, incluso cuando desaparece el target.
 
 ## 6. Clubes
 
@@ -1283,8 +1329,8 @@ mockup— dejaría esas dos siempre visibles.
 
 ## 8. Seguridad
 
-Las 42 tablas de prod tienen **RLS activa**. Dev tiene 47, también todas con RLS; las dos
-tablas nuevas de Social fase 0 siguen pendientes de producción. Patrones:
+Las 42 tablas de prod tienen **RLS activa**. Dev tiene 48, también todas con RLS; las tres
+tablas nuevas de Social fases 0/1 siguen pendientes de producción. Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
@@ -1310,10 +1356,12 @@ tablas nuevas de Social fase 0 siguen pendientes de producción. Patrones:
   el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
   `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
   pg_temp`, pero si alguna se escapa, volver a correr la migración la arregla.
-- **Helpers privados de Social fase 0**: las funciones `SECURITY DEFINER` nuevas viven en el
+- **Helpers privados de Social fases 0/1**: las funciones `SECURITY DEFINER` nuevas viven en el
   esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
   Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
-  `search_path = ''`. Ninguna añadió avisos al advisor de seguridad (delta 66 → 66 en dev).
+  `search_path = ''`; `public.can_view_interaction_target` también es `SECURITY INVOKER` y
+  delega en el helper privado de RLS. Ninguna añadió avisos al advisor de seguridad
+  (delta 66 → 66 en dev, reverificado el 2026-08-01).
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
@@ -1329,7 +1377,8 @@ tablas nuevas de Social fase 0 siguen pendientes de producción. Patrones:
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, solo dev, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod — `target_type` reutiliza `diary_entry`/`comment`/`club_post` de `target_kind`, sin valor nuevo) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres últimos: Social fase 1, solo dev, 2026-07-30) |
+| `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, solo dev) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
@@ -1338,7 +1387,7 @@ tablas nuevas de Social fase 0 siguen pendientes de producción. Patrones:
 
 ## 10. Migraciones
 
-123 ficheros en `supabase/migrations/` (recontado el 2026-07-30; incluye los deltas que aún
+128 ficheros en `supabase/migrations/` (recontado el 2026-08-01; incluye los deltas que aún
 están solo en dev). `supabase/schema-baseline.sql` es el replay ordenado
 para levantar un entorno limpio.
 
