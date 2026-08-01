@@ -38,6 +38,8 @@ export type FeedEvent = {
   itemSubtitle: string | null;
   // Estado del pase; solo informa el verbo "added".
   entryStatus: MediaStatus | null;
+  // Solo para `added`: pertenencia del visitante actual, resuelta por página.
+  viewerHasActivePass?: boolean;
   eventDate: string;
   // Clave de orden fina, solo para desempatar dentro de un grupo. eventDate de
   // progressed es date-only para sesiones backdateadas (ver
