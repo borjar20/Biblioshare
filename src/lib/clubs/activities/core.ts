@@ -70,8 +70,8 @@ export type ActivityDetail = ClubActivity & {
   items: ActivityItem[];
   /** Muestra para el stack de avatares (máx. 4); el total está en participantCount. */
   participants: ActivityParticipant[];
-  /** Chat general de la actividad (vacío/oculto en buddy_read). RLS lo filtra a participantes. */
-  chat: InteractionSummary;
+  /** Chat general solo para participantes de actividades no buddy_read; null cuando está oculto. */
+  chat: InteractionSummary | null;
   /** Actividades hijas nacidas de esta (spawn desde list_challenge: buddy_read o tierlist de cierre). */
   linkedChildren: LinkedChild[];
 };
@@ -382,19 +382,13 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     .filter((i): i is ActivityItem => i !== null);
 
   // El chat general no se pinta en buddy_read (que ya tiene sus chats por
-  // checkpoint) -- se evita la consulta y se devuelve el resumen a cero en
-  // vez de pedir un dato que la vista nunca usa.
-  const zeroChat: InteractionSummary = {
-    reactionCount: 0,
-    viewerReacted: false,
-    commentCount: 0,
-    comments: [],
-  };
-  const chat =
-    row.kind === "buddy_read"
-      ? zeroChat
-      : ((await getInteractionSummary(supabase, "club_activity", [activityId])).get(activityId) ??
-        zeroChat);
+  // checkpoint) ni se consulta para quien no participa: su RLS lo oculta y
+  // perder el detalle completo por ese dato opcional sería incorrecto.
+  let chat: InteractionSummary | null = null;
+  if (viewerIsParticipant && row.kind !== "buddy_read") {
+    chat = (await getInteractionSummary(supabase, "club_activity", [activityId])).get(activityId) ?? null;
+    if (!chat) throw new Error(`Interaction summary missing for club_activity:${activityId}`);
+  }
 
   // Actividades hijas (spawn desde list_challenge): mismo patrón de resolución de
   // catálogo por tipo que el pool de ítems de arriba, aplicado al ítem de origen de cada hija.

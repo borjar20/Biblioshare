@@ -5,6 +5,7 @@ import type { InteractionComment, InteractionSummary } from "./interactions";
 function comment(over: Partial<InteractionComment> = {}): InteractionComment {
   return {
     id: "c1",
+    interactionTargetId: "target-comment-1",
     authorId: "u1",
     author: "Ana",
     authorUsername: "ana",
@@ -21,6 +22,7 @@ function comment(over: Partial<InteractionComment> = {}): InteractionComment {
 }
 
 const base: InteractionSummary = {
+  interactionTargetId: "target-pass-1",
   reactionCount: 2,
   viewerReacted: false,
   commentCount: 5, // capado: mayor que comments.length a propósito
@@ -30,9 +32,11 @@ const base: InteractionSummary = {
 describe("interactionReducer", () => {
   it("toggleTarget suma/resta y hace ida y vuelta", () => {
     const on = interactionReducer(base, { type: "toggleTarget" });
+    expect(on.interactionTargetId).toBe("target-pass-1");
     expect(on.viewerReacted).toBe(true);
     expect(on.reactionCount).toBe(3);
     const off = interactionReducer(on, { type: "toggleTarget" });
+    expect(off.interactionTargetId).toBe("target-pass-1");
     expect(off.viewerReacted).toBe(false);
     expect(off.reactionCount).toBe(2);
   });
@@ -41,22 +45,32 @@ describe("interactionReducer", () => {
     const r = interactionReducer(base, { type: "toggleComment", id: "c2" });
     const c1 = r.comments.find((c) => c.id === "c1")!;
     const c2 = r.comments.find((c) => c.id === "c2")!;
+    expect(c2.interactionTargetId).toBe("target-comment-1");
     expect(c1.viewerReacted).toBe(false); // intacto
     expect(c2.viewerReacted).toBe(false); // estaba true → false
     expect(c2.reactionCount).toBe(2); // 3 → 2
   });
 
   it("addComment añade y sube commentCount (no ligado a comments.length)", () => {
-    const nuevo = comment({ id: "opt", body: "nuevo", isOwn: true });
+    const nuevo = comment({
+      id: "opt",
+      interactionTargetId: "optimistic-comment-target",
+      body: "nuevo",
+      isOwn: true,
+    });
     const r = interactionReducer(base, { type: "addComment", comment: nuevo });
     expect(r.comments).toHaveLength(3);
     expect(r.comments.at(-1)!.id).toBe("opt");
+    expect(r.comments.at(-1)!.interactionTargetId).toBe("optimistic-comment-target");
+    expect(r.interactionTargetId).toBe("target-pass-1");
     expect(r.commentCount).toBe(6);
   });
 
   it("deleteComment quita y baja commentCount", () => {
     const r = interactionReducer(base, { type: "deleteComment", id: "c1" });
     expect(r.comments.map((c) => c.id)).toEqual(["c2"]);
+    expect(r.comments[0].interactionTargetId).toBe("target-comment-1");
+    expect(r.interactionTargetId).toBe("target-pass-1");
     expect(r.commentCount).toBe(4);
   });
 });

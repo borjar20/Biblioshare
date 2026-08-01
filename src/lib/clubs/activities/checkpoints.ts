@@ -38,7 +38,7 @@ export type CheckpointViewModel = {
   status: CheckpointStatus;
   reachedByCount: number;
   participantCount: number;
-  chat: InteractionSummary;
+  chat: InteractionSummary | null;
 };
 
 export type ActivityCheckpointsView = {
@@ -53,13 +53,6 @@ export type ActivityCheckpointsView = {
   viewerPosition: Position | null;
   /** Usernames @mencionados que existen de verdad en los chats de los checkpoints. */
   knownUsernames: string[];
-};
-
-const EMPTY_SUMMARY: InteractionSummary = {
-  reactionCount: 0,
-  viewerReacted: false,
-  commentCount: 0,
-  comments: [],
 };
 
 export async function getActivityCheckpoints(activityId: string): Promise<ActivityCheckpointsView> {
@@ -134,7 +127,14 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
     viewerPosition = entry ? parsePosition(itemType, entry.position) : null;
   }
 
-  const chatByCheckpoint = await getInteractionSummary(supabase, "activity_checkpoint", checkpointIds);
+  const reachedCheckpointIds = checkpoints
+    .filter((checkpoint) => viewerReachedOrders.has(checkpoint.order as number))
+    .map((checkpoint) => checkpoint.id);
+  const chatByCheckpoint = await getInteractionSummary(
+    supabase,
+    "activity_checkpoint",
+    reachedCheckpointIds,
+  );
 
   const view: CheckpointViewModel[] = checkpoints.map((c) => {
     const order = c.order as number;
@@ -145,6 +145,10 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
       const targetPosition = parsePosition(itemType, c.position);
       if (hasReachedPosition(itemType, viewerPosition, targetPosition)) status = "suggested";
     }
+    const chat = viewerReachedOrders.has(order) ? (chatByCheckpoint.get(c.id) ?? null) : null;
+    if (viewerReachedOrders.has(order) && !chat) {
+      throw new Error(`Interaction summary missing for activity_checkpoint:${c.id}`);
+    }
     return {
       id: c.id,
       label: c.label,
@@ -154,7 +158,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
       status,
       reachedByCount: reachedCountByCheckpoint.get(c.id) ?? 0,
       participantCount: participantIds.length,
-      chat: chatByCheckpoint.get(c.id) ?? EMPTY_SUMMARY,
+      chat,
     };
   });
 
@@ -162,7 +166,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
   // actividad para linkificar @menciones reales (issue #321).
   const knownUsernames = await resolveKnownMentions(
     supabase,
-    view.flatMap((c) => c.chat.comments.map((comment) => comment.body)),
+    view.flatMap((c) => c.chat?.comments.map((comment) => comment.body) ?? []),
   );
 
   return { itemType, checkpoints: view, groupSafeOrder, viewerPosition, knownUsernames };

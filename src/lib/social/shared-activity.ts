@@ -29,6 +29,14 @@ export type ShareRef = {
   rowId: string;
 };
 
+// Un post compartido solo necesita un preview de la actividad. Mantenerlo
+// separado del FeedEvent evita exponer un target interactivo deliberadamente
+// no cargado (y, por tanto, un interactionTargetId nulo) al cliente.
+export type SharedActivityPreview = Omit<
+  FeedEvent,
+  "interactionTarget" | "reactionCount" | "viewerReacted" | "commentCount" | "comments"
+>;
+
 const REVIEW_EXCERPT_LENGTH = 200;
 
 function excerpt(text: string | null): string | null {
@@ -86,7 +94,7 @@ async function resolvePassItem(supabase: SupabaseServerClient, passId: string) {
 export async function resolveSharedActivity(
   supabase: SupabaseServerClient,
   ref: ShareRef,
-): Promise<FeedEvent | null> {
+): Promise<SharedActivityPreview | null> {
   if (ref.sourceTable === "diary_entries_added") {
     // item_type/item_id/status/created_at ya son columnas propias del pase
     // (§Tarea 9): sin join a library_entries.
@@ -120,11 +128,6 @@ export async function resolveSharedActivity(
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: null,
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
     };
   }
 
@@ -168,11 +171,6 @@ export async function resolveSharedActivity(
       // suelta para compartir en clubes) — ver issue de seguimiento.
       progress: { durationMinutes: row.duration_minutes, page: null, percent: null, note: null },
       reviewMeta: null,
-      interactionTarget: null,
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
     };
   }
 
@@ -231,11 +229,6 @@ export async function resolveSharedActivity(
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "diary_entry", targetId: row.id },
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
     };
   }
 
@@ -278,10 +271,5 @@ export async function resolveSharedActivity(
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },
     progress: null,
     reviewMeta: null,
-    interactionTarget: { targetType: "episode_watch", targetId: row.id },
-    reactionCount: 0,
-    viewerReacted: false,
-    commentCount: 0,
-    comments: [],
   };
 }

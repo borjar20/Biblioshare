@@ -52,10 +52,9 @@ export function CollectionCard({
                 {item.itemTitle}
               </Link>
               {item.itemSubtitle && <span className="text-[11px] text-foreground-faint">{item.itemSubtitle}</span>}
-              {item.interactionTarget && (
+              {item.interactionTarget?.interactionTargetId && (
                 <ReviewInteractions
-                  targetType={item.interactionTarget.targetType}
-                  targetId={item.interactionTarget.targetId}
+                  interactionTargetId={item.interactionTarget.interactionTargetId}
                   reactionCount={item.reactionCount}
                   viewerReacted={item.viewerReacted}
                   commentCount={item.commentCount}

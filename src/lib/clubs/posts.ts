@@ -6,8 +6,11 @@ import { notifyMany } from "@/lib/social/notifications";
 import { notifyMentions } from "@/lib/social/notify-mentions";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
-import { resolveSharedActivity, type ShareRef } from "@/lib/social/shared-activity";
-import type { FeedEvent } from "@/lib/social/feed";
+import {
+  resolveSharedActivity,
+  type ShareRef,
+  type SharedActivityPreview,
+} from "@/lib/social/shared-activity";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 async function requireUser() {
@@ -35,6 +38,7 @@ export type ClubPoll = {
 
 export type ClubPost = {
   id: string;
+  interactionTargetId: string;
   clubId: string;
   authorId: string;
   authorUsername: string;
@@ -43,7 +47,7 @@ export type ClubPost = {
   kind: "text" | "activity_share" | "poll";
   body: string;
   createdAt: string;
-  sharedActivity: FeedEvent | null; // solo kind='activity_share'; null también si la fila origen ya no existe
+  sharedActivity: SharedActivityPreview | null; // solo kind='activity_share'; null también si la fila origen ya no existe
   poll: ClubPoll | null; // solo kind='poll'
   reactionCount: number;
   viewerReacted: boolean;
@@ -270,10 +274,10 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
   // duplicaría buena parte de getFeed()'s complejidad para un ahorro
   // marginal en este contexto.
   const shareableRows = rows.filter((r) => r.kind === "activity_share" && r.ref);
-  const sharedByPostId = new Map<string, FeedEvent | null>(
+  const sharedByPostId = new Map<string, SharedActivityPreview | null>(
     await Promise.all(
       shareableRows.map(
-        async (r): Promise<[string, FeedEvent | null]> => [
+        async (r): Promise<[string, SharedActivityPreview | null]> => [
           r.id,
           await resolveSharedActivity(supabase, r.ref as unknown as ShareRef),
         ],
@@ -317,6 +321,7 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
       const author = authorById.get(r.author_id);
       if (!author) return null;
       const summary = summaries.get(r.id);
+      if (!summary) throw new Error(`Interaction summary missing for club_post:${r.id}`);
 
       let poll: ClubPoll | null = null;
       if (r.kind === "poll" && r.poll_ends_at) {
@@ -340,6 +345,7 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
 
       return {
         id: r.id,
+        interactionTargetId: summary.interactionTargetId,
         clubId: r.club_id,
         authorId: r.author_id,
         authorUsername: author.username,
@@ -350,10 +356,10 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
         createdAt: r.created_at,
         sharedActivity: sharedByPostId.get(r.id) ?? null,
         poll,
-        reactionCount: summary?.reactionCount ?? 0,
-        viewerReacted: summary?.viewerReacted ?? false,
-        commentCount: summary?.commentCount ?? 0,
-        comments: summary?.comments ?? [],
+        reactionCount: summary.reactionCount,
+        viewerReacted: summary.viewerReacted,
+        commentCount: summary.commentCount,
+        comments: summary.comments,
       };
     })
     .filter((p): p is ClubPost => p !== null);

@@ -76,10 +76,9 @@ export function ReviewCard({
         </p>
       )}
 
-      {event.interactionTarget && (
+      {event.interactionTarget?.interactionTargetId && (
         <ReviewInteractions
-          targetType={event.interactionTarget.targetType}
-          targetId={event.interactionTarget.targetId}
+          interactionTargetId={event.interactionTarget.interactionTargetId}
           reactionCount={event.reactionCount}
           viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
