@@ -44,6 +44,7 @@ const COL_PASSES = [
   "e2fc0a02-0000-4000-8000-000000000002",
 ];
 const VIEWER_COL_PASS = "e2fc0a09-0000-4000-8000-000000000009";
+const VIEWER_INACTIVE_COL_PASS = "e2fc0a08-0000-4000-8000-000000000008";
 const PROG_BOOK = "e2fc0b03-0000-4000-8000-000000000003";
 const PROG_PASS = "e2fc0a03-0000-4000-8000-000000000003";
 const PROG_SESSIONS = [
@@ -63,6 +64,7 @@ const ALL_BOOKS = [...COL_BOOKS, PROG_BOOK, REV_BOOK];
 const ALL_PASSES = [
   ...COL_PASSES,
   VIEWER_COL_PASS,
+  VIEWER_INACTIVE_COL_PASS,
   PROG_PASS,
   REV_PASS,
 ];
@@ -214,6 +216,15 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
           item_id: COL_BOOKS[0],
           status: "planned",
           is_active: true,
+          created_at: now,
+        },
+        {
+          id: VIEWER_INACTIVE_COL_PASS,
+          user_id: viewerId,
+          item_type: "book",
+          item_id: COL_BOOKS[1],
+          status: "completed",
+          is_active: false,
           created_at: now,
         },
       ]),
