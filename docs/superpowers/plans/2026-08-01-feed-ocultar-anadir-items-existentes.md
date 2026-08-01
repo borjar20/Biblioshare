@@ -49,11 +49,13 @@ Spec: `docs/superpowers/specs/2026-08-01-feed-ocultar-anadir-items-existentes-de
 - Create: `src/components/social/collection-card-items.ts`
 - Create: `src/components/social/collection-card-items.test.ts`
 - Modify: `src/components/social/collection-card.tsx:17-83`
+- Modify: `src/lib/social/feed.ts:25-73` — declarar la marca opcional consumida por la tarjeta.
 
 **Interfaces:**
 
 - Consumes: objetos con `viewerHasActivePass?: boolean`.
 - Produces: `itemsMissingFromLibrary<T extends { viewerHasActivePass?: boolean }>(items: readonly T[]): T[]`.
+- Produce: `FeedEvent.viewerHasActivePass?: boolean`, inicialmente sin poblar hasta Task 2.
 - `CollectionCard` usa exactamente el array devuelto para el recuento y para los argumentos de `quickAddManyToLibrary`.
 
 - [ ] **Step 1: Analizar el impacto antes de editar**
@@ -116,6 +118,13 @@ export function itemsMissingFromLibrary<
 
 - [ ] **Step 5: Conectar `CollectionCard` al helper**
 
+En `FeedEvent` (`src/lib/social/feed.ts`) declarar primero la marca que consume la tarjeta:
+
+```ts
+// Solo para `added`: pertenencia del visitante actual, resuelta por página.
+viewerHasActivePass?: boolean;
+```
+
 En `src/components/social/collection-card.tsx`, importar el helper y derivar una sola vez:
 
 ```tsx
@@ -170,7 +179,7 @@ Expected: 1 test PASS y TypeScript exit 0. En este punto la UI sigue mostrando b
 - [ ] **Step 7: Commit acotado**
 
 ```powershell
-git add src/components/social/collection-card-items.ts src/components/social/collection-card-items.test.ts src/components/social/collection-card.tsx
+git add src/components/social/collection-card-items.ts src/components/social/collection-card-items.test.ts src/components/social/collection-card.tsx src/lib/social/feed.ts
 node .gitnexus/run.cjs detect_changes --scope staged
 git commit -m "feat(feed): filtra acciones de coleccion disponibles"
 ```
@@ -278,14 +287,7 @@ npm run test:e2e -- feed-tarjetas-por-tipo --grep "un seguido con altas"
 
 Expected: FAIL porque la fila `owned` todavía muestra «Añadir». La limpieza del fixture debe terminar tanto al principio como en `finally`.
 
-- [ ] **Step 4: Añadir la marca al contrato del evento**
-
-En `FeedEvent` (`src/lib/social/feed.ts`) añadir:
-
-```ts
-// Solo para `added`: pertenencia del visitante actual, resuelta por página.
-viewerHasActivePass?: boolean;
-```
+- [ ] **Step 4: Hacer nullable el identificador del visitante**
 
 Cambiar la firma:
 
