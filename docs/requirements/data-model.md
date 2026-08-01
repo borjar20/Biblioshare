@@ -33,7 +33,8 @@ del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gi
 aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_indexes`;
 backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
 divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
-`books` no necesita backfill (las labels ya coincidían)]**
+`books` no necesita backfill (las labels ya coincidían); **fix del writer canónico de
+notificaciones aplicado y verificado SOLO EN DEV el 2026-08-01**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -77,6 +78,13 @@ divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas 
 > `supabase/tests/social_phase1_interaction_targets.sql` pasó completa y los advisors de seguridad
 > siguen en 66, sin findings nuevos. Producción y `schema-baseline.sql` siguen intactos y pendientes
 > de la tarea de despliegue de la fase.
+> **Fix del 2026-08-01 (writer canónico de notificaciones): aplicado y verificado SOLO EN DEV.**
+> `20260801135656_social_interaction_targets_notification_writer_fix.sql` conserva en INSERT el
+> `interaction_target_id` enviado sin par legacy por el writer confiable (`service_role`); si el
+> INSERT incluye `(target_type, target_id)`, ese par sigue siendo la autoridad. En UPDATE el trigger
+> nunca acepta metadatos canónicos aislados del cliente: vuelve a derivar desde el par completo o
+> limpia el ID si falta alguna parte. La matriz SQL pasó completa; advisors de seguridad 66→66 y de
+> rendimiento 53→53, sin delta. Producción y `schema-baseline.sql` siguen intactos.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -351,9 +359,13 @@ mismo helper y exigen además `commentable`/`reactable`.
 
 `comments.interaction_target_id`, `reactions.interaction_target_id` y
 `notifications.interaction_target_id` son nullable y tienen FK a `interaction_targets(id) on delete
-cascade`. Mientras dura la compatibilidad, los pares legacy `(target_type, target_id)` se conservan
-y triggers `BEFORE INSERT/UPDATE` vuelven a derivar el ID canónico, ignorando el enviado por el
-cliente. Los triggers de limpieza de fuente eliminan el target canónico; sus tres FKs eliminan
+cascade`. Mientras dura la compatibilidad, los pares legacy `(target_type, target_id)` se conservan.
+Los triggers `BEFORE INSERT/UPDATE` de comentarios y reacciones siempre vuelven a derivar el ID
+canónico. En notificaciones, un INSERT del writer confiable puede usar solo el ID canónico; un INSERT
+con par legacy se deriva desde ese par. En UPDATE el par legacy conserva siempre la autoridad y el
+ID se deriva de nuevo —o se limpia cuando el par está incompleto—, de modo que el cliente no puede
+introducir metadatos canónicos divergentes. Los triggers de limpieza de fuente eliminan el target
+canónico; sus tres FKs eliminan
 comentarios, reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y
 queda `actioned` con `target_deleted_at`, incluso cuando desaparece el target.
 

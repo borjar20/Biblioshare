@@ -75,6 +75,36 @@ insert into public.reactions (id, target_type, target_id, user_id, kind) values
   ('00000000-0000-4000-8000-000000000109', 'club_post', '00000000-0000-4000-8000-000000000105', '00000000-0000-4000-8000-0000000001b2', 'like');
 insert into public.notifications (id, user_id, actor_id, type, target_type, target_id) values
   ('00000000-0000-4000-8000-000000000110', '00000000-0000-4000-8000-0000000001a1', '00000000-0000-4000-8000-0000000001b2', 'club_post_commented', 'club_post', '00000000-0000-4000-8000-000000000105');
+set local role service_role;
+insert into public.notifications (id, user_id, actor_id, type, interaction_target_id) values
+  (
+    '00000000-0000-4000-8000-000000000112',
+    '00000000-0000-4000-8000-0000000001a1',
+    '00000000-0000-4000-8000-0000000001b2',
+    'club_post_liked',
+    (select id from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105')
+  );
+reset role;
+select pg_temp.assert_true(
+  (select n.interaction_target_id = t.id
+   from public.notifications n
+   join public.interaction_targets t on t.kind = 'club_post' and t.source_id = '00000000-0000-4000-8000-000000000105'
+   where n.id = '00000000-0000-4000-8000-000000000112'),
+  'service-role canonical-only notification insert preserves interaction target'
+);
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001a1","role":"authenticated"}', true);
+set local role authenticated;
+update public.notifications
+set interaction_target_id = (
+  select id from public.interaction_targets where kind = 'pass' and source_id = '00000000-0000-4000-8000-000000000102'
+)
+where id = '00000000-0000-4000-8000-000000000112';
+reset role;
+select pg_temp.assert_true(
+  (select interaction_target_id is null from public.notifications where id = '00000000-0000-4000-8000-000000000112'),
+  'updating canonical-only notification cannot introduce client-controlled target metadata'
+);
 insert into public.content_reports (id, reporter_id, target_type, target_id, reason, snapshot) values
   ('00000000-0000-4000-8000-000000000111', '00000000-0000-4000-8000-0000000001b2', 'club_post', '00000000-0000-4000-8000-000000000105', 'spam', '{}'::jsonb);
 
