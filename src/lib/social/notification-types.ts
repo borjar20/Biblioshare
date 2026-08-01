@@ -19,6 +19,9 @@ export type NotificationType =
   | "club_post_liked"
   | "club_post_commented"
   | "comment_liked"
+  | "activity_liked"
+  | "activity_commented"
+  | "checkpoint_commented"
   | "club_activity_proposed"
   | "club_activity_activated"
   | "club_activity_spawned"
@@ -47,6 +50,7 @@ export type Notification = {
   actorDisplayName: string | null;
   actorAvatarUrl: string | null;
   href: string;
+  interactionTargetId?: string;
   readAt: string | null;
   createdAt: string;
   // Cuántos otros actores dispararon el mismo tipo de notificación sobre el
@@ -69,6 +73,9 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_post_liked: "clubPostLiked",
   club_post_commented: "clubPostCommented",
   comment_liked: "commentLiked",
+  activity_liked: "activityLiked",
+  activity_commented: "activityCommented",
+  checkpoint_commented: "checkpointCommented",
   club_activity_proposed: "clubActivityProposed",
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",

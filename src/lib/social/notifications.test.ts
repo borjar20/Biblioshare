@@ -39,18 +39,39 @@ type Row = Record<string, unknown>;
 // select/delete/insert + eq/in/order/limit/maybeSingle, resueltas contra un
 // mapa de tablas en memoria. No reproduce RLS ni el cleanup por edad de
 // listNotifications (irrelevante aquí) -- delete() es un no-op a propósito.
-function makeFakeSupabase(tables: Record<string, Row[]>) {
+function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[] = []) {
   function queryBuilder(table: string) {
     const eqFilters: [string, unknown][] = [];
+    const neqFilters: [string, unknown][] = [];
+    const isFilters: [string, unknown][] = [];
     const inFilters: [string, unknown[]][] = [];
     let mode: "select" | "delete" | "insert" = "select";
     let insertRows: Row[] = [];
     let maybeSingleFlag = false;
+    let selectedColumns: string[] | null = null;
+    let orderBy: { column: string; ascending: boolean } | null = null;
+    let rowLimit: number | null = null;
 
     function matchingRows(): Row[] {
-      let rows = tables[table] ?? [];
+      let rows = [...(tables[table] ?? [])];
       for (const [col, val] of eqFilters) rows = rows.filter((r) => r[col] === val);
+      for (const [col, val] of neqFilters) rows = rows.filter((r) => r[col] !== val);
+      for (const [col, val] of isFilters) rows = rows.filter((r) => r[col] === val);
       for (const [col, vals] of inFilters) rows = rows.filter((r) => vals.includes(r[col]));
+      if (orderBy) {
+        const { column, ascending } = orderBy;
+        rows.sort((a, b) => {
+          const left = String(a[column] ?? "");
+          const right = String(b[column] ?? "");
+          return left.localeCompare(right) * (ascending ? 1 : -1);
+        });
+      }
+      if (rowLimit !== null) rows = rows.slice(0, rowLimit);
+      if (selectedColumns) {
+        rows = rows.map((row) =>
+          Object.fromEntries(selectedColumns!.map((column) => [column, row[column]])),
+        );
+      }
       return rows;
     }
 
@@ -69,8 +90,10 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
     }
 
     const builder = {
-      select() {
+      select(columns = "*") {
         mode = "select";
+        selectedColumns =
+          columns === "*" ? null : columns.split(",").map((column: string) => column.trim());
         return builder;
       },
       delete() {
@@ -86,19 +109,23 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
         eqFilters.push([col, val]);
         return builder;
       },
-      neq() {
+      neq(col: string, val: unknown) {
+        neqFilters.push([col, val]);
         return builder;
       },
-      is() {
+      is(col: string, val: unknown) {
+        isFilters.push([col, val]);
         return builder;
       },
       or() {
         return builder;
       },
-      order() {
+      order(column: string, options?: { ascending?: boolean }) {
+        orderBy = { column, ascending: options?.ascending ?? true };
         return builder;
       },
-      limit() {
+      limit(count: number) {
+        rowLimit = count;
         return builder;
       },
       in(col: string, vals: unknown[]) {
@@ -117,8 +144,11 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
   }
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    from: (table: string) => queryBuilder(table) as any,
+    from: (table: string) => {
+      queriedTables.push(table);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return queryBuilder(table) as any;
+    },
     rpc: async (name: string, args: { other_user_id?: string; candidate_ids?: string[] }) => {
       const blocks = tables.user_blocks ?? [];
       const actorId = "actor-1";
@@ -156,6 +186,47 @@ function baseTables(): Record<string, Row[]> {
     ],
     profile_identities: [
       { user_id: "actor-1", username: "ana", display_name: "Ana", avatar_url: null },
+    ],
+    interaction_targets: [
+      {
+        id: "target-post",
+        kind: "club_post",
+        source_id: "post-1",
+        owner_id: "user-1",
+        audience_kind: "club_member",
+        audience_id: "club-1",
+        href: "/club/club-lectura",
+        commentable: true,
+        reactable: true,
+        comment_notification_type: "club_post_commented",
+        reaction_notification_type: "club_post_liked",
+      },
+      {
+        id: "target-comment",
+        kind: "comment",
+        source_id: "comment-1",
+        owner_id: "user-1",
+        audience_kind: "club_member",
+        audience_id: "club-1",
+        href: "/club/club-lectura",
+        commentable: false,
+        reactable: true,
+        comment_notification_type: null,
+        reaction_notification_type: "comment_liked",
+      },
+      {
+        id: "target-pass",
+        kind: "pass",
+        source_id: "pass-1",
+        owner_id: "user-1",
+        audience_kind: "profile",
+        audience_id: "user-1",
+        href: "/libro/book-1",
+        commentable: true,
+        reactable: true,
+        comment_notification_type: "activity_commented",
+        reaction_notification_type: "activity_liked",
+      },
     ],
     notifications: [],
   };
@@ -263,6 +334,160 @@ describe("escritura confiable de notificaciones", () => {
       expect.objectContaining({ url: "/club/club-lectura" }),
     );
   });
+
+  it("notify escribe el target canónico y usa su href para el push", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const queriedTables: string[] = [];
+    const caller = makeFakeSupabase(callerTables, queriedTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notify(caller, {
+      userId: "user-2",
+      actorId: "actor-1",
+      type: "club_post_liked",
+      interactionTargetId: "target-post",
+    });
+
+    expect(writerTables.notifications).toEqual([
+      expect.objectContaining({
+        user_id: "user-2",
+        actor_id: "actor-1",
+        type: "club_post_liked",
+        interaction_target_id: "target-post",
+        target_type: null,
+        target_id: null,
+      }),
+    ]);
+    expect(sendPushToUser).toHaveBeenCalledWith(
+      "user-2",
+      expect.objectContaining({ url: "/club/club-lectura" }),
+    );
+    expect(queriedTables).toContain("interaction_targets");
+    expect(queriedTables).not.toContain("club_posts");
+    expect(queriedTables).not.toContain("clubs");
+  });
+
+  it("notifyMany propaga el target canónico a todo el lote", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notifyMany(caller, {
+      userIds: ["user-2", "user-3"],
+      actorId: "actor-1",
+      type: "activity_commented",
+      interactionTargetId: "target-pass",
+    });
+
+    expect(writerTables.notifications).toHaveLength(2);
+    expect(writerTables.notifications.every((row) => row.interaction_target_id === "target-pass"))
+      .toBe(true);
+    expect(sendPushToUsers).toHaveBeenCalledWith(
+      ["user-2", "user-3"],
+      expect.objectContaining({ url: "/libro/book-1" }),
+    );
+  });
+});
+
+describe("notificaciones canónicas — agrupación por tipo y target", () => {
+  it("agrupa solo reacciones equivalentes y conserva comentarios individuales", async () => {
+    const tables = baseTables();
+    tables.profile_identities = [
+      { user_id: "actor-1", username: "ana", display_name: "Ana", avatar_url: null },
+      { user_id: "actor-2", username: "bea", display_name: "Bea", avatar_url: null },
+      { user_id: "actor-3", username: "cora", display_name: "Cora", avatar_url: null },
+      { user_id: "actor-4", username: "dani", display_name: "Dani", avatar_url: null },
+      { user_id: "actor-5", username: "emma", display_name: "Emma", avatar_url: null },
+      { user_id: "actor-6", username: "fede", display_name: "Fede", avatar_url: null },
+    ];
+    tables.notifications = [
+      {
+        id: "n-post-3",
+        user_id: "user-1",
+        actor_id: "actor-3",
+        type: "club_post_liked",
+        interaction_target_id: "target-post",
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-01T12:00:00Z",
+      },
+      {
+        id: "n-post-2",
+        user_id: "user-1",
+        actor_id: "actor-2",
+        type: "club_post_liked",
+        interaction_target_id: "target-post",
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-01T11:00:00Z",
+      },
+      {
+        id: "n-post-1",
+        user_id: "user-1",
+        actor_id: "actor-1",
+        type: "club_post_liked",
+        interaction_target_id: "target-post",
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-01T10:00:00Z",
+      },
+      {
+        id: "n-comment-2",
+        user_id: "user-1",
+        actor_id: "actor-5",
+        type: "comment_liked",
+        interaction_target_id: "target-comment",
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-01T09:00:00Z",
+      },
+      {
+        id: "n-comment-1",
+        user_id: "user-1",
+        actor_id: "actor-4",
+        type: "comment_liked",
+        interaction_target_id: "target-comment",
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-01T08:00:00Z",
+      },
+      {
+        id: "n-activity-comment",
+        user_id: "user-1",
+        actor_id: "actor-6",
+        type: "activity_commented",
+        interaction_target_id: "target-pass",
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-01T07:00:00Z",
+      },
+    ];
+    const queriedTables: string[] = [];
+    const listed = await listNotifications(makeFakeSupabase(tables, queriedTables), "user-1");
+
+    expect(listed.map((n) => [n.type, n.interactionTargetId, n.extraActorsCount])).toEqual([
+      ["club_post_liked", "target-post", 2],
+      ["comment_liked", "target-comment", 1],
+      ["activity_commented", "target-pass", undefined],
+    ]);
+    expect(listed.map((n) => n.href)).toEqual([
+      "/club/club-lectura",
+      "/club/club-lectura",
+      "/libro/book-1",
+    ]);
+    expect(queriedTables).toContain("interaction_targets");
+    expect(queriedTables).not.toContain("club_posts");
+    expect(queriedTables).not.toContain("comments");
+    expect(queriedTables).not.toContain("passes");
+  });
 });
 
 describe("resolución de href de notificaciones — club_event vs club_activity", () => {
@@ -274,6 +499,7 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
         user_id: "user-1",
         actor_id: "actor-1",
         type: "club_event_created",
+        interaction_target_id: null,
         target_type: "club_event",
         target_id: "event-1",
         read_at: null,
@@ -284,6 +510,7 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
         user_id: "user-1",
         actor_id: "actor-1",
         type: "club_activity_proposed",
+        interaction_target_id: null,
         target_type: "club_activity",
         target_id: "activity-1",
         read_at: null,
