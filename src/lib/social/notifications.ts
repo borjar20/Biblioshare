@@ -155,19 +155,21 @@ export async function notifyMany(
   }
   if (userIds.length === 0) return [];
 
-  const notificationWriter = createServiceRoleClient();
-  const { error } = await notificationWriter.from("notifications").insert(
-    userIds.map((userId) => ({
-      user_id: userId,
-      actor_id: params.actorId,
-      type: params.type,
-      target_type: params.targetType ?? null,
-      target_id: params.targetId ?? null,
-      interaction_target_id: params.interactionTargetId ?? null,
-    })),
-  );
-  if (error) {
-    console.error("notifyMany() failed", error);
+  try {
+    const notificationWriter = createServiceRoleClient();
+    const { error } = await notificationWriter.from("notifications").insert(
+      userIds.map((userId) => ({
+        user_id: userId,
+        actor_id: params.actorId,
+        type: params.type,
+        target_type: params.targetType ?? null,
+        target_id: params.targetId ?? null,
+        interaction_target_id: params.interactionTargetId ?? null,
+      })),
+    );
+    if (error) throw error;
+  } catch (writerError) {
+    console.error("notifyMany() failed", writerError);
     return [];
   }
 

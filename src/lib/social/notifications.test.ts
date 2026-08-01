@@ -356,6 +356,60 @@ describe("escritura confiable de notificaciones", () => {
     expect(sendPushToUsers).not.toHaveBeenCalled();
   });
 
+  it("notifyMany devuelve vacío si no puede crear el writer confiable", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    trustedWriter.create.mockImplementation(() => {
+      throw new Error("writer unavailable");
+    });
+
+    await expect(
+      notifyMany(caller, {
+        userIds: ["user-2"],
+        actorId: "actor-1",
+        type: "club_event_created",
+      }),
+    ).resolves.toEqual([]);
+    expect(sendPushToUsers).not.toHaveBeenCalled();
+  });
+
+  it("notifyMany devuelve vacío si el insert rechaza la promesa", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    trustedWriter.create.mockReturnValue({
+      from: () => ({
+        insert: async () => {
+          throw new Error("insert rejected");
+        },
+      }),
+    });
+
+    await expect(
+      notifyMany(caller, {
+        userIds: ["user-2"],
+        actorId: "actor-1",
+        type: "club_event_created",
+      }),
+    ).resolves.toEqual([]);
+    expect(sendPushToUsers).not.toHaveBeenCalled();
+  });
+
+  it("notifyMany conserva los IDs confirmados si falla el push", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+    sendPushToUsers.mockRejectedValueOnce(new Error("push rejected"));
+
+    const confirmed = await notifyMany(caller, {
+      userIds: ["user-2"],
+      actorId: "actor-1",
+      type: "club_event_created",
+      targetType: "club_event",
+      targetId: "event-1",
+    });
+
+    expect(confirmed).toEqual(["user-2"]);
+    expect(writerTables.notifications).toHaveLength(1);
+  });
+
   it("notify escribe el target canónico y usa su href para el push", async () => {
     const callerTables = baseTables();
     const writerTables: Record<string, Row[]> = { notifications: [] };
