@@ -10996,3 +10996,15 @@ alter table public.comments drop constraint if exists comments_no_nesting;
 alter table public.comments drop column if exists target_type, drop column if exists target_id;
 alter table public.reactions drop column if exists target_type, drop column if exists target_id;
 
+
+-- ANEXO 2026-08-02 — grants de lectura anónima a los helpers de bloqueo
+-- (migración 20260816_grant_anon_read_block_helpers, aplicada en dev y prod).
+-- Con la navegación anónima, un visitante sin sesión llega a perfiles públicos y
+-- su feed; las políticas SELECT {anon,authenticated} de passes/progress_sessions/
+-- follows llaman a users_are_blocked() y el feed a filter_unblocked_user_ids().
+-- Al inlinearse (SQL STABLE SECURITY INVOKER), anon necesita EXECUTE sobre ambas
+-- Y SELECT sobre user_blocks (privilegio comprobado en planificación). Seguro:
+-- user_blocks no tiene política RLS para anon, así que nunca ve una fila.
+grant execute on function public.users_are_blocked(uuid) to anon;
+grant execute on function public.filter_unblocked_user_ids(uuid[]) to anon;
+grant select on table public.user_blocks to anon;
