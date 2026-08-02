@@ -16,7 +16,8 @@ import { itemHref } from "@/lib/catalog/item-href";
 // extracto de reseña y UNA fila de reacción (el target del propio evento).
 // `hideActor`: variante para "Reseñas recientes" del perfil (mismo prop que
 // tenía el FeedCard viejo) — el autor es el propio perfil, así que se oculta
-// la cabecera y se muestra el timestamp al pie en su lugar.
+// la cabecera. El «hace x» del pie NO depende de esa variante: la antigüedad de
+// la reseña se publica siempre.
 export function ReviewCard({
   event,
   viewerLoggedIn,
@@ -87,9 +88,7 @@ export function ReviewCard({
           knownUsernames={knownUsernames}
         />
       )}
-      {hideActor && (
-        <span suppressHydrationWarning className="self-end font-mono text-[10px] text-muted-foreground">{timeAgo(event.eventDate, tTime)}</span>
-      )}
+      <span suppressHydrationWarning className="self-end font-mono text-[10px] text-muted-foreground">{timeAgo(event.eventDate, tTime)}</span>
     </article>
   );
 }

@@ -1,4 +1,5 @@
 import type { FeedEntry, FeedEvent, FeedVerb } from "./feed";
+import { compareEntries } from "./feed-order";
 
 // Variante de presentación: N eventos del mismo actor colapsados en una tarjeta.
 // NO es una entidad con fila propia — solo agrupa para pintar. La reacción de
@@ -7,6 +8,7 @@ export type PersonGroupEntry = {
   source: "person-group";
   id: string;
   eventDate: string; // la del ítem más reciente
+  sortDate: string;  // la del ítem más reciente, para el orden final
   verb: Extract<FeedVerb, "added" | "progressed">;
   actor: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
   items: FeedEvent[];
@@ -58,17 +60,10 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     // Los de progressed se parten en sub-grupos cuya distancia entre sesiones
     // consecutivas no supere PROGRESS_WINDOW_DAYS; added es un único sub-grupo.
     const isProgressed = key.startsWith("progressed:");
-    // eventDate desc; empate (mismo día en sesiones backdateadas) → sortDate
-    // (created_at, hora real de registro) desc; último recurso el id. Sin el
+    // Mismo comparador que el feed (día desc → sortDate desc → id desc): sin el
     // paso por sortDate, N sesiones del mismo día caían al id (uuid aleatorio)
     // y salían desordenadas en la tarjeta.
-    const sorted = [...items].sort((a, b) => {
-      if (a.eventDate !== b.eventDate) return a.eventDate < b.eventDate ? 1 : -1;
-      const sa = a.sortDate ?? a.eventDate;
-      const sb = b.sortDate ?? b.eventDate;
-      if (sa !== sb) return sa < sb ? 1 : -1;
-      return a.id < b.id ? 1 : -1;
-    });
+    const sorted = [...items].sort(compareEntries);
     const chunks: FeedEvent[][] = [];
     for (const ev of sorted) {
       const last = chunks[chunks.length - 1];
@@ -87,7 +82,7 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     for (const chunk of chunks) {
       if (chunk.length === 1) {
         const e = chunk[0];
-        result.push({ source: "person", id: e.id, eventDate: e.eventDate, event: e });
+        result.push({ source: "person", id: e.id, eventDate: e.eventDate, sortDate: e.sortDate, event: e });
         continue;
       }
       const newest = chunk[0]; // ya ordenado desc
@@ -99,6 +94,7 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
         // grupos de páginas distintas con el mismo actor+obra.
         id: `group:${key}:${newest.id}`,
         eventDate: newest.eventDate,
+        sortDate: newest.sortDate,
         verb: newest.verb as PersonGroupEntry["verb"],
         actor: {
           id: newest.actorId,
@@ -111,7 +107,9 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     }
   }
 
-  // Reordenar todo por fecha desc (el bucketing rompió el orden original).
-  result.sort((a, b) => (a.eventDate < b.eventDate ? 1 : a.eventDate > b.eventDate ? -1 : a.id < b.id ? 1 : -1));
+  // Reordenar todo por la MISMA clave que usa el feed (el bucketing rompió el
+  // orden original). Reutilizar el comparador evita que las dos definiciones
+  // de "orden" se separen con el tiempo.
+  result.sort(compareEntries);
   return result;
 }

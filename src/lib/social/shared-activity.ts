@@ -123,6 +123,10 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: row.status,
       eventDate: row.created_at,
+      // sortDate = created_at, el contrato del campo en FeedEvent. Esta vista
+      // resuelve UNA fila y no pasa por el keyset del feed, pero el campo se
+      // rellena con la hora real de registro igual que allí.
+      sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
@@ -162,6 +166,7 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: sessionRelativeBasis(row.session_date, row.created_at),
+      sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
@@ -184,7 +189,7 @@ export async function resolveSharedActivity(
     // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
       .eq("id", ref.rowId)
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
@@ -224,6 +229,9 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: row.finished_on,
+      // pass_reviews es una VISTA: created_at sale nullable de los tipos
+      // generados; sin él se cae a la fecha semántica, ya comprobada no-nula.
+      sortDate: row.created_at ?? row.finished_on,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
       episode: null,
@@ -235,7 +243,7 @@ export async function resolveSharedActivity(
   // episode_watches
   const { data: row } = await supabase
     .from("episode_watches")
-    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on")
+    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at")
     .eq("id", ref.rowId)
     .maybeSingle();
   if (!row) return null;
@@ -266,6 +274,7 @@ export async function resolveSharedActivity(
     itemSubtitle: catalog.subtitle,
     entryStatus: null,
     eventDate: row.watched_on,
+    sortDate: row.created_at,
     rating: row.rating,
     reviewExcerpt: excerpt(row.review),
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },

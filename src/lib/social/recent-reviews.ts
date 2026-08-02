@@ -43,7 +43,7 @@ export async function getRecentReviews(
     // aparecer aquí.
     supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
       .eq("user_id", userId)
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado.
@@ -54,7 +54,7 @@ export async function getRecentReviews(
     supabase
       .from("episode_watches")
       .select(
-        "id, user_id, series_id, season_number, episode_number, rating, review, watched_on",
+        "id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at",
       )
       .eq("user_id", userId)
       .not("review", "is", null)
@@ -158,6 +158,12 @@ export async function getRecentReviews(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: r.finished_on,
+      // sortDate = created_at, el contrato del campo en FeedEvent. Aquí no
+      // ordena (esta lista ordena por eventDate), pero el evento viaja a las
+      // mismas tarjetas que el feed. pass_reviews es una VISTA: sus columnas
+      // salen nullable de los tipos generados, así que sin created_at se cae a
+      // la fecha semántica (no-nula por el .not("finished_on","is",null)).
+      sortDate: r.created_at ?? r.finished_on,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
       episode: null,
@@ -188,6 +194,7 @@ export async function getRecentReviews(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: r.watched_on,
+      sortDate: r.created_at,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
       episode: {
