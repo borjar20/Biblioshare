@@ -8,13 +8,17 @@ function ev(partial: Partial<FeedEvent> & Pick<FeedEvent, "id" | "verb" | "actor
     itemType: "book", itemId: partial.itemId ?? "i1", itemTitle: "T", itemCoverUrl: null,
     itemSubtitle: null, entryStatus: null, rating: null, reviewExcerpt: null,
     episode: null, progress: null, interactionTarget: null,
+    // Estos fixtures describen la AGRUPACIÓN, que lee `eventDate`. La columna
+    // de orden y la hora de registro caen por defecto sobre esa misma fecha
+    // salvo que el caso quiera separarlas explícitamente.
+    orderDate: partial.orderDate ?? partial.eventDate,
     sortDate: partial.sortDate ?? partial.eventDate,
     reactionCount: 0, viewerReacted: false, commentCount: 0, comments: [],
     ...partial,
   } as FeedEvent;
 }
 function person(e: FeedEvent): FeedEntry {
-  return { source: "person", id: e.id, eventDate: e.eventDate, sortDate: e.sortDate, event: e };
+  return { source: "person", id: e.id, eventDate: e.eventDate, orderDate: e.orderDate, sortDate: e.sortDate, event: e };
 }
 
 describe("groupPersonEntries", () => {
@@ -135,7 +139,7 @@ describe("groupPersonEntries", () => {
   });
 
   it("deja pasar las entradas de club sin tocar", () => {
-    const club = { source: "club" as const, id: "club:z", eventDate: "2026-07-29", sortDate: "2026-07-29", event: {} as never };
+    const club = { source: "club" as const, id: "club:z", eventDate: "2026-07-29", orderDate: "2026-07-29", sortDate: "2026-07-29", event: {} as never };
     expect(groupPersonEntries([club])).toEqual([club]);
   });
 });

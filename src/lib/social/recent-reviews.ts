@@ -172,6 +172,10 @@ export async function getRecentReviews(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: r.finished_on,
+      // La columna de orden de esta fuente es `finished_on` (ver
+      // FEED_SOURCE_COLUMNS). Esta lista no pagina por la clave del feed, pero
+      // el evento viaja a las mismas tarjetas, así que se rellena de verdad.
+      orderDate: r.finished_on,
       // sortDate = created_at, el contrato del campo en FeedEvent. Aquí no
       // ordena (esta lista ordena por eventDate), pero el evento viaja a las
       // mismas tarjetas que el feed, así que nunca puede ser date-only (ver el
@@ -207,6 +211,7 @@ export async function getRecentReviews(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: r.watched_on,
+      orderDate: r.watched_on,
       sortDate: r.created_at,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),

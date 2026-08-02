@@ -6,13 +6,15 @@ import type { getFeed } from "./feed";
 // este módulo no se ejecuta como suite.
 //
 // A diferencia de un stub que devuelve listas fijas, este doble APLICA lo que
-// la cadena de query pide —`.lte()`, `.order()`, `.limit()`— porque justo ahí
-// vivía el defecto que nadie cubría: una cota `lte` más ancha de lo que acepta
-// `isAfterCursor` gasta el `limit` en filas ya servidas y las filas antiguas no
-// se sirven NUNCA. Sin honrar `limit` el test no puede ver ese fallo.
+// la cadena de query pide —`.or()`, `.order()` (todas, en orden) y
+// `.limit()`— porque justo ahí vivía el defecto que nadie cubría: un filtro
+// que no coincide con lo que acepta `isAfterCursor` gasta el `limit` en filas
+// ya servidas y las filas antiguas no se sirven NUNCA. Sin honrar `limit` el
+// test no puede ver ese fallo, y un doble que REGISTRA el filtro sin aplicarlo
+// tampoco: mira la cadena, no sus consecuencias.
 //
-// Además registra el argumento de cada `.lte()` por fuente (`lteCalls`), para
-// poder afirmar sobre la cota elegida y no solo sobre el resultado.
+// Además registra el filtro `.or()` de cada fuente (`orFilters`), para poder
+// afirmar sobre el filtro emitido y no solo sobre el resultado.
 //
 // Sirve filas para las CINCO fuentes. Durante un tiempo solo devolvió `added` y
 // `diary`, y las otras tres (`progress_sessions`, `episode_watches` y las
@@ -58,13 +60,93 @@ export type FakeFeedData = {
   clubActivities?: FakeRow[];
 };
 
-export type FakeLteCall = { column: string; value: string };
+export type FakeOrderCall = { column: string; ascending: boolean };
 
 export type FakeFeedSupabase = {
   client: Parameters<typeof getFeed>[0];
-  /** Argumento de cada `.lte()` recibida, por fuente y en orden de llamada. */
-  lteCalls: Record<string, FakeLteCall[]>;
+  /** Argumento de cada `.or()` recibida, por fuente y en orden de llamada. */
+  orFilters: Record<string, string[]>;
+  /**
+   * Claves de `.order()` de CADA query, por fuente: una entrada por query, con
+   * sus columnas en el orden en que se pidieron. Sin esto, la mitad de ORDEN de
+   * la clave del feed seguía escrita a mano en cinco sitios sin nada que la
+   * atase a `FEED_SOURCE_COLUMNS` — y las columnas se centralizaron justo para
+   * que no pudieran separarse.
+   */
+  orderCalls: Record<string, FakeOrderCall[][]>;
 };
+
+// --- Evaluador de filtros PostgREST -----------------------------------------
+//
+// Se exporta para que los tests puedan comprobar el filtro emitido contra
+// `isAfterCursor` con EL MISMO evaluador que el doble usa para servir filas: si
+// fueran dos, la prueba de equivalencia no diría nada sobre lo que el doble
+// hace.
+//
+// Comparación por cadenas, igual que el resto del doble. Que eso siga
+// equivaliendo a Postgres depende de que todos los timestamps lleven el sufijo
+// `+00:00` (issue #347).
+
+/** Parte por comas al nivel superior, respetando los `and(...)` anidados. */
+function splitTopLevel(filter: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < filter.length; i++) {
+    const c = filter[i];
+    if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (c === "," && depth === 0) {
+      parts.push(filter.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(filter.slice(start));
+  return parts.filter((p) => p.length > 0);
+}
+
+function compare(op: string, left: string, right: string): boolean {
+  switch (op) {
+    case "eq":
+      return left === right;
+    case "neq":
+      return left !== right;
+    case "lt":
+      return left < right;
+    case "lte":
+      return left <= right;
+    case "gt":
+      return left > right;
+    case "gte":
+      return left >= right;
+    default:
+      throw new Error(`fake-feed-supabase: operador PostgREST no soportado: ${op}`);
+  }
+}
+
+function matchesClause(row: FakeRow, clause: string): boolean {
+  if (clause.startsWith("and(") && clause.endsWith(")")) {
+    return splitTopLevel(clause.slice(4, -1)).every((c) => matchesClause(row, c));
+  }
+  if (clause.startsWith("or(") && clause.endsWith(")")) {
+    return splitTopLevel(clause.slice(3, -1)).some((c) => matchesClause(row, c));
+  }
+  const firstDot = clause.indexOf(".");
+  const secondDot = clause.indexOf(".", firstDot + 1);
+  if (firstDot < 0 || secondDot < 0) {
+    throw new Error(`fake-feed-supabase: cláusula PostgREST ilegible: ${clause}`);
+  }
+  const column = clause.slice(0, firstDot);
+  const op = clause.slice(firstDot + 1, secondDot);
+  let value = clause.slice(secondDot + 1);
+  if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+  return compare(op, text(row[column]), value);
+}
+
+/** ¿Pasa `row` el filtro que se le dio a `.or()`? */
+export function rowMatchesOrFilter(row: FakeRow, filter: string): boolean {
+  return splitTopLevel(filter).some((clause) => matchesClause(row, clause));
+}
 
 function sourceOf(table: string, columns: string): FakeFeedSource {
   if (table === "passes") {
@@ -143,7 +225,8 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     ...r,
   }));
 
-  const lteCalls: Record<string, FakeLteCall[]> = {};
+  const orFilters: Record<string, string[]> = {};
+  const orderCalls: Record<string, FakeOrderCall[][]> = {};
 
   // Fila de `interaction_targets` por cada fila fuente que sea target de
   // interacción. `getInteractionSummary` (vía `getInteractionTargetRefs`)
@@ -206,10 +289,12 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
 
   function query(table: string) {
     let columns = "";
-    let orderColumn: string | null = null;
-    let ascending = true;
+    // TODAS las claves de `.order()`, en el orden en que se piden: la clave del
+    // feed son tres columnas y quedarse con la última convertiría el doble en
+    // un oráculo distinto del de producción.
+    const orders: FakeOrderCall[] = [];
     let limit: number | null = null;
-    const ltes: FakeLteCall[] = [];
+    const ors: string[] = [];
 
     const builder: Record<string, unknown> = {};
     const chain = () => builder;
@@ -220,13 +305,12 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       columns = cols;
       return builder;
     };
-    builder.lte = (column: string, value: string) => {
-      ltes.push({ column, value });
+    builder.or = (filter: string) => {
+      ors.push(filter);
       return builder;
     };
     builder.order = (column: string, opts?: { ascending?: boolean }) => {
-      orderColumn = column;
-      ascending = opts?.ascending ?? true;
+      orders.push({ column, ascending: opts?.ascending ?? true });
       return builder;
     };
     builder.limit = (n: number) => {
@@ -235,22 +319,23 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     };
     builder.then = (resolve: (value: unknown) => unknown) => {
       const source = sourceOf(table, columns);
-      if (ltes.length) (lteCalls[source] ??= []).push(...ltes);
+      if (ors.length) (orFilters[source] ??= []).push(...ors);
+      if (orders.length) (orderCalls[source] ??= []).push(orders);
 
       let result = dataFor(source);
-      for (const f of ltes) result = result.filter((r) => text(r[f.column]) <= f.value);
-      if (orderColumn) {
-        const col = orderColumn;
-        const dir = ascending ? -1 : 1;
-        // Desempate determinista (created_at, id) para que el doble no
-        // dependa del orden de inserción donde Postgres tampoco garantiza uno.
+      // Varios `.or()` se conjugan con AND entre sí, como en PostgREST.
+      for (const filter of ors) result = result.filter((r) => rowMatchesOrFilter(r, filter));
+      if (orders.length) {
         result = [...result].sort((a, b) => {
-          const [ka, kb] = [text(a[col]), text(b[col])];
-          if (ka !== kb) return ka < kb ? dir : -dir;
-          const [ca, cb] = [text(a.created_at), text(b.created_at)];
-          if (ca !== cb) return ca < cb ? dir : -dir;
+          for (const { column, ascending } of orders) {
+            const dir = ascending ? -1 : 1;
+            const [ka, kb] = [text(a[column]), text(b[column])];
+            if (ka !== kb) return ka < kb ? dir : -dir;
+          }
+          // Desempate determinista por id para que el doble no dependa del
+          // orden de inserción donde Postgres tampoco garantiza uno.
           const [ia, ib] = [text(a.id), text(b.id)];
-          return ia < ib ? dir : ia > ib ? -dir : 0;
+          return ia < ib ? 1 : ia > ib ? -1 : 0;
         });
       }
       if (limit != null) result = result.slice(0, limit);
@@ -265,5 +350,5 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     from: (table: string) => query(table),
   };
 
-  return { client: client as unknown as Parameters<typeof getFeed>[0], lteCalls };
+  return { client: client as unknown as Parameters<typeof getFeed>[0], orFilters, orderCalls };
 }

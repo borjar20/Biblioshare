@@ -8,6 +8,7 @@ export type PersonGroupEntry = {
   source: "person-group";
   id: string;
   eventDate: string; // la del ítem más reciente
+  orderDate: string; // la del ítem más reciente, para el orden final
   sortDate: string;  // la del ítem más reciente, para el orden final
   verb: Extract<FeedVerb, "added" | "progressed">;
   actor: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
@@ -85,7 +86,7 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     for (const chunk of chunks) {
       if (chunk.length === 1) {
         const e = chunk[0];
-        result.push({ source: "person", id: e.id, eventDate: e.eventDate, sortDate: e.sortDate, event: e });
+        result.push({ source: "person", id: e.id, eventDate: e.eventDate, orderDate: e.orderDate, sortDate: e.sortDate, event: e });
         continue;
       }
       const newest = chunk[0]; // ya ordenado desc
@@ -97,6 +98,7 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
         // grupos de páginas distintas con el mismo actor+obra.
         id: `group:${key}:${newest.id}`,
         eventDate: newest.eventDate,
+        orderDate: newest.orderDate,
         sortDate: newest.sortDate,
         verb: newest.verb as PersonGroupEntry["verb"],
         actor: {
