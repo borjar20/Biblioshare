@@ -502,3 +502,32 @@ export async function searchSeries(query: string): Promise<SearchResult[]> {
       isbn: null,
     }));
 }
+
+// ── Galería de portadas oficiales (editor de ficha) ──────────────────────────
+// TMDB /images devuelve TODOS los posters de la obra (varios idiomas/ediciones).
+// Se usan para ofrecer al colaborador portadas oficiales alternas a la actual.
+export type TmdbImagesResponse = {
+  posters?: Array<{ file_path?: string | null }>;
+};
+
+// Puro: mapea file_path -> URL absoluta con el mismo base (w342) que las
+// portadas importadas, para que la elegida sea coherente con el resto.
+export function mapPosterPaths(data: TmdbImagesResponse | null): string[] {
+  return (data?.posters ?? [])
+    .map((p) => p.file_path)
+    .filter((p): p is string => typeof p === "string" && p.length > 0)
+    .map((p) => `${TMDB_IMAGE_BASE}${p}`);
+}
+
+// `include_image_language=es,en,null` prioriza posters en español/inglés y los
+// sin idioma (arte sin texto); TMDB los ordena por votos. Nunca lanza: tmdbGet
+// ya devuelve null si no hay API key o la llamada falla.
+export async function getPosterPaths(
+  kind: "movie" | "tv",
+  tmdbId: number
+): Promise<string[]> {
+  const data = await tmdbGet<TmdbImagesResponse>(
+    `/${kind}/${tmdbId}/images?include_image_language=es,en,null`
+  );
+  return mapPosterPaths(data);
+}

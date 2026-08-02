@@ -1,4 +1,4 @@
-import { buildCoverUrl } from "./covers";
+import { buildCoverUrl, mapWorkCovers } from "./covers";
 
 // PELDAÑO 2: el detalle de la OBRA. Aquí vive la sinopsis de verdad — el
 // endpoint de búsqueda no la devuelve por mucho que se pida en `fields`, y de
@@ -89,5 +89,26 @@ export async function fetchFirstEditionDescription(
     return null;
   } catch {
     return null;
+  }
+}
+
+// Portadas oficiales de la obra para el editor de ficha. Mismo endpoint que
+// fetchWork; aquí solo interesa el array `covers`. Nunca lanza: fuente caída o
+// clave vacía -> [].
+export async function fetchWorkCovers(workKey: string): Promise<string[]> {
+  try {
+    const key = normalizeWorkKey(workKey);
+    if (!key) return [];
+
+    const res = await fetch(`https://openlibrary.org/works/${key}.json`, {
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+
+    const data: WorkResponse = await res.json();
+    return mapWorkCovers(data.covers);
+  } catch {
+    return [];
   }
 }
