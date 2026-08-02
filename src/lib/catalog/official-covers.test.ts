@@ -13,6 +13,14 @@ describe("isAllowedCoverHost", () => {
     expect(isAllowedCoverHost("no-soy-una-url")).toBe(false);
     expect(isAllowedCoverHost("")).toBe(false);
   });
+
+  it("rechaza vectores de bypass de allowlist y normaliza mayúsculas", () => {
+    expect(isAllowedCoverHost("https://image.tmdb.org.evil.com/x.jpg")).toBe(false);
+    expect(isAllowedCoverHost("https://evil.com@image.tmdb.org/x.jpg")).toBe(true);
+    expect(isAllowedCoverHost("https://image.tmdb.org@evil.com/x.jpg")).toBe(false);
+    expect(isAllowedCoverHost("https://IMAGE.TMDB.ORG/x.jpg")).toBe(true);
+    expect(isAllowedCoverHost("//covers.openlibrary.org/x.jpg")).toBe(false);
+  });
 });
 
 describe("capOfficialCovers", () => {
