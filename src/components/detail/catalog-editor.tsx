@@ -23,6 +23,8 @@ import { sagaHref } from "@/lib/catalog/item-href";
 import {
   updateCatalogItem,
   uploadCover,
+  fetchOfficialCovers,
+  setOfficialCover,
   updateEdition,
   deleteEdition,
   resyncEditions,
@@ -287,6 +289,48 @@ function CatalogEditorForm({
   // tarde -- no para pintar nada.
   const objectUrlRef = useRef<string | null>(null);
 
+  // Galería de portadas oficiales (carga bajo demanda). `officialCovers === null`
+  // = aún no se ha pedido; una vez pedida se cachea y reabrir no vuelve a la red.
+  const [showCovers, setShowCovers] = useState(false);
+  const [officialCovers, setOfficialCovers] = useState<string[] | null>(null);
+  const [coversLoading, startCoversTransition] = useTransition();
+  const [coversError, setCoversError] = useState(false);
+  const [coverSaving, setCoverSaving] = useState(false);
+
+  function toggleCovers() {
+    const next = !showCovers;
+    setShowCovers(next);
+    // Primera apertura: pedir la galería. Reaperturas usan la caché de estado.
+    if (next && officialCovers === null) {
+      setCoversError(false);
+      startCoversTransition(async () => {
+        const result = await fetchOfficialCovers(itemType, itemId);
+        setOfficialCovers(result.covers);
+      });
+    }
+  }
+
+  // Elegir una portada oficial: optimista igual que handleCoverChange. Si el
+  // servidor rechaza (host no permitido, fallo de update), se revierte.
+  async function handlePickOfficial(url: string) {
+    const previousCoverUrl = coverUrl;
+    setCoverUrl(url);
+    setCoverSaving(true);
+    setCoverError(false);
+    try {
+      const result = await setOfficialCover(itemType, itemId, url);
+      if (result.error) {
+        setCoverUrl(previousCoverUrl);
+        setCoverError(true);
+      }
+    } catch {
+      setCoverUrl(previousCoverUrl);
+      setCoverError(true);
+    } finally {
+      setCoverSaving(false);
+    }
+  }
+
   // Revoca el blob URL pendiente al desmontar (p.ej. al cerrar el editor
   // guardando "Guardar cambios"): sin esto, cada portada subida en la sesión
   // se queda reservando memoria para siempre. No es un setState, así que no
@@ -490,6 +534,57 @@ function CatalogEditorForm({
           {coverError && (
             <p className="text-sm text-status-dropped">{t("errors.generic")}</p>
           )}
+
+          {/* Galería de portadas oficiales: alternativa al upload manual de
+              arriba. Bajo demanda para no llamar a TMDB/OpenLibrary en cada
+              edición que solo toca texto. */}
+          <div className="flex flex-col gap-2.5">
+            <button
+              type="button"
+              onClick={toggleCovers}
+              className={`self-start font-mono text-[10px] tracking-[0.06em] uppercase ${accent.text} hover:underline`}
+            >
+              {showCovers ? t("hideOfficialCovers") : t("showOfficialCovers")}
+            </button>
+
+            {showCovers && (
+              <>
+                {coversLoading && (
+                  <p className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                    {t("coversLoading")}
+                  </p>
+                )}
+                {!coversLoading && officialCovers?.length === 0 && (
+                  <p className="text-sm text-muted-foreground">{t("noOfficialCovers")}</p>
+                )}
+                {!coversLoading && coversError && (
+                  <p className="text-sm text-status-dropped">{t("errors.generic")}</p>
+                )}
+                {!coversLoading && officialCovers && officialCovers.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                    {officialCovers.map((url) => {
+                      const selected = url === coverUrl;
+                      return (
+                        <button
+                          key={url}
+                          type="button"
+                          disabled={coverSaving}
+                          onClick={() => void handlePickOfficial(url)}
+                          aria-label={t("changeCover")}
+                          aria-pressed={selected}
+                          className={`relative aspect-[2/3] overflow-hidden rounded-[5px] border-2 disabled:opacity-60 ${
+                            selected ? accent.border : "border-transparent"
+                          }`}
+                        >
+                          <Image src={url} alt="" fill sizes="80px" className="object-cover" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           <div className="grid grid-cols-[1fr_96px] gap-2.5">
             <label className="flex flex-col gap-1.5">
