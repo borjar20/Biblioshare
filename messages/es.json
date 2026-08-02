@@ -9,7 +9,12 @@
       "collection": "Colección",
       "search": "Buscar",
       "clubs": "Clubes",
-      "profile": "Perfil"
+      "profile": "Perfil",
+      "login": "Entrar"
+    },
+    "auth": {
+      "signIn": "Iniciar sesión",
+      "signUp": "Crear cuenta"
     }
   },
   "auth": {
