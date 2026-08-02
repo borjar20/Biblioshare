@@ -1,15 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { getFeed } from "./feed";
-import { addedUpperBound, isAfterCursor, parseCursor } from "./feed-order";
-import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
-import { fakeSupabase, type FakeFeedData, type FakeRow } from "./fake-feed-supabase";
+import {
+  cursorSourceFilter,
+  FEED_SOURCE_COLUMNS,
+  isAfterCursor,
+  parseCursor,
+  type FeedSourceKey,
+} from "./feed-order";
+import {
+  fakeSupabase,
+  rowMatchesOrFilter,
+  type FakeFeedData,
+  type FakeRow,
+} from "./fake-feed-supabase";
 import { todayISO } from "@/lib/stats/dates";
 
-// Las cotas `.lte()` de `getFeed` y el filtro `isAfterCursor` de feed-order son
-// UNA sola invariante: la cota tiene que ser un superconjunto de lo que el
-// filtro acepta. feed-order.test.ts prueba el módulo puro y por construcción no
-// puede cubrir la ELECCIÓN de cota que hace feed.ts; por eso este fichero
-// pagina de verdad contra el doble y comprueba que ninguna fila se pierde.
+// El filtro `.or()` que `getFeed` emite y el `isAfterCursor` de feed-order son
+// UNA sola invariante: si dejan de coincidir, la paginación pierde o repite
+// filas. feed-order.test.ts prueba el módulo puro y por construcción no puede
+// cubrir la ELECCIÓN de columnas que hace feed.ts —qué filtro va a qué query—;
+// por eso este fichero pagina de verdad contra el doble y comprueba que ninguna
+// fila se pierde.
 
 const TODAY = todayISO();
 
@@ -216,30 +227,31 @@ const CLUB_EXPECTED_IDS = clubActivities.map((r) => `club_activities:${r.id}`).s
 
 type Walk = {
   served: string[];
-  /** Cota que feed.ts pasó a la fuente `added` en cada página con cursor. */
-  addedBounds: string[];
-  /** La que exige el orden total, recalculada desde el cursor servido. */
-  expectedBounds: string[];
-  /** Cota por fuente y el cursor vigente en esa página, para la propiedad. */
-  pages: { cursor: string; bounds: Record<string, string | undefined> }[];
+  /** Filtro por fuente y el cursor vigente en esa página, para la propiedad. */
+  pages: { cursor: string; filters: Record<string, string | undefined> }[];
+};
+
+// Nombre de fuente del doble (por tabla) → clave de `FEED_SOURCE_COLUMNS`.
+const FAKE_SOURCE_TO_KEY: Record<string, FeedSourceKey> = {
+  added: "added",
+  progress_sessions: "progressed",
+  diary: "diary",
+  episode_watches: "episodes",
+  club_activities: "clubs",
 };
 
 async function walk(pageSize: number, data: FakeFeedData = DATA): Promise<Walk> {
   const served: string[] = [];
-  const addedBounds: string[] = [];
-  const expectedBounds: string[] = [];
   const pages: Walk["pages"] = [];
   let cursor: string | undefined;
   for (let guard = 0; guard < 20; guard++) {
-    // Un doble por página: así `lteCalls` recoge las cotas de ESA página.
+    // Un doble por página: así `orFilters` recoge los filtros de ESA página.
     const fake = fakeSupabase(data);
     const page = await getFeed(fake.client, "viewer-1", { cursor, pageSize });
     if (cursor) {
-      addedBounds.push(fake.lteCalls.added?.[0]?.value ?? "(sin cota)");
-      expectedBounds.push(addedUpperBound(parseCursor(cursor)));
-      const bounds: Record<string, string | undefined> = {};
-      for (const [source, calls] of Object.entries(fake.lteCalls)) bounds[source] = calls[0]?.value;
-      pages.push({ cursor, bounds });
+      const filters: Record<string, string | undefined> = {};
+      for (const [source, calls] of Object.entries(fake.orFilters)) filters[source] = calls[0];
+      pages.push({ cursor, filters });
     }
     for (const entry of page.events) {
       if (entry.source === "person-group") served.push(...entry.items.map((e) => e.id));
@@ -248,7 +260,7 @@ async function walk(pageSize: number, data: FakeFeedData = DATA): Promise<Walk> 
     if (!page.nextCursor) break;
     cursor = page.nextCursor;
   }
-  return { served, addedBounds, expectedBounds, pages };
+  return { served, pages };
 }
 
 // Cada recorrido solo ejercita su defecto si el cursor cae donde el fixture
@@ -272,60 +284,82 @@ describe("cotas de cursor de getFeed", () => {
     expect(parseCursor(pages[1].cursor).sortDate?.slice(0, 10)).toBe(TODAY);
   });
 
-  // OJO con lo que este test NO prueba: `expectedBounds` se calcula llamando a
-  // `addedUpperBound`, o sea la propia función bajo prueba, así que NO es un
-  // oráculo de corrección — si `addedUpperBound` devolviera una cota mal
-  // calculada, este test seguiría en verde. Lo único que comprueba es el
-  // CABLEADO: que `feed.ts` derive su `.lte("created_at", …)` del helper y no
-  // de una fórmula propia duplicada (que es justo el RED que lo motivó). La
-  // corrección del valor la prueba `feed-order.test.ts` contra `isAfterCursor`,
-  // y la ausencia de pérdidas el test de paginación de arriba.
-  it("la cota de `added` coincide con el supremo de lo que acepta isAfterCursor", async () => {
-    const { addedBounds, expectedBounds } = await walk(5);
-    expect(addedBounds.length).toBeGreaterThan(0);
-    expect(addedBounds).toEqual(expectedBounds);
+  // OJO con lo que este test NO prueba: el filtro esperado se calcula llamando
+  // a `cursorSourceFilter`, o sea la propia función, así que NO es un oráculo de
+  // corrección — si devolviera un filtro mal construido, este test seguiría en
+  // verde. Lo único que comprueba es el CABLEADO: que cada query de `feed.ts`
+  // salga del helper con las columnas de SU fuente, y no de una fórmula propia
+  // duplicada ni del par de columnas de otra fuente (que es justo el RED que lo
+  // motivó). La corrección del filtro la prueba `feed-order.test.ts` contra
+  // `isAfterCursor`, y la ausencia de pérdidas los recorridos de este fichero.
+  it("cada fuente emite el filtro compuesto de SUS columnas", async () => {
+    const data: FakeFeedData = {
+      ...DATA,
+      sessions: [{ id: "sesion", session_date: OLD_DAY, created_at: stamp(OLD_DAY, "11:00") }],
+      episodes: [{ id: "episodio", watched_on: OLD_DAY, created_at: stamp(OLD_DAY, "12:00") }],
+      clubActivities: [{ id: "actividad", created_at: stamp(OLD_DAY, "13:00") }],
+    };
+    const { pages } = await walk(5, data);
+    expect(pages.length).toBeGreaterThan(0);
+    // Las cinco fuentes tienen que haber emitido filtro en alguna página: si
+    // una no aparece, este test no la está vigilando.
+    const seen = new Set<string>();
+    for (const { cursor, filters } of pages) {
+      const parsed = parseCursor(cursor);
+      for (const [fakeSource, filter] of Object.entries(filters)) {
+        const key = FAKE_SOURCE_TO_KEY[fakeSource];
+        expect(key, `fuente inesperada con filtro: ${fakeSource}`).toBeDefined();
+        seen.add(key);
+        expect(filter).toBe(cursorSourceFilter(FEED_SOURCE_COLUMNS[key], parsed));
+      }
+    }
+    expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed"]);
   });
 });
 
-describe("cotas de las fuentes de fecha-only cuando el día de orden no es la columna", () => {
-  it("sirve cada fila exactamente una vez aunque el día de orden sea UTC y la columna local", async () => {
+describe("fuentes de fecha-only cuya columna local diverge del timestamp UTC", () => {
+  it("sirve cada fila exactamente una vez", async () => {
     const { served, pages } = await walk(2, DIVERGENT_DATA);
     expect(new Set(served).size).toBe(served.length);
     expect([...served].sort()).toEqual(DIVERGENT_EXPECTED_IDS);
-    // Lo que hace peligroso este fixture es que el cursor esté en AYER
-    // mientras las filas `-hoy` tienen la columna en HOY: es ahí donde la cota
-    // ensanchada un día es la única que las alcanza.
-    expect(cursorDay(pages, 0)).toBe(YESTERDAY);
+    // Lo que hace peligroso este fixture es la divergencia entre la columna
+    // (fecha LOCAL) y el timestamp de registro (UTC): las filas `-hoy` tienen
+    // columna HOY y registro en el día UTC anterior, y las `-ayer` justo al
+    // revés. El recorrido tiene que CRUZAR ese borde —quedarse a un lado no
+    // ejercita nada—, así que se exige que el cursor pase por los dos días.
+    const days = pages.map((p) => parseCursor(p.cursor).day);
+    expect(cursorDay(pages, 0)).toBe(TODAY);
+    expect(days).toContain(YESTERDAY);
   });
 
-  // La propiedad, escrita sobre las fuentes donde `dayOf(eventDate)` PUEDE
-  // separarse de la columna filtrada (el test equivalente de `added` no puede
-  // fallar: allí eventDate, sortDate y la columna son la misma).
-  it("ninguna cota excluye una fila que isAfterCursor acepta", async () => {
+  // La propiedad sobre el fixture real: ninguna fila que `isAfterCursor` acepta
+  // queda fuera del filtro que la query emitió. Se evalúa el filtro con el mismo
+  // evaluador que el doble usa para servir, y la entrada se construye con
+  // `orderDate` = la columna EN CRUDO, que es lo que ahora manda en el orden.
+  it("ningún filtro excluye una fila que isAfterCursor acepta", async () => {
     const { pages } = await walk(2, DIVERGENT_DATA);
     expect(pages.length).toBeGreaterThan(0);
 
     const violations: string[] = [];
-    for (const { cursor, bounds } of pages) {
+    for (const { cursor, filters } of pages) {
       const parsed = parseCursor(cursor);
       for (const source of DATE_ONLY_SOURCES) {
-        const bound = bounds[source.key];
-        if (bound === undefined) continue;
+        const filter = filters[source.key];
+        if (filter === undefined) continue;
         for (const row of DIVERGENT_DATA[source.dataKey] ?? []) {
-          const column = String(row[source.column]);
-          // La hora de registro sale de la columna que use ESA fuente en
-          // `feed.ts` (updated_at en reseñas, created_at en las otras dos), no
-          // de created_at para todas.
-          const registeredAt = String(row[source.stampColumn]);
           const entry = {
-            eventDate: sessionRelativeBasis(column, registeredAt),
-            sortDate: registeredAt,
+            orderDate: String(row[source.column]),
+            // La hora de registro sale de la columna que use ESA fuente en
+            // `feed.ts` (updated_at en reseñas, created_at en las otras dos),
+            // no de created_at para todas.
+            sortDate: String(row[source.stampColumn]),
             id: `${source.idPrefix}:${row.id}`,
           };
           if (!isAfterCursor(entry, parsed)) continue;
-          if (column > bound) {
+          if (!rowMatchesOrFilter(row, filter)) {
             violations.push(
-              `${entry.id}: ${source.column}=${column} > cota ${bound} (cursor ${cursor}, eventDate ${entry.eventDate})`,
+              `${entry.id}: aceptada por isAfterCursor y rechazada por el filtro ` +
+                `${filter} (cursor ${cursor})`,
             );
           }
         }
@@ -460,11 +494,13 @@ describe("cota de la fuente de clubes", () => {
     expect(cursorDay(pages, 0)).toBe(CLUB_DAY);
   });
 
-  it("usa la cota exacta de created_at, no el fin del día", async () => {
+  it("usa el filtro compuesto de created_at, no el fin del día", async () => {
     const { pages } = await walk(2, CLUB_DATA);
     expect(pages.length).toBeGreaterThan(0);
-    for (const { cursor, bounds } of pages) {
-      expect(bounds.club_activities).toBe(addedUpperBound(parseCursor(cursor)));
+    for (const { cursor, filters } of pages) {
+      expect(filters.club_activities).toBe(
+        cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, parseCursor(cursor)),
+      );
     }
   });
 });

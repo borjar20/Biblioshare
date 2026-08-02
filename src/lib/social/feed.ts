@@ -7,9 +7,9 @@ import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 import { groupPersonEntries, type PersonGroupEntry } from "./group-feed-entries";
 import {
-  addedUpperBound,
   compareEntries,
-  dateUpperBoundInclusiveOfUtcSkew,
+  cursorSourceFilter,
+  FEED_SOURCE_COLUMNS,
   isAfterCursor,
   makeCursor,
   parseCursor,
@@ -48,11 +48,18 @@ export type FeedEvent = {
   entryStatus: MediaStatus | null;
   // Solo para `added`: pertenencia del visitante actual, resuelta por página.
   viewerHasActivePass?: boolean;
+  // Fecha SEMÁNTICA, solo para presentación: el «hace x» de la tarjeta y la
+  // ventana de agrupación. Puede llevar la sustitución de
+  // `sessionRelativeBasis`, así que NO existe como columna y NO ordena.
   eventDate: string;
-  // Hora real de registro (created_at). SIEMPRE presente: es el segundo
-  // componente de la clave de orden del feed (ver feed-order.ts). eventDate
-  // puede ser date-only —finished_on, watched_on, sesiones backdateadas— y por
-  // sí solo no distingue dos eventos del mismo día.
+  // Columna de fecha de la fuente, EN CRUDO: el primer componente de la clave
+  // de orden (ver feed-order.ts). Existe tal cual en la tabla, que es lo que
+  // permite que el filtro SQL de cada query sea el espejo exacto de
+  // `isAfterCursor` en vez de una aproximación.
+  orderDate: string;
+  // Hora real de registro. SIEMPRE presente: es el segundo componente de la
+  // clave de orden. `orderDate` puede ser date-only —finished_on, watched_on,
+  // session_date— y por sí solo no distingue dos eventos del mismo día.
   sortDate: string;
   rating: number | null;
   reviewExcerpt: string | null;
@@ -99,9 +106,9 @@ type FeedEventDraft = Omit<FeedEvent, "interactionTarget"> & {
 // no tener ítem — una tierlist, un reto). En vez de forzar un ítem falso en el
 // evento de club, la lista transporta la unión y cada tarjeta lee lo suyo.
 export type FeedEntry =
-  | { source: "person"; id: string; eventDate: string; sortDate: string; event: FeedEvent }
+  | { source: "person"; id: string; eventDate: string; orderDate: string; sortDate: string; event: FeedEvent }
   | PersonGroupEntry
-  | { source: "club"; id: string; eventDate: string; sortDate: string; event: ClubFeedEvent };
+  | { source: "club"; id: string; eventDate: string; orderDate: string; sortDate: string; event: ClubFeedEvent };
 
 export type FeedPage = {
   events: FeedEntry[];
@@ -144,10 +151,10 @@ export type FeedOptions = {
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_EXCERPT_LENGTH = 200;
 
-// El orden total, el formato del cursor y las cotas de las queries viven en
-// `./feed-order` (módulo puro, con sus propios tests): la clave de orden y el
-// filtro `isAfterCursor` tienen que moverse siempre juntos, o la paginación
-// pierde o repite filas sin romper ningún tipo.
+// El orden total, el formato del cursor y el filtro de las queries viven en
+// `./feed-order` (módulo puro, con sus propios tests): la clave de orden, el
+// filtro SQL y `isAfterCursor` tienen que moverse siempre juntos, o la
+// paginación pierde o repite filas sin romper ningún tipo.
 
 function excerpt(text: string | null): string | null {
   if (!text) return null;
@@ -197,13 +204,11 @@ export async function getFeed(
       : Promise.resolve({ data: [] as { followee_id: string }[], error: null }),
     includeClubs
       ? getClubActivityEvents(supabase, viewerId, {
-          // Un evento de club tiene eventDate === sortDate === created_at
-          // (club-feed.ts), la MISMA forma que la fuente `added`: la cota exacta
-          // es la de `addedUpperBound`. Con el fin del día, la query —que ordena
-          // created_at desc y corta a pageSize— devolvía las mismas filas de
-          // cabeza en todas las páginas y las actividades por debajo del cursor
-          // dentro de ese día no se servían nunca.
-          cursorUpperBound: cursor ? addedUpperBound(cursor) : undefined,
+          // Un evento de club tiene orderDate === sortDate === created_at
+          // (club-feed.ts), la MISMA forma que la fuente `added`.
+          cursorFilter: cursor
+            ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor)
+            : undefined,
           pageSize,
         })
       : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
@@ -242,15 +247,13 @@ export async function getFeed(
             .from("passes")
             .select("id, user_id, item_type, item_id, status, created_at")
             .in("user_id", followedIds)
+            // La clave de orden entera, en columnas reales: aquí la fecha y la
+            // hora de registro son la MISMA (un alta no se puede backdatear).
             .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
             .limit(pageSize);
           if (itemTypes) q = q.in("item_type", itemTypes);
-          // added: created_at ES el eventDate, pero `cursor.sortDate` NO es por
-          // sí solo una cota válida — sale de otra columna que `cursor.day` en
-          // cuanto el último evento de la página está backdateado. El supremo
-          // real (y por qué usar solo uno de los dos pierde filas o gasta el
-          // `limit`) vive en `addedUpperBound`, junto a `isAfterCursor`.
-          if (cursor) q = q.lte("created_at", addedUpperBound(cursor));
+          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.added, cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -266,13 +269,11 @@ export async function getFeed(
             )
             .in("user_id", followedIds)
             .order("session_date", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
             .limit(pageSize);
           if (itemTypes) q = q.in("passes.item_type", itemTypes);
-          // Un día más ancha que `cursor.day` a propósito: `eventDate` puede ser
-          // el created_at UTC mientras la columna es la fecha local (ver
-          // `dateUpperBoundInclusiveOfUtcSkew`). El descarte fino es de
-          // `isAfterCursor`.
-          if (cursor) q = q.lte("session_date", dateUpperBoundInclusiveOfUtcSkew(cursor));
+          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.progressed, cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -300,11 +301,11 @@ export async function getFeed(
             // feed social de gente a la que sigues.
             .not("finished_on", "is", null)
             .order("finished_on", { ascending: false })
+            .order("updated_at", { ascending: false })
+            .order("id", { ascending: false })
             .limit(pageSize);
           if (itemTypes) q = q.in("item_type", itemTypes);
-          // Ver `dateUpperBoundInclusiveOfUtcSkew`: un día más ancha porque el
-          // día del orden sale de created_at (UTC) cuando finished_on es hoy.
-          if (cursor) q = q.lte("finished_on", dateUpperBoundInclusiveOfUtcSkew(cursor));
+          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.diary, cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -317,10 +318,11 @@ export async function getFeed(
             )
             .in("user_id", followedIds)
             .order("watched_on", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
             .limit(pageSize);
           if (reviewsOnly) q = q.not("review", "is", null);
-          // Misma cota ensanchada que finished_on / session_date.
-          if (cursor) q = q.lte("watched_on", dateUpperBoundInclusiveOfUtcSkew(cursor));
+          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.episodes, cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -516,8 +518,9 @@ export async function getFeed(
       itemSubtitle: catalog.subtitle,
       entryStatus: r.status,
       eventDate: r.created_at,
-      // En esta fuente la fecha semántica y la hora de registro son la misma
-      // columna: un alta no se puede backdatear.
+      // En esta fuente la fecha semántica, la columna de orden y la hora de
+      // registro son la misma columna: un alta no se puede backdatear.
+      orderDate: r.created_at,
       sortDate: r.created_at,
       rating: null,
       reviewExcerpt: null,
@@ -552,6 +555,9 @@ export async function getFeed(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: sessionRelativeBasis(r.session_date, r.created_at),
+      // El orden va por la columna EN CRUDO, sin la sustitución de arriba: es
+      // lo que la query puede filtrar y ordenar.
+      orderDate: r.session_date,
       // Hora real de registro: desempata sesiones backdateadas del mismo día
       // (ver comentario del campo en FeedEvent).
       sortDate: r.created_at,
@@ -611,11 +617,11 @@ export async function getFeed(
       // La hora de registro aquí es `updated_at`, NO `created_at`: a diferencia
       // de progress_sessions / episode_watches —que insertan una fila por
       // evento—, el pase se crea al AÑADIR la obra y el terminado llega después
-      // como UPDATE. Con created_at el «hace x» medía desde el alta y, peor, el
-      // día de orden se iba semanas atrás mientras finished_on era hoy: la fila
-      // quedaba fuera de la cota `lte("finished_on", …)` de ese cursor y no se
-      // servía en NINGUNA página (ver feed-cursor-bounds.test.ts).
+      // como UPDATE. Con created_at el «hace x» mediría desde el alta, y el
+      // segundo componente de la clave de orden dejaría de ser la hora en que
+      // el terminado se registró (ver feed-cursor-bounds.test.ts).
       eventDate: sessionRelativeBasis(r.finished_on, r.updated_at),
+      orderDate: r.finished_on,
       sortDate: r.updated_at,
       rating: r.rating,
       reviewExcerpt: excerpt(reviewText),
@@ -656,6 +662,7 @@ export async function getFeed(
       // watched_on también es `date`: mismo criterio que finished_on y que las
       // sesiones (ver el bucle de reseñas).
       eventDate: sessionRelativeBasis(r.watched_on, r.created_at),
+      orderDate: r.watched_on,
       sortDate: r.created_at,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
@@ -678,19 +685,20 @@ export async function getFeed(
   // Las dos familias se mezclan aquí, ya como entradas: a partir de este punto
   // el orden, el cursor y el corte son los mismos para ambas.
   // Espeja a `FeedEntry` salvo en el evento de persona, que aquí sigue siendo
-  // el borrador (interactionTargetId aún sin resolver). `sortDate` es
-  // obligatorio en las dos ramas: es el segundo componente de la clave de orden
-  // (`OrderableEntry`, feed-order.ts) y sin él ni `compareEntries` ni
-  // `isAfterCursor` ni `makeCursor` aceptan estas entradas.
+  // el borrador (interactionTargetId aún sin resolver). `orderDate` y `sortDate`
+  // son obligatorios en las dos ramas: son los dos primeros componentes de la
+  // clave de orden (`OrderableEntry`, feed-order.ts) y sin ellos ni
+  // `compareEntries` ni `isAfterCursor` ni `makeCursor` aceptan estas entradas.
   const entries: Array<
-    | { source: "person"; id: string; eventDate: string; sortDate: string; event: FeedEventDraft }
-    | { source: "club"; id: string; eventDate: string; sortDate: string; event: ClubFeedEvent }
+    | { source: "person"; id: string; eventDate: string; orderDate: string; sortDate: string; event: FeedEventDraft }
+    | { source: "club"; id: string; eventDate: string; orderDate: string; sortDate: string; event: ClubFeedEvent }
   > = [
     ...events.map(
       (event) => ({
         source: "person",
         id: event.id,
         eventDate: event.eventDate,
+        orderDate: event.orderDate,
         sortDate: event.sortDate,
         event,
       }) as const,
@@ -700,20 +708,22 @@ export async function getFeed(
         source: "club",
         id: event.id,
         eventDate: event.eventDate,
-        // El evento de club ya ES su created_at (club-feed.ts:128), así que su
-        // hora real de registro y su fecha semántica coinciden.
+        // El evento de club ya ES su created_at (club-feed.ts), así que su
+        // columna de orden, su hora real de registro y su fecha semántica
+        // coinciden.
+        orderDate: event.eventDate,
         sortDate: event.eventDate,
         event,
       }) as const,
     ),
   ];
 
-  // Orden total (día desc, created_at desc, id desc) — ver feed-order.ts. El
-  // comparador y `isAfterCursor` son una sola invariante: si dejan de coincidir,
-  // la paginación pierde o repite filas.
+  // Orden total (día de la columna de fecha desc, hora de registro desc, id
+  // desc) — ver feed-order.ts. El comparador y `isAfterCursor` son una sola
+  // invariante: si dejan de coincidir, la paginación pierde o repite filas.
   entries.sort(compareEntries);
-  // Las queries usan `lte` (inclusivo), así que aquí se descarta lo ya servido
-  // en páginas anteriores — incluido el propio evento del cursor.
+  // Los filtros de query son inclusivos en el borde, así que aquí se descarta lo
+  // ya servido en páginas anteriores — incluido el propio evento del cursor.
   const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
   const page = fresh.slice(0, pageSize);
 

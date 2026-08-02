@@ -123,6 +123,9 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: row.status,
       eventDate: row.created_at,
+      // orderDate = la columna de fecha de la fuente (FEED_SOURCE_COLUMNS); en
+      // las altas es el mismo created_at.
+      orderDate: row.created_at,
       // sortDate = created_at, el contrato del campo en FeedEvent. Esta vista
       // resuelve UNA fila y no pasa por el keyset del feed, pero el campo se
       // rellena con la hora real de registro igual que allí.
@@ -166,6 +169,7 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: sessionRelativeBasis(row.session_date, row.created_at),
+      orderDate: row.session_date,
       sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
@@ -234,6 +238,7 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: row.finished_on,
+      orderDate: row.finished_on,
       // Timestamp real garantizado por el narrowing de arriba.
       sortDate: row.created_at,
       rating: row.rating,
@@ -278,6 +283,7 @@ export async function resolveSharedActivity(
     itemSubtitle: catalog.subtitle,
     entryStatus: null,
     eventDate: row.watched_on,
+    orderDate: row.watched_on,
     sortDate: row.created_at,
     rating: row.rating,
     reviewExcerpt: excerpt(row.review),
