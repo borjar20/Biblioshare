@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { NewSagaForm } from "@/components/saga/new-saga-form";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = { title: "Nueva saga — Biblioshare" };
 export default async function NewSagaPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/sagas/nueva"));
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect("/sagas");
 
   const t = await getTranslations("sagaIndex");

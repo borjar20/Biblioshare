@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { availableYears, resolvePeriod } from "@/lib/stats/period";
 import { getRatingDistribution } from "@/lib/stats/get-rating-distribution";
@@ -57,7 +58,7 @@ export default async function FullStatsPage({
 }) {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/estadisticas"));
 
   const t = await getTranslations("stats");
   const { periodo } = await searchParams;

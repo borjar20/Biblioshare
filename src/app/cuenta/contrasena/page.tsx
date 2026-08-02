@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { PasswordForm } from "./password-form";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default async function PasswordPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/cuenta/contrasena"));
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-6 px-4 py-12">

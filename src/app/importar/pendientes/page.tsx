@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getMyPendingRows, getReviewQueue } from "@/lib/import/pending";
 import { ResolveForm } from "./resolve-form";
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default async function PendingImportPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/importar/pendientes"));
 
   const t = await getTranslations("import");
   const isCollaborator = hasMinRole(await getCurrentUserRole(supabase), "collaborator");

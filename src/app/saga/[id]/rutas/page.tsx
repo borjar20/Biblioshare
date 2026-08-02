@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getSagaRoutes, sortCuratedRoutes } from "@/lib/sagas/get-saga-routes";
 import { countRouteEntries, type RawRouteEntryCountRow } from "@/lib/sagas/count-route-entries";
@@ -15,7 +16,7 @@ export default async function SagaRoutesPage({ params }: { params: Promise<{ id:
   const supabase = await createClient();
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/saga/${id}/rutas`));
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(sagaHref(id));
 
   // `show_map` decide el TEXTO de la fila del mapa generado, no si se pinta:

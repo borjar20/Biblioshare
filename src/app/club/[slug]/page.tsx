@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
@@ -52,7 +53,7 @@ export default async function ClubPage({
   const { tab: tabParam } = await searchParams;
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/club/${slug}`));
 
   const club = await getClub(slug);
 

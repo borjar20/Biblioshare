@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getLibraryItems, getUserGenres } from "@/lib/library/get-library-items";
 import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
 import { resolveEffectiveType, ALL_TYPES_PARAM } from "@/lib/library/effective-type";
@@ -70,7 +71,7 @@ export default async function CollectionPage({
 }) {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/coleccion"));
 
   const params = await searchParams;
   const tab: KnownTab = KNOWN_TABS.includes(params.tab as KnownTab)
