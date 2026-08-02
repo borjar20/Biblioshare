@@ -70,6 +70,8 @@ export async function CommunityPanel({
                 key={review.id}
                 initials={review.initials}
                 author={review.author}
+                username={review.username}
+                avatarUrl={review.avatarUrl}
                 dateLabel={shortDate(review.watchedOn)}
                 rating={review.rating}
                 text={review.text}
@@ -100,6 +102,8 @@ export async function CommunityPanel({
                 key={review.id}
                 initials={review.initials}
                 author={review.author}
+                username={review.username}
+                avatarUrl={review.avatarUrl}
                 dateLabel={shortDate(review.finishedOn)}
                 rating={review.rating}
                 text={review.text}
