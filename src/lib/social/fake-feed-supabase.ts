@@ -94,14 +94,14 @@ function text(value: unknown): string {
 }
 
 export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
-  const added = (rows.added ?? []).map((r) => ({
+  const added: FakeRow[] = (rows.added ?? []).map((r) => ({
     user_id: FAKE_ACTOR_ID,
     item_type: "book",
     item_id: FAKE_ITEM_ID,
     status: "reading",
     ...r,
   }));
-  const finished = (rows.finished ?? []).map((r) => ({
+  const finished: FakeRow[] = (rows.finished ?? []).map((r) => ({
     user_id: FAKE_ACTOR_ID,
     item_type: "book",
     item_id: FAKE_ITEM_ID,
@@ -114,7 +114,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     // representar un terminado registrado DESPUÉS del alta.
     updated_at: r.updated_at ?? r.created_at,
   }));
-  const sessions = (rows.sessions ?? []).map((r) => ({
+  const sessions: FakeRow[] = (rows.sessions ?? []).map((r) => ({
     user_id: FAKE_ACTOR_ID,
     pass_id: "pass-1",
     duration_minutes: 30,
@@ -124,7 +124,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     passes: { item_type: "book", item_id: FAKE_ITEM_ID },
     ...r,
   }));
-  const episodes = (rows.episodes ?? []).map((r) => ({
+  const episodes: FakeRow[] = (rows.episodes ?? []).map((r) => ({
     user_id: FAKE_ACTOR_ID,
     series_id: FAKE_SERIES_ID,
     season_number: 1,
