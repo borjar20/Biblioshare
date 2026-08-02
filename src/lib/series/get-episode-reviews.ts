@@ -10,6 +10,10 @@ export type EpisodeReview = {
   interactionTargetId: string;
   author: string;
   initials: string;
+  /** Username del autor para enlazar a /u/:username. null = perfil sin username. */
+  username: string | null;
+  /** Avatar del autor (Storage o URL legado); null = iniciales. */
+  avatarUrl: string | null;
   season: number;
   episode: number;
   episodeTitle: string | null;
@@ -62,7 +66,7 @@ export async function getEpisodeReviews(
   const [{ data: profiles }, { data: episodes }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("user_id, username, display_name")
+      .select("user_id, username, display_name, avatar_url")
       .in("user_id", userIds),
     supabase
       .from("series_episodes")
@@ -70,19 +74,25 @@ export async function getEpisodeReviews(
       .eq("series_id", seriesId),
   ]);
 
-  const nameByUser = new Map(
-    (profiles ?? []).map((p) => [p.user_id, p.display_name || p.username])
+  const identityByUser = new Map(
+    (profiles ?? []).map((p) => [
+      p.user_id,
+      { name: p.display_name || p.username, username: p.username, avatarUrl: p.avatar_url },
+    ])
   );
   const titleByEp = new Map(
     (episodes ?? []).map((e) => [`${e.season_number}:${e.episode_number}`, e.title])
   );
 
   const reviewBases = withText.map((r) => {
-    const author = nameByUser.get(r.user_id) ?? "—";
+    const identity = identityByUser.get(r.user_id);
+    const author = identity?.name ?? "—";
     return {
       id: r.id,
       author,
       initials: initials(author) || "?",
+      username: identity?.username ?? null,
+      avatarUrl: identity?.avatarUrl ?? null,
       season: r.season_number,
       episode: r.episode_number,
       episodeTitle: titleByEp.get(`${r.season_number}:${r.episode_number}`) ?? null,

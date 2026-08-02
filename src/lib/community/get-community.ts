@@ -12,6 +12,10 @@ export type CommunityReview = {
   interactionTargetId: string;
   author: string;
   initials: string;
+  /** Username del autor para enlazar a /u/:username. null = perfil sin username. */
+  username: string | null;
+  /** Avatar del autor (Storage o URL legado); null = iniciales. */
+  avatarUrl: string | null;
   finishedOn: string; // ISO date
   rating: number | null; // 1–10
   text: string;
@@ -200,20 +204,26 @@ export async function getCommunity(
       ];
 
       const [{ data: profiles }, editionLabelById] = await Promise.all([
-        supabase.from("profiles").select("user_id, username, display_name").in("user_id", userIds),
+        supabase.from("profiles").select("user_id, username, display_name, avatar_url").in("user_id", userIds),
         loadEditionLabels(supabase, itemType, editionIds),
       ]);
 
-      const nameByUser = new Map(
-        (profiles ?? []).map((p) => [p.user_id, p.display_name || p.username])
+      const identityByUser = new Map(
+        (profiles ?? []).map((p) => [
+          p.user_id,
+          { name: p.display_name || p.username, username: p.username, avatarUrl: p.avatar_url },
+        ])
       );
 
       const reviewBases = rows.map((r) => {
-        const author = nameByUser.get(r.user_id) ?? "—";
+        const identity = identityByUser.get(r.user_id);
+        const author = identity?.name ?? "—";
         return {
           id: r.id,
           author,
           initials: initials(author) || "?",
+          username: identity?.username ?? null,
+          avatarUrl: identity?.avatarUrl ?? null,
           finishedOn: r.finished_on,
           rating: r.rating,
           text: (r.review ?? "").trim(),
