@@ -84,16 +84,38 @@ const divergentRows = (prefix: string, column: string, minute: number): FakeRow[
   },
 ];
 
-// Las tres fuentes con columna `date` y su columna filtrada, para poder afirmar
-// la propiedad de superconjunto sobre cada una.
+// La fuente de reseñas NO usa `created_at` como hora de registro sino
+// `updated_at` (el pase se crea al añadir la obra y se termina después con un
+// UPDATE — ver feed.ts). Sus filas divergentes se escriben aparte, con un
+// `created_at` deliberadamente LEJANO y distinto del `updated_at`: si el
+// fixture dejase que el doble copiara created_at → updated_at, la comprobación
+// de superconjunto de más abajo coincidiría con producción por accidente y
+// dejaría de vigilar qué columna usa `feed.ts`.
+const divergentReviews: FakeRow[] = [
+  {
+    id: "resena-ayer",
+    finished_on: YESTERDAY,
+    created_at: stamp(daysBefore(TODAY, 9), "08:00"), // alta del pase
+    updated_at: stamp(TODAY, "18:00"), // registro del terminado
+  },
+  {
+    id: "resena-hoy",
+    finished_on: TODAY, // fecha LOCAL de hoy
+    created_at: stamp(daysBefore(TODAY, 9), "08:05"),
+    updated_at: stamp(YESTERDAY, "22:30"), // día UTC anterior
+  },
+];
+
+// Las tres fuentes con columna `date`, la columna filtrada y la columna de la
+// que sale su `sortDate`/hora de registro real en `feed.ts`.
 const DATE_ONLY_SOURCES = [
-  { key: "diary", column: "finished_on", idPrefix: "diary_entries", dataKey: "finished" },
-  { key: "progress_sessions", column: "session_date", idPrefix: "progress_sessions", dataKey: "sessions" },
-  { key: "episode_watches", column: "watched_on", idPrefix: "episode_watches", dataKey: "episodes" },
+  { key: "diary", column: "finished_on", stampColumn: "updated_at", idPrefix: "diary_entries", dataKey: "finished" },
+  { key: "progress_sessions", column: "session_date", stampColumn: "created_at", idPrefix: "progress_sessions", dataKey: "sessions" },
+  { key: "episode_watches", column: "watched_on", stampColumn: "created_at", idPrefix: "episode_watches", dataKey: "episodes" },
 ] as const;
 
 const DIVERGENT_DATA: FakeFeedData = {
-  finished: divergentRows("resena", "finished_on", 0),
+  finished: divergentReviews,
   sessions: divergentRows("sesion", "session_date", 1),
   episodes: divergentRows("episodio", "watched_on", 2),
 };
@@ -143,6 +165,46 @@ const LATE_EXPECTED_IDS = [
   "diary_entries:resena-tardia",
 ].sort();
 
+// --- Sesión con fecha FUTURA registrada días antes
+//
+// El formulario de registro no acota `session_date` por arriba (no hay `max` en
+// el input ni CHECK en la tabla): se puede registrar hoy una sesión fechada
+// dentro de cinco días. Cuando ese día llega, `session_date === todayISO()` y
+// `sessionRelativeBasis` sustituía por un `created_at` de hace cinco días: el
+// día de orden caía CINCO días por debajo de la columna y la cota
+// `lte(session_date, día+1)` no podía alcanzarla en ninguna página. Es la misma
+// forma que ya rompió `passes.created_at`, pero con el desfase por el otro lado.
+const FUTURE_SESSION_LOGGED_DAY = daysBefore(TODAY, 5);
+
+const FUTURE_SESSION_DATA: FakeFeedData = {
+  added: Array.from({ length: 2 }, (_, i) => ({
+    id: `alta-${i}`,
+    created_at: stamp(TODAY, `09:0${i}`),
+  })),
+  // Dos episodios en el día del registro: bastan para que el cursor baje de HOY
+  // a ese día con la página llena, que es el salto tras el cual la cota de
+  // `progress_sessions` ya no puede alcanzar un `session_date` de hoy.
+  episodes: Array.from({ length: 2 }, (_, i) => ({
+    id: `episodio-${i}`,
+    watched_on: FUTURE_SESSION_LOGGED_DAY,
+    created_at: stamp(FUTURE_SESSION_LOGGED_DAY, `10:0${i}`),
+  })),
+  sessions: [
+    {
+      id: "sesion-futura",
+      session_date: TODAY, // hoy… pero se registró cinco días antes
+      created_at: stamp(FUTURE_SESSION_LOGGED_DAY, "08:00"),
+    },
+  ],
+};
+const FUTURE_SESSION_EXPECTED_IDS = [
+  "diary_entries_added:alta-0",
+  "diary_entries_added:alta-1",
+  "episode_watches:episodio-0",
+  "episode_watches:episodio-1",
+  "progress_sessions:sesion-futura",
+].sort();
+
 // --- Clubes: `eventDate === sortDate === created_at`, igual que `added`.
 const CLUB_DAY = daysBefore(TODAY, 5);
 const clubActivities = Array.from({ length: 6 }, (_, i) => ({
@@ -189,11 +251,25 @@ async function walk(pageSize: number, data: FakeFeedData = DATA): Promise<Walk> 
   return { served, addedBounds, expectedBounds, pages };
 }
 
+// Cada recorrido solo ejercita su defecto si el cursor cae donde el fixture
+// supone. Nada de eso está garantizado por construcción: cambiar `pageSize` o
+// añadir filas mueve el corte de página y el test se quedaría verde sin probar
+// nada. Por eso cada walk afirma además el `day` del cursor que le importa.
+function cursorDay(pages: Walk["pages"], index: number): string {
+  expect(pages.length).toBeGreaterThan(index);
+  return parseCursor(pages[index].cursor).day;
+}
+
 describe("cotas de cursor de getFeed", () => {
   it("sirve cada fila exactamente una vez paginando hasta agotar el feed", async () => {
-    const { served } = await walk(5);
+    const { served, pages } = await walk(5);
     expect(new Set(served).size).toBe(served.length); // ninguna repetida
     expect([...served].sort()).toEqual(EXPECTED_IDS); // ninguna perdida
+    // El cursor que destapa el defecto es el BACKDATEADO: `day` = REVIEW_DAY
+    // mientras `sortDate` es de hoy. Si el corte de página deja de caer en una
+    // reseña, este recorrido ya no prueba lo que dice probar.
+    expect(cursorDay(pages, 1)).toBe(REVIEW_DAY);
+    expect(parseCursor(pages[1].cursor).sortDate?.slice(0, 10)).toBe(TODAY);
   });
 
   // OJO con lo que este test NO prueba: `expectedBounds` se calcula llamando a
@@ -213,9 +289,13 @@ describe("cotas de cursor de getFeed", () => {
 
 describe("cotas de las fuentes de fecha-only cuando el día de orden no es la columna", () => {
   it("sirve cada fila exactamente una vez aunque el día de orden sea UTC y la columna local", async () => {
-    const { served } = await walk(2, DIVERGENT_DATA);
+    const { served, pages } = await walk(2, DIVERGENT_DATA);
     expect(new Set(served).size).toBe(served.length);
     expect([...served].sort()).toEqual(DIVERGENT_EXPECTED_IDS);
+    // Lo que hace peligroso este fixture es que el cursor esté en AYER
+    // mientras las filas `-hoy` tienen la columna en HOY: es ahí donde la cota
+    // ensanchada un día es la única que las alcanza.
+    expect(cursorDay(pages, 0)).toBe(YESTERDAY);
   });
 
   // La propiedad, escrita sobre las fuentes donde `dayOf(eventDate)` PUEDE
@@ -233,9 +313,13 @@ describe("cotas de las fuentes de fecha-only cuando el día de orden no es la co
         if (bound === undefined) continue;
         for (const row of DIVERGENT_DATA[source.dataKey] ?? []) {
           const column = String(row[source.column]);
+          // La hora de registro sale de la columna que use ESA fuente en
+          // `feed.ts` (updated_at en reseñas, created_at en las otras dos), no
+          // de created_at para todas.
+          const registeredAt = String(row[source.stampColumn]);
           const entry = {
-            eventDate: sessionRelativeBasis(column, String(row.created_at)),
-            sortDate: String(row.created_at),
+            eventDate: sessionRelativeBasis(column, registeredAt),
+            sortDate: registeredAt,
             id: `${source.idPrefix}:${row.id}`,
           };
           if (!isAfterCursor(entry, parsed)) continue;
@@ -253,17 +337,33 @@ describe("cotas de las fuentes de fecha-only cuando el día de orden no es la co
 
 describe("reseña terminada hoy sobre un pase creado hace semanas", () => {
   it("se sirve en alguna página del recorrido completo", async () => {
-    const { served } = await walk(2, LATE_DATA);
+    const { served, pages } = await walk(2, LATE_DATA);
     expect(new Set(served).size).toBe(served.length);
     expect([...served].sort()).toEqual(LATE_EXPECTED_IDS);
+    // El salto peligroso es el que baja el cursor a MID_DAY: desde ahí la cota
+    // `lte(finished_on, MID_DAY+1)` ya no alcanza un finished_on de HOY.
+    expect(cursorDay(pages, 1)).toBe(MID_DAY);
+  });
+});
+
+describe("sesión fechada en el futuro y registrada días antes", () => {
+  it("se sirve en alguna página del recorrido completo", async () => {
+    const { served, pages } = await walk(2, FUTURE_SESSION_DATA);
+    expect(new Set(served).size).toBe(served.length);
+    expect([...served].sort()).toEqual(FUTURE_SESSION_EXPECTED_IDS);
+    // Igual que arriba: sin este cursor el recorrido no ejercita nada.
+    expect(cursorDay(pages, 1)).toBe(FUTURE_SESSION_LOGGED_DAY);
   });
 });
 
 describe("cota de la fuente de clubes", () => {
   it("sirve cada actividad exactamente una vez dentro del mismo día", async () => {
-    const { served } = await walk(2, CLUB_DATA);
+    const { served, pages } = await walk(2, CLUB_DATA);
     expect(new Set(served).size).toBe(served.length);
     expect([...served].sort()).toEqual(CLUB_EXPECTED_IDS);
+    // Todo el fixture vive DENTRO de un mismo día: si el cursor no cae ahí, la
+    // cota exacta de `created_at` no se está ejercitando.
+    expect(cursorDay(pages, 0)).toBe(CLUB_DAY);
   });
 
   it("usa la cota exacta de created_at, no el fin del día", async () => {
