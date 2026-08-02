@@ -9,11 +9,10 @@ import { groupPersonEntries, type PersonGroupEntry } from "./group-feed-entries"
 import {
   addedUpperBound,
   compareEntries,
-  dateUpperBound,
+  dateUpperBoundInclusiveOfUtcSkew,
   isAfterCursor,
   makeCursor,
   parseCursor,
-  timestampUpperBound,
 } from "./feed-order";
 
 // Feed de actividad personal (EPIC-05, Bloque C, SD-1). On-read fan-out sobre
@@ -198,7 +197,13 @@ export async function getFeed(
       : Promise.resolve({ data: [] as { followee_id: string }[], error: null }),
     includeClubs
       ? getClubActivityEvents(supabase, viewerId, {
-          cursorUpperBound: cursor ? timestampUpperBound(cursor) : undefined,
+          // Un evento de club tiene eventDate === sortDate === created_at
+          // (club-feed.ts), la MISMA forma que la fuente `added`: la cota exacta
+          // es la de `addedUpperBound`. Con el fin del día, la query —que ordena
+          // created_at desc y corta a pageSize— devolvía las mismas filas de
+          // cabeza en todas las páginas y las actividades por debajo del cursor
+          // dentro de ese día no se servían nunca.
+          cursorUpperBound: cursor ? addedUpperBound(cursor) : undefined,
           pageSize,
         })
       : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
@@ -263,7 +268,11 @@ export async function getFeed(
             .order("session_date", { ascending: false })
             .limit(pageSize);
           if (itemTypes) q = q.in("passes.item_type", itemTypes);
-          if (cursor) q = q.lte("session_date", dateUpperBound(cursor));
+          // Un día más ancha que `cursor.day` a propósito: `eventDate` puede ser
+          // el created_at UTC mientras la columna es la fecha local (ver
+          // `dateUpperBoundInclusiveOfUtcSkew`). El descarte fino es de
+          // `isAfterCursor`.
+          if (cursor) q = q.lte("session_date", dateUpperBoundInclusiveOfUtcSkew(cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -285,7 +294,9 @@ export async function getFeed(
             .order("finished_on", { ascending: false })
             .limit(pageSize);
           if (itemTypes) q = q.in("item_type", itemTypes);
-          if (cursor) q = q.lte("finished_on", dateUpperBound(cursor));
+          // Ver `dateUpperBoundInclusiveOfUtcSkew`: un día más ancha porque el
+          // día del orden sale de created_at (UTC) cuando finished_on es hoy.
+          if (cursor) q = q.lte("finished_on", dateUpperBoundInclusiveOfUtcSkew(cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
@@ -300,7 +311,8 @@ export async function getFeed(
             .order("watched_on", { ascending: false })
             .limit(pageSize);
           if (reviewsOnly) q = q.not("review", "is", null);
-          if (cursor) q = q.lte("watched_on", dateUpperBound(cursor));
+          // Misma cota ensanchada que finished_on / session_date.
+          if (cursor) q = q.lte("watched_on", dateUpperBoundInclusiveOfUtcSkew(cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),

@@ -13,11 +13,19 @@ import type { getFeed } from "./feed";
 //
 // Además registra el argumento de cada `.lte()` por fuente (`lteCalls`), para
 // poder afirmar sobre la cota elegida y no solo sobre el resultado.
+//
+// Sirve filas para las CINCO fuentes. Durante un tiempo solo devolvió `added` y
+// `diary`, y las otras tres (`progress_sessions`, `episode_watches` y las
+// actividades de club) contestaban siempre `[]`: sus cotas se ejercitaban en el
+// papel pero ninguna fila pasaba por ellas, así que dos defectos de cota
+// —fecha-only y clubes— vivieron con la suite en verde.
 
 export type FakeRow = Record<string, unknown>;
 
 export const FAKE_ACTOR_ID = "actor-1";
 export const FAKE_ITEM_ID = "book-1";
+export const FAKE_SERIES_ID = "series-1";
+export const FAKE_CLUB_ID = "club-1";
 
 // Las dos consultas a `passes` (altas y reseñas) y la de los pases del
 // visitante solo se distinguen por las columnas que piden.
@@ -30,6 +38,10 @@ export type FakeFeedSource =
   | "follows"
   | "profile_identities"
   | "books"
+  | "series"
+  | "club_members"
+  | "club_activities"
+  | "clubs"
   | "other";
 
 export type FakeFeedData = {
@@ -37,6 +49,12 @@ export type FakeFeedData = {
   added?: FakeRow[];
   /** Filas de la fuente de reseñas/terminados (`finished_on` no nulo). */
   finished?: FakeRow[];
+  /** Filas de `progress_sessions` (fuente `progressed`, columna `session_date`). */
+  sessions?: FakeRow[];
+  /** Filas de `episode_watches` (columna `watched_on`). */
+  episodes?: FakeRow[];
+  /** Filas de `club_activities` (la quinta fuente, columna `created_at`). */
+  clubActivities?: FakeRow[];
 };
 
 export type FakeLteCall = { column: string; value: string };
@@ -59,6 +77,10 @@ function sourceOf(table: string, columns: string): FakeFeedSource {
     case "follows":
     case "profile_identities":
     case "books":
+    case "series":
+    case "club_members":
+    case "club_activities":
+    case "clubs":
       return table;
     default:
       return "other";
@@ -85,6 +107,34 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     rating: null,
     ...r,
   }));
+  const sessions = (rows.sessions ?? []).map((r) => ({
+    user_id: FAKE_ACTOR_ID,
+    pass_id: "pass-1",
+    duration_minutes: 30,
+    position: null,
+    // El embed `passes!inner(item_type, item_id)` de la query real: sin él
+    // `progressedItem` devuelve null y la fila se cae antes de contarse.
+    passes: { item_type: "book", item_id: FAKE_ITEM_ID },
+    ...r,
+  }));
+  const episodes = (rows.episodes ?? []).map((r) => ({
+    user_id: FAKE_ACTOR_ID,
+    series_id: FAKE_SERIES_ID,
+    season_number: 1,
+    episode_number: 1,
+    rating: null,
+    review: null,
+    ...r,
+  }));
+  const clubActivities = (rows.clubActivities ?? []).map((r) => ({
+    club_id: FAKE_CLUB_ID,
+    kind: "lectura",
+    status: "active",
+    title: "Actividad",
+    description: null,
+    created_by: FAKE_ACTOR_ID,
+    ...r,
+  }));
 
   const lteCalls: Record<string, FakeLteCall[]> = {};
 
@@ -94,6 +144,18 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
         return added;
       case "diary":
         return finished;
+      case "progress_sessions":
+        return sessions;
+      case "episode_watches":
+        return episodes;
+      case "club_members":
+        return clubActivities.length ? [{ club_id: FAKE_CLUB_ID }] : [];
+      case "club_activities":
+        return clubActivities;
+      case "clubs":
+        return [{ id: FAKE_CLUB_ID, name: "Club", slug: "club", cover_url: null }];
+      case "series":
+        return [{ id: FAKE_SERIES_ID, title: "Serie", cover_url: null }];
       case "follows":
         return [{ followee_id: FAKE_ACTOR_ID }];
       case "profile_identities":

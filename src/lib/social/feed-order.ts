@@ -87,9 +87,36 @@ export function isAfterCursor(entry: OrderableEntry, cursor: FeedCursor): boolea
   return entry.id < cursor.id;
 }
 
-// Cota superior INCLUSIVA para una columna `date`.
-export function dateUpperBound(cursor: FeedCursor): string {
-  return cursor.day;
+// Suma días de calendario a una fecha "YYYY-MM-DD". UTC explícito y sin leer el
+// reloj: este módulo es puro (ver los tests que lo fijan).
+function addDaysUTC(day: string, days: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return day;
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+// Cota superior INCLUSIVA para una columna `date` (finished_on / watched_on /
+// session_date), UN DÍA MÁS ANCHA que el día del cursor a propósito.
+//
+// Por qué el día extra: en estas tres fuentes el día del orden NO es la columna
+// filtrada. `eventDate` es `sessionRelativeBasis(columna, created_at)`, que para
+// una fila de HOY devuelve `created_at` — y `todayISO()` es la fecha LOCAL
+// mientras `created_at` es UTC. Así que el día de orden pasa a ser un día UTC y
+// la columna sigue siendo local: en Madrid (UTC+2), lo registrado entre las
+// 00:00 y las 02:00 tiene columna = D y created_at = (D-1)T22:00..23:59Z, o sea
+// ordena en D-1. `isAfterCursor` lo acepta con cualquier cursor de día D-1, pero
+// `lte(columna, D-1)` lo dejaba fuera de la query: la fila no se servía en
+// NINGUNA página, nunca.
+//
+// Un día basta y no hace falta más: la fecha local de un instante nunca se
+// separa de su fecha UTC en más de un día (los husos van de UTC-12 a UTC+14), y
+// el sentido que importa aquí es el positivo — la columna local puede ir como
+// mucho un día POR DELANTE del día UTC del created_at.
+//
+// Lo que sobre —las filas del día extra que `isAfterCursor` no acepta— lo
+// descarta el filtro fino después del fetch, exactamente igual que en `added`.
+export function dateUpperBoundInclusiveOfUtcSkew(cursor: FeedCursor): string {
+  return addDaysUTC(cursor.day, 1);
 }
 
 // Cota superior INCLUSIVA para una columna `timestamptz`: cualquier hora de ese

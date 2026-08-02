@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addedUpperBound,
   compareEntries,
+  dateUpperBoundInclusiveOfUtcSkew,
   isAfterCursor,
   makeCursor,
   parseCursor,
@@ -189,6 +190,70 @@ describe("addedUpperBound", () => {
                 `(cursor day=${cursor.day} sortDate=${cursor.sortDate})`,
             ).toBe(true);
           }
+        }
+      }
+    }
+  });
+});
+
+describe("dateUpperBoundInclusiveOfUtcSkew", () => {
+  // Las columnas `date` (finished_on / watched_on / session_date) son fechas
+  // LOCALES, pero el día del orden sale de created_at (UTC) en cuanto la fila es
+  // de hoy. Por eso la cota va un día por delante: la fecha local de un instante
+  // nunca adelanta a su fecha UTC en más de un día.
+  it("va un día por delante del día del cursor", () => {
+    const cursor = parseCursor("2026-08-01~2026-08-01T22:30:00.000+00:00~diary_entries:b");
+    expect(dateUpperBoundInclusiveOfUtcSkew(cursor)).toBe("2026-08-02");
+  });
+
+  it("cruza fin de mes y fin de año sin salirse del calendario", () => {
+    expect(
+      dateUpperBoundInclusiveOfUtcSkew(parseCursor("2026-01-31~2026-01-31T10:00:00.000+00:00~a")),
+    ).toBe("2026-02-01");
+    expect(
+      dateUpperBoundInclusiveOfUtcSkew(parseCursor("2026-12-31~2026-12-31T10:00:00.000+00:00~a")),
+    ).toBe("2027-01-01");
+    expect(
+      dateUpperBoundInclusiveOfUtcSkew(parseCursor("2028-02-28~2028-02-28T10:00:00.000+00:00~a")),
+    ).toBe("2028-02-29"); // bisiesto
+  });
+
+  it("también se ensancha con un cursor legado (sin hora)", () => {
+    expect(dateUpperBoundInclusiveOfUtcSkew(parseCursor("2026-08-01~passes:aaa"))).toBe(
+      "2026-08-02",
+    );
+  });
+
+  it("nunca deja fuera una fila de fecha-only que `isAfterCursor` acepte", () => {
+    // Propiedad sobre la forma que rompía la anterior cota: `eventDate` es el
+    // created_at UTC (fila de hoy) mientras la columna filtrada es la fecha
+    // local, así que día de orden y columna se separan.
+    const cursors = [
+      "2026-08-01~2026-08-02T18:00:00.000+00:00~diary_entries:b", // backdateado, registrado hoy
+      "2026-08-01~2026-08-01T23:00:00.000+00:00~passes:a",
+      "2026-08-02~2026-08-02T09:00:00.000+00:00~passes:a",
+    ].map(parseCursor);
+    // [columna local, created_at UTC] con el desfase de Madrid (UTC+2).
+    const rows: [string, string][] = [
+      ["2026-08-02", "2026-08-01T22:00:00.000+00:00"],
+      ["2026-08-02", "2026-08-01T23:59:00.000+00:00"],
+      ["2026-08-02", "2026-08-02T10:00:00.000+00:00"],
+      ["2026-08-01", "2026-07-31T22:30:00.000+00:00"],
+      ["2026-08-01", "2026-08-01T09:00:00.000+00:00"],
+      ["2026-07-15", "2026-08-02T18:30:00.000+00:00"],
+    ];
+    for (const cursor of cursors) {
+      const bound = dateUpperBoundInclusiveOfUtcSkew(cursor);
+      for (const [column, createdAt] of rows) {
+        // Fila "de hoy": `sessionRelativeBasis` devuelve created_at.
+        for (const eventDate of [createdAt, column]) {
+          const entry: OrderableEntry = { eventDate, sortDate: createdAt, id: "x" };
+          if (!isAfterCursor(entry, cursor)) continue;
+          expect(
+            column <= bound,
+            `fila con columna ${column} (eventDate ${eventDate}) aceptada por ` +
+              `isAfterCursor pero fuera de la cota ${bound} (cursor day=${cursor.day})`,
+          ).toBe(true);
         }
       }
     }
