@@ -12,7 +12,9 @@ type TmdbSearchResponse = {
   results?: Array<{
     id: number;
     title?: string; // movie
+    original_title?: string; // movie
     name?: string; // tv
+    original_name?: string; // tv
     poster_path: string | null;
     release_date?: string; // movie
     first_air_date?: string; // tv
@@ -47,6 +49,9 @@ export async function searchMovies(query: string): Promise<SearchResult[]> {
       itemType: "movie" as const,
       externalId: String(r.id),
       title: r.title!,
+      // Título original (idioma de rodaje) — el que exporta Letterboxd. El
+      // matcher del importador lo compara junto al `title` traducido.
+      originalTitle: r.original_title ?? null,
       // No director available from a search-results response (needs a
       // separate credits call); the year is shown via `year`.
       subtitle: null,
@@ -482,6 +487,9 @@ export async function searchSeries(query: string): Promise<SearchResult[]> {
       itemType: "series" as const,
       externalId: String(r.id),
       title: r.name!,
+      // Nombre original (idioma de emisión) — el equivalente de `original_title`
+      // para series. Mismo motivo que en `searchMovies`: `name` viene en es-ES.
+      originalTitle: r.original_name ?? null,
       subtitle: null,
       coverUrl: r.poster_path ? `${TMDB_IMAGE_BASE}${r.poster_path}` : null,
       year: r.first_air_date

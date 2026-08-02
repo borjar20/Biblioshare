@@ -15,6 +15,12 @@ export type SearchResult = {
   // Ver docs/REQUIREMENTS.md §7.32.
   catalogId?: string;
   title: string;
+  // Películas/series: título en idioma original de TMDB (`original_title`). El
+  // `title` viene traducido a es-ES, que NO coincide con el título original que
+  // exporta Letterboxd ("Cadena perpetua" vs "The Shawshank Redemption") — el
+  // matcher del importador compara contra ambos. Ausente en libros y catálogo
+  // local (undefined).
+  originalTitle?: string | null;
   subtitle: string | null; // libros: autoría
   coverUrl: string | null;
   year: number | null;

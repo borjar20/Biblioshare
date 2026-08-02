@@ -56,16 +56,20 @@ async function matchMovie(
     return Math.abs(year - row.year) <= 1;
   };
 
+  // TMDB devuelve `title` traducido a es-ES; Letterboxd exporta el título
+  // ORIGINAL ("Cadena perpetua" vs "The Shawshank Redemption"). Se acepta el
+  // candidato si coincide cualquiera de los dos títulos. `originalTitle` es
+  // undefined en resultados locales y ahí solo cuenta `title`.
+  const titleMatches = (candidate: { title: string; originalTitle?: string | null }) =>
+    isSameTitle(candidate.title, row.title) ||
+    (candidate.originalTitle != null && isSameTitle(candidate.originalTitle, row.title));
+
   const localResults = await searchLocalCatalog(supabase, "movie", row.title);
-  const localMatch = localResults.find(
-    (r) => isSameTitle(r.title, row.title) && sameYear(r.year)
-  );
+  const localMatch = localResults.find((r) => titleMatches(r) && sameYear(r.year));
   if (localMatch) return localMatch.catalogId!;
 
   const apiResults = await searchMovies(row.title);
-  const apiMatch = apiResults.find(
-    (r) => isSameTitle(r.title, row.title) && sameYear(r.year)
-  );
+  const apiMatch = apiResults.find((r) => titleMatches(r) && sameYear(r.year));
   if (apiMatch) return findOrCreateCatalogItem(supabase, apiMatch);
 
   return null;
