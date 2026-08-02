@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { loginHref } from "@/lib/auth/safe-next";
 import { HeartIcon, CommentIcon } from "@/components/ui/icons";
 import {
   toggleReaction,
@@ -67,6 +69,7 @@ export function ReviewInteractions({
     onChange: setDraft,
     scope: clubId ? { scope: "club", clubId } : { scope: "profile" },
   });
+  const pathname = usePathname();
 
   if (!viewerLoggedIn) {
     return (
@@ -77,7 +80,7 @@ export function ReviewInteractions({
           </span>
         )}
         <Link
-          href="/login"
+          href={loginHref(pathname)}
           className="flex items-center gap-1.5 hover:text-foreground"
         >
           <CommentIcon className="h-4 w-4" />

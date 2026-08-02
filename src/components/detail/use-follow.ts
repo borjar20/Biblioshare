@@ -2,6 +2,7 @@ import { useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ItemType } from "@/lib/catalog/types";
 import { addExistingItemToLibrary } from "@/lib/library/add-existing-item";
+import { loginHref } from "@/lib/auth/safe-next";
 import { useItemStatus } from "./item-status-context";
 
 // Acción "Seguir" compartida por las DOS caras de la ficha: la ficha son dos
@@ -27,7 +28,10 @@ export function useFollow(
 
   function follow() {
     if (!isLoggedIn) {
-      startTransition(() => addExistingItemToLibrary(itemType, itemId));
+      // Anónimo: a login recordando la ficha para volver tras entrar. Antes
+      // disparaba la acción y el server redirigía a /login pelado (ida y vuelta
+      // inútil y sin retorno) — issue #358.
+      router.push(loginHref(pathname));
       return;
     }
     setStatus("planned");
