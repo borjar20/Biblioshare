@@ -352,32 +352,35 @@ Riesgo esperado: MEDIUM — `getFeed` lo comparten Inicio, Actividad de perfil y
 Añadir al final de `src/lib/social/feed-order.test.ts`:
 
 ```ts
-import { reviewRelativeBasis } from "./feed";
+import { getFeed } from "./feed";
 
 describe("base del «hace x» de las fechas sin hora", () => {
-  it("una reseña de hoy usa created_at, que es preciso", () => {
-    expect(
-      reviewRelativeBasis("2026-08-02", "2026-08-02T18:22:06.000+00:00", "2026-08-02"),
-    ).toBe("2026-08-02T18:22:06.000+00:00");
-  });
+  it("una reseña de hoy usa created_at, y una backdateada se queda en el día", async () => {
+    const page = await getFeed(fakeSupabase({
+      finished: [
+        { id: "hoy", finished_on: TODAY, created_at: `${TODAY}T18:22:06.000+00:00` },
+        { id: "vieja", finished_on: "2026-07-15", created_at: `${TODAY}T18:30:00.000+00:00` },
+      ],
+    }), "viewer-1");
 
-  it("una reseña backdateada se queda en el día: no se inventa una hora", () => {
-    expect(
-      reviewRelativeBasis("2026-07-15", "2026-08-02T18:22:06.000+00:00", "2026-08-02"),
-    ).toBe("2026-07-15");
+    const byId = new Map(page.events.map((e) => [e.id, e]));
+    expect(byId.get("diary_entries:hoy")?.eventDate).toBe(`${TODAY}T18:22:06.000+00:00`);
+    expect(byId.get("diary_entries:vieja")?.eventDate).toBe("2026-07-15");
   });
 });
 ```
 
-`reviewRelativeBasis` es el mismo criterio que `sessionRelativeBasis` aplicado a `finished_on` / `watched_on`; se reexporta desde `feed.ts` para que el test no dependa del módulo de sesiones.
+Este test vive en un fichero nuevo, `src/lib/social/feed-relative-basis.test.ts`, con un doble de Supabase mínimo: `fakeSupabase` devuelve las filas indicadas para la consulta de reseñas y listas vacías para las demás fuentes. `TODAY` se calcula con `todayISO()`, el mismo helper que usa producción, para que el test no dependa del día en que se ejecute.
+
+**Resolución de pre-flight (decidida antes de ejecutar el plan):** el plan proponía envolver el criterio en un `reviewRelativeBasis` propio de `feed.ts`. Se descartó: su cuerpo sería `return sessionRelativeBasis(...)`, un alias exacto sin comportamiento propio, y la razón que lo justificaba —que el test no dependiera del módulo de sesiones— resultó falsa (`feed.ts` se importa sin problemas desde Vitest). **Llamar a `sessionRelativeBasis` directamente** en los dos call sites, con un comentario en cada uno explicando por qué el criterio de sesiones aplica también a `finished_on` y `watched_on`.
 
 - [ ] **Step 3: Ejecutar y observar RED**
 
 ```powershell
-node node_modules/vitest/vitest.mjs run src/lib/social/feed-order.test.ts -t "base del"
+node node_modules/vitest/vitest.mjs run src/lib/social/feed-relative-basis.test.ts
 ```
 
-Expected: FAIL — `reviewRelativeBasis` no está exportado por `./feed`.
+Expected: FAIL — `eventDate` de la reseña de hoy es `"2026-08-02"` (el `finished_on` en crudo) donde el test espera el `created_at`.
 
 - [ ] **Step 4: Hacer `sortDate` obligatorio en los tipos**
 
@@ -404,24 +407,7 @@ export type FeedEntry =
 
 - [ ] **Step 5: Rellenar `sortDate` y la base del «hace x» en las cuatro fuentes**
 
-En `feed.ts`, exportar el criterio junto a los demás helpers de fecha:
-
-```ts
-import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
-import { todayISO } from "@/lib/stats/dates";
-
-// `finished_on` y `watched_on` son columnas `date`: sin hora, `timeAgo` las
-// interpreta como medianoche UTC y en Madrid arrancan con 2 horas de desfase.
-// Mismo criterio que las sesiones: si es de hoy, la hora real de registro es
-// precisa y se usa; si está backdateada, no hay hora que mostrar.
-export function reviewRelativeBasis(
-  onDate: string,
-  createdAt: string,
-  today: string = todayISO(),
-): string {
-  return sessionRelativeBasis(onDate, createdAt, today);
-}
-```
+`sessionRelativeBasis` ya está importado en `feed.ts` (línea 7) y se usa tal cual, sin envoltorio: es exactamente el mismo criterio.
 
 Añadir `created_at` a los dos `select` que no lo piden:
 
@@ -447,15 +433,19 @@ eventDate: sessionRelativeBasis(r.session_date, r.created_at),
 sortDate: r.created_at,
 
 // finished/rated/reviewed (feed.ts:591)
-eventDate: reviewRelativeBasis(r.finished_on, r.created_at),
+// finished_on es una columna `date`: sin hora, timeAgo la interpreta como
+// medianoche UTC y en Madrid arranca con 2 horas de desfase. Mismo criterio
+// que las sesiones: si es de hoy, la hora de registro es precisa y se usa;
+// si está backdateada, no hay hora real que mostrar.
+eventDate: sessionRelativeBasis(r.finished_on, r.created_at),
 sortDate: r.created_at,
 
-// watchedEpisode (feed.ts:628)
-eventDate: reviewRelativeBasis(r.watched_on, r.created_at),
+// watchedEpisode (feed.ts:628) — watched_on es `date`, mismo criterio
+eventDate: sessionRelativeBasis(r.watched_on, r.created_at),
 sortDate: r.created_at,
 ```
 
-En el bloque `reviewMeta` de las reseñas (feed.ts:596-602), `readingDays` sigue usando `r.finished_on` y `r.started_on` **en crudo**: mide días de lectura, no antigüedad, y no debe pasar por `reviewRelativeBasis`.
+En el bloque `reviewMeta` de las reseñas (feed.ts:596-602), `readingDays` sigue usando `r.finished_on` y `r.started_on` **en crudo**: mide días de lectura, no antigüedad, y no debe pasar por `sessionRelativeBasis`.
 
 - [ ] **Step 6: Sustituir el orden, el cursor y el filtro por el módulo puro**
 
@@ -880,7 +870,9 @@ Añadir a `src/components/social/feed-collapse.test.ts`:
 node node_modules/vitest/vitest.mjs run src/components/social/feed-collapse.test.ts
 ```
 
-Expected: FAIL en el import — `splitCollapsedItems` no existe hasta aplicar el Step 2. Si el Step 2 ya se aplicó, los tres tests nuevos deben pasar directos: son el contrato que el rename preserva. En ese caso el RED real es el del Step 6, en la tarjeta.
+Expected: PASS. **Esto no es un fallo de TDD** — es la consecuencia de que el Step 2 sea un rename que preserva el contrato: el umbral y el reparto ya existían y ya estaban probados. Los tres tests nuevos documentan ese contrato bajo los nombres nuevos, no comportamiento nuevo.
+
+**Resolución de pre-flight (decidida antes de ejecutar el plan):** el RED que exige la constante global «TDD estricto» se observa donde sí hay comportamiento nuevo, en la tarjeta. Antes de tocar `collection-card.tsx`, añadir a `e2e/feed-tarjetas-por-tipo.spec.ts` las aserciones del Step 8 y ejecutarlas: deben fallar porque la tarjeta pinta hoy las 4 filas y no existe el botón de expandir. Ese es el RED de esta tarea; el GREEN llega con el Step 6.
 
 - [ ] **Step 5: Añadir el copy**
 
