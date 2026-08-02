@@ -32,6 +32,8 @@ export function FeedItem({
       source: "person-group",
       id: entry.id,
       eventDate: entry.eventDate,
+      orderDate: entry.orderDate,
+      sortDate: entry.sortDate,
       verb: e.verb,
       actor: { id: e.actorId, username: e.actorUsername, displayName: e.actorDisplayName, avatarUrl: e.actorAvatarUrl },
       items: [e],

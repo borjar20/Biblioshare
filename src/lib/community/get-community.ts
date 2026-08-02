@@ -9,6 +9,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type CommunityReview = {
   id: string;
+  interactionTargetId: string;
   author: string;
   initials: string;
   finishedOn: string; // ISO date
@@ -207,7 +208,7 @@ export async function getCommunity(
         (profiles ?? []).map((p) => [p.user_id, p.display_name || p.username])
       );
 
-      reviews = rows.map((r) => {
+      const reviewBases = rows.map((r) => {
         const author = nameByUser.get(r.user_id) ?? "—";
         return {
           id: r.id,
@@ -227,9 +228,13 @@ export async function getCommunity(
       const summaries = await getInteractionSummary(
         supabase,
         "diary_entry",
-        reviews.map((r) => r.id),
+        reviewBases.map((r) => r.id),
       );
-      reviews = reviews.map((r) => ({ ...r, ...summaries.get(r.id) }));
+      reviews = reviewBases.map((review) => {
+        const summary = summaries.get(review.id);
+        if (!summary) throw new Error(`Interaction summary missing for diary_entry:${review.id}`);
+        return { ...review, ...summary };
+      });
     }
   }
 

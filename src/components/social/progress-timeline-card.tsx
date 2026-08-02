@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { SpoilerGate } from "./spoiler-gate";
 import { itemHref } from "@/lib/catalog/item-href";
-import { splitProgressSteps } from "./progress-collapse";
+import { splitCollapsedItems } from "./feed-collapse";
 
 export function ProgressTimelineCard({
   entry,
@@ -26,9 +26,9 @@ export function ProgressTimelineCard({
   const actorName = entry.actor.displayName || entry.actor.username;
   const work = entry.items[0];
   // Grupos largos se colapsan a las 2 sesiones más recientes; el resto queda
-  // tras un "ver N anteriores" (splitProgressSteps decide el umbral).
+  // tras un "ver N anteriores" (splitCollapsedItems decide el umbral).
   const [expanded, setExpanded] = useState(false);
-  const { visible, hiddenCount, collapsible } = splitProgressSteps(entry.items, expanded);
+  const { visible, hiddenCount, collapsible } = splitCollapsedItems(entry.items, expanded);
 
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
@@ -76,11 +76,10 @@ export function ProgressTimelineCard({
                     {step.progress.note.isSpoiler ? <SpoilerGate>{noteEl}</SpoilerGate> : noteEl}
                   </div>
                 )}
-                {step.interactionTarget && (
+                {step.interactionTarget?.interactionTargetId && (
                   <div className="mt-1.5">
                     <ReviewInteractions
-                      targetType={step.interactionTarget.targetType}
-                      targetId={step.interactionTarget.targetId}
+                      interactionTargetId={step.interactionTarget.interactionTargetId}
                       reactionCount={step.reactionCount}
                       viewerReacted={step.viewerReacted}
                       commentCount={step.commentCount}

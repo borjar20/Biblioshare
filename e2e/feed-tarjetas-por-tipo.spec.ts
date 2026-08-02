@@ -20,9 +20,9 @@ import { test, expect } from "@playwright/test";
 //        badge "Finalizado", dots de valoración y el texto de la reseña.
 //
 // Convención de datos (docs/TESTING.md): siembra por REST con la service key,
-// limpia ANTES (dentro del try) y DESPUÉS (finally) con UUIDs fijos, y NO toca
-// la biblioteca real de devtest — aquí no se ejercita el alta rápida (eso lo
-// cubre inicio-feed-agrupado.spec.ts), así que devtest no gana ningún pase.
+// limpia ANTES (dentro del try) y DESPUÉS (finally) con UUIDs fijos. El caso
+// Colección siembra temporalmente un pase activo de devtest para comprobar la
+// pertenencia del visitante; cleanFixtures lo retira en ambos extremos.
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -38,11 +38,17 @@ const USER_PREFIX = "e2fc";
 const COL_BOOKS = [
   "e2fc0b01-0000-4000-8000-000000000001",
   "e2fc0b02-0000-4000-8000-000000000002",
+  "e2fc0b05-0000-4000-8000-000000000005",
+  "e2fc0b06-0000-4000-8000-000000000006",
 ];
 const COL_PASSES = [
   "e2fc0a01-0000-4000-8000-000000000001",
   "e2fc0a02-0000-4000-8000-000000000002",
+  "e2fc0a05-0000-4000-8000-000000000005",
+  "e2fc0a06-0000-4000-8000-000000000006",
 ];
+const VIEWER_COL_PASS = "e2fc0a09-0000-4000-8000-000000000009";
+const VIEWER_INACTIVE_COL_PASS = "e2fc0a08-0000-4000-8000-000000000008";
 const PROG_BOOK = "e2fc0b03-0000-4000-8000-000000000003";
 const PROG_PASS = "e2fc0a03-0000-4000-8000-000000000003";
 const PROG_SESSIONS = [
@@ -59,7 +65,13 @@ const REV_BOOK = "e2fc0b04-0000-4000-8000-000000000004";
 const REV_PASS = "e2fc0a04-0000-4000-8000-000000000004";
 
 const ALL_BOOKS = [...COL_BOOKS, PROG_BOOK, REV_BOOK];
-const ALL_PASSES = [...COL_PASSES, PROG_PASS, REV_PASS];
+const ALL_PASSES = [
+  ...COL_PASSES,
+  VIEWER_COL_PASS,
+  VIEWER_INACTIVE_COL_PASS,
+  PROG_PASS,
+  REV_PASS,
+];
 
 const COVER_URL = "https://covers.openlibrary.org/b/id/12627383-M.jpg";
 
@@ -175,8 +187,19 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     });
     followeeId = followee.id;
     await followFromDevtest(followee.id);
+    const viewerId = await devtestId();
 
     const now = new Date().toISOString();
+    // created_at ESCALONADO (3 s entre altas) a propósito. El orden del feed es
+    // (día ↓, created_at ↓, id ↓): con las cuatro altas sembradas en el mismo
+    // instante empataban en created_at y el desempate caía al id —uuids fijos,
+    // sí, pero el test no puede depender de en qué orden alfabético quedaron—,
+    // así que "las 2 filas visibles al colapsar" no era una propiedad afirmable.
+    // Con el escalón el orden es Colección 4 → 3 → 2 → 1, y la obra que el
+    // visitante ya tiene (COL_BOOKS[0] = Colección 1) es la MÁS VIEJA: queda
+    // oculta mientras la tarjeta está colapsada.
+    const addedAt = (index: number) =>
+      new Date(ts - (COL_BOOKS.length - 1 - index) * 3_000).toISOString();
     await rest("books", {
       method: "POST",
       body: JSON.stringify(
@@ -190,17 +213,35 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     });
     await rest("passes", {
       method: "POST",
-      body: JSON.stringify(
-        COL_PASSES.map((id, i) => ({
+      body: JSON.stringify([
+        ...COL_PASSES.map((id, index) => ({
           id,
           user_id: followee.id,
           item_type: "book",
-          item_id: COL_BOOKS[i],
+          item_id: COL_BOOKS[index],
+          status: "planned",
+          is_active: true,
+          created_at: addedAt(index),
+        })),
+        {
+          id: VIEWER_COL_PASS,
+          user_id: viewerId,
+          item_type: "book",
+          item_id: COL_BOOKS[0],
           status: "planned",
           is_active: true,
           created_at: now,
-        })),
-      ),
+        },
+        {
+          id: VIEWER_INACTIVE_COL_PASS,
+          user_id: viewerId,
+          item_type: "book",
+          item_id: COL_BOOKS[1],
+          status: "completed",
+          is_active: false,
+          created_at: now,
+        },
+      ]),
     });
 
     await login(page);
@@ -209,16 +250,56 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     const card = page.locator("article").filter({ hasText: followeeName }).first();
     await expect(card).toBeVisible();
 
-    // Headline agrupado (NO dos tarjetas sueltas de "añadió a su biblioteca").
-    await expect(card.getByText(/añadió 2 títulos/i)).toBeVisible();
+    // Headline agrupado (NO cuatro tarjetas sueltas de "añadió a su
+    // biblioteca"), y con el TOTAL ya estando colapsada: 4, no las 2 visibles.
+    await expect(card.getByText(/añadió 4 títulos/i)).toBeVisible();
     // Badge de tipo "Colección".
     await expect(card.getByText(/^colección$/i)).toBeVisible();
-    // Lista vertical: por fila, título + autor + botón "Añadir".
+
+    // ── Colapsada ──
+    // Cada fila pinta DOS enlaces al mismo libro (portada con alt=título +
+    // título), así que las filas se cuentan por el TEXTO del título: el enlace
+    // de la portada no tiene texto y no entra en la cuenta.
+    const titleRows = card.getByText(/^\[E2E\] Colección \d · \d+$/);
+    await expect(titleRows).toHaveCount(2);
+    // Las 2 más nuevas por created_at (ver `addedAt`): Colección 4 y 3.
+    await expect(card.getByText(`[E2E] Colección 4 · ${ts}`)).toBeVisible();
+    await expect(card.getByText(`[E2E] Colección 3 · ${ts}`)).toBeVisible();
+    await expect(card.getByText("[E2E] Autor 4")).toBeVisible();
+    await expect(card.getByText("[E2E] Autor 3")).toBeVisible();
+    await expect(card.getByRole("button", { name: /ver 2 obras más/i })).toHaveCount(1);
+
+    // El pie cuenta TODAS las pendientes del grupo (4 obras − 1 ya en la
+    // biblioteca del visitante = 3), no solo las filas pintadas. Se afirma
+    // COLAPSADA porque es el estado donde ambos números difieren: si el pie se
+    // derivara de lo visible diría "los 2".
+    await expect(card.getByRole("button", { name: /guardar los 3/i })).toHaveCount(1);
+
+    // ── Expandida ──
+    await card.getByRole("button", { name: /ver 2 obras más/i }).click();
+    await expect(titleRows).toHaveCount(4);
+    // Lista vertical: por fila, título + autor. Las 2 que estaban ocultas.
     await expect(card.getByText(`[E2E] Colección 1 · ${ts}`)).toBeVisible();
     await expect(card.getByText(`[E2E] Colección 2 · ${ts}`)).toBeVisible();
     await expect(card.getByText("[E2E] Autor 1")).toBeVisible();
     await expect(card.getByText("[E2E] Autor 2")).toBeVisible();
-    await expect(card.getByRole("button", { name: /^añadir$/i })).toHaveCount(2);
+
+    // Y el botón "Añadir" por fila, según la biblioteca del visitante: la obra
+    // con pase ACTIVO (Colección 1) no lo ofrece; la que solo tiene un pase
+    // INACTIVO (Colección 2) sí. Ambas filas solo existen ya expandida.
+    const ownedRow = card
+      .getByRole("link", { name: `[E2E] Colección 1 · ${ts}` })
+      .first()
+      .locator("..");
+    const missingRow = card
+      .getByRole("link", { name: `[E2E] Colección 2 · ${ts}` })
+      .first()
+      .locator("..");
+    await expect(ownedRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(0);
+    await expect(missingRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(1);
+
+    // El pie no cambia al expandir: sigue siendo el total de pendientes.
+    await expect(card.getByRole("button", { name: /guardar los 3/i })).toHaveCount(1);
   } finally {
     await cleanFixtures();
     if (followeeId) {
@@ -282,12 +363,16 @@ test("las sesiones del mismo libro forman UNA timeline; la nota privada no se fi
     });
 
     const today = new Date().toISOString().slice(0, 10);
-    const backdated = isoDaysAgo(3).slice(0, 10); // 3 días < ventana de 7
-    // 3 sesiones del mismo libro → un solo sub-grupo (hueco máximo 3 días).
+    // Hueco de 2 días: el borde EXACTO de GROUP_WINDOW_DAYS, que parte cuando
+    // pasan MÁS de 2, así que las 3 sesiones siguen siendo UNA timeline. Este
+    // fixture usaba 3 días («< ventana de 7») y se quedó obsoleto al bajar la
+    // ventana a 2: partía la tarjeta en dos y el test fallaba.
+    const backdated = isoDaysAgo(2).slice(0, 10);
+    // 3 sesiones del mismo libro → un solo sub-grupo.
     await rest("progress_sessions", {
       method: "POST",
       body: JSON.stringify([
-        { id: PROG_SESSIONS[0], user_id: followee.id, pass_id: PROG_PASS, session_date: backdated, position: { page: 50 }, created_at: isoDaysAgo(3) },
+        { id: PROG_SESSIONS[0], user_id: followee.id, pass_id: PROG_PASS, session_date: backdated, position: { page: 50 }, created_at: isoDaysAgo(2) },
         { id: PROG_SESSIONS[1], user_id: followee.id, pass_id: PROG_PASS, session_date: today, position: { page: 120 }, created_at: isoDaysAgo(0.05) },
         { id: PROG_SESSIONS[2], user_id: followee.id, pass_id: PROG_PASS, session_date: today, position: { page: 200 }, created_at: new Date().toISOString() },
       ]),

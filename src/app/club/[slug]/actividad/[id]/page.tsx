@@ -48,7 +48,7 @@ export default async function ActivityPage({
   // cuerpos de sus comentarios para linkificar @menciones reales (issue #321).
   const knownUsernames = await resolveKnownMentions(
     supabase,
-    activity.chat.comments.map((c) => c.body),
+    activity.chat?.comments.map((c) => c.body) ?? [],
   );
 
   // La actividad vive dentro del shell del club (spec 2026-07-21): sin esto la

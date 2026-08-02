@@ -7,11 +7,22 @@ import {
   fetchNotifications,
   markAllNotificationsRead,
 } from "@/lib/social/notification-actions";
-import { NOTIFICATION_TYPE_KEY, type Notification } from "@/lib/social/notification-types";
+import {
+  NOTIFICATION_TYPE_KEY,
+  type Notification,
+  type NotificationType,
+} from "@/lib/social/notification-types";
 import { timeAgo } from "@/lib/relative-time";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
 import { PushToggle } from "@/components/push/push-toggle";
+
+const GROUPED_NOTIFICATION_TYPE_KEY: Partial<Record<NotificationType, string>> = {
+  review_liked: "reviewLikedGrouped",
+  club_post_liked: "clubPostLikedGrouped",
+  comment_liked: "commentLikedGrouped",
+  activity_liked: "activityLikedGrouped",
+};
 
 // Campana con contador de no leídas + dropdown (EPIC-05, Bloque D, SD-5). Al
 // abrir, marca todo como leído (sin selección fila a fila, mismo espíritu
@@ -118,10 +129,14 @@ export function NotificationBell({
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="text-sm text-foreground">
                         {n.extraActorsCount
-                          ? t("reviewLikedGrouped", {
-                              name: n.actorDisplayName || n.actorUsername,
-                              count: n.extraActorsCount,
-                            })
+                          ? t(
+                              GROUPED_NOTIFICATION_TYPE_KEY[n.type] ??
+                                NOTIFICATION_TYPE_KEY[n.type],
+                              {
+                                name: n.actorDisplayName || n.actorUsername,
+                                count: n.extraActorsCount,
+                              },
+                            )
                           : t(NOTIFICATION_TYPE_KEY[n.type], {
                               name: n.actorDisplayName || n.actorUsername,
                             })}

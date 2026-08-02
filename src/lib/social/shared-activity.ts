@@ -29,6 +29,14 @@ export type ShareRef = {
   rowId: string;
 };
 
+// Un post compartido solo necesita un preview de la actividad. Mantenerlo
+// separado del FeedEvent evita exponer un target interactivo deliberadamente
+// no cargado (y, por tanto, un interactionTargetId nulo) al cliente.
+export type SharedActivityPreview = Omit<
+  FeedEvent,
+  "interactionTarget" | "reactionCount" | "viewerReacted" | "commentCount" | "comments"
+>;
+
 const REVIEW_EXCERPT_LENGTH = 200;
 
 function excerpt(text: string | null): string | null {
@@ -86,7 +94,7 @@ async function resolvePassItem(supabase: SupabaseServerClient, passId: string) {
 export async function resolveSharedActivity(
   supabase: SupabaseServerClient,
   ref: ShareRef,
-): Promise<FeedEvent | null> {
+): Promise<SharedActivityPreview | null> {
   if (ref.sourceTable === "diary_entries_added") {
     // item_type/item_id/status/created_at ya son columnas propias del pase
     // (§Tarea 9): sin join a library_entries.
@@ -115,16 +123,18 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: row.status,
       eventDate: row.created_at,
+      // orderDate = la columna de fecha de la fuente (FEED_SOURCE_COLUMNS); en
+      // las altas es el mismo created_at.
+      orderDate: row.created_at,
+      // sortDate = created_at, el contrato del campo en FeedEvent. Esta vista
+      // resuelve UNA fila y no pasa por el keyset del feed, pero el campo se
+      // rellena con la hora real de registro igual que allí.
+      sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: null,
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
     };
   }
 
@@ -159,6 +169,8 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: sessionRelativeBasis(row.session_date, row.created_at),
+      orderDate: row.session_date,
+      sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
@@ -168,11 +180,6 @@ export async function resolveSharedActivity(
       // suelta para compartir en clubes) — ver issue de seguimiento.
       progress: { durationMinutes: row.duration_minutes, page: null, percent: null, note: null },
       reviewMeta: null,
-      interactionTarget: null,
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
     };
   }
 
@@ -186,7 +193,7 @@ export async function resolveSharedActivity(
     // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
       .eq("id", ref.rowId)
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
@@ -196,15 +203,20 @@ export async function resolveSharedActivity(
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
     // porque Supabase no infiere el tipo a partir de la query. pass_reviews
     // tipa TODAS sus columnas como nullable (es una vista), así que también
-    // se narrowan id/user_id/item_type/item_id — nunca vienen null en la
-    // práctica.
+    // se narrowan id/user_id/item_type/item_id/created_at — nunca vienen null
+    // en la práctica. created_at entra en la MISMA lista y no se cae a
+    // finished_on: `sortDate` promete un timestamp real, y un valor date-only
+    // ahí ordena por debajo de todo evento con hora de su día y empata con sus
+    // iguales (desempate por uuid). Sin hora real, la fila se trata como "ya no
+    // disponible", igual que sin id.
     if (
       !row ||
       row.id === null ||
       row.user_id === null ||
       row.item_type === null ||
       row.item_id === null ||
-      row.finished_on === null
+      row.finished_on === null ||
+      row.created_at === null
     )
       return null;
     const [actor, catalog] = await Promise.all([
@@ -226,23 +238,21 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: row.finished_on,
+      orderDate: row.finished_on,
+      // Timestamp real garantizado por el narrowing de arriba.
+      sortDate: row.created_at,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "diary_entry", targetId: row.id },
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
     };
   }
 
   // episode_watches
   const { data: row } = await supabase
     .from("episode_watches")
-    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on")
+    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at")
     .eq("id", ref.rowId)
     .maybeSingle();
   if (!row) return null;
@@ -273,15 +283,12 @@ export async function resolveSharedActivity(
     itemSubtitle: catalog.subtitle,
     entryStatus: null,
     eventDate: row.watched_on,
+    orderDate: row.watched_on,
+    sortDate: row.created_at,
     rating: row.rating,
     reviewExcerpt: excerpt(row.review),
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },
     progress: null,
     reviewMeta: null,
-    interactionTarget: { targetType: "episode_watch", targetId: row.id },
-    reactionCount: 0,
-    viewerReacted: false,
-    commentCount: 0,
-    comments: [],
   };
 }

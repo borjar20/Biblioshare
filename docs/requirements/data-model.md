@@ -33,12 +33,27 @@ del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gi
 aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_indexes`;
 backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
 divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
-`books` no necesita backfill (las labels ya coincidían)]**
+`books` no necesita backfill (las labels ya coincidían); **Social fase 1 — corregido aquí,
+2026-08-02**: esta cabecera llevaba «fix del writer canónico y migración de CONTRATO SOLO EN
+DEV» y «PRODUCCIÓN NO TIENE `interaction_targets` EN ABSOLUTO», y ya no es cierto — **la fase 1
+ENTERA está aplicada y verificada en DEV y en PROD** (`vmutcradmodhiltuohys`) el 2026-08-02: las
+siete migraciones de la cadena expansiva (`20260730212803` → `20260730213248` → `20260730214405`
+→ `20260730214621` → `20260801115944` → `20260801135656` → `20260802013421`) y, DESPUÉS de que
+el bundle canónico estuviera vivo, la de contrato
+(`20260801224621_social_interaction_targets_contract.sql`). Verificado contra los objetos reales
+—`pg_class`, `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra
+`list_migrations`: `interaction_target_id` es `NOT NULL` en `comments` y `reactions`, el par
+heredado `target_type`/`target_id` ya NO es columna de ninguna de las dos, `notifications`
+conserva sus tres columnas nullable, la unicidad de reacción es `(interaction_target_id,
+user_id, kind)` y `comments_no_nesting` ha desaparecido. Cero pérdida de datos en todo el
+recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a paso.
+`schema-baseline.sql` **ya no está sin anexar**: lleva el «ANEXO 2026-08-02» con las ocho
+migraciones en el orden en que las recibió producción**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
-> **2026-07-29** (delta de `target_kind`/`can_view_target` del feed agrupado de Inicio;
-> el resto del esquema sigue verificado el 2026-07-21): 42 tablas, todas con RLS activa.
+> **2026-07-30** para el delta de Social fase 0 (el resto conserva sus fechas de
+> verificación específicas): 47 tablas públicas, todas con RLS activa.
 > **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
 > select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
 > pendiente del merge de `feat/feed-tarjetas-por-tipo`.
@@ -47,11 +62,80 @@ divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas 
 > **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §9): valor `mentioned` del enum
 > `notification_type` aplicado y verificado en DEV **y en PROD** contra `pg_enum` (sin
 > tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
-> `decisiones.md`). Las políticas RLS de `notifications` (`select own`/`insert as
-> actor`/`update own`/`delete own`) no referencian `type`, así que `mentioned` queda
-> cubierto por la misma RLS que el resto de tipos sin cambio alguno — confirmado
-> re-listando `pg_policies` en dev el 2026-07-30. Spec:
+> `decisiones.md`). Al entrar esta mejora, las políticas RLS de `notifications` aún incluían
+> `insert as actor` y no referenciaban `type`, por lo que `mentioned` quedó cubierto sin
+> cambio específico. **Social fase 0 supersede esa puerta en dev y prod**: ya no existe ninguna
+> política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
+> servidor usa `service_role`. Spec:
 > `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
+> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
+> `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
+> Son siete migraciones:
+> `20260730190602_social_phase0_integrity.sql`,
+> `20260730190801_social_phase0_notification_compat.sql`,
+> `20260730191652_social_phase0_user_blocks.sql`,
+> `20260730191702_social_phase0_moderation_reports.sql`,
+> `20260730191708_social_phase0_polymorphic_cleanup.sql`,
+> `20260730194407_social_phase0_close_notification_inserts.sql` y
+> `20260730200000_social_phase0_report_reviewer_index.sql`. Pasaron la matriz transaccional
+> `supabase/tests/social_phase0_rls.sql` en prod dentro de una transacción con rollback; el
+> barrido dejó 0 comentarios, 0 reacciones y 0 notificaciones huérfanos. En ambos entornos,
+> INSERT sobre `notifications` queda permitido solo a
+> `service_role` (`anon=false`, `authenticated=false`, 0 políticas INSERT); las cuatro RPC
+> públicas nuevas son `SECURITY INVOKER`. En prod hay 66 avisos de seguridad, sin hallazgos
+> atribuibles a las tablas o RPC de esta fase. El rollout aplicó integridad+compatibilidad de
+> forma atómica, desplegó el bundle `8589601` y solo entonces cerró el INSERT heredado y añadió
+> el índice de reviewer; [#332](https://github.com/borjar20/Biblioshare/issues/332) conserva la
+> evidencia operativa.
+> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado en DEV, y desde el
+> 2026-08-02 también en PROD (ver el corte de producción más abajo).**
+> `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
+> `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
+> `activity_checkpoint` desde `club_activity_checkpoints.created_by`, repara el registro ya
+> materializado y añade el índice `interaction_targets_owner_id_idx`. La matriz transaccional
+> `supabase/tests/social_phase1_interaction_targets.sql` pasó completa y los advisors de seguridad
+> siguen en 66, sin findings nuevos.
+> **Fix del 2026-08-01 (writer canónico de notificaciones): aplicado y verificado en DEV, y en
+> PROD el 2026-08-02 dentro de la cadena expansiva.**
+> `20260801135656_social_interaction_targets_notification_writer_fix.sql` conserva en INSERT el
+> `interaction_target_id` enviado sin par legacy por el writer confiable (`service_role`); si el
+> INSERT incluye `(target_type, target_id)`, ese par sigue siendo la autoridad. En UPDATE el trigger
+> nunca acepta metadatos canónicos aislados del cliente: vuelve a derivar desde el par completo o
+> limpia el ID si falta alguna parte. La matriz SQL pasó completa; advisors de seguridad 66→66 y de
+> rendimiento 53→53, sin delta.
+> **Delta del 2026-08-01 (Social fase 1, migración de CONTRATO, §5): aplicado y verificado en DEV
+> el 2026-08-01 y en PROD el 2026-08-02, la última de las ocho.**
+> `20260801224621_social_interaction_targets_contract.sql` cierra el ciclo
+> expand/migrate/contract: `interaction_target_id` pasa a `NOT NULL` en `comments` y
+> `reactions`, la unicidad de reacción se apoya en él, desaparecen de esas dos tablas el par
+> heredado `(target_type, target_id)`, sus triggers de resolución, sus índices y el CHECK
+> `comments_no_nesting`, y cinco funciones `SECURITY DEFINER` pasan a resolver el padre de un
+> comentario por el registro canónico. `notifications` conserva intacto su par heredado
+> nullable y su trigger resolutor. La matriz `supabase/tests/social_phase1_interaction_targets.sql`
+> pasó completa (`ALL ASSERTIONS PASSED`) y los advisors siguen en 66 de seguridad, sin
+> hallazgos nuevos.
+> **Corte de producción del 2026-08-02: la fase 1 ENTERA está aplicada y verificada en PROD.**
+> Ocho migraciones contra `vmutcradmodhiltuohys`, verificadas contra objetos reales —`pg_class`,
+> `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra `list_migrations`: el
+> ledger de prod ya venía sin la fila de `social_phase0_notification_compat` pese a tener su
+> efecto (`comments_body_canonical`), que es justo la trampa que advierte `AGENTS.md`. Primero la
+> cadena EXPANSIVA de siete (`20260730212803` … `20260802013421`, esta última el fix de la
+> audiencia de checkpoint): el backfill no borró NADA — las 21 filas de comentarios/reacciones
+> tenían fuente viva y los conteos salieron idénticos (8 comentarios, 13 reacciones, 6 avisos),
+> con 647 targets y cero `interaction_target_id` nulos. Después el merge del bundle canónico
+> (`a4dcc0b` en `main`, despliegue de producción de Vercel correcto, el sitio responde 200) y
+> **solo entonces** la migración de CONTRATO
+> (`20260801224621_social_interaction_targets_contract.sql`), que borra columnas que el bundle
+> anterior todavía leía. Los conteos siguieron idénticos tras ella. Prod y dev quedan en 48 tablas
+> públicas, todas con RLS, y sin advisors nuevos en ninguno de los dos entornos.
+> **Ojo al orden, que difiere entre entornos**: en dev el contrato se aplicó ANTES que el fix de
+> la audiencia de checkpoint; en prod el fix viajó con la cadena expansiva y el contrato entró
+> después. Se verificó tras aplicarlo que el contrato NO revierte el fix —
+> `private.can_view_interaction_target` sigue delegando en
+> `can_view_target('activity_checkpoint', …)`. El baseline replica el orden de PROD, que es el que
+> reproduce producción desde cero.
+> El orden de despliegue fue expansiva → backfill → bundle → contrato. `schema-baseline.sql`
+> **ya está anexado** («ANEXO 2026-08-02»), en la misma pasada en que se cerró el ciclo en prod.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -101,7 +185,10 @@ graph TB
 
     subgraph SOCIAL["SOCIAL"]
         profiles[profiles]; follows[follows]
+        targets[interaction_targets]
         reactions[reactions]; comments[comments]; notifs[notifications]
+        blocks[user_blocks]; reports[content_reports]
+        comments --> targets; reactions --> targets; notifs --> targets
     end
 
     subgraph CLUBS["CLUBES"]
@@ -252,15 +339,17 @@ asume los tres— y **`onboarded_at`**, que **ES el gate** de `/onboarding`: con
 asistente no se vuelve a mostrar. Ojo, «tener perfil» y «estar onboardeado» son cosas distintas
 desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` (con `follow_status`
 `pending|accepted` — a perfil público es aceptado directo), `reactions` y `comments`
-(polimórficos vía `target_kind`), `notifications`, `push_subscriptions`.
+(polimórficos vía `target_kind` **hasta la fase 1 social; desde el 2026-08-02, en dev y en prod,
+apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, `push_subscriptions`.
 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
 
 **Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
 `20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
-el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor+día y
-actor+obra+día respectivamente, ver `decisiones.md`), pero cada reacción/comentario sigue
+el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor y por
+actor+obra respectivamente, con la ventana temporal exacta en `decisiones.md` — ha cambiado ya
+más de una vez, no la repitas aquí), pero cada reacción/comentario sigue
 apuntando a la fila real — `passes` o `progress_sessions` — nunca a un id sintético del grupo;
 de ahí que hicieran falta valores de enum nuevos en vez de reutilizar el `diary_entry` legado.
 `can_view_target()` gana dos ramas con el mismo patrón que las demás: `pass` resuelve vía
@@ -268,6 +357,154 @@ de ahí que hicieran falta valores de enum nuevos en vez de reutilizar el `diary
 `progress_session` vía `progress_sessions s`/`s.user_id`. Con esto, los eventos `added` (pase
 nuevo) y `progressed` (sesión de progreso) del feed pasan a ser reaccionables/comentables —
 antes no tenían ningún target.
+
+**Social fase 0 (dev y prod, 2026-07-30).** `user_blocks` guarda pares dirigidos
+`(blocker_id, blocked_id)`: ambos extremos pueden leer la fila, solo quien bloqueó puede
+crearla o retirarla. Crear un bloqueo borra follows y notificaciones entre ambos y el gate
+bidireccional se aplica a perfiles, contenido compartido a clubes, follows, comentarios,
+reacciones y feed de club. Las RPC públicas `users_are_blocked(other_user_id)` y
+`filter_unblocked_user_ids(candidate_ids)` son `SECURITY INVOKER`; la segunda filtra un lote
+sin perder el orden de la primera aparición. Retirar el bloqueo no reconstruye follows ni
+notificaciones borrados.
+
+Las notificaciones sociales se escriben desde servidor con `service_role`; el cliente ya no
+puede hacer INSERT directo (`anon` y `authenticated` sin privilegio, y 0 políticas INSERT).
+La migración de compatibilidad mantiene el orden de despliegue seguro hasta que
+`20260730194407_social_phase0_close_notification_inserts.sql` cierra definitivamente la puerta.
+
+`content_reports` conserva evidencia de moderación: reporter, usuario responsable derivado,
+target polimórfico, razón, detalle, snapshot, estado y revisión. El cliente no decide ni
+`reported_user_id` ni `snapshot`: un trigger los deriva del target real antes del INSERT.
+Solo el reporter ve su reporte; admins globales y moderadores/owners del club del target
+pueden verlo y resolverlo. Ser autor del target, por sí solo, no revela el reporte.
+`report_comment(comment_id, reason, details)` es el punto de escritura para comentarios y
+`moderatable_target_ids(target_kind, ids[])` permite resolver capacidades por lote. Al borrar
+un target, los comentarios/reacciones/notificaciones asociados se eliminan, pero los reportes
+se preservan como auditoría y pasan a `actioned` con `target_deleted_at`.
+
+### Registro canónico `interaction_targets` (Social fase 1, contrato cerrado, dev y prod, 2026-08-02)
+
+> **Estado: expand/migrate/contract COMPLETO en dev y en PRODUCCIÓN.** Las ocho migraciones están
+> aplicadas en los dos entornos —dev (`tyvzpuhxfwxrnkcpzxyg`) el 2026-08-01, prod
+> (`vmutcradmodhiltuohys`) el 2026-08-02— y todo lo que sigue está verificado contra objetos
+> reales (`pg_class`, `pg_proc`, `pg_constraint`, `information_schema.columns`), nunca contra
+> `list_migrations`. El despliegue a prod fue en el orden expansiva → backfill → bundle → contrato,
+> con el merge del bundle canónico en medio; el anexo correspondiente ya está en
+> `schema-baseline.sql` («ANEXO 2026-08-02»).
+
+`interaction_targets` desacopla las interacciones de siete tablas fuente y materializa ocho tipos.
+Su contrato vivo es:
+
+| Columna | Contrato |
+|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` |
+| `kind`, `source_id` | `target_kind` + `uuid`, ambos `not null`, con `unique(kind, source_id)` |
+| `owner_id` | `uuid not null references auth.users(id) on delete cascade`; índice `interaction_targets_owner_id_idx` |
+| `audience_kind`, `audience_id` | `interaction_audience_kind` + `uuid`, ambos `not null`; `audience_id` es polimórfico y no tiene FK |
+| `href` | `text not null`, siempre ruta interna (`href like '/%'`) |
+| capacidades | `commentable`/`reactable` `not null`; cada booleano equivale exactamente a que su tipo de aviso no sea `null` |
+| avisos | `comment_notification_type` y `reaction_notification_type`, ambos `notification_type` nullable |
+
+La matriz materializada por triggers es `diary_entry`, `episode_watch`, `club_post`, `comment`,
+`pass`, `progress_session`, `club_activity` y `activity_checkpoint`; `passes` emite dos targets
+distintos (`diary_entry` y `pass`). Un comentario hereda audiencia y `href` del padre. En un
+`activity_checkpoint`, el owner es **quien creó el checkpoint**
+(`club_activity_checkpoints.created_by`), no quien creó la actividad; la migración correctiva del
+2026-08-01 también repara con ese valor los targets existentes.
+
+RLS está activa. `anon` y `authenticated` tienen exclusivamente `SELECT`; no hay concesión de
+escritura de cliente. La policy de lectura delega en `can_view_interaction_target(id)`, que resuelve
+dinámicamente `profile`, `club_member`, `activity_participant` o `checkpoint_reached` y aplica el
+bloqueo bidireccional contra `owner_id`. Las policies de `comments` y `reactions` delegan en ese
+mismo helper y exigen además `commentable`/`reactable`.
+
+> **Corrección `20260802013421_social_interaction_targets_checkpoint_audience_fix.sql` (dev y prod, 2026-08-02).**
+> La rama `checkpoint_reached` resolvía sobre `source_id` en vez de sobre `audience_id`, el único
+> `case` que no leía la audiencia. Los dos valores solo coinciden en el target **propio** del
+> checkpoint: un comentario hereda `audience_id` del padre pero su `source_id` es el del propio
+> comentario, así que la comprobación recaía sobre un UUID de comentario y devolvía siempre falso.
+> Efecto: el comentario se veía pero su target no, que es justo el estado que los loaders tratan
+> como corrupción — un solo comentario en el chat de un checkpoint dejaba la página de la actividad
+> en error 500 de forma permanente para todos los participantes. La rama además comprobaba solo la
+> fila de lectura, sin exigir participación: salir de la actividad o ser expulsado del club no borra
+> `club_activity_checkpoint_reads`, así que un ex-miembro conservaba acceso de lectura al chat.
+> Ahora la rama **delega** en `public.can_view_target('activity_checkpoint', t.audience_id)`, que ya
+> exigía las dos condiciones (`is_activity_participant` **y** `has_reached_checkpoint`); delegar
+> evita que las dos definiciones de «puedo ver este checkpoint» vuelvan a divergir, que es lo que
+> produjo el fallo. La matriz SQL cubre ahora la visibilidad del target **heredado** de un comentario
+> en las cuatro audiencias, no solo la del target propio del padre.
+
+#### Contrato tras `20260801224621_social_interaction_targets_contract.sql`
+
+Las tres tablas de interacción tienen `interaction_target_id` con FK a `interaction_targets(id) on
+delete cascade`, pero **no en las mismas condiciones**:
+
+| Tabla | `interaction_target_id` | Par heredado `(target_type, target_id)` |
+|---|---|---|
+| `comments` | `not null` | **no existe**: columnas borradas |
+| `reactions` | `not null` | **no existe**: columnas borradas |
+| `notifications` | nullable | **se conserva**, nullable |
+
+`notifications` mantiene el par a propósito: los avisos de club, invitación y evento nombran fuentes
+que **no tienen fila en el registro canónico**, así que no hay id que poner. Conserva también su
+trigger resolutor `trg_notifications_resolve_interaction_target` con el reparto de autoridad de
+siempre (un INSERT del writer confiable puede traer solo el id canónico; con par legacy manda el
+par; en UPDATE el par conserva la autoridad y el id se re-deriva o se limpia, de modo que el cliente
+no puede inyectar metadatos canónicos divergentes).
+
+En comentarios y reacciones, en cambio, **el id canónico es la única identidad**:
+
+- **Unicidad de reacción**: `reactions_interaction_target_id_user_id_kind_key
+  unique (interaction_target_id, user_id, kind)`, en sustitución de la que iba por el par heredado.
+  El índice suelto `reactions_interaction_target_idx` se retira porque el nuevo único ya lo cubre por
+  prefijo (un índice duplicado habría levantado el advisor).
+- **Fuera la compatibilidad expand/migrate**: se retiran los triggers
+  `trg_comments_resolve_interaction_target` y `trg_reactions_resolve_interaction_target` y las
+  funciones `private.resolve_comment_interaction_target`,
+  `private.resolve_reaction_interaction_target` y `private.resolve_interaction_target`. Ya nadie
+  deriva el id canónico de un par que no existe. **`notifications` no pierde el suyo.**
+- **Sin respuestas anidadas: de CHECK a TRIGGER.** `comments_no_nesting` desapareció con las
+  columnas en las que se apoyaba. El invariante lo sostiene ahora
+  `private.enforce_comment_target_commentable()` vía `trg_comments_enforce_commentable`
+  (`BEFORE INSERT OR UPDATE OF interaction_target_id ON public.comments`, `FOR EACH ROW`), que
+  rechaza todo comentario apuntado a un target con `commentable = false`
+  (`target_not_commentable`, `23514` — el mismo `check_violation` que emitía el CHECK) y a un target
+  inexistente (`invalid_interaction_target`, `23503`). Es un trigger y **no** una política RLS a
+  propósito: así también ata a `service_role`, `postgres`, fixtures e2e y cualquier escritor
+  `SECURITY DEFINER`, que una policy de inserción no sujeta. Y generaliza más que el CHECK: cubre
+  cualquier target no comentable, no solo los de `kind = 'comment'`. Cubre el UPDATE porque
+  reapuntar un comentario ya escrito al target de otro comentario anida exactamente igual que
+  insertarlo así. Un `interaction_target_id` nulo lo deja pasar sin tocar, para que el `not null` de
+  la columna siga hablando con su propio `23502`. El trigger es `ENABLE ALWAYS` (`tgenabled = 'A'`),
+  no el `'O'` por defecto: si no, dejaría de dispararse con `session_replication_role = 'replica'`
+  —`pg_restore --disable-triggers`, restauraciones y ramas de Supabase, aplicación de replicación
+  lógica—, justo los caminos en los que el CHECK que sustituye **sí** se aplicaba; el invariante
+  habría quedado más débil que antes sin que nada lo delatara.
+- **El flag del que ahora depende el invariante está blindado.** Como el trigger lee
+  `interaction_targets.commentable`, un `update … set commentable = true where kind = 'comment'`
+  habría reabierto el anidamiento por la puerta de atrás. Lo impide el check
+  `interaction_targets_comment_not_commentable` (`kind <> 'comment' or not commentable`), que compone
+  con `interaction_targets_commentable_shape` para forzar además
+  `comment_notification_type is null` en los targets de comentario — exactamente lo que escribe
+  `private.sync_comment_interaction_target`.
+- **Cinco funciones `SECURITY DEFINER` reescritas** para resolver el padre de un comentario por el
+  registro canónico en vez de por las columnas borradas —plpgsql/SQL no declaran dependencia de
+  columna, así que el `drop column` no habría avisado y habrían petado en runtime—:
+  `private.cleanup_social_target` (deja de borrar comentarios/reacciones por el par: eso ya lo hace
+  la cascada del FK; conserva el snapshot de `content_reports`, el borrado del target canónico y el
+  de los avisos legacy), `private.can_moderate_comment` (**está en el camino RLS de `comments`**),
+  `private.social_target_club_id`, `private.prepare_content_report` (el snapshot de un reporte de
+  comentario sigue guardando `target_type`/`target_id` del padre, leídos ya del registro) y
+  `public.can_view_target`. Todas mantienen firma, `security definer`, `search_path` y ACL: no se
+  introdujo superficie nueva.
+
+`trg_comments_cleanup_social_target` **se conserva**: no es redundante. `interaction_targets` no
+tiene FK a las tablas fuente (`source_id` es polimórfico), así que al borrar un comentario alguien
+tiene que borrar su propia fila `kind = 'comment'` — y de ahí, en cascada, sus reacciones.
+
+Los triggers de limpieza de fuente eliminan el target canónico y sus FKs se llevan comentarios,
+reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y queda
+`actioned` con `target_deleted_at`, incluso cuando desaparece el target.
 
 ## 6. Clubes
 
@@ -1241,7 +1478,7 @@ mockup— dejaría esas dos siempre visibles.
 
 ## 8. Seguridad
 
-Las 42 tablas tienen **RLS activa**. Patrones:
+Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
@@ -1267,6 +1504,12 @@ Las 42 tablas tienen **RLS activa**. Patrones:
   el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
   `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
   pg_temp`, pero si alguna se escapa, volver a correr la migración la arregla.
+- **Helpers privados de Social fases 0/1**: las funciones `SECURITY DEFINER` nuevas viven en el
+  esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
+  Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
+  `search_path = ''`; `public.can_view_interaction_target` también es `SECURITY INVOKER` y
+  delega en el helper privado de RLS. Ninguna añadió avisos al advisor de seguridad
+  (66 avisos totales en prod y en dev, sin hallazgos atribuibles a esta fase).
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
@@ -1281,24 +1524,36 @@ Las 42 tablas tienen **RLS activa**. Patrones:
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod — `target_type` reutiliza `diary_entry`/`comment`/`club_post` de `target_kind`, sin valor nuevo) |
+| `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres últimos: Social fase 1, dev y **prod** 2026-08-02) |
+| `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
 | `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
-| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity` |
+| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session` |
 
 ## 10. Migraciones
 
-112 ficheros en `supabase/migrations/` (recontado el 2026-07-29; el 2026-07-28 decía 106, y
-antes de la fase 4 llevaba desviado desde 82). `supabase/schema-baseline.sql` es el replay ordenado
-para levantar un entorno limpio.
+131 ficheros en `supabase/migrations/` (recontado el 2026-08-02; incluye los deltas que aún
+están solo en dev, como `20260814_notes_public_select.sql`). `supabase/schema-baseline.sql` es el
+replay ordenado para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
 es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos veces (notas
 2026-07-14 y 2026-07-17) por olvidar exactamente eso. Las dos migraciones de eventos
 (`20260722_activity_kind_evento.sql`, `20260722_club_event_rpcs.sql`) se aplicaron a prod el
 2026-07-22 y se anexaron al baseline en la misma pasada («ANEXO 2026-07-22»).
+Por esa misma regla, las siete migraciones de Social fase 0 están aplicadas en dev y prod y
+anexadas al final del baseline como «ANEXO 2026-07-30». En producción, integridad y el puente de
+compatibilidad entraron atómicamente antes del bundle `8589601`; la revocación final de INSERT y
+el índice de reviewer entraron después de verificar el bundle. [#332](https://github.com/borjar20/Biblioshare/issues/332)
+conserva la evidencia operativa.
+Las ocho de Social fase 1 están aplicadas en dev y prod y anexadas como «ANEXO 2026-08-02», en la
+misma pasada en que se cerró el ciclo en producción. **El anexo va en el orden de PROD, que no es
+el de dev**: allí el fix de la audiencia de checkpoint (`20260802013421`) viajó con la cadena
+expansiva y la de contrato (`20260801224621`) entró la ÚLTIMA, después del bundle canónico; en dev
+el contrato se había aplicado antes que el fix.
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del

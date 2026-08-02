@@ -10,6 +10,14 @@ import { getInteractionSummary } from "./interactions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
+type RecentReviewDraft = Omit<FeedEvent, "interactionTarget"> & {
+  interactionTarget: {
+    targetType: "diary_entry" | "episode_watch";
+    targetId: string;
+    interactionTargetId: string | null;
+  };
+};
+
 const REVIEW_EXCERPT_LENGTH = 200;
 
 function excerpt(text: string | null): string | null {
@@ -35,7 +43,7 @@ export async function getRecentReviews(
     // aparecer aquí.
     supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
       .eq("user_id", userId)
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado.
@@ -46,7 +54,7 @@ export async function getRecentReviews(
     supabase
       .from("episode_watches")
       .select(
-        "id, user_id, series_id, season_number, episode_number, rating, review, watched_on",
+        "id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at",
       )
       .eq("user_id", userId)
       .not("review", "is", null)
@@ -68,10 +76,24 @@ export async function getRecentReviews(
   // El filtro anterior garantiza finished_on no nulo; se narrowa aquí porque
   // Supabase no infiere el tipo a partir de la query. pass_reviews tipa TODAS
   // sus columnas como nullable (es una vista), así que también se narrowan
-  // id/item_type/item_id — nunca vienen null en la práctica.
+  // id/item_type/item_id/created_at — nunca vienen null en la práctica.
+  // created_at va en la MISMA lista y no en un `??` a finished_on: `sortDate`
+  // promete un timestamp real, y un valor date-only ahí ordena por debajo de
+  // todo evento con hora de su día y empata con sus iguales (desempate por
+  // uuid). Sin hora real, la fila se descarta igual que sin id.
   const diaryRows = (diaryResult.data ?? []).filter(
-    (r): r is typeof r & { id: string; item_type: ItemType; item_id: string; finished_on: string } =>
-      r.id !== null && r.item_type !== null && r.item_id !== null && r.finished_on !== null
+    (r): r is typeof r & {
+      id: string;
+      item_type: ItemType;
+      item_id: string;
+      finished_on: string;
+      created_at: string;
+    } =>
+      r.id !== null &&
+      r.item_type !== null &&
+      r.item_id !== null &&
+      r.finished_on !== null &&
+      r.created_at !== null
   );
   const episodeRows = episodeResult.data ?? [];
 
@@ -131,7 +153,7 @@ export async function getRecentReviews(
     ]),
   );
 
-  const events: FeedEvent[] = [];
+  const events: RecentReviewDraft[] = [];
 
   for (const r of diaryRows) {
     const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
@@ -150,12 +172,21 @@ export async function getRecentReviews(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: r.finished_on,
+      // La columna de orden de esta fuente es `finished_on` (ver
+      // FEED_SOURCE_COLUMNS). Esta lista no pagina por la clave del feed, pero
+      // el evento viaja a las mismas tarjetas, así que se rellena de verdad.
+      orderDate: r.finished_on,
+      // sortDate = created_at, el contrato del campo en FeedEvent. Aquí no
+      // ordena (esta lista ordena por eventDate), pero el evento viaja a las
+      // mismas tarjetas que el feed, así que nunca puede ser date-only (ver el
+      // narrowing de `diaryRows`).
+      sortDate: r.created_at,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "diary_entry", targetId: r.id },
+      interactionTarget: { targetType: "diary_entry", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -180,6 +211,8 @@ export async function getRecentReviews(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: r.watched_on,
+      orderDate: r.watched_on,
+      sortDate: r.created_at,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
       episode: {
@@ -190,7 +223,7 @@ export async function getRecentReviews(
       },
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "episode_watch", targetId: r.id },
+      interactionTarget: { targetType: "episode_watch", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -216,13 +249,28 @@ export async function getRecentReviews(
     const summaries =
       e.interactionTarget.targetType === "diary_entry" ? diarySummaries : episodeSummaries;
     const s = summaries.get(e.interactionTarget.targetId);
-    if (s) {
-      e.reactionCount = s.reactionCount;
-      e.viewerReacted = s.viewerReacted;
-      e.commentCount = s.commentCount;
-      e.comments = s.comments;
+    if (!s) {
+      throw new Error(
+        `Interaction summary missing for ${e.interactionTarget.targetType}:${e.interactionTarget.targetId}`,
+      );
     }
+    e.interactionTarget.interactionTargetId = s.interactionTargetId;
+    e.reactionCount = s.reactionCount;
+    e.viewerReacted = s.viewerReacted;
+    e.commentCount = s.commentCount;
+    e.comments = s.comments;
   }
 
-  return page;
+  return page.map((event): FeedEvent => {
+    const interactionTargetId = event.interactionTarget.interactionTargetId;
+    if (interactionTargetId === null) {
+      throw new Error(
+        `Interaction target unresolved for ${event.interactionTarget.targetType}:${event.interactionTarget.targetId}`,
+      );
+    }
+    return {
+      ...event,
+      interactionTarget: { ...event.interactionTarget, interactionTargetId },
+    };
+  });
 }

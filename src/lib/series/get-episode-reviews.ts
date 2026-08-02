@@ -7,6 +7,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // Reseña de un episodio, análoga a CommunityReview pero etiquetada con SxEy.
 export type EpisodeReview = {
   id: string;
+  interactionTargetId: string;
   author: string;
   initials: string;
   season: number;
@@ -76,7 +77,7 @@ export async function getEpisodeReviews(
     (episodes ?? []).map((e) => [`${e.season_number}:${e.episode_number}`, e.title])
   );
 
-  const reviews = withText.map((r) => {
+  const reviewBases = withText.map((r) => {
     const author = nameByUser.get(r.user_id) ?? "—";
     return {
       id: r.id,
@@ -98,9 +99,13 @@ export async function getEpisodeReviews(
   const summaries = await getInteractionSummary(
     supabase,
     "episode_watch",
-    reviews.map((r) => r.id),
+    reviewBases.map((r) => r.id),
   );
-  const resolved = reviews.map((r) => ({ ...r, ...summaries.get(r.id) }));
+  const resolved: EpisodeReview[] = reviewBases.map((review) => {
+    const summary = summaries.get(review.id);
+    if (!summary) throw new Error(`Interaction summary missing for episode_watch:${review.id}`);
+    return { ...review, ...summary };
+  });
 
   const knownUsernames = await resolveKnownMentions(supabase, [
     ...resolved.map((r) => r.text),

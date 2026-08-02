@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "./notifications";
+import { usersAreBlocked } from "./block-state";
 import {
   revalidateFeed,
   revalidateProfilePages,
@@ -26,6 +27,10 @@ export async function followUser(targetUserId: string): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   if (user.id === targetUserId) return;
+
+  if (await usersAreBlocked(supabase, targetUserId)) {
+    throw new Error("No puedes seguir a este usuario");
+  }
 
   // profile_is_public es SECURITY DEFINER: puede leer el flag de un perfil
   // privado ajeno (que la RLS de profiles ocultaría) para decidir el status.

@@ -763,22 +763,78 @@ export type Database = {
           body: string
           created_at: string
           id: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
+          interaction_target_id: string
         }
         Insert: {
           author_id: string
           body: string
           created_at?: string
           id?: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
+          interaction_target_id: string
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
           id?: string
+          interaction_target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_interaction_target_id_fkey"
+            columns: ["interaction_target_id"]
+            isOneToOne: false
+            referencedRelation: "interaction_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: Database["public"]["Enums"]["content_report_reason"]
+          reported_user_id: string | null
+          reporter_id: string
+          resolution_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          snapshot: Json
+          status: string
+          target_deleted_at: string | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["content_report_reason"]
+          reported_user_id?: string | null
+          reporter_id: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          snapshot: Json
+          status?: string
+          target_deleted_at?: string | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["content_report_reason"]
+          reported_user_id?: string | null
+          reporter_id?: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          snapshot?: Json
+          status?: string
+          target_deleted_at?: string | null
           target_id?: string
           target_type?: Database["public"]["Enums"]["target_kind"]
         }
@@ -907,6 +963,60 @@ export type Database = {
           followee_id?: string
           follower_id?: string
           status?: Database["public"]["Enums"]["follow_status"]
+        }
+        Relationships: []
+      }
+      interaction_targets: {
+        Row: {
+          audience_id: string
+          audience_kind: Database["public"]["Enums"]["interaction_audience_kind"]
+          comment_notification_type:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          commentable: boolean
+          href: string
+          id: string
+          kind: Database["public"]["Enums"]["target_kind"]
+          owner_id: string
+          reactable: boolean
+          reaction_notification_type:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          source_id: string
+        }
+        Insert: {
+          audience_id: string
+          audience_kind: Database["public"]["Enums"]["interaction_audience_kind"]
+          comment_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          commentable: boolean
+          href: string
+          id?: string
+          kind: Database["public"]["Enums"]["target_kind"]
+          owner_id: string
+          reactable: boolean
+          reaction_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          source_id: string
+        }
+        Update: {
+          audience_id?: string
+          audience_kind?: Database["public"]["Enums"]["interaction_audience_kind"]
+          comment_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          commentable?: boolean
+          href?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["target_kind"]
+          owner_id?: string
+          reactable?: boolean
+          reaction_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          source_id?: string
         }
         Relationships: []
       }
@@ -1123,6 +1233,7 @@ export type Database = {
           actor_id: string
           created_at: string
           id: string
+          interaction_target_id: string | null
           read_at: string | null
           target_id: string | null
           target_type: string | null
@@ -1133,6 +1244,7 @@ export type Database = {
           actor_id: string
           created_at?: string
           id?: string
+          interaction_target_id?: string | null
           read_at?: string | null
           target_id?: string | null
           target_type?: string | null
@@ -1143,13 +1255,22 @@ export type Database = {
           actor_id?: string
           created_at?: string
           id?: string
+          interaction_target_id?: string | null
           read_at?: string | null
           target_id?: string | null
           target_type?: string | null
           type?: Database["public"]["Enums"]["notification_type"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_interaction_target_id_fkey"
+            columns: ["interaction_target_id"]
+            isOneToOne: false
+            referencedRelation: "interaction_targets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       passes: {
         Row: {
@@ -1410,28 +1531,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          interaction_target_id: string
           kind: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          interaction_target_id: string
           kind?: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          interaction_target_id?: string
           kind?: string
-          target_id?: string
-          target_type?: Database["public"]["Enums"]["target_kind"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reactions_interaction_target_id_fkey"
+            columns: ["interaction_target_id"]
+            isOneToOne: false
+            referencedRelation: "interaction_targets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saga_follows: {
         Row: {
@@ -1919,6 +2045,24 @@ export type Database = {
           },
         ]
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       club_identities: {
@@ -2068,6 +2212,10 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      can_view_interaction_target: {
+        Args: { p_interaction_target_id: string }
+        Returns: boolean
+      }
       can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
       can_view_target: {
         Args: {
@@ -2140,6 +2288,10 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      filter_unblocked_user_ids: {
+        Args: { candidate_ids: string[] }
+        Returns: string[]
+      }
       finish_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined
@@ -2200,6 +2352,13 @@ export type Database = {
         Args: { p_item_id: string; p_saga_id: string }
         Returns: undefined
       }
+      moderatable_target_ids: {
+        Args: {
+          candidate_target_ids: string[]
+          candidate_target_type: Database["public"]["Enums"]["target_kind"]
+        }
+        Returns: string[]
+      }
       notify_club_join_request: {
         Args: { p_club_id: string }
         Returns: undefined
@@ -2221,6 +2380,10 @@ export type Database = {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
         Returns: undefined
       }
+      report_comment: {
+        Args: { p_comment_id: string; p_details?: string; p_reason: string }
+        Returns: string
+      }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
@@ -2230,30 +2393,18 @@ export type Database = {
         Args: { p_entries: Json; p_route_id: string }
         Returns: undefined
       }
-      save_saga_sequence:
-        | {
-            Args: {
-              p_blocks: Json
-              p_entries: Json
-              p_removed: Json
-              p_saga_id: string
-              p_window_subjects: Json
-              p_windows: Json
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_blocks: Json
-              p_entries: Json
-              p_removed: Json
-              p_saga_id: string
-              p_tandems: Json
-              p_window_subjects: Json
-              p_windows: Json
-            }
-            Returns: undefined
-          }
+      save_saga_sequence: {
+        Args: {
+          p_blocks: Json
+          p_entries: Json
+          p_removed: Json
+          p_saga_id: string
+          p_tandems: Json
+          p_window_subjects: Json
+          p_windows: Json
+        }
+        Returns: undefined
+      }
       set_activity_completion_mode: {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
@@ -2297,6 +2448,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      users_are_blocked: { Args: { other_user_id: string }; Returns: boolean }
       vote_club_poll: {
         Args: { p_option_id: string; p_post_id: string }
         Returns: undefined
@@ -2314,7 +2466,18 @@ export type Database = {
       club_post_kind: "text" | "activity_share" | "poll"
       club_role: "member" | "moderator" | "owner"
       club_visibility: "public" | "private"
+      content_report_reason:
+        | "spam"
+        | "harassment"
+        | "spoiler"
+        | "hate"
+        | "other"
       follow_status: "pending" | "accepted"
+      interaction_audience_kind:
+        | "profile"
+        | "club_member"
+        | "activity_participant"
+        | "checkpoint_reached"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       notification_type:
@@ -2336,9 +2499,18 @@ export type Database = {
         | "club_activity_spawned"
         | "club_event_created"
         | "mentioned"
+        | "activity_liked"
+        | "activity_commented"
+        | "checkpoint_commented"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
-      saga_item_role: "precuela" | "novela_corta" | "relato" | "spin_off" | "companero" | "crossover"
+      saga_item_role:
+        | "precuela"
+        | "novela_corta"
+        | "relato"
+        | "spin_off"
+        | "companero"
+        | "crossover"
       saga_placement: "fijo" | "libre"
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
@@ -2491,7 +2663,14 @@ export const Constants = {
       club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
+      content_report_reason: ["spam", "harassment", "spoiler", "hate", "other"],
       follow_status: ["pending", "accepted"],
+      interaction_audience_kind: [
+        "profile",
+        "club_member",
+        "activity_participant",
+        "checkpoint_reached",
+      ],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
       notification_type: [
@@ -2513,10 +2692,20 @@ export const Constants = {
         "club_activity_spawned",
         "club_event_created",
         "mentioned",
+        "activity_liked",
+        "activity_commented",
+        "checkpoint_commented",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
-      saga_item_role: ["precuela", "novela_corta", "relato", "spin_off", "companero", "crossover"],
+      saga_item_role: [
+        "precuela",
+        "novela_corta",
+        "relato",
+        "spin_off",
+        "companero",
+        "crossover",
+      ],
       saga_placement: ["fijo", "libre"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],

@@ -43,7 +43,7 @@ export type ClubFeedResult = {
 export async function getClubActivityEvents(
   supabase: SupabaseServerClient,
   viewerId: string,
-  options: { cursorUpperBound?: string; pageSize: number },
+  options: { cursorFilter?: string; pageSize: number },
 ): Promise<ClubFeedResult> {
   const { data: memberRows, error: memberError } = await supabase
     .from("club_members")
@@ -66,9 +66,14 @@ export async function getClubActivityEvents(
     .in("club_id", clubIds)
     .in("status", ["proposed", "active"])
     .neq("kind", "evento")
+    // La clave de orden del feed sobre columnas reales: aquí la columna de
+    // fecha y la hora de registro son la misma (`created_at`), así que solo
+    // falta el `id` para cerrar el orden total (ver feed-order.ts).
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(options.pageSize);
-  if (options.cursorUpperBound) query = query.lte("created_at", options.cursorUpperBound);
+  // Filtro keyset compuesto, espejo exacto de `isAfterCursor` (feed-order.ts).
+  if (options.cursorFilter) query = query.or(options.cursorFilter);
 
   const { data: activityRows, error: activityError } = await query;
   if (activityError) throw activityError;

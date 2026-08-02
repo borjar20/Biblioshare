@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
@@ -10,6 +11,8 @@ import { QuickAddButton } from "@/components/library/quick-add-button";
 import { quickAddManyToLibrary } from "@/lib/library/quick-add-actions";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
+import { itemsMissingFromLibrary } from "./collection-card-items";
+import { splitCollapsedItems } from "./feed-collapse";
 
 // Variante A de "añadió N títulos": lista vertical con lomo + autor + reacción
 // por ítem (target real: pass) y alta rápida por fila. Frente a FeedGroupCard,
@@ -27,6 +30,9 @@ export function CollectionCard({
   const t = useTranslations("feed");
   const tTime = useTranslations("time");
   const actorName = entry.actor.displayName || entry.actor.username;
+  const missingItems = itemsMissingFromLibrary(entry.items);
+  const [expanded, setExpanded] = useState(false);
+  const { visible, hiddenCount, collapsible } = splitCollapsedItems(entry.items, expanded);
 
   return (
     <article className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4">
@@ -42,7 +48,7 @@ export function CollectionCard({
       </div>
 
       <div className="flex flex-col">
-        {entry.items.map((item) => (
+        {visible.map((item) => (
           <div key={item.id} className="flex gap-3 border-t border-border py-3 first:border-t-0">
             <Link href={itemHref(item.itemType, item.itemId)} className="w-[46px] shrink-0">
               <SpineCover coverUrl={item.itemCoverUrl} title={item.itemTitle} className="aspect-[2/3] w-[46px]" />
@@ -52,10 +58,9 @@ export function CollectionCard({
                 {item.itemTitle}
               </Link>
               {item.itemSubtitle && <span className="text-[11px] text-foreground-faint">{item.itemSubtitle}</span>}
-              {item.interactionTarget && (
+              {item.interactionTarget?.interactionTargetId && (
                 <ReviewInteractions
-                  targetType={item.interactionTarget.targetType}
-                  targetId={item.interactionTarget.targetId}
+                  interactionTargetId={item.interactionTarget.interactionTargetId}
                   reactionCount={item.reactionCount}
                   viewerReacted={item.viewerReacted}
                   commentCount={item.commentCount}
@@ -65,17 +70,38 @@ export function CollectionCard({
                 />
               )}
             </div>
-            <div className="shrink-0 self-start">
-              <QuickAddButton itemType={item.itemType} itemId={item.itemId} />
-            </div>
+            {!item.viewerHasActivePass && (
+              <div className="shrink-0 self-start">
+                <QuickAddButton itemType={item.itemType} itemId={item.itemId} />
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {entry.items.length > 1 && (
-        <form action={async () => { await quickAddManyToLibrary(entry.items.map((i) => ({ itemType: i.itemType, itemId: i.itemId }))); }}>
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full rounded-lg py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-surface-muted"
+        >
+          {expanded ? t("progress.showLess") : t("grouped.showMore", { count: hiddenCount })}
+        </button>
+      )}
+
+      {missingItems.length > 1 && (
+        <form
+          action={async () => {
+            await quickAddManyToLibrary(
+              missingItems.map((item) => ({
+                itemType: item.itemType,
+                itemId: item.itemId,
+              })),
+            );
+          }}
+        >
           <button type="submit" className="w-full rounded-lg border border-border py-2 text-[12.5px] font-semibold text-accent hover:bg-surface-muted">
-            {t("grouped.saveAllToQueue", { count: entry.items.length })}
+            {t("grouped.saveAllToQueue", { count: missingItems.length })}
           </button>
         </form>
       )}

@@ -1,4 +1,8 @@
 import type { createClient } from "@/lib/supabase/server";
+import {
+  getInteractionTargetRefs,
+  type TargetType as CanonicalTargetType,
+} from "./interaction-targets";
 
 // Capa de lectura de interacciones (EPIC-05, Bloque B, SD-3). Batch-fetch de
 // reacciones/comentarios para un conjunto de targets del mismo tipo — cada
@@ -9,22 +13,27 @@ import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-export type TargetType = "diary_entry" | "episode_watch" | "club_post" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session";
-export type ReactableTargetType = TargetType | "comment";
+export type TargetType = Exclude<CanonicalTargetType, "comment">;
+export type ReactableTargetType = CanonicalTargetType;
 
 export type InteractionComment = {
   id: string;
+  interactionTargetId: string;
   authorId: string;
   author: string;
+  authorUsername: string | null;
+  authorAvatarUrl: string | null;
   initials: string;
   body: string;
   createdAt: string;
   isOwn: boolean;
+  canDelete: boolean;
   reactionCount: number;
   viewerReacted: boolean;
 };
 
 export type InteractionSummary = {
+  interactionTargetId: string;
   reactionCount: number;
   viewerReacted: boolean;
   commentCount: number;
@@ -46,11 +55,13 @@ function initials(name: string): string {
 async function resolveAuthorNames(
   supabase: SupabaseServerClient,
   userIds: string[],
-): Promise<Map<string, string>> {
+): Promise<
+  Map<string, { name: string; username: string | null; avatarUrl: string | null }>
+> {
   if (userIds.length === 0) return new Map();
   const { data, error } = await supabase
     .from("profile_identities")
-    .select("user_id, username, display_name")
+    .select("user_id, username, display_name, avatar_url")
     .in("user_id", userIds);
   if (error) throw error;
   return new Map(
@@ -58,7 +69,14 @@ async function resolveAuthorNames(
       .filter(
         (p): p is typeof p & { user_id: string } => p.user_id != null,
       )
-      .map((p) => [p.user_id, p.display_name || p.username || "—"]),
+      .map((p) => [
+        p.user_id,
+        {
+          name: p.display_name || p.username || "—",
+          username: p.username ?? null,
+          avatarUrl: p.avatar_url ?? null,
+        },
+      ]),
   );
 }
 
@@ -70,13 +88,26 @@ export async function getInteractionSummary(
   const summaries = new Map<string, InteractionSummary>();
   if (targetIds.length === 0) return summaries;
 
-  for (const id of targetIds) {
-    summaries.set(id, {
+  const targetRefs = await getInteractionTargetRefs(
+    supabase,
+    targetIds.map((sourceId) => ({ kind: targetType, sourceId })),
+  );
+  const sourceIdByTargetId = new Map<string, string>();
+  const interactionTargetIds: string[] = [];
+  for (const sourceId of targetIds) {
+    const targetRef = targetRefs.get(`${targetType}:${sourceId}`);
+    if (!targetRef) {
+      throw new Error(`Interaction target missing for ${targetType}:${sourceId}`);
+    }
+    summaries.set(sourceId, {
+      interactionTargetId: targetRef.id,
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
       comments: [],
     });
+    sourceIdByTargetId.set(targetRef.id, sourceId);
+    interactionTargetIds.push(targetRef.id);
   }
 
   const {
@@ -86,14 +117,12 @@ export async function getInteractionSummary(
   const [reactionsResult, commentsResult] = await Promise.all([
     supabase
       .from("reactions")
-      .select("target_id, user_id")
-      .eq("target_type", targetType)
-      .in("target_id", targetIds),
+      .select("interaction_target_id, user_id")
+      .in("interaction_target_id", interactionTargetIds),
     supabase
       .from("comments")
-      .select("id, target_id, author_id, body, created_at")
-      .eq("target_type", targetType)
-      .in("target_id", targetIds)
+      .select("id, interaction_target_id, author_id, body, created_at")
+      .in("interaction_target_id", interactionTargetIds)
       .order("created_at", { ascending: true }),
   ]);
 
@@ -101,7 +130,9 @@ export async function getInteractionSummary(
   if (commentsResult.error) throw commentsResult.error;
 
   for (const r of reactionsResult.data ?? []) {
-    const s = summaries.get(r.target_id);
+    if (!r.interaction_target_id) continue;
+    const sourceId = sourceIdByTargetId.get(r.interaction_target_id);
+    const s = sourceId ? summaries.get(sourceId) : undefined;
     if (!s) continue;
     s.reactionCount += 1;
     if (user && r.user_id === user.id) s.viewerReacted = true;
@@ -109,25 +140,58 @@ export async function getInteractionSummary(
 
   const commentRows = commentsResult.data ?? [];
   const authorIds = [...new Set(commentRows.map((c) => c.author_id))];
-  const nameByAuthor = await resolveAuthorNames(supabase, authorIds);
+  const [nameByAuthor, commentTargetRefs] = await Promise.all([
+    resolveAuthorNames(supabase, authorIds),
+    getInteractionTargetRefs(
+      supabase,
+      commentRows.map((comment) => ({ kind: "comment", sourceId: comment.id })),
+    ),
+  ]);
+  let moderatableTargetIds = new Set<string>();
+  if (user) {
+    const { data: ids, error: moderationError } = await supabase.rpc(
+      "moderatable_target_ids",
+      {
+        candidate_target_type: targetType,
+        candidate_target_ids: targetIds,
+      },
+    );
+    if (moderationError) throw moderationError;
+    moderatableTargetIds = new Set((ids ?? []) as string[]);
+  }
 
   const seenPerTarget = new Map<string, number>();
   for (const c of commentRows) {
-    const s = summaries.get(c.target_id);
+    if (!c.interaction_target_id) continue;
+    const sourceId = sourceIdByTargetId.get(c.interaction_target_id);
+    if (!sourceId) continue;
+    const s = summaries.get(sourceId);
     if (!s) continue;
+    const commentTargetRef = commentTargetRefs.get(`comment:${c.id}`);
+    if (!commentTargetRef) {
+      throw new Error(`Interaction target missing for comment:${c.id}`);
+    }
     s.commentCount += 1;
-    const seen = (seenPerTarget.get(c.target_id) ?? 0) + 1;
-    seenPerTarget.set(c.target_id, seen);
+    const seen = (seenPerTarget.get(c.interaction_target_id) ?? 0) + 1;
+    seenPerTarget.set(c.interaction_target_id, seen);
     if (seen > COMMENT_PREFETCH_LIMIT) continue;
-    const author = nameByAuthor.get(c.author_id) ?? "—";
+    const identity = nameByAuthor.get(c.author_id) ?? {
+      name: "—",
+      username: null,
+      avatarUrl: null,
+    };
     s.comments.push({
       id: c.id,
+      interactionTargetId: commentTargetRef.id,
       authorId: c.author_id,
-      author,
-      initials: initials(author) || "?",
+      author: identity.name,
+      authorUsername: identity.username,
+      authorAvatarUrl: identity.avatarUrl,
+      initials: initials(identity.name) || "?",
       body: c.body,
       createdAt: c.created_at,
       isOwn: user?.id === c.author_id,
+      canDelete: user?.id === c.author_id || moderatableTargetIds.has(sourceId),
       reactionCount: 0,
       viewerReacted: false,
     });
@@ -142,19 +206,26 @@ export async function getInteractionSummary(
   // simplemente no encuentran destino en el bucle de abajo y se ignoran.
   const allCommentIds = commentRows.map((c) => c.id);
   if (allCommentIds.length > 0) {
+    const commentInteractionTargetIds = allCommentIds.map((commentId) => {
+      const targetRef = commentTargetRefs.get(`comment:${commentId}`);
+      if (!targetRef) {
+        throw new Error(`Interaction target missing for comment:${commentId}`);
+      }
+      return targetRef.id;
+    });
     const { data: commentReactions, error: commentReactionsError } = await supabase
       .from("reactions")
-      .select("target_id, user_id")
-      .eq("target_type", "comment")
-      .in("target_id", allCommentIds);
+      .select("interaction_target_id, user_id")
+      .in("interaction_target_id", commentInteractionTargetIds);
     if (commentReactionsError) throw commentReactionsError;
 
     const commentById = new Map<string, InteractionComment>();
     for (const s of summaries.values()) {
-      for (const c of s.comments) commentById.set(c.id, c);
+      for (const c of s.comments) commentById.set(c.interactionTargetId, c);
     }
     for (const r of commentReactions ?? []) {
-      const c = commentById.get(r.target_id);
+      if (!r.interaction_target_id) continue;
+      const c = commentById.get(r.interaction_target_id);
       if (!c) continue;
       c.reactionCount += 1;
       if (user && r.user_id === user.id) c.viewerReacted = true;

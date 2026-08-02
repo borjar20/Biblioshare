@@ -318,6 +318,26 @@
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
     "deleteComment": "Borrar",
+    "deleteCommentConfirm": "¿Borrar este comentario? Esta acción no se puede deshacer.",
+    "reportComment": "Reportar",
+    "reportReasonLabel": "Motivo",
+    "reportDetailsLabel": "Detalles opcionales",
+    "reportReason": {
+      "spam": "Spam",
+      "harassment": "Acoso",
+      "spoiler": "Spoiler sin avisar",
+      "hate": "Odio o discriminación",
+      "other": "Otro"
+    },
+    "sendReport": "Enviar reporte",
+    "reportSent": "Reporte enviado",
+    "cancel": "Cancelar",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "blockConfirm": "¿Bloquear a esta persona? Dejaréis de seguiros y no veréis vuestra actividad.",
+    "blockedTitle": "Usuario bloqueado",
+    "blockedDescription": "Has ocultado este perfil y su actividad. Puedes desbloquearlo cuando quieras.",
+    "actionError": "No se pudo guardar el cambio. Inténtalo de nuevo.",
     "you": "Tú"
   },
   "feed": {
@@ -335,7 +355,8 @@
     "grouped": {
       "addedCount": "añadió {count, plural, one {# título} other {# títulos}} a su biblioteca",
       "progressedIn": "avanzó en {title}",
-      "saveAllToQueue": "＋ Guardar {count, plural, one {el libro} other {los # libros}} en mi cola"
+      "saveAllToQueue": "＋ Guardar {count, plural, one {el libro} other {los # libros}} en mi cola",
+      "showMore": "ver {count, plural, one {# obra más} other {# obras más}}"
     },
     "kind": {
       "collection": "Colección",
@@ -389,8 +410,14 @@
     "clubInviteAccepted": "{name} aceptó tu invitación al club",
     "clubPost": "{name} publicó en el club",
     "clubPostLiked": "A {name} le gustó tu publicación",
+    "clubPostLikedGrouped": "A {name} y {count, plural, one {# persona} other {# personas}} más les gustó tu publicación",
     "clubPostCommented": "{name} comentó tu publicación",
     "commentLiked": "A {name} le gustó tu comentario",
+    "commentLikedGrouped": "A {name} y {count, plural, one {# persona} other {# personas}} más les gustó tu comentario",
+    "activityLiked": "A {name} le gustó tu actividad",
+    "activityLikedGrouped": "A {name} y {count, plural, one {# persona} other {# personas}} más les gustó tu actividad",
+    "activityCommented": "{name} comentó tu actividad",
+    "checkpointCommented": "{name} comentó tu punto de control",
     "clubActivityProposed": "{name} propuso una actividad en el club",
     "clubActivityActivated": "{name} activó una actividad en el club",
     "clubActivitySpawned": "{name} enlazó una actividad nueva en el club",

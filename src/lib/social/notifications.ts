@@ -3,12 +3,14 @@ import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import { sendPushToUser, sendPushToUsers, type PushPayload } from "@/lib/push/send-push";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   NOTIFICATION_TYPE_KEY,
   type Notification,
   type NotificationType,
   type ReviewTargetType,
 } from "./notification-types";
+import { filterUnblockedUserIds, usersAreBlocked } from "./block-state";
 
 export type { NotificationType, ReviewTargetType, Notification };
 export { NOTIFICATION_TYPE_KEY };
@@ -30,14 +32,24 @@ export async function notify(
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
+    interactionTargetId?: string;
   },
 ): Promise<void> {
-  const { error } = await supabase.from("notifications").insert({
+  try {
+    if (await usersAreBlocked(supabase, params.userId)) return;
+  } catch (blockError) {
+    console.error("notify() block check failed", blockError);
+    return;
+  }
+
+  const notificationWriter = createServiceRoleClient();
+  const { error } = await notificationWriter.from("notifications").insert({
     user_id: params.userId,
     actor_id: params.actorId,
     type: params.type,
     target_type: params.targetType ?? null,
     target_id: params.targetId ?? null,
+    interaction_target_id: params.interactionTargetId ?? null,
   });
   // Best-effort: no se propaga. Una notificación fallida no debe deshacer la
   // acción real (follow/accept/reacción/comentario) que ya se confirmó.
@@ -67,6 +79,7 @@ async function buildPushPayload(
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
+    interactionTargetId?: string;
   },
 ): Promise<PushPayload | null> {
   const { data: actor } = await supabase
@@ -77,7 +90,12 @@ async function buildPushPayload(
   if (!actor?.username) return null;
 
   let href = `/u/${actor.username}`;
-  if (params.targetType && params.targetId) {
+  if (params.interactionTargetId) {
+    const targetById = await resolveInteractionTargetMetadata(supabase, [
+      params.interactionTargetId,
+    ]);
+    href = targetById.get(params.interactionTargetId)?.href ?? href;
+  } else if (params.targetType && params.targetId) {
     const hrefByKey = await resolveTargetHrefs(supabase, [
       { targetType: params.targetType, targetId: params.targetId },
     ]);
@@ -103,6 +121,7 @@ async function deliverPush(
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
+    interactionTargetId?: string;
   },
 ): Promise<void> {
   const payload = await buildPushPayload(supabase, params);
@@ -123,23 +142,35 @@ export async function notifyMany(
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
+    interactionTargetId?: string;
   },
-): Promise<void> {
-  const userIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
-  if (userIds.length === 0) return;
+): Promise<string[]> {
+  const candidateIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
+  let userIds: string[];
+  try {
+    userIds = await filterUnblockedUserIds(supabase, candidateIds);
+  } catch (blockError) {
+    console.error("notifyMany() block check failed", blockError);
+    return [];
+  }
+  if (userIds.length === 0) return [];
 
-  const { error } = await supabase.from("notifications").insert(
-    userIds.map((userId) => ({
-      user_id: userId,
-      actor_id: params.actorId,
-      type: params.type,
-      target_type: params.targetType ?? null,
-      target_id: params.targetId ?? null,
-    })),
-  );
-  if (error) {
-    console.error("notifyMany() failed", error);
-    return;
+  try {
+    const notificationWriter = createServiceRoleClient();
+    const { error } = await notificationWriter.from("notifications").insert(
+      userIds.map((userId) => ({
+        user_id: userId,
+        actor_id: params.actorId,
+        type: params.type,
+        target_type: params.targetType ?? null,
+        target_id: params.targetId ?? null,
+        interaction_target_id: params.interactionTargetId ?? null,
+      })),
+    );
+    if (error) throw error;
+  } catch (writerError) {
+    console.error("notifyMany() failed", writerError);
+    return [];
   }
 
   try {
@@ -148,6 +179,7 @@ export async function notifyMany(
   } catch (pushError) {
     console.error("notifyMany() push delivery failed", pushError);
   }
+  return userIds;
 }
 
 export async function getUnreadCount(
@@ -273,25 +305,46 @@ async function resolveTargetHrefs(
   }
 
   if (commentIds.length > 0) {
-    const { data: commentRows } = await supabase
-      .from("comments")
-      .select("id, target_type, target_id")
-      .in("id", commentIds);
-    const parentTargets = (commentRows ?? []).map((c) => ({
-      targetType: c.target_type,
-      targetId: c.target_id,
-    }));
-    // Recursión de un solo nivel: comments_no_nesting (Task 1) garantiza que
-    // el target de un comentario nunca es 'comment', así que esta llamada
-    // recursiva termina siempre en su segunda pasada.
-    const parentHrefByKey = await resolveTargetHrefs(supabase, parentTargets);
-    for (const c of commentRows ?? []) {
-      const parentHref = parentHrefByKey.get(`${c.target_type}:${c.target_id}`);
-      if (parentHref) hrefByKey.set(`comment:${c.id}`, parentHref);
+    // El target canónico de un comentario hereda el href de su padre
+    // (private.sync_comment_interaction_target), así que basta con leerlo: ya no
+    // hace falta recorrer el par polimórfico ni recursar sobre el padre.
+    const { data: commentTargets } = await supabase
+      .from("interaction_targets")
+      .select("source_id, href")
+      .eq("kind", "comment")
+      .in("source_id", commentIds);
+    for (const t of commentTargets ?? []) {
+      hrefByKey.set(`comment:${t.source_id}`, t.href);
     }
   }
 
   return hrefByKey;
+}
+
+async function resolveInteractionTargetMetadata(
+  supabase: SupabaseServerClient,
+  targetIds: string[],
+): Promise<
+  Map<string, { href: string; reactionNotificationType: NotificationType | null }>
+> {
+  const uniqueIds = [...new Set(targetIds)];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from("interaction_targets")
+    .select("id, href, reaction_notification_type")
+    .in("id", uniqueIds);
+  if (error) throw error;
+
+  return new Map(
+    (data ?? []).map((target) => [
+      target.id,
+      {
+        href: target.href,
+        reactionNotificationType: target.reaction_notification_type as NotificationType | null,
+      },
+    ]),
+  );
 }
 
 const READ_EXPIRY_MS = 5 * 60 * 1000;
@@ -325,13 +378,22 @@ export async function listNotifications(
 
   const { data, error } = await supabase
     .from("notifications")
-    .select("id, type, actor_id, target_type, target_id, read_at, created_at")
+    .select(
+      "id, type, actor_id, target_type, target_id, interaction_target_id, read_at, created_at",
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(LIST_LIMIT);
 
   if (error) throw error;
   if (!data || data.length === 0) return [];
+
+  const targetById = await resolveInteractionTargetMetadata(
+    supabase,
+    data
+      .map((row) => row.interaction_target_id)
+      .filter((id): id is string => id != null),
+  );
 
   // Agrupa varias reacciones del mismo tipo sobre el mismo target (p. ej.
   // varios likes en la misma reseña) en una sola fila representativa — data
@@ -340,9 +402,12 @@ export async function listNotifications(
   const groups = new Map<string, { row: (typeof data)[number]; extraActorsCount: number }>();
   const groupOrder: string[] = [];
   for (const row of data) {
+    const target = row.interaction_target_id
+      ? targetById.get(row.interaction_target_id)
+      : undefined;
     const key =
-      row.type === "review_liked" && row.target_type && row.target_id
-        ? `${row.type}:${row.target_type}:${row.target_id}`
+      row.interaction_target_id && row.type === target?.reactionNotificationType
+        ? `${row.type}:${row.interaction_target_id}`
         : `solo:${row.id}`;
     const existing = groups.get(key);
     if (existing) {
@@ -375,7 +440,7 @@ export async function listNotifications(
   const targets = representativeRows
     .filter(
       (n): n is typeof n & { target_type: string; target_id: string } =>
-        n.target_type != null && n.target_id != null,
+        n.interaction_target_id == null && n.target_type != null && n.target_id != null,
     )
     .map((n) => ({ targetType: n.target_type, targetId: n.target_id }));
   const hrefByKey = await resolveTargetHrefs(supabase, targets);
@@ -387,7 +452,9 @@ export async function listNotifications(
       const actor = byId.get(n.actor_id);
       if (!actor) return null;
       const href =
-        n.target_type && n.target_id
+        n.interaction_target_id
+          ? (targetById.get(n.interaction_target_id)?.href ?? `/u/${actor.username}`)
+          : n.target_type && n.target_id
           ? (hrefByKey.get(`${n.target_type}:${n.target_id}`) ??
             `/u/${actor.username}`)
           : `/u/${actor.username}`;
@@ -399,6 +466,7 @@ export async function listNotifications(
         actorDisplayName: actor.display_name,
         actorAvatarUrl: actor.avatar_url,
         href,
+        interactionTargetId: n.interaction_target_id ?? undefined,
         readAt: n.read_at,
         createdAt: n.created_at,
         extraActorsCount: extraActorsCount > 0 ? extraActorsCount : undefined,
