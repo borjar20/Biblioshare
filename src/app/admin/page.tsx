@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole, type UserRole } from "@/lib/auth/roles";
 import { RoleSelect } from "./role-select";
 
@@ -15,7 +16,7 @@ export default async function AdminPage() {
   const supabase = await createClient();
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/admin"));
   if (!hasMinRole(await getCurrentUserRole(supabase), "admin")) redirect("/");
 
   // La política RLS "admins select all profiles" permite leer todos (incl.

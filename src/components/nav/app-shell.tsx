@@ -58,7 +58,11 @@ export async function AppShell({ children }: { children: ReactNode }) {
         unreadCount={unreadCount}
       />
       <div className="flex flex-1 flex-col">{children}</div>
-      {showNav && <BottomNav username={username as string} />}
+      {showNav ? (
+        <BottomNav username={username as string} />
+      ) : (
+        !user && <BottomNav username={null} />
+      )}
     </div>
   );
 }

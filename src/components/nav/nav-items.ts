@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/icons";
 
 export type NavItem = {
-  key: "home" | "collection" | "search" | "clubs" | "profile";
+  key: "home" | "collection" | "search" | "clubs" | "profile" | "login";
   href: string;
   /** Clave de traducción bajo `nav.items`. */
   labelKey: string;
@@ -52,4 +52,24 @@ export function primaryNavItems(username: string): NavItem[] {
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
   if (item.href === "/") return pathname === "/";
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+// Navegación para el usuario SIN sesión: solo los destinos públicos (Inicio,
+// Buscar, Clubes) más "Entrar". Colección y Perfil quedan fuera hasta que
+// inicie sesión — su hueco lo ocupa el CTA de login del header.
+export function anonNavItems(): NavItem[] {
+  const all = navItems("");
+  const publicItems = all.filter(
+    (i) => i.key === "home" || i.key === "search" || i.key === "clubs"
+  );
+  return [
+    ...publicItems,
+    { key: "login", href: "/login", labelKey: "login", Icon: UserIcon },
+  ];
+}
+
+// Igual que anonNavItems pero sin "Entrar": en escritorio el login vive como
+// botón del header, no como entrada de la barra.
+export function anonPrimaryNavItems(): NavItem[] {
+  return anonNavItems().filter((i) => i.key !== "login");
 }

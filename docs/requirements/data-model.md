@@ -48,7 +48,10 @@ conserva sus tres columnas nullable, la unicidad de reacción es `(interaction_t
 user_id, kind)` y `comments_no_nesting` ha desaparecido. Cero pérdida de datos en todo el
 recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a paso.
 `schema-baseline.sql` **ya no está sin anexar**: lleva el «ANEXO 2026-08-02» con las ocho
-migraciones en el orden en que las recibió producción**]**
+migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
+bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
+`anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
+ver «Social fase 0»)**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -375,6 +378,15 @@ reacciones y feed de club. Las RPC públicas `users_are_blocked(other_user_id)` 
 `filter_unblocked_user_ids(candidate_ids)` son `SECURITY INVOKER`; la segunda filtra un lote
 sin perder el orden de la primera aparición. Retirar el bloqueo no reconstruye follows ni
 notificaciones borrados.
+
+> **Grants a `anon` (dev y prod, 2026-08-02, migración `grant_anon_read_block_helpers`).** Con la
+> navegación anónima, un visitante sin sesión llega a perfiles públicos y su feed, cuyas políticas
+> SELECT `{anon,authenticated}` (passes, progress_sessions, follows) llaman a estos dos helpers.
+> Como son `SECURITY INVOKER` y SQL inlinable, `anon` necesita **EXECUTE** sobre ambas funciones y
+> **SELECT** sobre `user_blocks` (el privilegio de tabla se comprueba en planificación aunque el
+> guard `auth.uid() is null → false/'{}'` impida tocarla en runtime). Sin ello, la lectura anónima
+> lanzaba `permission denied` y devolvía 500. `user_blocks` no tiene política RLS para `anon`, así
+> que el grant solo satisface el chequeo de privilegio: un anónimo nunca ve una fila.
 
 Las notificaciones sociales se escriben desde servidor con `service_role`; el cliente ya no
 puede hacer INSERT directo (`anon` y `authenticated` sin privilegio, y 0 políticas INSERT).

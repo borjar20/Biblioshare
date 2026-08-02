@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/auth/safe-next";
 
 // Destino de los enlaces de email de Supabase Auth (recuperación de
 // contraseña hoy; sirve igual para confirmaciones/cambio de email). Soporta
@@ -12,9 +13,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/";
-  // Solo rutas internas: evita usar este endpoint como open redirect.
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const next = safeNext(searchParams.get("next"));
 
   const supabase = await createClient();
 

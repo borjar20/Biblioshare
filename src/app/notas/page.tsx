@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { Note } from "@/lib/notes/types";
@@ -50,7 +51,7 @@ export default async function NotebookPage({
 }) {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/notas"));
 
   const t = await getTranslations("notes");
   const query = parseNotesQuery(await searchParams);

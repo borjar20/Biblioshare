@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import type { ItemType } from "@/lib/catalog/types";
 import { createProfileFromMetadata } from "../(auth)/actions";
 import { Wordmark } from "@/components/ui/wordmark";
@@ -43,7 +44,7 @@ export default async function OnboardingPage({
   const result = await createProfileFromMetadata(supabase);
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/onboarding"));
 
   const { data: profile } = await supabase
     .from("profiles")

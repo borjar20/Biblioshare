@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
@@ -20,7 +21,7 @@ export default async function RouteEditorPage({
   const supabase = await createClient();
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/saga/${id}/rutas/${slug}/editar`));
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${id}`);
 
   const { data: route } = await supabase

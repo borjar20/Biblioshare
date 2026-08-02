@@ -8,6 +8,7 @@ import {
   isUsernameAvailable,
   normalizeUsername,
 } from "@/lib/profile/username";
+import { safeNext } from "@/lib/auth/safe-next";
 
 export type AuthActionState = {
   error?:
@@ -37,7 +38,7 @@ export async function login(
     return { error: "invalidCredentials" };
   }
 
-  redirect("/");
+  redirect(safeNext(String(formData.get("next") ?? "")));
 }
 
 // El @usuario se elige aquí, en el registro (antes era un paso aparte en
