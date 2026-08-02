@@ -43,10 +43,16 @@ export function ReviewRow({
   children?: React.ReactNode;
 }) {
   const avatar = (
-    <span className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gold to-accent text-[13px] font-semibold text-white lg:h-[42px] lg:w-[42px] lg:text-base">
+    <span className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-muted text-[13px] font-semibold text-white lg:h-[42px] lg:w-[42px] lg:text-base">
       {avatarUrl ? (
         isSupabaseAvatar(avatarUrl) ? (
-          <Image src={avatarUrl} alt={author} fill sizes="42px" className="object-cover" />
+          <Image
+            src={avatarUrl}
+            alt={author}
+            fill
+            sizes="(min-width: 1024px) 42px, 34px"
+            className="object-cover"
+          />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt={author} className="h-full w-full object-cover" />
@@ -54,8 +60,14 @@ export function ReviewRow({
       ) : (
         // `.av` del frame: degradado oro→acento con las iniciales en blanco.
         // Es el único sitio donde el oro y el acento se tocan, y funciona
-        // porque no compite con ninguna nota al lado.
-        <span aria-hidden>{initials}</span>
+        // porque no compite con ninguna nota al lado. El degradado va solo en
+        // este fallback para no asomar tras un avatar PNG con transparencia.
+        <span
+          aria-hidden
+          className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gold to-accent"
+        >
+          {initials}
+        </span>
       )}
     </span>
   );
