@@ -38,10 +38,14 @@ const USER_PREFIX = "e2fc";
 const COL_BOOKS = [
   "e2fc0b01-0000-4000-8000-000000000001",
   "e2fc0b02-0000-4000-8000-000000000002",
+  "e2fc0b05-0000-4000-8000-000000000005",
+  "e2fc0b06-0000-4000-8000-000000000006",
 ];
 const COL_PASSES = [
   "e2fc0a01-0000-4000-8000-000000000001",
   "e2fc0a02-0000-4000-8000-000000000002",
+  "e2fc0a05-0000-4000-8000-000000000005",
+  "e2fc0a06-0000-4000-8000-000000000006",
 ];
 const VIEWER_COL_PASS = "e2fc0a09-0000-4000-8000-000000000009";
 const VIEWER_INACTIVE_COL_PASS = "e2fc0a08-0000-4000-8000-000000000008";
@@ -237,7 +241,7 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     await expect(card).toBeVisible();
 
     // Headline agrupado (NO dos tarjetas sueltas de "añadió a su biblioteca").
-    await expect(card.getByText(/añadió 2 títulos/i)).toBeVisible();
+    await expect(card.getByText(/añadió 4 títulos/i)).toBeVisible();
     // Badge de tipo "Colección".
     await expect(card.getByText(/^colección$/i)).toBeVisible();
     // Lista vertical: por fila, título + autor + botón "Añadir".
@@ -256,7 +260,16 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
 
     await expect(ownedRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(0);
     await expect(missingRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(1);
-    await expect(card.getByRole("button", { name: /guardar los 2/i })).toHaveCount(0);
+
+    // Con 4 obras la tarjeta se colapsa a las 2 primeras + botón "ver 2 obras más".
+    await expect(card.getByRole("link", { name: /\[E2E\] Colección/ })).toHaveCount(2);
+    await expect(card.getByRole("button", { name: /ver 2 obras más/i })).toHaveCount(1);
+    await card.getByRole("button", { name: /ver 2 obras más/i }).click();
+    await expect(card.getByRole("link", { name: /\[E2E\] Colección/ })).toHaveCount(4);
+
+    // El pie sigue contando TODAS las pendientes del grupo (4 obras, 1 ya en
+    // biblioteca del visitante), no solo las visibles.
+    await expect(card.getByRole("button", { name: /guardar los 3/i })).toHaveCount(1);
   } finally {
     await cleanFixtures();
     if (followeeId) {

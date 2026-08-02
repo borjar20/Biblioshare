@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
@@ -11,6 +12,7 @@ import { quickAddManyToLibrary } from "@/lib/library/quick-add-actions";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
 import { itemsMissingFromLibrary } from "./collection-card-items";
+import { splitCollapsedItems } from "./feed-collapse";
 
 // Variante A de "añadió N títulos": lista vertical con lomo + autor + reacción
 // por ítem (target real: pass) y alta rápida por fila. Frente a FeedGroupCard,
@@ -29,6 +31,8 @@ export function CollectionCard({
   const tTime = useTranslations("time");
   const actorName = entry.actor.displayName || entry.actor.username;
   const missingItems = itemsMissingFromLibrary(entry.items);
+  const [expanded, setExpanded] = useState(false);
+  const { visible, hiddenCount, collapsible } = splitCollapsedItems(entry.items, expanded);
 
   return (
     <article className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4">
@@ -44,7 +48,7 @@ export function CollectionCard({
       </div>
 
       <div className="flex flex-col">
-        {entry.items.map((item) => (
+        {visible.map((item) => (
           <div key={item.id} className="flex gap-3 border-t border-border py-3 first:border-t-0">
             <Link href={itemHref(item.itemType, item.itemId)} className="w-[46px] shrink-0">
               <SpineCover coverUrl={item.itemCoverUrl} title={item.itemTitle} className="aspect-[2/3] w-[46px]" />
@@ -74,6 +78,16 @@ export function CollectionCard({
           </div>
         ))}
       </div>
+
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full rounded-lg py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-surface-muted"
+        >
+          {expanded ? t("progress.showLess") : t("grouped.showMore", { count: hiddenCount })}
+        </button>
+      )}
 
       {missingItems.length > 1 && (
         <form
