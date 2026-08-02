@@ -60,6 +60,10 @@ export async function findOrCreateCatalogItem(
       : {
           tmdb_id: Number(result.externalId),
           title: result.title,
+          // Título original (idioma de rodaje/emisión) para que el matcher de
+          // importación case aunque `title` esté traducido a es-ES. Ver
+          // decisiones.md 2026-08-02.
+          original_title: result.originalTitle ?? null,
           cover_url: result.coverUrl,
           release_year: result.year,
           synopsis: result.synopsis,
