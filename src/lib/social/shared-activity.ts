@@ -199,15 +199,20 @@ export async function resolveSharedActivity(
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
     // porque Supabase no infiere el tipo a partir de la query. pass_reviews
     // tipa TODAS sus columnas como nullable (es una vista), así que también
-    // se narrowan id/user_id/item_type/item_id — nunca vienen null en la
-    // práctica.
+    // se narrowan id/user_id/item_type/item_id/created_at — nunca vienen null
+    // en la práctica. created_at entra en la MISMA lista y no se cae a
+    // finished_on: `sortDate` promete un timestamp real, y un valor date-only
+    // ahí ordena por debajo de todo evento con hora de su día y empata con sus
+    // iguales (desempate por uuid). Sin hora real, la fila se trata como "ya no
+    // disponible", igual que sin id.
     if (
       !row ||
       row.id === null ||
       row.user_id === null ||
       row.item_type === null ||
       row.item_id === null ||
-      row.finished_on === null
+      row.finished_on === null ||
+      row.created_at === null
     )
       return null;
     const [actor, catalog] = await Promise.all([
@@ -229,9 +234,8 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: row.finished_on,
-      // pass_reviews es una VISTA: created_at sale nullable de los tipos
-      // generados; sin él se cae a la fecha semántica, ya comprobada no-nula.
-      sortDate: row.created_at ?? row.finished_on,
+      // Timestamp real garantizado por el narrowing de arriba.
+      sortDate: row.created_at,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
       episode: null,

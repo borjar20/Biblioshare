@@ -7,6 +7,7 @@ import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 import { groupPersonEntries, type PersonGroupEntry } from "./group-feed-entries";
 import {
+  addedUpperBound,
   compareEntries,
   dateUpperBound,
   isAfterCursor,
@@ -239,13 +240,12 @@ export async function getFeed(
             .order("created_at", { ascending: false })
             .limit(pageSize);
           if (itemTypes) q = q.in("item_type", itemTypes);
-          // added: created_at ES el eventDate, así que la hora del cursor es una
-          // cota exacta y estrecha. Con la cota de día entero, las altas más
-          // nuevas que el cursor volverían a entrar y gastarían el `limit`.
-          // Con cursor legado no hay `sortDate`, así que se cae a la cota de día.
-          if (cursor) {
-            q = q.lte("created_at", cursor.sortDate ?? timestampUpperBound(cursor));
-          }
+          // added: created_at ES el eventDate, pero `cursor.sortDate` NO es por
+          // sí solo una cota válida — sale de otra columna que `cursor.day` en
+          // cuanto el último evento de la página está backdateado. El supremo
+          // real (y por qué usar solo uno de los dos pierde filas o gasta el
+          // `limit`) vive en `addedUpperBound`, junto a `isAfterCursor`.
+          if (cursor) q = q.lte("created_at", addedUpperBound(cursor));
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  addedUpperBound,
   compareEntries,
   isAfterCursor,
   makeCursor,
   parseCursor,
+  timestampUpperBound,
   type FeedCursor,
   type OrderableEntry,
 } from "./feed-order";
@@ -103,6 +105,62 @@ describe("isAfterCursor", () => {
     // Si `day` se trunca a 10 caracteres antes de comparar, ambas cadenas
     // quedan iguales y la fila se pierde silenciosamente.
     expect(isAfterCursor(z, legado)).toBe(true);
+  });
+});
+
+describe("addedUpperBound", () => {
+  // La cota de la fuente `added` tiene que ser un SUPERCONJUNTO de lo que
+  // acepta `isAfterCursor` (si no, se pierden filas para siempre) y lo más
+  // estrecha posible sin violarlo (si no, el `limit` se gasta en filas ya
+  // servidas). El supremo del conjunto aceptado es
+  // min(cursor.sortDate, fin del día del cursor).
+  it("con cursor del mismo día usa la hora del cursor (cota estrecha)", () => {
+    const cursor = parseCursor("2026-08-02~2026-08-02T09:00:00.000+00:00~passes:a");
+    expect(addedUpperBound(cursor)).toBe("2026-08-02T09:00:00.000+00:00");
+  });
+
+  it("con cursor BACKDATEADO se queda en el fin del día, no en la hora de registro", () => {
+    // Una reseña terminada el 15 de julio pero registrada hoy: `day` sale de
+    // finished_on y `sortDate` de created_at. La hora de registro es 18 días
+    // MÁS ANCHA que el día, así que usarla devolvería las altas de hoy —ya
+    // servidas— y gastaría el `limit` entero en ellas.
+    const cursor = parseCursor("2026-07-15~2026-08-02T18:30:00.000+00:00~diary_entries:b");
+    expect(addedUpperBound(cursor)).toBe("2026-07-15T23:59:59.999+00:00");
+  });
+
+  it("un cursor legado (sin hora) cae a la cota de día", () => {
+    const cursor = parseCursor("2026-08-01~passes:aaa");
+    expect(cursor.sortDate).toBeNull();
+    expect(addedUpperBound(cursor)).toBe(timestampUpperBound(cursor));
+  });
+
+  it("nunca deja fuera nada que `isAfterCursor` acepte para la fuente added", () => {
+    // Propiedad, no ejemplo: para las altas eventDate === sortDate === created_at.
+    // Toda alta aceptada tiene que caber bajo la cota (`lte`, inclusiva).
+    const cursors = [
+      "2026-07-15~2026-08-02T18:30:00.000+00:00~diary_entries:b",
+      "2026-08-02~2026-08-02T09:00:00.000+00:00~passes:a",
+      "2026-08-02~2026-08-02T23:59:59.999+00:00~passes:z",
+    ].map(parseCursor);
+    const stamps = [
+      "2026-08-02T23:00:00.000+00:00",
+      "2026-08-02T18:30:00.000+00:00",
+      "2026-08-02T09:00:00.000+00:00",
+      "2026-07-15T23:00:00.000+00:00",
+      "2026-07-15T00:00:00.000+00:00",
+      "2026-07-02T10:00:00.000+00:00",
+    ];
+    for (const cursor of cursors) {
+      const bound = addedUpperBound(cursor);
+      for (const stamp of stamps) {
+        for (const id of ["passes:000", "passes:zzz"]) {
+          const entry: OrderableEntry = { eventDate: stamp, sortDate: stamp, id };
+          if (isAfterCursor(entry, cursor)) {
+            expect(stamp <= bound).toBe(true);
+          }
+        }
+      }
+    }
   });
 });
 

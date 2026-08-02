@@ -97,3 +97,29 @@ export function dateUpperBound(cursor: FeedCursor): string {
 export function timestampUpperBound(cursor: FeedCursor): string {
   return `${cursor.day}T23:59:59.999+00:00`;
 }
+
+// Cota superior INCLUSIVA para la fuente `added`, donde eventDate, sortDate y
+// la columna filtrada son la MISMA (`created_at`).
+//
+// Vive aquí, pegada a `isAfterCursor`, porque es su espejo: toda cota tiene que
+// ser un SUPERCONJUNTO de lo que el filtro acepta o la fila se pierde para
+// siempre, y lo más estrecha posible o el `limit` se gasta en filas ya servidas.
+//
+// El supremo del conjunto aceptado es min(sortDate, fin del día del cursor), y
+// las dos mitades importan:
+//   · `sortDate` sola NO basta. `day` y `sortDate` salen de columnas distintas
+//     en cuanto el último evento de una página está backdateado (una reseña
+//     terminada hace tres semanas y registrada hoy: day=finished_on,
+//     sortDate=created_at). Ahí `sortDate` es semanas MÁS ANCHA que el día:
+//     la query devuelve las altas de hoy —ya servidas—, gasta el `limit` en
+//     ellas, `fresh` se vacía, `nextCursor` se apaga y las altas antiguas no se
+//     sirven en NINGUNA página. Sin excepción y sin romper ningún test.
+//   · el fin del día solo tampoco: dentro del día del cursor, `isAfterCursor`
+//     ya no acepta nada por encima de `sortDate`, así que traerlo es tirar el
+//     `limit`.
+// Cursor legado (`sortDate === null`): no hay hora, así que la cota es el día.
+export function addedUpperBound(cursor: FeedCursor): string {
+  const dayBound = timestampUpperBound(cursor);
+  if (cursor.sortDate === null) return dayBound;
+  return cursor.sortDate < dayBound ? cursor.sortDate : dayBound;
+}
