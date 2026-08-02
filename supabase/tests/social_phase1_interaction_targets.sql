@@ -56,6 +56,29 @@ insert into public.club_activity_checkpoints (id, activity_id, label, position, 
   ('00000000-0000-4000-8000-000000000107', '00000000-0000-4000-8000-000000000106', 'Checkpoint', '{}'::jsonb, 1, '00000000-0000-4000-8000-0000000001b2');
 insert into public.club_activity_checkpoint_reads (checkpoint_id, user_id) values
   ('00000000-0000-4000-8000-000000000107', '00000000-0000-4000-8000-0000000001a1');
+-- Carol entra en la actividad, marca el checkpoint como leído y se sale. Salir NO
+-- borra la fila de lectura: es exactamente el estado de un ex-participante (o de
+-- un expulsado del club) y la razón por la que la visibilidad del checkpoint no
+-- puede descansar solo en `has_reached_checkpoint`.
+insert into public.club_activity_participants (activity_id, user_id) values
+  ('00000000-0000-4000-8000-000000000106', '00000000-0000-4000-8000-0000000001c3');
+insert into public.club_activity_checkpoint_reads (checkpoint_id, user_id) values
+  ('00000000-0000-4000-8000-000000000107', '00000000-0000-4000-8000-0000000001c3');
+delete from public.club_activity_participants
+where activity_id = '00000000-0000-4000-8000-000000000106'
+  and user_id = '00000000-0000-4000-8000-0000000001c3';
+select pg_temp.assert_true(
+  exists (
+    select 1 from public.club_activity_checkpoint_reads
+    where checkpoint_id = '00000000-0000-4000-8000-000000000107'
+      and user_id = '00000000-0000-4000-8000-0000000001c3'
+  ) and not exists (
+    select 1 from public.club_activity_participants
+    where activity_id = '00000000-0000-4000-8000-000000000106'
+      and user_id = '00000000-0000-4000-8000-0000000001c3'
+  ),
+  'salir de la actividad no borra la fila de lectura del checkpoint'
+);
 
 select pg_temp.assert_true(to_regclass('public.interaction_targets') is not null, 'interaction_targets exists');
 select pg_temp.assert_true(exists (select 1 from public.interaction_targets where kind = 'pass' and source_id = '00000000-0000-4000-8000-000000000102'), 'pass source gets canonical target');
@@ -411,6 +434,120 @@ select pg_temp.assert_true(
   'quien no es miembro del club del padre no ve el comentario'
 );
 reset role;
+
+-- ---------------------------------------------------------------------------
+-- Matriz de HERENCIA de audiencia: el target `kind='comment'`, no el del padre.
+--
+-- `private.sync_comment_interaction_target` copia del padre `audience_kind` y
+-- `audience_id`, pero pone `source_id = new.id` (el id del comentario). Hasta
+-- aquí la suite solo comprobaba la visibilidad del target PROPIO de cada fuente,
+-- donde `source_id = audience_id` coinciden por casualidad en el checkpoint — y
+-- por eso se coló que la rama `checkpoint_reached` leyera `source_id`. Un
+-- comentario en el chat de un checkpoint quedaba con la fila visible por la
+-- política de `comments` pero el target canónico invisible, que es el estado que
+-- `getInteractionSummary` trata como corrupción: 500 permanente en
+-- `/club/<slug>/actividad/<id>` para todos los participantes.
+--
+-- Se cubren las cuatro audiencias sobre targets HEREDADOS, en positivo y en
+-- negativo.
+insert into public.comments (id, interaction_target_id, author_id, body) values
+  ('00000000-0000-4000-8000-000000000116',
+   (select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107'),
+   '00000000-0000-4000-8000-0000000001b2', 'Comentario en el chat del checkpoint'),
+  ('00000000-0000-4000-8000-000000000117',
+   (select id from public.interaction_targets where kind = 'club_activity' and source_id = '00000000-0000-4000-8000-000000000106'),
+   '00000000-0000-4000-8000-0000000001b2', 'Comentario en la actividad'),
+  ('00000000-0000-4000-8000-000000000118',
+   (select id from public.interaction_targets where kind = 'pass' and source_id = '00000000-0000-4000-8000-000000000102'),
+   '00000000-0000-4000-8000-0000000001b2', 'Comentario en el pase');
+select pg_temp.assert_true(
+  (select count(*) = 4
+   from public.interaction_targets t
+   where t.kind = 'comment'
+     and t.source_id in (
+       '00000000-0000-4000-8000-000000000108',
+       '00000000-0000-4000-8000-000000000116',
+       '00000000-0000-4000-8000-000000000117',
+       '00000000-0000-4000-8000-000000000118'
+     )
+     and t.source_id <> t.audience_id),
+  'un target heredado tiene source_id propio y audience_id del padre: nunca coinciden'
+);
+
+-- Alice: dueña del pase, dueña del club, participante de la actividad y con el
+-- checkpoint marcado como leído. Ve los cuatro comentarios heredados.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001a1","role":"authenticated"}', true);
+set local role authenticated;
+select pg_temp.assert_true(
+  public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000118')),
+  'audiencia profile heredada: el target del comentario de un pase publico es visible'
+);
+select pg_temp.assert_true(
+  public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000108')),
+  'audiencia club_member heredada: un miembro del club ve el target del comentario del post'
+);
+select pg_temp.assert_true(
+  public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000117')),
+  'audiencia activity_participant heredada: un participante ve el target del comentario de la actividad'
+);
+select pg_temp.assert_true(
+  public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000116')),
+  'audiencia checkpoint_reached heredada: quien participa Y ha leido el checkpoint ve el target del comentario'
+);
+reset role;
+
+-- Bob: miembro del club, pero NI participante de la actividad NI ha leído el
+-- checkpoint. Ve lo del club y lo del perfil publico, nada de la actividad.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001b2","role":"authenticated"}', true);
+set local role authenticated;
+select pg_temp.assert_true(
+  public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000108')),
+  'audiencia club_member heredada: otro miembro del club tambien ve el target del comentario'
+);
+select pg_temp.assert_true(
+  not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000117')),
+  'audiencia activity_participant heredada: quien no participa no ve el target del comentario'
+);
+select pg_temp.assert_true(
+  not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000116')),
+  'audiencia checkpoint_reached heredada: quien no ha leido el checkpoint no ve el target del comentario'
+);
+reset role;
+
+-- Carol: EX-participante con la fila de lectura todavía viva, y ni siquiera
+-- miembro del club. La rama `checkpoint_reached` tiene que exigir los DOS
+-- conjuntos que exige `public.can_view_target('activity_checkpoint', …)`
+-- —`is_activity_participant` Y `has_reached_checkpoint`—, no solo la lectura:
+-- si no, salir de la actividad o ser expulsado del club deja acceso de lectura
+-- al chat del checkpoint por la Data API.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000001c3","role":"authenticated"}', true);
+set local role authenticated;
+select pg_temp.assert_true(
+  public.has_reached_checkpoint('00000000-0000-4000-8000-000000000107')
+    and not public.is_activity_participant('00000000-0000-4000-8000-000000000106'),
+  'el ex-participante conserva la lectura pero no la participacion'
+);
+select pg_temp.assert_true(
+  not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'activity_checkpoint' and source_id = '00000000-0000-4000-8000-000000000107')),
+  'el ex-participante no ve el target propio del checkpoint aunque su fila de lectura siga viva'
+);
+select pg_temp.assert_true(
+  not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000116')),
+  'el ex-participante no ve el target heredado del comentario del checkpoint'
+);
+select pg_temp.assert_true(
+  not public.can_view_interaction_target((select id from public.interaction_targets where kind = 'comment' and source_id = '00000000-0000-4000-8000-000000000108')),
+  'audiencia club_member heredada: quien no es miembro no ve el target del comentario'
+);
+reset role;
+-- Y la delegación es literal: la rama `checkpoint_reached` tiene que decir lo
+-- mismo que la definición canónica de "puedo ver este checkpoint".
+select pg_temp.assert_true(
+  (select pg_get_functiondef(p.oid) ilike '%can_view_target(''activity_checkpoint''%t.audience_id%'
+   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'private' and p.proname = 'can_view_interaction_target'),
+  'la rama checkpoint_reached delega en can_view_target sobre audience_id, no sobre source_id'
+);
 
 delete from public.club_posts where id = '00000000-0000-4000-8000-000000000105';
 select pg_temp.assert_true(not exists (select 1 from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'), 'deleting post deletes its target');

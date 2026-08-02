@@ -271,6 +271,24 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
       })
       .toBe(1);
 
+    // Recarga la página y comprueba que el comentario RENDERIZA. Hasta aquí el
+    // spec publicaba y se iba a otra ruta, así que no veía el fallo más grave
+    // posible: si el target canónico del comentario no es visible para quien sí
+    // ve la fila del comentario, `getInteractionSummary` lo trata como corrupción
+    // y lanza («Interaction target missing for comment:<id>»), dejando
+    // /club/<slug>/actividad/<id> en 500 permanente para TODOS los participantes
+    // y sin auto-curación. Se expande el hilo porque la lista de comentarios va
+    // plegada por defecto (los datos vienen prefetcheados, el DOM no).
+    await page.goto(`/club/${slug}/actividad/${activity.id}`);
+    const reloadedCheckpointCard = page
+      .locator("div.rounded-card")
+      .filter({ hasText: `Hito ${prefix}` })
+      .filter({ has: page.getByRole("button", { name: /comentario/i }) })
+      .last();
+    await expect(reloadedCheckpointCard).toBeVisible();
+    await reloadedCheckpointCard.getByRole("button", { name: /comentario/i }).click();
+    await expect(reloadedCheckpointCard.getByText(checkpointComment)).toBeVisible();
+
     await page.goto(`/club/${slug}`);
     let postCard = page.locator("div.shadow-card").filter({ hasText: postBody }).last();
     await expect(postCard).toBeVisible();

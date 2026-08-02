@@ -386,6 +386,22 @@ dinámicamente `profile`, `club_member`, `activity_participant` o `checkpoint_re
 bloqueo bidireccional contra `owner_id`. Las policies de `comments` y `reactions` delegan en ese
 mismo helper y exigen además `commentable`/`reactable`.
 
+> **Corrección `20260802013421_social_interaction_targets_checkpoint_audience_fix.sql` (solo dev).**
+> La rama `checkpoint_reached` resolvía sobre `source_id` en vez de sobre `audience_id`, el único
+> `case` que no leía la audiencia. Los dos valores solo coinciden en el target **propio** del
+> checkpoint: un comentario hereda `audience_id` del padre pero su `source_id` es el del propio
+> comentario, así que la comprobación recaía sobre un UUID de comentario y devolvía siempre falso.
+> Efecto: el comentario se veía pero su target no, que es justo el estado que los loaders tratan
+> como corrupción — un solo comentario en el chat de un checkpoint dejaba la página de la actividad
+> en error 500 de forma permanente para todos los participantes. La rama además comprobaba solo la
+> fila de lectura, sin exigir participación: salir de la actividad o ser expulsado del club no borra
+> `club_activity_checkpoint_reads`, así que un ex-miembro conservaba acceso de lectura al chat.
+> Ahora la rama **delega** en `public.can_view_target('activity_checkpoint', t.audience_id)`, que ya
+> exigía las dos condiciones (`is_activity_participant` **y** `has_reached_checkpoint`); delegar
+> evita que las dos definiciones de «puedo ver este checkpoint» vuelvan a divergir, que es lo que
+> produjo el fallo. La matriz SQL cubre ahora la visibilidad del target **heredado** de un comentario
+> en las cuatro audiencias, no solo la del target propio del padre.
+
 #### Contrato tras `20260801224621_social_interaction_targets_contract.sql`
 
 Las tres tablas de interacción tienen `interaction_target_id` con FK a `interaction_targets(id) on
