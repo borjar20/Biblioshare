@@ -471,6 +471,27 @@ if (cursor) q = q.lte("finished_on", dateUpperBound(cursor));       // reseñas
 if (cursor) q = q.lte("watched_on", dateUpperBound(cursor));        // episodios
 ```
 
+**Cota estrecha para `added` (hallazgo arrastrado de la review de la Task 1).** Cada query lleva
+`.order(...).limit(pageSize)`: una cota más ancha de lo necesario gasta slots del `limit` en filas
+ya servidas y puede truncar la cola que sí hace falta. `timestampUpperBound` devuelve el final del
+día, que para `added` es más ancho de lo necesario. En esa fuente —y **solo** en esa— `eventDate`
+ES `created_at`, así que un día anterior implica siempre un `created_at` anterior y la cota exacta
+existe:
+
+```ts
+// added: created_at ES el eventDate, así que la hora del cursor es una cota
+// exacta y estrecha. Con la cota de día entero, las altas más nuevas que el
+// cursor volverían a entrar y gastarían el `limit`.
+// Con cursor legado no hay `sortDate`, así que se cae a la cota de día.
+if (cursor) {
+  q = q.lte("created_at", cursor.sortDate ?? timestampUpperBound(cursor));
+}
+```
+
+Las otras tres fuentes tienen una fecha semántica (`session_date`, `finished_on`, `watched_on`) que
+es independiente de su `created_at` —pueden estar backdateadas—, así que ahí la cota por día es la
+única correcta y se queda como está.
+
 Propagar `sortDate` al construir las entradas (feed.ts:649-666):
 
 ```ts
