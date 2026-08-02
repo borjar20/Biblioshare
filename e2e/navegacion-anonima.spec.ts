@@ -29,6 +29,31 @@ test("anónimo abre un perfil público sin error (grants de los helpers de bloqu
   await expect(page.getByText("@devtest")).toBeVisible();
 });
 
+// Acciones in-page (issue #358): para el anónimo, seguir un perfil es un ENLACE
+// a login con retorno, no un botón que dispara la acción y redirige a /login
+// pelado. El mismo patrón (loginHref) cubre el "Seguir" de la ficha (useFollow)
+// y el link de comentar de reseñas/actividad.
+test("anónimo: seguir un perfil es un enlace a /login?next=", async ({ page }) => {
+  await page.goto("/u/devtest");
+  await expect(
+    page.getByRole("link", { name: /^seguir$/i }).first(),
+  ).toHaveAttribute("href", /\/login\?next=%2Fu%2Fdevtest/);
+});
+
+test("anónimo: 'Seguir' en una ficha lleva a /login?next= con la ficha", async ({ page }) => {
+  // Ficha pública cacheada en DEV (Cien años de soledad). El "Seguir" del hero/
+  // rail (useFollow) es un botón que, para el anónimo, hace router.push a login
+  // recordando la ficha — no dispara la acción.
+  const bookPath = "/libro/3e80b690-ceef-49fb-b442-ecd2ea88be83";
+  await page.goto(bookPath);
+  await page
+    .getByRole("button", { name: /^seguir$/i })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/login\?next=%2Flibro%2F3e80b690/);
+});
+
 // Round-trip completo: el anónimo pisa una página gated, se loguea desde el
 // /login?next= al que cae, y vuelve a esa página — no a la home. Es el retorno
 // que safeNext + el hidden input hacen posible (la review final marcó que no
