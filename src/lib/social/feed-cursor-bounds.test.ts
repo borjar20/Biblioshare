@@ -356,6 +356,100 @@ describe("sesión fechada en el futuro y registrada días antes", () => {
   });
 });
 
+// --- #346: un día con MÁS de `pageSize` filas en una sola fuente
+//
+// La reproducción que la issue no trae. Con una cota que solo depende del DÍA
+// del cursor (`lte(columna, día + 1)`), todas las páginas que caen dentro del
+// mismo día emiten la MISMA cota; la query ordena por la columna desc y corta a
+// `pageSize`, así que devuelve las MISMAS filas de cabeza una y otra vez.
+// `isAfterCursor` las descarta todas por ya servidas, `fresh` queda vacío,
+// `nextCursor` pasa a null y la paginación TERMINA: ni el resto de ese día ni
+// nada anterior —en ninguna fuente— se sirve jamás.
+//
+// Se escribe sobre las CINCO fuentes, no sobre una elegida a mano: la propiedad
+// es de la clave de orden, no de una columna concreta, y las dos fuentes que hoy
+// pasan (`added` y clubes, cuya cota sí depende de la hora del cursor) son las
+// que demuestran que el fixture no es vacuo.
+const DENSE_DAY = daysBefore(TODAY, 3);
+const DENSE_OLD_DAY = daysBefore(TODAY, 10);
+
+// 5 filas en DENSE_DAY (con pageSize 2, más del doble) y 3 en un día anterior.
+// Ninguna es de HOY a propósito: así `sessionRelativeBasis` no sustituye nada y
+// lo único que este recorrido ejercita es la DENSIDAD del día.
+type DenseSource = {
+  key: string;
+  dataKey: keyof FakeFeedData;
+  idPrefix: string;
+  row: (id: string, stamp: string, day: string) => FakeRow;
+};
+
+const DENSE_SOURCES: DenseSource[] = [
+  {
+    key: "added",
+    dataKey: "added",
+    idPrefix: "diary_entries_added",
+    row: (id, at) => ({ id, created_at: at }),
+  },
+  {
+    key: "progressed",
+    dataKey: "sessions",
+    idPrefix: "progress_sessions",
+    row: (id, at, day) => ({ id, session_date: day, created_at: at }),
+  },
+  {
+    key: "diary",
+    dataKey: "finished",
+    idPrefix: "diary_entries",
+    // El pase se creó semanas antes; el terminado se registra en `updated_at`,
+    // que es la hora de registro que usa `feed.ts` para esta fuente.
+    row: (id, at, day) => ({
+      id,
+      finished_on: day,
+      created_at: stamp(daysBefore(TODAY, 40), "08:00"),
+      updated_at: at,
+    }),
+  },
+  {
+    key: "episodes",
+    dataKey: "episodes",
+    idPrefix: "episode_watches",
+    row: (id, at, day) => ({ id, watched_on: day, created_at: at }),
+  },
+  {
+    key: "clubs",
+    dataKey: "clubActivities",
+    idPrefix: "club_activities",
+    row: (id, at) => ({ id, created_at: at }),
+  },
+];
+
+function denseFixture(source: DenseSource): { data: FakeFeedData; expected: string[] } {
+  const rows = [
+    ...Array.from({ length: 5 }, (_, i) => source.row(`densa-${i}`, stamp(DENSE_DAY, `1${i}:00`), DENSE_DAY)),
+    ...Array.from({ length: 3 }, (_, i) =>
+      source.row(`vieja-${i}`, stamp(DENSE_OLD_DAY, `1${i}:00`), DENSE_OLD_DAY),
+    ),
+  ];
+  return {
+    data: { [source.dataKey]: rows },
+    expected: rows.map((r) => `${source.idPrefix}:${String(r.id)}`).sort(),
+  };
+}
+
+describe("un día con más filas que `pageSize` en una sola fuente (#346)", () => {
+  for (const source of DENSE_SOURCES) {
+    it(`${source.key}: sirve el día entero y sigue sirviendo lo anterior`, async () => {
+      const { data, expected } = denseFixture(source);
+      const { served, pages } = await walk(2, data);
+      expect(new Set(served).size).toBe(served.length); // ninguna repetida
+      expect([...served].sort()).toEqual(expected); // ninguna perdida
+      // Si el cursor no llega a quedarse DENTRO del día denso, el recorrido no
+      // ejercita la inanición y este test no prueba lo que dice probar.
+      expect(cursorDay(pages, 0)).toBe(DENSE_DAY);
+    });
+  }
+});
+
 describe("cota de la fuente de clubes", () => {
   it("sirve cada actividad exactamente una vez dentro del mismo día", async () => {
     const { served, pages } = await walk(2, CLUB_DATA);
