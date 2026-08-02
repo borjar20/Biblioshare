@@ -4,7 +4,11 @@
 // tenía inline; ahora la comparten login y confirm.
 export function safeNext(raw: string | null | undefined): string {
   if (!raw) return "/";
-  return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+  // Rechaza también backslashes: el navegador normaliza "/\" a "//", así que
+  // "/\evil.com" sería un open redirect que la comprobación de "//" no ve.
+  return raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\")
+    ? raw
+    : "/";
 }
 
 // Enlace a login que recuerda a dónde volver. Lo usan las páginas gated al

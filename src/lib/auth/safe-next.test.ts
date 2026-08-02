@@ -10,6 +10,8 @@ describe("safeNext", () => {
     expect(safeNext("//evil.com")).toBe("/");
     expect(safeNext("https://evil.com")).toBe("/");
     expect(safeNext("evil")).toBe("/");
+    expect(safeNext("/\\evil.com")).toBe("/");
+    expect(safeNext("/path\\x")).toBe("/");
   });
   it("cae a / con vacío/null", () => {
     expect(safeNext(null)).toBe("/");

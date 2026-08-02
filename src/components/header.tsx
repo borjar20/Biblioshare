@@ -18,7 +18,7 @@ export async function Header({
   unreadCount,
 }: {
   loggedIn: boolean;
-  /** null mientras el usuario no tiene perfil (onboarding): topbar sin nav. */
+  /** null para el usuario anónimo y durante el onboarding (aún sin perfil): topbar sin nav. */
   username: string | null;
   avatarUrl: string | null;
   unreadCount: number;
