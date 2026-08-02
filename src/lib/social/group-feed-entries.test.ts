@@ -8,12 +8,13 @@ function ev(partial: Partial<FeedEvent> & Pick<FeedEvent, "id" | "verb" | "actor
     itemType: "book", itemId: partial.itemId ?? "i1", itemTitle: "T", itemCoverUrl: null,
     itemSubtitle: null, entryStatus: null, rating: null, reviewExcerpt: null,
     episode: null, progress: null, interactionTarget: null,
+    sortDate: partial.sortDate ?? partial.eventDate,
     reactionCount: 0, viewerReacted: false, commentCount: 0, comments: [],
     ...partial,
   } as FeedEvent;
 }
 function person(e: FeedEvent): FeedEntry {
-  return { source: "person", id: e.id, eventDate: e.eventDate, event: e };
+  return { source: "person", id: e.id, eventDate: e.eventDate, sortDate: e.sortDate, event: e };
 }
 
 describe("groupPersonEntries", () => {
@@ -33,13 +34,32 @@ describe("groupPersonEntries", () => {
     }
   });
 
-  it("no agrupa altas de días distintos", () => {
-    const entries = [
-      person(ev({ id: "diary_entries_added:a", verb: "added", actorId: "x", eventDate: "2026-07-29T09:00:00+00:00" })),
-      person(ev({ id: "diary_entries_added:b", verb: "added", actorId: "x", eventDate: "2026-07-28T09:00:00+00:00" })),
-    ];
-    expect(groupPersonEntries(entries)).toHaveLength(2);
-    expect(groupPersonEntries(entries).every((e) => e.source === "person")).toBe(true);
+  it("agrupa altas de días adyacentes (la ventana son 2 días naturales)", () => {
+    const out = groupPersonEntries([
+      person(ev({ id: "diary_entries_added:a", verb: "added", actorId: "x", eventDate: "2026-08-02T10:00:00+00:00", itemId: "b1" })),
+      person(ev({ id: "diary_entries_added:b", verb: "added", actorId: "x", eventDate: "2026-08-01T22:00:00+00:00", itemId: "b2" })),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("person-group");
+  });
+
+  it("parte las altas cuando el grupo pasaría de 2 días naturales", () => {
+    const out = groupPersonEntries([
+      person(ev({ id: "diary_entries_added:a", verb: "added", actorId: "x", eventDate: "2026-08-03T10:00:00+00:00", itemId: "b1" })),
+      person(ev({ id: "diary_entries_added:b", verb: "added", actorId: "x", eventDate: "2026-08-02T10:00:00+00:00", itemId: "b2" })),
+      person(ev({ id: "diary_entries_added:c", verb: "added", actorId: "x", eventDate: "2026-08-01T10:00:00+00:00", itemId: "b3" })),
+    ]);
+    // El feed va de más nuevo a más viejo, así que el par pegado es el de los
+    // dos días más nuevos y el más antiguo queda suelto.
+    expect(out).toHaveLength(2);
+    expect(out[0].source).toBe("person-group");
+    if (out[0].source === "person-group") {
+      expect(out[0].items.map((i) => i.id)).toEqual([
+        "diary_entries_added:a",
+        "diary_entries_added:b",
+      ]);
+    }
+    expect(out[1].source).toBe("person");
   });
 
   it("no agrupa una sola alta (queda como person)", () => {
@@ -79,37 +99,31 @@ describe("groupPersonEntries", () => {
     }
   });
 
-  it("agrupa progressed de la misma obra dentro de 7 días", () => {
-    const entries = [
-      person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
-      person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-25", itemId: "b1" })),
-      person(ev({ id: "progress_sessions:c", verb: "progressed", actorId: "x", eventDate: "2026-07-23", itemId: "b1" })),
-    ];
-    const out = groupPersonEntries(entries);
+  const sesion = (id: string, date: string) =>
+    person(ev({ id: `progress_sessions:${id}`, verb: "progressed", actorId: "x", eventDate: date, itemId: "obra" }));
+
+  it("agrupa progressed de la misma obra separados exactamente 2 días (borde de la ventana)", () => {
+    const out = groupPersonEntries([sesion("p1", "2026-08-03"), sesion("p2", "2026-08-01")]);
     expect(out).toHaveLength(1);
     expect(out[0].source).toBe("person-group");
-    if (out[0].source === "person-group") expect(out[0].items).toHaveLength(3);
   });
 
-  it("agrupa progressed de la misma obra separados exactamente 7 días (borde de la ventana)", () => {
-    const entries = [
-      person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
-      person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-22", itemId: "b1" })),
-    ];
-    const out = groupPersonEntries(entries);
-    expect(out).toHaveLength(1);
-    expect(out[0].source).toBe("person-group");
-    if (out[0].source === "person-group") expect(out[0].items).toHaveLength(2);
-  });
-
-  it("NO agrupa progressed de la misma obra separados >7 días", () => {
-    const entries = [
-      person(ev({ id: "progress_sessions:a", verb: "progressed", actorId: "x", eventDate: "2026-07-29", itemId: "b1" })),
-      person(ev({ id: "progress_sessions:b", verb: "progressed", actorId: "x", eventDate: "2026-07-10", itemId: "b1" })),
-    ];
-    const out = groupPersonEntries(entries);
+  it("NO agrupa progressed de la misma obra separados >2 días", () => {
+    const out = groupPersonEntries([sesion("p1", "2026-08-04"), sesion("p2", "2026-08-01")]);
     expect(out).toHaveLength(2);
     expect(out.every((e) => e.source === "person")).toBe(true);
+  });
+
+  it("una racha diaria larga sigue siendo UN timeline (la ventana es por hueco)", () => {
+    const out = groupPersonEntries([
+      sesion("p1", "2026-08-05"),
+      sesion("p2", "2026-08-04"),
+      sesion("p3", "2026-08-03"),
+      sesion("p4", "2026-08-02"),
+      sesion("p5", "2026-08-01"),
+    ]);
+    expect(out).toHaveLength(1);
+    if (out[0].source === "person-group") expect(out[0].items).toHaveLength(5);
   });
 
   it("no agrupa verbos no agrupables (finished/reviewed)", () => {
@@ -121,7 +135,7 @@ describe("groupPersonEntries", () => {
   });
 
   it("deja pasar las entradas de club sin tocar", () => {
-    const club = { source: "club" as const, id: "club:z", eventDate: "2026-07-29", event: {} as never };
+    const club = { source: "club" as const, id: "club:z", eventDate: "2026-07-29", sortDate: "2026-07-29", event: {} as never };
     expect(groupPersonEntries([club])).toEqual([club]);
   });
 });

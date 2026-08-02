@@ -24,7 +24,7 @@ export async function ActivityTab({
   const t = await getTranslations("profile");
   const user = await getCurrentUser();
 
-  const page = await getFeed(supabase, user?.id ?? userId, { actorId: userId });
+  const page = await getFeed(supabase, user?.id ?? null, { actorId: userId });
 
   if (page.events.length === 0) {
     return (

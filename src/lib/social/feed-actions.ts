@@ -36,7 +36,7 @@ export async function loadMoreProfileFeed(
     data: { user },
   } = await supabase.auth.getUser();
 
-  return getFeed(supabase, user?.id ?? actorId, {
+  return getFeed(supabase, user?.id ?? null, {
     cursor: cursor ?? undefined,
     actorId,
   });

@@ -123,6 +123,10 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: row.status,
       eventDate: row.created_at,
+      // sortDate = created_at, el contrato del campo en FeedEvent. Esta vista
+      // resuelve UNA fila y no pasa por el keyset del feed, pero el campo se
+      // rellena con la hora real de registro igual que allí.
+      sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
@@ -162,6 +166,7 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: sessionRelativeBasis(row.session_date, row.created_at),
+      sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
       episode: null,
@@ -184,7 +189,7 @@ export async function resolveSharedActivity(
     // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
       .eq("id", ref.rowId)
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
@@ -194,15 +199,20 @@ export async function resolveSharedActivity(
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
     // porque Supabase no infiere el tipo a partir de la query. pass_reviews
     // tipa TODAS sus columnas como nullable (es una vista), así que también
-    // se narrowan id/user_id/item_type/item_id — nunca vienen null en la
-    // práctica.
+    // se narrowan id/user_id/item_type/item_id/created_at — nunca vienen null
+    // en la práctica. created_at entra en la MISMA lista y no se cae a
+    // finished_on: `sortDate` promete un timestamp real, y un valor date-only
+    // ahí ordena por debajo de todo evento con hora de su día y empata con sus
+    // iguales (desempate por uuid). Sin hora real, la fila se trata como "ya no
+    // disponible", igual que sin id.
     if (
       !row ||
       row.id === null ||
       row.user_id === null ||
       row.item_type === null ||
       row.item_id === null ||
-      row.finished_on === null
+      row.finished_on === null ||
+      row.created_at === null
     )
       return null;
     const [actor, catalog] = await Promise.all([
@@ -224,6 +234,8 @@ export async function resolveSharedActivity(
       itemSubtitle: catalog.subtitle,
       entryStatus: null,
       eventDate: row.finished_on,
+      // Timestamp real garantizado por el narrowing de arriba.
+      sortDate: row.created_at,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
       episode: null,
@@ -235,7 +247,7 @@ export async function resolveSharedActivity(
   // episode_watches
   const { data: row } = await supabase
     .from("episode_watches")
-    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on")
+    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at")
     .eq("id", ref.rowId)
     .maybeSingle();
   if (!row) return null;
@@ -266,6 +278,7 @@ export async function resolveSharedActivity(
     itemSubtitle: catalog.subtitle,
     entryStatus: null,
     eventDate: row.watched_on,
+    sortDate: row.created_at,
     rating: row.rating,
     reviewExcerpt: excerpt(row.review),
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },

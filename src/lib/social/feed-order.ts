@@ -1,0 +1,166 @@
+// Clave de orden del feed: (día, created_at, id), descendente.
+//
+// Por qué el DÍA y no la fecha entera: las cuatro fuentes mezclan
+// granularidades. Las altas traen un timestamptz ("2026-08-01T18:22:06+00:00")
+// y las reseñas/episodios una columna `date` ("2026-08-01"). Comparando la
+// cadena completa, la corta es prefijo de la larga y ordena SIEMPRE por debajo:
+// una reseña de las 23:00 caía bajo un alta de las 00:01 del mismo día.
+// Normalizando al día, el desempate lo hace `sortDate` (created_at), que
+// siempre es un timestamp real.
+//
+// `id` cierra el orden total: sin él la paginación keyset no sería
+// determinista entre eventos con el mismo día y la misma hora.
+export type OrderableEntry = { eventDate: string; sortDate: string; id: string };
+
+// `sortDate: null` marca un cursor del formato antiguo (`fecha~id`), emitido
+// antes de este cambio y todavía vivo en una pestaña abierta durante el
+// despliegue. Para esos se conserva la comparación antigua: es la única forma
+// de no perder ni repetir filas en ese salto.
+//
+// `day` va SIEMPRE truncado a 10 caracteres porque alimenta `dateUpperBound`/
+// `timestampUpperBound`, que a su vez alimentan filtros Postgres `date` y
+// `timestamptz` — no pueden recibir un timestamp completo donde se espera una
+// fecha. Pero la comparación legado en `isAfterCursor` necesita la cadena
+// SIN truncar (la semántica que reproduce comparaba `eventDate` completo
+// contra el cursor completo). Truncar antes de comparar iguala fechas que en
+// la semántica antigua eran distintas y hace perder filas en silencio (ver
+// test de regresión). Por eso se conserva aparte, sin tocar `day`.
+export type FeedCursor = {
+  day: string;
+  sortDate: string | null;
+  id: string;
+  legacyFullDate: string | null;
+};
+
+const SEPARATOR = "~"; // no aparece ni en fechas ISO ni en los ids de evento
+
+export function dayOf(eventDate: string): string {
+  return eventDate.slice(0, 10);
+}
+
+// Comparador descendente, apto para Array.prototype.sort.
+export function compareEntries(a: OrderableEntry, b: OrderableEntry): number {
+  const [da, db] = [dayOf(a.eventDate), dayOf(b.eventDate)];
+  if (da !== db) return da < db ? 1 : -1;
+  if (a.sortDate !== b.sortDate) return a.sortDate < b.sortDate ? 1 : -1;
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+}
+
+export function makeCursor(entry: OrderableEntry): string {
+  return `${dayOf(entry.eventDate)}${SEPARATOR}${entry.sortDate}${SEPARATOR}${entry.id}`;
+}
+
+export function parseCursor(cursor: string): FeedCursor {
+  const parts = cursor.split(SEPARATOR);
+  // Los ids de evento no llevan `~`, pero unir el resto es gratis y evita que
+  // un id inesperado trunque el cursor en silencio.
+  if (parts.length >= 3) {
+    return {
+      day: parts[0],
+      sortDate: parts[1],
+      id: parts.slice(2).join(SEPARATOR),
+      legacyFullDate: null,
+    };
+  }
+  if (parts.length === 2) {
+    return { day: dayOf(parts[0]), sortDate: null, id: parts[1], legacyFullDate: parts[0] };
+  }
+  return { day: dayOf(cursor), sortDate: null, id: "", legacyFullDate: cursor };
+}
+
+// ¿Va `entry` estrictamente DESPUÉS del cursor en el orden total? Lo ya
+// servido —incluido el propio evento del cursor— queda fuera. Espeja a
+// `compareEntries`: si dejan de coincidir, la paginación pierde o repite filas.
+export function isAfterCursor(entry: OrderableEntry, cursor: FeedCursor): boolean {
+  if (cursor.sortDate === null) {
+    // Camino legado: (eventDate completo, id), la comparación anterior al
+    // cambio. Usa `legacyFullDate` (sin truncar) y NO `day`: `day` está
+    // truncado a 10 caracteres para los cotas de Postgres, y comparar contra
+    // la versión truncada iguala fechas que la semántica antigua distinguía.
+    const legacyDate = cursor.legacyFullDate ?? cursor.day;
+    if (entry.eventDate !== legacyDate) return entry.eventDate < legacyDate;
+    return entry.id < cursor.id;
+  }
+  const day = dayOf(entry.eventDate);
+  if (day !== cursor.day) return day < cursor.day;
+  if (entry.sortDate !== cursor.sortDate) return entry.sortDate < cursor.sortDate;
+  return entry.id < cursor.id;
+}
+
+// Suma días de calendario a una fecha "YYYY-MM-DD". UTC explícito y sin leer el
+// reloj: este módulo es puro (ver los tests que lo fijan).
+function addDaysUTC(day: string, days: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return day;
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+// Cota superior INCLUSIVA para una columna `date` (finished_on / watched_on /
+// session_date), UN DÍA MÁS ANCHA que el día del cursor a propósito.
+//
+// Por qué el día extra: en estas tres fuentes el día del orden NO es la columna
+// filtrada. `eventDate` es `sessionRelativeBasis(columna, created_at)`, que para
+// una fila de HOY devuelve `created_at` — y `todayISO()` es la fecha LOCAL
+// mientras `created_at` es UTC. Así que el día de orden pasa a ser un día UTC y
+// la columna sigue siendo local: en Madrid (UTC+2), lo registrado entre las
+// 00:00 y las 02:00 tiene columna = D y created_at = (D-1)T22:00..23:59Z, o sea
+// ordena en D-1. `isAfterCursor` lo acepta con cualquier cursor de día D-1, pero
+// `lte(columna, D-1)` lo dejaba fuera de la query: la fila no se servía en
+// NINGUNA página, nunca.
+//
+// Un día basta y no hace falta más: la fecha local de un instante nunca se
+// separa de su fecha UTC en más de un día (los husos van de UTC-12 a UTC+14), y
+// el sentido que importa aquí es el positivo — la columna local puede ir como
+// mucho un día POR DELANTE del día UTC del created_at.
+//
+// Lo que sobre —las filas del día extra que `isAfterCursor` no acepta— lo
+// descarta el filtro fino después del fetch, exactamente igual que en `added`.
+export function dateUpperBoundInclusiveOfUtcSkew(cursor: FeedCursor): string {
+  return addDaysUTC(cursor.day, 1);
+}
+
+// Cota superior INCLUSIVA para una columna `timestamptz`: cualquier hora de ese
+// día debe entrar en el fetch; el descarte fino lo hace `isAfterCursor`.
+export function timestampUpperBound(cursor: FeedCursor): string {
+  return `${cursor.day}T23:59:59.999+00:00`;
+}
+
+// Cota superior INCLUSIVA para la fuente `added`, donde eventDate, sortDate y
+// la columna filtrada son la MISMA (`created_at`).
+//
+// Vive aquí, pegada a `isAfterCursor`, porque es su espejo: toda cota tiene que
+// ser un SUPERCONJUNTO de lo que el filtro acepta o la fila se pierde para
+// siempre, y lo más estrecha posible o el `limit` se gasta en filas ya servidas.
+//
+// El supremo del conjunto aceptado es `sortDate` ACOTADO —por arriba y por
+// abajo— al día del cursor, y las tres piezas importan:
+//   · `sortDate` sola NO basta. `day` y `sortDate` salen de columnas distintas
+//     en cuanto el último evento de una página está backdateado (una reseña
+//     terminada hace tres semanas y registrada hoy: day=finished_on,
+//     sortDate=created_at). Ahí `sortDate` es semanas MÁS ANCHA que el día:
+//     la query devuelve las altas de hoy —ya servidas—, gasta el `limit` en
+//     ellas, `fresh` se vacía, `nextCursor` se apaga y las altas antiguas no se
+//     sirven en NINGUNA página. Sin excepción y sin romper ningún test.
+//   · el fin del día solo tampoco: dentro del día del cursor, `isAfterCursor`
+//     ya no acepta nada por encima de `sortDate`, así que traerlo es tirar el
+//     `limit`.
+//   · y el mínimo a secas TAMPOCO basta: hay que acotar también POR ABAJO, al
+//     arranque del día. `day` sale de una fecha LOCAL (finished_on /
+//     watched_on / session_date) y `sortDate` de un created_at UTC, así que
+//     `sortDate` puede caer en el día ANTERIOR a `day`: en Madrid (UTC+2) todo
+//     lo registrado entre las 00:00 y las 02:00 queda con day = D y
+//     created_at = (D-1)T22:00..23:59Z. `sessionRelativeBasis` lo enmascara el
+//     día mismo, pero a partir del siguiente la forma es permanente. Con el
+//     mínimo pelado la cota bajaría hasta esa hora y dejaría fuera altas que
+//     `isAfterCursor` SÍ acepta —acepta TODAS las de días anteriores—, en una
+//     banda que ninguna página posterior recupera (las siguientes bajan a días
+//     menores). Pérdida silenciosa y definitiva.
+// Cursor legado (`sortDate === null`): no hay hora, así que la cota es el día.
+export function addedUpperBound(cursor: FeedCursor): string {
+  const dayEnd = timestampUpperBound(cursor);
+  if (cursor.sortDate === null) return dayEnd;
+  // Acotado, no mínimo: por debajo del arranque del día no puede bajar nunca.
+  const dayStart = `${cursor.day}T00:00:00.000+00:00`;
+  if (cursor.sortDate < dayStart) return dayStart;
+  return cursor.sortDate < dayEnd ? cursor.sortDate : dayEnd;
+}

@@ -347,8 +347,9 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 
 **Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
 `20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
-el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor+día y
-actor+obra+día respectivamente, ver `decisiones.md`), pero cada reacción/comentario sigue
+el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor y por
+actor+obra respectivamente, con la ventana temporal exacta en `decisiones.md` — ha cambiado ya
+más de una vez, no la repitas aquí), pero cada reacción/comentario sigue
 apuntando a la fila real — `passes` o `progress_sessions` — nunca a un id sintético del grupo;
 de ahí que hicieran falta valores de enum nuevos en vez de reutilizar el `diary_entry` legado.
 `can_view_target()` gana dos ramas con el mismo patrón que las demás: `pass` resuelve vía
