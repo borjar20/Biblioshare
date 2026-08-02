@@ -147,8 +147,6 @@ describe("toggleReaction", () => {
     expect(fake.insertedReactions).toEqual([
       {
         interaction_target_id: "target-pass",
-        target_type: "pass",
-        target_id: "pass-1",
         user_id: "actor",
         kind: "like",
       },
@@ -214,8 +212,6 @@ describe("addComment", () => {
     expect(fake.insertedComments).toEqual([
       {
         interaction_target_id: "target-checkpoint",
-        target_type: "activity_checkpoint",
-        target_id: "checkpoint-1",
         author_id: "actor",
         body: "Llegué",
       },

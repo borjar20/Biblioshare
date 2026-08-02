@@ -26,7 +26,10 @@ export async function reportComment(
   const { data, error } = await supabase.rpc("report_comment", {
     p_comment_id: commentId,
     p_reason: reason,
-    p_details: normalizedDetails,
+    // `p_details` tiene DEFAULT NULL en la función: omitir la clave equivale a
+    // mandar null. Se omite explícitamente en vez de pasar `undefined` para no
+    // depender de que JSON.stringify descarte la clave por el camino.
+    ...(normalizedDetails ? { p_details: normalizedDetails } : {}),
   });
   if (error) throw error;
   if (!data) throw new Error("report_not_created");

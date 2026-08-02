@@ -34,7 +34,15 @@ aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_i
 backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
 divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
 `books` no necesita backfill (las labels ya coincidían); **fix del writer canónico de
-notificaciones aplicado y verificado SOLO EN DEV el 2026-08-01**]**
+notificaciones aplicado y verificado SOLO EN DEV el 2026-08-01**; **migración de CONTRATO de
+la fase 1 social (`20260801224621_social_interaction_targets_contract.sql`) aplicada y
+verificada SOLO EN DEV el 2026-08-01, contra `information_schema.columns`, `pg_constraint`,
+`pg_trigger` y `pg_proc` — nunca contra `list_migrations`: `interaction_target_id` es `NOT
+NULL` en `comments` y `reactions`, el par heredado `target_type`/`target_id` ya NO es columna
+de ninguna de las dos, y la unicidad de reacción es `(interaction_target_id, user_id, kind)`.
+**PRODUCCIÓN NO TIENE `interaction_targets` EN ABSOLUTO**: ni la migración expansiva ni la de
+contrato se han aplicado allí, y el bundle canónico no está desplegado — toda la fase 1
+(expandir Y contraer) vive solo en dev. `schema-baseline.sql` sigue intacto a propósito**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -85,6 +93,20 @@ notificaciones aplicado y verificado SOLO EN DEV el 2026-08-01**]**
 > nunca acepta metadatos canónicos aislados del cliente: vuelve a derivar desde el par completo o
 > limpia el ID si falta alguna parte. La matriz SQL pasó completa; advisors de seguridad 66→66 y de
 > rendimiento 53→53, sin delta. Producción y `schema-baseline.sql` siguen intactos.
+> **Delta del 2026-08-01 (Social fase 1, migración de CONTRATO, §5): aplicado y verificado
+> SOLO EN DEV.** `20260801224621_social_interaction_targets_contract.sql` cierra el ciclo
+> expand/migrate/contract: `interaction_target_id` pasa a `NOT NULL` en `comments` y
+> `reactions`, la unicidad de reacción se apoya en él, desaparecen de esas dos tablas el par
+> heredado `(target_type, target_id)`, sus triggers de resolución, sus índices y el CHECK
+> `comments_no_nesting`, y cinco funciones `SECURITY DEFINER` pasan a resolver el padre de un
+> comentario por el registro canónico. `notifications` conserva intacto su par heredado
+> nullable y su trigger resolutor. La matriz `supabase/tests/social_phase1_interaction_targets.sql`
+> pasó completa (`ALL ASSERTIONS PASSED`) y los advisors siguen en 66 de seguridad, sin
+> hallazgos nuevos. **Producción NO tiene `interaction_targets`**: la fase 1 entera —expansiva
+> incluida— sigue sin aplicarse allí y el bundle canónico sin desplegar, así que nada de esta
+> sección está verificado en prod. El orden de despliegue es expansiva → backfill → bundle →
+> contrato, verificando contra `pg_proc`/`pg_class`. `schema-baseline.sql` sigue intacto a
+> propósito: el anexo queda gateado a que producción esté confirmada.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -288,7 +310,8 @@ asume los tres— y **`onboarded_at`**, que **ES el gate** de `/onboarding`: con
 asistente no se vuelve a mostrar. Ojo, «tener perfil» y «estar onboardeado» son cosas distintas
 desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` (con `follow_status`
 `pending|accepted` — a perfil público es aceptado directo), `reactions` y `comments`
-(polimórficos vía `target_kind`), `notifications`, `push_subscriptions`.
+(polimórficos vía `target_kind` **hasta la fase 1 social; en dev apuntan ya solo a
+`interaction_targets` — ver más abajo**), `notifications`, `push_subscriptions`.
 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
@@ -329,7 +352,13 @@ pueden verlo y resolverlo. Ser autor del target, por sí solo, no revela el repo
 un target, los comentarios/reacciones/notificaciones asociados se eliminan, pero los reportes
 se preservan como auditoría y pasan a `actioned` con `target_deleted_at`.
 
-### Registro canónico `interaction_targets` (Social fase 1, solo dev, 2026-08-01)
+### Registro canónico `interaction_targets` (Social fase 1, contrato cerrado, SOLO DEV, 2026-08-01)
+
+> **Estado: expand/migrate/contract COMPLETO en dev, INEXISTENTE en producción.** Prod no tiene la
+> tabla `interaction_targets` ni ninguna de las columnas, funciones o triggers de esta sección: ni
+> la migración expansiva ni la de contrato se han aplicado allí, y el bundle canónico no está
+> desplegado. Todo lo que sigue describe **dev** (`tyvzpuhxfwxrnkcpzxyg`), verificado contra objetos
+> reales. El despliegue a prod va en el orden expansiva → backfill → bundle → contrato.
 
 `interaction_targets` desacopla las interacciones de siete tablas fuente y materializa ocho tipos.
 Su contrato vivo es:
@@ -357,17 +386,77 @@ dinámicamente `profile`, `club_member`, `activity_participant` o `checkpoint_re
 bloqueo bidireccional contra `owner_id`. Las policies de `comments` y `reactions` delegan en ese
 mismo helper y exigen además `commentable`/`reactable`.
 
-`comments.interaction_target_id`, `reactions.interaction_target_id` y
-`notifications.interaction_target_id` son nullable y tienen FK a `interaction_targets(id) on delete
-cascade`. Mientras dura la compatibilidad, los pares legacy `(target_type, target_id)` se conservan.
-Los triggers `BEFORE INSERT/UPDATE` de comentarios y reacciones siempre vuelven a derivar el ID
-canónico. En notificaciones, un INSERT del writer confiable puede usar solo el ID canónico; un INSERT
-con par legacy se deriva desde ese par. En UPDATE el par legacy conserva siempre la autoridad y el
-ID se deriva de nuevo —o se limpia cuando el par está incompleto—, de modo que el cliente no puede
-introducir metadatos canónicos divergentes. Los triggers de limpieza de fuente eliminan el target
-canónico; sus tres FKs eliminan
-comentarios, reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y
-queda `actioned` con `target_deleted_at`, incluso cuando desaparece el target.
+#### Contrato tras `20260801224621_social_interaction_targets_contract.sql`
+
+Las tres tablas de interacción tienen `interaction_target_id` con FK a `interaction_targets(id) on
+delete cascade`, pero **no en las mismas condiciones**:
+
+| Tabla | `interaction_target_id` | Par heredado `(target_type, target_id)` |
+|---|---|---|
+| `comments` | `not null` | **no existe**: columnas borradas |
+| `reactions` | `not null` | **no existe**: columnas borradas |
+| `notifications` | nullable | **se conserva**, nullable |
+
+`notifications` mantiene el par a propósito: los avisos de club, invitación y evento nombran fuentes
+que **no tienen fila en el registro canónico**, así que no hay id que poner. Conserva también su
+trigger resolutor `trg_notifications_resolve_interaction_target` con el reparto de autoridad de
+siempre (un INSERT del writer confiable puede traer solo el id canónico; con par legacy manda el
+par; en UPDATE el par conserva la autoridad y el id se re-deriva o se limpia, de modo que el cliente
+no puede inyectar metadatos canónicos divergentes).
+
+En comentarios y reacciones, en cambio, **el id canónico es la única identidad**:
+
+- **Unicidad de reacción**: `reactions_interaction_target_id_user_id_kind_key
+  unique (interaction_target_id, user_id, kind)`, en sustitución de la que iba por el par heredado.
+  El índice suelto `reactions_interaction_target_idx` se retira porque el nuevo único ya lo cubre por
+  prefijo (un índice duplicado habría levantado el advisor).
+- **Fuera la compatibilidad expand/migrate**: se retiran los triggers
+  `trg_comments_resolve_interaction_target` y `trg_reactions_resolve_interaction_target` y las
+  funciones `private.resolve_comment_interaction_target`,
+  `private.resolve_reaction_interaction_target` y `private.resolve_interaction_target`. Ya nadie
+  deriva el id canónico de un par que no existe. **`notifications` no pierde el suyo.**
+- **Sin respuestas anidadas: de CHECK a TRIGGER.** `comments_no_nesting` desapareció con las
+  columnas en las que se apoyaba. El invariante lo sostiene ahora
+  `private.enforce_comment_target_commentable()` vía `trg_comments_enforce_commentable`
+  (`BEFORE INSERT OR UPDATE OF interaction_target_id ON public.comments`, `FOR EACH ROW`), que
+  rechaza todo comentario apuntado a un target con `commentable = false`
+  (`target_not_commentable`, `23514` — el mismo `check_violation` que emitía el CHECK) y a un target
+  inexistente (`invalid_interaction_target`, `23503`). Es un trigger y **no** una política RLS a
+  propósito: así también ata a `service_role`, `postgres`, fixtures e2e y cualquier escritor
+  `SECURITY DEFINER`, que una policy de inserción no sujeta. Y generaliza más que el CHECK: cubre
+  cualquier target no comentable, no solo los de `kind = 'comment'`. Cubre el UPDATE porque
+  reapuntar un comentario ya escrito al target de otro comentario anida exactamente igual que
+  insertarlo así. Un `interaction_target_id` nulo lo deja pasar sin tocar, para que el `not null` de
+  la columna siga hablando con su propio `23502`. El trigger es `ENABLE ALWAYS` (`tgenabled = 'A'`),
+  no el `'O'` por defecto: si no, dejaría de dispararse con `session_replication_role = 'replica'`
+  —`pg_restore --disable-triggers`, restauraciones y ramas de Supabase, aplicación de replicación
+  lógica—, justo los caminos en los que el CHECK que sustituye **sí** se aplicaba; el invariante
+  habría quedado más débil que antes sin que nada lo delatara.
+- **El flag del que ahora depende el invariante está blindado.** Como el trigger lee
+  `interaction_targets.commentable`, un `update … set commentable = true where kind = 'comment'`
+  habría reabierto el anidamiento por la puerta de atrás. Lo impide el check
+  `interaction_targets_comment_not_commentable` (`kind <> 'comment' or not commentable`), que compone
+  con `interaction_targets_commentable_shape` para forzar además
+  `comment_notification_type is null` en los targets de comentario — exactamente lo que escribe
+  `private.sync_comment_interaction_target`.
+- **Cinco funciones `SECURITY DEFINER` reescritas** para resolver el padre de un comentario por el
+  registro canónico en vez de por las columnas borradas —plpgsql/SQL no declaran dependencia de
+  columna, así que el `drop column` no habría avisado y habrían petado en runtime—:
+  `private.cleanup_social_target` (deja de borrar comentarios/reacciones por el par: eso ya lo hace
+  la cascada del FK; conserva el snapshot de `content_reports`, el borrado del target canónico y el
+  de los avisos legacy), `private.can_moderate_comment` (**está en el camino RLS de `comments`**),
+  `private.social_target_club_id`, `private.prepare_content_report` (el snapshot de un reporte de
+  comentario sigue guardando `target_type`/`target_id` del padre, leídos ya del registro) y
+  `public.can_view_target`. Todas mantienen firma, `security definer`, `search_path` y ACL: no se
+  introdujo superficie nueva.
+
+`trg_comments_cleanup_social_target` **se conserva**: no es redundante. `interaction_targets` no
+tiene FK a las tablas fuente (`source_id` es polimórfico), así que al borrar un comentario alguien
+tiene que borrar su propia fila `kind = 'comment'` — y de ahí, en cascada, sus reacciones.
+
+Los triggers de limpieza de fuente eliminan el target canónico y sus FKs se llevan comentarios,
+reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y queda
+`actioned` con `target_deleted_at`, incluso cuando desaparece el target.
 
 ## 6. Clubes
 

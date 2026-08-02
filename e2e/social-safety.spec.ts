@@ -119,11 +119,17 @@ test("el dueño del contenido puede reportar y moderar un comentario ajeno", asy
       data: { club_id: clubId, author_id: owner.id, kind: "text", body: postBody },
     });
     const [{ id: postId }] = (await post.json()) as Array<{ id: string }>;
+    // Un comentario se cuelga del target canónico del post: el par polimórfico
+    // ya no existe en `comments`.
+    const postTarget = await request.get(
+      `${SUPABASE_URL}/rest/v1/interaction_targets?kind=eq.club_post&source_id=eq.${postId}&select=id`,
+      { headers: adminHeaders() },
+    );
+    const [{ id: postTargetId }] = (await postTarget.json()) as Array<{ id: string }>;
     const comment = await request.post(`${SUPABASE_URL}/rest/v1/comments`, {
       headers: adminHeaders(true),
       data: {
-        target_type: "club_post",
-        target_id: postId,
+        interaction_target_id: postTargetId,
         author_id: author.id,
         body: commentBody,
       },

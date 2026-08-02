@@ -305,21 +305,16 @@ async function resolveTargetHrefs(
   }
 
   if (commentIds.length > 0) {
-    const { data: commentRows } = await supabase
-      .from("comments")
-      .select("id, target_type, target_id")
-      .in("id", commentIds);
-    const parentTargets = (commentRows ?? []).map((c) => ({
-      targetType: c.target_type,
-      targetId: c.target_id,
-    }));
-    // Recursión de un solo nivel: comments_no_nesting (Task 1) garantiza que
-    // el target de un comentario nunca es 'comment', así que esta llamada
-    // recursiva termina siempre en su segunda pasada.
-    const parentHrefByKey = await resolveTargetHrefs(supabase, parentTargets);
-    for (const c of commentRows ?? []) {
-      const parentHref = parentHrefByKey.get(`${c.target_type}:${c.target_id}`);
-      if (parentHref) hrefByKey.set(`comment:${c.id}`, parentHref);
+    // El target canónico de un comentario hereda el href de su padre
+    // (private.sync_comment_interaction_target), así que basta con leerlo: ya no
+    // hace falta recorrer el par polimórfico ni recursar sobre el padre.
+    const { data: commentTargets } = await supabase
+      .from("interaction_targets")
+      .select("source_id, href")
+      .eq("kind", "comment")
+      .in("source_id", commentIds);
+    for (const t of commentTargets ?? []) {
+      hrefByKey.set(`comment:${t.source_id}`, t.href);
     }
   }
 

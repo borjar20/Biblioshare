@@ -15,7 +15,7 @@ async function getInteractionTarget(
   const { data, error } = await supabase
     .from("interaction_targets")
     .select(
-      "id, kind, source_id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
+      "id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
     )
     .eq("id", interactionTargetId)
     .maybeSingle();
@@ -56,9 +56,6 @@ export async function toggleReaction(interactionTargetId: string): Promise<void>
   } else {
     const { error } = await supabase.from("reactions").insert({
       interaction_target_id: interactionTargetId,
-      // Compatibilidad expand/migrate: ambas columnas siguen siendo NOT NULL.
-      target_type: target.kind,
-      target_id: target.source_id,
       user_id: user.id,
       kind: "like",
     });
@@ -104,9 +101,6 @@ export async function addComment(
     .from("comments")
     .insert({
       interaction_target_id: interactionTargetId,
-      // Compatibilidad expand/migrate: ambas columnas siguen siendo NOT NULL.
-      target_type: target.kind,
-      target_id: target.source_id,
       author_id: user.id,
       body: trimmed,
     })
