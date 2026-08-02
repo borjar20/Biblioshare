@@ -7,6 +7,9 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { ensureBookEditions } from "@/lib/editions/sync-editions";
 import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 import { uploadPublicImage } from "@/lib/storage/upload-public-image";
+import { getPosterPaths } from "@/lib/catalog/tmdb";
+import { fetchWorkCovers } from "@/lib/catalog/openlibrary/work-detail";
+import { isAllowedCoverHost, capOfficialCovers } from "@/lib/catalog/official-covers";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -226,6 +229,83 @@ export async function uploadCover(
       : itemType === "movie"
         ? await supabase.from("movies").update({ cover_url: coverUrl }).eq("id", itemId)
         : await supabase.from("series").update({ cover_url: coverUrl }).eq("id", itemId);
+
+  if (error) return { error: "generic" };
+
+  revalidateItemPage(itemType, itemId);
+  return { ok: true };
+}
+
+// Trae las portadas oficiales de la obra para la galería del editor. Lee el id
+// externo (tmdb_id / openlibrary_work_key) desde la BD por itemId — nunca del
+// cliente. Se llama DIRECTO desde el cliente, de ahí la validación de runtime.
+// Nunca lanza: sin id externo, fuente caída o sin API key -> { covers: [] }.
+export async function fetchOfficialCovers(
+  itemType: ItemType,
+  itemId: string
+): Promise<{ covers: string[] }> {
+  if (!isValidItemType(itemType) || !isValidUuid(itemId)) return { covers: [] };
+
+  const supabase = await createClient();
+  const guard = await requireCollaborator(supabase);
+  if (guard) return { covers: [] };
+
+  let urls: string[] = [];
+
+  // fetchWorkCovers ya atrapa sus propios errores, pero getPosterPaths puede
+  // lanzar en fallo de red (fetch de tmdbGet sin try/catch: un DNS caído o un
+  // timeout propaga la excepción en vez de devolver null). Esta action nunca
+  // debe rechazar, así que cualquier throw aquí se traduce en "sin portadas".
+  try {
+    if (itemType === "movie" || itemType === "series") {
+      const table = itemType === "movie" ? "movies" : "series";
+      const { data } = await supabase
+        .from(table)
+        .select("tmdb_id")
+        .eq("id", itemId)
+        .single();
+      if (data?.tmdb_id) {
+        urls = await getPosterPaths(itemType === "movie" ? "movie" : "tv", data.tmdb_id);
+      }
+    } else {
+      const { data } = await supabase
+        .from("books")
+        .select("openlibrary_work_key")
+        .eq("id", itemId)
+        .single();
+      if (data?.openlibrary_work_key) {
+        urls = await fetchWorkCovers(data.openlibrary_work_key);
+      }
+    }
+  } catch {
+    urls = [];
+  }
+
+  return { covers: capOfficialCovers(urls) };
+}
+
+// Fija cover_url a una portada oficial elegida en la galería. La allowlist de
+// host es la defensa clave: como uploadCover, esta action se invoca directa
+// desde el cliente y `url` es 100% manipulable. Guardamos la URL externa tal
+// cual (misma política que el importador), sin copiar a Storage.
+export async function setOfficialCover(
+  itemType: ItemType,
+  itemId: string,
+  url: string
+): Promise<EditItemState> {
+  if (!isValidItemType(itemType) || !isValidUuid(itemId)) return { error: "generic" };
+  if (!isAllowedCoverHost(url)) return { error: "generic" };
+
+  const supabase = await createClient();
+  const guard = await requireCollaborator(supabase);
+  if (guard) return guard;
+
+  const { error } =
+    itemType === "book"
+      ? await supabase.from("books").update({ cover_url: url }).eq("id", itemId)
+      : itemType === "movie"
+        ? await supabase.from("movies").update({ cover_url: url }).eq("id", itemId)
+        : await supabase.from("series").update({ cover_url: url }).eq("id", itemId);
 
   if (error) return { error: "generic" };
 
