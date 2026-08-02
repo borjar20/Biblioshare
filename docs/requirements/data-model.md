@@ -46,8 +46,8 @@ contrato se han aplicado allí, y el bundle canónico no está desplegado — to
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
-> **2026-07-29** (delta de `target_kind`/`can_view_target` del feed agrupado de Inicio;
-> el resto del esquema sigue verificado el 2026-07-21): 42 tablas, todas con RLS activa.
+> **2026-07-30** para el delta de Social fase 0 (el resto conserva sus fechas de
+> verificación específicas): 47 tablas públicas, todas con RLS activa.
 > **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
 > select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
 > pendiente del merge de `feat/feed-tarjetas-por-tipo`.
@@ -58,13 +58,13 @@ contrato se han aplicado allí, y el bundle canónico no está desplegado — to
 > tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
 > `decisiones.md`). Al entrar esta mejora, las políticas RLS de `notifications` aún incluían
 > `insert as actor` y no referenciaban `type`, por lo que `mentioned` quedó cubierto sin
-> cambio específico. **Social fase 0 supersede esa puerta solo en dev**: ya no existe ninguna
+> cambio específico. **Social fase 0 supersede esa puerta en dev y prod**: ya no existe ninguna
 > política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
 > servidor usa `service_role`. Spec:
 > `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
-> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado SOLO EN DEV.**
-> `user_blocks` y `content_reports` elevan dev a 47 tablas públicas, todas con RLS; prod
-> conserva las 42 verificadas arriba hasta el despliegue. Son siete migraciones:
+> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
+> `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
+> Son siete migraciones:
 > `20260730190602_social_phase0_integrity.sql`,
 > `20260730190801_social_phase0_notification_compat.sql`,
 > `20260730191652_social_phase0_user_blocks.sql`,
@@ -72,12 +72,15 @@ contrato se han aplicado allí, y el bundle canónico no está desplegado — to
 > `20260730191708_social_phase0_polymorphic_cleanup.sql`,
 > `20260730194407_social_phase0_close_notification_inserts.sql` y
 > `20260730200000_social_phase0_report_reviewer_index.sql`. Pasaron la matriz transaccional
-> `supabase/tests/social_phase0_rls.sql`; el barrido dejó 0 comentarios, 0 reacciones y 0
-> notificaciones huérfanos. En dev, INSERT sobre `notifications` queda permitido solo a
+> `supabase/tests/social_phase0_rls.sql` en prod dentro de una transacción con rollback; el
+> barrido dejó 0 comentarios, 0 reacciones y 0 notificaciones huérfanos. En ambos entornos,
+> INSERT sobre `notifications` queda permitido solo a
 > `service_role` (`anon=false`, `authenticated=false`, 0 políticas INSERT); las cuatro RPC
-> públicas nuevas son `SECURITY INVOKER`. Advisors de seguridad: 66 antes y 66 después, sin
-> hallazgos nuevos. Producción sigue pendiente en
-> [#332](https://github.com/borjar20/Biblioshare/issues/332).
+> públicas nuevas son `SECURITY INVOKER`. En prod hay 66 avisos de seguridad, sin hallazgos
+> atribuibles a las tablas o RPC de esta fase. El rollout aplicó integridad+compatibilidad de
+> forma atómica, desplegó el bundle `8589601` y solo entonces cerró el INSERT heredado y añadió
+> el índice de reviewer; [#332](https://github.com/borjar20/Biblioshare/issues/332) conserva la
+> evidencia operativa.
 > **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado SOLO EN DEV.**
 > `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
 > `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
@@ -102,11 +105,22 @@ contrato se han aplicado allí, y el bundle canónico no está desplegado — to
 > comentario por el registro canónico. `notifications` conserva intacto su par heredado
 > nullable y su trigger resolutor. La matriz `supabase/tests/social_phase1_interaction_targets.sql`
 > pasó completa (`ALL ASSERTIONS PASSED`) y los advisors siguen en 66 de seguridad, sin
-> hallazgos nuevos. **Producción NO tiene `interaction_targets`**: la fase 1 entera —expansiva
-> incluida— sigue sin aplicarse allí y el bundle canónico sin desplegar, así que nada de esta
-> sección está verificado en prod. El orden de despliegue es expansiva → backfill → bundle →
-> contrato, verificando contra `pg_proc`/`pg_class`. `schema-baseline.sql` sigue intacto a
-> propósito: el anexo queda gateado a que producción esté confirmada.
+> hallazgos nuevos.
+> **Corte de producción del 2026-08-02: la cadena EXPANSIVA está aplicada y verificada en PROD.**
+> Siete migraciones (`20260730212803` … `20260802013421`, esta última el fix de la audiencia de
+> checkpoint) contra `vmutcradmodhiltuohys`, verificadas contra objetos reales —`pg_class`,
+> `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra `list_migrations`: el
+> ledger de prod ya venía sin la fila de `social_phase0_notification_compat` pese a tener su
+> efecto (`comments_body_canonical`), que es justo la trampa que advierte `AGENTS.md`. El backfill
+> no borró NADA: las 21 filas de comentarios/reacciones tenían fuente viva y los conteos salieron
+> idénticos (8 comentarios, 13 reacciones, 6 avisos), con 647 targets y cero `interaction_target_id`
+> nulos. Prod y dev quedan en 48 tablas públicas, todas con RLS.
+> **La migración de CONTRATO sigue SOLO EN DEV, a propósito**: borra columnas que el bundle
+> desplegado todavía lee, así que va después de que el bundle canónico esté vivo y verificado.
+> En prod siguen presentes los pares legacy de `comments`/`reactions` y el check
+> `comments_no_nesting`, que es la comprobación de que el contrato no se ha colado.
+> El orden de despliegue es expansiva → backfill → bundle → contrato. `schema-baseline.sql` sigue
+> intacto a propósito: el anexo queda gateado a que el ciclo entero esté confirmado en producción.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -328,7 +342,7 @@ de ahí que hicieran falta valores de enum nuevos en vez de reutilizar el `diary
 nuevo) y `progressed` (sesión de progreso) del feed pasan a ser reaccionables/comentables —
 antes no tenían ningún target.
 
-**Social fase 0 (solo dev, 2026-07-30).** `user_blocks` guarda pares dirigidos
+**Social fase 0 (dev y prod, 2026-07-30).** `user_blocks` guarda pares dirigidos
 `(blocker_id, blocked_id)`: ambos extremos pueden leer la fila, solo quien bloqueó puede
 crearla o retirarla. Crear un bloqueo borra follows y notificaciones entre ambos y el gate
 bidireccional se aplica a perfiles, contenido compartido a clubes, follows, comentarios,
@@ -386,7 +400,7 @@ dinámicamente `profile`, `club_member`, `activity_participant` o `checkpoint_re
 bloqueo bidireccional contra `owner_id`. Las policies de `comments` y `reactions` delegan en ese
 mismo helper y exigen además `commentable`/`reactable`.
 
-> **Corrección `20260802013421_social_interaction_targets_checkpoint_audience_fix.sql` (solo dev).**
+> **Corrección `20260802013421_social_interaction_targets_checkpoint_audience_fix.sql` (dev y prod, 2026-08-02).**
 > La rama `checkpoint_reached` resolvía sobre `source_id` en vez de sobre `audience_id`, el único
 > `case` que no leía la audiencia. Los dos valores solo coinciden en el target **propio** del
 > checkpoint: un comentario hereda `audience_id` del padre pero su `source_id` es el del propio
@@ -1446,8 +1460,7 @@ mockup— dejaría esas dos siempre visibles.
 
 ## 8. Seguridad
 
-Las 42 tablas de prod tienen **RLS activa**. Dev tiene 48, también todas con RLS; las tres
-tablas nuevas de Social fases 0/1 siguen pendientes de producción. Patrones:
+Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
@@ -1478,7 +1491,7 @@ tablas nuevas de Social fases 0/1 siguen pendientes de producción. Patrones:
   Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
   `search_path = ''`; `public.can_view_interaction_target` también es `SECURITY INVOKER` y
   delega en el helper privado de RLS. Ninguna añadió avisos al advisor de seguridad
-  (delta 66 → 66 en dev, reverificado el 2026-08-01).
+  (66 avisos totales en prod y en dev, sin hallazgos atribuibles a esta fase).
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
@@ -1493,9 +1506,9 @@ tablas nuevas de Social fases 0/1 siguen pendientes de producción. Patrones:
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
-| `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, solo dev, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres últimos: Social fase 1, solo dev, 2026-07-30) |
-| `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, solo dev) |
+| `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres últimos: Social fase 1, dev y **prod** 2026-08-02) |
+| `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
@@ -1513,10 +1526,11 @@ es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos v
 2026-07-14 y 2026-07-17) por olvidar exactamente eso. Las dos migraciones de eventos
 (`20260722_activity_kind_evento.sql`, `20260722_club_event_rpcs.sql`) se aplicaron a prod el
 2026-07-22 y se anexaron al baseline en la misma pasada («ANEXO 2026-07-22»).
-Por esa misma regla, las siete migraciones de Social fase 0 **no se anexan aún**: están
-aplicadas solo en dev y el baseline debe seguir describiendo producción. Su despliegue y la
-actualización simultánea del baseline se rastrean en
-[#332](https://github.com/borjar20/Biblioshare/issues/332).
+Por esa misma regla, las siete migraciones de Social fase 0 están aplicadas en dev y prod y
+anexadas al final del baseline como «ANEXO 2026-07-30». En producción, integridad y el puente de
+compatibilidad entraron atómicamente antes del bundle `8589601`; la revocación final de INSERT y
+el índice de reviewer entraron después de verificar el bundle. [#332](https://github.com/borjar20/Biblioshare/issues/332)
+conserva la evidencia operativa.
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del
