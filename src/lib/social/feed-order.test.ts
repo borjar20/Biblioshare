@@ -55,6 +55,7 @@ describe("cursor", () => {
       day: "2026-08-01",
       sortDate: "2026-08-01T23:00:00.000+00:00",
       id: "x~y",
+      legacyFullDate: null,
     });
   });
 
@@ -63,6 +64,7 @@ describe("cursor", () => {
       day: "2026-08-01",
       sortDate: null,
       id: "diary_entries:bbb",
+      legacyFullDate: "2026-08-01",
     });
   });
 });
@@ -86,6 +88,21 @@ describe("isAfterCursor", () => {
     // cadena, así que la reseña date-only iba DESPUÉS del alta.
     expect(isAfterCursor(resena, legado)).toBe(true);
     expect(isAfterCursor(alta, legado)).toBe(false);
+  });
+
+  it("un cursor legado con hora de precisión no trunca la fecha al comparar (regresión #critical)", () => {
+    // Cursor legado emitido por un evento con eventDate de precisión horaria.
+    const legado = parseCursor("2026-08-01T12:00:00.000+00:00~passes:aaa");
+    const z: OrderableEntry = {
+      eventDate: "2026-08-01",
+      sortDate: "2026-08-01T00:00:00.000+00:00",
+      id: "zzz_review",
+    };
+    // Semántica antigua: "2026-08-01" (entry) vs "2026-08-01T12:00:00.000+00:00"
+    // (cursor) como cadenas completas -> "2026-08-01" < "...T12:00..." -> true.
+    // Si `day` se trunca a 10 caracteres antes de comparar, ambas cadenas
+    // quedan iguales y la fila se pierde silenciosamente.
+    expect(isAfterCursor(z, legado)).toBe(true);
   });
 });
 

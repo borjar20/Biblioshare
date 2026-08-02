@@ -16,7 +16,21 @@ export type OrderableEntry = { eventDate: string; sortDate: string; id: string }
 // antes de este cambio y todavía vivo en una pestaña abierta durante el
 // despliegue. Para esos se conserva la comparación antigua: es la única forma
 // de no perder ni repetir filas en ese salto.
-export type FeedCursor = { day: string; sortDate: string | null; id: string };
+//
+// `day` va SIEMPRE truncado a 10 caracteres porque alimenta `dateUpperBound`/
+// `timestampUpperBound`, que a su vez alimentan filtros Postgres `date` y
+// `timestamptz` — no pueden recibir un timestamp completo donde se espera una
+// fecha. Pero la comparación legado en `isAfterCursor` necesita la cadena
+// SIN truncar (la semántica que reproduce comparaba `eventDate` completo
+// contra el cursor completo). Truncar antes de comparar iguala fechas que en
+// la semántica antigua eran distintas y hace perder filas en silencio (ver
+// test de regresión). Por eso se conserva aparte, sin tocar `day`.
+export type FeedCursor = {
+  day: string;
+  sortDate: string | null;
+  id: string;
+  legacyFullDate: string | null;
+};
 
 const SEPARATOR = "~"; // no aparece ni en fechas ISO ni en los ids de evento
 
@@ -41,12 +55,17 @@ export function parseCursor(cursor: string): FeedCursor {
   // Los ids de evento no llevan `~`, pero unir el resto es gratis y evita que
   // un id inesperado trunque el cursor en silencio.
   if (parts.length >= 3) {
-    return { day: parts[0], sortDate: parts[1], id: parts.slice(2).join(SEPARATOR) };
+    return {
+      day: parts[0],
+      sortDate: parts[1],
+      id: parts.slice(2).join(SEPARATOR),
+      legacyFullDate: null,
+    };
   }
   if (parts.length === 2) {
-    return { day: dayOf(parts[0]), sortDate: null, id: parts[1] };
+    return { day: dayOf(parts[0]), sortDate: null, id: parts[1], legacyFullDate: parts[0] };
   }
-  return { day: dayOf(cursor), sortDate: null, id: "" };
+  return { day: dayOf(cursor), sortDate: null, id: "", legacyFullDate: cursor };
 }
 
 // ¿Va `entry` estrictamente DESPUÉS del cursor en el orden total? Lo ya
@@ -54,8 +73,11 @@ export function parseCursor(cursor: string): FeedCursor {
 // `compareEntries`: si dejan de coincidir, la paginación pierde o repite filas.
 export function isAfterCursor(entry: OrderableEntry, cursor: FeedCursor): boolean {
   if (cursor.sortDate === null) {
-    // Camino legado: (eventDate completo, id), la comparación anterior al cambio.
-    const legacyDate = cursor.day;
+    // Camino legado: (eventDate completo, id), la comparación anterior al
+    // cambio. Usa `legacyFullDate` (sin truncar) y NO `day`: `day` está
+    // truncado a 10 caracteres para los cotas de Postgres, y comparar contra
+    // la versión truncada iguala fechas que la semántica antigua distinguía.
+    const legacyDate = cursor.legacyFullDate ?? cursor.day;
     if (entry.eventDate !== legacyDate) return entry.eventDate < legacyDate;
     return entry.id < cursor.id;
   }
