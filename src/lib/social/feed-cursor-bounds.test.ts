@@ -315,6 +315,39 @@ describe("cotas de cursor de getFeed", () => {
     }
     expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed"]);
   });
+
+  // La otra mitad de la clave de orden. `FEED_SOURCE_COLUMNS` centralizó las
+  // COLUMNAS, pero el `.order()` de cada query seguía escrito a mano en cinco
+  // sitios (cuatro en feed.ts y uno en club-feed.ts) sin nada que lo atase a la
+  // definición: cambiar el par de columnas de una fuente y olvidar su `.order()`
+  // deja el filtro y el orden hablando de claves distintas, que es exactamente
+  // la clase de separación silenciosa que este módulo existe para impedir.
+  it("cada fuente ordena por las columnas de FEED_SOURCE_COLUMNS, desc y con `id` de cola", async () => {
+    const data: FakeFeedData = {
+      ...DATA,
+      sessions: [{ id: "sesion", session_date: OLD_DAY, created_at: stamp(OLD_DAY, "11:00") }],
+      episodes: [{ id: "episodio", watched_on: OLD_DAY, created_at: stamp(OLD_DAY, "12:00") }],
+      clubActivities: [{ id: "actividad", created_at: stamp(OLD_DAY, "13:00") }],
+    };
+    const fake = fakeSupabase(data);
+    await getFeed(fake.client, "viewer-1", { pageSize: 5 });
+
+    const seen = new Set<string>();
+    for (const [fakeSource, key] of Object.entries(FAKE_SOURCE_TO_KEY)) {
+      const queries = fake.orderCalls[fakeSource];
+      expect(queries, `la fuente ${fakeSource} no emitió ningún .order()`).toBeDefined();
+      const { dateColumn, stampColumn } = FEED_SOURCE_COLUMNS[key];
+      // `added` y `clubs` tienen dateColumn === stampColumn: la clave tiene dos
+      // columnas, no tres, y pedir la misma dos veces sería ruido.
+      const expected = [...new Set([dateColumn, stampColumn, "id"])].map((column) => ({
+        column,
+        ascending: false,
+      }));
+      for (const orders of queries ?? []) expect(orders, fakeSource).toEqual(expected);
+      seen.add(key);
+    }
+    expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed"]);
+  });
 });
 
 describe("fuentes de fecha-only cuya columna local diverge del timestamp UTC", () => {
@@ -470,6 +503,33 @@ function denseFixture(source: DenseSource): { data: FakeFeedData; expected: stri
   };
 }
 
+// --- #346 otra vez, con el empate movido de «mismo día» a «MISMO INSTANTE»
+//
+// Los fixtures densos de arriba dan a cada fila una hora DISTINTA
+// (`stamp(DENSE_DAY, "1i:00")`), así que el segundo componente de la clave ya
+// desempata y el tercero nunca se ejercita. Con K filas que comparten el
+// instante exacto la cota inclusiva de (día, hora) las vuelve a traer TODAS en
+// cada página, `isAfterCursor` las descarta por `id >= cursor.id`, `fresh`
+// queda vacío, `nextCursor` se apaga y no se sirve nada más — ni de ese día ni
+// de ningún día anterior, en ninguna fuente.
+//
+// Llega por la puerta de siempre: un import de CSV. `historicalCreatedAt`
+// (src/lib/import/commit-row.ts) escribe `date.finishedOn` como `created_at`,
+// así que todos los pases de un mismo día terminado comparten instante — y en
+// un export de Goodreads/Letterboxd un empate de 20 filas es de lo más normal.
+function tiedDenseFixture(source: DenseSource): { data: FakeFeedData; expected: string[] } {
+  const denseAt = stamp(DENSE_DAY, "10:00");
+  const oldAt = stamp(DENSE_OLD_DAY, "10:00");
+  const rows = [
+    ...Array.from({ length: 5 }, (_, i) => source.row(`empatada-${i}`, denseAt, DENSE_DAY)),
+    ...Array.from({ length: 3 }, (_, i) => source.row(`vieja-${i}`, oldAt, DENSE_OLD_DAY)),
+  ];
+  return {
+    data: { [source.dataKey]: rows },
+    expected: rows.map((r) => `${source.idPrefix}:${String(r.id)}`).sort(),
+  };
+}
+
 describe("un día con más filas que `pageSize` en una sola fuente (#346)", () => {
   for (const source of DENSE_SOURCES) {
     it(`${source.key}: sirve el día entero y sigue sirviendo lo anterior`, async () => {
@@ -480,6 +540,17 @@ describe("un día con más filas que `pageSize` en una sola fuente (#346)", () =
       // Si el cursor no llega a quedarse DENTRO del día denso, el recorrido no
       // ejercita la inanición y este test no prueba lo que dice probar.
       expect(cursorDay(pages, 0)).toBe(DENSE_DAY);
+    });
+
+    it(`${source.key}: sirve un empate de instante EXACTO sin apagar la paginación`, async () => {
+      const { data, expected } = tiedDenseFixture(source);
+      const { served, pages } = await walk(2, data);
+      expect(new Set(served).size).toBe(served.length);
+      expect([...served].sort()).toEqual(expected);
+      // El cursor tiene que quedarse DENTRO del empate: si no, el tercer
+      // componente de la clave no se ejercita.
+      expect(cursorDay(pages, 0)).toBe(DENSE_DAY);
+      expect(parseCursor(pages[0].cursor).sortDate).toBe(stamp(DENSE_DAY, "10:00"));
     });
   }
 });

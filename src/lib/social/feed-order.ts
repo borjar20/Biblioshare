@@ -128,6 +128,14 @@ export type FeedSourceColumns = {
    *                 único intervalo sobre esa columna.
    */
   kind: "date" | "timestamptz";
+  /**
+   * Prefijo del id de EVENTO de esta fuente. El tercer componente de la clave
+   * de orden es el id de evento (`diary_entries_added:<uuid>`), pero la columna
+   * `id` guarda el uuid pelado: sin el prefijo no se puede traducir el
+   * desempate a SQL. Termina en `:` y ninguno es prefijo de otro, así que
+   * comparar dos prefijos equivale a comparar los ids completos que generan.
+   */
+  eventIdPrefix: string;
 };
 
 export type FeedSourceKey = "added" | "progressed" | "diary" | "episodes" | "clubs";
@@ -136,12 +144,41 @@ export type FeedSourceKey = "added" | "progressed" | "diary" | "episodes" | "clu
 // sus queries con esto y los tests afirman contra lo mismo, de modo que no
 // pueden separarse.
 export const FEED_SOURCE_COLUMNS: Record<FeedSourceKey, FeedSourceColumns> = {
-  added: { dateColumn: "created_at", stampColumn: "created_at", kind: "timestamptz" },
-  progressed: { dateColumn: "session_date", stampColumn: "created_at", kind: "date" },
-  diary: { dateColumn: "finished_on", stampColumn: "updated_at", kind: "date" },
-  episodes: { dateColumn: "watched_on", stampColumn: "created_at", kind: "date" },
-  clubs: { dateColumn: "created_at", stampColumn: "created_at", kind: "timestamptz" },
+  added: {
+    dateColumn: "created_at",
+    stampColumn: "created_at",
+    kind: "timestamptz",
+    eventIdPrefix: "diary_entries_added:",
+  },
+  progressed: {
+    dateColumn: "session_date",
+    stampColumn: "created_at",
+    kind: "date",
+    eventIdPrefix: "progress_sessions:",
+  },
+  diary: {
+    dateColumn: "finished_on",
+    stampColumn: "updated_at",
+    kind: "date",
+    eventIdPrefix: "diary_entries:",
+  },
+  episodes: {
+    dateColumn: "watched_on",
+    stampColumn: "created_at",
+    kind: "date",
+    eventIdPrefix: "episode_watches:",
+  },
+  clubs: {
+    dateColumn: "created_at",
+    stampColumn: "created_at",
+    kind: "timestamptz",
+    eventIdPrefix: "club_activities:",
+  },
 };
+
+const KNOWN_EVENT_ID_PREFIXES = new Set(
+  Object.values(FEED_SOURCE_COLUMNS).map((c) => c.eventIdPrefix),
+);
 
 // Los valores van entre comillas dobles: dentro de un `or=(...)` de PostgREST,
 // `,` `.` `:` `(` `)` son estructurales y un timestamp los lleva. Mismo patrón
@@ -162,6 +199,40 @@ function quoted(value: string): string {
  * Cota inclusiva en el borde a propósito: el descarte fino —el propio evento del
  * cursor— lo sigue haciendo `isAfterCursor` en cliente.
  */
+/**
+ * Qué hacer con el EMPATE EXACTO: las filas cuyo (día, hora) coincide con el
+ * cursor. El desempate lo decide `id`, pero el id de la clave es el id de
+ * EVENTO (`diary_entries_added:<uuid>`) y la columna guarda el uuid pelado.
+ *
+ *  - Si el cursor lo emitió ESTA fuente, el prefijo coincide y el uuid pelado
+ *    se puede comparar contra la columna: `id.lt.<uuid>`. El empate se parte
+ *    exactamente donde lo parte `isAfterCursor`.
+ *  - Si lo emitió OTRA fuente, ningún id de esta fuente puede igualar al del
+ *    cursor, y como los prefijos difieren, el prefijo YA decide el orden de
+ *    TODAS sus filas a la vez: o el empate entero va después del cursor
+ *    (`lte`, está por servir) o entero antes (`lt`, ya se sirvió). No hace
+ *    falta cláusula de id: la cota de la hora basta.
+ *  - Prefijo desconocido (un cursor de una fuente que aún no existía): cota
+ *    inclusiva. Traer de más desperdicia `limit`; dejar de traer PIERDE filas,
+ *    y la invariante que este filtro debe cumplir es ser superconjunto.
+ */
+function tieBound(
+  columns: FeedSourceColumns,
+  cursor: FeedCursor,
+): { op: "lt" | "lte"; ownId: string | null } {
+  const { eventIdPrefix } = columns;
+  if (cursor.id.startsWith(eventIdPrefix)) {
+    return { op: "lt", ownId: cursor.id.slice(eventIdPrefix.length) };
+  }
+  const cursorPrefix = cursor.id.slice(0, cursor.id.indexOf(":") + 1);
+  if (!KNOWN_EVENT_ID_PREFIXES.has(cursorPrefix)) return { op: "lte", ownId: null };
+  // Prefijo de esta fuente MENOR que el del cursor ⇒ todas sus filas empatadas
+  // ordenan por DEBAJO del cursor ⇒ están por servir ⇒ cota inclusiva. Mayor ⇒
+  // todas ya se sirvieron ⇒ cota estricta, y así el empate cruzado tampoco
+  // gasta `limit`.
+  return { op: eventIdPrefix < cursorPrefix ? "lte" : "lt", ownId: null };
+}
+
 export function cursorSourceFilter(columns: FeedSourceColumns, cursor: FeedCursor): string {
   const { dateColumn, stampColumn, kind } = columns;
 
@@ -170,31 +241,65 @@ export function cursorSourceFilter(columns: FeedSourceColumns, cursor: FeedCurso
     // fila que la comparación legada acepta (`orderDate < legacyFullDate` como
     // cadenas) tiene su día ≤ `cursor.day`, así que `lte` es superconjunto.
     if (cursor.sortDate === null) return `${dateColumn}.lte.${quoted(cursor.day)}`;
-    return (
-      `${dateColumn}.lt.${quoted(cursor.day)},` +
-      `and(${dateColumn}.eq.${quoted(cursor.day)},${stampColumn}.lte.${quoted(cursor.sortDate)})`
-    );
+    const sameDay = `${dateColumn}.eq.${quoted(cursor.day)}`;
+    const tie = tieBound(columns, cursor);
+    const clauses = [
+      `${dateColumn}.lt.${quoted(cursor.day)}`,
+      `and(${sameDay},${stampColumn}.${tie.op}.${quoted(cursor.sortDate)})`,
+    ];
+    if (tie.ownId !== null) {
+      clauses.push(
+        `and(${sameDay},${stampColumn}.eq.${quoted(cursor.sortDate)},id.lt.${quoted(tie.ownId)})`,
+      );
+    }
+    return clauses.join(",");
   }
 
   // timestamptz: el día del cursor se traduce a su intervalo de instantes.
   const dayStart = `${cursor.day}T00:00:00.000+00:00`;
   const nextDayStart = `${addDaysUTC(cursor.day, 1)}T00:00:00.000+00:00`;
   if (cursor.sortDate === null) return `${dateColumn}.lt.${quoted(nextDayStart)}`;
-  // `sortDate` por debajo del arranque del día del cursor: dentro de ese día no
+
+  // OJO: aquí NO se comparan `cursor.sortDate` y `dayStart` como cadenas. Son
+  // de procedencias distintas —`sortDate` lo renderizó Postgres, `dayStart` lo
+  // sintetiza esta función— y Postgres OMITE la fracción cuando es cero, así
+  // que un `created_at` de medianoche exacta vuelve como "…T00:00:00+00:00":
+  // en JS eso ordena POR DEBAJO de "…T00:00:00.000+00:00" ('+' 0x2B < '.' 0x2E)
+  // siendo el MISMO instante. La rama del día desaparecía y toda fila con ese
+  // instante se perdía en silencio, para siempre. Y no es una forma rara: los
+  // pases importados por CSV llevan `created_at = finished_on`, o sea medianoche
+  // exacta (`historicalCreatedAt`, src/lib/import/commit-row.ts).
+  //
+  // Lo que la rama significa es una relación entre DÍAS, así que se compara
+  // entre días: dos cadenas "YYYY-MM-DD" de la misma forma. Los literales con
+  // `.000` solo se ENVÍAN a Postgres, que los parsea como instantes.
+  const stampDay = dayOf(cursor.sortDate);
+  // `sortDate` en un día anterior al del cursor: dentro del día del cursor no
   // queda nada aceptable, solo los días anteriores. Pasa cuando el cursor viene
   // de otra fuente (un `finished_on` local con un `updated_at` UTC del día
   // anterior, p. ej.).
-  if (cursor.sortDate < dayStart) return `${dateColumn}.lt.${quoted(dayStart)}`;
+  if (stampDay < cursor.day) return `${dateColumn}.lt.${quoted(dayStart)}`;
   // Y por arriba hay que RECORTAR al día: si el cursor viene de una fila
   // backdateada, su `sortDate` puede ir semanas por delante del día y sin el
   // recorte el filtro traería filas de días ya servidos, gastaría el `limit` en
-  // ellas y apagaría la paginación (el defecto original).
-  const upper =
-    cursor.sortDate < nextDayStart
-      ? `${stampColumn}.lte.${quoted(cursor.sortDate)}`
-      : `${stampColumn}.lt.${quoted(nextDayStart)}`;
-  return (
-    `${dateColumn}.lt.${quoted(dayStart)},` +
-    `and(${dateColumn}.gte.${quoted(dayStart)},${upper})`
-  );
+  // ellas y apagaría la paginación (el defecto original). En esa rama no hay
+  // empate posible: una fila que igualase a `sortDate` caería fuera del día del
+  // cursor, y ahí manda el día, no la hora.
+  if (stampDay > cursor.day) {
+    return (
+      `${dateColumn}.lt.${quoted(dayStart)},` +
+      `and(${dateColumn}.gte.${quoted(dayStart)},${stampColumn}.lt.${quoted(nextDayStart)})`
+    );
+  }
+  const tie = tieBound(columns, cursor);
+  const clauses = [
+    `${dateColumn}.lt.${quoted(dayStart)}`,
+    `and(${dateColumn}.gte.${quoted(dayStart)},${stampColumn}.${tie.op}.${quoted(cursor.sortDate)})`,
+  ];
+  if (tie.ownId !== null) {
+    // `dateColumn === stampColumn` en esta rama, y `sortDate` está dentro del
+    // día, así que la igualdad ya implica `gte dayStart`.
+    clauses.push(`and(${stampColumn}.eq.${quoted(cursor.sortDate)},id.lt.${quoted(tie.ownId)})`);
+  }
+  return clauses.join(",");
 }

@@ -6,7 +6,7 @@ import type { getFeed } from "./feed";
 // este módulo no se ejecuta como suite.
 //
 // A diferencia de un stub que devuelve listas fijas, este doble APLICA lo que
-// la cadena de query pide —`.or()`, `.lte()`, `.order()` (todas, en orden) y
+// la cadena de query pide —`.or()`, `.order()` (todas, en orden) y
 // `.limit()`— porque justo ahí vivía el defecto que nadie cubría: un filtro
 // que no coincide con lo que acepta `isAfterCursor` gasta el `limit` en filas
 // ya servidas y las filas antiguas no se sirven NUNCA. Sin honrar `limit` el
@@ -60,14 +60,20 @@ export type FakeFeedData = {
   clubActivities?: FakeRow[];
 };
 
-export type FakeLteCall = { column: string; value: string };
+export type FakeOrderCall = { column: string; ascending: boolean };
 
 export type FakeFeedSupabase = {
   client: Parameters<typeof getFeed>[0];
   /** Argumento de cada `.or()` recibida, por fuente y en orden de llamada. */
   orFilters: Record<string, string[]>;
-  /** Argumento de cada `.lte()` recibida, por fuente y en orden de llamada. */
-  lteCalls: Record<string, FakeLteCall[]>;
+  /**
+   * Claves de `.order()` de CADA query, por fuente: una entrada por query, con
+   * sus columnas en el orden en que se pidieron. Sin esto, la mitad de ORDEN de
+   * la clave del feed seguía escrita a mano en cinco sitios sin nada que la
+   * atase a `FEED_SOURCE_COLUMNS` — y las columnas se centralizaron justo para
+   * que no pudieran separarse.
+   */
+  orderCalls: Record<string, FakeOrderCall[][]>;
 };
 
 // --- Evaluador de filtros PostgREST -----------------------------------------
@@ -219,8 +225,8 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     ...r,
   }));
 
-  const lteCalls: Record<string, FakeLteCall[]> = {};
   const orFilters: Record<string, string[]> = {};
+  const orderCalls: Record<string, FakeOrderCall[][]> = {};
 
   // Fila de `interaction_targets` por cada fila fuente que sea target de
   // interacción. `getInteractionSummary` (vía `getInteractionTargetRefs`)
@@ -286,9 +292,8 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     // TODAS las claves de `.order()`, en el orden en que se piden: la clave del
     // feed son tres columnas y quedarse con la última convertiría el doble en
     // un oráculo distinto del de producción.
-    const orders: { column: string; ascending: boolean }[] = [];
+    const orders: FakeOrderCall[] = [];
     let limit: number | null = null;
-    const ltes: FakeLteCall[] = [];
     const ors: string[] = [];
 
     const builder: Record<string, unknown> = {};
@@ -298,10 +303,6 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     }
     builder.select = (cols: string) => {
       columns = cols;
-      return builder;
-    };
-    builder.lte = (column: string, value: string) => {
-      ltes.push({ column, value });
       return builder;
     };
     builder.or = (filter: string) => {
@@ -318,11 +319,10 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     };
     builder.then = (resolve: (value: unknown) => unknown) => {
       const source = sourceOf(table, columns);
-      if (ltes.length) (lteCalls[source] ??= []).push(...ltes);
       if (ors.length) (orFilters[source] ??= []).push(...ors);
+      if (orders.length) (orderCalls[source] ??= []).push(orders);
 
       let result = dataFor(source);
-      for (const f of ltes) result = result.filter((r) => text(r[f.column]) <= f.value);
       // Varios `.or()` se conjugan con AND entre sí, como en PostgREST.
       for (const filter of ors) result = result.filter((r) => rowMatchesOrFilter(r, filter));
       if (orders.length) {
@@ -350,5 +350,5 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     from: (table: string) => query(table),
   };
 
-  return { client: client as unknown as Parameters<typeof getFeed>[0], orFilters, lteCalls };
+  return { client: client as unknown as Parameters<typeof getFeed>[0], orFilters, orderCalls };
 }
