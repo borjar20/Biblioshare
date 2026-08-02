@@ -94,6 +94,14 @@ describe("cotas de cursor de getFeed", () => {
     expect([...served].sort()).toEqual(EXPECTED_IDS); // ninguna perdida
   });
 
+  // OJO con lo que este test NO prueba: `expectedBounds` se calcula llamando a
+  // `addedUpperBound`, o sea la propia función bajo prueba, así que NO es un
+  // oráculo de corrección — si `addedUpperBound` devolviera una cota mal
+  // calculada, este test seguiría en verde. Lo único que comprueba es el
+  // CABLEADO: que `feed.ts` derive su `.lte("created_at", …)` del helper y no
+  // de una fórmula propia duplicada (que es justo el RED que lo motivó). La
+  // corrección del valor la prueba `feed-order.test.ts` contra `isAfterCursor`,
+  // y la ausencia de pérdidas el test de paginación de arriba.
   it("la cota de `added` coincide con el supremo de lo que acepta isAfterCursor", async () => {
     const { addedBounds, expectedBounds } = await walk(5);
     expect(addedBounds.length).toBeGreaterThan(0);

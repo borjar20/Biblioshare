@@ -112,8 +112,9 @@ describe("addedUpperBound", () => {
   // La cota de la fuente `added` tiene que ser un SUPERCONJUNTO de lo que
   // acepta `isAfterCursor` (si no, se pierden filas para siempre) y lo más
   // estrecha posible sin violarlo (si no, el `limit` se gasta en filas ya
-  // servidas). El supremo del conjunto aceptado es
-  // min(cursor.sortDate, fin del día del cursor).
+  // servidas). El supremo del conjunto aceptado es `cursor.sortDate` ACOTADO
+  // al día del cursor por los dos lados: ni por encima del fin del día ni por
+  // debajo de su arranque.
   it("con cursor del mismo día usa la hora del cursor (cota estrecha)", () => {
     const cursor = parseCursor("2026-08-02~2026-08-02T09:00:00.000+00:00~passes:a");
     expect(addedUpperBound(cursor)).toBe("2026-08-02T09:00:00.000+00:00");
@@ -128,6 +129,17 @@ describe("addedUpperBound", () => {
     expect(addedUpperBound(cursor)).toBe("2026-07-15T23:59:59.999+00:00");
   });
 
+  it("con sortDate en el día ANTERIOR no baja del arranque del día del cursor", () => {
+    // Reseña registrada a las 00:30 en Madrid (UTC+2): finished_on es la fecha
+    // LOCAL "2026-08-03" y created_at el UTC "2026-08-02T22:00Z". A partir del
+    // día siguiente `sessionRelativeBasis` ya no lo enmascara y la forma es
+    // permanente. Si la cota bajase a las 22:00 del día 2, las altas de ese
+    // día entre las 22:00 y las 23:59 —que `isAfterCursor` acepta, por ser de
+    // un día anterior— no las traería ninguna página.
+    const cursor = parseCursor("2026-08-03~2026-08-02T22:00:00.000+00:00~diary_entries:c");
+    expect(addedUpperBound(cursor)).toBe("2026-08-03T00:00:00.000+00:00");
+  });
+
   it("un cursor legado (sin hora) cae a la cota de día", () => {
     const cursor = parseCursor("2026-08-01~passes:aaa");
     expect(cursor.sortDate).toBeNull();
@@ -137,15 +149,30 @@ describe("addedUpperBound", () => {
   it("nunca deja fuera nada que `isAfterCursor` acepte para la fuente added", () => {
     // Propiedad, no ejemplo: para las altas eventDate === sortDate === created_at.
     // Toda alta aceptada tiene que caber bajo la cota (`lte`, inclusiva).
+    // Los cursores enumeran las tres relaciones posibles entre `day` y
+    // `dayOf(sortDate)`, que es lo que decide la forma de la cota:
     const cursors = [
+      // sortDate en un día POSTERIOR a `day` (reseña backdateada, registrada hoy)
       "2026-07-15~2026-08-02T18:30:00.000+00:00~diary_entries:b",
+      // sortDate DENTRO de `day`, a media jornada y al filo del día
       "2026-08-02~2026-08-02T09:00:00.000+00:00~passes:a",
       "2026-08-02~2026-08-02T23:59:59.999+00:00~passes:z",
+      "2026-08-02~2026-08-02T00:00:00.000+00:00~passes:0",
+      // sortDate en el día ANTERIOR a `day`. No es exótico: `day` sale de una
+      // fecha LOCAL (finished_on/watched_on/session_date) y `sortDate` de un
+      // created_at UTC, así que todo lo registrado entre 00:00 y 02:00 en
+      // Madrid queda con day = D y created_at = (D-1)T22:00..23:59Z en cuanto
+      // pasa el día (`sessionRelativeBasis` solo lo enmascara el día mismo).
+      "2026-08-03~2026-08-02T22:00:00.000+00:00~diary_entries:c",
     ].map(parseCursor);
     const stamps = [
+      "2026-08-03T00:30:00.000+00:00",
+      "2026-08-02T23:30:00.000+00:00",
       "2026-08-02T23:00:00.000+00:00",
+      "2026-08-02T22:00:00.000+00:00",
       "2026-08-02T18:30:00.000+00:00",
       "2026-08-02T09:00:00.000+00:00",
+      "2026-08-02T00:00:00.000+00:00",
       "2026-07-15T23:00:00.000+00:00",
       "2026-07-15T00:00:00.000+00:00",
       "2026-07-02T10:00:00.000+00:00",
@@ -156,7 +183,11 @@ describe("addedUpperBound", () => {
         for (const id of ["passes:000", "passes:zzz"]) {
           const entry: OrderableEntry = { eventDate: stamp, sortDate: stamp, id };
           if (isAfterCursor(entry, cursor)) {
-            expect(stamp <= bound).toBe(true);
+            expect(
+              stamp <= bound,
+              `alta ${stamp} aceptada por isAfterCursor pero fuera de la cota ${bound} ` +
+                `(cursor day=${cursor.day} sortDate=${cursor.sortDate})`,
+            ).toBe(true);
           }
         }
       }

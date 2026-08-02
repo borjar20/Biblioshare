@@ -105,8 +105,8 @@ export function timestampUpperBound(cursor: FeedCursor): string {
 // ser un SUPERCONJUNTO de lo que el filtro acepta o la fila se pierde para
 // siempre, y lo más estrecha posible o el `limit` se gasta en filas ya servidas.
 //
-// El supremo del conjunto aceptado es min(sortDate, fin del día del cursor), y
-// las dos mitades importan:
+// El supremo del conjunto aceptado es `sortDate` ACOTADO —por arriba y por
+// abajo— al día del cursor, y las tres piezas importan:
 //   · `sortDate` sola NO basta. `day` y `sortDate` salen de columnas distintas
 //     en cuanto el último evento de una página está backdateado (una reseña
 //     terminada hace tres semanas y registrada hoy: day=finished_on,
@@ -117,9 +117,23 @@ export function timestampUpperBound(cursor: FeedCursor): string {
 //   · el fin del día solo tampoco: dentro del día del cursor, `isAfterCursor`
 //     ya no acepta nada por encima de `sortDate`, así que traerlo es tirar el
 //     `limit`.
+//   · y el mínimo a secas TAMPOCO basta: hay que acotar también POR ABAJO, al
+//     arranque del día. `day` sale de una fecha LOCAL (finished_on /
+//     watched_on / session_date) y `sortDate` de un created_at UTC, así que
+//     `sortDate` puede caer en el día ANTERIOR a `day`: en Madrid (UTC+2) todo
+//     lo registrado entre las 00:00 y las 02:00 queda con day = D y
+//     created_at = (D-1)T22:00..23:59Z. `sessionRelativeBasis` lo enmascara el
+//     día mismo, pero a partir del siguiente la forma es permanente. Con el
+//     mínimo pelado la cota bajaría hasta esa hora y dejaría fuera altas que
+//     `isAfterCursor` SÍ acepta —acepta TODAS las de días anteriores—, en una
+//     banda que ninguna página posterior recupera (las siguientes bajan a días
+//     menores). Pérdida silenciosa y definitiva.
 // Cursor legado (`sortDate === null`): no hay hora, así que la cota es el día.
 export function addedUpperBound(cursor: FeedCursor): string {
-  const dayBound = timestampUpperBound(cursor);
-  if (cursor.sortDate === null) return dayBound;
-  return cursor.sortDate < dayBound ? cursor.sortDate : dayBound;
+  const dayEnd = timestampUpperBound(cursor);
+  if (cursor.sortDate === null) return dayEnd;
+  // Acotado, no mínimo: por debajo del arranque del día no puede bajar nunca.
+  const dayStart = `${cursor.day}T00:00:00.000+00:00`;
+  if (cursor.sortDate < dayStart) return dayStart;
+  return cursor.sortDate < dayEnd ? cursor.sortDate : dayEnd;
 }
