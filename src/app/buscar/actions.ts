@@ -8,6 +8,7 @@ import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { itemHref } from "@/lib/catalog/item-href";
+import { loginHref } from "@/lib/auth/safe-next";
 import { settledWithin } from "@/lib/async/settled-within";
 import type { SearchResult } from "@/lib/catalog/types";
 
@@ -29,8 +30,10 @@ export async function openCatalogItem(result: SearchResult) {
     data: { user },
   } = await supabase.auth.getUser();
   // Crear catálogo exige sesión (RLS). Un visitante anónimo solo puede abrir lo
-  // que ya está cacheado; para lo demás, pasa por el login.
-  if (!user) redirect("/login");
+  // que ya está cacheado; para lo demás, pasa por el login y vuelve a la
+  // búsqueda tras entrar (el ítem aún no existe, así que no hay ficha a la que
+  // devolverle; que reabra el resultado ya con sesión).
+  if (!user) redirect(loginHref("/buscar"));
 
   const itemId = await findOrCreateCatalogItem(supabase, result, user.id);
 
@@ -64,7 +67,7 @@ export async function addToLibrary(result: SearchResult) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/buscar"));
 
   // La búsqueda ya NO persiste los resultados de la API (§7.32): un resultado
   // que no venía del catálogo local llega sin catalogId, y la fila nace aquí,
