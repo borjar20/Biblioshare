@@ -33,16 +33,22 @@ del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gi
 aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_indexes`;
 backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
 divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
-`books` no necesita backfill (las labels ya coincidían); **fix del writer canónico de
-notificaciones aplicado y verificado SOLO EN DEV el 2026-08-01**; **migración de CONTRATO de
-la fase 1 social (`20260801224621_social_interaction_targets_contract.sql`) aplicada y
-verificada SOLO EN DEV el 2026-08-01, contra `information_schema.columns`, `pg_constraint`,
-`pg_trigger` y `pg_proc` — nunca contra `list_migrations`: `interaction_target_id` es `NOT
-NULL` en `comments` y `reactions`, el par heredado `target_type`/`target_id` ya NO es columna
-de ninguna de las dos, y la unicidad de reacción es `(interaction_target_id, user_id, kind)`.
-**PRODUCCIÓN NO TIENE `interaction_targets` EN ABSOLUTO**: ni la migración expansiva ni la de
-contrato se han aplicado allí, y el bundle canónico no está desplegado — toda la fase 1
-(expandir Y contraer) vive solo en dev. `schema-baseline.sql` sigue intacto a propósito**]**
+`books` no necesita backfill (las labels ya coincidían); **Social fase 1 — corregido aquí,
+2026-08-02**: esta cabecera llevaba «fix del writer canónico y migración de CONTRATO SOLO EN
+DEV» y «PRODUCCIÓN NO TIENE `interaction_targets` EN ABSOLUTO», y ya no es cierto — **la fase 1
+ENTERA está aplicada y verificada en DEV y en PROD** (`vmutcradmodhiltuohys`) el 2026-08-02: las
+siete migraciones de la cadena expansiva (`20260730212803` → `20260730213248` → `20260730214405`
+→ `20260730214621` → `20260801115944` → `20260801135656` → `20260802013421`) y, DESPUÉS de que
+el bundle canónico estuviera vivo, la de contrato
+(`20260801224621_social_interaction_targets_contract.sql`). Verificado contra los objetos reales
+—`pg_class`, `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra
+`list_migrations`: `interaction_target_id` es `NOT NULL` en `comments` y `reactions`, el par
+heredado `target_type`/`target_id` ya NO es columna de ninguna de las dos, `notifications`
+conserva sus tres columnas nullable, la unicidad de reacción es `(interaction_target_id,
+user_id, kind)` y `comments_no_nesting` ha desaparecido. Cero pérdida de datos en todo el
+recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a paso.
+`schema-baseline.sql` **ya no está sin anexar**: lleva el «ANEXO 2026-08-02» con las ocho
+migraciones en el orden en que las recibió producción**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -81,23 +87,25 @@ contrato se han aplicado allí, y el bundle canónico no está desplegado — to
 > forma atómica, desplegó el bundle `8589601` y solo entonces cerró el INSERT heredado y añadió
 > el índice de reviewer; [#332](https://github.com/borjar20/Biblioshare/issues/332) conserva la
 > evidencia operativa.
-> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado SOLO EN DEV.**
+> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado en DEV, y desde el
+> 2026-08-02 también en PROD (ver el corte de producción más abajo).**
 > `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
 > `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
 > `activity_checkpoint` desde `club_activity_checkpoints.created_by`, repara el registro ya
 > materializado y añade el índice `interaction_targets_owner_id_idx`. La matriz transaccional
 > `supabase/tests/social_phase1_interaction_targets.sql` pasó completa y los advisors de seguridad
-> siguen en 66, sin findings nuevos. Producción y `schema-baseline.sql` siguen intactos y pendientes
-> de la tarea de despliegue de la fase.
-> **Fix del 2026-08-01 (writer canónico de notificaciones): aplicado y verificado SOLO EN DEV.**
+> siguen en 66, sin findings nuevos.
+> **Fix del 2026-08-01 (writer canónico de notificaciones): aplicado y verificado en DEV, y en
+> PROD el 2026-08-02 dentro de la cadena expansiva.**
 > `20260801135656_social_interaction_targets_notification_writer_fix.sql` conserva en INSERT el
 > `interaction_target_id` enviado sin par legacy por el writer confiable (`service_role`); si el
 > INSERT incluye `(target_type, target_id)`, ese par sigue siendo la autoridad. En UPDATE el trigger
 > nunca acepta metadatos canónicos aislados del cliente: vuelve a derivar desde el par completo o
 > limpia el ID si falta alguna parte. La matriz SQL pasó completa; advisors de seguridad 66→66 y de
-> rendimiento 53→53, sin delta. Producción y `schema-baseline.sql` siguen intactos.
-> **Delta del 2026-08-01 (Social fase 1, migración de CONTRATO, §5): aplicado y verificado
-> SOLO EN DEV.** `20260801224621_social_interaction_targets_contract.sql` cierra el ciclo
+> rendimiento 53→53, sin delta.
+> **Delta del 2026-08-01 (Social fase 1, migración de CONTRATO, §5): aplicado y verificado en DEV
+> el 2026-08-01 y en PROD el 2026-08-02, la última de las ocho.**
+> `20260801224621_social_interaction_targets_contract.sql` cierra el ciclo
 > expand/migrate/contract: `interaction_target_id` pasa a `NOT NULL` en `comments` y
 > `reactions`, la unicidad de reacción se apoya en él, desaparecen de esas dos tablas el par
 > heredado `(target_type, target_id)`, sus triggers de resolución, sus índices y el CHECK
@@ -106,21 +114,28 @@ contrato se han aplicado allí, y el bundle canónico no está desplegado — to
 > nullable y su trigger resolutor. La matriz `supabase/tests/social_phase1_interaction_targets.sql`
 > pasó completa (`ALL ASSERTIONS PASSED`) y los advisors siguen en 66 de seguridad, sin
 > hallazgos nuevos.
-> **Corte de producción del 2026-08-02: la cadena EXPANSIVA está aplicada y verificada en PROD.**
-> Siete migraciones (`20260730212803` … `20260802013421`, esta última el fix de la audiencia de
-> checkpoint) contra `vmutcradmodhiltuohys`, verificadas contra objetos reales —`pg_class`,
+> **Corte de producción del 2026-08-02: la fase 1 ENTERA está aplicada y verificada en PROD.**
+> Ocho migraciones contra `vmutcradmodhiltuohys`, verificadas contra objetos reales —`pg_class`,
 > `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra `list_migrations`: el
 > ledger de prod ya venía sin la fila de `social_phase0_notification_compat` pese a tener su
-> efecto (`comments_body_canonical`), que es justo la trampa que advierte `AGENTS.md`. El backfill
-> no borró NADA: las 21 filas de comentarios/reacciones tenían fuente viva y los conteos salieron
-> idénticos (8 comentarios, 13 reacciones, 6 avisos), con 647 targets y cero `interaction_target_id`
-> nulos. Prod y dev quedan en 48 tablas públicas, todas con RLS.
-> **La migración de CONTRATO sigue SOLO EN DEV, a propósito**: borra columnas que el bundle
-> desplegado todavía lee, así que va después de que el bundle canónico esté vivo y verificado.
-> En prod siguen presentes los pares legacy de `comments`/`reactions` y el check
-> `comments_no_nesting`, que es la comprobación de que el contrato no se ha colado.
-> El orden de despliegue es expansiva → backfill → bundle → contrato. `schema-baseline.sql` sigue
-> intacto a propósito: el anexo queda gateado a que el ciclo entero esté confirmado en producción.
+> efecto (`comments_body_canonical`), que es justo la trampa que advierte `AGENTS.md`. Primero la
+> cadena EXPANSIVA de siete (`20260730212803` … `20260802013421`, esta última el fix de la
+> audiencia de checkpoint): el backfill no borró NADA — las 21 filas de comentarios/reacciones
+> tenían fuente viva y los conteos salieron idénticos (8 comentarios, 13 reacciones, 6 avisos),
+> con 647 targets y cero `interaction_target_id` nulos. Después el merge del bundle canónico
+> (`a4dcc0b` en `main`, despliegue de producción de Vercel correcto, el sitio responde 200) y
+> **solo entonces** la migración de CONTRATO
+> (`20260801224621_social_interaction_targets_contract.sql`), que borra columnas que el bundle
+> anterior todavía leía. Los conteos siguieron idénticos tras ella. Prod y dev quedan en 48 tablas
+> públicas, todas con RLS, y sin advisors nuevos en ninguno de los dos entornos.
+> **Ojo al orden, que difiere entre entornos**: en dev el contrato se aplicó ANTES que el fix de
+> la audiencia de checkpoint; en prod el fix viajó con la cadena expansiva y el contrato entró
+> después. Se verificó tras aplicarlo que el contrato NO revierte el fix —
+> `private.can_view_interaction_target` sigue delegando en
+> `can_view_target('activity_checkpoint', …)`. El baseline replica el orden de PROD, que es el que
+> reproduce producción desde cero.
+> El orden de despliegue fue expansiva → backfill → bundle → contrato. `schema-baseline.sql`
+> **ya está anexado** («ANEXO 2026-08-02»), en la misma pasada en que se cerró el ciclo en prod.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
 
@@ -324,8 +339,8 @@ asume los tres— y **`onboarded_at`**, que **ES el gate** de `/onboarding`: con
 asistente no se vuelve a mostrar. Ojo, «tener perfil» y «estar onboardeado» son cosas distintas
 desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` (con `follow_status`
 `pending|accepted` — a perfil público es aceptado directo), `reactions` y `comments`
-(polimórficos vía `target_kind` **hasta la fase 1 social; en dev apuntan ya solo a
-`interaction_targets` — ver más abajo**), `notifications`, `push_subscriptions`.
+(polimórficos vía `target_kind` **hasta la fase 1 social; desde el 2026-08-02, en dev y en prod,
+apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, `push_subscriptions`.
 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
@@ -366,13 +381,15 @@ pueden verlo y resolverlo. Ser autor del target, por sí solo, no revela el repo
 un target, los comentarios/reacciones/notificaciones asociados se eliminan, pero los reportes
 se preservan como auditoría y pasan a `actioned` con `target_deleted_at`.
 
-### Registro canónico `interaction_targets` (Social fase 1, contrato cerrado, SOLO DEV, 2026-08-01)
+### Registro canónico `interaction_targets` (Social fase 1, contrato cerrado, dev y prod, 2026-08-02)
 
-> **Estado: expand/migrate/contract COMPLETO en dev, INEXISTENTE en producción.** Prod no tiene la
-> tabla `interaction_targets` ni ninguna de las columnas, funciones o triggers de esta sección: ni
-> la migración expansiva ni la de contrato se han aplicado allí, y el bundle canónico no está
-> desplegado. Todo lo que sigue describe **dev** (`tyvzpuhxfwxrnkcpzxyg`), verificado contra objetos
-> reales. El despliegue a prod va en el orden expansiva → backfill → bundle → contrato.
+> **Estado: expand/migrate/contract COMPLETO en dev y en PRODUCCIÓN.** Las ocho migraciones están
+> aplicadas en los dos entornos —dev (`tyvzpuhxfwxrnkcpzxyg`) el 2026-08-01, prod
+> (`vmutcradmodhiltuohys`) el 2026-08-02— y todo lo que sigue está verificado contra objetos
+> reales (`pg_class`, `pg_proc`, `pg_constraint`, `information_schema.columns`), nunca contra
+> `list_migrations`. El despliegue a prod fue en el orden expansiva → backfill → bundle → contrato,
+> con el merge del bundle canónico en medio; el anexo correspondiente ya está en
+> `schema-baseline.sql` («ANEXO 2026-08-02»).
 
 `interaction_targets` desacopla las interacciones de siete tablas fuente y materializa ocho tipos.
 Su contrato vivo es:
@@ -1517,9 +1534,9 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 
 ## 10. Migraciones
 
-128 ficheros en `supabase/migrations/` (recontado el 2026-08-01; incluye los deltas que aún
-están solo en dev). `supabase/schema-baseline.sql` es el replay ordenado
-para levantar un entorno limpio.
+131 ficheros en `supabase/migrations/` (recontado el 2026-08-02; incluye los deltas que aún
+están solo en dev, como `20260814_notes_public_select.sql`). `supabase/schema-baseline.sql` es el
+replay ordenado para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
 es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos veces (notas
@@ -1531,6 +1548,11 @@ anexadas al final del baseline como «ANEXO 2026-07-30». En producción, integr
 compatibilidad entraron atómicamente antes del bundle `8589601`; la revocación final de INSERT y
 el índice de reviewer entraron después de verificar el bundle. [#332](https://github.com/borjar20/Biblioshare/issues/332)
 conserva la evidencia operativa.
+Las ocho de Social fase 1 están aplicadas en dev y prod y anexadas como «ANEXO 2026-08-02», en la
+misma pasada en que se cerró el ciclo en producción. **El anexo va en el orden de PROD, que no es
+el de dev**: allí el fix de la audiencia de checkpoint (`20260802013421`) viajó con la cadena
+expansiva y la de contrato (`20260801224621`) entró la ÚLTIMA, después del bundle canónico; en dev
+el contrato se había aplicado antes que el fix.
 
 ⚠️ **El orden del baseline es el de aplicación REAL en producción**
 (`supabase_migrations.schema_migrations`), **no el alfabético de ficheros** — varias del
