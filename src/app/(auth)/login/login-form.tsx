@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +10,9 @@ import { login, type AuthActionState } from "../actions";
 
 const initialState: AuthActionState = {};
 
-export function LoginForm() {
+export function LoginForm({ next }: { next: string }) {
   const t = useTranslations("auth");
   const [state, formAction, pending] = useActionState(login, initialState);
-  const next = useSearchParams().get("next") ?? "";
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
