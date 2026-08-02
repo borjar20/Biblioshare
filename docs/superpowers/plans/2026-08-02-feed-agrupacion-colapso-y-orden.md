@@ -479,14 +479,26 @@ ES `created_at`, así que un día anterior implica siempre un `created_at` anter
 existe:
 
 ```ts
-// added: created_at ES el eventDate, así que la hora del cursor es una cota
-// exacta y estrecha. Con la cota de día entero, las altas más nuevas que el
-// cursor volverían a entrar y gastarían el `limit`.
-// Con cursor legado no hay `sortDate`, así que se cae a la cota de día.
-if (cursor) {
-  q = q.lte("created_at", cursor.sortDate ?? timestampUpperBound(cursor));
-}
+if (cursor) q = q.lte("created_at", addedUpperBound(cursor));
 ```
+
+**Corrección (hallazgo de la review de la Task 2).** La primera versión de esta enmienda usaba
+`cursor.sortDate ?? timestampUpperBound(cursor)` y **era incorrecta**: `cursor.day` y
+`cursor.sortDate` salen de columnas distintas en cuanto la última fila de una página está
+backdateada. Para una reseña con `finished_on = 2026-07-15` registrada hoy, el cursor es
+`day="2026-07-15"` pero `sortDate="2026-08-02T…"`, de modo que la supuesta cota estrecha quedaba
+**18 días más ancha** que la de día: la query gastaba su `limit` entero en filas ya servidas y las
+más antiguas no se servían nunca en ninguna página, sin excepción ni test rojo.
+
+La cota exacta es el **mínimo** de las dos, porque `isAfterCursor` acepta una fila `added` si
+`día(created_at) < cursor.day`, o si `día == cursor.day && created_at < cursor.sortDate`; el
+supremo de ese conjunto es `min(cursor.sortDate, finDeDía(cursor.day))`. Vive en `feed-order.ts`
+como `addedUpperBound(cursor)`, junto a `isAfterCursor`, para que las dos se muevan juntas.
+
+**Y la lección de proceso:** que las cotas `.lte` concuerden con `isAfterCursor` no lo cubría ningún
+test, y por eso el fallo pasó. La agreement se prueba en `feed-cursor-bounds.test.ts`, que pagina
+`getFeed` hasta agotarlo sobre un conjunto con filas backdateadas y exige que cada fila salga
+exactamente una vez.
 
 Las otras tres fuentes tienen una fecha semántica (`session_date`, `finished_on`, `watched_on`) que
 es independiente de su `created_at` —pueden estar backdateadas—, así que ahí la cota por día es la
