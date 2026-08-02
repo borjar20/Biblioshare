@@ -363,12 +363,16 @@ test("las sesiones del mismo libro forman UNA timeline; la nota privada no se fi
     });
 
     const today = new Date().toISOString().slice(0, 10);
-    const backdated = isoDaysAgo(3).slice(0, 10); // 3 días < ventana de 7
-    // 3 sesiones del mismo libro → un solo sub-grupo (hueco máximo 3 días).
+    // Hueco de 2 días: el borde EXACTO de GROUP_WINDOW_DAYS, que parte cuando
+    // pasan MÁS de 2, así que las 3 sesiones siguen siendo UNA timeline. Este
+    // fixture usaba 3 días («< ventana de 7») y se quedó obsoleto al bajar la
+    // ventana a 2: partía la tarjeta en dos y el test fallaba.
+    const backdated = isoDaysAgo(2).slice(0, 10);
+    // 3 sesiones del mismo libro → un solo sub-grupo.
     await rest("progress_sessions", {
       method: "POST",
       body: JSON.stringify([
-        { id: PROG_SESSIONS[0], user_id: followee.id, pass_id: PROG_PASS, session_date: backdated, position: { page: 50 }, created_at: isoDaysAgo(3) },
+        { id: PROG_SESSIONS[0], user_id: followee.id, pass_id: PROG_PASS, session_date: backdated, position: { page: 50 }, created_at: isoDaysAgo(2) },
         { id: PROG_SESSIONS[1], user_id: followee.id, pass_id: PROG_PASS, session_date: today, position: { page: 120 }, created_at: isoDaysAgo(0.05) },
         { id: PROG_SESSIONS[2], user_id: followee.id, pass_id: PROG_PASS, session_date: today, position: { page: 200 }, created_at: new Date().toISOString() },
       ]),
