@@ -1,5 +1,5 @@
 import type { FeedEntry, FeedEvent, FeedVerb } from "./feed";
-import { compareEntries } from "./feed-order";
+import { compareEntries, dayOf } from "./feed-order";
 
 // Variante de presentación: N eventos del mismo actor colapsados en una tarjeta.
 // NO es una entidad con fila propia — solo agrupa para pintar. La reacción de
@@ -18,24 +18,27 @@ export type PersonGroupEntry = {
 // watchedEpisode) y las entradas de club pasan intactos.
 const GROUPABLE: ReadonlySet<FeedVerb> = new Set(["added", "progressed"]);
 
-function day(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-export const PROGRESS_WINDOW_DAYS = 7;
+// Ventana de agrupación, en días naturales. Se aplica distinto según el verbo:
+//   added      → SPAN: el grupo abarca como máximo esta cantidad de días.
+//   progressed → HUECO: parte cuando entre dos sesiones consecutivas pasan más
+//                de esta cantidad de días.
+// La asimetría es deliberada: en altas se acota lo que abarca la tarjeta; en
+// sesiones se detecta el parón de una lectura, de modo que un libro leído a
+// diario durante semanas sigue siendo UNA tarjeta.
+export const GROUP_WINDOW_DAYS = 2;
 
 // Días naturales entre dos fechas ISO (fecha-only o timestamp), sin usar Date
 // (Date.now/new Date argless están prohibidos y aquí no hacen falta): se comparan
 // los días como enteros epoch/86400.
 function dayNumber(iso: string): number {
-  const [y, m, d] = day(iso).split("-").map(Number);
+  const [y, m, d] = dayOf(iso).split("-").map(Number);
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
 }
 
-// added → actor+día (sin cambios). progressed → actor+obra (la ventana se aplica
-// después, partiendo el bucket por huecos > PROGRESS_WINDOW_DAYS).
+// El corte por días ya no vive en la clave: las altas se trocean después, por
+// span, igual que las sesiones se trocean por hueco.
 function groupKey(e: FeedEvent): string {
-  if (e.verb === "added") return `added:${e.actorId}:${day(e.eventDate)}`;
+  if (e.verb === "added") return `added:${e.actorId}`;
   return `progressed:${e.actorId}:${e.itemType}:${e.itemId}`;
 }
 
@@ -57,8 +60,8 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
   const result: FeedEntry[] = [...passthrough];
   for (const [key, items] of buckets) {
     // Cada bucket ya es de un solo verbo (el prefijo de la clave lo garantiza).
-    // Los de progressed se parten en sub-grupos cuya distancia entre sesiones
-    // consecutivas no supere PROGRESS_WINDOW_DAYS; added es un único sub-grupo.
+    // Ambos se parten en sub-grupos según GROUP_WINDOW_DAYS, pero con distinta
+    // referencia (ver el bucle de abajo): progressed por hueco, added por span.
     const isProgressed = key.startsWith("progressed:");
     // Mismo comparador que el feed (día desc → sortDate desc → id desc): sin el
     // paso por sortDate, N sesiones del mismo día caían al id (uuid aleatorio)
@@ -67,17 +70,17 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
     const chunks: FeedEvent[][] = [];
     for (const ev of sorted) {
       const last = chunks[chunks.length - 1];
-      if (
-        isProgressed &&
-        last &&
-        dayNumber(last[last.length - 1].eventDate) - dayNumber(ev.eventDate) > PROGRESS_WINDOW_DAYS
-      ) {
-        chunks.push([ev]); // hueco mayor que la ventana → nuevo sub-grupo
-      } else if (last && (isProgressed || key.startsWith("added:"))) {
-        last.push(ev);
-      } else {
+      if (!last) {
         chunks.push([ev]);
+        continue;
       }
+      // added: se compara contra el MÁS NUEVO del grupo, para acotar el span.
+      // progressed: contra el ANTERIOR inmediato, para detectar el parón.
+      const reference = isProgressed ? last[last.length - 1] : last[0];
+      const distance = dayNumber(reference.eventDate) - dayNumber(ev.eventDate);
+      const limit = isProgressed ? GROUP_WINDOW_DAYS : GROUP_WINDOW_DAYS - 1;
+      if (distance > limit) chunks.push([ev]);
+      else last.push(ev);
     }
     for (const chunk of chunks) {
       if (chunk.length === 1) {

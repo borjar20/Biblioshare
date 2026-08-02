@@ -34,7 +34,7 @@ export type FeedCursor = {
 
 const SEPARATOR = "~"; // no aparece ni en fechas ISO ni en los ids de evento
 
-function dayOf(eventDate: string): string {
+export function dayOf(eventDate: string): string {
   return eventDate.slice(0, 10);
 }
 
