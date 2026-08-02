@@ -190,6 +190,16 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     const viewerId = await devtestId();
 
     const now = new Date().toISOString();
+    // created_at ESCALONADO (3 s entre altas) a propósito. El orden del feed es
+    // (día ↓, created_at ↓, id ↓): con las cuatro altas sembradas en el mismo
+    // instante empataban en created_at y el desempate caía al id —uuids fijos,
+    // sí, pero el test no puede depender de en qué orden alfabético quedaron—,
+    // así que "las 2 filas visibles al colapsar" no era una propiedad afirmable.
+    // Con el escalón el orden es Colección 4 → 3 → 2 → 1, y la obra que el
+    // visitante ya tiene (COL_BOOKS[0] = Colección 1) es la MÁS VIEJA: queda
+    // oculta mientras la tarjeta está colapsada.
+    const addedAt = (index: number) =>
+      new Date(ts - (COL_BOOKS.length - 1 - index) * 3_000).toISOString();
     await rest("books", {
       method: "POST",
       body: JSON.stringify(
@@ -211,7 +221,7 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
           item_id: COL_BOOKS[index],
           status: "planned",
           is_active: true,
-          created_at: now,
+          created_at: addedAt(index),
         })),
         {
           id: VIEWER_COL_PASS,
@@ -240,15 +250,43 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
     const card = page.locator("article").filter({ hasText: followeeName }).first();
     await expect(card).toBeVisible();
 
-    // Headline agrupado (NO dos tarjetas sueltas de "añadió a su biblioteca").
+    // Headline agrupado (NO cuatro tarjetas sueltas de "añadió a su
+    // biblioteca"), y con el TOTAL ya estando colapsada: 4, no las 2 visibles.
     await expect(card.getByText(/añadió 4 títulos/i)).toBeVisible();
     // Badge de tipo "Colección".
     await expect(card.getByText(/^colección$/i)).toBeVisible();
-    // Lista vertical: por fila, título + autor + botón "Añadir".
+
+    // ── Colapsada ──
+    // Cada fila pinta DOS enlaces al mismo libro (portada con alt=título +
+    // título), así que las filas se cuentan por el TEXTO del título: el enlace
+    // de la portada no tiene texto y no entra en la cuenta.
+    const titleRows = card.getByText(/^\[E2E\] Colección \d · \d+$/);
+    await expect(titleRows).toHaveCount(2);
+    // Las 2 más nuevas por created_at (ver `addedAt`): Colección 4 y 3.
+    await expect(card.getByText(`[E2E] Colección 4 · ${ts}`)).toBeVisible();
+    await expect(card.getByText(`[E2E] Colección 3 · ${ts}`)).toBeVisible();
+    await expect(card.getByText("[E2E] Autor 4")).toBeVisible();
+    await expect(card.getByText("[E2E] Autor 3")).toBeVisible();
+    await expect(card.getByRole("button", { name: /ver 2 obras más/i })).toHaveCount(1);
+
+    // El pie cuenta TODAS las pendientes del grupo (4 obras − 1 ya en la
+    // biblioteca del visitante = 3), no solo las filas pintadas. Se afirma
+    // COLAPSADA porque es el estado donde ambos números difieren: si el pie se
+    // derivara de lo visible diría "los 2".
+    await expect(card.getByRole("button", { name: /guardar los 3/i })).toHaveCount(1);
+
+    // ── Expandida ──
+    await card.getByRole("button", { name: /ver 2 obras más/i }).click();
+    await expect(titleRows).toHaveCount(4);
+    // Lista vertical: por fila, título + autor. Las 2 que estaban ocultas.
     await expect(card.getByText(`[E2E] Colección 1 · ${ts}`)).toBeVisible();
     await expect(card.getByText(`[E2E] Colección 2 · ${ts}`)).toBeVisible();
     await expect(card.getByText("[E2E] Autor 1")).toBeVisible();
     await expect(card.getByText("[E2E] Autor 2")).toBeVisible();
+
+    // Y el botón "Añadir" por fila, según la biblioteca del visitante: la obra
+    // con pase ACTIVO (Colección 1) no lo ofrece; la que solo tiene un pase
+    // INACTIVO (Colección 2) sí. Ambas filas solo existen ya expandida.
     const ownedRow = card
       .getByRole("link", { name: `[E2E] Colección 1 · ${ts}` })
       .first()
@@ -257,18 +295,10 @@ test("un seguido con altas del mismo día se pinta como UNA tarjeta Colección c
       .getByRole("link", { name: `[E2E] Colección 2 · ${ts}` })
       .first()
       .locator("..");
-
     await expect(ownedRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(0);
     await expect(missingRow.getByRole("button", { name: /^añadir$/i })).toHaveCount(1);
 
-    // Con 4 obras la tarjeta se colapsa a las 2 primeras + botón "ver 2 obras más".
-    await expect(card.getByRole("link", { name: /\[E2E\] Colección/ })).toHaveCount(2);
-    await expect(card.getByRole("button", { name: /ver 2 obras más/i })).toHaveCount(1);
-    await card.getByRole("button", { name: /ver 2 obras más/i }).click();
-    await expect(card.getByRole("link", { name: /\[E2E\] Colección/ })).toHaveCount(4);
-
-    // El pie sigue contando TODAS las pendientes del grupo (4 obras, 1 ya en
-    // biblioteca del visitante), no solo las visibles.
+    // El pie no cambia al expandir: sigue siendo el total de pendientes.
     await expect(card.getByRole("button", { name: /guardar los 3/i })).toHaveCount(1);
   } finally {
     await cleanFixtures();
