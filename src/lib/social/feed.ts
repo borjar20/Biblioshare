@@ -286,7 +286,15 @@ export async function getFeed(
           // después vía pass_reviews.
           let q = supabase
             .from("passes")
-            .select("id, user_id, item_type, item_id, finished_on, started_on, rating, created_at")
+            // updated_at, no created_at: un pase se CREA al añadir la obra a
+            // la biblioteca y se termina después con un UPDATE
+            // (planTransition → updateActive, passes/transitions.ts), así que
+            // created_at no es la hora de registro del terminado — puede ir
+            // semanas por delante. `updated_at` lo mantiene el trigger
+            // `passes_set_updated_at` y para la transición de cierre ES ese
+            // instante. Coste aceptado: una edición posterior (nota, edición)
+            // mueve la reseña en el feed.
+            .select("id, user_id, item_type, item_id, finished_on, started_on, rating, created_at, updated_at")
             .in("user_id", followedIds)
             // Un pase abierto no es actividad terminada: no aparece en el
             // feed social de gente a la que sigues.
@@ -599,8 +607,16 @@ export async function getFeed(
       // medianoche UTC y en Madrid arranca con 2 horas de desfase. Mismo criterio
       // que las sesiones: si es de hoy, la hora de registro es precisa y se usa;
       // si está backdateada, no hay hora real que mostrar.
-      eventDate: sessionRelativeBasis(r.finished_on, r.created_at),
-      sortDate: r.created_at,
+      //
+      // La hora de registro aquí es `updated_at`, NO `created_at`: a diferencia
+      // de progress_sessions / episode_watches —que insertan una fila por
+      // evento—, el pase se crea al AÑADIR la obra y el terminado llega después
+      // como UPDATE. Con created_at el «hace x» medía desde el alta y, peor, el
+      // día de orden se iba semanas atrás mientras finished_on era hoy: la fila
+      // quedaba fuera de la cota `lte("finished_on", …)` de ese cursor y no se
+      // servía en NINGUNA página (ver feed-cursor-bounds.test.ts).
+      eventDate: sessionRelativeBasis(r.finished_on, r.updated_at),
+      sortDate: r.updated_at,
       rating: r.rating,
       reviewExcerpt: excerpt(reviewText),
       episode: null,

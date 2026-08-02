@@ -102,6 +102,47 @@ const DIVERGENT_EXPECTED_IDS = DATE_ONLY_SOURCES.flatMap((s) =>
   (DIVERGENT_DATA[s.dataKey] ?? []).map((r) => `${s.idPrefix}:${r.id}`),
 ).sort();
 
+// --- Reseña terminada HOY sobre un pase creado hace semanas
+//
+// El pase se crea al añadir la obra a la biblioteca; el "terminado" llega
+// después como UPDATE. Si el día de orden sale de `created_at`, esa reseña
+// ordena en el día del ALTA (hace semanas) mientras su `finished_on` es hoy:
+// `isAfterCursor` la acepta con un cursor de aquel día, pero la cota
+// `lte("finished_on", día+1)` de esa página la deja fuera. No se sirve en
+// NINGUNA página, y ensanchar la cota no lo arregla: el hueco es el tiempo de
+// lectura entero, no un desfase de husos.
+const PASS_CREATED_DAY = daysBefore(TODAY, 20);
+const MID_DAY = daysBefore(TODAY, 5);
+
+const lateReview = {
+  id: "resena-tardia",
+  finished_on: TODAY,
+  created_at: stamp(PASS_CREATED_DAY, "10:00"), // alta del pase
+  updated_at: stamp(TODAY, "18:00"), // registro del terminado
+};
+// Dos altas de hoy y dos episodios de hace 5 días: bastan para que el cursor
+// baje de HOY a MID_DAY con la página llena, que es el salto tras el cual la
+// cota de `diary` ya no puede alcanzar un `finished_on` de hoy.
+const LATE_DATA: FakeFeedData = {
+  added: Array.from({ length: 2 }, (_, i) => ({
+    id: `alta-${i}`,
+    created_at: stamp(TODAY, `09:0${i}`),
+  })),
+  episodes: Array.from({ length: 2 }, (_, i) => ({
+    id: `episodio-${i}`,
+    watched_on: MID_DAY,
+    created_at: stamp(MID_DAY, `10:0${i}`),
+  })),
+  finished: [lateReview],
+};
+const LATE_EXPECTED_IDS = [
+  "diary_entries_added:alta-0",
+  "diary_entries_added:alta-1",
+  "episode_watches:episodio-0",
+  "episode_watches:episodio-1",
+  "diary_entries:resena-tardia",
+].sort();
+
 // --- Clubes: `eventDate === sortDate === created_at`, igual que `added`.
 const CLUB_DAY = daysBefore(TODAY, 5);
 const clubActivities = Array.from({ length: 6 }, (_, i) => ({
@@ -207,6 +248,14 @@ describe("cotas de las fuentes de fecha-only cuando el día de orden no es la co
       }
     }
     expect(violations).toEqual([]);
+  });
+});
+
+describe("reseña terminada hoy sobre un pase creado hace semanas", () => {
+  it("se sirve en alguna página del recorrido completo", async () => {
+    const { served } = await walk(2, LATE_DATA);
+    expect(new Set(served).size).toBe(served.length);
+    expect([...served].sort()).toEqual(LATE_EXPECTED_IDS);
   });
 });
 

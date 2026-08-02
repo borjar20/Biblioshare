@@ -106,6 +106,11 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     started_on: null,
     rating: null,
     ...r,
+    // Un pase que nunca se ha tocado tras el alta tiene updated_at ==
+    // created_at (lo pone el trigger `passes_set_updated_at` solo al UPDATE):
+    // ese es el valor por defecto, y el fixture solo lo fija cuando quiere
+    // representar un terminado registrado DESPUÉS del alta.
+    updated_at: r.updated_at ?? r.created_at,
   }));
   const sessions = (rows.sessions ?? []).map((r) => ({
     user_id: FAKE_ACTOR_ID,
