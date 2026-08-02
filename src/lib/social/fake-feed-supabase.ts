@@ -42,6 +42,7 @@ export type FakeFeedSource =
   | "club_members"
   | "club_activities"
   | "clubs"
+  | "interaction_targets"
   | "other";
 
 export type FakeFeedData = {
@@ -81,6 +82,7 @@ function sourceOf(table: string, columns: string): FakeFeedSource {
     case "club_members":
     case "club_activities":
     case "clubs":
+    case "interaction_targets":
       return table;
     default:
       return "other";
@@ -143,8 +145,23 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
 
   const lteCalls: Record<string, FakeLteCall[]> = {};
 
+  // Fila de `interaction_targets` por cada fila fuente que sea target de
+  // interacción. `getInteractionSummary` (vía `getInteractionTargetRefs`)
+  // resuelve el UUID canónico ahí y LANZA si falta: sin estas filas el feed no
+  // llega a devolver nada y ningún test de orden puede afirmar sobre el
+  // resultado. La clave del mapa es `kind:source_id`, así que servir todas las
+  // clases en cada consulta es inocuo (el doble no aplica `.eq`/`.in`).
+  const interactionTargets: FakeRow[] = [
+    ...added.map((r) => ({ kind: "pass", source_id: r.id })),
+    ...sessions.map((r) => ({ kind: "progress_session", source_id: r.id })),
+    ...finished.map((r) => ({ kind: "diary_entry", source_id: r.id })),
+    ...episodes.map((r) => ({ kind: "episode_watch", source_id: r.id })),
+  ].map((t) => ({ id: `interaction-target:${t.kind}:${text(t.source_id)}`, ...t }));
+
   function dataFor(source: FakeFeedSource): FakeRow[] {
     switch (source) {
+      case "interaction_targets":
+        return interactionTargets;
       case "added":
         return added;
       case "diary":

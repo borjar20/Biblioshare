@@ -54,6 +54,15 @@ const IDENTITY = {
 };
 const BOOK = { id: ITEM_ID, title: "Título", author: null, cover_url: null };
 
+// El UUID canónico de interacción de cada reseña: `getInteractionSummary` lo
+// exige (lanza si falta) desde que las interacciones cuelgan de
+// `interaction_target_id`. No es parte del contrato que prueba este fichero,
+// solo el mínimo para que la lectura llegue a devolver eventos.
+const INTERACTION_TARGETS = [
+  { id: "it-resena-ok", kind: "diary_entry", source_id: "resena-ok" },
+  { id: "it-sin-hora", kind: "diary_entry", source_id: "sin-hora" },
+];
+
 function review(overrides: Row): Row {
   return {
     id: "resena-ok",
@@ -75,6 +84,7 @@ describe("sortDate nunca es date-only", () => {
         pass_reviews: [review({ id: "sin-hora", created_at: null }), review({})],
         profile_identities: [IDENTITY],
         books: [BOOK],
+        interaction_targets: INTERACTION_TARGETS,
       }),
       USER_ID,
     );

@@ -677,9 +677,14 @@ export async function getFeed(
 
   // Las dos familias se mezclan aquí, ya como entradas: a partir de este punto
   // el orden, el cursor y el corte son los mismos para ambas.
+  // Espeja a `FeedEntry` salvo en el evento de persona, que aquí sigue siendo
+  // el borrador (interactionTargetId aún sin resolver). `sortDate` es
+  // obligatorio en las dos ramas: es el segundo componente de la clave de orden
+  // (`OrderableEntry`, feed-order.ts) y sin él ni `compareEntries` ni
+  // `isAfterCursor` ni `makeCursor` aceptan estas entradas.
   const entries: Array<
-    | { source: "person"; id: string; eventDate: string; event: FeedEventDraft }
-    | { source: "club"; id: string; eventDate: string; event: ClubFeedEvent }
+    | { source: "person"; id: string; eventDate: string; sortDate: string; event: FeedEventDraft }
+    | { source: "club"; id: string; eventDate: string; sortDate: string; event: ClubFeedEvent }
   > = [
     ...events.map(
       (event) => ({
