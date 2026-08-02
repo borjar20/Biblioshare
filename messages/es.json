@@ -355,7 +355,7 @@
     "grouped": {
       "addedCount": "añadió {count, plural, one {# título} other {# títulos}} a su biblioteca",
       "progressedIn": "avanzó en {title}",
-      "saveAllToQueue": "＋ Guardar {count, plural, one {el libro} other {los # libros}} en mi cola",
+      "saveAllToQueue": "＋ Guardar {count, plural, one {el título} other {los # títulos}} en mi cola",
       "showMore": "ver {count, plural, one {# obra más} other {# obras más}}"
     },
     "kind": {
