@@ -490,10 +490,33 @@ backdateada. Para una reseña con `finished_on = 2026-07-15` registrada hoy, el 
 **18 días más ancha** que la de día: la query gastaba su `limit` entero en filas ya servidas y las
 más antiguas no se servían nunca en ninguna página, sin excepción ni test rojo.
 
-La cota exacta es el **mínimo** de las dos, porque `isAfterCursor` acepta una fila `added` si
-`día(created_at) < cursor.day`, o si `día == cursor.day && created_at < cursor.sortDate`; el
-supremo de ese conjunto es `min(cursor.sortDate, finDeDía(cursor.day))`. Vive en `feed-order.ts`
-como `addedUpperBound(cursor)`, junto a `isAfterCursor`, para que las dos se muevan juntas.
+La cota correcta es un **clamp** al día del cursor, no un mínimo. `isAfterCursor` acepta una fila
+`added` en dos casos: **incondicionalmente** si `día(created_at) < cursor.day`, y además si
+`día == cursor.day && created_at < cursor.sortDate`. Ese «incondicionalmente» es lo que obliga al
+límite inferior: la cota nunca puede bajar del arranque de `cursor.day` sin dejar fuera filas de
+días anteriores que sí se aceptan.
+
+Y `sortDate` **puede** caer por debajo de ese arranque, porque `cursor.day` sale de una fecha
+**local** (`finished_on`, vía `todayISO()`) mientras `sortDate` es un `created_at` en **UTC**: en
+Madrid, todo lo registrado entre las 00:00 y las 02:00 queda con `eventDate = D` y
+`sortDate = (D−1)T22:00Z`, y a partir del día siguiente `sessionRelativeBasis` ya no lo enmascara.
+Con un `min` a secas se perdía esa banda de altas.
+
+```ts
+export function addedUpperBound(cursor: FeedCursor): string {
+  const dayEnd = timestampUpperBound(cursor);
+  if (cursor.sortDate === null) return dayEnd;
+  const dayStart = `${cursor.day}T00:00:00.000+00:00`;
+  if (cursor.sortDate < dayStart) return dayStart;
+  return cursor.sortDate < dayEnd ? cursor.sortDate : dayEnd;
+}
+```
+
+Vive en `feed-order.ts`, junto a `isAfterCursor`, para que las dos se muevan juntas.
+
+**Historial de este párrafo, porque el error se repitió dos veces:** la primera versión usaba
+`cursor.sortDate` a secas, la segunda `min(sortDate, finDeDía)`, y las dos perdían filas en
+silencio. Si alguien lo «simplifica» de vuelta a un mínimo, vuelve el fallo.
 
 **Y la lección de proceso:** que las cotas `.lte` concuerden con `isAfterCursor` no lo cubría ningún
 test, y por eso el fallo pasó. La agreement se prueba en `feed-cursor-bounds.test.ts`, que pagina
