@@ -763,26 +763,31 @@ export type Database = {
           body: string
           created_at: string
           id: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
+          interaction_target_id: string
         }
         Insert: {
           author_id: string
           body: string
           created_at?: string
           id?: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
+          interaction_target_id: string
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
           id?: string
-          target_id?: string
-          target_type?: Database["public"]["Enums"]["target_kind"]
+          interaction_target_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comments_interaction_target_id_fkey"
+            columns: ["interaction_target_id"]
+            isOneToOne: false
+            referencedRelation: "interaction_targets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       content_reports: {
         Row: {
@@ -958,6 +963,60 @@ export type Database = {
           followee_id?: string
           follower_id?: string
           status?: Database["public"]["Enums"]["follow_status"]
+        }
+        Relationships: []
+      }
+      interaction_targets: {
+        Row: {
+          audience_id: string
+          audience_kind: Database["public"]["Enums"]["interaction_audience_kind"]
+          comment_notification_type:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          commentable: boolean
+          href: string
+          id: string
+          kind: Database["public"]["Enums"]["target_kind"]
+          owner_id: string
+          reactable: boolean
+          reaction_notification_type:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          source_id: string
+        }
+        Insert: {
+          audience_id: string
+          audience_kind: Database["public"]["Enums"]["interaction_audience_kind"]
+          comment_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          commentable: boolean
+          href: string
+          id?: string
+          kind: Database["public"]["Enums"]["target_kind"]
+          owner_id: string
+          reactable: boolean
+          reaction_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          source_id: string
+        }
+        Update: {
+          audience_id?: string
+          audience_kind?: Database["public"]["Enums"]["interaction_audience_kind"]
+          comment_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          commentable?: boolean
+          href?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["target_kind"]
+          owner_id?: string
+          reactable?: boolean
+          reaction_notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+          source_id?: string
         }
         Relationships: []
       }
@@ -1174,6 +1233,7 @@ export type Database = {
           actor_id: string
           created_at: string
           id: string
+          interaction_target_id: string | null
           read_at: string | null
           target_id: string | null
           target_type: string | null
@@ -1184,6 +1244,7 @@ export type Database = {
           actor_id: string
           created_at?: string
           id?: string
+          interaction_target_id?: string | null
           read_at?: string | null
           target_id?: string | null
           target_type?: string | null
@@ -1194,13 +1255,22 @@ export type Database = {
           actor_id?: string
           created_at?: string
           id?: string
+          interaction_target_id?: string | null
           read_at?: string | null
           target_id?: string | null
           target_type?: string | null
           type?: Database["public"]["Enums"]["notification_type"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_interaction_target_id_fkey"
+            columns: ["interaction_target_id"]
+            isOneToOne: false
+            referencedRelation: "interaction_targets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       passes: {
         Row: {
@@ -1461,28 +1531,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          interaction_target_id: string
           kind: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          interaction_target_id: string
           kind?: string
-          target_id: string
-          target_type: Database["public"]["Enums"]["target_kind"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          interaction_target_id?: string
           kind?: string
-          target_id?: string
-          target_type?: Database["public"]["Enums"]["target_kind"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reactions_interaction_target_id_fkey"
+            columns: ["interaction_target_id"]
+            isOneToOne: false
+            referencedRelation: "interaction_targets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saga_follows: {
         Row: {
@@ -2137,6 +2212,10 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      can_view_interaction_target: {
+        Args: { p_interaction_target_id: string }
+        Returns: boolean
+      }
       can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
       can_view_target: {
         Args: {
@@ -2302,7 +2381,7 @@ export type Database = {
         Returns: undefined
       }
       report_comment: {
-        Args: { p_comment_id: string; p_details?: string | null; p_reason: string }
+        Args: { p_comment_id: string; p_details?: string; p_reason: string }
         Returns: string
       }
       resolve_pending_import: {
@@ -2314,30 +2393,18 @@ export type Database = {
         Args: { p_entries: Json; p_route_id: string }
         Returns: undefined
       }
-      save_saga_sequence:
-        | {
-            Args: {
-              p_blocks: Json
-              p_entries: Json
-              p_removed: Json
-              p_saga_id: string
-              p_window_subjects: Json
-              p_windows: Json
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_blocks: Json
-              p_entries: Json
-              p_removed: Json
-              p_saga_id: string
-              p_tandems: Json
-              p_window_subjects: Json
-              p_windows: Json
-            }
-            Returns: undefined
-          }
+      save_saga_sequence: {
+        Args: {
+          p_blocks: Json
+          p_entries: Json
+          p_removed: Json
+          p_saga_id: string
+          p_tandems: Json
+          p_window_subjects: Json
+          p_windows: Json
+        }
+        Returns: undefined
+      }
       set_activity_completion_mode: {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
@@ -2406,6 +2473,11 @@ export type Database = {
         | "hate"
         | "other"
       follow_status: "pending" | "accepted"
+      interaction_audience_kind:
+        | "profile"
+        | "club_member"
+        | "activity_participant"
+        | "checkpoint_reached"
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       notification_type:
@@ -2427,9 +2499,18 @@ export type Database = {
         | "club_activity_spawned"
         | "club_event_created"
         | "mentioned"
+        | "activity_liked"
+        | "activity_commented"
+        | "checkpoint_commented"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
-      saga_item_role: "precuela" | "novela_corta" | "relato" | "spin_off" | "companero" | "crossover"
+      saga_item_role:
+        | "precuela"
+        | "novela_corta"
+        | "relato"
+        | "spin_off"
+        | "companero"
+        | "crossover"
       saga_placement: "fijo" | "libre"
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
@@ -2584,6 +2665,12 @@ export const Constants = {
       club_visibility: ["public", "private"],
       content_report_reason: ["spam", "harassment", "spoiler", "hate", "other"],
       follow_status: ["pending", "accepted"],
+      interaction_audience_kind: [
+        "profile",
+        "club_member",
+        "activity_participant",
+        "checkpoint_reached",
+      ],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
       notification_type: [
@@ -2605,10 +2692,20 @@ export const Constants = {
         "club_activity_spawned",
         "club_event_created",
         "mentioned",
+        "activity_liked",
+        "activity_commented",
+        "checkpoint_commented",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
-      saga_item_role: ["precuela", "novela_corta", "relato", "spin_off", "companero", "crossover"],
+      saga_item_role: [
+        "precuela",
+        "novela_corta",
+        "relato",
+        "spin_off",
+        "companero",
+        "crossover",
+      ],
       saga_placement: ["fijo", "libre"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],

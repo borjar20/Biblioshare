@@ -9,13 +9,11 @@ import type { InteractionSummary } from "@/lib/social/interactions";
 // checkpoint" (has_reached_checkpoint), así que un summary vacío aquí
 // significa simplemente "sin acceso todavía", sin lógica extra en el cliente.
 export function CheckpointChat({
-  checkpointId,
   summary,
   viewerLoggedIn,
   clubId,
   knownUsernames,
 }: {
-  checkpointId: string;
   summary: InteractionSummary;
   viewerLoggedIn: boolean;
   /** Club de la actividad del checkpoint -- acota el autocompletar de @menciones a sus miembros. */
@@ -25,8 +23,7 @@ export function CheckpointChat({
 }) {
   return (
     <ReviewInteractions
-      targetType="activity_checkpoint"
-      targetId={checkpointId}
+      interactionTargetId={summary.interactionTargetId}
       reactionCount={summary.reactionCount}
       viewerReacted={summary.viewerReacted}
       commentCount={summary.commentCount}

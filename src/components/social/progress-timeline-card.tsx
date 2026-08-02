@@ -76,11 +76,10 @@ export function ProgressTimelineCard({
                     {step.progress.note.isSpoiler ? <SpoilerGate>{noteEl}</SpoilerGate> : noteEl}
                   </div>
                 )}
-                {step.interactionTarget && (
+                {step.interactionTarget?.interactionTargetId && (
                   <div className="mt-1.5">
                     <ReviewInteractions
-                      targetType={step.interactionTarget.targetType}
-                      targetId={step.interactionTarget.targetId}
+                      interactionTargetId={step.interactionTarget.interactionTargetId}
                       reactionCount={step.reactionCount}
                       viewerReacted={step.viewerReacted}
                       commentCount={step.commentCount}

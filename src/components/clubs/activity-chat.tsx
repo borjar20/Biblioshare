@@ -8,13 +8,11 @@ import type { InteractionSummary } from "@/lib/social/interactions";
 // (can_view_target = is_activity_participant) ya filtra a participantes, así que
 // un summary vacío significa "no participas / aún no hay mensajes".
 export function ActivityChat({
-  activityId,
   summary,
   viewerLoggedIn,
   clubId,
   knownUsernames,
 }: {
-  activityId: string;
   summary: InteractionSummary;
   viewerLoggedIn: boolean;
   /** Club de la actividad -- acota el autocompletar de @menciones a sus miembros. */
@@ -24,8 +22,7 @@ export function ActivityChat({
 }) {
   return (
     <ReviewInteractions
-      targetType="club_activity"
-      targetId={activityId}
+      interactionTargetId={summary.interactionTargetId}
       reactionCount={summary.reactionCount}
       viewerReacted={summary.viewerReacted}
       commentCount={summary.commentCount}

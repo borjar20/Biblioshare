@@ -147,8 +147,7 @@ export function ClubPostCard({
       })()}
 
       <ReviewInteractions
-        targetType="club_post"
-        targetId={post.id}
+        interactionTargetId={post.interactionTargetId}
         reactionCount={post.reactionCount}
         viewerReacted={post.viewerReacted}
         commentCount={post.commentCount}

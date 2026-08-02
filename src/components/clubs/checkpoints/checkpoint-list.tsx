@@ -134,7 +134,7 @@ export function CheckpointList({
                 )}
               </div>
 
-              {confirmed ? (
+              {confirmed && c.chat ? (
                 <div className="border-t border-border bg-surface-muted px-[15px] py-3">
                   <p className="mb-2 font-mono text-[9.5px] font-medium tracking-wider text-green uppercase">
                     {positionLabel
@@ -142,7 +142,6 @@ export function CheckpointList({
                       : c.label}
                   </p>
                   <CheckpointChat
-                    checkpointId={c.id}
                     summary={c.chat}
                     viewerLoggedIn
                     clubId={clubId}

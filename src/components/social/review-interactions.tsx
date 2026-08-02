@@ -11,7 +11,6 @@ import {
 } from "@/lib/social/interaction-actions";
 import type {
   InteractionComment,
-  TargetType,
 } from "@/lib/social/interactions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
@@ -26,8 +25,7 @@ import { CommentActions } from "./comment-actions";
 // instante y revierte en error. Los comentarios vienen prefetcheados (capados)
 // desde el servidor — expandir no dispara fetch, solo muestra/oculta.
 export function ReviewInteractions({
-  targetType,
-  targetId,
+  interactionTargetId,
   reactionCount,
   viewerReacted,
   commentCount,
@@ -37,8 +35,7 @@ export function ReviewInteractions({
   clubId,
   knownUsernames = [],
 }: {
-  targetType: TargetType;
-  targetId: string;
+  interactionTargetId: string;
   reactionCount: number;
   viewerReacted: boolean;
   commentCount: number;
@@ -60,7 +57,7 @@ export function ReviewInteractions({
 }) {
   const t = useTranslations("social");
   const { state, isPending, failed, run } = useOptimisticAction({
-    state: { reactionCount, viewerReacted, commentCount, comments },
+    state: { interactionTargetId, reactionCount, viewerReacted, commentCount, comments },
     reducer: interactionReducer,
   });
   const [expanded, setExpanded] = useState(false);
@@ -98,6 +95,7 @@ export function ReviewInteractions({
     // (con id y autor de verdad) y useOptimistic lo sustituye al asentarse.
     const optimistic: InteractionComment = {
       id: `optimistic-${Date.now()}`,
+      interactionTargetId: "optimistic-comment-target",
       authorId: "",
       author: t("you"),
       authorUsername: null,
@@ -111,7 +109,7 @@ export function ReviewInteractions({
       viewerReacted: false,
     };
     run({ type: "addComment", comment: optimistic }, () =>
-      addComment(targetType, targetId, value),
+      addComment(interactionTargetId, value),
     );
   }
 
@@ -127,7 +125,7 @@ export function ReviewInteractions({
             aria-pressed={state.viewerReacted}
             onClick={() =>
               run({ type: "toggleTarget" }, () =>
-                toggleReaction(targetType, targetId),
+                toggleReaction(interactionTargetId),
               )
             }
             className={`flex items-center gap-1.5 transition-colors ${
@@ -181,7 +179,7 @@ export function ReviewInteractions({
                   aria-pressed={c.viewerReacted}
                   onClick={() =>
                     run({ type: "toggleComment", id: c.id }, () =>
-                      toggleReaction("comment", c.id),
+                      toggleReaction(c.interactionTargetId),
                     )
                   }
                   className={`flex items-center gap-1 ${

@@ -82,6 +82,31 @@ async function savePassFields(
   return error ? { error: "generic" } : { review: review || null, isPublic };
 }
 
+async function notifyPublicReviewMentions(
+  supabase: SupabaseServerClient,
+  authorId: string,
+  passId: string,
+  review: string,
+): Promise<void> {
+  try {
+    const { data: target, error } = await supabase
+      .from("interaction_targets")
+      .select("id")
+      .eq("kind", "diary_entry")
+      .eq("source_id", passId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!target) return;
+    await notifyMentions(supabase, {
+      authorId,
+      text: review,
+      interactionTargetId: target.id,
+    });
+  } catch (error) {
+    console.error("notifyPublicReviewMentions failed", error);
+  }
+}
+
 // openPass ya no existe: abrir un pase es una transición de estado y pasa
 // por applyTransition (src/lib/passes/apply-transition.ts), nunca un insert
 // directo. Las acciones de este fichero editan un pase que ya reciben por id.
@@ -108,12 +133,7 @@ export async function closePass(
   // pública (el destinatario debe poder verla) -- el gate 'profile' con el
   // propio autor como owner reutiliza la visibilidad de su perfil.
   if (result.review && result.isPublic) {
-    await notifyMentions(supabase, {
-      authorId: user.id,
-      text: result.review,
-      target: { type: "diary_entry", id: passId },
-      gate: { kind: "profile", ownerId: user.id },
-    });
+    await notifyPublicReviewMentions(supabase, user.id, passId, result.review);
   }
 
   revalidateReadingLog(itemType, itemId);

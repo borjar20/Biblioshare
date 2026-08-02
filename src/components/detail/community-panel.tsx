@@ -82,8 +82,7 @@ export async function CommunityPanel({
                 }
               >
                 <ReviewInteractions
-                  targetType="episode_watch"
-                  targetId={review.id}
+                  interactionTargetId={review.interactionTargetId}
                   reactionCount={review.reactionCount}
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}
@@ -112,8 +111,7 @@ export async function CommunityPanel({
                 }
               >
                 <ReviewInteractions
-                  targetType="diary_entry"
-                  targetId={review.id}
+                  interactionTargetId={review.interactionTargetId}
                   reactionCount={review.reactionCount}
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}

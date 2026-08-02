@@ -1,12 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { resolveDeliverableMentions } from "./notify-mentions";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Fake de supabase-js suficiente para las cadenas que usa
-// resolveDeliverableMentions: select/eq/in + maybeSingle. A diferencia del
-// sketch del brief, aquí SÍ se distingue maybeSingle() (resuelve a un objeto
-// o null) de una cadena select().eq().in() normal (resuelve a un array) --
-// mezclar ambas formas habría dejado pasar un bug real: profiles.maybeSingle()
-// devuelve una fila suelta, no una lista de una fila.
+const mocks = vi.hoisted(() => ({
+  notifyMany: vi.fn(),
+  createServiceRoleClient: vi.fn(),
+}));
+vi.mock("./notifications", () => ({ notifyMany: mocks.notifyMany }));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: mocks.createServiceRoleClient,
+}));
+
+import { notifyMentions, resolveDeliverableMentions } from "./notify-mentions";
+
 type Row = Record<string, unknown>;
 
 function makeFakeSupabase(tables: Record<string, Row[]>) {
@@ -17,34 +21,37 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
 
     function matchingRows(): Row[] {
       let rows = tables[table] ?? [];
-      for (const [col, val] of eqFilters) rows = rows.filter((r) => r[col] === val);
-      for (const [col, vals] of inFilters) rows = rows.filter((r) => vals.includes(r[col]));
+      for (const [column, value] of eqFilters) {
+        rows = rows.filter((row) => row[column] === value);
+      }
+      for (const [column, values] of inFilters) {
+        rows = rows.filter((row) => values.includes(row[column]));
+      }
       return rows;
     }
 
     async function exec(): Promise<{ data: unknown; error: null }> {
       const rows = matchingRows();
-      if (maybeSingleFlag) return { data: rows[0] ?? null, error: null };
-      return { data: rows, error: null };
+      return { data: maybeSingleFlag ? (rows[0] ?? null) : rows, error: null };
     }
 
     const builder = {
       select() {
         return builder;
       },
-      eq(col: string, val: unknown) {
-        eqFilters.push([col, val]);
+      eq(column: string, value: unknown) {
+        eqFilters.push([column, value]);
         return builder;
       },
-      in(col: string, vals: unknown[]) {
-        inFilters.push([col, vals]);
+      in(column: string, values: unknown[]) {
+        inFilters.push([column, values]);
         return builder;
       },
       maybeSingle() {
         maybeSingleFlag = true;
         return exec();
       },
-      then(resolve: (v: unknown) => void, reject: (e: unknown) => void) {
+      then(resolve: (value: unknown) => void, reject: (error: unknown) => void) {
         exec().then(resolve, reject);
       },
     };
@@ -75,9 +82,25 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
   } as any;
 }
 
+function canonicalTarget(audienceKind: string, audienceId: string): Row {
+  return {
+    id: "target-1",
+    audience_kind: audienceKind,
+    audience_id: audienceId,
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.notifyMany.mockImplementation(
+    async (_supabase: unknown, params: { userIds: string[] }) => params.userIds,
+  );
+});
+
 describe("resolveDeliverableMentions — bloqueos", () => {
   it("excluye bloqueos en cualquiera de las dos direcciones", async () => {
     const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "author")],
       profile_identities: [
         { user_id: "blocked", username: "bloqueado" },
         { user_id: "blocked-by", username: "mebloqueo" },
@@ -93,135 +116,208 @@ describe("resolveDeliverableMentions — bloqueos", () => {
     const out = await resolveDeliverableMentions(supabase, {
       authorId: "author",
       text: "@bloqueado @mebloqueo @visible",
-      gate: { kind: "profile", ownerId: "author" },
+      interactionTargetId: "target-1",
     });
 
     expect(out).toEqual(["ok"]);
   });
 });
 
-describe("resolveDeliverableMentions — perfil público", () => {
-  it("entrega a todos los mencionados existentes menos el autor", async () => {
+describe("resolveDeliverableMentions — perfil", () => {
+  it("en perfil público entrega a todos menos al autor", async () => {
     const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
       profile_identities: [
         { user_id: "u-borja", username: "borja" },
         { user_id: "u-ana", username: "ana" },
         { user_id: "author", username: "yo" },
       ],
-      profiles: [{ user_id: "author", is_public: true }],
+      profiles: [{ user_id: "owner", is_public: true }],
     });
+
     const out = await resolveDeliverableMentions(supabase, {
       authorId: "author",
       text: "@borja @ana @yo",
-      gate: { kind: "profile", ownerId: "author" },
+      interactionTargetId: "target-1",
     });
+
     expect(out.sort()).toEqual(["u-ana", "u-borja"]);
   });
-});
 
-describe("resolveDeliverableMentions — perfil privado", () => {
-  it("solo entrega a seguidores aceptados del dueño", async () => {
+  it("en perfil privado entrega solo a seguidores aceptados del dueño", async () => {
     const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
       profile_identities: [
-        { user_id: "u-borja", username: "borja" },
-        { user_id: "u-ana", username: "ana" },
+        { user_id: "accepted", username: "aceptado" },
+        { user_id: "pending", username: "pendiente" },
       ],
       profiles: [{ user_id: "owner", is_public: false }],
       follows: [
-        { follower_id: "u-borja", followee_id: "owner", status: "accepted" },
-        // ana no sigue al dueño -> no debe recibir la mención pese a estar mencionada.
+        { follower_id: "accepted", followee_id: "owner", status: "accepted" },
+        { follower_id: "pending", followee_id: "owner", status: "pending" },
       ],
     });
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({
+        follows: [
+          { follower_id: "accepted", followee_id: "owner", status: "accepted" },
+          { follower_id: "pending", followee_id: "owner", status: "pending" },
+        ],
+      }),
+    );
+
     const out = await resolveDeliverableMentions(supabase, {
-      authorId: "owner",
-      text: "@borja @ana",
-      gate: { kind: "profile", ownerId: "owner" },
+      authorId: "author",
+      text: "@aceptado @pendiente",
+      interactionTargetId: "target-1",
     });
-    expect(out).toEqual(["u-borja"]);
+
+    expect(out).toEqual(["accepted"]);
   });
 
-  it("un seguidor pendiente (no aceptado) no recibe la mención", async () => {
+  it("usa service role para ver al otro seguidor aceptado de un owner privado", async () => {
     const supabase = makeFakeSupabase({
-      profile_identities: [{ user_id: "u-borja", username: "borja" }],
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "other-follower", username: "otra" }],
       profiles: [{ user_id: "owner", is_public: false }],
-      follows: [{ follower_id: "u-borja", followee_id: "owner", status: "pending" }],
-    });
-    const out = await resolveDeliverableMentions(supabase, {
-      authorId: "owner",
-      text: "@borja",
-      gate: { kind: "profile", ownerId: "owner" },
-    });
-    expect(out).toEqual([]);
-  });
-});
-
-describe("resolveDeliverableMentions — club", () => {
-  it("solo entrega a miembros activos del club", async () => {
-    const supabase = makeFakeSupabase({
-      profile_identities: [
-        { user_id: "u-borja", username: "borja" },
-        { user_id: "u-ana", username: "ana" },
+      follows: [
+        { follower_id: "author", followee_id: "owner", status: "accepted" },
       ],
-      club_members: [{ user_id: "u-ana", club_id: "c1", status: "active" }],
     });
-    const out = await resolveDeliverableMentions(supabase, {
-      authorId: "author",
-      text: "@borja @ana",
-      gate: { kind: "club", clubId: "c1" },
-    });
-    expect(out).toEqual(["u-ana"]);
-  });
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({
+        follows: [
+          { follower_id: "author", followee_id: "owner", status: "accepted" },
+          { follower_id: "other-follower", followee_id: "owner", status: "accepted" },
+          { follower_id: "outsider", followee_id: "elsewhere", status: "accepted" },
+        ],
+      }),
+    );
 
-  it("un miembro inactivo/expulsado no recibe la mención", async () => {
-    const supabase = makeFakeSupabase({
-      profile_identities: [{ user_id: "u-ana", username: "ana" }],
-      club_members: [{ user_id: "u-ana", club_id: "c1", status: "removed" }],
-    });
     const out = await resolveDeliverableMentions(supabase, {
       authorId: "author",
-      text: "@ana",
-      gate: { kind: "club", clubId: "c1" },
+      text: "@otra",
+      interactionTargetId: "target-1",
     });
-    expect(out).toEqual([]);
-  });
 
-  it("un miembro activo de OTRO club no recibe la mención", async () => {
-    const supabase = makeFakeSupabase({
-      profile_identities: [{ user_id: "u-ana", username: "ana" }],
-      club_members: [{ user_id: "u-ana", club_id: "c-other", status: "active" }],
-    });
-    const out = await resolveDeliverableMentions(supabase, {
-      authorId: "author",
-      text: "@ana",
-      gate: { kind: "club", clubId: "c1" },
-    });
-    expect(out).toEqual([]);
+    expect(out).toEqual(["other-follower"]);
   });
 });
 
-describe("resolveDeliverableMentions — sin menciones", () => {
-  it("devuelve vacío sin tocar la BD", async () => {
+describe("resolveDeliverableMentions — audiencias canónicas", () => {
+  it("entrega solo a miembros activos del club del target", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("club_member", "club-1")],
+      profile_identities: [
+        { user_id: "member", username: "dentro" },
+        { user_id: "removed", username: "fuera" },
+      ],
+      club_members: [
+        { club_id: "club-1", user_id: "member", status: "active" },
+        { club_id: "club-1", user_id: "removed", status: "removed" },
+      ],
+    });
+
+    const out = await resolveDeliverableMentions(supabase, {
+      authorId: "author",
+      text: "@dentro @fuera",
+      interactionTargetId: "target-1",
+    });
+
+    expect(out).toEqual(["member"]);
+  });
+
+  it("entrega solo a participantes de la actividad del target", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("activity_participant", "activity-1")],
+      profile_identities: [
+        { user_id: "participant", username: "dentro" },
+        { user_id: "outsider", username: "fuera" },
+      ],
+      club_activity_participants: [
+        { activity_id: "activity-1", user_id: "participant" },
+      ],
+    });
+
+    const out = await resolveDeliverableMentions(supabase, {
+      authorId: "author",
+      text: "@dentro @fuera",
+      interactionTargetId: "target-1",
+    });
+
+    expect(out).toEqual(["participant"]);
+  });
+
+  it("entrega solo a quienes alcanzaron el checkpoint del target", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("checkpoint_reached", "checkpoint-1")],
+      profile_identities: [
+        { user_id: "reached", username: "llego" },
+        { user_id: "behind", username: "atras" },
+      ],
+      club_activity_checkpoint_reads: [
+        { checkpoint_id: "checkpoint-1", user_id: "reached" },
+      ],
+    });
+
+    const out = await resolveDeliverableMentions(supabase, {
+      authorId: "author",
+      text: "@llego @atras",
+      interactionTargetId: "target-1",
+    });
+
+    expect(out).toEqual(["reached"]);
+  });
+});
+
+describe("notifyMentions", () => {
+  it("notifica con el mismo interactionTargetId canónico", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "mentioned", username: "ana" }],
+      profiles: [{ user_id: "owner", is_public: true }],
+    });
+
+    const notified = await notifyMentions(supabase, {
+      authorId: "author",
+      text: "hola @ana",
+      interactionTargetId: "target-1",
+    });
+
+    expect(notified).toEqual(["mentioned"]);
+    expect(mocks.notifyMany).toHaveBeenCalledWith(supabase, {
+      userIds: ["mentioned"],
+      actorId: "author",
+      type: "mentioned",
+      interactionTargetId: "target-1",
+    });
+  });
+
+  it("devuelve vacío si el insert no confirma destinatarios", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "owner", username: "duena" }],
+      profiles: [{ user_id: "owner", is_public: true }],
+    });
+    mocks.notifyMany.mockResolvedValue([]);
+
+    const notified = await notifyMentions(supabase, {
+      authorId: "author",
+      text: "hola @duena",
+      interactionTargetId: "target-1",
+    });
+
+    expect(notified).toEqual([]);
+  });
+
+  it("sale sin consultar si no hay menciones", async () => {
     const supabase = makeFakeSupabase({});
-    const out = await resolveDeliverableMentions(supabase, {
-      authorId: "a",
-      text: "texto sin menciones",
-      gate: { kind: "profile", ownerId: "a" },
-    });
-    expect(out).toEqual([]);
-  });
-});
-
-describe("resolveDeliverableMentions — el autor nunca se autonotifica", () => {
-  it("se excluye el autor aunque se mencione a sí mismo en perfil público", async () => {
-    const supabase = makeFakeSupabase({
-      profile_identities: [{ user_id: "author", username: "yo" }],
-      profiles: [{ user_id: "author", is_public: true }],
-    });
-    const out = await resolveDeliverableMentions(supabase, {
-      authorId: "author",
-      text: "@yo",
-      gate: { kind: "profile", ownerId: "author" },
-    });
-    expect(out).toEqual([]);
+    await expect(
+      resolveDeliverableMentions(supabase, {
+        authorId: "author",
+        text: "sin menciones",
+        interactionTargetId: "missing",
+      }),
+    ).resolves.toEqual([]);
   });
 });

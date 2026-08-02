@@ -64,11 +64,26 @@ export type FeedEvent = {
     percent: number | null;   // page / books.total_pages * 100, si ambos existen
     note: { body: string; isSpoiler: boolean } | null; // nota PÚBLICA (notes.is_public)
   } | null;
-  interactionTarget: { targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session"; targetId: string } | null;
+  interactionTarget: {
+    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session";
+    targetId: string;
+    interactionTargetId: string;
+  } | null;
   reactionCount: number;
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+};
+
+// Forma exclusivamente interna mientras getFeed agrupa las filas fuente y
+// resuelve los targets en batch. Nunca cruza el límite del loader: la forma
+// pública de arriba exige el UUID canónico para todo evento interactivo.
+type FeedEventDraft = Omit<FeedEvent, "interactionTarget"> & {
+  interactionTarget: {
+    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session";
+    targetId: string;
+    interactionTargetId: string | null;
+  } | null;
 };
 
 // El feed mezcla dos cosas que no comparten forma: los eventos de personas
@@ -474,7 +489,7 @@ export async function getFeed(
       .map((a) => [a.user_id, a]),
   );
 
-  const events: FeedEvent[] = [];
+  const events: FeedEventDraft[] = [];
 
   for (const r of addedRows) {
     const actor = actorById.get(r.user_id);
@@ -504,7 +519,7 @@ export async function getFeed(
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "pass", targetId: r.id },
+      interactionTarget: { targetType: "pass", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -551,7 +566,7 @@ export async function getFeed(
         };
       })(),
       reviewMeta: null,
-      interactionTarget: { targetType: "progress_session", targetId: r.id },
+      interactionTarget: { targetType: "progress_session", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -595,7 +610,7 @@ export async function getFeed(
             : null,
         totalPages: catalogByKey.get(`${r.item_type}:${r.item_id}`)?.totalPages ?? null,
       },
-      interactionTarget: { targetType: "diary_entry", targetId: r.id },
+      interactionTarget: { targetType: "diary_entry", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -631,7 +646,7 @@ export async function getFeed(
       },
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "episode_watch", targetId: r.id },
+      interactionTarget: { targetType: "episode_watch", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -641,22 +656,25 @@ export async function getFeed(
 
   // Las dos familias se mezclan aquí, ya como entradas: a partir de este punto
   // el orden, el cursor y el corte son los mismos para ambas.
-  const entries: FeedEntry[] = [
+  const entries: Array<
+    | { source: "person"; id: string; eventDate: string; event: FeedEventDraft }
+    | { source: "club"; id: string; eventDate: string; event: ClubFeedEvent }
+  > = [
     ...events.map(
-      (event): FeedEntry => ({
+      (event) => ({
         source: "person",
         id: event.id,
         eventDate: event.eventDate,
         event,
-      }),
+      }) as const,
     ),
     ...clubResult.events.map(
-      (event): FeedEntry => ({
+      (event) => ({
         source: "club",
         id: event.id,
         eventDate: event.eventDate,
         event,
-      }),
+      }) as const,
     ),
   ];
 
@@ -701,13 +719,34 @@ export async function getFeed(
       : e.interactionTarget.targetType === "pass" ? passSummaries
       : sessionSummaries;
     const s = summaries.get(e.interactionTarget.targetId);
-    if (s) {
-      e.reactionCount = s.reactionCount;
-      e.viewerReacted = s.viewerReacted;
-      e.commentCount = s.commentCount;
-      e.comments = s.comments;
+    if (!s) {
+      throw new Error(
+        `Interaction summary missing for ${e.interactionTarget.targetType}:${e.interactionTarget.targetId}`,
+      );
     }
+    e.interactionTarget.interactionTargetId = s.interactionTargetId;
+    e.reactionCount = s.reactionCount;
+    e.viewerReacted = s.viewerReacted;
+    e.commentCount = s.commentCount;
+    e.comments = s.comments;
   }
+
+  const finalizedPage: FeedEntry[] = page.map((entry) => {
+    if (entry.source === "club") return entry;
+    const target = entry.event.interactionTarget;
+    if (!target) {
+      return { ...entry, event: { ...entry.event, interactionTarget: null } };
+    }
+    const { interactionTargetId } = target;
+    if (interactionTargetId === null) {
+      throw new Error(`Interaction target unresolved for ${target.targetType}:${target.targetId}`);
+    }
+    const event: FeedEvent = {
+      ...entry.event,
+      interactionTarget: { ...target, interactionTargetId },
+    };
+    return { ...entry, event };
+  });
 
   const last = page[page.length - 1];
   const nextCursor = allExhausted || !last
@@ -723,5 +762,5 @@ export async function getFeed(
   // cursor: nextCursor apunta a un evento real de `page`, no a un grupo
   // sintético. Un grupo partido en el borde de página reaparece como grupo
   // propio en la siguiente tanda (limitación conocida → issue).
-  return { events: groupPersonEntries(page), nextCursor, knownUsernames };
+  return { events: groupPersonEntries(finalizedPage), nextCursor, knownUsernames };
 }

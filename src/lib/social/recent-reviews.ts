@@ -10,6 +10,14 @@ import { getInteractionSummary } from "./interactions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
+type RecentReviewDraft = Omit<FeedEvent, "interactionTarget"> & {
+  interactionTarget: {
+    targetType: "diary_entry" | "episode_watch";
+    targetId: string;
+    interactionTargetId: string | null;
+  };
+};
+
 const REVIEW_EXCERPT_LENGTH = 200;
 
 function excerpt(text: string | null): string | null {
@@ -131,7 +139,7 @@ export async function getRecentReviews(
     ]),
   );
 
-  const events: FeedEvent[] = [];
+  const events: RecentReviewDraft[] = [];
 
   for (const r of diaryRows) {
     const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
@@ -155,7 +163,7 @@ export async function getRecentReviews(
       episode: null,
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "diary_entry", targetId: r.id },
+      interactionTarget: { targetType: "diary_entry", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -190,7 +198,7 @@ export async function getRecentReviews(
       },
       progress: null,
       reviewMeta: null,
-      interactionTarget: { targetType: "episode_watch", targetId: r.id },
+      interactionTarget: { targetType: "episode_watch", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
@@ -216,13 +224,28 @@ export async function getRecentReviews(
     const summaries =
       e.interactionTarget.targetType === "diary_entry" ? diarySummaries : episodeSummaries;
     const s = summaries.get(e.interactionTarget.targetId);
-    if (s) {
-      e.reactionCount = s.reactionCount;
-      e.viewerReacted = s.viewerReacted;
-      e.commentCount = s.commentCount;
-      e.comments = s.comments;
+    if (!s) {
+      throw new Error(
+        `Interaction summary missing for ${e.interactionTarget.targetType}:${e.interactionTarget.targetId}`,
+      );
     }
+    e.interactionTarget.interactionTargetId = s.interactionTargetId;
+    e.reactionCount = s.reactionCount;
+    e.viewerReacted = s.viewerReacted;
+    e.commentCount = s.commentCount;
+    e.comments = s.comments;
   }
 
-  return page;
+  return page.map((event): FeedEvent => {
+    const interactionTargetId = event.interactionTarget.interactionTargetId;
+    if (interactionTargetId === null) {
+      throw new Error(
+        `Interaction target unresolved for ${event.interactionTarget.targetType}:${event.interactionTarget.targetId}`,
+      );
+    }
+    return {
+      ...event,
+      interactionTarget: { ...event.interactionTarget, interactionTargetId },
+    };
+  });
 }
