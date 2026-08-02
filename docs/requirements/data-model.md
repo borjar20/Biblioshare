@@ -224,6 +224,15 @@ GIN `{books,movies,series}_genres_gin` sirven `genres @> ARRAY[label]` (`/genero
 el filtro de biblioteca). Migración `20260815_genres_gin_indexes.sql`. Verificado en dev
 y en prod el 2026-07-30.
 
+`movies.original_title` / `series.original_title` (`text`, nullable; migración
+`20260802_screen_original_title.sql`, aplicada y verificada en DEV y en PROD el 2026-08-02 —
+movies 354/354 y series 26/26 con valor en prod, 0 null). El `title` se cachea traducido a
+**es-ES** desde TMDB (`language=es-ES`), pero Letterboxd exporta el título **original**; el
+matcher de importación (`src/lib/import/match-row.ts`) casa contra cualquiera de los dos. Lo
+escribe `find-or-create.ts` en cada alta; las filas previas se rellenaron por un backfill
+puntual que consulta TMDB por `tmdb_id` (idioma-independiente). Ver `decisiones.md`
+(2026-08-02).
+
 Tres tablas de "tirada concreta" cuelgan del catálogo:
 
 | Tabla | De | Para qué |

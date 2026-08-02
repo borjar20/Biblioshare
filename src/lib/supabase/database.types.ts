@@ -1114,6 +1114,7 @@ export type Database = {
           duration_minutes: number | null
           genres: string[] | null
           id: string
+          original_title: string | null
           release_year: number | null
           synopsis: string | null
           title: string
@@ -1126,6 +1127,7 @@ export type Database = {
           duration_minutes?: number | null
           genres?: string[] | null
           id?: string
+          original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
           title: string
@@ -1138,6 +1140,7 @@ export type Database = {
           duration_minutes?: number | null
           genres?: string[] | null
           id?: string
+          original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
           title?: string
@@ -1961,6 +1964,7 @@ export type Database = {
           episode_runtime_minutes: number | null
           genres: string[] | null
           id: string
+          original_title: string | null
           release_year: number | null
           synopsis: string | null
           title: string
@@ -1975,6 +1979,7 @@ export type Database = {
           episode_runtime_minutes?: number | null
           genres?: string[] | null
           id?: string
+          original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
           title: string
@@ -1989,6 +1994,7 @@ export type Database = {
           episode_runtime_minutes?: number | null
           genres?: string[] | null
           id?: string
+          original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
           title?: string

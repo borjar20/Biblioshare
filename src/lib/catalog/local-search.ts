@@ -20,11 +20,17 @@ type ScreenRow = {
   id: string;
   tmdb_id: number | null;
   title: string;
+  original_title: string | null;
   cover_url: string | null;
   release_year: number | null;
   synopsis: string | null;
   genres: string[] | null;
 };
+
+// `title` (es-ES) + `original_title` (idioma de rodaje). Se seleccionan ambos
+// para que el matcher de importación case por cualquiera. Ver decisiones.md.
+const SCREEN_COLUMNS =
+  "id, tmdb_id, title, original_title, cover_url, release_year, synopsis, genres";
 
 // Sin `publisher` ni `total_pages`: son datos de la tirada, viven en
 // `book_editions` y una tarjeta de búsqueda no los muestra.
@@ -57,6 +63,7 @@ function mapScreenRow(itemType: "movie" | "series", row: ScreenRow): SearchResul
     externalId: row.tmdb_id !== null ? String(row.tmdb_id) : "",
     catalogId: row.id,
     title: row.title,
+    originalTitle: row.original_title,
     subtitle: null,
     coverUrl: row.cover_url,
     year: row.release_year,
@@ -105,10 +112,16 @@ export async function searchLocalCatalog(
   }
 
   const table = itemType === "movie" ? "movies" : "series";
+  // Se busca en `title` (es-ES) Y `original_title`: un CSV de Letterboxd trae el
+  // título original, que puede no coincidir con el `title` traducido cacheado.
+  // Las comas/paréntesis separan condiciones en el filtro `or` de PostgREST, así
+  // que se sustituyen por espacios (el ilike ya es difuso por contención).
+  const safe = query.replace(/[,()]/g, " ").trim();
+  const like = `%${safe}%`;
   const { data } = await supabase
     .from(table)
-    .select("id, tmdb_id, title, cover_url, release_year, synopsis, genres")
-    .ilike("title", `%${query}%`)
+    .select(SCREEN_COLUMNS)
+    .or(`title.ilike.${like},original_title.ilike.${like}`)
     .limit(20);
   return (data ?? []).map((row) => mapScreenRow(itemType as "movie" | "series", row));
 }
