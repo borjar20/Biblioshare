@@ -2,6 +2,7 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
+import { SHELL_APP } from "@/lib/ui/layout";
 
 // Skeleton del Inicio (feed).
 //
@@ -16,7 +17,7 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // no hay `src/app/loading.tsx`.)
 export default function Loading() {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1080px] lg:px-7 lg:pt-[26px]">
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
       <LoadingAnnounce />
 
       {/* Saludo de escritorio (frame B). En móvil no existe. */}

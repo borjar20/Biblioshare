@@ -15,6 +15,7 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
+import { SHELL_APP } from "@/lib/ui/layout";
 
 // Inicio = el feed (§IA del rediseño Paper). El panel de estadísticas que vivía
 // aquí en una pestaña se mudó a Perfil › Panel, que es donde tiene sentido:
@@ -65,7 +66,7 @@ export default async function Home({
   // comparte pantalla con tus stats y la página deja de ser solo una lista.
   // Duplicados sin estado, así que el patrón de dos árboles es seguro.
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:max-w-[1200px] lg:px-7 lg:pt-[26px]">
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
       <div className="hidden pb-2.5 lg:block">
         <h1 className="font-serif text-[30px] leading-none font-semibold tracking-tight">
           {t("home.greeting", { name: profile?.displayName || profile?.username || "" })}
