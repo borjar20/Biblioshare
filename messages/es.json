@@ -1533,6 +1533,7 @@
     "annualGoalsTitle": "Objetivos anuales",
     "paceTitle": "Ritmo",
     "pacePerDay": "pág/día de media",
+    "sessionEmpty": "Aún sin sesiones de lectura",
     "ratingTitle": "Valoración media",
     "ratingCount": "{count, plural, one {# nota} other {# notas}}",
     "ratingEmpty": "Aún no has puntuado nada.",

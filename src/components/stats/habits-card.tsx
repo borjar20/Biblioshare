@@ -7,6 +7,22 @@ export async function HabitsCard({ habits }: { habits: Habits }) {
   const t = await getTranslations("stats");
   const dash = t("recordEmpty");
 
+  const noData =
+    habits.favoriteBand === null &&
+    habits.favoriteWeekday === null &&
+    habits.averageMinutes === null;
+
+  if (noData) {
+    return (
+      <div className="flex flex-col gap-2">
+        <h3 className="font-serif text-sm font-semibold text-foreground">
+          {t("habitsTitle")}
+        </h3>
+        <p className="text-sm text-muted-foreground">{t("sessionEmpty")}</p>
+      </div>
+    );
+  }
+
   const band = habits.favoriteBand
     ? t("habitBandValue", {
         from: habits.favoriteBand.startHour,
