@@ -146,6 +146,16 @@ ver «Social fase 0»)**]**
 > en PROD** (`information_schema.columns` → `date`, nullable). Migración
 > `20260817_passes_planned_on.sql`. Es forward-only (la fija `planTransition` al entrar en
 > `planned`); el historial importado se queda en `NULL`. Ningún RPC cambió; sin backfill. Ver §3.
+>
+> **Delta del 2026-08-03 (bis): la columna anterior salió SIN su grant y rompió «Seguir» en
+> producción.** `passes` tiene grants **por columna**, y Postgres exige privilegio sobre toda
+> columna nombrada en el INSERT/UPDATE aunque su valor sea `NULL`: al desplegar #366, el insert de
+> `applyTransition` (que siempre nombra `planned_on`) empezó a dar `42501 permission denied for
+> table passes` y toda alta de pase caía en el error boundary. Migración
+> `20260819_grant_passes_planned_on.sql` (`grant insert/update (planned_on) … to authenticated`).
+> **Es el MISMO fallo que `episode_runtime_minutes` un día antes** (`20260818`): columna nueva sin
+> grant compila, pasa los tests y solo revienta contra la BD real. ⚠️ Estado: **migración escrita,
+> pendiente de aplicar y verificar en DEV y PROD** — hasta entonces prod sigue rota.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
