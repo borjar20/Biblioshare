@@ -45,6 +45,13 @@ const VALID_STATUSES: MediaStatus[] = [
 const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 
+// Columnas de la rejilla de `Todo`, compartidas por la rejilla real y su
+// skeleton para que la carga no salte de 5 a 8 columnas. Las dos últimas
+// paradas acompañan al ensanche del shell (ver `shell` más abajo): mantienen la
+// portada en ~190px en vez de inflarla al repartir 1600px entre cinco.
+const TODO_GRID_COLS =
+  "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8";
+
 // Mi Biblioteca (Colección v2, Sesión 1 + F5 Task 4): gira en torno a
 // colecciones que crea el usuario, no a estados. Tres subpestañas visibles —
 // `Colecciones` (default, frame A), `Todo` (frame C, la biblioteca completa
@@ -126,8 +133,21 @@ export default async function CollectionPage({
   // streaming detrás de su <Suspense> con skeleton (Fase B del plan de
   // navegación). El `key` de los boundaries es la consulta: al cambiar un
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
+  // `Todo` es la única subpestaña que es una REJILLA larga de portadas, y en
+  // escritorio ancho la columna de 4xl la dejaba en cinco columnas con dos
+  // palmos de margen muerto a cada lado. Solo esa pestaña se ensancha: en
+  // `Colecciones` y `Sagas` las tarjetas son grandes y estirarlas a 1600px las
+  // deja desangeladas. Cambiar de pestaña es una navegación, así que el salto
+  // de ancho no ocurre "en vivo".
+  const shell =
+    tab === "todo"
+      ? "max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[100rem]"
+      : "max-w-4xl";
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div
+      className={`mx-auto flex w-full ${shell} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
+    >
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
           da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
@@ -179,7 +199,7 @@ export default async function CollectionPage({
           />
           <Suspense
             key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}:${genre ?? ""}`}
-            fallback={<SkeletonCoverGrid count={10} />}
+            fallback={<SkeletonCoverGrid count={16} cols={TODO_GRID_COLS} />}
           >
             <LibraryGrid
               userId={user.id}
@@ -236,11 +256,29 @@ async function TodoOverview({ userId }: { userId: string }) {
     getLibraryItems(supabase, userId, { favoritesOnly: true }),
   ]);
 
+  if (summary.total === 0) return null;
+
+  // En escritorio ancho el Resumen y los Destacados van EN PARALELO: apilados
+  // a 1600px, la tarjeta del Resumen quedaba con la leyenda «En curso ····· 4»
+  // separada medio metro y el estante de portadas se inflaba a 6 portadas
+  // gigantes. Sin destacados que poner al lado, el Resumen se topa en vez de
+  // estirarse — una tarjeta de 1600px de ancho y cuatro líneas de alto no la
+  // quiere nadie.
+  const hasFavorites = favorites.length > 0;
+
   return (
-    <>
-      <CollectionSummary summary={summary} />
-      <FavoritesShelf items={favorites} />
-    </>
+    <div
+      className={`flex flex-col gap-6 ${hasFavorites ? "xl:flex-row xl:items-start" : ""}`}
+    >
+      <div className={hasFavorites ? "xl:w-[360px] xl:shrink-0" : "xl:max-w-3xl"}>
+        <CollectionSummary summary={summary} />
+      </div>
+      {hasFavorites && (
+        <div className="min-w-0 flex-1">
+          <FavoritesShelf items={favorites} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -293,7 +331,7 @@ async function LibraryGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className={`grid gap-4 ${TODO_GRID_COLS}`}>
       {items.map((item) => (
         <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
       ))}
