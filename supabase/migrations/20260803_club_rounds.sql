@@ -174,24 +174,29 @@ create or replace function public.ensure_club_round(
 ) returns uuid
 language plpgsql security definer set search_path = '' as $function$
 declare
-  v_period text; v_day int; v_holder uuid; v_existing uuid;
+  v_period text; v_day int; v_holder uuid; v_existing uuid; v_existing_author uuid;
   v_prompt text; v_author uuid; v_id uuid;
 begin
   if not public.is_club_member(p_club_id) then
     raise exception 'not_a_member' using errcode = '42501';
   end if;
 
-  select s.period_key, s.day_index, s.holder_id, s.round_id
-    into v_period, v_day, v_holder, v_existing
+  select s.period_key, s.day_index, s.holder_id, s.round_id, s.round_author
+    into v_period, v_day, v_holder, v_existing, v_existing_author
   from public.get_club_round_state(p_club_id) s;
 
-  -- Ya hay ronda de este periodo: idempotente. Quien escribió primero la
-  -- definió, y esa es toda la regla de resolución de conflictos.
-  if v_existing is not null then
-    return v_existing;
-  end if;
-
   if p_prompt is not null then
+    if v_existing is not null then
+      -- Ya hay ronda de este periodo. Si la escribió quien llama, idempotente
+      -- (devuelve la misma). Si no, un retorno silencioso perdería el texto
+      -- de quien llega tarde sin que nadie se entere: mejor un error que la
+      -- UI pueda mostrar como "se te pasó el turno".
+      if v_existing_author is not distinct from (select auth.uid()) then
+        return v_existing;
+      end if;
+      raise exception 'round_already_open' using errcode = '42501';
+    end if;
+
     if (select auth.uid()) is distinct from v_holder then
       raise exception 'not_your_turn' using errcode = '42501';
     end if;
@@ -201,8 +206,14 @@ begin
     end if;
     v_author := v_holder;
   else
-    -- Consigna de la casa: solo del día 3 en adelante, para que el titular
-    -- tenga sus 48 h de exclusividad.
+    -- Consigna de la casa: idempotente sin condiciones -- dos respuestas
+    -- simultáneas a la casa deben acabar en la misma ronda, sea quien sea
+    -- quien la dispare.
+    if v_existing is not null then
+      return v_existing;
+    end if;
+    -- Solo del día 3 en adelante, para que el titular tenga sus 48 h de
+    -- exclusividad.
     if v_day < 3 then
       raise exception 'house_round_too_early' using errcode = '42501';
     end if;
@@ -229,5 +240,11 @@ $function$;
 
 revoke execute on function private.club_now()            from public, anon, authenticated;
 revoke execute on function private.house_prompt(uuid, text) from public, anon, authenticated;
+-- Postgres concede EXECUTE a PUBLIC por defecto al crear una función, y
+-- Supabase añade anon: sin este revoke, un llamante sin autenticar podría
+-- invocar una función SECURITY DEFINER. Mismo patrón que el resto de RPC del
+-- repo (create_club_poll, create_club, vote_club_poll, activate_club_activity...).
+revoke execute on function public.get_club_round_state(uuid) from public, anon;
+revoke execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) from public, anon;
 grant  execute on function public.get_club_round_state(uuid) to authenticated;
 grant  execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) to authenticated;

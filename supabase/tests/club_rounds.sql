@@ -44,6 +44,18 @@ insert into public.club_members (club_id, user_id, role, status, joined_at) valu
   ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-0000000002a1', 'owner',  'active', now() - interval '10 weeks'),
   ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-0000000002b2', 'member', 'active', now() - interval '9 weeks');
 
+-- Un segundo club, misma composición (Ana + Beto, mismo delta de una semana
+-- entre alta de club y alta del segundo miembro) pero nacido UNA semana antes
+-- que el de arriba. Sirve para conducir get_club_round_state() de verdad: si
+-- el titular avanza una posición por semana transcurrida, este club y el de
+-- 10 semanas deben tener titulares distintos en el periodo actual.
+insert into public.clubs (id, slug, name, visibility, owner_id, created_at) values
+  ('00000000-0000-4000-8000-000000000204', 'rondas-test-11w', 'Club de rondas (11 semanas)', 'public',
+   '00000000-0000-4000-8000-0000000002a1', now() - interval '11 weeks');
+insert into public.club_members (club_id, user_id, role, status, joined_at) values
+  ('00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-0000000002a1', 'owner',  'active', now() - interval '11 weeks'),
+  ('00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-0000000002b2', 'member', 'active', now() - interval '10 weeks');
+
 -- ── La tabla y su forma ──────────────────────────────────────────────
 insert into public.club_rounds (id, club_id, period_key, author_id, prompt) values
   ('00000000-0000-4000-8000-000000000202', '00000000-0000-4000-8000-000000000201',
@@ -142,24 +154,39 @@ select pg_temp.assert_true(
   'el periodo es la semana ISO en Europe/Madrid'
 );
 
+-- La aserción de arriba se mira al espejo: compara contra la MISMA expresión
+-- que usa la función, así que solo distinguiría una implementación en UTC
+-- durante el par de horas por semana en que ambos husos cruzan el límite.
+-- Esta es determinista: Madrid nunca está en UTC+0 (ni en horario de
+-- invierno, que es UTC+1), así que aguanta las 8760 horas del año y falla al
+-- instante si alguien cambia club_now() a UTC. club_now() es de `private`,
+-- así que corre con el rol privilegiado, igual que house_prompt() más abajo.
+reset role;
+select pg_temp.assert_true(
+  private.club_now() is distinct from (now() at time zone 'UTC'),
+  'club_now() usa Europe/Madrid, no UTC'
+);
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
+
 select pg_temp.assert_true(
   (select holder_id from public.get_club_round_state('00000000-0000-4000-8000-000000000201'))
    in ('00000000-0000-4000-8000-0000000002a1', '00000000-0000-4000-8000-0000000002b2'),
   'el titular es uno de los dos miembros activos'
 );
 
--- El club nació hace 10 semanas con 2 miembros: el titular alterna semana a
--- semana. Se comprueba la ARITMÉTICA, no una fecha concreta.
+-- El titular avanza una posición por semana transcurrida. Reimplementar la
+-- aritmética en el propio test (row_number + % 2) solo probaría "este club
+-- tiene dos miembros", pasaría igual con % 1, con joined_at ignorado o con un
+-- titular fijo: no conduce la función real. En su lugar, se compara la
+-- función CONTRA SÍ MISMA en dos clubes con la misma composición y un año de
+-- nacimiento desfasado una semana exacta -- si el delta de semanas o el
+-- módulo estuvieran mal, ambos clubes coincidirían en el mismo titular.
 select pg_temp.assert_true(
-  (select count(distinct holder) from (
-     select (select user_id from (
-       select user_id, row_number() over (order by joined_at, user_id) - 1 as idx
-       from public.club_members
-       where club_id = '00000000-0000-4000-8000-000000000201' and status = 'active'
-     ) r where r.idx = w % 2) as holder
-     from generate_series(0, 5) as w
-   ) s) = 2,
-  'a lo largo de 6 semanas consecutivas rotan los 2 miembros'
+  (select holder_id from public.get_club_round_state('00000000-0000-4000-8000-000000000201'))
+  is distinct from
+  (select holder_id from public.get_club_round_state('00000000-0000-4000-8000-000000000204')),
+  'el titular avanza una posición al comparar dos clubes nacidos con una semana de diferencia'
 );
 
 -- ── ensure_club_round: quién puede escribir ──────────────────────────
@@ -199,6 +226,27 @@ select pg_temp.assert_true(
   'el titular creó exactamente una ronda para el periodo actual'
 );
 
+-- Ronda ya abierta por el titular: otro miembro que intenta proponer texto
+-- encima NO puede recibir éxito silencioso -- eso perdería su texto sin que
+-- nadie se entere y es justo lo que rompía el badge "se te pasó el turno".
+do $$
+declare v_holder uuid; v_otro uuid;
+begin
+  select holder_id into v_holder from public.get_club_round_state('00000000-0000-4000-8000-000000000201');
+  select user_id into v_otro from public.club_members
+   where club_id = '00000000-0000-4000-8000-000000000201' and status = 'active' and user_id <> v_holder limit 1;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_otro, 'role', 'authenticated')::text, true);
+  perform pg_temp.expect_sqlstate(
+    format('select public.ensure_club_round(%L, %L)', '00000000-0000-4000-8000-000000000201', 'Yo también quiero'),
+    '42501',
+    'un miembro que no escribió la ronda ya abierta no puede proponer texto encima');
+  -- Deja el claim en el titular: es el que necesitan los bloques siguientes.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_holder, 'role', 'authenticated')::text, true);
+end;
+$$;
+
 -- Idempotencia: repetir la llamada devuelve la MISMA ronda, no una segunda.
 do $$
 declare v_a uuid; v_b uuid;
@@ -231,10 +279,11 @@ select pg_temp.assert_true(
   'la consigna de la casa varía entre periodos, no es constante'
 );
 
--- Nada más corre como authenticated tras esto: contexto ya limpio (reset role
--- de arriba) y el claim de la sección de turno no ha vuelto a fijarse desde
--- entonces. Se limpia igualmente el claim por si acaso, misma disciplina que
--- el cierre de la sección de RLS de la Task 1.
+-- Limpieza NECESARIA, no por si acaso: el claim SÍ sigue fijado en este
+-- punto. Los bloques `do $$` de arriba llaman a set_config(..., true) con el
+-- tercer argumento en true -- transaccional, no local a la sentencia --, así
+-- que el último valor que fijaron sobrevive al bloque y seguiría activo hasta
+-- el rollback si no se limpia aquí explícitamente.
 select set_config('request.jwt.claims', '', true);
 
 rollback;
