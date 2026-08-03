@@ -196,7 +196,7 @@ async function ClubFeedSection({
   // rail derecho sticky. Un solo árbol — el rail se coloca con `order` (el
   // resumen queda ARRIBA en móvil, como el frame 2, y a la derecha en `lg`).
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
       <aside className="flex flex-col gap-5 lg:order-2 lg:sticky lg:top-[96px]">
         <ClubSummary
           activities={activities}

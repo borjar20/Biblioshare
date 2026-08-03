@@ -113,7 +113,7 @@ export async function RinconTab({
   // Móvil: main (retos, Memorizar) y luego rail (sorteo). Escritorio: main a la
   // izquierda, rail a la derecha.
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_300px] lg:items-start">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_340px] lg:items-start">
       <div className="lg:order-1">{main}</div>
       <div className="lg:order-2">{rail}</div>
     </div>
