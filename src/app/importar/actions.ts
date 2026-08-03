@@ -9,8 +9,17 @@ import type { Json } from "@/lib/supabase/database.types";
 import { detectFormat } from "@/lib/import/detect-format";
 import { parseGoodreads } from "@/lib/import/parse-goodreads";
 import { parseLetterboxd } from "@/lib/import/parse-letterboxd";
-import { commitImportRow, commitManualImportRow } from "@/lib/import/commit-row";
-import type { ImportFormat, ImportRow, ImportRowResult } from "@/lib/import/types";
+import {
+  commitImportRow,
+  commitImportRowWithCandidate,
+  commitManualImportRow,
+} from "@/lib/import/commit-row";
+import type {
+  ImportCandidate,
+  ImportFormat,
+  ImportRow,
+  ImportRowResult,
+} from "@/lib/import/types";
 
 const CATALOG_TABLE_BY_TYPE = {
   book: "books",
@@ -92,6 +101,31 @@ export async function commitImportBatch(
     results.push(...chunkResults);
   }
   return results;
+}
+
+/**
+ * El usuario elige cuál de las coincidencias era la suya ("The Visit" de 2015
+ * son tres películas distintas). Se invoca imperativamente desde la pantalla de
+ * triaje, una fila por click.
+ *
+ * NO exige rol de colaborador, a diferencia de `resolveUnmatchedImportRow`: eso
+ * da de alta catálogo a mano (datos inventados por el usuario), mientras que
+ * esto solo confirma un resultado de TMDB. Es exactamente el mismo nivel de
+ * confianza que `addToLibrary` en `/buscar`, que ya acepta un `SearchResult`
+ * devuelto por el cliente.
+ */
+export async function resolveAmbiguousImportRow(
+  itemType: ItemType,
+  row: ImportRow,
+  candidate: ImportCandidate
+): Promise<ImportRowResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  return commitImportRowWithCandidate(supabase, user.id, itemType, row, candidate);
 }
 
 export type ResolveUnmatchedState = {

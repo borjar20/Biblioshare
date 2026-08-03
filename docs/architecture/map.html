@@ -905,6 +905,10 @@
         "src/lib/import/match-row.ts",
         "src/lib/import/commit-row.ts",
         "src/lib/import/run-batches.ts"
+      ],
+      "gotchas": [
+        "Letterboxd exporta el título EN INGLÉS, no el original (su catálogo es TMDB en-US): 'Pan's Labyrinth', no 'El laberinto del fauno'. La PR #356 asumió lo contrario y dejó sin casar todo el cine no anglosajón.",
+        "Buscar en TMDB con language=es-ES reordena por el título español: 'Parasite' deja fuera de la primera página a la de Bong Joon-ho ('Parásitos'). Por eso la lista base del importador es la en-US."
       ]
     },
     {
@@ -2410,7 +2414,9 @@
       "notes": [
         "parseImportFile NO escribe en BD: devuelve las filas y el cliente conduce los lotes.",
         "Lotes de 20 filas por llamada (BATCH_SIZE), 5 filas en paralelo dentro del servidor (BATCH_CONCURRENCY). Devolver tras cada lote es lo que mantiene la invocación bajo el timeout.",
-        "Tope duro de 3000 filas (MAX_ROWS)."
+        "Tope duro de 3000 filas (MAX_ROWS).",
+        "Películas: el matcher compara contra los TRES títulos de TMDB (es-ES, original y el INTERNACIONAL EN INGLÉS, que es el que exporta Letterboxd). La lista de candidatos se pide en en-US porque TMDB ordena por relevancia contra el título de ese idioma.",
+        "Con más de un candidato válido el matcher devuelve `ambiguous` y NO escribe: elige el usuario en la pantalla de triaje (resolveAmbiguousImportRow). En el onboarding, sin triaje, las ambiguas van a pending_import_rows."
       ],
       "steps": [
         {
@@ -2442,6 +2448,11 @@
           "node": "m-catalog",
           "action": "matchRow busca el ítem; si no existe, findOrCreateCatalogItem lo crea",
           "file": "src/lib/import/match-row.ts"
+        },
+        {
+          "node": "r-importar",
+          "action": "Las filas con varios candidatos se resuelven a mano en el triaje: el usuario elige la obra",
+          "file": "src/app/importar/ambiguous-row-form.tsx"
         },
         {
           "node": "m-passes",

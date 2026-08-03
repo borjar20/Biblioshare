@@ -252,11 +252,17 @@ y en prod el 2026-07-30.
 `movies.original_title` / `series.original_title` (`text`, nullable; migración
 `20260802_screen_original_title.sql`, aplicada y verificada en DEV y en PROD el 2026-08-02 —
 movies 354/354 y series 26/26 con valor en prod, 0 null). El `title` se cachea traducido a
-**es-ES** desde TMDB (`language=es-ES`), pero Letterboxd exporta el título **original**; el
-matcher de importación (`src/lib/import/match-row.ts`) casa contra cualquiera de los dos. Lo
+**es-ES** desde TMDB (`language=es-ES`); `original_title` guarda el del idioma de rodaje. Lo
 escribe `find-or-create.ts` en cada alta; las filas previas se rellenaron por un backfill
-puntual que consulta TMDB por `tmdb_id` (idioma-independiente). Ver `decisiones.md`
-(2026-08-02).
+puntual que consulta TMDB por `tmdb_id` (idioma-independiente).
+
+⚠️ **El motivo que daba esta sección era falso** (corregido el 2026-08-03): Letterboxd NO
+exporta el título original, exporta el **internacional en inglés** — su catálogo es TMDB
+en-US. Ese tercer título **no está en BD**: el matcher de importación
+(`src/lib/import/match-row.ts`) lo pide a TMDB en cada fila (`searchMoviesForImport`), así que
+la búsqueda en el catálogo LOCAL sigue sin poder casar «Spirited Away» con la fila cacheada
+como «El viaje de Chihiro» — resuelve igualmente, pero gastando la llamada a TMDB. Ver
+`decisiones.md` (2026-08-03).
 
 **Columnas de TAMAÑO** (`movies.duration_minutes`, `series.total_episodes` / `total_seasons` /
 `episode_runtime_minutes`): alimentan la estimación de tiempo y los tramos de duración del

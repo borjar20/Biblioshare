@@ -23,13 +23,13 @@ type TmdbSearchResponse = {
   }>;
 };
 
-async function tmdbSearch(kind: "movie" | "tv", query: string) {
+async function tmdbSearch(kind: "movie" | "tv", query: string, language = "es-ES") {
   const accessToken = process.env.TMDB_API_KEY;
   if (!accessToken) return [];
 
   const url = new URL(`https://api.themoviedb.org/3/search/${kind}`);
   url.searchParams.set("query", query);
-  url.searchParams.set("language", "es-ES");
+  url.searchParams.set("language", language);
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -41,28 +41,98 @@ async function tmdbSearch(kind: "movie" | "tv", query: string) {
   return data.results ?? [];
 }
 
+type TmdbMovieResult = NonNullable<TmdbSearchResponse["results"]>[number];
+
+function mapMovieResult(r: TmdbMovieResult): SearchResult {
+  return {
+    itemType: "movie" as const,
+    externalId: String(r.id),
+    title: r.title!,
+    // Título original (idioma de rodaje). El matcher del importador lo compara
+    // junto al `title` traducido y al internacional en inglés.
+    originalTitle: r.original_title ?? null,
+    // No director available from a search-results response (needs a
+    // separate credits call); the year is shown via `year`.
+    subtitle: null,
+    coverUrl: r.poster_path ? `${TMDB_IMAGE_BASE}${r.poster_path}` : null,
+    year: r.release_date ? Number(r.release_date.slice(0, 4)) || null : null,
+    synopsis: r.overview ?? null,
+    genres: resolveGenresFromIds(r.genre_ids),
+  };
+}
+
 export async function searchMovies(query: string): Promise<SearchResult[]> {
   const results = await tmdbSearch("movie", query);
-  return results
+  return results.filter((r) => r.title).map(mapMovieResult);
+}
+
+/**
+ * Los candidatos para casar una fila de Letterboxd, con los TRES títulos que
+ * puede tener una película anotados.
+ *
+ * Letterboxd construye su catálogo desde TMDB **en-US**, así que su `diary.csv`
+ * exporta el título en inglés: "Spirited Away", que no es ni el `title` es-ES
+ * que cacheamos ("El viaje de Chihiro") ni el `original_title` (千と千尋の神隠し).
+ * La PR #356 dio por hecho que exportaba el original y por eso todo el cine no
+ * anglosajón seguía sin casar. Ver decisiones.md (2026-08-03).
+ *
+ * La lista base es la de **en-US**, no la de es-ES, y eso importa: TMDB ordena
+ * por relevancia CONTRA EL TÍTULO EN ESE IDIOMA, así que buscar "Parasite" en
+ * es-ES deja la película de Bong Joon-ho (allí "Parásitos") fuera de la primera
+ * página — 95 resultados en 5 páginas, y la buena no está en la primera. Como la
+ * consulta viene en inglés, el orden en-US es el que la sube arriba.
+ *
+ * La respuesta es-ES se usa solo como diccionario id → ficha en español, que es
+ * lo que se persiste en catálogo. Las películas que no salen en ella quedan
+ * marcadas con `spanishMissing`.
+ */
+export async function searchMoviesForImport(query: string): Promise<SearchResult[]> {
+  const [english, spanish] = await Promise.all([
+    tmdbSearch("movie", query, "en-US"),
+    tmdbSearch("movie", query, "es-ES"),
+  ]);
+
+  const spanishById = new Map(spanish.map((r) => [r.id, r]));
+  return english
     .filter((r) => r.title)
-    .map((r) => ({
-      itemType: "movie" as const,
-      externalId: String(r.id),
-      title: r.title!,
-      // Título original (idioma de rodaje) — el que exporta Letterboxd. El
-      // matcher del importador lo compara junto al `title` traducido.
-      originalTitle: r.original_title ?? null,
-      // No director available from a search-results response (needs a
-      // separate credits call); the year is shown via `year`.
-      subtitle: null,
-      coverUrl: r.poster_path ? `${TMDB_IMAGE_BASE}${r.poster_path}` : null,
-      year: r.release_date ? Number(r.release_date.slice(0, 4)) || null : null,
-      synopsis: r.overview ?? null,
-      genres: resolveGenresFromIds(r.genre_ids),
-      publisher: null,
-      pageCount: null,
-      isbn: null,
-    }));
+    .map((r) => {
+      const es = spanishById.get(r.id);
+      return {
+        ...mapMovieResult(es ?? r),
+        englishTitle: r.title ?? null,
+        ...(es ? {} : { spanishMissing: true }),
+      };
+    });
+}
+
+/**
+ * Ficha en español de una película por id, con la forma de un resultado de
+ * búsqueda. Existe para los candidatos marcados `spanishMissing`: se les rescata
+ * el título y la sinopsis en español justo antes de darlos de alta en catálogo.
+ */
+export async function getMovieAsSearchResult(
+  tmdbId: number
+): Promise<SearchResult | null> {
+  const data = await tmdbGet<{
+    title?: string;
+    original_title?: string;
+    poster_path: string | null;
+    release_date?: string;
+    overview?: string;
+    genres?: Array<{ id: number }>;
+  }>(`/movie/${tmdbId}?language=es-ES`);
+  if (!data?.title) return null;
+
+  return mapMovieResult({
+    id: tmdbId,
+    title: data.title,
+    original_title: data.original_title,
+    poster_path: data.poster_path,
+    release_date: data.release_date,
+    overview: data.overview,
+    // El endpoint de ficha devuelve los géneros como objetos, no como ids.
+    genre_ids: (data.genres ?? []).map((g) => g.id),
+  });
 }
 
 export type WatchProvider = {

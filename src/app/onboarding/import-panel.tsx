@@ -46,8 +46,12 @@ export function ImportPanel({
       // Las filas sin match se guardan TODAS de golpe, sin pedirle nada al
       // usuario. `outcome` viene por número de fila, así que hay que volver a
       // casarlo con la fila original para tener el payload completo.
+      //
+      // Las ambiguas van al mismo saco: aquí no hay pantalla de triaje donde
+      // elegir entre candidatos, y quedarse la primera a ciegas es justo lo que
+      // se quitó del matcher. Que las revise un colaborador.
       const unmatched = results
-        .filter((r) => r.outcome === "unmatched")
+        .filter((r) => r.outcome === "unmatched" || r.outcome === "ambiguous")
         .map((r) => parsed.rows.find((row) => row.rowNumber === r.rowNumber))
         .filter((row): row is ImportRow => row !== undefined);
 
