@@ -274,3 +274,7 @@ pidiendo y se lleva por delante las rutas que la usan.
   **todas** las rutas den 404, `/` incluida. Se cura con `rm -rf .next`.
 - **`test-results/error-context.md` guarda la contraseña del login en claro.** Está
   gitignorado, pero no lo pegues en una conversación ni en una PR.
+- **El `badge` de una notificación NO admite el icono normal.** Android se queda solo con
+  su canal alfa, así que `/icon-192` (terracota opaco de borde a borde) sale como un
+  cuadrado macizo en la barra de estado. Por eso existe `/badge-96`, transparente. Y `icon`
+  y `badge` son dos imágenes distintas: sin `badge`, Chrome pone su propio logo.

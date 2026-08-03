@@ -124,6 +124,9 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title ?? "Biblioshare", {
       body: data.body,
       icon: "/icon-192",
+      // Barra de estado de Android: monocromo aparte, porque solo se usa su
+      // canal alfa (con /icon-192 saldría un cuadrado terracota macizo).
+      badge: "/badge-96",
       data: { url: data.url ?? "/" },
     })
   );

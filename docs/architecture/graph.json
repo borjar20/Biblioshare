@@ -353,12 +353,13 @@
       "label": "Route handlers /api/*",
       "layer": "route",
       "kind": "api",
-      "summary": "/api/export (volcado de datos), /api/month-calendar (calendario mensual), /api/og/nota/[id] (tarjeta PNG vía next/og), /icon-192.",
+      "summary": "/api/export (volcado de datos), /api/month-calendar (calendario mensual), /api/og/nota/[id] (tarjeta PNG vía next/og), /icon-192, /badge-96 (badge monocromo de las notificaciones).",
       "files": [
         "src/app/api/export",
         "src/app/api/month-calendar",
         "src/app/api/og/nota/[id]",
-        "src/app/icon-192"
+        "src/app/icon-192",
+        "src/app/badge-96"
       ]
     },
     {
