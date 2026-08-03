@@ -42,11 +42,16 @@ function todayISO() {
 export function SessionSheet({
   ctx,
   initialMinutes,
+  initialStartedAt,
   mode,
 }: {
   ctx: SessionContext;
   /** Minutos que trae el cronómetro de la tarjeta de hoy (?minutos=). */
   initialMinutes?: number | null;
+  /** Hora de inicio (ISO) que trae el mismo cronómetro (?inicio=): sin ella,
+   *  "Cuándo lees" no vería la sesión. La hoja la envía tal cual en un input
+   *  oculto salvo que el usuario ponga una hora a mano. */
+  initialStartedAt?: string | null;
   /** Dónde vive la hoja: decide a dónde ir tras guardar/cerrar. */
   mode: "modal" | "page";
 }) {
@@ -250,6 +255,7 @@ export function SessionSheet({
               fromPage={currentPage}
               total={total}
               initialMinutes={initialMinutes}
+              initialStartedAt={initialStartedAt}
               onPageChange={setLivePage}
               sessionDate={sessionDate}
             />

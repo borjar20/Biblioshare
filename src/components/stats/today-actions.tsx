@@ -208,16 +208,28 @@ function BookTimer({
         <button
           type="button"
           onClick={() => {
-            // Se para, se lleva el número a la vista de sesión y se limpia: el
-            // reloj ya hizo su trabajo. Si no se limpiara, al volver a la
-            // portada seguiría contando una sesión que ya has registrado.
+            // Se para, se llevan el número Y la hora de inicio a la vista de
+            // sesión, y se limpia: el reloj ya hizo su trabajo. Si no se
+            // limpiara, al volver a la portada seguiría contando una sesión que
+            // ya has registrado. `firstStartedAt` (la hora real de inicio para
+            // "Cuándo lees") SOLO vive en localStorage, así que hay que
+            // reenviarla por la URL ANTES de borrarla — si no, la hoja abriría
+            // sin ella y la sesión se guardaría con started_at = null.
             const stoppedAt = Date.now();
-            const minutes = toMinutes(elapsedMs(pause(state, stoppedAt), stoppedAt));
+            const paused = pause(state, stoppedAt);
+            const minutes = toMinutes(elapsedMs(paused, stoppedAt));
+            const firstStartedAt = paused.firstStartedAt ?? null;
             clearTimer(passId);
+            const params = new URLSearchParams();
             // Menos de medio minuto redondea a 0, y "0 minutos" no es un dato:
             // se va sin el parámetro y el campo queda vacío, como cualquier
             // sesión que se abre a mano.
-            router.push(minutes > 0 ? `${sessionHref}?minutos=${minutes}` : sessionHref);
+            if (minutes > 0) params.set("minutos", String(minutes));
+            if (firstStartedAt != null) {
+              params.set("inicio", new Date(firstStartedAt).toISOString());
+            }
+            const qs = params.toString();
+            router.push(qs ? `${sessionHref}?${qs}` : sessionHref);
           }}
           className="flex-[2] rounded-[8px] bg-[var(--acc)] px-3 py-1.5 text-[12px] font-semibold text-accent-foreground transition-opacity hover:opacity-90"
         >

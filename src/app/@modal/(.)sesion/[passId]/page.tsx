@@ -1,4 +1,5 @@
 import { loadSessionContext, parseMinutes } from "@/lib/sessions/load-context";
+import { parseStartedAt } from "@/lib/sessions/parse-started-at";
 import { itemHref } from "@/lib/catalog/item-href";
 import { SessionModal } from "@/components/session/session-modal";
 import { SessionSheet } from "@/components/session/session-sheet";
@@ -8,10 +9,10 @@ export default async function SessionModalPage({
   searchParams,
 }: {
   params: Promise<{ passId: string }>;
-  searchParams: Promise<{ minutos?: string }>;
+  searchParams: Promise<{ minutos?: string; inicio?: string }>;
 }) {
   const { passId } = await params;
-  const { minutos } = await searchParams;
+  const { minutos, inicio } = await searchParams;
 
   const ctx = await loadSessionContext(passId);
 
@@ -22,7 +23,12 @@ export default async function SessionModalPage({
   // llevaba.
   return (
     <SessionModal exitHref={`${itemHref(ctx.itemType, ctx.itemId)}?tab=log`}>
-      <SessionSheet ctx={ctx} initialMinutes={parseMinutes(minutos)} mode="modal" />
+      <SessionSheet
+        ctx={ctx}
+        initialMinutes={parseMinutes(minutos)}
+        initialStartedAt={parseStartedAt(inicio)}
+        mode="modal"
+      />
     </SessionModal>
   );
 }
