@@ -7,6 +7,7 @@ import type { FollowCounts } from "@/lib/social/follows";
 import { EditProfileForm } from "./edit-profile-form";
 import { ProfileSettingsSheet } from "@/app/u/[username]/profile-settings-sheet";
 import { UserAvatar } from "@/components/social/user-avatar";
+import { ImageZoom } from "@/components/ui/image-zoom";
 
 // Cabecera compacta del mockup "IA nueva": (avatar + nombre/@user + acción) →
 // counts → bio → chips con punto de color por tipo.
@@ -31,6 +32,19 @@ export async function ProfileHeader({
   const name = profile.displayName || profile.username;
   const memberSinceYear = new Date(profile.createdAt).getFullYear();
   const basePath = `/u/${profile.username}`;
+  // Con foto se puede ampliar; con iniciales no hay nada que ampliar.
+  const avatar = (size: number) =>
+    profile.avatarUrl ? (
+      <ImageZoom
+        src={profile.avatarUrl}
+        alt={name}
+        className="block rounded-full"
+      >
+        <UserAvatar name={name} avatarUrl={profile.avatarUrl} size={size} />
+      </ImageZoom>
+    ) : (
+      <UserAvatar name={name} avatarUrl={null} size={size} />
+    );
 
   return (
     <div className="flex flex-col gap-3 lg:gap-4">
@@ -39,12 +53,8 @@ export async function ProfileHeader({
             presentacional y sin estado, así que duplicarlo por breakpoint es el
             caso SEGURO de la regla de los dos árboles — a diferencia del botón
             de seguir o la hoja de editar, que van una sola vez más abajo. */}
-        <div className="lg:hidden">
-          <UserAvatar name={name} avatarUrl={profile.avatarUrl} size={60} />
-        </div>
-        <div className="hidden lg:block">
-          <UserAvatar name={name} avatarUrl={profile.avatarUrl} size={84} />
-        </div>
+        <div className="lg:hidden">{avatar(60)}</div>
+        <div className="hidden lg:block">{avatar(84)}</div>
         <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-3 gap-y-2 lg:flex-nowrap lg:gap-4">
           <div className="flex min-w-[55%] flex-col lg:min-w-0">
             <div className="flex flex-col lg:flex-row lg:items-baseline lg:gap-2.5">
