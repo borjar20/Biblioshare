@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ImageZoom } from "@/components/ui/image-zoom";
 
 // Pares de rayas del handoff Paper: verde club, libro, película, serie. Son
 // "portada", no superficie de UI: se quedan fijos en claro y oscuro, igual que
@@ -26,23 +27,35 @@ export function ClubCoverBand({
   coverUrl,
   seed,
   className = "",
+  zoomable = false,
   children,
 }: {
   coverUrl: string | null;
   /** Algo estable del club (su id) que decide el patrón de placeholder. */
   seed: string;
   className?: string;
+  /** Pulsar la portada la amplía. Opt-in: en la tarjeta del listado la banda
+   *  vive dentro de un `<Link>` y el zoom se comería la navegación. */
+  zoomable?: boolean;
   /** Contenido flotante sobre la banda (p. ej. el chip Público/Privado). */
   children?: ReactNode;
 }) {
+  const cover = coverUrl && (
+    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage, mismo criterio que profile-header
+    <img src={coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+  );
+
   return (
     <div
       className={`relative overflow-hidden ${className}`}
       style={coverUrl ? undefined : { backgroundImage: stripesFor(seed) }}
     >
-      {coverUrl && (
-        // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage, mismo criterio que profile-header
-        <img src={coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      {coverUrl && zoomable ? (
+        <ImageZoom src={coverUrl} alt="" className="absolute inset-0">
+          {cover}
+        </ImageZoom>
+      ) : (
+        cover
       )}
       {children}
     </div>

@@ -76,6 +76,7 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
           coverUrl={club.coverUrl}
           seed={club.id}
           className="h-[120px] rounded-card border border-border shadow-card"
+          zoomable
         />
         <Link
           href="/clubes"
