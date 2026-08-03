@@ -76,39 +76,31 @@ export async function searchMovies(query: string): Promise<SearchResult[]> {
  * La PR #356 dio por hecho que exportaba el original y por eso todo el cine no
  * anglosajón seguía sin casar. Ver decisiones.md (2026-08-03).
  *
- * La lista base es la de **en-US**, no la de es-ES, y eso importa: TMDB ordena
- * por relevancia CONTRA EL TÍTULO EN ESE IDIOMA, así que buscar "Parasite" en
- * es-ES deja la película de Bong Joon-ho (allí "Parásitos") fuera de la primera
- * página — 95 resultados en 5 páginas, y la buena no está en la primera. Como la
- * consulta viene en inglés, el orden en-US es el que la sube arriba.
+ * Se consulta en **en-US**, no en es-ES, y eso importa por dos motivos. Uno: el
+ * título que hay que casar es el inglés. Dos: TMDB ordena por relevancia CONTRA
+ * EL TÍTULO EN ESE IDIOMA, así que buscar "Parasite" en es-ES deja la película
+ * de Bong Joon-ho (allí "Parásitos") fuera de la primera página — 95 resultados
+ * en 5 páginas, y la buena no está en la primera.
  *
- * La respuesta es-ES se usa solo como diccionario id → ficha en español, que es
- * lo que se persiste en catálogo. Las películas que no salen en ella quedan
- * marcadas con `spanishMissing`.
+ * Por eso el `title` de estos candidatos viene EN INGLÉS y va anotado también
+ * como `englishTitle`: son de usar y tirar, para comparar y para enseñárselos al
+ * usuario cuando tiene que desempatar. La ficha en español se pide por id
+ * (`getMovieAsSearchResult`) solo para la que acaba eligiéndose, que es la única
+ * que se cachea — así el catálogo no se llena de títulos ingleses y se gasta una
+ * llamada por película nueva en vez de dos por fila.
  */
 export async function searchMoviesForImport(query: string): Promise<SearchResult[]> {
-  const [english, spanish] = await Promise.all([
-    tmdbSearch("movie", query, "en-US"),
-    tmdbSearch("movie", query, "es-ES"),
-  ]);
-
-  const spanishById = new Map(spanish.map((r) => [r.id, r]));
-  return english
+  const results = await tmdbSearch("movie", query, "en-US");
+  return results
     .filter((r) => r.title)
-    .map((r) => {
-      const es = spanishById.get(r.id);
-      return {
-        ...mapMovieResult(es ?? r),
-        englishTitle: r.title ?? null,
-        ...(es ? {} : { spanishMissing: true }),
-      };
-    });
+    .map((r) => ({ ...mapMovieResult(r), englishTitle: r.title ?? null }));
 }
 
 /**
  * Ficha en español de una película por id, con la forma de un resultado de
- * búsqueda. Existe para los candidatos marcados `spanishMissing`: se les rescata
- * el título y la sinopsis en español justo antes de darlos de alta en catálogo.
+ * búsqueda. Es lo que se cachea cuando el importador da de alta una película:
+ * sus candidatos vienen en inglés (ver `searchMoviesForImport`) y guardarlos tal
+ * cual dejaría "Parasite" en un catálogo que en todas partes dice "Parásitos".
  */
 export async function getMovieAsSearchResult(
   tmdbId: number

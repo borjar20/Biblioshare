@@ -59,10 +59,11 @@ function ambiguous(candidates: ImportCandidate[]): ImportMatch {
 /**
  * El id de catálogo de un candidato elegido (por el matcher o por el usuario).
  *
- * El rodeo por `getMovieAsSearchResult` es para los candidatos que la búsqueda
- * es-ES no devolvió: llegan con el título y la sinopsis en inglés y darlos de
- * alta tal cual dejaría "Parasite" en un catálogo que en todas partes dice
- * "Parásitos". Solo cuesta una llamada extra y solo en esos casos.
+ * Si ya está cacheado, su id y punto. Si no, se pide su ficha EN ESPAÑOL por id
+ * antes de darlo de alta: los candidatos del importador vienen de una búsqueda
+ * en-US (ver `searchMoviesForImport`) y guardarlos tal cual dejaría "Parasite"
+ * en un catálogo que en todas partes dice "Parásitos". Es una llamada por
+ * película nueva, no por fila.
  */
 export async function catalogIdForMovieCandidate(
   supabase: SupabaseServerClient,
@@ -71,9 +72,8 @@ export async function catalogIdForMovieCandidate(
 ): Promise<string> {
   if (candidate.catalogId) return candidate.catalogId;
 
-  const spanish = candidate.spanishMissing
-    ? await getMovieAsSearchResult(Number(candidate.externalId))
-    : null;
+  const tmdbId = Number(candidate.externalId);
+  const spanish = Number.isFinite(tmdbId) ? await getMovieAsSearchResult(tmdbId) : null;
   return findOrCreateCatalogItem(supabase, spanish ?? candidate, userId);
 }
 
@@ -113,41 +113,61 @@ async function matchMovie(
 
   // Una película tiene TRES títulos que nos pueden llegar, y hay que probar los
   // tres:
-  //   `title`         traducción es-ES de TMDB  "El viaje de Chihiro"
-  //   `originalTitle` idioma de rodaje          "千と千尋の神隠し"
-  //   `englishTitle`  internacional en inglés   "Spirited Away"
+  //   `title`         el del catálogo local, en es-ES  "El viaje de Chihiro"
+  //   `originalTitle` idioma de rodaje                 "千と千尋の神隠し"
+  //   `englishTitle`  internacional en inglés          "Spirited Away"
   // Letterboxd exporta EL TERCERO (su catálogo es TMDB en-US). Comparar solo
   // contra los dos primeros —lo que hacía la PR #356— dejaba sin casar todo el
   // cine no anglosajón, incluido el español: "Pan's Labyrinth" no se parece ni a
   // "El laberinto del fauno" (title) ni a "El laberinto del fauno" (original).
-  // `originalTitle`/`englishTitle` faltan en los resultados del catálogo local.
+  // En los candidatos de TMDB `title` viene también en inglés (se piden en-US) y
+  // en los del catálogo local faltan los otros dos: por eso se prueban los tres
+  // en todos, sin distinguir de dónde vino cada uno.
   const titleMatches = (candidate: ImportCandidate) =>
     [candidate.title, candidate.originalTitle, candidate.englishTitle].some(
       (title) => title != null && isSameTitle(title, row.title)
     );
 
-  const localResults = await searchLocalCatalog(supabase, "movie", row.title);
-  const localMatches = preferExactTitle(
-    localResults.filter((r) => titleMatches(r) && sameYear(r.year)),
-    row.title
-  );
-  if (localMatches.length === 1) {
-    return { kind: "matched", catalogId: localMatches[0].catalogId! };
-  }
-  if (localMatches.length > 1) return ambiguous(localMatches);
+  // El catálogo local NO puede decidir por su cuenta, y por eso ya no hay atajo
+  // "si casa en local, ni preguntamos a TMDB": lo único que sabe es lo que
+  // tenemos cacheado, y «hay una sola película con este nombre en NUESTRA base»
+  // no es «hay una sola película con este nombre». Con el atajo, a quien ya
+  // tuviera "La visita" (2015) cacheada se le seguía colando el match a ciegas
+  // que esta PR arregla — lo destapó el e2e, no el razonamiento.
+  //
+  // Se consultan las dos fuentes y se decide sobre el conjunto: TMDB aporta los
+  // tres títulos, el catálogo local aporta el `catalogId` de lo que ya está
+  // dado de alta (fusionado por tmdb_id, para no pedir su ficha otra vez).
+  const [localResults, apiResults] = await Promise.all([
+    searchLocalCatalog(supabase, "movie", row.title),
+    searchMoviesForImport(row.title),
+  ]);
 
-  const apiResults = await searchMoviesForImport(row.title);
-  const apiMatches = preferExactTitle(
-    apiResults.filter((r) => titleMatches(r) && sameYear(r.year)),
+  const cachedByTmdbId = new Map(
+    localResults.filter((r) => r.externalId).map((r) => [r.externalId, r])
+  );
+  const apiIds = new Set(apiResults.map((r) => r.externalId));
+  const candidates: ImportCandidate[] = [
+    ...apiResults.map((r) => {
+      const cached = cachedByTmdbId.get(r.externalId);
+      return cached ? { ...r, catalogId: cached.catalogId } : r;
+    }),
+    // Lo que tenemos cacheado y TMDB no ha devuelto: altas manuales sin tmdb_id,
+    // o películas que se quedaron fuera de la primera página de resultados.
+    ...localResults.filter((r) => !r.externalId || !apiIds.has(r.externalId)),
+  ];
+
+  const matches = preferExactTitle(
+    candidates.filter((r) => titleMatches(r) && sameYear(r.year)),
     row.title
   );
-  if (apiMatches.length === 1) {
+  if (matches.length === 1) {
     return {
       kind: "matched",
-      catalogId: await catalogIdForMovieCandidate(supabase, apiMatches[0]),
+      catalogId: await catalogIdForMovieCandidate(supabase, matches[0]),
     };
   }
-  if (apiMatches.length > 1) return ambiguous(apiMatches);
+  if (matches.length > 1) return ambiguous(matches);
 
   // Ningún título casó, pero TMDB SÍ devolvió resultados de ese año: la consulta
   // encontró la obra por un título alternativo que nosotros no pedimos
@@ -157,7 +177,7 @@ async function matchMovie(
   // nada que acote la lista y esto degeneraría en "aquí tienes 20 pelis": ahí sí
   // se declara sin match.
   if (row.year !== null) {
-    const sameYearOnly = apiResults.filter((r) => sameYear(r.year));
+    const sameYearOnly = candidates.filter((r) => sameYear(r.year));
     if (sameYearOnly.length > 0) return ambiguous(sameYearOnly);
   }
 

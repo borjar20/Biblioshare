@@ -139,8 +139,9 @@ describe("matchMovie: los tres títulos de una película", () => {
     const result = await matchImportRow(client, "movie", movieRow());
 
     expect(result).toEqual({ kind: "matched", catalogId: "local-1" });
-    // Ni siquiera se llega a TMDB si el local ya casa.
-    expect(apiMock).not.toHaveBeenCalled();
+    // Se consulta TMDB igualmente: el catálogo local no puede saber si ahí fuera
+    // hay otra película con el mismo título (ver el comentario en matchMovie).
+    expect(apiMock).toHaveBeenCalledOnce();
   });
 
   it("casa una fila cacheada por `originalTitle` cuando el `title` local es la traducción es-ES", async () => {
@@ -156,7 +157,6 @@ describe("matchMovie: los tres títulos de una película", () => {
     const result = await matchImportRow(client, "movie", movieRow());
 
     expect(result).toEqual({ kind: "matched", catalogId: "local-42" });
-    expect(apiMock).not.toHaveBeenCalled();
   });
 
   it("el chequeo de año sigue vetando un título que coincide pero es de otra obra", async () => {
@@ -286,7 +286,6 @@ describe("matchMovie: desempate por el usuario", () => {
     const result = await matchImportRow(client, "movie", movieRow());
 
     expect(result.kind).toBe("ambiguous");
-    expect(apiMock).not.toHaveBeenCalled();
   });
 });
 
@@ -297,10 +296,9 @@ describe("matchMovie: la ficha que se cachea va en español", () => {
     apiMock.mockResolvedValue([]);
   });
 
-  it("rescata la ficha es-ES por id cuando el candidato solo salió en la búsqueda inglesa", async () => {
-    // "Parasite": la búsqueda es-ES no la devuelve en la primera página (allí es
-    // "Parásitos"), así que el candidato llega con el título inglés. Cachearlo
-    // tal cual dejaría "Parasite" en un catálogo que dice "Parásitos".
+  it("pide la ficha es-ES por id antes de dar de alta: los candidatos vienen en inglés", async () => {
+    // Los candidatos salen de una búsqueda en-US, así que su `title` es inglés.
+    // Cachearlo tal cual dejaría "Parasite" en un catálogo que dice "Parásitos".
     apiMock.mockResolvedValue([
       sr({
         externalId: "496243",
@@ -308,7 +306,6 @@ describe("matchMovie: la ficha que se cachea va en español", () => {
         originalTitle: "기생충",
         englishTitle: "Parasite",
         year: 2019,
-        spanishMissing: true,
       }),
     ]);
     vi.mocked(getMovieAsSearchResult).mockResolvedValue(
@@ -330,18 +327,25 @@ describe("matchMovie: la ficha que se cachea va en español", () => {
     );
   });
 
-  it("no gasta la llamada extra cuando la búsqueda es-ES sí trajo la película", async () => {
+  it("no pide nada si la película ya está en el catálogo", async () => {
+    localMock.mockResolvedValue([
+      sr({ externalId: "278", title: "Cadena perpetua", year: 1994, catalogId: "local-7" }),
+    ]);
     apiMock.mockResolvedValue([
       sr({
         externalId: "278",
-        title: "Cadena perpetua",
+        title: "The Shawshank Redemption",
         englishTitle: "The Shawshank Redemption",
         year: 1994,
       }),
     ]);
 
-    await matchImportRow(client, "movie", movieRow());
+    const result = await matchImportRow(client, "movie", movieRow());
 
+    // Y no cuenta dos veces la misma película por venir de las dos fuentes: se
+    // fusionan por tmdb_id, así que esto es UN match, no un empate.
+    expect(result).toEqual({ kind: "matched", catalogId: "local-7" });
     expect(getMovieAsSearchResult).not.toHaveBeenCalled();
+    expect(findOrCreateCatalogItem).not.toHaveBeenCalled();
   });
 });
