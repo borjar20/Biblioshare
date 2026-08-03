@@ -25,7 +25,7 @@ export async function ActivityChart({ months }: { months: MonthlyActivity[] }) {
             const total = m.book + m.movie + m.series;
             const heightPercent = (total / max) * 100;
             return (
-              <div key={m.month} className="flex flex-1 flex-col items-center gap-1.5">
+              <div key={m.month} className="flex h-full flex-1 flex-col items-center gap-1.5">
                 <div className="flex w-full flex-1 items-end justify-center">
                   <div
                     className="flex w-6 flex-col-reverse overflow-hidden rounded-sm sm:w-8"

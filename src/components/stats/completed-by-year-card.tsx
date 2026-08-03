@@ -44,7 +44,7 @@ export async function CompletedByYearCard({ years }: { years: YearCompleted[] })
 
       <div className="flex h-24 items-end justify-between gap-1">
         {years.map((y) => (
-          <div key={y.year} className="flex flex-1 flex-col items-center gap-1">
+          <div key={y.year} className="flex h-full flex-1 flex-col items-center gap-1">
             <div className="flex w-full max-w-4 flex-1 flex-col-reverse justify-start">
               {(["book", "movie", "series"] as const).map((type) =>
                 y[type] > 0 ? (
@@ -54,7 +54,7 @@ export async function CompletedByYearCard({ years }: { years: YearCompleted[] })
                       height: `${(y[type] / max) * 100}%`,
                       background: `var(--type-${type})`,
                     }}
-                    className="w-full first:rounded-t-sm"
+                    className="w-full last:rounded-t-sm"
                   />
                 ) : null,
               )}
