@@ -4,7 +4,9 @@ import { parseLetterboxd } from "./parse-letterboxd";
 import type { ImportRow } from "./types";
 
 vi.mock("./match-row", () => ({
-  matchImportRow: vi.fn().mockResolvedValue("catalog-item-1"),
+  matchImportRow: vi
+    .fn()
+    .mockResolvedValue({ kind: "matched", catalogId: "catalog-item-1" }),
 }));
 
 // Fake de Supabase que SÍ simula el índice `passes_one_active`

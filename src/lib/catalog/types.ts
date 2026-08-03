@@ -15,12 +15,19 @@ export type SearchResult = {
   // Ver docs/REQUIREMENTS.md §7.32.
   catalogId?: string;
   title: string;
-  // Películas/series: título en idioma original de TMDB (`original_title`). El
-  // `title` viene traducido a es-ES, que NO coincide con el título original que
-  // exporta Letterboxd ("Cadena perpetua" vs "The Shawshank Redemption") — el
-  // matcher del importador compara contra ambos. Ausente en libros y catálogo
-  // local (undefined).
+  // Películas/series: título en idioma original de TMDB (`original_title`), el
+  // del idioma de rodaje. El `title` viene traducido a es-ES. Ausente en libros
+  // y catálogo local (undefined).
   originalTitle?: string | null;
+  // Películas: título INTERNACIONAL EN INGLÉS (el `title` de TMDB con
+  // language=en-US), que no es ninguno de los dos anteriores: "El viaje de
+  // Chihiro" (es-ES) / 千と千尋の神隠し (original) / "Spirited Away" (inglés).
+  // Es el que exporta Letterboxd, porque su catálogo es TMDB en-US, así que el
+  // matcher del importador compara contra los TRES. Solo lo rellena
+  // `searchMoviesForImport`; en el resto de rutas es undefined. OJO: en esos
+  // candidatos el `title` viene TAMBIÉN en inglés (se piden con language=en-US),
+  // así que no se cachean tal cual — ver `catalogIdForMovieCandidate`.
+  englishTitle?: string | null;
   subtitle: string | null; // libros: autoría
   coverUrl: string | null;
   year: number | null;
