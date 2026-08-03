@@ -12,11 +12,9 @@ import { RoundHistory } from "./round-history";
 // pinta lo decide el estado que devuelve SQL, no el cliente.
 export async function RoundBlock({
   clubId,
-  clubSlug,
   viewerId,
 }: {
   clubId: string;
-  clubSlug: string;
   viewerId: string;
 }) {
   const [state, t] = await Promise.all([getRoundState(clubId), getTranslations("club.round")]);
@@ -50,6 +48,11 @@ export async function RoundBlock({
           <p className="font-serif text-xl leading-snug font-medium text-balance">
             {state.round.prompt}
           </p>
+          {state.round.authorName && (
+            <p className="text-xs text-muted-foreground">
+              {t("proposedBy", { name: state.round.authorName })}
+            </p>
+          )}
           {summary && (
             <ReviewInteractions
               interactionTargetId={summary.interactionTargetId}
@@ -74,22 +77,35 @@ export async function RoundBlock({
         /* 01: te toca a ti. */
         <RoundComposer clubId={clubId} />
       ) : casaDisponible ? (
-        /* 04 sin materializar: la consigna existe, su fila todavía no. */
+        /* 04 sin materializar: la consigna existe, su fila todavía no. Mismo
+           <p> serif que el estado 03 -- issue real de la review de la Task 4:
+           sin esto se anunciaba el sello y el botón "Responder" sin la
+           pregunta a la vista. */
         <>
           <span className="self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
             {t("houseStamp")}
           </span>
+          {state.housePrompt && (
+            <p className="font-serif text-xl leading-snug font-medium text-balance">
+              {state.housePrompt}
+            </p>
+          )}
           <RoundAnswerGate clubId={clubId} />
         </>
       ) : (
         /* 02: le toca a otro y aún tiene sus 48 h. Deliberadamente sin nada que
-           responder: si aquí ya hubiera contenido, el turno no valdría nada. */
-        <div className="flex flex-col gap-1">
-          <p className="font-serif text-[17px] font-semibold">
-            {t("waitingTitle", { name: state.holderName ?? "" })}
-          </p>
-          <p className="text-sm text-muted-foreground">{t("waitingSub")}</p>
-        </div>
+           responder: si aquí ya hubiera contenido, el turno no valdría nada.
+           Sin holderId no hay titular -- el roster puede venir vacío en un
+           club sin miembros activos -- y sin titular no hay frase que
+           pintar: antes quedaba colgando "Esta semana le toca a ". */
+        state.holderId && (
+          <div className="flex flex-col gap-1">
+            <p className="font-serif text-[17px] font-semibold">
+              {t("waitingTitle", { name: state.holderName ?? "" })}
+            </p>
+            <p className="text-sm text-muted-foreground">{t("waitingSub")}</p>
+          </div>
+        )
       )}
 
       <RoundHistory clubId={clubId} currentPeriodKey={state.periodKey} />

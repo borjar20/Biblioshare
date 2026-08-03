@@ -257,6 +257,57 @@ begin
 end;
 $$;
 
+-- ── house_prompt: la consigna pendiente de materializar ──────────────
+-- get_club_round_state.house_prompt es lo que vio la review de la Task 4 que
+-- faltaba: sin ella, el estado "consigna de la casa sin materializar" (día
+-- >= 3, sin ronda todavía) pintaba el sello "Ronda de la casa" y el botón
+-- "Responder" sin la pregunta a la vista.
+
+-- Con ronda ya escrita para el periodo, house_prompt es null pase lo que
+-- pase con el día: la ronda ya escrita manda, la consigna de la casa no
+-- compite por el mismo periodo.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
+select pg_temp.assert_true(
+  (select house_prompt from public.get_club_round_state('00000000-0000-4000-8000-000000000201')) is null,
+  'house_prompt es null cuando el periodo ya tiene ronda escrita'
+);
+
+-- Fuera de esa rama, house_prompt es una PROPIEDAD frente a
+-- private.house_prompt(): coincide con ella cuando toca (día >= 3 y sin
+-- ronda) y es null en cualquier otro caso. Sin costura de inyección para
+-- forzar club_now() (issue diferida de la Task 2, #4: "el camino de
+-- consigna de la casa no tiene cobertura"), se escribe como propiedad válida
+-- sea cual sea el día real en que corra la matriz, en vez de asumirlo. Club
+-- 204 nunca recibe una ronda en todo este fichero -- aísla el efecto del día
+-- sin la ronda ya escrita de por medio. La lectura pasa por
+-- get_club_round_state (rol authenticated, como un cliente real); la
+-- comparación con private.house_prompt() necesita el rol privilegiado
+-- (revocado a authenticated a propósito), así que el resultado se pasa de
+-- una sesión de rol a otra por una tabla temporal -- mismo motivo que
+-- reset role antes de llamar a private.house_prompt() más abajo.
+create temporary table pg_temp.house_prompt_probe as
+select day_index, round_id, house_prompt, period_key
+from public.get_club_round_state('00000000-0000-4000-8000-000000000204');
+reset role;
+do $$
+declare v_day int; v_round uuid; v_house text; v_period text;
+begin
+  select day_index, round_id, house_prompt, period_key
+    into v_day, v_round, v_house, v_period
+  from pg_temp.house_prompt_probe;
+  if v_round is null and v_day >= 3 then
+    perform pg_temp.assert_true(
+      v_house = private.house_prompt('00000000-0000-4000-8000-000000000204', v_period),
+      'house_prompt trae la consigna de la casa cuando toca (día >= 3, sin ronda)');
+  else
+    perform pg_temp.assert_true(
+      v_house is null,
+      'house_prompt es null fuera de la ventana de la casa (día < 3, sin ronda todavía)');
+  end if;
+end $$;
+drop table pg_temp.house_prompt_probe;
+
 -- La consigna de la casa es determinista y depende del club Y del periodo.
 -- private.house_prompt() es una función interna: el Step 3 le revoca
 -- "execute" al rol authenticated a propósito (el cliente no debe poder

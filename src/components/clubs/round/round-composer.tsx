@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ItemPicker, type PickedItem } from "@/components/clubs/item-picker";
 import { proposeRound } from "@/lib/clubs/rounds/rounds";
@@ -11,6 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 // convierte un campo en un formulario.
 export function RoundComposer({ clubId }: { clubId: string }) {
   const t = useTranslations("club.round");
+  const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [item, setItem] = useState<PickedItem | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -32,6 +34,12 @@ export function RoundComposer({ clubId }: { clubId: string }) {
           // te pasó el turno". Viajan como resultado discriminado, no como
           // throw -- ver el comentario de ProposeRoundResult en rounds.ts.
           setError(t("errorNotYourTurn"));
+          // El composer se quedaba pintado como si aún fuera tu turno,
+          // encima de una ronda que ya existe (la de quien se adelantó). El
+          // texto se queda en el estado -- no se pierde, se puede copiar --
+          // pero la página necesita refrescar para que round-block.tsx vea
+          // el `round` ya escrito y deje de ofrecer el composer.
+          router.refresh();
           return;
         }
         setPrompt("");
@@ -51,6 +59,7 @@ export function RoundComposer({ clubId }: { clubId: string }) {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder={t("yourTurnPlaceholder")}
+        aria-label={t("yourTurnTitle")}
         maxLength={500}
         rows={3}
         className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm"
@@ -81,7 +90,11 @@ export function RoundComposer({ clubId }: { clubId: string }) {
         )}
         <span className="ml-auto text-xs text-muted-foreground">{t("yourTurnDeadline")}</span>
       </div>
-      {error && <p className="text-sm text-status-dropped">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-status-dropped">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -219,7 +219,7 @@ async function ClubFeedSection({
 
       <div className="min-w-0 lg:order-1">
         <div className="mb-5">
-          <RoundBlock clubId={club.id} clubSlug={club.slug} viewerId={userId} />
+          <RoundBlock clubId={club.id} viewerId={userId} />
         </div>
         <ClubFeed
           clubId={club.id}

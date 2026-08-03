@@ -2383,6 +2383,7 @@ export type Database = {
         Returns: {
           day_index: number
           holder_id: string
+          house_prompt: string
           period_key: string
           round_author: string
           round_id: string

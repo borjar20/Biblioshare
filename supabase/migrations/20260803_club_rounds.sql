@@ -128,7 +128,15 @@ returns table (
   round_author    uuid,
   round_prompt    text,
   round_item_type public.item_type,
-  round_item_id   uuid
+  round_item_id   uuid,
+  -- La consigna de la casa PENDIENTE de materializar (día >= 3, sin ronda
+  -- todavía): private.house_prompt() tiene el execute revocado a
+  -- `authenticated` a propósito (el 05: house_prompt es un cabo suelto que
+  -- no puede llamar el cliente), pero esta función es SECURITY DEFINER y sí
+  -- puede. Sin esto, la UI anunciaba "Ronda de la casa" + el botón
+  -- «Responder» sin la pregunta a la vista -- issue detectada en la review
+  -- de la Task 4. NULL en cualquier otro caso (ya hay ronda, o aún no toca).
+  house_prompt    text
 )
 language sql stable security definer set search_path = '' as $function$
   with ctx as (
@@ -160,7 +168,10 @@ language sql stable security definer set search_path = '' as $function$
          ctx.day_index,
          (select r.user_id from roster r
            where r.idx = (select weeks from turno) % nullif((select n from roster limit 1), 0)),
-         rd.id, rd.author_id, rd.prompt, rd.item_type, rd.item_id
+         rd.id, rd.author_id, rd.prompt, rd.item_type, rd.item_id,
+         case when rd.id is null and ctx.day_index >= 3
+              then private.house_prompt(p_club_id, ctx.period_key)
+         end as house_prompt
   from ctx
   left join public.club_rounds rd
     on rd.club_id = p_club_id and rd.period_key = ctx.period_key;

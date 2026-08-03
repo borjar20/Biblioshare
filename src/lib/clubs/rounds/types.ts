@@ -16,8 +16,18 @@ export type RoundState = {
   round: {
     id: string;
     authorId: string | null;
+    /** Nombre de quien propuso, para «{name} propuso la ronda» (estado 03).
+     *  `null` si es una ronda de la casa (`authorId` también null) o si el
+     *  autor no tiene perfil legible. */
+    authorName: string | null;
     prompt: string;
     itemType: ItemType | null;
     itemId: string | null;
   } | null;
+  /** La consigna de la casa PENDIENTE de materializar: solo trae texto
+   *  cuando `round` es `null`, `dayIndex >= 3` y aún no ha respondido nadie
+   *  (§2.4 de la spec). Lo calcula `get_club_round_state` en SQL -- ver su
+   *  comentario -- porque `private.house_prompt()` no es invocable desde
+   *  aquí (su `execute` está revocado para `authenticated` a propósito). */
+  housePrompt: string | null;
 };

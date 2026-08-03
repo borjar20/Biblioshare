@@ -18,6 +18,9 @@ export async function getRoundState(clubId: string): Promise<RoundState | null> 
 
   // El nombre del titular pide una segunda consulta: la RPC devuelve el id, y
   // el estado 02 de la maqueta dice «Esta semana le toca a Marta», no un uuid.
+  // El del autor es el mismo caso para el estado 03 («{name} propuso la
+  // ronda»): si coinciden (titular == autor, el camino normal), se reusa la
+  // consulta ya hecha en vez de duplicarla.
   let holderName: string | null = null;
   if (data.holder_id) {
     const { data: perfil } = await supabase
@@ -26,6 +29,19 @@ export async function getRoundState(clubId: string): Promise<RoundState | null> 
       .eq("user_id", data.holder_id)
       .maybeSingle();
     holderName = perfil?.display_name ?? perfil?.username ?? null;
+  }
+  let authorName: string | null = null;
+  if (data.round_author) {
+    if (data.round_author === data.holder_id) {
+      authorName = holderName;
+    } else {
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("display_name, username")
+        .eq("user_id", data.round_author)
+        .maybeSingle();
+      authorName = perfil?.display_name ?? perfil?.username ?? null;
+    }
   }
 
   return {
@@ -37,11 +53,13 @@ export async function getRoundState(clubId: string): Promise<RoundState | null> 
       ? {
           id: data.round_id,
           authorId: data.round_author,
+          authorName,
           prompt: data.round_prompt,
           itemType: data.round_item_type,
           itemId: data.round_item_id,
         }
       : null,
+    housePrompt: data.house_prompt,
   };
 }
 
