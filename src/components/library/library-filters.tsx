@@ -102,10 +102,13 @@ export async function LibraryFilters({
     (genre ? 1 : 0);
 
   return (
-    <div className="flex flex-col gap-2.5">
+    // Barra de una sola fila en sm+: buscador a la izquierda (topado, que a
+    // 1600px de shell ancho un `w-full` daba una píldora de metro y medio) y
+    // «Filtros» pegado al borde derecho de la rejilla. En móvil siguen apilados.
+    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       {/* Búsqueda: píldora con la lupa dentro y SIN botón aparte (Enter envía) —
           ocupa una fila menos. */}
-      <form action={basePath} className="relative">
+      <form action={basePath} className="relative w-full sm:max-w-xl sm:flex-1">
         {/* Buscar conserva el ámbito de tipo actual: el tipo concreto, o el
             centinela `todos` cuando la vista es «todos los tipos» — si no,
             buscar desde «Todo» revertiría al tipo preferido (issue #313). */}
