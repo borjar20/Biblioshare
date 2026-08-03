@@ -8,13 +8,12 @@ import type { FeedEvent } from "@/lib/social/feed";
 
 const RECENT_LIMIT = 10;
 
-// getFeed() (Bloque C) filtra por `follows` -- a quién sigues -- así que
-// nunca puede devolver las propias filas del viewer, sin importar qué
-// viewerId se le pase (su propia query es `follower_id = viewerId`, que
-// resuelve a quién sigue viewerId, nunca a viewerId mismo). Para "mi propia
-// actividad reciente" se hace una query ligera y propia sobre las 4 tablas
-// fuente, y cada fila se re-resuelve vía resolveSharedActivity (Task 3) en
-// vez de re-derivar la forma FeedEvent por tercera vez en el proyecto.
+// getFeed() (Bloque C) sirve tus filas MEZCLADAS con las de tus seguidos y
+// paginadas por su cursor: para "elige una actividad TUYA reciente" haría
+// falta filtrarlas después, sin garantía de cuántas propias trae cada página.
+// Así que aquí se hace una query ligera y propia sobre las 4 tablas fuente, y
+// cada fila se re-resuelve vía resolveSharedActivity (Task 3) en vez de
+// re-derivar la forma FeedEvent por tercera vez en el proyecto.
 export async function loadOwnRecentActivity(): Promise<FeedEvent[]> {
   const supabase = await createClient();
   const {

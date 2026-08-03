@@ -216,9 +216,28 @@ export async function getFeed(
   if (followResult.error) throw followResult.error;
 
   // Feed de actor: la fuente son sus propios eventos, no los de tus seguidos.
+  // En el feed personal (Inicio) el visitante entra como una fuente más: tu
+  // Inicio es "lo mío y lo de mi gente", no solo lo de los demás. `follows`
+  // nunca te devuelve a ti mismo (su filtro es `follower_id = viewerId`), así
+  // que hay que añadirse a mano.
   const followedIds = isActorFeed
     ? [actorId]
-    : (followResult.data ?? []).map((f) => f.followee_id);
+    : [
+        ...(viewerId ? [viewerId] : []),
+        ...(followResult.data ?? []).map((f) => f.followee_id),
+      ];
+  // Tus propias ALTAS son la excepción: un import en masa mete cientos de pases
+  // en el mismo instante y, como la agrupación es de presentación y se aplica
+  // DESPUÉS del corte a pageSize, esos pases ocupan la primera página entera y
+  // tapan todo lo demás (medido: un import de 126 títulos se llevaba 18 de los
+  // 20 huecos). Además es lo menos informativo que puedes ver de ti mismo: que
+  // añadiste algo ya lo sabes. Tus sesiones, terminados/reseñas y episodios sí
+  // entran. En el feed de un actor no aplica: ahí SÍ se ven sus altas.
+  // Esto es el parche del síntoma; la causa (agrupar después de paginar) es
+  // preexistente y vive en issue #391 — si se arregla, reconsiderar la regla.
+  const addedActorIds = isActorFeed
+    ? followedIds
+    : followedIds.filter((id) => id !== viewerId);
   // Seguir a nadie ya no vacía el feed: puedes tener clubes igualmente.
   const includePerson = includePeople && followedIds.length > 0;
   if (!includePerson && clubResult.events.length === 0) {
@@ -229,7 +248,7 @@ export async function getFeed(
   // paso previo por library_entries que resolvía qué entradas eran de un
   // tipo. progress_sessions no tiene item_type propio (cuelga del pase vía
   // pass_id), así que su query se une a diary_entries para filtrar.
-  const includeAdded = includePerson && !reviewsOnly;
+  const includeAdded = includePerson && !reviewsOnly && addedActorIds.length > 0;
   const includeProgressed = includePerson && !reviewsOnly;
   const includeDiary = includePerson;
   const includeEpisodes =
@@ -246,7 +265,8 @@ export async function getFeed(
           let q = supabase
             .from("passes")
             .select("id, user_id, item_type, item_id, status, created_at")
-            .in("user_id", followedIds)
+            // Sin el visitante: ver `addedActorIds`.
+            .in("user_id", addedActorIds)
             // La clave de orden entera, en columnas reales: aquí la fecha y la
             // hora de registro son la MISMA (un alta no se puede backdatear).
             .order("created_at", { ascending: false })
