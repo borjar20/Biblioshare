@@ -16,8 +16,10 @@ import { getRecords } from "@/lib/stats/get-records";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getTbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import { getCompletedByYear } from "@/lib/stats/get-completed-by-year";
+import { getTopRated } from "@/lib/stats/get-top-rated";
 import { CompletedByYearCard } from "@/components/stats/completed-by-year-card";
 import { RatingCard } from "@/components/stats/rating-card";
+import { TopRatedCard } from "@/components/stats/top-rated-card";
 import { TypeDistributionCard } from "@/components/stats/type-distribution-card";
 import { StatusBarCard } from "@/components/stats/status-bar-card";
 import { HoursByMonthCard } from "@/components/stats/hours-by-month-card";
@@ -66,20 +68,33 @@ export default async function FullStatsPage({
   const { periodo } = await searchParams;
   const period = resolvePeriod(periodo);
 
-  const [profile, rating, type, status, hours, catalog, habits, records, streaks, tbr, byYear] =
-    await Promise.all([
-      getOwnProfile(supabase, user.id),
-      getRatingDistribution(supabase, user.id, period),
-      getTypeDistribution(supabase, user.id, period),
-      getStatusDistribution(supabase, user.id),
-      getHoursByMonth(supabase, user.id, period),
-      getCatalogBreakdown(supabase, user.id, period),
-      getHabits(supabase, user.id, period),
-      getRecords(supabase, user.id, period),
-      getStreaks(supabase, user.id),
-      getTbrSnapshot(supabase, user.id),
-      getCompletedByYear(supabase, user.id),
-    ]);
+  const [
+    profile,
+    rating,
+    type,
+    status,
+    hours,
+    catalog,
+    habits,
+    records,
+    streaks,
+    tbr,
+    byYear,
+    topRated,
+  ] = await Promise.all([
+    getOwnProfile(supabase, user.id),
+    getRatingDistribution(supabase, user.id, period),
+    getTypeDistribution(supabase, user.id, period),
+    getStatusDistribution(supabase, user.id),
+    getHoursByMonth(supabase, user.id, period),
+    getCatalogBreakdown(supabase, user.id, period),
+    getHabits(supabase, user.id, period),
+    getRecords(supabase, user.id, period),
+    getStreaks(supabase, user.id),
+    getTbrSnapshot(supabase, user.id),
+    getCompletedByYear(supabase, user.id),
+    getTopRated(supabase, user.id, period),
+  ]);
 
   const backHref = profile
     ? `/u/${profile.username}?tab=estadisticas`
@@ -93,6 +108,9 @@ export default async function FullStatsPage({
     </Card>,
     <Card key="rating">
       <RatingCard dist={rating} />
+    </Card>,
+    <Card key="topRated">
+      <TopRatedCard items={topRated} />
     </Card>,
     <Card key="type">
       <TypeDistributionCard dist={type} />

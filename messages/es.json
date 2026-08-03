@@ -1537,6 +1537,7 @@
     "ratingTitle": "Valoración media",
     "ratingCount": "{count, plural, one {# nota} other {# notas}}",
     "ratingEmpty": "Aún no has puntuado nada.",
+    "topRatedTitle": "Mejor valoradas",
     "recordsTitle": "Récords",
     "recordMonth": "Mes más activo",
     "recordFastest": "Libro más rápido",
