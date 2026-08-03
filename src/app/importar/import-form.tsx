@@ -7,6 +7,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { ImportRow } from "@/lib/import/types";
 import { useImportRun } from "@/lib/import/use-import-run";
 import { parseImportFile, type ParseImportState } from "./actions";
+import { FORM_CARD_GRID_COLS } from "@/lib/ui/layout";
 import { UnmatchedRowForm } from "./unmatched-row-form";
 
 const initialParseState: ParseImportState = {};
@@ -45,9 +46,13 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
     void start(parsed.itemType, parsed.rows).then(() => setPhase("results"));
   }, [parseState.result, start]);
 
+  // `max-w-2xl` propio en las dos primeras fases: la página se ensancha para la
+  // de RESULTADOS, que es una pantalla de triaje y puede traer decenas de filas
+  // sin emparejar. Un selector de fichero y una barra de progreso estirados a
+  // 1200px solo quedan peor.
   if (phase === "upload") {
     return (
-      <form action={parseAction} className="flex flex-col gap-4">
+      <form action={parseAction} className="flex max-w-2xl flex-col gap-4">
         <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4 text-sm text-muted-foreground">
           <p>{t("help.goodreads")}</p>
           <p>{t("help.letterboxd")}</p>
@@ -76,7 +81,7 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
     const total = run.total;
     const percent = total > 0 ? Math.round((run.processed / total) * 100) : 0;
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex max-w-2xl flex-col gap-3">
         <p className="text-sm text-muted-foreground">
           {t("processing", { processed: run.processed, total })}
         </p>
@@ -109,7 +114,10 @@ export function ImportForm({ canResolveManually }: { canResolveManually: boolean
       {unmatched.length > 0 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-medium">{t("unmatchedTitle")}</h2>
-          <ul className="flex flex-col gap-3">
+          {/* Cada fila es un formulario de tres campos. A dos columnas dentro
+              de SHELL_APP cada una conserva ~470px —de sobra para etiqueta e
+              input— y se ven el doble de filas de una vez. */}
+          <ul className={`grid items-start gap-3 ${FORM_CARD_GRID_COLS}`}>
             {unmatched.map((result) => {
               const row = rowByNumber.get(result.rowNumber);
               if (!row) return null;
