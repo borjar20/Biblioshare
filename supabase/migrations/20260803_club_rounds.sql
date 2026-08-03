@@ -86,3 +86,148 @@ create trigger club_rounds_sync_interaction_target
 create trigger club_rounds_cleanup_social_target
   after delete on public.club_rounds
   for each row execute function private.cleanup_social_target('club_round');
+
+-- ── La semana y el turno viven AQUÍ, nunca en TypeScript ─────────────
+-- El cliente no calcula ni envía el periodo: así la clase de bug de la issue
+-- #271 (fecha del NAVEGADOR, no del servidor) no puede reproducirse.
+-- Europe/Madrid y no UTC: con UTC la semana cambiaría a las 02:00 del lunes
+-- en verano, y el producto es de un solo huso.
+create or replace function private.club_now()
+returns timestamp language sql stable set search_path = '' as $function$
+  select timezone('Europe/Madrid', now());
+$function$;
+
+create or replace function private.house_prompt(p_club_id uuid, p_period_key text)
+returns text language sql immutable set search_path = '' as $function$
+  -- Índice determinista por club Y periodo: dos clubes no reciben la misma
+  -- consigna la misma semana, y un club recibe siempre la misma para una
+  -- semana dada (lo que hace idempotente materializarla dos veces).
+  -- hashtext devuelve int4: abs() del valor más negativo de int4 desborda
+  -- ('integer out of range'). Se castea a bigint antes de abs() para que
+  -- ningún club quede permanentemente roto por esa colisión.
+  select (array[
+    'El libro que llevas más tiempo diciendo que vas a leer. ¿Cuánto llevas ya?',
+    'Un libro que abandonaste y no te arrepientes.',
+    'Una adaptación que mejora al original. Defiéndela.',
+    '¿Releer es perder el tiempo?',
+    'El personaje secundario que se merecía su propio libro.',
+    'Algo que leíste por obligación y acabó gustándote.',
+    'Un final que te sigue doliendo.',
+    'La recomendación que más veces has hecho.',
+    '¿Qué estás leyendo ahora mismo y qué tal va?',
+    'Un libro que te vendieron mal y era otra cosa.'
+  ])[1 + (abs(hashtext(p_club_id::text || p_period_key)::bigint) % 10)];
+$function$;
+
+create or replace function public.get_club_round_state(p_club_id uuid)
+returns table (
+  period_key      text,
+  day_index       int,
+  holder_id       uuid,
+  round_id        uuid,
+  round_author    uuid,
+  round_prompt    text,
+  round_item_type public.item_type,
+  round_item_id   uuid
+)
+language sql stable security definer set search_path = '' as $function$
+  with ctx as (
+    select to_char(private.club_now(), 'IYYY-"W"IW')     as period_key,
+           extract(isodow from private.club_now())::int  as day_index,
+           c.created_at
+    from public.clubs c
+    -- Sin ser miembro no hay estado que devolver: la función es SECURITY
+    -- DEFINER, así que la puerta se pone aquí a mano.
+    where c.id = p_club_id and public.is_club_member(p_club_id)
+  ),
+  roster as (
+    select m.user_id,
+           row_number() over (order by m.joined_at, m.user_id) - 1 as idx,
+           count(*) over ()                                        as n
+    from public.club_members m
+    where m.club_id = p_club_id and m.status = 'active'
+  ),
+  turno as (
+    select (
+      extract(epoch from (
+        date_trunc('week', private.club_now())
+        - date_trunc('week', timezone('Europe/Madrid', ctx.created_at))
+      )) / 604800
+    )::bigint as weeks
+    from ctx
+  )
+  select ctx.period_key,
+         ctx.day_index,
+         (select r.user_id from roster r
+           where r.idx = (select weeks from turno) % nullif((select n from roster limit 1), 0)),
+         rd.id, rd.author_id, rd.prompt, rd.item_type, rd.item_id
+  from ctx
+  left join public.club_rounds rd
+    on rd.club_id = p_club_id and rd.period_key = ctx.period_key;
+$function$;
+
+create or replace function public.ensure_club_round(
+  p_club_id   uuid,
+  p_prompt    text default null,
+  p_item_type public.item_type default null,
+  p_item_id   uuid default null
+) returns uuid
+language plpgsql security definer set search_path = '' as $function$
+declare
+  v_period text; v_day int; v_holder uuid; v_existing uuid;
+  v_prompt text; v_author uuid; v_id uuid;
+begin
+  if not public.is_club_member(p_club_id) then
+    raise exception 'not_a_member' using errcode = '42501';
+  end if;
+
+  select s.period_key, s.day_index, s.holder_id, s.round_id
+    into v_period, v_day, v_holder, v_existing
+  from public.get_club_round_state(p_club_id) s;
+
+  -- Ya hay ronda de este periodo: idempotente. Quien escribió primero la
+  -- definió, y esa es toda la regla de resolución de conflictos.
+  if v_existing is not null then
+    return v_existing;
+  end if;
+
+  if p_prompt is not null then
+    if (select auth.uid()) is distinct from v_holder then
+      raise exception 'not_your_turn' using errcode = '42501';
+    end if;
+    v_prompt := btrim(p_prompt);
+    if v_prompt = '' then
+      raise exception 'prompt_required' using errcode = '22023';
+    end if;
+    v_author := v_holder;
+  else
+    -- Consigna de la casa: solo del día 3 en adelante, para que el titular
+    -- tenga sus 48 h de exclusividad.
+    if v_day < 3 then
+      raise exception 'house_round_too_early' using errcode = '42501';
+    end if;
+    v_prompt := private.house_prompt(p_club_id, v_period);
+    v_author := null;
+  end if;
+
+  insert into public.club_rounds (club_id, period_key, author_id, prompt, item_type, item_id)
+  values (p_club_id, v_period, v_author, v_prompt,
+          case when p_prompt is not null then p_item_type end,
+          case when p_prompt is not null then p_item_id  end)
+  on conflict (club_id, period_key) do nothing
+  returning id into v_id;
+
+  -- La carrera entre dos respuestas simultáneas a la consigna de la casa la
+  -- resuelve el índice único, no un lock: si perdimos, leemos la ganadora.
+  if v_id is null then
+    select id into v_id from public.club_rounds
+     where club_id = p_club_id and period_key = v_period;
+  end if;
+  return v_id;
+end;
+$function$;
+
+revoke execute on function private.club_now()            from public, anon, authenticated;
+revoke execute on function private.house_prompt(uuid, text) from public, anon, authenticated;
+grant  execute on function public.get_club_round_state(uuid) to authenticated;
+grant  execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) to authenticated;

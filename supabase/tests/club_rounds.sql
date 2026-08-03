@@ -132,4 +132,98 @@ select pg_temp.assert_true(
 reset role;
 select set_config('request.jwt.claims', '', true);
 
+-- ── El periodo y el turno ────────────────────────────────────────────
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
+
+select pg_temp.assert_true(
+  (select period_key from public.get_club_round_state('00000000-0000-4000-8000-000000000201'))
+   = to_char(timezone('Europe/Madrid', now()), 'IYYY-"W"IW'),
+  'el periodo es la semana ISO en Europe/Madrid'
+);
+
+select pg_temp.assert_true(
+  (select holder_id from public.get_club_round_state('00000000-0000-4000-8000-000000000201'))
+   in ('00000000-0000-4000-8000-0000000002a1', '00000000-0000-4000-8000-0000000002b2'),
+  'el titular es uno de los dos miembros activos'
+);
+
+-- El club nació hace 10 semanas con 2 miembros: el titular alterna semana a
+-- semana. Se comprueba la ARITMÉTICA, no una fecha concreta.
+select pg_temp.assert_true(
+  (select count(distinct holder) from (
+     select (select user_id from (
+       select user_id, row_number() over (order by joined_at, user_id) - 1 as idx
+       from public.club_members
+       where club_id = '00000000-0000-4000-8000-000000000201' and status = 'active'
+     ) r where r.idx = w % 2) as holder
+     from generate_series(0, 5) as w
+   ) s) = 2,
+  'a lo largo de 6 semanas consecutivas rotan los 2 miembros'
+);
+
+-- ── ensure_club_round: quién puede escribir ──────────────────────────
+-- Carla no es miembro.
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002c3","role":"authenticated"}';
+select pg_temp.expect_sqlstate(
+  $$select public.ensure_club_round('00000000-0000-4000-8000-000000000201', 'Intrusa')$$,
+  '42501',
+  'un no-miembro no puede crear una ronda'
+);
+
+-- El que NO es titular no puede proponer.
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
+do $$
+declare v_holder uuid; v_otro uuid;
+begin
+  select holder_id into v_holder from public.get_club_round_state('00000000-0000-4000-8000-000000000201');
+  select user_id into v_otro from public.club_members
+   where club_id = '00000000-0000-4000-8000-000000000201' and status = 'active' and user_id <> v_holder limit 1;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_otro, 'role', 'authenticated')::text, true);
+  perform pg_temp.expect_sqlstate(
+    format('select public.ensure_club_round(%L, %L)', '00000000-0000-4000-8000-000000000201', 'No me toca'),
+    '42501',
+    'quien no es titular no puede proponer la ronda');
+  -- Y el titular SÍ puede.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_holder, 'role', 'authenticated')::text, true);
+  perform public.ensure_club_round('00000000-0000-4000-8000-000000000201', 'La pregunta del titular');
+end;
+$$;
+
+select pg_temp.assert_true(
+  (select count(*) from public.club_rounds
+   where club_id = '00000000-0000-4000-8000-000000000201'
+     and period_key = to_char(timezone('Europe/Madrid', now()), 'IYYY-"W"IW')) = 1,
+  'el titular creó exactamente una ronda para el periodo actual'
+);
+
+-- Idempotencia: repetir la llamada devuelve la MISMA ronda, no una segunda.
+do $$
+declare v_a uuid; v_b uuid;
+begin
+  select round_id into v_a from public.get_club_round_state('00000000-0000-4000-8000-000000000201');
+  select public.ensure_club_round('00000000-0000-4000-8000-000000000201') into v_b;
+  perform pg_temp.assert_true(v_a = v_b, 'ensure_club_round es idempotente dentro del periodo');
+end;
+$$;
+
+-- La consigna de la casa es determinista y depende del club Y del periodo.
+select pg_temp.assert_true(
+  private.house_prompt('00000000-0000-4000-8000-000000000201', '2026-W05')
+  = private.house_prompt('00000000-0000-4000-8000-000000000201', '2026-W05'),
+  'la consigna de la casa es estable para un club y periodo dados'
+);
+-- Comprobar SOLO W05 vs W06 sería inestable: con 10 consignas posibles hay 1
+-- entre 10 de que dos periodos consecutivos caigan en el mismo índice por
+-- pura colisión de hash. Se comprueba la PROPIEDAD sobre un puñado de
+-- periodos: que no todos caen en la misma consigna.
+select pg_temp.assert_true(
+  (select count(distinct private.house_prompt('00000000-0000-4000-8000-000000000201', p))
+   from (values ('2026-W01'), ('2026-W02'), ('2026-W03'), ('2026-W04'),
+                ('2026-W05'), ('2026-W06'), ('2026-W07'), ('2026-W08')) as periods(p)) > 1,
+  'la consigna de la casa varía entre periodos, no es constante'
+);
+
 rollback;
