@@ -70,11 +70,13 @@ export function CollectionCard({
                 />
               )}
             </div>
-            {!item.viewerHasActivePass && (
-              <div className="shrink-0 self-start">
-                <QuickAddButton itemType={item.itemType} itemId={item.itemId} />
-              </div>
-            )}
+            <div className="shrink-0 self-start">
+              <QuickAddButton
+                itemType={item.itemType}
+                itemId={item.itemId}
+                inLibrary={item.viewerHasActivePass ?? false}
+              />
+            </div>
           </div>
         ))}
       </div>
