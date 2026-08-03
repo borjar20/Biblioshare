@@ -67,6 +67,13 @@ export type FakeFeedSupabase = {
   /** Argumento de cada `.or()` recibida, por fuente y en orden de llamada. */
   orFilters: Record<string, string[]>;
   /**
+   * Valores de cada `.in(columna, valores)` recibida, por fuente y columna. El
+   * doble NO aplica `.in()` al servir filas (ver `dataFor`), así que la única
+   * forma de afirmar sobre a QUIÉN se le piden eventos —la lista de autores del
+   * feed— es mirar el filtro emitido.
+   */
+  inFilters: Record<string, Record<string, unknown[]>>;
+  /**
    * Claves de `.order()` de CADA query, por fuente: una entrada por query, con
    * sus columnas en el orden en que se pidieron. Sin esto, la mitad de ORDEN de
    * la clave del feed seguía escrita a mano en cinco sitios sin nada que la
@@ -227,6 +234,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
 
   const orFilters: Record<string, string[]> = {};
   const orderCalls: Record<string, FakeOrderCall[][]> = {};
+  const inFilters: Record<string, Record<string, unknown[]>> = {};
 
   // Fila de `interaction_targets` por cada fila fuente que sea target de
   // interacción. `getInteractionSummary` (vía `getInteractionTargetRefs`)
@@ -295,12 +303,18 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     const orders: FakeOrderCall[] = [];
     let limit: number | null = null;
     const ors: string[] = [];
+    const ins: Array<[string, unknown[]]> = [];
 
     const builder: Record<string, unknown> = {};
     const chain = () => builder;
-    for (const method of ["in", "eq", "neq", "not", "gte", "maybeSingle"]) {
+    for (const method of ["eq", "neq", "not", "gte", "maybeSingle"]) {
       builder[method] = chain;
     }
+    // Se registra pero no se aplica: ver `inFilters`.
+    builder.in = (column: string, values: unknown[]) => {
+      ins.push([column, values]);
+      return builder;
+    };
     builder.select = (cols: string) => {
       columns = cols;
       return builder;
@@ -321,6 +335,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       const source = sourceOf(table, columns);
       if (ors.length) (orFilters[source] ??= []).push(...ors);
       if (orders.length) (orderCalls[source] ??= []).push(orders);
+      for (const [column, values] of ins) (inFilters[source] ??= {})[column] = values;
 
       let result = dataFor(source);
       // Varios `.or()` se conjugan con AND entre sí, como en PostgREST.
@@ -350,5 +365,10 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     from: (table: string) => query(table),
   };
 
-  return { client: client as unknown as Parameters<typeof getFeed>[0], orFilters, orderCalls };
+  return {
+    client: client as unknown as Parameters<typeof getFeed>[0],
+    orFilters,
+    orderCalls,
+    inFilters,
+  };
 }
