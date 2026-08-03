@@ -31,3 +31,13 @@ export type RoundState = {
    *  aquí (su `execute` está revocado para `authenticated` a propósito). */
   housePrompt: string | null;
 };
+
+/** Una semana del histórico. `prompt: null` = esa semana no hubo ronda.
+ *  Hoy nunca llega `null` en la práctica: `listRoundHistory` solo lista
+ *  rondas que existen, no la serie completa de semanas ISO (ver su
+ *  comentario). El campo queda nullable para cuando se rellenen los huecos. */
+export type RoundHistoryEntry = {
+  periodKey: string;
+  prompt: string | null;
+  answerCount: number;
+};

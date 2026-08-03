@@ -542,9 +542,7 @@
       "noAnswersYet": "Sin respuestas todavía",
       "addToPlanned": "A pendientes",
       "historyTitle": "Rondas anteriores",
-      "historyWeeks": "{count} semanas",
       "historyAnswers": "{count} respuestas",
-      "historyEmptyWeek": "Sin ronda",
       "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
       "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
     }
