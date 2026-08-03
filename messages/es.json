@@ -1587,7 +1587,10 @@
     "authorsNew": "Autores nuevos",
     "authorsNewValue": "{count} de {total}",
     "decadesTitle": "Décadas de publicación",
-    "decadesEmpty": "Sin fechas de publicación que mostrar."
+    "decadesEmpty": "Sin fechas de publicación que mostrar.",
+    "completedByYearTitle": "Completadas por año",
+    "completedThisYear": "{count} este año",
+    "completedDelta": "{sign}{count} vs {year}"
   },
   "statsRail": {
     "year2026": "Tu 2026"

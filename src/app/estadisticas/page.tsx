@@ -15,6 +15,8 @@ import { getHabits } from "@/lib/stats/get-habits";
 import { getRecords } from "@/lib/stats/get-records";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getTbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
+import { getCompletedByYear } from "@/lib/stats/get-completed-by-year";
+import { CompletedByYearCard } from "@/components/stats/completed-by-year-card";
 import { RatingCard } from "@/components/stats/rating-card";
 import { TypeDistributionCard } from "@/components/stats/type-distribution-card";
 import { StatusBarCard } from "@/components/stats/status-bar-card";
@@ -64,7 +66,7 @@ export default async function FullStatsPage({
   const { periodo } = await searchParams;
   const period = resolvePeriod(periodo);
 
-  const [profile, rating, type, status, hours, catalog, habits, records, streaks, tbr] =
+  const [profile, rating, type, status, hours, catalog, habits, records, streaks, tbr, byYear] =
     await Promise.all([
       getOwnProfile(supabase, user.id),
       getRatingDistribution(supabase, user.id, period),
@@ -76,6 +78,7 @@ export default async function FullStatsPage({
       getRecords(supabase, user.id, period),
       getStreaks(supabase, user.id),
       getTbrSnapshot(supabase, user.id),
+      getCompletedByYear(supabase, user.id),
     ]);
 
   const backHref = profile
@@ -85,6 +88,9 @@ export default async function FullStatsPage({
   // Las tarjetas del frame J, en orden. En escritorio fluyen en columnas de
   // masonry (`columns`), evitando el break dentro de una tarjeta.
   const cards = [
+    <Card key="byYear">
+      <CompletedByYearCard years={byYear} />
+    </Card>,
     <Card key="rating">
       <RatingCard dist={rating} />
     </Card>,
