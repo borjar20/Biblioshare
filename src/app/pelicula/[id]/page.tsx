@@ -236,6 +236,9 @@ async function MovieTabs({
       ensureItemEnriched(supabase, "movie", {
         id: movie.id,
         tmdbId: movie.tmdb_id,
+        // La duración se hidrata aquí (misma respuesta que los créditos); sin
+        // pasarla no habría con qué decidir si ya está. Ver #365.
+        durationMinutes: movie.duration_minutes,
       }),
       getItemSagas(supabase, "movie", movie.id),
       getEditions(supabase, "movie", movie.id),

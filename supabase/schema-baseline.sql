@@ -11016,3 +11016,12 @@ grant select on table public.user_blocks to anon;
 -- planned. Forward-only: el historial importado nace como pases cerrados que
 -- nunca pasaron por planned, así que ahí queda NULL. Sin backfill.
 alter table public.passes add column if not exists planned_on date;
+
+-- ANEXO 2026-08-03 — grant de UPDATE sobre series.episode_runtime_minutes
+-- (issue #365, migración 20260818_grant_series_episode_runtime, aplicada en dev
+-- y prod). La columna se añadió en 20260710 DESPUÉS del grant de tamaños
+-- original (total_episodes/total_seasons) y se quedó fuera: como la hidratación
+-- escribe las tres en un ÚNICO patch, el UPDATE fallaba ENTERO en cuanto una
+-- serie llegaba sin duración de episodio. No se veía porque el backfill colgaba
+-- del sorteo y no había series pendientes; ahora corre al abrir cualquier ficha.
+grant update (episode_runtime_minutes) on public.series to authenticated;
