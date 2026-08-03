@@ -6,6 +6,7 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { countMyPending } from "@/lib/import/pending";
+import { SHELL_APP } from "@/lib/ui/layout";
 import { ImportForm } from "./import-form";
 
 export const metadata: Metadata = {
@@ -32,7 +33,11 @@ export default async function ImportPage() {
   const t = await getTranslations("import");
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6">
+    // El contenedor se ensancha SIEMPRE, pero quien decide si eso se nota es
+    // ImportForm: sus fases «subir» y «procesar» se ponen su propio tope. El
+    // ancho no puede depender de la fase desde aquí — la fase es estado de
+    // cliente y esto es un server component.
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
