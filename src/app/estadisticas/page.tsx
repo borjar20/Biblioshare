@@ -14,7 +14,7 @@ import { getCatalogBreakdown } from "@/lib/stats/get-catalog-breakdown";
 import { getHabits } from "@/lib/stats/get-habits";
 import { getRecords } from "@/lib/stats/get-records";
 import { getStreaks } from "@/lib/stats/get-streaks";
-import { getTbrTrend } from "@/lib/stats/get-tbr-trend";
+import { getTbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import { RatingCard } from "@/components/stats/rating-card";
 import { TypeDistributionCard } from "@/components/stats/type-distribution-card";
 import { StatusBarCard } from "@/components/stats/status-bar-card";
@@ -75,7 +75,7 @@ export default async function FullStatsPage({
       getHabits(supabase, user.id, period),
       getRecords(supabase, user.id, period),
       getStreaks(supabase, user.id),
-      getTbrTrend(supabase, user.id),
+      getTbrSnapshot(supabase, user.id),
     ]);
 
   const backHref = profile
@@ -117,7 +117,7 @@ export default async function FullStatsPage({
       <RecordsCard records={records} bestStreakDays={streaks.best} />
     </Card>,
     <Card key="tbr">
-      <TbrCard trend={tbr} />
+      <TbrCard snapshot={tbr} />
     </Card>,
   ];
 
