@@ -23,6 +23,7 @@ export function BookProgressField({
   fromPage,
   total,
   initialMinutes,
+  initialStartedAt,
   onPageChange,
   sessionDate,
 }: {
@@ -30,6 +31,12 @@ export function BookProgressField({
   fromPage: number | null;
   total: number | null;
   initialMinutes?: number | null;
+  /** Hora de inicio (ISO) reenviada por el cronómetro de la tarjeta de hoy
+   *  (?inicio=). Se envía tal cual salvo que el usuario ponga una hora a mano
+   *  abajo, que manda. Se lleva en un input oculto SIN convertir a hora local
+   *  en el render: hacerlo daría distinto en servidor (UTC) y cliente y rompería
+   *  la hidratación. */
+  initialStartedAt?: string | null;
   /** La página que el usuario está marcando AHORA, para que el anclaje del
    *  compositor la siga. No se usa para enviar nada: el input `name="page"`
    *  sigue siendo la única fuente de la posición de la sesión. */
@@ -73,7 +80,10 @@ export function BookProgressField({
   const minutesRef = useRef<HTMLInputElement>(null);
   // Vacío por defecto a propósito (issue #252): nunca se rellena con "ahora".
   const [startedAtTime, setStartedAtTime] = useState("");
+  // La hora a mano manda; si no hay, cae a la que reenvió el cronómetro. Así
+  // solo viaja UN name="startedAt" en el FormData (el servidor lee el primero).
   const startedAt = combineStartedAt(sessionDate, startedAtTime);
+  const effectiveStartedAt = startedAt ?? initialStartedAt ?? null;
 
   // "Otro" no es un valor: vacía el campo y le lleva el foco (petición
   // explícita del diseño). Los chips numéricos son un acelerador del MISMO
@@ -248,7 +258,9 @@ export function BookProgressField({
               />
               <p className="text-[11px] text-muted-foreground">{t("startedAtTimeHint")}</p>
             </div>
-            {startedAt && <input type="hidden" name="startedAt" value={startedAt} />}
+            {effectiveStartedAt && (
+              <input type="hidden" name="startedAt" value={effectiveStartedAt} />
+            )}
           </div>
         ) : (
           <SessionTimer
