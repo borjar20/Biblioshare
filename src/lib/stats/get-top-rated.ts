@@ -9,10 +9,17 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type TopRatedItem = { title: string; type: ItemType; rating: number };
 export type RatedRow = { item_type: ItemType; item_id: string; rating: number };
 
-// Lógica pura: mejores notas primero, cortadas a `limit`. Ordenación estable
+// Lógica pura: una entrada por obra (releer/rever no duplica, se queda la nota
+// más alta), mejores notas primero, cortadas a `limit`. Ordenación estable
 // suficiente para la tarjeta (empates por nota se dejan en el orden de entrada).
 export function pickTopRated(rows: RatedRow[], limit: number): RatedRow[] {
-  return [...rows].sort((a, b) => b.rating - a.rating).slice(0, limit);
+  const byWork = new Map<string, RatedRow>();
+  for (const row of rows) {
+    const key = `${row.item_type}:${row.item_id}`;
+    const existing = byWork.get(key);
+    if (!existing || row.rating > existing.rating) byWork.set(key, row);
+  }
+  return [...byWork.values()].sort((a, b) => b.rating - a.rating).slice(0, limit);
 }
 
 // Mejor valoradas del período (spec 2026-08-03): obras terminadas con nota, de
