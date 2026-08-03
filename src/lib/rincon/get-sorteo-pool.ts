@@ -40,7 +40,7 @@ export async function getSorteoPool(
 ): Promise<SorteoPool> {
   const { data: entries, error } = await supabase
     .from("passes")
-    .select("id, item_type, item_id")
+    .select("id, item_type, item_id, edition_id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("status", "planned");
@@ -48,10 +48,16 @@ export async function getSorteoPool(
   if (!entries || entries.length === 0) return { items: [], collections: [] };
 
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
-  for (const entry of entries) idsByType[entry.item_type].push(entry.item_id);
+  // Las páginas dependen de la EDICIÓN que el usuario dijo estar leyendo, no de
+  // la obra — sin esto los libros salían "sin estimar" (ver fetchCatalogMeta).
+  const editionIdByItem = new Map<string, string | null>();
+  for (const entry of entries) {
+    idsByType[entry.item_type].push(entry.item_id);
+    editionIdByItem.set(`${entry.item_type}:${entry.item_id}`, entry.edition_id);
+  }
 
   const [metaByKey, bookPace, moviePace, previous, sorteables] = await Promise.all([
-    fetchCatalogMeta(supabase, idsByType),
+    fetchCatalogMeta(supabase, idsByType, editionIdByItem),
     getBookPace(supabase, userId),
     getMoviePace(supabase, userId),
     // Pases archivados = la obra ya se leyó/vio alguna vez → no es "sin empezar".
@@ -131,7 +137,7 @@ export async function getSorteoPool(
 
   if (missingMovies.length > 0 || missingSeries.length > 0) {
     await backfillSizes(supabase, missingMovies, missingSeries);
-    estimable = build(await fetchCatalogMeta(supabase, idsByType));
+    estimable = build(await fetchCatalogMeta(supabase, idsByType, editionIdByItem));
   }
 
   const estimates = computePaceEstimates(estimable, bookPace, moviePace);
