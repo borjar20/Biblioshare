@@ -30,6 +30,7 @@ import { HabitsCard } from "@/components/stats/habits-card";
 import { RecordsCard } from "@/components/stats/records-card";
 import { TbrCard } from "@/components/stats/tbr-card";
 import { PeriodPills } from "./period-pills";
+import { SHELL_APP } from "@/lib/ui/layout";
 
 export const metadata: Metadata = {
   title: "Estadísticas — Biblioshare",
@@ -146,7 +147,7 @@ export default async function FullStatsPage({
   ];
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-4 pb-24 sm:px-6">
+    <main className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
       <header className="mb-4 flex items-center gap-3">
         <Link
           href={backHref}

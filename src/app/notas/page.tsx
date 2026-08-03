@@ -11,6 +11,7 @@ import { getNotesPage } from "@/lib/notes/get-notes";
 import { compareNotes } from "@/lib/notes/sort";
 import { hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
 import { NoteCard } from "@/components/notes/note-card";
+import { NOTE_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 import { NotesFilters } from "./notes-filters";
 import { NotesPager } from "./notes-pager";
 
@@ -65,7 +66,7 @@ export default async function NotebookPage({
   const filtered = hasActiveFilters(query);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-4 pb-24 sm:px-6">
+    <main className={`mx-auto w-full ${SHELL_GRID} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
       <header className="mb-4 flex items-center gap-3">
         <Link
           href={backHref}
@@ -94,6 +95,9 @@ export default async function NotebookPage({
           {filtered ? t("notebookEmptyFiltered") : t("notebookEmpty")}
         </p>
       ) : query.sort === "obra" ? (
+        // Agrupado por obra: la rejilla va DENTRO de cada grupo y el título de
+        // la obra se queda como banda a todo lo ancho. Una sola rejilla para
+        // todo se comería la agrupación, que es justo lo que pide este orden.
         <div className="flex flex-col gap-6">
           {groupByItem(notes).map((group) => {
             const first = group.notes[0];
@@ -105,15 +109,22 @@ export default async function NotebookPage({
                 >
                   {first.itemTitle ?? t("notebookUnknownWork")}
                 </Link>
-                {group.notes.map((note) => (
-                  <NoteCard key={note.id} note={note} />
-                ))}
+                <div className={`grid items-start gap-3 ${NOTE_GRID_COLS}`}>
+                  {group.notes.map((note) => (
+                    <NoteCard key={note.id} note={note} />
+                  ))}
+                </div>
               </section>
             );
           })}
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        // `items-start`: cada nota mide lo que mide y los bajos quedan
+        // desiguales. Es a propósito — la alternativa es recortar el cuerpo, y
+        // una nota cortada no tiene dónde seguir leyéndose (no hay ficha de
+        // nota). Tampoco vale `columns-*` estilo masonry: reordena la lectura
+        // en vertical por columna y se cargaría el orden «recientes».
+        <div className={`grid items-start gap-3 ${NOTE_GRID_COLS}`}>
           {notes.map((note) => (
             <NoteCard key={note.id} note={note} showItem />
           ))}

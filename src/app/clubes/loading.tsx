@@ -1,12 +1,13 @@
 import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { ClubCardSkeleton } from "@/components/clubs/club-skeletons";
+import { SHELL_GRID } from "@/lib/ui/layout";
 
 // Skeleton de /clubes: h1 + buscador + eyebrow de sección + tarjetas de club
 // (banda de portada + cuerpo). Misma envoltura que la página real.
 export default function Loading() {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <LoadingAnnounce />
       <div className="flex items-center justify-between">
         <SkeletonLine className="h-7 w-28" />
