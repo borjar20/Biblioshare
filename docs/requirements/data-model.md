@@ -141,6 +141,11 @@ ver «Social fase 0»)**]**
 > **ya está anexado** («ANEXO 2026-08-02»), en la misma pasada en que se cerró el ciclo en prod.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
+>
+> **Delta del 2026-08-03 (issue #361): `passes.planned_on date` añadida y verificada en DEV y
+> en PROD** (`information_schema.columns` → `date`, nullable). Migración
+> `20260817_passes_planned_on.sql`. Es forward-only (la fija `planTransition` al entrar en
+> `planned`); el historial importado se queda en `NULL`. Ningún RPC cambió; sin backfill. Ver §3.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -259,8 +264,14 @@ concreto de un ítem. Releer un libro es un pase nuevo, no una edición del ante
 
 Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status`:
 `planned|in_progress|completed|dropped`), `is_active`, `position` (jsonb), `rating`,
-`review`, `is_public`, `started_on`/`finished_on`, `edition_id`, y `pinned_order` (las de
-cola se borraron, ver «`queues` ya no existe»).
+`review`, `is_public`, `planned_on`/`started_on`/`finished_on`, `edition_id`, y
+`pinned_order` (las de cola se borraron, ver «`queues` ya no existe»).
+
+- **Fechas hito**: `planned_on` (entró en la pila), `started_on` (se empezó a leer/ver) y
+  `finished_on` (se terminó). Las fija `planTransition` (`src/lib/passes/transitions.ts`) en
+  cada cambio de estado. ⚠️ `planned_on` es **forward-only** (issue #361): el historial
+  importado nace como pases cerrados que nunca pasaron por `planned`, así que ahí es `NULL`.
+  Por eso «la pila» ordena por `created_at` (proxy con datos para todos) y no por `planned_on`.
 
 - **`is_active`** distingue el pase en curso de los cerrados. Solo uno activo por ítem.
 - **El pase es dueño de la nota y la reseña**, no la entrada de biblioteca: cada relectura

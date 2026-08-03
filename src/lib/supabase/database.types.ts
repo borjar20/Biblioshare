@@ -1286,6 +1286,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           pinned_order: number | null
+          planned_on: string | null
           position: Json
           rating: number | null
           review: string | null
@@ -1304,6 +1305,7 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           pinned_order?: number | null
+          planned_on?: string | null
           position?: Json
           rating?: number | null
           review?: string | null
@@ -1322,6 +1324,7 @@ export type Database = {
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           pinned_order?: number | null
+          planned_on?: string | null
           position?: Json
           rating?: number | null
           review?: string | null

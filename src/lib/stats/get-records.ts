@@ -7,7 +7,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type Records = {
   // Mes (YYYY-MM) con más obras terminadas.
   mostActiveMonth: { month: string; count: number } | null;
-  // Libro terminado más rápido: días entre añadir el pase y terminarlo.
+  // Libro terminado más rápido: días entre empezar a leerlo y terminarlo.
   fastestBook: { title: string; days: number } | null;
   // Pases que no son el primero de su obra: relecturas y re-visionados.
   rereads: number;
@@ -23,7 +23,7 @@ export async function getRecords(
 ): Promise<Records> {
   let query = supabase
     .from("passes")
-    .select("item_type, item_id, finished_on, created_at")
+    .select("item_type, item_id, finished_on, created_at, started_on")
     .eq("user_id", userId);
 
   // Con período, los récords son los de lo TERMINADO ese año; sin él (pestaña
@@ -42,6 +42,7 @@ export async function getRecords(
     item_id: string;
     finished_on: string | null;
     created_at: string;
+    started_on: string | null;
   }[];
 
   // Mes más activo (por terminados).
@@ -49,7 +50,9 @@ export async function getRecords(
   // Re-pases: total pases − obras distintas.
   const seenItems = new Set<string>();
   let total = 0;
-  // Libro más rápido: menos días entre alta (created_at) y fin (finished_on).
+  // Libro más rápido: menos días entre el inicio de la lectura (started_on) y
+  // el fin (finished_on). Fallback a created_at para el historial importado sin
+  // started_on (issue #361: started_on solo se rellena de forma fiable a futuro).
   let fastestBookId: string | null = null;
   let fastestDays = Infinity;
 
@@ -62,7 +65,8 @@ export async function getRecords(
       byMonth.set(month, (byMonth.get(month) ?? 0) + 1);
 
       if (row.item_type === "book") {
-        const days = daysBetween(row.created_at.slice(0, 10), row.finished_on);
+        const start = row.started_on ?? row.created_at.slice(0, 10);
+        const days = daysBetween(start, row.finished_on);
         if (days !== null && days < fastestDays) {
           fastestDays = days;
           fastestBookId = row.item_id;

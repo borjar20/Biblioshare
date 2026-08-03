@@ -79,6 +79,7 @@ export async function applyTransition(
       position: {},
       started_on: startedOn,
       finished_on: finishedOn,
+      planned_on: plan.plannedOn,
       is_public: true,
       // El fijado es de la relación con la obra: lo hereda el pase nuevo.
       pinned_order: plan.kind === "archiveAndCreate" ? (active!.pinnedOrder ?? null) : null,
