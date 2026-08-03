@@ -71,7 +71,7 @@ function fetchSeries(supabase: Supa, id: string) {
   return supabase
     .from("series")
     .select(
-      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id",
+      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -271,6 +271,10 @@ async function SeriesTabs({
       ensureItemEnriched(supabase, "series", {
         id: series.id,
         tmdbId: series.tmdb_id,
+        // Episodios y duración de episodio se hidratan aquí (misma respuesta
+        // que los créditos); sin pasarlos no hay con qué decidir. Ver #365.
+        totalEpisodes: series.total_episodes,
+        episodeRuntimeMinutes: series.episode_runtime_minutes,
       }),
       ensureSeriesEpisodes(supabase, {
         id: series.id,

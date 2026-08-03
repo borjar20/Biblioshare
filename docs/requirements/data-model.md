@@ -241,6 +241,23 @@ escribe `find-or-create.ts` en cada alta; las filas previas se rellenaron por un
 puntual que consulta TMDB por `tmdb_id` (idioma-independiente). Ver `decisiones.md`
 (2026-08-02).
 
+**Columnas de TAMAÑO** (`movies.duration_minutes`, `series.total_episodes` / `total_seasons` /
+`episode_runtime_minutes`): alimentan la estimación de tiempo y los tramos de duración del
+sorteo. No las trae la búsqueda (TMDB solo da `runtime` en la respuesta de **detalles**), así
+que las hidrata `ensureItemEnriched` al abrir la ficha, de la misma llamada que ya pedía para
+los créditos. Van fuera del trigger `enforce_catalog_edit_collaborator_only` a propósito: son
+de sincronización, no curadas, y las rellena cualquier `authenticated` que visite la ficha.
+
+> **Delta del 2026-08-03 (issue #365): `grant update (episode_runtime_minutes) on series to
+> authenticated`, aplicado y verificado en DEV y en PROD** (`information_schema.column_privileges`
+> → las 9 columnas, ya con `episode_runtime_minutes`). Migración
+> `20260818_grant_series_episode_runtime.sql`. La columna nació en `20260710` **después** del
+> grant de tamaños original y se quedó fuera; como la hidratación escribe las tres en un único
+> patch, el UPDATE fallaba entero en cuanto faltaba la duración de episodio. Sin cambio de
+> esquema: solo el grant. En la misma issue, el punto de captura de los tamaños pasó del sorteo
+> a la ficha (eran dato compartido rellenado por un backfill que solo alcanzaba pendientes del
+> dueño: 1 de 354 películas y 0 de 26 series en prod). Ver `decisiones.md` (2026-08-03).
+
 Tres tablas de "tirada concreta" cuelgan del catálogo:
 
 | Tabla | De | Para qué |

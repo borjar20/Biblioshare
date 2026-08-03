@@ -3,7 +3,6 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { EstimableItem } from "@/lib/pace/types";
 import type { SorteoCollection, SorteoItem } from "@/components/rincon/sorteo-logic";
 import { fetchCatalogMeta, type CatalogMeta } from "@/lib/pace/fetch-catalog-meta";
-import { backfillSizes } from "@/lib/pace/backfill-sizes";
 import { computePaceEstimates } from "@/lib/pace/compute-estimates";
 import { getBookPace } from "@/lib/pace/get-reading-pace";
 import { getMoviePace } from "@/lib/pace/get-movie-cadence";
@@ -117,28 +116,12 @@ export async function getSorteoPool(
       ];
     });
 
-  let estimable = build(metaByKey);
-
-  // El catálogo llega con huecos: TMDB trae duración y nº de episodios, pero
-  // nadie los persistía hasta que alguien abría la pantalla que los pedía.
-  // Ese backfill vivía en el panel de Colas, que quedó inalcanzable al integrar
-  // Colección v2 y llevaba tiempo sin ejecutarse. Ahora cuelga del sorteo, que
-  // es quien necesita los minutos para el filtro de duración.
-  const missingMovies = estimable
-    .filter((item) => item.itemType === "movie" && item.durationMinutes === null)
-    .map((item) => ({ id: item.itemId, tmdbId: item.tmdbId }));
-  const missingSeries = estimable
-    .filter(
-      (item) =>
-        item.itemType === "series" &&
-        (item.totalEpisodes === null || item.episodeRuntimeMinutes === null)
-    )
-    .map((item) => ({ id: item.itemId, tmdbId: item.tmdbId }));
-
-  if (missingMovies.length > 0 || missingSeries.length > 0) {
-    await backfillSizes(supabase, missingMovies, missingSeries);
-    estimable = build(await fetchCatalogMeta(supabase, idsByType, editionIdByItem));
-  }
+  // Los tamaños (duración, nº de episodios) NO se rellenan aquí: son dato de
+  // catálogo compartido y los hidrata `ensureItemEnriched` al abrir la ficha,
+  // de la misma respuesta de TMDB que ya pedía para los créditos. Colgarlo del
+  // sorteo solo alcanzaba las obras PENDIENTES de quien abriera SU Rincón —en
+  // producción, 1 de 354 películas—. Ver #365 y decisiones.md 2026-08-03.
+  const estimable = build(metaByKey);
 
   const estimates = computePaceEstimates(estimable, bookPace, moviePace);
 
