@@ -14,7 +14,14 @@
 -- El UPDATE lo necesita el camino in_progress → planned (volver a Pendiente),
 -- que sella planned_on.
 --
+-- Se le dan los MISMOS privilegios que a sus hermanas `started_on`/`finished_on`
+-- (verificado en prod: anon=SELECT; authenticated=INSERT,SELECT,UPDATE), no solo
+-- los dos que hoy están rotos: es la misma clase de dato (fecha hito del pase) y
+-- así el SELECT no vuelve a faltar cuando /estadisticas lo lea. El SELECT de
+-- `anon` solo alcanza filas que la RLS ya expone (pases públicos).
+--
 -- Aviso a quien añada la siguiente columna a `passes`: la columna sin su grant
 -- compila, pasa los tests y solo falla en runtime contra la BD real.
 grant insert (planned_on) on public.passes to authenticated;
 grant update (planned_on) on public.passes to authenticated;
+grant select (planned_on) on public.passes to anon, authenticated;

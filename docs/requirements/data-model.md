@@ -152,10 +152,17 @@ ver «Social fase 0»)**]**
 > columna nombrada en el INSERT/UPDATE aunque su valor sea `NULL`: al desplegar #366, el insert de
 > `applyTransition` (que siempre nombra `planned_on`) empezó a dar `42501 permission denied for
 > table passes` y toda alta de pase caía en el error boundary. Migración
-> `20260819_grant_passes_planned_on.sql` (`grant insert/update (planned_on) … to authenticated`).
+> `20260819_grant_passes_planned_on.sql`, **aplicada y verificada en DEV y en PROD el 2026-08-03**
+> (`information_schema.column_privileges` → `anon: SELECT`; `authenticated: INSERT, SELECT,
+> UPDATE`, idéntico a `started_on`). Se le dieron los tres privilegios de sus hermanas, no solo
+> los dos rotos, para que el SELECT no vuelva a faltar cuando `/estadisticas` lea la columna.
 > **Es el MISMO fallo que `episode_runtime_minutes` un día antes** (`20260818`): columna nueva sin
-> grant compila, pasa los tests y solo revienta contra la BD real. ⚠️ Estado: **migración escrita,
-> pendiente de aplicar y verificar en DEV y PROD** — hasta entonces prod sigue rota.
+> grant compila, pasa los tests y solo revienta contra la BD real (issue #375).
+>
+> Auditada de paso **toda** la tabla en prod: no queda ninguna otra columna con hueco. Sin
+> INSERT/UPDATE para `authenticated` solo están `id`, `created_at` y `updated_at` (default y
+> trigger, correcto), y `review` sigue **sin SELECT** a propósito — se lee por la vista
+> `pass_reviews`, que es la que aplica la privacidad.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
