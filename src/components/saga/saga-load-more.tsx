@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition, type MouseEvent } from "react";
 import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { CARD_GRID_COLS } from "@/lib/ui/layout";
 
 // Pie del índice de sagas: recuento + «Cargar más».
 //
@@ -45,7 +46,7 @@ export function SagaLoadMore({
   return (
     <>
       {pending && skeletonCount > 0 && (
-        <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={`mt-2.5 grid gap-2.5 ${CARD_GRID_COLS}`}>
           {Array.from({ length: skeletonCount }).map((_, i) => (
             <div key={i} className="flex gap-3 rounded-xl border border-border bg-surface p-3">
               <Skeleton className="h-[78px] w-[52px] shrink-0 rounded-md" />

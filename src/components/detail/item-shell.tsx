@@ -53,7 +53,7 @@ export function ItemShell({
   tabs: ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full lg:grid lg:max-w-[1160px] lg:grid-cols-[300px_1fr]">
+    <div className="mx-auto w-full lg:grid lg:max-w-[1200px] lg:grid-cols-[300px_1fr]">
       <div className="hidden lg:block">
         <ItemRail
           itemType={itemType}

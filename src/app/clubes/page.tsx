@@ -16,6 +16,7 @@ import { ClubListSkeleton } from "@/components/clubs/club-skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchIcon } from "@/components/ui/icons";
+import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 
 export default function ClubesPage() {
   const t = useTranslations("club");
@@ -59,7 +60,7 @@ export default function ClubesPage() {
   if (!userId) return null;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 lg:max-w-5xl">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-2xl font-semibold text-foreground">
           {t("navLabel")}
@@ -112,7 +113,7 @@ export default function ClubesPage() {
         ) : myClubs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
             {myClubs.map((club) => (
               <ClubCard
                 key={club.id}
@@ -133,7 +134,7 @@ export default function ClubesPage() {
         ) : discovered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
         ) : (
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
             {discovered.map((club) => (
               <ClubCard key={club.id} club={club} />
             ))}

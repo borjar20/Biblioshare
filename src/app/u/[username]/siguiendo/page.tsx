@@ -6,6 +6,7 @@ import { getProfileIdentity } from "@/lib/profile/get-profile-by-username";
 import { getFollowing } from "@/lib/social/follows";
 import { UserCard } from "@/components/social/user-card";
 import { ArrowLeftIcon } from "@/components/ui/icons";
+import { SHELL_READ } from "@/lib/ui/layout";
 
 export default async function FollowingPage({
   params,
@@ -24,7 +25,7 @@ export default async function FollowingPage({
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_READ} flex-col gap-4 px-4 py-8 sm:px-6`}>
       <Link
         href={`/u/${username}`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -38,7 +39,7 @@ export default async function FollowingPage({
       {following.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("emptyFollowing")}</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="grid gap-2 lg:grid-cols-2">
           {following.map((user) => (
             <UserCard key={user.userId} user={user} />
           ))}

@@ -30,6 +30,7 @@ import { ActivityTab } from "./_tabs/activity-tab";
 import { CollectionTab } from "./_tabs/collection-tab";
 import { StatsTab } from "./_tabs/stats-tab";
 import { RinconTab } from "./_tabs/rincon-tab";
+import { SHELL_APP } from "@/lib/ui/layout";
 
 const VALID_TABS: SectionTab[] = [
   "actividad",
@@ -134,7 +135,7 @@ export default async function PublicProfilePage({
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <ProfileHeader
         profile={profile}
         stats={stats}
