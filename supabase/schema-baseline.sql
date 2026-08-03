@@ -11008,3 +11008,11 @@ alter table public.reactions drop column if exists target_type, drop column if e
 grant execute on function public.users_are_blocked(uuid) to anon;
 grant execute on function public.filter_unblocked_user_ids(uuid[]) to anon;
 grant select on table public.user_blocks to anon;
+
+
+-- ANEXO 2026-08-03 — columna hito planned_on en passes (issue #361, migración
+-- 20260817_passes_planned_on, aplicada en dev y prod). Marca cuándo un pase
+-- entró en la pila (estado planned); la fija planTransition en cada transición a
+-- planned. Forward-only: el historial importado nace como pases cerrados que
+-- nunca pasaron por planned, así que ahí queda NULL. Sin backfill.
+alter table public.passes add column if not exists planned_on date;
