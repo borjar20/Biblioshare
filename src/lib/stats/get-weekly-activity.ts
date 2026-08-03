@@ -7,6 +7,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 const DAYS = 7;
 
 // Last 7 days (oldest → today) with total *reading* minutes per day.
+// A day counts as "active" when finished an item of ANY type (not just reading).
 //
 // Only book sessions carry minutes (§7.14): movies never had sessions, and
 // series sessions no longer record a duration. The !inner join on item_type —
@@ -24,26 +25,38 @@ export async function getWeeklyActivity(
   }
   const rangeStart = days[0].date;
 
-  // Las sesiones cuelgan del pase (pass_id, §Tarea 9, hub); item_type ya no
-  // se resuelve vía library_entries sino uniendo con el propio pase — si no,
-  // las sesiones de pases nuevos (library_entry_id null) desaparecerían de
-  // esta tira.
-  const { data, error } = await supabase
-    .from("progress_sessions")
-    .select("session_date, duration_minutes, passes!inner(item_type)")
-    .eq("user_id", userId)
-    .eq("passes.item_type", "book")
-    .gte("session_date", rangeStart)
-    .lte("session_date", todayISO());
+  // Minutos de lectura (solo libros) para el objetivo diario, y finales de
+  // cualquier tipo para "día activo" (una peli no tiene sesión pero sí final).
+  const [reading, finished] = await Promise.all([
+    supabase
+      .from("progress_sessions")
+      .select("session_date, duration_minutes, passes!inner(item_type)")
+      .eq("user_id", userId)
+      .eq("passes.item_type", "book")
+      .gte("session_date", rangeStart)
+      .lte("session_date", todayISO()),
+    supabase
+      .from("passes")
+      .select("finished_on")
+      .eq("user_id", userId)
+      .not("finished_on", "is", null)
+      .gte("finished_on", rangeStart)
+      .lte("finished_on", todayISO()),
+  ]);
 
-  if (error) throw error;
+  if (reading.error) throw reading.error;
+  if (finished.error) throw finished.error;
 
   const byDate = new Map(days.map((d) => [d.date, d]));
-  for (const row of data ?? []) {
+  for (const row of reading.data ?? []) {
     const bucket = byDate.get(row.session_date);
     if (!bucket) continue;
     bucket.active = true;
     bucket.minutes += row.duration_minutes ?? 0;
+  }
+  for (const row of finished.data ?? []) {
+    const bucket = byDate.get(row.finished_on as string);
+    if (bucket) bucket.active = true;
   }
 
   return days;

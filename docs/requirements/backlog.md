@@ -45,6 +45,7 @@
 ### Estadísticas y hábitos
 - [x] **Sesiones de progreso diarias** (§7.14) — `progress_sessions` + estadísticas diarias, calendario mensual, rachas y anuales (objetivos por tipo). Dashboard privado en el home.
 - [x] **Retos de lectura/visionado anuales** (§7.10) — tabla `challenges`, `/retos`, progreso al vuelo por criterio (género/saga). *(Verificado contra prod: la tabla `challenges` existe; la casilla `[ ]` de §7.10 en el monolito estaba obsoleta.)*
+- [x] **Estadísticas y gráficos de hábitos generales** (§7.15) — `/estadisticas` reorientado de `progress_sessions` hacia `passes` (la historia real): tarjeta titular "completadas por año" (apilado por tipo) + año vs año y "mejor valoradas"; "la pila" pasa de flujo mensual inventado a foto del momento; `HoursByMonthCard`/`HabitsCard`/`PaceCard` muestran empty state honesto sin sesiones; la tira semanal cuenta cualquier actividad, no solo minutos de lectura. Sin migraciones. Spec: `docs/superpowers/specs/2026-08-03-estadisticas-historial-cultural-design.md`
 
 ### Sagas
 - [x] **Sagas v2** (§7.4/§7.34) — subsagas anidadas (`parent_saga_id`), multi-membresía, grafo de lectura (`saga_nodes`/`saga_edges`), editor React Flow, seguimiento (`saga_follows`), índice público `/sagas` y pestaña "Sagas" en Mi Biblioteca (5 fases + mejoras post-v2). Spec: `docs/superpowers/specs/2026-07-19-sagas-v2-design.md`
@@ -112,7 +113,6 @@
 - [ ] **Diario emocional/contextual** (§7.18) — M. Estado de ánimo/compañía/ubicación sobre `diary_entries`.
 - [ ] **Retos personalizables** (§7.23) — L. Motor de filtros compartido; depende de 7.5 y 7.12.
 - [ ] **"Tu año en Biblioshare"** (§7.15) — recap anual compartible tipo Wrapped.
-- [ ] **Estadísticas y gráficos de hábitos generales** (§7.15).
 - [ ] **Comparar bibliotecas entre dos perfiles** (§7.15) — solape de ítems, social ligera.
 
 ### Social y clubes (EPIC-05)

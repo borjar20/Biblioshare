@@ -23,7 +23,7 @@ export async function HoursByMonthCard({ data }: { data: HoursByMonth }) {
       {hasData ? (
         <div className="flex h-20 items-end justify-between gap-1">
           {data.months.map((m, i) => (
-            <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
+            <div key={m.month} className="flex h-full flex-1 flex-col items-center gap-1">
               <div className="flex w-full flex-1 items-end justify-center">
                 <div
                   className={`w-full max-w-2.5 rounded-t-sm ${

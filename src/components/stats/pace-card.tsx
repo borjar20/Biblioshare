@@ -5,13 +5,24 @@ import { getTranslations } from "next-intl/server";
 export async function PaceCard({ pagesPerDay }: { pagesPerDay: number | null }) {
   const t = await getTranslations("stats");
 
+  if (pagesPerDay === null) {
+    return (
+      <div className="flex flex-col gap-2">
+        <h3 className="font-serif text-sm font-semibold text-foreground">
+          {t("paceTitle")}
+        </h3>
+        <p className="text-sm text-muted-foreground">{t("sessionEmpty")}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <h3 className="font-serif text-sm font-semibold text-foreground">
         {t("paceTitle")}
       </h3>
       <span className="font-serif text-4xl leading-none font-semibold text-foreground">
-        {pagesPerDay ?? t("recordEmpty")}
+        {pagesPerDay}
       </span>
       <span className="text-sm text-muted-foreground">{t("pacePerDay")}</span>
     </div>

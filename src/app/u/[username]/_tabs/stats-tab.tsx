@@ -8,7 +8,7 @@ import { getMonthCalendar } from "@/lib/stats/get-month-calendar";
 import { getMonthlyActivity } from "@/lib/diary/get-monthly-activity";
 import { getRatingDistribution } from "@/lib/stats/get-rating-distribution";
 import { getRecords } from "@/lib/stats/get-records";
-import { getTbrTrend } from "@/lib/stats/get-tbr-trend";
+import { getTbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import { getHabits } from "@/lib/stats/get-habits";
 import { getPagesPerDay } from "@/lib/stats/get-pace";
 import { WeeklyStrip } from "@/components/stats/weekly-strip";
@@ -82,7 +82,7 @@ export async function StatsTab({
     getMonthlyActivity(supabase, userId),
     getRatingDistribution(supabase, userId),
     getRecords(supabase, userId),
-    getTbrTrend(supabase, userId),
+    getTbrSnapshot(supabase, userId),
     getHabits(supabase, userId),
     getPagesPerDay(supabase, userId),
   ]);
@@ -140,7 +140,7 @@ export async function StatsTab({
           <RecordsCard records={records} bestStreakDays={streaks.best} />
         </Card>
         <Card>
-          <TbrCard trend={tbr} />
+          <TbrCard snapshot={tbr} />
         </Card>
       </div>
       <Link
