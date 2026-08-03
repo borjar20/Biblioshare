@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDownIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, XIcon } from "@/components/ui/icons";
 
 // Caparazón del desplegable de filtros: el botón «Filtros ▾» (con badge del nº
 // de filtros activos), el panel que se abre debajo y el cierre por clic fuera /
@@ -65,10 +65,27 @@ export function FiltersDropdown({
       </button>
 
       {open && (
+        // En móvil, hoja a pantalla completa: como panel flotante se comía la
+        // tabbar inferior (z-50 sobre su z-20) y encima se salía de la pantalla
+        // cuando hay muchos géneros. En sm+ sigue siendo el desplegable anclado
+        // al botón de siempre.
         <div
           role="menu"
-          className="absolute top-[42px] right-0 z-50 flex w-[min(280px,92vw)] flex-col gap-3 rounded-xl border border-border bg-surface p-3.5 shadow-card"
+          className="fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-auto sm:top-[42px] sm:right-0 sm:w-[min(280px,92vw)] sm:overflow-visible sm:rounded-xl sm:border sm:border-border sm:p-3.5 sm:shadow-card"
         >
+          <div className="flex items-center justify-between sm:hidden">
+            <span className="font-serif text-base font-semibold text-foreground">
+              {label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Cerrar"
+              className="-mr-1 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+            >
+              <XIcon className="h-5 w-5" />
+            </button>
+          </div>
           {children}
         </div>
       )}
