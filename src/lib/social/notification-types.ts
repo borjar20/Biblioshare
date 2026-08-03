@@ -44,8 +44,11 @@ export type ReviewTargetType =
   // que resolveTargetHrefs() lo resuelva a la ficha del club en vez de a la
   // actividad.
   | "club_event"
-  // Una ronda tampoco tiene página propia: resolveTargetHrefs() la lleva a la
-  // ficha del club (ver sync_club_round_interaction_target en la migración).
+  // Una ronda tampoco tiene página propia: resolveTargetHrefs() lee el href
+  // directo de interaction_targets (kind='club_round'), el mismo que ya
+  // escribe el trigger private.sync_club_round_interaction_target
+  // ('/club/'||slug||'?ronda='||period_key) -- no se recalcula, así que no
+  // puede divergir de él.
   | "club_round";
 
 export type Notification = {

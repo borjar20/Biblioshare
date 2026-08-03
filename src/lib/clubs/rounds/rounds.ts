@@ -75,7 +75,7 @@ export async function proposeRound(
   });
   if (error) throw error;
 
-  await notifyClub(supabase, clubId, user.id, "club_round_proposed", roundId as string);
+  await notifyClub(supabase, clubId, user.id, "club_round_proposed", roundId);
   revalidateClubPages();
 }
 
@@ -92,5 +92,5 @@ export async function ensureHouseRound(clubId: string): Promise<string> {
   });
   if (error) throw error;
   revalidateClubPages();
-  return roundId as string;
+  return roundId;
 }

@@ -318,6 +318,23 @@ async function resolveTargetHrefs(
     }
   }
 
+  const clubRoundIds = targets.filter((t) => t.targetType === "club_round").map((t) => t.targetId);
+  if (clubRoundIds.length > 0) {
+    // Igual que comment arriba: private.sync_club_round_interaction_target
+    // (20260803_club_rounds.sql) ya calcula y guarda
+    // '/club/' || slug || '?ronda=' || period_key al insertar la ronda. Se
+    // lee de ahí en vez de recalcularlo con un segundo join a clubs -- así
+    // los dos caminos no pueden divergir, son literalmente el mismo valor.
+    const { data: roundTargets } = await supabase
+      .from("interaction_targets")
+      .select("source_id, href")
+      .eq("kind", "club_round")
+      .in("source_id", clubRoundIds);
+    for (const t of roundTargets ?? []) {
+      hrefByKey.set(`club_round:${t.source_id}`, t.href);
+    }
+  }
+
   return hrefByKey;
 }
 
