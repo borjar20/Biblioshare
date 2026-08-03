@@ -1944,6 +1944,7 @@
     "sorteoFilterDurShort": "‹ 2 h",
     "sorteoFilterDurMed": "2 – 5 h",
     "sorteoFilterDurLong": "+5 h",
+    "sorteoFilterDurNone": "Sin estimar",
     "sorteoFilterStateLabel": "Estado del pase",
     "sorteoFilterStateAny": "Todos los pendientes",
     "sorteoFilterStateFresh": "Sin empezar",
