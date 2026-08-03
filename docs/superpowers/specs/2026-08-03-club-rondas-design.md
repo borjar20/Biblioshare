@@ -53,9 +53,14 @@ una propiedad del club, como su feed.
 
 ### 2.1 El periodo
 
-La **semana ISO del servidor**: `2026-W32`, de `to_char(now(), 'IYYY-"W"IW')`. Fijo, no
-configurable. Un club real tendrá que pedir quincenal o mensual antes de que eso se
-construya.
+La **semana ISO del servidor**: `2026-W32`, de
+`to_char(timezone('Europe/Madrid', now()), 'IYYY-"W"IW')`. Fijo, no configurable. Un club
+real tendrá que pedir quincenal o mensual antes de que eso se construya.
+
+**`Europe/Madrid` y no UTC, a propósito.** Con UTC la semana cambiaría a las 02:00 del
+lunes en horario de verano: quien escribiera un domingo por la noche vería su ronda caer en
+la semana siguiente. El producto es de un solo idioma y un solo huso, así que el huso se
+fija en vez de arrastrar un desfase silencioso.
 
 ### 2.2 El turno
 
@@ -94,10 +99,17 @@ pantalla en blanco.
 
 ### 2.4 La consigna de la casa
 
-Un array de constantes en `src/lib/clubs/rounds/house-prompts.ts`, **cuyo índice elige el
-servidor** con `hash(club_id || period_key)`: dos clubes distintos no reciben la misma
-pregunta la misma semana, y el mismo club recibe siempre la misma para una semana dada
-(idempotente si se materializa dos veces).
+Un array de constantes **en SQL**, dentro de `private.house_prompt(club_id, period_key)`,
+cuyo índice sale de `hashtext(club_id || period_key)`: dos clubes distintos no reciben la
+misma pregunta la misma semana, y el mismo club recibe siempre la misma para una semana
+dada (idempotente si se materializa dos veces).
+
+**En SQL y no en TypeScript, aunque un array de strings pida a gritos vivir en TS**: el
+texto lo elige el servidor y el cliente no lo manda (si lo mandara, cualquiera podría
+publicar la consigna que quisiera con el sello de la casa). Si el servidor lo elige, la
+lista tiene que estar donde está el servidor. Añadir consignas es un
+`create or replace function`. Se acepta porque el repo es mono-idioma (`es`); el día que
+haya un segundo locale, esto se mueve a la capa de traducción.
 
 **La consigna de la casa no tiene fila hasta que alguien la responde.** Se materializa en
 ese momento, y el `unique` hace idempotente la carrera entre dos respuestas simultáneas.
