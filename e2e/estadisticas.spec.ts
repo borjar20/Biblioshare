@@ -36,3 +36,19 @@ test("la pestaña Estadísticas enlaza a /estadisticas con su selector", async (
     page.getByRole("link", { name: /^todo$/i }),
   ).toBeVisible();
 });
+
+// El panel se reorientó de progress_sessions hacia passes (historial real): la
+// tarjeta titular es "completadas por año" y "la pila" pasó a foto del momento.
+test("la página muestra completadas por año", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.goto("/login");
+  await page.fill('input[name="email"]', EMAIL);
+  await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+
+  await page.goto("/estadisticas");
+  await expect(page.getByText(/completadas por año/i)).toBeVisible();
+  await expect(page.getByText(/la pila/i)).toBeVisible();
+});
