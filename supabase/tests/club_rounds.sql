@@ -87,4 +87,49 @@ select pg_temp.assert_true(
   'borrar una ronda borra su interaction_target'
 );
 
+-- ── RLS: las dos políticas se ejercitan de verdad, no solo se ven ────
+-- Todo lo de arriba corrió con el rol privilegiado de execute_sql, que se
+-- salta la RLS entera. A partir de aquí se cambia de rol y de JWT, igual que
+-- hace social_phase1_interaction_targets.sql.
+
+-- Carla no es miembro del club: "select" no le devuelve la ronda 202.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000002c3","role":"authenticated"}', true);
+set local role authenticated;
+select pg_temp.assert_true(
+  (select count(*) from public.club_rounds where id = '00000000-0000-4000-8000-000000000202') = 0,
+  'quien no es miembro del club no ve la ronda'
+);
+reset role;
+
+-- Beto es miembro raso (no moderador): el DELETE no da error -- la RLS
+-- simplemente no le deja ver la fila a borrar --, así que se comprueba que
+-- la fila SIGUE existiendo después, no que la sentencia falle.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000002b2","role":"authenticated"}', true);
+set local role authenticated;
+delete from public.club_rounds where id = '00000000-0000-4000-8000-000000000202';
+reset role;
+select pg_temp.assert_true(
+  exists (select 1 from public.club_rounds where id = '00000000-0000-4000-8000-000000000202'),
+  'un miembro raso no puede borrar la ronda: la fila sigue existiendo'
+);
+
+-- Ana es la dueña del club (moderador+ en la jerarquía member<moderator<owner):
+-- sí puede borrar. Va AL FINAL: si esta fila desapareciera antes de la
+-- comprobación de Beto, esa comprobación pasaría por el motivo equivocado
+-- (fila inexistente) en vez del correcto (RLS se lo impide).
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}', true);
+set local role authenticated;
+delete from public.club_rounds where id = '00000000-0000-4000-8000-000000000202';
+reset role;
+select pg_temp.assert_true(
+  not exists (select 1 from public.club_rounds where id = '00000000-0000-4000-8000-000000000202'),
+  'el dueño del club (moderador+) sí puede borrar la ronda'
+);
+
+-- Limpieza de contexto de sesión: una tarea siguiente añadirá más aserciones
+-- a este mismo fichero, dentro de la misma transacción, y heredaría el rol y
+-- el JWT si no se devuelven aquí al estado previo.
+reset role;
+select set_config('request.jwt.claims', '', true);
+
 rollback;

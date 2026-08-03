@@ -13,7 +13,7 @@ alter type public.notification_type add value if not exists 'club_round_liked';
 
 -- Postgres prohíbe USAR una etiqueta de enum en la misma transacción que la
 -- crea: sin este commit, el trigger de más abajo que menciona 'club_round'
--- hace fallar la migración entera. Misma trampa que 20260713_club_activities.sql.
+-- hace fallar la migración entera. Misma trampa que 20260712_club_posts.sql.
 commit;
 
 create table public.club_rounds (
