@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getItemTitles, keyFor } from "./get-item-titles";
 import { type StatsPeriod, yearBounds } from "./period";
+import { toStar } from "./rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -54,7 +55,7 @@ export async function getTopRated(
   const out: TopRatedItem[] = [];
   for (const r of top) {
     const title = titles.get(keyFor(r.item_type, r.item_id));
-    if (title) out.push({ title, type: r.item_type, rating: r.rating });
+    if (title) out.push({ title, type: r.item_type, rating: toStar(r.rating) });
   }
   return out;
 }

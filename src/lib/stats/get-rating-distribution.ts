@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { type StatsPeriod, yearBounds } from "./period";
+import { toStar } from "./rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -10,11 +11,6 @@ export type RatingDistribution = {
   // De 5★ a 1★, en ese orden (como el histograma del muro).
   buckets: { star: number; count: number }[];
 };
-
-// Nota interna 1–10 → estrella 1–5 (cada estrella = 2 puntos): 1-2→1 … 9-10→5.
-function toStar(rating: number): number {
-  return Math.min(5, Math.max(1, Math.ceil(rating / 2)));
-}
 
 // Valoración media + histograma, desde las notas de los pases terminados
 // (passes.rating, escala 1–10). Un pase sin nota no cuenta. Ver frame B/G del
