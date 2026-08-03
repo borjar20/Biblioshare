@@ -27,7 +27,7 @@ export default function Loading() {
 
       <TodayBlockSkeleton />
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_312px] lg:items-start lg:gap-7">
+      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
         <div className="min-w-0">
           {/* "Novedades" + contador de seguidos: solo móvil. */}
           <div className="flex items-baseline justify-between gap-3 pb-4 lg:hidden">

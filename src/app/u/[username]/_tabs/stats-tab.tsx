@@ -95,7 +95,7 @@ export async function StatsTab({
   );
 
   // Dos pilas independientes: en escritorio el muro (izquierda, 1fr) y el rail
-  // (derecha, 300px); en móvil se apilan, rail primero (orden del frame B). Cada
+  // (derecha, 340px); en móvil se apilan, rail primero (orden del frame B). Cada
   // tarjeta se pinta UNA vez — el calendario y el editor diario llevan estado y
   // duplicarlos rompería la regla de los dos árboles.
   const rail = (
@@ -153,7 +153,7 @@ export async function StatsTab({
   );
 
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_300px] lg:items-start">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_340px] lg:items-start">
       <div className="lg:order-2">{rail}</div>
       <div className="lg:order-1">{main}</div>
     </div>

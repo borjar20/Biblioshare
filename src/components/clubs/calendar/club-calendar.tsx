@@ -96,7 +96,7 @@ export function ClubCalendar({
         />
       )}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <button

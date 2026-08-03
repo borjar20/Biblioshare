@@ -91,7 +91,7 @@ export default async function Home({
         <TodayBlock userId={user.id} />
       </Suspense>
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_328px] lg:items-start lg:gap-7">
+      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
         <div className="min-w-0">
           {/* En móvil "Novedades" encabeza el FEED, no la página: encima está
               el bloque de hoy, que es quien abre el Inicio (frame G). Es la
