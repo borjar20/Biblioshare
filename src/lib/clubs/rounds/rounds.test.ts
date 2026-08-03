@@ -55,14 +55,16 @@ describe("proposeRound", () => {
     const client = makeRpcClient({ data: "round-1", error: null });
     mocks.createClient.mockResolvedValue(client);
 
-    await expect(proposeRound("club-1", "a".repeat(500), null)).resolves.toBeUndefined();
+    await expect(proposeRound("club-1", "a".repeat(500), null)).resolves.toEqual({ ok: true });
   });
 
-  it("camino feliz: llama a la RPC, a notifyClub y revalida", async () => {
+  it("camino feliz: llama a la RPC, a notifyClub y revalida, y devuelve ok", async () => {
     const client = makeRpcClient({ data: "round-1", error: null });
     mocks.createClient.mockResolvedValue(client);
 
-    await proposeRound("club-1", "¿Qué leemos?", { itemType: "book", itemId: "item-1" });
+    await expect(
+      proposeRound("club-1", "¿Qué leemos?", { itemType: "book", itemId: "item-1" }),
+    ).resolves.toEqual({ ok: true });
 
     expect(client.rpc).toHaveBeenCalledWith("ensure_club_round", {
       p_club_id: "club-1",
@@ -80,12 +82,31 @@ describe("proposeRound", () => {
     expect(mocks.revalidateClubPages).toHaveBeenCalledOnce();
   });
 
-  it("propaga el error de la RPC (not_your_turn / round_already_open) sin envolverlo", async () => {
-    const client = makeRpcClient({ data: null, error: { message: "round_already_open" } });
+  // Next.js redacta el `message` de un Error lanzado desde una server action
+  // en build de producción (ver el comentario de ProposeRoundResult en
+  // rounds.ts): un throw aquí nunca llegaría legible a la UI. Por eso los
+  // dos errores de dominio de la RPC son un resultado, no una excepción.
+  it.each(["round_already_open", "not_your_turn"] as const)(
+    "no lanza el error de dominio %s de la RPC -- lo devuelve como resultado",
+    async (reason) => {
+      const client = makeRpcClient({ data: null, error: { message: reason } });
+      mocks.createClient.mockResolvedValue(client);
+
+      await expect(proposeRound("club-1", "hola", null)).resolves.toEqual({
+        ok: false,
+        reason,
+      });
+      expect(mocks.notifyClub).not.toHaveBeenCalled();
+      expect(mocks.revalidateClubPages).not.toHaveBeenCalled();
+    },
+  );
+
+  it("sí lanza otros errores de la RPC, sin envolverlos", async () => {
+    const client = makeRpcClient({ data: null, error: { message: "other_pg_error" } });
     mocks.createClient.mockResolvedValue(client);
 
     await expect(proposeRound("club-1", "hola", null)).rejects.toMatchObject({
-      message: "round_already_open",
+      message: "other_pg_error",
     });
     expect(mocks.notifyClub).not.toHaveBeenCalled();
     expect(mocks.revalidateClubPages).not.toHaveBeenCalled();

@@ -31,6 +31,7 @@ import {
   ClubMainHeader,
 } from "@/components/clubs/club-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { RoundBlock } from "@/components/clubs/round/round-block";
 
 export async function generateMetadata({
   params,
@@ -217,6 +218,9 @@ async function ClubFeedSection({
       </aside>
 
       <div className="min-w-0 lg:order-1">
+        <div className="mb-5">
+          <RoundBlock clubId={club.id} clubSlug={club.slug} viewerId={userId} />
+        </div>
         <ClubFeed
           clubId={club.id}
           viewerId={userId}

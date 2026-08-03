@@ -526,7 +526,28 @@
     "chipPublic": "Público",
     "chipPrivate": "Privado",
     "open": "Abrir",
-    "membersCount": "Miembros · {count}"
+    "membersCount": "Miembros · {count}",
+    "round": {
+      "title": "La ronda",
+      "yourTurnTitle": "Te toca. ¿Qué le preguntas al club?",
+      "yourTurnPlaceholder": "Un libro que abandonaste y no te arrepientes…",
+      "yourTurnSubmit": "Proponer la ronda",
+      "yourTurnAddWork": "+ Añadir una obra",
+      "yourTurnDeadline": "Hasta el miércoles es tuya",
+      "waitingTitle": "Esta semana le toca a {name}",
+      "waitingSub": "Si el miércoles no ha propuesto nada, entra una consigna de la casa",
+      "houseStamp": "Ronda de la casa",
+      "proposedBy": "{name} propuso la ronda",
+      "answer": "Responder",
+      "noAnswersYet": "Sin respuestas todavía",
+      "addToPlanned": "A pendientes",
+      "historyTitle": "Rondas anteriores",
+      "historyWeeks": "{count} semanas",
+      "historyAnswers": "{count} respuestas",
+      "historyEmptyWeek": "Sin ronda",
+      "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
+      "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
+    }
   },
   "clubPost": {
     "composerPlaceholderText": "¿Qué quieres compartir con el club?",
