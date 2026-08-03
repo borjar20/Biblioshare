@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { CoverCard } from "@/components/ui/cover-card";
 import { getPerson } from "@/lib/people/get-person";
+import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 
 export async function generateMetadata({
   params,
@@ -55,7 +56,7 @@ export default async function PersonDetailPage({
     .join(" · ");
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-col gap-6 sm:flex-row">
         <div className="relative h-40 w-40 shrink-0 overflow-hidden rounded-full border border-border bg-surface-muted">
           {person.photoUrl ? (
@@ -87,7 +88,7 @@ export default async function PersonDetailPage({
       {works.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-foreground">{t("worksTitle")}</h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
             {works.map((work) => (
               <CoverCard
                 key={`${work.itemType}-${work.itemId}`}

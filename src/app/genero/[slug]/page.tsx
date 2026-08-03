@@ -4,6 +4,7 @@ import { genreDefForSlug, labelForSlug } from "@/lib/catalog/genre-vocab";
 import { getCatalogByGenre, PAGE_SIZE } from "@/lib/catalog/get-catalog-by-genre";
 import { itemHref } from "@/lib/catalog/item-href";
 import { CoverCard } from "@/components/ui/cover-card";
+import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 import { GenrePager } from "./genre-pager";
 
 // Página de un género: lista el catálogo (los tres tipos) que lo lleva. slug
@@ -33,7 +34,7 @@ export default async function GeneroPage({
   const currentPage = Math.min(page, totalPages);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8`}>
       <header className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold text-foreground">{label}</h1>
         <span className="font-mono text-[11px] text-muted-foreground">{total}</span>
@@ -42,7 +43,7 @@ export default async function GeneroPage({
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">Aún no hay obras de este género.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+        <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
           {items.map((item) => (
             <CoverCard
               key={`${item.itemType}:${item.itemId}`}

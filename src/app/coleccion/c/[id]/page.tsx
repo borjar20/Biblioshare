@@ -8,6 +8,7 @@ import { getCollection } from "@/lib/library/collections";
 import { CollectionDetail } from "@/components/library/collection-detail";
 import { CollectionMenu } from "@/components/library/collection-menu";
 import { ChevronLeftIcon } from "@/components/ui/icons";
+import { SHELL_GRID } from "@/lib/ui/layout";
 
 export async function generateMetadata({
   params,
@@ -52,7 +53,7 @@ export default async function CollectionDetailPage({
   const t = await getTranslations("collection");
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       {/* Topbar del frame B: «‹» a /coleccion + nombre + menú «⋯»
           (renombrar/descripción/borrar, Sesión 2). */}
       <div className="flex items-center gap-2.5">
