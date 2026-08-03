@@ -210,6 +210,11 @@ end;
 $$;
 
 -- La consigna de la casa es determinista y depende del club Y del periodo.
+-- private.house_prompt() es una función interna: el Step 3 le revoca
+-- "execute" al rol authenticated a propósito (el cliente no debe poder
+-- llamarla directo). Se prueba con el rol privilegiado de execute_sql, igual
+-- que la sección "La tabla y su forma" al principio de este fichero.
+reset role;
 select pg_temp.assert_true(
   private.house_prompt('00000000-0000-4000-8000-000000000201', '2026-W05')
   = private.house_prompt('00000000-0000-4000-8000-000000000201', '2026-W05'),
@@ -225,5 +230,11 @@ select pg_temp.assert_true(
                 ('2026-W05'), ('2026-W06'), ('2026-W07'), ('2026-W08')) as periods(p)) > 1,
   'la consigna de la casa varía entre periodos, no es constante'
 );
+
+-- Nada más corre como authenticated tras esto: contexto ya limpio (reset role
+-- de arriba) y el claim de la sección de turno no ha vuelto a fijarse desde
+-- entonces. Se limpia igualmente el claim por si acaso, misma disciplina que
+-- el cierre de la sección de RLS de la Task 1.
+select set_config('request.jwt.claims', '', true);
 
 rollback;
