@@ -56,6 +56,25 @@ describe("computePaceEstimates", () => {
     expect(result.perItem.s2.formulaText).toBe("Duración de episodio desconocida");
   });
 
+  it("estimates a book with known pages using a default pace when there is no personal pace yet", () => {
+    const item = makeItem({ entryId: "b0", itemType: "book", totalPages: 270 });
+
+    const result = computePaceEstimates([item], null, NO_MOVIE_PACE);
+
+    expect(result.perItem.b0.minutes).not.toBeNull();
+    expect(result.unresolvedCount).toBe(0);
+    expect(result.perItem.b0.formulaText).toContain("ritmo medio");
+  });
+
+  it("still counts a book with no page count as unresolved (default pace can't help)", () => {
+    const item = makeItem({ entryId: "b_np", itemType: "book", totalPages: null });
+
+    const result = computePaceEstimates([item], null, NO_MOVIE_PACE);
+
+    expect(result.perItem.b_np.minutes).toBeNull();
+    expect(result.unresolvedCount).toBe(1);
+  });
+
   it("excludes unresolved items from the total but still totals the resolved ones", () => {
     const bookPace: BookPace = { pagesPerMinute: 2, sampleCount: 5 };
     const items = [
