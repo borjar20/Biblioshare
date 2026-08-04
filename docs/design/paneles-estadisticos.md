@@ -498,9 +498,26 @@ orden: actividad del periodo · semana · objetivo · racha · ritmo · calendar
 
 **Ya no hay rail.** El rail de 340 px no repartía por importancia sino por ancho: la
 racha y el ritmo cabían en él, así que salían antes que la actividad del periodo. Ahora
-es una sola secuencia repartida en columnas por empaquetado (`columns`), con el orden
-del DOM igual al del esquema — que es el que lee un lector de pantalla y el que se ve
-en móvil.
+es una sola secuencia en rejilla, con el orden del DOM igual al del esquema — que es el
+que lee un lector de pantalla y el que se ve en móvil.
+
+### Rejilla con `items-start`, nunca `columns`
+
+Las dos vistas usan `grid ... items-start`, y las dos partes de esa decisión se pagaron
+mirando la pantalla:
+
+- **`columns` no vale.** El navegador elige una altura de columna y reparte; el
+  calendario —la tarjeta más alta con diferencia— se quedaba a diez píxeles de caber en
+  la primera columna, se iba entero a la segunda y dejaba medio metro de hueco muerto
+  abajo a la izquierda. Y el empate es frágil: depende de cuántas sesiones tenga el mes.
+- **`items-start` no es un olvido.** Sin él la rejilla estira las tarjetas de cada fila
+  a la altura de la más alta, y «La pila» junto al calendario se quedaba con 250 px de
+  vacío entre su anillo y su pie. **Una tarjeta hueca se lee como rota; el aire entre
+  tarjetas se lee como maqueta.** Se prefiere lo segundo aunque los píxeles sobrantes
+  sumen lo mismo.
+
+Queda algo de borde irregular entre filas, y es el precio correcto: las columnas
+terminan a ras y ninguna tarjeta miente sobre dónde acaba su contenido.
 
 ### Los tres controles, y una sola fila para toda la pantalla
 

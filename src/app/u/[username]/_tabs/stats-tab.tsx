@@ -173,12 +173,21 @@ export async function StatsTab({
         metric={metric}
       />
 
-      {/* Una sola secuencia, empaquetada en columnas. `columns` reparte por
-          altura sin dejar los huecos que deja una rejilla cuando las tarjetas
-          miden distinto, y `break-inside-avoid` impide que una se parta en dos
-          columnas. El ORDEN del DOM es el del esquema, que es el que lee un
-          lector de pantalla y el que se ve en móvil. */}
-      <div className="columns-1 lg:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
+      {/* REJILLA con `items-start`, no `columns`.
+          Con `columns`, el navegador elige una altura y reparte: el calendario
+          —la tarjeta más alta con diferencia— se quedaba a diez píxeles de
+          caber en la primera columna, se iba entero a la segunda y dejaba medio
+          metro de hueco muerto abajo a la izquierda. Y el empate es frágil:
+          depende de cuántas sesiones tengas ese mes.
+          `items-start` es deliberado, no un olvido: sin él la rejilla estira
+          las dos tarjetas de cada fila a la altura de la más alta, y «La pila»
+          junto al calendario se quedaba con 250 px de vacío entre su anillo y
+          su pie. Una tarjeta hueca se lee como rota; el aire ENTRE tarjetas se
+          lee como maqueta. Se prefiere lo segundo, aunque sume lo mismo.
+          Se lee de izquierda a derecha en el orden del esquema, que además es
+          el del DOM: el mismo que oye un lector de pantalla y el que se ve en
+          móvil, donde la rejilla es de una sola columna. */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <StatPanel spec={actividad} />
         <StatPanel spec={semana} />
         <StatPanel spec={objetivoHoy} />

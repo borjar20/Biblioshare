@@ -194,7 +194,11 @@ export default async function FullStatsPage({
               </h2>
               <p className="text-[11.5px] text-muted-foreground">{section.description}</p>
             </div>
-            <div className="columns-1 lg:columns-2 xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
+            {/* Rejilla, no `columns`: las tarjetas de una fila comparten altura
+                y la sección termina a ras, sin la columna a medias que dejaba
+                el reparto por altura cuando una tarjeta era mucho más alta que
+                el resto. Ver la nota de la pestaña del perfil. */}
+            <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {section.panels.map((spec) => (
                 // h3: los paneles cuelgan del título de su sección, que es h2.
                 <StatPanel key={spec.id} spec={spec} headingLevel={3} />
