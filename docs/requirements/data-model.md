@@ -163,6 +163,14 @@ ver «Social fase 0»)**]**
 > INSERT/UPDATE para `authenticated` solo están `id`, `created_at` y `updated_at` (default y
 > trigger, correcto), y `review` sigue **sin SELECT** a propósito — se lee por la vista
 > `pass_reviews`, que es la que aplica la privacidad.
+>
+> **Delta del 2026-08-04 (avisos por persona, §5): `follows.notify_events` y los cuatro valores
+> `followed_*` de `notification_type` añadidos y verificados SOLO EN DEV** (`information_schema.columns`
+> y `pg_enum`; prod no tiene ni la columna ni los valores de enum nuevos). Migraciones
+> `20260804000000_follow_notify_events.sql` y `20260804000001_notification_type_followed.sql`. Sin
+> tabla nueva: el interruptor de aviso por persona vive en `follows.notify_events`
+> (`finished|session|episode|added`), escrito por **service-role** porque la RLS de `follows` solo
+> concede UPDATE al followee. Ver §5 y `decisiones.md` (2026-08-04).
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -407,6 +415,16 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
+
+> **Delta del 2026-08-04 (avisos por persona): `follows.notify_events` añadida y verificada
+> SOLO EN DEV** (`information_schema.columns`: `text[]`, `not null`, default `'{}'::text[]`;
+> prod no tiene la columna). Migración `20260804000000_follow_notify_events.sql`. Categorías de
+> aviso (`finished|session|episode|added`) que el **follower** activó sobre el followee — campana
+> apagada = array vacío. **La escribe service-role, no el follower**: la RLS de `follows` solo
+> concede UPDATE al followee (evita el auto-accept en perfiles privados si se le abriera al
+> follower), así que el interruptor pasa por una server action con service-role
+> (`setFollowNotify`) en vez de un UPDATE directo del cliente. Sin tabla nueva. Ver
+> `decisiones.md` (2026-08-04).
 
 **Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
 `20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
@@ -1597,7 +1615,7 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres últimos: Social fase 1, dev y **prod** 2026-08-02) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql`, **SOLO EN DEV** — prod aún no tiene estos valores) |
 | `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
