@@ -649,7 +649,7 @@ fichero porque Postgres prohíbe usar un valor de enum en la misma transacción 
 **Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod queda pendiente** — aplicación
 reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta feature.
 
-### La ronda — latido semanal de club (dev, 2026-08-04; **prod pendiente**)
+### La ronda — latido semanal de club (dev y **prod**, 2026-08-04)
 
 Tabla propia, **no** un `kind` de `club_activities` — a propósito y contra SD-8, con el
 argumento completo en `decisiones.md` (2026-08-03) y en la spec
@@ -714,8 +714,26 @@ contra `list_migrations`: las 8 columnas, las 2 políticas, los 2 triggers, las 
 (`get_club_round_state` ya con las 9 columnas de salida, `house_prompt` incluida) y los 4
 valores de enum, todos presentes y con la forma exacta del fichero de migración.
 
-**Producción: pendiente — aplicación reservada explícitamente al usuario, no ejecutada en
-la sesión que cerró esta feature.** Dato para cuando se aplique: la migración llegó a dev en
+**Producción: APLICADA Y VERIFICADA el 2026-08-04** (`vmutcradmodhiltuohys`), en **una sola**
+llamada con el fichero consolidado y **antes** de mergear el código — al revés la página de
+todos los clubes habría reventado, porque `RoundBlock` llama a `get_club_round_state` en
+cada render. Verificado contra objetos reales (`pg_class`, `pg_policy`, `pg_trigger`,
+`pg_constraint`, `pg_enum`, `pg_proc`, `pg_proc.proacl`), **nunca contra
+`list_migrations`**: tabla con RLS activa, las dos políticas (`select` de miembros y
+`delete` de moderador+) y **ninguna** de `insert`/`update`, los dos triggers, las seis
+restricciones, los cuatro valores de enum y las cinco funciones con `search_path` fijado —
+las dos RPC públicas `security definer`, las dos de `private` no. Privilegios correctos:
+`get_club_round_state` y `ensure_club_round` quedan en `{postgres, authenticated,
+service_role}`, **sin `anon` ni `PUBLIC`**, y `club_now`/`house_prompt` solo en `postgres`.
+Advisors de seguridad **66 → 68**: los dos nuevos son
+`authenticated_security_definer_function_executable` para esas dos RPC, la misma categoría
+ya aceptada para las otras 41 del proyecto; **ninguno** en la categoría `anon`, lo que
+confirma que los `revoke` surtieron efecto.
+
+El `drop function if exists` que precede a `get_club_round_state` fue un no-op en este
+apply (prod no tenía la función); está ahí para el próximo cambio de columnas de salida.
+
+Dato histórico de dev: la migración llegó allí en
 **cuatro** entradas sucesivas, no tres — corregido aquí tras verificar
 `supabase_migrations.schema_migrations` (el dato de partida de esta sesión decía tres):
 `club_rounds` (tabla + RLS + triggers + los 4 valores de enum), `club_rounds_functions` (las

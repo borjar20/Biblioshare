@@ -24,9 +24,9 @@
 -- propósito: se anexa mientras la migración SOLO está en dev, porque el cierre
 -- documental de la feature (issue de gobernanza, ver AGENTS.md) no puede
 -- esperar a que alguien aplique prod en otra sesión. El anexo lo dice en su
--- propia cabecera. Cuando se aplique a prod, quien lo haga debe: (1) confirmar
--- que el contenido de este anexo sigue coincidiendo con lo aplicado real, y
--- (2) borrar el "prod: PENDIENTE" de su cabecera. No añadir un segundo anexo.
+-- propia cabecera. RESUELTO el 2026-08-04: prod recibió esa migración ese mismo
+-- día, en una sola llamada y con este mismo contenido consolidado; la cabecera
+-- del anexo ya no dice "PENDIENTE" y no se añadió un segundo anexo.
 -- Este fichero se mantiene a mano y ya se desincronizó DOS veces; ante la duda,
 -- regenerarlo con `pg_dump --schema-only` de prod.
 -- ============================================================================
@@ -11039,13 +11039,16 @@ grant update (episode_runtime_minutes) on public.series to authenticated;
 -- en decisiones.md, 2026-08-03). Fichero
 -- supabase/migrations/20260803_club_rounds.sql.
 --
--- ESTADO: aplicada y verificada SOLO EN DEV (tyvzpuhxfwxrnkcpzxyg), el
--- 2026-08-04, contra objetos reales (information_schema.columns, pg_policy,
--- pg_trigger, pg_proc, pg_enum) — no contra list_migrations. **PROD:
--- PENDIENTE**, aplicación reservada explícitamente al usuario y fuera del
--- encargo de la sesión que escribió este anexo. Se anexa igualmente, contra
--- la costumbre de este fichero (ver NOTA 2026-08-04 al principio), porque el
--- cierre documental de la feature no puede esperar a otra sesión.
+-- ESTADO: aplicada y verificada en DEV (tyvzpuhxfwxrnkcpzxyg) y en PROD
+-- (vmutcradmodhiltuohys), las dos el 2026-08-04, contra objetos reales
+-- (information_schema.columns, pg_class, pg_policy, pg_trigger, pg_constraint,
+-- pg_proc, pg_proc.proacl, pg_enum) — nunca contra list_migrations.
+-- A prod entró en UNA sola llamada con este mismo contenido consolidado, y
+-- ANTES de mergear el código: al revés, `RoundBlock` habría llamado a una
+-- get_club_round_state inexistente y habría tumbado la página de todos los
+-- clubes. Advisors de seguridad 66 -> 68, los dos nuevos de la categoría
+-- authenticated_security_definer_function_executable ya aceptada para las
+-- otras 41 RPC del proyecto; ninguno en la categoría anon.
 --
 -- Contexto para quien aplique a prod: en dev, la migración llegó en CUATRO
 -- entradas sucesivas, no en una — porque las tareas de implementación fueron
