@@ -49,6 +49,53 @@ test("la página muestra completadas por año", async ({ page }) => {
   await page.waitForURL("/");
 
   await page.goto("/estadisticas");
-  await expect(page.getByText(/completadas por año/i)).toBeVisible();
-  await expect(page.getByText(/la pila/i)).toBeVisible();
+  // Por el título del panel, no por texto suelto: desde el armazón accesible, el
+  // título también aparece en el `<caption>` de la tabla de valores exactos.
+  await expect(
+    page.getByRole("heading", { name: "Completadas por año" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "La pila" })).toBeVisible();
+});
+
+// Contrato del armazón de paneles (docs/design/paneles-estadisticos.md). Lo que
+// se comprueba aquí no es el aspecto, es que el dato sea LEGIBLE sin mirar el
+// gráfico: cada panel es una región con nombre, declara su periodo y su unidad,
+// y esconde detrás de un desplegable la tabla con los valores exactos.
+test("cada panel es una región con nombre, contexto y tabla de valores exactos", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.goto("/login");
+  await page.fill('input[name="email"]', EMAIL);
+  await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+  await page.goto("/estadisticas");
+
+  // 1 · Región con nombre: el lector de pantalla puede saltar de panel a panel.
+  const horas = page.getByRole("region", { name: "Horas por mes" });
+  await expect(horas).toBeVisible();
+
+  // 2 · Contexto: periodo y unidad, dentro del propio panel.
+  await expect(horas).toContainText(/Valores en minutos/i);
+
+  // 3 · Los valores exactos existen en el DOM, no solo como alturas de barra.
+  const verTabla = horas.getByText(/Ver los 12 valores exactos/i);
+  await expect(verTabla).toBeVisible();
+  await verTabla.click();
+  const tabla = horas.getByRole("table");
+  await expect(tabla.getByRole("rowheader", { name: "Enero" })).toBeVisible();
+  await expect(tabla.getByRole("columnheader", { name: "Mes" })).toBeVisible();
+
+  // 4 · Un panel que ignora el selector de periodo lo dice en su contexto, en
+  //     vez de fingir que obedece al filtro de la página.
+  await expect(page.getByRole("region", { name: "Estados" })).toContainText(
+    /Ahora mismo/i,
+  );
+
+  // 5 · Los paneles que ya son texto (ranking) no repiten una tabla plegada:
+  //     su lista ordenada ES el dato.
+  const mejores = page.getByRole("region", { name: "Mejor valoradas" });
+  await expect(mejores.getByText(/valores exactos/i)).toHaveCount(0);
 });
