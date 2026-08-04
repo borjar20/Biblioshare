@@ -184,11 +184,13 @@ ver «Social fase 0»)**]**
 > de las 10 tablas con hueco intencionado — idéntica en dev y prod.
 
 > **Delta del 2026-08-04 — seguimiento de eventos de club (§6.1) y el primer trabajo
-> programado del repo (§6.2):** aplicado y verificado **solo en dev**; **producción
-> pendiente**, aplicación reservada al usuario. Verificado contra los objetos reales de dev
-> (`information_schema.columns`, `pg_constraint`, `pg_policies`, `pg_proc`, `cron.job`) y con
-> 12 checks de impersonación, nunca contra `list_migrations`. Incluye un cambio en una tabla
-> del núcleo: `notifications.actor_id` pasa a **nullable**.
+> programado del repo (§6.2): aplicado y verificado en dev Y EN PRODUCCIÓN** el mismo día.
+> Verificado contra los objetos reales de los dos entornos (`information_schema.columns`,
+> `pg_constraint`, `pg_policies`, `pg_proc`, `cron.job`, `cron.job_run_details`,
+> `net._http_response`), nunca contra `list_migrations`, y con 12 checks de impersonación en
+> dev. Incluye un cambio en una tabla del núcleo: `notifications.actor_id` pasa a
+> **nullable**. El trabajo programado está **entregando de verdad** en producción (200 desde
+> el propio cron, ver §6.2).
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -711,10 +713,12 @@ y `20260811_spawn_linked_activity_defaults.sql`).** Cuatro huecos de la misma ca
 El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
 fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.
 
-**Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod queda pendiente** — aplicación
-reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta feature.
+**Aplicadas en dev (`supabase-dev`) el 2026-07-22.** *Corregido aquí el 2026-08-04*: esta línea
+decía «prod queda pendiente» y ya no era cierto — al preparar §6.1 se leyó `pg_proc` de PROD y
+las dos RPC estaban allí con su firma de julio (4 argumentos). Desde el 2026-08-04 tienen en los
+dos entornos la firma ampliada de 10 (ver §6.1).
 
-### 6.1 Seguimiento de eventos: `club_event_followers` (dev 2026-08-04; **prod pendiente**)
+### 6.1 Seguimiento de eventos: `club_event_followers` (dev y **prod**, 2026-08-04)
 
 Un miembro **sigue** un evento para declarar interés, ver quién más lo sigue y recibir un
 recordatorio antes de que empiece. Spec:
@@ -820,11 +824,15 @@ nuevos de `notification_type`: `club_event_reminder`, `club_event_updated`,
 **El planificador** (`20260824_club_event_reminder_scheduler.sql`) — primer trabajo programado
 del repo, ver §6.2.
 
-**Aplicado y verificado en dev el 2026-08-04** (12 checks de impersonación: idempotencia,
+**Aplicado y verificado en dev** el 2026-08-04 (12 checks de impersonación: idempotencia,
 extraño rechazado, privacidad de la lista, cancelar/reprogramar/evento pasado, expulsión,
-reclamo atómico y compensación). **Producción pendiente: aplicación reservada al usuario.**
+reclamo atómico y compensación) **y en PRODUCCIÓN** el mismo día, comprobando allí las firmas
+de las 9 RPC (una sola por nombre, sin ambigüedad), la tabla con su política e índices, el
+`actor_id` nullable con su CHECK relajado, el job activo, el backfill de los 2 eventos reales
+a las 19:00 `Europe/Madrid`, y la superficie 6 de `DRIFT-CHECK.md` (mismas 10 tablas de
+referencia: `club_activities` NO aparece, o sea que sus 8 columnas nuevas tienen su grant).
 
-### 6.2 El planificador: `pg_cron` + `pg_net` (dev 2026-08-04; **prod pendiente**)
+### 6.2 El planificador: `pg_cron` + `pg_net` (dev y **prod**, 2026-08-04)
 
 El repo **no tenía ningún trabajo programado** y la issue #394 lo dejó escrito como decisión
 de plataforma pendiente, prohibiendo expresamente resolverlo «escribiendo al renderizar».
@@ -854,6 +862,22 @@ select vault.create_secret('<mismo valor que CRON_SECRET en Vercel>', 'cron_secr
 
 Y `CRON_SECRET` como variable de entorno en Vercel. La ruta compara en tiempo constante y
 responde **503 si la variable falta** (cerrada, no abierta) y 401 sin cabecera válida.
+
+**Dos trampas confirmadas al ponerlo en producción, y las dos cuestan una hora si no se saben:**
+
+1. **La URL tiene que ser el ALIAS DE PRODUCCIÓN, no el de la rama.** La protección de
+   despliegue del proyecto está en `all_except_custom_domains` y no hay dominio propio, así
+   que `biblioshare-git-main-*.vercel.app` devuelve **302** al muro de SSO de Vercel y la
+   petición nunca llega a la ruta. `biblioshare-nine.vercel.app` sí llega. Queda anotado en la
+   descripción del propio secreto `app_base_url`.
+2. **Cambiar `CRON_SECRET` en Vercel exige REDEPLOY.** Mientras no se redespliega, la ruta
+   sigue respondiendo 503 aunque la variable ya esté guardada.
+
+**Verificado funcionando en producción el 2026-08-04** (issue #434, cerrada): `cron.job_run_details`
+da `succeeded` cada 5 minutos en punto y `net._http_response` da **200** con
+`{"claimed":…}` — incluida una respuesta cuyo `created` coincide al milisegundo con el
+`end_time` de una ejecución del cron, o sea disparada por el job y no a mano. Los `claimed: 0`
+de las primeras son correctos: todavía no hay eventos seguidos con recordatorio vencido.
 
 Esto **no cierra #394** (el aviso de turno de ronda sigue por construir) pero le retira el
 bloqueo: el mecanismo queda montado y §7.17 puede colgarse del mismo job.
@@ -1911,10 +1935,10 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
-| `club_event_state` | `programado \| cancelado \| pospuesto` (§6.1, 2026-08-04, **solo dev**). Solo los tres estados que una PERSONA declara: «en curso» y «finalizado» se derivan del reloj y NO se guardan |
-| `event_modality` | `presencial \| online \| hibrida` (§6.1, 2026-08-04, **solo dev**) |
+| `club_event_state` | `programado \| cancelado \| pospuesto` (§6.1, 2026-08-04, dev y **prod**). Solo los tres estados que una PERSONA declara: «en curso» y «finalizado» se derivan del reloj y NO se guardan |
+| `event_modality` | `presencial \| online \| hibrida` (§6.1, 2026-08-04, dev y **prod**) |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql`, **SOLO EN DEV** — prod aún no tiene estos valores) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, **SOLO EN DEV**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable |
 | `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
