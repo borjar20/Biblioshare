@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import type { ItemFilter } from "./filter";
 import { getItemTitles, keyFor } from "./get-item-titles";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -51,13 +52,17 @@ export function computeTbrSnapshot(rows: Row[], now: Date) {
 export async function getTbrSnapshot(
   supabase: SupabaseServerClient,
   userId: string,
+  itemFilter: ItemFilter = "all",
 ): Promise<TbrSnapshot> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("passes")
     .select("item_type, item_id, created_at")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("status", "planned");
+  if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

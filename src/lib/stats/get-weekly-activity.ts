@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import type { ItemType } from "@/lib/catalog/types";
 import { toISODate, todayISO } from "./dates";
 import type { DayActivity } from "./types";
 
@@ -21,7 +22,13 @@ export async function getWeeklyActivity(
   const days: DayActivity[] = [];
   for (let i = DAYS - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-    days.push({ date: toISODate(d), minutes: 0, active: false });
+    days.push({
+      date: toISODate(d),
+      minutes: 0,
+      active: false,
+      works: 0,
+      byType: { book: 0, movie: 0, series: 0 },
+    });
   }
   const rangeStart = days[0].date;
 
@@ -37,7 +44,7 @@ export async function getWeeklyActivity(
       .lte("session_date", todayISO()),
     supabase
       .from("passes")
-      .select("finished_on")
+      .select("finished_on, item_type")
       .eq("user_id", userId)
       .not("finished_on", "is", null)
       .gte("finished_on", rangeStart)
@@ -56,7 +63,10 @@ export async function getWeeklyActivity(
   }
   for (const row of finished.data ?? []) {
     const bucket = byDate.get(row.finished_on as string);
-    if (bucket) bucket.active = true;
+    if (!bucket) continue;
+    bucket.active = true;
+    bucket.works += 1;
+    bucket.byType[row.item_type as ItemType] += 1;
   }
 
   return days;

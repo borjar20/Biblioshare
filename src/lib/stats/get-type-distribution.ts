@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { type StatsPeriod, yearBounds } from "./period";
+import { type StatsPeriod, periodBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -25,9 +25,11 @@ export async function getTypeDistribution(
     .eq("user_id", userId)
     .not("finished_on", "is", null);
 
-  if (period !== "all") {
-    const { start, endExclusive } = yearBounds(period);
-    query = query.gte("finished_on", start).lt("finished_on", endExclusive);
+  const bounds = periodBounds(period);
+  if (bounds) {
+    query = query
+      .gte("finished_on", bounds.start)
+      .lt("finished_on", bounds.endExclusive);
   }
 
   const { data, error } = await query;

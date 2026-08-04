@@ -19,7 +19,10 @@ export async function getHoursByMonth(
   userId: string,
   period: StatsPeriod = "all",
 ): Promise<HoursByMonth> {
-  const year = period === "all" ? new Date().getFullYear() : period;
+  // El panel son 12 meses de UN año: los períodos cortos (semana, mes) y
+  // «todo» no tienen doce meses propios, así que caen en el año en curso. El
+  // rótulo del panel dice qué año se está pintando, no el período elegido.
+  const year = typeof period === "number" ? period : new Date().getFullYear();
   const { start, endExclusive } = yearBounds(year);
 
   const { data, error } = await supabase

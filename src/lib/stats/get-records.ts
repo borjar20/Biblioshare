@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { type StatsPeriod, yearBounds } from "./period";
+import type { ItemFilter } from "./filter";
+import { type StatsPeriod, periodBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -20,18 +21,22 @@ export async function getRecords(
   supabase: SupabaseServerClient,
   userId: string,
   period: StatsPeriod = "all",
+  itemFilter: ItemFilter = "all",
 ): Promise<Records> {
   let query = supabase
     .from("passes")
     .select("item_type, item_id, finished_on, created_at, started_on")
     .eq("user_id", userId);
 
-  // Con período, los récords son los de lo TERMINADO ese año; sin él (pestaña
-  // B/G) se calculan sobre toda la historia, como siempre.
-  if (period !== "all") {
-    const { start, endExclusive } = yearBounds(period);
-    query = query.gte("finished_on", start).lt("finished_on", endExclusive);
+  // Con período, los récords son los de lo TERMINADO en él; sin él se calculan
+  // sobre toda la historia, como siempre.
+  const bounds = periodBounds(period);
+  if (bounds) {
+    query = query
+      .gte("finished_on", bounds.start)
+      .lt("finished_on", bounds.endExclusive);
   }
+  if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
 
   const { data, error } = await query;
 

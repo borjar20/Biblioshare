@@ -1,7 +1,8 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getItemTitles, keyFor } from "./get-item-titles";
-import { type StatsPeriod, yearBounds } from "./period";
+import type { ItemFilter } from "./filter";
+import { type StatsPeriod, periodBounds } from "./period";
 import { toStar } from "./rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -30,6 +31,7 @@ export async function getTopRated(
   userId: string,
   period: StatsPeriod = "all",
   limit = 6,
+  itemFilter: ItemFilter = "all",
 ): Promise<TopRatedItem[]> {
   let query = supabase
     .from("passes")
@@ -37,10 +39,13 @@ export async function getTopRated(
     .eq("user_id", userId)
     .not("rating", "is", null);
 
-  if (period !== "all") {
-    const { start, endExclusive } = yearBounds(period);
-    query = query.gte("finished_on", start).lt("finished_on", endExclusive);
+  const bounds = periodBounds(period);
+  if (bounds) {
+    query = query
+      .gte("finished_on", bounds.start)
+      .lt("finished_on", bounds.endExclusive);
   }
+  if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
 
   const { data, error } = await query;
   if (error) throw error;

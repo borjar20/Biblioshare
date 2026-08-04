@@ -65,6 +65,9 @@ export default async function PublicProfilePage({
     q?: string;
     sort?: string;
     month?: string;
+    periodo?: string;
+    tipo?: string;
+    medida?: string;
     archivados?: string;
   }>;
 }) {
@@ -193,7 +196,12 @@ export default async function PublicProfilePage({
 
       {tab === "estadisticas" && (
         <Suspense fallback={<ProfileSectionSkeleton />}>
-          <StatsTab userId={profile.userId} monthParam={parsedParams.month} />
+          <StatsTab
+            userId={profile.userId}
+            basePath={basePath}
+            monthParam={parsedParams.month}
+            metricParam={parsedParams.medida}
+          />
         </Suspense>
       )}
 
