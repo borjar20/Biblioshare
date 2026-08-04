@@ -68,6 +68,14 @@ export function StatPanel({
         {contextSentence(spec)}
       </p>
 
+      {/* Ayuda: qué mide y cómo se calcula. Va antes del dato, no en nota al pie,
+          porque cambia cómo se interpreta la cifra que viene a continuación. */}
+      {spec.description && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {spec.description}
+        </p>
+      )}
+
       <PanelBody spec={spec} state={state} />
 
       {/* 8 · Notas e interpretación */}

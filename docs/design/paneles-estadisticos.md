@@ -49,6 +49,7 @@ que entre en la región y no siga leyendo ya se ha llevado la respuesta.
 ```
 1 Título              ← qué es
 2 Contexto            ← de qué periodo, con qué filtros, en qué unidad
+  + descripción       ← qué mide y cómo se calcula (opcional, pero ANTES del dato)
 3 Resumen textual     ← la respuesta en una frase
 4 Indicadores         ← el dato principal y su variación
 5 Visualización       ← la forma (decorativa)

@@ -152,6 +152,8 @@ function ratingPanel({ rating, titles }: SpecInput, period: string): PanelSpec {
   return {
     id: "valoraciones",
     title: titles.rating,
+    description:
+      "La nota interna va de 1 a 10 y se muestra en escala de 5. Un pase sin nota no entra en la media.",
     context: { period, filters: ["Solo pases con nota"] },
     viz: "bars",
     unit: UNITS.works,
@@ -176,7 +178,6 @@ function ratingPanel({ rating, titles }: SpecInput, period: string): PanelSpec {
         hint: `Sobre ${rating.count} ${rating.count === 1 ? "obra valorada" : "obras valoradas"}`,
       },
     ],
-    note: "La nota interna va de 1 a 10 y se muestra en escala de 5. Un pase sin nota no entra en la media.",
     empty: {
       title: "Aún no has valorado nada",
       message: "Pon una nota al cerrar un pase y aquí verás tu media y el reparto.",

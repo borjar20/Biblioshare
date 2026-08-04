@@ -155,7 +155,12 @@ export type PanelSpec = {
   /** Único en la página: prefija los `id` de título, resumen y tabla. */
   id: string;
   title: string;
-  /** Qué mide y cómo se calcula. Se enlaza con `aria-describedby`. */
+  /**
+   * Qué mide y cómo se calcula. Se pinta bajo el contexto, ANTES del dato:
+   * cambia cómo se interpreta la cifra, así que llega tarde en una nota al pie.
+   * Va como texto normal, no en `aria-describedby`: así se lee igual con lector
+   * de pantalla que con la vista, y no queda escondido en una descripción.
+   */
   description?: string;
   context: PanelContext;
   viz: PanelViz;
