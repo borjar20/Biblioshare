@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { applyTransition } from "@/lib/passes/apply-transition";
+import { notifyAdded } from "@/lib/social/notify-followers";
 import type { ItemType } from "@/lib/catalog/types";
 
 // Alta rápida desde el feed: mete la obra en la cola (planned) reusando la
@@ -17,7 +18,8 @@ export async function quickAddToLibrary(itemType: ItemType, itemId: string): Pro
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await applyTransition(supabase, user.id, itemType, itemId, "planned");
+  const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned");
+  await notifyAdded(supabase, user.id, outcome);
   revalidatePath("/");
 }
 
