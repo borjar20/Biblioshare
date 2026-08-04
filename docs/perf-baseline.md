@@ -68,24 +68,37 @@ Los dos escupen Markdown listo para pegar aquí o en una issue.
 | `/clubes` | 1 | **no** ← #438 |
 | `/estadisticas` | 1 | **no** ← #440 |
 
-### Vía B · Laboratorio (localhost:3000, mediana de 5 cargas en frío)
+### Vía B · Laboratorio (localhost:3000, mediana de 9 cargas en frío)
 
-Build de producción del commit de esta rama, Supabase **dev**, Chromium local.
+Build de producción de esta rama ya con `main` mezclado, Supabase **dev**, Chromium local.
 
-| Ruta | TTFB | FCP | LCP | Issue |
-|---|---:|---:|---:|---|
-| `/` | 786 ms | 1396 ms | **3176 ms** | |
-| `/estadisticas` | 391 ms | 572 ms | **2784 ms** | #440 |
-| `/clubes` | 440 ms | 564 ms | 1272 ms | #438 |
-| `/buscar` | 421 ms | 668 ms | 1044 ms | |
-| `/u/[username]` | 516 ms | 968 ms | 1036 ms | |
-| `/coleccion` | 614 ms | 808 ms | 808 ms | |
+| Ruta | TTFB | FCP | LCP (mediana) | LCP rango | Issue |
+|---|---:|---:|---:|---:|---|
+| `/estadisticas` | 863 ms | 960 ms | **2408 ms** | 1924–2636 | #440 |
+| `/` | 593 ms | 728 ms | **1760 ms** | 1504–2420 | |
+| `/clubes` | 546 ms | 656 ms | 1176 ms | 1088–1436 | #438 |
+| `/buscar` | 574 ms | 784 ms | 1028 ms | 784–2352 | |
+| `/u/[username]` | 637 ms | 760 ms | 884 ms | 800–1352 | |
+| `/coleccion` | 544 ms | 680 ms | 680 ms | 596–724 | |
+
+> **Lee el rango antes de celebrar una mejora.** Si la diferencia antes/después es menor que
+> él, no has medido una mejora: has medido el ruido otra vez.
 
 > **OJO con el TTFB de esta tabla.** `responseStart` marca el **primer byte**, y Next suelta la
 > cabecera del documento en cuanto puede, incluso mientras sigue esperando datos. En
-> `/estadisticas` eso da un TTFB de 391 ms **que no significa que la página esté lista**: sus 18
-> consultas siguen ahí, y se ven en el LCP de 2784 ms. Para páginas que hacen streaming,
-> **el TTFB no mide "cuándo está el dato"** — mira el LCP.
+> `/estadisticas` eso significa que el TTFB **no dice que la página esté lista**: sus 18
+> consultas siguen ahí, y salen en el LCP. Para páginas que hacen streaming, **el TTFB no mide
+> "cuándo está el dato"** — mira el LCP.
+
+#### Por qué 9 cargas y no 5
+
+Porque con 5 no salía dos veces lo mismo. Dos capturas consecutivas **del mismo código** dieron
+**3176 ms y 1940 ms** de LCP en `/`: una diferencia de 1,2 s que no era la app, sino la latencia
+de Supabase dev colándose en la mediana. Con 5 muestras, una sola carga lenta la mueve entera.
+
+De ahí las dos defensas que trae el script: 9 cargas por defecto y **el rango impreso al lado de
+cada mediana**. Sin el rango, cualquiera puede leer una diferencia de 300 ms como una victoria
+cuando el suelo de ruido de esa ruta es de 900.
 
 ---
 
@@ -98,12 +111,15 @@ instantáneamente y el LCP seguiría siendo malo.
 Esto **reordena el plan de la auditoría**: lo que manda es el trabajo de servidor — #435 (layout
 raíz), #436 (capa de datos) y la caché.
 
-**Pero el laboratorio matiza, no confirma a ciegas.** En local el TTFB baja a 391–786 ms (red
-local y Supabase dev), y ahí aparece lo que el campo tapaba: en `/` el LCP (3176 ms) va **1,8 s
-por detrás del FCP** (1396 ms). Ese hueco no es servidor, es una imagen que se descubre tarde —
+**Pero el laboratorio matiza, no confirma a ciegas.** En local el TTFB baja a 544–863 ms (red
+local y Supabase dev), y ahí aparece lo que el campo tapaba: en `/` el LCP (1760 ms) va **~1 s
+por detrás del FCP** (728 ms). Ese hueco no es servidor, es una imagen que se descubre tarde —
 o sea que **#441 (`priority`) sí tiene trabajo que hacer en `/`**, aunque no sea la palanca
 principal para el usuario real. Las dos cosas son ciertas a la vez porque miden escenarios
 distintos; por eso hay dos vías.
+
+**Y `/estadisticas` es la peor de las medidas** (LCP 2408 ms, la única por encima de 2 s), lo
+que sostiene #440: sus 18 consultas sin `<Suspense>` son el mayor bloqueo por ruta del proyecto.
 
 No es la primera medida que apunta ahí. `playwright.config.ts` ya documenta que los GET se van
 a 8 s con `proxy.ts` **pasando de 140 ms a 2,8 s**, y que solo resuelve la sesión de Supabase.

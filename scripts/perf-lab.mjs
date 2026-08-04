@@ -35,7 +35,13 @@ const arg = (name, fallback) => {
 };
 
 const BASE = arg("url", process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000");
-const RUNS = Number(arg("runs", "5"));
+// 9 y no 5: con 5 dos capturas consecutivas del MISMO commit dieron 3176 ms y
+// 1940 ms de LCP en `/`. Esa dispersión no es la app, es la latencia de
+// Supabase dev metiéndose en la mediana, y con 5 muestras una sola carga lenta
+// la mueve. El informe saca además el rango de cada ruta para que se vea el
+// suelo de ruido: una diferencia antes/después más pequeña que ese rango NO es
+// una mejora, es la misma medición otra vez.
+const RUNS = Number(arg("runs", "9"));
 const EMAIL = process.env.TEST_USER_EMAIL;
 const PASSWORD = process.env.TEST_USER_PASSWORD;
 const USERNAME = process.env.TEST_USER_USERNAME;
@@ -130,11 +136,14 @@ async function main() {
       rows.push({ ...route, ttfb: null });
       continue;
     }
+    const lcps = ok.filter((r) => r.lcp).map((r) => r.lcp);
     rows.push({
       ...route,
       ttfb: median(ok.map((r) => r.ttfb)),
       fcp: median(ok.filter((r) => r.fcp).map((r) => r.fcp)),
-      lcp: median(ok.filter((r) => r.lcp).map((r) => r.lcp)),
+      lcp: median(lcps),
+      lcpMin: lcps.length ? Math.min(...lcps) : null,
+      lcpMax: lcps.length ? Math.max(...lcps) : null,
       n: ok.length,
     });
   }
@@ -143,18 +152,24 @@ async function main() {
 
   console.log(`<!-- generado por scripts/perf-lab.mjs · ${RUNS} cargas/ruta · ${new Date().toISOString().slice(0, 10)} -->\n`);
   console.log(`### Vía B · Laboratorio (${BASE}, mediana de ${RUNS} cargas en frío)\n`);
-  console.log("| Ruta | TTFB | FCP | LCP | Issue |");
-  console.log("|---|---:|---:|---:|---|");
+  console.log("| Ruta | TTFB | FCP | LCP (mediana) | LCP rango | Issue |");
+  console.log("|---|---:|---:|---:|---:|---|");
   for (const r of rows) {
     if (r.ttfb === null) {
-      console.log(`| \`${r.label}\` | — | — | — | ${r.issue ?? ""} |`);
+      console.log(`| \`${r.label}\` | — | — | — | — | ${r.issue ?? ""} |`);
       continue;
     }
     const ms = (v) => (v ? `${Math.round(v)} ms` : "—");
-    console.log(`| \`${r.label}\` | ${ms(r.ttfb)} | ${ms(r.fcp)} | ${ms(r.lcp)} | ${r.issue ?? ""} |`);
+    const range =
+      r.lcpMin && r.lcpMax ? `${Math.round(r.lcpMin)}–${Math.round(r.lcpMax)}` : "—";
+    console.log(
+      `| \`${r.label}\` | ${ms(r.ttfb)} | ${ms(r.fcp)} | ${ms(r.lcp)} | ${range} | ${r.issue ?? ""} |`,
+    );
   }
-  console.log(`\n> Mediana, no media: una carga con un pico de latencia de Supabase no debe`);
-  console.log(`> mover la cifra. Medir SIEMPRE contra \`npm run build && npm start\`.`);
+  console.log(`\n> Mediana de ${RUNS} cargas, no media: un pico de latencia de Supabase no debe`);
+  console.log(`> mover la cifra. **Lee el rango antes de celebrar una mejora**: si el`);
+  console.log(`> antes/después es menor que él, no has medido una mejora sino el ruido.`);
+  console.log(`> Medir SIEMPRE contra \`npm run build && npm start\`.`);
 }
 
 main().catch((err) => {
