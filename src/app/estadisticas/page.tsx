@@ -29,7 +29,7 @@ import { getRatedFacets } from "@/lib/stats/get-rated-facets";
 import { getFormatStats } from "@/lib/stats/get-format-stats";
 import { getYearCalendar } from "@/lib/stats/get-year-calendar";
 import { getPagesPerDay } from "@/lib/stats/get-pace";
-import { buildStatsSections } from "@/lib/stats/panel/specs";
+import { buildStatsSections, hiddenPanelCount } from "@/lib/stats/panel/specs";
 import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { StatsControls } from "@/components/stats/stats-controls";
 import { SectionTabs } from "./section-tabs";
@@ -118,7 +118,7 @@ export default async function FullStatsPage({
 
   const backHref = profile ? `/u/${profile.username}?tab=estadisticas` : "/";
 
-  const sections = buildStatsSections({
+  const panelInput = {
     period,
     itemFilter,
     metric,
@@ -154,7 +154,13 @@ export default async function FullStatsPage({
     formats,
     calendar,
     pagesPerDay,
-  });
+  };
+
+  const sections = buildStatsSections(panelInput);
+  // Los paneles que este periodo no puede contestar no se pintan. Se DICE
+  // cuántos son: un panel que desaparece sin explicación se lee como que la
+  // página se rompió, y el calendario anual es de los que más se buscan.
+  const escondidos = hiddenPanelCount(panelInput);
 
   return (
     <main className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
@@ -196,8 +202,18 @@ export default async function FullStatsPage({
           />
         </div>
       </details>
+      {/* Qué periodo hay puesto y —lo que antes no se decía— qué se ha dejado
+          de enseñar por él. Un panel que desaparece sin explicación se lee como
+          una página rota; y el calendario anual es de los que más se buscan. */}
       <p className="mb-4 text-[11px] text-muted-foreground">
-        {`Periodo aplicado: ${periodLabel(period)}. Los paneles marcados como «ahora mismo» son una foto del momento y no cambian con este selector; los anuales se miden sobre el año natural.`}
+        {`Periodo aplicado: ${periodLabel(period)}.`}{" "}
+        {escondidos === 0
+          ? "Los paneles marcados como «ahora mismo» son una foto del momento y no cambian con este selector; los anuales se miden sobre el año natural."
+          : `Se ocultan ${escondidos} paneles que no pueden contestar a esta ventana: ${
+              period === "week" || period === "month"
+                ? "los de foto del momento y los que necesitan meses o años (el año natural, la serie histórica y los récords)"
+                : "los de foto del momento, que no hablan de un año sino de ahora"
+            }. Amplía el periodo para verlos.`}
       </p>
 
       {/* Índice de secciones: con siete bloques, bajar a «Por categoría»

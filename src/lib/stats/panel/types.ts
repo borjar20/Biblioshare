@@ -215,6 +215,23 @@ export type PanelSpec = {
     /** Rótulos de mes sobre la rejilla, con la columna en la que empieza cada uno. */
     months?: { label: string; column: number }[];
   };
+  /**
+   * La ventana REAL del dato, cuando no es la que elige el selector de la
+   * página. Sirve para **no enseñar un panel que no puede contestar la
+   * pregunta**, en vez de enseñarlo con una nota que avisa de que habla de otra
+   * cosa: con «Semana» puesto, doce meses de barras al lado de siete días no se
+   * leen como un alcance distinto, se leen como una contradicción.
+   *
+   *  · `snapshot` — es una foto de AHORA (estados, la pila, rachas). Solo tiene
+   *    sitio con el periodo en «todo», donde «ahora» es parte de «todo».
+   *  · `long` — necesita meses o años (el año natural, la serie histórica, los
+   *    récords). Desaparece con las ventanas cortas: semana y mes.
+   *
+   * Sin declarar = el panel obedece al selector y se enseña siempre.
+   * Solo lo aplica el muro (`buildStatsSections`); la pestaña del perfil está
+   * fijada al mes y elige sus paneles a mano.
+   */
+  dataWindow?: "snapshot" | "long";
   /** Interpretación o advertencia al pie. */
   note?: string;
   actions?: PanelAction[];

@@ -10,7 +10,7 @@
 
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { addDaysISO } from "./dates";
+import { addDaysISO, toISODate } from "./dates";
 import type { ItemFilter } from "./filter";
 import { type StatsPeriod, periodBounds, previousBounds } from "./period";
 
@@ -85,8 +85,16 @@ function emptyBuckets(
 
   const out: ActivityBucket[] = [];
   if (grain === "day") {
+    // El día de MAÑANA en adelante no se ha medido, igual que los meses de más
+    // abajo. La regla estaba escrita solo para los meses, así que un mes en
+    // curso pintaba sus días futuros como ceros: el 4 de agosto, el panel decía
+    // «los 31 puntos medidos valen cero» de un mes al que le quedan 27 días.
+    // La ventana de «semana» acaba hoy, así que ahí no sobra ninguno.
+    const today = toISODate(now);
     for (let d = bounds.start; d < bounds.endExclusive; d = addDaysISO(d, 1)) {
-      out.push(blank(d));
+      const bucket = blank(d);
+      if (d > today) bucket.future = true;
+      out.push(bucket);
     }
     return out;
   }

@@ -650,3 +650,69 @@ test("el mosaico solo escribe sus días destacados al ampliarlo", async ({ page 
   const capa = page.getByRole("dialog", { name: "Calendario anual" });
   await expect(capa.locator(destacado).first()).toBeVisible();
 });
+
+// Un panel que no puede contestar al periodo elegido ya no se enseña con una
+// nota que avisa: NO SE ENSEÑA. Declarar el alcance vale cuando la distancia es
+// pequeña; con «Mes» puesto, doce meses de barras al lado de treinta días se
+// leen como que la pantalla no hizo caso, y son nueve tarjetas, no una.
+test("un periodo corto esconde los paneles que no puede contestar", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas?periodo=mes");
+
+  // Fuera los de foto del momento, los anuales, la serie histórica y récords.
+  for (const nombre of ["Estados", "La pila", "Racha", "Calendario anual", "Récords"]) {
+    await expect(page.getByRole("region", { name: nombre, exact: true })).toHaveCount(0);
+  }
+  // Y con ellos, la sección que se queda sin ninguno: un título con su
+  // descripción y nada debajo se lee como un agujero.
+  await expect(
+    page.getByRole("heading", { name: "Biblioteca y estados", level: 2 }),
+  ).toHaveCount(0);
+
+  // Lo que SÍ contesta al mes se queda, y la página dice cuántos escondió —un
+  // panel que desaparece sin explicación se lee como una página rota.
+  await expect(page.getByRole("region", { name: "Actividad del periodo" })).toBeVisible();
+  await expect(page.getByText(/Se ocultan \d+ paneles/)).toBeVisible();
+
+  // Con un AÑO solo sobran los de foto del momento: lo anual ya cuadra.
+  await page.goto("/estadisticas?periodo=2026");
+  await expect(page.getByRole("region", { name: "Calendario anual" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Récords" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Estados", exact: true })).toHaveCount(0);
+});
+
+// Un mes son 31 columnas de ~9 px. Treinta y un números seguidos no son un eje,
+// y treinta «0» encima de la base tampoco: tapan el eje y no dicen nada que la
+// raya del cero no diga ya.
+test("el eje de un mes se poda, y ni el cero ni el hueco escriben su cifra", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas?periodo=mes");
+
+  await page
+    .getByRole("region", { name: "Actividad del periodo" })
+    .getByRole("button", { name: /ampliar actividad del periodo/i })
+    .click();
+  const capa = page.getByRole("dialog", { name: "Actividad del periodo" });
+
+  const rotulos = await capa.locator("[data-axis-label]").allTextContents();
+  expect(rotulos.length).toBeGreaterThan(27); // un mes entero, día a día
+  const escritos = rotulos.filter(Boolean);
+  // Uno de cada cinco, y como mucho un extra: el pico.
+  expect(escritos.length).toBeLessThanOrEqual(7);
+  expect(escritos).toContain("5");
+  expect(escritos).toContain("10");
+
+  // Ni un «0» escrito sobre la base. El dato exacto sigue en el nombre
+  // accesible de cada columna, que es lo que lo hace consultable sin ratón.
+  const cifras = await capa.locator("[data-value-label]").allTextContents();
+  expect(cifras).not.toContain("0");
+  await expect(capa.getByRole("img").first()).toBeVisible();
+});

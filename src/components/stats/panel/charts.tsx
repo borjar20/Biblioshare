@@ -14,12 +14,15 @@
 // JavaScript: un tooltip que solo existe al pasar el cursor deja fuera a quien
 // navega con teclado, y eso convertiría el dato en decoración otra vez.
 //
-// `PLAIN` lista las que siguen siendo decorativas (línea, área, medidor): su
+// `PLAIN` lista las que siguen siendo decorativas (hoy solo el medidor): su
 // dato sigue en la tabla, así que el armazón las oculta al lector como antes.
 //
-// Tres reglas de dibujo que no se negocian:
-//   · un hueco (`null`) NO se dibuja — se marca con un punto tenue en la base;
+// Cuatro reglas de dibujo que no se negocian:
+//   · un hueco (`null`) NO se dibuja — se marca con un contorno DISCONTINUO,
+//     el mismo lenguaje del mosaico; nunca con algo que se parezca al cero;
 //   · un cero medido SÍ se dibuja, como marca de 2 px sobre la base;
+//   · ni el hueco ni el cero escriben su cifra encima: treinta «0» seguidos
+//     tapan el eje y no dicen nada que la raya no diga ya;
 //   · el color nunca va solo: la leyenda lleva glifo de forma además de color.
 
 import { GLYPH_CHAR, share, partValue, type PanelDerived } from "@/lib/stats/panel/derive";
@@ -55,8 +58,13 @@ export const PLAIN_VIZ: PanelSpec["viz"][] = ["gauge"];
 
 // Alto del área de dibujo. Con todo a cero no hay altura que enseñar: reservar
 // 96 px de hueco solo mete aire muerto entre la cifra y las etiquetas.
+//
+// Pero tampoco vale `h-8`: en esos 32 px caben la fila de cifras, las marcas y
+// los rótulos del eje solo si nada mide nada, y en cuanto el mes en curso trae
+// sus días futuros —marca discontinua de 10 px— el eje se quedaba con altura
+// CERO y sus números no se veían. 56 px es lo que ocupan las tres filas.
 function plotHeight(derived: PanelDerived): string {
-  return derived.allZero ? "h-8" : "h-24";
+  return derived.allZero ? "h-14" : "h-24";
 }
 
 // Barras finas con muchos puntos; algo más anchas cuando hay pocos, o la
@@ -71,23 +79,79 @@ function barWidth(count: number): string {
  * `block w-full` no es decorado: sin ancho propio, la columna la centra en
  * ajuste al contenido y `truncate` no tiene qué recortar — «Fantasía» y
  * «Ciencia ficción» se pisaban una encima de otra.
+ *
+ * El alto es FIJO (`h-3 leading-3`) y se pinta también cuando no hay rótulo:
+ * una columna con la etiqueta vacía y otra con ella mediría distinto, y con la
+ * marca repartiéndose el alto sobrante las barras dejarían de compartir base.
  */
-function AxisLabel({ datum }: { datum: PanelDatum }) {
+function AxisLabel({
+  datum,
+  muted = false,
+  roomy = false,
+}: {
+  datum: PanelDatum;
+  muted?: boolean;
+  /**
+   * El rótulo puede DESBORDAR su columna. Solo en el eje podado: ahí sus dos
+   * vecinos están vacíos, así que un «10» centrado se lee entero. Con todas las
+   * columnas rotuladas hay que recortar, o «Fantasía» se monta sobre «Ciencia
+   * ficción»; pero recortando, una columna de un mes (~9 px) dejaba «10» en
+   * «1» y el eje numeraba mal.
+   */
+  roomy?: boolean;
+}) {
   return (
     <span
-      className={`block w-full truncate text-center font-mono text-[8.5px] ${
-        datum.value === null ? "text-foreground-faint" : "text-muted-foreground"
-      }`}
+      // Ancla de prueba: es la única forma de comprobar CUÁNTOS puntos llevan
+      // rótulo sin atarse a la posición del `<span>` dentro de la columna.
+      data-axis-label
+      className={`block h-3 w-full shrink-0 text-center font-mono text-[8.5px] leading-3 ${
+        roomy ? "overflow-visible whitespace-nowrap" : "truncate"
+      } ${datum.value === null ? "text-foreground-faint" : "text-muted-foreground"}`}
     >
-      {datum.short ?? datum.label}
+      {muted ? "" : (datum.short ?? datum.label)}
     </span>
   );
 }
 
-/** Marca de «aquí no hay medida». Ni barra ni cero: un punto en la base. */
-function GapMark() {
+/**
+ * A partir de cuántos puntos el eje deja de rotularlos todos.
+ *
+ * Un mes son 31 columnas de ~9 px: treinta y un números seguidos no son un eje,
+ * son una textura. Doce meses o diez notas sí se leen enteros, así que el corte
+ * va por encima de eso.
+ */
+const AXIS_DENSE_FROM = 14;
+
+/**
+ * Qué puntos llevan rótulo. `null` = todos.
+ *
+ * Uno de cada cinco (que es lo que deja leer un mes: 5, 10, 15…) **más el
+ * pico**, porque es el punto que más se busca y el que caería sin nombre justo
+ * cuando importa. Si el máximo empata o hay un solo punto, `derived.max` es
+ * `null` y no se añade ninguno — no se inventa un ganador.
+ */
+function axisLabelKeys(spec: PanelSpec, derived: PanelDerived): Set<string> | null {
+  if (spec.data.length <= AXIS_DENSE_FROM) return null;
+  const keys = new Set<string>();
+  spec.data.forEach((d, i) => {
+    if ((i + 1) % 5 === 0) keys.add(d.key);
+  });
+  if (derived.max) keys.add(derived.max.key);
+  return keys;
+}
+
+/**
+ * Marca de «aquí no hay medida»: un contorno DISCONTINUO, el mismo lenguaje que
+ * ya usa el mosaico para sus días sin dato. Antes era un punto tenue en la base,
+ * indistinguible a simple vista de la raya del cero medido — y son dos cosas
+ * opuestas: una es «no leí» y la otra «no lo sé».
+ */
+function GapMark({ width = "max-w-4" }: { width?: string }) {
   return (
-    <span className="mb-px block h-1 w-1 rounded-full bg-foreground-faint/60" />
+    <span
+      className={`block h-2.5 w-full ${width} rounded-t-[4px] border border-dashed border-border`}
+    />
   );
 }
 
@@ -171,15 +235,27 @@ function BarColumn({
   derived,
   datum,
   interactive,
+  axisKeys = null,
   children,
 }: {
   spec: PanelSpec;
   derived: PanelDerived;
   datum: PanelDatum;
   interactive?: boolean;
+  /**
+   * Qué puntos llevan rótulo cuando el eje va podado (ver `axisLabelKeys`).
+   * `null` = eje normal, todos rotulados.
+   */
+  axisKeys?: Set<string> | null;
   children: React.ReactNode;
 }) {
   const probe = interactive && datum.value !== null;
+  const showLabel = axisKeys === null || axisKeys.has(datum.key);
+  // Ni el hueco ni el cero escriben su cifra arriba. El hueco porque no la
+  // tiene; el cero porque en un mes flojo son treinta «0» seguidos sobre la
+  // base, una ristra que tapa el eje y no dice nada que la raya del cero no
+  // diga ya. El dato exacto sigue en el globo y en el nombre accesible.
+  const quiet = datum.value === null || datum.value === 0;
   return (
     <div
       className="group relative flex h-full min-w-0 flex-1 flex-col items-center gap-1 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -189,14 +265,15 @@ function BarColumn({
     >
       <span
         aria-hidden
-        className={`h-3 font-mono text-[9.5px] leading-3 ${
-          datum.value === null ? "text-transparent" : "text-muted-foreground"
+        data-value-label
+        className={`h-3 shrink-0 font-mono text-[9.5px] leading-3 ${
+          quiet ? "text-transparent" : "text-muted-foreground"
         }`}
       >
-        {datum.value === null ? "" : formatNumber(datum.value)}
+        {datum.value === null || datum.value === 0 ? "" : formatNumber(datum.value)}
       </span>
       {children}
-      <AxisLabel datum={datum} />
+      <AxisLabel datum={datum} muted={!showLabel} roomy={axisKeys !== null} />
       {probe && <PointTip spec={spec} derived={derived} datum={datum} />}
     </div>
   );
@@ -204,13 +281,21 @@ function BarColumn({
 
 export function BarsChart({ spec, derived, interactive }: ChartProps) {
   const color = spec.series?.[0]?.color ?? "var(--accent)";
+  const labelled = axisLabelKeys(spec, derived);
   return (
     <div className={`flex ${plotHeight(derived)} items-end justify-between gap-0.5 pt-4`}>
       {spec.data.map((d) => (
-        <BarColumn key={d.key} spec={spec} derived={derived} datum={d} interactive={interactive}>
+        <BarColumn
+          key={d.key}
+          spec={spec}
+          derived={derived}
+          datum={d}
+          interactive={interactive}
+          axisKeys={labelled}
+        >
           <div className="flex w-full flex-1 items-end justify-center">
             {d.value === null ? (
-              <GapMark />
+              <GapMark width={barWidth(spec.data.length)} />
             ) : d.value === 0 ? (
               // Cero medido: marca en la base, no una barra corta que mienta.
               <span className={`block h-0.5 w-full ${barWidth(spec.data.length)} rounded-full bg-surface-3`} />
@@ -231,10 +316,18 @@ export function BarsChart({ spec, derived, interactive }: ChartProps) {
 }
 
 export function StackedChart({ spec, derived, interactive }: ChartProps) {
+  const labelled = axisLabelKeys(spec, derived);
   return (
     <div className={`flex ${plotHeight(derived)} items-end justify-between gap-1 pt-4`}>
       {spec.data.map((d) => (
-        <BarColumn key={d.key} spec={spec} derived={derived} datum={d} interactive={interactive}>
+        <BarColumn
+          key={d.key}
+          spec={spec}
+          derived={derived}
+          datum={d}
+          interactive={interactive}
+          axisKeys={labelled}
+        >
           <div className="flex w-full max-w-4 flex-1 flex-col-reverse justify-start gap-px">
             {d.value === null ? (
               <div className="flex justify-center">
@@ -289,6 +382,7 @@ export function LineChart({
   // su propio número y el último media a la derecha del suyo.
   const x = (i: number) => ((i + 0.5) / n) * W;
   const y = (v: number) => H - (v / derived.scale) * (H - 4) - 2;
+  const labelled = axisLabelKeys(spec, derived);
   const color = spec.series?.[0]?.color ?? "var(--accent)";
 
   // Tramos continuos de puntos medidos.
@@ -345,19 +439,19 @@ export function LineChart({
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
             />
-            {/* Un punto por medida. Con la cifra escrita debajo, el punto es lo
-                que la ata a su sitio en el trazo; y un tramo de un solo punto
-                no tiene línea que dibujar, así que sin esto desaparecería. */}
-            {r.map((p) => (
+            {/* SIN punto por medida: con la cifra de cada mes escrita debajo,
+                los doce círculos solo engordaban el trazo. Se queda el del
+                tramo de UN solo punto, que no tiene línea que dibujar y sin
+                él desaparecería del gráfico. */}
+            {r.length === 1 && (
               <circle
-                key={p.i}
-                cx={x(p.i)}
-                cy={y(p.v)}
-                r={1.6}
+                cx={x(r[0].i)}
+                cy={y(r[0].v)}
+                r={2}
                 fill={color}
                 vectorEffect="non-scaling-stroke"
               />
-            ))}
+            )}
           </g>
         ))}
       </svg>
@@ -372,6 +466,7 @@ export function LineChart({
             derived={derived}
             datum={d}
             interactive={interactive}
+            axisKeys={labelled}
           >
             {null}
           </BarColumn>

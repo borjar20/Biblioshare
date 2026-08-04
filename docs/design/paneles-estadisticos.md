@@ -485,7 +485,7 @@ Qué se usa y por qué:
   sobre la biblioteca entera, la curva de la pila dejando fuera las abandonadas, y que la
   conversión a estrellas concuerde con la media —que es la que fallaba: `toStar(7)` daba
   4 y la media daba 3,5—.
-- **24 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
+- **26 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
   unidad, cifra en texto sin ampliar, Escape cerrando **y devolviendo el foco al
   disparador**, que ampliar un panel no mueva a sus vecinos, el muro agrupado en
   secciones con su índice y sus paneles a nivel `h3`, el índice marcando la sección
@@ -506,7 +506,12 @@ Qué se usa y por qué:
   que Géneros presida con el **género principal y sin un total** —el que sumaba barras
   solapadas—, que el histograma de notas tenga **diez columnas** con una en «3,5», que la
   línea lleve sus doce cifras y **ninguna tabla**, y que el mosaico **no escriba nada en
-  la cara** y sí al ampliarlo.
+  la cara** y sí al ampliarlo. Y del filtrado por periodo: que con «Mes» no
+  quede ni un panel de foto del momento, anual o de récords —ni la sección que se queda
+  sin ninguno—, que con un AÑO solo se vayan los de foto del momento, que la página diga
+  cuántos escondió, y que el eje de un mes rotule uno de cada cinco sin escribir ni un
+  «0» (`data-axis-label` y `data-value-label` son las anclas: contar rótulos por la
+  posición del `<span>` dentro de la columna se rompería al mover una fila).
 - **Revisión visual en navegador** (1400 px y 390 px, claro y oscuro, cara y capa). De
   ahí salieron trece defectos que ninguna prueba veía: color de sector por posición en
   vez de por categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota
@@ -649,6 +654,41 @@ del todo. Con dos cabeceras pegadas, el margen de salto de cada sección deja de
 `scroll-mt` a ojo y pasa a ser `calc(var(--topbar-h) + 56px)`, o el enlace del índice
 taparía su propio destino.
 
+### Lo que el periodo no puede contestar, no se enseña
+
+Declarar el alcance en el rótulo (abajo) vale cuando la distancia es pequeña. **No
+vale cuando es grande y son nueve tarjetas a la vez**: con «Mes» puesto, doce meses de
+barras al lado de treinta días no se leen como un alcance distinto, se leen como que la
+pantalla no hizo caso. Así que el muro filtra.
+
+Cada spec declara su ventana real con `dataWindow`, y de ahí sale una sola regla
+(`fitsPeriod`):
+
+| `dataWindow` | Qué es | Paneles |
+|---|---|---|
+| `snapshot` | una foto de AHORA | Estados · La pila · Rachas · Cuánto acabas |
+| `long` | necesita meses o años | Horas por mes · Calendario anual · Completadas por año · Evolución de la pila · Récords |
+| *(sin declarar)* | obedece al selector | todo lo demás |
+
+| Periodo | Fuera |
+|---|---|
+| Semana · Mes | los `long` **y** los `snapshot` |
+| Un año | los `snapshot` |
+| Todo | nada — «ahora» es parte de «todo» |
+
+Dos consecuencias que no son opcionales:
+
+- **Una sección que se queda sin paneles desaparece entera.** Un título con su
+  descripción y nada debajo se lee como un agujero, y dejaría un enlace del índice
+  llevando a la nada. Con «Mes», «Biblioteca y estados» no existe.
+- **La página dice cuántos escondió y por qué.** Un panel que desaparece sin explicación
+  se lee como una página rota, y el calendario anual es de los que más se buscan. La
+  línea bajo los filtros pasa de describir el alcance a decir «Se ocultan 9 paneles que
+  no pueden contestar a esta ventana… Amplía el periodo para verlos».
+
+La pestaña del perfil no aplica nada de esto: está fijada al mes y elige sus paneles a
+mano, uno a uno.
+
 ### La regla dura: un panel que no obedece al filtro tiene que decirlo
 
 El filtro global va en el **rótulo** (`context.filter`), entre el periodo y la unidad, y
@@ -778,6 +818,34 @@ juntos —una racha buena son días seguidos—, así que en una tarjeta de 340 
 celda mide 6 px, las tres se pisaban entre ellas y con los rótulos de mes. Se descarta
 la que caiga a menos de cuatro columnas de otra ya escrita: menos etiquetas legibles
 valen más que tres ilegibles.
+
+**El hueco y el cero no se parecen, y ninguno de los dos escribe su cifra.** Son
+respuestas opuestas —«no leí» contra «no lo sé»— y se dibujaban casi igual: raya de 2 px
+contra punto tenue de 1 px en la misma base. Ahora el hueco es un **contorno
+discontinuo**, el mismo lenguaje que ya usaba el mosaico. Y ninguno pone número encima:
+un mes flojo eran treinta «0» seguidos que tapaban el eje sin decir nada que la raya del
+cero no dijera ya. El dato exacto sigue en el globo y en el nombre accesible.
+
+De ahí salió un fallo que llevaba tiempo: `getPeriodActivity` marcaba como futuros los
+MESES que aún no han llegado, pero no los días. El 4 de agosto, el panel del mes decía
+«los 31 puntos medidos valen cero» de un mes al que le quedan 27 días por vivir. Ahora
+dice «los 4 puntos medidos valen cero; 27 de 31 puntos sin datos» — y esos 27 son
+justo los que se ven discontinuos.
+
+**Con más de 14 puntos, el eje rotula uno de cada cinco y el pico.** Un mes son 31
+columnas de ~9 px: treinta y un números seguidos no son un eje, son una textura. El pico
+entra siempre porque es el punto que más se busca. Y en ese modo el rótulo **desborda**
+su columna en vez de recortarse: sus dos vecinos están vacíos, así que un «10» centrado
+se lee entero — recortando, la columna de 9 px lo dejaba en «1» y el eje numeraba mal.
+
+**Ojo al alto con todo a cero.** El `h-8` que evitaba 96 px de aire muerto solo daba para
+tres filas si nada medía nada; en cuanto el mes en curso trajo sus marcas discontinuas de
+10 px, el eje se quedó con altura CERO y sus números desaparecieron. Son `h-14`, y las
+filas de texto llevan `shrink-0` — sin él, el flex las encoge antes que a la marca.
+
+**La línea no lleva un punto por medida.** Se probaron y sobran: con la cifra de cada mes
+escrita debajo, los doce círculos solo engordaban el trazo. Se queda el del tramo de UN
+solo punto, que no tiene línea que dibujar y sin él desaparecería del gráfico.
 
 **El anillo se dibuja en SVG, no con `conic-gradient`.** Un gradiente es un fondo: no
 tiene tramos a los que apuntar, así que no admite ni la separación de 2 px entre

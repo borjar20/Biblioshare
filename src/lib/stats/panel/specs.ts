@@ -160,6 +160,33 @@ export type StatsInput = {
 
 // ══ El muro completo, por secciones ══════════════════════════════════════════
 
+/**
+ * ¿Puede este panel contestar al periodo elegido?
+ *
+ * Hasta aquí, un panel que no obedecía al selector se enseñaba igual y lo
+ * declaraba en su rótulo. La regla se queda para lo que SÍ tiene sitio —el
+ * filtro de tipo, o «ahora mismo» dentro de «todo»— pero **declarar no basta
+ * cuando la distancia es grande**: con «Semana» puesto, doce meses de barras al
+ * lado de siete días no se leen como un alcance distinto, se leen como que la
+ * pantalla no hizo caso. Y son doce tarjetas, no una.
+ *
+ * Así que a partir de aquí, lo que no puede contestar **no se enseña**:
+ *
+ * | Periodo | Fuera |
+ * |---|---|
+ * | Semana · Mes | los `long` (año natural, serie histórica, récords) y los `snapshot` |
+ * | Un año | los `snapshot` |
+ * | Todo | nada — «ahora» es parte de «todo» |
+ *
+ * Lo que queda no es un recorte silencioso: la página dice cuántos paneles
+ * escondió y por qué, para que nadie crea que su calendario se rompió.
+ */
+export function fitsPeriod(spec: PanelSpec, period: StatsPeriod): boolean {
+  if (spec.dataWindow === "snapshot") return period === "all";
+  if (spec.dataWindow === "long") return period !== "week" && period !== "month";
+  return true;
+}
+
 export function buildStatsSections(input: StatsInput): PanelSection[] {
   const period = periodLabel(input.period);
   // El filtro global va SUELTO al rótulo, no mezclado con los filtros propios
@@ -168,6 +195,33 @@ export function buildStatsSections(input: StatsInput): PanelSection[] {
   const filter =
     input.itemFilter === "all" ? undefined : itemFilterLabel(input.itemFilter);
 
+  // Se filtran los paneles y, después, las secciones que se quedan sin
+  // ninguno: un título con su descripción y nada debajo se lee como un
+  // agujero, y además dejaría un enlace del índice llevando a la nada.
+  return allSections(input, period, filter)
+    .map((section) => ({
+      ...section,
+      panels: section.panels.filter((spec) => fitsPeriod(spec, input.period)),
+    }))
+    .filter((section) => section.panels.length > 0);
+}
+
+/** Cuántos paneles esconde el periodo elegido. Lo dice la página, no se calla. */
+export function hiddenPanelCount(input: StatsInput): number {
+  const all = allSections(input, periodLabel(input.period), undefined);
+  const total = all.reduce((n, s) => n + s.panels.length, 0);
+  const shown = all.reduce(
+    (n, s) => n + s.panels.filter((spec) => fitsPeriod(spec, input.period)).length,
+    0,
+  );
+  return total - shown;
+}
+
+function allSections(
+  input: StatsInput,
+  period: string,
+  filter: string | undefined,
+): PanelSection[] {
   return [
     {
       id: "resumen",
@@ -557,6 +611,7 @@ function yearHeatmapLayout(calendar: YearCalendar): NonNullable<PanelSpec["heatm
 function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
   return {
     id: "calendario-anual",
+    dataWindow: "long",
     title: "Calendario anual",
     description:
       "Un día «activo» es aquel en que registraste una sesión o terminaste algo, del tipo que sea. Ver una película sin sesión también pinta el día.",
@@ -613,6 +668,7 @@ function streaksPanel(
 ): PanelSpec {
   return {
     id: "racha",
+    dataWindow: "snapshot",
     title,
     description:
       "Un día cuenta para la racha si registraste una sesión o terminaste algo. La racha son días SEGUIDOS; los días activos, sueltos.",
@@ -701,6 +757,7 @@ function sessionsPanel(
 function libraryHealthPanel({ health, itemFilter }: StatsInput, period: string): PanelSpec {
   return {
     id: "salud-biblioteca",
+    dataWindow: "snapshot",
     title: "Cuánto acabas",
     description:
       "Las tasas se calculan sobre lo CERRADO —terminadas más abandonadas—, no sobre la biblioteca entera: si contaran los pendientes, añadir un libro bajaría tu tasa sin que hayas dejado nada a medias.",
@@ -765,6 +822,7 @@ function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
     `${MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase()} de ${month.slice(0, 4)}`;
   return {
     id: "backlog",
+    dataWindow: "long",
     title: "Evolución de la pila",
     description:
       "Obras abiertas al cierre de cada mes: creadas ya y todavía sin terminar. Las abandonadas quedan fuera de la serie entera — sin fecha de abandono, contarlas las dejaría abiertas para siempre y la curva subiría sola.",
@@ -1406,6 +1464,7 @@ function completedByYearPanel({ byYear, titles, itemFilter }: StatsInput): Panel
   const prev = byYear.length > 1 ? byYear[byYear.length - 2] : null;
   return {
     id: "completadas-por-anio",
+    dataWindow: "long",
     title: titles.completedByYear,
     context: {
       period: "Todos los años con actividad",
@@ -1596,6 +1655,7 @@ function typePanel({ type, titles, itemFilter }: StatsInput, period: string): Pa
 function statusPanel({ status, titles }: StatsInput, filter: string | undefined): PanelSpec {
   return {
     id: "estados",
+    dataWindow: "snapshot",
     title: titles.status,
     context: {
       period: "Ahora mismo",
@@ -1625,6 +1685,7 @@ function hoursPanel({ hours, titles, todayISO, itemFilter }: StatsInput): PanelS
   const currentMonth = Number(todayISO.slice(5, 7));
   return {
     id: "horas-por-mes",
+    dataWindow: "long",
     title: titles.hours,
     context: {
       period: String(hours.year),
@@ -1853,6 +1914,7 @@ function recordsPanel(
   const month = records.mostActiveMonth;
   return {
     id: "records",
+    dataWindow: "long",
     title,
     context: { period, filter },
     viz: "kpi",
@@ -1902,6 +1964,7 @@ function recordsPanel(
 function tbrPanel(tbr: TbrSnapshot, title: string, filter?: string): PanelSpec {
   return {
     id: "pila",
+    dataWindow: "snapshot",
     title,
     context: {
       period: "Ahora mismo",
