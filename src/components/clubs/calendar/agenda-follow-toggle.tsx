@@ -37,6 +37,8 @@ export function AgendaFollowToggle({
   });
 
   function toggle() {
+    // La doble pulsación se corta AQUÍ, no con el atributo `disabled`. Ver abajo.
+    if (isPending) return;
     setFallo(false);
     const iba = state.following;
     run({ type: iba ? "unfollow" : "follow" }, async () => {
@@ -55,12 +57,19 @@ export function AgendaFollowToggle({
     <button
       type="button"
       onClick={toggle}
-      disabled={isPending}
+      // `aria-disabled` en vez de `disabled` MIENTRAS GUARDA, y no es un detalle:
+      // deshabilitar un elemento que tiene el foco lo BLUREA, y al volver no se
+      // recupera. En una lista eso deja a quien navega con teclado en el body,
+      // habiendo perdido su sitio entre las filas. Se vio con un test de teclado
+      // que fallaba justo aquí. Con aria-disabled el botón sigue siendo enfocable,
+      // la tecnología asistiva sabe que está inerte, y la doble pulsación la corta
+      // la guarda de `toggle()` (más la idempotencia de la RPC detrás).
+      aria-disabled={isPending}
       aria-pressed={state.following}
       // El título del evento va en el nombre accesible: en una agenda de cinco
       // filas, cinco botones que solo dicen «Seguir» son indistinguibles.
       aria-label={`${state.following ? t("eventUnfollow") : t("eventFollow")}: ${title}`}
-      className={`grid w-12 shrink-0 place-items-center border-l border-border transition-colors hover:bg-surface-muted disabled:opacity-50 ${
+      className={`grid w-12 shrink-0 place-items-center border-l border-border transition-colors hover:bg-surface-muted aria-disabled:opacity-50 ${
         state.following ? "text-accent" : "text-muted-foreground hover:text-foreground"
       }`}
     >
