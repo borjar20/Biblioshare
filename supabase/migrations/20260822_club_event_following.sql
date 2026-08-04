@@ -135,8 +135,12 @@ as $$
     when p_starts_at is null then null
     -- Cancelado o pospuesto: los recordatorios futuros se apagan (§9.4).
     when p_event_state <> 'programado' then null
-    -- Nunca se recuerda algo ya terminado (§9.1).
-    when coalesce(p_ends_at, p_starts_at) <= now() then null
+    -- Ya empezado (en curso) o terminado: no hay nada que anticipar. Un
+    -- «recordatorio» de algo que ya está pasando no es un recordatorio -- por
+    -- definición avisa ANTES. Ojo: la condición es sobre `starts_at`, NO sobre
+    -- `coalesce(ends_at, starts_at)`; con la segunda, seguir un evento en curso
+    -- con «24 horas antes» disparaba un aviso inmediato de algo ya empezado.
+    when p_starts_at <= now() then null
     -- Si el momento ya pasó pero el evento no ha empezado ("muy próximo"), el
     -- resultado queda en el pasado y el primer barrido lo coge. No hace falta
     -- un caso especial: `reminder_due_at <= now()` ya es cierto.

@@ -152,11 +152,15 @@ export function EventFollowButton({
   return (
     <div className="flex flex-col gap-2">
       {boton}
+      {/* El motivo de bloqueo MANDA sobre el estado de seguimiento. Al revés
+          —enseñando «recibirás un recordatorio» a quien sigue un evento
+          cancelado— la ficha prometía un aviso que no va a llegar nunca. Se vio
+          en la verificación en navegador. */}
       {errorCode ? (
         <p role="alert" className="text-xs text-status-dropped">
           {t("eventFollowError")}
         </p>
-      ) : razonBloqueo && !current.following ? (
+      ) : razonBloqueo ? (
         <p className="text-xs text-muted-foreground">{razonBloqueo}</p>
       ) : (
         <p className="text-xs text-muted-foreground">{t("eventFollowHint")}</p>

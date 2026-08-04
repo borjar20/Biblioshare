@@ -252,7 +252,6 @@ export function EventDetailView({
             preview={event.followersPreview}
             total={event.followersCount}
             canFollow={viewerIsMember && seguible && !event.viewerFollows}
-            followAction={botonSeguir}
           />
         </div>
 

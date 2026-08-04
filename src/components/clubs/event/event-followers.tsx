@@ -21,7 +21,6 @@ export function EventFollowers({
   preview,
   total,
   canFollow,
-  followAction,
 }: {
   activityId: string;
   viewerId: string;
@@ -30,7 +29,6 @@ export function EventFollowers({
   total: number;
   /** Si quien mira puede seguirlo, el estado vacío le invita a ser el primero. */
   canFollow: boolean;
-  followAction?: React.ReactNode;
 }) {
   const t = useTranslations("activity");
   const [abierto, setAbierto] = useState(false);
@@ -38,11 +36,15 @@ export function EventFollowers({
   if (total === 0) {
     return (
       <div className="rounded-card border border-border bg-surface">
+        {/* No se repite aquí el botón de seguir: el CTA ya está justo encima en
+            el rail, y dos controles con el MISMO nombre accesible en una pantalla
+            son un problema (para el teclado y para los locators), no una
+            comodidad. La invitación de §8 la cumple el mensaje. Se detectó
+            mirándolo en el navegador. */}
         <EmptyState
           glyph={<BellIcon className="h-6 w-6" />}
           title={t("eventFollowersEmptyTitle")}
           message={canFollow ? t("eventFollowersEmptyHint") : undefined}
-          action={canFollow ? followAction : undefined}
         />
       </div>
     );

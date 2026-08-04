@@ -437,10 +437,10 @@ as $$
        and a.kind = 'evento'
        and a.status = 'active'
        and a.event_state = 'programado'
-       -- Nunca se recuerda algo ya terminado (§9.1). El trigger ya no arma
-       -- recordatorios de eventos pasados, pero un evento puede TERMINAR sin que
-       -- nadie escriba nada: esta condición es la autoridad.
-       and coalesce(a.ends_at, a.starts_at) > now()
+       -- Nunca se recuerda algo que ya empezó (§9.1). El trigger ya no arma
+       -- recordatorios de eventos pasados, pero un evento EMPIEZA sin que nadie
+       -- escriba nada: esta condición es la autoridad.
+       and a.starts_at > now()
        and (p_activity_id is null or f.activity_id = p_activity_id)
      order by f.reminder_due_at
      limit greatest(p_limit, 1)

@@ -43,15 +43,21 @@ export function deriveEventState(timing: EventTiming, now: Date = new Date()): E
 }
 
 /**
- * Seguir declara interés en algo que va a pasar. Un evento en curso, cancelado o
- * finalizado ya no lo es — y la RPC rechaza esos tres, así que esto solo evita
- * ofrecer un botón que fallaría. La autoridad está en el servidor.
+ * Espeja exactamente lo que permite `private.assert_can_follow_event`: se puede
+ * seguir hasta que el evento TERMINA. Esto solo evita ofrecer un botón que
+ * fallaría; la autoridad está en el servidor.
  *
- * Pospuesto SÍ se puede seguir: es justo cuando más interesa enterarse de la
- * fecha nueva.
+ * - `pospuesto` sí: es justo cuando más interesa enterarse de la fecha nueva.
+ * - `en_curso` sí, y no es un descuido: la RPC lo permite (el evento no ha
+ *   terminado), y la agenda ofrecía el botón mientras la ficha lo deshabilitaba —
+ *   dos superficies con respuestas distintas para lo mismo. Se vio en la
+ *   verificación en navegador. Declararse interesado en algo que está pasando es
+ *   legítimo; lo que no llega es un «recordatorio», porque un recordatorio avisa
+ *   ANTES (ver reminderMoment).
+ * - `cancelado` y `finalizado` no.
  */
 export function canFollowEvent(state: EventState): boolean {
-  return state === "programado" || state === "pospuesto";
+  return state === "programado" || state === "pospuesto" || state === "en_curso";
 }
 
 /**
@@ -111,6 +117,8 @@ export function reminderFiresImmediately(
 ): boolean {
   const momento = reminderMoment(startsAt, minutesBefore);
   if (!momento || !startsAt) return false;
+  // Un evento ya empezado no se recuerda: un recordatorio avisa ANTES. Espeja la
+  // condición `p_starts_at <= now()` de private.club_event_reminder_due.
   if (new Date(startsAt).getTime() <= now.getTime()) return false;
   return momento.getTime() <= now.getTime();
 }

@@ -119,14 +119,16 @@ describe("deriveEventState", () => {
 });
 
 describe("canFollowEvent", () => {
-  it("se puede seguir lo programado y lo pospuesto", () => {
+  it("se puede seguir hasta que el evento termina", () => {
     expect(canFollowEvent("programado")).toBe(true);
     // Pospuesto SÍ: es justo cuando más interesa enterarse de la fecha nueva.
     expect(canFollowEvent("pospuesto")).toBe(true);
+    // En curso también: es lo que permite assert_can_follow_event en SQL, y tener
+    // dos respuestas distintas según la pantalla era el bug.
+    expect(canFollowEvent("en_curso")).toBe(true);
   });
 
-  it("no se puede seguir lo que está en curso, cancelado o finalizado", () => {
-    expect(canFollowEvent("en_curso")).toBe(false);
+  it("no se puede seguir lo cancelado ni lo finalizado", () => {
     expect(canFollowEvent("cancelado")).toBe(false);
     expect(canFollowEvent("finalizado")).toBe(false);
   });
@@ -226,6 +228,16 @@ describe("reminderFiresImmediately", () => {
   it("un evento ya pasado no avisa de inmediato", () => {
     expect(
       reminderFiresImmediately("2026-08-11T08:00:00Z", 1440, AHORA),
+    ).toBe(false);
+  });
+
+  // Y uno EN CURSO tampoco: un recordatorio avisa antes, así que en cuanto el
+  // evento empieza deja de haber nada que anticipar. Espeja la condición
+  // `p_starts_at <= now()` del SQL.
+  it("un evento que ya empezó no avisa, aunque no haya terminado", () => {
+    // Empezó hace un minuto; sigue «en curso», pero ya no se recuerda.
+    expect(
+      reminderFiresImmediately("2026-08-12T07:59:00Z", 60, AHORA),
     ).toBe(false);
   });
 });

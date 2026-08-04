@@ -14,7 +14,7 @@ import {
 import { formatMonthYear } from "@/lib/clubs/activities/format-date";
 import { EventForm } from "@/components/clubs/propose/event-form";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
 import { MARK_ACCENT } from "./mark-accent";
@@ -153,6 +153,17 @@ export function ClubCalendar({
                   {t(`markKind_${markKind}`)}
                 </span>
               ))}
+              {/* La marca de seguido también en la LEYENDA, no solo en la rejilla
+                  (§17): un icono nuevo en las celdas sin nada que lo explique
+                  obliga a adivinar qué significa. Solo se pinta si hay algo
+                  seguido este mes -- una leyenda para un símbolo que no aparece es
+                  ruido. */}
+              {viewerIsMember && seguidosDelMes.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
+                  <BellIcon className="h-2.5 w-2.5" aria-hidden />
+                  {t("eventFollowedBadge")}
+                </span>
+              )}
             </div>
           </div>
 
