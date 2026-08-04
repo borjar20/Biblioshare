@@ -19,7 +19,18 @@ const SPINES = [
   { color: "#caa2d0", height: 34 / 66 }, // serie
 ];
 
-export function AppIconMark({ size }: { size: number }) {
+// `monochrome`: variante para el badge de notificación de Android, que IGNORA
+// los colores y se queda solo con el canal alfa. Si le pasas el icono normal,
+// el terracota de fondo es opaco de punta a punta y en la barra de estado sale
+// un cuadrado macizo, no la marca. Por eso: fondo transparente y lomos blancos
+// (blanco por convención; da igual el color, solo cuenta que sea opaco).
+export function AppIconMark({
+  size,
+  monochrome = false,
+}: {
+  size: number;
+  monochrome?: boolean;
+}) {
   const markHeight = size * MARK_RATIO;
   const spineWidth = markHeight * SPINE_WIDTH_RATIO;
 
@@ -32,7 +43,7 @@ export function AppIconMark({ size }: { size: number }) {
         alignItems: "flex-end",
         justifyContent: "center",
         gap: markHeight * GAP_RATIO,
-        background: ACCENT,
+        background: monochrome ? "transparent" : ACCENT,
       }}
     >
       {SPINES.map((spine) => (
@@ -42,7 +53,7 @@ export function AppIconMark({ size }: { size: number }) {
             width: spineWidth,
             height: markHeight * spine.height,
             borderRadius: spineWidth * 0.4,
-            background: spine.color,
+            background: monochrome ? "#ffffff" : spine.color,
           }}
         />
       ))}

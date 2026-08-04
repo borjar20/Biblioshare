@@ -177,6 +177,7 @@ export function ItemPicker({
               <button
                 key={item.entryId}
                 type="button"
+                data-testid="item-picker-library-result"
                 onClick={() => pickLibrary(item)}
                 className="flex items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-surface-muted"
               >
