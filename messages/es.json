@@ -344,7 +344,14 @@
     "blockedTitle": "Usuario bloqueado",
     "blockedDescription": "Has ocultado este perfil y su actividad. Puedes desbloquearlo cuando quieras.",
     "actionError": "No se pudo guardar el cambio. Inténtalo de nuevo.",
-    "you": "Tú"
+    "you": "Tú",
+    "notifyBellLabel": "Avisos de esta persona",
+    "notifyMenuTitle": "Avísame cuando…",
+    "notifyFinished": "Termine o reseñe una obra",
+    "notifySession": "Registre una sesión",
+    "notifyEpisode": "Vea un episodio",
+    "notifyAdded": "Añada algo a su biblioteca",
+    "notifyAddedHint": "Puede llegar en ráfagas si añade muchas obras seguidas."
   },
   "feed": {
     "verbs": {
@@ -430,7 +437,11 @@
     "clubEventCreated": "{name} marcó una fecha en el club",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
-    "mentioned": "{name} te mencionó"
+    "mentioned": "{name} te mencionó",
+    "followedFinished": "{name} terminó una obra",
+    "followedSession": "{name} registró una sesión de lectura",
+    "followedEpisode": "{name} vio un episodio",
+    "followedAdded": "{name} añadió algo a su biblioteca"
   },
   "time": {
     "justNow": "ahora mismo",
