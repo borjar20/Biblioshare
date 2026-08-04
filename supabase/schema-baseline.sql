@@ -11322,3 +11322,928 @@ revoke execute on function public.get_club_round_state(uuid) from public, anon;
 revoke execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) from public, anon;
 grant  execute on function public.get_club_round_state(uuid) to authenticated;
 grant  execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) to authenticated;
+
+-- ===========================================================================
+-- ANEXO 2026-08-04 — Seguimiento de eventos de club + el primer trabajo
+-- programado del repo (spec docs/superpowers/specs/2026-08-04-club-event-following-design.md)
+--
+-- ESTADO: aplicado y verificado SOLO EN DEV el 2026-08-04. **Producción
+-- pendiente**, aplicación reservada al usuario. Se anexa aquí para que recrear
+-- el proyecto dev desde cero deje la feature completa, igual que se hizo con
+-- La ronda (ANEXO 2026-08-03).
+--
+-- ORDEN DE APLICACIÓN (importa: las RPC dependen de las columnas y de la tabla):
+--   1. 20260822_club_event_following.sql          columnas, enums, tabla, triggers, RLS, grants
+--   2. 20260823_club_event_following_rpcs.sql     RPCs + barrido + valores de notification_type
+--   3. 20260824_club_event_reminder_scheduler.sql pg_cron + pg_net + el job
+--   4. 20260825_notifications_system_actor.sql    notifications.actor_id pasa a nullable
+--
+-- OJO al desplegar: **migración primero, merge después** (lección de #393). Y el
+-- job no hace nada hasta que existan los dos secretos de Vault (ver el fichero 3).
+-- ===========================================================================
+
+-- --- 20260822_club_event_following.sql ---------------------------------
+
+-- Seguimiento de eventos de club (spec 2026-08-04).
+--
+-- Tres cosas a la vez, porque las tres son la misma feature:
+--   1. El evento gana los datos que su ficha necesita (hora, zona, sitio, estado).
+--   2. `club_event_followers`: quién sigue qué, y cuándo quiere que le avisemos.
+--   3. El primer trabajo programado del repo (pg_cron + pg_net), que retira el
+--      bloqueo de #394.
+--
+-- Por qué COLUMNAS y no `config jsonb`, que es donde van los campos por kind:
+-- el barrido de recordatorios tiene que comparar y indexar `starts_at`. En jsonb
+-- una fecha es una CADENA, y comparar fechas como cadenas es exactamente lo que
+-- prohíbe §10 de la spec (y lo que calendar-marks.ts ya documenta como trampa).
+--
+-- SD-8 sigue en pie: el evento es un `kind` de club_activities, no una tabla
+-- aparte. Estas columnas son nulas para los otros cuatro kinds, a propósito.
+
+-- ---------------------------------------------------------------------------
+-- 1. Enums
+-- ---------------------------------------------------------------------------
+
+do $$ begin
+  create type public.event_modality as enum ('presencial', 'online', 'hibrida');
+exception when duplicate_object then null; end $$;
+
+-- Solo los tres estados que una PERSONA declara. "En curso" y "finalizado" NO
+-- están aquí: se deducen del reloj (starts_at/ends_at) en una función pura
+-- compartida por servidor y cliente. Un estado guardado es un estado que hay
+-- que mantener sincronizado, y group-activities.ts ya dejó esa lección escrita
+-- en este mismo módulo.
+do $$ begin
+  create type public.club_event_state as enum ('programado', 'cancelado', 'pospuesto');
+exception when duplicate_object then null; end $$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Columnas del evento
+-- ---------------------------------------------------------------------------
+
+alter table public.club_activities
+  add column if not exists starts_at      timestamptz,
+  add column if not exists ends_at        timestamptz,
+  add column if not exists event_timezone text not null default 'Europe/Madrid',
+  add column if not exists location       text,
+  add column if not exists modality       public.event_modality,
+  add column if not exists online_url     text,
+  add column if not exists event_state    public.club_event_state not null default 'programado',
+  add column if not exists updated_at     timestamptz;
+
+-- Los topes son los mismos que ya usa la tabla para title/description
+-- (20260715_text_length_limits.sql): si divergieran, habría un rango de
+-- longitudes que pasa la validación del cliente y muere en Postgres con un
+-- 23514 crudo que la UI no traduce.
+do $$ begin
+  alter table public.club_activities
+    add constraint club_activities_location_len check (char_length(location) <= 200);
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table public.club_activities
+    add constraint club_activities_online_url_len check (char_length(online_url) <= 500);
+exception when duplicate_object then null; end $$;
+
+-- Un fin anterior al inicio no es un dato, es un bug. En BD para que no dependa
+-- de que todos los escritores se acuerden.
+do $$ begin
+  alter table public.club_activities
+    add constraint club_activities_event_window check (ends_at is null or starts_at is null or ends_at >= starts_at);
+exception when duplicate_object then null; end $$;
+
+-- Backfill: los eventos que existen se crearon cuando el modelo no tenía hora.
+-- 19:00 Europe/Madrid es una hora INVENTADA, y se asume a la vista: es la que
+-- menos sorprende para un club de lectura. La alternativa (dejarlos sin
+-- instante) obligaría a que toda la feature tratara "evento sin hora" como caso
+-- especial permanente.
+update public.club_activities
+   set starts_at = (starts_on::text || ' 19:00')::timestamp at time zone 'Europe/Madrid'
+ where kind = 'evento' and starts_on is not null and starts_at is null;
+
+-- ---------------------------------------------------------------------------
+-- 3. starts_on se mantiene solo, y no puede divergir
+-- ---------------------------------------------------------------------------
+
+-- `starts_on` SE QUEDA: de él cuelgan el calendario, group-activities, la tira
+-- "Próximo" del feed y los eventos que ya existen. Lo deriva un trigger.
+--
+-- NO es una columna generada porque no PUEDE serlo: timezone(text, timestamptz)
+-- es STABLE, no IMMUTABLE (depende de la base de datos de zonas), y Postgres
+-- rechaza una GENERATED que la invoque. El trigger consigue lo mismo —
+-- divergencia estructuralmente imposible, sea quien sea quien escriba — y deja
+-- intactos TODOS los lectores actuales: ni una consulta del calendario cambia.
+create or replace function private.sync_club_event_date()
+returns trigger
+language plpgsql
+set search_path to ''
+as $$
+begin
+  if new.kind = 'evento' and new.starts_at is not null then
+    new.starts_on := (new.starts_at at time zone new.event_timezone)::date;
+  end if;
+
+  -- updated_at lo pone la BD, nunca el cliente: es el dato de "última
+  -- actualización" que la ficha muestra, y un cliente puede mentir.
+  if tg_op = 'UPDATE' then
+    new.updated_at := now();
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_club_event_date on public.club_activities;
+create trigger sync_club_event_date
+  before insert or update on public.club_activities
+  for each row execute function private.sync_club_event_date();
+
+-- ---------------------------------------------------------------------------
+-- 4. Cuándo toca avisar
+-- ---------------------------------------------------------------------------
+
+-- STABLE, no IMMUTABLE: mira now() para no armar nunca el recordatorio de algo
+-- que ya terminó. Por eso tampoco puede ir en un índice; el índice va sobre la
+-- columna que esta función rellena.
+create or replace function private.club_event_reminder_due(
+  p_starts_at   timestamptz,
+  p_ends_at     timestamptz,
+  p_event_state public.club_event_state,
+  p_minutes     integer
+) returns timestamptz
+language sql
+stable
+set search_path to ''
+as $$
+  select case
+    -- Sin preferencia = sin recordatorio. Es una elección, no un hueco.
+    when p_minutes is null then null
+    when p_starts_at is null then null
+    -- Cancelado o pospuesto: los recordatorios futuros se apagan (§9.4).
+    when p_event_state <> 'programado' then null
+    -- Ya empezado (en curso) o terminado: no hay nada que anticipar. Un
+    -- «recordatorio» de algo que ya está pasando no es un recordatorio -- por
+    -- definición avisa ANTES. Ojo: la condición es sobre `starts_at`, NO sobre
+    -- `coalesce(ends_at, starts_at)`; con la segunda, seguir un evento en curso
+    -- con «24 horas antes» disparaba un aviso inmediato de algo ya empezado.
+    when p_starts_at <= now() then null
+    -- Si el momento ya pasó pero el evento no ha empezado ("muy próximo"), el
+    -- resultado queda en el pasado y el primer barrido lo coge. No hace falta
+    -- un caso especial: `reminder_due_at <= now()` ya es cierto.
+    else p_starts_at - make_interval(mins => p_minutes)
+  end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 5. La tabla de seguimiento
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.club_event_followers (
+  activity_id           uuid        not null references public.club_activities(id) on delete cascade,
+  user_id               uuid        not null references auth.users(id)             on delete cascade,
+  followed_at           timestamptz not null default now(),
+  -- null = "sin recordatorio". Los valores que ofrece la UI son 0, 15, 60,
+  -- 1440 y 10080; el CHECK deja cualquier positivo porque el tope real lo pone
+  -- la UI y un valor raro no rompe nada (solo adelanta el aviso).
+  remind_minutes_before integer,
+  -- DERIVADO por trigger, nunca escrito a mano. Es la única desnormalización de
+  -- la feature y tiene justificación: el barrido corre cada 5 min sobre TODOS
+  -- los clubes, y con el instante precalculado es una búsqueda por índice.
+  -- Calculando `starts_at - interval` por fila no hay índice posible.
+  reminder_due_at       timestamptz,
+  -- Sello de entrega: es la idempotencia del barrido y del reclamo atómico.
+  reminded_at           timestamptz,
+  -- La PK compuesta ES la restricción única de "un usuario sigue una vez" Y el
+  -- índice de "seguidores de este evento". Una columna `id` sintética añadiría
+  -- una unique aparte para no ganar nada.
+  primary key (activity_id, user_id),
+  constraint club_event_followers_remind_positive
+    check (remind_minutes_before is null or remind_minutes_before >= 0)
+);
+
+comment on table public.club_event_followers is
+  'Interés en un evento de club (kind=evento). Seguir NO es asistir: expresa interés y arma un recordatorio.';
+
+-- "Eventos que sigue esta persona" (§16).
+create index if not exists club_event_followers_user_idx
+  on public.club_event_followers (user_id, activity_id);
+
+-- El barrido. Parcial: las filas ya entregadas no ocupan índice.
+create index if not exists club_event_followers_due_idx
+  on public.club_event_followers (reminder_due_at)
+  where reminded_at is null;
+
+-- El recordatorio es un CAMPO de la fila de seguimiento, mantenido en la MISMA
+-- transacción que la escritura que lo provoca. De ahí sale, sin código, que no
+-- pueda existir un seguidor sin recordatorio ni un recordatorio sin seguidor:
+-- no hay dos escrituras que puedan quedar desparejadas (§21).
+create or replace function private.sync_event_follower_reminder()
+returns trigger
+language plpgsql
+set search_path to ''
+as $$
+declare
+  v_starts_at   timestamptz;
+  v_ends_at     timestamptz;
+  v_event_state public.club_event_state;
+begin
+  select starts_at, ends_at, event_state
+    into v_starts_at, v_ends_at, v_event_state
+    from public.club_activities
+   where id = new.activity_id;
+
+  new.reminder_due_at := private.club_event_reminder_due(
+    v_starts_at, v_ends_at, v_event_state, new.remind_minutes_before
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_event_follower_reminder on public.club_event_followers;
+create trigger sync_event_follower_reminder
+  before insert or update on public.club_event_followers
+  for each row execute function private.sync_event_follower_reminder();
+
+-- Cambia la fecha, la zona o el estado del evento ⇒ se reprograma a TODOS sus
+-- seguidores. El cálculo no se repite aquí: este trigger solo toca `reminded_at`
+-- y deja que el trigger de arriba recalcule (un UPDATE dispara su BEFORE aunque
+-- el valor no cambie). Un solo sitio calcula el instante.
+--
+-- Que un cambio de fecha re-arme incluso un recordatorio YA entregado es
+-- deliberado: quien recibió "mañana a las 18:00" necesita enterarse cuando pase
+-- a ser el jueves.
+create or replace function private.reschedule_event_reminders()
+returns trigger
+language plpgsql
+set search_path to ''
+as $$
+begin
+  update public.club_event_followers
+     set reminded_at = case
+           when new.starts_at is distinct from old.starts_at then null
+           else reminded_at
+         end
+   where activity_id = new.id;
+  return null;
+end;
+$$;
+
+drop trigger if exists reschedule_event_reminders on public.club_activities;
+create trigger reschedule_event_reminders
+  after update of starts_at, ends_at, event_state, event_timezone
+  on public.club_activities
+  for each row
+  when (new.kind = 'evento')
+  execute function private.reschedule_event_reminders();
+
+-- ---------------------------------------------------------------------------
+-- 6. RLS y grants
+-- ---------------------------------------------------------------------------
+
+alter table public.club_event_followers enable row level security;
+
+-- Ver quién sigue un evento = ser miembro ACTIVO de su club. Mismo gate que el
+-- calendario, y el que decide la privacidad de §12: aunque el club sea público,
+-- la lista de seguidores es de sus miembros. Se prioriza la privacidad.
+drop policy if exists "members read event followers" on public.club_event_followers;
+create policy "members read event followers"
+  on public.club_event_followers for select
+  using (
+    exists (
+      select 1 from public.club_activities a
+       where a.id = club_event_followers.activity_id
+         and public.is_club_member(a.club_id)
+    )
+  );
+
+-- Sin política insert/update/delete a propósito (SD-8): se escribe SOLO por RPC
+-- SECURITY DEFINER, igual que el resto del motor de actividades.
+
+revoke all on public.club_event_followers from anon, authenticated;
+grant select on public.club_event_followers to authenticated;
+
+-- club_activities tiene grant POR COLUMNA. Postgres exige privilegio sobre toda
+-- columna nombrada en un INSERT/UPDATE aunque su valor sea NULL, así que una
+-- columna nueva sin grant rompe la escritura ENTERA de la tabla, no solo el
+-- campo nuevo. Ha pasado dos veces (issue #375, superficie 6 de DRIFT-CHECK).
+grant insert (starts_at, ends_at, event_timezone, location, modality, online_url, event_state, updated_at),
+      update (starts_at, ends_at, event_timezone, location, modality, online_url, event_state, updated_at)
+   on public.club_activities to authenticated, anon, service_role;
+
+-- --- 20260823_club_event_following_rpcs.sql ----------------------------
+
+-- RPCs del seguimiento de eventos (spec 2026-08-04).
+--
+-- Todo SECURITY DEFINER: club_activities no tiene política UPDATE (SD-8) y
+-- club_event_followers no tiene ninguna política de escritura, a propósito. La
+-- autoridad de permisos está aquí, en servidor, no en que la UI esconda un botón.
+
+-- ---------------------------------------------------------------------------
+-- 1. create/update de evento, con los campos nuevos
+-- ---------------------------------------------------------------------------
+
+-- Se AMPLÍAN las firmas con DROP + CREATE, no con overload: una sobrecarga de 10
+-- argumentos con defaults conviviría con la de 4, y una llamada de 4 argumentos
+-- quedaría AMBIGUA (42725). Con DROP + CREATE, la llamada de 4 argumentos del
+-- bundle ANTERIOR sigue resolviendo contra la función nueva usando sus defaults
+-- — que es lo que hace segura la regla «migración primero, merge después» (#393).
+--
+-- La hora viaja como `time` aparte de `p_starts_on date`, no como un timestamptz
+-- ya resuelto por el cliente: así el instante lo construye SQL con la zona del
+-- evento y el horario de verano lo resuelve la base de datos de zonas, no
+-- aritmética nuestra. Sin hora se asume 19:00, la misma que el backfill.
+
+drop function if exists public.create_club_event(uuid, text, text, date);
+drop function if exists public.update_club_event(uuid, text, text, date);
+
+create or replace function private.validate_event_fields(
+  p_timezone   text,
+  p_location   text,
+  p_online_url text,
+  p_modality   public.event_modality,
+  p_starts_time time,
+  p_ends_time   time
+) returns void
+language plpgsql
+set search_path to ''
+as $$
+begin
+  if p_timezone is null or not exists (
+    select 1 from pg_catalog.pg_timezone_names where name = p_timezone
+  ) then
+    raise exception 'invalid_timezone';
+  end if;
+  if char_length(coalesce(p_location, '')) > 200 then
+    raise exception 'location_too_long';
+  end if;
+  if char_length(coalesce(p_online_url, '')) > 500 then
+    raise exception 'online_url_too_long';
+  end if;
+  -- Un evento online sin enlace es admisible (puede llegar después), pero un
+  -- enlace que no es http(s) es un error del formulario, no un dato.
+  if p_online_url is not null and p_online_url !~* '^https?://' then
+    raise exception 'invalid_online_url';
+  end if;
+  if p_modality = 'online' and p_location is not null then
+    raise exception 'online_event_has_location';
+  end if;
+  if p_ends_time is not null and p_starts_time is not null and p_ends_time <= p_starts_time then
+    raise exception 'ends_before_starts';
+  end if;
+end;
+$$;
+
+create or replace function public.create_club_event(
+  p_club_id     uuid,
+  p_title       text,
+  p_description text default null,
+  p_starts_on   date default null,
+  p_starts_time time default null,
+  p_ends_time   time default null,
+  p_timezone    text default 'Europe/Madrid',
+  p_location    text default null,
+  p_modality    public.event_modality default null,
+  p_online_url  text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_id uuid;
+  v_title text := trim(p_title);
+  v_description text := nullif(trim(coalesce(p_description, '')), '');
+  v_location text := nullif(trim(coalesce(p_location, '')), '');
+  v_online_url text := nullif(trim(coalesce(p_online_url, '')), '');
+  v_starts_time time := coalesce(p_starts_time, '19:00'::time);
+  v_starts_at timestamptz;
+  v_ends_at timestamptz;
+begin
+  if not public.has_min_club_role(p_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if coalesce(v_title, '') = '' then
+    raise exception 'title_required';
+  end if;
+  if char_length(v_title) > 120 then
+    raise exception 'title_too_long';
+  end if;
+  if char_length(coalesce(v_description, '')) > 2000 then
+    raise exception 'description_too_long';
+  end if;
+  if p_starts_on is null then
+    raise exception 'starts_on_required';
+  end if;
+
+  perform private.validate_event_fields(
+    p_timezone, v_location, v_online_url, p_modality, v_starts_time, p_ends_time
+  );
+
+  v_starts_at := (p_starts_on::text || ' ' || v_starts_time::text)::timestamp
+                   at time zone p_timezone;
+  if p_ends_time is not null then
+    v_ends_at := (p_starts_on::text || ' ' || p_ends_time::text)::timestamp
+                   at time zone p_timezone;
+  end if;
+
+  -- Un evento nace ACTIVO: no se propone ni se activa (la política de INSERT
+  -- fuerza status='proposed', y por eso esto va por RPC).
+  insert into public.club_activities (
+    club_id, kind, title, description, status, created_by,
+    starts_at, ends_at, event_timezone, location, modality, online_url
+  ) values (
+    p_club_id, 'evento', v_title, v_description, 'active', auth.uid(),
+    v_starts_at, v_ends_at, p_timezone, v_location, p_modality, v_online_url
+  ) returning id into v_id;
+
+  -- El organizador queda como seguidor desde la creación (§18): figura entre
+  -- quienes lo siguen y recibe su recordatorio, y puede apagarlo sin dejar de
+  -- ser el organizador. Seguir y organizar siguen siendo cosas distintas: esto
+  -- solo declara que quien lo monta también está interesado.
+  insert into public.club_event_followers (activity_id, user_id, remind_minutes_before)
+  values (v_id, auth.uid(), 1440)
+  on conflict (activity_id, user_id) do nothing;
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.update_club_event(
+  p_activity_id uuid,
+  p_title       text,
+  p_description text default null,
+  p_starts_on   date default null,
+  p_starts_time time default null,
+  p_ends_time   time default null,
+  p_timezone    text default null,
+  p_location    text default null,
+  p_modality    public.event_modality default null,
+  p_online_url  text default null
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_club_id uuid;
+  v_kind public.activity_kind;
+  v_status public.activity_status;
+  v_old_tz text;
+  v_old_time time;
+  v_title text := trim(p_title);
+  v_description text := nullif(trim(coalesce(p_description, '')), '');
+  v_location text := nullif(trim(coalesce(p_location, '')), '');
+  v_online_url text := nullif(trim(coalesce(p_online_url, '')), '');
+  v_tz text;
+  v_starts_time time;
+  v_starts_at timestamptz;
+  v_ends_at timestamptz;
+begin
+  select club_id, kind, status, event_timezone,
+         (starts_at at time zone event_timezone)::time
+    into v_club_id, v_kind, v_status, v_old_tz, v_old_time
+    from public.club_activities where id = p_activity_id;
+
+  if v_club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v_kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  if not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if p_starts_on is null then
+    raise exception 'starts_on_required';
+  end if;
+  if coalesce(v_title, '') = '' then
+    raise exception 'title_required';
+  end if;
+  if char_length(v_title) > 120 then
+    raise exception 'title_too_long';
+  end if;
+  if char_length(coalesce(v_description, '')) > 2000 then
+    raise exception 'description_too_long';
+  end if;
+
+  -- Sin zona ni hora explícitas se conservan las que tenía: así el bundle
+  -- anterior, que solo manda título/descripción/fecha, no borra la hora.
+  v_tz := coalesce(p_timezone, v_old_tz, 'Europe/Madrid');
+  v_starts_time := coalesce(p_starts_time, v_old_time, '19:00'::time);
+
+  perform private.validate_event_fields(
+    v_tz, v_location, v_online_url, p_modality, v_starts_time, p_ends_time
+  );
+
+  v_starts_at := (p_starts_on::text || ' ' || v_starts_time::text)::timestamp
+                   at time zone v_tz;
+  if p_ends_time is not null then
+    v_ends_at := (p_starts_on::text || ' ' || p_ends_time::text)::timestamp
+                   at time zone v_tz;
+  end if;
+
+  update public.club_activities
+     set title = v_title,
+         description = v_description,
+         starts_at = v_starts_at,
+         ends_at = v_ends_at,
+         event_timezone = v_tz,
+         location = v_location,
+         modality = p_modality,
+         online_url = v_online_url
+   where id = p_activity_id and kind = 'evento' and status = 'active';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Seguir / dejar de seguir / recordatorio / estado
+-- ---------------------------------------------------------------------------
+
+-- Los seis valores que ofrece la UI (§9.2), validados en SQL para que un cliente
+-- no pueda colar un offset arbitrario.
+create or replace function private.valid_event_reminder(p_minutes integer)
+returns boolean
+language sql
+immutable
+set search_path to ''
+as $$
+  select p_minutes is null or p_minutes in (0, 15, 60, 1440, 10080);
+$$;
+
+create or replace function private.assert_can_follow_event(p_activity_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v record;
+begin
+  select club_id, kind, status, event_state, starts_at, ends_at
+    into v
+    from public.club_activities where id = p_activity_id;
+
+  if v.club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v.kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  -- Archivado o propuesto: no es un evento vigente del club.
+  if v.status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  -- Cubre de una vez a quien no es miembro, a quien lo dejó, al expulsado y al
+  -- invitado que no ha aceptado: is_club_member exige status='active'.
+  if not public.is_club_member(v.club_id) then
+    raise exception 'not_a_member';
+  end if;
+  if v.event_state = 'cancelado' then
+    raise exception 'event_cancelled';
+  end if;
+  if coalesce(v.ends_at, v.starts_at) is not null
+     and coalesce(v.ends_at, v.starts_at) <= now() then
+    raise exception 'event_finished';
+  end if;
+
+  return v.club_id;
+end;
+$$;
+
+-- IDEMPOTENTE por construcción: el `on conflict do update` hace que dos
+-- peticiones simultáneas dejen UNA fila en vez de un 23505 en la cara del
+-- usuario. Es la garantía de «pulsar varias veces rápido» y de «dos solicitudes
+-- concurrentes» (§20) en la BD, no en la UI.
+create or replace function public.follow_club_event(
+  p_activity_id uuid,
+  p_remind_minutes_before integer default 1440
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if not private.valid_event_reminder(p_remind_minutes_before) then
+    raise exception 'invalid_reminder';
+  end if;
+  perform private.assert_can_follow_event(p_activity_id);
+
+  insert into public.club_event_followers (activity_id, user_id, remind_minutes_before)
+  values (p_activity_id, auth.uid(), p_remind_minutes_before)
+  on conflict (activity_id, user_id)
+    do update set remind_minutes_before = excluded.remind_minutes_before;
+end;
+$$;
+
+-- Borrar lo que no está no es un error: idempotente sin mirar antes. Y se
+-- permite SIEMPRE, incluso en un evento cancelado o ya pasado — dejar de seguir
+-- nunca puede quedar bloqueado.
+create or replace function public.unfollow_club_event(p_activity_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  delete from public.club_event_followers
+   where activity_id = p_activity_id and user_id = auth.uid();
+end;
+$$;
+
+create or replace function public.set_club_event_reminder(
+  p_activity_id uuid,
+  p_remind_minutes_before integer
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if not private.valid_event_reminder(p_remind_minutes_before) then
+    raise exception 'invalid_reminder';
+  end if;
+  perform private.assert_can_follow_event(p_activity_id);
+
+  update public.club_event_followers
+     set remind_minutes_before = p_remind_minutes_before
+   where activity_id = p_activity_id and user_id = auth.uid();
+
+  -- Cambiar el recordatorio de algo que no sigues es un error del cliente, no un
+  -- alta implícita: distinguirlo evita que un fallo de estado en la UI cree
+  -- seguimientos que nadie pidió.
+  if not found then
+    raise exception 'not_following';
+  end if;
+end;
+$$;
+
+-- Cancelar / posponer / reprogramar. Los recordatorios los apaga y los vuelve a
+-- armar el trigger; aquí solo se declara el estado.
+create or replace function public.set_club_event_state(
+  p_activity_id uuid,
+  p_state public.club_event_state
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_club_id uuid;
+  v_kind public.activity_kind;
+  v_status public.activity_status;
+begin
+  select club_id, kind, status into v_club_id, v_kind, v_status
+    from public.club_activities where id = p_activity_id;
+
+  if v_club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v_kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  if not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+
+  update public.club_activities set event_state = p_state where id = p_activity_id;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 3. El barrido: reclamo atómico y compensación
+-- ---------------------------------------------------------------------------
+
+-- Reclamar y devolver en la MISMA sentencia es lo que hace que dos barridos
+-- solapados no entreguen el mismo aviso dos veces: el segundo ya no encuentra
+-- `reminded_at is null`, y `skip locked` evita además que se queden esperándose.
+--
+-- El precio es que una caída entre reclamar y entregar PIERDE el aviso, así que
+-- la ruta compensa: si la entrega falla, llama a release_event_reminders y la
+-- fila vuelve a estar disponible para el barrido siguiente. Es la compensación
+-- explícita que pide §21, no un «ya se verá».
+--
+-- El join con club_members es la pieza que resuelve de una vez «abandona el
+-- club», «es expulsado» y «pierde permisos» (§20): un seguimiento sin membresía
+-- activa es INERTE. No se borra la fila — si vuelve al club, su interés sigue
+-- ahí — se invalida.
+-- `p_activity_id` opcional para poder reclamar SOLO los de un evento. Lo necesita
+-- la entrega inmediata: al seguir un evento que empieza dentro del propio offset
+-- elegido, §9.1 pide avisar ya en vez de esperar al barrido. Sin este parámetro
+-- una acción de usuario tendría que llamar al reclamo GLOBAL, y acabaría
+-- entregando los avisos de todos los clubes — trabajo no acotado dentro de un clic.
+create or replace function public.claim_due_event_reminders(
+  p_limit integer default 200,
+  p_activity_id uuid default null
+)
+returns table (
+  activity_id     uuid,
+  user_id         uuid,
+  club_id         uuid,
+  club_slug       text,
+  club_name       text,
+  title           text,
+  starts_at       timestamptz,
+  event_timezone  text,
+  location        text,
+  modality        public.event_modality,
+  organizer_id    uuid,
+  minutes_before  integer
+)
+language sql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+  with due as (
+    select f.activity_id, f.user_id
+      from public.club_event_followers f
+      join public.club_activities a on a.id = f.activity_id
+      join public.club_members m
+        on m.club_id = a.club_id and m.user_id = f.user_id and m.status = 'active'
+     where f.reminded_at is null
+       and f.reminder_due_at is not null
+       and f.reminder_due_at <= now()
+       and a.kind = 'evento'
+       and a.status = 'active'
+       and a.event_state = 'programado'
+       -- Nunca se recuerda algo que ya empezó (§9.1). El trigger ya no arma
+       -- recordatorios de eventos pasados, pero un evento EMPIEZA sin que nadie
+       -- escriba nada: esta condición es la autoridad.
+       and a.starts_at > now()
+       and (p_activity_id is null or f.activity_id = p_activity_id)
+     order by f.reminder_due_at
+     limit greatest(p_limit, 1)
+     for update of f skip locked
+  ),
+  claimed as (
+    update public.club_event_followers f
+       set reminded_at = now()
+      from due
+     where f.activity_id = due.activity_id and f.user_id = due.user_id
+    returning f.activity_id, f.user_id, f.remind_minutes_before
+  )
+  select c.activity_id, c.user_id, a.club_id, cl.slug, cl.name, a.title,
+         a.starts_at, a.event_timezone, a.location, a.modality, a.created_by,
+         c.remind_minutes_before
+    from claimed c
+    join public.club_activities a on a.id = c.activity_id
+    join public.clubs cl on cl.id = a.club_id;
+$$;
+
+-- Devuelve al barrido las filas que se reclamaron y no se pudieron entregar.
+-- Ante la duda, ruido antes que silencio.
+create or replace function public.release_event_reminders(
+  p_activity_id uuid,
+  p_user_ids uuid[]
+) returns integer
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_count integer;
+begin
+  update public.club_event_followers
+     set reminded_at = null
+   where activity_id = p_activity_id
+     and user_id = any(p_user_ids);
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- Las dos son del barrido, no de la app: solo service_role. Sin esto, cualquier
+-- sesión autenticada podría sellar los recordatorios de todo el mundo (y con ello
+-- impedir que se entreguen).
+revoke all on function public.claim_due_event_reminders(integer, uuid) from public, anon, authenticated;
+revoke all on function public.release_event_reminders(uuid, uuid[]) from public, anon, authenticated;
+grant execute on function public.claim_due_event_reminders(integer, uuid) to service_role;
+grant execute on function public.release_event_reminders(uuid, uuid[]) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 4. Tipos de notificación
+-- ---------------------------------------------------------------------------
+
+-- Ampliar un enum es la dirección INOFENSIVA (el bundle anterior no conoce los
+-- valores nuevos y no los recibe); retirar valores es la peligrosa. Ningún objeto
+-- de esta migración USA los valores nuevos, así que pueden añadirse aquí mismo.
+alter type public.notification_type add value if not exists 'club_event_reminder';
+alter type public.notification_type add value if not exists 'club_event_updated';
+alter type public.notification_type add value if not exists 'club_event_cancelled';
+
+-- --- 20260824_club_event_reminder_scheduler.sql ------------------------
+
+-- El PRIMER trabajo programado del repo. Retira el bloqueo de #394.
+--
+-- Va en su propia migración a propósito: es la única pieza que necesita secretos
+-- en Vault y la única que se puede retirar sola (`cron.unschedule`) sin tocar la
+-- feature. Si algún día se cambia de mecanismo, este fichero es el que se
+-- reemplaza.
+--
+-- Por qué pg_cron y no Vercel Cron: la cuenta de Vercel es Hobby, donde un cron
+-- corre UNA vez al día y a una hora no garantizada — incompatible con un
+-- recordatorio «15 minutos antes». pg_cron da granularidad de minutos en el plan
+-- gratuito de Supabase.
+--
+-- Por qué salta a HTTP en vez de escribir en `notifications` desde SQL: firmar
+-- VAPID es web-push, o sea Node. Un job que solo insertara filas llenaría la
+-- campana y no enviaría ni un push. Saltando a la ruta se reutiliza el
+-- notifyMany/sendPushToUsers que ya existe, en vez de duplicar el sistema de
+-- notificaciones (§25 del encargo).
+--
+-- ANTES DE QUE ESTO HAGA NADA hay que crear los dos secretos, una vez por
+-- entorno (no van en git):
+--
+--   select vault.create_secret('https://biblioshare.vercel.app', 'app_base_url');
+--   select vault.create_secret('<mismo valor que CRON_SECRET en Vercel>', 'cron_secret');
+--
+-- Sin ellos la función avisa y no despacha: nunca entra en un bucle de errores
+-- contra una URL vacía.
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+create or replace function private.dispatch_event_reminders()
+returns void
+language plpgsql
+security definer
+set search_path to ''
+as $$
+declare
+  v_url text;
+  v_secret text;
+begin
+  select decrypted_secret into v_url
+    from vault.decrypted_secrets where name = 'app_base_url';
+  select decrypted_secret into v_secret
+    from vault.decrypted_secrets where name = 'cron_secret';
+
+  if v_url is null or v_secret is null then
+    raise warning 'dispatch_event_reminders: faltan los secretos app_base_url/cron_secret en Vault; no se despacha nada';
+    return;
+  end if;
+
+  perform net.http_post(
+    url     := v_url || '/api/cron/event-reminders',
+    headers := jsonb_build_object(
+                 'content-type', 'application/json',
+                 'x-cron-secret', v_secret
+               ),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 20000
+  );
+end;
+$$;
+
+revoke all on function private.dispatch_event_reminders() from public, anon, authenticated;
+
+-- Cada 5 minutos. Es el ÚNICO error de puntualidad del sistema y es explícito: un
+-- recordatorio se entrega entre 0 y 5 minutos DESPUÉS de su momento teórico,
+-- nunca antes.
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'event-reminders') then
+    perform cron.unschedule('event-reminders');
+  end if;
+  perform cron.schedule(
+    'event-reminders',
+    '*/5 * * * *',
+    $job$ select private.dispatch_event_reminders(); $job$
+  );
+end $$;
+
+-- --- 20260825_notifications_system_actor.sql ---------------------------
+
+-- Una notificación EMITIDA POR EL SISTEMA no tiene actor humano.
+--
+-- Hasta ahora toda notificación era «alguien te hizo algo»: `actor_id` NOT NULL y
+-- `CHECK (user_id <> actor_id)`. El recordatorio de evento (spec 2026-08-04) es el
+-- primero que no encaja en esa forma — lo dispara un trabajo programado, no una
+-- persona.
+--
+-- Se intentó evitar este cambio poniendo al ORGANIZADOR del evento como actor, y
+-- fue peor por dos motivos que solo aparecieron al probarlo contra dev:
+--
+--   1. El organizador que sigue su propio evento choca con el CHECK: su
+--      recordatorio no se puede insertar (23514), así que justo quien monta el
+--      evento se quedaba sin aviso — lo contrario de lo que pide §18.
+--   2. Miente en la pantalla: «Marta te avisa» cuando Marta no ha hecho nada.
+--
+-- Las dos son el mismo síntoma de forzar un evento del sistema por un modelo con
+-- forma de persona. Se arregla el modelo, no se parchea alrededor.
+--
+-- Consumidores que ya tratan el actor nulo (son todos los que leen la bandeja):
+-- listNotifications, buildPushPayload y notification-bell.tsx.
+alter table public.notifications alter column actor_id drop not null;
+
+-- El invariante se conserva donde sigue teniendo sentido: si HAY actor, no puede
+-- ser el propio destinatario (nadie quiere «has comentado tu propio post»).
+alter table public.notifications drop constraint if exists notifications_check;
+alter table public.notifications
+  add constraint notifications_check
+  check (actor_id is null or user_id <> actor_id);

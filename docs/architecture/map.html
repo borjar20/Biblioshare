@@ -395,10 +395,11 @@
       "label": "/clubes · /club/[slug]",
       "layer": "route",
       "kind": "route",
-      "summary": "Directorio de clubes, muro, calendario, miembros y actividades (/club/[slug]/actividad/[id]).",
+      "summary": "Directorio de clubes, muro, calendario, miembros, actividades (/club/[slug]/actividad/[id]) y la ficha de un evento (/club/[slug]/evento/[id]).",
       "files": [
         "src/app/clubes",
-        "src/app/club/[slug]"
+        "src/app/club/[slug]",
+        "src/app/club/[slug]/evento/[id]"
       ]
     },
     {
@@ -479,12 +480,27 @@
       "label": "Route handlers /api/*",
       "layer": "route",
       "kind": "api",
-      "summary": "/api/export (volcado de datos), /api/month-calendar (calendario mensual), /api/og/nota/[id] (tarjeta PNG vía next/og), /icon-192.",
+      "summary": "/api/export (volcado de datos), /api/month-calendar (calendario mensual), /api/og/nota/[id] (tarjeta PNG vía next/og), /icon-192, /badge-96 (badge monocromo de las notificaciones).",
       "files": [
         "src/app/api/export",
         "src/app/api/month-calendar",
         "src/app/api/og/nota/[id]",
-        "src/app/icon-192"
+        "src/app/icon-192",
+        "src/app/badge-96"
+      ]
+    },
+    {
+      "id": "r-cron",
+      "label": "POST /api/cron/event-reminders",
+      "layer": "route",
+      "kind": "api",
+      "summary": "El extremo del PRIMER trabajo programado del repo. Lo llama pg_cron cada 5 min vía pg_net, nunca un navegador. Drena los recordatorios vencidos y los entrega por notifyMany + push.",
+      "files": [
+        "src/app/api/cron/event-reminders/route.ts"
+      ],
+      "gotchas": [
+        "Si falta CRON_SECRET la ruta responde 503 y queda CERRADA, no abierta: un despliegue sin la variable no debe dejar un extremo público que vacíe la cola de recordatorios.",
+        "El barrido llama a notifyMany con systemDelivery: sin eso, filter_unblocked_user_ids devuelve un array VACÍO (porque auth.uid() es null con service_role) y NINGÚN recordatorio se entrega jamás. Medido: claimed 3, delivered 0."
       ]
     },
     {
@@ -1231,7 +1247,10 @@
       "label": "notifications",
       "layer": "db",
       "kind": "table",
-      "summary": "Bandeja del usuario. notify()/notifyMany() escriben aquí y disparan el push detrás."
+      "summary": "Bandeja del usuario. notify()/notifyMany() escriben aquí y disparan el push detrás.",
+      "gotchas": [
+        "actor_id es NULLABLE desde 2026-08-04: una notificación emitida por el sistema (el recordatorio de evento) no tiene actor. Todo lector de la bandeja tiene que tratar el actor nulo, y el CHECK solo exige user_id <> actor_id CUANDO hay actor."
+      ]
     },
     {
       "id": "t-push",
@@ -1252,7 +1271,31 @@
       "label": "club_activities · items · participants · checkpoints",
       "layer": "db",
       "kind": "table",
-      "summary": "Actividades de club y sus tablas satélite (opiniones, colocaciones, votos, lecturas de checkpoint)."
+      "summary": "Actividades de club y sus tablas satélite (opiniones, colocaciones, votos, lecturas de checkpoint). Desde 2026-08-04 lleva además las columnas de EVENTO (starts_at/ends_at/event_timezone/location/modality/online_url/event_state/updated_at).",
+      "gotchas": [
+        "starts_on lo DERIVA un trigger desde starts_at y la zona del evento; no es una columna generada porque timezone(text, timestamptz) es STABLE y Postgres rechaza una GENERATED que la invoque. Escribir starts_on a mano no sirve: el trigger lo sobreescribe.",
+        "Tiene grant POR COLUMNA: añadir una columna sin su grant rompe la escritura ENTERA de la tabla, no solo el campo nuevo (issue #375). Correr la superficie 6 de DRIFT-CHECK.md después de tocarla."
+      ]
+    },
+    {
+      "id": "t-event-followers",
+      "label": "club_event_followers",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Quién sigue qué evento y cuándo quiere que le avisemos. El recordatorio es un CAMPO derivado de la fila (reminder_due_at), recalculado por triggers; reminded_at es el sello de entrega.",
+      "columns": [
+        "activity_id",
+        "user_id",
+        "followed_at",
+        "remind_minutes_before",
+        "reminder_due_at",
+        "reminded_at"
+      ],
+      "gotchas": [
+        "reminder_due_at NO se puede escribir a mano: el trigger before insert/update lo recalcula desde club_activities en cada escritura, así que un UPDATE que intente forzarlo se pierde. Para moverlo hay que mover el EVENTO.",
+        "Abandonar el club o ser expulsado NO borra la fila: se invalida. El join con club_members (status='active') del barrido y de las lecturas es lo que la deja inerte, en un solo sitio y sin triggers sobre la membresía.",
+        "Sin política de escritura a propósito (SD-8): todo va por RPC SECURITY DEFINER. Las de barrido (claim_due_event_reminders / release_event_reminders) están revocadas para authenticated -- sellan filas, y sellarlas sin entregarlas impediría que se entreguen."
+      ]
     },
     {
       "id": "t-sagas",
@@ -2213,6 +2256,31 @@
       "from": "r-auth",
       "to": "x-supabase-auth",
       "kind": "auth"
+    },
+    {
+      "from": "r-cron",
+      "to": "m-clubs",
+      "kind": "calls"
+    },
+    {
+      "from": "r-cron",
+      "to": "m-social",
+      "kind": "calls"
+    },
+    {
+      "from": "m-clubs",
+      "to": "t-event-followers",
+      "kind": "writes"
+    },
+    {
+      "from": "r-clubes",
+      "to": "t-event-followers",
+      "kind": "reads"
+    },
+    {
+      "from": "c-clubs",
+      "to": "m-clubs",
+      "kind": "calls"
     }
   ],
   "flows": [
@@ -2882,6 +2950,73 @@
           "node": "r-offline",
           "action": "Sin red, el sw sirve /offline en vez del error del navegador",
           "file": "src/app/offline"
+        }
+      ]
+    },
+    {
+      "id": "flow-event-following",
+      "name": "Seguir un evento de club → recordatorio",
+      "category": "clubs",
+      "summary": "Un miembro sigue un evento desde la agenda o su ficha; el recordatorio queda armado en la propia fila de seguimiento, y un trabajo programado lo entrega antes de que el evento empiece.",
+      "entrypoint": "src/lib/clubs/activities/event-follow-actions.ts",
+      "notes": [
+        "El recordatorio NO es una segunda escritura: es un campo de la fila, recalculado por trigger en la misma transacción. Por eso no puede haber un seguidor sin aviso ni un aviso sin seguidor.",
+        "Cambiar la fecha del evento reprograma a TODOS sus seguidores y re-arma incluso los avisos ya entregados: quien recibió «mañana a las 18:00» necesita saberlo si pasa al jueves.",
+        "La ficha de un evento NO es /actividad/[id] (esa sigue dando 404 para eventos, hasDetailView=false): es /club/[slug]/evento/[id]."
+      ],
+      "steps": [
+        {
+          "node": "c-clubs",
+          "action": "Botón de seguir en la agenda del calendario o en la ficha, con estado optimista",
+          "file": "src/components/clubs/event/event-follow-button.tsx"
+        },
+        {
+          "node": "a-otras",
+          "action": "followClubEvent / unfollowClubEvent / setClubEventReminder (resultado discriminado, nunca lanzan)",
+          "file": "src/lib/clubs/activities/event-follow-actions.ts"
+        },
+        {
+          "node": "sb-server",
+          "action": "RPC follow_club_event: valida membresía activa y estado, e inserta con on conflict do update (idempotente)",
+          "file": "src/lib/supabase/server.ts"
+        },
+        {
+          "node": "t-event-followers",
+          "action": "Fila de seguimiento; los triggers calculan reminder_due_at desde starts_at/zona/estado"
+        },
+        {
+          "node": "r-cron",
+          "action": "pg_cron (cada 5 min) → pg_net → POST /api/cron/event-reminders",
+          "file": "src/app/api/cron/event-reminders/route.ts"
+        },
+        {
+          "node": "m-clubs",
+          "action": "claim_due_event_reminders reclama y sella en la MISMA sentencia (skip locked); si la entrega falla, release_event_reminders devuelve las filas al barrido siguiente",
+          "file": "src/lib/clubs/activities/event-reminders.ts"
+        },
+        {
+          "node": "m-social",
+          "action": "notifyMany con systemDelivery y pushBody a medida (evento, club, hora y tiempo restante; nunca el enlace de acceso)",
+          "file": "src/lib/social/notifications.ts"
+        },
+        {
+          "node": "t-notifications",
+          "action": "Fila SIN actor: la emite el sistema, no una persona"
+        },
+        {
+          "node": "m-push",
+          "action": "sendPushToUsers firma con VAPID y envía a cada endpoint",
+          "file": "src/lib/push/send-push.ts"
+        },
+        {
+          "node": "sw",
+          "action": "El service worker pinta la notificación; su enlace abre la ficha del evento",
+          "file": "public/sw.js"
+        },
+        {
+          "node": "m-reactivity",
+          "action": "revalidateClubPages() refresca muro, calendario y la ficha del evento",
+          "file": "src/lib/reactivity/revalidate.ts"
         }
       ]
     }
