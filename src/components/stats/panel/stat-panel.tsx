@@ -1,24 +1,30 @@
 // El armazón único de TODOS los paneles estadísticos. Un panel no es un
 // componente a medida: es este armazón + un `PanelSpec`.
 //
-// DOS DENSIDADES, un solo árbol. El panel entero es un `<details>`:
+// DOS DENSIDADES:
 //
-//   PLEGADO (vista general) — lo que se ve de un vistazo, sin prosa:
+//   CARA (vista general) — lo que se ve de un vistazo, sin prosa:
 //     rótulo de contexto · título · cifra grande · titular de una línea · gráfico
-//   DESPLEGADO — el detalle, al pulsar en cualquier punto de la tarjeta:
-//     descripción · resumen completo · resto de indicadores · leyenda · nota ·
-//     tabla con los valores exactos · acciones
+//   CAPA — el detalle, al pulsar en cualquier punto de la tarjeta:
+//     todo lo anterior + descripción · resumen completo · resto de indicadores ·
+//     tabla con los valores exactos · contexto largo · nota · acciones
 //
-// El bloque compacto va dentro del `<summary>`, así que **la tarjeta entera es
-// el control**: se pulsa donde sea, funciona con teclado y se anuncia como
-// desplegable — sin una línea de JavaScript, en una página que es toda de
-// servidor.
+// El detalle se abre en un modal (`PanelDialog`) y NO desplegando la tarjeta en
+// línea. La razón es de maquetación, no de estilo: en una rejilla, un
+// `<details>` que crece empuja a sus vecinas y mueve bajo el cursor justo lo
+// que se estaba mirando. La capa deja el muro quieto.
 //
-// Lo que NO cambia al plegar: el dato sigue siendo texto. La cifra que preside
+// Lo que NO cambia en la cara: el dato sigue siendo texto. La cifra que preside
 // la tarjeta es un `<dl>` de verdad (la fabrica `heroKpi` si la spec no trae
-// indicadores) y debajo va lo que destaca. Un panel plegado nunca es solo un
-// dibujo. La leyenda también viaja al bloque compacto: un anillo plegado sin
-// leyenda sería identidad por color y nada más.
+// indicadores) y debajo va lo que destaca. Una tarjeta cerrada nunca es solo un
+// dibujo. La leyenda también viaja a la cara: un anillo sin leyenda sería
+// identidad por color y nada más.
+//
+// La capa REPITE la cabecera, la cifra y el gráfico en vez de solo añadir lo que
+// falta. Es a propósito: la capa tapa la tarjeta, así que sin repetirlos el
+// detalle aparecería huérfano de la cifra que lo contextualiza. No duplica nada
+// en el árbol accesible — un `<dialog>` cerrado no existe para el lector, y con
+// la capa abierta el fondo queda `inert`.
 
 import Link from "next/link";
 import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
@@ -34,6 +40,7 @@ import {
 import { buildHighlight, summaryLines } from "@/lib/stats/panel/summary";
 import type { PanelKpi, PanelSpec } from "@/lib/stats/panel/types";
 import { Chart, Legend } from "./charts";
+import { PanelDialog } from "./panel-dialog";
 import { contextSentence, PanelTable } from "./panel-table";
 
 /** Visualizaciones que YA son texto: no dibujan ni repiten tabla. */
@@ -119,51 +126,68 @@ export function StatPanel({
   const rest = spec.kpis?.filter((k) => k.key !== hero?.key) ?? [];
   const isTextual = TEXTUAL.includes(spec.viz);
 
+  const highlight = isTextual ? "" : buildHighlight(spec, derived);
+  const warning = state.status === "partial" ? state.message : null;
+
+  // Aviso y gráfico salen igual en la cara y en la capa. El titular NO: en la
+  // capa está el resumen entero, que ya lo contiene — repetirlo dejaba la misma
+  // frase dos veces seguidas, palabra por palabra.
+  const alert = warning && (
+    <p className="rounded-lg border border-status-in-progress/40 bg-status-in-progress/10 px-2.5 py-1.5 text-[11px] text-foreground-soft">
+      <span aria-hidden>⚠ </span>
+      {warning}
+    </p>
+  );
+
+  const plot = !isTextual && (
+    <div aria-hidden className="pt-0.5">
+      <Chart spec={spec} derived={derived} />
+    </div>
+  );
+
   return (
-    <section aria-labelledby={titleId} className={`${CARD} hover:border-accent/40`}>
-      <details className="group">
-        {/* ── PLEGADO ───────────────────────────────────────────────────── */}
-        <summary className="flex cursor-pointer list-none flex-col gap-2.5 p-4 [&::-webkit-details-marker]:hidden">
-          <PanelHead spec={spec} titleId={titleId} Heading={Heading} chevron />
+    <section
+      aria-labelledby={titleId}
+      className={`${CARD} relative hover:border-accent/40`}
+    >
+      {/* ── CARA ─────────────────────────────────────────────────────────
+          Sin nada interactivo dentro: el disparador de la capa la cubre
+          entera y taparía cualquier enlace. Por eso el ranking recortado va
+          sin enlaces — los completos, con los suyos, viven en la capa. */}
+      <div className="flex flex-col gap-2.5 p-4">
+        <PanelHead spec={spec} titleId={titleId} Heading={Heading} />
+        {alert}
+        {hero && <Hero kpi={hero} />}
+        {/* Una frase: lo que DESTACA. El párrafo entero espera a la capa. */}
+        {highlight && (
+          <p className="text-[11.5px] leading-snug text-muted-foreground">
+            {highlight}
+          </p>
+        )}
+        {plot}
+        <Legend derived={derived} />
+        {spec.viz === "ranking" && (
+          <RankingList spec={spec} limit={RANKING_PREVIEW} />
+        )}
+        <span aria-hidden className="label-section pt-0.5 text-accent/70">
+          Ampliar ↗
+        </span>
+      </div>
 
-          {state.status === "partial" && (
-            <p className="rounded-lg border border-status-in-progress/40 bg-status-in-progress/10 px-2.5 py-1.5 text-[11px] text-foreground-soft">
-              <span aria-hidden>⚠ </span>
-              {state.message}
-            </p>
-          )}
-
+      {/* ── CAPA ───────────────────────────────────────────────────────
+          Orden de lectura: qué es · cuánto · qué dice · gráfico · valores
+          exactos. El texto va ANTES del dibujo a propósito — quien no puede
+          leer el gráfico no debería tener que saltárselo para llegar al dato. */}
+      <PanelDialog title={spec.title} label={`Ampliar ${spec.title}`}>
+        <div className="flex flex-col gap-3">
+          <PanelHead
+            spec={spec}
+            titleId={`${spec.id}-dialog-title`}
+            Heading={Heading}
+          />
+          {alert}
           {hero && <Hero kpi={hero} />}
 
-          {/* Una frase: lo que DESTACA. El párrafo entero espera al desplegable. */}
-          {!isTextual && buildHighlight(spec, derived) && (
-            <p className="text-[11.5px] leading-snug text-muted-foreground">
-              {buildHighlight(spec, derived)}
-            </p>
-          )}
-
-          {!isTextual && (
-            <div aria-hidden className="pt-0.5">
-              <Chart spec={spec} derived={derived} />
-            </div>
-          )}
-
-          <Legend derived={derived} />
-
-          {spec.viz === "ranking" && (
-            <RankingList spec={spec} limit={RANKING_PREVIEW} />
-          )}
-
-          <span
-            aria-hidden
-            className="label-section pt-0.5 text-accent/70 group-open:hidden"
-          >
-            Ver detalle ↓
-          </span>
-        </summary>
-
-        {/* ── DESPLEGADO ────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-3 border-t border-border px-4 pt-3 pb-4">
           {spec.description && (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {spec.description}
@@ -178,10 +202,11 @@ export function StatPanel({
 
           {rest.length > 0 && <KpiRow kpis={rest} />}
 
-          {/* El ranking completo: la vista compacta solo enseñaba las primeras. */}
-          {spec.viz === "ranking" && spec.data.length > RANKING_PREVIEW && (
-            <RankingList spec={spec} />
-          )}
+          {plot}
+          <Legend derived={derived} />
+
+          {/* El ranking completo: la cara solo enseñaba las primeras. */}
+          {spec.viz === "ranking" && <RankingList spec={spec} />}
 
           {/* Los valores exactos. Los paneles que ya son texto no los repiten:
               su lista o su `<dl>` YA son el dato, y duplicarlos solo obliga al
@@ -213,7 +238,7 @@ export function StatPanel({
             </div>
           )}
         </div>
-      </details>
+      </PanelDialog>
     </section>
   );
 }
@@ -229,35 +254,23 @@ function PanelHead({
   spec,
   titleId,
   Heading,
-  chevron = false,
 }: {
   spec: PanelSpec;
   titleId: string;
   Heading: "h2" | "h3" | "h4";
-  chevron?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="label-section">
-          {spec.context.period}
-          {spec.context.scope ? ` · ${spec.context.scope}` : ""} · {spec.unit.short}
-        </span>
-        <Heading
-          id={titleId}
-          className="font-serif text-[15px] leading-tight font-semibold text-foreground"
-        >
-          {spec.title}
-        </Heading>
-      </div>
-      {chevron && (
-        <span
-          aria-hidden
-          className="mt-0.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-        >
-          ⌄
-        </span>
-      )}
+    <div className="flex min-w-0 flex-col gap-1">
+      <span className="label-section">
+        {spec.context.period}
+        {spec.context.scope ? ` · ${spec.context.scope}` : ""} · {spec.unit.short}
+      </span>
+      <Heading
+        id={titleId}
+        className="font-serif text-[15px] leading-tight font-semibold text-foreground"
+      >
+        {spec.title}
+      </Heading>
     </div>
   );
 }
@@ -339,11 +352,11 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
 }
 
 /**
- * Ranking: lista ordenada de verdad, la posición la pone `<ol>`. Plegado enseña
- * las primeras; desplegado, todas.
+ * Ranking: lista ordenada de verdad, la posición la pone `<ol>`. La cara enseña
+ * las primeras; la capa, todas.
  *
- * Sin enlaces cuando está recortada: iría dentro del `<summary>`, y un enlace
- * dentro del control que abre la tarjeta es una trampa para el teclado.
+ * Sin enlaces cuando está recortada: esa versión vive en la cara, bajo el
+ * disparador que cubre la tarjeta, así que serían enlaces intocables.
  */
 function RankingList({ spec, limit }: { spec: PanelSpec; limit?: number }) {
   const rows = limit ? spec.data.slice(0, limit) : spec.data;

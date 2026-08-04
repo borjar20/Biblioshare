@@ -116,7 +116,9 @@ export function summaryLines(spec: PanelSpec, derived = derive(spec)): string[] 
       return sentences([
         `${n} ${n === 1 ? "posición" : "posiciones"}`,
         first ? `1.ª ${first.label} (${formatValue(first.value, unit)})` : null,
-        n > 1 ? `última ${last.label} (${formatValue(last.value, unit)})` : null,
+        // Mayúscula: cada elemento de `sentences` es una FRASE y se une con
+        // punto. En minúscula salía «1.ª Dune (5,0 ★). última Solaris (4,0 ★).».
+        n > 1 ? `Última ${last.label} (${formatValue(last.value, unit)})` : null,
         missingSentence(d, spec.data.length),
       ]);
     }

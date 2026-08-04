@@ -199,7 +199,9 @@ describe("reglas por tipo de visualización", () => {
     );
     expect(text).toContain("2 posiciones");
     expect(text).toContain("1.ª Dune (5,0 ★)");
-    expect(text).toContain("última Solaris (4,0 ★)");
+    // Mayúscula: va detrás de un punto, no pegada a la frase anterior.
+    expect(text).toContain("Última Solaris (4,0 ★)");
+    expect(text).not.toContain(". última");
   });
 
   it("kpi admite un valor no numérico sin romper la frase", () => {

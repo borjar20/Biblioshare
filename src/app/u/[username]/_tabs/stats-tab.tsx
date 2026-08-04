@@ -153,7 +153,10 @@ export async function StatsTab({
       <div className="hidden lg:block">
         <StatPanel spec={actividadAnual} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* `items-start`: sin él, la rejilla estira las dos tarjetas a la altura
+          de la más alta y «Récords» (que no lleva gráfico) se queda con un
+          palmo de tarjeta vacía debajo de su cifra. */}
+      <div className="grid items-start gap-4 sm:grid-cols-2">
         <StatPanel spec={recordsSpec} />
         <StatPanel spec={pila} />
       </div>

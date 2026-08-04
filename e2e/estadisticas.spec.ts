@@ -67,8 +67,8 @@ async function login(page: import("@playwright/test").Page) {
 
 // Contrato del armazón de paneles (docs/design/paneles-estadisticos.md). Lo que
 // se comprueba aquí no es el aspecto: es que el dato sea LEGIBLE sin mirar el
-// gráfico, plegado y desplegado. Cada panel es una región con nombre, declara su
-// periodo y su unidad de un vistazo, y al pulsarlo enseña los valores exactos.
+// gráfico, en la cara y en la capa. Cada panel es una región con nombre, declara
+// su periodo y su unidad de un vistazo, y al pulsarlo abre los valores exactos.
 test("cada panel es una región con nombre, contexto y tabla de valores exactos", async ({
   page,
 }) => {
@@ -81,38 +81,56 @@ test("cada panel es una región con nombre, contexto y tabla de valores exactos"
   const horas = page.getByRole("region", { name: "Horas por mes" });
   await expect(horas).toBeVisible();
 
-  // 2 · Plegado: el rótulo dice periodo y unidad en cuatro palabras.
+  // 2 · En la cara: el rótulo dice periodo y unidad en cuatro palabras.
   await expect(horas).toContainText(/2026 · min/i);
 
-  // 3 · Plegado, la tabla NO está a la vista: la vista general es compacta.
-  const tabla = horas.getByRole("table");
-  await expect(tabla).toBeHidden();
+  // 3 · La tabla NO está a la vista: la vista general es compacta.
+  await expect(horas.getByRole("table")).toBeHidden();
 
-  // 4 · La tarjeta ENTERA es el control: se pulsa y se despliega.
-  await horas.locator("summary").click();
+  // 4 · La tarjeta ENTERA es el control, y abre una capa con nombre propio.
+  await horas.getByRole("button", { name: /ampliar horas por mes/i }).click();
+  const capa = page.getByRole("dialog", { name: "Horas por mes" });
+  await expect(capa).toBeVisible();
+
+  const tabla = capa.getByRole("table");
   await expect(tabla).toBeVisible();
   await expect(tabla.getByRole("rowheader", { name: "Enero" })).toBeVisible();
   await expect(tabla.getByRole("columnheader", { name: "Mes" })).toBeVisible();
   // Y ahí sí aparece la frase larga de contexto, con la unidad completa.
-  await expect(horas).toContainText(/Valores en minutos/i);
+  await expect(capa).toContainText(/Valores en minutos/i);
 
-  // 5 · Un panel que ignora el selector de periodo lo dice ANTES de su cifra,
-  //     sin necesidad de desplegarlo.
+  // 5 · Escape cierra y el foco VUELVE al disparador, no al principio del
+  //     documento: quien navega con teclado sigue donde estaba.
+  await page.keyboard.press("Escape");
+  await expect(capa).toBeHidden();
+  await expect(
+    horas.getByRole("button", { name: /ampliar horas por mes/i }),
+  ).toBeFocused();
+
+  // 6 · Un panel que ignora el selector de periodo lo dice ANTES de su cifra,
+  //     sin necesidad de ampliarlo.
   await expect(page.getByRole("region", { name: "Estados" })).toContainText(
     /Ahora mismo · foto del momento/i,
   );
 
-  // 6 · Los paneles que ya son texto (ranking) no repiten tabla ni desplegados:
+  // 7 · Los paneles que ya son texto (ranking) no repiten tabla ni ampliados:
   //     su lista ordenada ES el dato.
-  const mejores = page.getByRole("region", { name: "Mejor valoradas" });
-  await mejores.locator("summary").click();
-  await expect(mejores.getByRole("table")).toHaveCount(0);
+  await page
+    .getByRole("region", { name: "Mejor valoradas" })
+    .getByRole("button", { name: /ampliar mejor valoradas/i })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Mejor valoradas" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Mejor valoradas" }).getByRole("table"),
+  ).toHaveCount(0);
 });
 
-// Un panel plegado tiene que seguir diciendo su dato en TEXTO. Si al plegarlo se
-// quedara solo el dibujo, el rediseño compacto habría deshecho justo lo que este
+// La cara del panel tiene que seguir diciendo su dato en TEXTO. Si al compactar
+// se quedara solo el dibujo, el rediseño habría deshecho justo lo que este
 // sistema arregla.
-test("plegado, el panel sigue teniendo su cifra en texto y no solo el gráfico", async ({
+test("en la cara, el panel sigue teniendo su cifra en texto y no solo el gráfico", async ({
   page,
 }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
@@ -121,10 +139,43 @@ test("plegado, el panel sigue teniendo su cifra en texto y no solo el gráfico",
   await page.goto("/estadisticas");
 
   const horas = page.getByRole("region", { name: "Horas por mes" });
-  // Sin desplegar nada: el `<dl>` con la cifra que preside la tarjeta.
+  // Sin abrir nada: el `<dl>` con la cifra que preside la tarjeta.
   const hero = horas.locator("dl").first();
   await expect(hero).toBeVisible();
   await expect(hero).toContainText(/\d/);
+});
+
+// La razón de ser de la capa: ampliar un panel no puede mover a sus vecinos.
+// Con el `<details>` en línea, abrir la primera tarjeta empujaba a la de al lado
+// y el muro se recolocaba bajo el cursor.
+test("ampliar un panel no mueve a los demás", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const vecino = page.getByRole("region", { name: "Estados" });
+  // Posición respecto al DOCUMENTO, no al viewport: Playwright hace scroll para
+  // pulsar, y un `boundingBox()` mediría ese scroll como si fuera un salto.
+  const donde = () =>
+    vecino.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        top: Math.round(r.top + window.scrollY),
+        left: Math.round(r.left + window.scrollX),
+        height: Math.round(r.height),
+      };
+    });
+
+  const antes = await donde();
+
+  await page
+    .getByRole("region", { name: "Horas por mes" })
+    .getByRole("button", { name: /ampliar horas por mes/i })
+    .click();
+  await expect(page.getByRole("dialog", { name: "Horas por mes" })).toBeVisible();
+
+  expect(await donde()).toEqual(antes);
 });
 
 // La pestaña Estadísticas del perfil usa el MISMO armazón que /estadisticas
@@ -139,12 +190,11 @@ test("la pestaña del perfil usa el armazón de paneles", async ({ page }) => {
   await expect(semana).toBeVisible();
   await expect(semana).toContainText(/Últimos 7 días · ventana móvil · min/i);
 
-  // Se despliega igual que en el muro, y da los valores exactos por día.
-  await semana.locator("summary").click();
-  await expect(semana.getByRole("table")).toBeVisible();
-  await expect(
-    semana.getByRole("columnheader", { name: "Día" }),
-  ).toBeVisible();
+  // Se amplía igual que en el muro, y da los valores exactos por día.
+  await semana.getByRole("button", { name: /ampliar lectura esta semana/i }).click();
+  const capa = page.getByRole("dialog", { name: "Lectura esta semana" });
+  await expect(capa.getByRole("table")).toBeVisible();
+  await expect(capa.getByRole("columnheader", { name: "Día" })).toBeVisible();
 
   // El calendario y el editor de objetivo NO son paneles: siguen siendo
   // controles con estado propio y no se pliegan.

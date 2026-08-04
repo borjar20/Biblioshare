@@ -41,38 +41,63 @@ Nueve reglas. Las cuatro primeras son las que se incumplían antes del rediseño
 9. **Los filtros van en una fila, arriba, para todo el muro.** Nunca un filtro dentro
    de una tarjeta.
 
-## 2. Jerarquía de contenido: dos densidades, un solo árbol
+## 2. Jerarquía de contenido: dos densidades, la cara y la capa
 
-El panel entero es un `<details>`. **La tarjeta completa es el control**: se pulsa en
-cualquier punto, funciona con teclado y se anuncia como desplegable, sin una línea de
-JavaScript.
+**La tarjeta completa es el control**: se pulsa en cualquier punto y abre el panel
+ampliado en una capa modal.
 
 ```
-PLEGADO  (vista general — sin prosa)      DESPLEGADO  (el detalle)
-┌────────────────────────────────┐        ├─ descripción     ← cómo se calcula
-│ 2 Rótulo: periodo · alcance ·  │        ├─ 3 resumen completo
-│   unidad                       │        ├─ 4 resto de indicadores
-│ 1 Título                       │        ├─ 7 tabla de valores exactos
-│ 4 Cifra que preside            │        ├─ 2 contexto en frase larga
-│ 3 Una frase: lo que DESTACA    │        ├─ 8 notas
-│ 5 Visualización + leyenda      │        └─ 10 acciones
-│ 6 «Ver detalle ↓»              │
-└────────────────────────────────┘        9 Estados sustituyen a todo esto
+CARA  (vista general — sin prosa)         CAPA  (el detalle, sobre el muro)
+┌────────────────────────────────┐        ├─ 1 título + 2 rótulo
+│ 2 Rótulo: periodo · alcance ·  │        ├─ 4 cifra que preside
+│   unidad                       │        ├─ descripción     ← cómo se calcula
+│ 1 Título                       │        ├─ 3 resumen completo
+│ 4 Cifra que preside            │        ├─ 4 resto de indicadores
+│ 3 Una frase: lo que DESTACA    │        ├─ 5 visualización + leyenda
+│ 5 Visualización + leyenda      │        ├─ 7 tabla de valores exactos
+│ 6 «Ampliar ↗»                  │        ├─ 2 contexto en frase larga
+└────────────────────────────────┘        ├─ 8 notas
+                                          └─ 10 acciones
+9 Estados sustituyen a todo esto
 ```
 
 El orden del DOM **es** el orden de lectura y el de importancia. Quien entre en la
-región y no siga leyendo ya se ha llevado la respuesta.
+región y no siga leyendo ya se ha llevado la respuesta. Dentro de la capa el texto va
+**antes** del dibujo: quien no puede leer el gráfico no debería tener que saltárselo
+para llegar al dato.
 
-**Tres reglas de la vista compacta**, que es donde es fácil deshacer todo el trabajo:
+**Por qué una capa y no un `<details>` en línea.** El desplegable nativo es más barato
+y fue la primera versión, pero en una rejilla de dos o tres columnas una tarjeta que
+crece empuja a todas sus vecinas: el muro se recoloca bajo el cursor y lo que estabas
+mirando se va de sitio. La capa deja el fondo quieto y concentra el foco —visual y de
+teclado— en un solo panel. Hay un e2e que lo fija: ampliar un panel no puede mover la
+posición de otro en el documento.
 
-1. **Plegado sigue habiendo cifra en texto.** La preside un `<dl>` de verdad; si la spec
-   no declara indicadores, `heroKpi` fabrica uno con el total. Un panel plegado nunca es
-   un dibujo a secas.
+Sigue siendo `<dialog>` **nativo** con `showModal()`, como el resto de capas del repo:
+Escape, trampa de foco, `inert` del fondo y devolución del foco al disparador vienen
+de serie. El coste es un componente cliente mínimo (`panel-dialog.tsx`) en una página
+que por lo demás es toda de servidor: solo sabe abrir y cerrar, y el contenido le llega
+ya renderizado.
+
+**Cuatro reglas de la vista compacta**, que es donde es fácil deshacer todo el trabajo:
+
+1. **En la cara sigue habiendo cifra en texto.** La preside un `<dl>` de verdad; si la
+   spec no declara indicadores, `heroKpi` fabrica uno con el total. Una tarjeta cerrada
+   nunca es un dibujo a secas.
 2. **La frase compacta es la SEGUNDA del resumen, no la primera.** La primera dice el
    total, y el total ya está ahí en 32 px: repetirlo gasta la única línea de prosa que
    tiene la vista general. La segunda dice lo que destaca.
-3. **La leyenda viaja al bloque compacto.** Un anillo plegado sin leyenda sería
-   identidad por color y nada más.
+3. **La leyenda viaja a la cara.** Un anillo sin leyenda sería identidad por color y
+   nada más.
+4. **Ese titular NO se repite en la capa.** Allí está el resumen entero, que ya lo
+   contiene: reutilizar el bloque de la cara dejaba la misma frase dos veces seguidas,
+   palabra por palabra.
+
+**La cara no lleva nada interactivo.** El disparador la cubre entera (`absolute
+inset-0`), así que cualquier enlace debajo sería intocable. Por eso el ranking recortado
+va sin enlaces y los completos viven en la capa. El botón es una superposición y no
+envuelve al contenido porque `<button>` solo admite contenido de frase: un `<h2>`
+dentro sería HTML inválido.
 
 **La decisión que sostiene la accesibilidad:** el gráfico va `aria-hidden` y la tabla
 es el dato. La alternativa —un `aria-label` por barra— duplica cada cifra en el árbol
@@ -81,8 +106,8 @@ accesible, obliga a mantener dos copias y las desincroniza al primer cambio.
 ## 3. Plantilla genérica
 
 ```
-PLEGADO ─────────────────────────────────────────────┐
-│ 2026 · MIN                                      ⌄  │ 2  rótulo mono
+CARA ────────────────────────────────────────────────┐
+│ 2026 · MIN                                         │ 2  rótulo mono
 │ Horas por mes                                      │ 1  título serif
 │                                                    │
 │ 25 min                                             │ 4  cifra que preside
@@ -94,15 +119,25 @@ PLEGADO ────────────────────────
 │ E F M A M J J A S  O  N  D                         │
 │                  └─ ─ = cero medido                │
 │                     · = sin datos                  │
-│ VER DETALLE ↓                                      │ 6
+│ AMPLIAR ↗                                          │ 6
 └────────────────────────────────────────────────────┘
 
-DESPLEGADO (se añade debajo, al pulsar la tarjeta) ──┐
+CAPA (modal sobre el muro, al pulsar la tarjeta) ────┐
+│                                              [ ✕ ] │    cierre pegado arriba
+│ 2026 · MIN                                         │ 2
+│ Horas por mes                                      │ 1
+│                                                    │
+│ 25 min                                             │ 4  la cifra se repite:
+│ Total                                              │    la capa tapa la cara
+│                                                    │
 │ Solo cuenta sesiones con duración registrada.      │    descripción
 │                                                    │
 │ Total 25 minutos en 8 puntos. Máximo: Julio        │ 3  resumen completo
-│ (25 min); mínimo: Enero (0 min). 4 de 12 puntos    │
-│ sin datos.                                         │
+│ (25 min); mínimo: Enero (0 min). 4 de 12 puntos    │    (el titular NO se
+│ sin datos.                                         │     repite: ya está aquí)
+│                                                    │
+│ ─ ─ ─ ─ ─ ─ █ ─ ·  ·  ·  ·                         │ 5
+│ E F M A M J J A S  O  N  D                         │
 │                                                    │
 │ ┌────────────┬──────────┬──────────┐               │ 7
 │ │ Mes        │  Minutos │    Cuota │               │
@@ -291,48 +326,62 @@ secas, que no dice si es culpa del filtro o de que no hay nada.
 ## 9. Semántica y ARIA
 
 ```html
-<section aria-labelledby="horas-title">        <!-- región con nombre -->
-  <details>
-    <summary>                                   <!-- LA TARJETA ENTERA es el control -->
-      <span class="label-section">2026 · min</span>
-      <h2 id="horas-title">Horas por mes</h2>
-      <dl><dd>25 min</dd><dt>Total</dt></dl>    <!-- la cifra, en texto -->
-      <p>Máximo: Julio (25 min)…</p>            <!-- lo que destaca -->
-      <div aria-hidden="true">…gráfico…</div>   <!-- decorativo -->
-      <ul>…leyenda con glifo…</ul>              <!-- NO oculta: nombra series -->
-    </summary>
+<section aria-labelledby="horas-title" class="relative">   <!-- región con nombre -->
+  <div>                                       <!-- LA CARA: nada interactivo -->
+    <span class="label-section">2026 · min</span>
+    <h2 id="horas-title">Horas por mes</h2>
+    <dl><dd>25 min</dd><dt>Total</dt></dl>    <!-- la cifra, en texto -->
+    <p>Máximo: Julio (25 min)…</p>            <!-- lo que destaca -->
+    <div aria-hidden="true">…gráfico…</div>   <!-- decorativo -->
+    <ul>…leyenda con glifo…</ul>              <!-- NO oculta: nombra series -->
+  </div>
 
-    <div>
-      <p>Total 25 minutos en 8 puntos…</p>      <!-- resumen completo -->
-      <table>
-        <caption class="sr-only">Horas por mes. 2026 · Sesiones. Valores en minutos.</caption>
-        <thead><tr><th scope="col">Mes</th><th scope="col">Minutos</th></tr></thead>
-        <tbody><tr><th scope="row">Enero</th><td>0 min</td></tr></tbody>
-        <tfoot><tr><th scope="row">Total</th><td>25 min</td></tr></tfoot>
-      </table>
-    </div>
-  </details>
+  <!-- El disparador CUBRE la tarjeta; no la envuelve -->
+  <button aria-haspopup="dialog" aria-label="Ampliar Horas por mes"
+          class="absolute inset-0"></button>
+
+  <dialog aria-label="Horas por mes">         <!-- showModal(): modal + inert -->
+    <button aria-label="Cerrar">✕</button>
+    <span class="label-section">2026 · min</span>
+    <h2 id="horas-dialog-title">Horas por mes</h2>
+    <dl><dd>25 min</dd><dt>Total</dt></dl>
+    <p>Total 25 minutos en 8 puntos…</p>      <!-- resumen completo -->
+    <div aria-hidden="true">…gráfico…</div>
+    <table>
+      <caption class="sr-only">Horas por mes. 2026 · Sesiones. Valores en minutos.</caption>
+      <thead><tr><th scope="col">Mes</th><th scope="col">Minutos</th></tr></thead>
+      <tbody><tr><th scope="row">Enero</th><td>0 min</td></tr></tbody>
+      <tfoot><tr><th scope="row">Total</th><td>25 min</td></tr></tfoot>
+    </table>
+  </dialog>
 </section>
 ```
 
-El `<h2>` va **dentro** del `<summary>`: el nombre accesible del desplegable acaba
-siendo «Horas por mes · 2026 · min · 25 min · Total…», que es informativo — dice qué se
-va a abrir. A cambio, `aria-labelledby` de la región sigue apuntando al `<h2>`, así que
-el panel conserva su nombre en la lista de regiones.
+**El disparador se superpone, no envuelve.** `<button>` solo admite contenido de frase:
+meter dentro el `<h2>` sería HTML inválido y algunos lectores lo aplanan. Por eso el
+botón es una capa `absolute inset-0` con `aria-label` propio —«Ampliar Horas por mes»,
+que dice qué se abre y de qué panel— y el `aria-labelledby` de la región sigue apuntando
+al `<h2>`, así que el panel conserva su nombre en la lista de regiones.
 
-**Ningún enlace dentro del `<summary>`.** Un enlace dentro del control que abre la
-tarjeta es una trampa de teclado: los enlaces de un ranking y de la tabla viven en el
-bloque desplegado, y la lista recortada de la vista compacta va sin ellos.
+**Cabecera y cifra se repiten dentro de la capa, y no duplican nada.** Un `<dialog>`
+cerrado no existe para el lector de pantalla, y con la capa abierta el fondo queda
+`inert`: en ningún momento hay dos copias vivas. Sin repetirlas, el detalle aparecería
+huérfano de la cifra que lo contextualiza, porque la capa tapa la cara.
 
-**Carga, error y vacío no se pliegan**: no hay detalle detrás que abrir.
+**Ningún enlace en la cara.** El disparador la cubre entera, así que serían enlaces
+intocables: los del ranking y los de la tabla viven en la capa, y la lista recortada de
+la vista compacta va sin ellos.
+
+**Carga, error y vacío no se amplían**: no hay detalle detrás que abrir.
 
 Qué se usa y por qué:
 
 - `<section aria-labelledby>` — la convierte en **región navegable**: 12 paneles = 12
   saltos, en vez de un muro plano.
 - `aria-hidden` en el gráfico — el valor existe **una sola vez** en el árbol accesible.
-- `<details>/<summary>` — el desplegable **nativo**: teclado y anuncio de estado
-  plegado/desplegado sin una línea de JavaScript, y funciona aunque el JS falle.
+- `<dialog>` + `showModal()` — el modal **nativo**: Escape, trampa de foco, `inert` del
+  fondo y devolución del foco al disparador, sin escribirlos a mano. Es el mismo patrón
+  que el resto de capas del repo (`sheet-shell.tsx`, `image-zoom.tsx`).
 - `<dl>/<dt>/<dd>` — los indicadores son pares término/valor de verdad.
 - `<ol>` en rankings — la posición la da el marcado, no un número pintado.
 - `scope="col"`/`scope="row"` + `<caption>` — cada celda queda situada al navegar.
@@ -344,14 +393,16 @@ Qué se usa y por qué:
 
 ### Funcionales
 
-- [ ] El panel responde a las 7 preguntas sin abrir nada más que el desplegable.
+- [ ] El panel responde a las 7 preguntas sin abrir nada más que su capa.
 - [ ] Resumen, indicadores, gráfico y tabla salen del mismo `PanelSpec`.
 - [ ] Borrar el gráfico no pierde información.
-- [ ] **Plegado, el panel sigue teniendo su cifra en texto** (no solo el dibujo).
-- [ ] La tarjeta entera abre y cierra con ratón y con teclado, y no hay enlaces dentro
-      del control que la abre.
-- [ ] La leyenda es visible sin desplegar en todo panel con 2+ series.
-- [ ] El alcance ajeno al filtro se ve **antes** que la cifra, sin desplegar.
+- [ ] **En la cara, el panel sigue teniendo su cifra en texto** (no solo el dibujo).
+- [ ] La tarjeta entera abre con ratón y con teclado; la capa cierra con Escape, con el
+      botón y pulsando fuera, y **devuelve el foco al disparador**.
+- [ ] **Ampliar un panel no mueve a ningún otro** de sitio en el documento.
+- [ ] Ninguna frase aparece dos veces seguidas dentro de la capa.
+- [ ] La leyenda es visible sin ampliar en todo panel con 2+ series.
+- [ ] El alcance ajeno al filtro se ve **antes** que la cifra, sin ampliar.
 - [ ] `null` se lee «Sin datos» y no entra en totales, medias ni cuotas.
 - [ ] Un `0` medido se dibuja y se lista como `0`.
 - [ ] Con un solo punto no se anuncian máximo ni mínimo.
@@ -372,11 +423,13 @@ Qué se usa y por qué:
 | 1.4.4 Redimensionar texto | Sin alturas fijas en el texto; el panel crece con él |
 | 1.4.10 Reajuste (400 %) | Una columna; la tabla desplaza en su propio contenedor, la página no |
 | 1.4.11 Contraste no textual | El dato no depende del gráfico, así que ningún tono es información única |
-| 2.1.1 Teclado | Solo hay dos controles, ambos nativos: `<details>` y enlaces |
+| 2.1.1 Teclado | Solo hay controles nativos: `<button>`, `<dialog>` y enlaces |
+| 2.1.2 Sin trampas de teclado | La trampa de foco de la capa es la del `<dialog>` nativo, y Escape siempre sale |
+| 2.4.3 Orden del foco | Al cerrar, el `<dialog>` nativo devuelve el foco al disparador (con e2e) |
 | 2.4.6 Encabezados y etiquetas | Un `h2` por panel; nivel configurable para no romper la jerarquía |
 | 2.4.7 Foco visible | El `:focus-visible` global de `globals.css` (anillo de acento, offset 2) |
 | 2.4.11 Foco no oscurecido | Sin barras fijas sobre los paneles |
-| 2.5.8 Tamaño del objetivo | El `<summary>` ocupa la línea completa |
+| 2.5.8 Tamaño del objetivo | El disparador ocupa la tarjeta entera |
 | 3.2.4 Identificación coherente | Los 12 paneles comparten armazón, orden y microcopy |
 | 3.3.1 Identificación de errores | El error es texto con glifo, nunca un panel en rojo sin más |
 | 4.1.2 Nombre, función, valor | Elementos nativos; el ARIA se limita a nombrar la región y ocultar el adorno |
@@ -385,14 +438,18 @@ Qué se usa y por qué:
 
 - **28 unitarios** (`summary.test.ts`): hueco vs cero, silencio de reglas, concordancia,
   qué indicador preside y qué frase llega a la vista compacta.
-- **6 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y unidad,
-  tabla oculta plegada y visible al pulsar la tarjeta, `rowheader`/`columnheader`,
-  cifra en texto sin desplegar, ausencia de tabla duplicada en un ranking, y la
-  pestaña del perfil sobre el mismo armazón.
-- **Revisión visual en navegador** (1280 px y 390 px, plegado y desplegado). De ahí
-  salieron seis defectos que ninguna prueba veía: color de sector por posición en vez
-  de por categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota con
-  total cero, 96 px de hueco con todo a cero, y las dos «M» de martes y miércoles.
+- **7 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y unidad,
+  tabla oculta en la cara y visible en la capa, `rowheader`/`columnheader`, cifra en
+  texto sin ampliar, Escape cerrando **y devolviendo el foco al disparador**, que
+  ampliar un panel no mueva a sus vecinos, ausencia de tabla duplicada en un ranking, y
+  la pestaña del perfil sobre el mismo armazón.
+- **Revisión visual en navegador** (1280 px y 390 px, cara y capa). De ahí salieron
+  nueve defectos que ninguna prueba veía: color de sector por posición en vez de por
+  categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota con total
+  cero, 96 px de hueco con todo a cero, las dos «M» de martes y miércoles, el titular
+  repetido palabra por palabra dentro de la capa, «. última Solaris» en minúscula tras
+  punto, y las etiquetas del eje pisándose («Fantasía» sobre «Ciencia ficción»: el
+  `truncate` no recortaba porque la columna no le daba ancho).
 - Paleta pasada por el validador de la guía de dataviz — resultado en la decisión
   correspondiente de `docs/requirements/decisiones.md`.
 

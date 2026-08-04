@@ -26,11 +26,17 @@ function barWidth(count: number): string {
   return count <= 7 ? "max-w-6" : "max-w-3";
 }
 
-/** Etiqueta del eje. Corta si la hay, y siempre bajo la marca. */
+/**
+ * Etiqueta del eje. Corta si la hay, y siempre bajo la marca.
+ *
+ * `block w-full` no es decorado: sin ancho propio, la columna la centra en
+ * ajuste al contenido y `truncate` no tiene qué recortar — «Fantasía» y
+ * «Ciencia ficción» se pisaban una encima de otra.
+ */
 function AxisLabel({ datum }: { datum: PanelDatum }) {
   return (
     <span
-      className={`truncate font-mono text-[8.5px] ${
+      className={`block w-full truncate text-center font-mono text-[8.5px] ${
         datum.value === null ? "text-foreground-faint" : "text-muted-foreground"
       }`}
     >
