@@ -82,6 +82,12 @@ export function revalidateSagaRoutesPage(id: string): void {
 export function revalidateClubPages(): void {
   revalidatePath("/club/[slug]", "page");
   revalidatePath("/club/[slug]/actividad/[id]", "page");
+  // El calendario y la ficha de evento también: seguir un evento cambia el
+  // contador de seguidores de la ficha y la marca de «seguido» de la rejilla, y
+  // sin esto el optimismo de la UI no tendría con qué reconciliarse (la causa
+  // nº1 de «no se actualiza sin recargar»).
+  revalidatePath("/club/[slug]/calendario", "page");
+  revalidatePath("/club/[slug]/evento/[id]", "page");
   revalidatePath("/clubes");
 }
 

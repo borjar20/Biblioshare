@@ -26,7 +26,10 @@ function actividad(over: Partial<CalendarActivityRow> = {}): CalendarActivityRow
 }
 
 describe("buildCalendarMarks", () => {
-  it("un evento produce UNA marca y nunca enlaza", () => {
+  // Desde la spec 2026-08-04 un evento SÍ enlaza, a su ficha propia. Lo que sigue
+  // siendo cierto —y es lo que esta prueba protege— es que NO enlaza a
+  // /actividad/[id], que devuelve 404 para eventos.
+  it("un evento produce UNA marca que enlaza a su ficha, no a /actividad", () => {
     const marks = buildCalendarMarks(
       [actividad({ kind: "evento", title: "Café literario", startsOn: "2026-07-04" })],
       [],
@@ -35,8 +38,51 @@ describe("buildCalendarMarks", () => {
     );
     expect(marks).toHaveLength(1);
     expect(marks[0].markKind).toBe("evento");
-    expect(marks[0].href).toBeNull();
+    expect(marks[0].href).toBe(`/club/${SLUG}/evento/a1`);
+    expect(marks[0].href).not.toContain("/actividad/");
     expect(marks[0].title).toBe("Café literario");
+  });
+
+  it("un evento se marca como seguido solo si quien mira lo sigue", () => {
+    const [sinSeguir] = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(sinSeguir.followedByViewer).toBe(false);
+
+    const [seguido] = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+      new Set(["a1"]),
+    );
+    expect(seguido.followedByViewer).toBe(true);
+  });
+
+  // Un hito no se sigue: aunque su actividad esté en el conjunto, la marca de
+  // checkpoint no puede salir marcada como seguida.
+  it("un hito nunca se marca como seguido", () => {
+    const checkpoint: CalendarCheckpointRow = {
+      id: "c1",
+      label: "Hito 1",
+      dueOn: "2026-07-10",
+      activityId: "a1",
+      activityTitle: "Fundación",
+      activityKind: "buddy_read",
+      activityStatus: "active",
+    };
+    const marks = buildCalendarMarks(
+      [actividad({ kind: "buddy_read", startsOn: "2026-07-01" })],
+      [checkpoint],
+      HOY,
+      SLUG,
+      new Set(["a1"]),
+    );
+    const hitoMark = marks.find((m) => m.markKind === "hito");
+    expect(hitoMark?.followedByViewer).toBe(false);
   });
 
   it("un evento IGNORA su ends_on aunque tenga valor", () => {

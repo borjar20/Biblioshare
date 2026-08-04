@@ -49,7 +49,7 @@ export async function getClubCalendarMarks(
 ): Promise<CalendarMark[]> {
   const supabase = await createClient();
 
-  const [actividades, hitos] = await Promise.all([
+  const [actividades, hitos, seguidos] = await Promise.all([
     supabase
       .from("club_activities")
       .select("id, kind, title, status, starts_on, ends_on", { count: "exact" })
@@ -64,10 +64,24 @@ export async function getClubCalendarMarks(
       .eq("club_activities.club_id", clubId)
       .in("club_activities.status", ["active", "finished"])
       .not("due_on", "is", null),
+    // Los eventos que sigue quien mira, para la marca accesible de la rejilla y el
+    // filtro «Sigues» de la agenda. La RLS de club_event_followers ya limita las
+    // filas a los eventos de clubes donde es miembro activo, y aquí se acota al
+    // club de esta página. Va en el MISMO Promise.all: es una tercera consulta en
+    // paralelo, no un viaje extra en serie.
+    supabase
+      .from("club_event_followers")
+      .select("activity_id, club_activities!inner(club_id)")
+      .eq("club_activities.club_id", clubId),
   ]);
 
   if (actividades.error) throw actividades.error;
   if (hitos.error) throw hitos.error;
+  // Los seguimientos son decoración: si fallan, el calendario se pinta sin marcas
+  // de «seguido» en vez de caerse entero.
+  if (seguidos.error) {
+    console.error("getClubCalendarMarks: no se pudieron leer los seguimientos", seguidos.error);
+  }
 
   // El count va en la MISMA consulta (cabecera Content-Range), no en un viaje
   // aparte: así no puede desincronizarse con las filas que acaban de llegar.
@@ -117,5 +131,15 @@ export async function getClubCalendarMarks(
   // petición justo a medianoche podría dar dos nociones de "hoy" distintas en
   // la misma respuesta (ya pasó en el antiguo upcoming.ts, ya borrado, con UTC
   // y hora local mezcladas en el mismo fichero).
-  return buildCalendarMarks(activityRows, checkpointRows, today, clubSlug);
+  const followedEventIds = new Set(
+    (seguidos.data ?? []).map((row) => row.activity_id),
+  );
+
+  return buildCalendarMarks(
+    activityRows,
+    checkpointRows,
+    today,
+    clubSlug,
+    followedEventIds,
+  );
 }

@@ -17,16 +17,25 @@ export type CalendarMark = {
   activityId: string;
   activityKind: ActivityKind;
   /**
-   * null cuando la marca no tiene ficha a la que enlazar. Eso pasa siempre que
-   * `activityKind === "evento"`, sea cual sea el markKind: un evento no tiene
-   * página propia, así que enlazarlo sería un 404.
+   * null cuando la marca no tiene ficha a la que enlazar.
    *
-   * Ojo: NO basta con mirar `markKind === "evento"` -- un hito de una actividad
-   * evento también viene sin enlace. Los consumidores comprueban `href`, no el
-   * kind.
+   * Desde la spec 2026-08-04 un EVENTO sí enlaza, a su ficha propia
+   * (/club/[slug]/evento/[id]) -- no a /actividad/[id], que sigue devolviendo 404
+   * para eventos. Lo que se queda sin enlace es un HITO de una actividad evento:
+   * un checkpoint no tiene ficha por su cuenta y la de la actividad no le
+   * corresponde.
+   *
+   * Los consumidores comprueban `href`, nunca el kind.
    */
   href: string | null;
   past: boolean;
+  /**
+   * Solo tiene sentido en marcas de evento: si quien mira lo sigue. Se usa para la
+   * marca accesible de la rejilla y el filtro «Sigues» de la agenda (§17, §16).
+   * `false` en todo lo demás -- un hito o el inicio de una lectura conjunta no se
+   * siguen.
+   */
+  followedByViewer: boolean;
 };
 
 export type CalendarActivityRow = {
@@ -71,13 +80,16 @@ export function buildCalendarMarks(
   checkpoints: CalendarCheckpointRow[],
   today: string,
   clubSlug: string,
+  /** Ids de los eventos que sigue quien mira. Vacío = nadie los sigue o no hay
+   *  sesión; la función sigue siendo pura y no consulta nada. */
+  followedEventIds: ReadonlySet<string> = new Set(),
 ): CalendarMark[] {
   const marks: CalendarMark[] = [];
 
   for (const activity of activities) {
     if (!ESTADOS_VISIBLES.has(activity.status)) continue;
 
-    // Un evento nunca enlaza: no tiene página propia y el <Link> daría 404.
+    // Un evento enlaza a su ficha propia, que NO es /actividad/[id].
     if (activity.kind === "evento") {
       if (activity.startsOn) {
         marks.push({
@@ -87,8 +99,9 @@ export function buildCalendarMarks(
           detail: null,
           activityId: activity.id,
           activityKind: activity.kind,
-          href: null,
+          href: `/club/${clubSlug}/evento/${activity.id}`,
           past: activity.startsOn < today,
+          followedByViewer: followedEventIds.has(activity.id),
         });
       }
       // Su ends_on se ignora SIEMPRE: el kind no lo usa.
@@ -107,6 +120,7 @@ export function buildCalendarMarks(
         activityKind: activity.kind,
         href,
         past: activity.startsOn < today,
+        followedByViewer: false,
       });
     }
     if (activity.endsOn) {
@@ -119,6 +133,7 @@ export function buildCalendarMarks(
         activityKind: activity.kind,
         href,
         past: activity.endsOn < today,
+        followedByViewer: false,
       });
     }
   }
@@ -139,6 +154,7 @@ export function buildCalendarMarks(
           ? null
           : `/club/${clubSlug}/actividad/${checkpoint.activityId}`,
       past: checkpoint.dueOn < today,
+      followedByViewer: false,
     });
   }
 
