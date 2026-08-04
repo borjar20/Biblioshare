@@ -11,16 +11,10 @@ import { getRecords } from "@/lib/stats/get-records";
 import { getTbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import { getHabits } from "@/lib/stats/get-habits";
 import { getPagesPerDay } from "@/lib/stats/get-pace";
-import { WeeklyStrip } from "@/components/stats/weekly-strip";
-import { StreakCard } from "@/components/stats/streak-card";
-import { PaceCard } from "@/components/stats/pace-card";
-import { RatingCard } from "@/components/stats/rating-card";
-import { RecordsCard } from "@/components/stats/records-card";
-import { TbrCard } from "@/components/stats/tbr-card";
-import { HabitsCard } from "@/components/stats/habits-card";
+import { buildProfilePanels } from "@/lib/stats/panel/specs";
+import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { DailyGoalForm } from "@/components/stats/daily-goal-form";
 import { MonthCalendar } from "@/components/stats/month-calendar";
-import { ActivityChart } from "@/components/activity-chart";
 import { todayISO } from "@/lib/stats/dates";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -30,7 +24,8 @@ function currentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// Marco de tarjeta del muro.
+// Marco para lo que NO es un panel de datos: el calendario y el editor de
+// objetivo, que son controles con estado propio.
 function Card({
   children,
   className = "",
@@ -49,6 +44,16 @@ function Card({
 
 // Estadísticas ◍ — el muro del mockup Perfil v2 (frames B móvil y G escritorio).
 // Privada: la página ya garantiza que solo llega aquí el dueño.
+//
+// Desde el rediseño de paneles accesibles, las tarjetas de datos son
+// `PanelSpec` pintadas por el armazón común (`StatPanel`), igual que
+// `/estadisticas`: mismo contrato, mismo microcopy y —lo que más importa— los
+// mismos números contados igual en los dos sitios, porque cuatro de los
+// constructores son literalmente los del muro. Ver
+// docs/design/paneles-estadisticos.md.
+//
+// Siguen fuera del armazón el calendario mensual y el editor de objetivo: no son
+// paneles de lectura, son controles con estado propio.
 export async function StatsTab({
   userId,
   monthParam,
@@ -61,31 +66,55 @@ export async function StatsTab({
   const supabase = await createClient();
   const ownProfile = await getOwnProfile(supabase, userId);
 
+  const [weekly, streaks, calendar, monthly, rating, records, tbr, habits, pace] =
+    await Promise.all([
+      getWeeklyActivity(supabase, userId),
+      getStreaks(supabase, userId),
+      getMonthCalendar(
+        supabase,
+        userId,
+        MONTH_RE.test(monthParam ?? "") ? (monthParam as string) : currentMonthKey(),
+      ),
+      getMonthlyActivity(supabase, userId),
+      getRatingDistribution(supabase, userId),
+      getRecords(supabase, userId),
+      getTbrSnapshot(supabase, userId),
+      getHabits(supabase, userId),
+      getPagesPerDay(supabase, userId),
+    ]);
+
   const [
+    semana,
+    objetivoHoy,
+    racha,
+    ritmo,
+    actividadAnual,
+    valoracion,
+    recordsSpec,
+    pila,
+    habitos,
+  ] = buildProfilePanels({
+    titles: {
+      weekly: tStats("weeklyTitle"),
+      dailyGoal: tStats("dailyGoalTitle"),
+      streak: tStats("streakTitle"),
+      pace: tStats("paceTitle"),
+      activityYear: tProfile("activityYearTitle"),
+      rating: tStats("ratingTitle"),
+      records: tStats("recordsTitle"),
+      tbr: tStats("tbrTitle"),
+      habits: tStats("habitsTitle"),
+    },
     weekly,
-    streaks,
-    calendar,
     monthly,
+    dailyGoalMinutes: ownProfile?.dailyGoalMinutes ?? null,
+    streaks,
+    pagesPerDay: pace,
     rating,
     records,
     tbr,
     habits,
-    pace,
-  ] = await Promise.all([
-    getWeeklyActivity(supabase, userId),
-    getStreaks(supabase, userId),
-    getMonthCalendar(
-      supabase,
-      userId,
-      MONTH_RE.test(monthParam ?? "") ? (monthParam as string) : currentMonthKey(),
-    ),
-    getMonthlyActivity(supabase, userId),
-    getRatingDistribution(supabase, userId),
-    getRecords(supabase, userId),
-    getTbrSnapshot(supabase, userId),
-    getHabits(supabase, userId),
-    getPagesPerDay(supabase, userId),
-  ]);
+  });
 
   const privNote = (
     <p className="inline-flex items-center gap-2 rounded-lg border border-border bg-accent/5 px-3 py-2 text-[11px] text-muted-foreground">
@@ -101,47 +130,32 @@ export async function StatsTab({
   const rail = (
     <div className="flex flex-col gap-4">
       {privNote}
-      <Card className="grid gap-3">
-        <WeeklyStrip
-          days={weekly}
-          dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null}
-        />
-        <div className="border-t border-border" />
+      <StatPanel spec={semana} />
+      <StatPanel spec={objetivoHoy} />
+      <Card>
         <DailyGoalForm dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null} />
       </Card>
       <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <StreakCard streaks={streaks} />
-        </Card>
-        <Card>
-          <PaceCard pagesPerDay={pace} />
-        </Card>
+        <StatPanel spec={racha} />
+        <StatPanel spec={ritmo} />
       </div>
       <Card>
         <MonthCalendar initialCalendar={calendar} basePath="/" todayKey={todayISO()} />
       </Card>
-      <Card>
-        <HabitsCard habits={habits} />
-      </Card>
+      <StatPanel spec={habitos} />
     </div>
   );
 
   const main = (
     <div className="flex flex-col gap-4">
-      <Card>
-        <RatingCard dist={rating} />
-      </Card>
+      <StatPanel spec={valoracion} />
       {/* Actividad anual: solo en escritorio (frame G; el móvil B no la trae). */}
-      <Card className="hidden lg:block">
-        <ActivityChart months={monthly} />
-      </Card>
+      <div className="hidden lg:block">
+        <StatPanel spec={actividadAnual} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <RecordsCard records={records} bestStreakDays={streaks.best} />
-        </Card>
-        <Card>
-          <TbrCard snapshot={tbr} />
-        </Card>
+        <StatPanel spec={recordsSpec} />
+        <StatPanel spec={pila} />
       </div>
       <Link
         href="/estadisticas"

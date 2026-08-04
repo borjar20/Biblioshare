@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { derive } from "./derive";
+import { derive, heroKpi } from "./derive";
 import { formatDelta, formatShare, formatValue, NO_DATA } from "./format";
-import { buildSummary } from "./summary";
+import { buildHighlight, buildSummary, summaryLines } from "./summary";
 import { UNITS, type PanelSpec } from "./types";
 
 function spec(over: Partial<PanelSpec> = {}): PanelSpec {
@@ -40,7 +40,13 @@ describe("hueco vs cero — la distinción que sostiene todo el sistema", () => 
   it("todo a cero se lee como «sin actividad», no como panel vacío", () => {
     const s = spec({ data: [{ key: "a", label: "A", value: 0 }, { key: "b", label: "B", value: 0 }] });
     expect(derive(s).isEmpty).toBe(false);
-    expect(buildSummary(s)).toBe("Sin actividad: los 2 puntos medidos valen cero.");
+    expect(buildSummary(s)).toBe(
+      "Sin actividad. Los 2 puntos medidos valen cero; no es que falten datos.",
+    );
+    // La frase que separa cero de hueco es la que llega a la vista compacta.
+    expect(buildHighlight(s)).toBe(
+      "Los 2 puntos medidos valen cero; no es que falten datos.",
+    );
   });
 
   it("sin ningún dato medido devuelve cadena vacía (toca estado vacío)", () => {
@@ -127,7 +133,7 @@ describe("reglas por tipo de visualización", () => {
         ],
       }),
     );
-    expect(text).toContain("Total 40 obras repartidas en 2 categorías");
+    expect(text).toContain("Total 40 obras en 2 categorías");
     expect(text).toContain("Mayor: Libros, 30 obras (75 %)");
   });
 
@@ -205,5 +211,128 @@ describe("reglas por tipo de visualización", () => {
       }),
     );
     expect(text).toBe("Día más lector: Martes.");
+  });
+});
+
+describe("vista compacta: titular corto y cifra automática", () => {
+  const meses = spec({
+    labelHeader: "Mes",
+    data: [
+      { key: "a", label: "Enero", value: 2 },
+      { key: "b", label: "Febrero", value: 9 },
+      { key: "c", label: "Marzo", value: null },
+    ],
+  });
+
+  it("la frase compacta es lo que DESTACA, no el total que ya preside la tarjeta", () => {
+    expect(summaryLines(meses)[0]).toBe("Total 11 obras en 2 puntos.");
+    expect(buildHighlight(meses)).toBe("Máximo: Febrero (9 obras); mínimo: Enero (2 obras).");
+    // Y el resumen completo sigue siendo la unión de todas.
+    expect(buildSummary(meses)).toBe(summaryLines(meses).join(" "));
+  });
+
+  it("sin nada que destacar, la vista compacta no inventa frase", () => {
+    const unico = spec({ data: [{ key: "a", label: "Enero", value: 5 }] });
+    expect(buildHighlight(unico)).toBe("");
+  });
+
+  it("un `summary` a mano se respeta y no se parte en frases", () => {
+    const s = spec({ summary: "Lo dice el panel. Y punto.", data: [{ key: "a", label: "A", value: 1 }] });
+    expect(summaryLines(s)).toEqual(["Lo dice el panel. Y punto."]);
+    expect(buildSummary(s)).toBe("Lo dice el panel. Y punto.");
+    // Y una spec con `summary` a mano no tiene segunda línea que destacar.
+    expect(buildHighlight(s)).toBe("");
+  });
+
+  it("sin KPIs, la tarjeta plegada preside con el total: nunca queda solo el dibujo", () => {
+    const hero = heroKpi(meses, derive(meses));
+    expect(hero).toEqual({ key: "total", label: "Total", value: 11, unit: UNITS.works });
+  });
+
+  it("cuando sumar no significa nada (notas, ranking) preside el primero", () => {
+    const ranking = spec({
+      viz: "ranking",
+      unit: UNITS.stars,
+      data: [
+        { key: "a", label: "Dune", value: 5 },
+        { key: "b", label: "Solaris", value: 4 },
+      ],
+    });
+    expect(heroKpi(ranking, derive(ranking))).toMatchObject({ label: "Dune", value: 5 });
+  });
+
+  it("los KPIs de la spec mandan sobre el automático", () => {
+    const s = spec({
+      kpis: [{ key: "m", label: "Nota media", value: 4.2, unit: UNITS.stars }],
+      data: [{ key: "a", label: "A", value: 3 }],
+    });
+    expect(heroKpi(s, derive(s))?.label).toBe("Nota media");
+  });
+
+  it("un panel vacío no fabrica cifra que presidir", () => {
+    const s = spec({ data: [{ key: "a", label: "A", value: null }] });
+    expect(heroKpi(s, derive(s))).toBeNull();
+  });
+});
+
+describe("concordancia: la unidad la elige el panel, no la frase", () => {
+  it("no concuerda en femenino con una unidad masculina", () => {
+    // «repartidas» valía para obras y chirriaba con títulos. La frase evita el
+    // participio en vez de adivinar el género de cada unidad.
+    const text = buildSummary(
+      spec({
+        viz: "donut",
+        unit: UNITS.items,
+        data: [
+          { key: "a", label: "Completado", value: 100 },
+          { key: "b", label: "Pendiente", value: 37 },
+        ],
+      }),
+    );
+    expect(text).toContain("Total 137 títulos en 2 categorías");
+    expect(text).not.toContain("repartidas");
+  });
+});
+
+describe("concordancia del símbolo corto", () => {
+  it("«1 obra», no «1 obras»: el mínimo de un histograma salía en plural", () => {
+    expect(formatValue(1, UNITS.works)).toBe("1 obra");
+    expect(formatValue(2, UNITS.works)).toBe("2 obras");
+    expect(formatValue(1, UNITS.days)).toBe("1 día");
+    expect(formatValue(0, UNITS.items)).toBe("0 títulos");
+  });
+
+  it("las abreviaturas de verdad no se pluralizan", () => {
+    expect(formatValue(1, UNITS.minutes)).toBe("1 min");
+    expect(formatValue(1, UNITS.stars)).toBe("1,0 ★");
+    expect(formatValue(1, UNITS.percent)).toBe("1\u00a0%");
+  });
+});
+
+describe("qué indicador preside la tarjeta", () => {
+  const habitos = spec({
+    viz: "kpi",
+    unit: UNITS.minutes,
+    data: [],
+    kpis: [
+      { key: "franja", label: "Franja favorita", value: null },
+      { key: "dia", label: "Día más lector", value: null },
+      { key: "media", label: "Sesión media", value: 42, unit: UNITS.minutes },
+    ],
+  });
+
+  it("preside el primero CON dato, no el primero de la lista", () => {
+    // Si no, un panel con dos indicadores vacíos delante enseñaba «Sin datos»
+    // en grande teniendo el tercero lleno justo debajo.
+    expect(heroKpi(habitos, derive(habitos))?.key).toBe("media");
+  });
+
+  it("si ninguno trae dato, el panel está vacío", () => {
+    const s = spec({
+      viz: "kpi",
+      data: [],
+      kpis: [{ key: "a", label: "A", value: null }],
+    });
+    expect(derive(s).isEmpty).toBe(true);
   });
 });

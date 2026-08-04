@@ -17,7 +17,8 @@ import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
 import type { TbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import type { TopRatedItem } from "@/lib/stats/get-top-rated";
 import type { TypeDistribution } from "@/lib/stats/get-type-distribution";
-import type { Streaks } from "@/lib/stats/types";
+import type { DayActivity, Streaks } from "@/lib/stats/types";
+import type { MonthlyActivity } from "@/lib/diary/get-monthly-activity";
 import type { StatsPeriod } from "@/lib/stats/period";
 import { UNITS, type PanelSpec } from "./types";
 
@@ -27,11 +28,20 @@ const MONTHS = [
 ];
 const MONTH_SHORT = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+// Iniciales del calendario del repo: la X de miércoles evita la colisión con martes.
+const WEEKDAY_INITIALS = ["L", "M", "X", "J", "V", "S", "D"];
 
 const TYPE_SERIES = [
   { key: "book", label: "Libros", color: "var(--type-book)" },
   { key: "movie", label: "Películas", color: "var(--type-movie)" },
   { key: "series", label: "Series", color: "var(--type-series)" },
+];
+
+const STATUS_SERIES = [
+  { key: "completed", label: "Completado", color: "var(--status-completed)" },
+  { key: "planned", label: "Pendiente", color: "var(--status-planned)" },
+  { key: "in_progress", label: "En curso", color: "var(--status-in-progress)" },
+  { key: "dropped", label: "Abandonado", color: "var(--status-dropped)" },
 ];
 
 const STATUS_LABEL = {
@@ -83,7 +93,7 @@ export function buildStatsPanels(input: SpecInput): PanelSpec[] {
   const period = periodLabel(input.period);
   return [
     completedByYearPanel(input),
-    ratingPanel(input, period),
+    ratingPanel(input.rating, input.titles.rating, period),
     topRatedPanel(input, period),
     typePanel(input, period),
     statusPanel(input),
@@ -91,10 +101,209 @@ export function buildStatsPanels(input: SpecInput): PanelSpec[] {
     genresPanel(input, period),
     authorsPanel(input, period),
     decadesPanel(input, period),
-    habitsPanel(input, period),
-    recordsPanel(input, period),
-    tbrPanel(input),
+    habitsPanel(input.habits, input.titles.habits, period),
+    recordsPanel(input.records, input.streaks, input.titles.records, period),
+    tbrPanel(input.tbr, input.titles.tbr),
   ];
+}
+
+// ══ Panel del perfil (pestaña Estadísticas) ══════════════════════════════════
+// Reutiliza cuatro constructores del muro (valoración, récords, la pila y
+// hábitos): son los mismos datos, así que tienen que contarse igual en los dos
+// sitios. Lo propio de aquí es la semana, el objetivo diario, la racha, el
+// ritmo y la actividad del año.
+
+export type ProfileTitles = {
+  weekly: string;
+  dailyGoal: string;
+  streak: string;
+  pace: string;
+  activityYear: string;
+  rating: string;
+  records: string;
+  tbr: string;
+  habits: string;
+};
+
+export type ProfileInput = {
+  titles: ProfileTitles;
+  weekly: DayActivity[];
+  monthly: MonthlyActivity[];
+  dailyGoalMinutes: number | null;
+  streaks: Streaks;
+  pagesPerDay: number | null;
+  rating: RatingDistribution;
+  records: Records;
+  tbr: TbrSnapshot;
+  habits: Habits;
+};
+
+export function buildProfilePanels(input: ProfileInput): PanelSpec[] {
+  // La pestaña del perfil no tiene selector de periodo: sus consultas van sin
+  // acotar, así que el alcance real es todo el histórico.
+  const all = "Todo el histórico";
+  return [
+    weeklyPanel(input.weekly, input.titles.weekly),
+    dailyGoalPanel(input.weekly, input.dailyGoalMinutes, input.titles.dailyGoal),
+    streakPanel(input.streaks, input.titles.streak),
+    pacePanel(input.pagesPerDay, input.titles.pace),
+    activityYearPanel(input.monthly, input.titles.activityYear),
+    ratingPanel(input.rating, input.titles.rating, all),
+    recordsPanel(input.records, input.streaks, input.titles.records, all),
+    tbrPanel(input.tbr, input.titles.tbr),
+    habitsPanel(input.habits, input.titles.habits, all),
+  ];
+}
+
+// ── Actividad de los últimos 7 días ───────────────────────────────────────────
+function weeklyPanel(days: DayActivity[], title: string): PanelSpec {
+  return {
+    id: "semana",
+    title,
+    context: { period: "Últimos 7 días", scope: "ventana móvil" },
+    viz: "bars",
+    unit: UNITS.minutes,
+    labelHeader: "Día",
+    series: [{ key: "minutes", label: "Minutos", color: "var(--accent)" }],
+    data: days.map((d) => ({
+      key: d.date,
+      label: `${weekdayName(d.date)} ${Number(d.date.slice(8, 10))}`,
+      short: weekdayShort(d.date),
+      value: d.minutes,
+    })),
+    note: "Ventana móvil de siete días que termina hoy, no la semana natural. Solo cuenta minutos de sesiones de lectura con duración registrada.",
+    empty: {
+      title: "Sin actividad esta semana",
+      message: "Registra una sesión y la semana empieza a llenarse.",
+    },
+  };
+}
+
+// ── Medidor de progreso ───────────────────────────────────────────────────────
+function dailyGoalPanel(
+  days: DayActivity[],
+  goalMinutes: number | null,
+  title: string,
+): PanelSpec {
+  const today = days[days.length - 1];
+  return {
+    id: "objetivo-hoy",
+    title,
+    context: { period: "Hoy" },
+    viz: "gauge",
+    unit: UNITS.minutes,
+    target: goalMinutes,
+    labelHeader: "Día",
+    data: today ? [{ key: today.date, label: "Hoy", value: today.minutes }] : [],
+    kpis: today
+      ? [
+          {
+            key: "hoy",
+            label: goalMinutes ? `De ${goalMinutes} minutos` : "Acumulado hoy",
+            value: today.minutes,
+            unit: UNITS.minutes,
+          },
+        ]
+      : undefined,
+    note: goalMinutes
+      ? undefined
+      : "No tienes objetivo diario configurado, así que aquí solo se acumula el tiempo del día.",
+    empty: {
+      title: "Todavía no hay tiempo registrado hoy",
+      message: "Registra una sesión para ver cuánto llevas.",
+    },
+  };
+}
+
+// ── Indicadores sueltos ───────────────────────────────────────────────────────
+function streakPanel(streaks: Streaks, title: string): PanelSpec {
+  return {
+    id: "racha",
+    title,
+    context: { period: "Ahora mismo", scope: "foto del momento" },
+    viz: "kpi",
+    unit: UNITS.days,
+    data: [],
+    kpis: [
+      { key: "actual", label: "Días seguidos", value: streaks.current, unit: UNITS.days },
+      {
+        key: "mejor",
+        label: "Tu mejor racha",
+        value: streaks.best > 0 ? streaks.best : null,
+        unit: UNITS.days,
+      },
+    ],
+    empty: {
+      title: "Sin racha en marcha",
+      message: "Registra actividad dos días seguidos para arrancar una.",
+    },
+  };
+}
+
+function pacePanel(pagesPerDay: number | null, title: string): PanelSpec {
+  return {
+    id: "ritmo",
+    title,
+    context: { period: "Todo el histórico", filters: ["Solo libros"] },
+    viz: "kpi",
+    unit: UNITS.pages,
+    data: [],
+    kpis: [
+      {
+        key: "ritmo",
+        label: "Páginas al día",
+        value: pagesPerDay,
+        unit: UNITS.pages,
+        hint: "Media sobre los días con sesión registrada",
+      },
+    ],
+    empty: {
+      title: "Aún no se puede calcular tu ritmo",
+      message: "Hacen falta sesiones de lectura con páginas registradas.",
+    },
+  };
+}
+
+// ── Evolución apilada por tipo ────────────────────────────────────────────────
+function activityYearPanel(months: MonthlyActivity[], title: string): PanelSpec {
+  return {
+    id: "actividad-anual",
+    title,
+    context: { period: "Últimos 7 meses", scope: "ventana móvil" },
+    viz: "stacked",
+    unit: UNITS.works,
+    labelHeader: "Mes",
+    series: TYPE_SERIES,
+    data: months.map((m) => ({
+      key: m.month,
+      label: `${MONTHS[Number(m.month.slice(5, 7)) - 1]} ${m.month.slice(0, 4)}`,
+      short: MONTH_SHORT[Number(m.month.slice(5, 7)) - 1],
+      value: m.book + m.movie + m.series,
+      parts: [
+        { key: "book", value: m.book },
+        { key: "movie", value: m.movie },
+        { key: "series", value: m.series },
+      ],
+    })),
+    empty: {
+      title: "Sin obras terminadas en estos meses",
+      message: "Cierra un pase y el mes correspondiente aparecerá aquí.",
+    },
+  };
+}
+
+/** Índice lunes=0 de una fecha ISO. Se parsea a mano, como el resto del repo. */
+function mondayIndex(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  return (new Date(y, m - 1, d).getDay() + 6) % 7;
+}
+
+function weekdayName(iso: string): string {
+  return WEEKDAYS[mondayIndex(iso)];
+}
+
+function weekdayShort(iso: string): string {
+  return WEEKDAY_INITIALS[mondayIndex(iso)];
 }
 
 // ── Comparativa entre periodos ────────────────────────────────────────────────
@@ -106,7 +315,7 @@ function completedByYearPanel({ byYear, titles }: SpecInput): PanelSpec {
     title: titles.completedByYear,
     context: {
       period: "Todos los años con actividad",
-      scope: "No obedece al selector de periodo: es la serie histórica completa",
+      scope: "serie histórica",
     },
     viz: "stacked",
     unit: UNITS.works,
@@ -148,10 +357,10 @@ function completedByYearPanel({ byYear, titles }: SpecInput): PanelSpec {
 }
 
 // ── Distribución: histograma de notas ─────────────────────────────────────────
-function ratingPanel({ rating, titles }: SpecInput, period: string): PanelSpec {
+function ratingPanel(rating: RatingDistribution, title: string, period: string): PanelSpec {
   return {
     id: "valoraciones",
-    title: titles.rating,
+    title,
     description:
       "La nota interna va de 1 a 10 y se muestra en escala de 5. Un pase sin nota no entra en la media.",
     context: { period, filters: ["Solo pases con nota"] },
@@ -243,11 +452,12 @@ function statusPanel({ status, titles }: SpecInput): PanelSpec {
     title: titles.status,
     context: {
       period: "Ahora mismo",
-      scope: "Foto del momento: el selector de periodo no la afecta",
+      scope: "foto del momento",
     },
     viz: "donut",
     unit: UNITS.items,
     labelHeader: "Estado",
+    series: STATUS_SERIES,
     data: status.buckets.map((b) => ({
       key: b.status,
       label: STATUS_LABEL[b.status],
@@ -329,6 +539,15 @@ function authorsPanel({ catalog, titles }: SpecInput, period: string): PanelSpec
     })),
     kpis: [
       {
+        key: "top",
+        label: "Autor más leído",
+        value: null,
+        text: catalog.authors[0]?.name,
+        hint: catalog.authors[0]
+          ? `${catalog.authors[0].works} ${catalog.authors[0].works === 1 ? "obra" : "obras"}`
+          : undefined,
+      },
+      {
         key: "nuevos",
         label: "Autores nuevos",
         value: catalog.newAuthors,
@@ -366,13 +585,13 @@ function decadesPanel({ catalog, titles }: SpecInput, period: string): PanelSpec
 }
 
 // ── Indicadores ───────────────────────────────────────────────────────────────
-function habitsPanel({ habits, titles }: SpecInput, period: string): PanelSpec {
+function habitsPanel(habits: Habits, title: string, period: string): PanelSpec {
   const band = habits.favoriteBand
     ? `${pad(habits.favoriteBand.startHour)}:00–${pad((habits.favoriteBand.startHour + 2) % 24)}:00`
     : undefined;
   return {
     id: "habitos",
-    title: titles.habits,
+    title,
     context: { period, filters: ["Sesiones de lectura"] },
     viz: "kpi",
     unit: UNITS.minutes,
@@ -406,11 +625,11 @@ function habitsPanel({ habits, titles }: SpecInput, period: string): PanelSpec {
   };
 }
 
-function recordsPanel({ records, streaks, titles }: SpecInput, period: string): PanelSpec {
+function recordsPanel(records: Records, streaks: Streaks, title: string, period: string): PanelSpec {
   const month = records.mostActiveMonth;
   return {
     id: "records",
-    title: titles.records,
+    title,
     context: { period },
     viz: "kpi",
     unit: UNITS.works,
@@ -456,13 +675,13 @@ function recordsPanel({ records, streaks, titles }: SpecInput, period: string): 
 }
 
 // ── Acumulado / pila ──────────────────────────────────────────────────────────
-function tbrPanel({ tbr, titles }: SpecInput): PanelSpec {
+function tbrPanel(tbr: TbrSnapshot, title: string): PanelSpec {
   return {
     id: "pila",
-    title: titles.tbr,
+    title,
     context: {
       period: "Ahora mismo",
-      scope: "Foto del momento: el selector de periodo no la afecta",
+      scope: "foto del momento",
     },
     viz: "donut",
     unit: UNITS.items,

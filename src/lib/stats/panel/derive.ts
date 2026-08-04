@@ -5,6 +5,7 @@
 import type {
   PanelColumnId,
   PanelDatum,
+  PanelKpi,
   PanelSeries,
   PanelSpec,
   SeriesGlyph,
@@ -104,6 +105,32 @@ export function partValue(datum: PanelDatum, seriesKey: string): number | null {
 export function share(value: number | null, scale: number): number {
   if (value === null || scale <= 0) return 0;
   return (value / scale) * 100;
+}
+
+/**
+ * El indicador que preside el panel plegado. Si la spec no trae KPIs, se
+ * fabrica uno con el total (o el máximo, cuando sumar no significa nada).
+ *
+ * No es cosmético: la vista compacta esconde la tabla, así que sin esto un
+ * panel plegado volvería a ser un dibujo sin ninguna cifra en el DOM — justo lo
+ * que este sistema existe para impedir.
+ */
+export function heroKpi(spec: PanelSpec, derived: PanelDerived): PanelKpi | null {
+  if (spec.kpis?.length) {
+    // El primero QUE TENGA DATO. Si no, un panel de tres indicadores con el
+    // primero vacío presidía con un «Sin datos» enorme teniendo los otros dos
+    // llenos justo debajo.
+    return spec.kpis.find((k) => k.value !== null || Boolean(k.text)) ?? spec.kpis[0];
+  }
+  if (derived.isEmpty) return null;
+
+  // Una media o un ranking de notas no se suman: preside el mejor.
+  if (spec.viz === "ranking" || spec.unit.short === "★") {
+    return derived.known[0]
+      ? { key: "top", label: derived.known[0].label, value: derived.known[0].value, unit: spec.unit }
+      : null;
+  }
+  return { key: "total", label: "Total", value: derived.total, unit: spec.unit };
 }
 
 /** Columnas por defecto según la visualización. Se pueden fijar en la spec. */

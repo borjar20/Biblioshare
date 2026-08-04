@@ -46,8 +46,12 @@ export type PanelContext = {
   /** Filtros activos, ya resueltos a texto: ["Solo libros"]. */
   filters?: string[];
   /**
-   * Matiz de alcance cuando el panel NO obedece al selector de periodo — p. ej.
-   * una foto del momento. Sin esto, un panel que ignora el filtro miente.
+   * Alcance, cuando el panel NO obedece al selector de periodo de la página.
+   * Sin esto, un panel que ignora el filtro miente por omisión.
+   *
+   * **Va en el rótulo, junto al periodo, así que tiene que ser CORTO** — dos o
+   * tres palabras («foto del momento», «serie histórica»). La explicación larga
+   * es cosa de `note`.
    */
   scope?: string;
 };

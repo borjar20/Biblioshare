@@ -11,7 +11,9 @@ import { formatShare, formatValue, NO_DATA } from "@/lib/stats/panel/format";
 import type { PanelDatum, PanelSpec } from "@/lib/stats/panel/types";
 
 const TH = "px-2 py-1.5 text-left font-medium text-muted-foreground";
-const TD = "px-2 py-1.5 align-baseline";
+// `text-left` explícito: un `<th>` se centra por defecto, y las etiquetas de
+// fila salían centradas en su columna.
+const TD = "px-2 py-1.5 text-left align-baseline";
 const NUM = "text-right font-mono tabular-nums";
 
 function LabelCell({ datum }: { datum: PanelDatum }) {
@@ -31,7 +33,11 @@ export function PanelTable({
   spec: PanelSpec;
   derived: PanelDerived;
 }) {
-  const cols = defaultColumns(spec);
+  // Con total 0 la cuota de cada fila es 0/0, o sea indefinida: la columna
+  // entera saldría «Sin datos» siete veces y no diría nada. Mejor no existir.
+  const cols = defaultColumns(spec).filter(
+    (c) => c !== "share" || derived.total > 0,
+  );
   // Un apilado añade una columna por serie: sin ellas, el desglose solo existiría
   // en los colores del gráfico.
   const seriesCols = spec.viz === "stacked" ? derived.series : [];

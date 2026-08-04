@@ -290,7 +290,7 @@
     "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo.",
     "panelPrivateNote": "Solo tú ves este panel. Tu colección y tu actividad son públicas.",
     "emptyTitle": "Colección vacía",
-    "activityYearTitle": "Actividad este año",
+    "activityYearTitle": "Actividad reciente",
     "highlights": "Destacados",
     "recentReviews": "Reseñas recientes",
     "activityToday": "Hoy",
@@ -1320,7 +1320,11 @@
     "zoneSequence": "La secuencia",
     "zoneSequenceHint": "El orden de lectura. Reordenar renumera.",
     "zoneSequenceHintMobile": "El orden de lectura. Mover una fila entre pestañas es lo que cambia su colocación.",
-    "zone": { "sequence": "La secuencia", "free": "Cuando quieras", "unclassified": "Sin clasificar" },
+    "zone": {
+      "sequence": "La secuencia",
+      "free": "Cuando quieras",
+      "unclassified": "Sin clasificar"
+    },
     "zonePickerLabel": "Zona que se está curando",
     "slotN": "Hueco {n}",
     "whereRead": "Dónde se lee",
@@ -1345,8 +1349,19 @@
     "roleNone": "Sin rol",
     "roleLabelFor": "Rol narrativo de {title}",
     "rowMenuFor": "Acciones de {title}",
-    "itemType": { "book": "Libro", "movie": "Película", "series": "Serie" },
-    "role": { "precuela": "Precuela", "novela_corta": "Novela corta", "relato": "Relato", "spin_off": "Spin-off", "companero": "Compañero", "crossover": "Crossover" },
+    "itemType": {
+      "book": "Libro",
+      "movie": "Película",
+      "series": "Serie"
+    },
+    "role": {
+      "precuela": "Precuela",
+      "novela_corta": "Novela corta",
+      "relato": "Relato",
+      "spin_off": "Spin-off",
+      "companero": "Compañero",
+      "crossover": "Crossover"
+    },
     "moveUp": "Subir un hueco",
     "moveDown": "Bajar un hueco",
     "moveUpFor": "Subir un hueco: {title}",
@@ -1553,6 +1568,7 @@
     "annualGoal": "de {goal} este año",
     "annualTotal": "completados este año",
     "dailyGoal": "Objetivo diario de lectura (min)",
+    "dailyGoalTitle": "Objetivo de hoy",
     "dailyGoalHint": "Minutos de lectura al día. Vacío = sin objetivo.",
     "noGoal": "Sin objetivo",
     "editGoals": "Editar",

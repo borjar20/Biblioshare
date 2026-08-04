@@ -14,6 +14,18 @@ import type { PanelDatum, PanelSpec } from "@/lib/stats/panel/types";
 
 type ChartProps = { spec: PanelSpec; derived: PanelDerived };
 
+// Alto del área de dibujo. Con todo a cero no hay altura que enseñar: reservar
+// 96 px de hueco solo mete aire muerto entre la cifra y las etiquetas.
+function plotHeight(derived: PanelDerived): string {
+  return derived.allZero ? "h-8" : "h-24";
+}
+
+// Barras finas con muchos puntos; algo más anchas cuando hay pocos, o la
+// tarjeta se queda con cinco rayitas perdidas en medio del ancho.
+function barWidth(count: number): string {
+  return count <= 7 ? "max-w-6" : "max-w-3";
+}
+
 /** Etiqueta del eje. Corta si la hay, y siempre bajo la marca. */
 function AxisLabel({ datum }: { datum: PanelDatum }) {
   return (
@@ -37,7 +49,7 @@ function GapMark() {
 export function BarsChart({ spec, derived }: ChartProps) {
   const color = spec.series?.[0]?.color ?? "var(--accent)";
   return (
-    <div className="flex h-24 items-end justify-between gap-0.5">
+    <div className={`flex ${plotHeight(derived)} items-end justify-between gap-0.5`}>
       {spec.data.map((d) => (
         <div key={d.key} className="flex h-full min-w-0 flex-1 flex-col items-center gap-1">
           <div className="flex w-full flex-1 items-end justify-center">
@@ -45,10 +57,10 @@ export function BarsChart({ spec, derived }: ChartProps) {
               <GapMark />
             ) : d.value === 0 ? (
               // Cero medido: marca en la base, no una barra corta que mienta.
-              <span className="block h-0.5 w-full max-w-3 rounded-full bg-surface-3" />
+              <span className={`block h-0.5 w-full ${barWidth(spec.data.length)} rounded-full bg-surface-3`} />
             ) : (
               <span
-                className="block w-full max-w-3 rounded-t-[4px]"
+                className={`block w-full ${barWidth(spec.data.length)} rounded-t-[4px]`}
                 style={{
                   height: `max(4px, ${share(d.value, derived.scale)}%)`,
                   background: color,
@@ -65,7 +77,7 @@ export function BarsChart({ spec, derived }: ChartProps) {
 
 export function StackedChart({ spec, derived }: ChartProps) {
   return (
-    <div className="flex h-24 items-end justify-between gap-1">
+    <div className={`flex ${plotHeight(derived)} items-end justify-between gap-1`}>
       {spec.data.map((d) => (
         <div key={d.key} className="flex h-full min-w-0 flex-1 flex-col items-center gap-1">
           <div className="flex w-full max-w-4 flex-1 flex-col-reverse justify-start gap-px">
@@ -186,7 +198,7 @@ export function DonutChart({ spec, derived }: ChartProps) {
   const pcts = slices.map((d) => (d.value / total) * 100);
   const stops = pcts.map((p, i) => {
     const from = pcts.slice(0, i).reduce((a, b) => a + b, 0);
-    return `${colorFor(spec, i)} ${from}% ${from + p}%`;
+    return `${colorFor(spec, slices[i])} ${from}% ${from + p}%`;
   });
   const used = pcts.reduce((a, b) => a + b, 0);
   if (used < 100) stops.push(`var(--surface-3) ${used}% 100%`);
@@ -288,8 +300,7 @@ export function Legend({ derived }: { derived: PanelDerived }) {
   );
 }
 
-// Color de un sector del anillo: el de su serie si la hay, si no la rotación
-// fija del proyecto. Sigue a la entidad por posición, nunca al ranking.
+// Rotación de reserva cuando la spec no declara series.
 const FALLBACK_COLORS = [
   "var(--type-book)",
   "var(--type-movie)",
@@ -299,8 +310,20 @@ const FALLBACK_COLORS = [
   "var(--status-planned)",
 ];
 
-function colorFor(spec: PanelSpec, index: number): string {
-  return spec.series?.[index]?.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+/**
+ * Color de un sector: **el de SU categoría**, buscada por clave.
+ *
+ * Antes se buscaba por la posición del sector, y eso repintaba el anillo entero
+ * en cuanto una categoría valía cero: al desaparecer «Pendiente», «En curso»
+ * heredaba su color y quien hubiera aprendido el reparto leía otro. El color
+ * sigue a la entidad, nunca al ranking.
+ */
+function colorFor(spec: PanelSpec, datum: PanelDatum): string {
+  const own = spec.series?.find((s) => s.key === datum.key);
+  if (own) return own.color;
+  // Sin series, el índice ESTABLE es el del conjunto completo, no el del sector.
+  const i = spec.data.findIndex((d) => d.key === datum.key);
+  return FALLBACK_COLORS[(i < 0 ? 0 : i) % FALLBACK_COLORS.length];
 }
 
 /** Elige la visualización. `ranking`, `kpi` y `table` no dibujan: son texto. */

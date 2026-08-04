@@ -1,18 +1,28 @@
 // El armazón único de TODOS los paneles estadísticos. Un panel no es un
 // componente a medida: es este armazón + un `PanelSpec`.
 //
-// Orden de lectura, que es también el orden del DOM (1 → 10):
-//   1 cabecera · 2 contexto · 3 resumen · 4 indicadores · 5 visualización
-//   6 selector de vista · 7 tabla · 8 notas · 9 estados · 10 acciones
+// DOS DENSIDADES, un solo árbol. El panel entero es un `<details>`:
 //
-// La decisión que sostiene la accesibilidad: **el gráfico es decorativo**
-// (`aria-hidden`) y la tabla es el dato. Así el valor exacto existe una sola
-// vez en el árbol accesible; la alternativa —poner `aria-label` en cada barra—
-// duplica cada cifra y las dos copias se separan al primer cambio.
+//   PLEGADO (vista general) — lo que se ve de un vistazo, sin prosa:
+//     rótulo de contexto · título · cifra grande · titular de una línea · gráfico
+//   DESPLEGADO — el detalle, al pulsar en cualquier punto de la tarjeta:
+//     descripción · resumen completo · resto de indicadores · leyenda · nota ·
+//     tabla con los valores exactos · acciones
+//
+// El bloque compacto va dentro del `<summary>`, así que **la tarjeta entera es
+// el control**: se pulsa donde sea, funciona con teclado y se anuncia como
+// desplegable — sin una línea de JavaScript, en una página que es toda de
+// servidor.
+//
+// Lo que NO cambia al plegar: el dato sigue siendo texto. La cifra que preside
+// la tarjeta es un `<dl>` de verdad (la fabrica `heroKpi` si la spec no trae
+// indicadores) y debajo va lo que destaca. Un panel plegado nunca es solo un
+// dibujo. La leyenda también viaja al bloque compacto: un anillo plegado sin
+// leyenda sería identidad por color y nada más.
 
 import Link from "next/link";
 import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
-import { derive } from "@/lib/stats/panel/derive";
+import { derive, heroKpi } from "@/lib/stats/panel/derive";
 import {
   deltaGlyph,
   deltaIsGood,
@@ -21,13 +31,19 @@ import {
   formatValue,
   NO_DATA,
 } from "@/lib/stats/panel/format";
-import { buildSummary } from "@/lib/stats/panel/summary";
+import { buildHighlight, summaryLines } from "@/lib/stats/panel/summary";
 import type { PanelKpi, PanelSpec } from "@/lib/stats/panel/types";
 import { Chart, Legend } from "./charts";
 import { contextSentence, PanelTable } from "./panel-table";
 
-/** Visualizaciones que YA son texto: no llevan gráfico decorativo ni tabla aparte. */
+/** Visualizaciones que YA son texto: no dibujan ni repiten tabla. */
 const TEXTUAL: PanelSpec["viz"][] = ["ranking", "kpi", "table"];
+
+/** Cuántas filas de un ranking caben en la vista compacta. */
+const RANKING_PREVIEW = 3;
+
+const CARD =
+  "rounded-card border border-border bg-surface shadow-card transition-colors";
 
 export function StatPanel({
   spec,
@@ -41,161 +57,244 @@ export function StatPanel({
   const titleId = `${spec.id}-title`;
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
 
-  return (
-    <section
-      aria-labelledby={titleId}
-      aria-busy={state.status === "loading" || undefined}
-      className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card"
-    >
-      {/* 1 · Cabecera + 10 · acciones */}
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <Heading id={titleId} className="font-serif text-sm font-semibold text-foreground">
-          {spec.title}
-        </Heading>
-        {spec.actions?.map((a) => (
-          <Link
-            key={a.href}
-            href={a.href}
-            className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-accent"
-          >
-            {a.label}
-          </Link>
-        ))}
-      </div>
-
-      {/* 2 · Contexto: periodo, filtros y unidades. Siempre, aunque no haya datos. */}
-      <p className="font-mono text-[10.5px] leading-snug text-muted-foreground">
-        {contextSentence(spec)}
-      </p>
-
-      {/* Ayuda: qué mide y cómo se calcula. Va antes del dato, no en nota al pie,
-          porque cambia cómo se interpreta la cifra que viene a continuación. */}
-      {spec.description && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {spec.description}
-        </p>
-      )}
-
-      <PanelBody spec={spec} state={state} />
-
-      {/* 8 · Notas e interpretación */}
-      {spec.note && state.status !== "loading" && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{spec.note}</p>
-      )}
-    </section>
-  );
-}
-
-function PanelBody({
-  spec,
-  state,
-}: {
-  spec: PanelSpec;
-  state: NonNullable<PanelSpec["state"]>;
-}) {
-  // 9 · Estados —————————————————————————————————————————————————
-  if (state.status === "loading") {
+  // Carga y error no son plegables: no hay detalle que abrir todavía.
+  if (state.status === "loading" || state.status === "error") {
     return (
-      <div className="flex flex-col gap-2">
-        <span className="sr-only" role="status">
-          Cargando {spec.title}…
-        </span>
-        <SkeletonLine className="w-4/5" />
-        <SkeletonLine className="w-3/5" />
-        <Skeleton className="h-24 w-full rounded-lg" />
-      </div>
-    );
-  }
-
-  if (state.status === "error") {
-    return (
-      <div
-        role="status"
-        className="flex flex-col gap-2 rounded-lg border border-status-dropped bg-status-dropped/10 p-3"
+      <section
+        aria-labelledby={titleId}
+        aria-busy={state.status === "loading" || undefined}
+        className={`${CARD} flex flex-col gap-3 p-4`}
       >
-        <p className="text-sm text-status-dropped">
-          <span aria-hidden>⚠ </span>
-          {state.message ?? "No se han podido cargar estos datos."}
-        </p>
-        {state.retry}
-      </div>
+        <PanelHead spec={spec} titleId={titleId} Heading={Heading} />
+        {state.status === "loading" ? (
+          <div className="flex flex-col gap-2">
+            <span className="sr-only" role="status">
+              Cargando {spec.title}…
+            </span>
+            <SkeletonLine className="w-2/5" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+          </div>
+        ) : (
+          <div
+            role="status"
+            className="flex flex-col gap-2 rounded-lg border border-status-dropped bg-status-dropped/10 p-3"
+          >
+            <p className="text-sm text-status-dropped">
+              <span aria-hidden>⚠ </span>
+              {state.message ?? "No se han podido cargar estos datos."}
+            </p>
+            {state.retry}
+          </div>
+        )}
+      </section>
     );
   }
 
   const derived = derive(spec);
 
-  // Vacío: se DERIVA de que no haya ni una medida. Nunca se pinta como ceros.
+  // Vacío: se DERIVA de que no haya ni una medida. Nunca se pinta como ceros, y
+  // tampoco se deja plegar — no hay detalle detrás.
   if (derived.isEmpty) {
     return (
-      <div className="flex flex-col gap-1 py-2">
-        <p className="text-sm text-foreground">{spec.empty?.title ?? "Todavía no hay datos"}</p>
-        {spec.empty?.message && (
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            {spec.empty.message}
+      <section aria-labelledby={titleId} className={`${CARD} flex flex-col gap-3 p-4`}>
+        <PanelHead spec={spec} titleId={titleId} Heading={Heading} />
+        <div className="flex flex-col gap-1 py-1">
+          <p className="text-sm text-foreground">
+            {spec.empty?.title ?? "Todavía no hay datos"}
           </p>
-        )}
-      </div>
+          {spec.empty?.message && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {spec.empty.message}
+            </p>
+          )}
+        </div>
+      </section>
     );
   }
 
-  const summary = buildSummary(spec, derived);
+  const hero = heroKpi(spec, derived);
+  const lines = summaryLines(spec, derived);
+  // El resto son los demás indicadores. Se descarta POR CLAVE, no por posición:
+  // el que preside no tiene por qué ser el primero (ver `heroKpi`).
+  const rest = spec.kpis?.filter((k) => k.key !== hero?.key) ?? [];
   const isTextual = TEXTUAL.includes(spec.viz);
 
   return (
-    <>
-      {/* Datos parciales: se avisa ANTES de enseñar la cifra, no en una nota al pie. */}
-      {state.status === "partial" && (
-        <p className="rounded-lg border border-status-in-progress/40 bg-status-in-progress/10 px-2.5 py-1.5 text-[11px] text-foreground-soft">
-          <span aria-hidden>⚠ </span>
-          {state.message}
-        </p>
-      )}
+    <section aria-labelledby={titleId} className={`${CARD} hover:border-accent/40`}>
+      <details className="group">
+        {/* ── PLEGADO ───────────────────────────────────────────────────── */}
+        <summary className="flex cursor-pointer list-none flex-col gap-2.5 p-4 [&::-webkit-details-marker]:hidden">
+          <PanelHead spec={spec} titleId={titleId} Heading={Heading} chevron />
 
-      {/* 3 · Resumen textual */}
-      {summary && (
-        <p className="text-[12.5px] leading-relaxed text-foreground-soft">{summary}</p>
-      )}
+          {state.status === "partial" && (
+            <p className="rounded-lg border border-status-in-progress/40 bg-status-in-progress/10 px-2.5 py-1.5 text-[11px] text-foreground-soft">
+              <span aria-hidden>⚠ </span>
+              {state.message}
+            </p>
+          )}
 
-      {/* 4 · Indicadores clave */}
-      {spec.kpis && spec.kpis.length > 0 && <KpiRow kpis={spec.kpis} />}
+          {hero && <Hero kpi={hero} />}
 
-      {/* 5 · Visualización (decorativa) */}
-      {!isTextual && (
-        <div aria-hidden className="pt-1">
-          <Chart spec={spec} derived={derived} />
+          {/* Una frase: lo que DESTACA. El párrafo entero espera al desplegable. */}
+          {!isTextual && buildHighlight(spec, derived) && (
+            <p className="text-[11.5px] leading-snug text-muted-foreground">
+              {buildHighlight(spec, derived)}
+            </p>
+          )}
+
+          {!isTextual && (
+            <div aria-hidden className="pt-0.5">
+              <Chart spec={spec} derived={derived} />
+            </div>
+          )}
+
+          <Legend derived={derived} />
+
+          {spec.viz === "ranking" && (
+            <RankingList spec={spec} limit={RANKING_PREVIEW} />
+          )}
+
+          <span
+            aria-hidden
+            className="label-section pt-0.5 text-accent/70 group-open:hidden"
+          >
+            Ver detalle ↓
+          </span>
+        </summary>
+
+        {/* ── DESPLEGADO ────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-3 border-t border-border px-4 pt-3 pb-4">
+          {spec.description && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {spec.description}
+            </p>
+          )}
+
+          {lines.length > 0 && (
+            <p className="text-[12.5px] leading-relaxed text-foreground-soft">
+              {lines.join(" ")}
+            </p>
+          )}
+
+          {rest.length > 0 && <KpiRow kpis={rest} />}
+
+          {/* El ranking completo: la vista compacta solo enseñaba las primeras. */}
+          {spec.viz === "ranking" && spec.data.length > RANKING_PREVIEW && (
+            <RankingList spec={spec} />
+          )}
+
+          {/* Los valores exactos. Los paneles que ya son texto no los repiten:
+              su lista o su `<dl>` YA son el dato, y duplicarlos solo obliga al
+              lector de pantalla a oírlo dos veces. */}
+          {!isTextual && <PanelTable spec={spec} derived={derived} />}
+          {spec.viz === "table" && <PanelTable spec={spec} derived={derived} />}
+
+          <p className="text-[10.5px] leading-relaxed text-foreground-faint">
+            {contextSentence(spec)}
+          </p>
+
+          {spec.note && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {spec.note}
+            </p>
+          )}
+
+          {spec.actions && spec.actions.length > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {spec.actions.map((a) => (
+                <Link
+                  key={a.href}
+                  href={a.href}
+                  className="text-[11px] font-medium text-accent hover:underline"
+                >
+                  {a.label} ›
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      <Legend derived={derived} />
-
-      {spec.viz === "ranking" && <RankingList spec={spec} />}
-
-      {/* 6 · Selector de vista + 7 · tabla. `<details>` es el control nativo:
-          accesible con teclado y anunciado como desplegable sin una línea de JS.
-          Los paneles que ya son texto no repiten la tabla. */}
-      {!isTextual && (
-        <details className="group">
-          <summary className="cursor-pointer list-none text-[11px] text-muted-foreground underline underline-offset-2 hover:text-accent">
-            <span aria-hidden className="mr-1 inline-block group-open:rotate-90">
-              ›
-            </span>
-            Ver los {formatNumber(spec.data.length)} valores exactos
-          </summary>
-          <div className="pt-2">
-            <PanelTable spec={spec} derived={derived} />
-          </div>
-        </details>
-      )}
-
-      {/* 6 bis · La tabla de un panel `table` no se pliega: es su vista principal. */}
-      {spec.viz === "table" && <PanelTable spec={spec} derived={derived} />}
-    </>
+      </details>
+    </section>
   );
 }
 
 /**
- * Indicadores clave. `<dl>` porque son pares término/valor de verdad, y el
- * lector de pantalla los recorre como tales.
+ * Rótulo de contexto + título. El rótulo va ARRIBA y en mono: dice periodo y
+ * unidad en cuatro palabras, en vez de la frase entera que antes ocupaba dos
+ * líneas en cada tarjeta. El alcance («Ahora mismo») viaja aquí y no en el
+ * desplegable: un panel que no obedece al filtro de la página tiene que decirlo
+ * ANTES de que nadie lea su cifra, o miente por omisión.
  */
+function PanelHead({
+  spec,
+  titleId,
+  Heading,
+  chevron = false,
+}: {
+  spec: PanelSpec;
+  titleId: string;
+  Heading: "h2" | "h3" | "h4";
+  chevron?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="label-section">
+          {spec.context.period}
+          {spec.context.scope ? ` · ${spec.context.scope}` : ""} · {spec.unit.short}
+        </span>
+        <Heading
+          id={titleId}
+          className="font-serif text-[15px] leading-tight font-semibold text-foreground"
+        >
+          {spec.title}
+        </Heading>
+      </div>
+      {chevron && (
+        <span
+          aria-hidden
+          className="mt-0.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+        >
+          ⌄
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** La cifra que preside la tarjeta. `<dl>` de verdad, no un número suelto. */
+function Hero({ kpi }: { kpi: PanelKpi }) {
+  const value = kpi.text ?? formatValue(kpi.value, kpi.unit);
+  const good = kpi.delta ? deltaIsGood(kpi.delta) : undefined;
+  return (
+    <dl className="flex flex-col gap-0.5">
+      <dd
+        className={`font-serif text-[32px] leading-none font-semibold tracking-tight ${
+          value === NO_DATA ? "text-foreground-faint" : "text-foreground"
+        }`}
+      >
+        {value}
+      </dd>
+      <dt className="text-[11px] text-muted-foreground">{kpi.label}</dt>
+      {kpi.delta && (
+        <dd
+          className={`text-[11px] ${
+            good === undefined
+              ? "text-muted-foreground"
+              : good
+                ? "text-status-completed"
+                : "text-status-dropped"
+          }`}
+        >
+          <span aria-hidden>{deltaGlyph(kpi.delta)} </span>
+          {formatDelta(kpi.delta)}
+        </dd>
+      )}
+    </dl>
+  );
+}
+
+/** El resto de indicadores, ya en el desplegable. */
 function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
   return (
     <dl className="flex flex-wrap gap-x-6 gap-y-2">
@@ -207,7 +306,7 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
             <dt className="text-[10.5px] text-muted-foreground">{k.label}</dt>
             <dd className="flex flex-col gap-0.5">
               <span
-                className={`font-serif text-2xl leading-none font-semibold ${
+                className={`font-serif text-xl leading-none font-semibold ${
                   value === NO_DATA ? "text-foreground-faint" : "text-foreground"
                 }`}
               >
@@ -239,17 +338,24 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
   );
 }
 
-/** Ranking: lista ordenada de verdad. La posición la pone `<ol>`, no un número pintado. */
-function RankingList({ spec }: { spec: PanelSpec }) {
+/**
+ * Ranking: lista ordenada de verdad, la posición la pone `<ol>`. Plegado enseña
+ * las primeras; desplegado, todas.
+ *
+ * Sin enlaces cuando está recortada: iría dentro del `<summary>`, y un enlace
+ * dentro del control que abre la tarjeta es una trampa para el teclado.
+ */
+function RankingList({ spec, limit }: { spec: PanelSpec; limit?: number }) {
+  const rows = limit ? spec.data.slice(0, limit) : spec.data;
   return (
     <ol className="flex flex-col">
-      {spec.data.map((d) => (
+      {rows.map((d) => (
         <li
           key={d.key}
-          className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1.5 last:border-0"
+          className="flex items-baseline justify-between gap-3 border-b border-border/50 py-1.5 last:border-0"
         >
-          <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-            {d.href ? (
+          <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+            {d.href && !limit ? (
               <Link href={d.href} className="hover:text-accent hover:underline">
                 {d.label}
               </Link>
@@ -257,7 +363,9 @@ function RankingList({ spec }: { spec: PanelSpec }) {
               d.label
             )}
             {d.detail && (
-              <span className="ml-1.5 text-[11px] text-muted-foreground">{d.detail}</span>
+              <span className="ml-1.5 text-[10.5px] text-muted-foreground">
+                {d.detail}
+              </span>
             )}
           </span>
           <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
@@ -265,6 +373,11 @@ function RankingList({ spec }: { spec: PanelSpec }) {
           </span>
         </li>
       ))}
+      {limit && spec.data.length > limit && (
+        <li className="pt-1.5 text-[10.5px] text-foreground-faint">
+          y {formatNumber(spec.data.length - limit)} más
+        </li>
+      )}
     </ol>
   );
 }

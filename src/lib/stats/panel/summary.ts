@@ -10,13 +10,13 @@ import { derive, partValue, type PanelDerived } from "./derive";
 import { formatDelta, formatProse, formatShare, formatValue } from "./format";
 import type { PanelSpec } from "./types";
 
-/** Une frases en un párrafo, descartando las que ninguna regla llenó. */
-function paragraph(sentences: (string | null)[]): string {
-  return sentences
+/** Limpia las frases que ninguna regla llenó y las puntúa. */
+function sentences(raw: (string | null)[]): string[] {
+  return raw
     .filter((s): s is string => Boolean(s))
-    .map((s) => (s.endsWith(".") ? s : `${s}.`))
-    .join(" ");
+    .map((s) => (s.endsWith(".") ? s : `${s}.`));
 }
+
 
 /** «3 de 12 periodos sin datos» — el hueco se nombra, no se rellena con cero. */
 function missingSentence(d: PanelDerived, total: number): string | null {
@@ -57,21 +57,28 @@ function deltaSentence(spec: PanelSpec): string | null {
 }
 
 /**
- * Resumen del panel. Devuelve `""` si no hay ni un dato medido — en ese caso el
- * panel debe pintar su estado vacío, no una frase de relleno.
+ * Frases del resumen, sueltas y en orden de importancia: dato principal →
+ * extremos → reparto → variación → huecos. Devuelve [] si no hay ni una medida
+ * (ahí toca estado vacío, no una frase de relleno).
+ *
+ * Se exponen sueltas porque la vista compacta enseña SOLO la primera y la
+ * ampliada las enseña todas — partir el párrafo por el punto sería adivinar.
  */
-export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
-  if (spec.summary) return spec.summary;
-  if (derived.isEmpty) return "";
+export function summaryLines(spec: PanelSpec, derived = derive(spec)): string[] {
+  if (spec.summary) return [spec.summary];
+  if (derived.isEmpty) return [];
 
   const d = derived;
   const n = d.known.length;
   const unit = spec.unit;
 
   // Todo medido y todo a cero: es una respuesta, y muy distinta de «sin datos».
+  // Van DOS frases a propósito: la segunda es la que ve la vista compacta, y es
+  // justo la que separa «medí y salió cero» de «no llegué a medir».
   if (d.allZero && spec.viz !== "gauge") {
-    return paragraph([
-      `Sin actividad: los ${n} puntos medidos valen cero`,
+    return sentences([
+      "Sin actividad",
+      `Los ${n} ${n === 1 ? "punto medido vale" : "puntos medidos valen"} cero; no es que falten datos`,
       missingSentence(d, spec.data.length),
     ]);
   }
@@ -79,23 +86,23 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
   switch (spec.viz) {
     case "kpi": {
       const main = spec.kpis?.[0];
-      if (!main) return "";
+      if (!main) return [];
       const value = main.text ?? formatProse(main.value, main.unit ?? unit);
-      return paragraph([`${main.label}: ${value}`, deltaSentence(spec)]);
+      return sentences([`${main.label}: ${value}`, deltaSentence(spec)]);
     }
 
     case "gauge": {
       const done = d.total;
       const target = spec.target ?? null;
       if (target === null || target <= 0) {
-        return paragraph([
+        return sentences([
           `${formatProse(done, unit)} acumuladas. Sin objetivo configurado`,
           deltaSentence(spec),
         ]);
       }
       const pct = formatShare(done, target);
       const rest = target - done;
-      return paragraph([
+      return sentences([
         rest <= 0
           ? `Objetivo cumplido: ${formatProse(done, unit)} de ${formatProse(target, unit)} (${pct})`
           : `${formatProse(done, unit)} de ${formatProse(target, unit)} (${pct}); faltan ${formatProse(rest, unit)}`,
@@ -106,7 +113,7 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
     case "ranking": {
       const first = d.known[0];
       const last = d.known[n - 1];
-      return paragraph([
+      return sentences([
         `${n} ${n === 1 ? "posición" : "posiciones"}`,
         first ? `1.ª ${first.label} (${formatValue(first.value, unit)})` : null,
         n > 1 ? `última ${last.label} (${formatValue(last.value, unit)})` : null,
@@ -116,7 +123,7 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
 
     case "heatmap": {
       const active = d.known.filter((x) => x.value > 0).length;
-      return paragraph([
+      return sentences([
         `${active} de ${n} ${n === 1 ? "día" : "días"} con actividad (${formatShare(active, n)})`,
         d.max ? `Máximo: ${d.max.label} (${formatValue(d.max.value, unit)})` : null,
         missingSentence(d, spec.data.length),
@@ -124,8 +131,10 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
     }
 
     case "donut": {
-      return paragraph([
-        `Total ${formatProse(d.total, unit)} repartidas en ${n} ${n === 1 ? "categoría" : "categorías"}`,
+      // Sin participio: «repartidas» concuerda con obras pero no con títulos, y
+      // la unidad la elige cada panel.
+      return sentences([
+        `Total ${formatProse(d.total, unit)} en ${n} ${n === 1 ? "categoría" : "categorías"}`,
         d.max
           ? `Mayor: ${d.max.label}, ${formatValue(d.max.value, unit)} (${formatShare(d.max.value, d.total)})`
           : null,
@@ -134,7 +143,7 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
     }
 
     case "stacked": {
-      return paragraph([
+      return sentences([
         `Total ${formatProse(d.total, unit)} en ${n} ${n === 1 ? "periodo" : "periodos"}`,
         extremesSentence(d, spec),
         mixSentence(spec, d),
@@ -146,7 +155,7 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
     // bars, line, area y table comparten la lectura: cuánto en total, qué
     // destaca y cuánto falta.
     default: {
-      return paragraph([
+      return sentences([
         `Total ${formatProse(d.total, unit)} en ${n} ${n === 1 ? "punto" : "puntos"}`,
         extremesSentence(d, spec),
         deltaSentence(spec),
@@ -154,4 +163,21 @@ export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
       ]);
     }
   }
+}
+
+/** Resumen completo, en un párrafo. Vista ampliada. */
+export function buildSummary(spec: PanelSpec, derived = derive(spec)): string {
+  return summaryLines(spec, derived).join(" ");
+}
+
+/**
+ * La frase que acompaña a la cifra en la vista compacta: lo que DESTACA, no el
+ * total — que ya preside la tarjeta como cifra grande. Por eso es la SEGUNDA
+ * línea, no la primera: repetir «Total 78 obras» debajo de un «78 obras» de
+ * 32 px es gastar la única línea de prosa que tiene la vista general.
+ *
+ * Si no hay nada que destacar (un dato único, todos iguales), no hay frase.
+ */
+export function buildHighlight(spec: PanelSpec, derived = derive(spec)): string {
+  return summaryLines(spec, derived)[1] ?? "";
 }

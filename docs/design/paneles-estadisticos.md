@@ -41,24 +41,38 @@ Nueve reglas. Las cuatro primeras son las que se incumplían antes del rediseño
 9. **Los filtros van en una fila, arriba, para todo el muro.** Nunca un filtro dentro
    de una tarjeta.
 
-## 2. Jerarquía de contenido
+## 2. Jerarquía de contenido: dos densidades, un solo árbol
 
-El orden del DOM **es** el orden de lectura y el de importancia. Un lector de pantalla
-que entre en la región y no siga leyendo ya se ha llevado la respuesta.
+El panel entero es un `<details>`. **La tarjeta completa es el control**: se pulsa en
+cualquier punto, funciona con teclado y se anuncia como desplegable, sin una línea de
+JavaScript.
 
 ```
-1 Título              ← qué es
-2 Contexto            ← de qué periodo, con qué filtros, en qué unidad
-  + descripción       ← qué mide y cómo se calcula (opcional, pero ANTES del dato)
-3 Resumen textual     ← la respuesta en una frase
-4 Indicadores         ← el dato principal y su variación
-5 Visualización       ← la forma (decorativa)
-6 Selector de vista   ← "Ver los N valores exactos"
-7 Tabla               ← todos los valores
-8 Notas               ← salvedades de cálculo
-9 Estados             ← sustituyen a 3–8 cuando toca
-10 Acciones           ← a dónde ir a partir de aquí
+PLEGADO  (vista general — sin prosa)      DESPLEGADO  (el detalle)
+┌────────────────────────────────┐        ├─ descripción     ← cómo se calcula
+│ 2 Rótulo: periodo · alcance ·  │        ├─ 3 resumen completo
+│   unidad                       │        ├─ 4 resto de indicadores
+│ 1 Título                       │        ├─ 7 tabla de valores exactos
+│ 4 Cifra que preside            │        ├─ 2 contexto en frase larga
+│ 3 Una frase: lo que DESTACA    │        ├─ 8 notas
+│ 5 Visualización + leyenda      │        └─ 10 acciones
+│ 6 «Ver detalle ↓»              │
+└────────────────────────────────┘        9 Estados sustituyen a todo esto
 ```
+
+El orden del DOM **es** el orden de lectura y el de importancia. Quien entre en la
+región y no siga leyendo ya se ha llevado la respuesta.
+
+**Tres reglas de la vista compacta**, que es donde es fácil deshacer todo el trabajo:
+
+1. **Plegado sigue habiendo cifra en texto.** La preside un `<dl>` de verdad; si la spec
+   no declara indicadores, `heroKpi` fabrica uno con el total. Un panel plegado nunca es
+   un dibujo a secas.
+2. **La frase compacta es la SEGUNDA del resumen, no la primera.** La primera dice el
+   total, y el total ya está ahí en 32 px: repetirlo gasta la única línea de prosa que
+   tiene la vista general. La segunda dice lo que destaca.
+3. **La leyenda viaja al bloque compacto.** Un anillo plegado sin leyenda sería
+   identidad por color y nada más.
 
 **La decisión que sostiene la accesibilidad:** el gráfico va `aria-hidden` y la tabla
 es el dato. La alternativa —un `aria-label` por barra— duplica cada cifra en el árbol
@@ -67,37 +81,45 @@ accesible, obliga a mantener dos copias y las desincroniza al primer cambio.
 ## 3. Plantilla genérica
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ Horas por mes                        Ver detalle ›  │ 1 + 10
-│ 2026 · Sesiones de lectura. Valores en minutos.     │ 2
-│                                                     │
-│ Total 1.240 minutos en 8 puntos. Máximo: Marzo      │ 3
-│ (310 min); mínimo: Agosto (0 min). 4 de 12 puntos   │
-│ sin datos.                                          │
-│                                                     │
-│ Sesión media          Mejor mes                     │ 4
-│ 42 min                Marzo                         │
-│ ▲ +8 minutos más que en 2025                        │
-│                                                     │
-│   ▁ ▃ █ ▅ ▂ ▄ ▃ ─ ·  ·  ·  ·                        │ 5
-│   E F M A M J J A S  O  N  D                        │
-│                    └─ ─ = cero medido               │
-│                       · = sin datos                 │
-│                                                     │
-│ › Ver los 12 valores exactos                        │ 6
-│   ┌────────────┬─────────┬────────┐                 │ 7
-│   │ Mes        │ Minutos │  Cuota │                 │
-│   ├────────────┼─────────┼────────┤                 │
-│   │ Enero      │  90 min │    7 % │                 │
-│   │ Agosto     │   0 min │    0 % │                 │
-│   │ Septiembre │Sin datos│Sin datos│                │
-│   ├────────────┼─────────┼────────┤                 │
-│   │ Total      │1.240 min│        │                 │
-│   └────────────┴─────────┴────────┘                 │
-│                                                     │
-│ Solo cuenta sesiones con duración. Un mes futuro    │ 8
-│ aparece como «Sin datos», no como cero.             │
-└─────────────────────────────────────────────────────┘
+PLEGADO ─────────────────────────────────────────────┐
+│ 2026 · MIN                                      ⌄  │ 2  rótulo mono
+│ Horas por mes                                      │ 1  título serif
+│                                                    │
+│ 25 min                                             │ 4  cifra que preside
+│ Total                                              │
+│                                                    │
+│ Máximo: Julio (25 min); mínimo: Enero (0 min).     │ 3  lo que DESTACA
+│                                                    │
+│ ─ ─ ─ ─ ─ ─ █ ─ ·  ·  ·  ·                         │ 5
+│ E F M A M J J A S  O  N  D                         │
+│                  └─ ─ = cero medido                │
+│                     · = sin datos                  │
+│ VER DETALLE ↓                                      │ 6
+└────────────────────────────────────────────────────┘
+
+DESPLEGADO (se añade debajo, al pulsar la tarjeta) ──┐
+│ Solo cuenta sesiones con duración registrada.      │    descripción
+│                                                    │
+│ Total 25 minutos en 8 puntos. Máximo: Julio        │ 3  resumen completo
+│ (25 min); mínimo: Enero (0 min). 4 de 12 puntos    │
+│ sin datos.                                         │
+│                                                    │
+│ ┌────────────┬──────────┬──────────┐               │ 7
+│ │ Mes        │  Minutos │    Cuota │               │
+│ ├────────────┼──────────┼──────────┤               │
+│ │ Enero      │    0 min │      0 % │               │
+│ │ Julio      │   25 min │    100 % │               │
+│ │ Septiembre │ Sin datos│ Sin datos│               │
+│ ├────────────┼──────────┼──────────┤               │
+│ │ Total      │   25 min │          │               │
+│ └────────────┴──────────┴──────────┘               │
+│ «Sin datos» significa que no se registró medida,   │
+│ no que valga cero. El total suma solo lo medido.   │
+│                                                    │
+│ 2026 · Sesiones de lectura. Valores en minutos.    │ 2  contexto largo
+│ Un mes futuro aparece como «Sin datos», no cero.   │ 8  nota
+│ Ver estadísticas completas ›                       │ 10 acciones
+└────────────────────────────────────────────────────┘
 ```
 
 ### Wireframes de los estados (bloque 9)
@@ -172,6 +194,19 @@ estructurado, y duplicarlo solo obliga al lector de pantalla a oírlo dos veces.
 **Frases, en orden:** dato principal → extremos → reparto → variación → huecos. Se
 concatenan solo las que alguna regla llenó, así que el resumen encoge con el dato en
 vez de arrastrar muletillas.
+
+`summaryLines()` las devuelve **sueltas**, no unidas: la vista compacta enseña la
+segunda (`buildHighlight`) y la ampliada las une todas (`buildSummary`). Partir el
+párrafo por el punto sería adivinar dónde acaba cada frase.
+
+**Concordancia**, que es donde falla un generador de texto en español:
+
+| Trampa | Regla |
+|---|---|
+| «137 títulos repartid**as**» | La frase evita el participio: la unidad la elige cada panel y su género no se puede suponer. |
+| «1 obra**s**» | `formatValue` pluraliza cuando el símbolo corto ES la palabra (`obras`, `días`); las abreviaturas de verdad (`min`, `%`, `★`) no se tocan. |
+| «más que **en** la semana pasada» | El conector concuerda: `en` solo si el periodo empieza por dígito. |
+| «los 1 puntos medidos» | El mensaje de todo-a-cero concuerda en singular y plural. |
 
 **Variación** (`formatDelta`), siempre las cuatro señales:
 
@@ -257,23 +292,39 @@ secas, que no dice si es culpa del filtro o de que no hay nada.
 
 ```html
 <section aria-labelledby="horas-title">        <!-- región con nombre -->
-  <h2 id="horas-title">Horas por mes</h2>
-  <p>2026 · Sesiones. Valores en minutos.</p>
-  <p>Total 1.240 minutos en 8 puntos…</p>      <!-- resumen -->
-  <dl>…</dl>                                    <!-- indicadores -->
-  <div aria-hidden="true">…gráfico…</div>       <!-- decorativo -->
-  <ul>…leyenda con glifo…</ul>                  <!-- NO oculta: nombra series -->
   <details>
-    <summary>Ver los 12 valores exactos</summary>
-    <table>
-      <caption class="sr-only">Horas por mes. 2026 · Sesiones. Valores en minutos.</caption>
-      <thead><tr><th scope="col">Mes</th><th scope="col">Minutos</th></tr></thead>
-      <tbody><tr><th scope="row">Enero</th><td>90 min</td></tr></tbody>
-      <tfoot><tr><th scope="row">Total</th><td>1.240 min</td></tr></tfoot>
-    </table>
+    <summary>                                   <!-- LA TARJETA ENTERA es el control -->
+      <span class="label-section">2026 · min</span>
+      <h2 id="horas-title">Horas por mes</h2>
+      <dl><dd>25 min</dd><dt>Total</dt></dl>    <!-- la cifra, en texto -->
+      <p>Máximo: Julio (25 min)…</p>            <!-- lo que destaca -->
+      <div aria-hidden="true">…gráfico…</div>   <!-- decorativo -->
+      <ul>…leyenda con glifo…</ul>              <!-- NO oculta: nombra series -->
+    </summary>
+
+    <div>
+      <p>Total 25 minutos en 8 puntos…</p>      <!-- resumen completo -->
+      <table>
+        <caption class="sr-only">Horas por mes. 2026 · Sesiones. Valores en minutos.</caption>
+        <thead><tr><th scope="col">Mes</th><th scope="col">Minutos</th></tr></thead>
+        <tbody><tr><th scope="row">Enero</th><td>0 min</td></tr></tbody>
+        <tfoot><tr><th scope="row">Total</th><td>25 min</td></tr></tfoot>
+      </table>
+    </div>
   </details>
 </section>
 ```
+
+El `<h2>` va **dentro** del `<summary>`: el nombre accesible del desplegable acaba
+siendo «Horas por mes · 2026 · min · 25 min · Total…», que es informativo — dice qué se
+va a abrir. A cambio, `aria-labelledby` de la región sigue apuntando al `<h2>`, así que
+el panel conserva su nombre en la lista de regiones.
+
+**Ningún enlace dentro del `<summary>`.** Un enlace dentro del control que abre la
+tarjeta es una trampa de teclado: los enlaces de un ranking y de la tabla viven en el
+bloque desplegado, y la lista recortada de la vista compacta va sin ellos.
+
+**Carga, error y vacío no se pliegan**: no hay detalle detrás que abrir.
 
 Qué se usa y por qué:
 
@@ -296,6 +347,11 @@ Qué se usa y por qué:
 - [ ] El panel responde a las 7 preguntas sin abrir nada más que el desplegable.
 - [ ] Resumen, indicadores, gráfico y tabla salen del mismo `PanelSpec`.
 - [ ] Borrar el gráfico no pierde información.
+- [ ] **Plegado, el panel sigue teniendo su cifra en texto** (no solo el dibujo).
+- [ ] La tarjeta entera abre y cierra con ratón y con teclado, y no hay enlaces dentro
+      del control que la abre.
+- [ ] La leyenda es visible sin desplegar en todo panel con 2+ series.
+- [ ] El alcance ajeno al filtro se ve **antes** que la cifra, sin desplegar.
 - [ ] `null` se lee «Sin datos» y no entra en totales, medias ni cuotas.
 - [ ] Un `0` medido se dibuja y se lista como `0`.
 - [ ] Con un solo punto no se anuncian máximo ni mínimo.
@@ -327,8 +383,23 @@ Qué se usa y por qué:
 
 ### Comprobado el 2026-08-04
 
-- 16 unitarios (`summary.test.ts`) sobre hueco/cero, silencio de reglas y formato.
-- 4 e2e (`e2e/estadisticas.spec.ts`) sobre región con nombre, contexto con unidad,
-  tabla con `rowheader`/`columnheader`, y ausencia de tabla duplicada en un ranking.
+- **28 unitarios** (`summary.test.ts`): hueco vs cero, silencio de reglas, concordancia,
+  qué indicador preside y qué frase llega a la vista compacta.
+- **6 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y unidad,
+  tabla oculta plegada y visible al pulsar la tarjeta, `rowheader`/`columnheader`,
+  cifra en texto sin desplegar, ausencia de tabla duplicada en un ranking, y la
+  pestaña del perfil sobre el mismo armazón.
+- **Revisión visual en navegador** (1280 px y 390 px, plegado y desplegado). De ahí
+  salieron seis defectos que ninguna prueba veía: color de sector por posición en vez
+  de por categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota con
+  total cero, 96 px de hueco con todo a cero, y las dos «M» de martes y miércoles.
 - Paleta pasada por el validador de la guía de dataviz — resultado en la decisión
   correspondiente de `docs/requirements/decisiones.md`.
+
+### Consumidores
+
+| Vista | Paneles | Fuera del armazón |
+|---|---|---|
+| `/estadisticas` | 12 | — |
+| `/u/[username]?tab=estadisticas` | 9 (4 comparten constructor con el muro) | calendario mensual y editor de objetivo: son controles con estado |
+| Rail del feed (`stats-rail`) | 0 — sigue con sus tarjetas propias | es un resumen deliberadamente distinto |

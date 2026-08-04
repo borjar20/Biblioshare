@@ -36,7 +36,11 @@ export function formatValue(value: number | null, unit?: Unit): string {
   if (value === null || !Number.isFinite(value)) return NO_DATA;
   const n = formatNumber(value, unit?.decimals ?? 0);
   if (!unit) return n;
-  return `${n}${unit.short === "%" ? NBSP : " "}${unit.short}`;
+  // Cuando el símbolo corto ES la palabra en plural («obras», «días»), tiene que
+  // concordar: si no, sale «1 obras» en el mínimo de cada histograma. Las
+  // abreviaturas de verdad («min», «%», «★») no se tocan.
+  const symbol = unit.short === unit.many ? plural(value, unit) : unit.short;
+  return `${n}${unit.short === "%" ? NBSP : " "}${symbol}`;
 }
 
 /** Valor + unidad en prosa, con concordancia: «1 obra», «12 obras». */
