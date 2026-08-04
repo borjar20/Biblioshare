@@ -505,7 +505,7 @@ function CatalogEditorForm({
               {/* "Tipo de medio" en solo lectura (frame 6): sitúa qué ficha se
                   está tocando sin permitir cambiarla — el tipo no se edita. */}
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                <span className="label-section">
                   {t("fieldType")}
                 </span>
                 <input
@@ -516,7 +516,7 @@ function CatalogEditorForm({
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                <span className="label-section">
                   {t("fieldTitle")}
                 </span>
                 {/* `.title-ed`: el título se edita en serif y a 20px — sigue
@@ -550,7 +550,7 @@ function CatalogEditorForm({
             {showCovers && (
               <>
                 {coversLoading && (
-                  <p className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+                  <p className="label-section">
                     {t("coversLoading")}
                   </p>
                 )}
@@ -588,13 +588,13 @@ function CatalogEditorForm({
 
           <div className="grid grid-cols-[1fr_96px] gap-2.5">
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+              <span className="label-section">
                 {t(AUTHOR_LABEL_KEY[itemType])}
               </span>
               <Input name="author" defaultValue={item.author ?? ""} maxLength={200} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+              <span className="label-section">
                 {t("fieldYearShort")}
               </span>
               <Input
@@ -607,7 +607,7 @@ function CatalogEditorForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+            <span className="label-section">
               {t("fieldGenres")}
             </span>
             {/* `.chips-ed` del frame: chips en caja (no en mono-etiqueta) con
@@ -663,7 +663,7 @@ function CatalogEditorForm({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("fieldSynopsis")}
             </span>
             <textarea
@@ -686,7 +686,7 @@ function CatalogEditorForm({
             primary y "hacer principal" en las demás. El aspa de cada chip
             quita SOLO esa membresía, no las demás sagas del ítem. */}
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {tSaga("title")}
           </span>
           {sagas.length > 0 && (
@@ -751,7 +751,7 @@ function CatalogEditorForm({
         {itemType !== "series" && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+              <span className="label-section">
                 {isMovie ? tEditions("titleMovie") : tEditions("titleBook")}
               </span>
               {/* Solo libros: útil porque el filtro de OpenLibrary (Tarea 5)
@@ -762,7 +762,7 @@ function CatalogEditorForm({
                   type="button"
                   disabled={resyncPending}
                   onClick={handleResync}
-                  className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase hover:text-foreground disabled:opacity-60"
+                  className="label-section hover:text-foreground disabled:opacity-60"
                 >
                   {resyncPending ? t("resyncing") : t("resync")}
                 </button>
@@ -786,7 +786,7 @@ function CatalogEditorForm({
             {/* `.ed-addbox`: caja discontinua sobre --surface-2 con el botón
                 de añadir también discontinuo y del acento. */}
             <div className="flex flex-col gap-3 rounded-[10px] border border-dashed border-border bg-surface-muted p-3">
-              <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+              <span className="label-section">
                 {isMovie ? tEditions("addMovie") : tEditions("add")}
               </span>
               <form action={createFormAction} className="flex flex-col gap-3">

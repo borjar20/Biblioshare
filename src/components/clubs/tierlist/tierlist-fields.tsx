@@ -53,7 +53,7 @@ export function TierlistFields({
 
   return (
     <div className="flex flex-col gap-2 rounded-card border border-border p-3">
-      <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+      <span className="label-section">
         {t("tierlistTiers")}
       </span>
 

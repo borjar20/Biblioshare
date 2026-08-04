@@ -70,7 +70,7 @@ export function FollowButton({
         {label}
       </Button>
       {failed && (
-        <p role="alert" className="max-w-48 text-right text-xs text-destructive">
+        <p role="alert" className="max-w-48 text-right text-xs text-status-dropped">
           {t("actionError")}
         </p>
       )}

@@ -7,6 +7,7 @@ import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { countMyPending } from "@/lib/import/pending";
 import { SHELL_APP } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 import { ImportForm } from "./import-form";
 
 export const metadata: Metadata = {
@@ -39,7 +40,7 @@ export default async function ImportPage() {
     // cliente y esto es un server component.
     <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <PageHeader title={t("title")} />
         <p className="text-sm text-muted-foreground">{t("description")}</p>
         <Link href="/importar/pendientes" className="text-sm text-accent underline">
           {pendingCount > 0

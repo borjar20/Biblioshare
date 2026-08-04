@@ -140,7 +140,7 @@ export async function LibraryFilters({
       <FiltersDropdown label={t("collection.filters")} activeCount={activeCount}>
         {showTypeFilter && (
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("collection.filterType")}
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -164,7 +164,7 @@ export async function LibraryFilters({
         )}
 
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterStatus")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
@@ -189,7 +189,7 @@ export async function LibraryFilters({
 
         {genres && genres.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("collection.filterGenre")}
             </span>
             <div className="flex flex-wrap items-center gap-0.5">
@@ -206,7 +206,7 @@ export async function LibraryFilters({
         )}
 
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterSort")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">

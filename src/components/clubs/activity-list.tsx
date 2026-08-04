@@ -94,7 +94,7 @@ function Group({ title, children }: { title: string; children: ReactNode[] }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <h2 className="label-section">
         {title}
       </h2>
       <div className="grid gap-2 lg:grid-cols-2">{children}</div>

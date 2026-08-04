@@ -211,6 +211,17 @@
   --radius-cover: 10px;
   --radius-card: 14px;
 
+  /* Los radios de Tailwind APUNTAN a la escala de arriba, no a sus valores de
+     fábrica (6/8/12/16). Motivo: el código tenía 270 `rounded-md|lg|xl|2xl`
+     contra 114 de la escala propia, así que en pantalla convivían cuatro
+     tamaños de esquina donde el sistema declara tres. Reasignarlos aquí los
+     alinea sin tocar 270 sitios ni pelearse con lo que venga después.
+     `sm` se queda fuera: es el detalle diminuto (dots, marcas), no una caja. */
+  --radius-md: var(--radius-chip);
+  --radius-lg: var(--radius-cover);
+  --radius-xl: var(--radius-card);
+  --radius-2xl: var(--radius-card);
+
   --shadow-card: 0 6px 16px -12px rgba(60, 35, 15, 0.4);
   --shadow-cover: 0 8px 18px -8px rgba(60, 35, 15, 0.5);
 
@@ -227,10 +238,55 @@ body {
 /* Paper es liso: papel, sin el glow ambiental del tema morado (el handoff lo
    da por prescindible y a estos valores era imperceptible de todos modos). */
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-serif);
+/* Foco de teclado, UNA sola vez para toda la app.
+   Antes de esto no había ninguno donde más se navega: `Button` —el primitivo
+   más usado— no declaraba foco, y el repo tenía 30 `focus:outline-none` contra
+   5 `focus-visible:` en total. Con el ratón no se nota; con el teclado la app
+   se recorría a ciegas.
+   Va SIN capa a propósito: las utilidades de Tailwind viven en `@layer
+   utilities`, y una regla sin capa gana a cualquier regla en capa (no es
+   cuestión de especificidad). Es lo que deja que esto venza a los
+   `focus:outline-none` que ya están escritos, sin ir a borrarlos uno a uno.
+   `:focus-visible` (no `:focus`) = solo teclado, el ratón no lo dispara.
+   El anillo de acento y el offset son los que ya usaban los tres sitios que sí
+   lo tenían resuelto: se adopta esa decisión, no se inventa otra. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Los titulares son Fraunces POR DEFECTO, y por defecto quiere decir que una
+   utilidad puede cambiarlo. Esta regla estaba sin capa, y una regla sin capa
+   gana a todo `@layer utilities` pase lo que pase: cualquier `<h2
+   className="font-mono …">` se pintaba en serif y nadie podía enmendarlo desde
+   el marcado. Ahí estaba media explicación de los quince estilos de etiqueta —
+   se subía el tamaño a 12px para compensar un serif que no se había pedido.
+   En `@layer base` sigue aplicándose a todo titular sin clase, y ahora
+   `label-section` (o cualquier `font-*`) manda donde se le diga. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Etiqueta de sección: el rótulo mono en mayúsculas que encabeza cada bloque
+   ("EN CURSO", "MIS CLUBES", "EDICIONES"). Existía ya en QUINCE variantes de la
+   misma idea —de 8,5 a 12 px y diez valores de `tracking`—, así que la misma
+   etiqueta salía a 12 px en Clubes y a 10 px en Inicio. Estos son los valores
+   del handoff (10 px / 0.12em).
+   Lleva el color dentro porque el color ES parte del papel: si se deja fuera,
+   la siguiente pantalla lo vuelve a elegir a ojo y volvemos a quince.
+   NO es para las micro-etiquetas de dentro de una tarjeta (el "LIBRO" sobre un
+   título, el "BOLSILLO" de una edición): esas son chips, otro papel. */
+@utility label-section {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }
 
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */

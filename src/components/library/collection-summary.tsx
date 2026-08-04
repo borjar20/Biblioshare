@@ -41,7 +41,7 @@ export async function CollectionSummary({
         <span className="font-serif text-3xl leading-none font-semibold text-foreground">
           {summary.total}
         </span>
-        <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {t("collection.summary.total")}
         </span>
       </div>

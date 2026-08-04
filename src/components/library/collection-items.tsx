@@ -71,7 +71,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
       >
         {/* Tipo */}
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterType")}
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -97,7 +97,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
 
         {/* Estado */}
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterStatus")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
@@ -119,7 +119,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
 
         {/* Orden */}
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterSort")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">

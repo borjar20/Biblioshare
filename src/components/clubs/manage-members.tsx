@@ -110,7 +110,7 @@ export function ManageMembers({
   return (
     <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <h2 className="label-section">
           {t("membersCount", { count: active.length })}
         </h2>
         <Button

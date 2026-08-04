@@ -46,7 +46,7 @@ export function ProposalModeration({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <h2 className="label-section">
         {t("groupProposed", { count: proposals.length })}
       </h2>
 

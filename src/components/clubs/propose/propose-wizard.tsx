@@ -125,7 +125,7 @@ export function ProposeWizard({
         </Field>
 
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("kind")}
           </span>
 
@@ -215,7 +215,7 @@ export function ProposeWizard({
           se DESCRIBE por criterio y no enumera ítems. */}
       {definition?.usesItemPool && (
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {kind === "buddy_read" ? t("proposeItem") : t("proposeItems")}
           </span>
 

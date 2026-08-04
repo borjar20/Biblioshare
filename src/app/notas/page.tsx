@@ -12,6 +12,7 @@ import { compareNotes } from "@/lib/notes/sort";
 import { hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
 import { NoteCard } from "@/components/notes/note-card";
 import { NOTE_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 import { NotesFilters } from "./notes-filters";
 import { NotesPager } from "./notes-pager";
 
@@ -67,21 +68,18 @@ export default async function NotebookPage({
 
   return (
     <main className={`mx-auto w-full ${SHELL_GRID} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
-      <header className="mb-4 flex items-center gap-3">
-        <Link
-          href={backHref}
-          aria-label={t("notebookBack")}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-lg text-muted-foreground transition-colors hover:text-foreground"
-        >
-          ‹
-        </Link>
-        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-          {t("notebookTitle")}
-        </h1>
-        <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-          {t("notebookResults", { count: total })}
-        </span>
-      </header>
+      <div className="mb-4">
+        <PageHeader
+          title={t("notebookTitle")}
+          backHref={backHref}
+          backLabel={t("notebookBack")}
+          action={
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {t("notebookResults", { count: total })}
+            </span>
+          }
+        />
+      </div>
 
       <div className="mb-4">
         <NotesFilters query={query} />
@@ -105,7 +103,7 @@ export default async function NotebookPage({
               <section key={group.key} className="flex flex-col gap-3">
                 <Link
                   href={itemHref(first.itemType, first.itemId)}
-                  className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase hover:text-accent"
+                  className="label-section hover:text-accent"
                 >
                   {first.itemTitle ?? t("notebookUnknownWork")}
                 </Link>

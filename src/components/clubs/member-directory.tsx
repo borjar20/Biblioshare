@@ -162,7 +162,7 @@ export function MemberDirectory({
 
       {data.team.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("directorySectionTeam")}
           </h2>
           <div className="divide-y divide-border lg:grid lg:grid-cols-2 lg:gap-3 lg:divide-y-0">
@@ -175,7 +175,7 @@ export function MemberDirectory({
 
       <section className="flex flex-col gap-2">
         {showMainHeading && (
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("directorySectionMembers")} · {data.rowsTotal}
           </h2>
         )}

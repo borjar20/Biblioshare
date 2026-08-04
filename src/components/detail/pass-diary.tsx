@@ -55,7 +55,7 @@ export function PassDiary({
   return (
     <div className="flex flex-col">
       {/* `.h5` del frame: mono, versalitas, apagado (igual que Sesiones). */}
-      <h3 className="mb-[11px] font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase lg:mb-[15px]">
+      <h3 className="mb-[11px] label-section lg:mb-[15px]">
         {t("diaryTitle")}
       </h3>
 
@@ -250,7 +250,7 @@ function PassCard({
           className="flex flex-col gap-2 border-t border-border pt-2"
         >
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("finishedOn")}
             </span>
             <input
@@ -263,7 +263,7 @@ function PassCard({
           </label>
 
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("rating")}
             </span>
             <RatingDots value={rating} onChange={setRating} size="sm" />
@@ -271,7 +271,7 @@ function PassCard({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("review")}
             </span>
             <div className="relative">

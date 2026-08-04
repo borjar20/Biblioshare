@@ -16,13 +16,13 @@ export function NewSagaForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+        <span className="label-section">
           {t("nameLabel")}
         </span>
         <Input name="name" required maxLength={120} placeholder={t("namePlaceholder")} />
       </label>
       <div className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+        <span className="label-section">
           {t("accentLabel")}
         </span>
         <AccentRadio name="accent" />

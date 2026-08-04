@@ -86,7 +86,7 @@ export function CheckpointDraftEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+      <span className="label-section">
         {t("checkpoints")}
       </span>
 

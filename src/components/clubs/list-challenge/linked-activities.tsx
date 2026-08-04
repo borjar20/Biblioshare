@@ -68,7 +68,7 @@ export function LinkedActivities({
 
       {activity.linkedChildren.length > 0 && (
         <>
-          <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h3 className="label-section">
             {t("linkedActivities")}
           </h3>
           <div className="flex flex-col gap-2">
@@ -100,7 +100,7 @@ export function LinkedActivities({
         </>
       )}
 
-      {error && <p className="text-xs text-destructive">{t("proposeError")}</p>}
+      {error && <p className="text-xs text-status-dropped">{t("proposeError")}</p>}
     </section>
   );
 }

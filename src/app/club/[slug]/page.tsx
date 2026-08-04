@@ -205,7 +205,7 @@ async function ClubFeedSection({
           clubSlug={club.slug}
         />
         <div className="hidden rounded-card border border-border bg-surface p-4 shadow-card lg:block">
-          <h2 className="mb-3 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="mb-3 label-section">
             {t("directorySectionMembers")} · {club.memberCount}
           </h2>
           <Link

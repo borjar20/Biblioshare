@@ -239,7 +239,7 @@ export function ReviewInteractions({
         </div>
       )}
       {failed && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-status-dropped">
           {t("actionError")}
         </p>
       )}

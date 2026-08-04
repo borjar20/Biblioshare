@@ -7,6 +7,7 @@ import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getMyPendingRows, getReviewQueue } from "@/lib/import/pending";
 import { FORM_CARD_GRID_COLS, SHELL_APP } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 import { ResolveForm } from "./resolve-form";
 import { DismissButton } from "./dismiss-button";
 
@@ -30,7 +31,7 @@ export default async function PendingImportPage() {
   return (
     <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("pendingTitle")}</h1>
+        <PageHeader title={t("pendingTitle")} />
         <p className="text-sm text-muted-foreground">{t("pendingDescription")}</p>
         <Link href="/importar" className="text-sm text-accent underline">
           {t("backToImport")}

@@ -12,6 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { InboxIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
@@ -142,15 +143,7 @@ export default async function CollectionPage({
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
           da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className="h-[22px] w-2 shrink-0 rounded-full bg-accent"
-        />
-        <h1 className="font-serif text-2xl font-semibold text-foreground lg:text-[28px]">
-          {t("title")}
-        </h1>
-      </div>
+      <PageHeader title={t("title")} />
 
       <CollectionTabs active={tab} />
 

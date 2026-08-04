@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
@@ -31,6 +30,7 @@ import { RecordsCard } from "@/components/stats/records-card";
 import { TbrCard } from "@/components/stats/tbr-card";
 import { PeriodPills } from "./period-pills";
 import { SHELL_APP } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = {
   title: "Estadísticas — Biblioshare",
@@ -148,18 +148,13 @@ export default async function FullStatsPage({
 
   return (
     <main className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
-      <header className="mb-4 flex items-center gap-3">
-        <Link
-          href={backHref}
-          aria-label={t("back")}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-lg text-muted-foreground transition-colors hover:text-foreground"
-        >
-          ‹
-        </Link>
-        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-          {t("fullStatsTitle")}
-        </h1>
-      </header>
+      <div className="mb-4">
+        <PageHeader
+          title={t("fullStatsTitle")}
+          backHref={backHref}
+          backLabel={t("back")}
+        />
+      </div>
 
       <div className="mb-4">
         <PeriodPills current={period} years={availableYears()} />

@@ -14,6 +14,7 @@ import { ClubCard } from "@/components/clubs/club-card";
 import { ClubForm } from "@/components/clubs/club-form";
 import { ClubListSkeleton } from "@/components/clubs/club-skeletons";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { SearchIcon } from "@/components/ui/icons";
 import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
@@ -61,18 +62,18 @@ export default function ClubesPage() {
 
   return (
     <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      <div className="flex items-center justify-between">
-        <h1 className="font-serif text-2xl font-semibold text-foreground">
-          {t("navLabel")}
-        </h1>
-        <Button
-          type="button"
-          className="px-3.5 py-1.5 text-xs"
-          onClick={() => setCreating((v) => !v)}
-        >
-          + {t("create")}
-        </Button>
-      </div>
+      <PageHeader
+        title={t("navLabel")}
+        action={
+          <Button
+            type="button"
+            className="px-3.5 py-1.5 text-xs"
+            onClick={() => setCreating((v) => !v)}
+          >
+            + {t("create")}
+          </Button>
+        }
+      />
 
       {/* El buscador va antes que nada, como en el handoff: buscar un club es
           la acción más frecuente de quien llega aquí sin uno concreto en mente.
@@ -105,7 +106,7 @@ export default function ClubesPage() {
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <h2 className="label-section">
           {t("myClubs")}
         </h2>
         {myClubsLoading ? (
@@ -126,7 +127,7 @@ export default function ClubesPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <h2 className="label-section">
           {t("discover")}
         </h2>
         {discoverLoading ? (

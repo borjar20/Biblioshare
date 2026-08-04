@@ -95,7 +95,7 @@ export async function SagaIndexFilters({
 
         <FiltersDropdown label={t("filtersLabel")} activeCount={activeCount}>
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("filterTypeLabel")}
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -108,7 +108,7 @@ export async function SagaIndexFilters({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("filterOtherLabel")}
             </span>
             <div className="flex flex-wrap gap-1.5">
