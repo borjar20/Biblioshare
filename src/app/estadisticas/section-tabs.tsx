@@ -76,7 +76,11 @@ export function SectionTabs({
     // `z-10` lo deja por debajo de la cabecera (que es `z-20`).
     <nav
       aria-label="Secciones"
-      className="sticky top-[var(--topbar-h)] z-10 mb-6 -mx-4 flex gap-5 overflow-x-auto border-b border-border bg-background/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      // `pt-3` es del NAV y no de cada enlace: el subrayado del activo tiene que
+      // seguir pegado al borde inferior. Sin él, las letras nacían a ras de la
+      // cabecera de la app —dos franjas pegadas sin aire entre ellas— y el
+      // índice se leía como parte de la barra de arriba.
+      className="sticky top-[var(--topbar-h)] z-10 mb-6 -mx-4 flex gap-5 overflow-x-auto border-b border-border bg-background/90 px-4 pt-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
       {sections.map((s) => {
         const on = s.id === active;

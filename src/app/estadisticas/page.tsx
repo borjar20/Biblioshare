@@ -215,7 +215,7 @@ export default async function FullStatsPage({
             key={section.id}
             id={section.id}
             aria-labelledby={`${section.id}-heading`}
-            className="scroll-mt-[calc(var(--topbar-h)+56px)]"
+            className="scroll-mt-[calc(var(--topbar-h)+72px)]"
           >
             <div className="mb-3 flex flex-col gap-0.5">
               <h2
