@@ -26,9 +26,16 @@ import {
  * JavaScript para acabar navegando igual; y así la selección se puede compartir,
  * sobrevive a recargar y funciona sin JS.
  *
+ * Van en GRUPOS SEGMENTADOS (una cápsula por grupo, activo en relleno) y no en
+ * botones sueltos con aire entre ellos. Con tres grupos en dos filas, los huecos
+ * dentro de un grupo y los huecos entre grupos medían casi lo mismo, así que
+ * «Series» y «Obras» parecían opciones de la misma pregunta. La cápsula dice
+ * dónde empieza y acaba cada decisión, y el separador vertical entre «Tipo de
+ * obra» y «Magnitud» remata que son dos independientes en la misma línea.
+ *
  * Cada grupo es un `<nav>` con su nombre accesible y marca el activo con
- * `aria-current`, que es lo que hace que un lector de pantalla anuncie cuál
- * está puesto — el color de fondo por sí solo no lo dice.
+ * `aria-current`, que es lo que hace que un lector de pantalla anuncie cuál está
+ * puesto — el relleno por sí solo no lo dice.
  */
 export function StatsControls({
   basePath,
@@ -56,10 +63,10 @@ export function StatsControls({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       <Group label="Periodo">
         {availablePeriods().map((p) => (
-          <Pill
+          <Segment
             key={String(p)}
             href={href({ periodo: periodParam(p) })}
             active={p === period}
@@ -68,27 +75,29 @@ export function StatsControls({
         ))}
       </Group>
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
         <Group label="Tipo de obra">
           {ITEM_FILTERS.map((f) => (
-            <Pill
+            <Segment
               key={f}
               href={href({ tipo: itemFilterParam(f) })}
               active={f === itemFilter}
               label={itemFilterLabel(f)}
-              small
             />
           ))}
         </Group>
 
-        <Group label="Magnitud de la actividad">
+        {/* Dos decisiones distintas en la misma línea: la raya lo dice sin
+            gastar otra fila. Decorativa — cada grupo ya se nombra solo. */}
+        <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
+
+        <Group label="Magnitud">
           {(["works", "time"] as ActivityMetric[]).map((m) => (
-            <Pill
+            <Segment
               key={m}
               href={href({ medida: activityMetricParam(m) })}
               active={m === metric}
               label={activityMetricLabel(m)}
-              small
             />
           ))}
         </Group>
@@ -101,32 +110,30 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-2">
       <span className="label-section shrink-0">{label}</span>
-      {children}
+      <span className="inline-flex gap-px rounded-full border border-border bg-surface p-[3px]">
+        {children}
+      </span>
     </nav>
   );
 }
 
-function Pill({
+function Segment({
   href,
   active,
   label,
-  small = false,
 }: {
   href: string;
   active: boolean;
   label: string;
-  small?: boolean;
 }) {
   return (
     <Link
       href={href}
       aria-current={active ? "true" : undefined}
-      className={`rounded-full border transition-colors ${
-        small ? "px-3 py-1 text-[12px]" : "px-4 py-1.5 text-sm"
-      } font-medium ${
+      className={`rounded-full px-3 py-1 text-[12.5px] whitespace-nowrap transition-colors ${
         active
-          ? "border-accent bg-accent text-accent-foreground"
-          : "border-border bg-surface text-muted-foreground hover:text-foreground"
+          ? "bg-accent font-semibold text-accent-foreground"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {label}

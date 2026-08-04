@@ -206,7 +206,14 @@ export type PanelSpec = {
    * y es lo que alinea los días de la semana — sin él, el 1 de enero cae
    * siempre arriba y las filas dejan de ser lunes, martes…
    */
-  heatmap?: { rows: number; offset?: number };
+  heatmap?: {
+    rows: number;
+    offset?: number;
+    /** Cuántas columnas ocupa la rejilla; hace falta para alinear los meses. */
+    columns?: number;
+    /** Rótulos de mes sobre la rejilla, con la columna en la que empieza cada uno. */
+    months?: { label: string; column: number }[];
+  };
   /** Interpretación o advertencia al pie. */
   note?: string;
   actions?: PanelAction[];

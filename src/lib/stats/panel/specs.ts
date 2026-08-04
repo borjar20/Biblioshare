@@ -52,6 +52,12 @@ const MONTHS = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 const MONTH_SHORT = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+// Tres letras para el eje del mosaico anual: con una sola inicial, marzo y mayo
+// («M») caerían idénticos en un eje de doce rótulos y no se podrían distinguir.
+const MONTH_SHORT_NAMES = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 // Iniciales del calendario del repo: la X de miércoles evita la colisión con martes.
 const WEEKDAY_INITIALS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -538,6 +544,31 @@ function profileActivityPanel(
   );
 }
 
+/**
+ * Disposición del mosaico anual: siete filas (una por día de la semana), una
+ * columna por semana, y los rótulos de mes encima.
+ *
+ * El rótulo se coloca en la columna donde CAE EL DÍA 1 de cada mes, calculada
+ * igual que la celda: `(índice del día + desplazamiento) / 7`. Repartir doce
+ * etiquetas a ojo entre 53 columnas las desalinea un par de semanas, que es
+ * justo el error que hace inútil un eje.
+ */
+function yearHeatmapLayout(calendar: YearCalendar): NonNullable<PanelSpec["heatmap"]> {
+  const offset = mondayIndex(calendar.days[0]?.date ?? `${calendar.year}-01-01`);
+  const columns = Math.ceil((calendar.days.length + offset) / 7);
+
+  const months: { label: string; column: number }[] = [];
+  calendar.days.forEach((day, i) => {
+    if (!day.date.endsWith("-01")) return;
+    const month = Number(day.date.slice(5, 7));
+    const column = Math.floor((i + offset) / 7);
+    // Enero suele empezar a media columna; su rótulo iría fuera de la rejilla.
+    months.push({ label: MONTH_SHORT_NAMES[month - 1], column: Math.min(column, columns - 1) });
+  });
+
+  return { rows: 7, offset, columns, months };
+}
+
 /** Calendario anual: 365 celdas de intensidad. */
 function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
   return {
@@ -553,7 +584,7 @@ function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
     // Siete filas, una por día de la semana; cada columna, una semana. El
     // desplazamiento es el día de la semana del 1 de enero: sin él las filas
     // dejarían de ser lunes, martes… y el mosaico no sería un calendario.
-    heatmap: { rows: 7, offset: mondayIndex(calendar.days[0]?.date ?? `${calendar.year}-01-01`) },
+    heatmap: yearHeatmapLayout(calendar),
     unit: { short: "act.", one: "actividad", many: "actividades" },
     labelHeader: "Día",
     data: calendar.days.map((d) => ({
@@ -582,7 +613,7 @@ function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
           : undefined,
       },
     ],
-    note: "Cada columna es una semana y cada fila un día de la semana. El mapa solo orienta: los 365 valores exactos están en la tabla del detalle.",
+    note: "Cada columna es una semana y cada fila un día de la semana. Los tres días más movidos llevan su cifra escrita; el resto se consulta apuntando a su celda o recorriéndolas con el tabulador.",
     empty: {
       title: "Sin actividad este año",
       message: "Registra una sesión y el calendario empieza a encenderse.",

@@ -16,7 +16,9 @@ Implementación: `src/lib/stats/panel/` (datos, transformación, interpretación
 Nueve reglas. Las cuatro primeras son las que se incumplían antes del rediseño.
 
 1. **El gráfico no es la única forma de acceder al dato.** Cada panel lleva resumen
-   textual, indicadores y tabla. El gráfico se puede borrar sin perder información.
+   textual e indicadores, y sus valores exactos en una tabla **o escritos dentro del
+   propio gráfico** —con las marcas focalizables, no solo al pasar el ratón—. Lo que
+   nunca vale es que haya que medir una altura para saber una cifra.
 2. **El color no diferencia nada por sí solo.** Toda serie lleva glifo de forma
    (`● ■ ▲ ◆`) y nombre en la tabla. *Medido:* `--type-movie` y `--type-series` tienen
    ΔE 1,1 en deuteranopia (umbral 8) y 10,5 en visión normal (umbral 15) — quien
@@ -54,7 +56,8 @@ CARA  (vista general — sin prosa)         CAPA  (el detalle, sobre el muro)
 │ 1 Título                       │        ├─ 3 resumen completo
 │ 4 Cifra que preside            │        ├─ 4 resto de indicadores
 │ 3 Una frase: lo que DESTACA    │        ├─ 5 visualización + leyenda
-│ 5 Visualización + leyenda      │        ├─ 7 tabla de valores exactos
+│ 5 Visualización + leyenda      │        ├─ 7 tabla — SOLO si el gráfico
+                                          │     no dice ya sus cifras
 │ 6 «Ampliar ↗»                  │        ├─ 2 contexto en frase larga
 └────────────────────────────────┘        ├─ 8 notas
                                           └─ 10 acciones
@@ -99,9 +102,29 @@ va sin enlaces y los completos viven en la capa. El botón es una superposición
 envuelve al contenido porque `<button>` solo admite contenido de frase: un `<h2>`
 dentro sería HTML inválido.
 
-**La decisión que sostiene la accesibilidad:** el gráfico va `aria-hidden` y la tabla
-es el dato. La alternativa —un `aria-label` por barra— duplica cada cifra en el árbol
-accesible, obliga a mantener dos copias y las desincroniza al primer cambio.
+**La decisión que sostiene la accesibilidad, y cómo cambió.** Al principio: el gráfico
+`aria-hidden` y la tabla como único dato. Hoy no vale para todos, porque esa tabla se
+volvió el problema — 365 filas en el mosaico del año, 348 de ellas diciendo «0».
+
+La regla actual tiene dos mitades y **no se puede aplicar solo la primera**:
+
+- Un gráfico que **escribe sus cifras dentro** (el total sobre cada barra, el valor
+  junto a cada sector, la cifra sobre los días más movidos) pierde su tabla. En la capa
+  deja de ser `aria-hidden` y cada marca medida es **focalizable**, con su desglose en
+  el nombre accesible; el globo sale con `:hover` **y** con `:focus-visible`, en CSS
+  puro. Un globo solo-ratón devolvería el dato a la categoría de decoración.
+- Un gráfico que **no** las escribe (línea, área, medidor) sigue `aria-hidden` y sigue
+  teniendo tabla.
+
+La lista vive en `SELF_DESCRIBING` (`stat-panel.tsx`) y `PLAIN_VIZ` (`charts.tsx`).
+Mover un `viz` de una a otra obliga a mover también su dato: **quitar la tabla sin
+escribir las cifras es perder información, no simplificar.**
+
+**El gráfico consultable va SOLO en la capa.** En la cara, el disparador la cubre entera
+con `absolute inset-0`: una marca focalizable ahí quedaría debajo —el ratón no la
+alcanzaría y el teclado enfocaría algo tapado—. Por eso el armazón pinta dos gráficos,
+el de la cara decorativo y el de la capa consultable. Las cifras escritas salen en los
+dos: son texto, no control.
 
 ## 3. Plantilla genérica
 
@@ -292,7 +315,10 @@ type PanelSpec = {
   summary?: string;            // sustituye al generado
   columns?: PanelColumnId[];   // "label"|"value"|"share"|"detail"
   labelHeader?: string; valueHeader?: string;
-  heatmap?: { rows: number; offset?: number };  // año: fluye por columna
+  heatmap?: {                  // año: fluye por columna, una por semana
+    rows: number; offset?: number; columns?: number;
+    months?: { label: string; column: number }[];
+  };
   note?: string;
   actions?: { label; href }[];
   state?: PanelState;          // ready | loading | error | partial
@@ -352,7 +378,17 @@ secas, que no dice si es culpa del filtro o de que no hay nada.
     <h2 id="horas-dialog-title">Horas por mes</h2>
     <dl><dd>25 min</dd><dt>Total</dt></dl>
     <p>Total 25 minutos en 8 puntos…</p>      <!-- resumen completo -->
-    <div aria-hidden="true">…gráfico…</div>
+
+    <!-- El gráfico de la CAPA se consulta punto a punto: cada marca medida es
+         focalizable y lleva su desglose en el nombre. El globo sale con
+         :hover Y con :focus-visible, en CSS puro — un tooltip solo-ratón
+         devolvería el dato a la categoría de decoración. -->
+    <div>
+      <div tabindex="0" role="img"
+           aria-label="Julio: 26 obras — 19 libros, 4 películas, 3 series">…</div>
+    </div>
+
+    <!-- Solo cuando el gráfico NO dice ya sus cifras (línea, área, medidor) -->
     <table>
       <caption class="sr-only">Horas por mes. 2026 · Sesiones. Valores en minutos.</caption>
       <thead><tr><th scope="col">Mes</th><th scope="col">Minutos</th></tr></thead>
@@ -447,24 +483,27 @@ Qué se usa y por qué:
   concordancia, qué indicador preside, límites de semana/mes/año y su periodo anterior
   (incluido enero, que retrocede de año), tasas sobre lo cerrado y no sobre la
   biblioteca entera, y la curva de la pila dejando fuera las abandonadas.
-- **12 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
-  unidad, tabla oculta en la cara y visible en la capa, `rowheader`/`columnheader`,
-  cifra en texto sin ampliar, Escape cerrando **y devolviendo el foco al disparador**,
-  que ampliar un panel no mueva a sus vecinos, ausencia de tabla duplicada en un
-  ranking, el muro agrupado en secciones con su índice y sus paneles a nivel `h3`, el
-  periodo admitiendo semana y mes, el conmutador obras/tiempo cambiando la unidad, el
-  filtro de tipo declarándose en el rótulo (y «Distribución por tipo» declarando que
-  NO lo obedece), y la pestaña del perfil sin rail, en el orden del esquema.
-- **Revisión visual en navegador** (1400 px y 390 px, cara y capa). De ahí salieron
-  once defectos que ninguna prueba veía: color de sector por posición en vez de por
-  categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota con total
-  cero, 96 px de hueco con todo a cero, las dos «M» de martes y miércoles, el titular
-  repetido palabra por palabra dentro de la capa, «. última Solaris» en minúscula tras
-  punto, las etiquetas del eje pisándose («Fantasía» sobre «Ciencia ficción»: el
-  `truncate` no recortaba porque la columna no le daba ancho), **el calendario anual de
-  cinco mil píxeles** (365 celdas en la rejilla de siete columnas pensada para un mes,
-  que arrastraba a la sección entera) y **«La pila crece» con el periodo en «todo»**,
-  donde no hay ventana y por tanto no hay tendencia que afirmar.
+- **15 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
+  unidad, cifra en texto sin ampliar, Escape cerrando **y devolviendo el foco al
+  disparador**, que ampliar un panel no mueva a sus vecinos, el muro agrupado en
+  secciones con su índice y sus paneles a nivel `h3`, el índice marcando la sección
+  activa (incluida la última, que es donde falla el scrollspy de manual), el periodo
+  admitiendo semana y mes, el conmutador obras/tiempo cambiando la unidad, el filtro de
+  tipo declarándose en el rótulo —y «Distribución por tipo» declarando que NO lo
+  obedece—, la pestaña del perfil sin rail, y el contrato nuevo de los gráficos: que la
+  tabla NO esté **y** que el dato SÍ siga estando (punto focalizable con su valor en el
+  nombre), y que eso ocurra solo en la capa, nunca en la cara.
+- **Revisión visual en navegador** (1400 px y 390 px, claro y oscuro, cara y capa). De
+  ahí salieron trece defectos que ninguna prueba veía: color de sector por posición en
+  vez de por categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota
+  con total cero, 96 px de hueco con todo a cero, las dos «M» de martes y miércoles, el
+  titular repetido palabra por palabra dentro de la capa, «. última Solaris» en
+  minúscula tras punto, las etiquetas del eje pisándose («Fantasía» sobre «Ciencia
+  ficción»), **el calendario anual de cinco mil píxeles**, **«La pila crece» con el
+  periodo en «todo»**, **las tres cifras del mosaico pisándose entre ellas y con los
+  rótulos de mes** (en una tarjeta de 340 px las celdas miden 6 px y los picos vienen
+  juntos) y **el anillo desapareciendo con todo a cero** — que es un cero medido, no
+  una ausencia, y la tarjeta perdía su forma.
 - Paleta pasada por el validador de la guía de dataviz — resultado en la decisión
   correspondiente de `docs/requirements/decisiones.md`.
 
@@ -574,3 +613,59 @@ panel afirma nada sobre ello.
 Dos paneles llevan la ausencia escrita en su nota, para que la pantalla no prometa lo
 que no tiene: «Estados» dice que no existe el estado «pausada», y «Objetivo de hoy»
 que el objetivo es de minutos. Esas notas se retiran al cerrar #426 y #429.
+
+## 12. Gráficos sin tabla, y la cabecera segmentada
+
+Handoff `HANDOFF - Gráficos sin tabla mensual.md` del proyecto de diseño
+(claude.ai/design), con cuatro mockups. Lo que cambia y por qué.
+
+### La tabla se sustituye, no se borra
+
+El problema no era la tabla en abstracto: era que **crecía sin límite con el
+histórico** y repetía en texto lo que el dibujo ya decía. En el mosaico del año eran
+365 filas, 348 de ellas diciendo «0», y enterraban el resto de la capa.
+
+| Gráfico | Lo que ahora lleva dentro | Qué pierde |
+|---|---|---|
+| Barras y apiladas | El total **encima de cada barra**, siempre visible; globo con el desglose por tipo | La tabla Mes/Libros/Películas/Series/Cuota |
+| Anillo | El valor de cada categoría **junto a su sector y en su color**; la leyenda añade valor y cuota | La cifra del centro y la tabla |
+| Mosaico del año | **Rótulos de mes** sobre la rejilla y la cifra escrita sobre los días más movidos | Las 365 filas |
+
+La condición para retirar una tabla es que su gráfico escriba las cifras **y** se pueda
+recorrer con el tabulador (ver §2). Las dos mitades, o ninguna.
+
+**Los rótulos del mosaico son tres letras, no una.** Con la inicial sola, marzo y mayo
+caen los dos en «M» en un eje de doce, y un eje que no distingue sus etiquetas no es un
+eje. Y su columna se calcula igual que la celda —`(índice del día + desplazamiento) / 7`—
+porque repartir doce rótulos a ojo entre 53 columnas los desalinea un par de semanas.
+
+**Como mucho tres cifras escritas sobre el mosaico, y separadas.** Los picos vienen
+juntos —una racha buena son días seguidos—, así que en una tarjeta de 340 px, donde la
+celda mide 6 px, las tres se pisaban entre ellas y con los rótulos de mes. Se descarta
+la que caiga a menos de cuatro columnas de otra ya escrita: menos etiquetas legibles
+valen más que tres ilegibles.
+
+**El anillo se dibuja en SVG, no con `conic-gradient`.** Un gradiente es un fondo: no
+tiene tramos a los que apuntar, así que no admite ni la separación de 2 px entre
+sectores —que es lo que impide leer como uno solo dos colores que fallan en
+daltonismo— ni un globo por arco. Con todo a cero se dibuja la pista vacía: un cero
+medido no es una ausencia, y la tarjeta perdería su forma.
+
+### La cabecera
+
+- Los filtros pasan de botones sueltos a **grupos segmentados** (una cápsula por grupo,
+  activo en relleno). Con tres grupos en dos filas, el hueco *dentro* de un grupo y el
+  hueco *entre* grupos medían casi lo mismo, así que «Series» y «Obras» parecían
+  opciones de la misma pregunta.
+- **Separador vertical** entre «Tipo de obra» y «Magnitud»: dos decisiones
+  independientes en la misma línea, sin gastar otra fila.
+- El índice de secciones gana **estado activo real** (color + subrayado). Siete enlaces
+  del mismo color dicen a dónde se puede ir, no dónde estás.
+
+**El activo se sigue con la posición, y no con `IntersectionObserver`.** Es la respuesta
+de manual y falla justo en el borde que más se nota: con el margen recortado por abajo
+—para que «la actual» sea la de arriba y no la que asoma por el pie— la ÚLTIMA sección
+no llega nunca a cruzar la línea si la página ya no puede scrollear más. Pulsas «Por
+categoría», la pantalla salta al final y el resaltado se queda en la anterior. La regla
+explícita («la última sección cuyo borde superior haya pasado la línea de guardia; si
+estamos al final del documento, la última de todas») es más corta y no tiene ese agujero.

@@ -70,7 +70,7 @@ async function login(page: import("@playwright/test").Page) {
 // se comprueba aquí no es el aspecto: es que el dato sea LEGIBLE sin mirar el
 // gráfico, en la cara y en la capa. Cada panel es una región con nombre, declara
 // su periodo y su unidad de un vistazo, y al pulsarlo abre los valores exactos.
-test("cada panel es una región con nombre, contexto y tabla de valores exactos", async ({
+test("cada panel es una región con nombre, contexto y valores exactos", async ({
   page,
 }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
@@ -87,18 +87,20 @@ test("cada panel es una región con nombre, contexto y tabla de valores exactos"
   // arriba puede estar en «Semana» y esta tarjeta seguir enseñando doce meses.
   await expect(horas).toContainText(/2026 · año natural · min/i);
 
-  // 3 · La tabla NO está a la vista: la vista general es compacta.
-  await expect(horas.getByRole("table")).toBeHidden();
-
-  // 4 · La tarjeta ENTERA es el control, y abre una capa con nombre propio.
+  // 3 · La tarjeta ENTERA es el control, y abre una capa con nombre propio.
   await horas.getByRole("button", { name: /ampliar horas por mes/i }).click();
   const capa = page.getByRole("dialog", { name: "Horas por mes" });
   await expect(capa).toBeVisible();
 
-  const tabla = capa.getByRole("table");
-  await expect(tabla).toBeVisible();
-  await expect(tabla.getByRole("rowheader", { name: "Enero" })).toBeVisible();
-  await expect(tabla.getByRole("columnheader", { name: "Mes" })).toBeVisible();
+  // 4 · Los valores exactos ya NO son una tabla: los lleva el propio gráfico.
+  //     Cada punto medido se nombra con su etiqueta y su valor, así que se
+  //     puede recorrer con el tabulador — no solo con el ratón.
+  await expect(capa.getByRole("table")).toHaveCount(0);
+  const julio = capa.getByRole("img", { name: /^Julio: / });
+  await expect(julio).toBeVisible();
+  await julio.focus();
+  await expect(julio).toBeFocused();
+
   // Y ahí sí aparece la frase larga de contexto, con la unidad completa.
   await expect(capa).toContainText(/Valores en minutos/i);
 
@@ -193,11 +195,14 @@ test("la pestaña del perfil usa el armazón de paneles", async ({ page }) => {
   await expect(semana).toBeVisible();
   await expect(semana).toContainText(/Últimos 7 días · ventana móvil · min/i);
 
-  // Se amplía igual que en el muro, y da los valores exactos por día.
+  // Se amplía igual que en el muro, y da los valores exactos por día — que
+  // desde el handoff «Gráficos sin tabla mensual» los lleva el propio gráfico,
+  // no una tabla debajo.
   await semana.getByRole("button", { name: /ampliar lectura esta semana/i }).click();
   const capa = page.getByRole("dialog", { name: "Lectura esta semana" });
-  await expect(capa.getByRole("table")).toBeVisible();
-  await expect(capa.getByRole("columnheader", { name: "Día" })).toBeVisible();
+  await expect(capa).toBeVisible();
+  await expect(capa.getByRole("table")).toHaveCount(0);
+  await expect(capa.getByRole("img").first()).toBeVisible();
 
   // El calendario y el editor de objetivo NO son paneles: siguen siendo
   // controles con estado propio y no se pliegan.
@@ -255,7 +260,7 @@ test("el conmutador obras/tiempo cambia la unidad del panel", async ({ page }) =
   await expect(actividad).toContainText(/Este mes · min/i);
 
   await page
-    .getByRole("navigation", { name: "Magnitud de la actividad" })
+    .getByRole("navigation", { name: "Magnitud" })
     .getByRole("link", { name: "Obras" })
     .click();
   await expect(actividad).toContainText(/Este mes · obras/i);
@@ -311,4 +316,80 @@ test("la pestaña del perfil no tiene rail: el orden es el del esquema", async (
     return !!(a.compareDocumentPosition(b as Node) & Node.DOCUMENT_POSITION_FOLLOWING);
   }, await racha.elementHandle());
   expect(ordenCorrecto).toBe(true);
+});
+
+// Handoff «Gráficos sin tabla mensual»: los gráficos que llevan sus cifras
+// dentro pierden la tabla que las repetía fila a fila. La prueba es doble a
+// propósito — que la tabla NO esté, y que el dato SÍ siga estando —, porque
+// solo la primera mitad sería un permiso para perder información.
+test("los gráficos con cifras dentro sustituyen a su tabla, sin perder el dato", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  // Anillo: el total sale del centro y el valor de cada categoría se lee en la
+  // leyenda, con su cuota. Es lo que permitió retirarle la tabla.
+  const tipo = page.getByRole("region", { name: "Distribución por tipo" });
+  await expect(tipo).toContainText(/Libros\s*\d+\s*\(\d+%\)/);
+  await tipo.getByRole("button", { name: /ampliar distribución por tipo/i }).click();
+  const capaTipo = page.getByRole("dialog", { name: "Distribución por tipo" });
+  await expect(capaTipo.getByRole("table")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // Mosaico del año: 365 filas no eran una tabla legible. En su lugar, rótulos
+  // de mes sobre la rejilla y la cifra escrita sobre los días más movidos.
+  const calendario = page.getByRole("region", { name: "Calendario anual" });
+  await expect(calendario).toContainText("Ene");
+  await expect(calendario).toContainText("Dic");
+  await calendario.getByRole("button", { name: /ampliar calendario anual/i }).click();
+  const capaCal = page.getByRole("dialog", { name: "Calendario anual" });
+  await expect(capaCal.getByRole("table")).toHaveCount(0);
+  // Pero cualquier día con actividad sigue siendo consultable con teclado.
+  await expect(capaCal.getByRole("img", { name: /de julio: / }).first()).toBeVisible();
+});
+
+// Los gráficos de la CARA no pueden ser focalizables: el disparador del modal
+// la cubre entera con `absolute inset-0`, así que el teclado enfocaría algo
+// tapado y el ratón no lo alcanzaría nunca.
+test("solo el gráfico de la capa es consultable punto a punto", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const horas = page.getByRole("region", { name: "Horas por mes" });
+  // En la cara no hay ni un punto consultable…
+  await expect(horas.getByRole("img", { name: /^Julio: / })).toHaveCount(0);
+
+  // …y en la capa sí.
+  await horas.getByRole("button", { name: /ampliar horas por mes/i }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Horas por mes" }).getByRole("img", { name: /^Julio: / }),
+  ).toBeVisible();
+});
+
+// El índice de secciones marca DÓNDE ESTÁS, no solo a dónde se puede ir: con
+// siete secciones largas, siete enlaces del mismo color son atajos, no un mapa.
+test("el índice de secciones marca la sección activa", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const indice = page.getByRole("navigation", { name: "Secciones" });
+  // Arriba del todo, la primera.
+  await expect(indice.getByRole("link", { name: "Resumen general" })).toHaveAttribute(
+    "aria-current",
+    "location",
+  );
+
+  // Al saltar a otra, el resaltado la sigue.
+  await indice.getByRole("link", { name: "Por categoría" }).click();
+  await expect(indice.getByRole("link", { name: "Por categoría" })).toHaveAttribute(
+    "aria-current",
+    "location",
+  );
 });

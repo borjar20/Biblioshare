@@ -27,6 +27,7 @@ import { getPagesPerDay } from "@/lib/stats/get-pace";
 import { buildStatsSections } from "@/lib/stats/panel/specs";
 import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { StatsControls } from "@/components/stats/stats-controls";
+import { SectionTabs } from "./section-tabs";
 import { SHELL_APP } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -169,22 +170,20 @@ export default async function FullStatsPage({
       </p>
 
       {/* Índice de secciones: con siete bloques, bajar a «Por categoría»
-          scrolleando es peor que un salto. Son anclas, no JavaScript. */}
-      <nav aria-label="Secciones" className="mb-6 flex flex-wrap gap-x-4 gap-y-1">
-        {sections.map((s) => (
-          <a
-            key={s.id}
-            href={`#${s.id}`}
-            className="text-[12px] font-medium text-accent hover:underline"
-          >
-            {s.title}
-          </a>
-        ))}
-      </nav>
+          scrolleando es peor que un salto. Marca en cuál estás — sin eso son
+          siete atajos del mismo color, no un mapa. */}
+      <SectionTabs sections={sections.map(({ id, title }) => ({ id, title }))} />
 
+      {/* `scroll-mt-20` en cada sección: el salto del índice dejaría el título
+          debajo de la cabecera pegajosa si no se le reserva su alto. */}
       <div className="flex flex-col gap-10">
         {sections.map((section) => (
-          <section key={section.id} id={section.id} aria-labelledby={`${section.id}-heading`}>
+          <section
+            key={section.id}
+            id={section.id}
+            aria-labelledby={`${section.id}-heading`}
+            className="scroll-mt-20"
+          >
             <div className="mb-3 flex flex-col gap-0.5">
               <h2
                 id={`${section.id}-heading`}

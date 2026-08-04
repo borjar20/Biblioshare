@@ -39,12 +39,28 @@ import {
 } from "@/lib/stats/panel/format";
 import { buildHighlight, summaryLines } from "@/lib/stats/panel/summary";
 import type { PanelKpi, PanelSpec } from "@/lib/stats/panel/types";
-import { Chart, Legend } from "./charts";
+import { Chart, Legend, PLAIN_VIZ } from "./charts";
 import { PanelDialog } from "./panel-dialog";
 import { contextSentence, PanelTable } from "./panel-table";
 
 /** Visualizaciones que YA son texto: no dibujan ni repiten tabla. */
 const TEXTUAL: PanelSpec["viz"][] = ["ranking", "kpi", "table"];
+
+/**
+ * Visualizaciones que llevan sus CIFRAS DENTRO, en texto: el total sobre cada
+ * barra, el valor junto a cada sector, la cifra sobre los días más movidos.
+ *
+ * Son las que pierden la tabla de valores exactos, y las dos mitades de esa
+ * frase van juntas a propósito. La tabla existía porque el dibujo era
+ * decorativo; en cuanto el dibujo dice el número —y deja consultarlo con
+ * teclado, no solo con el ratón—, la tabla pasa de ser la única vía a ser una
+ * segunda copia de lo mismo. Y una segunda copia no es gratis: en el calendario
+ * anual eran 365 filas que nadie lee y que enterraban el resto de la capa.
+ *
+ * Ojo al invariante: **quitar un `viz` de aquí obliga a devolverle la tabla**, y
+ * añadir uno obliga a que su gráfico escriba sus valores y sea focalizable.
+ */
+const SELF_DESCRIBING: PanelSpec["viz"][] = ["bars", "stacked", "donut", "heatmap"];
 
 /** Cuántas filas de un ranking caben en la vista compacta. */
 const RANKING_PREVIEW = 3;
@@ -139,9 +155,28 @@ export function StatPanel({
     </p>
   );
 
-  const plot = !isTextual && (
+  const selfDescribing = SELF_DESCRIBING.includes(spec.viz);
+
+  // DOS gráficos, y no es un descuido: el de la cara es decorativo y el de la
+  // capa se puede consultar punto a punto.
+  //
+  // En la cara no cabe otra cosa. El disparador del modal la cubre entera con
+  // `absolute inset-0`, así que un tramo focalizable ahí quedaría debajo: el
+  // ratón nunca lo alcanzaría y el teclado enfocaría algo invisible. Y `aria-
+  // hidden` en la cara tampoco esconde nada — el resumen y la cifra que
+  // presiden ya dicen el dato, y la capa lo repite entero.
+  const faceplot = !isTextual && (
     <div aria-hidden className="pt-0.5">
       <Chart spec={spec} derived={derived} />
+    </div>
+  );
+
+  // En la capa, `aria-hidden` SOLO en las que siguen siendo decorativas: ocultar
+  // un gráfico que ya no tiene tabla detrás dejaría su dato fuera del alcance de
+  // un lector de pantalla, que es lo contrario de lo que este sistema hace.
+  const plot = !isTextual && (
+    <div aria-hidden={PLAIN_VIZ.includes(spec.viz) || undefined} className="pt-0.5">
+      <Chart spec={spec} derived={derived} interactive={selfDescribing} />
     </div>
   );
 
@@ -164,8 +199,8 @@ export function StatPanel({
             {highlight}
           </p>
         )}
-        {plot}
-        <Legend derived={derived} />
+        {faceplot}
+        <Legend derived={derived} spec={spec} />
         {spec.viz === "ranking" && (
           <RankingList spec={spec} limit={RANKING_PREVIEW} />
         )}
@@ -203,15 +238,17 @@ export function StatPanel({
           {rest.length > 0 && <KpiRow kpis={rest} />}
 
           {plot}
-          <Legend derived={derived} />
+          <Legend derived={derived} spec={spec} />
 
           {/* El ranking completo: la cara solo enseñaba las primeras. */}
           {spec.viz === "ranking" && <RankingList spec={spec} />}
 
-          {/* Los valores exactos. Los paneles que ya son texto no los repiten:
-              su lista o su `<dl>` YA son el dato, y duplicarlos solo obliga al
-              lector de pantalla a oírlo dos veces. */}
-          {!isTextual && <PanelTable spec={spec} derived={derived} />}
+          {/* Los valores exactos. NO los repiten ni los paneles que ya son
+              texto —su lista o su `<dl>` YA son el dato— ni los gráficos que
+              escriben sus cifras dentro: duplicarlos solo obliga al lector de
+              pantalla a oírlo dos veces, y en el calendario anual eran 365
+              filas de las que 348 decían «0». */}
+          {!isTextual && !selfDescribing && <PanelTable spec={spec} derived={derived} />}
           {spec.viz === "table" && <PanelTable spec={spec} derived={derived} />}
 
           <p className="text-[10.5px] leading-relaxed text-foreground-faint">
