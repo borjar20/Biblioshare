@@ -84,6 +84,9 @@ export default async function ClubCalendarPage({
           today={hoy}
           clubId={club.id}
           canModerate={canModerate}
+          // Llegar aquí ya exige `viewerRole`, que solo lo tienen los miembros
+          // activos: el gate de arriba hace 404 para todo lo demás.
+          viewerIsMember
         />
       </Suspense>
     </ClubShell>

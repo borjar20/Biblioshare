@@ -39,19 +39,27 @@ export function ClubCalendar({
   today,
   clubId,
   canModerate,
+  viewerIsMember,
 }: {
   marks: CalendarMark[];
   today: string;
   clubId: string;
   canModerate: boolean;
+  viewerIsMember: boolean;
 }) {
   const t = useTranslations("activity");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [creando, setCreando] = useState(false);
+  // «Sigues» filtra la AGENDA, no la rejilla: la rejilla es el mapa del mes y
+  // vaciarla dejaría al usuario sin contexto de qué más hay. Es estado local y no
+  // un search param porque no es un enlace que nadie vaya a compartir.
+  const [soloSeguidos, setSoloSeguidos] = useState(false);
 
   const month = parseMonthParam(searchParams.get("mes"), today);
-  const agenda = agendaForMonth(marks, month, today);
+  const agendaDelMes = agendaForMonth(marks, month, today);
+  const seguidosDelMes = agendaDelMes.filter((m) => m.followedByViewer);
+  const agenda = soloSeguidos ? seguidosDelMes : agendaDelMes;
 
   function irAlMes(destino: string) {
     // Sin esta guarda, pulsar "Hoy" estando ya en el mes actual apila una
@@ -152,10 +160,50 @@ export function ClubCalendar({
         </div>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-[96px]">
-          <h2 className="label-section">
-            {t("calendarAgenda")}
-          </h2>
-          <AgendaList marks={agenda} />
+          <h2 className="label-section">{t("calendarAgenda")}</h2>
+
+          {/* El filtro solo aparece si hay algo que filtrar: un conmutador
+              «Sigues · 0» permanente sería un control que nunca hace nada. */}
+          {viewerIsMember && seguidosDelMes.length > 0 && (
+            <div
+              role="tablist"
+              aria-label={t("agendaFilterLabel")}
+              className="inline-flex w-fit overflow-hidden rounded-lg border border-border bg-surface"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!soloSeguidos}
+                onClick={() => setSoloSeguidos(false)}
+                className={`px-3 py-1.5 text-xs transition-colors ${
+                  soloSeguidos
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "bg-accent font-medium text-accent-foreground"
+                }`}
+              >
+                {t("agendaFilterAll")}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={soloSeguidos}
+                onClick={() => setSoloSeguidos(true)}
+                className={`px-3 py-1.5 text-xs transition-colors ${
+                  soloSeguidos
+                    ? "bg-accent font-medium text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t("agendaFilterFollowed", { count: seguidosDelMes.length })}
+              </button>
+            </div>
+          )}
+
+          <AgendaList
+            marks={agenda}
+            viewerIsMember={viewerIsMember}
+            emptyMessage={soloSeguidos ? t("agendaFollowedEmpty") : undefined}
+          />
         </aside>
       </div>
     </div>

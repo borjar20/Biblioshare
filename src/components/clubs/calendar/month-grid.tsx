@@ -6,6 +6,7 @@ import {
   marksByDate,
   type CalendarMark,
 } from "@/lib/clubs/activities/calendar-marks";
+import { BellIcon } from "@/components/ui/icons";
 import { MARK_ACCENT } from "./mark-accent";
 
 const DIAS_CORTOS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -74,9 +75,16 @@ export function MonthGrid({
                     <span
                       key={`${mark.activityId}-${mark.markKind}-${i}`}
                       aria-hidden
-                      className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[mark.markKind].bar}`}
+                      className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[mark.markKind].bar} ${
+                        mark.followedByViewer ? "ring-1 ring-accent ring-offset-1" : ""
+                      }`}
                     />
                   ))}
+                  {/* En móvil no caben chips, así que la campana del día va una
+                      sola vez: con puntos de 6 px, un anillo solo no basta. */}
+                  {visibles.some((m) => m.followedByViewer) && (
+                    <BellIcon className="h-2 w-2 shrink-0 text-accent" aria-hidden />
+                  )}
                   {delDia.length > MAX_CHIPS && (
                     <span className="font-mono text-[8px] leading-none text-muted-foreground">
                       {t("calendarMore", { count: delDia.length - MAX_CHIPS })}
@@ -92,11 +100,19 @@ export function MonthGrid({
                     <span
                       key={`${mark.activityId}-${mark.markKind}-${i}`}
                       title={`${t(`markKind_${mark.markKind}`)} · ${mark.title}`}
-                      className={`truncate rounded-chip border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.text} ${
+                      className={`flex items-center gap-1 truncate rounded-chip border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.text} ${
                         mark.past ? "opacity-50" : ""
                       }`}
                     >
-                      {mark.title}
+                      {/* La campana es FORMA, no color: en escala de grises el día
+                          seguido sigue distinguiéndose del que no (§17). */}
+                      {mark.followedByViewer && (
+                        <BellIcon className="h-2.5 w-2.5 shrink-0 text-accent" aria-hidden />
+                      )}
+                      <span className="truncate">{mark.title}</span>
+                      {mark.followedByViewer && (
+                        <span className="sr-only">{t("eventFollowedBadge")}</span>
+                      )}
                     </span>
                   );
                 })}
@@ -112,7 +128,14 @@ export function MonthGrid({
                   chips ya llevan el texto y esto duplicaría el anuncio. */}
               {delDia.length > 0 && (
                 <span className="sr-only lg:hidden">
-                  {delDia.map((m) => `${t(`markKind_${m.markKind}`)}: ${m.title}`).join(". ")}
+                  {delDia
+                    .map(
+                      (m) =>
+                        `${t(`markKind_${m.markKind}`)}: ${m.title}${
+                          m.followedByViewer ? `. ${t("eventFollowedBadge")}` : ""
+                        }`,
+                    )
+                    .join(". ")}
                 </span>
               )}
             </div>
