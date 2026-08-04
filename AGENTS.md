@@ -72,6 +72,47 @@ medición, pégalos: una tabla de «antes/después» vale más que un párrafo d
 que sobrevive en el repo es peor que no tener issue: manda a la siguiente persona en la dirección
 contraria. Ha pasado ya dos veces (#106 y #117): en ambas, lo que la issue daba por causa era un
 síntoma que apuntaba a otro sitio.
+
+### Toda issue nace con sus tres etiquetas
+
+Sin etiquetas, 140 issues son un muro: no se puede distinguir «rompe producción» de «pulido que
+decidimos no hacer», y el backlog deja de servir para decidir. **Etiqueta al crearla**, en el mismo
+comando — ponerlas después no lo hace nadie:
+
+```sh
+gh issue create --label "area:social,tipo:bug,P1" --title "…" --body-file …
+```
+
+Exactamente **una de cada dimensión**, ni más ni menos:
+
+| Dimensión | Valores |
+|---|---|
+| **Área** | `area:sagas` · `area:clubes` · `area:social` · `area:catalogo` · `area:ui` · `area:infra` |
+| **Tipo** | `tipo:bug` · `tipo:deuda` · `tipo:cobertura` · `tipo:feature` · `tipo:acta` · `tipo:sospecha` |
+| **Prioridad** | `P0` · `P1` · `P2` · `P3` |
+
+Qué significa cada tipo, que es donde se falla al elegir:
+
+- **`tipo:bug`** — hace algo que no debe. Si no puedes escribir «se esperaba X y pasa Y», no es esto.
+- **`tipo:deuda`** — límite asumido a sabiendas, o código que hay que ordenar. Funciona hoy y su
+  consecuencia es previsible.
+- **`tipo:cobertura`** — el código está bien; lo que falta es el test que distinguiría una
+  implementación correcta de una rota.
+- **`tipo:feature`** — funcionalidad que nadie ha construido aún.
+- **`tipo:acta`** — se decidió **no** hacerlo, y se registra para que nadie lo reimplemente leyendo
+  un mockup viejo. No es trabajo pendiente: es memoria. No se hace ni se cierra.
+- **`tipo:sospecha`** — no reproducido. Hay que confirmarlo **antes** de arreglar nada.
+
+Y la prioridad, que es la que se infla sola:
+
+- **`P0`** — rompe producción, datos o seguridad. Se arregla antes de construir nada nuevo. Si hay
+  más de un puñado a la vez, no son todas P0.
+- **`P1`** — bug con víctima real, o algo que hace desconfiar de lo que la pantalla dice.
+- **`P2`** — deuda, cobertura y pulido con consecuencia previsible. **El sitio por defecto.**
+- **`P3`** — feature, idea o registro. No bloquea a nadie.
+
+Regla contra la inflación: **la prioridad la fija el daño a quien usa la app, no lo cerca que esté
+de lo que estás tocando ahora.** Un `tipo:deuda` que te molesta hoy sigue siendo P2.
 <!-- END:biblioshare-docs -->
 
 <!-- BEGIN:biblioshare-cleanup -->
