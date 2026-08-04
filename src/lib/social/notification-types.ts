@@ -66,8 +66,11 @@ export type ReviewTargetType =
 export type Notification = {
   id: string;
   type: NotificationType;
-  actorId: string;
-  actorUsername: string;
+  // null = emitida por el SISTEMA, no por una persona (hoy solo el recordatorio
+  // de evento). Los cuatro campos de actor van juntos: o hay actor y están los
+  // cuatro, o no hay y son null. Ver la migración 20260825.
+  actorId: string | null;
+  actorUsername: string | null;
   actorDisplayName: string | null;
   actorAvatarUrl: string | null;
   href: string;

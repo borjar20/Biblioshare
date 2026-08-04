@@ -1350,7 +1350,7 @@ export type Database = {
       }
       notifications: {
         Row: {
-          actor_id: string
+          actor_id: string | null
           created_at: string
           id: string
           interaction_target_id: string | null
@@ -1361,7 +1361,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          actor_id: string
+          actor_id?: string | null
           created_at?: string
           id?: string
           interaction_target_id?: string | null
@@ -1372,7 +1372,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          actor_id?: string
+          actor_id?: string | null
           created_at?: string
           id?: string
           interaction_target_id?: string | null
@@ -2455,7 +2455,14 @@ export type Database = {
         Returns: undefined
       }
       follow_club_event: {
-        Args: { p_activity_id: string; p_remind_minutes_before?: number }
+        Args: {
+          p_activity_id: string
+          // null es un valor legítimo: significa "sin recordatorio". Postgres no
+          // declara la nulabilidad de un parámetro, así que el generador lo emite
+          // como `number` a secas y hay que admitir null a mano — igual que en
+          // set_club_event_reminder.
+          p_remind_minutes_before?: number | null
+        }
         Returns: undefined
       }
       get_activity_diary_passes: {

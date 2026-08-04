@@ -49,11 +49,17 @@ describe("revalidate helpers", () => {
     expect(calls()).toEqual(["/u/borja"]);
   });
 
-  it("revalidateClubPages cubre ficha de club, actividad y listado", () => {
+  // El calendario y la ficha de evento entran desde el seguimiento de eventos
+  // (spec 2026-08-04): seguir cambia el contador de la ficha y la marca de
+  // «seguido» de la rejilla, y sin revalidarlas el optimismo de la UI no tendría
+  // con qué reconciliarse.
+  it("revalidateClubPages cubre ficha de club, actividad, calendario, evento y listado", () => {
     revalidateClubPages();
     expect(calls()).toEqual([
       "/club/[slug] page",
       "/club/[slug]/actividad/[id] page",
+      "/club/[slug]/calendario page",
+      "/club/[slug]/evento/[id] page",
       "/clubes",
     ]);
   });
@@ -72,6 +78,8 @@ describe("revalidate helpers", () => {
       "/",
       "/club/[slug] page",
       "/club/[slug]/actividad/[id] page",
+      "/club/[slug]/calendario page",
+      "/club/[slug]/evento/[id] page",
       "/clubes",
     ]);
   });

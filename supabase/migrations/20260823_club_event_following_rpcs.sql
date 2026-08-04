@@ -398,7 +398,15 @@ $$;
 -- club», «es expulsado» y «pierde permisos» (§20): un seguimiento sin membresía
 -- activa es INERTE. No se borra la fila — si vuelve al club, su interés sigue
 -- ahí — se invalida.
-create or replace function public.claim_due_event_reminders(p_limit integer default 200)
+-- `p_activity_id` opcional para poder reclamar SOLO los de un evento. Lo necesita
+-- la entrega inmediata: al seguir un evento que empieza dentro del propio offset
+-- elegido, §9.1 pide avisar ya en vez de esperar al barrido. Sin este parámetro
+-- una acción de usuario tendría que llamar al reclamo GLOBAL, y acabaría
+-- entregando los avisos de todos los clubes — trabajo no acotado dentro de un clic.
+create or replace function public.claim_due_event_reminders(
+  p_limit integer default 200,
+  p_activity_id uuid default null
+)
 returns table (
   activity_id     uuid,
   user_id         uuid,
@@ -433,6 +441,7 @@ as $$
        -- recordatorios de eventos pasados, pero un evento puede TERMINAR sin que
        -- nadie escriba nada: esta condición es la autoridad.
        and coalesce(a.ends_at, a.starts_at) > now()
+       and (p_activity_id is null or f.activity_id = p_activity_id)
      order by f.reminder_due_at
      limit greatest(p_limit, 1)
      for update of f skip locked
@@ -477,9 +486,9 @@ $$;
 -- Las dos son del barrido, no de la app: solo service_role. Sin esto, cualquier
 -- sesión autenticada podría sellar los recordatorios de todo el mundo (y con ello
 -- impedir que se entreguen).
-revoke all on function public.claim_due_event_reminders(integer) from public, anon, authenticated;
+revoke all on function public.claim_due_event_reminders(integer, uuid) from public, anon, authenticated;
 revoke all on function public.release_event_reminders(uuid, uuid[]) from public, anon, authenticated;
-grant execute on function public.claim_due_event_reminders(integer) to service_role;
+grant execute on function public.claim_due_event_reminders(integer, uuid) to service_role;
 grant execute on function public.release_event_reminders(uuid, uuid[]) to service_role;
 
 -- ---------------------------------------------------------------------------
