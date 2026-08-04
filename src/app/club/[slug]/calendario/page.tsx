@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import { getClub } from "@/lib/clubs/clubs";
 import { listClubActivities } from "@/lib/clubs/activities/core";
@@ -28,7 +28,6 @@ export default async function ClubCalendarPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/club/${slug}/calendario`));
 
