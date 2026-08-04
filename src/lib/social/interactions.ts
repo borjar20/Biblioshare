@@ -130,7 +130,6 @@ export async function getInteractionSummary(
   if (commentsResult.error) throw commentsResult.error;
 
   for (const r of reactionsResult.data ?? []) {
-    if (!r.interaction_target_id) continue;
     const sourceId = sourceIdByTargetId.get(r.interaction_target_id);
     const s = sourceId ? summaries.get(sourceId) : undefined;
     if (!s) continue;
@@ -162,14 +161,20 @@ export async function getInteractionSummary(
 
   const seenPerTarget = new Map<string, number>();
   for (const c of commentRows) {
-    if (!c.interaction_target_id) continue;
     const sourceId = sourceIdByTargetId.get(c.interaction_target_id);
     if (!sourceId) continue;
     const s = summaries.get(sourceId);
     if (!s) continue;
     const commentTargetRef = commentTargetRefs.get(`comment:${c.id}`);
     if (!commentTargetRef) {
-      throw new Error(`Interaction target missing for comment:${c.id}`);
+      // Un comentario cuyo target canónico no resuelve es un hecho de
+      // VISIBILIDAD (el espectador no lo ve por RLS), no corrupción: se
+      // descarta ese comentario, no el lote entero (#340). El throw estricto
+      // se mantiene solo a nivel de fuente, arriba.
+      console.error(
+        `[social] interaction target unresolved, skipping comment:${c.id}`,
+      );
+      continue;
     }
     s.commentCount += 1;
     const seen = (seenPerTarget.get(c.interaction_target_id) ?? 0) + 1;
@@ -204,15 +209,12 @@ export async function getInteractionSummary(
   // COMMENT_PREFETCH_LIMIT que ya están en s.comments) para no complicar el
   // filtrado -- reacciones de comentarios fuera de la página prefetch
   // simplemente no encuentran destino en el bucle de abajo y se ignoran.
-  const allCommentIds = commentRows.map((c) => c.id);
-  if (allCommentIds.length > 0) {
-    const commentInteractionTargetIds = allCommentIds.map((commentId) => {
-      const targetRef = commentTargetRefs.get(`comment:${commentId}`);
-      if (!targetRef) {
-        throw new Error(`Interaction target missing for comment:${commentId}`);
-      }
-      return targetRef.id;
-    });
+  // Mismo criterio que arriba: los comentarios sin target resoluble se caen
+  // del lote en vez de tumbarlo (#340).
+  const commentInteractionTargetIds = commentRows
+    .map((c) => commentTargetRefs.get(`comment:${c.id}`)?.id)
+    .filter((id): id is string => id !== undefined);
+  if (commentInteractionTargetIds.length > 0) {
     const { data: commentReactions, error: commentReactionsError } = await supabase
       .from("reactions")
       .select("interaction_target_id, user_id")
@@ -224,7 +226,6 @@ export async function getInteractionSummary(
       for (const c of s.comments) commentById.set(c.interactionTargetId, c);
     }
     for (const r of commentReactions ?? []) {
-      if (!r.interaction_target_id) continue;
       const c = commentById.get(r.interaction_target_id);
       if (!c) continue;
       c.reactionCount += 1;

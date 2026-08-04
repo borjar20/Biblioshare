@@ -163,4 +163,50 @@ describe("getInteractionSummary", () => {
       getInteractionSummary(client, "diary_entry", ["entry-present", "missing"]),
     ).rejects.toThrow(/interaction target.*diary_entry:missing/i);
   });
+
+  // #340: un comentario cuyo target canónico no resuelve es un hecho de
+  // visibilidad, no corrupción. Antes tumbaba el lote entero (una página de
+  // club en 500 permanente por un solo comentario).
+  it("descarta el comentario sin target canónico sin tumbar el lote", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client } = makeFakeSupabase({
+      interaction_targets: [
+        { id: "target-parent", kind: "diary_entry", source_id: "entry" },
+        { id: "target-comment-ok", kind: "comment", source_id: "comment-ok" },
+        // comment-invisible no tiene fila: el espectador no la ve.
+      ],
+      reactions: [{ interaction_target_id: "target-comment-ok", user_id: "viewer" }],
+      comments: [
+        {
+          id: "comment-ok",
+          interaction_target_id: "target-parent",
+          author_id: "author-1",
+          body: "visible",
+          created_at: "2026-07-30T00:00:00Z",
+        },
+        {
+          id: "comment-invisible",
+          interaction_target_id: "target-parent",
+          author_id: "author-2",
+          body: "no resoluble",
+          created_at: "2026-07-30T00:01:00Z",
+        },
+      ],
+      profile_identities: [
+        { user_id: "author-1", username: "ana", display_name: "Ana", avatar_url: null },
+        { user_id: "author-2", username: "bea", display_name: null, avatar_url: null },
+      ],
+    });
+
+    const summaries = await getInteractionSummary(client, "diary_entry", ["entry"]);
+
+    const summary = summaries.get("entry");
+    expect(summary).toMatchObject({ interactionTargetId: "target-parent", commentCount: 1 });
+    expect(summary?.comments.map((c) => c.id)).toEqual(["comment-ok"]);
+    // La degradación deja rastro, no es silenciosa.
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("comment-invisible"));
+    // El comentario superviviente conserva sus reacciones.
+    expect(summary?.comments[0]).toMatchObject({ reactionCount: 1, viewerReacted: true });
+    errorSpy.mockRestore();
+  });
 });
