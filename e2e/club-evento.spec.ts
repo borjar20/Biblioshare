@@ -47,7 +47,7 @@ async function crearUsuario(request: APIRequestContext, username: string) {
 // devuelve 404 (con control positivo), y que EDITAR/ARCHIVAR desde la tarjeta
 // -- controles solo de moderador+ -- funcionan de verdad contra la RPC con un
 // auth.uid() real. Se autolimpia.
-test("evento: se crea, se edita, se archiva y no tiene ficha", async ({
+test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad", async ({
   page,
   request,
 }) => {
@@ -139,9 +139,18 @@ test("evento: se crea, se edita, se archiva y no tiene ficha", async ({
     await expect(seccionProximo.getByText(titulo)).toBeVisible({ timeout: 15000 });
     await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
 
-    // ...y NO enlaza a ninguna ficha. Se comprueba que la URL no cambia, no solo
-    // que falte un <a>: lo que rompería de verdad es que el envoltorio condicional
-    // se invierta y la tarjeta vuelva a ser un Link.
+    // ...y su TARJETA no enlaza a /actividad/[id].
+    //
+    // Ojo con leer esto como «un evento no tiene ficha»: desde la spec 2026-08-04
+    // SÍ la tiene, en /club/[slug]/evento/[id] (ver club-evento-seguimiento.spec.ts).
+    // Lo que sigue siendo cierto, y es lo que protege este bloque, es que la ruta
+    // GENÉRICA de actividad no sirve eventos: hasDetailView sigue en false porque
+    // ActivityDetailView está montado sobre el pool de ítems, los participantes y
+    // las opiniones, y un evento no tiene ninguna de las tres.
+    //
+    // Se comprueba que la URL no cambia, no solo que falte un <a>: lo que rompería
+    // de verdad es que el envoltorio condicional se invierta y la tarjeta vuelva a
+    // ser un Link a /actividad/.
     await expect(
       page.locator(`a[href*="/actividad/"]`).filter({ hasText: titulo }),
     ).toHaveCount(0);
@@ -155,7 +164,8 @@ test("evento: se crea, se edita, se archiva y no tiene ficha", async ({
     ).toBeVisible();
     expect(page.url()).toBe(urlAntes);
 
-    // Y su ficha, pedida a mano, da 404.
+    // Y la ruta genérica de actividad, pedida a mano, sigue dando 404 para un
+    // evento (su ficha propia vive en otra ruta).
     const respuesta = await page.goto(`/club/${CLUB_SLUG}/actividad/${eventoId}`);
     expect(respuesta?.status()).toBe(404);
 

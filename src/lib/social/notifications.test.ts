@@ -292,7 +292,7 @@ describe("notificaciones — frontera de bloqueo", () => {
     expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["visible"]);
     expect(sendPushToUsers).toHaveBeenCalledWith(
       ["visible"],
-      expect.objectContaining({ url: "/club/club-lectura" }),
+      expect.objectContaining({ url: "/club/club-lectura/evento/event-1" }),
     );
   });
 });
@@ -323,7 +323,7 @@ describe("escritura confiable de notificaciones", () => {
     ]);
     expect(sendPushToUser).toHaveBeenCalledWith(
       "user-2",
-      expect.objectContaining({ url: "/club/club-lectura" }),
+      expect.objectContaining({ url: "/club/club-lectura/evento/event-1" }),
     );
   });
 
@@ -347,7 +347,7 @@ describe("escritura confiable de notificaciones", () => {
     expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["user-2", "user-3"]);
     expect(sendPushToUsers).toHaveBeenCalledWith(
       ["user-2", "user-3"],
-      expect.objectContaining({ url: "/club/club-lectura" }),
+      expect.objectContaining({ url: "/club/club-lectura/evento/event-1" }),
     );
   });
 
@@ -612,9 +612,10 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
     const result = await listNotifications(supabase, "user-1");
     const byId = new Map(result.map((n) => [n.id, n]));
 
-    // El evento NO tiene página de detalle (404 a propósito) -- debe enlazar
-    // a la ficha del club, nunca a /actividad/[id].
-    expect(byId.get("n-event")?.href).toBe("/club/club-lectura");
+    // Un evento tiene su ficha propia en /evento/[id] desde la spec 2026-08-04.
+    // Lo que sigue siendo cierto es que NO es /actividad/[id]: esa ruta devuelve
+    // 404 para eventos a propósito (hasDetailView sigue en false).
+    expect(byId.get("n-event")?.href).toBe("/club/club-lectura/evento/event-1");
     // Un club_activity hermano debe seguir yendo al detalle, sin cambios.
     expect(byId.get("n-activity")?.href).toBe("/club/club-lectura/actividad/activity-1");
   });
@@ -633,7 +634,7 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
     });
     expect(sendPushToUsers).toHaveBeenCalledTimes(1);
     const [, eventPayload] = sendPushToUsers.mock.calls[0];
-    expect(eventPayload.url).toBe("/club/club-lectura");
+    expect(eventPayload.url).toBe("/club/club-lectura/evento/event-1");
 
     await notifyMany(supabase, {
       userIds: ["user-2"],

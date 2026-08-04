@@ -70,8 +70,11 @@ describe("resolvePeriod: ventanas cortas", () => {
 });
 
 describe("availablePeriods", () => {
-  it("semana, mes, dos años y todo", () => {
-    expect(availablePeriods(NOW)).toEqual(["week", "month", 2026, 2025, "all"]);
+  // «Todo» va PRIMERO desde el commit 5e32d2e («reorder periods»), que cambió
+  // availablePeriods() y dejó este test sin actualizar. Se corrige aquí porque
+  // bloqueaba el merge; el orden que se fija es el que decidió ese commit.
+  it("todo, semana, mes y dos años", () => {
+    expect(availablePeriods(NOW)).toEqual(["all", "week", "month", 2026, 2025]);
   });
 });
 

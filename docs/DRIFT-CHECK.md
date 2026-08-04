@@ -218,6 +218,17 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 
 **Referencia (prod y dev, 2026-08-04 — 48 tablas con grants por columna, 10 con hueco):**
 
+> **Nota del 2026-08-04 (seguimiento de eventos, solo dev por ahora).** `club_activities` ganó
+> **8 columnas** (`starts_at`, `ends_at`, `event_timezone`, `location`, `modality`, `online_url`,
+> `event_state`, `updated_at`) **con su grant de INSERT/UPDATE**, así que sigue **sin aparecer**
+> en esta lista — que es exactamente la señal de que no hay hueco. En dev la consulta devuelve
+> las mismas 10 tablas con los mismos números. Si al aplicar en prod apareciera
+> `club_activities`, falta uno de esos 8 grants.
+>
+> `club_event_followers` **no** entra en la lista por otra razón: solo tiene `grant select`
+> (se escribe únicamente por RPC `SECURITY DEFINER`), así que no es una tabla con grants de
+> escritura por columna y la consulta no la mira.
+
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
 | `books` | 14 | 14 | 9 | la hidratación solo reescribe parte de la ficha |

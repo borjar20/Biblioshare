@@ -4,15 +4,26 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { CalendarMark } from "@/lib/clubs/activities/calendar-marks";
 import { formatDayMonth, formatEventDate } from "@/lib/clubs/activities/format-date";
+import { BellIcon } from "@/components/ui/icons";
 import { MARK_ACCENT } from "./mark-accent";
+import { AgendaFollowToggle } from "./agenda-follow-toggle";
 
-export function AgendaList({ marks }: { marks: CalendarMark[] }) {
+export function AgendaList({
+  marks,
+  /** Copy del vacío: cambia según el filtro activo (todo vs. solo los seguidos). */
+  emptyMessage,
+  viewerIsMember = false,
+}: {
+  marks: CalendarMark[];
+  emptyMessage?: string;
+  viewerIsMember?: boolean;
+}) {
   const t = useTranslations("activity");
 
   if (marks.length === 0) {
     return (
       <p className="rounded-card border border-border bg-surface p-4 text-sm text-muted-foreground">
-        {t("calendarEmptyMonth")}
+        {emptyMessage ?? t("calendarEmptyMonth")}
       </p>
     );
   }
@@ -22,6 +33,7 @@ export function AgendaList({ marks }: { marks: CalendarMark[] }) {
       {marks.map((mark, i) => {
         const { day, month } = formatDayMonth(mark.date);
         const accent = MARK_ACCENT[mark.markKind];
+        const esEvento = mark.markKind === "evento";
 
         const inner = (
           <>
@@ -38,6 +50,15 @@ export function AgendaList({ marks }: { marks: CalendarMark[] }) {
               >
                 <span aria-hidden className={`h-1.5 w-1.5 rounded-[2px] ${accent.bar}`} />
                 {t(`markKind_${mark.markKind}`)}
+                {/* La marca de seguido lleva icono Y texto accesible: no depende del
+                    color, así que sobrevive a la escala de grises y a un lector de
+                    pantalla (§17). */}
+                {mark.followedByViewer && (
+                  <>
+                    <BellIcon className="h-2.5 w-2.5 text-accent" aria-hidden />
+                    <span className="sr-only">{t("eventFollowedBadge")}</span>
+                  </>
+                )}
               </span>
               <span className="truncate font-serif text-[14.5px] leading-tight font-semibold text-foreground">
                 {mark.title}
@@ -51,20 +72,34 @@ export function AgendaList({ marks }: { marks: CalendarMark[] }) {
           </>
         );
 
-        const clases = `flex items-start gap-3 rounded-card border border-border bg-surface px-3 py-3 ${
+        const clases = `flex min-w-0 flex-1 items-start gap-3 px-3 py-3 ${
           mark.past ? "opacity-50" : ""
         }`;
 
-        // Un evento NO enlaza: no tiene ficha y el <Link> daría 404. El mismo
-        // envoltorio condicional que activity-card.tsx.
+        // Un HITO sigue sin enlace: no tiene ficha propia. Un evento y una
+        // actividad sí. Se comprueba `href`, nunca el kind.
         return (
-          <li key={`${mark.activityId}-${mark.markKind}-${i}`}>
+          <li
+            key={`${mark.activityId}-${mark.markKind}-${i}`}
+            className="flex items-stretch overflow-hidden rounded-card border border-border bg-surface"
+          >
             {mark.href ? (
-              <Link href={mark.href} className={`${clases} hover:opacity-80`}>
+              <Link href={mark.href} className={`${clases} hover:bg-surface-muted`}>
                 {inner}
               </Link>
             ) : (
               <div className={clases}>{inner}</div>
+            )}
+
+            {/* El control de seguir es HERMANO del enlace, nunca dentro: un
+                <button> dentro de un <a> es HTML inválido y rompe el tabulador.
+                Y así pulsarlo no navega a ningún sitio. */}
+            {esEvento && viewerIsMember && !mark.past && (
+              <AgendaFollowToggle
+                activityId={mark.activityId}
+                title={mark.title}
+                following={mark.followedByViewer}
+              />
             )}
           </li>
         );
