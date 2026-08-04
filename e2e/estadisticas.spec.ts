@@ -191,22 +191,108 @@ test("la pestaña del perfil usa el armazón de paneles", async ({ page }) => {
   await login(page);
   await page.goto(`/u/${USERNAME}?tab=estadisticas`);
 
-  const semana = page.getByRole("region", { name: "Lectura esta semana" });
+  const semana = page.getByRole("region", { name: "Esta semana", exact: true });
   await expect(semana).toBeVisible();
-  await expect(semana).toContainText(/Últimos 7 días · ventana móvil · min/i);
+  await expect(semana).toContainText(/Últimos 7 días · ventana móvil · obras/i);
 
   // Se amplía igual que en el muro, y da los valores exactos por día — que
   // desde el handoff «Gráficos sin tabla mensual» los lleva el propio gráfico,
   // no una tabla debajo.
-  await semana.getByRole("button", { name: /ampliar lectura esta semana/i }).click();
-  const capa = page.getByRole("dialog", { name: "Lectura esta semana" });
+  await semana.getByRole("button", { name: /ampliar esta semana/i }).click();
+  const capa = page.getByRole("dialog", { name: "Esta semana" });
   await expect(capa).toBeVisible();
   await expect(capa.getByRole("table")).toHaveCount(0);
   await expect(capa.getByRole("img").first()).toBeVisible();
 
-  // El calendario y el editor de objetivo NO son paneles: siguen siendo
-  // controles con estado propio y no se pliegan.
+  // Y la capa NO desborda a lo ancho: los globos del gráfico son `display:none`
+  // en reposo y el <dialog> recorta el eje X, así que un panel de siete barras
+  // no puede regalar una barra de scroll horizontal.
+  const desborda = await capa.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(desborda).toBe(false);
+  await page.keyboard.press("Escape");
+
+  // El calendario NO es un panel: sigue siendo un control con estado propio y
+  // no se pliega.
   await expect(page.getByRole("region", { name: "Racha", exact: true })).toBeVisible();
+});
+
+// La pestaña se fijó al MES y a todos los tipos: la pregunta ya está hecha, y
+// el calendario que la acompaña es mensual. Lo único que se elige aquí es en
+// qué magnitud verlo. Para cambiar la pregunta está /estadisticas.
+test("la pestaña del perfil solo ofrece magnitud, no periodo ni tipo", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto(`/u/${USERNAME}?tab=estadisticas`);
+
+  await expect(page.getByRole("navigation", { name: "Magnitud" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Periodo" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Tipo de obra" })).toHaveCount(0);
+
+  // Y la magnitud sigue mandando sobre algo: desde que «Actividad del periodo»
+  // se fue, el panel al que obedece es la semana. Un selector que no cambia
+  // nada es peor que no tenerlo.
+  const semana = page.getByRole("region", { name: "Esta semana", exact: true });
+  await page
+    .getByRole("navigation", { name: "Magnitud" })
+    .getByRole("link", { name: "Tiempo" })
+    .click();
+  await expect(semana).toContainText(/Últimos 7 días · ventana móvil · min/i);
+});
+
+// El objetivo diario no es una medida: es una META que se fija y se edita, como
+// los retos. Se mudó a Rincón con ellos, y el medidor va pegado a su editor —
+// separarlos obligaría a cambiar de pestaña para entender la cifra que acabas
+// de tocar.
+test("el objetivo diario vive en Rincón, con los retos", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+
+  await page.goto(`/u/${USERNAME}?tab=estadisticas`);
+  await expect(page.getByRole("region", { name: "Objetivo de hoy" })).toHaveCount(0);
+
+  await page.goto(`/u/${USERNAME}?tab=rincon`);
+  await expect(page.getByRole("region", { name: "Objetivo de hoy" })).toBeVisible();
+  // Y su editor va pegado: el formulario arranca plegado, así que lo que se ve
+  // es su rótulo, no el input.
+  await expect(page.getByText(/objetivo diario de lectura/i)).toBeVisible();
+});
+
+// «La pila» y «Entra y sale» eran dos tarjetas que solo se entendían juntas: la
+// segunda decía si la primera sube o baja, y había que mirar a otro sitio para
+// saberlo. Ahora es un panel con las tres columnas en el mismo eje, y cada una
+// desglosada por tipo — un «+4» de libros no es un «+4» de películas.
+test("la pila y el balance son un solo panel, desglosado por tipo", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto(`/u/${USERNAME}?tab=estadisticas`);
+
+  await expect(page.getByRole("region", { name: "Entra y sale" })).toHaveCount(0);
+
+  const pila = page.getByRole("region", { name: "La pila", exact: true });
+  await expect(pila).toBeVisible();
+  // El rótulo tiene que decir que la primera columna es una foto de AHORA: si
+  // no, parecería del mes como las otras dos.
+  await expect(pila).toContainText(/foto del momento/i);
+  await pila.getByRole("button", { name: /ampliar la pila/i }).click();
+
+  const capa = page.getByRole("dialog", { name: "La pila" });
+  // Las tres columnas, por el nombre accesible de su barra: es el contrato del
+  // handoff —el gráfico lleva sus cifras dentro y es alcanzable con el
+  // tabulador—, no una tabla debajo.
+  for (const columna of [/^Pendientes ahora mismo:/, /^Añadidas /, /^Terminadas /]) {
+    await expect(capa.getByRole("img", { name: columna })).toHaveCount(1);
+  }
+  // Apilado por tipo: la leyenda nombra los tres.
+  for (const tipo of ["Libros", "Películas", "Series"]) {
+    await expect(capa).toContainText(tipo);
+  }
 });
 
 // El muro va agrupado en secciones, no en una rejilla de doce tarjetas sueltas.
@@ -292,8 +378,9 @@ test("el filtro de tipo acota el muro y cada panel lo declara", async ({ page })
 
 // La pestaña del perfil ya no tiene rail. El rail no repartía por importancia
 // sino por ancho: la racha y el ritmo cabían en 340 px, así que salían ANTES
-// que la actividad del periodo. El orden del DOM es ahora el del esquema, que
-// es el que lee un lector de pantalla y el que se ve en móvil.
+// que la semana. El orden del DOM es ahora el del esquema, que es el que lee un
+// lector de pantalla y el que se ve en móvil — y que la multicolumna respeta,
+// porque fluye por columnas sin reordenar nada.
 test("la pestaña del perfil no tiene rail: el orden es el del esquema", async ({
   page,
 }) => {
@@ -303,19 +390,26 @@ test("la pestaña del perfil no tiene rail: el orden es el del esquema", async (
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`/u/${USERNAME}?tab=estadisticas`);
 
-  const actividad = page.getByRole("region", { name: "Actividad del periodo" });
+  const semana = page.getByRole("region", { name: "Esta semana", exact: true });
   const racha = page.getByRole("region", { name: "Racha", exact: true });
-  await expect(actividad).toBeVisible();
+  await expect(semana).toBeVisible();
   await expect(racha).toBeVisible();
 
   // `compareDocumentPosition`: DOCUMENT_POSITION_FOLLOWING = la racha va
-  // DESPUÉS de la actividad en el DOM, que es el orden que lee un lector de
+  // DESPUÉS de la semana en el DOM, que es el orden que lee un lector de
   // pantalla y el que se ve en móvil.
-  const ordenCorrecto = await actividad.evaluate((a, b) => {
+  const ordenCorrecto = await semana.evaluate((a, b) => {
     if (!b) return false;
     return !!(a.compareDocumentPosition(b as Node) & Node.DOCUMENT_POSITION_FOLLOWING);
   }, await racha.elementHandle());
   expect(ordenCorrecto).toBe(true);
+
+  // Y la pestaña NO desborda a lo ancho: la multicolumna reparte sin sacar nada
+  // del contenedor.
+  const desborda = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth + 1,
+  );
+  expect(desborda).toBe(false);
 });
 
 // Handoff «Gráficos sin tabla mensual»: los gráficos que llevan sus cifras

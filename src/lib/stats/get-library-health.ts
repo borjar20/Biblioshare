@@ -31,6 +31,9 @@ export type LibraryHealth = {
   added: number;
   /** Obras terminadas durante el periodo. */
   finished: number;
+  /** `added` y `finished` desglosados por tipo, para la barra apilada. */
+  addedByType: Record<ItemType, number>;
+  finishedByType: Record<ItemType, number>;
   /**
    * Pendientes al cierre de cada mes de los últimos 12. Es acumulado real
    * (añadidos menos terminados hasta esa fecha), no el saldo del mes.
@@ -77,6 +80,8 @@ export function computeLibraryHealth(
   let dropped = 0;
   let added = 0;
   let finished = 0;
+  const addedByType: Record<ItemType, number> = { book: 0, movie: 0, series: 0 };
+  const finishedByType: Record<ItemType, number> = { book: 0, movie: 0, series: 0 };
   const waits: number[] = [];
 
   for (const row of rows) {
@@ -85,8 +90,14 @@ export function computeLibraryHealth(
     if (row.is_active && row.status === "planned") {
       waits.push(monthsBetween(row.created_at, now));
     }
-    if (within(row.created_at)) added++;
-    if (row.finished_on && within(row.finished_on)) finished++;
+    if (within(row.created_at)) {
+      added++;
+      addedByType[row.item_type]++;
+    }
+    if (row.finished_on && within(row.finished_on)) {
+      finished++;
+      finishedByType[row.item_type]++;
+    }
   }
 
   const closed = completed + dropped;
@@ -123,6 +134,8 @@ export function computeLibraryHealth(
     medianWaitMonths: median(waits),
     added,
     finished,
+    addedByType,
+    finishedByType,
     backlog,
   };
 }

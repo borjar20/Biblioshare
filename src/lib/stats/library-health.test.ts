@@ -61,6 +61,26 @@ describe("computeLibraryHealth", () => {
     expect(h.finished).toBe(2);
   });
 
+  // El desglose por tipo es lo que hace legible «Entra y sale»: un «+4» de
+  // libros no es un «+4» de películas. Tiene que sumar EXACTAMENTE el total, o
+  // la barra apilada dibujaría un tramo que no está en la cifra de arriba.
+  it("el balance se desglosa por tipo, y cada desglose suma su total", () => {
+    const rows = [
+      pass({ item_type: "book", created_at: "2026-07-02T00:00:00Z", finished_on: "2026-07-10" }),
+      pass({ item_type: "movie", created_at: "2026-07-03T00:00:00Z", finished_on: "2026-07-11" }),
+      pass({ item_type: "movie", created_at: "2026-07-04T00:00:00Z", finished_on: null, status: "planned", is_active: true }),
+      pass({ item_type: "series", created_at: "2025-01-01T00:00:00Z", finished_on: "2026-07-08" }),
+    ];
+    const h = computeLibraryHealth(rows, "month", NOW);
+
+    expect(h.addedByType).toEqual({ book: 1, movie: 2, series: 0 });
+    expect(h.finishedByType).toEqual({ book: 1, movie: 1, series: 1 });
+
+    const sum = (t: Record<string, number>) => Object.values(t).reduce((a, b) => a + b, 0);
+    expect(sum(h.addedByType)).toBe(h.added);
+    expect(sum(h.finishedByType)).toBe(h.finished);
+  });
+
   it("la curva de la pila deja fuera las abandonadas en toda la serie", () => {
     // Sin fecha de abandono en el esquema, incluirla la dejaría abierta para
     // siempre y la curva subiría sola.

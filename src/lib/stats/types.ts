@@ -7,6 +7,14 @@ export type DayActivity = {
   date: string; // "YYYY-MM-DD"
   minutes: number; // reading minutes only — see getWeeklyActivity
   active: boolean;
+  /**
+   * Obras terminadas ese día, de CUALQUIER tipo. No es lo mismo que `minutes`
+   * ni se deriva de él: una película se termina sin sesión, y un día de lectura
+   * larga puede no terminar nada. Es lo que lee el conmutador de magnitud.
+   */
+  works: number;
+  /** Desglose de `works` por tipo, para la barra apilada. */
+  byType: Record<ItemType, number>;
 };
 
 export type Streaks = {

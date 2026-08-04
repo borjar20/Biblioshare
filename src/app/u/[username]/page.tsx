@@ -200,8 +200,6 @@ export default async function PublicProfilePage({
             userId={profile.userId}
             basePath={basePath}
             monthParam={parsedParams.month}
-            periodParam={parsedParams.periodo}
-            typeParam={parsedParams.tipo}
             metricParam={parsedParams.medida}
           />
         </Suspense>

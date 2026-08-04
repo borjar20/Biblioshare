@@ -10,6 +10,11 @@ import { MemorizeCard } from "@/components/notes/memorize-card";
 import { NotesCountsCard } from "@/components/notes/notes-counts-card";
 import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { SpineDraw } from "@/components/rincon/spine-draw";
+import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
+import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
+import { buildDailyGoalPanel } from "@/lib/stats/panel/specs";
+import { StatPanel } from "@/components/stats/panel/stat-panel";
+import { DailyGoalForm } from "@/components/stats/daily-goal-form";
 
 function Card({
   children,
@@ -40,16 +45,19 @@ export async function RinconTab({
   basePath: string;
 }) {
   const tChallenges = await getTranslations("challenges");
+  const tStats = await getTranslations("stats");
   const supabase = await createClient();
 
   // Memorizar se lleva una muestra acotada (elige UNA al azar) y los contadores
   // salen de un `count` en SQL. Antes las dos cosas se derivaban del array
   // completo de notas, que viajaba entero al cliente.
-  const [challenges, sorteo, counts, pool] = await Promise.all([
+  const [challenges, sorteo, counts, pool, ownProfile, weekly] = await Promise.all([
     getChallenges(supabase, userId, { includeArchived }),
     getNotesForSorteo(supabase, userId),
     getNoteCounts(supabase, userId),
     getSorteoPool(supabase, userId),
+    getOwnProfile(supabase, userId),
+    getWeeklyActivity(supabase, userId),
   ]);
   const challengeProgress = await getChallengeProgress(
     supabase,
@@ -59,6 +67,27 @@ export async function RinconTab({
 
   const main = (
     <div className="flex flex-col gap-4">
+      {/* El objetivo diario vivía en la pestaña de Estadísticas, entre cifras
+          que solo se leen. Pero un objetivo no es una medida: es una META que
+          se fija, se edita y se persigue — exactamente lo que son los retos de
+          aquí abajo. Estaba en la pestaña equivocada.
+          Va ARRIBA del todo, no tras la lista de retos: es lo único de esta
+          pestaña que se mira todos los días, y con una docena de retos encima
+          quedaba bajo la línea de flotación.
+          Y van juntos el medidor (cuánto llevas hoy) y el editor (cuánto te has
+          puesto): separarlos obligaría a cambiar de sitio para entender la
+          cifra que acabas de tocar. */}
+      <StatPanel
+        spec={buildDailyGoalPanel(
+          weekly,
+          ownProfile?.dailyGoalMinutes ?? null,
+          tStats("dailyGoalTitle"),
+        )}
+      />
+      <Card>
+        <DailyGoalForm dailyGoalMinutes={ownProfile?.dailyGoalMinutes ?? null} />
+      </Card>
+
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold tracking-tight">
           {tChallenges("title")}

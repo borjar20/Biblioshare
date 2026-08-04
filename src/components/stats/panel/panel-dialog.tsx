@@ -46,6 +46,11 @@ export function PanelDialog({
         aria-label={label}
         className="absolute inset-0 z-10 cursor-pointer rounded-card"
       />
+      {/* `overflow-x-clip` explícito: pedir solo `overflow-y: auto` hace que el
+          eje X compute a `auto` también, y entonces cualquier globo del gráfico
+          que asome por el borde le regala una barra horizontal a toda la capa.
+          `clip` recorta sin crear contenedor de scroll; la tabla ancha sigue
+          teniendo el suyo propio dentro (ver panel-table.tsx). */}
       <dialog
         ref={ref}
         aria-label={title}
@@ -54,7 +59,7 @@ export function PanelDialog({
           // scrim. Un clic dentro llega con el hijo como target.
           if (e.target === ref.current) ref.current?.close();
         }}
-        className="m-auto max-h-[86dvh] w-[min(100%-1.5rem,34rem)] overflow-y-auto overscroll-contain rounded-card border border-border bg-surface p-0 text-left text-foreground shadow-card backdrop:bg-scrim"
+        className="m-auto max-h-[86dvh] w-[min(100%-1.5rem,34rem)] overflow-x-clip overflow-y-auto overscroll-contain rounded-card border border-border bg-surface p-0 text-left text-foreground shadow-card backdrop:bg-scrim"
       >
         {/* El cierre va pegado arriba: la capa hace scroll (una tabla de doce
             filas no cabe), y una salida que se va con el scroll deja atrapado a

@@ -9,8 +9,9 @@
 // pendiente, y eso lo contesta el título de su sección antes que el suyo.
 //
 // La pestaña del perfil (`buildProfilePanels`) es la vista corta del mismo
-// esquema, en el orden del bloque «Actividad»: qué has hecho · objetivo ·
-// hábito · pila · valoración · récords · cuándo consumes.
+// esquema, y está FIJADA al mes y a todos los tipos: qué has hecho · hábito ·
+// pila · valoración · cuándo consumes. Sin selector de periodo ni de tipo — el
+// muro completo es el sitio donde se cambia la pregunta.
 //
 // Los títulos siguen viniendo de `messages/es.json` (se pasan en `titles`) para
 // no duplicar lo que ya existe. La prosa nueva —descripciones, notas y textos
@@ -201,7 +202,7 @@ export function buildStatsSections(input: StatsInput): PanelSection[] {
       description: "Qué tienes, qué acabas y qué se te acumula.",
       panels: [
         statusPanel(input, filter),
-        tbrPanel(input.tbr, input.titles.tbr, undefined, filter),
+        tbrPanel(input.tbr, input.titles.tbr, filter),
         libraryHealthPanel(input, period),
         backlogPanel(input),
       ],
@@ -277,28 +278,21 @@ export function buildStatsSections(input: StatsInput): PanelSection[] {
 
 export type ProfileTitles = {
   weekly: string;
-  dailyGoal: string;
   streak: string;
   pace: string;
-  activityYear: string;
   rating: string;
-  records: string;
   tbr: string;
   habits: string;
 };
 
 export type ProfileInput = {
   period: StatsPeriod;
-  itemFilter: ItemFilter;
   metric: ActivityMetric;
   titles: ProfileTitles;
-  activity: PeriodActivity;
   weekly: DayActivity[];
-  dailyGoalMinutes: number | null;
   streaks: Streaks;
   pagesPerDay: number | null;
   rating: RatingDistribution;
-  records: Records;
   tbr: TbrSnapshot;
   habits: Habits;
   health: LibraryHealth;
@@ -306,35 +300,40 @@ export type ProfileInput = {
 };
 
 /**
- * Los paneles de la pestaña, EN EL ORDEN DEL ESQUEMA. El orden es el contenido:
- * primero qué has hecho, luego a qué aspirabas, luego con qué constancia, y solo
- * después el inventario. Invertirlo convierte la pestaña en un almacén.
+ * Los paneles de la pestaña, EN EL ORDEN DEL ESQUEMA: qué has hecho · con qué
+ * constancia · qué se te acumula · cómo puntúas · cuándo consumes.
+ *
+ * Tres tarjetas se fueron y conviene saber por qué, para que nadie las
+ * reponga leyendo una maqueta vieja:
+ *
+ *  · «Actividad del periodo» contaba lo mismo que el calendario del mes, con
+ *    otro dibujo. Dos gráficos que responden a la misma pregunta obligan a
+ *    compararlos entre sí antes de poder leer ninguno.
+ *  · El objetivo diario se mudó al Rincón, con los retos: es una meta que se
+ *    edita, no una cifra que se lee.
+ *  · «Récords» pedía un histórico. Con la pestaña fijada al MES, «tu mejor
+ *    racha» y «el mes más activo» hablarían de treinta días, que no es un
+ *    récord de nada. Sigue entero en /estadisticas, donde hay periodo.
  */
 export function buildProfilePanels(input: ProfileInput): PanelSpec[] {
   const period = periodLabel(input.period);
-  // El filtro global va SUELTO al rótulo, no mezclado con los filtros propios
-  // de cada panel: lo acaba de elegir quien mira, y tiene que verse junto a la
-  // cifra. «Todo» no se anuncia — repetirlo en cada tarjeta es ruido.
-  const filter =
-    input.itemFilter === "all" ? undefined : itemFilterLabel(input.itemFilter);
   return [
-    // Actividad del periodo.
-    profileActivityPanel(input, period, filter),
-    weeklyPanel(input.weekly, input.titles.weekly),
-    // Objetivo.
-    dailyGoalPanel(input.weekly, input.dailyGoalMinutes, input.titles.dailyGoal),
-    // Hábito.
+    weeklyPanel(input.weekly, input.titles.weekly, input.metric),
     streaksPanel(input.streaks, input.titles.streak),
     pacePanel(input.pagesPerDay, input.titles.pace),
-    // La pila.
-    tbrPanel(input.tbr, input.titles.tbr, input.formats),
-    profileBalancePanel(input, period),
-    // Valoración y récords.
-    ratingPanel(input.rating, input.titles.rating, period, filter),
-    recordsPanel(input.records, input.streaks, input.titles.records, period),
-    // Cuándo consumes.
-    habitsPanel(input.habits, input.titles.habits, period, filter),
+    profilePilaPanel(input, period),
+    ratingPanel(input.rating, input.titles.rating, period, undefined),
+    habitsPanel(input.habits, input.titles.habits, period, undefined),
   ];
+}
+
+/** El objetivo diario, que vive con los retos del Rincón y no con las cifras. */
+export function buildDailyGoalPanel(
+  weekly: DayActivity[],
+  goalMinutes: number | null,
+  title: string,
+): PanelSpec {
+  return dailyGoalPanel(weekly, goalMinutes, title);
 }
 
 // ── §1 Resumen general ────────────────────────────────────────────────────────
@@ -514,22 +513,6 @@ function activitySpec(
 
 function periodActivityPanel(
   input: StatsInput,
-  period: string,
-  filter: string | undefined,
-): PanelSpec {
-  return activitySpec(
-    input.activity,
-    input.metric,
-    "actividad-periodo",
-    "Actividad del periodo",
-    period,
-    previousLabel(input.period),
-    filter,
-  );
-}
-
-function profileActivityPanel(
-  input: ProfileInput,
   period: string,
   filter: string | undefined,
 ): PanelSpec {
@@ -793,46 +776,99 @@ function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
   };
 }
 
-/** Balance de la pila para el perfil: entra frente a sale. */
-function profileBalancePanel(input: ProfileInput, period: string): PanelSpec {
-  const { health } = input;
+/**
+ * La pila del perfil: el saldo Y el inventario en UN panel.
+ *
+ * Antes eran dos tarjetas —«La pila» (anillo de pendientes) y «Entra y sale»
+ * (tres cifras sueltas)— que solo se entendían juntas: la segunda decía si la
+ * primera sube o baja, y para saberlo había que mirar a otro sitio. Aquí las
+ * tres columnas comparten eje y unidad, así que el saldo se ve sin restar.
+ *
+ * Y las tres van DESGLOSADAS POR TIPO, que es la pregunta que quedaba fuera:
+ * un mes de «+4» puede ser cuatro libros que no vas a abrir o cuatro películas
+ * de dos horas, y no es lo mismo para nada.
+ *
+ * Mezcla una foto (lo pendiente AHORA) con dos flujos (lo que se movió en el
+ * periodo). Comparten unidad —títulos—, así que el eje es honesto, pero el
+ * rótulo tiene que decirlo o la primera columna parecería del mes también.
+ */
+function profilePilaPanel(input: ProfileInput, period: string): PanelSpec {
+  const { tbr, health, formats, titles } = input;
   const net = health.added - health.finished;
+  const netLabel =
+    net > 0 ? "La pila crece" : net < 0 ? "La pila baja" : "La pila se mantiene";
 
-  // «Crece» y «baja» son afirmaciones sobre una TENDENCIA, y una tendencia
-  // necesita una ventana. Con el periodo en «todo el histórico» no la hay: la
-  // diferencia es sencillamente lo que sigue abierto desde siempre, y llamarlo
-  // «la pila crece» sonaría a alarma sobre algo que no se está moviendo.
-  const bounded = input.period !== "all";
-  const netLabel = !bounded
-    ? "Sin cerrar todavía"
-    : net > 0
-      ? "La pila crece"
-      : net < 0
-        ? "La pila baja"
-        : "La pila se mantiene";
+  const lower = period.toLowerCase();
 
   return {
-    id: "balance-pila",
-    title: bounded ? "Entra y sale" : "Lo que sigue abierto",
+    id: "pila",
+    title: titles.tbr,
     description:
-      "Lo que añadiste frente a lo que terminaste en el periodo. Ordena por fecha de creación del pase, no por `planned_on`: esa fecha solo existe hacia delante, y el historial importado la tiene vacía.",
-    context: { period },
-    viz: "kpi",
+      "Lo que tienes pendiente ahora mismo, y lo que entró y salió en el periodo. El movimiento ordena por fecha de creación del pase, no por `planned_on`: esa fecha solo existe hacia delante y el historial importado la tiene vacía.",
+    context: { period, scope: "la pila, foto del momento" },
+    viz: "stacked",
     unit: UNITS.items,
-    data: [],
-    kpis: [
+    labelHeader: "Columna",
+    series: TYPE_SERIES,
+    data: [
       {
-        key: "neto",
-        label: netLabel,
-        value: Math.abs(net) || 0,
-        unit: UNITS.items,
+        key: "pendiente",
+        label: "Pendientes ahora mismo",
+        short: "Pila",
+        value: tbr.pending,
+        parts: [
+          { key: "book", value: tbr.byType.book },
+          { key: "movie", value: tbr.byType.movie },
+          { key: "series", value: tbr.byType.series },
+        ],
       },
-      { key: "entra", label: "Añadidas", value: health.added, unit: UNITS.items },
-      { key: "sale", label: "Terminadas", value: health.finished, unit: UNITS.items },
+      {
+        key: "entra",
+        label: `Añadidas ${lower}`,
+        short: "Entra",
+        value: health.added,
+        parts: [
+          { key: "book", value: health.addedByType.book },
+          { key: "movie", value: health.addedByType.movie },
+          { key: "series", value: health.addedByType.series },
+        ],
+      },
+      {
+        key: "sale",
+        label: `Terminadas ${lower}`,
+        short: "Sale",
+        value: health.finished,
+        parts: [
+          { key: "book", value: health.finishedByType.book },
+          { key: "movie", value: health.finishedByType.movie },
+          { key: "series", value: health.finishedByType.series },
+        ],
+      },
     ],
+    kpis: [
+      { key: "pendientes", label: "Pendientes", value: tbr.pending, unit: UNITS.items },
+      { key: "neto", label: netLabel, value: Math.abs(net) || 0, unit: UNITS.items },
+      {
+        key: "tiempo",
+        label: "Películas pendientes",
+        value: formats.movies.pendingMinutes,
+        unit: UNITS.minutes,
+        hint: "Los libros no entran: sus páginas no son minutos",
+      },
+    ],
+    note: [
+      "La primera columna es una foto de AHORA; las otras dos, el movimiento del periodo. Por eso «Entra» y «Sale» pueden sumar más que la pila entera.",
+      tbr.oldest
+        ? `Lo que más lleva esperando: «${tbr.oldest.title}», ${tbr.oldest.monthsWaiting} ${
+            tbr.oldest.monthsWaiting === 1 ? "mes" : "meses"
+          } en la pila.`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" "),
     empty: {
-      title: "Sin movimiento en el periodo",
-      message: "Ni añadiste ni terminaste nada en esta ventana.",
+      title: "No tienes nada pendiente ni movimiento en el periodo",
+      message: "Cuando marques algo como pendiente, aparecerá aquí.",
     },
   };
 }
@@ -1194,25 +1230,58 @@ function seriesFormatPanel({ formats }: StatsInput, period: string): PanelSpec {
 }
 
 // ── Actividad de los últimos 7 días ───────────────────────────────────────────
-function weeklyPanel(days: DayActivity[], title: string): PanelSpec {
+/**
+ * La semana, en la magnitud elegida. Es el panel al que obedece el conmutador
+ * obras/tiempo en el perfil, desde que la pestaña se quedó fija en el mes y
+ * «Actividad del periodo» se fue.
+ *
+ * Las dos magnitudes NO son la misma serie en otra escala: los minutos solo
+ * los llevan las sesiones de lectura, y las obras cuentan cualquier pase que
+ * cierres. Un domingo de cine sale a cero en tiempo y a dos en obras, y las
+ * dos cosas son ciertas.
+ */
+function weeklyPanel(
+  days: DayActivity[],
+  title: string,
+  metric: ActivityMetric,
+): PanelSpec {
+  const time = metric === "time";
   return {
     id: "semana",
     title,
+    description: time
+      ? "Minutos de sesiones de lectura con duración registrada. Solo los libros llevan sesión: una película vista no suma minutos aquí."
+      : "Obras con el pase cerrado cada día, del tipo que sea. Algo terminado sin sesión sí cuenta aquí, aunque no sume ni un minuto.",
     context: { period: "Últimos 7 días", scope: "ventana móvil" },
-    viz: "bars",
-    unit: UNITS.minutes,
+    // Apilado solo cuando hay desglose que apilar: los minutos no distinguen
+    // tipo, porque la sesión cuelga del pase pero el tiempo no se reparte.
+    viz: time ? "bars" : "stacked",
+    unit: time ? UNITS.minutes : UNITS.works,
     labelHeader: "Día",
-    series: [{ key: "minutes", label: "Minutos", color: "var(--accent)" }],
+    series: time
+      ? [{ key: "minutes", label: "Minutos", color: "var(--accent)" }]
+      : TYPE_SERIES,
     data: days.map((d) => ({
       key: d.date,
       label: `${weekdayName(d.date)} ${Number(d.date.slice(8, 10))}`,
       short: weekdayShort(d.date),
-      value: d.minutes,
+      value: time ? d.minutes : d.works,
+      parts: time
+        ? undefined
+        : [
+            { key: "book", value: d.byType.book },
+            { key: "movie", value: d.byType.movie },
+            { key: "series", value: d.byType.series },
+          ],
     })),
-    note: "Ventana móvil de siete días que termina hoy, no la semana natural. Solo cuenta minutos de sesiones de lectura con duración registrada.",
+    note: time
+      ? "Ventana móvil de siete días que termina hoy, no la semana natural. Solo cuenta minutos de sesiones de lectura con duración registrada."
+      : "Ventana móvil de siete días que termina hoy, no la semana natural.",
     empty: {
       title: "Sin actividad esta semana",
-      message: "Registra una sesión y la semana empieza a llenarse.",
+      message: time
+        ? "Registra una sesión y la semana empieza a llenarse."
+        : "Cierra un pase y la semana empieza a llenarse.",
     },
   };
 }
@@ -1747,17 +1816,7 @@ function recordsPanel(
 }
 
 // ── Acumulado / pila ──────────────────────────────────────────────────────────
-function tbrPanel(
-  tbr: TbrSnapshot,
-  title: string,
-  formats?: FormatStats,
-  filter?: string,
-): PanelSpec {
-  // Tiempo estimado para vaciar la parte de PANTALLA de la pila. Los libros no
-  // se suman aquí: sus páginas no son minutos, y convertirlas exigiría una
-  // velocidad de lectura que nadie ha medido.
-  const screenMinutes = formats?.movies.pendingMinutes ?? null;
-
+function tbrPanel(tbr: TbrSnapshot, title: string, filter?: string): PanelSpec {
   return {
     id: "pila",
     title,
@@ -1777,17 +1836,6 @@ function tbrPanel(
     ],
     kpis: [
       { key: "pendientes", label: "Pendientes", value: tbr.pending, unit: UNITS.items },
-      ...(formats
-        ? [
-            {
-              key: "tiempo",
-              label: "Películas pendientes",
-              value: screenMinutes,
-              unit: UNITS.minutes,
-              hint: "Los libros no entran: sus páginas no son minutos",
-            } satisfies PanelKpi,
-          ]
-        : []),
     ],
     note: tbr.oldest
       ? `Lo que más lleva esperando: «${tbr.oldest.title}», ${tbr.oldest.monthsWaiting} ${

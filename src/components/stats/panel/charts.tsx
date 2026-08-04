@@ -86,13 +86,20 @@ function GapMark() {
 }
 
 /** Clases del globo. Sale con el ratón y con el foco, sin una línea de JS. */
+// `hidden`/`block`, NO `invisible`/`opacity-0`. Un elemento con
+// `visibility: hidden` sigue ocupando su sitio en el desbordamiento del
+// contenedor: cada globo mide ~120 px, va centrado sobre una columna de ~25 y
+// se sale medio ancho por cada extremo del gráfico. Como la capa ampliada es un
+// `<dialog>` con `overflow-y: auto` —y eso hace que `overflow-x` compute a
+// `auto` también—, los globos ESCONDIDOS le metían una barra de scroll
+// horizontal permanente. `display: none` no aporta nada al desbordamiento.
+// A cambio se pierde la transición de opacidad, que no la echa nadie de menos.
 const TIP =
-  "pointer-events-none invisible absolute bottom-full left-1/2 z-20 mb-1.5 " +
+  "pointer-events-none hidden absolute bottom-full left-1/2 z-20 mb-1.5 " +
   "-translate-x-1/2 whitespace-nowrap rounded-lg border border-border " +
   "bg-surface-3 px-2.5 py-1.5 text-left text-[11px] leading-relaxed " +
-  "text-foreground opacity-0 shadow-card transition-opacity " +
-  "group-hover:visible group-hover:opacity-100 " +
-  "group-focus-visible:visible group-focus-visible:opacity-100";
+  "text-foreground shadow-card " +
+  "group-hover:block group-focus-visible:block";
 
 /**
  * Desglose por serie de un punto apilado, para el globo y para el nombre

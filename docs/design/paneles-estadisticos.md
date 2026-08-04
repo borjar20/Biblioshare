@@ -483,7 +483,7 @@ Qué se usa y por qué:
   concordancia, qué indicador preside, límites de semana/mes/año y su periodo anterior
   (incluido enero, que retrocede de año), tasas sobre lo cerrado y no sobre la
   biblioteca entera, y la curva de la pila dejando fuera las abandonadas.
-- **15 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
+- **18 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
   unidad, cifra en texto sin ampliar, Escape cerrando **y devolviendo el foco al
   disparador**, que ampliar un panel no mueva a sus vecinos, el muro agrupado en
   secciones con su índice y sus paneles a nivel `h3`, el índice marcando la sección
@@ -492,7 +492,12 @@ Qué se usa y por qué:
   tipo declarándose en el rótulo —y «Distribución por tipo» declarando que NO lo
   obedece—, la pestaña del perfil sin rail, y el contrato nuevo de los gráficos: que la
   tabla NO esté **y** que el dato SÍ siga estando (punto focalizable con su valor en el
-  nombre), y que eso ocurra solo en la capa, nunca en la cara.
+  nombre), y que eso ocurra solo en la capa, nunca en la cara. Y, de la reorganización
+  del perfil: que ahí solo haya selector de magnitud —y que siga mandando sobre la
+  semana—, que el objetivo diario esté en Rincón y NO en Estadísticas, que «La pila»
+  traiga sus tres columnas desglosadas y «Entra y sale» ya no exista, y que **ni la capa
+  ni la pestaña desborden a lo ancho** (`scrollWidth` contra `clientWidth`), que es la
+  prueba que faltaba cuando los globos escondidos regalaban scroll horizontal.
 - **Revisión visual en navegador** (1400 px y 390 px, claro y oscuro, cara y capa). De
   ahí salieron trece defectos que ninguna prueba veía: color de sector por posición en
   vez de por categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota
@@ -531,32 +536,68 @@ falla: si «Décadas» habla de lo que ves o de lo que tienes esperando.
 | 6 | Gustos y descubrimiento | Qué eliges, de quién y de qué época |
 | 7 | Por categoría | Lo que solo tiene sentido dentro de un tipo de obra |
 
+### La pestaña del perfil: fijada al mes, y siete tarjetas
+
 La pestaña del perfil es la **vista corta del mismo esquema**, sin secciones y en este
-orden: actividad del periodo · semana · objetivo · racha · ritmo · calendario · la pila
-· balance · valoración · récords · cuándo consumes.
+orden: **esta semana · racha · ritmo · calendario · la pila · valoración · cuándo
+consumes**.
+
+**No tiene selector de periodo ni de tipo: está fijada a MES y a todos los tipos.** La
+pregunta aquí ya está hecha —«¿cómo llevo el mes?»— y el calendario que la acompaña es
+mensual: un selector que permita poner «2025» al lado de un calendario de treinta días
+deja media pantalla contando otra cosa. Para cambiar la pregunta está `/estadisticas`.
+Lo único que se elige es la **magnitud** (obras · tiempo), y desde que se fue «Actividad
+del periodo» el panel al que obedece es **la semana** — un selector que no cambia nada
+es peor que no tenerlo.
+
+Tres tarjetas se retiraron, y conviene saber por qué para que nadie las reponga leyendo
+una maqueta vieja:
+
+| Se fue | Por qué |
+|---|---|
+| **Actividad del periodo** | Contestaba lo mismo que el calendario del mes con otro dibujo. Dos gráficos con la misma respuesta obligan a compararlos entre sí antes de poder leer ninguno |
+| **Objetivo de hoy** (medidor + editor) | Un objetivo no es una medida: es una **meta que se fija y se edita**, igual que los retos. Se mudó a **Rincón**, con ellos, y el medidor va pegado a su editor |
+| **Récords** | Pide un histórico. Con la pestaña en el mes, «tu mejor racha» y «el mes más activo» hablarían de treinta días, que no es récord de nada. Sigue entero en `/estadisticas`, donde sí hay periodo |
+
+Y dos se fundieron en una: **«La pila» + «Entra y sale»**. Solo se entendían juntas —la
+segunda decía si la primera sube o baja, y había que mirar a otro sitio para saberlo—.
+Ahora es un apilado de **tres columnas en el mismo eje** (pendientes ahora · añadidas ·
+terminadas), **desglosadas por tipo**: un «+4» de libros no es un «+4» de películas.
+Mezcla una foto (lo pendiente hoy) con dos flujos (el movimiento del periodo); comparten
+unidad, así que el eje es honesto, pero **el rótulo tiene que decirlo** (`scope: "la
+pila, foto del momento"`) o la primera columna parecería del mes también.
 
 **Ya no hay rail.** El rail de 340 px no repartía por importancia sino por ancho: la
-racha y el ritmo cabían en él, así que salían antes que la actividad del periodo. Ahora
-es una sola secuencia en rejilla, con el orden del DOM igual al del esquema — que es el
-que lee un lector de pantalla y el que se ve en móvil.
+racha y el ritmo cabían en él, así que salían antes que la semana. Ahora es una sola
+secuencia con el orden del DOM igual al del esquema — que es el que lee un lector de
+pantalla y el que se ve en móvil.
 
-### Rejilla con `items-start`, nunca `columns`
+### El reparto en columnas: rejilla en el muro, masonry en el perfil
 
-Las dos vistas usan `grid ... items-start`, y las dos partes de esa decisión se pagaron
-mirando la pantalla:
+Las dos vistas empezaron con `grid ... items-start`, y ahí se pagaron dos lecciones que
+siguen valiendo:
 
-- **`columns` no vale.** El navegador elige una altura de columna y reparte; el
-  calendario —la tarjeta más alta con diferencia— se quedaba a diez píxeles de caber en
-  la primera columna, se iba entero a la segunda y dejaba medio metro de hueco muerto
-  abajo a la izquierda. Y el empate es frágil: depende de cuántas sesiones tenga el mes.
 - **`items-start` no es un olvido.** Sin él la rejilla estira las tarjetas de cada fila
   a la altura de la más alta, y «La pila» junto al calendario se quedaba con 250 px de
   vacío entre su anillo y su pie. **Una tarjeta hueca se lee como rota; el aire entre
   tarjetas se lee como maqueta.** Se prefiere lo segundo aunque los píxeles sobrantes
   sumen lo mismo.
+- **Pero `items-start` deja hueco entre filas.** Cada fila la marca su tarjeta más alta,
+  así que una tarjeta corta al lado del calendario deja su hueco muerto hasta la fila
+  siguiente, y esos huecos se suman a lo largo de la pestaña.
 
-Queda algo de borde irregular entre filas, y es el precio correcto: las columnas
-terminan a ras y ninguna tarjeta miente sobre dónde acaba su contenido.
+Por eso **el perfil pasó a multicolumna** (`columns-1 lg:columns-2` + `break-inside-avoid`
++ margen inferior por hijo, porque `gap` no separa *dentro* de una columna): cada tarjeta
+empieza donde acabó la anterior de su columna, sin filas que igualar. Se lee **en
+columnas, no en filas** —primero la izquierda entera—, y el orden del DOM se mantiene,
+que es lo que oye un lector de pantalla y lo que se ve en móvil a una columna.
+
+`break-inside-avoid` no es opcional: sin él, multicolumna parte una tarjeta por donde le
+convenga y media aparece arriba del todo en la columna siguiente.
+
+**El muro completo (`/estadisticas`) sigue en rejilla**, no en multicolumna: allí las
+tarjetas van agrupadas en secciones de dos a seis, y multicolumna las repartiría entre
+columnas rompiendo la lectura por bloques que da sentido a cada título de sección.
 
 ### Los tres controles, y una sola fila para toda la pantalla
 
@@ -612,7 +653,8 @@ panel afirma nada sobre ello.
 
 Dos paneles llevan la ausencia escrita en su nota, para que la pantalla no prometa lo
 que no tiene: «Estados» dice que no existe el estado «pausada», y «Objetivo de hoy»
-que el objetivo es de minutos. Esas notas se retiran al cerrar #426 y #429.
+—que desde 2026-08-04 vive en **Rincón**, con los retos— que el objetivo es de minutos.
+Esas notas se retiran al cerrar #426 y #429.
 
 ## 12. Gráficos sin tabla, y la cabecera segmentada
 
@@ -650,6 +692,16 @@ tiene tramos a los que apuntar, así que no admite ni la separación de 2 px ent
 sectores —que es lo que impide leer como uno solo dos colores que fallan en
 daltonismo— ni un globo por arco. Con todo a cero se dibuja la pista vacía: un cero
 medido no es una ausencia, y la tarjeta perdería su forma.
+
+**Los globos se esconden con `display:none`, no con `visibility:hidden`.** Un elemento
+con `visibility: hidden` **sigue contando para el desbordamiento** de su contenedor.
+Cada globo mide ~120 px, va centrado sobre una columna de ~25 y asoma medio ancho por
+cada extremo del gráfico; como la capa es un `<dialog>` con `overflow-y: auto` —y eso
+hace que el eje X **compute a `auto` también**—, unos globos que nadie veía le regalaban
+una barra de scroll horizontal permanente a todos los modales. `display:none` no aporta
+nada al desbordamiento, y el `<dialog>` declara además `overflow-x: clip` para el caso
+del globo sí visible en las columnas del borde (`clip` recorta sin crear contenedor de
+scroll, así que la tabla ancha conserva el suyo). Se pierde la transición de opacidad.
 
 ### La cabecera
 

@@ -36,6 +36,12 @@ import {
  * Cada grupo es un `<nav>` con su nombre accesible y marca el activo con
  * `aria-current`, que es lo que hace que un lector de pantalla anuncie cuál está
  * puesto — el relleno por sí solo no lo dice.
+ *
+ * `period` e `itemFilter` son OPCIONALES: donde no se pasan, su grupo no se
+ * pinta ni viaja en el enlace. Es lo que usa la pestaña del perfil, que está
+ * fijada al mes y a todos los tipos —ahí la pregunta ya está hecha y lo único
+ * que se elige es en qué magnitud verla—. Un selector que no cambia nada es
+ * peor que no tenerlo: promete un control que no existe.
  */
 export function StatsControls({
   basePath,
@@ -47,15 +53,15 @@ export function StatsControls({
   basePath: string;
   /** Parámetros que hay que conservar al navegar (p. ej. `tab`, `month`). */
   baseParams?: Record<string, string>;
-  period: StatsPeriod;
-  itemFilter: ItemFilter;
+  period?: StatsPeriod;
+  itemFilter?: ItemFilter;
   metric: ActivityMetric;
 }) {
   function href(next: Partial<{ periodo: string; tipo: string; medida: string }>): string {
     const params = new URLSearchParams({
       ...baseParams,
-      periodo: periodParam(period),
-      tipo: itemFilterParam(itemFilter),
+      ...(period !== undefined ? { periodo: periodParam(period) } : {}),
+      ...(itemFilter !== undefined ? { tipo: itemFilterParam(itemFilter) } : {}),
       medida: activityMetricParam(metric),
       ...next,
     });
@@ -64,32 +70,38 @@ export function StatsControls({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <Group label="Periodo">
-        {availablePeriods().map((p) => (
-          <Segment
-            key={String(p)}
-            href={href({ periodo: periodParam(p) })}
-            active={p === period}
-            label={periodPillLabel(p)}
-          />
-        ))}
-      </Group>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
-        <Group label="Tipo de obra">
-          {ITEM_FILTERS.map((f) => (
+      {period !== undefined && (
+        <Group label="Periodo">
+          {availablePeriods().map((p) => (
             <Segment
-              key={f}
-              href={href({ tipo: itemFilterParam(f) })}
-              active={f === itemFilter}
-              label={itemFilterLabel(f)}
+              key={String(p)}
+              href={href({ periodo: periodParam(p) })}
+              active={p === period}
+              label={periodPillLabel(p)}
             />
           ))}
         </Group>
+      )}
 
-        {/* Dos decisiones distintas en la misma línea: la raya lo dice sin
-            gastar otra fila. Decorativa — cada grupo ya se nombra solo. */}
-        <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
+        {itemFilter !== undefined && (
+          <>
+            <Group label="Tipo de obra">
+              {ITEM_FILTERS.map((f) => (
+                <Segment
+                  key={f}
+                  href={href({ tipo: itemFilterParam(f) })}
+                  active={f === itemFilter}
+                  label={itemFilterLabel(f)}
+                />
+              ))}
+            </Group>
+
+            {/* Dos decisiones distintas en la misma línea: la raya lo dice sin
+                gastar otra fila. Decorativa — cada grupo ya se nombra solo. */}
+            <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
+          </>
+        )}
 
         <Group label="Magnitud">
           {(["works", "time"] as ActivityMetric[]).map((m) => (
