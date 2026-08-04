@@ -164,17 +164,25 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
+          ends_at: string | null
           ends_on: string | null
+          event_state: Database["public"]["Enums"]["club_event_state"]
+          event_timezone: string
           id: string
           kind: Database["public"]["Enums"]["activity_kind"]
+          location: string | null
+          modality: Database["public"]["Enums"]["event_modality"] | null
+          online_url: string | null
           spawned_from_activity_id: string | null
           spawned_from_item_id: string | null
           spawned_from_item_type:
             | Database["public"]["Enums"]["item_type"]
             | null
+          starts_at: string | null
           starts_on: string | null
           status: Database["public"]["Enums"]["activity_status"]
           title: string
+          updated_at: string | null
         }
         Insert: {
           club_id: string
@@ -182,17 +190,25 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
+          ends_at?: string | null
           ends_on?: string | null
+          event_state?: Database["public"]["Enums"]["club_event_state"]
+          event_timezone?: string
           id?: string
           kind: Database["public"]["Enums"]["activity_kind"]
+          location?: string | null
+          modality?: Database["public"]["Enums"]["event_modality"] | null
+          online_url?: string | null
           spawned_from_activity_id?: string | null
           spawned_from_item_id?: string | null
           spawned_from_item_type?:
             | Database["public"]["Enums"]["item_type"]
             | null
+          starts_at?: string | null
           starts_on?: string | null
           status?: Database["public"]["Enums"]["activity_status"]
           title: string
+          updated_at?: string | null
         }
         Update: {
           club_id?: string
@@ -200,17 +216,25 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
+          ends_at?: string | null
           ends_on?: string | null
+          event_state?: Database["public"]["Enums"]["club_event_state"]
+          event_timezone?: string
           id?: string
           kind?: Database["public"]["Enums"]["activity_kind"]
+          location?: string | null
+          modality?: Database["public"]["Enums"]["event_modality"] | null
+          online_url?: string | null
           spawned_from_activity_id?: string | null
           spawned_from_item_id?: string | null
           spawned_from_item_type?:
             | Database["public"]["Enums"]["item_type"]
             | null
+          starts_at?: string | null
           starts_on?: string | null
           status?: Database["public"]["Enums"]["activity_status"]
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -443,6 +467,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "club_activity_placements_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "club_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_event_followers: {
+        Row: {
+          activity_id: string
+          followed_at: string
+          remind_minutes_before: number | null
+          reminded_at: string | null
+          reminder_due_at: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          followed_at?: string
+          remind_minutes_before?: number | null
+          reminded_at?: string | null
+          reminder_due_at?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          followed_at?: string
+          remind_minutes_before?: number | null
+          reminded_at?: string | null
+          reminder_due_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_followers_activity_id_fkey"
             columns: ["activity_id"]
             isOneToOne: false
             referencedRelation: "club_activities"
@@ -2333,11 +2392,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_due_event_reminders: {
+        Args: { p_limit?: number }
+        Returns: {
+          activity_id: string
+          club_id: string
+          club_name: string
+          club_slug: string
+          event_timezone: string
+          location: string | null
+          minutes_before: number | null
+          modality: Database["public"]["Enums"]["event_modality"] | null
+          organizer_id: string
+          starts_at: string | null
+          title: string
+          user_id: string
+        }[]
+      }
       create_club_event: {
         Args: {
           p_club_id: string
           p_description?: string
+          p_ends_time?: string
+          p_location?: string
+          p_modality?: Database["public"]["Enums"]["event_modality"]
+          p_online_url?: string
           p_starts_on?: string
+          p_starts_time?: string
+          p_timezone?: string
           p_title: string
         }
         Returns: string
@@ -2370,6 +2452,10 @@ export type Database = {
       }
       finish_club_activity: {
         Args: { p_activity_id: string }
+        Returns: undefined
+      }
+      follow_club_event: {
+        Args: { p_activity_id: string; p_remind_minutes_before?: number }
         Returns: undefined
       }
       get_activity_diary_passes: {
@@ -2499,6 +2585,21 @@ export type Database = {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
       }
+      release_event_reminders: {
+        Args: { p_activity_id: string; p_user_ids: string[] }
+        Returns: number
+      }
+      set_club_event_reminder: {
+        Args: { p_activity_id: string; p_remind_minutes_before: number | null }
+        Returns: undefined
+      }
+      set_club_event_state: {
+        Args: {
+          p_activity_id: string
+          p_state: Database["public"]["Enums"]["club_event_state"]
+        }
+        Returns: undefined
+      }
       set_club_member_role: {
         Args: {
           p_club_id: string
@@ -2525,6 +2626,10 @@ export type Database = {
         Args: { p_club_id: string; p_new_owner_id: string }
         Returns: undefined
       }
+      unfollow_club_event: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
       update_activity_config: {
         Args: { p_activity_id: string; p_config: Json }
         Returns: undefined
@@ -2533,7 +2638,13 @@ export type Database = {
         Args: {
           p_activity_id: string
           p_description?: string
+          p_ends_time?: string
+          p_location?: string
+          p_modality?: Database["public"]["Enums"]["event_modality"]
+          p_online_url?: string
           p_starts_on?: string
+          p_starts_time?: string
+          p_timezone?: string
           p_title: string
         }
         Returns: undefined
@@ -2552,6 +2663,7 @@ export type Database = {
         | "criteria_challenge"
         | "evento"
       activity_status: "proposed" | "active" | "finished" | "archived"
+      club_event_state: "programado" | "cancelado" | "pospuesto"
       club_member_status: "invited" | "active" | "requested"
       club_post_kind: "text" | "activity_share" | "poll"
       club_role: "member" | "moderator" | "owner"
@@ -2562,6 +2674,7 @@ export type Database = {
         | "spoiler"
         | "hate"
         | "other"
+      event_modality: "presencial" | "online" | "hibrida"
       follow_status: "pending" | "accepted"
       interaction_audience_kind:
         | "profile"
@@ -2599,6 +2712,9 @@ export type Database = {
         | "followed_session"
         | "followed_episode"
         | "followed_added"
+        | "club_event_reminder"
+        | "club_event_updated"
+        | "club_event_cancelled"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       saga_item_role:
@@ -2757,11 +2873,13 @@ export const Constants = {
         "evento",
       ],
       activity_status: ["proposed", "active", "finished", "archived"],
+      club_event_state: ["programado", "cancelado", "pospuesto"],
       club_member_status: ["invited", "active", "requested"],
       club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
       content_report_reason: ["spam", "harassment", "spoiler", "hate", "other"],
+      event_modality: ["presencial", "online", "hibrida"],
       follow_status: ["pending", "accepted"],
       interaction_audience_kind: [
         "profile",
@@ -2800,6 +2918,9 @@ export const Constants = {
         "followed_session",
         "followed_episode",
         "followed_added",
+        "club_event_reminder",
+        "club_event_updated",
+        "club_event_cancelled",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],

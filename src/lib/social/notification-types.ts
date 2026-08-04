@@ -26,6 +26,14 @@ export type NotificationType =
   | "club_activity_activated"
   | "club_activity_spawned"
   | "club_event_created"
+  // Los tres del seguimiento de eventos (spec 2026-08-04). `club_event_reminder`
+  // es el ÚNICO tipo que no lo dispara una persona: lo manda el trabajo
+  // programado. Como notifications.actor_id es NOT NULL, su actor es el
+  // organizador del evento — se prefirió eso a hacer nullable una columna del
+  // núcleo, que habría obligado a auditar cada lector de la campana y del push.
+  | "club_event_reminder"
+  | "club_event_updated"
+  | "club_event_cancelled"
   | "followed_finished"
   | "followed_session"
   | "followed_episode"
@@ -93,6 +101,9 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",
   club_event_created: "clubEventCreated",
+  club_event_reminder: "clubEventReminder",
+  club_event_updated: "clubEventUpdated",
+  club_event_cancelled: "clubEventCancelled",
   followed_finished: "followedFinished",
   followed_session: "followedSession",
   followed_episode: "followedEpisode",
