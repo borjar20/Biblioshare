@@ -98,9 +98,12 @@ el sistema de notificaciones. Tabla `club_event_followers` con el recordatorio c
 por triggers (un recordatorio configurable entre seis opciones por seguidor), reclamo atómico con
 `skip locked` y compensación al fallar. `notifications.actor_id` pasa a **nullable**: un aviso del
 sistema no tiene actor. Marca accesible de «seguido» en rejilla y leyenda, y conmutador
-«Todo / Sigues» en la agenda. **Migraciones aplicadas y verificadas solo en dev** (`20260822`–
-`20260825`, con 12 checks de impersonación); **producción pendiente**, aplicación reservada al
-usuario — detalle en `data-model.md` §6.1 y §6.2, decisiones en `decisiones.md` (2026-08-04).
+«Todo / Sigues» en la agenda. **Migraciones aplicadas y verificadas en dev Y EN PRODUCCIÓN**
+(`20260822`–`20260825`, con 12 checks de impersonación en dev y verificación contra los objetos
+reales en los dos entornos) — detalle en `data-model.md` §6.1 y §6.2, decisiones en
+`decisiones.md` (2026-08-04). **El trabajo programado está entregando en producción**
+(#434 cerrada con la evidencia: `cron.job_run_details` en `succeeded` cada 5 min y
+`net._http_response` con 200 desde el propio cron).
 **Retira el bloqueo de [#394](https://github.com/borjar20/Biblioshare/issues/394) sin cerrarlo**
 (el aviso de turno de ronda sigue por construir, pero ya hay planificador). Spec:
 `docs/superpowers/specs/2026-08-04-club-event-following-design.md`; prototipo:

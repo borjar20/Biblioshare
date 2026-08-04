@@ -11327,10 +11327,10 @@ grant  execute on function public.ensure_club_round(uuid, text, public.item_type
 -- ANEXO 2026-08-04 — Seguimiento de eventos de club + el primer trabajo
 -- programado del repo (spec docs/superpowers/specs/2026-08-04-club-event-following-design.md)
 --
--- ESTADO: aplicado y verificado SOLO EN DEV el 2026-08-04. **Producción
--- pendiente**, aplicación reservada al usuario. Se anexa aquí para que recrear
--- el proyecto dev desde cero deje la feature completa, igual que se hizo con
--- La ronda (ANEXO 2026-08-03).
+-- ESTADO: aplicado y verificado en DEV Y EN PRODUCCIÓN el 2026-08-04, contra los
+-- objetos reales de los dos entornos (nunca contra list_migrations). El trabajo
+-- programado entrega de verdad en prod: cron.job_run_details en 'succeeded' cada
+-- 5 min y net._http_response con 200 (issue #434, cerrada).
 --
 -- ORDEN DE APLICACIÓN (importa: las RPC dependen de las columnas y de la tabla):
 --   1. 20260822_club_event_following.sql          columnas, enums, tabla, triggers, RLS, grants
