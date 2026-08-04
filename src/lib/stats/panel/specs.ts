@@ -1,26 +1,51 @@
-// Configuración declarativa de los paneles de /estadisticas. Aquí NO se pinta
-// nada: cada función traduce lo que devuelve un getter de `src/lib/stats/*` a un
+// Configuración declarativa de los paneles estadísticos. Aquí NO se pinta nada:
+// cada función traduce lo que devuelve un getter de `src/lib/stats/*` a un
 // `PanelSpec`, y el armazón hace el resto. Añadir un panel = añadir una función.
+//
+// El muro completo se agrupa en SECCIONES (`buildStatsSections`), siguiendo el
+// esquema de estadísticas: resumen · actividad · hábitos · biblioteca ·
+// valoraciones · gustos · por categoría. Doce tarjetas sueltas en una rejilla
+// no se leen: hay que saber si «Décadas» habla de lo que ves o de lo que tienes
+// pendiente, y eso lo contesta el título de su sección antes que el suyo.
+//
+// La pestaña del perfil (`buildProfilePanels`) es la vista corta del mismo
+// esquema, en el orden del bloque «Actividad»: qué has hecho · objetivo ·
+// hábito · pila · valoración · récords · cuándo consumes.
 //
 // Los títulos siguen viniendo de `messages/es.json` (se pasan en `titles`) para
 // no duplicar lo que ya existe. La prosa nueva —descripciones, notas y textos
-// de vacío— va en literal, como ya hacen `records-card` y `month-calendar`: el
-// repo es mono-idioma y estas frases se componen con gramática.
+// de vacío— va en literal: el repo es mono-idioma y estas frases se componen
+// con gramática.
 
 import type { CatalogBreakdown } from "@/lib/stats/get-catalog-breakdown";
 import type { YearCompleted } from "@/lib/stats/get-completed-by-year";
+import type { FormatStats } from "@/lib/stats/get-format-stats";
 import type { Habits } from "@/lib/stats/get-habits";
 import type { HoursByMonth } from "@/lib/stats/get-hours-by-month";
+import type { LibraryHealth } from "@/lib/stats/get-library-health";
+import type { ActivityBucket, PeriodActivity } from "@/lib/stats/get-period-activity";
+import type { RatedFacets, RatedGroup } from "@/lib/stats/get-rated-facets";
 import type { RatingDistribution } from "@/lib/stats/get-rating-distribution";
 import type { Records } from "@/lib/stats/get-records";
 import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
 import type { TbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import type { TopRatedItem } from "@/lib/stats/get-top-rated";
 import type { TypeDistribution } from "@/lib/stats/get-type-distribution";
+import type { YearCalendar } from "@/lib/stats/get-year-calendar";
 import type { DayActivity, Streaks } from "@/lib/stats/types";
-import type { MonthlyActivity } from "@/lib/diary/get-monthly-activity";
-import type { StatsPeriod } from "@/lib/stats/period";
-import { UNITS, type PanelSpec } from "./types";
+import {
+  type ActivityMetric,
+  type ItemFilter,
+  itemFilterLabel,
+} from "@/lib/stats/filter";
+import {
+  type StatsPeriod,
+  periodLabel,
+  previousLabel,
+} from "@/lib/stats/period";
+import { UNITS, type PanelKpi, type PanelSpec } from "./types";
+
+export { periodLabel };
 
 const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -51,9 +76,37 @@ const STATUS_LABEL = {
   dropped: "Abandonado",
 } as const;
 
-export function periodLabel(period: StatsPeriod): string {
-  return period === "all" ? "Todo el histórico" : String(period);
+/** Cuántos nombres entran en un ranking antes de que la lista deje de leerse. */
+const RANK_LIMIT = 6;
+
+/** El filtro global, listo para el rótulo. `undefined` cuando no hay ninguno. */
+function globalFilter(itemFilter: ItemFilter): string | undefined {
+  return itemFilter === "all" ? undefined : itemFilterLabel(itemFilter);
 }
+
+/**
+ * Alcance de un panel que NO puede obedecer al filtro de tipo: o la consulta
+ * que lo alimenta no lo acepta, o el panel es justo el que responde a esa
+ * pregunta.
+ *
+ * Se compone con el alcance que ya tuviera, y solo aparece cuando hay filtro
+ * puesto. Callarlo sería el peor de los dos errores posibles: con el muro en
+ * «Libros», una tarjeta que sigue contando películas y no lo dice es
+ * indistinguible de una que sí filtró.
+ */
+function withAllTypes(itemFilter: ItemFilter, scope?: string): string | undefined {
+  if (itemFilter === "all") return scope;
+  return scope ? `${scope} · todos los tipos` : "todos los tipos";
+}
+
+/** Una sección del muro: un título y sus paneles. */
+export type PanelSection = {
+  id: string;
+  title: string;
+  /** Qué pregunta contesta la sección. Una línea, no un párrafo. */
+  description: string;
+  panels: PanelSpec[];
+};
 
 /** Títulos, tal cual salen de `messages/es.json`. */
 export type PanelTitles = {
@@ -71,11 +124,14 @@ export type PanelTitles = {
   tbr: string;
 };
 
-export type SpecInput = {
+export type StatsInput = {
   period: StatsPeriod;
+  itemFilter: ItemFilter;
+  metric: ActivityMetric;
   titles: PanelTitles;
   /** Hoy, en ISO. Llega del servidor: `new Date()` en render rompe la pureza. */
   todayISO: string;
+  activity: PeriodActivity;
   byYear: YearCompleted[];
   rating: RatingDistribution;
   topRated: TopRatedItem[];
@@ -87,31 +143,131 @@ export type SpecInput = {
   records: Records;
   streaks: Streaks;
   tbr: TbrSnapshot;
+  health: LibraryHealth;
+  facets: RatedFacets;
+  formats: FormatStats;
+  calendar: YearCalendar;
+  pagesPerDay: number | null;
 };
 
-export function buildStatsPanels(input: SpecInput): PanelSpec[] {
+// ══ El muro completo, por secciones ══════════════════════════════════════════
+
+export function buildStatsSections(input: StatsInput): PanelSection[] {
   const period = periodLabel(input.period);
+  // El filtro global va SUELTO al rótulo, no mezclado con los filtros propios
+  // de cada panel: lo acaba de elegir quien mira, y tiene que verse junto a la
+  // cifra. «Todo» no se anuncia — repetirlo en cada tarjeta es ruido.
+  const filter =
+    input.itemFilter === "all" ? undefined : itemFilterLabel(input.itemFilter);
+
   return [
-    completedByYearPanel(input),
-    ratingPanel(input.rating, input.titles.rating, period),
-    topRatedPanel(input, period),
-    typePanel(input, period),
-    statusPanel(input),
-    hoursPanel(input),
-    genresPanel(input, period),
-    authorsPanel(input, period),
-    decadesPanel(input, period),
-    habitsPanel(input.habits, input.titles.habits, period),
-    recordsPanel(input.records, input.streaks, input.titles.records, period),
-    tbrPanel(input.tbr, input.titles.tbr),
+    {
+      id: "resumen",
+      title: "Resumen general",
+      description: "Cuánto llevas en el periodo y cómo se reparte.",
+      panels: [summaryPanel(input, period), typePanel(input, period)],
+    },
+    {
+      id: "actividad",
+      title: "Actividad",
+      description: "Cuándo ocurrió, en qué ritmo y con qué constancia.",
+      panels: [
+        periodActivityPanel(input, period, filter),
+        completedByYearPanel(input),
+        hoursPanel(input),
+        yearCalendarPanel(input),
+        streaksPanel(input.streaks, "Rachas", input.itemFilter),
+        recordsPanel(input.records, input.streaks, input.titles.records, period, filter),
+      ],
+    },
+    {
+      id: "habitos",
+      title: "Hábitos",
+      description: "A qué hora, qué día y con qué sesiones lo haces.",
+      panels: [
+        habitsPanel(input.habits, input.titles.habits, period, filter),
+        sessionsPanel(input, period, filter),
+      ],
+    },
+    {
+      id: "biblioteca",
+      title: "Biblioteca y estados",
+      description: "Qué tienes, qué acabas y qué se te acumula.",
+      panels: [
+        statusPanel(input, filter),
+        tbrPanel(input.tbr, input.titles.tbr, undefined, filter),
+        libraryHealthPanel(input, period),
+        backlogPanel(input),
+      ],
+    },
+    {
+      id: "valoraciones",
+      title: "Valoraciones",
+      description: "Cómo puntúas y qué puntúas mejor.",
+      panels: [
+        ratingPanel(input.rating, input.titles.rating, period, filter),
+        topRatedPanel(input, period),
+        ratedGroupPanel("nota-generos", "Géneros mejor valorados", "Género", input.facets.genres, period, filter),
+        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
+        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
+        // Páginas y minutos no comparten eje, así que van en dos paneles; y con
+        // un tipo elegido solo se pinta el suyo, o el otro saldría vacío al
+        // lado sin más explicación que «sin datos».
+        ...(input.itemFilter === "movie" || input.itemFilter === "series"
+          ? []
+          : [lengthVsRatingPanel(input, "book", period)]),
+        ...(input.itemFilter === "book"
+          ? []
+          : [lengthVsRatingPanel(input, "screen", period)]),
+      ],
+    },
+    {
+      id: "gustos",
+      title: "Gustos y descubrimiento",
+      description: "Qué eliges, de quién y de qué época.",
+      panels: [
+        genresPanel(input, period, filter),
+        // Autores y editoriales solo existen en libros; la dirección, en
+        // películas. Con el tipo contrario elegido saldrían vacíos y con un
+        // rótulo que se contradice a sí mismo («Libros · Solo películas»).
+        ...(input.itemFilter === "movie" || input.itemFilter === "series"
+          ? []
+          : [authorsPanel(input, period), publishersPanel(input, period)]),
+        ...(input.itemFilter === "book" || input.itemFilter === "series"
+          ? []
+          : [directorsPanel(input, period)]),
+        decadesPanel(input, period),
+        discoveryPanel(input, period),
+      ],
+    },
+    {
+      id: "categoria",
+      title: "Por categoría",
+      description: "Lo que solo tiene sentido dentro de un tipo de obra.",
+      // Estos tres NO obedecen al filtro de tipo: lo SON. Con un tipo elegido
+      // se enseña solo el suyo — dejar los otros dos al lado, llenos de datos
+      // de lo que el filtro dice haber excluido, es la contradicción más
+      // ruidosa que puede tener la pantalla.
+      panels: [
+        ...(input.itemFilter === "all" || input.itemFilter === "book"
+          ? [bookFormatPanel(input, period)]
+          : []),
+        ...(input.itemFilter === "all" || input.itemFilter === "movie"
+          ? [movieFormatPanel(input, period)]
+          : []),
+        ...(input.itemFilter === "all" || input.itemFilter === "series"
+          ? [seriesFormatPanel(input, period)]
+          : []),
+      ],
+    },
   ];
 }
 
 // ══ Panel del perfil (pestaña Estadísticas) ══════════════════════════════════
-// Reutiliza cuatro constructores del muro (valoración, récords, la pila y
-// hábitos): son los mismos datos, así que tienen que contarse igual en los dos
-// sitios. Lo propio de aquí es la semana, el objetivo diario, la racha, el
-// ritmo y la actividad del año.
+// La vista corta del mismo esquema. Reutiliza los constructores del muro donde
+// son el mismo dato —valoración, récords, la pila, hábitos, rachas— porque
+// tienen que contarse igual en los dos sitios; lo propio de aquí es la semana,
+// el objetivo diario y el ritmo.
 
 export type ProfileTitles = {
   weekly: string;
@@ -126,9 +282,12 @@ export type ProfileTitles = {
 };
 
 export type ProfileInput = {
+  period: StatsPeriod;
+  itemFilter: ItemFilter;
+  metric: ActivityMetric;
   titles: ProfileTitles;
+  activity: PeriodActivity;
   weekly: DayActivity[];
-  monthly: MonthlyActivity[];
   dailyGoalMinutes: number | null;
   streaks: Streaks;
   pagesPerDay: number | null;
@@ -136,23 +295,871 @@ export type ProfileInput = {
   records: Records;
   tbr: TbrSnapshot;
   habits: Habits;
+  health: LibraryHealth;
+  formats: FormatStats;
 };
 
+/**
+ * Los paneles de la pestaña, EN EL ORDEN DEL ESQUEMA. El orden es el contenido:
+ * primero qué has hecho, luego a qué aspirabas, luego con qué constancia, y solo
+ * después el inventario. Invertirlo convierte la pestaña en un almacén.
+ */
 export function buildProfilePanels(input: ProfileInput): PanelSpec[] {
-  // La pestaña del perfil no tiene selector de periodo: sus consultas van sin
-  // acotar, así que el alcance real es todo el histórico.
-  const all = "Todo el histórico";
+  const period = periodLabel(input.period);
+  // El filtro global va SUELTO al rótulo, no mezclado con los filtros propios
+  // de cada panel: lo acaba de elegir quien mira, y tiene que verse junto a la
+  // cifra. «Todo» no se anuncia — repetirlo en cada tarjeta es ruido.
+  const filter =
+    input.itemFilter === "all" ? undefined : itemFilterLabel(input.itemFilter);
   return [
+    // Actividad del periodo.
+    profileActivityPanel(input, period, filter),
     weeklyPanel(input.weekly, input.titles.weekly),
+    // Objetivo.
     dailyGoalPanel(input.weekly, input.dailyGoalMinutes, input.titles.dailyGoal),
-    streakPanel(input.streaks, input.titles.streak),
+    // Hábito.
+    streaksPanel(input.streaks, input.titles.streak),
     pacePanel(input.pagesPerDay, input.titles.pace),
-    activityYearPanel(input.monthly, input.titles.activityYear),
-    ratingPanel(input.rating, input.titles.rating, all),
-    recordsPanel(input.records, input.streaks, input.titles.records, all),
-    tbrPanel(input.tbr, input.titles.tbr),
-    habitsPanel(input.habits, input.titles.habits, all),
+    // La pila.
+    tbrPanel(input.tbr, input.titles.tbr, input.formats),
+    profileBalancePanel(input, period),
+    // Valoración y récords.
+    ratingPanel(input.rating, input.titles.rating, period, filter),
+    recordsPanel(input.records, input.streaks, input.titles.records, period),
+    // Cuándo consumes.
+    habitsPanel(input.habits, input.titles.habits, period, filter),
   ];
+}
+
+// ── §1 Resumen general ────────────────────────────────────────────────────────
+
+/**
+ * Las cuatro cifras de cabecera. Es un panel de indicadores a propósito: mezclar
+ * obras, minutos y estrellas en un gráfico exigiría tres ejes, y la regla de la
+ * casa es que un panel tiene UNO.
+ */
+function summaryPanel(input: StatsInput, period: string): PanelSpec {
+  const { activity, rating, hours } = input;
+  const totalMinutes = hours.months.reduce((s, m) => s + m.minutes, 0);
+
+  const kpis: PanelKpi[] = [
+    {
+      key: "obras",
+      label: "Obras terminadas",
+      value: activity.works,
+      unit: UNITS.works,
+      delta:
+        activity.previousWorks === null
+          ? undefined
+          : {
+              value: activity.works - activity.previousWorks,
+              unit: UNITS.works,
+              comparedTo: previousLabel(input.period),
+              higherIsBetter: true,
+            },
+    },
+    {
+      key: "tiempo",
+      label: "Tiempo registrado",
+      value: activity.minutes,
+      unit: UNITS.minutes,
+      delta:
+        activity.previousMinutes === null
+          ? undefined
+          : {
+              value: activity.minutes - activity.previousMinutes,
+              unit: UNITS.minutes,
+              comparedTo: previousLabel(input.period),
+              higherIsBetter: true,
+            },
+    },
+    {
+      key: "nota",
+      label: "Nota media",
+      value: rating.average,
+      unit: UNITS.stars,
+      hint: `Sobre ${rating.count} ${rating.count === 1 ? "obra valorada" : "obras valoradas"}`,
+    },
+    {
+      key: "anual",
+      label: `Horas registradas en ${hours.year}`,
+      value: Math.round(totalMinutes / 60),
+      unit: { short: "h", one: "hora", many: "horas" },
+      hint: "El año natural completo, obedezca o no el periodo elegido",
+    },
+  ];
+
+  return {
+    id: "resumen-general",
+    title: "Resumen",
+    description:
+      "Las cifras de cabecera del periodo. El tiempo solo cuenta sesiones con duración registrada, así que una película vista sin sesión suma obra pero no minutos.",
+    context: {
+      period,
+      filter:
+        input.itemFilter === "all" ? undefined : itemFilterLabel(input.itemFilter),
+    },
+    viz: "kpi",
+    unit: UNITS.works,
+    data: [],
+    kpis,
+    empty: {
+      title: "Todavía no hay nada que resumir",
+      message: "Cierra un pase o registra una sesión y estas cifras empiezan a moverse.",
+    },
+  };
+}
+
+// ── §2 Actividad ──────────────────────────────────────────────────────────────
+
+/** Etiquetas del eje según el grano del periodo. */
+function bucketLabels(
+  bucket: ActivityBucket,
+  grain: PeriodActivity["granularity"],
+): { label: string; short: string } {
+  if (grain === "year") return { label: bucket.key, short: bucket.key.slice(2) };
+  if (grain === "month") {
+    const month = Number(bucket.key.slice(5, 7));
+    return {
+      label: `${MONTHS[month - 1]} ${bucket.key.slice(0, 4)}`,
+      short: MONTH_SHORT[month - 1],
+    };
+  }
+  const day = Number(bucket.key.slice(8, 10));
+  const month = Number(bucket.key.slice(5, 7));
+  return { label: `${day} de ${MONTHS[month - 1].toLowerCase()}`, short: String(day) };
+}
+
+/**
+ * «Actividad del periodo»: la evolución, en la magnitud elegida. Las dos
+ * magnitudes salen de la misma consulta, así que alternarlas no cuesta otra
+ * vuelta a la BD — solo cambia qué se lee de cada cubo.
+ */
+function activitySpec(
+  activity: PeriodActivity,
+  metric: ActivityMetric,
+  id: string,
+  title: string,
+  period: string,
+  previous: string,
+  filter: string | undefined,
+): PanelSpec {
+  const time = metric === "time";
+  const value = (b: ActivityBucket) => (time ? b.minutes : b.works);
+  const total = time ? activity.minutes : activity.works;
+  const before = time ? activity.previousMinutes : activity.previousWorks;
+
+  return {
+    id,
+    title,
+    description: time
+      ? "Minutos de sesiones con duración registrada. Una obra terminada sin sesión no suma tiempo, aunque sí cuente como obra."
+      : "Obras con el pase cerrado en el periodo. Releer cuenta como obra nueva: es un pase nuevo.",
+    context: { period, filter },
+    // Apilado solo cuando hay desglose que apilar: el tiempo no distingue tipo,
+    // porque la sesión cuelga del pase pero los minutos no se reparten.
+    viz: time ? "bars" : "stacked",
+    unit: time ? UNITS.minutes : UNITS.works,
+    labelHeader:
+      activity.granularity === "day" ? "Día" : activity.granularity === "month" ? "Mes" : "Año",
+    series: time
+      ? [{ key: "minutes", label: "Minutos", color: "var(--accent)" }]
+      : TYPE_SERIES,
+    data: activity.buckets.map((b) => {
+      const { label, short } = bucketLabels(b, activity.granularity);
+      return {
+        key: b.key,
+        label,
+        short,
+        // Un cubo futuro NO vale cero: nadie lo ha medido todavía.
+        value: b.future ? null : value(b),
+        parts: time
+          ? undefined
+          : [
+              { key: "book", value: b.book },
+              { key: "movie", value: b.movie },
+              { key: "series", value: b.series },
+            ],
+      };
+    }),
+    kpis: [
+      {
+        key: "total",
+        label: time ? "Tiempo del periodo" : "Terminadas en el periodo",
+        value: total,
+        unit: time ? UNITS.minutes : UNITS.works,
+        delta:
+          before === null
+            ? undefined
+            : {
+                value: total - before,
+                unit: time ? UNITS.minutes : UNITS.works,
+                comparedTo: previous,
+                higherIsBetter: true,
+              },
+      },
+    ],
+    empty: {
+      title: time ? "Sin tiempo registrado en el periodo" : "Nada terminado en el periodo",
+      message: "Prueba a ampliar el periodo con el selector de arriba.",
+    },
+  };
+}
+
+function periodActivityPanel(
+  input: StatsInput,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
+  return activitySpec(
+    input.activity,
+    input.metric,
+    "actividad-periodo",
+    "Actividad del periodo",
+    period,
+    previousLabel(input.period),
+    filter,
+  );
+}
+
+function profileActivityPanel(
+  input: ProfileInput,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
+  return activitySpec(
+    input.activity,
+    input.metric,
+    "actividad-periodo",
+    "Actividad del periodo",
+    period,
+    previousLabel(input.period),
+    filter,
+  );
+}
+
+/** Calendario anual: 365 celdas de intensidad. */
+function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
+  return {
+    id: "calendario-anual",
+    title: "Calendario anual",
+    description:
+      "Un día «activo» es aquel en que registraste una sesión o terminaste algo, del tipo que sea. Ver una película sin sesión también pinta el día.",
+    context: {
+      period: String(calendar.year),
+      scope: withAllTypes(itemFilter, "año natural"),
+    },
+    viz: "heatmap",
+    // Siete filas, una por día de la semana; cada columna, una semana. El
+    // desplazamiento es el día de la semana del 1 de enero: sin él las filas
+    // dejarían de ser lunes, martes… y el mosaico no sería un calendario.
+    heatmap: { rows: 7, offset: mondayIndex(calendar.days[0]?.date ?? `${calendar.year}-01-01`) },
+    unit: { short: "act.", one: "actividad", many: "actividades" },
+    labelHeader: "Día",
+    data: calendar.days.map((d) => ({
+      key: d.date,
+      label: `${Number(d.date.slice(8, 10))} de ${MONTHS[Number(d.date.slice(5, 7)) - 1].toLowerCase()}`,
+      short: d.date.slice(8, 10),
+      value: d.count,
+    })),
+    kpis: [
+      {
+        key: "activos",
+        label: "Días activos",
+        value: calendar.activeDays,
+        unit: UNITS.days,
+        hint: `De ${calendar.days.length} del año`,
+      },
+      {
+        key: "pico",
+        label: "Día más movido",
+        value: null,
+        text: calendar.busiest
+          ? `${Number(calendar.busiest.date.slice(8, 10))} de ${MONTHS[Number(calendar.busiest.date.slice(5, 7)) - 1].toLowerCase()}`
+          : undefined,
+        hint: calendar.busiest
+          ? `${calendar.busiest.count} ${calendar.busiest.count === 1 ? "actividad" : "actividades"}`
+          : undefined,
+      },
+    ],
+    note: "Cada columna es una semana y cada fila un día de la semana. El mapa solo orienta: los 365 valores exactos están en la tabla del detalle.",
+    empty: {
+      title: "Sin actividad este año",
+      message: "Registra una sesión y el calendario empieza a encenderse.",
+    },
+  };
+}
+
+/** Rachas y días activos: la constancia, que no es lo mismo que el volumen. */
+function streaksPanel(
+  streaks: Streaks,
+  title: string,
+  itemFilter: ItemFilter = "all",
+): PanelSpec {
+  return {
+    id: "racha",
+    title,
+    description:
+      "Un día cuenta para la racha si registraste una sesión o terminaste algo. La racha son días SEGUIDOS; los días activos, sueltos.",
+    // La racha es deliberadamente de TODOS los tipos: si no, una noche de cine
+    // rompería la racha de quien tiene puesto «Libros», y no es cierto que ese
+    // día no hiciera nada.
+    context: {
+      period: "Ahora mismo",
+      scope: withAllTypes(itemFilter, "foto del momento"),
+    },
+    viz: "kpi",
+    unit: UNITS.days,
+    data: [],
+    kpis: [
+      { key: "actual", label: "Días seguidos", value: streaks.current, unit: UNITS.days },
+      {
+        key: "mejor",
+        label: "Tu mejor racha",
+        value: streaks.best > 0 ? streaks.best : null,
+        unit: UNITS.days,
+      },
+      {
+        key: "activos",
+        label: "Días activos",
+        value: streaks.activeDays > 0 ? streaks.activeDays : null,
+        unit: UNITS.days,
+        hint: "En todo el histórico, seguidos o no",
+      },
+    ],
+    empty: {
+      title: "Sin racha en marcha",
+      message: "Registra actividad dos días seguidos para arrancar una.",
+    },
+  };
+}
+
+/** Sesiones: cuántas, cuánto duran y a qué ritmo avanzan. */
+function sessionsPanel(
+  { habits, pagesPerDay }: StatsInput,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
+  const perDay =
+    habits.activeDays > 0 ? Math.round((habits.sessions / habits.activeDays) * 10) / 10 : null;
+  return {
+    id: "sesiones",
+    title: "Sesiones y ritmo",
+    description:
+      "La sesión media solo promedia las sesiones que traen duración; el recuento las cuenta todas. Por eso las dos cifras pueden no cuadrar.",
+    context: { period, filter },
+    viz: "kpi",
+    unit: UNITS.sessions,
+    data: [],
+    kpis: [
+      { key: "total", label: "Sesiones", value: habits.sessions || null, unit: UNITS.sessions },
+      {
+        key: "media",
+        label: "Sesión media",
+        value: habits.averageMinutes,
+        unit: UNITS.minutes,
+      },
+      {
+        key: "frecuencia",
+        label: "Sesiones por día activo",
+        value: perDay,
+        unit: { short: "ses./día", one: "sesión", many: "sesiones", decimals: 1 },
+        hint: `Sobre ${habits.activeDays} ${habits.activeDays === 1 ? "día con sesión" : "días con sesión"}`,
+      },
+      {
+        key: "ritmo",
+        label: "Páginas al día",
+        value: pagesPerDay,
+        unit: UNITS.pages,
+        hint: "Solo libros: las series se miden en episodios",
+      },
+    ],
+    empty: {
+      title: "Sin sesiones en el periodo",
+      message: "Registra una sesión con su duración para empezar a acumular.",
+    },
+  };
+}
+
+// ── §4 Biblioteca y estados ───────────────────────────────────────────────────
+
+function libraryHealthPanel({ health, itemFilter }: StatsInput, period: string): PanelSpec {
+  return {
+    id: "salud-biblioteca",
+    title: "Cuánto acabas",
+    description:
+      "Las tasas se calculan sobre lo CERRADO —terminadas más abandonadas—, no sobre la biblioteca entera: si contaran los pendientes, añadir un libro bajaría tu tasa sin que hayas dejado nada a medias.",
+    context: {
+      period: "Ahora mismo",
+      scope: "foto del momento",
+      filter: itemFilter === "all" ? undefined : itemFilterLabel(itemFilter),
+    },
+    viz: "kpi",
+    unit: UNITS.percent,
+    data: [],
+    kpis: [
+      {
+        key: "final",
+        label: "Tasa de finalización",
+        value: health.completionRate,
+        unit: UNITS.percent,
+      },
+      {
+        key: "abandono",
+        label: "Tasa de abandono",
+        value: health.dropRate,
+        unit: UNITS.percent,
+        delta: undefined,
+      },
+      {
+        key: "espera",
+        label: "Espera mediana de la pila",
+        value: health.medianWaitMonths,
+        unit: { short: "meses", one: "mes", many: "meses" },
+        hint: "La mitad lleva más; la otra mitad, menos",
+      },
+      {
+        key: "balance",
+        label: `Balance del periodo (${period.toLowerCase()})`,
+        value: health.added - health.finished,
+        unit: UNITS.items,
+        hint: `${health.added} añadidas · ${health.finished} terminadas`,
+      },
+    ],
+    note: "Las abandonadas no tienen fecha de abandono en el esquema, así que la tasa las cuenta pero no se puede saber CUÁNDO se abandonaron.",
+    empty: {
+      title: "Todavía no hay nada cerrado",
+      message: "Termina o abandona algo y aquí aparecerá tu proporción.",
+    },
+  };
+}
+
+function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
+  return {
+    id: "backlog",
+    title: "Evolución de la pila",
+    description:
+      "Obras abiertas al cierre de cada mes: creadas ya y todavía sin terminar. Las abandonadas quedan fuera de la serie entera — sin fecha de abandono, contarlas las dejaría abiertas para siempre y la curva subiría sola.",
+    context: {
+      period: "Últimos 12 meses",
+      scope: "serie histórica",
+      filter: globalFilter(itemFilter),
+    },
+    viz: "line",
+    unit: UNITS.items,
+    labelHeader: "Mes",
+    series: [{ key: "pending", label: "Abiertas", color: "var(--status-planned)" }],
+    data: health.backlog.map((b) => ({
+      key: b.month,
+      label: `${MONTHS[Number(b.month.slice(5, 7)) - 1]} ${b.month.slice(0, 4)}`,
+      short: MONTH_SHORT[Number(b.month.slice(5, 7)) - 1],
+      value: b.pending,
+    })),
+    empty: {
+      title: "Sin historial suficiente",
+      message: "Hace falta al menos un pase para dibujar la evolución.",
+    },
+  };
+}
+
+/** Balance de la pila para el perfil: entra frente a sale. */
+function profileBalancePanel(input: ProfileInput, period: string): PanelSpec {
+  const { health } = input;
+  const net = health.added - health.finished;
+
+  // «Crece» y «baja» son afirmaciones sobre una TENDENCIA, y una tendencia
+  // necesita una ventana. Con el periodo en «todo el histórico» no la hay: la
+  // diferencia es sencillamente lo que sigue abierto desde siempre, y llamarlo
+  // «la pila crece» sonaría a alarma sobre algo que no se está moviendo.
+  const bounded = input.period !== "all";
+  const netLabel = !bounded
+    ? "Sin cerrar todavía"
+    : net > 0
+      ? "La pila crece"
+      : net < 0
+        ? "La pila baja"
+        : "La pila se mantiene";
+
+  return {
+    id: "balance-pila",
+    title: bounded ? "Entra y sale" : "Lo que sigue abierto",
+    description:
+      "Lo que añadiste frente a lo que terminaste en el periodo. Ordena por fecha de creación del pase, no por `planned_on`: esa fecha solo existe hacia delante, y el historial importado la tiene vacía.",
+    context: { period },
+    viz: "kpi",
+    unit: UNITS.items,
+    data: [],
+    kpis: [
+      {
+        key: "neto",
+        label: netLabel,
+        value: Math.abs(net) || 0,
+        unit: UNITS.items,
+      },
+      { key: "entra", label: "Añadidas", value: health.added, unit: UNITS.items },
+      { key: "sale", label: "Terminadas", value: health.finished, unit: UNITS.items },
+    ],
+    empty: {
+      title: "Sin movimiento en el periodo",
+      message: "Ni añadiste ni terminaste nada en esta ventana.",
+    },
+  };
+}
+
+// ── §5 Valoraciones ───────────────────────────────────────────────────────────
+
+/** Ranking de nota media por faceta (género, autor, director). */
+function ratedGroupPanel(
+  id: string,
+  title: string,
+  labelHeader: string,
+  groups: RatedGroup[],
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
+  return {
+    id,
+    title,
+    description:
+      "Solo entran los nombres con dos obras valoradas o más. Con una sola, el ranking premiaría el acierto de una prueba, no un gusto.",
+    context: { period, filter, filters: ["Mínimo 2 obras valoradas"] },
+    viz: "ranking",
+    unit: UNITS.stars,
+    labelHeader,
+    valueHeader: "Nota",
+    data: groups.slice(0, RANK_LIMIT).map((g) => ({
+      key: g.name,
+      label: g.name,
+      value: Math.round(g.average * 10) / 10,
+      detail: `${g.works} ${g.works === 1 ? "obra" : "obras"}`,
+    })),
+    empty: {
+      title: "Sin suficientes obras valoradas",
+      message: "Hacen falta al menos dos obras valoradas del mismo nombre.",
+    },
+  };
+}
+
+/**
+ * ¿Puntúas mejor lo largo? Se responde por TRAMOS, no con una nube de puntos:
+ * la media de cada tramo contesta la pregunta directamente, y una nube de
+ * cuarenta puntos obliga a estimar una tendencia a ojo.
+ */
+function lengthVsRatingPanel(
+  { facets }: StatsInput,
+  kind: "book" | "screen",
+  period: string,
+): PanelSpec {
+  const isBook = kind === "book";
+  const rows = facets.lengthVsRating.filter((r) =>
+    isBook ? r.type === "book" : r.type !== "book",
+  );
+  const edges = isBook ? [200, 400, 600] : [90, 120, 150];
+  const unitShort = isBook ? "págs." : "min";
+  const labels = [
+    `Menos de ${edges[0]} ${unitShort}`,
+    `${edges[0]}–${edges[1]} ${unitShort}`,
+    `${edges[1]}–${edges[2]} ${unitShort}`,
+    `Más de ${edges[2]} ${unitShort}`,
+  ];
+
+  const sums = [0, 0, 0, 0];
+  const counts = [0, 0, 0, 0];
+  for (const r of rows) {
+    const i = r.length < edges[0] ? 0 : r.length < edges[1] ? 1 : r.length < edges[2] ? 2 : 3;
+    sums[i] += r.star;
+    counts[i] += 1;
+  }
+
+  return {
+    id: isBook ? "duracion-nota-libros" : "duracion-nota-pantalla",
+    title: isBook ? "Nota según extensión" : "Nota según duración",
+    description: isBook
+      ? "Nota media de los libros valorados, por tramos de páginas. Solo entran los que traen extensión en su ficha."
+      : "Nota media de películas y series valoradas, por tramos de minutos. Solo entran las que traen duración en su ficha.",
+    context: { period, filters: [isBook ? "Solo libros" : "Solo pantalla"] },
+    viz: "bars",
+    unit: UNITS.stars,
+    labelHeader: "Tramo",
+    valueHeader: "Nota media",
+    series: [
+      { key: "nota", label: "Nota media", color: isBook ? "var(--type-book)" : "var(--type-movie)" },
+    ],
+    data: labels.map((label, i) => ({
+      key: label,
+      label,
+      short: i === 0 ? `<${edges[0]}` : i === 3 ? `>${edges[2]}` : String(edges[i - 1]),
+      // Un tramo sin ninguna obra NO vale cero estrellas: no hay medida.
+      value: counts[i] > 0 ? Math.round((sums[i] / counts[i]) * 10) / 10 : null,
+      detail: `${counts[i]} ${counts[i] === 1 ? "obra" : "obras"}`,
+    })),
+    note: "Un tramo vacío sale como «sin datos», no como cero estrellas.",
+    empty: {
+      title: "Sin obras valoradas con esa medida",
+      message: "La extensión y la duración salen de la ficha de catálogo, y muchas no la traen.",
+    },
+  };
+}
+
+// ── §6 Gustos y descubrimiento ────────────────────────────────────────────────
+
+function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+  return {
+    id: "directores",
+    title: "Directores más vistos",
+    context: {
+      period,
+      filter: globalFilter(itemFilter),
+      filters: ["Solo películas", "Obras distintas"],
+    },
+    viz: "ranking",
+    unit: UNITS.works,
+    labelHeader: "Director",
+    data: catalog.directors.slice(0, RANK_LIMIT).map((d) => ({
+      key: d.name,
+      label: d.name,
+      value: d.works,
+    })),
+    note: "La dirección sale del campo `director` de la ficha, que trae una sola persona: los codirigidos cuentan solo al primero.",
+    empty: {
+      title: "Sin directores en este periodo",
+      message: "Termina una película con dirección en su ficha para que aparezca.",
+    },
+  };
+}
+
+function publishersPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+  return {
+    id: "editoriales",
+    title: "Editoriales",
+    context: {
+      period,
+      filter: globalFilter(itemFilter),
+      filters: ["Solo libros", "Obras distintas"],
+    },
+    viz: "ranking",
+    unit: UNITS.works,
+    labelHeader: "Editorial",
+    data: catalog.publishers.slice(0, RANK_LIMIT).map((p) => ({
+      key: p.name,
+      label: p.name,
+      value: p.works,
+    })),
+    note: "La editorial es la de la OBRA, no la de la edición que registraste: si leíste otro sello, aquí no se nota.",
+    empty: {
+      title: "Sin editoriales que mostrar",
+      message: "La editorial sale de la ficha del libro, y muchas no la traen.",
+    },
+  };
+}
+
+/** Descubrimiento: cuántos nombres del periodo eran nuevos. */
+function discoveryPanel(
+  { catalog, records, period: raw, itemFilter }: StatsInput,
+  period: string,
+): PanelSpec {
+  const isAll = raw === "all";
+  return {
+    id: "descubrimiento",
+    title: "Descubrimiento",
+    description: isAll
+      ? "Con el periodo en «todo» no hay un «antes», así que todos los nombres cuentan como nuevos."
+      : "Un nombre es nuevo si no aparece en nada terminado ANTES del periodo.",
+    context: { period, filter: globalFilter(itemFilter) },
+    viz: "kpi",
+    unit: UNITS.authors,
+    data: [],
+    kpis: [
+      {
+        key: "autores",
+        label: "Autores nuevos",
+        value: catalog.authorFacet.discovered || null,
+        unit: UNITS.authors,
+        hint: `De ${catalog.authorFacet.total} ${catalog.authorFacet.total === 1 ? "autor leído" : "autores leídos"}`,
+      },
+      {
+        key: "directores",
+        label: "Directores nuevos",
+        value: catalog.directorFacet.discovered || null,
+        unit: UNITS.authors,
+        hint: `De ${catalog.directorFacet.total} ${catalog.directorFacet.total === 1 ? "director visto" : "directores vistos"}`,
+      },
+      {
+        key: "revisitas",
+        label: "Revisitas",
+        value: records.rereads,
+        unit: UNITS.passes,
+        hint: "Pases que no son el primero de su obra",
+      },
+    ],
+    empty: {
+      title: "Nada que descubrir todavía",
+      message: "Termina algo con autor o dirección en su ficha.",
+    },
+  };
+}
+
+// ── §7 Por categoría ──────────────────────────────────────────────────────────
+
+/** Nota al pie sobre cuántas obras se quedaron sin talla en la ficha. */
+function coverageNote(known: number, unknown: number, what: string): string | undefined {
+  if (unknown === 0) return undefined;
+  const total = known + unknown;
+  return `Se mide sobre ${known} de ${total}: ${unknown} ${
+    unknown === 1 ? "no trae" : "no traen"
+  } ${what} en su ficha de catálogo. Las medias son de las que sí.`;
+}
+
+function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): PanelSpec {
+  const b = formats.books;
+  const known = b.finished - b.unknown;
+  const daysToEmpty =
+    b.pendingPages !== null && pagesPerDay ? Math.round(b.pendingPages / pagesPerDay) : null;
+
+  return {
+    id: "libros-formato",
+    title: "Libros",
+    context: { period, filters: ["Solo libros"] },
+    viz: "kpi",
+    unit: UNITS.pages,
+    data: [],
+    kpis: [
+      { key: "paginas", label: "Páginas leídas", value: b.pagesRead, unit: UNITS.pages },
+      { key: "media", label: "Extensión media", value: b.averagePages, unit: UNITS.pages },
+      {
+        key: "largo",
+        label: "El más largo",
+        value: null,
+        text: b.longest?.title,
+        hint: b.longest ? `${b.longest.value} páginas` : undefined,
+      },
+      {
+        key: "corto",
+        label: "El más corto",
+        value: null,
+        text: b.shortest?.title,
+        hint: b.shortest ? `${b.shortest.value} páginas` : undefined,
+      },
+      {
+        key: "ritmo",
+        label: "Ritmo",
+        value: pagesPerDay,
+        unit: UNITS.pages,
+        hint: "Páginas por día con sesión",
+      },
+      {
+        key: "vaciar",
+        label: "Vaciar la pila de libros",
+        value: daysToEmpty,
+        unit: UNITS.days,
+        hint:
+          b.pendingPages !== null
+            ? `${b.pendingPages} páginas pendientes a tu ritmo actual`
+            : "Hace falta saber tu ritmo y las páginas de lo pendiente",
+      },
+    ],
+    note: coverageNote(known, b.unknown, "número de páginas"),
+    empty: {
+      title: "Sin libros terminados en el periodo",
+      message: "Cierra el pase de un libro para que aparezcan sus páginas.",
+    },
+  };
+}
+
+function movieFormatPanel({ formats }: StatsInput, period: string): PanelSpec {
+  const m = formats.movies;
+  const known = m.finished - m.unknown;
+  return {
+    id: "peliculas-formato",
+    title: "Películas",
+    context: { period, filters: ["Solo películas"] },
+    viz: "kpi",
+    unit: UNITS.minutes,
+    data: [],
+    kpis: [
+      { key: "minutos", label: "Minutos vistos", value: m.minutesWatched, unit: UNITS.minutes },
+      { key: "media", label: "Duración media", value: m.averageMinutes, unit: UNITS.minutes },
+      {
+        key: "larga",
+        label: "La más larga",
+        value: null,
+        text: m.longest?.title,
+        hint: m.longest ? `${m.longest.value} minutos` : undefined,
+      },
+      {
+        key: "corta",
+        label: "La más corta",
+        value: null,
+        text: m.shortest?.title,
+        hint: m.shortest ? `${m.shortest.value} minutos` : undefined,
+      },
+      {
+        key: "pendiente",
+        label: "Pendiente por ver",
+        value: m.pendingMinutes,
+        unit: UNITS.minutes,
+        hint: "Duración de las películas de la pila",
+      },
+    ],
+    note: coverageNote(known, m.unknown, "duración"),
+    empty: {
+      title: "Sin películas terminadas en el periodo",
+      message: "Cierra el pase de una película para que sumen sus minutos.",
+    },
+  };
+}
+
+function seriesFormatPanel({ formats }: StatsInput, period: string): PanelSpec {
+  const s = formats.series;
+  return {
+    id: "series-formato",
+    title: "Series",
+    description:
+      "Las series no llevan sesiones: se miden en episodios vistos. Una temporada cuenta como completa cuando has visto tantos episodios como tiene en el catálogo — y si el catálogo de esa temporada no está cacheado, no se afirma nada.",
+    context: { period, filters: ["Solo series"] },
+    viz: "kpi",
+    unit: UNITS.episodes,
+    data: [],
+    kpis: [
+      { key: "episodios", label: "Episodios vistos", value: s.episodes || null, unit: UNITS.episodes },
+      {
+        key: "temporadas",
+        label: "Temporadas completadas",
+        value: s.seasonsCompleted || null,
+        unit: UNITS.seasons,
+      },
+      {
+        key: "maraton",
+        label: "Días de maratón",
+        value: s.marathonDays || null,
+        unit: UNITS.days,
+        hint: "Días con 3 episodios o más",
+      },
+      {
+        key: "hueco",
+        label: "Días entre episodios",
+        value: s.averageGapDays,
+        unit: UNITS.days,
+        hint: "Media dentro de una misma serie",
+      },
+      { key: "curso", label: "Series en curso", value: s.active || null, unit: UNITS.items },
+      {
+        key: "restante",
+        label: "Para ponerte al día",
+        value: s.remainingMinutes,
+        unit: UNITS.minutes,
+        hint:
+          s.remainingEpisodes !== null
+            ? `${s.remainingEpisodes} episodios pendientes de las series en curso`
+            : "Hace falta que la ficha traiga total de episodios y duración",
+      },
+      { key: "abandonadas", label: "Abandonadas", value: s.dropped || null, unit: UNITS.items },
+    ],
+    empty: {
+      title: "Sin episodios en el periodo",
+      message: "Marca un episodio como visto para que empiecen a contar.",
+    },
+  };
 }
 
 // ── Actividad de los últimos 7 días ───────────────────────────────────────────
@@ -206,36 +1213,11 @@ function dailyGoalPanel(
         ]
       : undefined,
     note: goalMinutes
-      ? undefined
+      ? "El objetivo es de MINUTOS. Páginas, películas o episodios no tienen objetivo propio todavía."
       : "No tienes objetivo diario configurado, así que aquí solo se acumula el tiempo del día.",
     empty: {
       title: "Todavía no hay tiempo registrado hoy",
       message: "Registra una sesión para ver cuánto llevas.",
-    },
-  };
-}
-
-// ── Indicadores sueltos ───────────────────────────────────────────────────────
-function streakPanel(streaks: Streaks, title: string): PanelSpec {
-  return {
-    id: "racha",
-    title,
-    context: { period: "Ahora mismo", scope: "foto del momento" },
-    viz: "kpi",
-    unit: UNITS.days,
-    data: [],
-    kpis: [
-      { key: "actual", label: "Días seguidos", value: streaks.current, unit: UNITS.days },
-      {
-        key: "mejor",
-        label: "Tu mejor racha",
-        value: streaks.best > 0 ? streaks.best : null,
-        unit: UNITS.days,
-      },
-    ],
-    empty: {
-      title: "Sin racha en marcha",
-      message: "Registra actividad dos días seguidos para arrancar una.",
     },
   };
 }
@@ -264,34 +1246,6 @@ function pacePanel(pagesPerDay: number | null, title: string): PanelSpec {
   };
 }
 
-// ── Evolución apilada por tipo ────────────────────────────────────────────────
-function activityYearPanel(months: MonthlyActivity[], title: string): PanelSpec {
-  return {
-    id: "actividad-anual",
-    title,
-    context: { period: "Últimos 7 meses", scope: "ventana móvil" },
-    viz: "stacked",
-    unit: UNITS.works,
-    labelHeader: "Mes",
-    series: TYPE_SERIES,
-    data: months.map((m) => ({
-      key: m.month,
-      label: `${MONTHS[Number(m.month.slice(5, 7)) - 1]} ${m.month.slice(0, 4)}`,
-      short: MONTH_SHORT[Number(m.month.slice(5, 7)) - 1],
-      value: m.book + m.movie + m.series,
-      parts: [
-        { key: "book", value: m.book },
-        { key: "movie", value: m.movie },
-        { key: "series", value: m.series },
-      ],
-    })),
-    empty: {
-      title: "Sin obras terminadas en estos meses",
-      message: "Cierra un pase y el mes correspondiente aparecerá aquí.",
-    },
-  };
-}
-
 /** Índice lunes=0 de una fecha ISO. Se parsea a mano, como el resto del repo. */
 function mondayIndex(iso: string): number {
   const [y, m, d] = iso.split("-").map(Number);
@@ -307,7 +1261,7 @@ function weekdayShort(iso: string): string {
 }
 
 // ── Comparativa entre periodos ────────────────────────────────────────────────
-function completedByYearPanel({ byYear, titles }: SpecInput): PanelSpec {
+function completedByYearPanel({ byYear, titles, itemFilter }: StatsInput): PanelSpec {
   const current = byYear[byYear.length - 1];
   const prev = byYear.length > 1 ? byYear[byYear.length - 2] : null;
   return {
@@ -315,7 +1269,9 @@ function completedByYearPanel({ byYear, titles }: SpecInput): PanelSpec {
     title: titles.completedByYear,
     context: {
       period: "Todos los años con actividad",
-      scope: "serie histórica",
+      // La serie histórica se lee entera, sin filtro de tipo: su desglose por
+      // color YA distingue libros, películas y series.
+      scope: withAllTypes(itemFilter, "serie histórica"),
     },
     viz: "stacked",
     unit: UNITS.works,
@@ -357,13 +1313,40 @@ function completedByYearPanel({ byYear, titles }: SpecInput): PanelSpec {
 }
 
 // ── Distribución: histograma de notas ─────────────────────────────────────────
-function ratingPanel(rating: RatingDistribution, title: string, period: string): PanelSpec {
+
+/** Mediana y moda desde los cinco cubos del histograma. */
+function ratingShape(rating: RatingDistribution): { median: number | null; mode: number | null } {
+  if (rating.count === 0) return { median: null, mode: null };
+  const ascending = [...rating.buckets].sort((a, b) => a.star - b.star);
+  let mode: number | null = null;
+  let best = 0;
+  let seen = 0;
+  let median: number | null = null;
+  const middle = rating.count / 2;
+  for (const b of ascending) {
+    if (b.count > best) {
+      best = b.count;
+      mode = b.star;
+    }
+    seen += b.count;
+    if (median === null && seen >= middle) median = b.star;
+  }
+  return { median, mode };
+}
+
+function ratingPanel(
+  rating: RatingDistribution,
+  title: string,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
+  const { median, mode } = ratingShape(rating);
   return {
     id: "valoraciones",
     title,
     description:
-      "La nota interna va de 1 a 10 y se muestra en escala de 5. Un pase sin nota no entra en la media.",
-    context: { period, filters: ["Solo pases con nota"] },
+      "La nota interna va de 1 a 10 y se muestra en escala de 5. Un pase sin nota no entra en la media. La mediana y la moda se leen sobre los cinco cubos, así que salen en estrellas enteras.",
+    context: { period, filter, filters: ["Solo pases con nota"] },
     viz: "bars",
     unit: UNITS.works,
     labelHeader: "Nota",
@@ -386,6 +1369,14 @@ function ratingPanel(rating: RatingDistribution, title: string, period: string):
         unit: UNITS.stars,
         hint: `Sobre ${rating.count} ${rating.count === 1 ? "obra valorada" : "obras valoradas"}`,
       },
+      { key: "mediana", label: "Mediana", value: median, unit: UNITS.stars },
+      {
+        key: "moda",
+        label: "Nota más repetida",
+        value: mode,
+        unit: UNITS.stars,
+        hint: "La barra más alta del histograma",
+      },
     ],
     empty: {
       title: "Aún no has valorado nada",
@@ -395,7 +1386,7 @@ function ratingPanel(rating: RatingDistribution, title: string, period: string):
 }
 
 // ── Ranking ───────────────────────────────────────────────────────────────────
-function topRatedPanel({ topRated, titles }: SpecInput, period: string): PanelSpec {
+function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: string): PanelSpec {
   const typeLabel: Record<TopRatedItem["type"], string> = {
     book: "Libro",
     movie: "Película",
@@ -404,7 +1395,11 @@ function topRatedPanel({ topRated, titles }: SpecInput, period: string): PanelSp
   return {
     id: "mejor-valoradas",
     title: titles.topRated,
-    context: { period, filters: ["Ordenado por nota, de mayor a menor"] },
+    context: {
+      period,
+      filter: globalFilter(itemFilter),
+      filters: ["Ordenado por nota, de mayor a menor"],
+    },
     viz: "ranking",
     unit: UNITS.stars,
     labelHeader: "Obra",
@@ -423,11 +1418,20 @@ function topRatedPanel({ topRated, titles }: SpecInput, period: string): PanelSp
 }
 
 // ── Parte-todo: tipo de obra ──────────────────────────────────────────────────
-function typePanel({ type, titles }: SpecInput, period: string): PanelSpec {
+/**
+ * Este panel ignora el filtro de tipo a propósito: es el que responde a esa
+ * misma pregunta. Filtrarlo lo dejaría con un solo sector y el cien por cien,
+ * que no informa de nada.
+ */
+function typePanel({ type, titles, itemFilter }: StatsInput, period: string): PanelSpec {
   return {
     id: "por-tipo",
     title: titles.type,
-    context: { period, filters: ["Obras terminadas"] },
+    context: {
+      period,
+      scope: withAllTypes(itemFilter),
+      filters: ["Obras terminadas"],
+    },
     viz: "donut",
     unit: UNITS.works,
     labelHeader: "Tipo",
@@ -446,13 +1450,14 @@ function typePanel({ type, titles }: SpecInput, period: string): PanelSpec {
 }
 
 // ── Parte-todo: estados de la biblioteca ──────────────────────────────────────
-function statusPanel({ status, titles }: SpecInput): PanelSpec {
+function statusPanel({ status, titles }: StatsInput, filter: string | undefined): PanelSpec {
   return {
     id: "estados",
     title: titles.status,
     context: {
       period: "Ahora mismo",
       scope: "foto del momento",
+      filter,
     },
     viz: "donut",
     unit: UNITS.items,
@@ -463,6 +1468,7 @@ function statusPanel({ status, titles }: SpecInput): PanelSpec {
       label: STATUS_LABEL[b.status],
       value: b.count,
     })),
+    note: "No hay estado «pausada»: una obra parada sigue contando como «en curso».",
     empty: {
       title: "Tu biblioteca está vacía",
       message: "Añade una obra y verás aquí cómo se reparten sus estados.",
@@ -471,13 +1477,17 @@ function statusPanel({ status, titles }: SpecInput): PanelSpec {
 }
 
 // ── Evolución temporal ────────────────────────────────────────────────────────
-function hoursPanel({ hours, titles, todayISO }: SpecInput): PanelSpec {
+function hoursPanel({ hours, titles, todayISO, itemFilter }: StatsInput): PanelSpec {
   const currentYear = Number(todayISO.slice(0, 4));
   const currentMonth = Number(todayISO.slice(5, 7));
   return {
     id: "horas-por-mes",
     title: titles.hours,
-    context: { period: String(hours.year), filters: ["Sesiones de lectura"] },
+    context: {
+      period: String(hours.year),
+      scope: withAllTypes(itemFilter, "año natural"),
+      filters: ["Sesiones de lectura"],
+    },
     viz: "bars",
     unit: UNITS.minutes,
     labelHeader: "Mes",
@@ -490,7 +1500,7 @@ function hoursPanel({ hours, titles, todayISO }: SpecInput): PanelSpec {
       value:
         hours.year === currentYear && m.month > currentMonth ? null : m.minutes,
     })),
-    note: "Solo cuenta el tiempo de sesiones registradas con duración. Un mes futuro aparece como «Sin datos», no como cero.",
+    note: "Son los doce meses de un año natural, así que una semana o un mes elegidos arriba no lo recortan. Solo cuenta tiempo de sesiones con duración; un mes futuro sale como «Sin datos», no como cero.",
     empty: {
       title: "Sin sesiones registradas este año",
       message: "Registra una sesión con su duración para empezar a acumular.",
@@ -499,13 +1509,18 @@ function hoursPanel({ hours, titles, todayISO }: SpecInput): PanelSpec {
 }
 
 // ── Distribución por categorías ───────────────────────────────────────────────
-function genresPanel({ catalog, titles }: SpecInput, period: string): PanelSpec {
+function genresPanel(
+  { catalog, titles }: StatsInput,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
   const top = catalog.genres.slice(0, 6);
   return {
     id: "generos",
     title: titles.genres,
     context: {
       period,
+      filter,
       filters: top.length < catalog.genres.length ? ["6 géneros más frecuentes"] : undefined,
     },
     viz: "bars",
@@ -524,15 +1539,19 @@ function genresPanel({ catalog, titles }: SpecInput, period: string): PanelSpec 
   };
 }
 
-function authorsPanel({ catalog, titles }: SpecInput, period: string): PanelSpec {
+function authorsPanel({ catalog, titles, itemFilter }: StatsInput, period: string): PanelSpec {
   return {
     id: "autores",
     title: titles.authors,
-    context: { period, filters: ["Solo autores de libro", "Obras distintas"] },
+    context: {
+      period,
+      filter: globalFilter(itemFilter),
+      filters: ["Solo autores de libro", "Obras distintas"],
+    },
     viz: "ranking",
     unit: UNITS.works,
     labelHeader: "Autor",
-    data: catalog.authors.slice(0, 5).map((a) => ({
+    data: catalog.authors.slice(0, RANK_LIMIT).map((a) => ({
       key: a.name,
       label: a.name,
       value: a.works,
@@ -562,16 +1581,20 @@ function authorsPanel({ catalog, titles }: SpecInput, period: string): PanelSpec
   };
 }
 
-function decadesPanel({ catalog, titles }: SpecInput, period: string): PanelSpec {
+function decadesPanel({ catalog, titles, itemFilter }: StatsInput, period: string): PanelSpec {
   return {
     id: "decadas",
     title: titles.decades,
-    context: { period, filters: ["Década de publicación"] },
+    context: {
+      period,
+      filter: globalFilter(itemFilter),
+      filters: ["Década de publicación"],
+    },
     viz: "bars",
     unit: UNITS.works,
     labelHeader: "Década",
     series: [{ key: "count", label: "Obras", color: "var(--accent)" }],
-    data: catalog.decades.slice(0, 5).map((d) => ({
+    data: catalog.decades.slice(0, 6).map((d) => ({
       key: String(d.decade),
       label: `Años ${d.decade}`,
       short: String(d.decade).slice(2),
@@ -585,14 +1608,19 @@ function decadesPanel({ catalog, titles }: SpecInput, period: string): PanelSpec
 }
 
 // ── Indicadores ───────────────────────────────────────────────────────────────
-function habitsPanel(habits: Habits, title: string, period: string): PanelSpec {
+function habitsPanel(
+  habits: Habits,
+  title: string,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
   const band = habits.favoriteBand
     ? `${pad(habits.favoriteBand.startHour)}:00–${pad((habits.favoriteBand.startHour + 2) % 24)}:00`
     : undefined;
   return {
     id: "habitos",
     title,
-    context: { period, filters: ["Sesiones de lectura"] },
+    context: { period, filter, filters: ["Sesiones de lectura"] },
     viz: "kpi",
     unit: UNITS.minutes,
     data: [],
@@ -616,6 +1644,13 @@ function habitsPanel(habits: Habits, title: string, period: string): PanelSpec {
         value: habits.averageMinutes,
         unit: UNITS.minutes,
       },
+      {
+        key: "sesiones",
+        label: "Sesiones",
+        value: habits.sessions || null,
+        unit: UNITS.sessions,
+        hint: `En ${habits.activeDays} ${habits.activeDays === 1 ? "día" : "días"} distintos`,
+      },
     ],
     note: "La franja solo cuenta sesiones con hora de inicio registrada; el día y la media, todas.",
     empty: {
@@ -625,12 +1660,18 @@ function habitsPanel(habits: Habits, title: string, period: string): PanelSpec {
   };
 }
 
-function recordsPanel(records: Records, streaks: Streaks, title: string, period: string): PanelSpec {
+function recordsPanel(
+  records: Records,
+  streaks: Streaks,
+  title: string,
+  period: string,
+  filter?: string,
+): PanelSpec {
   const month = records.mostActiveMonth;
   return {
     id: "records",
     title,
-    context: { period },
+    context: { period, filter },
     viz: "kpi",
     unit: UNITS.works,
     data: [],
@@ -675,13 +1716,24 @@ function recordsPanel(records: Records, streaks: Streaks, title: string, period:
 }
 
 // ── Acumulado / pila ──────────────────────────────────────────────────────────
-function tbrPanel(tbr: TbrSnapshot, title: string): PanelSpec {
+function tbrPanel(
+  tbr: TbrSnapshot,
+  title: string,
+  formats?: FormatStats,
+  filter?: string,
+): PanelSpec {
+  // Tiempo estimado para vaciar la parte de PANTALLA de la pila. Los libros no
+  // se suman aquí: sus páginas no son minutos, y convertirlas exigiría una
+  // velocidad de lectura que nadie ha medido.
+  const screenMinutes = formats?.movies.pendingMinutes ?? null;
+
   return {
     id: "pila",
     title,
     context: {
       period: "Ahora mismo",
       scope: "foto del momento",
+      filter,
     },
     viz: "donut",
     unit: UNITS.items,
@@ -692,7 +1744,20 @@ function tbrPanel(tbr: TbrSnapshot, title: string): PanelSpec {
       { key: "movie", label: "Películas", value: tbr.byType.movie },
       { key: "series", label: "Series", value: tbr.byType.series },
     ],
-    kpis: [{ key: "pendientes", label: "Pendientes", value: tbr.pending, unit: UNITS.items }],
+    kpis: [
+      { key: "pendientes", label: "Pendientes", value: tbr.pending, unit: UNITS.items },
+      ...(formats
+        ? [
+            {
+              key: "tiempo",
+              label: "Películas pendientes",
+              value: screenMinutes,
+              unit: UNITS.minutes,
+              hint: "Los libros no entran: sus páginas no son minutos",
+            } satisfies PanelKpi,
+          ]
+        : []),
+    ],
     note: tbr.oldest
       ? `Lo que más lleva esperando: «${tbr.oldest.title}», ${tbr.oldest.monthsWaiting} ${
           tbr.oldest.monthsWaiting === 1 ? "mes" : "meses"

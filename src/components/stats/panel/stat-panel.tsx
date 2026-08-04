@@ -263,6 +263,7 @@ function PanelHead({
     <div className="flex min-w-0 flex-col gap-1">
       <span className="label-section">
         {spec.context.period}
+        {spec.context.filter ? ` · ${spec.context.filter}` : ""}
         {spec.context.scope ? ` · ${spec.context.scope}` : ""} · {spec.unit.short}
       </span>
       <Heading

@@ -31,9 +31,10 @@ test("la pestaña Estadísticas enlaza a /estadisticas con su selector", async (
     .click();
 
   await page.waitForURL(/\/estadisticas/);
-  // El selector de período: el pill "Todo" es un enlace a ?periodo=todo.
+  // El selector de período. Se busca DENTRO de su grupo: «Todo» es también el
+  // primer valor del filtro de tipo, y sin acotar el nombre casa con los dos.
   await expect(
-    page.getByRole("link", { name: /^todo$/i }),
+    page.getByRole("navigation", { name: "Periodo" }).getByRole("link", { name: "Todo" }),
   ).toBeVisible();
 });
 
@@ -54,7 +55,7 @@ test("la página muestra completadas por año", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Completadas por año" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "La pila" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "La pila", exact: true })).toBeVisible();
 });
 
 async function login(page: import("@playwright/test").Page) {
@@ -82,7 +83,9 @@ test("cada panel es una región con nombre, contexto y tabla de valores exactos"
   await expect(horas).toBeVisible();
 
   // 2 · En la cara: el rótulo dice periodo y unidad en cuatro palabras.
-  await expect(horas).toContainText(/2026 · min/i);
+  // El panel es de un AÑO natural entero, así que lo declara: el selector de
+  // arriba puede estar en «Semana» y esta tarjeta seguir enseñando doce meses.
+  await expect(horas).toContainText(/2026 · año natural · min/i);
 
   // 3 · La tabla NO está a la vista: la vista general es compacta.
   await expect(horas.getByRole("table")).toBeHidden();
@@ -109,7 +112,7 @@ test("cada panel es una región con nombre, contexto y tabla de valores exactos"
 
   // 6 · Un panel que ignora el selector de periodo lo dice ANTES de su cifra,
   //     sin necesidad de ampliarlo.
-  await expect(page.getByRole("region", { name: "Estados" })).toContainText(
+  await expect(page.getByRole("region", { name: "Estados", exact: true })).toContainText(
     /Ahora mismo · foto del momento/i,
   );
 
@@ -154,7 +157,7 @@ test("ampliar un panel no mueve a los demás", async ({ page }) => {
   await login(page);
   await page.goto("/estadisticas");
 
-  const vecino = page.getByRole("region", { name: "Estados" });
+  const vecino = page.getByRole("region", { name: "Estados", exact: true });
   // Posición respecto al DOCUMENTO, no al viewport: Playwright hace scroll para
   // pulsar, y un `boundingBox()` mediría ese scroll como si fuera un salto.
   const donde = () =>
@@ -198,5 +201,114 @@ test("la pestaña del perfil usa el armazón de paneles", async ({ page }) => {
 
   // El calendario y el editor de objetivo NO son paneles: siguen siendo
   // controles con estado propio y no se pliegan.
-  await expect(page.getByRole("region", { name: "Racha" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Racha", exact: true })).toBeVisible();
+});
+
+// El muro va agrupado en secciones, no en una rejilla de doce tarjetas sueltas.
+// El índice de arriba es lo que hace alcanzable «Por categoría» sin scrollear
+// media pantalla.
+test("el muro se agrupa en secciones con índice", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const indice = page.getByRole("navigation", { name: "Secciones" });
+  for (const nombre of ["Resumen general", "Actividad", "Hábitos", "Por categoría"]) {
+    await expect(indice.getByRole("link", { name: nombre })).toBeVisible();
+    await expect(page.getByRole("heading", { name: nombre, level: 2 })).toBeVisible();
+  }
+
+  // Y los paneles cuelgan de su sección: son h3, no h2 sueltos.
+  await expect(
+    page.getByRole("heading", { name: "Horas por mes", level: 3 }),
+  ).toBeVisible();
+});
+
+// El selector de periodo ya no es solo «un año o todo»: la ventana corta es
+// justo la que contesta «¿cómo voy AHORA?».
+test("el periodo admite semana y mes, y se nota en el rótulo del panel", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas?periodo=semana");
+
+  const actividad = page.getByRole("region", { name: "Actividad del periodo" });
+  await expect(actividad).toContainText(/Últimos 7 días · obras/i);
+
+  await page.goto("/estadisticas?periodo=mes");
+  await expect(actividad).toContainText(/Este mes · obras/i);
+});
+
+// Obras y tiempo son dos preguntas distintas, no dos estilos: quien lee tochos
+// ve poca obra y muchas horas. El conmutador cambia la MAGNITUD, y el rótulo
+// tiene que decirlo — si no, la misma barra significaría dos cosas.
+test("el conmutador obras/tiempo cambia la unidad del panel", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas?periodo=mes&medida=tiempo");
+
+  const actividad = page.getByRole("region", { name: "Actividad del periodo" });
+  await expect(actividad).toContainText(/Este mes · min/i);
+
+  await page
+    .getByRole("navigation", { name: "Magnitud de la actividad" })
+    .getByRole("link", { name: "Obras" })
+    .click();
+  await expect(actividad).toContainText(/Este mes · obras/i);
+});
+
+// El filtro de tipo es GLOBAL: acota todos los paneles a la vez y cada uno lo
+// declara. Un panel que se filtra sin decirlo miente por omisión.
+test("el filtro de tipo acota el muro y cada panel lo declara", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas?tipo=libros");
+
+  // El filtro va en el RÓTULO, entre el periodo y la unidad, no escondido en el
+  // detalle: tiene que leerse antes que la cifra que acota.
+  await expect(page.getByRole("region", { name: "Estados", exact: true })).toContainText(
+    /· Libros ·/,
+  );
+  await expect(page.getByRole("region", { name: "Valoración media" })).toContainText(
+    /· Libros ·/,
+  );
+
+  // Y el panel que NO puede obedecerlo también lo dice: «Distribución por tipo»
+  // es justo el que responde a esa pregunta, así que se lee entero.
+  await expect(
+    page.getByRole("region", { name: "Distribución por tipo" }),
+  ).toContainText(/todos los tipos/i);
+});
+
+// La pestaña del perfil ya no tiene rail. El rail no repartía por importancia
+// sino por ancho: la racha y el ritmo cabían en 340 px, así que salían ANTES
+// que la actividad del periodo. El orden del DOM es ahora el del esquema, que
+// es el que lee un lector de pantalla y el que se ve en móvil.
+test("la pestaña del perfil no tiene rail: el orden es el del esquema", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/u/${USERNAME}?tab=estadisticas`);
+
+  const actividad = page.getByRole("region", { name: "Actividad del periodo" });
+  const racha = page.getByRole("region", { name: "Racha", exact: true });
+  await expect(actividad).toBeVisible();
+  await expect(racha).toBeVisible();
+
+  // `compareDocumentPosition`: DOCUMENT_POSITION_FOLLOWING = la racha va
+  // DESPUÉS de la actividad en el DOM, que es el orden que lee un lector de
+  // pantalla y el que se ve en móvil.
+  const ordenCorrecto = await actividad.evaluate((a, b) => {
+    if (!b) return false;
+    return !!(a.compareDocumentPosition(b as Node) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }, await racha.elementHandle());
+  expect(ordenCorrecto).toBe(true);
 });

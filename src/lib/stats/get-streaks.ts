@@ -43,5 +43,6 @@ export async function getStreaks(
   return {
     current: currentStreak(activeDays, todayISO()),
     best: bestStreak(activeDays),
+    activeDays: activeDays.size,
   };
 }

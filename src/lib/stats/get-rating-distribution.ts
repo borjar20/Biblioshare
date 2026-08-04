@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
-import { type StatsPeriod, yearBounds } from "./period";
+import type { ItemFilter } from "./filter";
+import { type StatsPeriod, periodBounds } from "./period";
 import { toStar } from "./rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -19,6 +20,7 @@ export async function getRatingDistribution(
   supabase: SupabaseServerClient,
   userId: string,
   period: StatsPeriod = "all",
+  itemFilter: ItemFilter = "all",
 ): Promise<RatingDistribution> {
   let query = supabase
     .from("passes")
@@ -26,12 +28,15 @@ export async function getRatingDistribution(
     .eq("user_id", userId)
     .not("rating", "is", null);
 
-  // Acotar por año cuenta las notas de lo TERMINADO ese año; sin período (la
-  // pestaña B/G) cuenta todas las notas, terminadas o no, como siempre.
-  if (period !== "all") {
-    const { start, endExclusive } = yearBounds(period);
-    query = query.gte("finished_on", start).lt("finished_on", endExclusive);
+  // Acotar por período cuenta las notas de lo TERMINADO en él; sin período
+  // cuenta todas las notas, terminadas o no, como siempre.
+  const bounds = periodBounds(period);
+  if (bounds) {
+    query = query
+      .gte("finished_on", bounds.start)
+      .lt("finished_on", bounds.endExclusive);
   }
+  if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
 
   const { data, error } = await query;
 

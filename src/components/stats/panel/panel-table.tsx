@@ -153,7 +153,11 @@ function showTotal(spec: PanelSpec): boolean {
 }
 
 export function contextSentence(spec: PanelSpec): string {
-  const bits = [spec.context.period, ...(spec.context.filters ?? [])];
+  const bits = [
+    spec.context.period,
+    ...(spec.context.filter ? [spec.context.filter] : []),
+    ...(spec.context.filters ?? []),
+  ];
   if (spec.context.scope) bits.push(spec.context.scope);
   return `${bits.join(" · ")}. Valores en ${spec.unit.many}.`;
 }

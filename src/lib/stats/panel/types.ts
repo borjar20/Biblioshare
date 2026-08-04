@@ -34,6 +34,8 @@ export const UNITS = {
   days: { short: "días", one: "día", many: "días" },
   sessions: { short: "sesiones", one: "sesión", many: "sesiones" },
   authors: { short: "autores", one: "autor", many: "autores" },
+  episodes: { short: "eps.", one: "episodio", many: "episodios" },
+  seasons: { short: "temp.", one: "temporada", many: "temporadas" },
   passes: { short: "pases", one: "pase", many: "pases" },
   percent: { short: "%", one: "por ciento", many: "por ciento" },
   stars: { short: "★", one: "estrella", many: "estrellas", decimals: 1 },
@@ -43,7 +45,17 @@ export const UNITS = {
 export type PanelContext = {
   /** Periodo ya resuelto a texto: "2026", "Todo el histórico", "Últimos 7 días". */
   period: string;
-  /** Filtros activos, ya resueltos a texto: ["Solo libros"]. */
+  /**
+   * El filtro GLOBAL de la vista, ya resuelto a texto: "Solo libros".
+   *
+   * Va en el rótulo, con el periodo, y no con el resto de filtros. Es una
+   * distinción de fondo, no de sitio: `filters` son las condiciones propias del
+   * panel («solo pases con nota»), que no cambian nunca; este lo acaba de
+   * elegir quien mira, y si no se ve junto a la cifra, la cifra miente por
+   * omisión — «97 obras» sin más parece el total y es solo el de libros.
+   */
+  filter?: string;
+  /** Filtros propios del panel, ya resueltos a texto: ["Solo pases con nota"]. */
   filters?: string[];
   /**
    * Alcance, cuando el panel NO obedece al selector de periodo de la página.
@@ -183,6 +195,18 @@ export type PanelSpec = {
   labelHeader?: string;
   /** Cabecera de la columna de valor. Por defecto, la unidad en plural. */
   valueHeader?: string;
+  /**
+   * Disposición del mapa de calor cuando NO es una rejilla de siete columnas.
+   * Sin esto, un año entero se pinta como un mes larguísimo: 365 celdas en 7
+   * columnas dan 53 filas y una tarjeta de cinco mil píxeles que arrastra a
+   * toda la sección.
+   *
+   * Con `rows`, las celdas fluyen por COLUMNA: cada columna es una semana.
+   * `offset` es la fila en la que empieza la primera celda (0 = primera fila),
+   * y es lo que alinea los días de la semana — sin él, el 1 de enero cae
+   * siempre arriba y las filas dejan de ser lunes, martes…
+   */
+  heatmap?: { rows: number; offset?: number };
   /** Interpretación o advertencia al pie. */
   note?: string;
   actions?: PanelAction[];

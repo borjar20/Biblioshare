@@ -251,10 +251,54 @@ export function GaugeChart({ spec, derived }: ChartProps) {
 }
 
 /**
- * Mapa de calor. Rampa de UN solo tono por opacidad (nunca arcoíris) y, sobre
- * ella, el número del día: la intensidad orienta, el dígito informa.
+ * Mapa de calor. Rampa de UN solo tono por opacidad (nunca arcoíris).
+ *
+ * DOS DENSIDADES, y la elige el dato, no una opción de estilo:
+ *
+ *  · Un mes (31 celdas) va en siete columnas CON el número del día dentro: la
+ *    intensidad orienta y el dígito informa.
+ *  · Un año (365) fluye por columna —cada columna, una semana— y SIN dígitos.
+ *    Un número legible dentro de 365 casillas obligaría a una tarjeta de cinco
+ *    mil píxeles; y trescientas sesenta y cinco cifras diminutas no se leen de
+ *    todas formas: para eso está la tabla de valores exactos de la capa.
  */
 export function HeatmapChart({ spec, derived }: ChartProps) {
+  const layout = spec.heatmap;
+
+  if (layout) {
+    return (
+      <div
+        className="grid grid-flow-col gap-px"
+        style={{
+          gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
+          gridAutoColumns: "minmax(0, 1fr)",
+        }}
+      >
+        {spec.data.map((d, i) => {
+          const v = d.value;
+          const intensity = v === null || v <= 0 ? 0 : 0.25 + 0.75 * (v / derived.scale);
+          return (
+            <span
+              key={d.key}
+              className={`aspect-square rounded-[1.5px] ${
+                v === null ? "border border-dashed border-border" : v === 0 ? "bg-surface-muted" : ""
+              }`}
+              style={{
+                // Solo la PRIMERA celda se desplaza: a partir de ahí el flujo
+                // por columna coloca sola cada una en su día de la semana.
+                gridRowStart: i === 0 && layout.offset ? layout.offset + 1 : undefined,
+                background:
+                  intensity > 0
+                    ? `color-mix(in srgb, var(--accent) ${intensity * 100}%, var(--surface))`
+                    : undefined,
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-7 gap-1">
       {spec.data.map((d) => {

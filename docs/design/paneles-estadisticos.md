@@ -277,7 +277,12 @@ type PanelSpec = {
   id: string;                  // único: prefija los id de título y tabla
   title: string;
   description?: string;
-  context: { period: string; filters?: string[]; scope?: string };
+  context: {
+    period: string;            // "Este mes", "2026", "Todo el histórico"
+    filter?: string;           // el filtro GLOBAL: "Libros". Va en el rótulo
+    filters?: string[];        // los propios del panel: ["Solo pases con nota"]
+    scope?: string;            // "foto del momento", "todos los tipos"
+  };
   viz: PanelViz;
   unit: Unit;                  // { short, one, many, decimals? }
   data: PanelDatum[];
@@ -287,6 +292,7 @@ type PanelSpec = {
   summary?: string;            // sustituye al generado
   columns?: PanelColumnId[];   // "label"|"value"|"share"|"detail"
   labelHeader?: string; valueHeader?: string;
+  heatmap?: { rows: number; offset?: number };  // año: fluye por columna
   note?: string;
   actions?: { label; href }[];
   state?: PanelState;          // ready | loading | error | partial
@@ -436,20 +442,29 @@ Qué se usa y por qué:
 
 ### Comprobado el 2026-08-04
 
-- **28 unitarios** (`summary.test.ts`): hueco vs cero, silencio de reglas, concordancia,
-  qué indicador preside y qué frase llega a la vista compacta.
-- **7 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y unidad,
-  tabla oculta en la cara y visible en la capa, `rowheader`/`columnheader`, cifra en
-  texto sin ampliar, Escape cerrando **y devolviendo el foco al disparador**, que
-  ampliar un panel no mueva a sus vecinos, ausencia de tabla duplicada en un ranking, y
-  la pestaña del perfil sobre el mismo armazón.
-- **Revisión visual en navegador** (1280 px y 390 px, cara y capa). De ahí salieron
-  nueve defectos que ninguna prueba veía: color de sector por posición en vez de por
+- **97 unitarios** de estadísticas (`summary.test.ts`, `period.test.ts`,
+  `library-health.test.ts`, `habits-pace.test.ts`): hueco vs cero, silencio de reglas,
+  concordancia, qué indicador preside, límites de semana/mes/año y su periodo anterior
+  (incluido enero, que retrocede de año), tasas sobre lo cerrado y no sobre la
+  biblioteca entera, y la curva de la pila dejando fuera las abandonadas.
+- **12 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
+  unidad, tabla oculta en la cara y visible en la capa, `rowheader`/`columnheader`,
+  cifra en texto sin ampliar, Escape cerrando **y devolviendo el foco al disparador**,
+  que ampliar un panel no mueva a sus vecinos, ausencia de tabla duplicada en un
+  ranking, el muro agrupado en secciones con su índice y sus paneles a nivel `h3`, el
+  periodo admitiendo semana y mes, el conmutador obras/tiempo cambiando la unidad, el
+  filtro de tipo declarándose en el rótulo (y «Distribución por tipo» declarando que
+  NO lo obedece), y la pestaña del perfil sin rail, en el orden del esquema.
+- **Revisión visual en navegador** (1400 px y 390 px, cara y capa). De ahí salieron
+  once defectos que ninguna prueba veía: color de sector por posición en vez de por
   categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota con total
   cero, 96 px de hueco con todo a cero, las dos «M» de martes y miércoles, el titular
   repetido palabra por palabra dentro de la capa, «. última Solaris» en minúscula tras
-  punto, y las etiquetas del eje pisándose («Fantasía» sobre «Ciencia ficción»: el
-  `truncate` no recortaba porque la columna no le daba ancho).
+  punto, las etiquetas del eje pisándose («Fantasía» sobre «Ciencia ficción»: el
+  `truncate` no recortaba porque la columna no le daba ancho), **el calendario anual de
+  cinco mil píxeles** (365 celdas en la rejilla de siete columnas pensada para un mes,
+  que arrastraba a la sección entera) y **«La pila crece» con el periodo en «todo»**,
+  donde no hay ventana y por tanto no hay tendencia que afirmar.
 - Paleta pasada por el validador de la guía de dataviz — resultado en la decisión
   correspondiente de `docs/requirements/decisiones.md`.
 
@@ -457,6 +472,88 @@ Qué se usa y por qué:
 
 | Vista | Paneles | Fuera del armazón |
 |---|---|---|
-| `/estadisticas` | 12 | — |
-| `/u/[username]?tab=estadisticas` | 9 (4 comparten constructor con el muro) | calendario mensual y editor de objetivo: son controles con estado |
+| `/estadisticas` | 26 en 7 secciones | — |
+| `/u/[username]?tab=estadisticas` | 10 (6 comparten constructor con el muro) | calendario mensual y editor de objetivo: son controles con estado |
 | Rail del feed (`stats-rail`) | 0 — sigue con sus tarjetas propias | es un resumen deliberadamente distinto |
+
+## 11. Organización: secciones, periodo y filtro global
+
+El muro dejó de ser doce tarjetas sueltas en una rejilla. Va en **siete secciones**, y
+el título de la sección contesta antes que el de la tarjeta a la pregunta que más se
+falla: si «Décadas» habla de lo que ves o de lo que tienes esperando.
+
+| § | Sección | Contesta |
+|---|---|---|
+| 1 | Resumen general | Cuánto llevas en el periodo y cómo se reparte |
+| 2 | Actividad | Cuándo ocurrió, en qué ritmo y con qué constancia |
+| 3 | Hábitos | A qué hora, qué día y con qué sesiones |
+| 4 | Biblioteca y estados | Qué tienes, qué acabas y qué se te acumula |
+| 5 | Valoraciones | Cómo puntúas y qué puntúas mejor |
+| 6 | Gustos y descubrimiento | Qué eliges, de quién y de qué época |
+| 7 | Por categoría | Lo que solo tiene sentido dentro de un tipo de obra |
+
+La pestaña del perfil es la **vista corta del mismo esquema**, sin secciones y en este
+orden: actividad del periodo · semana · objetivo · racha · ritmo · calendario · la pila
+· balance · valoración · récords · cuándo consumes.
+
+**Ya no hay rail.** El rail de 340 px no repartía por importancia sino por ancho: la
+racha y el ritmo cabían en él, así que salían antes que la actividad del periodo. Ahora
+es una sola secuencia repartida en columnas por empaquetado (`columns`), con el orden
+del DOM igual al del esquema — que es el que lee un lector de pantalla y el que se ve
+en móvil.
+
+### Los tres controles, y una sola fila para toda la pantalla
+
+Nunca un filtro por panel: con dos filtros distintos a la vez nadie puede saber qué
+compara cada cifra con cuál. Son **enlaces**, no estado de cliente — el servidor tiene
+que consultar de nuevo igualmente, así la elección se comparte y sobrevive a recargar.
+
+| Control | Valores | URL |
+|---|---|---|
+| Periodo | Semana · Mes · año en curso · anterior · Todo | `?periodo=` |
+| Tipo de obra | Todo · Libros · Películas · Series | `?tipo=` |
+| Magnitud | Obras · Tiempo | `?medida=` |
+
+El periodo por defecto **no es el mismo en las dos vistas**: el muro arranca en el año
+en curso y la pestaña del perfil en «todo el histórico», que es lo que enseñaba antes
+de tener selector. Estrenar un control no debe cambiarle los números a nadie.
+
+### La regla dura: un panel que no obedece al filtro tiene que decirlo
+
+El filtro global va en el **rótulo** (`context.filter`), entre el periodo y la unidad, y
+separado de los filtros propios del panel (`context.filters`, que viven en la capa). La
+distinción es de fondo, no de sitio: los propios no cambian nunca; el global lo acaba de
+elegir quien mira, y si no se ve junto a la cifra, la cifra miente — «97 obras» a secas
+parece el total y es solo el de libros.
+
+Y al revés: varios paneles **no pueden** obedecerlo, porque su consulta no lo acepta o
+porque son justo los que responden a esa pregunta. Esos declaran `scope: "todos los
+tipos"`. Callarlo es el peor de los dos errores: con el muro en «Libros», una tarjeta
+que sigue contando películas y no lo dice es indistinguible de una que sí filtró.
+
+| Panel | Filtro de tipo |
+|---|---|
+| Distribución por tipo | **No** — es el que responde a esa pregunta |
+| Rachas | **No** — una noche de cine no rompe la racha de quien tiene puesto «Libros» |
+| Completadas por año, Horas por mes, Calendario anual | **No** — su consulta es anual y sin tipo |
+| Libros / Películas / Series (§7), Autores, Editoriales, Directores | Se ocultan cuando el tipo elegido no es el suyo |
+| El resto | Sí, y lo declaran en el rótulo |
+
+### Lo que queda fuera, y por qué
+
+La línea es **si el dato existe en la base**. Todo lo que se podía calcular —aunque
+hiciera falta un getter nuevo— está hecho. Lo que exige columna, enum o hidratación
+nueva no se ha simulado ni se ha dejado a medias: no aparece en el muro, y ningún
+panel afirma nada sobre ello.
+
+| Punto del esquema | Por qué no está | Issue |
+|---|---|---|
+| «Pausadas» | `media_status` solo tiene `planned/in_progress/completed/dropped` | [#426](https://github.com/borjar20/Biblioshare/issues/426) |
+| Países · idioma de pantalla · formato de libro · ficción/no ficción | Sin columna en ninguna tabla del catálogo | [#427](https://github.com/borjar20/Biblioshare/issues/427) |
+| Cine / casa / plataforma | Es del pase, y `passes` no tiene dónde guardarlo | [#428](https://github.com/borjar20/Biblioshare/issues/428) |
+| Objetivo en páginas, películas o episodios | `profiles` solo tiene `daily_goal_minutes` | [#429](https://github.com/borjar20/Biblioshare/issues/429) |
+| «Obras terminadas en una sola sesión» | **Sí hay dato**; ningún getter cruza sesiones con pases terminados | [#430](https://github.com/borjar20/Biblioshare/issues/430) |
+
+Dos paneles llevan la ausencia escrita en su nota, para que la pantalla no prometa lo
+que no tiene: «Estados» dice que no existe el estado «pausada», y «Objetivo de hoy»
+que el objetivo es de minutos. Esas notas se retiran al cerrar #426 y #429.

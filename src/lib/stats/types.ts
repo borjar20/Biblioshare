@@ -12,6 +12,12 @@ export type DayActivity = {
 export type Streaks = {
   current: number;
   best: number;
+  /**
+   * Días DISTINTOS con actividad en todo el histórico. Sale del mismo conjunto
+   * que las dos rachas, así que no cuesta una consulta: es su tamaño. Ojo, no
+   * es «racha»: cuenta días sueltos, sin exigir que sean seguidos.
+   */
+  activeDays: number;
 };
 
 export type CalendarDay = {
