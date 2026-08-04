@@ -1005,18 +1005,21 @@ export type Database = {
           created_at: string
           followee_id: string
           follower_id: string
+          notify_events: string[]
           status: Database["public"]["Enums"]["follow_status"]
         }
         Insert: {
           created_at?: string
           followee_id: string
           follower_id: string
+          notify_events?: string[]
           status?: Database["public"]["Enums"]["follow_status"]
         }
         Update: {
           created_at?: string
           followee_id?: string
           follower_id?: string
+          notify_events?: string[]
           status?: Database["public"]["Enums"]["follow_status"]
         }
         Relationships: []
@@ -2592,6 +2595,10 @@ export type Database = {
         | "club_round_proposed"
         | "club_round_commented"
         | "club_round_liked"
+        | "followed_finished"
+        | "followed_session"
+        | "followed_episode"
+        | "followed_added"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       saga_item_role:
@@ -2789,6 +2796,10 @@ export const Constants = {
         "club_round_proposed",
         "club_round_commented",
         "club_round_liked",
+        "followed_finished",
+        "followed_session",
+        "followed_episode",
+        "followed_added",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],

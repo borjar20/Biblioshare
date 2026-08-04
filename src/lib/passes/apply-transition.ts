@@ -7,7 +7,7 @@ import { getActivePass } from "./get-passes";
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type TransitionOutcome =
-  | { kind: "done"; passId: string; closed: boolean }
+  | { kind: "done"; passId: string; closed: boolean; created: boolean }
   | { kind: "askResume" };
 
 function today(): string {
@@ -37,7 +37,7 @@ export async function applyTransition(
   if (plan.kind === "askResume") return { kind: "askResume" };
 
   if (plan.kind === "none") {
-    return { kind: "done", passId: active!.id, closed: false };
+    return { kind: "done", passId: active!.id, closed: false, created: false };
   }
 
   if (plan.kind === "updateActive") {
@@ -53,6 +53,7 @@ export async function applyTransition(
       kind: "done",
       passId: active!.id,
       closed: to === "completed" || to === "dropped",
+      created: false,
     };
   }
 
@@ -91,5 +92,6 @@ export async function applyTransition(
     kind: "done",
     passId: created?.id ?? active?.id ?? "",
     closed: plan.status === "completed" || plan.status === "dropped",
+    created: true,
   };
 }

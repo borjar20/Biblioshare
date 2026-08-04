@@ -7,6 +7,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { normalizeIsbn } from "@/lib/catalog/isbn";
 import { applyTransition } from "@/lib/passes/apply-transition";
+import { notifyAdded } from "@/lib/social/notify-followers";
 
 export type AddManualItemState = {
   error?: "titleRequired" | "invalidPageCount" | "invalidIsbn" | "forbidden" | "generic";
@@ -88,7 +89,8 @@ export async function addManualItem(
   // Alta = pase activo en planned vía la máquina (el ítem acaba de nacer,
   // así que no puede haber pase previo; la transición crea el activo).
   try {
-    await applyTransition(supabase, user.id, itemType, inserted.id, "planned");
+    const outcome = await applyTransition(supabase, user.id, itemType, inserted.id, "planned");
+    await notifyAdded(supabase, user.id, outcome);
   } catch {
     return { error: "generic" };
   }

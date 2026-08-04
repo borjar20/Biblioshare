@@ -26,6 +26,10 @@ export type NotificationType =
   | "club_activity_activated"
   | "club_activity_spawned"
   | "club_event_created"
+  | "followed_finished"
+  | "followed_session"
+  | "followed_episode"
+  | "followed_added"
   | "club_round_proposed"
   | "club_round_commented"
   | "club_round_liked"
@@ -89,6 +93,10 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",
   club_event_created: "clubEventCreated",
+  followed_finished: "followedFinished",
+  followed_session: "followedSession",
+  followed_episode: "followedEpisode",
+  followed_added: "followedAdded",
   club_round_proposed: "clubRoundProposed",
   club_round_commented: "clubRoundCommented",
   club_round_liked: "clubRoundLiked",

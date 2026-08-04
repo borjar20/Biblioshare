@@ -14,6 +14,7 @@ import {
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -169,6 +170,11 @@ export async function addSession(
     .single();
 
   if (insertError || !inserted) return { error: "generic" };
+
+  await notifyFollowersOfEvent(supabase, user.id, "session", {
+    targetType: "diary_entry",
+    targetId: passId,
+  });
 
   // Las notas de esta sesión ya se guardaron sueltas (SessionNotebook,
   // session_id null) mientras la hoja estaba abierta — aquí solo se
