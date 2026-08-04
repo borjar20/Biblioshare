@@ -68,7 +68,7 @@ export function CriteriaChallengeBoard({
         railExtra={railExtra}
         body={
           <div className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h2 className="label-section">
               {t("criteriaProgress")}
             </h2>
             <p className="text-xs text-muted-foreground">{t("criteriaJoinToSee")}</p>
@@ -84,7 +84,7 @@ export function CriteriaChallengeBoard({
         railExtra={railExtra}
         body={
           <div className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h2 className="label-section">
               {t("criteriaProgress")}
             </h2>
             <p className="text-xs text-muted-foreground">{t("criteriaNoConfig")}</p>
@@ -112,7 +112,7 @@ export function CriteriaChallengeBoard({
       railExtra={railExtra}
       railTop={
         <div className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("criteriaProgress")}
           </h2>
 
@@ -148,7 +148,7 @@ export function CriteriaChallengeBoard({
       }
       body={
         <div className="flex flex-col gap-3">
-          <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h3 className="label-section">
             {t(isCooperative ? "criteriaWhoContributes" : "criteriaRanking")}
           </h3>
           <div className="flex flex-col">

@@ -110,7 +110,7 @@ export default async function Home({
           {/* En PC el rótulo y los chips comparten línea (frame B); en móvil el
               rótulo no está y los chips se quedan solos a la izquierda. */}
           <div className="mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
-            <span className="hidden font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase lg:block">
+            <span className="hidden label-section lg:block">
               {t("feed.sectionTitle")}
             </span>
             <FeedFilters filter={filter} />

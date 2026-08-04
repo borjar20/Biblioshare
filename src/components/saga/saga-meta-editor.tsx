@@ -123,13 +123,13 @@ export function SagaMetaEditor({
       {/* ── Metadatos ── */}
       <form action={formAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+          <span className="label-section">
             {t("editName")}
           </span>
           <Input name="name" required maxLength={120} defaultValue={initial.name} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+          <span className="label-section">
             {t("editOverview")}
           </span>
           <textarea
@@ -140,7 +140,7 @@ export function SagaMetaEditor({
           />
         </label>
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+          <span className="label-section">
             {t("editAccent")}
           </span>
           <AccentRadio name="accent" defaultValue={initial.accent} />
@@ -188,7 +188,7 @@ export function SagaMetaEditor({
 
       {/* ── Universo padre ── */}
       <div id="universo" className="flex flex-col gap-3 scroll-mt-24">
-        <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+        <span className="label-section">
           {t("editParent")}
         </span>
         {parent ? (

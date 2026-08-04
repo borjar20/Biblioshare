@@ -46,7 +46,7 @@ export async function ClubSummary({
     <div className="flex flex-col gap-5">
       {active.length > 0 && (
         <section className="flex flex-col gap-2.5">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("summaryActive")}
           </h2>
 
@@ -102,7 +102,7 @@ export async function ClubSummary({
 
       {upcoming.length > 0 && (
         <section className="flex flex-col gap-2.5">
-          <h2 className="flex items-center justify-between gap-2 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="flex items-center justify-between gap-2 label-section">
             {t("summaryNext")}
             <Link
               href={`/club/${clubSlug}/calendario`}

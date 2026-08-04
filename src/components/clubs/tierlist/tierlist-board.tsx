@@ -75,7 +75,7 @@ export function TierlistBoard({
         railExtra={railExtra}
         body={
           <div className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h2 className="label-section">
               {t("tierlistTitle")}
             </h2>
             <p className="text-xs text-muted-foreground">{t("tierlistJoinToSee")}</p>
@@ -91,7 +91,7 @@ export function TierlistBoard({
         railExtra={railExtra}
         body={
           <div className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h2 className="label-section">
               {t("tierlistTitle")}
             </h2>
             <p className="text-xs text-muted-foreground">{t("tierlistNoConfig")}</p>
@@ -194,7 +194,7 @@ export function TierlistBoard({
             ))}
           </div>
 
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {board.isViewer
               ? t("tierlistYours")
               : t("tierlistOf", { name: board.displayName || board.username })}
@@ -224,7 +224,7 @@ export function TierlistBoard({
               ))}
             </div>
 
-            <p className="mt-1 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <p className="mt-1 label-section">
               {t("tierlistUnplaced", { count: board.unplacedItemKeys.length })}
             </p>
             <TierRow

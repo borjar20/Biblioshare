@@ -66,7 +66,7 @@ export function SessionList({
             negrita. En PC la edición va en la MISMA línea ("Sesiones · Plaza
             & Janés (tapa dura)"), como hace el frame 10; en móvil no cabe y
             baja a su propia línea, como hace el frame 3. */}
-        <h3 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+        <h3 className="label-section">
           {t("title")}
           {editionLabel && (
             <span className="hidden lg:inline"> · {editionLabel}</span>

@@ -44,7 +44,7 @@ export async function NowConsuming({
   if (variant === "strip") {
     return (
       <div className="flex flex-col gap-3">
-        <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {t("nowConsuming")}
         </span>
         <div className="flex gap-4 overflow-x-auto pb-1">
@@ -95,7 +95,7 @@ export async function NowConsuming({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {t("nowConsuming")}
         </span>
         <span className="h-px flex-1 bg-border" />

@@ -10,7 +10,7 @@ export async function WatchProviders({ data }: { data: WatchProvidersData }) {
 
   return (
     <div className="flex flex-col gap-2.5 lg:gap-[15px]">
-      <h2 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+      <h2 className="label-section">
         {t("title")}
       </h2>
 

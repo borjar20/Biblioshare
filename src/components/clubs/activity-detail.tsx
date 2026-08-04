@@ -161,7 +161,7 @@ export function ActivityDetailView({
     <>
       {!isParticipant && activity.items.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("previewItems")}
           </h2>
           <div className="grid grid-cols-5 gap-2">
@@ -529,7 +529,7 @@ export function ActivityDetailView({
           RLS (can_view_target = is_activity_participant) lo respalda. */}
       {activity.kind !== "buddy_read" && isParticipant && activity.chat && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("activityChat")}
           </h2>
           <ActivityChat

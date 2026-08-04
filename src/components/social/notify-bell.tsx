@@ -101,7 +101,7 @@ export function NotifyBell({
             </label>
           ))}
           {failed && (
-            <p role="alert" className="px-2 py-1 text-xs text-destructive">
+            <p role="alert" className="px-2 py-1 text-xs text-status-dropped">
               {t("actionError")}
             </p>
           )}

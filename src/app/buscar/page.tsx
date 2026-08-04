@@ -14,6 +14,7 @@ import { SearchResultCard } from "./search-result-card";
 import { PeopleResults } from "./people-results";
 import { ResultsEyebrow } from "./results-eyebrow";
 import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = {
   title: "Buscar — Biblioshare",
@@ -70,9 +71,7 @@ export default async function SearchPage({
 
   return (
     <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      <h1 className="font-serif text-[26px] font-semibold tracking-tight">
-        {t("title")}
-      </h1>
+      <PageHeader title={t("title")} />
 
       <ModeSwitch mode={mode} query={query} itemType={itemType} />
 

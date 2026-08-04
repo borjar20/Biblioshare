@@ -686,7 +686,7 @@ function PassDataPanel({
         )}
 
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {tPasses("rating")}
           </span>
           <RatingDots
@@ -716,7 +716,7 @@ function PassDataPanel({
           editions.length > 0 &&
           !pendingEditionQuestion && (
             <div className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+              <span className="label-section">
                 {t("edition")}
               </span>
               <Select

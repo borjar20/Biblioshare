@@ -1,6 +1,6 @@
 # Referencia visual para prototipos
 
-> [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-07-30]
+> [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-08-04]
 
 Este es el punto de partida para cualquier prototipo funcional nuevo de
 Biblioshare. Resume el lenguaje visual actual para evitar redescubrirlo en cada
@@ -32,7 +32,17 @@ Las capturas de escritorio rondan 2520×1230 px; las de móvil, 945×2048 px.
 - **Tipografía:** Fraunces para titulares y secciones; Geist sans para lectura de interfaz; Geist Mono para etiquetas, metadatos y controles compactos.
 - **Acento principal:** terracota (`--accent`), con oro para progreso/logros, verde para completado, teal para películas y violeta para series.
 - **Forma:** chips de 6 px, portadas de 10 px y tarjetas de 14 px. Sombras contenidas (`--shadow-card`, `--shadow-cover`).
+  Los radios de Tailwind **apuntan a esa escala**, no a sus valores de fábrica: `rounded-md`=6, `rounded-lg`=10,
+  `rounded-xl`=`rounded-2xl`=14. Escribir `rounded-lg` es legítimo y cae en la escala; lo que no vale es un
+  `rounded-[9px]` nuevo. `rounded-sm` (4 px) se sale de la escala a propósito: es el detalle diminuto, no una caja.
 - **Iconos:** línea redondeada, monocromos y con `currentColor`; no emojis.
+- **Rótulo de sección:** la utilidad `label-section` (mono 10 px, `0.12em`, muted, mayúsculas). No se vuelve a escribir
+  a mano la combinación `font-mono … uppercase` para encabezar un bloque; llegó a haber quince variantes.
+- **Error:** `text-status-dropped`. `text-destructive` **no existe** y computa igual que el texto normal.
+- **Foco de teclado:** lo pone `globals.css` para toda la app (`:focus-visible` → anillo de acento 2 px, offset 2 px).
+  No hace falta añadirlo por componente, y un `focus:outline-none` suelto ya no lo apaga.
+- **Cabecera de página:** `ui/page-header.tsx` (barrita de acento + Fraunces + acción opcional). Un `<h1>` suelto con
+  su propio tamaño es deriva.
 
 Los nombres y valores completos de los tokens están en
 [`src/app/globals.css`](../src/app/globals.css). Se usan tokens de Tailwind

@@ -29,7 +29,7 @@ export function Field({
         htmlFor={htmlFor}
         className={
           mono
-            ? "mb-[3px] font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase"
+            ? "mb-[3px] label-section"
             : "text-sm font-medium"
         }
       >

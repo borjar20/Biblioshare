@@ -83,7 +83,7 @@ export function ItemConnectSheet({
           </div>
         </div>
 
-        <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <h3 className="label-section">
           {t("connectFromItem")}
         </h3>
 
@@ -119,7 +119,7 @@ export function ItemConnectSheet({
           {t("tierlistOfferedAtClose")}
         </p>
 
-        {error && <p className="text-center text-xs text-destructive">{t("proposeError")}</p>}
+        {error && <p className="text-center text-xs text-status-dropped">{t("proposeError")}</p>}
       </div>
     </dialog>
   );

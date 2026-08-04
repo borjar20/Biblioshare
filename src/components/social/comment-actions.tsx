@@ -51,7 +51,7 @@ export function CommentActions({
           type="button"
           disabled={isBusy}
           onClick={confirmDelete}
-          className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+          className="text-muted-foreground transition-colors hover:text-status-dropped disabled:opacity-50"
         >
           {t("deleteComment")}
         </button>

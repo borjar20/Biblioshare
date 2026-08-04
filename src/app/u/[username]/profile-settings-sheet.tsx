@@ -69,7 +69,7 @@ export function ProfileSettingsSheet({
           <div className="flex flex-col gap-4 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                <span className="label-section">
                   {t("visibilityLabel")}
                 </span>
                 <span className="text-sm text-foreground">
@@ -93,7 +93,7 @@ export function ProfileSettingsSheet({
             {isAdmin && (
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground uppercase underline hover:text-foreground"
+                className="inline-flex items-center gap-1.5 label-section underline hover:text-foreground"
               >
                 <LockIcon className="h-3.5 w-3.5" />
                 {adminLabel}

@@ -28,7 +28,7 @@ export function DailyGoalForm({
     return (
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("dailyGoal")}
           </span>
           <span className="text-sm text-foreground">

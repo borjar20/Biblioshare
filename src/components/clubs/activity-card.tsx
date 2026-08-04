@@ -74,7 +74,7 @@ export function ActivityCard({
             en una línea, y cortarlo a media palabra no ayuda a nadie. La meta
             va en muted (.mm del frame 3): el color de tipo lo lleva la baldosa,
             no el texto. */}
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {t(`kind_${activity.kind}`)}
           {meta && ` · ${meta}`}
         </span>
