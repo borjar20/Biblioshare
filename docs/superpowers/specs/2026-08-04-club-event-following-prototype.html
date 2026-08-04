@@ -386,7 +386,10 @@
     <h1>Seguimiento de eventos de club</h1>
     <p>
       Los diez especímenes de abajo cubren las ocho vistas que pide el encargo, en claro y oscuro,
-      escritorio y móvil. El color sale tal cual de <code>globals.css</code>; la tipografía usa pilas
+      escritorio y móvil. <strong>Actualizado el 2026-08-04 tras implementarlo</strong>: cuatro
+      especímenes llevan una nota de «corregido tras la implementación», porque verlo funcionando en
+      un navegador real destapó cosas que el mockup daba por buenas. Se dejan a la vista en vez de
+      reescribirlas en silencio: el prototipo es también el registro de en qué se equivocó. El color sale tal cual de <code>globals.css</code>; la tipografía usa pilas
       del sistema en lugar de Fraunces y Geist, porque lo que se valida aquí es jerarquía, estados y
       accesibilidad, no el renderizado de la fuente.
     </p>
@@ -730,12 +733,17 @@
             </span>
             <h4>Nadie lo sigue todavía</h4>
             <p>Sé la primera persona en apuntarse y te avisamos antes de que empiece.</p>
-            <button type="button" class="btn" style="margin-top:16px;">Seguir evento</button>
           </div>
         </div>
         <p class="note" style="margin-top:16px;">
           El estado vacío invita a actuar solo si esa persona puede seguirlo. A quien no es miembro
           activo se le muestra el recuento sin el botón.
+        </p>
+        <p class="note" style="margin-top:12px;">
+          <strong>Corregido tras la implementación:</strong> el prototipo repetía aquí el botón
+          «Seguir evento». En la ficha real el CTA está justo encima, en el rail, así que
+          duplicarlo dejaba dos controles con el mismo nombre accesible en la misma pantalla. El
+          mensaje solo ya cumple la invitación.
         </p>
       </div>
     </div>
@@ -799,9 +807,17 @@
         </div>
 
         <div class="card rail-box">
-          <p class="phone-cap">Evento cancelado</p>
-          <button type="button" class="btn" style="width:100%;justify-content:center;" disabled>Seguir evento</button>
+          <p class="phone-cap">Evento cancelado · siguiéndolo ya</p>
+          <button type="button" class="btn btn-secondary" style="width:100%;justify-content:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+            Siguiendo
+          </button>
           <p class="hint">Este evento ha sido cancelado.</p>
+          <p class="note" style="margin-top:10px;font-size:12px;">
+            <strong>Corregido tras la implementación:</strong> aquí decía «Recibirás un recordatorio
+            antes del evento», porque el motivo de bloqueo solo se pintaba a quien NO seguía el
+            evento. Era una promesa falsa. El motivo manda ahora sobre el estado de seguimiento.
+          </p>
         </div>
 
         <div class="card rail-box">
@@ -899,7 +915,13 @@
         <span class="chip chip-live"><span class="dot" style="border-radius:999px;background:var(--green)"></span>En curso ahora</span>
         <h3 style="font-family:var(--serif);font-size:22px;font-weight:600;margin:12px 0 0;">Charla con la traductora</h3>
         <p class="tz" style="margin-top:6px;">Empezó a las 20:30 · termina a las 22:00</p>
-        <a class="btn" href="#" style="margin-top:14px;">Entrar a la videollamada</a>
+        <a class="btn" href="#" style="margin-top:14px;">Entrar ahora</a>
+        <p class="note" style="margin-top:12px;">
+          <strong>Precisado tras la implementación:</strong> un evento en curso <strong>sí</strong> se
+          puede seguir — es lo que permite la RPC, hasta que termina. Lo que no llega es un
+          recordatorio, porque un recordatorio avisa antes y ya no hay nada que anticipar. El
+          prototipo no lo decía y las tres capas (agenda, ficha y BD) no coincidían.
+        </p>
       </div>
 
       <div class="card rail-box" style="opacity:0.75;">
