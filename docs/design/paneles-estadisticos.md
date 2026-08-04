@@ -478,12 +478,14 @@ Qué se usa y por qué:
 
 ### Comprobado el 2026-08-04
 
-- **97 unitarios** de estadísticas (`summary.test.ts`, `period.test.ts`,
-  `library-health.test.ts`, `habits-pace.test.ts`): hueco vs cero, silencio de reglas,
-  concordancia, qué indicador preside, límites de semana/mes/año y su periodo anterior
-  (incluido enero, que retrocede de año), tasas sobre lo cerrado y no sobre la
-  biblioteca entera, y la curva de la pila dejando fuera las abandonadas.
-- **18 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
+- **83 unitarios** de `src/lib/stats/**` (`summary.test.ts`, `period.test.ts`,
+  `library-health.test.ts`, `habits-pace.test.ts`, `rating.test.ts`…): hueco vs cero,
+  silencio de reglas, concordancia, qué indicador preside, límites de semana/mes/año y su
+  periodo anterior (incluido enero, que retrocede de año), tasas sobre lo cerrado y no
+  sobre la biblioteca entera, la curva de la pila dejando fuera las abandonadas, y que la
+  conversión a estrellas concuerde con la media —que es la que fallaba: `toStar(7)` daba
+  4 y la media daba 3,5—.
+- **24 e2e** (`e2e/estadisticas.spec.ts`): región con nombre, rótulo con periodo y
   unidad, cifra en texto sin ampliar, Escape cerrando **y devolviendo el foco al
   disparador**, que ampliar un panel no mueva a sus vecinos, el muro agrupado en
   secciones con su índice y sus paneles a nivel `h3`, el índice marcando la sección
@@ -497,7 +499,14 @@ Qué se usa y por qué:
   semana—, que el objetivo diario esté en Rincón y NO en Estadísticas, que «La pila»
   traiga sus tres columnas desglosadas y «Entra y sale» ya no exista, y que **ni la capa
   ni la pestaña desborden a lo ancho** (`scrollWidth` contra `clientWidth`), que es la
-  prueba que faltaba cuando los globos escondidos regalaban scroll horizontal.
+  prueba que faltaba cuando los globos escondidos regalaban scroll horizontal. Y, de la
+  revisión del muro: que arranque en **todo el histórico** y con los **filtros plegados**
+  (el selector existe pero no se ve, y el resumen dice qué hay puesto), que el índice de
+  secciones **siga en pantalla tras saltar al final** y no tape el título al que salta,
+  que Géneros presida con el **género principal y sin un total** —el que sumaba barras
+  solapadas—, que el histograma de notas tenga **diez columnas** con una en «3,5», que la
+  línea lleve sus doce cifras y **ninguna tabla**, y que el mosaico **no escriba nada en
+  la cara** y sí al ampliarlo.
 - **Revisión visual en navegador** (1400 px y 390 px, claro y oscuro, cara y capa). De
   ahí salieron trece defectos que ninguna prueba veía: color de sector por posición en
   vez de por categoría, «1 obras», el indicador vacío presidiendo, la columna de cuota
@@ -586,18 +595,25 @@ siguen valiendo:
   así que una tarjeta corta al lado del calendario deja su hueco muerto hasta la fila
   siguiente, y esos huecos se suman a lo largo de la pestaña.
 
-Por eso **el perfil pasó a multicolumna** (`columns-1 lg:columns-2` + `break-inside-avoid`
-+ margen inferior por hijo, porque `gap` no separa *dentro* de una columna): cada tarjeta
-empieza donde acabó la anterior de su columna, sin filas que igualar. Se lee **en
-columnas, no en filas** —primero la izquierda entera—, y el orden del DOM se mantiene,
-que es lo que oye un lector de pantalla y lo que se ve en móvil a una columna.
+Por eso **las dos vistas van en multicolumna** (`columns-1 lg:columns-2` —el muro llega a
+`xl:columns-3`— + `break-inside-avoid` + margen inferior por hijo, porque `gap` no separa
+*dentro* de una columna): cada tarjeta empieza donde acabó la anterior de su columna, sin
+filas que igualar. Se lee **en columnas, no en filas** —primero la izquierda entera—, y el
+orden del DOM se mantiene, que es lo que oye un lector de pantalla y lo que se ve en móvil
+a una columna.
 
 `break-inside-avoid` no es opcional: sin él, multicolumna parte una tarjeta por donde le
 convenga y media aparece arriba del todo en la columna siguiente.
 
-**El muro completo (`/estadisticas`) sigue en rejilla**, no en multicolumna: allí las
-tarjetas van agrupadas en secciones de dos a seis, y multicolumna las repartiría entre
-columnas rompiendo la lectura por bloques que da sentido a cada título de sección.
+**En el muro, el reparto es POR SECCIÓN, no de toda la página.** Es lo que hace tolerable
+la única cosa que multicolumna no sabe hacer: como no puede partir una tarjeta, equilibra
+a bulto y puede dejar una columna corta. Acotado a la sección, ese desequilibrio nunca se
+propaga más allá del bloque en el que ocurre, y la lectura por bloques que da sentido a
+cada título de sección se conserva. Medido el 2026-08-04 a 1568 px: el hueco residual va
+de 0 px (Hábitos, Por categoría) a 342 px (Actividad, seis tarjetas de alturas muy
+dispares); *dentro* de una columna ya no hay ningún hueco, que es lo que la rejilla no
+podía evitar. La limitación queda anotada en
+[#431](https://github.com/borjar20/Biblioshare/issues/431).
 
 ### Los tres controles, y una sola fila para toda la pantalla
 
@@ -611,9 +627,27 @@ que consultar de nuevo igualmente, así la elección se comparte y sobrevive a r
 | Tipo de obra | Todo · Libros · Películas · Series | `?tipo=` |
 | Magnitud | Obras · Tiempo | `?medida=` |
 
-El periodo por defecto **no es el mismo en las dos vistas**: el muro arranca en el año
-en curso y la pestaña del perfil en «todo el histórico», que es lo que enseñaba antes
-de tener selector. Estrenar un control no debe cambiarle los números a nadie.
+**El periodo por defecto es «todo el histórico»** (la pestaña del perfil no tiene
+selector: está fijada al mes). El muro arrancaba en el año en curso, y eso lo ponía en su
+peor estado nada más entrar: con «2026» puesto, las tarjetas de serie histórica y las de
+foto del momento seguían enseñando lo suyo, así que la primera lectura de la pantalla era
+un selector diciendo una cosa y media docena de paneles diciendo otra. Con «Todo», el
+rótulo y el contenido coinciden y **acotar pasa a ser una decisión deliberada**.
+
+**Los tres controles van PLEGADOS** en un `<details>` nativo —cero JavaScript, y el
+estado abierto/cerrado no viaja en la URL porque no es parte de la pregunta—. Tres grupos
+de pastillas ocupaban dos filas altas que se leen una vez, al entrar o al cambiar de
+periodo, por encima de siete secciones de tarjetas que es lo que se viene a ver. **El
+resumen del plegable dice qué hay puesto** (`Filtros · Todo el histórico · Todo ·
+Obras`): uno que solo dijera «Filtros» obligaría a abrirlo para saber de qué periodo
+habla la pantalla, y entonces plegarlo costaría más de lo que ahorra.
+
+**El índice de secciones se queda pegado** bajo la cabecera de la app
+(`top-[var(--topbar-h)]`), como las pestañas de la ficha. Uno que se va con el scroll
+sirve una sola vez: para saltar de «Valoraciones» a otra sección habría que volver arriba
+del todo. Con dos cabeceras pegadas, el margen de salto de cada sección deja de ser un
+`scroll-mt` a ojo y pasa a ser `calc(var(--topbar-h) + 56px)`, o el enlace del índice
+taparía su propio destino.
 
 ### La regla dura: un panel que no obedece al filtro tiene que decirlo
 
@@ -635,6 +669,49 @@ que sigue contando películas y no lo dice es indistinguible de una que sí filt
 | Completadas por año, Horas por mes, Calendario anual | **No** — su consulta es anual y sin tipo |
 | Libros / Películas / Series (§7), Autores, Editoriales, Directores | Se ocultan cuando el tipo elegido no es el suyo |
 | El resto | Sí, y lo declaran en el rótulo |
+
+### La otra regla dura: hay series que NO se suman
+
+El armazón fabrica un indicador «Total» cuando la spec no trae ninguno (`heroKpi`), y eso
+es correcto para un flujo —obras terminadas, minutos, altas— pero **miente en dos formas
+de dato**, y las dos estaban en pantalla presidiendo su tarjeta con una cifra falsa:
+
+| Forma | Panel | Por qué el total no existe | Qué preside ahora |
+|---|---|---|---|
+| **Solapada** | Géneros más frecuentes | Una obra con tres géneros entra en las tres barras. Cada barra es correcta —«cuántas obras distintas llevan este género»—; la suma daba 218 sobre 151 obras reales | **Género principal**, con su recuento |
+| **Stock** | Evolución de la pila | Cada punto es cuántas obras había *abiertas* al cerrar ese mes. Sumar doce fotos del inventario cuenta doce veces una obra abierta todo el año | **Abiertas al cerrar el último mes**, con su variación contra el primero |
+
+Los dos llevan además `summary` explícito, porque el resumen automático de `bars` y de
+`line` empieza justo por «Total». **Una cifra inflada al lado de cifras reales no cuesta
+solo esa tarjeta**: quien la pilla una vez desconfía de las otras veintinueve.
+
+### La escala de nota: diez peldaños, no cinco
+
+La nota interna va de **1 a 10** y se enseña sobre 5, así que **cada punto interno es
+media estrella** y la conversión es exacta: `toStar(7) = 3,5`. Antes redondeaba hacia
+arriba a estrella entera (`ceil(r/2)`) y el histograma agrupaba en cinco columnas,
+mientras la media —que sí divide entre 2— seguía dando decimales. Resultado: con un 7,
+la barra más alta decía 4 ★ y la cifra grande de la misma tarjeta decía 3,5 ★, **y no
+había forma de saber cuál de las dos mentía**.
+
+El histograma tiene ahora **diez columnas** (0,5 → 5,0), la mediana y la moda salen en la
+misma escala que la media, y el eje escribe siempre un decimal («4,0», no «4») para que
+las diez etiquetas no bailen de ancho. Comprobado con datos reales: media 3,70 ★ con la
+moda en 4,0 y 20 obras en 3,5 — las tres cifras cuadran entre sí y con el dibujo.
+
+Quien vuelva a agrupar en enteros tiene que cambiar también la media, o vuelve el
+desajuste. `toStar` lo lleva escrito.
+
+### Un panel sin datos se ve sin datos
+
+El estado vacío se pinta **atenuado**: borde discontinuo, sin fondo y sin sombra. Una
+tarjeta vacía con el mismo peso visual que una llena compite igual por la mirada, y en un
+muro de treinta paneles eso obliga a leer el texto de cada una para descartarla.
+
+Lo que **no** se atenúa es el texto: bajar su opacidad costaría el contraste de lo único
+que explica por qué el panel está vacío. Y **«todo a cero» no es «sin datos»**: un panel
+con ceros medidos conserva su tarjeta normal y su gráfico, porque un cero medido es una
+respuesta. La distinción se deriva del dato (`derived.isEmpty`), nunca se declara.
 
 ### Lo que queda fuera, y por qué
 
@@ -671,10 +748,25 @@ histórico** y repetía en texto lo que el dibujo ya decía. En el mosaico del a
 |---|---|---|
 | Barras y apiladas | El total **encima de cada barra**, siempre visible; globo con el desglose por tipo | La tabla Mes/Libros/Películas/Series/Cuota |
 | Anillo | El valor de cada categoría **junto a su sector y en su color**; la leyenda añade valor y cuota | La cifra del centro y la tabla |
-| Mosaico del año | **Rótulos de mes** sobre la rejilla y la cifra escrita sobre los días más movidos | Las 365 filas |
+| Mosaico del año | **Rótulos de mes** sobre la rejilla y, ya ampliado, la cifra sobre los días más movidos | Las 365 filas |
+| Línea (y área) | El valor **bajo cada punto**, con un punto dibujado por medida; globo y foco por punto | La tabla de doce meses |
 
 La condición para retirar una tabla es que su gráfico escriba las cifras **y** se pueda
 recorrer con el tabulador (ver §2). Las dos mitades, o ninguna.
+
+**En la línea, el trazo lleva `aria-hidden` aunque el gráfico ya no sea decorativo.** Un
+`<svg>` suelto se anuncia como una imagen sin nombre, y en cuanto la línea salió de
+`PLAIN_VIZ` eso metía un elemento mudo entre los doce puntos que sí se nombran. El dato
+vive en las columnas de abajo, no en el trazo. Y esas columnas se centran en `(i+0,5)/n`,
+no en `i/(n-1)`: anclado a los extremos, el primer punto caía media columna a la
+izquierda de su propio número.
+
+**Las cifras del mosaico salen solo en la capa.** En la tarjeta cerrada la celda mide
+unos 6 px: tres números flotando sobre esa rejilla tapan semanas enteras sin llegar a
+señalar un día, así que quitan más de lo que dan. Ampliado, la rejilla es el doble de
+ancha y ahí sí funcionan. Ojo al comprobarlo: **la capa vive dentro de la misma
+`<section>`**, así que un `querySelectorAll` sobre la región cuenta también las celdas
+del `<dialog>` cerrado — hay que filtrar por visibilidad.
 
 **Los rótulos del mosaico son tres letras, no una.** Con la inicial sola, marzo y mayo
 caen los dos en «M» en un eje de doce, y un eje que no distingue sus etiquetas no es un

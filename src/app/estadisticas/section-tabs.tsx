@@ -63,9 +63,20 @@ export function SectionTabs({
   }, [sections]);
 
   return (
+    // PEGADO bajo la cabecera de la app (`--topbar-h`), como las pestañas de la
+    // ficha. Un índice que se va con el scroll es un índice que solo sirve una
+    // vez: en cuanto bajas a «Valoraciones» hay que subir arriba del todo para
+    // saltar a otra sección, y con siete secciones largas eso es medio muro de
+    // vuelta. Pegado, además, el resaltado deja de ser decorativo — dice dónde
+    // estás MIENTRAS scrolleas, que es cuando hace falta.
+    //
+    // `-mx-4 px-4` y sus variantes deshacen el padding lateral de `<main>`: sin
+    // eso el fondo del índice acaba antes que el borde de la pantalla y las
+    // tarjetas se ven pasar por los lados al scrollear.
+    // `z-10` lo deja por debajo de la cabecera (que es `z-20`).
     <nav
       aria-label="Secciones"
-      className="mb-6 flex gap-5 overflow-x-auto border-b border-border"
+      className="sticky top-[var(--topbar-h)] z-10 mb-6 -mx-4 flex gap-5 overflow-x-auto border-b border-border bg-background/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
       {sections.map((s) => {
         const on = s.id === active;

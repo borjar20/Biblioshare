@@ -60,7 +60,14 @@ const TEXTUAL: PanelSpec["viz"][] = ["ranking", "kpi", "table"];
  * Ojo al invariante: **quitar un `viz` de aquí obliga a devolverle la tabla**, y
  * añadir uno obliga a que su gráfico escriba sus valores y sea focalizable.
  */
-const SELF_DESCRIBING: PanelSpec["viz"][] = ["bars", "stacked", "donut", "heatmap"];
+const SELF_DESCRIBING: PanelSpec["viz"][] = [
+  "bars",
+  "stacked",
+  "donut",
+  "heatmap",
+  "line",
+  "area",
+];
 
 /** Cuántas filas de un ranking caben en la vista compacta. */
 const RANKING_PREVIEW = 3;
@@ -117,12 +124,22 @@ export function StatPanel({
 
   // Vacío: se DERIVA de que no haya ni una medida. Nunca se pinta como ceros, y
   // tampoco se deja plegar — no hay detalle detrás.
+  //
+  // Y se pinta ATENUADO: borde discontinuo, sin fondo y sin sombra. Una tarjeta
+  // vacía con el mismo peso visual que una llena compite por la mirada igual
+  // que ella, y en un muro de treinta paneles eso obliga a leer el texto de
+  // cada una para descartarla. El discontinuo dice «aquí no hay nada» antes de
+  // leer una palabra, y sin bajar la opacidad del texto: atenuar la tarjeta no
+  // puede costar el contraste de lo único que explica por qué está vacía.
   if (derived.isEmpty) {
     return (
-      <section aria-labelledby={titleId} className={`${CARD} flex flex-col gap-3 p-4`}>
+      <section
+        aria-labelledby={titleId}
+        className="flex flex-col gap-3 rounded-card border border-dashed border-border p-4"
+      >
         <PanelHead spec={spec} titleId={titleId} Heading={Heading} />
         <div className="flex flex-col gap-1 py-1">
-          <p className="text-sm text-foreground">
+          <p className="text-sm text-muted-foreground">
             {spec.empty?.title ?? "Todavía no hay datos"}
           </p>
           {spec.empty?.message && (

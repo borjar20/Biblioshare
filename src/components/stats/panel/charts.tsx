@@ -44,8 +44,14 @@ type ChartProps = {
  * Visualizaciones que siguen siendo DECORATIVAS: su dato exacto vive en la
  * tabla de la capa, así que el armazón las esconde al lector de pantalla. Las
  * que no están aquí llevan sus cifras dentro y se leen.
+ *
+ * La línea salió de aquí: ahora escribe el valor de cada punto bajo su marca y
+ * cada punto es focalizable, como las barras. Su tabla de doce filas repetía
+ * exactamente eso y nada más — doce meses y un número, ya visibles arriba.
+ * El medidor se queda: es UNA cifra contra un objetivo, y esa cifra ya preside
+ * la tarjeta como indicador.
  */
-export const PLAIN_VIZ: PanelSpec["viz"][] = ["line", "area", "gauge"];
+export const PLAIN_VIZ: PanelSpec["viz"][] = ["gauge"];
 
 // Alto del área de dibujo. Con todo a cero no hay altura que enseñar: reservar
 // 96 px de hueco solo mete aire muerto entre la cifra y las etiquetas.
@@ -262,12 +268,26 @@ export function StackedChart({ spec, derived, interactive }: ChartProps) {
 /**
  * Línea (o área). Los huecos PARTEN el trazo: unir por encima de un `null`
  * dibujaría una tendencia que nadie midió.
+ *
+ * Lleva SU CIFRA EN CADA PUNTO, escrita debajo, y cada punto es focalizable con
+ * su globo — igual que las barras. Es lo que le quitó la tabla: doce filas
+ * («Enero 2026 · 34») que no añadían un dato que el gráfico no dijera ya, y que
+ * en la capa se llevaban más alto que el propio gráfico.
  */
-export function LineChart({ spec, derived, area = false }: ChartProps & { area?: boolean }) {
+export function LineChart({
+  spec,
+  derived,
+  interactive,
+  area = false,
+}: ChartProps & { area?: boolean }) {
   const W = 100;
   const H = 40;
   const n = spec.data.length;
-  const x = (i: number) => (n <= 1 ? W / 2 : (i / (n - 1)) * W);
+  // El CENTRO de la columna, no el borde. Debajo hay una fila de `n` columnas
+  // iguales con la cifra y el rótulo de cada punto; con el trazo anclado a los
+  // extremos (`i/(n-1)`), el primer punto caía media columna a la izquierda de
+  // su propio número y el último media a la derecha del suyo.
+  const x = (i: number) => ((i + 0.5) / n) * W;
   const y = (v: number) => H - (v / derived.scale) * (H - 4) - 2;
   const color = spec.series?.[0]?.color ?? "var(--accent)";
 
@@ -286,7 +306,12 @@ export function LineChart({ spec, derived, area = false }: ChartProps & { area?:
 
   return (
     <div className="flex flex-col gap-1">
+      {/* El trazo es DECORATIVO y lo dice: un `<svg>` sin más se anuncia como
+          una imagen sin nombre, y desde que el gráfico dejó de estar oculto al
+          lector eso metía un elemento mudo entre los doce puntos que sí se
+          nombran. El dato vive en las columnas de abajo. */}
       <svg
+        aria-hidden
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
         className="h-24 w-full overflow-visible"
@@ -320,18 +345,36 @@ export function LineChart({ spec, derived, area = false }: ChartProps & { area?:
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
             />
-            {/* Un tramo de un solo punto no tiene línea: se marca con el punto. */}
-            {r.length === 1 && (
-              <circle cx={x(r[0].i)} cy={y(r[0].v)} r={2} fill={color} vectorEffect="non-scaling-stroke" />
-            )}
+            {/* Un punto por medida. Con la cifra escrita debajo, el punto es lo
+                que la ata a su sitio en el trazo; y un tramo de un solo punto
+                no tiene línea que dibujar, así que sin esto desaparecería. */}
+            {r.map((p) => (
+              <circle
+                key={p.i}
+                cx={x(p.i)}
+                cy={y(p.v)}
+                r={1.6}
+                fill={color}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
           </g>
         ))}
       </svg>
+      {/* Misma columna que las barras: cifra encima, rótulo debajo y globo con
+          el detalle. Sin marca que dibujar en medio — la marca es el punto del
+          trazo, que ya está justo encima. */}
       <div className="flex justify-between gap-0.5">
         {spec.data.map((d) => (
-          <span key={d.key} className="min-w-0 flex-1 text-center">
-            <AxisLabel datum={d} />
-          </span>
+          <BarColumn
+            key={d.key}
+            spec={spec}
+            derived={derived}
+            datum={d}
+            interactive={interactive}
+          >
+            {null}
+          </BarColumn>
         ))}
       </div>
     </div>
@@ -494,16 +537,23 @@ function loudDays(
  *  · Un mes (31 celdas) va en siete columnas CON el número del día dentro: la
  *    intensidad orienta y el dígito informa.
  *  · Un año (365) fluye por columna —cada columna, una semana— con las
- *    ETIQUETAS DE MES encima y la cifra escrita solo sobre los días más
- *    movidos. Trescientas sesenta y cinco cifras diminutas no se leen; tres sí,
- *    y son las que contestan «¿cuándo fue tu mejor día?» sin pasar el ratón.
- *    El resto se consulta apuntando a la celda.
+ *    ETIQUETAS DE MES encima y, YA AMPLIADO, la cifra escrita solo sobre los
+ *    días más movidos. Trescientas sesenta y cinco cifras diminutas no se leen;
+ *    tres sí, y son las que contestan «¿cuándo fue tu mejor día?» sin pasar el
+ *    ratón. El resto se consulta apuntando a la celda.
  */
 export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
   const layout = spec.heatmap;
 
   if (layout) {
-    const loud = loudDays(spec.data, layout.offset ?? 0);
+    // Las cifras sobre los días destacados son de la CAPA (`interactive`), no
+    // de la tarjeta cerrada. En la cara el mosaico de un año mide unos 6 px por
+    // celda: tres números en globo sobre esa rejilla tapan semanas enteras y no
+    // se puede saber a qué día apuntan, así que quitan más de lo que dan. Al
+    // ampliar, la rejilla es el doble de ancha y ahí sí señalan el día.
+    const loud = interactive
+      ? loudDays(spec.data, layout.offset ?? 0)
+      : new Set<string>();
 
     return (
       // `gap-4` entre los rótulos de mes y la rejilla: la cifra de un día que
@@ -694,9 +744,9 @@ export function Chart({ spec, derived, interactive }: ChartProps) {
     case "stacked":
       return <StackedChart spec={spec} derived={derived} interactive={interactive} />;
     case "line":
-      return <LineChart spec={spec} derived={derived} />;
+      return <LineChart spec={spec} derived={derived} interactive={interactive} />;
     case "area":
-      return <LineChart spec={spec} derived={derived} area />;
+      return <LineChart spec={spec} derived={derived} interactive={interactive} area />;
     case "donut":
       return <DonutChart spec={spec} derived={derived} />;
     case "gauge":

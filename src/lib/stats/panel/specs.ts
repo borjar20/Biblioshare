@@ -44,6 +44,7 @@ import {
   periodLabel,
   previousLabel,
 } from "@/lib/stats/period";
+import { starLabel } from "@/lib/stats/rating";
 import { UNITS, type PanelKpi, type PanelSpec } from "./types";
 
 export { periodLabel };
@@ -596,7 +597,7 @@ function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
           : undefined,
       },
     ],
-    note: "Cada columna es una semana y cada fila un día de la semana. Los tres días más movidos llevan su cifra escrita; el resto se consulta apuntando a su celda o recorriéndolas con el tabulador.",
+    note: "Cada columna es una semana y cada fila un día de la semana. Aquí, con el panel ampliado, los tres días más movidos llevan su cifra escrita; el resto se consulta apuntando a su celda o recorriéndolas con el tabulador. En la tarjeta cerrada el mosaico es demasiado pequeño para que esas cifras señalen un día concreto.",
     empty: {
       title: "Sin actividad este año",
       message: "Registra una sesión y el calendario empieza a encenderse.",
@@ -748,7 +749,20 @@ function libraryHealthPanel({ health, itemFilter }: StatsInput, period: string):
   };
 }
 
+/**
+ * La curva de la pila. Cada punto es un STOCK —cuántas obras había abiertas al
+ * cerrar ese mes—, no un flujo, y de ahí sale su única trampa: **esta serie no
+ * se suma**. El indicador que fabrica el armazón por defecto es el total, y
+ * sumar doce fotos del inventario da un número que no significa nada (una obra
+ * abierta todo el año se contaría doce veces). Preside el ÚLTIMO punto, que es
+ * la pregunta de verdad —«¿cuántas tengo abiertas ahora?»— con su variación
+ * contra el primer mes de la serie.
+ */
 function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
+  const last = health.backlog[health.backlog.length - 1] ?? null;
+  const first = health.backlog[0] ?? null;
+  const monthName = (month: string) =>
+    `${MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase()} de ${month.slice(0, 4)}`;
   return {
     id: "backlog",
     title: "Evolución de la pila",
@@ -769,11 +783,37 @@ function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
       short: MONTH_SHORT[Number(b.month.slice(5, 7)) - 1],
       value: b.pending,
     })),
+    kpis: last
+      ? [
+          {
+            key: "ahora",
+            label: `Abiertas al cerrar ${monthName(last.month)}`,
+            value: last.pending,
+            unit: UNITS.items,
+            delta:
+              first && first !== last
+                ? {
+                    value: last.pending - first.pending,
+                    unit: UNITS.items,
+                    comparedTo: monthName(first.month),
+                  }
+                : undefined,
+          },
+        ]
+      : undefined,
+    summary: last
+      ? `Al cerrar ${monthName(last.month)} quedaban ${formatWorks(last.pending, "título", "títulos")} abiertos. Cada punto es cuántos había abiertos ESE mes, no cuántos se añadieron: la serie no se suma.`
+      : undefined,
     empty: {
       title: "Sin historial suficiente",
       message: "Hace falta al menos un pase para dibujar la evolución.",
     },
   };
+}
+
+/** «3 títulos» / «1 título». Concordancia a mano: el repo es mono-idioma. */
+function formatWorks(value: number, one: string, many: string): string {
+  return `${value} ${value === 1 ? one : many}`;
 }
 
 /**
@@ -1414,7 +1454,7 @@ function completedByYearPanel({ byYear, titles, itemFilter }: StatsInput): Panel
 
 // ── Distribución: histograma de notas ─────────────────────────────────────────
 
-/** Mediana y moda desde los cinco cubos del histograma. */
+/** Mediana y moda desde los diez cubos del histograma (medias estrellas). */
 function ratingShape(rating: RatingDistribution): { median: number | null; mode: number | null } {
   if (rating.count === 0) return { median: null, mode: null };
   const ascending = [...rating.buckets].sort((a, b) => a.star - b.star);
@@ -1445,20 +1485,23 @@ function ratingPanel(
     id: "valoraciones",
     title,
     description:
-      "La nota interna va de 1 a 10 y se muestra en escala de 5. Un pase sin nota no entra en la media. La mediana y la moda se leen sobre los cinco cubos, así que salen en estrellas enteras.",
+      "La nota interna va de 1 a 10 y se muestra en escala de 5, así que cada punto interno es MEDIA estrella y el histograma tiene diez columnas. Un pase sin nota no entra en la media. Media, mediana y moda se leen en la misma escala: si la media dice 3,5, hay una columna en 3,5.",
     context: { period, filter, filters: ["Solo pases con nota"] },
     viz: "bars",
     unit: UNITS.works,
     labelHeader: "Nota",
     valueHeader: "Obras",
     series: [{ key: "count", label: "Obras", color: "var(--gold)" }],
-    // Los buckets llegan de 5★ a 1★; el eje se lee mejor de menos a más.
+    // Los buckets llegan de 5★ a 0,5★; el eje se lee mejor de menos a más.
     data: [...rating.buckets]
       .sort((a, b) => a.star - b.star)
       .map((b) => ({
-        key: String(b.star),
-        label: `${b.star} ${b.star === 1 ? "estrella" : "estrellas"}`,
-        short: `${b.star}★`,
+        key: starLabel(b.star),
+        label: `${starLabel(b.star)} ${b.star === 1 ? "estrella" : "estrellas"}`,
+        // Un decimal SIEMPRE, también en las enteras: con «1» al lado de «1,5»
+        // las diez etiquetas del eje bailan de ancho y dejan de leerse como
+        // una escala.
+        short: starLabel(b.star),
         value: b.count,
       })),
     kpis: [
@@ -1609,28 +1652,68 @@ function hoursPanel({ hours, titles, todayISO, itemFilter }: StatsInput): PanelS
 }
 
 // ── Distribución por categorías ───────────────────────────────────────────────
+/**
+ * Géneros más frecuentes. La cifra que preside es el GÉNERO PRINCIPAL, no un
+ * total, y esa es toda la corrección: **las barras de este panel no se suman**.
+ *
+ * Una obra con tres géneros en su ficha entra en las tres barras —es correcto,
+ * cada barra contesta «¿cuántas obras distintas llevan este género?»—, pero el
+ * resumen genérico de `bars` remataba con «Total N obras» sumándolas, y esa N
+ * salía bastante mayor que las obras que de verdad se han terminado. Un total
+ * inflado al lado de una cifra real es peor que no dar total: quien lo lea una
+ * vez desconfía de las otras treinta tarjetas.
+ */
 function genresPanel(
   { catalog, titles }: StatsInput,
   period: string,
   filter: string | undefined,
 ): PanelSpec {
-  const top = catalog.genres.slice(0, 6);
+  const top = catalog.genres.slice(0, RANK_LIMIT);
+  const main = catalog.genres[0] ?? null;
+  const distinct = catalog.genres.length;
   return {
     id: "generos",
     title: titles.genres,
+    description:
+      "Cada barra son las obras DISTINTAS que llevan ese género en su ficha de catálogo. Una obra con varios géneros cuenta en todos ellos, así que las barras se leen una a una y no se suman entre sí.",
     context: {
       period,
       filter,
-      filters: top.length < catalog.genres.length ? ["6 géneros más frecuentes"] : undefined,
+      filters:
+        top.length < distinct ? [`${RANK_LIMIT} géneros más frecuentes`] : undefined,
     },
     viz: "bars",
     unit: UNITS.works,
     labelHeader: "Género",
+    valueHeader: "Obras",
     series: [{ key: "count", label: "Obras", color: "var(--type-book)" }],
     data: top.map((g) => ({ key: g.name, label: g.name, value: g.count })),
+    kpis: [
+      {
+        key: "principal",
+        label: "Género principal",
+        value: null,
+        text: main?.name,
+        hint: main
+          ? `${main.count} ${main.count === 1 ? "obra suya" : "obras suyas"} en el periodo`
+          : undefined,
+      },
+      {
+        key: "distintos",
+        label: "Géneros distintos",
+        value: distinct,
+        unit: UNITS.genres,
+        hint: "Contando cada nombre una vez",
+      },
+    ],
+    // Explícito, y no el resumen automático de `bars`: ese empieza por «Total»,
+    // y aquí el total es justo la cifra que no existe.
+    summary: main
+      ? `Género principal: ${main.name}, en ${main.count} ${main.count === 1 ? "obra" : "obras"}. ${distinct} ${distinct === 1 ? "género distinto" : "géneros distintos"} en el periodo; las barras no se suman entre sí, porque una obra puede estar en varias.`
+      : undefined,
     note:
-      top.length < catalog.genres.length
-        ? `Se muestran 6 de ${catalog.genres.length} géneros. Las cuotas se calculan sobre los mostrados.`
+      top.length < distinct
+        ? `Se muestran ${RANK_LIMIT} de ${distinct} géneros. Las cuotas se calculan sobre los mostrados.`
         : undefined,
     empty: {
       title: "Sin géneros que mostrar",

@@ -31,12 +31,24 @@ test("la pestaña Estadísticas enlaza a /estadisticas con su selector", async (
     .click();
 
   await page.waitForURL(/\/estadisticas/);
+  // Los filtros van plegados: lo que se ve de entrada es el resumen de lo que
+  // hay puesto, y el selector aparece al abrirlos.
+  await abrirFiltros(page);
   // El selector de período. Se busca DENTRO de su grupo: «Todo» es también el
   // primer valor del filtro de tipo, y sin acotar el nombre casa con los dos.
   await expect(
     page.getByRole("navigation", { name: "Periodo" }).getByRole("link", { name: "Todo" }),
   ).toBeVisible();
 });
+
+/**
+ * Los filtros del muro viven en un `<details>` plegado. Se pulsa el `summary`
+ * directamente y no por rol: el mapeo accesible de `summary` cambia entre
+ * navegadores (botón, triángulo de revelación), y el elemento no.
+ */
+async function abrirFiltros(page: import("@playwright/test").Page) {
+  await page.locator("summary", { hasText: "Filtros" }).click();
+}
 
 // El panel se reorientó de progress_sessions hacia passes (historial real): la
 // tarjeta titular es "completadas por año" y "la pila" pasó a foto del momento.
@@ -345,6 +357,7 @@ test("el conmutador obras/tiempo cambia la unidad del panel", async ({ page }) =
   const actividad = page.getByRole("region", { name: "Actividad del periodo" });
   await expect(actividad).toContainText(/Este mes · min/i);
 
+  await abrirFiltros(page);
   await page
     .getByRole("navigation", { name: "Magnitud" })
     .getByRole("link", { name: "Obras" })
@@ -486,4 +499,154 @@ test("el índice de secciones marca la sección activa", async ({ page }) => {
     "aria-current",
     "location",
   );
+});
+
+// Al entrar sin `?periodo=`, TODO EL HISTÓRICO. Antes arrancaba en el año en
+// curso y la pantalla se contradecía sola: el selector decía «2026» y media
+// docena de paneles (serie histórica, foto del momento) seguían enseñando lo
+// suyo. Y los filtros van plegados, con lo que hay puesto escrito en su
+// resumen: tres filas de pastillas por encima de siete secciones de tarjetas se
+// leen una vez y estorban el resto del rato.
+test("el muro arranca en todo el histórico y con los filtros plegados", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  await expect(page.getByText(/Periodo aplicado: Todo el histórico/i)).toBeVisible();
+
+  // Plegado: el selector existe en el DOM pero no se ve hasta abrirlo, y el
+  // resumen dice de qué periodo habla la pantalla sin tener que abrir nada.
+  const periodo = page.getByRole("navigation", { name: "Periodo" });
+  await expect(periodo).toBeHidden();
+  await expect(page.locator("summary", { hasText: "Filtros" })).toContainText(
+    "Todo el histórico",
+  );
+
+  await abrirFiltros(page);
+  await expect(periodo.getByRole("link", { name: "Todo" })).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+});
+
+// El índice de secciones se queda pegado bajo la cabecera. Uno que se va con el
+// scroll solo sirve una vez: para saltar de «Valoraciones» a otra sección
+// habría que volver arriba del todo, que con siete secciones largas es medio
+// muro de vuelta.
+test("el índice de secciones se queda pegado arriba al scrollear", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const indice = page.getByRole("navigation", { name: "Secciones" });
+  await indice.getByRole("link", { name: "Por categoría" }).click();
+  // El resaltado se recalcula al scrollear, así que esperar a que marque la
+  // sección de destino es lo que garantiza que el salto ya terminó — medir la
+  // caja a media animación daría cualquier cosa.
+  await expect(indice.getByRole("link", { name: "Por categoría" })).toHaveAttribute(
+    "aria-current",
+    "location",
+  );
+
+  // Tras saltar al final del muro sigue en pantalla, justo bajo la cabecera.
+  await expect(indice).toBeInViewport();
+  const caja = await indice.boundingBox();
+  expect(caja!.y).toBeLessThan(120);
+
+  // Y el destino del salto no queda tapado por las dos cabeceras pegadas: el
+  // título de la sección tiene que verse por debajo de ambas.
+  const titulo = page.getByRole("heading", { name: "Por categoría", level: 2 });
+  const cajaTitulo = await titulo.boundingBox();
+  expect(cajaTitulo!.y).toBeGreaterThan(caja!.y + caja!.height - 1);
+});
+
+// Las barras de géneros NO se suman: una obra con tres géneros entra en las
+// tres. El resumen genérico de `bars` remataba con un «Total N obras» que salía
+// bastante mayor que las obras terminadas de verdad, y un total inflado al lado
+// de cifras reales hace desconfiar de toda la pantalla.
+test("géneros preside con el principal, no con un total inflado", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const generos = page.getByRole("region", { name: "Géneros más frecuentes" });
+  await expect(generos).toContainText("Género principal");
+  await expect(generos).not.toContainText(/Total \d/);
+
+  await generos.getByRole("button", { name: /ampliar géneros/i }).click();
+  const capa = page.getByRole("dialog", { name: "Géneros más frecuentes" });
+  await expect(capa).toContainText(/no se suman entre sí/i);
+  await expect(capa).not.toContainText(/Total \d/);
+});
+
+// La nota interna va de 1 a 10, así que cada punto es MEDIA estrella. Con el
+// histograma agrupado en cinco columnas enteras, un 7 se dibujaba en la de 4 ★
+// mientras la media decía 3,5: la barra más alta y la cifra grande de la misma
+// tarjeta discrepaban en medio punto.
+test("el histograma de notas va en medias estrellas, como la media", async ({
+  page,
+}) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  await page
+    .getByRole("region", { name: "Valoración media" })
+    .getByRole("button", { name: /ampliar valoración media/i })
+    .click();
+  const capa = page.getByRole("dialog", { name: "Valoración media" });
+
+  // Diez columnas, una por cada valor de la escala interna. Siempre existen:
+  // un cubo vacío es un cero medido, no un hueco.
+  await expect(capa.getByRole("img")).toHaveCount(10);
+  await expect(capa.getByRole("img", { name: /^3,5 estrellas: / })).toHaveCount(1);
+});
+
+// «Números en el gráfico antes que una tabla sin valor»: la línea escribe el
+// valor de cada punto bajo su marca y cada punto es alcanzable con el
+// tabulador, así que su tabla —doce filas que repetían eso mismo— sobra.
+test("la línea lleva sus cifras dentro y pierde la tabla", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const evolucion = page.getByRole("region", { name: "Evolución de la pila" });
+  // En la cara, ni un punto consultable: el disparador de la capa la cubre.
+  await expect(evolucion.getByRole("img")).toHaveCount(0);
+
+  await evolucion.getByRole("button", { name: /ampliar evolución de la pila/i }).click();
+  const capa = page.getByRole("dialog", { name: "Evolución de la pila" });
+  await expect(capa.getByRole("table")).toHaveCount(0);
+  // Doce meses, cada uno con su nombre accesible y su valor.
+  await expect(capa.getByRole("img")).toHaveCount(12);
+  const primero = capa.getByRole("img").first();
+  await primero.focus();
+  await expect(primero).toBeFocused();
+});
+
+// Las cifras sobre los días destacados del mosaico son de la CAPA. En la
+// tarjeta cerrada, cada celda mide unos 6 px: tres números flotando encima
+// tapan semanas enteras sin llegar a señalar un día.
+test("el mosaico solo escribe sus días destacados al ampliarlo", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await login(page);
+  await page.goto("/estadisticas");
+
+  const calendario = page.getByRole("region", { name: "Calendario anual" });
+  // `:visible` no es un adorno: la capa vive DENTRO de la misma región, así que
+  // sin él se cuentan también las celdas destacadas del `<dialog>` cerrado.
+  const destacado = '[class*="ring-accent"]:visible';
+  await expect(calendario.locator(destacado)).toHaveCount(0);
+
+  await calendario.getByRole("button", { name: /ampliar calendario anual/i }).click();
+  const capa = page.getByRole("dialog", { name: "Calendario anual" });
+  await expect(capa.locator(destacado).first()).toBeVisible();
 });

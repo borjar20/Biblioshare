@@ -34,6 +34,7 @@ export const UNITS = {
   days: { short: "días", one: "día", many: "días" },
   sessions: { short: "sesiones", one: "sesión", many: "sesiones" },
   authors: { short: "autores", one: "autor", many: "autores" },
+  genres: { short: "géneros", one: "género", many: "géneros" },
   episodes: { short: "eps.", one: "episodio", many: "episodios" },
   seasons: { short: "temp.", one: "temporada", many: "temporadas" },
   passes: { short: "pases", one: "pase", many: "pases" },
