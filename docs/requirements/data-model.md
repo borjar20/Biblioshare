@@ -165,8 +165,8 @@ ver «Social fase 0»)**]**
 > `pass_reviews`, que es la que aplica la privacidad.
 >
 > **Delta del 2026-08-04 (avisos por persona, §5): `follows.notify_events` y los cuatro valores
-> `followed_*` de `notification_type` añadidos y verificados SOLO EN DEV** (`information_schema.columns`
-> y `pg_enum`; prod no tiene ni la columna ni los valores de enum nuevos). Migraciones
+> `followed_*` de `notification_type` añadidos y verificados en DEV Y EN PROD** el 2026-08-04
+> (`information_schema.columns` y `pg_enum`: prod devuelve `has_column=1`, `followed_enum_values=4`). Migraciones
 > `20260804000000_follow_notify_events.sql` y `20260804000001_notification_type_followed.sql`. Sin
 > tabla nueva: el interruptor de aviso por persona vive en `follows.notify_events`
 > (`finished|session|episode|added`), escrito por **service-role** porque la RLS de `follows` solo
@@ -417,8 +417,8 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
 
 > **Delta del 2026-08-04 (avisos por persona): `follows.notify_events` añadida y verificada
-> SOLO EN DEV** (`information_schema.columns`: `text[]`, `not null`, default `'{}'::text[]`;
-> prod no tiene la columna). Migración `20260804000000_follow_notify_events.sql`. Categorías de
+> en DEV Y EN PROD** el 2026-08-04 (`information_schema.columns`: `text[]`, `not null`, default `'{}'::text[]`).
+> Migración `20260804000000_follow_notify_events.sql`. Categorías de
 > aviso (`finished|session|episode|added`) que el **follower** activó sobre el followee — campana
 > apagada = array vacío. **La escribe service-role, no el follower**: la RLS de `follows` solo
 > concede UPDATE al followee (evita el auto-accept en perfiles privados si se le abriera al
