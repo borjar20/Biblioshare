@@ -19,7 +19,7 @@ export type StatsPeriod = "week" | "month" | "all" | number;
 /** Los pills que se ofrecen, en orden. */
 export function availablePeriods(now = new Date()): StatsPeriod[] {
   const year = now.getFullYear();
-  return ["week", "month", year, year - 1, "all"];
+  return ["all" ,"week", "month", year, year - 1];
 }
 
 /** Los años sueltos. Sigue aquí porque los paneles anuales razonan en años. */
