@@ -227,6 +227,21 @@ function baseTables(): Record<string, Row[]> {
         comment_notification_type: "activity_commented",
         reaction_notification_type: "activity_liked",
       },
+      {
+        // href tal cual lo escribe private.sync_club_round_interaction_target
+        // (20260803_club_rounds.sql): '/club/' || slug || '?ronda=' || period_key.
+        id: "target-round",
+        kind: "club_round",
+        source_id: "round-1",
+        owner_id: "user-1",
+        audience_kind: "club_member",
+        audience_id: "club-1",
+        href: "/club/club-lectura?ronda=2026-W32",
+        commentable: true,
+        reactable: true,
+        comment_notification_type: "club_round_commented",
+        reaction_notification_type: "club_round_liked",
+      },
     ],
     notifications: [],
   };
@@ -633,6 +648,55 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
   });
 });
 
+describe("resolución de href de notificaciones — club_round", () => {
+  // Regresión: resolveTargetHrefs() no tenía bucket para 'club_round', así que
+  // hrefByKey.get("club_round:<id>") salía siempre undefined y el href caía
+  // al fallback (perfil del actor) en vez de a la ronda. El fix lee el href
+  // directo de interaction_targets (mismo valor que escribe el trigger de la
+  // migración) -- estos dos tests son los que detectan una regresión si esa
+  // rama vuelve a desaparecer.
+  it("listNotifications (campana): club_round_proposed enlaza a la ficha del club con ?ronda=", async () => {
+    const tables = baseTables();
+    tables.notifications = [
+      {
+        id: "n-round",
+        user_id: "user-1",
+        actor_id: "actor-1",
+        type: "club_round_proposed",
+        interaction_target_id: null,
+        target_type: "club_round",
+        target_id: "round-1",
+        read_at: null,
+        created_at: "2026-08-03T10:00:00Z",
+      },
+    ];
+    const supabase = makeFakeSupabase(tables);
+
+    const result = await listNotifications(supabase, "user-1");
+
+    expect(result[0]?.href).toBe("/club/club-lectura?ronda=2026-W32");
+  });
+
+  it("notifyMany (payload push): comparte la misma resolución que la campana", async () => {
+    const tables = baseTables();
+    const supabase = makeFakeSupabase(tables);
+    trustedWriter.create.mockReturnValue(supabase);
+
+    await notifyMany(supabase, {
+      userIds: ["user-2"],
+      actorId: "actor-1",
+      type: "club_round_proposed",
+      targetType: "club_round",
+      targetId: "round-1",
+    });
+
+    expect(sendPushToUsers).toHaveBeenCalledWith(
+      ["user-2"],
+      expect.objectContaining({ url: "/club/club-lectura?ronda=2026-W32" }),
+    );
+  });
+});
+
 describe("notifyClub — target_type escrito según el tipo de notificación", () => {
   // Cubre notify-club.ts directamente: los dos tests de arriba ejercen
   // resolveTargetHrefs() a través de notifyMany/listNotifications con un
@@ -652,6 +716,21 @@ describe("notifyClub — target_type escrito según el tipo de notificación", (
       type: "club_event_created",
       target_type: "club_event",
       target_id: "event-1",
+    });
+  });
+
+  it("club_round_proposed escribe target_type='club_round'", async () => {
+    const tables = baseTables();
+    const supabase = makeFakeSupabase(tables);
+
+    trustedWriter.create.mockReturnValue(supabase);
+    await notifyClub(supabase, "club-1", "actor-1", "club_round_proposed", "round-1");
+
+    expect(tables.notifications).toHaveLength(1);
+    expect(tables.notifications[0]).toMatchObject({
+      type: "club_round_proposed",
+      target_type: "club_round",
+      target_id: "round-1",
     });
   });
 

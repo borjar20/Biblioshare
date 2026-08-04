@@ -649,6 +649,112 @@ fichero porque Postgres prohíbe usar un valor de enum en la misma transacción 
 **Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod queda pendiente** — aplicación
 reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta feature.
 
+### La ronda — latido semanal de club (dev y **prod**, 2026-08-04)
+
+Tabla propia, **no** un `kind` de `club_activities` — a propósito y contra SD-8, con el
+argumento completo en `decisiones.md` (2026-08-03) y en la spec
+`docs/superpowers/specs/2026-08-03-club-rondas-design.md` §1. Migración
+`supabase/migrations/20260803_club_rounds.sql`.
+
+`club_rounds`: `id`, `club_id` (FK a `clubs`, `on delete cascade`), `period_key` (semana ISO
+`IYYY-"W"IW` de `timezone('Europe/Madrid', now())`, calculada en SQL — el cliente nunca la
+manda), `author_id` (FK a `auth.users`, `on delete set null`; NULL = consigna de la casa),
+`prompt` (`char_length` 1..500), `item_type`/`item_id` (par polimórfico sin FK, igual que
+`club_activity_items`; `num_nonnulls` fuerza los dos NULL o los dos con valor),
+`created_at`. **`unique (club_id, period_key)`**: quien escribe primero define la ronda del
+periodo — sin lock, lo resuelve el índice.
+
+Cuatro valores de enum nuevos: `target_kind.club_round`,
+`notification_type.club_round_proposed|club_round_commented|club_round_liked`.
+
+RLS activa, **dos políticas, sin INSERT ni UPDATE** — la única puerta de escritura es
+`ensure_club_round()` (`SECURITY DEFINER`), y una ronda es inmutable (sus respuestas
+contestan a ESA pregunta):
+- `club rounds select members` (`select`, `authenticated`) — solo miembros del club, con
+  independencia de `clubs.visibility` (SD-4).
+- `club rounds delete moderators` (`delete`, `authenticated`) — moderador+
+  (`has_min_club_role`), para retirar una consigna abusiva antes de que se quede una semana
+  entera arriba.
+
+Dos triggers:
+- `club_rounds_sync_interaction_target` (`after insert`) → registra el target canónico
+  (`kind = 'club_round'`), owner `coalesce(author_id, clubs.owner_id)` (la casa no es un
+  usuario y `owner_id` es `not null`), audiencia `club_member`, href
+  `/club/{slug}?ronda={period_key}`, comentable y reaccionable.
+- `club_rounds_cleanup_social_target` (`after delete`) → `private.cleanup_social_target`
+  genérico: reportes, target, comentarios, reacciones y avisos.
+
+Cuatro funciones, todas con `search_path = ''` y `revoke`/`grant` explícitos (mismo patrón
+que el resto de RPC del repo):
+- `private.club_now()` — la hora del servidor en `Europe/Madrid`, no UTC (con UTC la semana
+  cambiaría a las 02:00 del lunes en verano). Sin costura de inyección para forzar el día en
+  test — ver Pendiente más abajo.
+- `private.house_prompt(club_id, period_key)` — 10 consignas fijas en SQL, índice
+  determinista `hashtext(club_id || period_key)` (casteado a `bigint` antes de `abs()` para
+  no desbordar en el valor más negativo de `int4`). `execute` revocado incluso a
+  `authenticated`: el cliente nunca la llama directo.
+- `public.get_club_round_state(club_id) returns table(period_key, day_index, holder_id,
+  round_id, round_author, round_prompt, round_item_type, round_item_id, house_prompt)`
+  (`SECURITY DEFINER`) — periodo y día ISO actuales, titular por rotación aritmética sobre
+  miembros activos (`(semanas desde clubs.created_at) % nº miembros`), la ronda existente si
+  la hay, y `house_prompt` (la consigna de la casa PENDIENTE de materializar, solo si
+  `day_index >= 3` y aún no hay ronda). Puerta de membresía a mano (`is_club_member`) porque
+  es `SECURITY DEFINER`.
+- `public.ensure_club_round(club_id, prompt default null, item_type default null, item_id
+  default null) returns uuid` (`SECURITY DEFINER`) — único camino de escritura. Con
+  `prompt`: exige ser el titular si el periodo sigue libre; si ya hay ronda devuelve la
+  misma solo cuando el autor coincide con quien llama, si no `round_already_open`. Sin
+  `prompt`: materializa la consigna de la casa, solo desde el día 3, idempotente sin
+  condición — la carrera entre dos respuestas simultáneas la resuelve el `unique`
+  (`insert … on conflict do nothing` + relectura de la fila ganadora si perdimos).
+
+**Verificado en dev (`tyvzpuhxfwxrnkcpzxyg`) el 2026-08-04** contra objetos reales
+(`information_schema.columns`, `pg_policy`, `pg_trigger`, `pg_proc`, `pg_enum`), nunca
+contra `list_migrations`: las 8 columnas, las 2 políticas, los 2 triggers, las 4 funciones
+(`get_club_round_state` ya con las 9 columnas de salida, `house_prompt` incluida) y los 4
+valores de enum, todos presentes y con la forma exacta del fichero de migración.
+
+**Producción: APLICADA Y VERIFICADA el 2026-08-04** (`vmutcradmodhiltuohys`), en **una sola**
+llamada con el fichero consolidado y **antes** de mergear el código — al revés la página de
+todos los clubes habría reventado, porque `RoundBlock` llama a `get_club_round_state` en
+cada render. Verificado contra objetos reales (`pg_class`, `pg_policy`, `pg_trigger`,
+`pg_constraint`, `pg_enum`, `pg_proc`, `pg_proc.proacl`), **nunca contra
+`list_migrations`**: tabla con RLS activa, las dos políticas (`select` de miembros y
+`delete` de moderador+) y **ninguna** de `insert`/`update`, los dos triggers, las seis
+restricciones, los cuatro valores de enum y las cinco funciones con `search_path` fijado —
+las dos RPC públicas `security definer`, las dos de `private` no. Privilegios correctos:
+`get_club_round_state` y `ensure_club_round` quedan en `{postgres, authenticated,
+service_role}`, **sin `anon` ni `PUBLIC`**, y `club_now`/`house_prompt` solo en `postgres`.
+Advisors de seguridad **66 → 68**: los dos nuevos son
+`authenticated_security_definer_function_executable` para esas dos RPC, la misma categoría
+ya aceptada para las otras 41 del proyecto; **ninguno** en la categoría `anon`, lo que
+confirma que los `revoke` surtieron efecto.
+
+El `drop function if exists` que precede a `get_club_round_state` fue un no-op en este
+apply (prod no tenía la función); está ahí para el próximo cambio de columnas de salida.
+
+Dato histórico de dev: la migración llegó allí en
+**cuatro** entradas sucesivas, no tres — corregido aquí tras verificar
+`supabase_migrations.schema_migrations` (el dato de partida de esta sesión decía tres):
+`club_rounds` (tabla + RLS + triggers + los 4 valores de enum), `club_rounds_functions` (las
+cuatro funciones, `get_club_round_state` todavía sin `house_prompt`),
+`club_rounds_functions_fixes` (mismo día: corrige `ensure_club_round`, que devolvía la ronda
+existente sin comprobar autoría cuando alguien proponía tarde — `round_already_open` no se
+lanzaba nunca) y `club_rounds_house_prompt_column` (`drop function` + `create function` de
+`get_club_round_state` para añadir la columna, obligado porque `create or replace` no puede
+cambiar la lista de columnas de salida de una función `returns table`). El fichero que vive
+en `supabase/migrations/20260803_club_rounds.sql` ya está consolidado en una sola pasada con
+la forma FINAL: aplicarlo a prod tal cual, como fichero único, es correcto y no necesita
+reproducir el `drop`+`create` — prod nunca pasó por la forma intermedia de
+`get_club_round_state` que lo obligó en dev. Decisión de despliegue en `decisiones.md`
+(2026-08-03).
+
+**Pendiente, con issue:** el camino de la consigna de la casa no tiene cobertura
+automática de test (depende del día real de la semana); `resolveTargetHrefs` toma
+`targetType` como `string` en vez de una unión de tipos; el histórico no pinta los huecos
+«Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
+una en las issues abiertas (ver `backlog.md`).
+
 ## 7. Sagas
 
 `sagas` es **jerárquica** (`parent_saga_id`): las subsagas son sagas reales anidadas.

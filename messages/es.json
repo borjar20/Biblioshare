@@ -428,6 +428,9 @@
     "clubActivityActivated": "{name} activó una actividad en el club",
     "clubActivitySpawned": "{name} enlazó una actividad nueva en el club",
     "clubEventCreated": "{name} marcó una fecha en el club",
+    "clubRoundProposed": "{name} propuso la ronda de esta semana",
+    "clubRoundCommented": "{name} comentó la ronda de tu club",
+    "clubRoundLiked": "A {name} le gustó la ronda de tu club",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
     "mentioned": "{name} te mencionó"
@@ -523,7 +526,26 @@
     "chipPublic": "Público",
     "chipPrivate": "Privado",
     "open": "Abrir",
-    "membersCount": "Miembros · {count}"
+    "membersCount": "Miembros · {count}",
+    "round": {
+      "title": "La ronda",
+      "yourTurnTitle": "Te toca. ¿Qué le preguntas al club?",
+      "yourTurnPlaceholder": "Un libro que abandonaste y no te arrepientes…",
+      "yourTurnSubmit": "Proponer la ronda",
+      "yourTurnAddWork": "+ Añadir una obra",
+      "yourTurnDeadline": "Hasta el miércoles es tuya",
+      "waitingTitle": "Esta semana le toca a {name}",
+      "waitingSub": "Si el miércoles no ha propuesto nada, entra una consigna de la casa",
+      "houseStamp": "Ronda de la casa",
+      "proposedBy": "{name} propuso la ronda",
+      "answer": "Responder",
+      "noAnswersYet": "Sin respuestas todavía",
+      "itemLink": "Ver la obra",
+      "historyTitle": "Rondas anteriores",
+      "historyAnswers": "{count} respuestas",
+      "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
+      "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
+    }
   },
   "clubPost": {
     "composerPlaceholderText": "¿Qué quieres compartir con el club?",

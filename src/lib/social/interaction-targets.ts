@@ -10,7 +10,8 @@ export type TargetType =
   | "activity_checkpoint"
   | "club_activity"
   | "pass"
-  | "progress_session";
+  | "progress_session"
+  | "club_round";
 
 export type InteractionTargetRef = {
   id: string;

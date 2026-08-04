@@ -26,6 +26,9 @@ export type NotificationType =
   | "club_activity_activated"
   | "club_activity_spawned"
   | "club_event_created"
+  | "club_round_proposed"
+  | "club_round_commented"
+  | "club_round_liked"
   | "mentioned";
 
 export type ReviewTargetType =
@@ -40,7 +43,13 @@ export type ReviewTargetType =
   // propósito para kind='evento'), así que necesita su propio target_type para
   // que resolveTargetHrefs() lo resuelva a la ficha del club en vez de a la
   // actividad.
-  | "club_event";
+  | "club_event"
+  // Una ronda tampoco tiene página propia: resolveTargetHrefs() lee el href
+  // directo de interaction_targets (kind='club_round'), el mismo que ya
+  // escribe el trigger private.sync_club_round_interaction_target
+  // ('/club/'||slug||'?ronda='||period_key) -- no se recalcula, así que no
+  // puede divergir de él.
+  | "club_round";
 
 export type Notification = {
   id: string;
@@ -80,5 +89,8 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_activity_activated: "clubActivityActivated",
   club_activity_spawned: "clubActivitySpawned",
   club_event_created: "clubEventCreated",
+  club_round_proposed: "clubRoundProposed",
+  club_round_commented: "clubRoundCommented",
+  club_round_liked: "clubRoundLiked",
   mentioned: "mentioned",
 };
