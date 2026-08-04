@@ -171,6 +171,17 @@ ver «Social fase 0»)**]**
 > tabla nueva: el interruptor de aviso por persona vive en `follows.notify_events`
 > (`finished|session|episode|added`), escrito por **service-role** porque la RLS de `follows` solo
 > concede UPDATE al followee. Ver §5 y `decisiones.md` (2026-08-04).
+>
+> **Delta del 2026-08-04 (barrido de P0), aplicado y verificado en DEV Y EN PROD** — ninguna
+> columna ni tabla nueva, solo dos guardas: `private.enforce_comment_target_commentable` pasa a
+> rechazar el reapuntado de un comentario (§5, issue #339) y nace
+> `private.forbid_delete_with_passes` con sus tres triggers `BEFORE DELETE` sobre
+> `books`/`movies`/`series` (§3, issue #272). Migraciones `20260820_comments_forbid_retarget.sql`
+> y `20260821_catalog_delete_guard_passes.sql`. Verificado además que **no había datos ya
+> derivados**: cero comentarios con audiencia/href distintos de los de su padre en los dos
+> entornos, y cero pases huérfanos en prod (en dev había 4, borrados). El control preventivo de
+> los grants por columna vive ahora en `docs/DRIFT-CHECK.md` §6 (issue #375), con la referencia
+> de las 10 tablas con hueco intencionado — idéntica en dev y prod.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -330,6 +341,18 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
 - ⚠️ **`rereadCount` NO es el ordinal del pase**: cuenta los pases CERRADOS. El actual es
   +1. La primera lectura siempre sale bien, así que el fallo pasa desapercibido hasta que
   alguien relee.
+- ⚠️ **La referencia al ítem es POLIMÓRFICA (`item_type` + `item_id`) y por eso NO hay FK.**
+  Borrar una obra del catálogo dejaba pases colgando en silencio (issue #272: 4 filas en dev;
+  prod estaba limpio). Como el síntoma no se parece a la causa —`getSorteoPool` descarta los
+  pases sin obra en catálogo, así que el pool salía vacío y el e2e moría con un timeout que
+  no mencionaba ni el sorteo ni los pendientes—, desde el **2026-08-04** lo cierra en la BD
+  el trigger `private.forbid_delete_with_passes` (`20260821_catalog_delete_guard_passes.sql`,
+  aplicado en **dev y prod**), `BEFORE DELETE` sobre `books`, `movies` y `series`: **rechaza
+  el borrado** (`catalog_item_has_passes`, `23503`) si quedan pases apuntando a la obra.
+  No cascadea a propósito — un pase guarda nota y reseña del usuario, ver `decisiones.md`.
+  La trampa al depurar: `count(*) from passes where is_active and status='planned'` cuenta
+  los huérfanos, así que parece que el usuario SÍ tiene pendientes; la cuenta que importa es
+  la de pendientes **con obra en catálogo**.
 
 Cuelgan del pase:
 
@@ -570,6 +593,16 @@ En comentarios y reacciones, en cambio, **el id canónico es la única identidad
   —`pg_restore --disable-triggers`, restauraciones y ramas de Supabase, aplicación de replicación
   lógica—, justo los caminos en los que el CHECK que sustituye **sí** se aplicaba; el invariante
   habría quedado más débil que antes sin que nada lo delatara.
+  ⚠️ **Y desde el 2026-08-04 ese mismo trigger PROHÍBE reapuntar un comentario a otro padre**
+  (`comment_retarget_forbidden`, `23514` — migración `20260820_comments_forbid_retarget.sql`,
+  aplicada en **dev y prod**). Cubrir el UPDATE para impedir el anidamiento dejaba abierto un
+  agujero peor: `private.sync_comment_interaction_target` es `AFTER INSERT` y no tiene
+  equivalente en UPDATE, así que el reapuntado pasaba el control y dejaba el target del
+  comentario con la **audiencia y el `href` del padre anterior** — visibilidad resuelta contra
+  un público que ya no le corresponde y deep link a la página equivocada (issue #339). Se
+  prohíbe en vez de sincronizar: `addComment` inserta y nunca reapunta, así que el derivado
+  no puede quedar obsoleto por construcción. Verificado que ni dev ni prod tenían filas ya
+  derivadas. Los UPDATE que no tocan `interaction_target_id` siguen funcionando igual.
 - **El flag del que ahora depende el invariante está blindado.** Como el trigger lee
   `interaction_targets.commentable`, un `update … set commentable = true where kind = 'comment'`
   habría reabierto el anidamiento por la puerta de atrás. Lo impide el check

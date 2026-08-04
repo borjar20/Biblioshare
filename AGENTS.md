@@ -1,7 +1,11 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
 <!-- END:nextjs-agent-rules -->
 
 <!-- BEGIN:biblioshare-docs -->
@@ -32,6 +36,10 @@ Antes de dar por terminado cualquier cambio, repasa:
 
 1. **¿Tocaste el esquema** (tablas, columnas, RLS, enums, funciones, migraciones)**?**
    → actualiza `docs/requirements/data-model.md` y su fecha de verificación.
+   **¿Añadiste una COLUMNA?** → corre la superficie 6 de `docs/DRIFT-CHECK.md` (grants por
+   columna). Varias tablas tienen `grant` fino y **una columna sin su grant rompe la
+   escritura ENTERA de la tabla**, no solo el campo nuevo — compila, pasa el typecheck y
+   pasa los unitarios, y revienta en producción. Ha pasado dos veces (issue #375).
 2. **¿Cerraste o cambiaste el estado de una feature?**
    → marca la casilla en `docs/requirements/backlog.md`. La narrativa de *cómo* se hizo va en una
    spec de `docs/superpowers/specs/`, **nunca** en el backlog (eso fue lo que lo pudrió antes).

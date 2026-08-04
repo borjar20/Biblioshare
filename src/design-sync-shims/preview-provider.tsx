@@ -4,6 +4,9 @@ import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/a
 import messages from "../../messages/es.json";
 
 const noopRouter: AppRouterInstance = {
+  // `bfcacheId` lo añadió Next 16.3.0 a AppRouterInstance. Aquí es un router de
+  // pega para la preview de diseño: basta un valor estable.
+  bfcacheId: "preview",
   back() {},
   forward() {},
   refresh() {},
