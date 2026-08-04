@@ -11,6 +11,7 @@ import {
   rollSeriesProgress,
 } from "./episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -87,6 +88,20 @@ export async function setEpisodeWatched(
 
   if (watched) {
     await markEpisodeWatched(supabase, user.id, seriesId, passId, season, episode);
+    const { data: watchRow } = await supabase
+      .from("episode_watches")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("pass_id", passId)
+      .eq("season_number", season)
+      .eq("episode_number", episode)
+      .maybeSingle();
+    if (watchRow) {
+      await notifyFollowersOfEvent(supabase, user.id, "episode", {
+        targetType: "episode_watch",
+        targetId: watchRow.id,
+      });
+    }
   } else {
     const { error } = await supabase
       .from("episode_watches")
