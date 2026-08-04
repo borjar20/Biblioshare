@@ -656,61 +656,6 @@ export type Database = {
           },
         ]
       }
-      club_rounds: {
-        Row: {
-          author_id: string | null
-          club_id: string
-          created_at: string
-          id: string
-          item_id: string | null
-          item_type: Database["public"]["Enums"]["item_type"] | null
-          period_key: string
-          prompt: string
-        }
-        Insert: {
-          author_id?: string | null
-          club_id: string
-          created_at?: string
-          id?: string
-          item_id?: string | null
-          item_type?: Database["public"]["Enums"]["item_type"] | null
-          period_key: string
-          prompt: string
-        }
-        Update: {
-          author_id?: string | null
-          club_id?: string
-          created_at?: string
-          id?: string
-          item_id?: string | null
-          item_type?: Database["public"]["Enums"]["item_type"] | null
-          period_key?: string
-          prompt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "club_rounds_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "club_identities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "club_rounds_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "club_stats"
-            referencedColumns: ["club_id"]
-          },
-          {
-            foreignKeyName: "club_rounds_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "clubs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       clubs: {
         Row: {
           cover_url: string | null
@@ -2355,15 +2300,6 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      ensure_club_round: {
-        Args: {
-          p_club_id: string
-          p_item_id?: string
-          p_item_type?: Database["public"]["Enums"]["item_type"]
-          p_prompt?: string
-        }
-        Returns: string
-      }
       filter_unblocked_user_ids: {
         Args: { candidate_ids: string[] }
         Returns: string[]
@@ -2379,20 +2315,6 @@ export type Database = {
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           user_id: string
-        }[]
-      }
-      get_club_round_state: {
-        Args: { p_club_id: string }
-        Returns: {
-          day_index: number
-          holder_id: string
-          house_prompt: string
-          period_key: string
-          round_author: string
-          round_id: string
-          round_item_id: string
-          round_item_type: Database["public"]["Enums"]["item_type"]
-          round_prompt: string
         }[]
       }
       get_list_challenge_progress: {
@@ -2592,9 +2514,6 @@ export type Database = {
         | "activity_liked"
         | "activity_commented"
         | "checkpoint_commented"
-        | "club_round_proposed"
-        | "club_round_commented"
-        | "club_round_liked"
         | "followed_finished"
         | "followed_session"
         | "followed_episode"
@@ -2620,7 +2539,6 @@ export type Database = {
         | "club_activity"
         | "pass"
         | "progress_session"
-        | "club_round"
       user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
@@ -2793,9 +2711,6 @@ export const Constants = {
         "activity_liked",
         "activity_commented",
         "checkpoint_commented",
-        "club_round_proposed",
-        "club_round_commented",
-        "club_round_liked",
         "followed_finished",
         "followed_session",
         "followed_episode",
@@ -2823,7 +2738,6 @@ export const Constants = {
         "club_activity",
         "pass",
         "progress_session",
-        "club_round",
       ],
       user_role: ["user", "collaborator", "admin"],
     },
