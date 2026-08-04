@@ -97,12 +97,27 @@ test("ronda: el titular propone y la ronda queda respondible", async ({ page }) 
     const composer = page.getByRole("textbox", { name: "Te toca. ¿Qué le preguntas al club?" });
     await expect(composer).toBeVisible();
 
+    // La obra: se persiste (item_type/item_id) desde antes de este fix, pero
+    // round-block.tsx no la pintaba nunca -- issue real de la review final.
+    // Cualquier ítem de la biblioteca de devtest vale: no importa cuál, solo
+    // que el enlace a su ficha aparezca tras enviar. data-testid porque los
+    // botones de resultado no tienen nombre accesible fijo (el título es del
+    // seed, no de este test).
+    await page.getByRole("button", { name: "+ Añadir una obra" }).click();
+    const firstResult = page.getByTestId("item-picker-library-result").first();
+    await expect(firstResult).toBeVisible();
+    await firstResult.click();
+
     const pregunta = `¿Ronda de prueba ${ts}?`;
     await composer.fill(pregunta);
     await page.getByRole("button", { name: "Proponer la ronda" }).click();
 
     // Se comprueba que se GUARDÓ, no solo que se pintara.
     await expect(page.getByText(pregunta)).toBeVisible();
+    // Y que la obra adjunta se pinta -- no solo que se guardara en silencio.
+    const itemLink = page.getByRole("link", { name: "Ver la obra" });
+    await expect(itemLink).toBeVisible();
+    await expect(itemLink).toHaveAttribute("href", /^\/(libro|pelicula|serie)\//);
 
     // La fila persistida, con poll (no un fetch suelto): confirmado a mano
     // contra dev, la REST API de Supabase puede tardar en reflejar una
@@ -113,16 +128,18 @@ test("ronda: el titular propone y la ronda queda respondible", async ({ page }) 
     // forma intermitente con la fila ya confirmada en la base (se vio con SQL
     // directo mientras el fetch de al lado seguía devolviendo []): no es un
     // bug de dominio, es la lag medida en los comentarios de playwright.config.ts.
-    let round: { prompt: string; author_id: string | null } | undefined;
+    let round:
+      | { prompt: string; author_id: string | null; item_type: string | null; item_id: string | null }
+      | undefined;
     await expect
       .poll(
         async () => {
           const rows = (await (
             await fetch(
-              `${SUPABASE_URL}/rest/v1/club_rounds?club_id=eq.${clubId}&select=prompt,author_id`,
+              `${SUPABASE_URL}/rest/v1/club_rounds?club_id=eq.${clubId}&select=prompt,author_id,item_type,item_id`,
               { headers: adminHeaders() },
             )
-          ).json()) as { prompt: string; author_id: string | null }[];
+          ).json()) as { prompt: string; author_id: string | null; item_type: string | null; item_id: string | null }[];
           round = rows.find((r) => r.prompt === pregunta);
           return round?.author_id ?? null;
         },
@@ -130,6 +147,9 @@ test("ronda: el titular propone y la ronda queda respondible", async ({ page }) 
       )
       .not.toBeNull();
     expect(round?.prompt).toBe(pregunta);
+    // La obra viajó hasta la fila, no solo hasta el enlace en pantalla.
+    expect(round?.item_type).not.toBeNull();
+    expect(round?.item_id).not.toBeNull();
   } finally {
     // Autolimpieza: el club es desechable y nadie más lo usa, así que basta con
     // borrarlo por id -- el cascade se lleva club_members y club_rounds. No hay

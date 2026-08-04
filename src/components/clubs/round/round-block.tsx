@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getRoundState } from "@/lib/clubs/rounds/rounds";
 import { getInteractionSummary } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
+import { itemHref } from "@/lib/catalog/item-href";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { RoundComposer } from "./round-composer";
 import { RoundAnswerGate } from "./round-answer-gate";
@@ -48,6 +50,17 @@ export async function RoundBlock({
           <p className="font-serif text-xl leading-snug font-medium text-balance">
             {state.round.prompt}
           </p>
+          {/* La obra viaja a la RPC y se persiste (item_type/item_id), pero
+             hasta aquí nadie la pintaba: se guardaba en silencio. Un enlace a
+             la ficha basta -- una ronda de la casa nunca lleva obra. */}
+          {state.round.itemType && state.round.itemId && (
+            <Link
+              href={itemHref(state.round.itemType, state.round.itemId)}
+              className="self-start text-sm font-medium text-accent hover:underline"
+            >
+              {t("itemLink")}
+            </Link>
+          )}
           {state.round.authorName && (
             <p className="text-xs text-muted-foreground">
               {t("proposedBy", { name: state.round.authorName })}

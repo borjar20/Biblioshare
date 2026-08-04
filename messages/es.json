@@ -540,7 +540,7 @@
       "proposedBy": "{name} propuso la ronda",
       "answer": "Responder",
       "noAnswersYet": "Sin respuestas todavía",
-      "addToPlanned": "A pendientes",
+      "itemLink": "Ver la obra",
       "historyTitle": "Rondas anteriores",
       "historyAnswers": "{count} respuestas",
       "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",

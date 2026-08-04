@@ -119,6 +119,14 @@ returns text language sql immutable set search_path = '' as $function$
   ])[1 + (abs(hashtext(p_club_id::text || p_period_key)::bigint) % 10)];
 $function$;
 
+-- create or replace NO puede cambiar las columnas de salida de una función
+-- returns table: en dev ya obligó a un DROP + CREATE a mano cuando esta
+-- función ganó house_prompt. Prod todavía no la tiene, así que hoy el DROP no
+-- hace nada -- pero deja el fichero listo para el siguiente cambio de
+-- columnas en vez de reventar. Convención ya establecida en el repo (p.ej.
+-- 20260716_list_challenge_completion_mode.sql).
+drop function if exists public.get_club_round_state(uuid);
+
 create or replace function public.get_club_round_state(p_club_id uuid)
 returns table (
   period_key      text,
