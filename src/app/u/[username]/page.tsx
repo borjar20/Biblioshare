@@ -8,10 +8,12 @@ import {
 } from "@/lib/profile/get-profile-by-username";
 import {
   getFollowCounts,
+  getFollowNotify,
   getFollowState,
   getPendingRequests,
 } from "@/lib/social/follows";
 import { FollowButton } from "@/components/social/follow-button";
+import { NotifyBell } from "@/components/social/notify-bell";
 import { ProfileSafetyActions } from "@/components/social/profile-safety-actions";
 import { getBlockState } from "@/lib/social/block-state";
 import { FollowRequests } from "@/components/social/follow-requests";
@@ -134,6 +136,11 @@ export default async function PublicProfilePage({
     user ? getBlockState(supabase, user.id, profile.userId) : Promise.resolve("none" as const),
   ]);
 
+  const notifyEvents =
+    !isOwner && blockState === "none" && followState === "accepted"
+      ? await getFollowNotify(supabase, user?.id ?? null, profile.userId)
+      : [];
+
   return (
     <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <ProfileHeader
@@ -143,12 +150,21 @@ export default async function PublicProfilePage({
         counts={counts}
         followButton={
           !isOwner && blockState === "none" ? (
-            <FollowButton
-              targetUserId={profile.userId}
-              targetIsPublic={profile.isPublic}
-              state={followState}
-              viewerLoggedIn={!!user}
-            />
+            <div className="flex items-start gap-2">
+              <FollowButton
+                targetUserId={profile.userId}
+                targetIsPublic={profile.isPublic}
+                state={followState}
+                viewerLoggedIn={!!user}
+              />
+              {followState === "accepted" && (
+                <NotifyBell
+                  targetUserId={profile.userId}
+                  username={profile.username}
+                  initial={notifyEvents}
+                />
+              )}
+            </div>
           ) : undefined
         }
         safetyActions={
