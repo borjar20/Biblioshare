@@ -3,6 +3,7 @@ import { parseStartedAt } from "@/lib/sessions/parse-started-at";
 import { itemHref } from "@/lib/catalog/item-href";
 import { SessionModal } from "@/components/session/session-modal";
 import { SessionSheet } from "@/components/session/session-sheet";
+import { RouteMessages } from "@/components/route-messages";
 
 export default async function SessionModalPage({
   params,
@@ -22,13 +23,15 @@ export default async function SessionModalPage({
   // "Información" — con back() esto salía gratis porque la URL anterior ya lo
   // llevaba.
   return (
-    <SessionModal exitHref={`${itemHref(ctx.itemType, ctx.itemId)}?tab=log`}>
-      <SessionSheet
-        ctx={ctx}
-        initialMinutes={parseMinutes(minutos)}
-        initialStartedAt={parseStartedAt(inicio)}
-        mode="modal"
-      />
-    </SessionModal>
+    <RouteMessages ns={["episode", "library", "notes", "passes", "session"]}>
+      <SessionModal exitHref={`${itemHref(ctx.itemType, ctx.itemId)}?tab=log`}>
+        <SessionSheet
+          ctx={ctx}
+          initialMinutes={parseMinutes(minutos)}
+          initialStartedAt={parseStartedAt(inicio)}
+          mode="modal"
+        />
+      </SessionModal>
+    </RouteMessages>
   );
 }

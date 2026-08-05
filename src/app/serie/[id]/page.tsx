@@ -10,6 +10,14 @@ import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
+import { RouteMessages } from "@/components/route-messages";
+
+// Namespaces de cliente de la ficha de serie (medidos, #444): como libro/película
+// más `episode` (rejilla de episodios).
+const DETAIL_NS = [
+  "catalogEdit", "collection", "detail", "editions", "episode",
+  "item", "library", "notes", "passes", "social",
+] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -95,7 +103,9 @@ type SeriesDetailProps = {
 export default function SeriesDetailPage(props: SeriesDetailProps) {
   return (
     <Suspense fallback={<ItemShellSkeleton itemType="series" />}>
-      <SeriesDetail {...props} />
+      <RouteMessages ns={DETAIL_NS}>
+        <SeriesDetail {...props} />
+      </RouteMessages>
     </Suspense>
   );
 }
