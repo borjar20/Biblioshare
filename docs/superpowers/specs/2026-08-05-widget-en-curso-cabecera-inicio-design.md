@@ -143,9 +143,11 @@ la app) salvo **Guardar**, que abre la app.
   - **Guardar** → abre la app en `/sesion/{pass}?minutos=M` (o sin `minutos` si
     «Otro»). Ver «Registrar / Guardar».
   - *Solo libros* tienen chips de duración (la sesión de lectura se mide en
-    minutos). Si el título elegido es **serie/película**, el paso 2 no muestra
-    chips: un único «Abrir para registrar» → su `deepLink` (episodio/ficha).
-    Mismo criterio que `TodayActions`.
+    minutos). Si el título elegido **no es libro** (serie), el paso 2 no muestra
+    chips: un único «Abrir para registrar» → su `deepLink` (episodio). Mismo
+    criterio que `TodayActions`. Las **películas no llegan a «en curso»** (se ven
+    de una sentada), así que ningún widget las trata; la rama «no-libro» las
+    cubriría de forma defensiva si alguna colase.
 
 ## Cronómetro nativo — Completo · «Sesión» (sin abrir la app)
 
@@ -285,5 +287,6 @@ selección). Siguen funciones puras testeables en JVM.
 
 - La cola «Para más tarde» (`status=planned`): no está en las secciones replicadas.
 - Guardado headless / cola offline de sesiones: descartado (decisión 3, abre la app).
-- Cronómetro para series/películas: solo libros, como en `TodayActions`.
+- **Películas**: no llegan a «en curso», así que ningún widget las trata.
+- Cronómetro: solo libros (la serie se mide en episodios), como en `TodayActions`.
 - Nuevos tamaños o cambios en `DailyGoalWidget`: fuera de este cambio.
