@@ -40,6 +40,10 @@ type Row = Record<string, unknown>;
 // mapa de tablas en memoria. No reproduce RLS ni el cleanup por edad de
 // listNotifications (irrelevante aquí) -- delete() es un no-op a propósito.
 function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[] = []) {
+  // Los insert generan id como lo haría la BD, para que `.insert().select()`
+  // (que notify/notifyMany usan para recuperar el id de la notificación) devuelva
+  // filas con id.
+  let insertCounter = 0;
   function queryBuilder(table: string) {
     const eqFilters: [string, unknown][] = [];
     const neqFilters: [string, unknown][] = [];
@@ -48,6 +52,7 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
     let mode: "select" | "delete" | "insert" = "select";
     let insertRows: Row[] = [];
     let maybeSingleFlag = false;
+    let singleFlag = false;
     let selectedColumns: string[] | null = null;
     let orderBy: { column: string; ascending: boolean } | null = null;
     let rowLimit: number | null = null;
@@ -81,8 +86,18 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
         return { data: null, error: null };
       }
       if (mode === "insert") {
-        tables[table] = [...(tables[table] ?? []), ...insertRows];
-        return { data: insertRows, error: null };
+        const withIds = insertRows.map((row) =>
+          row.id != null ? row : { ...row, id: `${table}-${insertCounter++}` },
+        );
+        tables[table] = [...(tables[table] ?? []), ...withIds];
+        let out: Row[] = withIds;
+        if (selectedColumns) {
+          out = withIds.map((row) =>
+            Object.fromEntries(selectedColumns!.map((column) => [column, row[column]])),
+          );
+        }
+        if (singleFlag) return { data: out[0] ?? null, error: null };
+        return { data: out, error: null };
       }
       const rows = matchingRows();
       if (maybeSingleFlag) return { data: rows[0] ?? null, error: null };
@@ -91,7 +106,9 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
 
     const builder = {
       select(columns = "*") {
-        mode = "select";
+        // Tras insert(), select() no cambia de modo: pide devolver las filas
+        // insertadas (RETURNING), como hace .insert().select() en supabase-js.
+        if (mode !== "insert") mode = "select";
         selectedColumns =
           columns === "*" ? null : columns.split(",").map((column: string) => column.trim());
         return builder;
@@ -134,6 +151,11 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
       },
       maybeSingle() {
         maybeSingleFlag = true;
+        return exec();
+      },
+      single() {
+        maybeSingleFlag = true;
+        singleFlag = true;
         return exec();
       },
       then(resolve: (v: unknown) => void, reject: (e: unknown) => void) {
@@ -292,7 +314,8 @@ describe("notificaciones — frontera de bloqueo", () => {
     expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["visible"]);
     expect(sendPushToUsers).toHaveBeenCalledWith(
       ["visible"],
-      expect.objectContaining({ url: "/club/club-lectura/evento/event-1" }),
+      expect.objectContaining({ path: "/club/club-lectura/evento/event-1" }),
+      expect.anything(),
     );
   });
 });
@@ -323,7 +346,8 @@ describe("escritura confiable de notificaciones", () => {
     ]);
     expect(sendPushToUser).toHaveBeenCalledWith(
       "user-2",
-      expect.objectContaining({ url: "/club/club-lectura/evento/event-1" }),
+      expect.objectContaining({ path: "/club/club-lectura/evento/event-1" }),
+      expect.anything(),
     );
   });
 
@@ -347,7 +371,8 @@ describe("escritura confiable de notificaciones", () => {
     expect(writerTables.notifications.map((row) => row.user_id)).toEqual(["user-2", "user-3"]);
     expect(sendPushToUsers).toHaveBeenCalledWith(
       ["user-2", "user-3"],
-      expect.objectContaining({ url: "/club/club-lectura/evento/event-1" }),
+      expect.objectContaining({ path: "/club/club-lectura/evento/event-1" }),
+      expect.anything(),
     );
   });
 
@@ -355,7 +380,9 @@ describe("escritura confiable de notificaciones", () => {
     const caller = makeFakeSupabase(baseTables());
     trustedWriter.create.mockReturnValue({
       from: () => ({
-        insert: async () => ({ error: { message: "insert failed" } }),
+        insert: () => ({
+          select: async () => ({ data: null, error: { message: "insert failed" } }),
+        }),
       }),
     });
 
@@ -391,9 +418,11 @@ describe("escritura confiable de notificaciones", () => {
     const caller = makeFakeSupabase(baseTables());
     trustedWriter.create.mockReturnValue({
       from: () => ({
-        insert: async () => {
-          throw new Error("insert rejected");
-        },
+        insert: () => ({
+          select: async () => {
+            throw new Error("insert rejected");
+          },
+        }),
       }),
     });
 
@@ -451,7 +480,8 @@ describe("escritura confiable de notificaciones", () => {
     ]);
     expect(sendPushToUser).toHaveBeenCalledWith(
       "user-2",
-      expect.objectContaining({ url: "/club/club-lectura" }),
+      expect.objectContaining({ path: "/club/club-lectura" }),
+      expect.anything(),
     );
     expect(queriedTables).toContain("interaction_targets");
     expect(queriedTables).not.toContain("club_posts");
@@ -476,7 +506,8 @@ describe("escritura confiable de notificaciones", () => {
       .toBe(true);
     expect(sendPushToUsers).toHaveBeenCalledWith(
       ["user-2", "user-3"],
-      expect.objectContaining({ url: "/libro/book-1" }),
+      expect.objectContaining({ path: "/libro/book-1" }),
+      expect.anything(),
     );
   });
 });
@@ -634,7 +665,7 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
     });
     expect(sendPushToUsers).toHaveBeenCalledTimes(1);
     const [, eventPayload] = sendPushToUsers.mock.calls[0];
-    expect(eventPayload.url).toBe("/club/club-lectura/evento/event-1");
+    expect(eventPayload.path).toBe("/club/club-lectura/evento/event-1");
 
     await notifyMany(supabase, {
       userIds: ["user-2"],
@@ -645,7 +676,7 @@ describe("resolución de href de notificaciones — club_event vs club_activity"
     });
     expect(sendPushToUsers).toHaveBeenCalledTimes(2);
     const [, activityPayload] = sendPushToUsers.mock.calls[1];
-    expect(activityPayload.url).toBe("/club/club-lectura/actividad/activity-1");
+    expect(activityPayload.path).toBe("/club/club-lectura/actividad/activity-1");
   });
 });
 
@@ -693,8 +724,60 @@ describe("resolución de href de notificaciones — club_round", () => {
 
     expect(sendPushToUsers).toHaveBeenCalledWith(
       ["user-2"],
-      expect.objectContaining({ url: "/club/club-lectura?ronda=2026-W32" }),
+      expect.objectContaining({ path: "/club/club-lectura?ronda=2026-W32" }),
+      expect.anything(),
     );
+  });
+});
+
+describe("deduplicación por dedupe_key (spec item 9)", () => {
+  it("no manda push si la notificación ya existía (upsert sin fila devuelta)", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    trustedWriter.create.mockReturnValue({
+      from: () => ({
+        upsert: () => ({
+          select: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+        }),
+      }),
+    });
+
+    await notify(caller, {
+      userId: "user-2",
+      actorId: "actor-1",
+      type: "club_post_liked",
+      interactionTargetId: "target-post",
+      dedupeKey: "reaction:target-post:actor-1",
+    });
+
+    expect(sendPushToUser).not.toHaveBeenCalled();
+  });
+
+  it("con dedupeKey usa upsert(ignoreDuplicates), escribe la clave y manda push si es nueva", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    const upsertSpy = vi.fn();
+    trustedWriter.create.mockReturnValue({
+      from: () => ({
+        upsert: (row: unknown, opts: unknown) => {
+          upsertSpy(row, opts);
+          return { select: () => ({ maybeSingle: async () => ({ data: { id: "n-1" }, error: null }) }) };
+        },
+      }),
+    });
+
+    await notify(caller, {
+      userId: "user-2",
+      actorId: "actor-1",
+      type: "club_post_liked",
+      interactionTargetId: "target-post",
+      dedupeKey: "reaction:target-post:actor-1",
+    });
+
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ dedupe_key: "reaction:target-post:actor-1" }),
+      expect.objectContaining({ onConflict: "dedupe_key", ignoreDuplicates: true }),
+    );
+    // El id de la fila nueva viaja como notificationId del push.
+    expect(sendPushToUser).toHaveBeenCalledWith("user-2", expect.anything(), "n-1");
   });
 });
 

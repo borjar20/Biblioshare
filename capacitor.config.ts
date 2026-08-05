@@ -15,6 +15,13 @@ const config: CapacitorConfig = {
   server: {
     url: "https://biblioshare-nine.vercel.app",
   },
+  plugins: {
+    // Cómo se muestran los push con la app en foreground (spec item 2). En
+    // Android "alert" mantiene el aviso visible; "sound"/"badge" según el canal.
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
+  },
 };
 
 export default config;

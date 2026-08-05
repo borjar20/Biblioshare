@@ -68,6 +68,9 @@ export async function toggleReaction(interactionTargetId: string): Promise<void>
           actorId: user.id,
           type: target.reaction_notification_type,
           interactionTargetId,
+          // Idempotencia (spec item 9): un like → unlike → like no debe avisar
+          // dos veces. Misma persona + mismo target = una notificación.
+          dedupeKey: `reaction:${interactionTargetId}:${user.id}`,
         });
       } catch (notificationError) {
         console.error(notificationError);

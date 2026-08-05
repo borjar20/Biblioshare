@@ -6,6 +6,7 @@ import { AppShell } from "@/components/nav/app-shell";
 import { CelebrationProvider } from "@/components/celebrations/celebration-provider";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { AndroidPushInit } from "@/components/push/android-push-init";
 import { SessionOriginTracker } from "@/components/session/session-origin";
 import "./globals.css";
 
@@ -61,6 +62,9 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <ServiceWorkerRegister />
+        {/* Arranca el push nativo Android (no-op en web): listeners de FCM y
+            navegación segura al tocar una notificación. */}
+        <AndroidPushInit />
         {/* Anota la pantalla actual en cada navegación para que el modal de
             sesión sepa a dónde volver al cerrarse (issue #161). Va aquí, en la
             raíz, porque tiene que enterarse de TODAS las navegaciones — no

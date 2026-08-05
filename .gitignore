@@ -38,6 +38,14 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Firebase — cuenta de servicio de FCM v1. Su clave privada es un SECRETO: se
+# convierte en las env vars FIREBASE_* (ver docs/push-notifications-android.md);
+# el JSON en sí NUNCA entra al repo. (google-services.json es config de cliente,
+# no secreto, y va aparte en android/.)
+*service-account*.json
+firebase-adminsdk-*.json
+firebase-service-account*.json
+
 # vercel
 .vercel
 
