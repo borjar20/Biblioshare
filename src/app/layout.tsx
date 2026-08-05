@@ -7,6 +7,7 @@ import { CelebrationProvider } from "@/components/celebrations/celebration-provi
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { AndroidPushInit } from "@/components/push/android-push-init";
+import { AndroidWidgetSync } from "@/components/widgets/android-widget-sync";
 import { SessionOriginTracker } from "@/components/session/session-origin";
 import "./globals.css";
 
@@ -65,6 +66,9 @@ export default function RootLayout({
         {/* Arranca el push nativo Android (no-op en web): listeners de FCM y
             navegación segura al tocar una notificación. */}
         <AndroidPushInit />
+        {/* Sincroniza los widgets nativos Android (no-op en web): arranque,
+            foreground/background, mutaciones del bucle diario y auth. */}
+        <AndroidWidgetSync />
         {/* Anota la pantalla actual en cada navegación para que el modal de
             sesión sepa a dónde volver al cerrarse (issue #161). Va aquí, en la
             raíz, porque tiene que enterarse de TODAS las navegaciones — no
