@@ -92,14 +92,38 @@ autenticarse se sigue el flujo normal de la app.
   Glance 1.1.1. Java/Kotlin target 21. Sin cambios de versión en Capacitor.
 - Build: `cd android && ./gradlew :app:assembleDebug` (sin `keystore.properties`
   el release sale sin firmar, como siempre).
-- Tests JVM nativos: `./gradlew :app:testDebugUnitTest`
-  (`WidgetSnapshotTest.kt`: parseo, versión, fechas, rutas).
+- Tests JVM nativos: `./gradlew :app:testDebugUnitTest` (`WidgetSnapshotTest.kt`:
+  parseo, versión, fechas, rutas; `WidgetStateTest.kt`: estados de cada widget).
 - Tests web: `npx vitest run src/lib/widgets/build-widget-snapshot.test.ts`.
 - R8/ProGuard: `minifyEnabled false` en este proyecto — no hacen falta reglas
   keep. Si algún día se activa minify, Glance y el plugin (anotado con
   `@CapacitorPlugin`) traen sus reglas por consumer-rules; verificar entonces.
 - Launchers que ignoran `targetCellWidth`: mandan `minWidth/minHeight` (110 dp
   ≈ 2×2); el layout responde por `SizeMode.Responsive` (corte en 240 dp de ancho).
+
+### Iterar sin desplegar ni instalar
+
+El widget es una función pura del snapshot, así que se puede ver y probar sin
+emulador, sin instalar y sin desplegar la web:
+
+1. **Ver el dibujo** — `android/app/src/debug/.../WidgetPreviews.kt`: ábrelo en
+   Android Studio y pulsa *Split*/*Design*. Pinta los dos tamaños y todos los
+   estados (libro en curso, serie, datos antiguos, vacío, sin sesión, objetivo
+   completado, día caducado, sin objetivo) con datos de mentira. La API de
+   preview de Glance es experimental (`@ExperimentalGlancePreviewApi`): el
+   render depende de la versión de Android Studio; si falla, el plan B es el
+   punto 2 más el emulador.
+2. **Probar el comportamiento** — `WidgetStateTest.kt`: `currentProgressState` y
+   `dailyGoalState` son puras, así que el cambio de día o un snapshot de hace
+   tres días se comprueban en JVM en segundos con
+   `./gradlew :app:testDebugUnitTest`. Sin emulador, sin Robolectric.
+3. **Sin desplegar, pero con la app entera** — apunta `server.url` de
+   `capacitor.config.ts` a `http://10.0.2.2:3000` (alias del host desde el
+   emulador) con `cleartext: true` y levanta `next dev`. Instalas una vez y
+   luego iteras la web sin pasar por Vercel.
+
+Las previews viven solo en el source set `debug`, así que el APK de release no
+las lleva (verificado con `:app:compileReleaseKotlin`).
 
 ### Depurar Glance
 

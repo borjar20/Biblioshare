@@ -46,28 +46,33 @@ class CurrentProgressWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         // I/O fuera de la composición: store y bitmap se resuelven una vez aquí.
         val snapshot = WidgetSnapshotStore.load(context)
-        val data = snapshot?.currentProgress
-        val stale = snapshot != null && isOlderThanHours(snapshot.generatedAt, 48)
-        val cover = data?.coverUrl?.let { WidgetImageCache.loadBitmap(context, it) }
-        provideContent {
-            when {
-                snapshot == null -> WidgetCard("/") {
-                    EmptyState(
-                        LocalContext.current.getString(R.string.widget_open_app_title),
-                        LocalContext.current.getString(R.string.widget_open_app_subtitle),
-                    )
-                }
-                data == null -> WidgetCard("/coleccion") {
-                    EmptyState(
-                        LocalContext.current.getString(R.string.widget_nothing_in_progress),
-                        LocalContext.current.getString(R.string.widget_open_to_start),
-                    )
-                }
-                else -> WidgetCard(data.deepLink) {
-                    if (LocalSize.current.width >= 240.dp) Horizontal(data, cover, stale)
-                    else Compact(data, cover)
-                }
-            }
+        val state = currentProgressState(snapshot)
+        val cover = (state as? ProgressWidgetState.Content)
+            ?.data?.coverUrl?.let { WidgetImageCache.loadBitmap(context, it) }
+        provideContent { CurrentProgressContent(state, cover) }
+    }
+}
+
+/** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
+@Composable
+fun CurrentProgressContent(state: ProgressWidgetState, cover: Bitmap?) {
+    val context = LocalContext.current
+    when (state) {
+        ProgressWidgetState.SignedOut -> WidgetCard("/") {
+            EmptyState(
+                context.getString(R.string.widget_open_app_title),
+                context.getString(R.string.widget_open_app_subtitle),
+            )
+        }
+        ProgressWidgetState.NothingInProgress -> WidgetCard("/coleccion") {
+            EmptyState(
+                context.getString(R.string.widget_nothing_in_progress),
+                context.getString(R.string.widget_open_to_start),
+            )
+        }
+        is ProgressWidgetState.Content -> WidgetCard(state.data.deepLink) {
+            if (LocalSize.current.width >= 240.dp) Horizontal(state.data, cover, state.stale)
+            else Compact(state.data, cover)
         }
     }
 }
