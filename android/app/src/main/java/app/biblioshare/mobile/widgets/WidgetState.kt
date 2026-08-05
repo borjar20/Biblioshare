@@ -64,6 +64,23 @@ fun currentProgressState(
     )
 }
 
+sealed interface QuickRegisterState {
+    data object SignedOut : QuickRegisterState
+    data object NothingInProgress : QuickRegisterState
+    data class Pick(val items: List<CurrentProgressData>) : QuickRegisterState
+    data class Register(val item: CurrentProgressData) : QuickRegisterState
+}
+
+/** Paso 1 = elegir de entre lo que está en curso; paso 2 = registrar lo elegido. */
+fun quickRegisterState(snapshot: WidgetSnapshot?, step: Int, selectedPassId: String?): QuickRegisterState {
+    if (snapshot == null) return QuickRegisterState.SignedOut
+    val items = snapshot.inProgress
+    if (items.isEmpty()) return QuickRegisterState.NothingInProgress
+    val chosen = items.firstOrNull { it.passId == selectedPassId }
+    return if (step >= 2 && chosen != null) QuickRegisterState.Register(chosen)
+    else QuickRegisterState.Pick(items)
+}
+
 /** @param today fecha local del dispositivo ("YYYY-MM-DD"), inyectable para probar el cambio de día. */
 fun dailyGoalState(
     snapshot: WidgetSnapshot?,

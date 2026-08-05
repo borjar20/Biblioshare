@@ -98,6 +98,21 @@ class CurrentProgressStateTest {
     }
 }
 
+class QuickRegisterStateTest {
+
+    @Test fun `paso 1 lista, paso 2 elige por passId`() {
+        val s1 = quickRegisterState(snap("p1", "p2"), step = 1, selectedPassId = null)
+        assertTrue(s1 is QuickRegisterState.Pick && s1.items.size == 2)
+        val s2 = quickRegisterState(snap("p1", "p2"), step = 2, selectedPassId = "p2")
+        assertTrue(s2 is QuickRegisterState.Register && (s2 as QuickRegisterState.Register).item.passId == "p2")
+    }
+
+    @Test fun `paso 2 con seleccion perdida vuelve a lista`() {
+        val s = quickRegisterState(snap("p1"), step = 2, selectedPassId = "zzz")
+        assertTrue(s is QuickRegisterState.Pick)
+    }
+}
+
 class DailyGoalStateTest {
 
     @Test
