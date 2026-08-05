@@ -10,6 +10,7 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
+import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import {
@@ -84,13 +85,24 @@ function fetchBook(supabase: Supa, id: string) {
 
 type BookRow = NonNullable<Awaited<ReturnType<typeof fetchBook>>["data"]>;
 
-export default async function BookDetailPage({
-  params,
-  searchParams,
-}: {
+type BookDetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ cerrar?: string }>;
-}) {
+};
+
+// La página es SÍNCRONA y solo pinta el armazón + el boundary: la lectura de
+// `params`/`searchParams` baja a BookDetail, por DEBAJO del <Suspense> (#442).
+// Así el App Shell no queda atado a una URL concreta y la ficha puede tener
+// shell estático compartido por todos los enlaces a /libro/*.
+export default function BookDetailPage(props: BookDetailProps) {
+  return (
+    <Suspense fallback={<ItemShellSkeleton itemType="book" />}>
+      <BookDetail {...props} />
+    </Suspense>
+  );
+}
+
+async function BookDetail({ params, searchParams }: BookDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
