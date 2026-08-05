@@ -83,7 +83,7 @@ jobs:
         run: |
           npx firebase-tools appdistribution:distribute "${{ steps.apk.outputs.name }}" \
             --app "1:662274343878:android:9fa66a65468c965e2f68c7" \
-            --groups "beta-testers" \
+            --groups "beta-tester" \
             --release-notes-file notes.txt
 
       - name: Attach APK to the GitHub Release

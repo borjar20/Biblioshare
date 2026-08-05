@@ -4,7 +4,7 @@
 
 Al publicar un GitHub Release, `.github/workflows/firebase-app-distribution.yml` compila
 el APK de release firmado, lo sube a Firebase App Distribution (grupo de testers
-`beta-testers`, proyecto `biblioshare-cab6c`) y lo adjunta como asset al propio release.
+`beta-tester`, proyecto `biblioshare-cab6c`) y lo adjunta como asset al propio release.
 No dispara con tags sueltos ni con pushes normales, solo al **publicar** un release.
 
 ## Secrets necesarios (GitHub → Settings → Secrets and variables → Actions)
@@ -36,7 +36,7 @@ mínimo privilegio, si se filtra una no compromete la otra.
 ## Crear el grupo de testers (una vez)
 
 [Firebase Console](https://console.firebase.google.com/) → proyecto `biblioshare-cab6c` →
-App Distribution → pestaña **Testers y grupos** → crear grupo `beta-testers` → añade los
+App Distribution → pestaña **Testers y grupos** → crear grupo `beta-tester` → añade los
 correos de los testers. Añadir/quitar testers se hace aquí, sin tocar el workflow.
 
 ## Probar el workflow
@@ -48,7 +48,7 @@ Publica un GitHub Release de prueba (puede ser un pre-release). El job debe:
    `keystore.properties` no llegó bien, Gradle avisa con
    `keystore.properties no encontrado: el APK de release saldra SIN FIRMAR.`
 2. Aparecer en Firebase Console → App Distribution con el `versionName`/`versionCode`
-   esperados, y notificar a los testers del grupo `beta-testers`.
+   esperados, y notificar a los testers del grupo `beta-tester`.
 3. Quedar adjunto al release de GitHub como `biblioshare-<versionName>.apk`.
 
 ## Rotar la cuenta de servicio
