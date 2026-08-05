@@ -1,0 +1,92 @@
+name: Firebase App Distribution
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-distribute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Derive version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION_NAME="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore release keystore
+        working-directory: android
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > app/release.jks
+          cat > keystore.properties <<EOF
+          storeFile=${{ github.workspace }}/android/app/release.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Build signed release APK
+        working-directory: android
+        run: |
+          ./gradlew assembleRelease \
+            -PappVersionCode=${{ steps.version.outputs.version_code }} \
+            -PappVersionName=${{ steps.version.outputs.version_name }}
+
+      - name: Rename APK
+        id: apk
+        run: |
+          NAME="biblioshare-${{ steps.version.outputs.version_name }}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Write release notes
+        run: |
+          cat > notes.txt <<'EOF'
+          ${{ github.event.release.body }}
+          EOF
+          if [ ! -s notes.txt ]; then
+            echo "${{ steps.version.outputs.tag }}" > notes.txt
+          fi
+
+      - name: Write Firebase service account
+        run: echo '${{ secrets.FIREBASE_APPDISTRO_SERVICE_ACCOUNT }}' > firebase-sa.json
+
+      - name: Upload to Firebase App Distribution
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-sa.json
+        run: |
+          npx firebase-tools appdistribution:distribute "${{ steps.apk.outputs.name }}" \
+            --app "1:662274343878:android:9fa66a65468c965e2f68c7" \
+            --groups "beta-tester" \
+            --release-notes-file notes.txt
+
+      - name: Attach APK to the GitHub Release
+        run: gh release upload "${{ steps.version.outputs.tag }}" "${{ steps.apk.outputs.name }}" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
