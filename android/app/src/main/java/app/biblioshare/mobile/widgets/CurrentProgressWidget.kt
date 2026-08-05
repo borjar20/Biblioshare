@@ -3,20 +3,19 @@ package app.biblioshare.mobile.widgets
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
-import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -26,36 +25,34 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import app.biblioshare.mobile.R
 
-// Widget «En curso»: el elemento principal que tienes a medias. La SELECCIÓN
-// no vive aquí: la decide el servidor con la misma regla que la tarjeta de
-// hoy del dashboard (getTodayFocus → sesión más reciente; decisión de usuario
-// 2026-07-17) y llega ya resuelta en el snapshot. Aquí solo se pinta.
+// Widget «En curso»: un solo tamaño grande (Completo) con el destacado (el que
+// decide el servidor, misma regla que getTodayFocus del dashboard) y, si hay
+// más lecturas a medias, la rejilla "Continúa donde lo dejaste". La SELECCIÓN
+// del destacado no vive aquí: llega resuelta en el snapshot; el tap para
+// cambiarla se conecta en Task 8.
 class CurrentProgressWidget : GlanceAppWidget() {
 
-    companion object {
-        private val COMPACT = DpSize(110.dp, 110.dp)
-        private val HORIZONTAL = DpSize(240.dp, 110.dp)
-    }
-
-    override val sizeMode = SizeMode.Responsive(setOf(COMPACT, HORIZONTAL))
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // I/O fuera de la composición: store y bitmap se resuelven una vez aquí.
+        // I/O fuera de la composición: store y portadas se resuelven una vez aquí.
         val snapshot = WidgetSnapshotStore.load(context)
-        val state = currentProgressState(snapshot)
-        val cover = (state as? ProgressWidgetState.Content)
-            ?.data?.coverUrl?.let { WidgetImageCache.loadBitmap(context, it) }
-        provideContent { CurrentProgressContent(state, cover) }
+        val state = currentProgressState(snapshot, selectedPassId = null)
+        val covers = (state as? ProgressWidgetState.Content)?.items.orEmpty()
+            .mapNotNull { it.coverUrl }
+            .associateWith { WidgetImageCache.loadBitmap(context, it) }
+        provideContent { CurrentProgressContent(state, covers) }
     }
 }
 
 /** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
 @Composable
-fun CurrentProgressContent(state: ProgressWidgetState, cover: Bitmap?) {
+fun CurrentProgressContent(state: ProgressWidgetState, covers: Map<String, Bitmap?>) {
     val context = LocalContext.current
     when (state) {
         ProgressWidgetState.SignedOut -> WidgetCard("/") {
@@ -70,10 +67,7 @@ fun CurrentProgressContent(state: ProgressWidgetState, cover: Bitmap?) {
                 context.getString(R.string.widget_open_to_start),
             )
         }
-        is ProgressWidgetState.Content -> WidgetCard(state.data.deepLink) {
-            if (LocalSize.current.width >= 240.dp) Horizontal(state.data, cover, state.stale)
-            else Compact(state.data, cover)
-        }
+        is ProgressWidgetState.Content -> Completo(state, covers)
     }
 }
 
@@ -82,80 +76,85 @@ class CurrentProgressWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 @Composable
-private fun Compact(data: CurrentProgressData, cover: Bitmap?) {
-    Column(modifier = GlanceModifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Cover(cover, width = 38, height = 54)
-            Spacer(GlanceModifier.width(8.dp))
-            Column {
-                Text(data.title, style = titleStyle(), maxLines = 2)
+private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bitmap?>) {
+    val ctx = LocalContext.current
+    val f = state.featured
+    Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
+        SectionHeader(
+            label = "En curso",
+            trailing = "${state.total} · Ver todos ›",
+            onTrailing = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/coleccion?status=in_progress")),
+        )
+        Spacer(GlanceModifier.height(10.dp))
+        FeaturedCard(f, f.coverUrl?.let(covers::get))
+        if (state.others.isNotEmpty()) {
+            Spacer(GlanceModifier.height(18.dp))
+            Text("Continúa donde lo dejaste", style = softStyle())
+            Spacer(GlanceModifier.height(8.dp))
+            ContinueGrid(state.others, covers)
+        }
+    }
+}
+
+/** Portada + ordinal + título + contexto + progreso + racha/semana + pie de acciones. */
+@Composable
+private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?) {
+    Column(GlanceModifier.fillMaxWidth().background(WidgetPalette.surface).cornerRadius(18.dp)) {
+        Row(GlanceModifier.padding(16.dp)) {
+            Cover(cover, width = 72, height = 104)
+            Spacer(GlanceModifier.width(14.dp))
+            Column(GlanceModifier.defaultWeight()) {
                 Text(
-                    if (data.percentage != null) "${data.percentage} %" else data.progressLabel,
-                    style = softStyle(),
-                    maxLines = 1,
+                    d.nthLabel,
+                    style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
                 )
-            }
-        }
-        Spacer(GlanceModifier.defaultWeight())
-        ProgressLine(data)
-    }
-}
-
-@Composable
-private fun Horizontal(data: CurrentProgressData, cover: Bitmap?, stale: Boolean) {
-    val context = LocalContext.current
-    Row(modifier = GlanceModifier.fillMaxSize()) {
-        Cover(cover, width = 56, height = 80)
-        Spacer(GlanceModifier.width(12.dp))
-        Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
-            val type = context.getString(
-                when (data.itemType) {
-                    "movie" -> R.string.widget_type_movie
-                    "series" -> R.string.widget_type_series
-                    else -> R.string.widget_type_book
-                },
-            )
-            Text(
-                if (data.subtitle != null) "$type · ${data.subtitle}" else type,
-                style = softStyle(),
-                maxLines = 1,
-            )
-            Text(data.title, style = titleStyle(), maxLines = 1)
-            Text(data.progressLabel, style = bodyStyle(), maxLines = 1)
-            Spacer(GlanceModifier.defaultWeight())
-            ProgressLine(data)
-            Spacer(GlanceModifier.height(4.dp))
-            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                val status = when {
-                    stale -> context.getString(R.string.widget_stale_data)
-                    else -> data.statusLabel ?: ""
+                Text(d.title, style = bigStyle(), maxLines = 2)
+                Text(d.contextLabel.ifBlank { "Sin progreso" }, style = softStyle(), maxLines = 1)
+                if (d.percentage != null) {
+                    Spacer(GlanceModifier.height(8.dp))
+                    SoftBar(d.percentage)
+                    Spacer(GlanceModifier.height(4.dp))
+                    Text(d.progressLabel, style = softStyle(), maxLines = 1)
                 }
-                Text(status, style = TextStyle(color = WidgetPalette.fgSoft, fontSize = 10.sp), maxLines = 1)
-                Spacer(GlanceModifier.defaultWeight())
-                // Las películas no tienen sesiones: su registro es la ficha, que
-                // ya abre la tarjeta entera. Mismo criterio que TodayCard.
-                if (data.itemType != "movie") {
-                    Text(
-                        context.getString(R.string.widget_log_progress),
-                        style = accentStyle(),
-                        modifier = GlanceModifier.clickable(
-                            actionStartActivity(WidgetDeepLinks.intentFor(context, data.deepLink)),
-                        ),
-                    )
+                if (d.streakDays > 0 || d.week.isNotEmpty()) {
+                    Spacer(GlanceModifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (d.streakDays > 0) {
+                            StreakPill(d.streakDays)
+                            Spacer(GlanceModifier.defaultWeight())
+                        }
+                        WeekDots(d.week)
+                    }
                 }
             }
         }
+        FeaturedActions(d)
     }
 }
 
-/** Barra si hay porcentaje; si no hay total conocido, no se inventa. */
+/** Sesión/Registrar como deep-link plano; el cronómetro nativo llega en Task 17. */
 @Composable
-private fun ProgressLine(data: CurrentProgressData) {
-    val pct = data.percentage ?: return
-    LinearProgressIndicator(
-        progress = pct / 100f,
-        modifier = GlanceModifier.fillMaxWidth().height(6.dp),
-        color = WidgetPalette.accent,
-        backgroundColor = WidgetPalette.track,
-    )
+private fun FeaturedActions(d: CurrentProgressData) {
+    val ctx = LocalContext.current
+    Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        if (d.itemType == "book") {
+            ActionCell(
+                "◷ Sesión",
+                WidgetPalette.accent,
+                GlanceModifier.defaultWeight()
+                    .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, d.deepLink))),
+            )
+            Spacer(GlanceModifier.width(8.dp))
+        }
+        ActionCell(
+            "✎ Registrar",
+            WidgetPalette.fg,
+            GlanceModifier.defaultWeight()
+                .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),
+        )
+    }
 }
+
+/** "Registrar" sin minutos: la hoja de sesión para libros, la ficha para el resto. */
+private fun itemLogHref(d: CurrentProgressData): String =
+    if (d.itemType != "book") d.deepLink else "/sesion/${d.passId}"

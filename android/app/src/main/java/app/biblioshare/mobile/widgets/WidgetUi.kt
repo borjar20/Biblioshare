@@ -8,9 +8,11 @@ import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -40,6 +42,8 @@ object WidgetPalette {
     val accent = ColorProvider(R.color.widget_accent)
     val track = ColorProvider(R.color.widget_track)
     val gold = ColorProvider(R.color.widget_gold)
+    /** Superficie ligeramente elevada sobre el fondo, para la tarjeta destacada del Completo. */
+    val surface = ColorProvider(R.color.widget_surface)
 }
 
 fun titleStyle() = TextStyle(color = WidgetPalette.fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -89,9 +93,10 @@ fun EmptyState(title: String, subtitle: String) {
     }
 }
 
-/** Cabecera de sección: etiqueta en mayúsculas + acción opcional (p. ej. "Ver todos") a la derecha. */
+/** Cabecera de sección: etiqueta en mayúsculas + texto de acción opcional (p. ej.
+ *  "2 · Ver todos ›") a la derecha, clicable solo si se da [onTrailing]. */
 @Composable
-fun SectionHeader(label: String, trailing: (@Composable () -> Unit)? = null) {
+fun SectionHeader(label: String, trailing: String? = null, onTrailing: Action? = null) {
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -102,7 +107,44 @@ fun SectionHeader(label: String, trailing: (@Composable () -> Unit)? = null) {
         )
         if (trailing != null) {
             Spacer(GlanceModifier.defaultWeight())
-            trailing()
+            Text(
+                trailing,
+                style = if (onTrailing != null) accentStyle() else softStyle(),
+                modifier = if (onTrailing != null) GlanceModifier.clickable(onTrailing) else GlanceModifier,
+            )
+        }
+    }
+}
+
+/** Celda de acción del pie de la tarjeta destacada: texto centrado sobre un
+ *  fondo sutil redondeado. El [modifier] pasado ya trae `.defaultWeight()` y
+ *  `.clickable(...)` — aquí solo se añade la superficie. */
+@Composable
+fun ActionCell(label: String, color: ColorProvider, modifier: GlanceModifier) {
+    Box(
+        modifier = modifier.background(WidgetPalette.track).cornerRadius(10.dp).padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = TextStyle(color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium))
+    }
+}
+
+/** Rejilla de "Continúa donde lo dejaste": 3 columnas por fila, portada + título
+ *  a una línea. Sin clic en Task 7 — el foco se conecta en Task 8. */
+@Composable
+fun ContinueGrid(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+    Column {
+        others.chunked(3).forEach { row ->
+            Row(modifier = GlanceModifier.fillMaxWidth()) {
+                row.forEach { d ->
+                    Column(modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)) {
+                        Cover(d.coverUrl?.let(covers::get), width = 64, height = 92)
+                        Spacer(GlanceModifier.height(4.dp))
+                        Text(d.title, style = softStyle(), maxLines = 1)
+                    }
+                }
+            }
+            Spacer(GlanceModifier.height(10.dp))
         }
     }
 }

@@ -7,4 +7,5 @@
     <color name="widget_accent">#B0542F</color>
     <color name="widget_track">#ECE3D4</color>
     <color name="widget_gold">#B08A2F</color>
+    <color name="widget_surface">#FBF5EA</color>
 </resources>
