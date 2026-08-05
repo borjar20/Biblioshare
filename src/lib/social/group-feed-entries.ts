@@ -10,14 +10,18 @@ export type PersonGroupEntry = {
   eventDate: string; // la del ítem más reciente
   orderDate: string; // la del ítem más reciente, para el orden final
   sortDate: string;  // la del ítem más reciente, para el orden final
-  verb: Extract<FeedVerb, "added" | "progressed">;
+  verb: Extract<FeedVerb, "added" | "progressed" | "rated" | "reviewed" | "watchedEpisode">;
   actor: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
   items: FeedEvent[];
 };
 
-// Solo estos dos verbos se agrupan; el resto (finished/rated/reviewed/
-// watchedEpisode) y las entradas de club pasan intactos.
-const GROUPABLE: ReadonlySet<FeedVerb> = new Set(["added", "progressed"]);
+// Qué se agrupa: altas y sesiones por verbo, y las valoraciones de episodios
+// (mismas filas de episode_watches, verbo rated/reviewed/watchedEpisode) por
+// serie — se reconocen porque llevan datos de episodio. El resto (finished y las
+// reseñas de obra completa, sin episode) y las entradas de club pasan intactos.
+function isGroupable(e: FeedEvent): boolean {
+  return e.verb === "added" || e.verb === "progressed" || e.episode != null;
+}
 
 // Ventana de agrupación, en días naturales. Se aplica distinto según el verbo:
 //   added      → SPAN: el grupo abarca como máximo esta cantidad de días.
@@ -40,7 +44,10 @@ function dayNumber(iso: string): number {
 // span, igual que las sesiones se trocean por hueco.
 function groupKey(e: FeedEvent): string {
   if (e.verb === "added") return `added:${e.actorId}`;
-  return `progressed:${e.actorId}:${e.itemType}:${e.itemId}`;
+  if (e.verb === "progressed") return `progressed:${e.actorId}:${e.itemType}:${e.itemId}`;
+  // Episodios: por serie (itemId = series_id), sin importar el verbo concreto
+  // de cada uno (rated/reviewed/watchedEpisode conviven en el mismo atracón).
+  return `episodes:${e.actorId}:${e.itemId}`;
 }
 
 export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
@@ -48,7 +55,7 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
   const passthrough: FeedEntry[] = [];
 
   for (const entry of entries) {
-    if (entry.source !== "person" || !GROUPABLE.has(entry.event.verb)) {
+    if (entry.source !== "person" || !isGroupable(entry.event)) {
       passthrough.push(entry);
       continue;
     }
@@ -60,10 +67,12 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
 
   const result: FeedEntry[] = [...passthrough];
   for (const [key, items] of buckets) {
-    // Cada bucket ya es de un solo verbo (el prefijo de la clave lo garantiza).
-    // Ambos se parten en sub-grupos según GROUP_WINDOW_DAYS, pero con distinta
-    // referencia (ver el bucle de abajo): progressed por hueco, added por span.
-    const isProgressed = key.startsWith("progressed:");
+    // Cada bucket es de una sola familia (el prefijo de la clave lo garantiza):
+    // added, progressed, o los episodios de UNA serie. Todos se parten en
+    // sub-grupos por GROUP_WINDOW_DAYS, con distinta referencia: progressed y
+    // episodes por HUECO (detectan el parón entre sesiones/episodios
+    // consecutivos); added por SPAN (acota lo que abarca la tarjeta).
+    const useGap = key.startsWith("progressed:") || key.startsWith("episodes:");
     // Mismo comparador que el feed (día desc → sortDate desc → id desc): sin el
     // paso por sortDate, N sesiones del mismo día caían al id (uuid aleatorio)
     // y salían desordenadas en la tarjeta.
@@ -77,9 +86,9 @@ export function groupPersonEntries(entries: FeedEntry[]): FeedEntry[] {
       }
       // added: se compara contra el MÁS NUEVO del grupo, para acotar el span.
       // progressed: contra el ANTERIOR inmediato, para detectar el parón.
-      const reference = isProgressed ? last[last.length - 1] : last[0];
+      const reference = useGap ? last[last.length - 1] : last[0];
       const distance = dayNumber(reference.eventDate) - dayNumber(ev.eventDate);
-      const limit = isProgressed ? GROUP_WINDOW_DAYS : GROUP_WINDOW_DAYS - 1;
+      const limit = useGap ? GROUP_WINDOW_DAYS : GROUP_WINDOW_DAYS - 1;
       if (distance > limit) chunks.push([ev]);
       else last.push(ev);
     }
