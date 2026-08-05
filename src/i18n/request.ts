@@ -8,13 +8,11 @@ export default getRequestConfig(async () => {
   return {
     locale,
     messages: (await import(`../../messages/${locale}.json`)).default,
-    // "Ahora" ÚNICO para toda la petición, compartido por el servidor y el
-    // cliente a través de NextIntlClientProvider. Lo piden las fechas
-    // relativas ("hace 2 días", session-list.tsx): sin esto cada lado llama a
-    // `new Date()` por su cuenta, next-intl avisa con ENVIRONMENT_FALLBACK y
-    // los dos relojes pueden caer a distinto lado de una frontera ("hoy" en el
-    // servidor, "ayer" en el cliente) — que es un desajuste de hidratación
-    // esperando a pasar a medianoche.
-    now: new Date(),
+    // Sin `now` global a propósito (#475). Un `new Date()` aquí se evalúa en el
+    // camino de PRERENDER y con Cache Components (#448) rompe el build de TODA
+    // ruta (valor inestable). La única fecha relativa del proyecto vive en un
+    // componente cliente (session-list.tsx), que fija su propio "ahora" tras
+    // montar y pinta la fecha absoluta en SSR — así no hay desajuste de
+    // hidratación sin sacar todas las rutas del shell estático.
   };
 });

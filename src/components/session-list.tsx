@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { formatPosition, type Position } from "@/lib/library/position";
@@ -58,6 +58,15 @@ export function SessionList({
   const format = useFormatter();
   const accent = MEDIA_ACCENT[itemType];
   const [isPending, startTransition] = useTransition();
+
+  // "Ahora" del CLIENTE, fijado tras montar (#475). La fecha relativa depende
+  // del reloj, así que NO puede vivir en el shell estático de Cache Components
+  // (#448): en SSR/primer render se pinta la fecha ABSOLUTA —determinista,
+  // idéntica en servidor y cliente, sin desajuste de hidratación— y al montar
+  // se cambia a relativa con el reloj del cliente. Antes esto se pineaba con un
+  // `now` global en i18n/request.ts que bloqueaba el prerender de TODA ruta.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => setNow(new Date()), []);
 
   return (
     <div className="flex flex-col">
@@ -129,7 +138,13 @@ export function SessionList({
                     dateTime={relativeBasis}
                     className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground lg:text-[11px]"
                   >
-                    {format.relativeTime(new Date(relativeBasis))}
+                    {now
+                      ? format.relativeTime(new Date(relativeBasis), now)
+                      : format.dateTime(new Date(relativeBasis), {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
                   </time>
                   <button
                     type="button"
