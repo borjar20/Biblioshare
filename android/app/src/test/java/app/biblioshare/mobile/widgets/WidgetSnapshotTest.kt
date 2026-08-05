@@ -19,20 +19,25 @@ private fun validJson(
       "version": $version,
       "userId": "$userId",
       "generatedAt": "2026-08-05T10:00:00.000Z",
-      "currentProgress": {
-        "passId": "pass-1",
-        "itemType": "book",
-        "itemId": "item-1",
-        "title": "Dune",
-        "subtitle": "Frank Herbert",
-        "coverUrl": "https://covers.example/dune.jpg",
-        "currentValue": 184,
-        "totalValue": 430,
-        "percentage": 43,
-        "progressLabel": "184 de 430 páginas",
-        "statusLabel": "Últ. actividad 03/08",
-        "deepLink": "/sesion/pass-1"
-      },
+      "inProgressTotal": 1,
+      "inProgress": [
+        {
+          "passId": "pass-1",
+          "itemType": "book",
+          "itemId": "item-1",
+          "title": "Dune",
+          "subtitle": "Frank Herbert",
+          "coverUrl": "https://covers.example/dune.jpg",
+          "percentage": 43,
+          "progressLabel": "184 de 430 páginas",
+          "deepLink": "/sesion/pass-1",
+          "nthLabel": "1.ª lectura",
+          "contextLabel": "Día 4 · desde 2/8 · 1 nota",
+          "streakDays": 3,
+          "kindLabel": "Libro",
+          "week": []
+        }
+      ],
       "dailyGoal": {
         "date": "2026-08-05",
         "goalType": "minutes",
@@ -48,6 +53,24 @@ private fun validJson(
     }
 """.trimIndent()
 
+private fun v2Json() = """
+{ "version":2, "userId":"u1", "generatedAt":"2026-08-05T10:00:00Z",
+  "inProgressTotal":2, "dailyGoal":null,
+  "inProgress":[
+    {"passId":"p1","itemType":"book","itemId":"b1","title":"Salitre y Cenizas",
+     "subtitle":null,"coverUrl":null,"percentage":25,"progressLabel":"60 de 240 páginas",
+     "deepLink":"/sesion/p1","nthLabel":"1.ª lectura","contextLabel":"Día 4 · desde 2/8 · 1 nota",
+     "streakDays":3,"kindLabel":"Libro",
+     "week":[{"active":false,"today":false},{"active":false,"today":false},
+             {"active":false,"today":false},{"active":true,"today":false},
+             {"active":true,"today":false},{"active":true,"today":false},
+             {"active":true,"today":true}]},
+    {"passId":"p2","itemType":"book","itemId":"b2","title":"Siega","subtitle":null,
+     "coverUrl":null,"percentage":null,"progressLabel":"Sin progreso","deepLink":"/sesion/p2",
+     "nthLabel":"1.ª lectura","contextLabel":"","streakDays":0,"kindLabel":"Libro","week":[]}
+  ] }
+""".trimIndent()
+
 class WidgetSnapshotTest {
 
     @Test
@@ -55,36 +78,34 @@ class WidgetSnapshotTest {
         val snapshot = WidgetSnapshot.parse(validJson())
         assertNotNull(snapshot)
         assertEquals("user-1", snapshot!!.userId)
-        assertEquals("Dune", snapshot.currentProgress?.title)
-        assertEquals(43, snapshot.currentProgress?.percentage)
+        assertEquals(1, snapshot.inProgress.size)
+        assertEquals("Dune", snapshot.inProgress[0].title)
+        assertEquals(43, snapshot.inProgress[0].percentage)
         assertEquals(40, snapshot.dailyGoal?.targetValue)
         assertEquals(12, snapshot.dailyGoal?.streak)
     }
 
     @Test
-    fun `los bloques null son estados validos (nada en curso, sin objetivo)`() {
+    fun `inProgress vacio y dailyGoal null son estados validos (nada en curso, sin objetivo)`() {
         val snapshot = WidgetSnapshot.parse(
             """{"version": $WIDGET_SCHEMA_VERSION, "userId": "u", "generatedAt": "2026-08-05T10:00:00Z",
-                "currentProgress": null, "dailyGoal": null}""",
+                "inProgressTotal": 0, "inProgress": [], "dailyGoal": null}""",
         )
         assertNotNull(snapshot)
-        assertNull(snapshot!!.currentProgress)
+        assertTrue(snapshot!!.inProgress.isEmpty())
         assertNull(snapshot.dailyGoal)
     }
 
     @Test
-    fun `totalValue y percentage null se conservan (progreso sin total conocido)`() {
-        val json = validJson()
-            .replace("\"totalValue\": 430", "\"totalValue\": null")
-            .replace("\"percentage\": 43", "\"percentage\": null")
-        val progress = WidgetSnapshot.parse(json)!!.currentProgress!!
-        assertNull(progress.totalValue)
+    fun `percentage null se conserva (progreso sin total conocido)`() {
+        val json = validJson().replace("\"percentage\": 43", "\"percentage\": null")
+        val progress = WidgetSnapshot.parse(json)!!.inProgress[0]
         assertNull(progress.percentage)
     }
 
     @Test
     fun `version distinta se descarta entera (migracion = estado vacio)`() {
-        assertNull(WidgetSnapshot.parse(validJson(version = 2)))
+        assertNull(WidgetSnapshot.parse(validJson(version = 1)))
         assertNull(WidgetSnapshot.parse(validJson(version = 0)))
     }
 
@@ -95,13 +116,27 @@ class WidgetSnapshotTest {
         assertNull(WidgetSnapshot.parse("{no es json"))
         assertNull(WidgetSnapshot.parse("""{"version": $WIDGET_SCHEMA_VERSION}"""))
         assertNull(WidgetSnapshot.parse(validJson(userId = "")))
-        // currentProgress sin campos requeridos → el parse entero se invalida.
-        assertNull(
-            WidgetSnapshot.parse(
-                """{"version": $WIDGET_SCHEMA_VERSION, "userId": "u", "generatedAt": "x",
-                    "currentProgress": {"title": "suelto"}, "dailyGoal": null}""",
-            ),
-        )
+    }
+
+    @Test fun `parsea snapshot v2 con lista de en curso`() {
+        val s = WidgetSnapshot.parse(v2Json())!!
+        assertEquals(2, s.inProgress.size)
+        assertEquals(2, s.inProgressTotal)
+        assertEquals("1.ª lectura", s.inProgress[0].nthLabel)
+        assertEquals(7, s.inProgress[0].week.size)
+        assertTrue(s.inProgress[0].week.last().today)
+        assertNull(s.inProgress[1].percentage)
+    }
+
+    @Test fun `descarta version distinta`() {
+        assertNull(WidgetSnapshot.parse(v2Json().replace("\"version\":2", "\"version\":1")))
+    }
+
+    @Test fun `inProgress ausente o ilegible degrada a lista vacia`() {
+        val s = WidgetSnapshot.parse(
+            """{"version":2,"userId":"u1","generatedAt":"x","inProgressTotal":0}""",
+        )!!
+        assertTrue(s.inProgress.isEmpty())
     }
 }
 

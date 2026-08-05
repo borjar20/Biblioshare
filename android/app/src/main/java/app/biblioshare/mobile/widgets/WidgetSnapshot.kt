@@ -1,12 +1,15 @@
 package app.biblioshare.mobile.widgets
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 // Modelo espejo de src/lib/widgets/types.ts. La versión DEBE coincidir con
 // WIDGET_SCHEMA_VERSION del lado web: un snapshot de otra versión se descarta
 // entero (parse devuelve null) y el widget cae al estado vacío — nunca se
 // intenta migrar a medias un formato que este APK no conoce.
-const val WIDGET_SCHEMA_VERSION = 1
+const val WIDGET_SCHEMA_VERSION = 2
+
+data class WidgetWeekDay(val active: Boolean, val today: Boolean)
 
 data class CurrentProgressData(
     val passId: String,
@@ -15,12 +18,14 @@ data class CurrentProgressData(
     val title: String,
     val subtitle: String?,
     val coverUrl: String?,
-    val currentValue: Int,
-    val totalValue: Int?,
     val percentage: Int?,
     val progressLabel: String,
-    val statusLabel: String?,
     val deepLink: String,
+    val nthLabel: String,
+    val contextLabel: String,
+    val streakDays: Int,
+    val week: List<WidgetWeekDay>,
+    val kindLabel: String,
 )
 
 data class DailyGoalData(
@@ -41,7 +46,8 @@ data class WidgetSnapshot(
     val version: Int,
     val userId: String,
     val generatedAt: String,
-    val currentProgress: CurrentProgressData?,
+    val inProgress: List<CurrentProgressData>,
+    val inProgressTotal: Int,
     val dailyGoal: DailyGoalData?,
 ) {
     companion object {
@@ -61,7 +67,8 @@ data class WidgetSnapshot(
                     version = WIDGET_SCHEMA_VERSION,
                     userId = userId,
                     generatedAt = root.getString("generatedAt"),
-                    currentProgress = root.optJSONObject("currentProgress")?.let(::parseProgress),
+                    inProgress = parseInProgress(root.optJSONArray("inProgress")),
+                    inProgressTotal = root.optInt("inProgressTotal", 0),
                     dailyGoal = root.optJSONObject("dailyGoal")?.let(::parseGoal),
                 )
             } catch (_: Exception) {
@@ -69,20 +76,39 @@ data class WidgetSnapshot(
             }
         }
 
-        private fun parseProgress(o: JSONObject): CurrentProgressData = CurrentProgressData(
-            passId = o.getString("passId"),
-            itemType = o.getString("itemType"),
-            itemId = o.getString("itemId"),
-            title = o.getString("title"),
-            subtitle = o.optStringOrNull("subtitle"),
-            coverUrl = o.optStringOrNull("coverUrl"),
-            currentValue = o.optInt("currentValue", 0),
-            totalValue = if (o.isNull("totalValue")) null else o.getInt("totalValue"),
-            percentage = if (o.isNull("percentage")) null else o.getInt("percentage"),
-            progressLabel = o.getString("progressLabel"),
-            statusLabel = o.optStringOrNull("statusLabel"),
-            deepLink = o.getString("deepLink"),
-        )
+        private fun parseInProgress(arr: JSONArray?): List<CurrentProgressData> {
+            if (arr == null) return emptyList()
+            val out = ArrayList<CurrentProgressData>(arr.length())
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                out.add(
+                    CurrentProgressData(
+                        passId = o.getString("passId"),
+                        itemType = o.getString("itemType"),
+                        itemId = o.getString("itemId"),
+                        title = o.getString("title"),
+                        subtitle = o.optStringOrNull("subtitle"),
+                        coverUrl = o.optStringOrNull("coverUrl"),
+                        percentage = if (o.isNull("percentage")) null else o.getInt("percentage"),
+                        progressLabel = o.getString("progressLabel"),
+                        deepLink = o.getString("deepLink"),
+                        nthLabel = o.optString("nthLabel"),
+                        contextLabel = o.optString("contextLabel"),
+                        streakDays = o.optInt("streakDays", 0),
+                        week = parseWeek(o.optJSONArray("week")),
+                        kindLabel = o.optString("kindLabel"),
+                    ),
+                )
+            }
+            return out
+        }
+
+        private fun parseWeek(arr: JSONArray?): List<WidgetWeekDay> {
+            if (arr == null) return emptyList()
+            return (0 until arr.length()).mapNotNull { i ->
+                arr.optJSONObject(i)?.let { WidgetWeekDay(it.optBoolean("active"), it.optBoolean("today")) }
+            }
+        }
 
         private fun parseGoal(o: JSONObject): DailyGoalData = DailyGoalData(
             date = o.getString("date"),
