@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { RouteMessages } from "@/components/route-messages";
 import { AppShell } from "@/components/nav/app-shell";
 import { CelebrationProvider } from "@/components/celebrations/celebration-provider";
 import { ThemeScript } from "@/components/theme-script";
@@ -66,14 +66,17 @@ export default function RootLayout({
             raíz, porque tiene que enterarse de TODAS las navegaciones — no
             solo de las que pasan por la ficha. */}
         <SessionOriginTracker />
-        <NextIntlClientProvider>
+        {/* Provider raíz de i18n: manda SOLO el subconjunto BASE (chrome +
+            comunes) en el payload de cada ruta. Cada página añade sus namespaces
+            con <RouteMessages ns={…}> por debajo (#444). */}
+        <RouteMessages>
           {/* Overlay global de microanimaciones: drena las celebraciones ganadas
               en servidor y las anima una vez, sin bloquear la navegación. */}
           <CelebrationProvider>
             <AppShell>{children}</AppShell>
             {modal}
           </CelebrationProvider>
-        </NextIntlClientProvider>
+        </RouteMessages>
         <SpeedInsights />
       </body>
     </html>
