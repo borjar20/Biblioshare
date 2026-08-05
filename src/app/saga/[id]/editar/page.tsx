@@ -14,6 +14,10 @@ import { SagaMetaEditor } from "@/components/saga/saga-meta-editor";
 import { SequenceEditor } from "@/components/saga/sequence/sequence-editor";
 import { SequenceItineraries } from "@/components/saga/sequence/sequence-itineraries";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export const metadata: Metadata = { title: "Editar saga — Biblioshare" };
 
 export default async function EditSagaPage({ params }: { params: Promise<{ id: string }> }) {

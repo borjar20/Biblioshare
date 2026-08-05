@@ -34,6 +34,10 @@ import { StatsTab } from "./_tabs/stats-tab";
 import { RinconTab } from "./_tabs/rincon-tab";
 import { SHELL_APP } from "@/lib/ui/layout";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 const VALID_TABS: SectionTab[] = [
   "actividad",
   "estadisticas",

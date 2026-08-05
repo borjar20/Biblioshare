@@ -9,6 +9,10 @@ import { ActivityDetailView } from "@/components/clubs/activity-detail";
 import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export async function generateMetadata({
   params,
 }: {

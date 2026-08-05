@@ -10,6 +10,10 @@ import { ClubSearch } from "@/components/clubs/club-search";
 import { ClubCreateToggle } from "@/components/clubs/club-create-toggle";
 import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Clubes — Biblioshare",
 };

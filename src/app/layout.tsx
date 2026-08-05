@@ -9,6 +9,10 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { SessionOriginTracker } from "@/components/session/session-origin";
 import "./globals.css";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 // `display: "swap"` explícito: es ya el default de next/font, pero fijarlo evita
 // depender de un default que puede cambiar entre versiones (auditoría #446).
 const geistSans = Geist({

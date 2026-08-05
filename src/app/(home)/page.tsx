@@ -17,6 +17,10 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 import { AppLogoIcon } from "@/components/ui/icons";
 import { SHELL_APP } from "@/lib/ui/layout";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 // Inicio = el feed (§IA del rediseño Paper). El panel de estadísticas que vivía
 // aquí en una pestaña se mudó a Perfil › Panel, que es donde tiene sentido:
 // es privado y es tuyo.

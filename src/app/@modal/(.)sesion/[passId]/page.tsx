@@ -5,6 +5,10 @@ import { SessionModal } from "@/components/session/session-modal";
 import { SessionSheet } from "@/components/session/session-sheet";
 import { RouteMessages } from "@/components/route-messages";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function SessionModalPage({
   params,
   searchParams,

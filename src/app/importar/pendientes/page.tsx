@@ -11,6 +11,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ResolveForm } from "./resolve-form";
 import { DismissButton } from "./dismiss-button";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Import pendiente — Biblioshare",
 };
@@ -46,7 +50,7 @@ export default async function PendingImportPage() {
           /* Fichas mínimas —título, estado, descartar—, así que caben tres. En
              una sola columna eran barras anchas con un palmo de vacío entre el
              título y el botón. */
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          (<ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {mine.map((p) => (
               <li
                 key={p.id}
@@ -61,7 +65,7 @@ export default async function PendingImportPage() {
                 <DismissButton pendingId={p.id} label={t("dismiss")} />
               </li>
             ))}
-          </ul>
+          </ul>)
         )}
       </section>
 
@@ -74,7 +78,7 @@ export default async function PendingImportPage() {
             /* La cola de revisión es donde más se nota: cada elemento es un
                formulario completo, y a dos columnas se ven el doble de filas
                sin que ningún campo quede apretado. */
-            <ul className={`grid items-start gap-3 ${FORM_CARD_GRID_COLS}`}>
+            (<ul className={`grid items-start gap-3 ${FORM_CARD_GRID_COLS}`}>
               {queue.map((p) => (
                 <li key={p.id}>
                   <ResolveForm
@@ -85,7 +89,7 @@ export default async function PendingImportPage() {
                   />
                 </li>
               ))}
-            </ul>
+            </ul>)
           )}
         </section>
       )}
