@@ -1887,6 +1887,39 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
+## 7.9 Celebraciones — `user_celebrations` (dev, 2026-08-05 · prod PENDIENTE)
+
+Memoria de las microanimaciones ganadas por usuario, para que un hito **no se repita** entre
+recargas ni entre dispositivos (localStorage no se comparte). **No es estado de progreso** —
+el estado vivo sigue en `passes`; esta tabla es memoria de UI persistida.
+
+**La tabla** `user_celebrations`: `id`, `user_id` (FK `auth.users`, `on delete cascade`),
+`event_type text` (no enum: añadir un evento no debe exigir migración de tipo; el registro de
+la app en `src/lib/celebrations/registry.ts` es la fuente de verdad), `event_key text`,
+`payload jsonb`, `first_triggered_at`, `last_triggered_at`, `displayed_at` (NULL = ganada sin
+animar todavía), `created_at`. **`unique (user_id, event_type, event_key)` ES la
+deduplicación**: ganar dos veces el mismo hito no crea segunda fila. Índice parcial
+`idx_user_celebrations_pending on (user_id) where displayed_at is null` para el drenado.
+
+**RLS**: `select`/`insert`/`update` solo de las propias (`auth.uid() = user_id`) — cada quien
+gana SUS celebraciones con su sesión, sin service-role. `grant select, insert, update` a
+`authenticated`.
+
+**RPC** `pull_pending_celebrations()` (`security definer`, `search_path` fijado, `revoke` de
+`anon`/`public`): reclama y devuelve las no mostradas del usuario en **una** sentencia
+(`update … where displayed_at is null returning …`), atómica ante dos pestañas.
+
+Modelo **ganar → drenar**: el dominio gana (idempotente vía upsert `ignoreDuplicates`) desde
+`addSession` (eventos «primera actividad», «objetivo diario», «hito de racha») y desde las
+acciones de club (join/accept/post/poll/vote → «primera participación»); el cliente drena por
+la RPC, anima una vez y sella `displayed_at`. Migración
+`supabase/migrations/20260805_user_celebrations.sql`.
+
+**Pendiente (issues a abrir):** aplicar a **prod** con el merge; marcar episodios desde la
+pestaña Episodios (`episode-actions.ts`) y publicar/votar en club aún no disparan
+`checkCelebrations()` en cliente (la celebración se gana igual y se drena en el siguiente
+pull/visibilidad, solo se retrasa); la preferencia vive en localStorage (no cross-device).
+
 ## 8. Seguridad
 
 Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:

@@ -15,6 +15,7 @@ import {
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
+import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -235,6 +236,11 @@ export async function addSession(
       .eq("user_id", user.id);
     if (updateError) return { error: "generic" };
   }
+
+  // Microanimaciones del bucle diario (primera actividad, objetivo diario,
+  // hito de racha): best-effort, nunca tumba el guardado de la sesión. El
+  // cliente drena y anima tras recibir `ok` (checkCelebrations en session-sheet).
+  await earnDailyLoopCelebrations(supabase, user.id);
 
   // Auto-cierre de libro o serie (Regla 5 del esquema de flujo): si la
   // sesión alcanza la última página de TU edición (libro) o el último

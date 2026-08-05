@@ -1392,6 +1392,42 @@ export type Database = {
           },
         ]
       }
+      user_celebrations: {
+        Row: {
+          created_at: string
+          displayed_at: string | null
+          event_key: string
+          event_type: string
+          first_triggered_at: string
+          id: string
+          last_triggered_at: string
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          displayed_at?: string | null
+          event_key: string
+          event_type: string
+          first_triggered_at?: string
+          id?: string
+          last_triggered_at?: string
+          payload?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          displayed_at?: string | null
+          event_key?: string
+          event_type?: string
+          first_triggered_at?: string
+          id?: string
+          last_triggered_at?: string
+          payload?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       passes: {
         Row: {
           created_at: string
@@ -2351,6 +2387,14 @@ export type Database = {
         Returns: boolean
       }
       club_is_private: { Args: { p_club_id: string }; Returns: boolean }
+      pull_pending_celebrations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          event_key: string
+          event_type: string
+          payload: Json
+        }[]
+      }
       club_member_row_exists: { Args: { p_club_id: string }; Returns: boolean }
       club_role: {
         Args: { p_club_id: string }

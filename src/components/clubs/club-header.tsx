@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { getClub } from "@/lib/clubs/clubs";
 import { joinClub, leaveClub, acceptInvite, declineInvite } from "@/lib/clubs/membership";
+import { checkCelebrations } from "@/lib/celebrations/preference";
 import { ClubForm } from "./club-form";
 import { ClubCoverBand } from "./club-cover";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
     startTransition(async () => {
       await joinClub(club.id);
       setStatus("active");
+      checkCelebrations(); // pudo ganar "primera participación en un club"
     });
   }
 
@@ -42,6 +44,7 @@ export function ClubHeader({ club, userId }: { club: ClubDetail; userId: string 
     startTransition(async () => {
       await acceptInvite(club.id);
       setStatus("active");
+      checkCelebrations(); // pudo ganar "primera participación en un club"
     });
   }
 

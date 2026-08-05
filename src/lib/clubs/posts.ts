@@ -12,6 +12,7 @@ import {
   type SharedActivityPreview,
 } from "@/lib/social/shared-activity";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
+import { earnFirstClubParticipation } from "@/lib/celebrations/earn";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -162,6 +163,7 @@ export async function createTextPost(clubId: string, body: string): Promise<void
 
   const mentioned = await notifyPostMentions(supabase, userId, trimmed, post.id);
   await notifyNewPost(supabase, clubId, userId, post.id, mentioned);
+  await earnFirstClubParticipation(supabase, userId, clubId);
   revalidateClubPages();
 }
 
@@ -192,6 +194,7 @@ export async function createShareActivityPost(
 
   const mentioned = await notifyPostMentions(supabase, userId, trimmed, post.id);
   await notifyNewPost(supabase, clubId, userId, post.id, mentioned);
+  await earnFirstClubParticipation(supabase, userId, clubId);
   revalidateClubPages();
 }
 
@@ -225,13 +228,15 @@ export async function createPoll(
   if (error) throw error;
 
   await notifyNewPost(supabase, clubId, userId);
+  await earnFirstClubParticipation(supabase, userId, clubId);
   revalidateClubPages();
 }
 
 export async function votePoll(postId: string, optionId: string): Promise<void> {
-  const { supabase } = await requireUser();
+  const { supabase, userId } = await requireUser();
   const { error } = await supabase.rpc("vote_club_poll", { p_post_id: postId, p_option_id: optionId });
   if (error) throw error;
+  await earnFirstClubParticipation(supabase, userId);
   revalidateClubPages();
 }
 

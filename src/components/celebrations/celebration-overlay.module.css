@@ -1,0 +1,171 @@
+/* Overlay global de celebraciones. NO bloquea la interacción (pointer-events:
+   none) y se ancla abajo-centro respetando el área segura del móvil. Sin canvas:
+   todo transform/opacity, así que no provoca reflow y va fluido en gama baja. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: end center;
+  padding: 0 16px calc(20px + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px 14px;
+  border-radius: 20px;
+  background: var(--background, #fff);
+  color: var(--foreground, #232321);
+  border: 1px solid var(--border, rgba(30,30,25,.12));
+  box-shadow: 0 18px 50px rgba(25, 25, 20, 0.22);
+  animation: card-in 320ms cubic-bezier(0.2, 0.85, 0.25, 1.05) both;
+  will-change: transform, opacity;
+}
+.card[data-intensity="high"] {
+  padding: 20px 24px 16px;
+}
+
+.visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.msg {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-align: center;
+  text-wrap: balance;
+  max-width: 260px;
+}
+
+@keyframes card-in {
+  0% { transform: translateY(24px) scale(0.96); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ---- Reducido / estático: sin movimiento, estado final visible + texto ---- */
+.overlay[data-reduce="true"] .card { animation: fade-in 160ms ease both; }
+.overlay[data-reduce="true"] .visual * {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+.staticIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  color: #fff;
+  background: var(--accent, #6d5dfc);
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============ 1. first_activity_of_day — portada que encaja ============ */
+.shelf {
+  width: 150px; height: 92px;
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 6px; padding-bottom: 11px; position: relative;
+}
+.shelf::after {
+  content: ""; position: absolute; left: 2px; right: 2px; bottom: 0;
+  height: 9px; border-radius: 4px; background: #a9713f; box-shadow: 0 4px 0 #7c4f28;
+}
+.book { width: 26px; border-radius: 3px 3px 2px 2px; box-shadow: 0 5px 11px rgba(0,0,0,.16); }
+.book.s1 { height: 58px; background: #f0a35e; }
+.book.s2 { height: 72px; background: #71a9cf; }
+.book.s3 { height: 52px; background: #d87581; }
+.book.arriving {
+  height: 66px; background: linear-gradient(160deg, #8574ff, #5343d4);
+  animation: cover-in 820ms cubic-bezier(0.18, 0.85, 0.26, 1.2) both;
+}
+@keyframes cover-in {
+  0% { transform: translateY(120px) rotate(10deg) scale(0.82); opacity: 0; }
+  70% { transform: translateY(-6px) rotate(-2deg) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+}
+
+/* ============ 2. daily_goal_completed — anillo que se cierra ============ */
+.ringWrap { width: 104px; height: 104px; }
+.ring { width: 104px; height: 104px; transform: rotate(-90deg); }
+.ringTrack { fill: none; stroke: var(--border, rgba(30,30,25,.14)); stroke-width: 10; }
+.ringValue {
+  fill: none; stroke: #2e9f6b; stroke-width: 10; stroke-linecap: round;
+  stroke-dasharray: 339.3; stroke-dashoffset: 339.3;
+  animation: ring-fill 1000ms cubic-bezier(0.45, 0, 0.2, 1) forwards;
+}
+.ringCheck {
+  position: absolute; width: 52px; height: 52px; border-radius: 50%;
+  display: grid; place-items: center; background: #2e9f6b; color: #fff;
+  font-size: 1.5rem; transform: scale(0.4); opacity: 0;
+  animation: check-pop 440ms 780ms cubic-bezier(0.18, 0.9, 0.28, 1.35) forwards;
+}
+@keyframes ring-fill { to { stroke-dashoffset: 0; } }
+@keyframes check-pop {
+  0% { transform: scale(0.35) rotate(-18deg); opacity: 0; }
+  70% { transform: scale(1.12) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ============ 3. streak_milestone — pila de lomos que crece ============ */
+.stack {
+  width: 130px; height: 108px; position: relative;
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 3px;
+}
+.spine { height: 13px; border-radius: 3px; transform: scaleX(0); transform-origin: left; opacity: 0; box-shadow: 0 2px 6px rgba(0,0,0,.14); animation: spine-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1.1) forwards; }
+.spine:nth-child(1) { width: 96px; background: #f0a35e; animation-delay: 60ms; }
+.spine:nth-child(2) { width: 84px; background: #71a9cf; animation-delay: 180ms; }
+.spine:nth-child(3) { width: 90px; background: #d87581; animation-delay: 300ms; }
+.spine:nth-child(4) { width: 80px; background: #6d5dfc; animation-delay: 420ms; }
+.spine:nth-child(5) { width: 88px; background: #2e9f6b; animation-delay: 540ms; }
+.stackNum {
+  position: absolute; top: -6px; right: 0; width: 46px; height: 46px;
+  border-radius: 50%; display: grid; place-items: center;
+  background: #e0a458; color: #3a2a12; font-weight: 800; font-size: 1rem;
+  transform: scale(0.3); opacity: 0; box-shadow: 0 7px 16px rgba(224, 164, 88, 0.4);
+  font-variant-numeric: tabular-nums;
+  animation: num-pop 460ms 700ms cubic-bezier(0.2, 0.9, 0.3, 1.4) forwards;
+}
+@keyframes spine-in { to { transform: scaleX(1); opacity: 1; } }
+@keyframes num-pop {
+  0% { transform: scale(0.3) rotate(-12deg); opacity: 0; }
+  70% { transform: scale(1.14) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ============ 4. first_club_participation — avatares que se unen ============ */
+.club { width: 168px; height: 108px; position: relative; display: grid; place-items: center; }
+.core {
+  width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center;
+  background: linear-gradient(145deg, #6d5dfc, #4f3bd6); color: #fff; font-size: 1.4rem;
+  box-shadow: 0 12px 26px rgba(84, 64, 220, 0.26);
+  transform: scale(0.75); opacity: 0.35;
+  animation: core-pulse 640ms 420ms cubic-bezier(0.2, 0.9, 0.3, 1.3) forwards;
+}
+.avatar {
+  position: absolute; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 0.85rem;
+  border: 3px solid var(--background, #fff); box-shadow: 0 7px 16px rgba(0,0,0,.16); opacity: 0;
+}
+.avatar.a { background: #e07a5f; left: 8px; top: 38px; animation: join-a 720ms cubic-bezier(0.2, 0.9, 0.25, 1.18) forwards; }
+.avatar.b { background: #3d8f73; right: 8px; top: 38px; animation: join-b 720ms 90ms cubic-bezier(0.2, 0.9, 0.25, 1.18) forwards; }
+.avatar.c { background: #3979bd; left: 64px; top: -2px; animation: join-c 720ms 180ms cubic-bezier(0.2, 0.9, 0.25, 1.18) forwards; }
+@keyframes join-a { from { transform: translateX(-48px) rotate(-18deg) scale(0.7); opacity: 0; } to { transform: translateX(40px) rotate(0) scale(1); opacity: 1; } }
+@keyframes join-b { from { transform: translateX(48px) rotate(18deg) scale(0.7); opacity: 0; } to { transform: translateX(-40px) rotate(0) scale(1); opacity: 1; } }
+@keyframes join-c { from { transform: translateY(-44px) scale(0.7); opacity: 0; } to { transform: translateY(24px) scale(1); opacity: 1; } }
+@keyframes core-pulse {
+  0% { transform: scale(0.75); opacity: 0.35; }
+  70% { transform: scale(1.13); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .visual * { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+}

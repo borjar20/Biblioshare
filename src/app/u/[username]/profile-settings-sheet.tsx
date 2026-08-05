@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { logout } from "@/app/(auth)/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { GearIcon, LockIcon } from "@/components/ui/icons";
+import { CelebrationPreferenceToggle } from "@/components/celebrations/celebration-preference-toggle";
 import { updateProfileVisibility } from "./actions";
 
 // Hoja de ajustes tras el engranaje (plan 05, P1 — versión interina sin el ⚙
@@ -89,6 +90,8 @@ export function ProfileSettingsSheet({
                 {isPublic ? t("makePrivate") : t("makePublic")}
               </Button>
             </div>
+
+            <CelebrationPreferenceToggle />
 
             {isAdmin && (
               <Link

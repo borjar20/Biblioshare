@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "@/lib/social/notifications";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
+import { earnFirstClubParticipation } from "@/lib/celebrations/earn";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -37,6 +38,7 @@ export async function joinClub(clubId: string): Promise<void> {
     .from("club_members")
     .insert({ club_id: clubId, user_id: userId, status: "active" });
   if (error) throw error;
+  await earnFirstClubParticipation(supabase, userId, clubId);
   revalidateClubPages();
 }
 
@@ -136,6 +138,7 @@ export async function acceptInvite(clubId: string): Promise<void> {
   // Solo notifica si de verdad había una invitación pendiente que aceptar
   // (evita notificar dos veces con un doble clic).
   if (data && data.length > 0) {
+    await earnFirstClubParticipation(supabase, userId, clubId);
     try {
       await notify(supabase, {
         userId: club.owner_id,
