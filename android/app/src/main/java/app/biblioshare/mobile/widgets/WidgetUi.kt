@@ -9,15 +9,20 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.ContentScale
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -34,6 +39,7 @@ object WidgetPalette {
     val fgSoft = ColorProvider(R.color.widget_fg_soft)
     val accent = ColorProvider(R.color.widget_accent)
     val track = ColorProvider(R.color.widget_track)
+    val gold = ColorProvider(R.color.widget_gold)
 }
 
 fun titleStyle() = TextStyle(color = WidgetPalette.fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -81,4 +87,64 @@ fun EmptyState(title: String, subtitle: String) {
         Text(title, style = titleStyle(), maxLines = 2)
         Text(subtitle, style = softStyle(), maxLines = 2)
     }
+}
+
+/** Cabecera de sección: etiqueta en mayúsculas + acción opcional (p. ej. "Ver todos") a la derecha. */
+@Composable
+fun SectionHeader(label: String, trailing: (@Composable () -> Unit)? = null) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label.uppercase(),
+            style = TextStyle(color = WidgetPalette.fgSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold),
+        )
+        if (trailing != null) {
+            Spacer(GlanceModifier.defaultWeight())
+            trailing()
+        }
+    }
+}
+
+/** Pastilla dorada con la racha en días (icono + texto). */
+@Composable
+fun StreakPill(days: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = GlanceModifier
+            .background(ImageProvider(R.drawable.widget_pill_gold))
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+    ) {
+        Text("◆", style = TextStyle(color = WidgetPalette.gold, fontSize = 11.sp))
+        Spacer(GlanceModifier.width(7.dp))
+        Text("Racha $days d", style = TextStyle(color = WidgetPalette.fg, fontSize = 12.sp, fontWeight = FontWeight.Medium))
+    }
+}
+
+/** Fila de puntos de la semana: hoy en dorado, activo en acento, inactivo en el track. */
+@Composable
+fun WeekDots(week: List<WidgetWeekDay>) {
+    Row {
+        week.forEach { d ->
+            val bg = when {
+                d.today -> R.drawable.widget_dot_today
+                d.active -> R.drawable.widget_dot_on
+                else -> R.drawable.widget_dot_off
+            }
+            Box(GlanceModifier.size(14.dp).background(ImageProvider(bg))) {}
+            Spacer(GlanceModifier.width(4.dp))
+        }
+    }
+}
+
+/** Barra de progreso fina; usa el indicador nativo de Glance (no hay fillMaxWidth(fraction) en 1.1.1). */
+@Composable
+fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent) {
+    LinearProgressIndicator(
+        progress = (percent.coerceIn(0, 100)) / 100f,
+        modifier = GlanceModifier.fillMaxWidth().height(6.dp),
+        color = color,
+        backgroundColor = WidgetPalette.track,
+    )
 }
