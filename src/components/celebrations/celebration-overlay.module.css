@@ -1,13 +1,14 @@
 /* Overlay global de celebraciones. NO bloquea la interacción (pointer-events:
-   none) y se ancla abajo-centro respetando el área segura del móvil. Sin canvas:
-   todo transform/opacity, así que no provoca reflow y va fluido en gama baja. */
+   none) y se centra en la pantalla respetando el área segura del móvil. Sin
+   canvas: todo transform/opacity, así que no provoca reflow y va fluido en gama baja. */
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 90;
   display: grid;
-  place-items: end center;
-  padding: 0 16px calc(20px + env(safe-area-inset-bottom));
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px
+    max(16px, env(safe-area-inset-bottom));
   pointer-events: none;
 }
 
@@ -93,7 +94,17 @@
 }
 
 /* ============ 2. daily_goal_completed — anillo que se cierra ============ */
-.ringWrap { width: 104px; height: 104px; }
+/* position:relative + grid centran el check sobre el anillo: como grid item
+   (aunque sea absolute) su posición estática es el centro, y check-pop escala
+   sobre su propio centro sin descolocarlo. Sin esto el check saltaba a la
+   esquina de .visual (bug reportado). */
+.ringWrap {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+}
 .ring { width: 104px; height: 104px; transform: rotate(-90deg); }
 .ringTrack { fill: none; stroke: var(--border, rgba(30,30,25,.14)); stroke-width: 10; }
 .ringValue {
