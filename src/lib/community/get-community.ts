@@ -108,6 +108,12 @@ async function loadEditionLabels(
   );
 }
 
+/** Solo el agregado de puntuación: lo único que el hero de la ficha necesita. */
+export type RatingSummary = Pick<
+  Community,
+  "avgRating" | "ratingCount" | "distribution"
+>;
+
 // Agregados reales de la comunidad para una ficha: la media y el histograma
 // salen de los pases (diary_entries), no de library_entries.rating — esa
 // columna se está jubilando y una entrada puede acumular varios pases
@@ -115,11 +121,19 @@ async function loadEditionLabels(
 // texto público. La visibilidad la resuelve RLS: solo se ven filas de
 // perfiles públicos (más las propias del que mira), así que aquí no hay
 // filtro extra.
-export async function getCommunity(
+//
+// Partido en dos (#439): el HERO solo pinta `avgRating`/`ratingCount`, así que
+// espera a `getRatingSummary` —una consulta a `passes`—. Las reseñas y todo lo
+// que cuelga de ellas (perfiles, ediciones, reacciones, menciones) son ~4
+// roundtrips más que solo pinta `CommunityPanel`, detrás del <Suspense> de las
+// pestañas: viven en `getReviews`. Sin cachear: sigue siendo el cliente de
+// sesión y RLS filtra igual que antes (el cambio a agregado público cacheado
+// sería otra decisión —ver #437/#439—, no esto).
+export async function getRatingSummary(
   supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string
-): Promise<Community> {
+): Promise<RatingSummary> {
   // Notas: un voto por usuario, el de su pase cerrado más reciente, sin
   // contar las entradas abandonadas (dropped). latestRatingPerUser hace el
   // "quédate con el último pase por user_id" en TypeScript porque Supabase
@@ -160,6 +174,18 @@ export async function getCommunity(
     }
   }
 
+  return { avgRating, ratingCount: ratings.length, distribution };
+}
+
+// Reseñas de la comunidad (texto público) + los @usernames que mencionan.
+// ~4 roundtrips; vive detrás del <Suspense> de las pestañas, nunca en el hero
+// (#439). Mismo cliente de sesión: RLS solo sirve filas de perfiles públicos
+// más las propias del que mira.
+export async function getReviews(
+  supabase: SupabaseServerClient,
+  itemType: ItemType,
+  itemId: string
+): Promise<Pick<Community, "reviews" | "knownUsernames">> {
   // Reseñas: pases con texto, de cualquier pase de esta obra (incluidos los
   // abandonados — una reseña sigue siendo válida aunque el pase no vote).
   // pass_reviews ya expone item_type/item_id directamente: sin el paso previo
@@ -253,5 +279,20 @@ export async function getCommunity(
     ...reviews.flatMap((r) => r.comments.map((c) => c.body)),
   ]);
 
-  return { avgRating, ratingCount: ratings.length, distribution, reviews, knownUsernames };
+  return { reviews, knownUsernames };
+}
+
+// El objeto entero. Ya no se usa en el camino crítico de la ficha (la página
+// llama a getRatingSummary para el hero y getReviews con las pestañas), pero se
+// mantiene como combinador para quien quiera la comunidad completa de una vez.
+export async function getCommunity(
+  supabase: SupabaseServerClient,
+  itemType: ItemType,
+  itemId: string
+): Promise<Community> {
+  const [summary, reviews] = await Promise.all([
+    getRatingSummary(supabase, itemType, itemId),
+    getReviews(supabase, itemType, itemId),
+  ]);
+  return { ...summary, ...reviews };
 }
