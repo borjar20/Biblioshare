@@ -5,9 +5,15 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
-import { getLibraryItems, getUserGenres } from "@/lib/library/get-library-items";
+import {
+  getLibraryItems,
+  getUserGenres,
+} from "@/lib/library/get-library-items";
 import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
-import { resolveEffectiveType, ALL_TYPES_PARAM } from "@/lib/library/effective-type";
+import {
+  resolveEffectiveType,
+  ALL_TYPES_PARAM,
+} from "@/lib/library/effective-type";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
@@ -16,11 +22,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { InboxIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
-import {
-  CollectionTabs,
-  KNOWN_TABS,
-  type KnownTab,
-} from "./collection-tabs";
+import { CollectionTabs, KNOWN_TABS, type KnownTab } from "./collection-tabs";
 import { CollectionSummary } from "@/components/library/collection-summary";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { CollectionsGrid } from "@/components/library/collections-grid";
@@ -82,7 +84,7 @@ export default async function CollectionPage({
   const params = await searchParams;
   const tab: KnownTab = KNOWN_TABS.includes(params.tab as KnownTab)
     ? (params.tab as KnownTab)
-    : "colecciones";
+    : "todo";
   const status = VALID_STATUSES.includes(params.status as MediaStatus)
     ? (params.status as MediaStatus)
     : undefined;
@@ -92,7 +94,8 @@ export default async function CollectionPage({
     : "recent";
   // Slug inválido -> se trata como si no hubiera filtro (no se propaga a
   // getLibraryItems, que devolvería la biblioteca vacía para un slug basura).
-  const genre = params.genero && genreDefForSlug(params.genero) ? params.genero : undefined;
+  const genre =
+    params.genero && genreDefForSlug(params.genero) ? params.genero : undefined;
   // Con ?type= explícito manda la URL. Sin él, y SOLO si el usuario declaró
   // exactamente UN interés en el onboarding, el filtro de «Todo» arranca ahí:
   // con dos o tres no hay un tipo "obvio" y forzar uno escondería media
@@ -106,7 +109,8 @@ export default async function CollectionPage({
   // `interests` solo se consulta en el caso por defecto (ni tipo válido ni
   // `todos`): es la única rama que los necesita, y así se ahorra la query.
   const isExplicitType =
-    VALID_TYPES.includes(params.type as ItemType) || params.type === ALL_TYPES_PARAM;
+    VALID_TYPES.includes(params.type as ItemType) ||
+    params.type === ALL_TYPES_PARAM;
   let interests: ItemType[] = [];
   if (!isExplicitType) {
     const { data: prefs } = await supabase
@@ -116,14 +120,18 @@ export default async function CollectionPage({
       .maybeSingle();
     interests = (prefs?.interests ?? []) as ItemType[];
   }
-  const itemType: ItemType | undefined = resolveEffectiveType(params.type, interests);
+  const itemType: ItemType | undefined = resolveEffectiveType(
+    params.type,
+    interests,
+  );
 
   // Géneros del selector: solo se consultan en la pestaña `todo`, donde vive
   // `LibraryFilters` — evita la query extra en `colecciones`/`sagas`. Se acota
   // al MISMO `itemType` efectivo (lock de onboarding o `?type=`) que recibe
   // `getLibraryItems` más abajo: si no, un chip de género de un tipo bloqueado
   // filtraría la rejilla a 0 resultados.
-  const genres = tab === "todo" ? await getUserGenres(supabase, user.id, itemType) : [];
+  const genres =
+    tab === "todo" ? await getUserGenres(supabase, user.id, itemType) : [];
 
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
@@ -209,7 +217,6 @@ export default async function CollectionPage({
           <FollowedSagasPanel userId={user.id} />
         </Suspense>
       )}
-
     </div>
   );
 }
@@ -258,7 +265,9 @@ async function TodoOverview({ userId }: { userId: string }) {
     <div
       className={`flex flex-col gap-6 ${hasFavorites ? "xl:flex-row xl:items-start" : ""}`}
     >
-      <div className={hasFavorites ? "xl:w-[360px] xl:shrink-0" : "xl:max-w-3xl"}>
+      <div
+        className={hasFavorites ? "xl:w-[360px] xl:shrink-0" : "xl:max-w-3xl"}
+      >
         <CollectionSummary summary={summary} />
       </div>
       {hasFavorites && (
