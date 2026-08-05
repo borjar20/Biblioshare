@@ -54,6 +54,7 @@ jobs:
       - name: Build signed release APK
         working-directory: android
         run: |
+          chmod +x ./gradlew
           ./gradlew assembleRelease \
             -PappVersionCode=${{ steps.version.outputs.version_code }} \
             -PappVersionName=${{ steps.version.outputs.version_name }}
