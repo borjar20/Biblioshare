@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/nav/app-shell";
+import { CelebrationProvider } from "@/components/celebrations/celebration-provider";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { SessionOriginTracker } from "@/components/session/session-origin";
@@ -66,8 +67,12 @@ export default function RootLayout({
             solo de las que pasan por la ficha. */}
         <SessionOriginTracker />
         <NextIntlClientProvider>
-          <AppShell>{children}</AppShell>
-          {modal}
+          {/* Overlay global de microanimaciones: drena las celebraciones ganadas
+              en servidor y las anima una vez, sin bloquear la navegación. */}
+          <CelebrationProvider>
+            <AppShell>{children}</AppShell>
+            {modal}
+          </CelebrationProvider>
         </NextIntlClientProvider>
         <SpeedInsights />
       </body>

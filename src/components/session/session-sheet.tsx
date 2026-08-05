@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import type { MediaStatus } from "@/lib/library/types";
 import { addSession, type AddSessionState } from "@/lib/sessions/actions";
+import { checkCelebrations } from "@/lib/celebrations/preference";
 import { itemHref } from "@/lib/catalog/item-href";
 import { timerStorageKey } from "@/lib/sessions/timer";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
@@ -105,7 +106,13 @@ export function SessionSheet({
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
   useEffect(() => {
-    if (!state.ok || state.passClosed) return;
+    if (!state.ok) return;
+    // El guardado pudo ganar celebraciones en servidor (primera actividad,
+    // objetivo diario, hito de racha): que el provider las drene y anime. Va
+    // aquí y no en el bloque de derivación porque disparar un evento es un
+    // efecto, no estado derivado. Se pide también cuando el pase se cierra.
+    checkCelebrations();
+    if (state.passClosed) return;
     closeSheet();
   }, [state, closeSheet]);
 
