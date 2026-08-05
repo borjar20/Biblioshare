@@ -1,8 +1,6 @@
-import type { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "./types";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // Las series no tienen ediciones: su unidad de progreso son los episodios.
 //
@@ -19,13 +17,17 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // en la base de datos era correcta. Añadir `id` como desempate no cambia el
 // resultado (ya era determinista sin él) pero sí cambia la URL de la
 // petición, así que ninguna llamada sirve una respuesta cacheada de la otra.
+// Cliente SIN sesión (`book_editions`/`movie_versions` son `SELECT USING (true)`):
+// resultado idéntico para todos → cacheable en Fase 4 (#436). El SYNC de ediciones
+// (que sí escribe y exige sesión) vive en loadBookEditions, no aquí.
 export async function getEditions(
-  supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string,
   freshRead = false
 ): Promise<Edition[]> {
   if (itemType === "series") return [];
+
+  const supabase = createPublicClient();
 
   if (itemType === "book") {
     let query = supabase

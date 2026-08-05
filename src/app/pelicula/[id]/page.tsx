@@ -116,7 +116,7 @@ export default async function MovieDetailPage({
   // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
   // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
   const [ratingSummary, activePass, shellRole] = await Promise.all([
-    getRatingSummary(supabase, "movie", movie.id),
+    getRatingSummary("movie", movie.id),
     user
       ? supabase
           .from("passes")
@@ -244,8 +244,8 @@ async function MovieTabs({
         // pasarla no habría con qué decidir si ya está. Ver #365.
         durationMinutes: movie.duration_minutes,
       }),
-      getItemSagas(supabase, "movie", movie.id),
-      getEditions(supabase, "movie", movie.id),
+      getItemSagas("movie", movie.id),
+      getEditions("movie", movie.id),
       // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
       userId
         ? supabase
@@ -269,7 +269,7 @@ async function MovieTabs({
   const community: Community = { ...ratingSummary, ...reviewsResult };
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
-  const credits = await getItemCredits(supabase, "movie", movie.id);
+  const credits = await getItemCredits("movie", movie.id);
 
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];
