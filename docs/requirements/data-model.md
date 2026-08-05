@@ -468,6 +468,26 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 > (`setFollowNotify`) en vez de un UPDATE directo del cliente. Sin tabla nueva. Ver
 > `decisiones.md` (2026-08-04).
 
+> **Delta del 2026-08-05 (notificaciones push unificadas Web+Android): aplicado en DEV;
+> PROD pendiente del merge.** Migraciones `20260828_push_devices.sql`,
+> `20260829_notification_preferences.sql`, `20260830_notifications_dedupe_key.sql`.
+> - **`push_devices`** (NUEVA): dispositivos push unificados. Enum `push_platform`
+>   (`web_push|fcm_android|apns_ios`). `web_push` usa `endpoint`+`p256dh`+`auth` (VAPID);
+>   nativo usa `token`. CHECK `push_devices_credentials_shape` impide mezclar los dos mundos.
+>   Salud por dispositivo (`enabled`, `last_success_at`, `last_error`, `last_error_at`,
+>   `failure_count`) para apagar tokens muertos sin borrarlos. RLS self-only; el dispatcher
+>   lee/escribe salud con service_role. **Sustituye a `push_subscriptions`** (que sigue en
+>   pie, con sus filas COPIADAS a `push_devices`; su retirada es un issue aparte tras
+>   verificar en prod).
+> - **`notification_preferences`** (NUEVA): una fila por usuario, opt-out (sin fila = todo
+>   activo). Canales `web_push_enabled`/`android_push_enabled` × categorías
+>   `category_social|clubs|progress|system`. El dispatcher las cruza. RLS self-only.
+> - **`notifications.dedupe_key`** (COLUMNA NUEVA, nullable): idempotencia opcional; índice
+>   único parcial `where dedupe_key is not null`. Hoy la usan las reacciones. **Grants por
+>   columna añadidos** (DRIFT-CHECK superficie 6, #375): `dedupe_key` concedida con el mismo
+>   patrón que las demás columnas de `notifications`. Ver `decisiones.md` (2026-08-05) y
+>   `docs/push-notifications-android.md`.
+
 **Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
 `20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
 el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor y por

@@ -1352,6 +1352,7 @@ export type Database = {
         Row: {
           actor_id: string | null
           created_at: string
+          dedupe_key: string | null
           id: string
           interaction_target_id: string | null
           read_at: string | null
@@ -1363,6 +1364,7 @@ export type Database = {
         Insert: {
           actor_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           interaction_target_id?: string | null
           read_at?: string | null
@@ -1374,6 +1376,7 @@ export type Database = {
         Update: {
           actor_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           interaction_target_id?: string | null
           read_at?: string | null
@@ -1661,6 +1664,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_preferences: {
+        Row: {
+          android_push_enabled: boolean
+          category_clubs: boolean
+          category_progress: boolean
+          category_social: boolean
+          category_system: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+          web_push_enabled: boolean
+        }
+        Insert: {
+          android_push_enabled?: boolean
+          category_clubs?: boolean
+          category_progress?: boolean
+          category_social?: boolean
+          category_system?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+          web_push_enabled?: boolean
+        }
+        Update: {
+          android_push_enabled?: boolean
+          category_clubs?: boolean
+          category_progress?: boolean
+          category_social?: boolean
+          category_system?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+          web_push_enabled?: boolean
+        }
+        Relationships: []
+      }
+      push_devices: {
+        Row: {
+          app_version: string | null
+          auth: string | null
+          created_at: string
+          device_id: string | null
+          device_name: string | null
+          enabled: boolean
+          endpoint: string | null
+          failure_count: number
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          last_success_at: string | null
+          p256dh: string | null
+          platform: Database["public"]["Enums"]["push_platform"]
+          token: string | null
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          auth?: string | null
+          created_at?: string
+          device_id?: string | null
+          device_name?: string | null
+          enabled?: boolean
+          endpoint?: string | null
+          failure_count?: number
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_success_at?: string | null
+          p256dh?: string | null
+          platform: Database["public"]["Enums"]["push_platform"]
+          token?: string | null
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          auth?: string | null
+          created_at?: string
+          device_id?: string | null
+          device_name?: string | null
+          enabled?: boolean
+          endpoint?: string | null
+          failure_count?: number
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_success_at?: string | null
+          p256dh?: string | null
+          platform?: Database["public"]["Enums"]["push_platform"]
+          token?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -2768,6 +2864,7 @@ export type Database = {
         | "club_event_cancelled"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
+      push_platform: "web_push" | "fcm_android" | "apns_ios"
       saga_item_role:
         | "precuela"
         | "novela_corta"
@@ -2975,6 +3072,7 @@ export const Constants = {
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
+      push_platform: ["web_push", "fcm_android", "apns_ios"],
       saga_item_role: [
         "precuela",
         "novela_corta",

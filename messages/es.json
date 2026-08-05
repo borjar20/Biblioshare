@@ -879,9 +879,16 @@
   },
   "push": {
     "toggleLabel": "Notificaciones push",
-    "toggleHint": "Recibe un aviso del sistema cuando alguien te siga, reaccione o comente.",
+    "toggleHint": "Recibe un aviso cuando alguien te siga, reaccione o comente.",
     "unsupported": "Tu navegador no soporta notificaciones push.",
-    "deniedHint": "Has bloqueado los avisos para este sitio. Actívalos desde los ajustes de notificaciones de tu navegador para poder recibirlos."
+    "deniedHint": "Has bloqueado los avisos para este sitio. Actívalos desde los ajustes de notificaciones de tu navegador para poder recibirlos.",
+    "deniedHintNative": "Has bloqueado los avisos. Actívalos desde los ajustes de notificaciones de tu dispositivo para poder recibirlos.",
+    "error": "No se pudo completar. Inténtalo de nuevo.",
+    "categoriesLabel": "Recibir avisos de",
+    "categorySocial": "Social",
+    "categoryClubs": "Clubes",
+    "categoryProgress": "Progreso",
+    "categorySystem": "Sistema"
   },
   "item": {
     "pages": "págs.",

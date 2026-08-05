@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "662274343878",
+    "project_id": "biblioshare-cab6c",
+    "storage_bucket": "biblioshare-cab6c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:662274343878:android:9fa66a65468c965e2f68c7",
+        "android_client_info": {
+          "package_name": "app.biblioshare.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_0wr_BcPS87Z8Sa2K_3pOLsGZlrY4VwY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
