@@ -156,6 +156,8 @@ describe("toggleReaction", () => {
       actorId: "actor",
       type: "activity_liked",
       interactionTargetId: "target-pass",
+      // Idempotencia de reacciones (spec item 9): un relike no reavisa.
+      dedupeKey: "reaction:target-pass:actor",
     });
   });
 

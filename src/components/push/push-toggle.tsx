@@ -2,129 +2,110 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { subscribeToPush, unsubscribeFromPush } from "@/lib/push/subscription-actions";
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  getNotificationPlatform,
+  getPushPermissionState,
+  isPushEnabled,
+  type NotificationPlatform,
+  type PushPermissionState,
+} from "@/lib/push/platform";
 
-type PermissionState = "unsupported" | "default" | "denied";
-
-// Toggle de opt-in de notificaciones push (E5.D4). El estado real vive en el
-// navegador (Notification.permission + PushManager), no en la app — se
-// consulta al montar en vez de guardarse en servidor.
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
-}
+// Toggle de opt-in de notificaciones push (spec item 12). Habla con la API común
+// de plataforma: no sabe si está en web o en el WebView de Capacitor. Muestra
+// estados reales (activas / pendientes / denegadas / no compatible) y usa
+// lenguaje de app en nativo (no «tu navegador»).
 
 export function PushToggle() {
   const t = useTranslations("push");
-  const [state, setState] = useState<PermissionState>("default");
-  const [subscribed, setSubscribed] = useState(false);
+  const [platform, setPlatform] = useState<NotificationPlatform>("web");
+  const [permission, setPermission] = useState<PushPermissionState>("prompt");
+  const [enabled, setEnabled] = useState(false);
+  const [error, setError] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    // Notification.permission/serviceWorker support can only be read
-    // client-side (SSR has neither), so this one-time sync after mount is
-    // intentional rather than a derivable/subscribable value.
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState("unsupported");
-      return;
-    }
-    if (Notification.permission === "denied") {
-      setState("denied");
-      return;
-    }
-    navigator.serviceWorker.ready.then((registration) =>
-      registration.pushManager.getSubscription().then((sub) => setSubscribed(!!sub)),
-    );
+    // Estas lecturas dependen de APIs de plataforma/navegador que solo existen en
+    // cliente: se resuelven al montar (el servidor asume el default seguro). Mismo
+    // patrón justificado que barcode-scanner.tsx / theme-toggle.tsx.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPlatform(getNotificationPlatform());
+    let active = true;
+    void getPushPermissionState().then((p) => active && setPermission(p));
+    void isPushEnabled().then((e) => active && setEnabled(e));
+    return () => {
+      active = false;
+    };
   }, []);
 
   function enable() {
+    setError(false);
     startTransition(async () => {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setState("denied");
-        return;
+      try {
+        const result = await enablePushNotifications();
+        setPermission(result.state);
+        setEnabled(result.ok);
+        if (!result.ok && result.state !== "denied") setError(true);
+      } catch {
+        setError(true);
       }
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-        ) as BufferSource,
-      });
-      const json = subscription.toJSON() as {
-        endpoint: string;
-        keys: { p256dh: string; auth: string };
-      };
-      await subscribeToPush(json);
-      setSubscribed(true);
     });
   }
 
   function disable() {
     startTransition(async () => {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      if (subscription) {
-        await unsubscribeFromPush(subscription.endpoint);
-        await subscription.unsubscribe();
+      try {
+        await disablePushNotifications();
+        setEnabled(false);
+        setPermission(await getPushPermissionState());
+      } catch {
+        setError(true);
       }
-      setSubscribed(false);
     });
   }
 
-  if (state === "unsupported") {
-    return (
-      <p className="px-4 py-3 text-xs text-muted-foreground">{t("unsupported")}</p>
-    );
+  const isNative = platform === "android" || platform === "ios";
+
+  if (permission === "unsupported") {
+    // Solo puede pasar en web real: en el WebView nativo nunca es "unsupported".
+    return <p className="px-4 py-3 text-xs text-muted-foreground">{t("unsupported")}</p>;
   }
 
-  if (state === "denied") {
+  if (permission === "denied") {
     return (
-      <p className="px-4 py-3 text-xs text-muted-foreground">{t("deniedHint")}</p>
+      <p className="px-4 py-3 text-xs text-muted-foreground">
+        {isNative ? t("deniedHintNative") : t("deniedHint")}
+      </p>
     );
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium">{t("toggleLabel")}</span>
-        <span className="text-xs text-muted-foreground">{t("toggleHint")}</span>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={subscribed}
-        aria-label={t("toggleLabel")}
-        disabled={isPending}
-        onClick={subscribed ? disable : enable}
-        className={`relative h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors disabled:opacity-50 ${
-          subscribed ? "bg-accent" : "bg-surface-muted"
-        }`}
-      >
-        <span
-          className={`absolute left-0 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
-            // El knob se apoya en dos fondos distintos, así que su color va con
-            // el estado: sobre bg-accent contrasta accent-foreground; sobre
-            // bg-surface-muted haría falta algo más oscuro en modo oscuro.
-            subscribed
-              ? "bg-accent-foreground"
-              : "bg-muted-foreground"
-          } ${
-            // Estos offsets asumen que el knob está anclado a left-0: sin ese
-            // anclaje el absolute cae en su posición estática, que en un
-            // <button> va centrada (text-align: center del UA), y el estado
-            // "on" se salía del track y lo recortaba el overflow-hidden.
-            // w-11 track (44px) minus w-5 knob (20px) minus the 2px inset used
-            // on every other edge (top-0.5) leaves 22px for the "on" position
-            // — translate-x-5 (20px) undershot that by 2px, so the knob never
-            // reached a symmetric right inset.
-            subscribed ? "translate-x-[1.375rem]" : "translate-x-0.5"
+    <div className="flex flex-col gap-1 px-4 py-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium">{t("toggleLabel")}</span>
+          <span className="text-xs text-muted-foreground">{t("toggleHint")}</span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label={t("toggleLabel")}
+          disabled={isPending}
+          onClick={enabled ? disable : enable}
+          className={`relative h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors disabled:opacity-50 ${
+            enabled ? "bg-accent" : "bg-surface-muted"
           }`}
-        />
-      </button>
+        >
+          <span
+            className={`absolute left-0 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+              enabled ? "bg-accent-foreground" : "bg-muted-foreground"
+            } ${enabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`}
+          />
+        </button>
+      </div>
+      {error && <span className="text-xs text-status-dropped">{t("error")}</span>}
     </div>
   );
 }

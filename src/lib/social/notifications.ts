@@ -2,7 +2,8 @@ import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
-import { sendPushToUser, sendPushToUsers, type PushPayload } from "@/lib/push/send-push";
+import { sendPushToUser, sendPushToUsers } from "@/lib/push/send-push";
+import { NOTIFICATION_CATEGORY, type PushContent } from "@/lib/push/types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   NOTIFICATION_TYPE_KEY,
@@ -35,6 +36,11 @@ export async function notify(
     targetType?: ReviewTargetType;
     targetId?: string;
     interactionTargetId?: string;
+    // Clave de idempotencia opcional (spec item 9). Si se pasa y ya existe una
+    // notificación con esa clave, no se inserta otra NI se manda push. Hoy la
+    // usan las reacciones (un relike no debe volver a avisar). Sin clave, el
+    // comportamiento es el de siempre (insert normal).
+    dedupeKey?: string;
   },
 ): Promise<void> {
   try {
@@ -45,25 +51,38 @@ export async function notify(
   }
 
   const notificationWriter = createServiceRoleClient();
-  const { error } = await notificationWriter.from("notifications").insert({
+  const row = {
     user_id: params.userId,
     actor_id: params.actorId,
     type: params.type,
     target_type: params.targetType ?? null,
     target_id: params.targetId ?? null,
     interaction_target_id: params.interactionTargetId ?? null,
-  });
+    dedupe_key: params.dedupeKey ?? null,
+  };
+  // .select() recupera el id de la fila (viaja en el data payload del push, spec
+  // item 8). Con dedupeKey se hace upsert(ignoreDuplicates): si ya existía, no
+  // devuelve fila (maybeSingle → null) y se salta también el push.
+  const { data: inserted, error } = params.dedupeKey
+    ? await notificationWriter
+        .from("notifications")
+        .upsert(row, { onConflict: "dedupe_key", ignoreDuplicates: true })
+        .select("id")
+        .maybeSingle()
+    : await notificationWriter.from("notifications").insert(row).select("id").single();
   // Best-effort: no se propaga. Una notificación fallida no debe deshacer la
   // acción real (follow/accept/reacción/comentario) que ya se confirmó.
   if (error) {
     console.error("notify() failed", error);
     return;
   }
+  // Duplicada (dedupeKey ya existía): la notificación no es nueva, no hay push.
+  if (params.dedupeKey && !inserted) return;
 
   // Entrega push (E5.D4), también best-effort — nunca debe afectar a la
   // notificación in-app, que ya se insertó arriba con éxito.
   try {
-    await deliverPush(supabase, params);
+    await deliverPush(supabase, params, inserted?.id);
   } catch (pushError) {
     console.error("notify() push delivery failed", pushError);
   }
@@ -83,7 +102,7 @@ async function buildPushPayload(
     targetId?: string;
     interactionTargetId?: string;
   },
-): Promise<PushPayload | null> {
+): Promise<PushContent | null> {
   // Sin actor (aviso del sistema) no se busca perfil y no se aborta: el enlace sale
   // del target. Con actor que no resuelve sí se aborta, porque la copy por defecto
   // lleva su nombre.
@@ -117,9 +136,14 @@ async function buildPushPayload(
   const name = actor?.display_name || actor?.username || tCommon("appName");
 
   return {
+    // La categoría se deriva del tipo (no se pasa suelta): gobierna las
+    // preferencias del destinatario y el canal Android.
+    category: NOTIFICATION_CATEGORY[params.type],
+    type: params.type,
     title: tCommon("appName"),
     body: t(NOTIFICATION_TYPE_KEY[params.type], { name }),
-    url: href,
+    path: href,
+    actorUserId: params.actorId ?? undefined,
   };
 }
 
@@ -133,10 +157,11 @@ async function deliverPush(
     targetId?: string;
     interactionTargetId?: string;
   },
+  notificationId?: string,
 ): Promise<void> {
-  const payload = await buildPushPayload(supabase, params);
-  if (!payload) return;
-  await sendPushToUser(params.userId, payload);
+  const content = await buildPushPayload(supabase, params);
+  if (!content) return;
+  await sendPushToUser(params.userId, content, notificationId);
 }
 
 // Fan-out a varios destinatarios (post/actividad de club): UNA inserción
@@ -198,33 +223,41 @@ export async function notifyMany(
   }
   if (userIds.length === 0) return [];
 
+  // Map user_id → notificationId de la fila recién insertada (1:1: cada usuario
+  // recibe una sola fila). Viaja en el data payload del push (spec item 8).
+  let notificationIdByUser = new Map<string, string>();
   try {
     const notificationWriter = createServiceRoleClient();
-    const { error } = await notificationWriter.from("notifications").insert(
-      userIds.map((userId) => ({
-        user_id: userId,
-        actor_id: params.actorId,
-        type: params.type,
-        target_type: params.targetType ?? null,
-        target_id: params.targetId ?? null,
-        interaction_target_id: params.interactionTargetId ?? null,
-      })),
-    );
+    const { data: insertedRows, error } = await notificationWriter
+      .from("notifications")
+      .insert(
+        userIds.map((userId) => ({
+          user_id: userId,
+          actor_id: params.actorId,
+          type: params.type,
+          target_type: params.targetType ?? null,
+          target_id: params.targetId ?? null,
+          interaction_target_id: params.interactionTargetId ?? null,
+        })),
+      )
+      .select("id, user_id");
     if (error) throw error;
+    notificationIdByUser = new Map((insertedRows ?? []).map((r) => [r.user_id, r.id]));
   } catch (writerError) {
     console.error("notifyMany() failed", writerError);
     return [];
   }
 
   try {
-    const payload = await buildPushPayload(supabase, params);
+    const content = await buildPushPayload(supabase, params);
     // El cuerpo a medida sustituye al de la clave i18n, pero se conserva el
-    // título y —sobre todo— el href que ya resolvió buildPushPayload: es lo que
+    // título y —sobre todo— la ruta que ya resolvió buildPushPayload: es lo que
     // hace que la notificación abra la ficha correcta.
-    if (payload) {
+    if (content) {
       await sendPushToUsers(
         userIds,
-        params.pushBody ? { ...payload, body: params.pushBody } : payload,
+        params.pushBody ? { ...content, body: params.pushBody } : content,
+        { notificationIdByUser },
       );
     }
   } catch (pushError) {

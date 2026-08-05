@@ -1,109 +1,164 @@
-import webpush from "web-push";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { DEFAULT_PREFERENCES, isPushAllowed, type NotificationPreferences } from "./preferences";
+import { transportFor } from "./transports";
+import type {
+  NotificationEvent,
+  PushContent,
+  PushDeliveryResult,
+  PushPlatform,
+} from "./types";
 
-// Entrega de push (E5.D4), canal-agnóstica: hoy solo implementa "web"; un
-// canal nativo futuro (ios_native, vía Capacitor/APNs) se añadiría como una
-// rama más en el bucle de sendPushToUser, sin tocar la firma pública.
+// Dispatcher común de push (spec item 6). Recibe una notificación lógica YA
+// creada en `notifications` (la fuente de verdad) y la reparte por los
+// transportes activos del destinatario. Reglas duras:
+//   - Nunca lanza: un fallo de entrega jamás revierte la acción social original.
+//   - Consulta preferencias + dispositivos del DESTINATARIO con service_role
+//     (el actor que dispara la notificación no tiene RLS sobre ellos).
+//   - Desactiva tokens definitivamente inválidos; mantiene activos los que
+//     fallan por causas temporales.
 //
-// Usa un cliente service_role en vez del cliente de la request: notify() se
-// llama con el cliente del actor (quien sigue/reacciona/comenta), y la
-// política RLS de push_subscriptions es self-only (auth.uid() = user_id) —
-// el actor no tiene permiso para leer ni borrar las suscripciones del
-// destinatario. Sin esto, la consulta no da error (RLS filtra en silencio),
-// simplemente no devuelve filas y el push nunca se envía.
+// Sustituye al bucle canal-ciego anterior (solo web). `sendPushToUser(s)`
+// conservan su nombre; ahora reciben PushContent (categoría + tipo + ruta), no
+// un {title,body,url} plano, porque el dispatcher necesita la categoría para
+// las preferencias y el canal Android.
 
-type WebCredentials = { endpoint: string; keys: { p256dh: string; auth: string } };
-
-export type PushPayload = {
-  title: string;
-  body: string;
-  url: string;
+// Fila de push_devices con lo que el dispatcher necesita.
+type DeviceRow = {
+  id: string;
+  user_id: string;
+  platform: PushPlatform;
+  endpoint: string | null;
+  p256dh: string | null;
+  auth: string | null;
+  token: string | null;
+  failure_count: number;
 };
-
-let vapidConfigured = false;
-
-// Configuración perezosa: si esto corriera a nivel de módulo, el side effect
-// se ejecutaría en cuanto Next.js importe este fichero — incluido durante la
-// recolección de datos de página en `next build`, mucho antes de que exista
-// una petición real. Con claves VAPID ausentes (build sin las env vars, un
-// segundo desarrollador sin configurarlas localmente, etc.) eso tira todo el
-// build abajo por una feature que es best-effort por diseño.
-function ensureVapidConfigured(): boolean {
-  if (vapidConfigured) return true;
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) {
-    console.error("sendPushToUser: VAPID keys not configured, skipping push delivery");
-    return false;
-  }
-  webpush.setVapidDetails("mailto:borjar20@gmail.com", publicKey, privateKey);
-  vapidConfigured = true;
-  return true;
-}
-
-async function sendWebPush(
-  credentials: WebCredentials,
-  payload: PushPayload,
-): Promise<{ expired: boolean }> {
-  try {
-    await webpush.sendNotification(
-      credentials as webpush.PushSubscription,
-      JSON.stringify(payload),
-    );
-    return { expired: false };
-  } catch (error) {
-    // 404/410 del push service = el navegador descartó esta suscripción
-    // (desinstalada, permiso revocado desde el SO, etc.) — limpiar en el
-    // llamador. Cualquier otro fallo se registra pero no se relanza: el
-    // envío de push es siempre best-effort.
-    const statusCode = (error as { statusCode?: number }).statusCode;
-    if (statusCode === 404 || statusCode === 410) return { expired: true };
-    console.error("sendWebPush failed", error);
-    return { expired: false };
-  }
-}
 
 export async function sendPushToUser(
   userId: string,
-  payload: PushPayload,
+  content: PushContent,
+  notificationId?: string,
 ): Promise<void> {
-  await sendPushToUsers([userId], payload);
+  const map = notificationId ? new Map([[userId, notificationId]]) : undefined;
+  await sendPushToUsers([userId], content, { notificationIdByUser: map });
 }
 
-// Entrega en lote a varios destinatarios con el MISMO payload (fan-out de
-// club, E5.F/G): una sola query de suscripciones para todos, envíos web-push
-// en paralelo, y una sola limpieza de suscripciones caducadas al final — en
-// vez de (query + envíos secuenciales + delete) por destinatario.
 export async function sendPushToUsers(
   userIds: string[],
-  payload: PushPayload,
+  content: PushContent,
+  opts?: { notificationIdByUser?: Map<string, string> },
 ): Promise<void> {
-  if (userIds.length === 0) return;
-  if (!ensureVapidConfigured()) return;
+  const uniqueIds = [...new Set(userIds)];
+  if (uniqueIds.length === 0) return;
 
   const supabase = createServiceRoleClient();
-  const { data: subs, error } = await supabase
-    .from("push_subscriptions")
-    .select("id, channel, credentials")
-    .in("user_id", userIds);
 
+  // Preferencias del destinatario (opt-out: sin fila = todo activo).
+  const { data: prefRows } = await supabase
+    .from("notification_preferences")
+    .select(
+      "user_id, web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system",
+    )
+    .in("user_id", uniqueIds);
+  const prefsByUser = new Map<string, NotificationPreferences>(
+    (prefRows ?? []).map((r) => [r.user_id, r]),
+  );
+
+  // Solo dispositivos ACTIVOS (índice parcial idx_push_devices_user_enabled).
+  const { data: devices, error } = await supabase
+    .from("push_devices")
+    .select("id, user_id, platform, endpoint, p256dh, auth, token, failure_count")
+    .in("user_id", uniqueIds)
+    .eq("enabled", true);
   if (error) {
-    console.error("sendPushToUsers: failed to load subscriptions", error);
+    console.error("sendPushToUsers: failed to load devices", error);
     return;
   }
+  if (!devices || devices.length === 0) return;
 
-  const expiredIds: string[] = [];
+  const outcomes: { device: DeviceRow; result: PushDeliveryResult }[] = [];
   await Promise.all(
-    (subs ?? []).map(async (sub) => {
-      if (sub.channel === "web") {
-        const { expired } = await sendWebPush(sub.credentials as WebCredentials, payload);
-        if (expired) expiredIds.push(sub.id);
-      }
-      // futuro: else if (sub.channel === "ios_native") await sendNativePush(...)
+    (devices as DeviceRow[]).map(async (device) => {
+      const prefs = prefsByUser.get(device.user_id) ?? DEFAULT_PREFERENCES;
+      // Preferencia desactivada → no se intenta (spec item 10).
+      if (!isPushAllowed(prefs, content.category, device.platform)) return;
+
+      const transport = transportFor(device.platform);
+      if (!transport) return; // apns_ios reservado, sin transporte vivo aún
+
+      const event: NotificationEvent = {
+        ...content,
+        recipientUserId: device.user_id,
+        notificationId: opts?.notificationIdByUser?.get(device.user_id),
+      };
+      const result = await transport.send(
+        {
+          id: device.id,
+          platform: device.platform,
+          endpoint: device.endpoint,
+          p256dh: device.p256dh,
+          auth: device.auth,
+          token: device.token,
+        },
+        event,
+      );
+      outcomes.push({ device, result });
     }),
   );
 
-  if (expiredIds.length > 0) {
-    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+  await recordHealth(supabase, outcomes);
+}
+
+// Traduce los resultados a salud de push_devices (spec item 10). El camino feliz
+// (todo enviado) es UNA sola query; los fallos, raros, son updates individuales.
+async function recordHealth(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  outcomes: { device: DeviceRow; result: PushDeliveryResult }[],
+): Promise<void> {
+  const now = new Date().toISOString();
+  const sentIds = outcomes.filter((o) => o.result.outcome === "sent").map((o) => o.device.id);
+  const invalid = outcomes.filter((o) => o.result.outcome === "invalid_token");
+  const temporary = outcomes.filter((o) => o.result.outcome === "temporary_error");
+
+  const ops: PromiseLike<unknown>[] = [];
+
+  if (sentIds.length > 0) {
+    ops.push(
+      supabase
+        .from("push_devices")
+        .update({ last_success_at: now, failure_count: 0, last_error: null, last_error_at: null })
+        .in("id", sentIds),
+    );
   }
+
+  // Token definitivamente inválido → apagar y registrar la causa. No se borra
+  // la fila: así el usuario ve «error de registro» en ajustes.
+  for (const { device, result } of invalid) {
+    ops.push(
+      supabase
+        .from("push_devices")
+        .update({ enabled: false, last_error: result.errorCode ?? "INVALID", last_error_at: now })
+        .eq("id", device.id),
+    );
+  }
+
+  // Error temporal → se mantiene ACTIVO (spec item 10), solo se cuenta el fallo.
+  for (const { device, result } of temporary) {
+    ops.push(
+      supabase
+        .from("push_devices")
+        .update({
+          failure_count: (device.failure_count ?? 0) + 1,
+          last_error: result.errorCode ?? "TEMPORARY",
+          last_error_at: now,
+        })
+        .eq("id", device.id),
+    );
+  }
+
+  if (ops.length === 0) return;
+  await Promise.all(ops).then(
+    () => {},
+    (e) => console.error("sendPushToUsers: health update failed", e),
+  );
 }

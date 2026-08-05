@@ -41,4 +41,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Push (spec item 2): permiso en tiempo de ejecución de Android 13+ (API 33).
+         En 12 y anteriores las notificaciones se reciben siempre; este permiso
+         solo gobierna el prompt de POST_NOTIFICATIONS que dispara requestPermissions(). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
