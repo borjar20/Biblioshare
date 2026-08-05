@@ -3,8 +3,8 @@ import type { LibraryItem } from "@/lib/library/types";
 import type { TodayPass } from "@/lib/stats/get-today-focus";
 import { compareTodayPasses } from "@/lib/stats/get-today-focus";
 import {
-  buildCurrentProgressData,
   buildDailyGoalData,
+  buildInProgress,
   buildWidgetSnapshot,
   snapshotFingerprint,
 } from "./build-widget-snapshot";
@@ -71,86 +71,10 @@ describe("compareTodayPasses (selección del pase del widget)", () => {
   });
 });
 
-describe("buildCurrentProgressData", () => {
-  it("null sin pase destacado", () => {
-    expect(buildCurrentProgressData(null)).toBeNull();
-  });
-
-  it("libro con página y total: etiqueta, porcentaje y deep link a la sesión", () => {
-    const data = buildCurrentProgressData(
-      pass({ item: item({ position: { page: 184 }, pageCount: 430 }) }),
-    );
-    expect(data).toMatchObject({
-      progressLabel: "184 de 430 páginas",
-      percentage: 43,
-      currentValue: 184,
-      totalValue: 430,
-      deepLink: "/sesion/pass-1",
-    });
-  });
-
-  it("libro con página sin total: no inventa porcentaje", () => {
-    const data = buildCurrentProgressData(
-      pass({ item: item({ position: { page: 184 }, pageCount: null }) }),
-    );
-    expect(data?.progressLabel).toBe("Pág. 184");
-    expect(data?.percentage).toBeNull();
-    expect(data?.totalValue).toBeNull();
-  });
-
-  it("serie con total: episodios y subtítulo de temporada", () => {
-    const data = buildCurrentProgressData(
-      pass({
-        item: item({
-          itemType: "series",
-          position: { season: 2, episode: 12 },
-          totalEpisodes: 30,
-        }),
-      }),
-    );
-    expect(data).toMatchObject({
-      progressLabel: "12 de 30 episodios",
-      subtitle: "Temporada 2 · Episodio 12",
-      percentage: 40,
-    });
-  });
-
-  it("serie sin total fiable: sin porcentaje, la posición vive en el subtítulo", () => {
-    const data = buildCurrentProgressData(
-      pass({
-        item: item({
-          itemType: "series",
-          position: { season: 1, episode: 4 },
-          totalEpisodes: null,
-        }),
-      }),
-    );
-    expect(data?.subtitle).toBe("Temporada 1 · Episodio 4");
-    expect(data?.progressLabel).toBe("En curso");
-    expect(data?.percentage).toBeNull();
-  });
-
-  it("película: «En curso» y deep link a la ficha (no hay sesiones)", () => {
-    const data = buildCurrentProgressData(
-      pass({ item: item({ itemType: "movie", itemId: "m-9" }) }),
-    );
-    expect(data?.progressLabel).toBe("En curso");
-    expect(data?.percentage).toBeNull();
-    expect(data?.deepLink).toBe("/pelicula/m-9");
-  });
-
-  it("pase huérfano (sin activePassId): cae a la ficha del ítem", () => {
-    const data = buildCurrentProgressData(
-      pass({ item: item({ activePassId: null, itemId: "b-3" }) }),
-    );
-    expect(data?.deepLink).toBe("/libro/b-3");
-  });
-
-  it("statusLabel con la última actividad", () => {
-    const data = buildCurrentProgressData(pass({ lastSessionDate: "2026-08-03" }));
-    expect(data?.statusLabel).toBe("Últ. actividad 03/08");
-  });
-});
+// `buildCurrentProgressData` (pase único, campos currentValue/totalValue/statusLabel) fue
+// reemplazado por `buildInProgress` (lista, nthLabel/contextLabel/week/kindLabel) — ver el
+// describe("buildInProgress", ...) más abajo, que cubre el equivalente v2 de estos casos
+// (progreso con/sin total, deep link a sesión vs. ficha, notas).
 
 describe("buildDailyGoalData", () => {
   const base = { date: "2026-08-05", todayMinutes: 32, streak: 12 };
@@ -194,10 +118,56 @@ describe("buildDailyGoalData", () => {
   });
 });
 
+function bookPass(over: Partial<TodayPass> = {}): TodayPass {
+  return {
+    item: {
+      entryId: "e1", activePassId: "p1", itemType: "book", itemId: "b1",
+      title: "Salitre y Cenizas", subtitle: "Carlos de Traspe", coverUrl: null,
+      status: "in_progress", position: { page: 60 } as never, pageCount: 240,
+      rereadCount: 0, pinnedOrder: null,
+    } as never,
+    startedOn: "2026-08-02", lastSessionDate: "2026-08-05", noteCount: 1,
+    dayNumber: 4, streakDays: 3,
+    week: [
+      { date: "2026-07-30", active: false }, { date: "2026-07-31", active: false },
+      { date: "2026-08-01", active: false }, { date: "2026-08-02", active: true },
+      { date: "2026-08-03", active: true }, { date: "2026-08-04", active: true },
+      { date: "2026-08-05", active: true },
+    ],
+    ...over,
+  };
+}
+
+describe("buildInProgress", () => {
+  it("primer pase: ordinal, contexto, semana y kind", () => {
+    const [d] = buildInProgress([bookPass()]);
+    expect(d.nthLabel).toBe("1.ª lectura");
+    expect(d.contextLabel).toBe("Día 4 · desde 2/8 · 1 nota");
+    expect(d.kindLabel).toBe("Libro");
+    expect(d.percentage).toBe(25);
+    expect(d.week[6]).toEqual({ active: true, today: true });
+    expect(d.week[0]).toEqual({ active: false, today: false });
+  });
+
+  it("relectura: ordinal +1 y notas en plural; sin progreso → 'Sin progreso'", () => {
+    const p = bookPass({
+      item: { ...bookPass().item, rereadCount: 1, position: {} as never } as never,
+      noteCount: 3, dayNumber: null, startedOn: null,
+    });
+    const [d] = buildInProgress([p]);
+    expect(d.nthLabel).toBe("2.ª lectura");
+    expect(d.percentage).toBeNull();
+    expect(d.progressLabel).toBe("Sin progreso");
+    expect(d.contextLabel).toBe("3 notas"); // sin día ni desde
+  });
+});
+
 describe("buildWidgetSnapshot + snapshotFingerprint", () => {
+  const featured = pass({ item: item({ position: { page: 10 }, pageCount: 100 }) });
   const input = {
     userId: "user-1",
-    featured: pass({ item: item({ position: { page: 10 }, pageCount: 100 }) }),
+    passes: [featured],
+    total: 1,
     date: "2026-08-05",
     goalMinutes: 40,
     todayMinutes: 10,
@@ -209,7 +179,8 @@ describe("buildWidgetSnapshot + snapshotFingerprint", () => {
     expect(snapshot.version).toBe(WIDGET_SCHEMA_VERSION);
     expect(snapshot.userId).toBe("user-1");
     expect(snapshot.generatedAt).toBe("2026-08-05T10:00:00.000Z");
-    expect(snapshot.currentProgress?.title).toBe("Dune");
+    expect(snapshot.inProgress[0]?.title).toBe("Dune");
+    expect(snapshot.inProgressTotal).toBe(1);
     expect(snapshot.dailyGoal?.targetValue).toBe(40);
   });
 
