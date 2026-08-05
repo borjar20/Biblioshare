@@ -1,4 +1,7 @@
 apply plugin: 'com.android.application'
+// Kotlin + Compose compiler, solo para los widgets Glance (src/main/java/**/widgets/).
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 // Firma de release. Ni la keystore ni sus contrasenas se versionan: viven fuera
 // del repo y se declaran en `android/keystore.properties` (gitignorado), con la
@@ -48,6 +51,14 @@ android {
         }
     }
 
+    // Mismo target que el Java 21 que fija capacitor.build.gradle.
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+    buildFeatures {
+        compose = true
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -71,7 +82,11 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Widgets nativos (Jetpack Glance). Trae Compose runtime y coroutines.
+    implementation "androidx.glance:glance-appwidget:1.1.1"
     testImplementation "junit:junit:$junitVersion"
+    // org.json real para los tests JVM del snapshot (en unit tests el del SDK es un stub).
+    testImplementation "org.json:json:20240303"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

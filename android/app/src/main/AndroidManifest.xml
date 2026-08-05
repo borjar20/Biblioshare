@@ -26,6 +26,31 @@
 
         </activity>
 
+        <!-- Widgets nativos (Jetpack Glance). exported=false: solo el sistema
+             les manda APPWIDGET_UPDATE. -->
+        <receiver
+            android:name=".widgets.CurrentProgressWidgetReceiver"
+            android:label="@string/widget_current_progress_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/current_progress_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.DailyGoalWidgetReceiver"
+            android:label="@string/widget_daily_goal_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/daily_goal_widget_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
