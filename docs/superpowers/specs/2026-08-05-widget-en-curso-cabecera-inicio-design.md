@@ -59,9 +59,10 @@ Layout `Large`, nuevo tamaño en `SizeMode.Responsive`. De arriba abajo:
      `dailyGoalState`). Sin meta configurada, la fila no aparece.
    - `◆ Racha {streakDays} d` (píldora dorada, solo si `streakDays > 0`) + los 7
      cuadritos de la semana (`week`): el de hoy con borde, los activos rellenos.
-   - **Acciones**: `Sesión` (→ `/sesion/{passId}`) · `Registrar` (→ ficha
-     `?tab=log`). En películas, solo la ficha (sin Sesión), igual que hoy en
-     `Horizontal` y en `TodayCard`.
+   - **Acciones** (solo libros con pase; películas/series no tienen cronómetro):
+     `Sesión` **arranca el cronómetro EN EL WIDGET sin abrir la app** y la fila
+     se transforma en reloj vivo + `Registrar`/`Descartar`. Ver la sección
+     «Cronómetro nativo». `Registrar` sin reloj vivo → ficha `?tab=log`.
 3. **CONTINÚA DONDE LO DEJASTE** (rótulo mono apagado, solo si `inProgressRest`
    no está vacío) — tira **horizontal** (`Row`) de mini-portadas: portada + título
    corto + `{percentage} %` o "Sin progreso". Tope **3** ítems (los siguientes
@@ -172,9 +173,11 @@ nuevas.
 - `provideGlance` carga la portada del destacado **y** las de `inProgressRest`
   (`WidgetImageCache.loadBitmap` por url; N ≤ 3). Pasa un `Map<url, Bitmap?>` o
   lista paralela a `Large`.
-- Acciones clicables con `actionStartActivity(WidgetDeepLinks.intentFor(...))`:
-  «Ver todos», «Sesión», «Registrar» y cada mini de «Continúa». La raíz
-  (`WidgetCard`) sigue navegando al destacado como respaldo.
+- Navegan a la app con `actionStartActivity(WidgetDeepLinks.intentFor(...))`:
+  «Ver todos», cada mini de «Continúa» y la raíz (`WidgetCard`, respaldo →
+  destacado). Las acciones del cronómetro (Sesión/Registrar/Descartar) NO son
+  `actionStartActivity`: son `actionRunCallback` (ver «Cronómetro nativo»), porque
+  corren con la app cerrada.
 
 ### `WidgetState.kt`
 
@@ -187,6 +190,98 @@ esos dos (o `Content` gana `total`/`rest`). Sigue siendo función pura y testeab
 Nuevas previews del layout grande: con `rest` y sin él, con meta y sin ella, y el
 caso destacado sin porcentaje. Muestras de `RestItem` de ejemplo.
 
+## Cronómetro nativo — iniciar sesión desde el widget (sin abrir la app)
+
+El botón **Sesión** (libros) arranca el cronómetro **en el widget**, con
+**segundos en vivo**, sin abrir ninguna pantalla. Guardar la sesión sí abre la
+app (el widget nunca habla con Supabase). Solo aplica a **libros con pase activo**
+(`itemType == "book"`), igual que `canTime` en `TodayActions`.
+
+### Por qué hay DOS relojes (y la regla que evita que diverjan)
+
+El cronómetro de la app vive en `localStorage` del WebView (`timer.ts`), que con
+la app cerrada **no existe**. Para que corra con la app cerrada, el estado tiene
+que vivir en **nativo**. Coexisten dos almacenes para el mismo reloj — justo lo
+que `timer.ts` avisa que «tarde o temprano divergiría». Regla única de propiedad:
+
+1. **Mientras hay reloj nativo, manda el nativo.**
+2. **Al abrir la app** se **siembra** el `localStorage` desde el nativo (si aún
+   no había reloj para ese pase). A partir de ahí los relojes de dentro de la app
+   (tarjeta de hoy + hoja de sesión) coinciden porque leen la misma clave.
+3. **La app espeja hacia el nativo por UN solo punto**: `writeTimer`/`clearTimer`
+   de `timer.ts` son el único sitio por el que pasan TODAS las escrituras del
+   reloj (start/pause/register/cancel de cualquier componente). Ahí, y solo ahí,
+   se refleja al store nativo. App→nativo en un sitio, no por componente.
+
+### Estado nativo — `TimerStore` (Kotlin, nuevo)
+
+SharedPreferences (mismo patrón que `WidgetSnapshotStore`). Un solo reloj a la
+vez (el del destacado):
+
+- `pass_id: String`
+- `started_at_wallclock: Long` — epoch ms del arranque.
+
+**No** se guarda base de `elapsedRealtime`: el `Chronometer` se recalcula en cada
+render desde el reloj de pared (`base = SystemClock.elapsedRealtime() - (now -
+startedWall)`), así **el reinicio del dispositivo no lo rompe** (elapsedRealtime
+se resetea en boot; el reloj de pared no). Sin pausa en el widget → elapsed =
+`now - startedWall`, sin acumulador.
+
+### Segundos en vivo — `Chronometer` incrustado
+
+Glance no tiene cronómetro; se incrusta un `Chronometer` de Android con
+`AndroidRemoteViews`, `base` como arriba y `setStarted(true)`. Tics en el proceso
+del launcher, **sin despertar la app ni actualizaciones periódicas**. Guarda de
+sesión larga: si `now - startedWall > 4 h` (mismo umbral que `isStale` en
+`timer.ts`), no se pinta el reloj corriendo sino un aviso «sesión larga, ábrela
+para registrar» (evita un contador eterno). El theming del RemoteView (color/
+fuente) es la pieza más delicada — afinar en preview.
+
+### Acciones nativas (Glance `actionRunCallback`, corren con la app cerrada)
+
+- **StartTimerAction** (`Sesión`): lee el `passId` del destacado del snapshot,
+  escribe `TimerStore` (`now`), `updateAll`. Solo se pinta si es libro con pase y
+  no hay ya reloj para ese pase.
+- **DiscardTimerAction** (`Descartar`): limpia `TimerStore`, `updateAll`.
+- **Registrar**: `actionRunCallback` que calcula `minutos = round((now -
+  startedWall)/60000)`, limpia `TimerStore` y **lanza la app** con
+  `WidgetDeepLinks.intentFor(context, "/sesion/{pass}?minutos=M&inicio=ISO")`
+  (`safeInternalPath` ya deja pasar query strings — no lleva `//` ni `://`). La
+  hoja abre **rellena**. Se calcula en el callback (instante del toque), no en el
+  intent estático, para no perder los segundos entre pintar y tocar.
+
+### Puente Capacitor (`BiblioshareWidgetPlugin`, métodos nuevos)
+
+- `getRunningTimer()` → `{ passId, startedAt }` | `null`.
+- `setRunningTimer({ passId, startedAt })` → escribe `TimerStore` + `updateAll`.
+- `clearRunningTimer({ passId })` → limpia + `updateAll`.
+
+### Lado web
+
+- `src/lib/native/android-widgets.ts`: envolturas finas `getRunningTimer` /
+  `setRunningTimer` / `clearRunningTimer` sobre el plugin (no-op fuera de Android
+  nativo, como `syncAndroidWidgets`).
+- **Espejo app→nativo** en `timer.ts`: tras `emit()`, si `Capacitor.getPlatform()
+  === "android"`, `writeTimer` llama `setRunningTimer(pass, firstStartedAt)` y
+  `clearTimer` llama `clearRunningTimer(pass)` (import dinámico y guarda de
+  plataforma, como `sync.ts`, para no cargar nativo en web ni en los tests).
+  - *Ceiling asumido:* el widget no modela **pausa** (startedAt null con
+    acumulado). Si en la app se pausa, se espeja como `clearRunningTimer` → el
+    widget vuelve a «Sesión». Con la app abierta el usuario mira la app, no el
+    widget, así que la pérdida de fidelidad es inocua. Se abre issue.
+- **Siembra nativo→app al abrir**: en el arranque/`resume` de Capacitor, leer
+  `getRunningTimer()` y, si hay y `localStorage` no tiene reloj para ese pase,
+  `writeTimer(pass, { startedAt, accumulatedMs: 0, firstStartedAt: startedAt })`.
+  (Engancha en el bootstrap nativo existente donde se dispara la sync.)
+
+### Notas de seguridad/consistencia
+
+- `TimerStore` es privado y solo texto de presentación (passId + epoch): sin
+  tokens, como `WidgetSnapshotStore`. En cambio de cuenta (userId distinto en el
+  snapshot) se limpia junto con el snapshot.
+- Registrar limpia el nativo **antes** de abrir la app y pasa minutos por URL: no
+  hay doble conteo (no queda reloj que sembrar y la hoja ya trae el número).
+
 ## Tests (sin emulador)
 
 - `build-widget-snapshot.test.ts` (vitest): campos nuevos del destacado, `nthLabel`
@@ -197,18 +292,31 @@ caso destacado sin porcentaje. Muestras de `RestItem` de ejemplo.
   → listas vacías sin romper.
 - `WidgetStateTest.kt`: si `currentProgressState` cambia de forma, ajustar; el resto
   de estados (SignedOut/NothingInProgress/stale) no cambia.
+- **Cronómetro nativo** (JUnit JVM): `TimerStore` round-trip (set/get/clear) y purga
+  al cambiar de usuario; función pura que deriva `minutos = round(elapsed/60000)` y
+  la guarda de sesión larga (`elapsed > 4 h` → estado «ábrela para registrar»). La
+  siembra y el espejo dos-vías son de dispositivo → se cubren en **#485**.
 
 ## Definición de «hecho» (AGENTS.md)
 
-- No toca esquema/BD (el snapshot no es BD): sin cambios en `data-model.md`.
+- No toca esquema/BD (ni el snapshot ni el `TimerStore` son BD): sin cambios en
+  `data-model.md`.
 - Marcar la casilla correspondiente en `backlog.md` si existe; si no, no forzarla.
-- Actualizar la memoria de widgets (versión de esquema v2, nuevo layout grande).
-- La prueba en dispositivo real queda en **#485** (ya abierta). Si aparece cualquier
-  pendiente o límite asumido, abrir issue con sus tres etiquetas.
+- Actualizar la memoria de widgets (esquema v2, layout grande, cronómetro nativo y
+  la regla de propiedad de los dos relojes).
+- **Abrir issues** (las issues son el backlog operativo, AGENTS.md): (a) el widget
+  no modela la **pausa** del reloj (se espeja como clear) — `tipo:deuda`; (b)
+  verificación en dispositivo de la sincronización dos-vías nativo↔WebView, si no
+  cabe en **#485** — `tipo:cobertura`.
+- La prueba en dispositivo real queda en **#485** (ya abierta).
 
 ## Fuera de alcance (YAGNI)
 
 - La cola «Para más tarde» (`status=planned`): no está en la sección que se replica.
-- Interacción rica del cronómetro dentro del widget (RemoteViews no lo permite).
+- **Editar** progreso/página/notas desde el widget: el cronómetro sí corre en el
+  widget, pero **registrar/guardar abre la app** (Supabase no es alcanzable desde
+  el widget). No es una limitación a resolver: es la arquitectura.
+- Cronómetro para **series/películas**: la serie se mide en episodios, la película
+  no tiene sesión — solo libros, como en `TodayActions`.
 - Scroll horizontal real en «Continúa»: se muestra un tope fijo, el resto en la app.
 - Nuevos tamaños en `DailyGoalWidget`: fuera de este cambio.
