@@ -29,7 +29,12 @@ import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
 import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { getCommunity } from "@/lib/community/get-community";
+import {
+  getRatingSummary,
+  getReviews,
+  type Community,
+  type RatingSummary,
+} from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
 import { loadBookEditions } from "@/lib/editions/load-editions";
 import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
@@ -78,7 +83,6 @@ function fetchBook(supabase: Supa, id: string) {
 }
 
 type BookRow = NonNullable<Awaited<ReturnType<typeof fetchBook>>["data"]>;
-type Community = Awaited<ReturnType<typeof getCommunity>>;
 
 export default async function BookDetailPage({
   params,
@@ -133,8 +137,8 @@ export default async function BookDetailPage({
   // viaje. Con Supabase remoto lo caro es la ida y vuelta, no las columnas.
   // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
   // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
-  const [community, activePass, shellRole] = await Promise.all([
-    getCommunity(supabase, "book", book.id),
+  const [ratingSummary, activePass, shellRole] = await Promise.all([
+    getRatingSummary(supabase, "book", book.id),
     user
       ? supabase
           .from("passes")
@@ -198,8 +202,8 @@ export default async function BookDetailPage({
         byline={byline}
         genres={genres}
         coverUrl={book.cover_url}
-        avgRating={community.avgRating}
-        ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
+        avgRating={ratingSummary.avgRating}
+        ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
         statusSlot={
           <HeroStatusOrFollow
@@ -235,7 +239,7 @@ export default async function BookDetailPage({
             <BookTabs
               book={book}
               userId={user?.id ?? null}
-              community={community}
+              ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
           </Suspense>
@@ -250,12 +254,12 @@ export default async function BookDetailPage({
 async function BookTabs({
   book,
   userId,
-  community,
+  ratingSummary,
   cerrar,
 }: {
   book: BookRow;
   userId: string | null;
-  community: Community;
+  ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
   const supabase = await createClient();
@@ -268,7 +272,7 @@ async function BookTabs({
   // reales: ensureItemEnriched escribe lo que getItemCredits lee, y getSessions
   // necesita saber el pase abierto. Todo lo demás va en paralelo aunque el
   // código lo lea en orden.
-  const [, sagas, editions, activeRow, role] = await Promise.all([
+  const [, sagas, editions, activeRow, role, reviewsResult] = await Promise.all([
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
     ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
@@ -289,7 +293,14 @@ async function BookTabs({
           .then(({ data }) => data)
       : null,
     userId ? getCurrentUserRole(supabase) : null,
+    // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel; van
+    // aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
+    getReviews(supabase, "book", book.id),
   ]);
+
+  // Community que espera CommunityPanel = el agregado (ya resuelto en el hero)
+  // más las reseñas (aquí).
+  const community: Community = { ...ratingSummary, ...reviewsResult };
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits(supabase, "book", book.id);
