@@ -91,10 +91,16 @@ export function ItemHero({
         <div className="mt-2 flex gap-4 sm:mt-4 sm:gap-6">
           {coverUrl ? (
             <ImageZoom src={coverUrl} alt={title} className={coverClass}>
+              {/* La portada en primer plano es el LCP de la vista móvil (#441).
+                  `priority` la saca del lazy y la precarga. El fondo difuminado
+                  de arriba se queda lazy: comparte esta misma URL (el loader
+                  custom colapsa los buckets, ver cdn-loader.ts), así que
+                  reaprovecha esta precarga sin una segunda descarga. */}
               <Image
                 src={coverUrl}
                 alt={title}
                 fill
+                priority
                 sizes="(max-width: 640px) 116px, 160px"
                 className="object-cover"
               />

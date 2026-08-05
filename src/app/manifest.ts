@@ -10,9 +10,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // theme_color = --accent (modo claro) de globals.css.
     // background_color = --accent a propósito (NO --background): es el fondo del
     // splash nativo de Android (icono de la marca centrado sobre él) y del
-    // primer paint de la PWA. En terracota casa con el overlay `SplashScreen`,
-    // así que el arranque nativo y el web se ven iguales, sin flash de papel
-    // antes de la marca.
+    // primer paint de la PWA, para que el arranque nativo no muestre un flash
+    // de papel antes de la marca. (El overlay web `SplashScreen` se retiró; ver
+    // issue tipo:acta y decisiones.md.)
     background_color: "#b0542f",
     theme_color: "#b0542f",
     icons: [
