@@ -12,8 +12,8 @@ describe("nextCheckpoint", () => {
     const result = nextCheckpoint([
       cp("Hito 1", "confirmed"),
       cp("Hito 2", "confirmed"),
-      cp("Hito 3", "locked"),
-      cp("Hito 4", "suggested"),
+      cp("Hito 3", "pending"),
+      cp("Hito 4", "pending"),
     ]);
     expect(result?.label).toBe("Hito 3");
   });
@@ -28,7 +28,7 @@ describe("nextCheckpoint", () => {
 
   it("no asume que los confirmados vengan primero", () => {
     const result = nextCheckpoint([
-      cp("Hito 1", "suggested"),
+      cp("Hito 1", "pending"),
       cp("Hito 2", "confirmed"),
     ]);
     expect(result?.label).toBe("Hito 1");

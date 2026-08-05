@@ -25,8 +25,9 @@ export const EMPTY_CHECKPOINT: CheckpointDraft = {
 };
 
 // Convierte los borradores del formulario a lo que espera el servidor. Descarta
-// los que no tienen etiqueta o cuya posición no es un número válido: un hito sin
-// posición no se puede alcanzar, así que no es un hito.
+// los que no tienen etiqueta: el hito ES su etiqueta ("fin del cap. 12"). La
+// posición es una pista opcional desde #471 (autodeclarado: la página depende de
+// la edición de cada participante) -- si no hay un número válido, va sin pista.
 export function toProposedCheckpoints(
   drafts: CheckpointDraft[],
   itemType: ItemType | null,
@@ -39,18 +40,18 @@ export function toProposedCheckpoints(
 
     if (itemType === "book") {
       const page = Number(draft.page);
-      if (!Number.isFinite(page) || page <= 0) continue;
-      result.push({ label, position: { page }, dueOn: draft.dueOn || null });
+      const position = Number.isFinite(page) && page > 0 && draft.page.trim() !== "" ? { page } : {};
+      result.push({ label, position, dueOn: draft.dueOn || null });
       continue;
     }
 
     const season = Number(draft.season);
     const episode = Number(draft.episode);
-    if (!Number.isFinite(season) || !Number.isFinite(episode)) continue;
-    if (season <= 0 || episode <= 0) continue;
+    const validSeries =
+      Number.isFinite(season) && Number.isFinite(episode) && season > 0 && episode > 0;
     result.push({
       label,
-      position: { season, episode },
+      position: validSeries ? { season, episode } : {},
       dueOn: draft.dueOn || null,
     });
   }

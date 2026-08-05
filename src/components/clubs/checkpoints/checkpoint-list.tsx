@@ -37,6 +37,7 @@ export function CheckpointList({
   onChanged,
   clubId,
   knownUsernames,
+  viewerIsParticipant,
 }: {
   itemType: ItemType;
   checkpoints: CheckpointViewModel[];
@@ -46,6 +47,9 @@ export function CheckpointList({
   clubId: string;
   /** Usernames @mencionados que existen de verdad, resueltos server-side (resolveKnownMentions). */
   knownUsernames: string[];
+  /** Confirmar es autodeclarado (#471) pero solo para participantes: a un no
+      participante el botón siempre le fallaría ('forbidden' en la RPC). */
+  viewerIsParticipant: boolean;
 }) {
   const t = useTranslations("activity");
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +62,7 @@ export function CheckpointList({
         await confirmCheckpoint(checkpointId);
         onChanged();
       } catch {
-        setError(t("checkpointNotReachedError"));
+        setError(t("confirmCheckpointError"));
       }
     });
   }
@@ -105,18 +109,12 @@ export function CheckpointList({
                   {confirmed && <CheckIcon className="h-3.5 w-3.5 text-accent-foreground" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={`text-[13.5px] font-semibold ${
-                      c.status === "locked" ? "text-muted-foreground" : "text-foreground"
-                    }`}
-                  >
-                    {c.label}
-                  </p>
+                  <p className="text-[13.5px] font-semibold text-foreground">{c.label}</p>
                   <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{meta}</p>
                 </div>
                 {confirmed ? (
                   <span className="shrink-0 font-mono text-[10px] text-green">{t("chatOpen")}</span>
-                ) : c.status === "suggested" ? (
+                ) : viewerIsParticipant ? (
                   <Button
                     type="button"
                     variant="secondary"

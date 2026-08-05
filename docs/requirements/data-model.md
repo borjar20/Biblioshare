@@ -192,6 +192,15 @@ ver «Social fase 0»)**]**
 > **nullable**. El trabajo programado está **entregando de verdad** en producción (200 desde
 > el propio cron, ver §6.2).
 
+> **Delta del 2026-08-05 — hitos de `buddy_read` autodeclarados (§6, issues #470/#471):
+> aplicado y verificado en DEV y EN PROD** contra `pg_proc` (nunca contra `list_migrations`).
+> `confirm_checkpoint` deja de revalidar la posición del lector: la comparaba contra
+> `library_entries` (CONGELADA — tercer bug real de esa tabla) y, aunque leyera `passes`, la
+> página objetivo depende de la edición de cada participante. Dos migraciones,
+> `20260826_confirm_checkpoint_lee_passes.sql` y `20260827_hitos_autodeclarados.sql`; sin
+> columnas nuevas ni cambios de grants (ACL de la función preservada por `create or replace`
+> y verificada: `authenticated=X`, sin `anon`).
+
 ## 0. Dos renombres que invalidan la doc antigua
 
 **`diary_entries` se llama `passes` desde julio de 2026** (migración `pass_hub_c_rename`).
@@ -202,9 +211,10 @@ de la doc vieja aún la presenta así. Ya no lo es: **el estado vivo del usuario
 `passes`**. `library_entries` sigue existiendo porque conserva `pinned_order`
 (sus columnas de cola se borraron con la retirada de colas, ver más abajo), pero **su
 `status` y su `position` no se actualizan** — leerlos
-da datos de hace meses. Esto ya ha causado dos bugs reales en producción (avance de sagas
-al 0%, PR #96). Regla: **cualquier feature que necesite el estado del usuario lo deriva de
-`passes`, nunca de `library_entries`.**
+da datos de hace meses. Esto ya ha causado tres bugs reales en producción (avance de sagas
+al 0%, PR #96; confirmación de hitos de lectura conjunta rechazada, issue #470). Regla:
+**cualquier feature que necesite el estado del usuario lo deriva de `passes`, nunca de
+`library_entries`.**
 
 ## 1. La forma general
 
@@ -650,6 +660,28 @@ archived`) con sus satélites `club_activity_items`, `_participants`, `_opinions
 
 **`config` (jsonb) es opaco a la BD**: lo interpreta la app según el `kind`. Ahí viven el
 criterio del reto, los tiers de la tierlist y el `completionMode` del reto por lista.
+
+### Hitos de `buddy_read` autodeclarados (dev y prod, 2026-08-05 — issues #470/#471)
+
+Confirmar un hito (`confirm_checkpoint`, SECURITY DEFINER, único camino de escritura a
+`club_activity_checkpoint_reads`) **ya no revalida la posición del lector**: exige ser
+participante y cascada idempotente sobre los hitos anteriores, nada más. Dos migraciones
+encadenadas (`20260826_confirm_checkpoint_lee_passes.sql` y
+`20260827_hitos_autodeclarados.sql`):
+
+- **#470** — la RPC original (20260713) leía `library_entries.position`, tabla CONGELADA
+  desde el pase-hub: comparaba contra una posición muerta y rechazaba confirmaciones que la
+  UI (que lee `passes`) daba por alcanzables. La 20260826 la pasó al pase activo… 
+- **#471** — …y la 20260827 eliminó el gate entero: la página objetivo la fijaba el
+  moderador según SU edición y cada participante mide en páginas de la SUYA
+  (`book_editions.total_pages` varía), así que el mismo número cae en puntos distintos de
+  la historia (bloqueo con ediciones compactas, spoilers con ediciones más paginadas).
+
+`club_activity_checkpoints.position` sigue existiendo (jsonb not null) pero como **pista
+visual opcional**: `{}` = hito sin pista, y la app ya no compara posiciones
+(`hasReachedPosition` eliminada de `src/lib/library/position.ts`). El spoiler guard del
+chat no cambia: `can_view_target('activity_checkpoint', …)` sigue exigiendo
+`is_activity_participant` **y** `has_reached_checkpoint`.
 
 ### `evento` — actividad no participativa (dev y prod, 2026-07-22)
 

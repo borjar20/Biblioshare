@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getInteractionSummary } from "@/lib/social/interactions";
 import type { InteractionSummary } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
-import { parsePosition, hasReachedPosition } from "@/lib/library/position";
+import { parsePosition } from "@/lib/library/position";
 import type { Position } from "@/lib/library/position";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
@@ -26,11 +26,16 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
-export type CheckpointStatus = "locked" | "suggested" | "confirmed";
+// Autodeclarado desde #471: confirmado o pendiente, sin estado intermedio
+// derivado de la página — la página depende de la edición de cada participante
+// (book_editions.total_pages varía), así que comparar posiciones entre lector y
+// hito fabricaba spoilers o bloqueos según qué edición tuviera cada uno.
+export type CheckpointStatus = "pending" | "confirmed";
 
 export type CheckpointViewModel = {
   id: string;
   label: string;
+  /** Pista visual opcional ({} = sin pista); NO gatea la confirmación (#471). */
   position: Position;
   /** Fecha en la que se espera llegar. null = lectura a ritmo libre. */
   dueOn: string | null;
@@ -48,8 +53,8 @@ export type ActivityCheckpointsView = {
   // "terreno seguro" del grupo (decisión 8 del diseño); null si nadie lo es o
   // si aún no hay participantes.
   groupSafeOrder: number | null;
-  // Posición del viewer en la obra según su diario (ya se consultaba para
-  // derivar el status "suggested"); null si no la tiene en la biblioteca.
+  // Posición del viewer en la obra según su diario (alimenta la tarjeta "Tu
+  // progreso"); null si no la tiene en la biblioteca.
   viewerPosition: Position | null;
   /** Usernames @mencionados que existen de verdad en los chats de los checkpoints. */
   knownUsernames: string[];
@@ -138,13 +143,7 @@ export async function getActivityCheckpoints(activityId: string): Promise<Activi
 
   const view: CheckpointViewModel[] = checkpoints.map((c) => {
     const order = c.order as number;
-    let status: CheckpointStatus = "locked";
-    if (viewerReachedOrders.has(order)) {
-      status = "confirmed";
-    } else if (itemType && viewerPosition) {
-      const targetPosition = parsePosition(itemType, c.position);
-      if (hasReachedPosition(itemType, viewerPosition, targetPosition)) status = "suggested";
-    }
+    const status: CheckpointStatus = viewerReachedOrders.has(order) ? "confirmed" : "pending";
     const chat = viewerReachedOrders.has(order) ? (chatByCheckpoint.get(c.id) ?? null) : null;
     if (viewerReachedOrders.has(order) && !chat) {
       throw new Error(`Interaction summary missing for activity_checkpoint:${c.id}`);
