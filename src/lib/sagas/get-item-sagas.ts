@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaMembership } from "./types";
@@ -22,6 +23,12 @@ export async function getItemSagas(
   itemType: ItemType,
   itemId: string,
 ): Promise<SagaMembership[]> {
+  "use cache";
+  // Idéntico para todo el mundo (#437): saga_items/sagas son SELECT USING(true)
+  // y el cliente es anónimo. El espectador no edita sagas (son de admin), así que
+  // no hay read-your-own-writes que invalidar; `days` acota una edición de admin.
+  cacheLife("days");
+  cacheTag(`saga-membership:${itemType}:${itemId}`);
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("saga_items")

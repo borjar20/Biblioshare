@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Credit, CreditRole, ItemCredits } from "./types";
@@ -27,6 +28,13 @@ export async function getItemCredits(
   itemType: ItemType,
   itemId: string
 ): Promise<ItemCredits> {
+  "use cache";
+  // Idéntico para todo el mundo (#437): créditos/personas son SELECT USING(true)
+  // y el cliente es anónimo. El espectador nunca escribe créditos —los rellena
+  // ensureItemEnriched, backfill idempotente—, así que no hay read-your-own-writes
+  // que invalidar aquí; `days` acota la rareza de un re-enriquecido.
+  cacheLife("days");
+  cacheTag(`credits:${itemType}:${itemId}`);
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("credits")
