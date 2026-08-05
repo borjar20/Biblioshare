@@ -4,4 +4,24 @@
     <string name="title_activity_main">Biblioshare</string>
     <string name="package_name">app.biblioshare.mobile</string>
     <string name="custom_url_scheme">app.biblioshare.mobile</string>
+
+    <!-- Widgets (app mono-idioma es: sin variantes de locale, ver AGENTS.md) -->
+    <string name="widget_current_progress_label">En curso</string>
+    <string name="widget_current_progress_desc">Tu libro, película o serie a medias, con su progreso.</string>
+    <string name="widget_daily_goal_label">Objetivo de hoy</string>
+    <string name="widget_daily_goal_desc">Minutos de lectura de hoy frente a tu objetivo diario.</string>
+    <string name="widget_open_app_title">Abre Biblioshare</string>
+    <string name="widget_open_app_subtitle">Inicia sesión para ver tus datos</string>
+    <string name="widget_nothing_in_progress">Nada en progreso</string>
+    <string name="widget_open_to_start">Abre Biblioshare para empezar</string>
+    <string name="widget_no_goal_title">Sin objetivo diario</string>
+    <string name="widget_no_goal_subtitle">Configúralo en Estadísticas</string>
+    <string name="widget_goal_title">Objetivo de hoy</string>
+    <string name="widget_outdated_subtitle">Abre Biblioshare para actualizar</string>
+    <string name="widget_stale_data">Datos antiguos</string>
+    <string name="widget_log_progress">Registrar progreso</string>
+    <string name="widget_streak_days">🔥 %1$d días</string>
+    <string name="widget_type_book">Libro</string>
+    <string name="widget_type_movie">Película</string>
+    <string name="widget_type_series">Serie</string>
 </resources>

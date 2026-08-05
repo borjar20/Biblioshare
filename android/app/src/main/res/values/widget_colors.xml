@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta Paper de la web (globals.css): par claro aquí, oscuro en values-night. -->
+<resources>
+    <color name="widget_bg">#FFFDF8</color>
+    <color name="widget_fg">#2C2620</color>
+    <color name="widget_fg_soft">#584F43</color>
+    <color name="widget_accent">#B0542F</color>
+    <color name="widget_track">#ECE3D4</color>
+</resources>

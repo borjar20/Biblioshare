@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2x2 por defecto, redimensionable a 4x2 (Glance recompone por SizeMode.Responsive).
+     updatePeriodMillis=1h: re-render desde el store LOCAL (sin red) — su único
+     trabajo real es que el widget note el cambio de día sin WorkManager. En
+     launchers que ignoran targetCellWidth mandan los minWidth/minHeight. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="180dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="3600000"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:description="@string/widget_current_progress_desc" />

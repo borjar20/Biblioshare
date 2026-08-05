@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder de portada: lomo de libro estilizado sobre el track de la paleta. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="56dp"
+    android:height="80dp"
+    android:viewportWidth="56"
+    android:viewportHeight="80">
+    <path
+        android:fillColor="@color/widget_track"
+        android:pathData="M4,4 h48 a4,4 0 0 1 4,4 v64 a4,4 0 0 1 -4,4 h-48 a4,4 0 0 1 -4,-4 v-64 a4,4 0 0 1 4,-4 z" />
+    <path
+        android:fillColor="@color/widget_fg_soft"
+        android:pathData="M14,20 h28 v3 h-28 z M14,29 h28 v3 h-28 z M14,38 h18 v3 h-18 z" />
+</vector>
