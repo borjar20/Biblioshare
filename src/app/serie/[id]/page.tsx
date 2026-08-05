@@ -115,7 +115,7 @@ export default async function SeriesDetailPage({
   // El rol también (menú ⋯ del hero, P2): todo paralelo, coste cero en serie.
   const [ratingSummary, activePass, watchedEpisodes, catalogEpisodes, shellRole] =
     await Promise.all([
-      getRatingSummary(supabase, "series", series.id),
+      getRatingSummary("series", series.id),
       user
         ? supabase
             .from("passes")
@@ -286,7 +286,7 @@ async function SeriesTabs({
         totalSeasons: series.total_seasons,
       }),
       series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
-      getItemSagas(supabase, "series", series.id),
+      getItemSagas("series", series.id),
       // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
       userId
         ? supabase
@@ -310,7 +310,7 @@ async function SeriesTabs({
   const community: Community = { ...ratingSummary, ...reviewsResult };
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
-  const credits = await getItemCredits(supabase, "series", series.id);
+  const credits = await getItemCredits("series", series.id);
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];

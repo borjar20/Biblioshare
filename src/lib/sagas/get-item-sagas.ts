@@ -1,8 +1,6 @@
-import type { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaMembership } from "./types";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // TODAS las sagas de un ítem. Sustituye a getItemSaga, que usaba
 // `maybeSingle()` y por tanto daba por hecho que un ítem pertenece como mucho
@@ -18,11 +16,13 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // `total` es el número de obras de esa saga, para el "nº 4 de 20" de la
 // maqueta. Va como agregado anidado en la MISMA consulta: con Supabase remoto
 // lo caro es la ida y vuelta, y una consulta por saga serían N viajes.
+// Cliente SIN sesión (`saga_items`/`sagas` son `SELECT USING (true)`): resultado
+// idéntico para todos → cacheable en Fase 4 (#436).
 export async function getItemSagas(
-  supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string,
 ): Promise<SagaMembership[]> {
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("saga_items")
     .select("position, is_primary, saga:sagas(id, name, saga_items(count))")

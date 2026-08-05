@@ -138,7 +138,7 @@ export default async function BookDetailPage({
   // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
   // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
   const [ratingSummary, activePass, shellRole] = await Promise.all([
-    getRatingSummary(supabase, "book", book.id),
+    getRatingSummary("book", book.id),
     user
       ? supabase
           .from("passes")
@@ -276,8 +276,8 @@ async function BookTabs({
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
     ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
-    getItemSagas(supabase, "book", book.id),
-    getEditions(supabase, "book", book.id),
+    getItemSagas("book", book.id),
+    getEditions("book", book.id),
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
     // status/rating/position viven en passes, library_entries ya no
     // se lee.
@@ -303,7 +303,7 @@ async function BookTabs({
   const community: Community = { ...ratingSummary, ...reviewsResult };
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
-  const credits = await getItemCredits(supabase, "book", book.id);
+  const credits = await getItemCredits("book", book.id);
 
   // Ediciones del DISPLAY: se resuelven por streaming (sync-si-hace-falta + lee)
   // dentro del <Suspense> de EditionsSection. NO se await aquí: eso bloquearía la

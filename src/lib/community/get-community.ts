@@ -1,4 +1,4 @@
-import type { createClient } from "@/lib/supabase/server";
+import { createPublicClient, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
@@ -117,23 +117,27 @@ export type RatingSummary = Pick<
 // Agregados reales de la comunidad para una ficha: la media y el histograma
 // salen de los pases (diary_entries), no de library_entries.rating — esa
 // columna se está jubilando y una entrada puede acumular varios pases
-// (relecturas, revisionados). Las reseñas también son pases: los que tienen
-// texto público. La visibilidad la resuelve RLS: solo se ven filas de
-// perfiles públicos (más las propias del que mira), así que aquí no hay
-// filtro extra.
+// (relecturas, revisionados).
 //
 // Partido en dos (#439): el HERO solo pinta `avgRating`/`ratingCount`, así que
 // espera a `getRatingSummary` —una consulta a `passes`—. Las reseñas y todo lo
 // que cuelga de ellas (perfiles, ediciones, reacciones, menciones) son ~4
 // roundtrips más que solo pinta `CommunityPanel`, detrás del <Suspense> de las
-// pestañas: viven en `getReviews`. Sin cachear: sigue siendo el cliente de
-// sesión y RLS filtra igual que antes (el cambio a agregado público cacheado
-// sería otra decisión —ver #437/#439—, no esto).
+// pestañas: viven en `getReviews`.
+//
+// Cliente SIN sesión (#436): el agregado es, por diseño, la media de los
+// perfiles PÚBLICOS —lo que ve un visitante sin cuenta—, IDÉNTICO para todo el
+// mundo y por tanto cacheable en Fase 4. CAMBIO DE COMPORTAMIENTO respecto a
+// antes: con el cliente de sesión, RLS colaba en la media los pases del propio
+// espectador y los de perfiles privados que sigue; ahora NO cuentan. Es la
+// definición canónica de "media de la comunidad" (decisión en decisiones.md).
+// getReviews NO puede seguir el mismo camino: lleva `viewerReacted`, que sí
+// depende de quién mira.
 export async function getRatingSummary(
-  supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string
 ): Promise<RatingSummary> {
+  const supabase = createPublicClient();
   // Notas: un voto por usuario, el de su pase cerrado más reciente, sin
   // contar las entradas abandonadas (dropped). latestRatingPerUser hace el
   // "quédate con el último pase por user_id" en TypeScript porque Supabase
@@ -291,7 +295,7 @@ export async function getCommunity(
   itemId: string
 ): Promise<Community> {
   const [summary, reviews] = await Promise.all([
-    getRatingSummary(supabase, itemType, itemId),
+    getRatingSummary(itemType, itemId),
     getReviews(supabase, itemType, itemId),
   ]);
   return { ...summary, ...reviews };

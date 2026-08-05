@@ -105,7 +105,7 @@ export async function addSession(
   // Episodios), no aquí.
   let maxPosition: number | null = null;
   if (itemType === "book") {
-    const editions = await getEditions(supabase, "book", itemId);
+    const editions = await getEditions("book", itemId);
     const edition =
       editions.find((e) => e.id === pass.editionId) ?? primaryEdition(editions);
     maxPosition = edition?.totalUnits ?? null;

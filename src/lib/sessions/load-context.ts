@@ -118,7 +118,7 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
 
   // El total sale de la EDICIÓN del pase (o la primaria), no de
   // books.total_pages: bolsillo y tapa dura no tienen las mismas páginas.
-  const editions = await getEditions(supabase, itemType, itemId);
+  const editions = await getEditions(itemType, itemId);
   const edition =
     editions.find((e) => e.id === activePass.editionId) ?? primaryEdition(editions);
   const total = edition?.totalUnits ?? book?.total_pages ?? series?.total_episodes ?? null;
