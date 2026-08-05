@@ -1,5 +1,5 @@
 import "server-only";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { itemHref, sagaHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 
@@ -93,8 +93,16 @@ export function revalidateClubPages(): void {
 
 // --- Helpers compuestos por forma de mutación ---
 
-/** Registro de lectura (pase, sesión, episodio visto): ficha + perfiles + feed. */
+/** Registro de lectura (pase, sesión, episodio visto): ficha + perfiles + feed.
+ *  Fase 4 (#448): además refresca la media de la comunidad cacheada
+ *  (`getRatingSummary`, etiqueta `ratings:*`). `updateTag` —no `revalidateTag`—
+ *  hace que la SIGUIENTE petición espere al dato fresco: el que acaba de puntuar
+ *  ve su voto contado de inmediato (read-your-own-writes, la clase de bug más
+ *  cara del repo: #36/#37/#39/#66). Es el punto PRECISO donde cambia una nota:
+ *  todo escritor de nota pasa por aquí, y no por `revalidateItemPage` (que
+ *  también dispara en ediciones de metadatos que no tocan la nota). */
 export function revalidateReadingLog(itemType: ItemType, id: string): void {
+  updateTag(`ratings:${itemType}:${id}`);
   revalidateItemPage(itemType, id);
   revalidateProfilePages();
   revalidateFeed();

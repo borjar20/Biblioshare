@@ -7,9 +7,10 @@ import { deliverDueEventReminders } from "@/lib/clubs/activities/event-reminders
 // navegador.
 //
 // Nunca se cachea: es una escritura, y una respuesta cacheada dejaría de entregar
-// recordatorios sin que nada fallara visiblemente.
-export const dynamic = "force-dynamic";
-
+// recordatorios sin que nada fallara visiblemente. Con Cache Components (#448) el
+// segmento `dynamic = "force-dynamic"` es incompatible y sobra: un POST que lee
+// `request.headers` y escribe es dinámico por defecto —nunca entra en el shell.
+//
 // POST, no GET: entrega notificaciones y sella filas. Un GET invitaría a que
 // cualquier precargador o rastreador lo disparase.
 export async function POST(request: Request) {

@@ -4,6 +4,9 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // Cache Components (Fase 4, #448): habilita `use cache` + PPR por defecto.
+  // Clave de nivel superior en Next 16, NO bajo `experimental`.
+  cacheComponents: true,
   experimental: {
     serverActions: {
       // Goodreads exports include free-text reviews; a few hundred rows can

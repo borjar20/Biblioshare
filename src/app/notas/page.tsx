@@ -16,6 +16,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { NotesFilters } from "./notes-filters";
 import { NotesPager } from "./notes-pager";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Cuaderno — Biblioshare",
 };
@@ -89,14 +93,14 @@ export default async function NotebookPage({
         // Dos vacíos distintos con dos salidas distintas: «no tienes nada» te
         // dice dónde anotar; «no hay nada con estos filtros» te dice que los
         // quites (el enlace ya está en la barra).
-        <p className="text-sm text-muted-foreground">
+        (<p className="text-sm text-muted-foreground">
           {filtered ? t("notebookEmptyFiltered") : t("notebookEmpty")}
-        </p>
+        </p>)
       ) : query.sort === "obra" ? (
         // Agrupado por obra: la rejilla va DENTRO de cada grupo y el título de
         // la obra se queda como banda a todo lo ancho. Una sola rejilla para
         // todo se comería la agrupación, que es justo lo que pide este orden.
-        <div className="flex flex-col gap-6">
+        (<div className="flex flex-col gap-6">
           {groupByItem(notes).map((group) => {
             const first = group.notes[0];
             return (
@@ -115,18 +119,18 @@ export default async function NotebookPage({
               </section>
             );
           })}
-        </div>
+        </div>)
       ) : (
         // `items-start`: cada nota mide lo que mide y los bajos quedan
         // desiguales. Es a propósito — la alternativa es recortar el cuerpo, y
         // una nota cortada no tiene dónde seguir leyéndose (no hay ficha de
         // nota). Tampoco vale `columns-*` estilo masonry: reordena la lectura
         // en vertical por columna y se cargaría el orden «recientes».
-        <div className={`grid items-start gap-3 ${NOTE_GRID_COLS}`}>
+        (<div className={`grid items-start gap-3 ${NOTE_GRID_COLS}`}>
           {notes.map((note) => (
             <NoteCard key={note.id} note={note} showItem />
           ))}
-        </div>
+        </div>)
       )}
 
       <NotesPager query={query} total={total} />

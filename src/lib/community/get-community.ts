@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
@@ -137,6 +138,15 @@ export async function getRatingSummary(
   itemType: ItemType,
   itemId: string
 ): Promise<RatingSummary> {
+  "use cache";
+  // Cacheable por #437: es la media de perfiles PÚBLICOS (cliente anónimo,
+  // escalares), idéntica para todo el mundo — decisión de #436/decisiones.md.
+  // A diferencia de créditos/sagas, el espectador SÍ la cambia al cerrar un pase
+  // con nota, así que se invalida con `updateTag(ratings:*)` desde
+  // `revalidateReadingLog` (read-your-own-writes). `hours` acota la ventana si
+  // algún escritor futuro se saltara ese único punto de invalidación.
+  cacheLife("hours");
+  cacheTag(`ratings:${itemType}:${itemId}`);
   const supabase = createPublicClient();
   // Notas: un voto por usuario, el de su pase cerrado más reciente, sin
   // contar las entradas abandonadas (dropped). latestRatingPerUser hace el

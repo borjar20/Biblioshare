@@ -12,6 +12,10 @@ import { ClubShell, ClubSidebar, ClubMainHeader } from "@/components/clubs/club-
 import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubCalendar } from "@/components/clubs/calendar/club-calendar";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export async function generateMetadata({
   params,
 }: {

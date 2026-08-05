@@ -8,6 +8,10 @@ import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { GenrePager } from "./genre-pager";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 // Página de un género: lista el catálogo (los tres tipos) que lo lleva. slug
 // inválido → 404. Server component puro; el filtro va por la URL (?pagina=N).
 export default async function GeneroPage({

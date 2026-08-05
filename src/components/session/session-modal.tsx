@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getSessionOrigin } from "./session-origin";
 
 // Cáscara del modal de sesión. <dialog> nativo con showModal(): atrapa el foco
@@ -58,37 +58,13 @@ import { getSessionOrigin } from "./session-origin";
 // para pisar `pendingPush`. Tampoco es cosa del auto-cierre: cualquiera que
 // entre a registrar una sesión pierde la entrada de la ficha.
 
-// ¿La entrada anterior del historial es el destino al que queremos volver?
-// Solo la Navigation API lo sabe (Chromium); donde no exista se responde que
-// sí, que es el comportamiento de siempre — este helper solo puede MEJORAR el
-// destino, nunca empeorarlo respecto a lo que había antes de la issue #117.
-//
-// Esto decide CÓMO se sale (back, que además desmonta la ruta interceptada y
-// conserva el scroll, frente a replace), nunca A DÓNDE: el destino lo fija
-// exitTarget() más abajo. Es una distinción que costó una regresión: mientras
-// el "a dónde" salió de aquí, un historial degradado mandaba al usuario al
-// sitio equivocado.
-//
-// NO usar esto para deducir el origen ("¿hay CUALQUIER entrada anterior? ->
-// back()"): está probado que rompe la Regla 2 de pase-hub.spec.ts, o sea la
-// regresión de #117. Cuando el push a /sesion degrada a replace —lo dispara,
-// por ejemplo, pulsar "Leyendo" justo antes: su server action revalida y se
-// come el `pendingPush`— la entrada de la ficha desaparece, y entonces "hay
-// una entrada anterior" y "el usuario venía de ahí" dejan de ser lo mismo.
-function previousEntryIs(exitHref: string): boolean {
-  const nav = (
-    window as unknown as {
-      navigation?: { currentEntry?: { index: number }; entries(): { url: string }[] };
-    }
-  ).navigation;
-  if (!nav?.currentEntry) return true;
-  const previous = nav.entries()[nav.currentEntry.index - 1];
-  if (!previous) return false;
-  return (
-    new URL(previous.url).pathname ===
-    new URL(exitHref, window.location.origin).pathname
-  );
-}
+// Nota histórica (#117, pre-Cache Components): la salida distinguía `back()`
+// (cuando la entrada anterior ERA la ficha) de `replace()`, con un helper
+// `previousEntryIs` que miraba la Navigation API. Con Cache Components (#448)
+// `back()` dejó de desmontar la ruta interceptada y la URL revertía a /sesion,
+// así que la salida es ahora SIEMPRE `replace(exitTarget)` — ver `closeOnce`.
+// El destino sigue saliendo de exitTarget(), nunca del historial, que es lo que
+// #117 exigía para no echar al usuario fuera de la obra.
 
 // A dónde se sale. El origen REAL lo anota SessionOriginTracker antes de
 // navegar (session-origin.tsx); `exitHref` —la ficha de la obra— es solo el
@@ -130,30 +106,50 @@ export function SessionModal({
   exitHref: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closedRef = useRef(false);
 
-  // Único punto de salida del modal: da igual cuántas veces se llame (native
-  // "close" de este <dialog>, o una llamada explícita vía contexto desde
-  // SessionSheet) — solo la primera navega.
-  const closeOnce = useCallback(() => {
-    if (closedRef.current) return;
-    closedRef.current = true;
-    // Idempotente: si llegamos aquí DESDE el "close" nativo, ya está cerrado;
-    // si llegamos por SessionSheet (vía contexto), lo cerramos nosotros. El
-    // close() reentrante vuelve a este callback y sale por el guard de arriba.
-    dialogRef.current?.close();
-    const target = exitTarget(exitHref);
-    if (previousEntryIs(target)) router.back();
-    else router.replace(target);
-  }, [router, exitHref]);
+  // ¿Está activa la ruta interceptada (/sesion/*)? Es la ÚNICA fuente de verdad
+  // de si el modal debe verse.
+  const onModalRoute = pathname.startsWith("/sesion/");
 
-  // showModal() es una llamada imperativa al DOM, no setState: no choca con
+  // El <dialog> se abre/cierra según la RUTA, no según el montaje del
+  // componente. Con Cache Components (#448) el slot paralelo `@modal` se
+  // conserva en navegación soft: la ruta interceptada NO se desmonta al cerrar,
+  // así que un `showModal()` en el efecto de montaje solo se dispararía una vez
+  // —el modal no volvería a abrirse en la segunda visita— y, peor, la ruta
+  // preservada terminaba reafirmando la URL /sesion tras un `back()` (la
+  // regresión que destapó test 244 al activar cacheComponents). Gobernarlo por
+  // `pathname` es robusto a que Next conserve o no el slot: `showModal()` es
+  // una llamada imperativa al DOM (no setState), no choca con
   // react-hooks/set-state-in-effect.
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
-  }, []);
+    if (!dialog) return;
+    if (onModalRoute && !dialog.open) dialog.showModal();
+    else if (!onModalRoute && dialog.open) dialog.close();
+    // Al reentrar en la ruta se rearma el guard de salida.
+    if (onModalRoute) closedRef.current = false;
+  }, [onModalRoute]);
+
+  // Único punto de salida: navegar a la obra. El efecto de arriba cierra el
+  // <dialog> cuando el pathname deja de ser /sesion/*. Da igual cuántas veces
+  // se llame (el "close" nativo del <dialog> y una llamada explícita vía
+  // contexto desde SessionSheet pueden dispararse ambos para un mismo gesto);
+  // el guard deja pasar solo la primera navegación.
+  //
+  // `replace`, no `back()` (#117 + #448): `back()` mandaba al usuario fuera de
+  // la obra cuando el push a /sesion había degradado a replace, y ADEMÁS con
+  // Cache Components no desmonta la ruta interceptada, dejando la URL revertir a
+  // /sesion. `replace(exitTarget)` fija la URL en la obra (destino SIEMPRE la
+  // ficha, nunca el inicio — se conserva la garantía de #117) y resuelve el
+  // slot @modal a su `default`.
+  const closeOnce = useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    router.replace(exitTarget(exitHref));
+  }, [router, exitHref]);
 
   return (
     <dialog
