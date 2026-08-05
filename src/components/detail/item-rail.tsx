@@ -31,10 +31,16 @@ export function ItemRail({
         className={`relative h-[384px] w-64 overflow-hidden rounded-lg border-2 ${accent.border} bg-surface-muted shadow-[0_20px_40px_-16px_rgba(60,35,15,0.55)]`}
       >
         {coverUrl ? (
+          // Esta portada es el LCP de la vista PC (#441): `priority` la precarga
+          // en vez de dejarla en lazy. Es la gemela PC de la del hero móvil —
+          // solo una se ve por breakpoint, así que no compiten. A DPR de móvil
+          // ambas resuelven al mismo bucket del CDN (misma URL, ver
+          // cdn-loader.ts), de modo que la precarga cruzada no descarga de más.
           <Image
             src={coverUrl}
             alt={title}
             fill
+            priority
             sizes="256px"
             className="object-cover"
           />
