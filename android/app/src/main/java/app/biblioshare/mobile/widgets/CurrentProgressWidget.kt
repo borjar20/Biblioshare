@@ -48,11 +48,14 @@ class CurrentProgressWidget : GlanceAppWidget() {
         val snapshot = WidgetSnapshotStore.load(context)
         val selected = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[SELECTED_PASS_KEY]
         val state = currentProgressState(snapshot, selectedPassId = selected)
-        val covers = (state as? ProgressWidgetState.Content)?.items.orEmpty()
-            .mapNotNull { it.coverUrl }
-            .associateWith { WidgetImageCache.loadBitmap(context, it) }
+        val covers = loadCovers(context, snapshot)
         provideContent { CurrentProgressContent(state, covers) }
     }
+}
+
+private suspend fun loadCovers(context: Context, snapshot: WidgetSnapshot?): Map<String, Bitmap?> {
+    val urls = snapshot?.inProgress?.mapNotNull { it.coverUrl }?.distinct().orEmpty()
+    return urls.associateWith { WidgetImageCache.loadBitmap(context, it) }
 }
 
 /** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */

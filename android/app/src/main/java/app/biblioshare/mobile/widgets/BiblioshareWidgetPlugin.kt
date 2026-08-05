@@ -31,11 +31,11 @@ class BiblioshareWidgetPlugin : Plugin() {
         WidgetRefresh.updateAll(context)
         // Portada en segundo plano, best-effort: si falla queda el placeholder.
         Thread {
-            val cover = parsed.currentProgress?.coverUrl
-            WidgetImageCache.prune(context, setOfNotNull(cover))
-            if (cover != null && WidgetImageCache.ensureDownloaded(context, cover)) {
-                WidgetRefresh.updateAll(context)
-            }
+            val covers = parsed.inProgress.mapNotNull { it.coverUrl }
+            WidgetImageCache.prune(context, covers.toSet())
+            var any = false
+            covers.forEach { if (WidgetImageCache.ensureDownloaded(context, it)) any = true }
+            if (any) WidgetRefresh.updateAll(context)
         }.start()
         call.resolve()
     }
@@ -64,5 +64,6 @@ object WidgetRefresh {
     fun updateAll(context: Context) = runBlocking {
         CurrentProgressWidget().updateAll(context)
         DailyGoalWidget().updateAll(context)
+        // TODO(Task 11, plan 2026-08-05-widgets-registro-dos-tamanos): QuickRegisterWidget().updateAll(context)
     }
 }
