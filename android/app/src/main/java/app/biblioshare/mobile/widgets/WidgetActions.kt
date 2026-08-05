@@ -59,3 +59,30 @@ class PickMinutesAction : ActionCallback {
         QuickRegisterWidget().update(context, glanceId)
     }
 }
+
+// Acciones del cronómetro nativo del widget "Progreso actual": arrancar y
+// descartar solo tocan TimerStore (Task 14) y repintan sin abrir la app;
+// registrar sí abre la app, prerrellenada con los minutos y el inicio.
+class StartTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        val passId = p[PASS_ID_PARAM] ?: return
+        TimerStore.set(c, passId, System.currentTimeMillis())
+        CurrentProgressWidget().update(c, id)
+    }
+}
+class DiscardTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        TimerStore.clear(c, p[PASS_ID_PARAM])
+        CurrentProgressWidget().update(c, id)
+    }
+}
+class RegisterTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        val r = TimerStore.get(c) ?: return
+        val minutos = elapsedMinutes(r.startedAt, System.currentTimeMillis())
+        val inicio = java.time.Instant.ofEpochMilli(r.startedAt).toString()
+        TimerStore.clear(c, r.passId)
+        val href = "/sesion/${r.passId}?minutos=$minutos&inicio=$inicio"
+        c.startActivity(WidgetDeepLinks.intentFor(c, href))
+    }
+}
