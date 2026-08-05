@@ -32,7 +32,7 @@ export async function StatsRail({ userId }: { userId: string }) {
   const year = new Date().getFullYear();
   const tRail = await getTranslations("statsRail");
   const [profile, weekly, streaks, annual, annualGoals, whoToFollow] = await Promise.all([
-    getOwnProfile(supabase, userId),
+    getOwnProfile(userId),
     getWeeklyActivity(supabase, userId),
     getStreaks(supabase, userId),
     getAnnualCompleted(supabase, userId, year),

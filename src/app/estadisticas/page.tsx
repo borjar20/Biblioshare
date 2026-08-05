@@ -94,9 +94,9 @@ export default async function FullStatsPage({
   const metric = resolveActivityMetric(medida);
 
   // Lo único que el SHELL espera: el @usuario, para el enlace de volver. Una
-  // consulta ligera (índice por user_id), no las 18 del muro.
-  const supabase = await createClient();
-  const profile = await getOwnProfile(supabase, user.id);
+  // consulta ligera (índice por user_id), no las 18 del muro. getOwnProfile crea
+  // su propio cliente y va memoizado por userId (#456).
+  const profile = await getOwnProfile(user.id);
   const backHref = profile ? `/u/${profile.username}?tab=estadisticas` : "/";
 
   return (

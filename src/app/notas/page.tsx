@@ -59,7 +59,7 @@ export default async function NotebookPage({
   const query = parseNotesQuery(await searchParams);
 
   const [profile, { notes, total }] = await Promise.all([
-    getOwnProfile(supabase, user.id),
+    getOwnProfile(user.id),
     getNotesPage(supabase, user.id, query),
   ]);
 
