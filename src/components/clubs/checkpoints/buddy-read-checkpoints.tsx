@@ -114,6 +114,7 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
             onChanged={refresh}
             clubId={activity.clubId}
             knownUsernames={view.knownUsernames}
+            viewerIsParticipant={activity.viewerIsParticipant}
           />
         </div>
       }
