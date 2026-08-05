@@ -107,6 +107,7 @@ export function writeTimer(passId: string, state: TimerState): void {
     // sigue funcionando en memoria durante esta sesión de página.
   }
   emit();
+  mirrorToWidget("write", passId, state);
 }
 
 export function clearTimer(passId: string): void {
@@ -116,4 +117,30 @@ export function clearTimer(passId: string): void {
     // Ídem.
   }
   emit();
+  mirrorToWidget("clear", passId);
+}
+
+// ── Espejo app→nativo ───────────────────────────────────────────────────────
+// El widget de registro (Android) muestra el cronómetro corriendo sin abrir
+// la app. Best-effort y no bloqueante: si falla, el reloj de la app (fuente
+// de verdad) sigue intacto — el widget simplemente se queda con el último
+// dato que supo. Import dinámico + guarda de plataforma, mismo patrón que
+// android-widgets.ts, para no meter Capacitor en el bundle web ni en SSR.
+function mirrorToWidget(op: "write" | "clear", passId: string, state?: TimerState): void {
+  if (typeof window === "undefined") return;
+  void (async () => {
+    try {
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.getPlatform() !== "android") return;
+      const w = await import("@/lib/native/android-widgets");
+      if (op === "clear" || !state || state.startedAt === null) {
+        // Pausa o cierre: el widget no modela "pausado", así que lo apagamos.
+        await w.clearRunningTimer(passId);
+      } else {
+        await w.setRunningTimer(passId, state.firstStartedAt ?? state.startedAt);
+      }
+    } catch {
+      // Best-effort: el reloj de la app no depende de esto.
+    }
+  })();
 }

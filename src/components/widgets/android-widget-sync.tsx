@@ -5,6 +5,7 @@ import { getNotificationPlatform } from "@/lib/push/platform";
 import { onCelebrationCheck } from "@/lib/celebrations/preference";
 import { requestWidgetSync } from "@/lib/widgets/sync";
 import { createClient } from "@/lib/supabase/client";
+import { seedTimerFromWidget } from "@/lib/native/widget-timer-bootstrap";
 
 // Disparadores de la sincronización de widgets Android. SOLO en el WebView de
 // Capacitor (en web no hace nada). Cubre el ciclo completo sin sembrar
@@ -27,11 +28,12 @@ export function AndroidWidgetSync() {
     if (getNotificationPlatform() !== "android") return;
 
     requestWidgetSync("mount");
+    void seedTimerFromWidget();
 
     const onVisibility = () => {
-      requestWidgetSync(
-        document.visibilityState === "visible" ? "resume" : "background",
-      );
+      const visible = document.visibilityState === "visible";
+      requestWidgetSync(visible ? "resume" : "background");
+      if (visible) void seedTimerFromWidget();
     };
     document.addEventListener("visibilitychange", onVisibility);
 
