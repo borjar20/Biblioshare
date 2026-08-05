@@ -155,6 +155,8 @@ private fun FeaturedActions(d: CurrentProgressData) {
     }
 }
 
-/** "Registrar" sin minutos: la hoja de sesión para libros, la ficha para el resto. */
+/** "Registrar" sin minutos: la hoja de sesión para libros, la ficha para el resto.
+ *  Un pase huérfano (libro sin pase activo → passId vacío) no tiene sesión que
+ *  abrir: cae a su deepLink, que ya apunta a la ficha. */
 private fun itemLogHref(d: CurrentProgressData): String =
-    if (d.itemType != "book") d.deepLink else "/sesion/${d.passId}"
+    if (d.itemType != "book" || d.passId.isBlank()) d.deepLink else "/sesion/${d.passId}"
