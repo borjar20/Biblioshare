@@ -44,33 +44,36 @@ class DailyGoalWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(COMPACT, HORIZONTAL))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = WidgetSnapshotStore.load(context)
-        val goal = snapshot?.dailyGoal
-        val outdated = goal != null && goal.date != todayLocalISO()
-        provideContent {
-            when {
-                snapshot == null -> WidgetCard("/") {
-                    EmptyState(
-                        LocalContext.current.getString(R.string.widget_open_app_title),
-                        LocalContext.current.getString(R.string.widget_open_app_subtitle),
-                    )
-                }
-                goal == null -> WidgetCard("/estadisticas") {
-                    EmptyState(
-                        LocalContext.current.getString(R.string.widget_no_goal_title),
-                        LocalContext.current.getString(R.string.widget_no_goal_subtitle),
-                    )
-                }
-                outdated -> WidgetCard(goal.deepLink) {
-                    EmptyState(
-                        LocalContext.current.getString(R.string.widget_goal_title),
-                        LocalContext.current.getString(R.string.widget_outdated_subtitle),
-                    )
-                }
-                else -> WidgetCard(goal.deepLink) {
-                    if (LocalSize.current.width >= 240.dp) Horizontal(goal) else Compact(goal)
-                }
-            }
+        val state = dailyGoalState(WidgetSnapshotStore.load(context))
+        provideContent { DailyGoalContent(state) }
+    }
+}
+
+/** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
+@Composable
+fun DailyGoalContent(state: GoalWidgetState) {
+    val context = LocalContext.current
+    when (state) {
+        GoalWidgetState.SignedOut -> WidgetCard("/") {
+            EmptyState(
+                context.getString(R.string.widget_open_app_title),
+                context.getString(R.string.widget_open_app_subtitle),
+            )
+        }
+        GoalWidgetState.NoGoal -> WidgetCard("/estadisticas") {
+            EmptyState(
+                context.getString(R.string.widget_no_goal_title),
+                context.getString(R.string.widget_no_goal_subtitle),
+            )
+        }
+        is GoalWidgetState.Outdated -> WidgetCard(state.goal.deepLink) {
+            EmptyState(
+                context.getString(R.string.widget_goal_title),
+                context.getString(R.string.widget_outdated_subtitle),
+            )
+        }
+        is GoalWidgetState.Content -> WidgetCard(state.goal.deepLink) {
+            if (LocalSize.current.width >= 240.dp) Horizontal(state.goal) else Compact(state.goal)
         }
     }
 }

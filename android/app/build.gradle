@@ -84,6 +84,11 @@ dependencies {
     implementation project(':capacitor-android')
     // Widgets nativos (Jetpack Glance). Trae Compose runtime y coroutines.
     implementation "androidx.glance:glance-appwidget:1.1.1"
+    // Previews de los widgets en Android Studio (src/debug/**/WidgetPreviews.kt):
+    // pintan cada estado sin emulador y sin instalar nada. Solo debug: no viajan
+    // en el APK de release.
+    debugImplementation "androidx.glance:glance-preview:1.1.1"
+    debugImplementation "androidx.glance:glance-appwidget-preview:1.1.1"
     testImplementation "junit:junit:$junitVersion"
     // org.json real para los tests JVM del snapshot (en unit tests el del SDK es un stub).
     testImplementation "org.json:json:20240303"
