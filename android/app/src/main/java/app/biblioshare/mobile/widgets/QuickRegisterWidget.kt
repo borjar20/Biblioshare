@@ -138,18 +138,23 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int
                     Spacer(GlanceModifier.width(6.dp))
                 }
                 // "Otro": no hay entrada de texto en Glance, así que en vez de
-                // marcar un preset abre la ficha de sesión para un valor libre.
+                // marcar un preset pone minutes=0 — "Guardar sesión" abrirá la
+                // hoja de sesión sin minutos para teclear un valor libre.
                 MinuteChip(
                     label = "Otro",
                     active = minutes != 15 && minutes != 30 && minutes != 45,
-                    onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/sesion/${item.passId}")),
+                    onClick = actionRunCallback<PickMinutesAction>(actionParametersOf(MINUTES_PARAM to 0)),
                 )
             }
             Spacer(GlanceModifier.height(12.dp))
+            val href = when {
+                item.passId.isBlank() -> item.deepLink // pase huérfano: sin sesión, a la ficha
+                minutes > 0 -> "/sesion/${item.passId}?minutos=$minutes"
+                else -> "/sesion/${item.passId}" // "Otro"/0: abre la hoja para teclear
+            }
             PrimaryButton(
                 "Guardar sesión",
-                // Task 13: añade ?minutos= (y registra el widget en el manifest)
-                onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/sesion/${item.passId}")),
+                onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, href)),
             )
         } else {
             PrimaryButton(
