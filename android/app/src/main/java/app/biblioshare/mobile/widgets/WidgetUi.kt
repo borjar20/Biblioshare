@@ -9,8 +9,10 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.Action
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
@@ -130,14 +132,17 @@ fun ActionCell(label: String, color: ColorProvider, modifier: GlanceModifier) {
 }
 
 /** Rejilla de "Continúa donde lo dejaste": 3 columnas por fila, portada + título
- *  a una línea. Sin clic en Task 7 — el foco se conecta en Task 8. */
+ *  a una línea. Tocar una celda cambia el destacado (Glance state, Task 8). */
 @Composable
 fun ContinueGrid(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
     Column {
         others.chunked(3).forEach { row ->
             Row(modifier = GlanceModifier.fillMaxWidth()) {
                 row.forEach { d ->
-                    Column(modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)) {
+                    Column(
+                        modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)
+                            .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                    ) {
                         Cover(d.coverUrl?.let(covers::get), width = 64, height = 92)
                         Spacer(GlanceModifier.height(4.dp))
                         Text(d.title, style = softStyle(), maxLines = 1)

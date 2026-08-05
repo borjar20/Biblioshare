@@ -15,6 +15,8 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -38,11 +40,13 @@ import app.biblioshare.mobile.R
 class CurrentProgressWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Exact
+    override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // I/O fuera de la composición: store y portadas se resuelven una vez aquí.
+        // I/O fuera de la composición: store, selección y portadas se resuelven una vez aquí.
         val snapshot = WidgetSnapshotStore.load(context)
-        val state = currentProgressState(snapshot, selectedPassId = null)
+        val selected = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[SELECTED_PASS_KEY]
+        val state = currentProgressState(snapshot, selectedPassId = selected)
         val covers = (state as? ProgressWidgetState.Content)?.items.orEmpty()
             .mapNotNull { it.coverUrl }
             .associateWith { WidgetImageCache.loadBitmap(context, it) }
