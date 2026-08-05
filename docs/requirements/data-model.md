@@ -1887,7 +1887,7 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
-## 7.9 Celebraciones — `user_celebrations` (dev, 2026-08-05 · prod PENDIENTE)
+## 7.9 Celebraciones — `user_celebrations` (dev y **prod**, 2026-08-05)
 
 Memoria de las microanimaciones ganadas por usuario, para que un hito **no se repita** entre
 recargas ni entre dispositivos (localStorage no se comparte). **No es estado de progreso** —
@@ -1915,10 +1915,15 @@ acciones de club (join/accept/post/poll/vote → «primera participación»); el
 la RPC, anima una vez y sella `displayed_at`. Migración
 `supabase/migrations/20260805_user_celebrations.sql`.
 
-**Pendiente (issues a abrir):** aplicar a **prod** con el merge; marcar episodios desde la
-pestaña Episodios (`episode-actions.ts`) y publicar/votar en club aún no disparan
-`checkCelebrations()` en cliente (la celebración se gana igual y se drena en el siguiente
-pull/visibilidad, solo se retrasa); la preferencia vive en localStorage (no cross-device).
+**Aplicada a prod el 2026-08-05** (misma pasada que dev): verificado contra objetos reales —
+`user_celebrations` con RLS activa y 3 políticas, 3 índices, y `pull_pending_celebrations`
+`security definer` con `search_path=public`, ejecutable por `authenticated` y **no** por `anon`.
+
+**Pendiente (issues abiertas):** #459 marcar episodios desde la pestaña Episodios
+(`episode-actions.ts`) y publicar/votar en club aún no disparan `checkCelebrations()` en cliente
+(la celebración se gana igual y se drena en el siguiente pull/visibilidad, solo se retrasa);
+#460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
+`annual_challenge_completed` y `club_activity_completed`.
 
 ## 8. Seguridad
 
