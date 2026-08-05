@@ -33,7 +33,7 @@ function nthLabel(itemType: string, rereadCount: number): string {
 }
 
 function kindLabel(itemType: string): string {
-  return itemType === "series" ? "Serie" : "Libro";
+  return itemType === "series" ? "Serie" : itemType === "movie" ? "Película" : "Libro";
 }
 
 function contextLabel(pass: TodayPass): string {

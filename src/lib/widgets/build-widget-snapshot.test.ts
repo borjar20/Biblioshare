@@ -160,6 +160,28 @@ describe("buildInProgress", () => {
     expect(d.progressLabel).toBe("Sin progreso");
     expect(d.contextLabel).toBe("3 notas"); // sin día ni desde
   });
+
+  it("serie con progreso: ordinal de visionado, kind y subtítulo de temporada", () => {
+    const [d] = buildInProgress([
+      pass({
+        item: item({
+          itemType: "series",
+          position: { season: 2, episode: 12 },
+          totalEpisodes: 30,
+        }),
+      }),
+    ]);
+    expect(d.nthLabel).toBe("1.º visionado");
+    expect(d.kindLabel).toBe("Serie");
+    expect(d.subtitle).toBe("Temporada 2 · Episodio 12");
+    expect(d.progressLabel).toBe("12 de 30 episodios");
+  });
+
+  it("pase huérfano (sin activePassId): passId vacío y deep link a la ficha, no a la sesión", () => {
+    const [d] = buildInProgress([pass({ item: item({ activePassId: null, itemId: "b-3" }) })]);
+    expect(d.passId).toBe("");
+    expect(d.deepLink).toBe("/libro/b-3");
+  });
 });
 
 describe("buildWidgetSnapshot + snapshotFingerprint", () => {
