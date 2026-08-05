@@ -86,6 +86,26 @@ fun PreviewCompleto() {
     )
 }
 
+// Cronómetro nativo corriendo para el destacado (Task 17). El Chronometer no
+// tickea en el panel de previews de Android Studio — el tick en vivo se
+// verifica en dispositivo (#485) — pero el layout del pie (reloj + Descartar/
+// Registrar) sí se ve.
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = COMPLETO_W_DP, heightDp = COMPLETO_H_DP)
+@Composable
+fun PreviewCompletoTimer() {
+    CurrentProgressContent(
+        ProgressWidgetState.Content(
+            items = listOf(sampleFeatured, sampleOther),
+            selectedPassId = null,
+            total = 2,
+            stale = false,
+        ),
+        covers = emptyMap(),
+        running = TimerLogic.Running("p1", System.currentTimeMillis() - 5 * 60_000L),
+    )
+}
+
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = COMPLETO_W_DP, heightDp = COMPLETO_H_DP)
 @Composable

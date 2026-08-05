@@ -2,16 +2,21 @@ package app.biblioshare.mobile.widgets
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.SystemClock
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -49,7 +54,8 @@ class CurrentProgressWidget : GlanceAppWidget() {
         val selected = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[SELECTED_PASS_KEY]
         val state = currentProgressState(snapshot, selectedPassId = selected)
         val covers = loadCovers(context, snapshot)
-        provideContent { CurrentProgressContent(state, covers) }
+        val running = TimerStore.get(context)
+        provideContent { CurrentProgressContent(state, covers, running) }
     }
 }
 
@@ -60,7 +66,11 @@ internal suspend fun loadCovers(context: Context, snapshot: WidgetSnapshot?): Ma
 
 /** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
 @Composable
-fun CurrentProgressContent(state: ProgressWidgetState, covers: Map<String, Bitmap?>) {
+fun CurrentProgressContent(
+    state: ProgressWidgetState,
+    covers: Map<String, Bitmap?>,
+    running: TimerLogic.Running? = null,
+) {
     val context = LocalContext.current
     when (state) {
         ProgressWidgetState.SignedOut -> WidgetCard("/") {
@@ -75,7 +85,7 @@ fun CurrentProgressContent(state: ProgressWidgetState, covers: Map<String, Bitma
                 context.getString(R.string.widget_open_to_start),
             )
         }
-        is ProgressWidgetState.Content -> Completo(state, covers)
+        is ProgressWidgetState.Content -> Completo(state, covers, running)
     }
 }
 
@@ -84,7 +94,7 @@ class CurrentProgressWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 @Composable
-private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bitmap?>) {
+private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bitmap?>, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
     val f = state.featured
     Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
@@ -94,7 +104,7 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
             onTrailing = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/coleccion?status=in_progress")),
         )
         Spacer(GlanceModifier.height(10.dp))
-        FeaturedCard(f, f.coverUrl?.let(covers::get))
+        FeaturedCard(f, f.coverUrl?.let(covers::get), running)
         if (state.others.isNotEmpty()) {
             Spacer(GlanceModifier.height(18.dp))
             Text("Continúa donde lo dejaste", style = softStyle())
@@ -106,7 +116,7 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
 
 /** Portada + ordinal + título + contexto + progreso + racha/semana + pie de acciones. */
 @Composable
-private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?) {
+private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     Column(GlanceModifier.fillMaxWidth().background(WidgetPalette.surface).cornerRadius(18.dp)) {
         Row(GlanceModifier.padding(16.dp)) {
             Cover(cover, width = 72, height = 104)
@@ -136,30 +146,72 @@ private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?) {
                 }
             }
         }
-        FeaturedActions(d)
+        FeaturedActions(d, running)
     }
 }
 
-/** Sesión/Registrar como deep-link plano; el cronómetro nativo llega en Task 17. */
+/** Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
+ *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
+ *  o, pasadas 4h, invita a abrir la app en vez de seguir tickeando en segundo plano. */
 @Composable
-private fun FeaturedActions(d: CurrentProgressData) {
+private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
-    Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-        if (d.itemType == "book") {
-            ActionCell(
-                "◷ Sesión",
-                WidgetPalette.accent,
-                GlanceModifier.defaultWeight()
-                    .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, d.deepLink))),
+    if (running != null && running.passId == d.passId) {
+        val now = System.currentTimeMillis()
+        if (isLongSession(running.startedAt, now)) {
+            Text(
+                "Sesión larga · ábrela para registrar",
+                style = softStyle(),
+                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable(actionRunCallback<RegisterTimerAction>()),
             )
-            Spacer(GlanceModifier.width(8.dp))
+        } else {
+            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
+                    setChronometer(
+                        R.id.widget_chrono,
+                        chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
+                        null,
+                        true,
+                    )
+                }
+                AndroidRemoteViews(rv)
+                Spacer(GlanceModifier.height(8.dp))
+                Row {
+                    ActionCell(
+                        "Descartar",
+                        WidgetPalette.fgSoft,
+                        GlanceModifier.defaultWeight()
+                            .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                    )
+                    Spacer(GlanceModifier.width(8.dp))
+                    ActionCell(
+                        "Registrar",
+                        WidgetPalette.accent,
+                        GlanceModifier.defaultWeight()
+                            .clickable(actionRunCallback<RegisterTimerAction>()),
+                    )
+                }
+            }
         }
-        ActionCell(
-            "✎ Registrar",
-            WidgetPalette.fg,
-            GlanceModifier.defaultWeight()
-                .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),
-        )
+    } else {
+        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            if (d.itemType == "book") {
+                ActionCell(
+                    "◷ Sesión",
+                    WidgetPalette.accent,
+                    GlanceModifier.defaultWeight()
+                        .clickable(actionRunCallback<StartTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                )
+                Spacer(GlanceModifier.width(8.dp))
+            }
+            ActionCell(
+                "✎ Registrar",
+                WidgetPalette.fg,
+                GlanceModifier.defaultWeight()
+                    .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),
+            )
+        }
     }
 }
 
