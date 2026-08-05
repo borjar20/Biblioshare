@@ -9,6 +9,7 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
+import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -89,13 +90,22 @@ function formatRuntime(minutes: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default async function MovieDetailPage({
-  params,
-  searchParams,
-}: {
+type MovieDetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ cerrar?: string }>;
-}) {
+};
+
+// Página síncrona: `params`/`searchParams` bajan a MovieDetail, por DEBAJO del
+// <Suspense> (#442). Ver /libro para el porqué.
+export default function MovieDetailPage(props: MovieDetailProps) {
+  return (
+    <Suspense fallback={<ItemShellSkeleton itemType="movie" />}>
+      <MovieDetail {...props} />
+    </Suspense>
+  );
+}
+
+async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
