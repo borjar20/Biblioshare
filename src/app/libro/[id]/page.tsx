@@ -11,6 +11,13 @@ import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
+import { RouteMessages } from "@/components/route-messages";
+
+// Namespaces de cliente de la ficha (medidos por su subárbol, #444).
+const DETAIL_NS = [
+  "catalogEdit", "collection", "detail", "editions",
+  "item", "library", "notes", "passes", "social",
+] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import {
@@ -97,7 +104,9 @@ type BookDetailProps = {
 export default function BookDetailPage(props: BookDetailProps) {
   return (
     <Suspense fallback={<ItemShellSkeleton itemType="book" />}>
-      <BookDetail {...props} />
+      <RouteMessages ns={DETAIL_NS}>
+        <BookDetail {...props} />
+      </RouteMessages>
     </Suspense>
   );
 }
