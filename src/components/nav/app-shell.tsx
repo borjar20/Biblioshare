@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getUnreadCount } from "@/lib/social/notifications";
 import { Header } from "@/components/header";
 import { BottomNav } from "./bottom-nav";
@@ -26,17 +27,18 @@ export async function AppShell({ children }: { children: ReactNode }) {
 
   if (user) {
     const supabase = await createClient();
-    const [{ data: profile }, count] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("username, avatar_url, onboarded_at")
-        .eq("user_id", user.id)
-        .maybeSingle(),
+    // getOwnProfile va memoizado por userId (#456): esta lectura la reutiliza la
+    // página, así que el perfil se consulta UNA vez por petición en toda ruta.
+    // .catch(() => null): getOwnProfile hace throw en error y aquí se tolera —el
+    // chrome se pinta sin navegación en vez de tumbar la ruta entera, que es lo
+    // que hacía la consulta inline anterior (maybeSingle sin throw).
+    const [profile, count] = await Promise.all([
+      getOwnProfile(user.id).catch(() => null),
       getUnreadCount(supabase, user.id),
     ]);
     username = profile?.username ?? null;
-    avatarUrl = profile?.avatar_url ?? null;
-    onboarded = profile?.onboarded_at != null;
+    avatarUrl = profile?.avatarUrl ?? null;
+    onboarded = profile?.onboardedAt != null;
     unreadCount = count;
   }
 
