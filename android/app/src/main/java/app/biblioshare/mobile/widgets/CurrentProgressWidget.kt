@@ -32,11 +32,12 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import app.biblioshare.mobile.R
 
-// Widget «En curso»: un solo tamaño grande (Completo) con el destacado (el que
-// decide el servidor, misma regla que getTodayFocus del dashboard) y, si hay
-// más lecturas a medias, la rejilla "Continúa donde lo dejaste". La SELECCIÓN
-// del destacado no vive aquí: llega resuelta en el snapshot; el tap para
-// cambiarla se conecta en Task 8.
+// Widget «En curso»: un solo tamaño grande (Completo) con el destacado (por
+// defecto el que decide el servidor, misma regla que getTodayFocus del
+// dashboard) y, si hay más lecturas a medias, la rejilla "Continúa donde lo
+// dejaste". Tocar una portada de la rejilla cambia el foco SIN abrir la app:
+// el passId elegido se guarda en el estado Glance (SELECTED_PASS_KEY) y se lee
+// aquí en provideGlance; si no hay elección, gana el [0] del snapshot.
 class CurrentProgressWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Exact
