@@ -20,6 +20,9 @@ private const val WIDE_W_DP = 240
 private const val WIDE_H_DP = 110
 private const val COMPLETO_W_DP = 380
 private const val COMPLETO_H_DP = 560
+private const val QUICK_REGISTER_W_DP = 340
+private const val QUICK_REGISTER_PICK_H_DP = 420
+private const val QUICK_REGISTER_REGISTER_H_DP = 360
 
 // Destacado con progreso, racha y semana — ejercita FeaturedCard al completo.
 private val sampleFeatured = CurrentProgressData(
@@ -142,4 +145,28 @@ fun PreviewGoalOutdated() {
 @Composable
 fun PreviewGoalNoGoal() {
     DailyGoalContent(GoalWidgetState.NoGoal)
+}
+
+// --- Registro rápido (2 pasos) ----------------------------------------------
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = QUICK_REGISTER_W_DP, heightDp = QUICK_REGISTER_PICK_H_DP)
+@Composable
+fun PreviewQuickRegisterPick() {
+    QuickRegisterContent(
+        QuickRegisterState.Pick(listOf(sampleFeatured, sampleOther)),
+        covers = emptyMap(),
+        minutes = 30,
+    )
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = QUICK_REGISTER_W_DP, heightDp = QUICK_REGISTER_REGISTER_H_DP)
+@Composable
+fun PreviewQuickRegisterRegisterBook() {
+    QuickRegisterContent(
+        QuickRegisterState.Register(sampleFeatured),
+        covers = emptyMap(),
+        minutes = 30,
+    )
 }

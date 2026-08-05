@@ -64,6 +64,6 @@ object WidgetRefresh {
     fun updateAll(context: Context) = runBlocking {
         CurrentProgressWidget().updateAll(context)
         DailyGoalWidget().updateAll(context)
-        // TODO(Task 11, plan 2026-08-05-widgets-registro-dos-tamanos): QuickRegisterWidget().updateAll(context)
+        QuickRegisterWidget().updateAll(context)
     }
 }

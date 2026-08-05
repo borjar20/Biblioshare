@@ -53,7 +53,7 @@ class CurrentProgressWidget : GlanceAppWidget() {
     }
 }
 
-private suspend fun loadCovers(context: Context, snapshot: WidgetSnapshot?): Map<String, Bitmap?> {
+internal suspend fun loadCovers(context: Context, snapshot: WidgetSnapshot?): Map<String, Bitmap?> {
     val urls = snapshot?.inProgress?.mapNotNull { it.coverUrl }?.distinct().orEmpty()
     return urls.associateWith { WidgetImageCache.loadBitmap(context, it) }
 }

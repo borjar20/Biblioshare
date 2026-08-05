@@ -46,6 +46,8 @@ object WidgetPalette {
     val gold = ColorProvider(R.color.widget_gold)
     /** Superficie ligeramente elevada sobre el fondo, para la tarjeta destacada del Completo. */
     val surface = ColorProvider(R.color.widget_surface)
+    /** Fondo base, casi blanco: texto legible sobre un chip/botón relleno de acento. */
+    val bg = ColorProvider(R.color.widget_bg)
 }
 
 fun titleStyle() = TextStyle(color = WidgetPalette.fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -194,4 +196,68 @@ fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent) {
         color = color,
         backgroundColor = WidgetPalette.track,
     )
+}
+
+/** Fila compacta del paso 1 del registro rápido: portada + kindLabel + título +
+ *  progreso (o "Sin progreso"), toda la fila clicable. Sin `WidgetCard`: vive
+ *  dentro de la tarjeta del widget, no es una pantalla propia. */
+@Composable
+fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().clickable(onClick).padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Cover(cover, width = 36, height = 54)
+        Spacer(GlanceModifier.width(10.dp))
+        Column(modifier = GlanceModifier.defaultWeight()) {
+            Text(item.kindLabel, style = softStyle(), maxLines = 1)
+            Text(item.title, style = titleStyle(), maxLines = 1)
+            if (item.percentage != null) {
+                Spacer(GlanceModifier.height(4.dp))
+                SoftBar(item.percentage)
+            } else {
+                Text("Sin progreso", style = softStyle())
+            }
+        }
+    }
+}
+
+/** Chip de minutos del paso 2: relleno de acento cuando está activo, track si no. */
+@Composable
+fun MinuteChip(label: String, active: Boolean, onClick: Action) {
+    Box(
+        modifier = GlanceModifier
+            .clickable(onClick)
+            .background(if (active) WidgetPalette.accent else WidgetPalette.track)
+            .cornerRadius(10.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = TextStyle(
+                color = if (active) WidgetPalette.bg else WidgetPalette.fg,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+    }
+}
+
+/** Botón primario (Guardar sesión / Abrir para registrar): relleno de acento a
+ *  todo el ancho. Distinto de [ActionCell] (que siempre pinta sobre `track`,
+ *  pensado para acciones secundarias en pareja) — este es el CTA único del paso 2. */
+@Composable
+fun PrimaryButton(label: String, onClick: Action) {
+    Box(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .clickable(onClick)
+            .background(WidgetPalette.accent)
+            .cornerRadius(10.dp)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = TextStyle(color = WidgetPalette.bg, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+    }
 }
