@@ -2,6 +2,7 @@ import type { FeedEntry } from "@/lib/social/feed";
 import { ClubFeedCard } from "./club-feed-card";
 import { CollectionCard } from "./collection-card";
 import { ProgressTimelineCard } from "./progress-timeline-card";
+import { EpisodeRatingsCard } from "./episode-ratings-card";
 import { ReviewCard } from "./review-card";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 
@@ -20,9 +21,12 @@ export function FeedItem({
   // Un evento singleton se envuelve como grupo de 1 para las variantes A/B, que
   // ya manejan items.length === 1 (sin pie "Guardar los N", timeline de 1 paso).
   if (entry.source === "person-group") {
-    return entry.verb === "added"
-      ? <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />
-      : <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+    if (entry.verb === "added")
+      return <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+    if (entry.verb === "progressed")
+      return <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+    // rated / reviewed / watchedEpisode → valoraciones de episodios agrupadas.
+    return <EpisodeRatingsCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
   }
 
   // source === "person": elegir por verbo del evento.

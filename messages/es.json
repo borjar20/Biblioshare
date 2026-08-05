@@ -367,13 +367,19 @@
     "grouped": {
       "addedCount": "añadió {count, plural, one {# título} other {# títulos}} a su biblioteca",
       "progressedIn": "avanzó en {title}",
+      "ratedEpisodes": "valoró {count, plural, one {# episodio de} other {# episodios de}}",
       "saveAllToQueue": "＋ Guardar {count, plural, one {el título} other {los # títulos}} en mi cola",
       "showMore": "ver {count, plural, one {# obra más} other {# obras más}}"
     },
     "kind": {
       "collection": "Colección",
       "progress": "Avances",
-      "review": "Reseña"
+      "review": "Reseña",
+      "reviews": "Reseñas"
+    },
+    "episode": {
+      "watched": "Visto",
+      "showMore": "ver {count, plural, one {# episodio más} other {# episodios más}}"
     },
     "progress": {
       "reachedPage": "Llegó a la pág. {page}",
