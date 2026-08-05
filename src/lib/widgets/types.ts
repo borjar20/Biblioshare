@@ -6,7 +6,9 @@
 // Solo datos de presentación + userId (para detectar cambio de cuenta en el
 // lado nativo). Nada de tokens, email ni contenido privado (notas/reseñas).
 
-export const WIDGET_SCHEMA_VERSION = 1;
+export const WIDGET_SCHEMA_VERSION = 2;
+
+export type WidgetWeekDay = { active: boolean; today: boolean };
 
 export type CurrentProgressWidgetData = {
   passId: string;
@@ -15,12 +17,14 @@ export type CurrentProgressWidgetData = {
   title: string;
   subtitle?: string | null;
   coverUrl?: string | null;
-  currentValue: number;
-  totalValue?: number | null;
-  percentage?: number | null;
+  percentage?: number | null; // null = "Sin progreso"
   progressLabel: string;
-  statusLabel?: string | null;
   deepLink: string;
+  nthLabel: string; // "1.ª lectura"
+  contextLabel: string; // "Día 4 · desde 2/8 · 1 nota" (puede ir vacío)
+  streakDays: number; // 0 = sin racha
+  week: WidgetWeekDay[]; // 7 días, antiguo→hoy
+  kindLabel: string; // "Libro" | "Serie"
 };
 
 export type DailyGoalWidgetData = {
@@ -42,6 +46,7 @@ export type WidgetSnapshot = {
   version: number;
   userId: string;
   generatedAt: string;
-  currentProgress: CurrentProgressWidgetData | null;
-  dailyGoal: DailyGoalWidgetData | null;
+  inProgress: CurrentProgressWidgetData[]; // [0] = destacado por defecto
+  inProgressTotal: number;
+  dailyGoal: DailyGoalWidgetData | null; // GLOBAL (meta de hoy)
 };
