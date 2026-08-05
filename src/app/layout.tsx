@@ -5,23 +5,27 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/nav/app-shell";
 import { ThemeScript } from "@/components/theme-script";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
-import { SplashScreen } from "@/components/splash/splash-screen";
 import { SessionOriginTracker } from "@/components/session/session-origin";
 import "./globals.css";
 
+// `display: "swap"` explícito: es ya el default de next/font, pero fijarlo evita
+// depender de un default que puede cambiar entre versiones (auditoría #446).
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -62,7 +66,6 @@ export default function RootLayout({
             solo de las que pasan por la ficha. */}
         <SessionOriginTracker />
         <NextIntlClientProvider>
-          {/* <SplashScreen /> */}
           <AppShell>{children}</AppShell>
           {modal}
         </NextIntlClientProvider>
