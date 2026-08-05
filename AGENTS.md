@@ -30,6 +30,38 @@ El estado vivo del usuario vive en **`passes`**, nunca en `library_entries` (CON
 **Migraciones:** "no aparece en `list_migrations`" **≠** "no está en prod" — verifica contra los
 objetos reales (`pg_proc`/`pg_class`), no el ledger. Regla: dev primero (`supabase-dev`), luego prod.
 
+## Caché y RLS: solo se cachea lo que es idéntico para TODO el mundo (regla #437)
+
+**En una app cuya privacidad descansa en RLS, un `use cache` mal puesto no es una regresión de
+rendimiento: es una fuga de datos ENTRE CUENTAS.** El resultado de una consulta depende de quién la
+hace (RLS filtra por `auth.uid()`); si cacheas esa función y compartes la entrada, le sirves a un
+usuario las filas que solo otro podía ver. Y es traicionero porque **no se ve en desarrollo**: con
+una sola cuenta abierta la caché acierta siempre y todo parece correcto — sale en producción, que ya
+tiene 3 cuentas reales.
+
+Una función con `use cache` recibe **argumentos escalares** y usa un **cliente SIN sesión**
+(`createPublicClient()` de `src/lib/supabase/server.ts`, rol anónimo), **nunca el cliente de la
+petición**. Al escribir CUALQUIER `use cache`, contesta por escrito en la PR:
+
+1. **¿El dato es el mismo para un anónimo, para el dueño y para un tercero?**
+   - **Sí** → cacheable. Cliente sin sesión, argumentos escalares.
+   - **No** → no se cachea; se queda detrás de `<Suspense>`.
+   - **Depende de la sesión pero con vida útil conocida** → `use cache: private` (cachea en el
+     navegador, no en el servidor; no entra en el shell estático).
+2. **¿La función, o algo que llama, toca `cookies()`, `headers()` o `searchParams`?** Si sí, no
+   compila como cacheada (`next-request-in-use-cache`) — y **pasa `next build` y falla en `next
+   start`**, así que prueba los e2e contra build de producción, no solo `next dev`. Extrae el valor
+   fuera y pásalo como argumento.
+
+**Cambio semántico que hay que decidir a propósito:** cachear un agregado público (p. ej. la media
+de notas de una obra) mueve el cálculo de «sobre las filas que el que mira puede ver» a «sobre las
+filas públicas». Casi seguro es lo que se quiere, pero **es un cambio de comportamiento** y se
+decide explícito, no se cuela en un refactor de rendimiento (ya pasó con `getRatingSummary`, #436 —
+ver `decisiones.md`).
+
+Origen: auditoría Next.js 16, issue #437 (`tipo:acta`). Es el único punto del informe donde el
+riesgo no es «va más lento de lo que podría».
+
 ## Definición de «hecho»: no cierres un cambio sin sincronizar la doc
 
 Antes de dar por terminado cualquier cambio, repasa:
