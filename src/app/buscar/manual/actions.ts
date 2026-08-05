@@ -95,6 +95,6 @@ export async function addManualItem(
     return { error: "generic" };
   }
 
-  const profile = await getOwnProfile(supabase, user.id);
+  const profile = await getOwnProfile(user.id);
   redirect(profile ? `/u/${profile.username}` : "/");
 }

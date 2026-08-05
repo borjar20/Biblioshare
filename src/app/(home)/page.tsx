@@ -58,7 +58,7 @@ export default async function Home({
   // rail hace las suyas por su cuenta, detrás de su propio boundary.
   const [counts, profile] = await Promise.all([
     getFollowCounts(supabase, user.id),
-    getOwnProfile(supabase, user.id),
+    getOwnProfile(user.id),
   ]);
 
   // Dos cabeceras, una por breakpoint (P-T7): en móvil el frame A abre con

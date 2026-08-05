@@ -56,7 +56,7 @@ export async function RinconTab({
     getNotesForSorteo(supabase, userId),
     getNoteCounts(supabase, userId),
     getSorteoPool(supabase, userId),
-    getOwnProfile(supabase, userId),
+    getOwnProfile(userId),
     getWeeklyActivity(supabase, userId),
   ]);
   const challengeProgress = await getChallengeProgress(

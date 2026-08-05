@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
-import { periodLabel, resolvePeriod } from "@/lib/stats/period";
+import {
+  periodLabel,
+  resolvePeriod,
+  type StatsPeriod,
+} from "@/lib/stats/period";
 import {
   activityMetricLabel,
   itemFilterLabel,
   resolveActivityMetric,
   resolveItemFilter,
+  type ActivityMetric,
+  type ItemFilter,
 } from "@/lib/stats/filter";
 import { toISODate } from "@/lib/stats/dates";
 import { getRatingDistribution } from "@/lib/stats/get-rating-distribution";
@@ -32,6 +39,7 @@ import { getPagesPerDay } from "@/lib/stats/get-pace";
 import { buildStatsSections, hiddenPanelCount } from "@/lib/stats/panel/specs";
 import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { StatsControls } from "@/components/stats/stats-controls";
+import { StatsWallSkeleton } from "@/components/stats/stats-wall-skeleton";
 import { SectionTabs } from "./section-tabs";
 import { SHELL_APP } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -51,13 +59,24 @@ export const metadata: Metadata = {
 // que el de la tarjeta a la pregunta que más se falla — si «Décadas» habla de
 // lo que ves o de lo que tienes esperando.
 //
+// El SHELL (cabecera + filtros) se pinta sin esperar a los datos; el muro —18
+// consultas— llega detrás de un <Suspense> (#440). Antes no había boundary, así
+// que al entrar por URL directa (enlace compartido, recarga, PWA) no se veía
+// NADA hasta que terminaba la consulta más lenta de las 18. El `loading.tsx` solo
+// cubría la navegación desde dentro, no la entrada directa.
+//
+// Un solo boundary para todo el muro, no uno por sección: varias de las 18
+// consultas alimentan varias secciones (actividad, nota, horas, récords, ritmo),
+// así que un boundary por sección o duplicaría consultas o exigiría hacer
+// cacheables los 18 getters. Con uno solo, el shell aparece ya y el muro entero
+// llega junto — que es lo que arregla el problema que se reportó.
+//
 // Ver docs/design/paneles-estadisticos.md.
 export default async function FullStatsPage({
   searchParams,
 }: {
   searchParams: Promise<{ periodo?: string; tipo?: string; medida?: string }>;
 }) {
-  const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/estadisticas"));
 
@@ -73,11 +92,88 @@ export default async function FullStatsPage({
   const period = resolvePeriod(periodo, undefined, "all");
   const itemFilter = resolveItemFilter(tipo);
   const metric = resolveActivityMetric(medida);
+
+  // Lo único que el SHELL espera: el @usuario, para el enlace de volver. Una
+  // consulta ligera (índice por user_id), no las 18 del muro. getOwnProfile crea
+  // su propio cliente y va memoizado por userId (#456).
+  const profile = await getOwnProfile(user.id);
+  const backHref = profile ? `/u/${profile.username}?tab=estadisticas` : "/";
+
+  return (
+    <main className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
+      <div className="mb-4">
+        <PageHeader
+          title={t("fullStatsTitle")}
+          backHref={backHref}
+          backLabel={t("back")}
+        />
+      </div>
+
+      {/* Una sola fila de filtros para TODO el muro (nunca filtros por panel):
+          cada panel repite después el periodo que le toca, porque varios son una
+          foto del momento y no lo obedecen.
+
+          PLEGADOS, y con `<details>` nativo — cero JavaScript, y el estado
+          abierto/cerrado no viaja en la URL porque no es parte de la pregunta.
+          Tres grupos de pastillas ocupaban dos filas altas que se leen UNA vez
+          (al entrar, o al cambiar de periodo) y estorban en todas las demás;
+          debajo van siete secciones de tarjetas, que es lo que se viene a ver.
+          El resumen tiene que decir qué hay puesto: un plegable que solo dijera
+          «Filtros» obligaría a abrirlo para saber de qué periodo habla la
+          pantalla, y entonces plegarlo costaría más de lo que ahorra. */}
+      <details className="mb-2 rounded-card border border-border bg-surface">
+        <summary className="flex cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2.5 text-[12.5px] text-muted-foreground marker:text-accent">
+          <span className="label-section text-foreground">Filtros</span>
+          <span className="font-medium text-foreground">{periodLabel(period)}</span>
+          <span aria-hidden>·</span>
+          <span>{itemFilterLabel(itemFilter)}</span>
+          <span aria-hidden>·</span>
+          <span>{activityMetricLabel(metric)}</span>
+        </summary>
+        <div className="border-t border-border p-3">
+          <StatsControls
+            basePath="/estadisticas"
+            period={period}
+            itemFilter={itemFilter}
+            metric={metric}
+          />
+        </div>
+      </details>
+
+      {/* El muro —18 consultas— detrás de su boundary. El fallback reserva altura
+          (masonry) para no mover columnas al resolverse (CLS, #284/#440). */}
+      <Suspense fallback={<StatsWallSkeleton />}>
+        <StatsWall
+          userId={user.id}
+          period={period}
+          itemFilter={itemFilter}
+          metric={metric}
+        />
+      </Suspense>
+    </main>
+  );
+}
+
+// El muro: las 18 consultas, la construcción de secciones y el render de los
+// paneles. Todo detrás del <Suspense> del shell.
+async function StatsWall({
+  userId,
+  period,
+  itemFilter,
+  metric,
+}: {
+  userId: string;
+  period: StatsPeriod;
+  itemFilter: ItemFilter;
+  metric: ActivityMetric;
+}) {
+  const supabase = await createClient();
+  const t = await getTranslations("stats");
   const todayISO = toISODate(new Date());
-  const calendarYear = typeof period === "number" ? period : Number(todayISO.slice(0, 4));
+  const calendarYear =
+    typeof period === "number" ? period : Number(todayISO.slice(0, 4));
 
   const [
-    profile,
     activity,
     rating,
     type,
@@ -96,27 +192,24 @@ export default async function FullStatsPage({
     calendar,
     pagesPerDay,
   ] = await Promise.all([
-    getOwnProfile(supabase, user.id),
-    getPeriodActivity(supabase, user.id, period, itemFilter),
-    getRatingDistribution(supabase, user.id, period, itemFilter),
-    getTypeDistribution(supabase, user.id, period),
-    getStatusDistribution(supabase, user.id, itemFilter),
-    getHoursByMonth(supabase, user.id, period),
-    getCatalogBreakdown(supabase, user.id, period, itemFilter),
-    getHabits(supabase, user.id, period, itemFilter),
-    getRecords(supabase, user.id, period, itemFilter),
-    getStreaks(supabase, user.id),
-    getTbrSnapshot(supabase, user.id, itemFilter),
-    getCompletedByYear(supabase, user.id),
-    getTopRated(supabase, user.id, period, 6, itemFilter),
-    getLibraryHealth(supabase, user.id, period, itemFilter),
-    getRatedFacets(supabase, user.id, period, itemFilter),
-    getFormatStats(supabase, user.id, period),
-    getYearCalendar(supabase, user.id, calendarYear),
-    getPagesPerDay(supabase, user.id, period),
+    getPeriodActivity(supabase, userId, period, itemFilter),
+    getRatingDistribution(supabase, userId, period, itemFilter),
+    getTypeDistribution(supabase, userId, period),
+    getStatusDistribution(supabase, userId, itemFilter),
+    getHoursByMonth(supabase, userId, period),
+    getCatalogBreakdown(supabase, userId, period, itemFilter),
+    getHabits(supabase, userId, period, itemFilter),
+    getRecords(supabase, userId, period, itemFilter),
+    getStreaks(supabase, userId),
+    getTbrSnapshot(supabase, userId, itemFilter),
+    getCompletedByYear(supabase, userId),
+    getTopRated(supabase, userId, period, 6, itemFilter),
+    getLibraryHealth(supabase, userId, period, itemFilter),
+    getRatedFacets(supabase, userId, period, itemFilter),
+    getFormatStats(supabase, userId, period),
+    getYearCalendar(supabase, userId, calendarYear),
+    getPagesPerDay(supabase, userId, period),
   ]);
-
-  const backHref = profile ? `/u/${profile.username}?tab=estadisticas` : "/";
 
   const panelInput = {
     period,
@@ -163,45 +256,7 @@ export default async function FullStatsPage({
   const escondidos = hiddenPanelCount(panelInput);
 
   return (
-    <main className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
-      <div className="mb-4">
-        <PageHeader
-          title={t("fullStatsTitle")}
-          backHref={backHref}
-          backLabel={t("back")}
-        />
-      </div>
-
-      {/* Una sola fila de filtros para TODO el muro (nunca filtros por panel):
-          cada panel repite después el periodo que le toca, porque varios son una
-          foto del momento y no lo obedecen.
-
-          PLEGADOS, y con `<details>` nativo — cero JavaScript, y el estado
-          abierto/cerrado no viaja en la URL porque no es parte de la pregunta.
-          Tres grupos de pastillas ocupaban dos filas altas que se leen UNA vez
-          (al entrar, o al cambiar de periodo) y estorban en todas las demás;
-          debajo van siete secciones de tarjetas, que es lo que se viene a ver.
-          El resumen tiene que decir qué hay puesto: un plegable que solo dijera
-          «Filtros» obligaría a abrirlo para saber de qué periodo habla la
-          pantalla, y entonces plegarlo costaría más de lo que ahorra. */}
-      <details className="mb-2 rounded-card border border-border bg-surface">
-        <summary className="flex cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2.5 text-[12.5px] text-muted-foreground marker:text-accent">
-          <span className="label-section text-foreground">Filtros</span>
-          <span className="font-medium text-foreground">{periodLabel(period)}</span>
-          <span aria-hidden>·</span>
-          <span>{itemFilterLabel(itemFilter)}</span>
-          <span aria-hidden>·</span>
-          <span>{activityMetricLabel(metric)}</span>
-        </summary>
-        <div className="border-t border-border p-3">
-          <StatsControls
-            basePath="/estadisticas"
-            period={period}
-            itemFilter={itemFilter}
-            metric={metric}
-          />
-        </div>
-      </details>
+    <>
       {/* Qué periodo hay puesto y —lo que antes no se decía— qué se ha dejado
           de enseñar por él. Un panel que desaparece sin explicación se lee como
           una página rota; y el calendario anual es de los que más se buscan. */}
@@ -262,6 +317,6 @@ export default async function FullStatsPage({
           </section>
         ))}
       </div>
-    </main>
+    </>
   );
 }

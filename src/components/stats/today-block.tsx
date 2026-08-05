@@ -36,7 +36,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
   const [focus, weekly, profile, planned] = await Promise.all([
     getTodayFocus(supabase, userId),
     getWeeklyActivity(supabase, userId),
-    getOwnProfile(supabase, userId),
+    getOwnProfile(userId),
     getLibraryItems(supabase, userId, { status: "planned" }),
   ]);
 
