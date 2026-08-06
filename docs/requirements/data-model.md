@@ -51,7 +51,7 @@ recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a 
 migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
 bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
 `anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»)**]**
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -1110,6 +1110,26 @@ afecta a la **presentación** (qué se pinta en el timeline/grafo), nunca al nú
 de #185 en la ORDENACIÓN (no en el cómputo) sigue sin resolver y queda abierta como issue — ya no
 puede descuadrar el progreso porque el progreso no la mira.
 
+**Columnas de `saga_items`** (verificado contra `information_schema.columns` de prod el
+2026-08-06; el doc solo las tenía en prosa dispersa —`role` en §7.3, `placement` en §7.4,
+`optional` en §7.10— y reconstruirlas obligaba a perseguir tres `ALTER`):
+
+| columna | tipo | null | default | notas |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | |
+| `saga_id` | `uuid` | NO | — | |
+| `item_type` | `item_type` (enum) | NO | — | |
+| `item_id` | `uuid` | NO | — | |
+| `position` | `integer` | SÍ | — | hueco en la secuencia curada |
+| `created_at` | `timestamptz` | NO | `now()` | |
+| `is_primary` | `boolean` | NO | `false` | membresía principal (multi-membresía) |
+| `role` | `saga_item_role` (enum) | SÍ | — | §7.3, issue #167 |
+| `placement` | `saga_placement` (enum) | SÍ | — | `fijo`/`libre`, §7.4 |
+| `optional` | `boolean` | NO | `false` | §7.10, opcionales saltables |
+
+Unique vigente: `(saga_id, item_type, item_id)` (`saga_items_saga_item_key`) — el antiguo
+`saga_items_item_key` sobre `(item_type, item_id)` se retiró al abrir la multi-membresía.
+
 ### 7.1 Escritura de `saga_items` (issue #169)
 
 `saga_items` tuvo el INSERT abierto a cualquier `authenticated` **a propósito**, porque el
@@ -1186,8 +1206,11 @@ dentro de una saga. Tres tablas:
     `buildRouteList` — `saga_routes.name` no tiene unique, así que renombrarla dejaría dos chips
     con el mismo texto en cuanto alguien la desdesignara. Sin backfill a propósito: designar
     cambia la vista POR DEFECTO de esa saga y no se hace en nombre del curador.
-- `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), y **XOR**
-  `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos).
+- `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), **XOR**
+  `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos), y
+  `note` (`text` nullable, `CHECK (note is null or char_length(note) <= 200)`, la nota del paso;
+  una cadena vacía `''` cuenta como sin nota, ver `count-route-entries.ts`). Columnas reales en
+  prod: `id`, `route_id`, `position`, `item_type`, `item_id`, `child_saga_id`, `note`, `created_at`.
   Guardado por **full-replace atómico** vía RPC `save_saga_route(p_route_id, p_entries)`
   (`SECURITY DEFINER`, gate `collaborator+` interno) — nunca se escribe fila a fila desde el
   cliente. **Desde el 2026-07-29 (issue #176, `20260809_save_saga_route_valida_subarbol.sql`,
@@ -2077,9 +2100,11 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 
 ## 10. Migraciones
 
-131 ficheros en `supabase/migrations/` (recontado el 2026-08-02; incluye los deltas que aún
-están solo en dev, como `20260814_notes_public_select.sql`). `supabase/schema-baseline.sql` es el
-replay ordenado para levantar un entorno limpio.
+155 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+2026-08-06; incluye los deltas que aún están solo en dev, como `20260814_notes_public_select.sql`).
+Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
+pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
+`supabase/schema-baseline.sql` es el replay ordenado para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
 es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos veces (notas
