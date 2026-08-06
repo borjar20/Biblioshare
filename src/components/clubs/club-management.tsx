@@ -15,6 +15,7 @@ export function ClubManagement({
   viewerRole,
   initialActivities,
   initialJoinRequests,
+  today,
 }: {
   clubId: string;
   clubSlug: string;
@@ -22,6 +23,8 @@ export function ClubManagement({
   viewerRole: "moderator" | "owner";
   initialActivities: ClubActivity[];
   initialJoinRequests: JoinRequest[];
+  /** "Hoy" del servidor, reenviado a ProposalModeration → ActivityCard (#271). */
+  today: string;
 }) {
   // Deriva de props: moderar una propuesta revalida (Fase 1) y la RSC re-ejecuta
   // con las actividades frescas. Sin espejo local ni re-fetch cliente.
@@ -33,6 +36,7 @@ export function ClubManagement({
         proposals={proposed}
         clubSlug={clubSlug}
         canModerate
+        today={today}
       />
 
       <JoinRequestList clubId={clubId} initialRequests={initialJoinRequests} />

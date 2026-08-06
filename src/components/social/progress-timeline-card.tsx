@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { SpoilerGate } from "./spoiler-gate";
@@ -22,7 +22,6 @@ export function ProgressTimelineCard({
   knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
-  const tTime = useTranslations("time");
   const actorName = entry.actor.displayName || entry.actor.username;
   const work = entry.items[0];
   // Grupos largos se colapsan a las 2 sesiones más recientes; el resto queda
@@ -89,7 +88,7 @@ export function ProgressTimelineCard({
                     />
                   </div>
                 )}
-                <span suppressHydrationWarning className="mt-1 block font-mono text-[9.5px] text-foreground-faint">{timeAgo(step.eventDate, tTime)}</span>
+                <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
               </div>
             </div>
           );

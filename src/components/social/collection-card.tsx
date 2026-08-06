@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { QuickAddButton } from "@/components/library/quick-add-button";
@@ -28,7 +28,6 @@ export function CollectionCard({
   knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
-  const tTime = useTranslations("time");
   const actorName = entry.actor.displayName || entry.actor.username;
   const missingItems = itemsMissingFromLibrary(entry.items);
   const [expanded, setExpanded] = useState(false);
@@ -126,7 +125,7 @@ export function CollectionCard({
           )}
         </div>
       )}
-      <span suppressHydrationWarning className="self-end font-mono text-[10px] text-muted-foreground">{timeAgo(entry.eventDate, tTime)}</span>
+      <TimeAgo iso={entry.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );
 }

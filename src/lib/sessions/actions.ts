@@ -7,6 +7,7 @@ import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getActivePass } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
+import { todayISO } from "@/lib/stats/dates";
 import { getEditions } from "@/lib/editions/get-editions";
 import { primaryEdition } from "@/lib/editions/edition-label";
 import {
@@ -29,7 +30,7 @@ const VALID_STATUSES: MediaStatus[] = [
 // directa. `passClosed` avisa de que la sesión completó el pase: el cliente
 // encadena la hoja de cierre en vez de irse (D4 de la spec).
 export type AddSessionState = {
-  error?: "invalidPosition" | "invalidDuration" | "generic";
+  error?: "invalidPosition" | "invalidDuration" | "futureDate" | "generic";
   ok?: boolean;
   passClosed?: boolean;
 };
@@ -59,6 +60,14 @@ export async function addSession(
   if (!pass || pass.id !== passId) return { error: "generic" };
 
   const sessionDate = String(formData.get("sessionDate") ?? "").trim();
+
+  // No se registran sesiones en el FUTURO. El date picker ya pone `max`, pero
+  // una server action es un POST público, así que se rechaza también aquí
+  // (#352): además de ser un dato absurdo, una sesión futura envenena la clave
+  // de orden del feed (sessionRelativeBasis). Se compara contra el "hoy" del
+  // servidor; el borde de huso (tu "hoy" ya es el "mañana" del servidor) lo
+  // cubre el `max` del cliente, que va en tu calendario local.
+  if (sessionDate && sessionDate > todayISO()) return { error: "futureDate" };
 
   // Los minutos son solo de lectura (§7.14): una sesión de serie registra qué
   // episodio alcanzaste, no cuánto tardaste — la duración de una serie es una

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ReviewInteractions } from "@/components/social/review-interactions";
@@ -31,7 +31,6 @@ export function ReviewCard({
   knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
-  const tTime = useTranslations("time");
   const actorName = event.actorDisplayName || event.actorUsername;
   const meta = [
     event.itemSubtitle,
@@ -88,7 +87,7 @@ export function ReviewCard({
           knownUsernames={knownUsernames}
         />
       )}
-      <span suppressHydrationWarning className="self-end font-mono text-[10px] text-muted-foreground">{timeAgo(event.eventDate, tTime)}</span>
+      <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );
 }

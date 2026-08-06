@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ReviewInteractions } from "@/components/social/review-interactions";
@@ -31,7 +31,6 @@ export function EpisodeRatingsCard({
   knownUsernames: string[];
 }) {
   const t = useTranslations("feed");
-  const tTime = useTranslations("time");
   const actorName = entry.actor.displayName || entry.actor.username;
   const series = entry.items[0];
   // Grupos largos se colapsan a los 2 episodios más recientes; el resto queda
@@ -90,7 +89,7 @@ export function EpisodeRatingsCard({
                   />
                 </div>
               )}
-              <span suppressHydrationWarning className="mt-1 block font-mono text-[9.5px] text-foreground-faint">{timeAgo(ep.eventDate, tTime)}</span>
+              <TimeAgo iso={ep.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
             </div>
           </div>
         ))}

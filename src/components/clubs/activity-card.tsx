@@ -8,7 +8,6 @@ import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { formatEventDate } from "@/lib/clubs/activities/format-date";
 import { isPastEvent } from "@/lib/clubs/activities/group-activities";
-import { todayISO } from "@/lib/stats/dates";
 
 const STATUS_STYLE: Record<ClubActivity["status"], string> = {
   proposed: "bg-surface-muted text-muted-foreground",
@@ -20,12 +19,18 @@ const STATUS_STYLE: Record<ClubActivity["status"], string> = {
 export function ActivityCard({
   activity,
   clubSlug,
+  today,
   actions,
   muted = false,
   tint,
 }: {
   activity: ClubActivity;
   clubSlug: string;
+  /** "Hoy" del SERVIDOR (YYYY-MM-DD), no `new Date()` del navegador: así la
+   *  píldora "Ya pasó" responde a `starts_on` en el MISMO huso que el calendario
+   *  del club (`getClubCalendarMarks`), y no se contradice con la tira "Próximo"
+   *  en la misma pantalla cuando el reloj del visitante va en otro huso (#271). */
+  today: string;
   /** Aprobar / rechazar, en las propuestas que esperan moderación. */
   actions?: ReactNode;
   /** Atenúa la tarjeta (finalizadas/archivadas). */
@@ -53,7 +58,7 @@ export function ActivityCard({
   // "Ya pasó" la tapaba -- un evento archivado en "Finalizadas" se veía
   // idéntico a uno vivo y pasado en "Fechas señaladas".
   const past =
-    !linked && activity.status === "active" && isPastEvent(activity.startsOn, todayISO());
+    !linked && activity.status === "active" && isPastEvent(activity.startsOn, today);
 
   const inner = (
     <>

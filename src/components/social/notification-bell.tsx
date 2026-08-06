@@ -12,7 +12,7 @@ import {
   type Notification,
   type NotificationType,
 } from "@/lib/social/notification-types";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
 import { PushToggle } from "@/components/push/push-toggle";
@@ -37,7 +37,6 @@ export function NotificationBell({
   initialUnreadCount: number;
 }) {
   const t = useTranslations("notifications");
-  const tTime = useTranslations("time");
   const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
@@ -158,12 +157,10 @@ export function NotificationBell({
                                 n.actorDisplayName || n.actorUsername || tCommon("appName"),
                             })}
                       </span>
-                      <span
-                        suppressHydrationWarning
+                      <TimeAgo
+                        iso={n.createdAt}
                         className="font-mono text-[10px] text-muted-foreground"
-                      >
-                        {timeAgo(n.createdAt, tTime)}
-                      </span>
+                      />
                     </div>
 
                     {/* Punto de no leída. Se calcula sobre la lista que se trajo
