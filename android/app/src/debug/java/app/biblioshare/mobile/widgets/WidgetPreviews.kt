@@ -18,30 +18,42 @@ import androidx.glance.preview.Preview
 private const val COMPACT_DP = 110
 private const val WIDE_W_DP = 240
 private const val WIDE_H_DP = 110
+private const val COMPLETO_W_DP = 380
+private const val COMPLETO_H_DP = 560
+private const val QUICK_REGISTER_W_DP = 340
+private const val QUICK_REGISTER_PICK_H_DP = 420
+private const val QUICK_REGISTER_REGISTER_H_DP = 360
 
-private val sampleBook = CurrentProgressData(
-    passId = "pass-1",
+// Destacado con progreso, racha y semana — ejercita FeaturedCard al completo.
+private val sampleFeatured = CurrentProgressData(
+    passId = "p1",
     itemType = "book",
-    itemId = "item-1",
-    title = "Dune",
-    subtitle = "Frank Herbert",
+    itemId = "b1",
+    title = "Salitre y Cenizas",
+    subtitle = null,
     coverUrl = null, // sin portada cacheada → se ve el placeholder
-    currentValue = 184,
-    totalValue = 430,
-    percentage = 43,
-    progressLabel = "184 de 430 páginas",
-    statusLabel = "Últ. actividad 03/08",
-    deepLink = "/sesion/pass-1",
+    percentage = 25,
+    progressLabel = "60 de 240 páginas",
+    deepLink = "/sesion/p1",
+    nthLabel = "1.ª lectura",
+    contextLabel = "Día 4 · desde 2/8 · 1 nota",
+    streakDays = 3,
+    week = List(7) { WidgetWeekDay(active = it in 3..6, today = it == 6) },
+    kindLabel = "Libro",
 )
 
-private val sampleSeries = sampleBook.copy(
-    itemType = "series",
-    title = "Severance",
-    subtitle = "Temporada 2 · Episodio 4",
-    currentValue = 12,
-    totalValue = 30,
-    percentage = 40,
-    progressLabel = "12 de 30 episodios",
+// Otra lectura a medias, sin progreso todavía — ejercita ContinueGrid y el
+// fallback "Sin progreso" de contextLabel en blanco.
+private val sampleOther = sampleFeatured.copy(
+    passId = "p2",
+    itemId = "b2",
+    title = "Siega",
+    percentage = null,
+    progressLabel = "Sin progreso",
+    deepLink = "/sesion/p2",
+    contextLabel = "",
+    streakDays = 0,
+    week = emptyList(),
 )
 
 private val sampleGoal = DailyGoalData(
@@ -57,41 +69,55 @@ private val sampleGoal = DailyGoalData(
     deepLink = "/",
 )
 
-// --- En curso ---------------------------------------------------------------
+// --- En curso (Completo, un solo tamaño grande) -----------------------------
 
 @OptIn(ExperimentalGlancePreviewApi::class)
-@Preview(widthDp = COMPACT_DP, heightDp = COMPACT_DP)
+@Preview(widthDp = COMPLETO_W_DP, heightDp = COMPLETO_H_DP)
 @Composable
-fun PreviewProgressCompact() {
-    CurrentProgressContent(ProgressWidgetState.Content(sampleBook, stale = false), cover = null)
+fun PreviewCompleto() {
+    CurrentProgressContent(
+        ProgressWidgetState.Content(
+            items = listOf(sampleFeatured, sampleOther),
+            selectedPassId = null,
+            total = 2,
+            stale = false,
+        ),
+        covers = emptyMap(),
+    )
+}
+
+// Cronómetro nativo corriendo para el destacado (Task 17). El Chronometer no
+// tickea en el panel de previews de Android Studio — el tick en vivo se
+// verifica en dispositivo (#485) — pero el layout del pie (reloj + Descartar/
+// Registrar) sí se ve.
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = COMPLETO_W_DP, heightDp = COMPLETO_H_DP)
+@Composable
+fun PreviewCompletoTimer() {
+    CurrentProgressContent(
+        ProgressWidgetState.Content(
+            items = listOf(sampleFeatured, sampleOther),
+            selectedPassId = null,
+            total = 2,
+            stale = false,
+        ),
+        covers = emptyMap(),
+        running = TimerLogic.Running("p1", System.currentTimeMillis() - 5 * 60_000L),
+    )
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
-@Preview(widthDp = WIDE_W_DP, heightDp = WIDE_H_DP)
+@Preview(widthDp = COMPLETO_W_DP, heightDp = COMPLETO_H_DP)
 @Composable
-fun PreviewProgressWide() {
-    CurrentProgressContent(ProgressWidgetState.Content(sampleBook, stale = false), cover = null)
+fun PreviewCompletoNothingInProgress() {
+    CurrentProgressContent(ProgressWidgetState.NothingInProgress, covers = emptyMap())
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
-@Preview(widthDp = WIDE_W_DP, heightDp = WIDE_H_DP)
+@Preview(widthDp = COMPLETO_W_DP, heightDp = COMPLETO_H_DP)
 @Composable
-fun PreviewProgressSeriesStale() {
-    CurrentProgressContent(ProgressWidgetState.Content(sampleSeries, stale = true), cover = null)
-}
-
-@OptIn(ExperimentalGlancePreviewApi::class)
-@Preview(widthDp = COMPACT_DP, heightDp = COMPACT_DP)
-@Composable
-fun PreviewProgressEmpty() {
-    CurrentProgressContent(ProgressWidgetState.NothingInProgress, cover = null)
-}
-
-@OptIn(ExperimentalGlancePreviewApi::class)
-@Preview(widthDp = COMPACT_DP, heightDp = COMPACT_DP)
-@Composable
-fun PreviewProgressSignedOut() {
-    CurrentProgressContent(ProgressWidgetState.SignedOut, cover = null)
+fun PreviewCompletoSignedOut() {
+    CurrentProgressContent(ProgressWidgetState.SignedOut, covers = emptyMap())
 }
 
 // --- Objetivo de hoy --------------------------------------------------------
@@ -139,4 +165,28 @@ fun PreviewGoalOutdated() {
 @Composable
 fun PreviewGoalNoGoal() {
     DailyGoalContent(GoalWidgetState.NoGoal)
+}
+
+// --- Registro rápido (2 pasos) ----------------------------------------------
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = QUICK_REGISTER_W_DP, heightDp = QUICK_REGISTER_PICK_H_DP)
+@Composable
+fun PreviewQuickRegisterPick() {
+    QuickRegisterContent(
+        QuickRegisterState.Pick(listOf(sampleFeatured, sampleOther)),
+        covers = emptyMap(),
+        minutes = 30,
+    )
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = QUICK_REGISTER_W_DP, heightDp = QUICK_REGISTER_REGISTER_H_DP)
+@Composable
+fun PreviewQuickRegisterRegisterBook() {
+    QuickRegisterContent(
+        QuickRegisterState.Register(sampleFeatured),
+        covers = emptyMap(),
+        minutes = 30,
+    )
 }

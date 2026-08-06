@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Registro rápido: 2 pasos (elegir pase + minutos), pensado como widget
+     pequeño-mediano fijo (SizeMode.Exact en QuickRegisterWidget.kt). -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="180dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="180dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="3"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="260dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="3600000"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:description="@string/widget_quick_register_desc" />

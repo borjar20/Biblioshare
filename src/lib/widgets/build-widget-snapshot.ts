@@ -21,15 +21,30 @@ import {
 //   daily_goal_completed. Solo existe en minutos: no hay objetivo diario de
 //   páginas/episodios en el modelo, y este widget no lo crea.
 
-/** "2026-08-03" → "03/08" para el "Últ. actividad". */
+/** "2026-08-02" → "2/8" para el "desde" del contexto (sin ceros a la izquierda). */
 function shortDate(iso: string): string {
-  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const [, m, d] = iso.split("-");
+  return `${Number(d)}/${Number(m)}`;
 }
 
-export function buildCurrentProgressData(
-  pass: TodayPass | null,
-): CurrentProgressWidgetData | null {
-  if (!pass) return null;
+function nthLabel(itemType: string, rereadCount: number): string {
+  const n = rereadCount + 1;
+  return itemType === "book" ? `${n}.ª lectura` : `${n}.º visionado`;
+}
+
+function kindLabel(itemType: string): string {
+  return itemType === "series" ? "Serie" : itemType === "movie" ? "Película" : "Libro";
+}
+
+function contextLabel(pass: TodayPass): string {
+  const parts: string[] = [];
+  if (pass.dayNumber != null) parts.push(`Día ${pass.dayNumber}`);
+  if (pass.startedOn) parts.push(`desde ${shortDate(pass.startedOn)}`);
+  if (pass.noteCount > 0) parts.push(pass.noteCount === 1 ? "1 nota" : `${pass.noteCount} notas`);
+  return parts.join(" · ");
+}
+
+function oneInProgress(pass: TodayPass): CurrentProgressWidgetData {
   const { item } = pass;
   const progress = getProgress(item);
   const percentage = progress
@@ -43,35 +58,16 @@ export function buildCurrentProgressData(
       ? `/sesion/${item.activePassId}`
       : itemHref(item.itemType, item.itemId);
 
+  let progressLabel = "Sin progreso";
   let subtitle = item.subtitle;
-  let progressLabel = "En curso";
-  let currentValue = 0;
-
-  if (item.itemType === "book") {
-    const page =
-      "page" in item.position && item.position.page !== undefined
-        ? item.position.page
-        : null;
-    if (progress) {
-      progressLabel = `${progress.current} de ${progress.total} páginas`;
-      currentValue = progress.current;
-    } else if (page !== null) {
-      // Página sin total conocido: no se inventa porcentaje.
-      progressLabel = `Pág. ${page}`;
-      currentValue = page;
-    }
+  if (item.itemType === "book" && progress) {
+    progressLabel = `${progress.current} de ${progress.total} páginas`;
   } else if (item.itemType === "series") {
     if ("season" in item.position) {
       subtitle = `Temporada ${item.position.season} · Episodio ${item.position.episode}`;
-      currentValue = item.position.episode;
     }
-    if (progress) {
-      // No todas las series tienen total fiable: solo si totalEpisodes existe.
-      progressLabel = `${progress.current} de ${progress.total} episodios`;
-      currentValue = progress.current;
-    }
+    if (progress) progressLabel = `${progress.current} de ${progress.total} episodios`;
   }
-  // Película: sin progreso granular persistente en el modelo → "En curso".
 
   return {
     passId: item.activePassId ?? "",
@@ -80,15 +76,19 @@ export function buildCurrentProgressData(
     title: item.title,
     subtitle,
     coverUrl: item.coverUrl,
-    currentValue,
-    totalValue: progress?.total ?? null,
     percentage,
     progressLabel,
-    statusLabel: pass.lastSessionDate
-      ? `Últ. actividad ${shortDate(pass.lastSessionDate)}`
-      : null,
     deepLink,
+    nthLabel: nthLabel(item.itemType, item.rereadCount),
+    contextLabel: contextLabel(pass),
+    streakDays: pass.streakDays,
+    week: pass.week.map((d, i) => ({ active: d.active, today: i === pass.week.length - 1 })),
+    kindLabel: kindLabel(item.itemType),
   };
+}
+
+export function buildInProgress(passes: TodayPass[]): CurrentProgressWidgetData[] {
+  return passes.map(oneInProgress);
 }
 
 export function buildDailyGoalData(input: {
@@ -126,7 +126,8 @@ export function buildDailyGoalData(input: {
 
 export function buildWidgetSnapshot(input: {
   userId: string;
-  featured: TodayPass | null;
+  passes: TodayPass[];
+  total: number;
   date: string;
   goalMinutes: number | null;
   todayMinutes: number;
@@ -137,7 +138,8 @@ export function buildWidgetSnapshot(input: {
     version: WIDGET_SCHEMA_VERSION,
     userId: input.userId,
     generatedAt: (input.now ?? new Date()).toISOString(),
-    currentProgress: buildCurrentProgressData(input.featured),
+    inProgress: buildInProgress(input.passes),
+    inProgressTotal: input.total,
     dailyGoal: buildDailyGoalData(input),
   };
 }

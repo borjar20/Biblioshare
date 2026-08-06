@@ -10,6 +10,8 @@
     <string name="widget_current_progress_desc">Tu libro, película o serie a medias, con su progreso.</string>
     <string name="widget_daily_goal_label">Objetivo de hoy</string>
     <string name="widget_daily_goal_desc">Minutos de lectura de hoy frente a tu objetivo diario.</string>
+    <string name="widget_quick_register_label">Registro rápido</string>
+    <string name="widget_quick_register_desc">Registra una sesión de lectura en dos toques</string>
     <string name="widget_open_app_title">Abre Biblioshare</string>
     <string name="widget_open_app_subtitle">Inicia sesión para ver tus datos</string>
     <string name="widget_nothing_in_progress">Nada en progreso</string>
@@ -24,4 +26,23 @@
     <string name="widget_type_book">Libro</string>
     <string name="widget_type_movie">Película</string>
     <string name="widget_type_series">Serie</string>
+
+    <!-- Widget Completo: cabecera, destacado y rejilla "Continúa donde lo dejaste" -->
+    <string name="widget_view_all">%1$d · Ver todos ›</string>
+    <string name="widget_continue_where_left_off">Continúa donde lo dejaste</string>
+    <string name="widget_no_progress">Sin progreso</string>
+    <string name="widget_long_session">Sesión larga · ábrela para registrar</string>
+    <string name="widget_discard">Descartar</string>
+    <string name="widget_register">Registrar</string>
+    <string name="widget_session_action">◷ Sesión</string>
+    <string name="widget_register_action">✎ Registrar</string>
+    <string name="widget_streak">Racha %1$d d</string>
+
+    <!-- Widget Registro rápido: paso 1 (elegir) y paso 2 (registrar) -->
+    <string name="widget_register_reading_title">Registrar lectura</string>
+    <string name="widget_items_in_progress_count">%1$d en curso</string>
+    <string name="widget_first_session">Primera sesión</string>
+    <string name="widget_save_session">Guardar sesión</string>
+    <string name="widget_open_to_register">Abrir para registrar</string>
+    <string name="widget_other_minutes">Otro</string>
 </resources>

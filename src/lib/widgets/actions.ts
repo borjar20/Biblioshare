@@ -41,11 +41,16 @@ export async function getWidgetSnapshot(): Promise<WidgetSnapshotResult> {
         .maybeSingle(),
     ]);
 
+    const passes = [focus.featured, ...focus.rest].filter(
+      (p): p is NonNullable<typeof p> => p !== null,
+    );
+
     return {
       ok: true,
       snapshot: buildWidgetSnapshot({
         userId: user.id,
-        featured: focus.featured,
+        passes,
+        total: focus.total,
         date: todayISO(),
         goalMinutes: profile.data?.daily_goal_minutes ?? null,
         todayMinutes: weekly[weekly.length - 1]?.minutes ?? 0,

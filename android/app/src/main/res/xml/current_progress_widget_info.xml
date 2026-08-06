@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 2x2 por defecto, redimensionable a 4x2 (Glance recompone por SizeMode.Responsive).
+<!-- Redimensionado en Fase 3 (Task 13): "Completo" pasó a ser UN layout grande
+     único (tarjeta destacada + rejilla, SizeMode.Exact, ~380x560) en vez del
+     2x2 responsive original — a 110x110 renderizaba apretado. 250x320/4x4
+     le da sitio; el resto de la config (initialLayout, resizeMode,
+     updatePeriodMillis, description) no cambia.
      updatePeriodMillis=1h: re-render desde el store LOCAL (sin red) — su único
      trabajo real es que el widget note el cambio de día sin WorkManager. En
      launchers que ignoran targetCellWidth mandan los minWidth/minHeight. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="110dp"
-    android:minHeight="110dp"
-    android:minResizeWidth="110dp"
-    android:minResizeHeight="110dp"
-    android:targetCellWidth="2"
-    android:targetCellHeight="2"
-    android:maxResizeWidth="360dp"
-    android:maxResizeHeight="180dp"
+    android:minWidth="250dp"
+    android:minHeight="320dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="320dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="4"
+    android:maxResizeWidth="380dp"
+    android:maxResizeHeight="560dp"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="3600000"

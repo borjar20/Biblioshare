@@ -126,7 +126,7 @@ semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Spec:
 - [x] **PWA instalable + offline de lectura** (§6) — manifest, iconos, service worker.
 - [x] **Escanear código de barras por ISBN** (§7.3) — botón de cámara solo en wrapper Capacitor (`@capacitor-mlkit/barcode-scanning`). *Pendiente verificar en dispositivo real.*
 - [x] **Capacitor: configuración + scaffolding Android** (§7.31) — `capacitor.config.ts` con `server.url`, proyecto Gradle Android. *iOS y build/test en dispositivo real siguen pendientes (ver Pendiente).*
-- [x] **Widgets nativos de Android** (§7.31) — «En curso» y «Objetivo de hoy» con Jetpack Glance + plugin local `BiblioshareWidget`; snapshot local, sin Supabase ni credenciales en el widget. Guía: `docs/widgets-android.md`. *Verificación en dispositivo real pendiente (issue).*
+- [x] **Widgets nativos de Android** (§7.31) — «En curso» (partido en dos tamaños: Completo y Registro rápido, con cronómetro nativo) y «Objetivo de hoy», con Jetpack Glance + plugin local `BiblioshareWidget`; snapshot local, sin Supabase ni credenciales en el widget. Guía: `docs/widgets-android.md` · Spec: `docs/superpowers/specs/2026-08-05-widget-en-curso-cabecera-inicio-design.md`. *Verificación en dispositivo real pendiente (issue, complementa #485).*
 
 ### RBAC
 - [x] **Roles usuario / colaborador / administrador** (§7.35) — enum `user_role`, trigger anti-escalada, gateo de contribución manual, página `/admin`.

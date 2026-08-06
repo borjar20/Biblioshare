@@ -2,21 +2,27 @@ package app.biblioshare.mobile.widgets
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.SystemClock
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
-import androidx.glance.LocalSize
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -26,36 +32,45 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import app.biblioshare.mobile.R
 
-// Widget «En curso»: el elemento principal que tienes a medias. La SELECCIÓN
-// no vive aquí: la decide el servidor con la misma regla que la tarjeta de
-// hoy del dashboard (getTodayFocus → sesión más reciente; decisión de usuario
-// 2026-07-17) y llega ya resuelta en el snapshot. Aquí solo se pinta.
+// Widget «En curso»: un solo tamaño grande (Completo) con el destacado (por
+// defecto el que decide el servidor, misma regla que getTodayFocus del
+// dashboard) y, si hay más lecturas a medias, la rejilla "Continúa donde lo
+// dejaste". Tocar una portada de la rejilla cambia el foco SIN abrir la app:
+// el passId elegido se guarda en el estado Glance (SELECTED_PASS_KEY) y se lee
+// aquí en provideGlance; si no hay elección, gana el [0] del snapshot.
 class CurrentProgressWidget : GlanceAppWidget() {
 
-    companion object {
-        private val COMPACT = DpSize(110.dp, 110.dp)
-        private val HORIZONTAL = DpSize(240.dp, 110.dp)
-    }
-
-    override val sizeMode = SizeMode.Responsive(setOf(COMPACT, HORIZONTAL))
+    override val sizeMode = SizeMode.Exact
+    override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // I/O fuera de la composición: store y bitmap se resuelven una vez aquí.
+        // I/O fuera de la composición: store, selección y portadas se resuelven una vez aquí.
         val snapshot = WidgetSnapshotStore.load(context)
-        val state = currentProgressState(snapshot)
-        val cover = (state as? ProgressWidgetState.Content)
-            ?.data?.coverUrl?.let { WidgetImageCache.loadBitmap(context, it) }
-        provideContent { CurrentProgressContent(state, cover) }
+        val selected = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[SELECTED_PASS_KEY]
+        val state = currentProgressState(snapshot, selectedPassId = selected)
+        val covers = loadCovers(context, snapshot)
+        val running = TimerStore.get(context)
+        provideContent { CurrentProgressContent(state, covers, running) }
     }
+}
+
+internal suspend fun loadCovers(context: Context, snapshot: WidgetSnapshot?): Map<String, Bitmap?> {
+    val urls = snapshot?.inProgress?.mapNotNull { it.coverUrl }?.distinct().orEmpty()
+    return urls.associateWith { WidgetImageCache.loadBitmap(context, it) }
 }
 
 /** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
 @Composable
-fun CurrentProgressContent(state: ProgressWidgetState, cover: Bitmap?) {
+fun CurrentProgressContent(
+    state: ProgressWidgetState,
+    covers: Map<String, Bitmap?>,
+    running: TimerLogic.Running? = null,
+) {
     val context = LocalContext.current
     when (state) {
         ProgressWidgetState.SignedOut -> WidgetCard("/") {
@@ -70,10 +85,7 @@ fun CurrentProgressContent(state: ProgressWidgetState, cover: Bitmap?) {
                 context.getString(R.string.widget_open_to_start),
             )
         }
-        is ProgressWidgetState.Content -> WidgetCard(state.data.deepLink) {
-            if (LocalSize.current.width >= 240.dp) Horizontal(state.data, cover, state.stale)
-            else Compact(state.data, cover)
-        }
+        is ProgressWidgetState.Content -> Completo(state, covers, running)
     }
 }
 
@@ -82,80 +94,134 @@ class CurrentProgressWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 @Composable
-private fun Compact(data: CurrentProgressData, cover: Bitmap?) {
-    Column(modifier = GlanceModifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Cover(cover, width = 38, height = 54)
-            Spacer(GlanceModifier.width(8.dp))
-            Column {
-                Text(data.title, style = titleStyle(), maxLines = 2)
-                Text(
-                    if (data.percentage != null) "${data.percentage} %" else data.progressLabel,
-                    style = softStyle(),
-                    maxLines = 1,
-                )
-            }
+private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bitmap?>, running: TimerLogic.Running?) {
+    val ctx = LocalContext.current
+    val f = state.featured
+    Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
+        SectionHeader(
+            label = ctx.getString(R.string.widget_current_progress_label),
+            trailing = ctx.getString(R.string.widget_view_all, state.total),
+            onTrailing = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/coleccion?status=in_progress")),
+        )
+        Spacer(GlanceModifier.height(10.dp))
+        FeaturedCard(f, f.coverUrl?.let(covers::get), running)
+        if (state.others.isNotEmpty()) {
+            Spacer(GlanceModifier.height(18.dp))
+            Text(ctx.getString(R.string.widget_continue_where_left_off), style = softStyle())
+            Spacer(GlanceModifier.height(8.dp))
+            ContinueGrid(state.others, covers)
         }
-        Spacer(GlanceModifier.defaultWeight())
-        ProgressLine(data)
     }
 }
 
+/** Portada + ordinal + título + contexto + progreso + racha/semana + pie de acciones. */
 @Composable
-private fun Horizontal(data: CurrentProgressData, cover: Bitmap?, stale: Boolean) {
+private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     val context = LocalContext.current
-    Row(modifier = GlanceModifier.fillMaxSize()) {
-        Cover(cover, width = 56, height = 80)
-        Spacer(GlanceModifier.width(12.dp))
-        Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
-            val type = context.getString(
-                when (data.itemType) {
-                    "movie" -> R.string.widget_type_movie
-                    "series" -> R.string.widget_type_series
-                    else -> R.string.widget_type_book
-                },
-            )
-            Text(
-                if (data.subtitle != null) "$type · ${data.subtitle}" else type,
-                style = softStyle(),
-                maxLines = 1,
-            )
-            Text(data.title, style = titleStyle(), maxLines = 1)
-            Text(data.progressLabel, style = bodyStyle(), maxLines = 1)
-            Spacer(GlanceModifier.defaultWeight())
-            ProgressLine(data)
-            Spacer(GlanceModifier.height(4.dp))
-            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                val status = when {
-                    stale -> context.getString(R.string.widget_stale_data)
-                    else -> data.statusLabel ?: ""
+    Column(GlanceModifier.fillMaxWidth().background(WidgetPalette.surface).cornerRadius(18.dp)) {
+        Row(GlanceModifier.padding(16.dp)) {
+            Cover(cover, width = 72, height = 104)
+            Spacer(GlanceModifier.width(14.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                Text(
+                    d.nthLabel,
+                    style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                )
+                Text(d.title, style = bigStyle(), maxLines = 2)
+                Text(
+                    d.contextLabel.ifBlank { context.getString(R.string.widget_no_progress) },
+                    style = softStyle(),
+                    maxLines = 1,
+                )
+                if (d.percentage != null) {
+                    Spacer(GlanceModifier.height(8.dp))
+                    SoftBar(d.percentage)
+                    Spacer(GlanceModifier.height(4.dp))
+                    Text(d.progressLabel, style = softStyle(), maxLines = 1)
                 }
-                Text(status, style = TextStyle(color = WidgetPalette.fgSoft, fontSize = 10.sp), maxLines = 1)
-                Spacer(GlanceModifier.defaultWeight())
-                // Las películas no tienen sesiones: su registro es la ficha, que
-                // ya abre la tarjeta entera. Mismo criterio que TodayCard.
-                if (data.itemType != "movie") {
-                    Text(
-                        context.getString(R.string.widget_log_progress),
-                        style = accentStyle(),
-                        modifier = GlanceModifier.clickable(
-                            actionStartActivity(WidgetDeepLinks.intentFor(context, data.deepLink)),
-                        ),
+                if (d.streakDays > 0 || d.week.isNotEmpty()) {
+                    Spacer(GlanceModifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (d.streakDays > 0) {
+                            StreakPill(d.streakDays)
+                            Spacer(GlanceModifier.defaultWeight())
+                        }
+                        WeekDots(d.week)
+                    }
+                }
+            }
+        }
+        FeaturedActions(d, running)
+    }
+}
+
+/** Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
+ *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
+ *  o, pasadas 4h, invita a abrir la app en vez de seguir tickeando en segundo plano. */
+@Composable
+private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?) {
+    val ctx = LocalContext.current
+    if (running != null && running.passId == d.passId) {
+        val now = System.currentTimeMillis()
+        if (isLongSession(running.startedAt, now)) {
+            Text(
+                ctx.getString(R.string.widget_long_session),
+                style = softStyle(),
+                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable(actionRunCallback<RegisterTimerAction>()),
+            )
+        } else {
+            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
+                    setChronometer(
+                        R.id.widget_chrono,
+                        chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
+                        null,
+                        true,
+                    )
+                }
+                AndroidRemoteViews(rv)
+                Spacer(GlanceModifier.height(8.dp))
+                Row {
+                    ActionCell(
+                        ctx.getString(R.string.widget_discard),
+                        WidgetPalette.fgSoft,
+                        GlanceModifier.defaultWeight()
+                            .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                    )
+                    Spacer(GlanceModifier.width(8.dp))
+                    ActionCell(
+                        ctx.getString(R.string.widget_register),
+                        WidgetPalette.accent,
+                        GlanceModifier.defaultWeight()
+                            .clickable(actionRunCallback<RegisterTimerAction>()),
                     )
                 }
             }
         }
+    } else {
+        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            if (d.itemType == "book") {
+                ActionCell(
+                    ctx.getString(R.string.widget_session_action),
+                    WidgetPalette.accent,
+                    GlanceModifier.defaultWeight()
+                        .clickable(actionRunCallback<StartTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                )
+                Spacer(GlanceModifier.width(8.dp))
+            }
+            ActionCell(
+                ctx.getString(R.string.widget_register_action),
+                WidgetPalette.fg,
+                GlanceModifier.defaultWeight()
+                    .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),
+            )
+        }
     }
 }
 
-/** Barra si hay porcentaje; si no hay total conocido, no se inventa. */
-@Composable
-private fun ProgressLine(data: CurrentProgressData) {
-    val pct = data.percentage ?: return
-    LinearProgressIndicator(
-        progress = pct / 100f,
-        modifier = GlanceModifier.fillMaxWidth().height(6.dp),
-        color = WidgetPalette.accent,
-        backgroundColor = WidgetPalette.track,
-    )
-}
+/** "Registrar" sin minutos: la hoja de sesión para libros, la ficha para el resto.
+ *  Un pase huérfano (libro sin pase activo → passId vacío) no tiene sesión que
+ *  abrir: cae a su deepLink, que ya apunta a la ficha. */
+private fun itemLogHref(d: CurrentProgressData): String =
+    if (d.itemType != "book" || d.passId.isBlank()) d.deepLink else "/sesion/${d.passId}"

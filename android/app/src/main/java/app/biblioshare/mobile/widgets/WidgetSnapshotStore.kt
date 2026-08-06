@@ -24,6 +24,7 @@ object WidgetSnapshotStore {
         val previous = load(context)
         if (previous != null && previous.userId != parsed.userId) {
             WidgetImageCache.clear(context)
+            TimerStore.clear(context, null)
         }
         prefs(context).edit().putString(KEY_SNAPSHOT, json).apply()
         return parsed

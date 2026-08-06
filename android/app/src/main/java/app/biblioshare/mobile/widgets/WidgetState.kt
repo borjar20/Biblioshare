@@ -17,7 +17,18 @@ sealed interface ProgressWidgetState {
     /** Hay sesión pero nada a medias. */
     data object NothingInProgress : ProgressWidgetState
 
-    data class Content(val data: CurrentProgressData, val stale: Boolean) : ProgressWidgetState
+    data class Content(
+        val items: List<CurrentProgressData>,
+        val selectedPassId: String?,
+        val total: Int,
+        val stale: Boolean,
+    ) : ProgressWidgetState {
+        /** El elegido por el usuario si sigue en curso; si no, el primero. */
+        val featured: CurrentProgressData
+            get() = items.firstOrNull { it.passId == selectedPassId } ?: items.first()
+        val others: List<CurrentProgressData>
+            get() = items.filter { it.passId != featured.passId }
+    }
 }
 
 sealed interface GoalWidgetState {
@@ -32,18 +43,42 @@ sealed interface GoalWidgetState {
     data class Content(val goal: DailyGoalData) : GoalWidgetState
 }
 
-/** @param staleAfterHours a partir de cuántas horas sin sincronizar se avisa. */
+/**
+ * @param selectedPassId destacado elegido por el usuario (widget de un solo
+ * tamaño con varios en curso); null o ya no en curso cae al primero.
+ * @param staleAfterHours a partir de cuántas horas sin sincronizar se avisa.
+ */
 fun currentProgressState(
     snapshot: WidgetSnapshot?,
+    selectedPassId: String?,
     nowMillis: Long = System.currentTimeMillis(),
     staleAfterHours: Int = 48,
 ): ProgressWidgetState {
     if (snapshot == null) return ProgressWidgetState.SignedOut
-    val data = snapshot.currentProgress ?: return ProgressWidgetState.NothingInProgress
+    if (snapshot.inProgress.isEmpty()) return ProgressWidgetState.NothingInProgress
     return ProgressWidgetState.Content(
-        data = data,
+        items = snapshot.inProgress,
+        selectedPassId = selectedPassId,
+        total = snapshot.inProgressTotal,
         stale = isOlderThanHours(snapshot.generatedAt, staleAfterHours, nowMillis),
     )
+}
+
+sealed interface QuickRegisterState {
+    data object SignedOut : QuickRegisterState
+    data object NothingInProgress : QuickRegisterState
+    data class Pick(val items: List<CurrentProgressData>) : QuickRegisterState
+    data class Register(val item: CurrentProgressData) : QuickRegisterState
+}
+
+/** Paso 1 = elegir de entre lo que está en curso; paso 2 = registrar lo elegido. */
+fun quickRegisterState(snapshot: WidgetSnapshot?, step: Int, selectedPassId: String?): QuickRegisterState {
+    if (snapshot == null) return QuickRegisterState.SignedOut
+    val items = snapshot.inProgress
+    if (items.isEmpty()) return QuickRegisterState.NothingInProgress
+    val chosen = items.firstOrNull { it.passId == selectedPassId }
+    return if (step >= 2 && chosen != null) QuickRegisterState.Register(chosen)
+    else QuickRegisterState.Pick(items)
 }
 
 /** @param today fecha local del dispositivo ("YYYY-MM-DD"), inyectable para probar el cambio de día. */

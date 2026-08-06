@@ -2,11 +2,13 @@ package app.biblioshare.mobile.widgets
 
 import android.content.Context
 import androidx.glance.appwidget.updateAll
+import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 
 // Puente Capacitor → widgets. La web construye el snapshot (toda la lógica de
 // negocio vive en TypeScript, src/lib/widgets/) y aquí solo se valida, se
@@ -31,11 +33,11 @@ class BiblioshareWidgetPlugin : Plugin() {
         WidgetRefresh.updateAll(context)
         // Portada en segundo plano, best-effort: si falla queda el placeholder.
         Thread {
-            val cover = parsed.currentProgress?.coverUrl
-            WidgetImageCache.prune(context, setOfNotNull(cover))
-            if (cover != null && WidgetImageCache.ensureDownloaded(context, cover)) {
-                WidgetRefresh.updateAll(context)
-            }
+            val covers = parsed.inProgress.mapNotNull { it.coverUrl }
+            WidgetImageCache.prune(context, covers.toSet())
+            var any = false
+            covers.forEach { if (WidgetImageCache.ensureDownloaded(context, it)) any = true }
+            if (any) WidgetRefresh.updateAll(context)
         }.start()
         call.resolve()
     }
@@ -52,6 +54,38 @@ class BiblioshareWidgetPlugin : Plugin() {
         WidgetRefresh.updateAll(context)
         call.resolve()
     }
+
+    @PluginMethod
+    fun getRunningTimer(call: PluginCall) {
+        val r = TimerStore.get(context)
+        val res = JSObject()
+        if (r == null) {
+            res.put("timer", JSONObject.NULL)
+        } else {
+            res.put("timer", JSObject().put("passId", r.passId).put("startedAt", r.startedAt))
+        }
+        call.resolve(res)
+    }
+
+    @PluginMethod
+    fun setRunningTimer(call: PluginCall) {
+        val passId = call.getString("passId")
+        val startedAt = call.getLong("startedAt")
+        if (passId == null || startedAt == null) {
+            call.reject("passId/startedAt requeridos")
+            return
+        }
+        TimerStore.set(context, passId, startedAt)
+        WidgetRefresh.updateAll(context)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun clearRunningTimer(call: PluginCall) {
+        TimerStore.clear(context, call.getString("passId"))
+        WidgetRefresh.updateAll(context)
+        call.resolve()
+    }
 }
 
 object WidgetRefresh {
@@ -64,5 +98,6 @@ object WidgetRefresh {
     fun updateAll(context: Context) = runBlocking {
         CurrentProgressWidget().updateAll(context)
         DailyGoalWidget().updateAll(context)
+        QuickRegisterWidget().updateAll(context)
     }
 }

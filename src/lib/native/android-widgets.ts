@@ -12,6 +12,9 @@ export interface BiblioshareWidgetPlugin {
   updateSnapshot(options: { snapshot: WidgetSnapshot }): Promise<void>;
   clearSnapshot(): Promise<void>;
   refreshWidgets(): Promise<void>;
+  getRunningTimer(): Promise<{ timer: { passId: string; startedAt: number } | null }>;
+  setRunningTimer(options: { passId: string; startedAt: number }): Promise<void>;
+  clearRunningTimer(options: { passId: string }): Promise<void>;
 }
 
 const BiblioshareWidget =
@@ -53,4 +56,20 @@ export async function clearAndroidWidgets(): Promise<void> {
 /** Re-render desde el store nativo, sin red (p. ej. tras cambio de tema). */
 export async function refreshAndroidWidgets(): Promise<void> {
   await BiblioshareWidget.refreshWidgets();
+}
+
+// ── Cronómetro nativo (widget de registro) ─────────────────────────────────
+// Espejo app→nativo (timer.ts) y siembra nativo→app (widget-timer-bootstrap.ts).
+
+export async function setRunningTimer(passId: string, startedAt: number): Promise<void> {
+  await BiblioshareWidget.setRunningTimer({ passId, startedAt });
+}
+
+export async function clearRunningTimer(passId: string): Promise<void> {
+  await BiblioshareWidget.clearRunningTimer({ passId });
+}
+
+export async function getRunningTimer(): Promise<{ passId: string; startedAt: number } | null> {
+  const { timer } = await BiblioshareWidget.getRunningTimer();
+  return timer ?? null;
 }
