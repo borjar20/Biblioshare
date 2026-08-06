@@ -1,6 +1,8 @@
 package app.biblioshare.mobile.widgets
 
 import android.graphics.Bitmap
+import android.os.SystemClock
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -11,6 +13,7 @@ import androidx.glance.LocalContext
 import androidx.glance.action.Action
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -241,42 +244,76 @@ fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
     }
 }
 
-/** Chip de minutos del paso 2: relleno de acento cuando está activo, track si no. */
+/** Vista de sesión compartida por el pie del Completo y el paso 2 del Reducido:
+ *  Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
+ *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
+ *  o, pasadas 4h, invita a abrir la app en vez de seguir tickeando en segundo
+ *  plano. Fase A: cronómetro SIN pausa (Descartar/Registrar); la pausa llega
+ *  en Fase B (#498). */
 @Composable
-fun MinuteChip(label: String, active: Boolean, onClick: Action) {
-    Box(
-        modifier = GlanceModifier
-            .clickable(onClick)
-            .background(if (active) WidgetPalette.accent else WidgetPalette.track)
-            .cornerRadius(10.dp)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            label,
-            style = TextStyle(
-                color = if (active) WidgetPalette.bg else WidgetPalette.fg,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
+fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
+    val ctx = LocalContext.current
+    if (running != null && running.passId == d.passId) {
+        val now = System.currentTimeMillis()
+        if (isLongSession(running.startedAt, now)) {
+            Text(
+                ctx.getString(R.string.widget_long_session),
+                style = softStyle(),
+                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable(actionRunCallback<RegisterTimerAction>()),
+            )
+        } else {
+            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
+                    setChronometer(
+                        R.id.widget_chrono,
+                        chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
+                        null,
+                        true,
+                    )
+                }
+                AndroidRemoteViews(rv)
+                Spacer(GlanceModifier.height(8.dp))
+                Row {
+                    ActionCell(
+                        ctx.getString(R.string.widget_discard),
+                        WidgetPalette.fgSoft,
+                        GlanceModifier.defaultWeight()
+                            .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                    )
+                    Spacer(GlanceModifier.width(8.dp))
+                    ActionCell(
+                        ctx.getString(R.string.widget_register),
+                        WidgetPalette.accent,
+                        GlanceModifier.defaultWeight()
+                            .clickable(actionRunCallback<RegisterTimerAction>()),
+                    )
+                }
+            }
+        }
+    } else {
+        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            if (d.itemType == "book") {
+                ActionCell(
+                    ctx.getString(R.string.widget_session_action),
+                    WidgetPalette.accent,
+                    GlanceModifier.defaultWeight()
+                        .clickable(actionRunCallback<StartTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                )
+                Spacer(GlanceModifier.width(8.dp))
+            }
+            ActionCell(
+                ctx.getString(R.string.widget_register_action),
+                WidgetPalette.fg,
+                GlanceModifier.defaultWeight()
+                    .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),
+            )
+        }
     }
 }
 
-/** Botón primario (Guardar sesión / Abrir para registrar): relleno de acento a
- *  todo el ancho. Distinto de [ActionCell] (que siempre pinta sobre `track`,
- *  pensado para acciones secundarias en pareja) — este es el CTA único del paso 2. */
-@Composable
-fun PrimaryButton(label: String, onClick: Action) {
-    Box(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .clickable(onClick)
-            .background(WidgetPalette.accent)
-            .cornerRadius(10.dp)
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, style = TextStyle(color = WidgetPalette.bg, fontSize = 13.sp, fontWeight = FontWeight.Bold))
-    }
-}
+/** "Registrar" sin minutos: la hoja de sesión para libros, la ficha para el resto.
+ *  Un pase huérfano (libro sin pase activo → passId vacío) no tiene sesión que
+ *  abrir: cae a su deepLink, que ya apunta a la ficha. */
+internal fun itemLogHref(d: CurrentProgressData): String =
+    if (d.itemType != "book" || d.passId.isBlank()) d.deepLink else "/sesion/${d.passId}"

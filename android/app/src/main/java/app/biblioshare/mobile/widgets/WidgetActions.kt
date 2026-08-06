@@ -23,22 +23,20 @@ class SelectFocusAction : ActionCallback {
     }
 }
 
-// Estado del widget de "Registro rápido" (2 pasos): en qué paso está, qué pase
-// eligió en el paso 1 y qué minutos lleva marcados en el paso 2. Se lee en
-// QuickRegisterWidget.provideGlance y se escribe en las 3 acciones de abajo.
+// Estado del widget de "Registro rápido" (2 pasos): en qué paso está y qué
+// pase eligió en el paso 1. Se lee en QuickRegisterWidget.provideGlance y se
+// escribe en las 2 acciones de abajo. El paso 2 ya no fija minutos por chip:
+// pinta la misma vista de sesión (cronómetro) que el Completo (#498).
 val STEP_KEY = intPreferencesKey("qr_step")
 val QR_SELECTED_KEY = stringPreferencesKey("qr_selected")
-val QR_MINUTES_KEY = intPreferencesKey("qr_minutes")
-val MINUTES_PARAM = ActionParameters.Key<Int>("minutes")
 
-/** Paso 1 → 2: elige el pase y arranca los minutos en 30 (el chip del medio). */
+/** Paso 1 → 2: elige el pase. */
 class PickAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val passId = parameters[PASS_ID_PARAM] ?: return
         updateAppWidgetState(context, glanceId) {
             it[QR_SELECTED_KEY] = passId
             it[STEP_KEY] = 2
-            it[QR_MINUTES_KEY] = 30
         }
         QuickRegisterWidget().update(context, glanceId)
     }
@@ -48,14 +46,6 @@ class PickAction : ActionCallback {
 class BackAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         updateAppWidgetState(context, glanceId) { it[STEP_KEY] = 1 }
-        QuickRegisterWidget().update(context, glanceId)
-    }
-}
-
-/** Tap en un chip de minutos del paso 2: solo cambia el marcado. */
-class PickMinutesAction : ActionCallback {
-    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        updateAppWidgetState(context, glanceId) { it[QR_MINUTES_KEY] = parameters[MINUTES_PARAM] ?: 30 }
         QuickRegisterWidget().update(context, glanceId)
     }
 }

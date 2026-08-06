@@ -2,20 +2,14 @@ package app.biblioshare.mobile.widgets
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.SystemClock
-import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
-import androidx.glance.action.actionParametersOf
-import androidx.glance.action.clickable
-import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -167,77 +161,6 @@ private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerL
             }
         }
         Box(GlanceModifier.fillMaxWidth().height(1.dp).background(WidgetPalette.border)) {}
-        FeaturedActions(d, running)
+        SessionTimerView(d, running)
     }
 }
-
-/** Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
- *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
- *  o, pasadas 4h, invita a abrir la app en vez de seguir tickeando en segundo plano. */
-@Composable
-private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?) {
-    val ctx = LocalContext.current
-    if (running != null && running.passId == d.passId) {
-        val now = System.currentTimeMillis()
-        if (isLongSession(running.startedAt, now)) {
-            Text(
-                ctx.getString(R.string.widget_long_session),
-                style = softStyle(),
-                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-                    .clickable(actionRunCallback<RegisterTimerAction>()),
-            )
-        } else {
-            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
-                    setChronometer(
-                        R.id.widget_chrono,
-                        chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
-                        null,
-                        true,
-                    )
-                }
-                AndroidRemoteViews(rv)
-                Spacer(GlanceModifier.height(8.dp))
-                Row {
-                    ActionCell(
-                        ctx.getString(R.string.widget_discard),
-                        WidgetPalette.fgSoft,
-                        GlanceModifier.defaultWeight()
-                            .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
-                    )
-                    Spacer(GlanceModifier.width(8.dp))
-                    ActionCell(
-                        ctx.getString(R.string.widget_register),
-                        WidgetPalette.accent,
-                        GlanceModifier.defaultWeight()
-                            .clickable(actionRunCallback<RegisterTimerAction>()),
-                    )
-                }
-            }
-        }
-    } else {
-        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            if (d.itemType == "book") {
-                ActionCell(
-                    ctx.getString(R.string.widget_session_action),
-                    WidgetPalette.accent,
-                    GlanceModifier.defaultWeight()
-                        .clickable(actionRunCallback<StartTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
-                )
-                Spacer(GlanceModifier.width(8.dp))
-            }
-            ActionCell(
-                ctx.getString(R.string.widget_register_action),
-                WidgetPalette.fg,
-                GlanceModifier.defaultWeight()
-                    .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),
-            )
-        }
-    }
-}
-
-/** "Registrar" sin minutos: la hoja de sesión para libros, la ficha para el resto.
- *  Un pase huérfano (libro sin pase activo → passId vacío) no tiene sesión que
- *  abrir: cae a su deepLink, que ya apunta a la ficha. */
-private fun itemLogHref(d: CurrentProgressData): String =
-    if (d.itemType != "book" || d.passId.isBlank()) d.deepLink else "/sesion/${d.passId}"

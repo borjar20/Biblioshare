@@ -178,7 +178,7 @@ fun PreviewQuickRegisterPick() {
     QuickRegisterContent(
         QuickRegisterState.Pick(listOf(sampleFeatured, sampleOther)),
         covers = emptyMap(),
-        minutes = 30,
+        running = null,
     )
 }
 
@@ -189,6 +189,19 @@ fun PreviewQuickRegisterRegisterBook() {
     QuickRegisterContent(
         QuickRegisterState.Register(sampleFeatured),
         covers = emptyMap(),
-        minutes = 30,
+        running = null,
+    )
+}
+
+// El paso 2 arranca en la vista de sesión: crono corriendo, para ver el layout
+// con "Descartar"/"Registrar" + el enlace secundario debajo (Task A4/#498).
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = QUICK_REGISTER_W_DP, heightDp = QUICK_REGISTER_REGISTER_H_DP)
+@Composable
+fun PreviewQuickRegisterRegisterTimer() {
+    QuickRegisterContent(
+        QuickRegisterState.Register(sampleFeatured),
+        covers = emptyMap(),
+        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
     )
 }

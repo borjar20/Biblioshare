@@ -39,7 +39,5 @@
     <string name="widget_register_reading_title">Registrar lectura</string>
     <string name="widget_items_in_progress_count">%1$d en curso</string>
     <string name="widget_first_session">Primera sesión</string>
-    <string name="widget_save_session">Guardar sesión</string>
-    <string name="widget_open_to_register">Abrir para registrar</string>
-    <string name="widget_other_minutes">Otro</string>
+    <string name="widget_register_in_app">Registrar en la app</string>
 </resources>

@@ -34,10 +34,11 @@ import app.biblioshare.mobile.R
 
 // Widget «Registro rápido»: un solo tamaño pequeño, 2 pasos, SIN abrir la app
 // para lo más frecuente (marcar una sesión de lo que ya está en curso). Paso 1
-// (Pick) = elegir de entre lo que está en curso; paso 2 (Register) = fijar
-// minutos (libros) o abrir la ficha (resto) para registrar. El paso, el pase
-// elegido y los minutos viven en el estado Glance (WidgetActions.kt); se leen
-// aquí UNA vez fuera de la composición, junto con snapshot y portadas — los
+// (Pick) = elegir de entre lo que está en curso; paso 2 (Register) = la misma
+// vista de sesión (cronómetro) que el Completo, con un enlace secundario a la
+// app para quien prefiera la hoja completa. El paso y el pase elegido viven en
+// el estado Glance (WidgetActions.kt); se leen aquí UNA vez fuera de la
+// composición, junto con snapshot, portadas y el cronómetro nativo — los
 // mismos que ya carga CurrentProgressWidget (loadCovers es `internal`, no se
 // duplica el loader).
 class QuickRegisterWidget : GlanceAppWidget() {
@@ -50,7 +51,8 @@ class QuickRegisterWidget : GlanceAppWidget() {
         val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
         val state = quickRegisterState(snapshot, prefs[STEP_KEY] ?: 1, prefs[QR_SELECTED_KEY])
         val covers = loadCovers(context, snapshot)
-        provideContent { QuickRegisterContent(state, covers, prefs[QR_MINUTES_KEY] ?: 30) }
+        val running = TimerStore.get(context)
+        provideContent { QuickRegisterContent(state, covers, running) }
     }
 }
 
@@ -60,7 +62,7 @@ class QuickRegisterWidgetReceiver : GlanceAppWidgetReceiver() {
 
 /** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
 @Composable
-fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>, minutes: Int) {
+fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>, running: TimerLogic.Running?) {
     val context = LocalContext.current
     when (state) {
         QuickRegisterState.SignedOut -> WidgetCard("/") {
@@ -77,7 +79,7 @@ fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>
         }
         is QuickRegisterState.Pick -> WidgetSurface { PickStep(state.items, covers) }
         is QuickRegisterState.Register -> WidgetSurface {
-            RegisterStep(state.item, state.item.coverUrl?.let(covers::get), minutes)
+            RegisterStep(state.item, state.item.coverUrl?.let(covers::get), running)
         }
     }
 }
@@ -103,9 +105,11 @@ private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitma
     }
 }
 
-/** Paso 2: volver + ficha del elegido + minutos (libros) o abrir ficha (resto). */
+/** Paso 2: volver + ficha del elegido + vista de sesión (la misma del Completo,
+ *  Task A4/#498: el paso 2 va DIRECTO al cronómetro, no a chips de minutos) +
+ *  enlace secundario a la hoja de sesión completa en la app. */
 @Composable
-private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int) {
+private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
     Column(GlanceModifier.fillMaxSize()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -134,40 +138,14 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int
             }
         }
         Spacer(GlanceModifier.height(12.dp))
-        if (item.itemType == "book") {
-            Row(modifier = GlanceModifier.fillMaxWidth()) {
-                listOf(15, 30, 45).forEach { m ->
-                    MinuteChip(
-                        label = "$m",
-                        active = minutes == m,
-                        onClick = actionRunCallback<PickMinutesAction>(actionParametersOf(MINUTES_PARAM to m)),
-                    )
-                    Spacer(GlanceModifier.width(6.dp))
-                }
-                // "Otro": no hay entrada de texto en Glance, así que en vez de
-                // marcar un preset pone minutes=0 — "Guardar sesión" abrirá la
-                // hoja de sesión sin minutos para teclear un valor libre.
-                MinuteChip(
-                    label = ctx.getString(R.string.widget_other_minutes),
-                    active = minutes != 15 && minutes != 30 && minutes != 45,
-                    onClick = actionRunCallback<PickMinutesAction>(actionParametersOf(MINUTES_PARAM to 0)),
-                )
-            }
-            Spacer(GlanceModifier.height(12.dp))
-            val href = when {
-                item.passId.isBlank() -> item.deepLink // pase huérfano: sin sesión, a la ficha
-                minutes > 0 -> "/sesion/${item.passId}?minutos=$minutes"
-                else -> "/sesion/${item.passId}" // "Otro"/0: abre la hoja para teclear
-            }
-            PrimaryButton(
-                ctx.getString(R.string.widget_save_session),
-                onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, href)),
-            )
-        } else {
-            PrimaryButton(
-                ctx.getString(R.string.widget_open_to_register),
-                onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, item.deepLink)),
-            )
-        }
+        SessionTimerView(item, running)
+        // itemLogHref ya resuelve el huérfano (passId vacío) a su ficha, así que
+        // el enlace secundario nunca navega a una ruta /sesion/ rota.
+        Text(
+            ctx.getString(R.string.widget_register_in_app),
+            style = softStyle(),
+            modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(item)))),
+        )
     }
 }
