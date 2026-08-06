@@ -166,8 +166,10 @@ fun ContinueCarousel(others: List<CurrentProgressData>, covers: Map<String, Bitm
     Row(GlanceModifier.fillMaxWidth()) {
         others.take(CAROUSEL_MAX).forEach { d ->
             Row(
+                // Fondo `surface`, no `track`: la barra de progreso usa `track` de
+                // fondo, así que sobre una tarjeta `track` era invisible (#498).
                 modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)
-                    .background(WidgetPalette.track).cornerRadius(12.dp).padding(8.dp)
+                    .background(WidgetPalette.surface).cornerRadius(12.dp).padding(8.dp)
                     .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
