@@ -200,6 +200,16 @@ ver «Social fase 0»)**]**
 > `20260826_confirm_checkpoint_lee_passes.sql` y `20260827_hitos_autodeclarados.sql`; sin
 > columnas nuevas ni cambios de grants (ACL de la función preservada por `create or replace`
 > y verificada: `authenticated=X`, sin `anon`).
+>
+> **Delta del 2026-08-06 — la vista `public.pass_reviews` proyecta ahora `d.updated_at` (Bloque 3
+> del triage #496, issue #345), aplicado y verificado en DEV y EN PROD** (`pg_get_viewdef`).
+> `updated_at` se añadió AL FINAL (`create or replace view` solo admite columnas nuevas al final;
+> el WHERE de RLS no cambió, grants a `anon, authenticated` preservados). Motivo: es la hora REAL
+> del terminado —un pase se CREA al añadir la obra y el «terminado» llega después como UPDATE, así
+> que `created_at` puede ir semanas por delante—. `recent-reviews.ts` y `shared-activity.ts` ya
+> leían de esta vista y seguían con `created_at` porque la vista no lo exponía; ahora usan
+> `updated_at` como `sortDate`, igual que `getFeed`. Trade-off asumido (mismo que el feed):
+> `updated_at` lo mueve cualquier update del pase. Migración `20260833_pass_reviews_updated_at.sql`.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
