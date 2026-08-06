@@ -52,15 +52,37 @@ export type FeedCursor = {
 
 const SEPARATOR = "~"; // no aparece ni en fechas ISO ni en los ids de evento
 
-export function dayOf(eventDate: string): string {
-  return eventDate.slice(0, 10);
+// El DÍA de la clave de orden. Una columna `date` pelada ("YYYY-MM-DD") no lleva
+// zona: es ya el día natural y se usa tal cual. Un timestamp se lleva a su día
+// UTC —NO al día del offset local—, porque el filtro SQL trata la columna
+// timestamptz como instante y traduce el día del cursor a límites `+00:00`
+// (`dayStart`/`nextDayStart`). Cortar la cadena daría el día local si el offset
+// no fuese `+00:00` y rompería el espejo con SQL (#347). Nunca lanza: si el valor
+// no parsea, cae al corte de cadena.
+export function dayOf(value: string): string {
+  if (value.length <= 10 || !value.includes("T")) return value.slice(0, 10);
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return value.slice(0, 10);
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+// Compara dos `sortDate` por INSTANTE, no como cadenas: dos representaciones del
+// mismo momento con distinto offset (`+02:00` vs `+00:00`) o precisión son
+// iguales, y "20:00+02:00" (18:00Z) va ANTES que "19:00+00:00" (19:00Z) aunque
+// como cadena parezca mayor. Espeja lo que hace Postgres en el filtro SQL. (#347)
+function compareSortDate(a: string, b: string): number {
+  if (a === b) return 0;
+  const [ma, mb] = [Date.parse(a), Date.parse(b)];
+  if (Number.isNaN(ma) || Number.isNaN(mb)) return a < b ? -1 : a > b ? 1 : 0;
+  return ma - mb;
 }
 
 // Comparador descendente, apto para Array.prototype.sort.
 export function compareEntries(a: OrderableEntry, b: OrderableEntry): number {
   const [da, db] = [dayOf(a.orderDate), dayOf(b.orderDate)];
   if (da !== db) return da < db ? 1 : -1;
-  if (a.sortDate !== b.sortDate) return a.sortDate < b.sortDate ? 1 : -1;
+  const s = compareSortDate(a.sortDate, b.sortDate);
+  if (s !== 0) return s < 0 ? 1 : -1;
   return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
 }
 
@@ -101,7 +123,8 @@ export function isAfterCursor(entry: OrderableEntry, cursor: FeedCursor): boolea
   }
   const day = dayOf(entry.orderDate);
   if (day !== cursor.day) return day < cursor.day;
-  if (entry.sortDate !== cursor.sortDate) return entry.sortDate < cursor.sortDate;
+  const s = compareSortDate(entry.sortDate, cursor.sortDate);
+  if (s !== 0) return s < 0;
   return entry.id < cursor.id;
 }
 

@@ -48,6 +48,52 @@ describe("compareEntries", () => {
   });
 });
 
+// El desempate por `sortDate` y el día por `dayOf` se comparaban como STRINGS,
+// lo que solo equivale al orden temporal real si TODOS los timestamps llevan el
+// mismo offset `+00:00` — un supuesto no verificado (la GUC TimeZone de Supabase,
+// fuera de este repo). El lado SQL (`cursorSourceFilter`) ya compara por INSTANTE
+// (Postgres parsea el offset), así que si el JS compara por string y algún valor
+// llega con otro offset, JS y SQL discrepan → se pierden o repiten filas. (#347)
+describe("orden por instante, no por string de offset no verificado (#347)", () => {
+  it("compareEntries desempata por INSTANTE aunque el offset difiera", () => {
+    // A = 18:00Z escrito como +02:00; B = 19:00Z escrito como +00:00. A es
+    // ANTERIOR en el tiempo, así que en orden descendente va DESPUÉS de B. La
+    // comparación de string diría lo contrario ("20:00" > "19:00").
+    const A: OrderableEntry = {
+      orderDate: "2026-08-02T20:00:00.000+02:00",
+      sortDate: "2026-08-02T20:00:00.000+02:00",
+      id: "passes:a",
+    };
+    const B: OrderableEntry = {
+      orderDate: "2026-08-02T19:00:00.000+00:00",
+      sortDate: "2026-08-02T19:00:00.000+00:00",
+      id: "passes:b",
+    };
+    expect([A, B].sort(compareEntries)).toEqual([B, A]);
+  });
+
+  it("isAfterCursor decide por INSTANTE aunque el offset difiera", () => {
+    // Cursor = B (19:00Z). A (18:00Z) es anterior → va después en desc → está
+    // POR SERVIR respecto a B.
+    const cursorB = parseCursor("2026-08-02~2026-08-02T19:00:00.000+00:00~passes:b");
+    const A: OrderableEntry = {
+      orderDate: "2026-08-02T20:00:00.000+02:00",
+      sortDate: "2026-08-02T20:00:00.000+02:00",
+      id: "passes:a",
+    };
+    expect(isAfterCursor(A, cursorB)).toBe(true);
+  });
+
+  it("dayOf toma el día UTC de un timestamp, no el día del offset local", () => {
+    // 01:00 +02:00 = 23:00Z del día ANTERIOR. El filtro SQL trata la columna
+    // timestamptz como instante UTC, así que el día que cuenta es el UTC.
+    expect(dayOf("2026-08-03T01:00:00.000+02:00")).toBe("2026-08-02");
+    // Una columna date pelada no lleva zona: es ya el día natural, tal cual.
+    expect(dayOf("2026-08-02")).toBe("2026-08-02");
+    expect(dayOf("2026-08-02T14:00:00.000+00:00")).toBe("2026-08-02");
+  });
+});
+
 describe("cursor", () => {
   it("un cursor nuevo lleva día, hora e id", () => {
     expect(makeCursor(resena)).toBe(
@@ -93,6 +139,23 @@ describe("isAfterCursor", () => {
     // cadena, así que la reseña date-only iba DESPUÉS del alta.
     expect(isAfterCursor(resena, legado)).toBe(true);
     expect(isAfterCursor(alta, legado)).toBe(false);
+  });
+
+  it("un cursor legado date-only NO pierde una fila de hoy de una fuente date-only (#349)", () => {
+    // #349 describía la pérdida cuando `isAfterCursor` comparaba `eventDate`
+    // (que sessionRelativeBasis volvía timestamp para las filas de hoy). El
+    // refactor #346 la pasó a comparar `orderDate`, que para finished/session/
+    // watched sigue siendo la columna `date` pelada — así que empata con el día
+    // del cursor legado y se desempata por id, sin pérdida. Este test lo fija.
+    const legado = parseCursor("2026-08-02~diary_entries:mmm");
+    // Fila de HOY, fuente date-only: orderDate es finished_on (date pelada),
+    // aunque su eventDate haya pasado a timestamp por sessionRelativeBasis.
+    const hoy: OrderableEntry = {
+      orderDate: "2026-08-02",
+      sortDate: "2026-08-02T14:00:00.000+00:00",
+      id: "diary_entries:aaa", // "aaa" < "mmm" ⇒ va después en desc ⇒ por servir
+    };
+    expect(isAfterCursor(hoy, legado)).toBe(true);
   });
 
   it("un cursor legado con hora de precisión no trunca la fecha al comparar (regresión #critical)", () => {
