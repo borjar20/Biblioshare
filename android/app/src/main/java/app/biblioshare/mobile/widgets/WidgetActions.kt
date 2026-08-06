@@ -7,6 +7,7 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.appwidget.updateAll
 
 // Estado del widget (Preferences DataStore de Glance): qué pase decidió el
 // usuario destacar tocando la rejilla "Continúa donde lo dejaste". Se lee en
@@ -14,12 +15,20 @@ import androidx.glance.appwidget.state.updateAppWidgetState
 val SELECTED_PASS_KEY = stringPreferencesKey("selected_pass_id")
 val PASS_ID_PARAM = ActionParameters.Key<String>("passId")
 
+/** Refresca AMBOS widgets vía updateAll (el camino fiable, el mismo del foreground).
+ *  El estado de cronómetro y el snapshot son compartidos, así que refrescar los dos
+ *  es correcto; updateAll solo recompone RemoteViews del store local (sin red). */
+private suspend fun refreshWidgets(context: Context) {
+    CurrentProgressWidget().updateAll(context)
+    QuickRegisterWidget().updateAll(context)
+}
+
 /** Tap en una portada de la rejilla: persiste el pase elegido y repinta. */
 class SelectFocusAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val passId = parameters[PASS_ID_PARAM] ?: return
         updateAppWidgetState(context, glanceId) { it[SELECTED_PASS_KEY] = passId }
-        CurrentProgressWidget().update(context, glanceId)
+        refreshWidgets(context)
     }
 }
 
@@ -38,7 +47,7 @@ class PickAction : ActionCallback {
             it[QR_SELECTED_KEY] = passId
             it[STEP_KEY] = 2
         }
-        QuickRegisterWidget().update(context, glanceId)
+        refreshWidgets(context)
     }
 }
 
@@ -46,7 +55,7 @@ class PickAction : ActionCallback {
 class BackAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         updateAppWidgetState(context, glanceId) { it[STEP_KEY] = 1 }
-        QuickRegisterWidget().update(context, glanceId)
+        refreshWidgets(context)
     }
 }
 
@@ -59,7 +68,7 @@ class StartTimerAction : ActionCallback {
         val now = System.currentTimeMillis()
         // Arranque limpio desde el widget: sin pausas, ancla e inicio coinciden.
         TimerStore.set(c, passId, now, now)
-        CurrentProgressWidget().update(c, id)
+        refreshWidgets(c)
     }
 }
 class DiscardTimerAction : ActionCallback {
@@ -67,7 +76,7 @@ class DiscardTimerAction : ActionCallback {
         // clearFromWidget (no clear) deja la lápida para que la app apague su
         // propio reloj sembrado al reabrir (#493).
         TimerStore.clearFromWidget(c)
-        CurrentProgressWidget().update(c, id)
+        refreshWidgets(c)
     }
 }
 class RegisterTimerAction : ActionCallback {
@@ -78,6 +87,7 @@ class RegisterTimerAction : ActionCallback {
         val minutos = elapsedMinutes(r.startedAt, System.currentTimeMillis())
         val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
         TimerStore.clearFromWidget(c)
+        refreshWidgets(c)
         val href = "/sesion/${r.passId}?minutos=$minutos&inicio=$inicio"
         c.startActivity(WidgetDeepLinks.intentFor(c, href))
     }

@@ -274,7 +274,7 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
                 }
                 AndroidRemoteViews(rv)
                 Spacer(GlanceModifier.height(8.dp))
-                Row {
+                Row(GlanceModifier.fillMaxWidth()) {
                     ActionCell(
                         ctx.getString(R.string.widget_discard),
                         WidgetPalette.fgSoft,
