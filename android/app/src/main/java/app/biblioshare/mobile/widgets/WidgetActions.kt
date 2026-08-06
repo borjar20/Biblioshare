@@ -8,7 +8,6 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.appwidget.updateAll
 
 // Estado del widget (Preferences DataStore de Glance): qué pase decidió el
 // usuario destacar tocando la rejilla "Continúa donde lo dejaste". Se lee en
@@ -18,18 +17,13 @@ val PASS_ID_PARAM = ActionParameters.Key<String>("passId")
 
 private const val WIDGET_LOG_TAG = "BiblioshareWidgets"
 
-/** Refresca AMBOS widgets vía updateAll (el camino fiable, el del foreground).
- *  Independiente (runCatching): un fallo en uno no impide el otro. Loggea para
- *  diagnosticar el repintado intermitente (logcat -s BiblioshareWidgets). */
 private suspend fun refreshWidgets(context: Context, from: String) {
-    Log.i(WIDGET_LOG_TAG, "action '$from' fired → refreshWidgets")
-    val current = runCatching { CurrentProgressWidget().updateAll(context) }
-    val quick = runCatching { QuickRegisterWidget().updateAll(context) }
+    Log.i(WIDGET_LOG_TAG, "action '$from' fired → compose+push directo")
+    val result = runCatching { WidgetRefresh.updateAllSuspend(context) }
     Log.i(
         WIDGET_LOG_TAG,
-        "refreshWidgets('$from') done: current=${current.isSuccess} quick=${quick.isSuccess}" +
-            (current.exceptionOrNull()?.let { " currentErr=$it" } ?: "") +
-            (quick.exceptionOrNull()?.let { " quickErr=$it" } ?: ""),
+        "refreshWidgets('$from') done: ok=${result.isSuccess}" +
+            (result.exceptionOrNull()?.let { " err=$it" } ?: ""),
     )
 }
 

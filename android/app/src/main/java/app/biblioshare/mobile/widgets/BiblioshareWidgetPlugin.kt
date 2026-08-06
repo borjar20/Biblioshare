@@ -1,7 +1,11 @@
 package app.biblioshare.mobile.widgets
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
-import androidx.glance.appwidget.updateAll
+import android.util.Log
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.compose
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -77,14 +81,32 @@ class BiblioshareWidgetPlugin : Plugin() {
 
 object WidgetRefresh {
     /**
-     * Re-renderiza TODAS las instancias de ambos widgets desde el store local.
-     * runBlocking es aceptable: corre en el hilo de plugins de Capacitor (o en
-     * el Thread de la portada), nunca en el main thread, y updateAll solo
-     * recompone RemoteViews.
+     * Re-renderiza TODAS las instancias de los widgets y las EMPUJA directamente
+     * vía AppWidgetManager.updateAppWidget (compose() en proceso). Motivo (#498):
+     * GlanceAppWidget.update/updateAll solo ENCOLA la composición como
+     * OneTimeWorkRequest normal de WorkManager, y One UI difiere esos jobs con la
+     * app en background hasta el siguiente broadcast — el widget no repintaba
+     * hasta la siguiente acción. compose()+updateAppWidget pinta aquí y ahora.
+     * Fallback por instancia al update() clásico si compose() fallara.
      */
-    fun updateAll(context: Context) = runBlocking {
-        CurrentProgressWidget().updateAll(context)
-        DailyGoalWidget().updateAll(context)
-        QuickRegisterWidget().updateAll(context)
+    fun updateAll(context: Context) = runBlocking { updateAllSuspend(context) }
+
+    suspend fun updateAllSuspend(context: Context) {
+        push(context, CurrentProgressWidget(), CurrentProgressWidget::class.java)
+        push(context, DailyGoalWidget(), DailyGoalWidget::class.java)
+        push(context, QuickRegisterWidget(), QuickRegisterWidget::class.java)
+    }
+
+    private suspend fun <T : GlanceAppWidget> push(context: Context, widget: T, provider: Class<T>) {
+        val glanceManager = GlanceAppWidgetManager(context)
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        glanceManager.getGlanceIds(provider).forEach { id ->
+            runCatching {
+                appWidgetManager.updateAppWidget(glanceManager.getAppWidgetId(id), widget.compose(context, id))
+            }.onFailure {
+                Log.w("BiblioshareWidgets", "compose+push falló para $id, caigo a update()", it)
+                runCatching { widget.update(context, id) }
+            }
+        }
     }
 }
