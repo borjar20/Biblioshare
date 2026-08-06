@@ -2381,6 +2381,7 @@ export type Database = {
           review: string | null
           started_on: string | null
           status: Database["public"]["Enums"]["media_status"] | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -2398,6 +2399,7 @@ export type Database = {
           review?: string | null
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"] | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2415,6 +2417,7 @@ export type Database = {
           review?: string | null
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"] | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []

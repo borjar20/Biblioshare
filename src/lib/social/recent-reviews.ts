@@ -43,7 +43,7 @@ export async function getRecentReviews(
     // aparecer aquí.
     supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, updated_at")
       .eq("user_id", userId)
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado.
@@ -76,24 +76,26 @@ export async function getRecentReviews(
   // El filtro anterior garantiza finished_on no nulo; se narrowa aquí porque
   // Supabase no infiere el tipo a partir de la query. pass_reviews tipa TODAS
   // sus columnas como nullable (es una vista), así que también se narrowan
-  // id/item_type/item_id/created_at — nunca vienen null en la práctica.
-  // created_at va en la MISMA lista y no en un `??` a finished_on: `sortDate`
-  // promete un timestamp real, y un valor date-only ahí ordena por debajo de
-  // todo evento con hora de su día y empata con sus iguales (desempate por
-  // uuid). Sin hora real, la fila se descarta igual que sin id.
+  // id/item_type/item_id/updated_at — nunca vienen null en la práctica.
+  // updated_at (no created_at, #345) es la hora REAL del terminado: un pase se
+  // crea al añadir la obra y el "terminado" llega después como UPDATE. Va en la
+  // MISMA lista y no en un `??` a finished_on: `sortDate` promete un timestamp
+  // real, y un valor date-only ahí ordena por debajo de todo evento con hora de
+  // su día y empata con sus iguales (desempate por uuid). Sin hora real, la fila
+  // se descarta igual que sin id.
   const diaryRows = (diaryResult.data ?? []).filter(
     (r): r is typeof r & {
       id: string;
       item_type: ItemType;
       item_id: string;
       finished_on: string;
-      created_at: string;
+      updated_at: string;
     } =>
       r.id !== null &&
       r.item_type !== null &&
       r.item_id !== null &&
       r.finished_on !== null &&
-      r.created_at !== null
+      r.updated_at !== null
   );
   const episodeRows = episodeResult.data ?? [];
 
@@ -176,11 +178,12 @@ export async function getRecentReviews(
       // FEED_SOURCE_COLUMNS). Esta lista no pagina por la clave del feed, pero
       // el evento viaja a las mismas tarjetas, así que se rellena de verdad.
       orderDate: r.finished_on,
-      // sortDate = created_at, el contrato del campo en FeedEvent. Aquí no
-      // ordena (esta lista ordena por eventDate), pero el evento viaja a las
-      // mismas tarjetas que el feed, así que nunca puede ser date-only (ver el
-      // narrowing de `diaryRows`).
-      sortDate: r.created_at,
+      // sortDate = updated_at (#345), el contrato del campo en FeedEvent: la hora
+      // REAL de registro del terminado, igual que el feed. Aquí no ordena (esta
+      // lista ordena por eventDate), pero el evento viaja a las mismas tarjetas
+      // que el feed, así que nunca puede ser date-only (ver el narrowing de
+      // `diaryRows`).
+      sortDate: r.updated_at,
       rating: r.rating,
       reviewExcerpt: excerpt(r.review),
       episode: null,
