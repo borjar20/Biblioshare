@@ -27,6 +27,7 @@
     <string name="widget_view_all">%1$d · Ver todos ›</string>
     <string name="widget_continue_where_left_off">Continúa donde lo dejaste</string>
     <string name="widget_no_progress">Sin progreso</string>
+    <string name="widget_today_goal">Meta de hoy</string>
     <string name="widget_long_session">Sesión larga · ábrela para registrar</string>
     <string name="widget_discard">Descartar</string>
     <string name="widget_register">Registrar</string>

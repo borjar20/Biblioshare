@@ -6,7 +6,6 @@ import android.os.SystemClock
 import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
@@ -24,17 +23,17 @@ import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
-import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
 import app.biblioshare.mobile.R
 
 // Widget «En curso»: un solo tamaño grande (Completo) con el destacado (por
@@ -110,7 +109,7 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
             Text(ctx.getString(R.string.widget_stale_data), style = softStyle())
         }
         Spacer(GlanceModifier.height(10.dp))
-        FeaturedCard(f, f.coverUrl?.let(covers::get), running)
+        FeaturedCard(f, f.coverUrl?.let(covers::get), running, state.dailyGoal)
         if (state.others.isNotEmpty()) {
             Spacer(GlanceModifier.height(18.dp))
             Text(ctx.getString(R.string.widget_continue_where_left_off), style = softStyle())
@@ -120,43 +119,54 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
     }
 }
 
-/** Portada + ordinal + título + contexto + progreso + racha/semana + pie de acciones. */
+/** Portada + ordinal + título + contexto + «Meta de hoy» (objetivo GLOBAL, no el
+ *  % de páginas del pase) + racha/semana + pie partido de acciones. */
 @Composable
-private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
+private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?, dailyGoal: DailyGoalData?) {
     val context = LocalContext.current
     Column(GlanceModifier.fillMaxWidth().background(WidgetPalette.surface).cornerRadius(18.dp)) {
-        Row(GlanceModifier.padding(16.dp)) {
-            Cover(cover, width = 72, height = 104)
-            Spacer(GlanceModifier.width(14.dp))
-            Column(GlanceModifier.defaultWeight()) {
-                Text(
-                    d.nthLabel,
-                    style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
-                )
-                Text(d.title, style = bigStyle(), maxLines = 2)
-                Text(
-                    d.contextLabel.ifBlank { context.getString(R.string.widget_no_progress) },
-                    style = softStyle(),
-                    maxLines = 1,
-                )
-                if (d.percentage != null) {
-                    Spacer(GlanceModifier.height(8.dp))
-                    SoftBar(d.percentage)
-                    Spacer(GlanceModifier.height(4.dp))
-                    Text(d.progressLabel, style = softStyle(), maxLines = 1)
-                }
-                if (d.streakDays > 0 || d.week.isNotEmpty()) {
-                    Spacer(GlanceModifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (d.streakDays > 0) {
-                            StreakPill(d.streakDays)
+        Row(GlanceModifier.fillMaxWidth()) {
+            // Barra de acento: Glance no tiene `::before`, se emula con un Box
+            // angosto como primer hijo del Row.
+            Box(GlanceModifier.width(4.dp).fillMaxHeight().background(WidgetPalette.accent)) {}
+            Row(GlanceModifier.defaultWeight().padding(16.dp)) {
+                Cover(cover, width = 72, height = 104)
+                Spacer(GlanceModifier.width(14.dp))
+                Column(GlanceModifier.defaultWeight()) {
+                    Text(
+                        d.nthLabel,
+                        style = accentStyle(),
+                    )
+                    Text(d.title, style = bigStyle(), maxLines = 2)
+                    Text(
+                        d.contextLabel.ifBlank { context.getString(R.string.widget_no_progress) },
+                        style = softStyle(),
+                        maxLines = 1,
+                    )
+                    if (dailyGoal != null) {
+                        Spacer(GlanceModifier.height(10.dp))
+                        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(context.getString(R.string.widget_today_goal), style = softStyle())
                             Spacer(GlanceModifier.defaultWeight())
+                            Text(dailyGoal.progressLabel, style = softStyle())
                         }
-                        WeekDots(d.week)
+                        Spacer(GlanceModifier.height(4.dp))
+                        SoftBar(dailyGoal.percentage)
+                    }
+                    if (d.streakDays > 0 || d.week.isNotEmpty()) {
+                        Spacer(GlanceModifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (d.streakDays > 0) {
+                                StreakPill(d.streakDays)
+                                Spacer(GlanceModifier.defaultWeight())
+                            }
+                            WeekDots(d.week)
+                        }
                     }
                 }
             }
         }
+        Box(GlanceModifier.fillMaxWidth().height(1.dp).background(WidgetPalette.border)) {}
         FeaturedActions(d, running)
     }
 }

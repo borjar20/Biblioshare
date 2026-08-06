@@ -96,6 +96,12 @@ class CurrentProgressStateTest {
         // Sigue siendo útil sin conexión: se avisa, no se vacía.
         assertEquals("p1", state.featured.passId)
     }
+
+    @Test fun `Content lleva el dailyGoal global del snapshot`() {
+        val g = goal()
+        val state = currentProgressState(snapshotWithGoal(g), selectedPassId = null) as ProgressWidgetState.Content
+        assertEquals(g, state.dailyGoal)
+    }
 }
 
 class QuickRegisterStateTest {

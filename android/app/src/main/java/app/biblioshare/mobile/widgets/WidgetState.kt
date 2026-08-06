@@ -22,6 +22,7 @@ sealed interface ProgressWidgetState {
         val selectedPassId: String?,
         val total: Int,
         val stale: Boolean,
+        val dailyGoal: DailyGoalData?,
     ) : ProgressWidgetState {
         /** El elegido por el usuario si sigue en curso; si no, el primero. */
         val featured: CurrentProgressData
@@ -61,6 +62,7 @@ fun currentProgressState(
         selectedPassId = selectedPassId,
         total = snapshot.inProgressTotal,
         stale = isOlderThanHours(snapshot.generatedAt, staleAfterHours, nowMillis),
+        dailyGoal = snapshot.dailyGoal,
     )
 }
 

@@ -81,6 +81,7 @@ fun PreviewCompleto() {
             selectedPassId = null,
             total = 2,
             stale = false,
+            dailyGoal = sampleGoal,
         ),
         covers = emptyMap(),
     )
@@ -100,6 +101,7 @@ fun PreviewCompletoTimer() {
             selectedPassId = null,
             total = 2,
             stale = false,
+            dailyGoal = sampleGoal,
         ),
         covers = emptyMap(),
         running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
