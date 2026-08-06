@@ -18,6 +18,9 @@ import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.lazy.GridCells
+import androidx.glance.appwidget.lazy.LazyVerticalGrid
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -150,25 +153,34 @@ fun ActionCell(label: String, color: ColorProvider, modifier: GlanceModifier) {
     }
 }
 
-/** Rejilla de "Continúa donde lo dejaste": 3 columnas por fila, portada + título
- *  a una línea. Tocar una celda cambia el destacado (Glance state, Task 8). */
+/** Rejilla de "Continúa donde lo dejaste": 3 columnas, portada + título a una
+ *  línea, con SCROLL nativo (#498) cuando hay muchas en curso. Tocar una celda
+ *  cambia el destacado (Glance state, Task 8).
+ *  LazyVerticalGrid: en API 33+ los ítems viajan inline dentro del RemoteViews
+ *  (compatible con el empuje compose()+updateAppWidget de A11); en 31–32 se sirven
+ *  vía GlanceRemoteViewsService con el appWidgetId real. `defaultWeight` le da el
+ *  alto sobrante bajo el foco para que scrollee dentro de su banda. */
 @Composable
-fun ContinueGrid(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
-    Column {
-        others.chunked(3).forEach { row ->
-            Row(modifier = GlanceModifier.fillMaxWidth()) {
-                row.forEach { d ->
-                    Column(
-                        modifier = GlanceModifier.defaultWeight().padding(end = 6.dp)
-                            .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
-                    ) {
-                        Cover(d.coverUrl?.let(covers::get), width = 48, height = 70)
-                        Spacer(GlanceModifier.height(4.dp))
-                        Text(d.title, style = softStyle(), maxLines = 1)
-                    }
-                }
+fun ContinueGrid(
+    others: List<CurrentProgressData>,
+    covers: Map<String, Bitmap?>,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    // El peso (defaultWeight) lo pone quien la llama: es una extensión de
+    // ColumnScope y aquí, como raíz de ContinueGrid, no hay scope de Column.
+    LazyVerticalGrid(
+        gridCells = GridCells.Fixed(3),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        items(others) { d ->
+            Column(
+                modifier = GlanceModifier.fillMaxWidth().padding(end = 6.dp, bottom = 8.dp)
+                    .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+            ) {
+                Cover(d.coverUrl?.let(covers::get), width = 48, height = 70)
+                Spacer(GlanceModifier.height(4.dp))
+                Text(d.title, style = softStyle(), maxLines = 1)
             }
-            Spacer(GlanceModifier.height(8.dp))
         }
     }
 }

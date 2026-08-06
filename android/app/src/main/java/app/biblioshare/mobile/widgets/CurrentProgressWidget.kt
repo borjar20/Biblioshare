@@ -101,7 +101,8 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
             Spacer(GlanceModifier.height(10.dp))
             Text(ctx.getString(R.string.widget_continue_where_left_off), style = softStyle())
             Spacer(GlanceModifier.height(6.dp))
-            ContinueGrid(state.others, covers)
+            // defaultWeight aquí (dentro del Column): la rejilla scrollea en el alto sobrante.
+            ContinueGrid(state.others, covers, GlanceModifier.defaultWeight())
         }
     }
 }

@@ -14,6 +14,8 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.layout.Alignment
@@ -82,23 +84,28 @@ fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>
     }
 }
 
-/** Paso 1: cabecera + una fila compacta por cada lectura en curso. */
+/** Paso 1: cabecera + lista de lecturas en curso con SCROLL nativo (#498) cuando
+ *  no caben en 4x2 — sin abrir la app. LazyColumn: ítems inline (API 33+) o vía
+ *  GlanceRemoteViewsService (31–32); `defaultWeight` le da el alto sobrante bajo
+ *  la cabecera. */
 @Composable
-private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+private fun PickStep(list: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
     val context = LocalContext.current
     Column(GlanceModifier.fillMaxSize()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(context.getString(R.string.widget_register_reading_title), style = titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            Text(context.getString(R.string.widget_items_in_progress_count, items.size), style = softStyle())
+            Text(context.getString(R.string.widget_items_in_progress_count, list.size), style = softStyle())
         }
         Spacer(GlanceModifier.height(6.dp))
-        items.forEach { item ->
-            CompactRow(
-                item = item,
-                cover = item.coverUrl?.let(covers::get),
-                onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
-            )
+        LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
+            items(list) { item ->
+                CompactRow(
+                    item = item,
+                    cover = item.coverUrl?.let(covers::get),
+                    onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
+                )
+            }
         }
     }
 }
