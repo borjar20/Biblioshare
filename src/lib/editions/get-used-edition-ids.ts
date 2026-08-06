@@ -6,25 +6,19 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // para NO ofrecer el borrado rápido de algo que el trigger
 // block_edition_delete_if_used va a rechazar de todas formas.
 //
-// Es un chequeo ORIENTATIVO, igual que el que hace deleteEdition: la RLS de
-// `passes` solo deja ver los pases propios y los de perfiles públicos, así que
-// una edición usada solo por perfiles privados no sale aquí. Por eso la
-// interfaz sigue teniendo que saber enseñar el error `inUse` cuando el borrado
-// falla pese a todo.
+// Va por la RPC `editions_in_use` (SECURITY DEFINER), NO por un select directo:
+// la RLS de `passes` solo deja ver los pases propios y los de perfiles públicos,
+// así que una edición usada solo por perfiles privados salía como "libre" y se
+// ofrecía un × que el trigger luego rechazaba (#278). La RPC ve TODOS los pases.
 export async function getUsedEditionIds(
   supabase: SupabaseServerClient,
   editionIds: string[]
 ): Promise<string[]> {
   if (editionIds.length === 0) return [];
 
-  const { data } = await supabase
-    .from("passes")
-    .select("edition_id")
-    .in("edition_id", editionIds);
+  const { data } = await supabase.rpc("editions_in_use", {
+    p_edition_ids: editionIds,
+  });
 
-  const used = new Set<string>();
-  for (const row of data ?? []) {
-    if (row.edition_id) used.add(row.edition_id);
-  }
-  return [...used];
+  return data ?? [];
 }

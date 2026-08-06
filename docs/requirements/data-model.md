@@ -762,6 +762,18 @@ y `20260811_spawn_linked_activity_defaults.sql`).** Cuatro huecos de la misma ca
   tiene ficha: `hasDetailView: false`), pero sí por la puerta de atrás. Ahora el invariante
   es del esquema, no del comentario.
 
+**Endurecimiento del 2026-08-06 (issue #129, dev y prod, `20260831_club_activity_role_gate_first.sql`).**
+El gate de rol (`has_min_club_role`) se evaluaba DESPUÉS de los checks de existencia/kind/estado
+en `update_club_event`, `set_club_event_state`, `finish_club_activity` y `archive_club_activity`.
+Como son `SECURITY DEFINER`, cualquier `authenticated` (sin ser miembro) distinguía por el mensaje
+de error si un uuid existía, si era un evento y si estaba activo — un oráculo sobre lo que la RLS de
+SELECT (`club_activities select member`) protege. Ahora el rol va PRIMERO: con la fila inexistente
+`has_min_club_role(null, …)` es `false` y el no-autorizado recibe `forbidden` genérico. Solo tras
+pasar el gate (= eres moderador del club dueño, que ya puede ver la fila) se revela kind/estado.
+`finish_club_activity` usa `coalesce(v_created_by = auth.uid(), false)` para su rama creador-O-mod
+(un `null = uuid` daría NULL y dejaría pasar el gate). `create_club_event` ya comprobaba rol primero
+desde `20260823`, no se tocó.
+
 El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
 fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.
 
