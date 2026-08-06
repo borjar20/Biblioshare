@@ -78,12 +78,25 @@ class DiscardTimerAction : ActionCallback {
         refreshWidgets(c, "DiscardTimer")
     }
 }
+// Pausa nativa in-widget (#498, Fase B): banca/reanuda el elapsed sin abrir la app.
+class PauseTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        TimerStore.pause(c, System.currentTimeMillis())
+        refreshWidgets(c, "PauseTimer")
+    }
+}
+class ResumeTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        TimerStore.resume(c, System.currentTimeMillis())
+        refreshWidgets(c, "ResumeTimer")
+    }
+}
 class RegisterTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val r = TimerStore.get(c) ?: return
-        // Minutos desde el ancla efectiva (ya sin pausas, #491); `inicio` es la
+        // Minutos del elapsed REAL (cuenta con la pausa, #498); `inicio` es la
         // hora real de arranque para "Cuándo lees".
-        val minutos = elapsedMinutes(r.startedAt, System.currentTimeMillis())
+        val minutos = elapsedMinutes(elapsedMs(r, System.currentTimeMillis()))
         val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
         TimerStore.clearFromWidget(c)
         refreshWidgets(c, "RegisterTimer")

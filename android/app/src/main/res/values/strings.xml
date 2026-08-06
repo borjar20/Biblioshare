@@ -31,6 +31,8 @@
     <string name="widget_long_session">Sesión larga · ábrela para registrar</string>
     <string name="widget_discard">Descartar</string>
     <string name="widget_register">Registrar</string>
+    <string name="widget_pause">Pausar</string>
+    <string name="widget_resume">Reanudar</string>
     <string name="widget_session_action">◷ Sesión</string>
     <string name="widget_register_action">✎ Registrar</string>
     <string name="widget_streak">Racha %1$d d</string>

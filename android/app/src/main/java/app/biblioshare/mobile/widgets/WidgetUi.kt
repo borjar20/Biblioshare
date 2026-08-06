@@ -315,17 +315,17 @@ fun FocusZone(
 }
 
 /** Vista de sesión compartida por el pie del Completo y el paso 2 del Reducido:
- *  Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
- *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
- *  o, pasadas 4h, invita a abrir la app en vez de seguir tickeando en segundo
- *  plano. Fase A: cronómetro SIN pausa (Descartar/Registrar); la pausa llega
- *  en Fase B (#498). */
+ *  Sesión/Registrar como deep-link plano cuando no hay cronómetro para este pase;
+ *  si lo hay, pinta el reloj nativo (Chronometer tickeando si corre, o el tiempo
+ *  CONGELADO si está pausado) + Pausar/Reanudar │ Registrar, y Descartar como
+ *  enlace secundario. Pasadas 4h corriendo, invita a abrir la app en vez de
+ *  seguir tickeando en segundo plano. Pausa nativa: Fase B (#498). */
 @Composable
 fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
     if (running != null && running.passId == d.passId) {
         val now = System.currentTimeMillis()
-        if (isLongSession(running.startedAt, now)) {
+        if (running.running && isLongSession(running.startedAt, now)) {
             Text(
                 ctx.getString(R.string.widget_long_session),
                 style = softStyle(),
@@ -334,24 +334,34 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
             )
         } else {
             Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
-                    setChronometer(
-                        R.id.widget_chrono,
-                        chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
-                        null,
-                        true,
-                    )
+                if (running.running) {
+                    val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
+                        setChronometer(
+                            R.id.widget_chrono,
+                            chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
+                            null,
+                            true,
+                        )
+                    }
+                    // Cronómetro centrado: el Chronometer es match_parent + gravity center.
+                    AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
+                } else {
+                    // Pausado: tiempo congelado, mismo tamaño y sitio que el reloj vivo.
+                    Box(GlanceModifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            fmtElapsed(elapsedMs(running, now)),
+                            style = TextStyle(color = WidgetPalette.accent, fontSize = 24.sp),
+                        )
+                    }
                 }
-                // Cronómetro centrado: el Chronometer es match_parent + gravity center
-                // (widget_chronometer.xml) y aquí ocupa todo el ancho.
-                AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
                 Spacer(GlanceModifier.height(8.dp))
+                val toggle = if (running.running) actionRunCallback<PauseTimerAction>()
+                             else actionRunCallback<ResumeTimerAction>()
                 Row(GlanceModifier.fillMaxWidth()) {
                     ActionCell(
-                        ctx.getString(R.string.widget_discard),
-                        WidgetPalette.fgSoft,
-                        GlanceModifier.defaultWeight()
-                            .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                        ctx.getString(if (running.running) R.string.widget_pause else R.string.widget_resume),
+                        WidgetPalette.fg,
+                        GlanceModifier.defaultWeight().clickable(toggle),
                     )
                     Spacer(GlanceModifier.width(8.dp))
                     ActionCell(
@@ -360,6 +370,14 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
                         GlanceModifier.defaultWeight()
                             .clickable(actionRunCallback<RegisterTimerAction>()),
                     )
+                }
+                Spacer(GlanceModifier.height(6.dp))
+                Box(
+                    GlanceModifier.fillMaxWidth()
+                        .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(ctx.getString(R.string.widget_discard), style = softStyle())
                 }
             }
         }
