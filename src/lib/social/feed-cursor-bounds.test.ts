@@ -279,9 +279,11 @@ describe("cotas de cursor de getFeed", () => {
     expect([...served].sort()).toEqual(EXPECTED_IDS); // ninguna perdida
     // El cursor que destapa el defecto es el BACKDATEADO: `day` = REVIEW_DAY
     // mientras `sortDate` es de hoy. Si el corte de página deja de caer en una
-    // reseña, este recorrido ya no prueba lo que dice probar.
-    expect(cursorDay(pages, 1)).toBe(REVIEW_DAY);
-    expect(parseCursor(pages[1].cursor).sortDate?.slice(0, 10)).toBe(TODAY);
+    // reseña, este recorrido ya no prueba lo que dice probar. (Con el corte por
+    // tarjetas, la primera página ya arrastra las 6 altas de hoy —un grupo— y
+    // parte de las reseñas, así que ese cursor es la PRIMERA página registrada.)
+    expect(cursorDay(pages, 0)).toBe(REVIEW_DAY);
+    expect(parseCursor(pages[0].cursor).sortDate?.slice(0, 10)).toBe(TODAY);
   });
 
   // OJO con lo que este test NO prueba: el filtro esperado se calcula llamando
@@ -361,7 +363,10 @@ describe("fuentes de fecha-only cuya columna local diverge del timestamp UTC", (
     // revés. El recorrido tiene que CRUZAR ese borde —quedarse a un lado no
     // ejercita nada—, así que se exige que el cursor pase por los dos días.
     const days = pages.map((p) => parseCursor(p.cursor).day);
-    expect(cursorDay(pages, 0)).toBe(TODAY);
+    // Con el corte por tarjetas la primera página baja hasta el borde divergente
+    // y el cursor se planta en una fila `-ayer` (columna = YESTERDAY, registro =
+    // hoy): exactamente el punto donde columna local y timestamp UTC divergen.
+    expect(cursorDay(pages, 0)).toBe(YESTERDAY);
     expect(days).toContain(YESTERDAY);
   });
 
@@ -407,9 +412,16 @@ describe("reseña terminada hoy sobre un pase creado hace semanas", () => {
     const { served, pages } = await walk(2, LATE_DATA);
     expect(new Set(served).size).toBe(served.length);
     expect([...served].sort()).toEqual(LATE_EXPECTED_IDS);
-    // El salto peligroso es el que baja el cursor a MID_DAY: desde ahí la cota
-    // `lte(finished_on, MID_DAY+1)` ya no alcanza un finished_on de HOY.
-    expect(cursorDay(pages, 1)).toBe(MID_DAY);
+    // El defecto: si `diary` ordenara por created_at, la reseña (finished_on de
+    // HOY, pase creado hace 20 días) caería 20 días abajo y la cota
+    // `lte(finished_on, cursorDay+1)` de la página profunda no la alcanzaría.
+    // El recorrido lo caza: `served` == EXPECTED exige servir HASTA los episodios
+    // de MID_DAY, y en la página cuyo cursor baja a ese día una reseña mal
+    // ordenada se perdería. El corte por tarjetas sirve la reseña ya en la
+    // primera página (ordena en HOY, como debe), así que el cursor registrado
+    // parte de HOY; la garantía de no-vacuidad la da que el recorrido cruza a
+    // MID_DAY (sus episodios están en EXPECTED).
+    expect(cursorDay(pages, 0)).toBe(TODAY);
   });
 });
 
@@ -418,8 +430,11 @@ describe("sesión fechada en el futuro y registrada días antes", () => {
     const { served, pages } = await walk(2, FUTURE_SESSION_DATA);
     expect(new Set(served).size).toBe(served.length);
     expect([...served].sort()).toEqual(FUTURE_SESSION_EXPECTED_IDS);
-    // Igual que arriba: sin este cursor el recorrido no ejercita nada.
-    expect(cursorDay(pages, 1)).toBe(FUTURE_SESSION_LOGGED_DAY);
+    // Igual que arriba: la sesión con fecha FUTURA (session_date de HOY,
+    // registrada 5 días antes) ordena en HOY y se sirve en la primera página; el
+    // recorrido cruza a FUTURE_SESSION_LOGGED_DAY (sus episodios están en
+    // EXPECTED), que es donde una sesión mal ordenada por created_at se perdería.
+    expect(cursorDay(pages, 0)).toBe(TODAY);
   });
 });
 
