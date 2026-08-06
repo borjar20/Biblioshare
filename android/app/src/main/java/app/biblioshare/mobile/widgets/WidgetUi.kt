@@ -243,10 +243,10 @@ fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent, heightDp:
  *  progreso (o "Sin progreso"), toda la fila clicable. Sin `WidgetCard`: vive
  *  dentro de la tarjeta del widget, no es una pantalla propia. */
 @Composable
-fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
+fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action, modifier: GlanceModifier = GlanceModifier) {
     val context = LocalContext.current
     Row(
-        modifier = GlanceModifier.fillMaxWidth().clickable(onClick).padding(vertical = 6.dp),
+        modifier = GlanceModifier.fillMaxWidth().then(modifier).clickable(onClick).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Cover(cover, width = 36, height = 54)
@@ -276,9 +276,12 @@ fun FocusZone(
     running: TimerLogic.Running?,
     dailyGoal: DailyGoalData? = null,
     compact: Boolean = false,
+    modifier: GlanceModifier = GlanceModifier,
 ) {
     val ctx = LocalContext.current
-    Column(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_featured_bg))) {
+    // `modifier` (p. ej. defaultWeight) permite que el foco LLENE el alto cuando
+    // no hay nada debajo (Completo con crono activo, #498).
+    Column(GlanceModifier.fillMaxWidth().then(modifier).background(ImageProvider(R.drawable.widget_featured_bg))) {
         Row(
             GlanceModifier.fillMaxWidth().padding(
                 start = if (compact) 14.dp else 16.dp,
@@ -309,6 +312,9 @@ fun FocusZone(
                 }
             }
         }
+        // Al llenar el alto, empuja la sesión al fondo (reparte el hueco arriba y
+        // abajo); al envolver, el peso no reparte nada y queda pegado como antes.
+        Spacer(GlanceModifier.defaultWeight())
         Box(GlanceModifier.fillMaxWidth().padding(start = 4.dp).height(1.dp).background(WidgetPalette.border)) {}
         SessionTimerView(data, running)
     }
@@ -371,14 +377,13 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
                             .clickable(actionRunCallback<RegisterTimerAction>()),
                     )
                 }
-                Spacer(GlanceModifier.height(6.dp))
-                Box(
+                Spacer(GlanceModifier.height(8.dp))
+                ActionCell(
+                    ctx.getString(R.string.widget_discard),
+                    WidgetPalette.fgSoft,
                     GlanceModifier.fillMaxWidth()
                         .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(ctx.getString(R.string.widget_discard), style = softStyle())
-                }
+                )
             }
         }
     } else {

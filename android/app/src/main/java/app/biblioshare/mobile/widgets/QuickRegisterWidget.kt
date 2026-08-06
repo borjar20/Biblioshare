@@ -98,13 +98,27 @@ private fun PickStep(list: List<CurrentProgressData>, covers: Map<String, Bitmap
             Text(context.getString(R.string.widget_items_in_progress_count, list.size), style = softStyle())
         }
         Spacer(GlanceModifier.height(6.dp))
-        LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
-            items(list) { item ->
+        // Pocas obras (≤3, lo que cabe holgado en 4x2): filas repartidas con peso
+        // que LLENAN el alto (sin hueco). Más obras: LazyColumn con scroll nativo,
+        // manteniendo el tamaño actual de fila (#498).
+        if (list.size <= 3) {
+            list.forEach { item ->
                 CompactRow(
                     item = item,
                     cover = item.coverUrl?.let(covers::get),
                     onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
+                    modifier = GlanceModifier.defaultWeight(),
                 )
+            }
+        } else {
+            LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
+                items(list) { item ->
+                    CompactRow(
+                        item = item,
+                        cover = item.coverUrl?.let(covers::get),
+                        onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
+                    )
+                }
             }
         }
     }
