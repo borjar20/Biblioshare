@@ -77,6 +77,13 @@ class TimerStoreTest {
         assertEquals(700L, elapsedMs(TimerLogic.get(m)!!, now = 2_200L)) // 500 + 200
     }
 
+    @Test fun `pause con reloj hacia atras no persiste acumulado negativo`() {
+        val m = HashMap<String, String>()
+        TimerLogic.start(m, "p1", now = 1_000L)
+        TimerLogic.pause(m, now = 500L) // el reloj del sistema retrocedió
+        assertEquals(0L, elapsedMs(TimerLogic.get(m)!!, now = 9_999L))
+    }
+
     @Test fun `set (espejo app) restaura estado pausado`() {
         val m = HashMap<String, String>()
         TimerLogic.set(m, "p1", startedAt = 0L, firstStartedAt = 100L, accumulatedMs = 800L, running = false)

@@ -17,6 +17,11 @@ class WidgetTimerTest {
     @Test fun `base del chronometer resta el transcurrido`() {
         assertEquals(9_000L, chronometerBase(startedAt = 1_000L, now = 2_000L, elapsedRealtime = 10_000L))
     }
+    @Test fun `elapsedMs corriendo no es negativo con reloj hacia atras`() {
+        val r = TimerLogic.Running("p1", startedAt = 1_000L, firstStartedAt = 1_000L, accumulatedMs = 0L, running = true)
+        assertEquals(0L, elapsedMs(r, now = 500L))
+    }
+
     @Test fun `fmtElapsed MM SS con ceros y con horas`() {
         assertEquals("00:40", fmtElapsed(40_000L))
         assertEquals("05:00", fmtElapsed(5 * 60_000L))

@@ -11,7 +11,7 @@ fun chronometerBase(startedAt: Long, now: Long, elapsedRealtime: Long): Long =
 /** Elapsed real del cronómetro con pausa: corriendo cuenta desde el ancla
  *  efectiva; pausado es el acumulado congelado (#498, Fase B). */
 fun elapsedMs(r: TimerLogic.Running, now: Long): Long =
-    if (r.running) now - r.startedAt else r.accumulatedMs
+    if (r.running) (now - r.startedAt).coerceAtLeast(0) else r.accumulatedMs
 
 fun elapsedMinutes(ms: Long): Int = Math.round(ms / 60_000.0).toInt()
 

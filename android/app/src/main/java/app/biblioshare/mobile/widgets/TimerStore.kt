@@ -53,8 +53,11 @@ object TimerLogic {
     fun pause(m: MutableMap<String, String>, now: Long) {
         val r = get(m) ?: return
         if (!r.running) return
+        // coerceAtLeast(0): si el reloj del sistema retrocede (corrección NTP,
+        // cambio manual) entre arrancar y pausar, no persistir un acumulado
+        // negativo — misma defensa que `max(0, running)` en timer.ts (#498).
         set(m, r.passId, startedAt = r.startedAt, firstStartedAt = r.firstStartedAt,
-            accumulatedMs = now - r.startedAt, running = false)
+            accumulatedMs = (now - r.startedAt).coerceAtLeast(0), running = false)
     }
 
     /** Reanuda: reancla `now - accumulatedMs` para no perder lo ya contado. */
