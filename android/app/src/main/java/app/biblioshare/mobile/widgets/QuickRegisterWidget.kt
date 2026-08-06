@@ -148,7 +148,9 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: Tim
                 Text(ctx.getString(R.string.widget_register), style = titleStyle())
             }
             Spacer(GlanceModifier.height(8.dp))
-            FocusZone(item, cover, running, dailyGoal = null, compact = true)
+            // defaultWeight: el foco llena el alto sobrante bajo la cabecera (sin
+            // hueco); su spacer interno empuja Sesión/Registrar al fondo (#498).
+            FocusZone(item, cover, running, dailyGoal = null, compact = true, modifier = GlanceModifier.defaultWeight())
         }
     }
 }
