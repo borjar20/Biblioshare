@@ -5,7 +5,8 @@ import { getInteractionSummary, type InteractionComment } from "./interactions";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
-import { groupPersonEntries, type PersonGroupEntry } from "./group-feed-entries";
+import { groupPersonEntries, descriptorForEvent, type PersonGroupEntry } from "./group-feed-entries";
+import { planFeedPageCut } from "./feed-paging";
 import {
   compareEntries,
   cursorSourceFilter,
@@ -175,6 +176,13 @@ export async function getFeed(
   options: FeedOptions = {},
 ): Promise<FeedPage> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  // La agrupación colapsa varias filas en una tarjeta, así que para completar
+  // una tarjeta de N miembros hacen falta N filas dentro del fetch. Se pide el
+  // doble de `pageSize` por fuente: da holgura para grupos de hasta ~2×pageSize
+  // sin partirlos (un import de docenas de títulos cabe). Un grupo aún mayor es
+  // el residuo acotado de #391. Si una tarjeta toca el límite del fetch,
+  // `planFeedPageCut` la retiene hasta la siguiente tanda (por `openTailIds`).
+  const fetchLimit = pageSize * 2;
   const cursor = options.cursor ? parseCursor(options.cursor) : null;
 
   const actorId = options.actorId;
@@ -209,7 +217,7 @@ export async function getFeed(
           cursorFilter: cursor
             ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor)
             : undefined,
-          pageSize,
+          pageSize: fetchLimit,
         })
       : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
   ]);
@@ -271,7 +279,7 @@ export async function getFeed(
             // hora de registro son la MISMA (un alta no se puede backdatear).
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
-            .limit(pageSize);
+            .limit(fetchLimit);
           if (itemTypes) q = q.in("item_type", itemTypes);
           if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.added, cursor));
           return q;
@@ -291,7 +299,7 @@ export async function getFeed(
             .order("session_date", { ascending: false })
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
-            .limit(pageSize);
+            .limit(fetchLimit);
           if (itemTypes) q = q.in("passes.item_type", itemTypes);
           if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.progressed, cursor));
           return q;
@@ -323,7 +331,7 @@ export async function getFeed(
             .order("finished_on", { ascending: false })
             .order("updated_at", { ascending: false })
             .order("id", { ascending: false })
-            .limit(pageSize);
+            .limit(fetchLimit);
           if (itemTypes) q = q.in("item_type", itemTypes);
           if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.diary, cursor));
           return q;
@@ -340,7 +348,7 @@ export async function getFeed(
             .order("watched_on", { ascending: false })
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
-            .limit(pageSize);
+            .limit(fetchLimit);
           if (reviewsOnly) q = q.not("review", "is", null);
           if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.episodes, cursor));
           return q;
@@ -406,11 +414,11 @@ export async function getFeed(
   // texto caen), el feed se da por agotado y la paginación muere en la primera
   // tanda: las reseñas antiguas no se cargarían nunca.
   const allExhausted =
-    addedRows.length < pageSize &&
-    progressedRows.length < pageSize &&
-    diaryRowsRaw.length < pageSize &&
-    episodeRows.length < pageSize &&
-    clubResult.rowCount < pageSize;
+    addedRows.length < fetchLimit &&
+    progressedRows.length < fetchLimit &&
+    diaryRowsRaw.length < fetchLimit &&
+    episodeRows.length < fetchLimit &&
+    clubResult.rowCount < fetchLimit;
 
   // progress_sessions no tiene item_type propio (cuelga del pase vía
   // pass_id): se resuelve del pase embebido por la query de arriba
@@ -745,7 +753,49 @@ export async function getFeed(
   // Los filtros de query son inclusivos en el borde, así que aquí se descarta lo
   // ya servido en páginas anteriores — incluido el propio evento del cursor.
   const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
-  const page = fresh.slice(0, pageSize);
+  // El corte NO es un simple slice(pageSize): la agrupación de presentación
+  // colapsa filas en tarjetas y esas tarjetas SE SOLAPAN en el orden (un
+  // timeline de avances contiene eventos sueltos de otros dentro de su lapso).
+  // Cortar por fila cruda partiría tarjetas entre páginas (#295/#303) o perdería
+  // las filas que viven dentro del lapso de un grupo. `planFeedPageCut` corta en
+  // un BORDE que ningún grupo cruza: el cursor sigue siendo el keyset crudo de la
+  // última fila servida (`makeCursor(last)` abajo, formato y filtro SQL intactos)
+  // y la siguiente tanda continúa sin duplicar ni perder. Ver feed-paging.ts.
+  //
+  // ponytail: residuo acotado (#391) — un import masivo del MISMO instante que
+  // exceda `fetchLimit` sin hueco interno puede quedar como dos tarjetas
+  // "añadió N" entre páginas y con el conteo de lo traído, no el total. Decidido
+  // "acotar sin count": una query de count exacta queda como refinamiento.
+  //
+  // `openTailIds`: por cada fuente que tocó su límite de fetch (pudo dejar filas
+  // sin traer), el id del evento más VIEJO suyo que sigue en `fresh`. Una tarjeta
+  // que lo contenga podría tener más miembros más allá del fetch — el
+  // planificador la retiene para no partirla. `fresh` está ordenado desc, así que
+  // el más viejo de cada fuente es el último que aparece.
+  const sourceLimitHit: Array<[string, boolean]> = [
+    [FEED_SOURCE_COLUMNS.added.eventIdPrefix, addedRows.length >= fetchLimit],
+    [FEED_SOURCE_COLUMNS.progressed.eventIdPrefix, progressedRows.length >= fetchLimit],
+    [FEED_SOURCE_COLUMNS.diary.eventIdPrefix, diaryRowsRaw.length >= fetchLimit],
+    [FEED_SOURCE_COLUMNS.episodes.eventIdPrefix, episodeRows.length >= fetchLimit],
+    [FEED_SOURCE_COLUMNS.clubs.eventIdPrefix, clubResult.rowCount >= fetchLimit],
+  ];
+  const openTailIds = new Set<string>();
+  for (const [prefix, limitHit] of sourceLimitHit) {
+    if (!limitHit) continue;
+    for (let i = fresh.length - 1; i >= 0; i--) {
+      if (fresh[i].id.startsWith(prefix)) {
+        openTailIds.add(fresh[i].id);
+        break;
+      }
+    }
+  }
+  const cut = planFeedPageCut(
+    fresh,
+    (e) => (e.source === "person" ? descriptorForEvent(e.event) : null),
+    pageSize,
+    openTailIds,
+  );
+  const page = fresh.slice(0, cut);
 
   const addedPageEvents = page.flatMap((entry) =>
     entry.source === "person" && entry.event.verb === "added"
@@ -837,8 +887,15 @@ export async function getFeed(
     return { ...entry, event };
   });
 
+  // El feed se agota SOLO cuando se sirvió hasta el final del fetch (`cut` llegó
+  // al final de `fresh`) Y ninguna fuente tenía más. `planFeedPageCut` puede
+  // cortar ANTES del final aunque las fuentes estén agotadas (corta en un borde
+  // limpio tras `pageSize` tarjetas): en ese caso quedan filas en `fresh` y hay
+  // que seguir, o se pierden (era el bug de perder filas al meter el corte por
+  // tarjetas).
   const last = page[page.length - 1];
-  const nextCursor = allExhausted || !last ? null : makeCursor(last);
+  const servedAll = cut >= fresh.length;
+  const nextCursor = (allExhausted && servedAll) || !last ? null : makeCursor(last);
 
   const knownUsernames = await resolveKnownMentions(supabase, [
     ...personEvents.map((e) => e.reviewExcerpt).filter((t): t is string => t !== null),

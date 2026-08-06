@@ -4,14 +4,8 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { FeedEntry } from "@/lib/social/feed";
 import { loadMoreProfileFeed } from "@/lib/social/feed-actions";
+import { bucketProfileFeed } from "@/lib/social/profile-feed-buckets";
 import { FeedItem } from "./feed-item";
-
-// Agrupa por día natural. La clave es la parte de fecha (los eventos "added"
-// traen timestamp completo; los demás, date), para no partir un mismo día por
-// husos horarios.
-function dayKey(eventDate: string): string {
-  return eventDate.slice(0, 10);
-}
 
 // La Actividad del perfil (plan 05, P4/P5): el mismo feed que ve un visitante,
 // agrupado por día — cada tarjeta se despacha con FeedItem, igual que el feed
@@ -65,15 +59,10 @@ export function ProfileActivityFeed({
     });
   }
 
-  // Agrupación en orden: los eventos ya vienen ordenados por fecha desc, así
-  // que basta recorrerlos y abrir un grupo nuevo cuando cambia el día.
-  const groups: { key: string; entries: FeedEntry[] }[] = [];
-  for (const entry of events) {
-    const key = dayKey(entry.eventDate);
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) last.entries.push(entry);
-    else groups.push({ key, entries: [entry] });
-  }
+  // Bucketiza por día natural. Reparte las tarjetas de altas que abarcan 2 días
+  // (person-group `added`) en un sub-grupo por día, para que las altas de ayer
+  // caigan bajo "Ayer" y no queden ocultas bajo "Hoy" (#348).
+  const groups = bucketProfileFeed(events);
 
   return (
     <div className="flex flex-col gap-6">
