@@ -11,8 +11,13 @@ export async function getWhoToFollow(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<PersonSuggestion[]> {
+  // Sobre-pedimos (30) porque los seguidos se filtran aquí, no en la consulta:
+  // con el LIMIT de 6 de onboarding, un usuario que ya siga a esos 6 primeros
+  // dejaba la tarjeta vacía (issue #297). La tarjeta pinta 3.
+  // ponytail: over-fetch fijo; si alguien sigue a >27 de los 30 primeros perfiles
+  // públicos la tarjeta aún encoge — anti-join en SQL si llega a molestar.
   const [{ profiles }, following] = await Promise.all([
-    getSocialSuggestions(supabase, userId),
+    getSocialSuggestions(supabase, userId, 30),
     supabase.from("follows").select("followee_id").eq("follower_id", userId),
   ]);
   const excluded = new Set((following.data ?? []).map((f) => f.followee_id));
