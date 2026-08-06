@@ -1,5 +1,9 @@
 package app.biblioshare.mobile.auth
 
+import app.biblioshare.mobile.widgets.WidgetRefresh
+import app.biblioshare.mobile.widgets.WidgetSnapshotStore
+import app.biblioshare.mobile.widgets.WidgetSync
+import app.biblioshare.mobile.widgets.WidgetWork
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -25,7 +29,13 @@ class NativeAuthPlugin : Plugin() {
             return
         }
         Thread {
-            NativeSupabase.establish(context, url, anonKey, tokenHash)
+            val userId = NativeSupabase.establish(context, url, anonKey, tokenHash)
+            if (userId != null) {
+                // Con sesión: refresco periódico en segundo plano + primer
+                // pintado inmediato tirando de Supabase (no esperamos al WebView).
+                WidgetWork.schedulePeriodic(context)
+                WidgetSync.refresh(context)
+            }
             resolveStatus(call)
         }.start()
     }
@@ -34,6 +44,11 @@ class NativeAuthPlugin : Plugin() {
     fun signOut(call: PluginCall) {
         Thread {
             NativeSupabase.signOut(context)
+            // Sin sesión no hay refrescos, y el widget se vacía (no dejar datos
+            // de la cuenta anterior a la vista).
+            WidgetWork.cancel(context)
+            WidgetSnapshotStore.clear(context)
+            WidgetRefresh.updateAll(context)
             call.resolve()
         }.start()
     }

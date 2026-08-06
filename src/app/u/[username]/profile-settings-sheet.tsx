@@ -126,11 +126,16 @@ export function ProfileSettingsSheet({
                     } catch {
                       // best-effort
                     }
-                    // Widgets: fuera snapshot y portadas ANTES de salir, para
-                    // que la pantalla de inicio no siga enseñando datos de la
-                    // sesión cerrada. Best-effort, no bloquea el logout.
-                    const { clearWidgetsOnLogout } = await import("@/lib/widgets/sync");
-                    await clearWidgetsOnLogout();
+                    // Sesión nativa (arquitectura híbrida): revócala ANTES de
+                    // salir. teardown cancela el refresco periódico y vacía el
+                    // widget, para que la pantalla de inicio no siga enseñando
+                    // datos de la sesión cerrada. Best-effort, no bloquea el logout.
+                    try {
+                      const { teardownNativeSession } = await import("@/lib/native/native-auth");
+                      await teardownNativeSession();
+                    } catch {
+                      // best-effort
+                    }
                   }
                   await logout();
                 })

@@ -119,6 +119,30 @@ object NativeSupabase {
         return if (userId.isEmpty()) null else Who(userId)
     }
 
+    /**
+     * ¿Hay sesión guardada? Solo mira los tokens en disco (sin red), para que el
+     * refresco en segundo plano no dispare llamadas cuando ya no hay sesión.
+     */
+    fun hasSession(context: Context): Boolean =
+        prefs(context).getString(K_REFRESH, null) != null
+
+    /**
+     * Llama una RPC de PostgREST con la sesión nativa y devuelve el cuerpo JSON
+     * crudo, o null si no hay sesión viva o el servidor no respondió 2xx. Sin
+     * argumentos: cuerpo "{}". La RLS de la función filtra por auth.uid(), así
+     * que el nativo solo puede leer lo suyo. Base del transporte de widgets
+     * (arquitectura híbrida, Fase 2): get_widget_snapshot devuelve el JSON v2
+     * que el parser ya consume.
+     */
+    fun rpc(context: Context, fn: String): String? {
+        val token = freshAccessToken(context) ?: return null
+        val p = prefs(context)
+        val url = p.getString(K_URL, null) ?: return null
+        val anon = p.getString(K_ANON, null) ?: return null
+        val (code, text) = request("POST", "$url/rest/v1/rpc/$fn", anon, token, "{}")
+        return if (code in 200..299) text else null
+    }
+
     fun signOut(context: Context) {
         val p = prefs(context)
         val url = p.getString(K_URL, null)
