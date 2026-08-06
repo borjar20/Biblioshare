@@ -97,7 +97,11 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
         // Zona de foco compartida con el paso 2 del Reducido; el Completo mantiene
         // la barra «Meta de hoy». Racha/semana se retiran para caber en 4x3 (#498).
         FocusZone(f, f.coverUrl?.let(covers::get), running, dailyGoal = state.dailyGoal)
-        if (state.others.isNotEmpty()) {
+        // Con el cronómetro activo para el destacado, el foco crece (reloj +
+        // acciones) y aplastaría el carrusel: lo ocultamos mientras dure la
+        // sesión (#498). El foco vuelve a encogerse al registrar/descartar.
+        val timerActive = running?.passId == f.passId
+        if (state.others.isNotEmpty() && !timerActive) {
             Spacer(GlanceModifier.height(10.dp))
             Text(ctx.getString(R.string.widget_continue_where_left_off), style = softStyle())
             Spacer(GlanceModifier.height(6.dp))
