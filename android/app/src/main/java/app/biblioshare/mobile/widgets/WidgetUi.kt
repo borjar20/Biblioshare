@@ -18,9 +18,6 @@ import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.lazy.GridCells
-import androidx.glance.appwidget.lazy.LazyVerticalGrid
-import androidx.glance.appwidget.lazy.items
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -153,37 +150,38 @@ fun ActionCell(label: String, color: ColorProvider, modifier: GlanceModifier) {
     }
 }
 
-/** Rejilla de "Continúa donde lo dejaste": 3 columnas, portada + título a una
- *  línea, con SCROLL nativo (#498) cuando hay muchas en curso. Tocar una celda
- *  cambia el destacado (Glance state, Task 8).
- *  LazyVerticalGrid: en API 33+ los ítems viajan inline dentro del RemoteViews
- *  (compatible con el empuje compose()+updateAppWidget de A11); en 31–32 se sirven
- *  vía GlanceRemoteViewsService con el appWidgetId real. `defaultWeight` le da el
- *  alto sobrante bajo el foco para que scrollee dentro de su banda. */
+/** Carrusel horizontal de "Continúa donde lo dejaste": tarjetas de ANCHO FIJO,
+ *  cada una portada (proporción 2:3) + título a una línea (se ellipsa por el
+ *  ancho fijo) + barra de progreso muy fina. Tocar una tarjeta cambia el
+ *  destacado (Glance state, Task 8).
+ *
+ *  Glance 1.1.1 NO tiene scroll horizontal (solo LazyColumn/LazyVerticalGrid
+ *  scrollan), así que es un Row que muestra las que caben; el resto se alcanza
+ *  con «Ver todos» de la cabecera (que ya trae el total real). Un Row NO
+ *  virtualiza —hornea toda portada en el RemoteViews—, así que se acota:
+ *  ponytail: cap CAROUSEL_MAX, techo de memoria de bitmaps + tarjetas fuera de
+ *  pantalla inútiles; «Ver todos» cubre el resto. */
 @Composable
-fun ContinueGrid(
-    others: List<CurrentProgressData>,
-    covers: Map<String, Bitmap?>,
-    modifier: GlanceModifier = GlanceModifier,
-) {
-    // El peso (defaultWeight) lo pone quien la llama: es una extensión de
-    // ColumnScope y aquí, como raíz de ContinueGrid, no hay scope de Column.
-    LazyVerticalGrid(
-        gridCells = GridCells.Fixed(3),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        items(others) { d ->
+fun ContinueCarousel(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+    Row(GlanceModifier.fillMaxWidth()) {
+        others.take(CAROUSEL_MAX).forEach { d ->
             Column(
-                modifier = GlanceModifier.fillMaxWidth().padding(end = 6.dp, bottom = 8.dp)
+                modifier = GlanceModifier.width(CAROUSEL_CARD_W.dp).padding(end = 8.dp)
                     .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
             ) {
-                Cover(d.coverUrl?.let(covers::get), width = 48, height = 70)
+                Cover(d.coverUrl?.let(covers::get), width = CAROUSEL_CARD_W, height = CAROUSEL_COVER_H)
                 Spacer(GlanceModifier.height(4.dp))
                 Text(d.title, style = softStyle(), maxLines = 1)
+                Spacer(GlanceModifier.height(3.dp))
+                SoftBar(d.percentage ?: 0, heightDp = 3)
             }
         }
     }
 }
+
+private const val CAROUSEL_CARD_W = 60
+private const val CAROUSEL_COVER_H = 90 // 2:3 sobre el ancho fijo
+private const val CAROUSEL_MAX = 6 // más no caben ni scrollan (Glance sin scroll horizontal)
 
 /** Pastilla dorada con la racha en días (icono + texto). */
 @Composable
@@ -220,12 +218,13 @@ fun WeekDots(week: List<WidgetWeekDay>) {
     }
 }
 
-/** Barra de progreso fina; usa el indicador nativo de Glance (no hay fillMaxWidth(fraction) en 1.1.1). */
+/** Barra de progreso fina; usa el indicador nativo de Glance (no hay fillMaxWidth(fraction) en 1.1.1).
+ *  `heightDp` permite una barra «muy fina» en las tarjetas del carrusel. */
 @Composable
-fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent) {
+fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent, heightDp: Int = 6) {
     LinearProgressIndicator(
         progress = (percent.coerceIn(0, 100)) / 100f,
-        modifier = GlanceModifier.fillMaxWidth().height(6.dp),
+        modifier = GlanceModifier.fillMaxWidth().height(heightDp.dp),
         color = color,
         backgroundColor = WidgetPalette.track,
     )
