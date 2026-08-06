@@ -321,16 +321,17 @@ export async function getLibraryItems(
 // los que tiene, no los ~45 del vocabulario entero). Cuenta obras distintas por
 // género — una obra con varios géneros suma 1 a cada uno, no se pesa por total.
 //
-// `itemType` opcional: cuando la página bloquea implícitamente un tipo (lock de
-// onboarding con un único interés, o `?type=` explícito) hay que pasar ese
-// MISMO tipo aquí para que la faceta no ofrezca chips de un tipo que la rejilla
-// no está mostrando (si no, un chip filtra a 0 resultados). Sin él, se cuenta
-// la biblioteca activa completa (comportamiento previo, sin cambios).
-// La faceta no refleja el filtro de estado activo — ver issue #306.
+// `itemType`/`status` opcionales: cuando la página acota la rejilla (lock de
+// onboarding con un único interés o `?type=`; filtro de estado `?status=`) hay
+// que pasar los MISMOS filtros aquí para que la faceta no ofrezca chips de un
+// subconjunto que la rejilla no está mostrando (si no, un chip filtra a 0
+// resultados — issue #306 para `status`, mismo defecto que ya se acotó por
+// `itemType`). Sin ellos, se cuenta la biblioteca activa completa (sin cambios).
 export async function getUserGenres(
   supabase: SupabaseServerClient,
   userId: string,
-  itemType?: ItemType
+  itemType?: ItemType,
+  status?: MediaStatus
 ): Promise<{ slug: string; label: string; count: number }[]> {
   let query = supabase
     .from("passes")
@@ -338,6 +339,7 @@ export async function getUserGenres(
     .eq("user_id", userId)
     .eq("is_active", true);
   if (itemType) query = query.eq("item_type", itemType);
+  if (status) query = query.eq("status", status);
   const { data: entries } = await query;
 
   const refs = (entries ?? []).map((e) => ({

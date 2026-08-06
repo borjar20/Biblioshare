@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { ItemType } from "@/lib/catalog/types";
 import type { ImportCandidate, ImportRow } from "@/lib/import/types";
 import { resolveAmbiguousImportRow } from "./actions";
+import { CandidateList } from "./candidate-list";
 import { UnmatchedRowForm } from "./unmatched-row-form";
 
 /**
@@ -75,56 +75,7 @@ export function AmbiguousRowForm({
         <p className="text-xs text-muted-foreground">{t("ambiguous.hint")}</p>
       </div>
 
-      <ul className="flex flex-col gap-2">
-        {candidates.map((candidate) => {
-          const alt = altTitles(candidate);
-          return (
-          <li key={candidate.externalId}>
-            <button
-              type="button"
-              onClick={() => choose(candidate)}
-              disabled={pending}
-              className="flex w-full items-start gap-3 rounded-lg border border-border p-2 text-left transition hover:border-accent disabled:opacity-50"
-            >
-              <span className="relative aspect-2/3 w-10 shrink-0 overflow-hidden rounded bg-surface-muted">
-                {candidate.coverUrl && (
-                  <Image
-                    src={candidate.coverUrl}
-                    alt=""
-                    fill
-                    sizes="40px"
-                    className="object-cover"
-                  />
-                )}
-              </span>
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-sm font-medium text-foreground">
-                  {candidate.title}
-                  {candidate.year !== null && (
-                    <span className="text-muted-foreground"> ({candidate.year})</span>
-                  )}
-                </span>
-                {/* Los otros dos títulos (original e inglés) solo si aportan algo:
-                    son justo lo que le dice al usuario que "La visita" es la peli
-                    que él anotó como "The Visit". */}
-                {alt.length > 0 && (
-                  <span className="line-clamp-1 font-serif text-[11px] italic text-muted-foreground">
-                    {alt.join(" · ")}
-                  </span>
-                )}
-                {/* La sinopsis es lo ÚNICO que distingue dos películas con el
-                    mismo título y el mismo año, que es el caso que trae aquí. */}
-                {candidate.synopsis && (
-                  <span className="line-clamp-2 text-xs text-muted-foreground">
-                    {candidate.synopsis}
-                  </span>
-                )}
-              </span>
-            </button>
-          </li>
-          );
-        })}
-      </ul>
+      <CandidateList candidates={candidates} onChoose={choose} disabled={pending} />
 
       <Button
         type="button"
@@ -137,15 +88,4 @@ export function AmbiguousRowForm({
       </Button>
     </div>
   );
-}
-
-function altTitles(candidate: ImportCandidate): string[] {
-  const seen = new Set([candidate.title.toLowerCase()]);
-  const out: string[] = [];
-  for (const title of [candidate.englishTitle, candidate.originalTitle]) {
-    if (!title || seen.has(title.toLowerCase())) continue;
-    seen.add(title.toLowerCase());
-    out.push(title);
-  }
-  return out;
 }

@@ -86,6 +86,7 @@ export default async function PendingImportPage() {
                     itemType={p.itemType}
                     row={p.row}
                     ownerName={p.ownerName ?? null}
+                    candidates={p.candidates}
                   />
                 </li>
               ))}
