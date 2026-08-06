@@ -17,9 +17,9 @@ class WidgetTimerTest {
     @Test fun `base del chronometer resta el transcurrido`() {
         assertEquals(9_000L, chronometerBase(startedAt = 1_000L, now = 2_000L, elapsedRealtime = 10_000L))
     }
-    @Test fun `fmtElapsed MM SS y con horas`() {
-        assertEquals("0:40", fmtElapsed(40_000L))
-        assertEquals("5:00", fmtElapsed(5 * 60_000L))
+    @Test fun `fmtElapsed MM SS con ceros y con horas`() {
+        assertEquals("00:40", fmtElapsed(40_000L))
+        assertEquals("05:00", fmtElapsed(5 * 60_000L))
         assertEquals("1:02:03", fmtElapsed((3600 + 2 * 60 + 3) * 1000L))
     }
 }

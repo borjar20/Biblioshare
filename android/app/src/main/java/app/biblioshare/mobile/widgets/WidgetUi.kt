@@ -346,13 +346,13 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
                     // Cronómetro centrado: el Chronometer es match_parent + gravity center.
                     AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
                 } else {
-                    // Pausado: tiempo congelado, mismo tamaño y sitio que el reloj vivo.
-                    Box(GlanceModifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            fmtElapsed(elapsedMs(running, now)),
-                            style = TextStyle(color = WidgetPalette.accent, fontSize = 24.sp),
-                        )
+                    // Pausado: tiempo congelado con el MISMO TextView monospace que el
+                    // Chronometer (widget_static_time.xml) — así no cambia la tipografía
+                    // ni el relleno de ceros al pausar (#498).
+                    val rv = RemoteViews(ctx.packageName, R.layout.widget_static_time).apply {
+                        setTextViewText(R.id.widget_static_time, fmtElapsed(elapsedMs(running, now)))
                     }
+                    AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
                 }
                 Spacer(GlanceModifier.height(8.dp))
                 val toggle = if (running.running) actionRunCallback<PauseTimerAction>()
