@@ -200,6 +200,16 @@ ver «Social fase 0»)**]**
 > `20260826_confirm_checkpoint_lee_passes.sql` y `20260827_hitos_autodeclarados.sql`; sin
 > columnas nuevas ni cambios de grants (ACL de la función preservada por `create or replace`
 > y verificada: `authenticated=X`, sin `anon`).
+>
+> **Delta del 2026-08-06 — la vista `public.pass_reviews` proyecta ahora `d.updated_at` (Bloque 3
+> del triage #496, issue #345), aplicado y verificado en DEV y EN PROD** (`pg_get_viewdef`).
+> `updated_at` se añadió AL FINAL (`create or replace view` solo admite columnas nuevas al final;
+> el WHERE de RLS no cambió, grants a `anon, authenticated` preservados). Motivo: es la hora REAL
+> del terminado —un pase se CREA al añadir la obra y el «terminado» llega después como UPDATE, así
+> que `created_at` puede ir semanas por delante—. `recent-reviews.ts` y `shared-activity.ts` ya
+> leían de esta vista y seguían con `created_at` porque la vista no lo exponía; ahora usan
+> `updated_at` como `sortDate`, igual que `getFeed`. Trade-off asumido (mismo que el feed):
+> `updated_at` lo mueve cualquier update del pase. Migración `20260833_pass_reviews_updated_at.sql`.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -778,6 +788,18 @@ y `20260811_spawn_linked_activity_defaults.sql`).** Cuatro huecos de la misma ca
   desde la UI (`finishActivity` solo se llama desde la ficha de actividad, y un evento no
   tiene ficha: `hasDetailView: false`), pero sí por la puerta de atrás. Ahora el invariante
   es del esquema, no del comentario.
+
+**Endurecimiento del 2026-08-06 (issue #129, dev y prod, `20260831_club_activity_role_gate_first.sql`).**
+El gate de rol (`has_min_club_role`) se evaluaba DESPUÉS de los checks de existencia/kind/estado
+en `update_club_event`, `set_club_event_state`, `finish_club_activity` y `archive_club_activity`.
+Como son `SECURITY DEFINER`, cualquier `authenticated` (sin ser miembro) distinguía por el mensaje
+de error si un uuid existía, si era un evento y si estaba activo — un oráculo sobre lo que la RLS de
+SELECT (`club_activities select member`) protege. Ahora el rol va PRIMERO: con la fila inexistente
+`has_min_club_role(null, …)` es `false` y el no-autorizado recibe `forbidden` genérico. Solo tras
+pasar el gate (= eres moderador del club dueño, que ya puede ver la fila) se revela kind/estado.
+`finish_club_activity` usa `coalesce(v_created_by = auth.uid(), false)` para su rama creador-O-mod
+(un `null = uuid` daría NULL y dejaría pasar el gate). `create_club_event` ya comprobaba rol primero
+desde `20260823`, no se tocó.
 
 El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
 fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.

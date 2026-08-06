@@ -2381,6 +2381,7 @@ export type Database = {
           review: string | null
           started_on: string | null
           status: Database["public"]["Enums"]["media_status"] | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -2398,6 +2399,7 @@ export type Database = {
           review?: string | null
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"] | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2415,6 +2417,7 @@ export type Database = {
           review?: string | null
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"] | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -2576,6 +2579,10 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      editions_in_use: {
+        Args: { p_edition_ids: string[] }
+        Returns: string[]
       }
       ensure_club_round: {
         Args: {

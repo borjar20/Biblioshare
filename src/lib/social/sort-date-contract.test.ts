@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import { getRecentReviews } from "./recent-reviews";
 import { resolveSharedActivity } from "./shared-activity";
 
-// Contrato de `FeedEvent.sortDate`: SIEMPRE un timestamp real (created_at).
-// `pass_reviews` es una VISTA y los tipos generados marcan todas sus columnas
-// nullable, así que es tentador caer a `finished_on` — pero eso mete un valor
-// date-only donde el resto del sistema espera hora, y reintroduce los dos
-// defectos que este trabajo quita:
+// Contrato de `FeedEvent.sortDate`: SIEMPRE un timestamp real (updated_at, #345
+// — la hora real del terminado). `pass_reviews` es una VISTA y los tipos
+// generados marcan todas sus columnas nullable, así que es tentador caer a
+// `finished_on` — pero eso mete un valor date-only donde el resto del sistema
+// espera hora, y reintroduce los dos defectos que este trabajo quita:
 //   · "2026-07-15" < "2026-07-15T09:00+00:00" como cadena: la fila cae por
 //     debajo de TODO evento con hora de su mismo día.
 //   · dos filas así empatan y el desempate se lo lleva un uuid aleatorio.
 // El resto de columnas nullables de la vista (id/user_id/item_type/item_id) ya
-// se narrowan; created_at tiene que ir por el mismo camino.
+// se narrowan; updated_at tiene que ir por el mismo camino.
 
 const USER_ID = "user-1";
 const ITEM_ID = "book-1";
@@ -72,16 +72,16 @@ function review(overrides: Row): Row {
     finished_on: "2026-07-15",
     rating: null,
     review: "texto",
-    created_at: "2026-07-20T09:00:00.000+00:00",
+    updated_at: "2026-07-20T09:00:00.000+00:00",
     ...overrides,
   };
 }
 
 describe("sortDate nunca es date-only", () => {
-  it("getRecentReviews no sirve una reseña sin created_at con la fecha semántica", async () => {
+  it("getRecentReviews no sirve una reseña sin updated_at con la fecha semántica", async () => {
     const events = await getRecentReviews(
       fakeSupabase({
-        pass_reviews: [review({ id: "sin-hora", created_at: null }), review({})],
+        pass_reviews: [review({ id: "sin-hora", updated_at: null }), review({})],
         profile_identities: [IDENTITY],
         books: [BOOK],
         interaction_targets: INTERACTION_TARGETS,
@@ -95,10 +95,10 @@ describe("sortDate nunca es date-only", () => {
     for (const e of events) expect(e.sortDate).toContain("T");
   });
 
-  it("resolveSharedActivity trata una reseña sin created_at como no disponible", async () => {
+  it("resolveSharedActivity trata una reseña sin updated_at como no disponible", async () => {
     const resolved = await resolveSharedActivity(
       fakeSupabase({
-        pass_reviews: [review({ id: "sin-hora", created_at: null })],
+        pass_reviews: [review({ id: "sin-hora", updated_at: null })],
         profile_identities: [IDENTITY],
         books: [BOOK],
       }),

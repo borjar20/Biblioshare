@@ -143,18 +143,48 @@ export async function resolveSharedActivity(
     // library_entry_id.
     const { data: row } = await supabase
       .from("progress_sessions")
-      // `note` NO se pide: texto privado del autor (ver `progress` en FeedEvent).
-      .select("id, user_id, pass_id, session_date, duration_minutes, created_at")
+      // `note` NO se pide: es la copia PRIVADA del autor. La nota pública se
+      // resuelve aparte desde `notes` (is_public=true), igual que getFeed.
+      // `position` sí, para derivar page/percent en libros (#301).
+      .select("id, user_id, pass_id, session_date, duration_minutes, created_at, position")
       .eq("id", ref.rowId)
       .maybeSingle();
     if (!row) return null;
     const item = await resolvePassItem(supabase, row.pass_id);
     if (!item) return null;
-    const [actor, catalog] = await Promise.all([
+    // La nota PÚBLICA de esta sesión (Task 1: política RLS `public notes select`).
+    // El .eq("is_public", true) es cinturón-y-tirantes sobre la RLS. Una sola
+    // fila: la más reciente pública. total_pages solo para libros (percent).
+    const [actor, catalog, publicNote, totalPages] = await Promise.all([
       resolveActor(supabase, row.user_id),
       resolveCatalog(supabase, item.itemType, item.itemId),
+      supabase
+        .from("notes")
+        .select("body, is_spoiler")
+        .eq("session_id", row.id)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then((r) =>
+          r.data?.body != null
+            ? { body: r.data.body, isSpoiler: r.data.is_spoiler ?? false }
+            : null,
+        ),
+      item.itemType === "book"
+        ? supabase
+            .from("books")
+            .select("total_pages")
+            .eq("id", item.itemId)
+            .maybeSingle()
+            .then((r) => r.data?.total_pages ?? null)
+        : Promise.resolve<number | null>(null),
     ]);
     if (!actor || !catalog) return null;
+    const pos = (row.position ?? {}) as { page?: number };
+    const page = typeof pos.page === "number" ? pos.page : null;
+    const percent =
+      page != null && totalPages ? Math.min(100, Math.round((page / totalPages) * 100)) : null;
     return {
       id: `progress_sessions:${row.id}`,
       actorId: row.user_id,
@@ -174,11 +204,10 @@ export async function resolveSharedActivity(
       rating: null,
       reviewExcerpt: null,
       episode: null,
-      // page/percent/note se quedan sin resolver aquí, a propósito y fuera
-      // del alcance de esta tarea (Task 3 del plan "feed tarjetas por tipo"
-      // solo toca el fan-out de `getFeed`, no este resolver de una fila
-      // suelta para compartir en clubes) — ver issue de seguimiento.
-      progress: { durationMinutes: row.duration_minutes, page: null, percent: null, note: null },
+      // page/percent/note resueltos como en getFeed (#301): page desde
+      // position, percent contra books.total_pages, note desde la nota PÚBLICA.
+      // La copia privada `progress_sessions.note` nunca se sirve aquí.
+      progress: { durationMinutes: row.duration_minutes, page, percent, note: publicNote },
       reviewMeta: null,
     };
   }
@@ -193,7 +222,7 @@ export async function resolveSharedActivity(
     // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review, created_at")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, updated_at")
       .eq("id", ref.rowId)
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
@@ -203,12 +232,13 @@ export async function resolveSharedActivity(
     // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
     // porque Supabase no infiere el tipo a partir de la query. pass_reviews
     // tipa TODAS sus columnas como nullable (es una vista), así que también
-    // se narrowan id/user_id/item_type/item_id/created_at — nunca vienen null
-    // en la práctica. created_at entra en la MISMA lista y no se cae a
-    // finished_on: `sortDate` promete un timestamp real, y un valor date-only
-    // ahí ordena por debajo de todo evento con hora de su día y empata con sus
-    // iguales (desempate por uuid). Sin hora real, la fila se trata como "ya no
-    // disponible", igual que sin id.
+    // se narrowan id/user_id/item_type/item_id/updated_at — nunca vienen null
+    // en la práctica. updated_at (no created_at, #345) es la hora REAL del
+    // terminado; entra en la MISMA lista y no se cae a finished_on: `sortDate`
+    // promete un timestamp real, y un valor date-only ahí ordena por debajo de
+    // todo evento con hora de su día y empata con sus iguales (desempate por
+    // uuid). Sin hora real, la fila se trata como "ya no disponible", igual que
+    // sin id.
     if (
       !row ||
       row.id === null ||
@@ -216,7 +246,7 @@ export async function resolveSharedActivity(
       row.item_type === null ||
       row.item_id === null ||
       row.finished_on === null ||
-      row.created_at === null
+      row.updated_at === null
     )
       return null;
     const [actor, catalog] = await Promise.all([
@@ -239,8 +269,9 @@ export async function resolveSharedActivity(
       entryStatus: null,
       eventDate: row.finished_on,
       orderDate: row.finished_on,
-      // Timestamp real garantizado por el narrowing de arriba.
-      sortDate: row.created_at,
+      // sortDate = updated_at (#345), hora real del terminado; timestamp real
+      // garantizado por el narrowing de arriba.
+      sortDate: row.updated_at,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
       episode: null,
