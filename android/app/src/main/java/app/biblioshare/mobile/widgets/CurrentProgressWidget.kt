@@ -37,7 +37,7 @@ import app.biblioshare.mobile.R
 // aquí en provideGlance; si no hay elección, gana el [0] del snapshot.
 class CurrentProgressWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Single
+    override val sizeMode = SizeMode.Exact
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -47,6 +47,10 @@ class CurrentProgressWidget : GlanceAppWidget() {
         val state = currentProgressState(snapshot, selectedPassId = selected)
         val covers = loadCovers(context, snapshot)
         val running = TimerStore.get(context)
+        android.util.Log.i(
+            "BiblioshareWidgets",
+            "CurrentProgress.provideGlance: selected=$selected running=${running?.passId} state=${state::class.simpleName}",
+        )
         provideContent { CurrentProgressContent(state, covers, running) }
     }
 }

@@ -43,7 +43,7 @@ import app.biblioshare.mobile.R
 // duplica el loader).
 class QuickRegisterWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Single
+    override val sizeMode = SizeMode.Exact
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -52,6 +52,10 @@ class QuickRegisterWidget : GlanceAppWidget() {
         val state = quickRegisterState(snapshot, prefs[STEP_KEY] ?: 1, prefs[QR_SELECTED_KEY])
         val covers = loadCovers(context, snapshot)
         val running = TimerStore.get(context)
+        android.util.Log.i(
+            "BiblioshareWidgets",
+            "QuickRegister.provideGlance: step=${prefs[STEP_KEY]} selected=${prefs[QR_SELECTED_KEY]} state=${state::class.simpleName}",
+        )
         provideContent { QuickRegisterContent(state, covers, running) }
     }
 }
