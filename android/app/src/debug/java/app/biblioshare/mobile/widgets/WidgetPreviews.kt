@@ -102,7 +102,7 @@ fun PreviewCompletoTimer() {
             stale = false,
         ),
         covers = emptyMap(),
-        running = TimerLogic.Running("p1", System.currentTimeMillis() - 5 * 60_000L),
+        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
     )
 }
 

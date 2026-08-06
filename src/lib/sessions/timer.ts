@@ -51,6 +51,17 @@ export function toMinutes(ms: number): number {
   return Math.round(ms / 60_000);
 }
 
+// Ancla que el reloj nativo del widget usa como origen (Android). Descuenta el
+// tiempo ya acumulado en pausas previas para que `now - anchor` == elapsedMs y
+// el Chronometer NO cuente los huecos pausados (#491). Es estable mientras el
+// reloj corre (startedAt - accumulatedMs no cambia con `now`). `firstStartedAt`
+// viaja aparte: es la hora real de inicio para "Cuándo lees", que el ancla
+// efectiva ya no representa tras una pausa.
+export function widgetAnchor(state: TimerState): number | null {
+  if (state.startedAt === null) return null;
+  return state.startedAt - state.accumulatedMs;
+}
+
 export const timerStorageKey = (passId: string) => `biblioshare:timer:${passId}`;
 
 // ── Persistencia ────────────────────────────────────────────────────────────
@@ -133,11 +144,12 @@ function mirrorToWidget(op: "write" | "clear", passId: string, state?: TimerStat
       const { Capacitor } = await import("@capacitor/core");
       if (Capacitor.getPlatform() !== "android") return;
       const w = await import("@/lib/native/android-widgets");
-      if (op === "clear" || !state || state.startedAt === null) {
-        // Pausa o cierre: el widget no modela "pausado", así que lo apagamos.
+      const anchor = state ? widgetAnchor(state) : null;
+      if (op === "clear" || anchor === null) {
+        // Pausa o cierre: el widget no modela "pausado", así que lo apagamos (#489).
         await w.clearRunningTimer(passId);
       } else {
-        await w.setRunningTimer(passId, state.firstStartedAt ?? state.startedAt);
+        await w.setRunningTimer(passId, anchor, state!.firstStartedAt ?? state!.startedAt!);
       }
     } catch {
       // Best-effort: el reloj de la app no depende de esto.

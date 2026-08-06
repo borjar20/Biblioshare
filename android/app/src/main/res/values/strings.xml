@@ -21,11 +21,7 @@
     <string name="widget_goal_title">Objetivo de hoy</string>
     <string name="widget_outdated_subtitle">Abre Biblioshare para actualizar</string>
     <string name="widget_stale_data">Datos antiguos</string>
-    <string name="widget_log_progress">Registrar progreso</string>
     <string name="widget_streak_days">🔥 %1$d días</string>
-    <string name="widget_type_book">Libro</string>
-    <string name="widget_type_movie">Película</string>
-    <string name="widget_type_series">Serie</string>
 
     <!-- Widget Completo: cabecera, destacado y rejilla "Continúa donde lo dejaste" -->
     <string name="widget_view_all">%1$d · Ver todos ›</string>

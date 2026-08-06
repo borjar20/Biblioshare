@@ -103,6 +103,12 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
             trailing = ctx.getString(R.string.widget_view_all, state.total),
             onTrailing = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/coleccion?status=in_progress")),
         )
+        // Snapshot sin refrescar en 48h: avisa de que los números pueden ser
+        // viejos (se perdió al reescribir el layout en Fase 2, #492).
+        if (state.stale) {
+            Spacer(GlanceModifier.height(6.dp))
+            Text(ctx.getString(R.string.widget_stale_data), style = softStyle())
+        }
         Spacer(GlanceModifier.height(10.dp))
         FeaturedCard(f, f.coverUrl?.let(covers::get), running)
         if (state.others.isNotEmpty()) {
