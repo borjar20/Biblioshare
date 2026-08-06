@@ -1,8 +1,13 @@
 name: Firebase App Distribution
 
+# Disparo por PUSH de tag `vX.Y` (fiable), no por `release: published`: publicar
+# una release vía API/token (gh) a veces NO emite el evento `release` y la CI no
+# arrancaba (#498). El push de un tag sí dispara siempre. Las notas se leen de la
+# GitHub Release si existe (con fallback al tag).
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*.*"
 
 permissions:
   contents: write
@@ -67,10 +72,10 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Write release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cat > notes.txt <<'EOF'
-          ${{ github.event.release.body }}
-          EOF
+          gh release view "${{ steps.version.outputs.tag }}" --json body -q .body > notes.txt 2>/dev/null || true
           if [ ! -s notes.txt ]; then
             echo "${{ steps.version.outputs.tag }}" > notes.txt
           fi
@@ -87,7 +92,12 @@ jobs:
             --groups "beta-tester" \
             --release-notes-file notes.txt
 
-      - name: Attach APK to the GitHub Release
-        run: gh release upload "${{ steps.version.outputs.tag }}" "${{ steps.apk.outputs.name }}" --clobber
+      - name: Attach APK to the GitHub Release (si existe)
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ steps.version.outputs.tag }}" "${{ steps.apk.outputs.name }}" --clobber
+          else
+            echo "No hay GitHub Release para ${{ steps.version.outputs.tag }}; se omite el adjunto."
+          fi
