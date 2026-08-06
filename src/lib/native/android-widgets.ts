@@ -12,10 +12,21 @@ export interface BiblioshareWidgetPlugin {
   updateSnapshot(options: { snapshot: WidgetSnapshot }): Promise<void>;
   clearSnapshot(): Promise<void>;
   refreshWidgets(): Promise<void>;
-  getRunningTimer(): Promise<{ timer: { passId: string; startedAt: number } | null }>;
-  setRunningTimer(options: { passId: string; startedAt: number }): Promise<void>;
+  getRunningTimer(): Promise<{
+    timer: NativeRunningTimer | null;
+    // Lápida: el widget descartó/registró una sesión y la app aún puede tener
+    // ese reloj sembrado en localStorage (#493). `firstStartedAt` identifica la
+    // sesión concreta para no pisar un reloj nuevo iniciado en la app.
+    cleared?: { passId: string; firstStartedAt: number } | null;
+  }>;
+  setRunningTimer(options: { passId: string; startedAt: number; firstStartedAt: number }): Promise<void>;
   clearRunningTimer(options: { passId: string }): Promise<void>;
 }
+
+// `startedAt` es el ancla EFECTIVA (descuenta pausas, ver widgetAnchor en
+// timer.ts); `firstStartedAt` es la hora real de inicio para "Cuándo lees".
+export type NativeRunningTimer = { passId: string; startedAt: number; firstStartedAt: number };
+export type NativeClearedTimer = { passId: string; firstStartedAt: number };
 
 const BiblioshareWidget =
   registerPlugin<BiblioshareWidgetPlugin>("BiblioshareWidget");
@@ -61,15 +72,22 @@ export async function refreshAndroidWidgets(): Promise<void> {
 // ── Cronómetro nativo (widget de registro) ─────────────────────────────────
 // Espejo app→nativo (timer.ts) y siembra nativo→app (widget-timer-bootstrap.ts).
 
-export async function setRunningTimer(passId: string, startedAt: number): Promise<void> {
-  await BiblioshareWidget.setRunningTimer({ passId, startedAt });
+export async function setRunningTimer(
+  passId: string,
+  startedAt: number,
+  firstStartedAt: number,
+): Promise<void> {
+  await BiblioshareWidget.setRunningTimer({ passId, startedAt, firstStartedAt });
 }
 
 export async function clearRunningTimer(passId: string): Promise<void> {
   await BiblioshareWidget.clearRunningTimer({ passId });
 }
 
-export async function getRunningTimer(): Promise<{ passId: string; startedAt: number } | null> {
-  const { timer } = await BiblioshareWidget.getRunningTimer();
-  return timer ?? null;
+export async function getRunningTimer(): Promise<{
+  running: NativeRunningTimer | null;
+  cleared: NativeClearedTimer | null;
+}> {
+  const { timer, cleared } = await BiblioshareWidget.getRunningTimer();
+  return { running: timer ?? null, cleared: cleared ?? null };
 }

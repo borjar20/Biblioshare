@@ -66,22 +66,28 @@ class PickMinutesAction : ActionCallback {
 class StartTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val passId = p[PASS_ID_PARAM] ?: return
-        TimerStore.set(c, passId, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        // Arranque limpio desde el widget: sin pausas, ancla e inicio coinciden.
+        TimerStore.set(c, passId, now, now)
         CurrentProgressWidget().update(c, id)
     }
 }
 class DiscardTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
-        TimerStore.clear(c, p[PASS_ID_PARAM])
+        // clearFromWidget (no clear) deja la lápida para que la app apague su
+        // propio reloj sembrado al reabrir (#493).
+        TimerStore.clearFromWidget(c)
         CurrentProgressWidget().update(c, id)
     }
 }
 class RegisterTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val r = TimerStore.get(c) ?: return
+        // Minutos desde el ancla efectiva (ya sin pausas, #491); `inicio` es la
+        // hora real de arranque para "Cuándo lees".
         val minutos = elapsedMinutes(r.startedAt, System.currentTimeMillis())
-        val inicio = java.time.Instant.ofEpochMilli(r.startedAt).toString()
-        TimerStore.clear(c, r.passId)
+        val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
+        TimerStore.clearFromWidget(c)
         val href = "/sesion/${r.passId}?minutos=$minutos&inicio=$inicio"
         c.startActivity(WidgetDeepLinks.intentFor(c, href))
     }
