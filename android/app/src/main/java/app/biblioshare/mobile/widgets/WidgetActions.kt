@@ -9,6 +9,10 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.updateAll
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkManager
 
 // Estado del widget (Preferences DataStore de Glance): qué pase decidió el
 // usuario destacar tocando la rejilla "Continúa donde lo dejaste". Se lee en
@@ -31,6 +35,14 @@ private suspend fun refreshWidgets(context: Context, from: String) {
             (current.exceptionOrNull()?.let { " currentErr=$it" } ?: "") +
             (quick.exceptionOrNull()?.let { " quickErr=$it" } ?: ""),
     )
+    // Respaldo fiable: expedited corre en un estado de proceso que One UI honra.
+    // REPLACE: toques rápidos no apilan workers. RUN_AS_NON_EXPEDITED: si se agota
+    // la cuota de expedited, cae a trabajo normal (sin crash ni notificación forzada).
+    val req = OneTimeWorkRequestBuilder<WidgetRepaintWorker>()
+        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        .build()
+    WorkManager.getInstance(context).enqueueUniqueWork("widget_repaint", ExistingWorkPolicy.REPLACE, req)
+    Log.i(WIDGET_LOG_TAG, "refreshWidgets('$from') direct done + expedited enqueued")
 }
 
 /** Tap en una portada de la rejilla: persiste el pase elegido y repinta. */
