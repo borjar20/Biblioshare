@@ -150,41 +150,45 @@ fun ActionCell(label: String, color: ColorProvider, modifier: GlanceModifier) {
     }
 }
 
-/** Carrusel horizontal de "Continúa donde lo dejaste": tarjetas de ANCHO FIJO,
- *  cada una portada (proporción 2:3) + título a una línea (se ellipsa por el
- *  ancho fijo) + barra de progreso muy fina. Tocar una tarjeta cambia el
- *  destacado (Glance state, Task 8).
+/** Carrusel de "Continúa donde lo dejaste": hasta 3 tarjetas HORIZONTALES que
+ *  rellenan el ancho (1/3 cada una). Cada tarjeta = portada a la izquierda +
+ *  bloque de texto a la derecha (título a 2 líneas con ellipsis, contexto a 1
+ *  línea y barra de progreso muy fina), sobre un fondo sutil redondeado. Tocar
+ *  una tarjeta cambia el destacado (Glance state, Task 8).
  *
  *  Glance 1.1.1 NO tiene scroll horizontal (solo LazyColumn/LazyVerticalGrid
- *  scrollan), así que es un Row que muestra las que caben; el resto se alcanza
- *  con «Ver todos» de la cabecera (que ya trae el total real). Un Row NO
- *  virtualiza —hornea toda portada en el RemoteViews—, así que se acota:
- *  ponytail: cap CAROUSEL_MAX, techo de memoria de bitmaps + tarjetas fuera de
- *  pantalla inútiles; «Ver todos» cubre el resto. */
+ *  scrollan): se muestran 3 y el resto se alcanza con «Ver todos» de la cabecera
+ *  (que ya trae el total real). `cornerRadius` clipa el fondo en API 31+; en <31
+ *  cae a esquinas rectas. */
 @Composable
 fun ContinueCarousel(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+    val ctx = LocalContext.current
     Row(GlanceModifier.fillMaxWidth()) {
         others.take(CAROUSEL_MAX).forEach { d ->
-            Column(
-                modifier = GlanceModifier.width(CAROUSEL_CARD_W.dp).padding(end = 8.dp)
+            Row(
+                modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)
+                    .background(WidgetPalette.track).cornerRadius(12.dp).padding(8.dp)
                     .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Cover(d.coverUrl?.let(covers::get), width = CAROUSEL_CARD_W, height = CAROUSEL_COVER_H)
-                Spacer(GlanceModifier.height(3.dp))
-                Text(d.title, style = softStyle(), maxLines = 1)
-                Spacer(GlanceModifier.height(2.dp))
-                SoftBar(d.percentage ?: 0, heightDp = 3)
+                Cover(d.coverUrl?.let(covers::get), width = 44, height = 64)
+                Spacer(GlanceModifier.width(8.dp))
+                Column(GlanceModifier.defaultWeight()) {
+                    Text(d.title, style = titleStyle(), maxLines = 2)
+                    Text(
+                        d.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
+                        style = softStyle(),
+                        maxLines = 1,
+                    )
+                    Spacer(GlanceModifier.height(4.dp))
+                    SoftBar(d.percentage ?: 0, heightDp = 3)
+                }
             }
         }
     }
 }
 
-// Portada más baja que la rejilla anterior (era 90 y se salía por abajo, cortando
-// título y barra en 4x3). 70 de alto deja caber la tarjeta ENTERA en la banda que
-// ya sostenía la rejilla. El ancho se mantiene (no era el problema).
-private const val CAROUSEL_CARD_W = 60
-private const val CAROUSEL_COVER_H = 70
-private const val CAROUSEL_MAX = 6 // más no caben ni scrollan (Glance sin scroll horizontal)
+private const val CAROUSEL_MAX = 3 // Glance sin scroll horizontal: 3 y el resto por «Ver todos»
 
 /** Pastilla dorada con la racha en días (icono + texto). */
 @Composable
