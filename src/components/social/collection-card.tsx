@@ -21,11 +21,14 @@ export function CollectionCard({
   entry,
   viewerLoggedIn,
   knownUsernames,
+  hideActor = false,
 }: {
   entry: PersonGroupEntry; // verb === "added"
   viewerLoggedIn: boolean;
   /** Usernames @mencionados que existen de verdad (comentarios), resueltos server-side. */
   knownUsernames: string[];
+  /** Oculta avatar+nombre y capitaliza el verbo (Actividad del perfil, #302). */
+  hideActor?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = entry.actor.displayName || entry.actor.username;
@@ -38,10 +41,14 @@ export function CollectionCard({
   return (
     <article className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-center gap-2.5">
-        <UserAvatar name={actorName} avatarUrl={entry.actor.avatarUrl} size={30} />
+        {!hideActor && <UserAvatar name={actorName} avatarUrl={entry.actor.avatarUrl} size={30} />}
         <p className="min-w-0 flex-1 text-sm leading-snug text-foreground">
-          <Link href={`/u/${entry.actor.username}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
-          <span className="text-muted-foreground">{t("grouped.addedCount", { count: entry.items.length })}</span>
+          {!hideActor && (
+            <>
+              <Link href={`/u/${entry.actor.username}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
+            </>
+          )}
+          <span className={`text-muted-foreground${hideActor ? " first-letter:uppercase" : ""}`}>{t("grouped.addedCount", { count: entry.items.length })}</span>
         </p>
         <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
           {t("kind.collection")}
