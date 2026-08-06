@@ -32,14 +32,22 @@ class BiblioshareWidgetPlugin : Plugin() {
         // Texto primero: el contenido nunca espera a una imagen.
         WidgetRefresh.updateAll(context)
         // Portada en segundo plano, best-effort: si falla queda el placeholder.
-        Thread {
-            val covers = parsed.inProgress.mapNotNull { it.coverUrl }
-            WidgetImageCache.prune(context, covers.toSet())
-            var any = false
-            covers.forEach { if (WidgetImageCache.ensureDownloaded(context, it)) any = true }
-            if (any) WidgetRefresh.updateAll(context)
-        }.start()
+        Thread { WidgetSync.downloadCovers(context, parsed) }.start()
         call.resolve()
+    }
+
+    /**
+     * Refresco inmediato tirando de Supabase (arquitectura híbrida, Fase 2): el
+     * widget PIDE su snapshot vía RPC en vez de esperar a que la web lo empuje.
+     * Lo llama el WebView en primer plano (arranque, foco, tras mutar progreso);
+     * el refresco con la app cerrada lo lleva WorkManager (WidgetWork).
+     */
+    @PluginMethod
+    fun syncNow(call: PluginCall) {
+        Thread {
+            WidgetSync.refresh(context)
+            call.resolve()
+        }.start()
     }
 
     @PluginMethod

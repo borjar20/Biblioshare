@@ -84,6 +84,9 @@ dependencies {
     implementation project(':capacitor-android')
     // Widgets nativos (Jetpack Glance). Trae Compose runtime y coroutines.
     implementation "androidx.glance:glance-appwidget:1.1.1"
+    // Refresco de widgets con la app cerrada (arquitectura híbrida, Fase 2):
+    // WorkManager ejecuta el fetch a Supabase periódicamente respetando Doze.
+    implementation "androidx.work:work-runtime-ktx:2.10.1"
     // Previews de los widgets en Android Studio (src/debug/**/WidgetPreviews.kt):
     // pintan cada estado sin emulador y sin instalar nada. Solo debug: no viajan
     // en el APK de release.

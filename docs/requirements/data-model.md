@@ -409,6 +409,23 @@ Cuelgan del pase:
 **Las series no tienen `progress_sessions`**: se miden en episodios. Cualquier orden por
 "última sesión" las manda al final si no se contempla.
 
+### RPC `get_widget_snapshot()` — lectura para widgets nativos (dev + prod, 2026-08-06)
+
+Arquitectura híbrida Fase 2 (`20260806_get_widget_snapshot.sql`, epic #497): el widget
+Android la llama DIRECTAMENTE por PostgREST con su sesión nativa (Fase 1) y recibe el mismo
+JSON v2 que antes construía el TS y empujaba el WebView (`build-widget-snapshot.ts`) — cambia
+el transporte, no el contrato. `SECURITY INVOKER` (RLS del que llama; no puede ver a otro),
+`STABLE`, sin argumentos (usa `auth.uid()`), `EXECUTE` a `authenticated`. Es un **port fiel**
+de `getTodayFocus` + `hydrateItems` + `getProgress` + `getWeeklyActivity` + `getStreaks`; no
+cambia el esquema (solo lee). Dos trampas que el port respeta: (1) tres definiciones distintas
+de "actividad" —racha/semana por pase = sesiones ∪ episodios; racha global = sesiones ∪
+finales de pase; minutos de hoy = solo `duration_minutes` de libros—; (2) "hoy" en
+**`Europe/Madrid`** (convención de `club_rounds`), no UTC. **En prod desde 2026-08-06**
+(verificada bajo rol `authenticated` con RLS: JSON v2 correcto para un usuario real de 2 pases
+en curso). Riesgo vivo: como la web sigue usando el TS, widget y dashboard podrían
+divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver `decisiones.md` e issue
+de reconciliación.
+
 ## 4. Organización del usuario
 
 | Tabla | Qué |
