@@ -17,14 +17,10 @@ val PASS_ID_PARAM = ActionParameters.Key<String>("passId")
 
 private const val WIDGET_LOG_TAG = "BiblioshareWidgets"
 
+/** Repinta ambos widgets en el propio proceso (compose()+updateAppWidget, #498). */
 private suspend fun refreshWidgets(context: Context, from: String) {
-    Log.i(WIDGET_LOG_TAG, "action '$from' fired → compose+push directo")
-    val result = runCatching { WidgetRefresh.updateAllSuspend(context) }
-    Log.i(
-        WIDGET_LOG_TAG,
-        "refreshWidgets('$from') done: ok=${result.isSuccess}" +
-            (result.exceptionOrNull()?.let { " err=$it" } ?: ""),
-    )
+    runCatching { WidgetRefresh.updateAllSuspend(context) }
+        .onFailure { Log.w(WIDGET_LOG_TAG, "refreshWidgets('$from') falló", it) }
 }
 
 /** Tap en una portada de la rejilla: persiste el pase elegido y repinta. */

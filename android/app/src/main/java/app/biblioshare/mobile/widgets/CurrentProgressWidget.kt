@@ -47,10 +47,6 @@ class CurrentProgressWidget : GlanceAppWidget() {
         val state = currentProgressState(snapshot, selectedPassId = selected)
         val covers = loadCovers(context, snapshot)
         val running = TimerStore.get(context)
-        android.util.Log.i(
-            "BiblioshareWidgets",
-            "CurrentProgress.provideGlance: selected=$selected running=${running?.passId} state=${state::class.simpleName}",
-        )
         provideContent { CurrentProgressContent(state, covers, running) }
     }
 }
