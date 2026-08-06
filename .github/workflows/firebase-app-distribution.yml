@@ -1,11 +1,18 @@
 name: Firebase App Distribution
 
-# Disparo al PUBLICAR una GitHub Release desde la web (así salió v1.1). Nota: una
-# release publicada vía API/token (gh) puede NO emitir este evento — publícala
-# desde la interfaz web. Las notas se leen de la Release (fallback al tag).
+# Dos disparos:
+#  - `release: published`: al publicar una GitHub Release desde la web (así salió v1.1).
+#  - `workflow_dispatch`: botón "Run workflow" en la pestaña Actions, dando la versión
+#    a mano (p. ej. 1.2). Escape fiable si el evento de release no llega a arrancar.
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión del APK (p. ej. 1.2), sin la v"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -34,11 +41,16 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Derive version from tag
+      - name: Derive version
         id: version
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION_NAME="${TAG#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION_NAME="${{ inputs.version }}"
+            TAG="v${VERSION_NAME}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION_NAME="${TAG#v}"
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
