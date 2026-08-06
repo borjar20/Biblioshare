@@ -21,13 +21,26 @@ export interface BiblioshareWidgetPlugin {
     // sesión concreta para no pisar un reloj nuevo iniciado en la app.
     cleared?: { passId: string; firstStartedAt: number } | null;
   }>;
-  setRunningTimer(options: { passId: string; startedAt: number; firstStartedAt: number }): Promise<void>;
+  setRunningTimer(options: {
+    passId: string;
+    startedAt: number;
+    firstStartedAt: number;
+    accumulatedMs: number;
+    running: boolean;
+  }): Promise<void>;
   clearRunningTimer(options: { passId: string }): Promise<void>;
 }
 
 // `startedAt` es el ancla EFECTIVA (descuenta pausas, ver widgetAnchor en
-// timer.ts); `firstStartedAt` es la hora real de inicio para "Cuándo lees".
-export type NativeRunningTimer = { passId: string; startedAt: number; firstStartedAt: number };
+// timer.ts); `firstStartedAt` es la hora real de inicio para "Cuándo lees";
+// `accumulatedMs`/`running` modelan la pausa nativa (Fase B, #498).
+export type NativeRunningTimer = {
+  passId: string;
+  startedAt: number;
+  firstStartedAt: number;
+  accumulatedMs: number;
+  running: boolean;
+};
 export type NativeClearedTimer = { passId: string; firstStartedAt: number };
 
 const BiblioshareWidget =
@@ -45,8 +58,10 @@ export async function setRunningTimer(
   passId: string,
   startedAt: number,
   firstStartedAt: number,
+  accumulatedMs: number,
+  running: boolean,
 ): Promise<void> {
-  await BiblioshareWidget.setRunningTimer({ passId, startedAt, firstStartedAt });
+  await BiblioshareWidget.setRunningTimer({ passId, startedAt, firstStartedAt, accumulatedMs, running });
 }
 
 export async function clearRunningTimer(passId: string): Promise<void> {
