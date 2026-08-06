@@ -99,15 +99,15 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
     val f = state.featured
     Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
         SectionHeader(
-            label = "En curso",
-            trailing = "${state.total} · Ver todos ›",
+            label = ctx.getString(R.string.widget_current_progress_label),
+            trailing = ctx.getString(R.string.widget_view_all, state.total),
             onTrailing = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/coleccion?status=in_progress")),
         )
         Spacer(GlanceModifier.height(10.dp))
         FeaturedCard(f, f.coverUrl?.let(covers::get), running)
         if (state.others.isNotEmpty()) {
             Spacer(GlanceModifier.height(18.dp))
-            Text("Continúa donde lo dejaste", style = softStyle())
+            Text(ctx.getString(R.string.widget_continue_where_left_off), style = softStyle())
             Spacer(GlanceModifier.height(8.dp))
             ContinueGrid(state.others, covers)
         }
@@ -117,6 +117,7 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
 /** Portada + ordinal + título + contexto + progreso + racha/semana + pie de acciones. */
 @Composable
 private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
+    val context = LocalContext.current
     Column(GlanceModifier.fillMaxWidth().background(WidgetPalette.surface).cornerRadius(18.dp)) {
         Row(GlanceModifier.padding(16.dp)) {
             Cover(cover, width = 72, height = 104)
@@ -127,7 +128,11 @@ private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerL
                     style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
                 )
                 Text(d.title, style = bigStyle(), maxLines = 2)
-                Text(d.contextLabel.ifBlank { "Sin progreso" }, style = softStyle(), maxLines = 1)
+                Text(
+                    d.contextLabel.ifBlank { context.getString(R.string.widget_no_progress) },
+                    style = softStyle(),
+                    maxLines = 1,
+                )
                 if (d.percentage != null) {
                     Spacer(GlanceModifier.height(8.dp))
                     SoftBar(d.percentage)
@@ -160,7 +165,7 @@ private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?
         val now = System.currentTimeMillis()
         if (isLongSession(running.startedAt, now)) {
             Text(
-                "Sesión larga · ábrela para registrar",
+                ctx.getString(R.string.widget_long_session),
                 style = softStyle(),
                 modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
                     .clickable(actionRunCallback<RegisterTimerAction>()),
@@ -179,14 +184,14 @@ private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?
                 Spacer(GlanceModifier.height(8.dp))
                 Row {
                     ActionCell(
-                        "Descartar",
+                        ctx.getString(R.string.widget_discard),
                         WidgetPalette.fgSoft,
                         GlanceModifier.defaultWeight()
                             .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
                     )
                     Spacer(GlanceModifier.width(8.dp))
                     ActionCell(
-                        "Registrar",
+                        ctx.getString(R.string.widget_register),
                         WidgetPalette.accent,
                         GlanceModifier.defaultWeight()
                             .clickable(actionRunCallback<RegisterTimerAction>()),
@@ -198,7 +203,7 @@ private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?
         Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
             if (d.itemType == "book") {
                 ActionCell(
-                    "◷ Sesión",
+                    ctx.getString(R.string.widget_session_action),
                     WidgetPalette.accent,
                     GlanceModifier.defaultWeight()
                         .clickable(actionRunCallback<StartTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
@@ -206,7 +211,7 @@ private fun FeaturedActions(d: CurrentProgressData, running: TimerLogic.Running?
                 Spacer(GlanceModifier.width(8.dp))
             }
             ActionCell(
-                "✎ Registrar",
+                ctx.getString(R.string.widget_register_action),
                 WidgetPalette.fg,
                 GlanceModifier.defaultWeight()
                     .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(d)))),

@@ -26,4 +26,23 @@
     <string name="widget_type_book">Libro</string>
     <string name="widget_type_movie">Película</string>
     <string name="widget_type_series">Serie</string>
+
+    <!-- Widget Completo: cabecera, destacado y rejilla "Continúa donde lo dejaste" -->
+    <string name="widget_view_all">%1$d · Ver todos ›</string>
+    <string name="widget_continue_where_left_off">Continúa donde lo dejaste</string>
+    <string name="widget_no_progress">Sin progreso</string>
+    <string name="widget_long_session">Sesión larga · ábrela para registrar</string>
+    <string name="widget_discard">Descartar</string>
+    <string name="widget_register">Registrar</string>
+    <string name="widget_session_action">◷ Sesión</string>
+    <string name="widget_register_action">✎ Registrar</string>
+    <string name="widget_streak">Racha %1$d d</string>
+
+    <!-- Widget Registro rápido: paso 1 (elegir) y paso 2 (registrar) -->
+    <string name="widget_register_reading_title">Registrar lectura</string>
+    <string name="widget_items_in_progress_count">%1$d en curso</string>
+    <string name="widget_first_session">Primera sesión</string>
+    <string name="widget_save_session">Guardar sesión</string>
+    <string name="widget_open_to_register">Abrir para registrar</string>
+    <string name="widget_other_minutes">Otro</string>
 </resources>

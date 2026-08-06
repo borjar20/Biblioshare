@@ -83,11 +83,12 @@ fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>
 /** Paso 1: cabecera + una fila compacta por cada lectura en curso. */
 @Composable
 private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+    val context = LocalContext.current
     Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Registrar lectura", style = titleStyle())
+            Text(context.getString(R.string.widget_register_reading_title), style = titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            Text("${items.size} en curso", style = softStyle())
+            Text(context.getString(R.string.widget_items_in_progress_count, items.size), style = softStyle())
         }
         Spacer(GlanceModifier.height(8.dp))
         items.forEach { item ->
@@ -111,7 +112,7 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int
                 style = TextStyle(color = WidgetPalette.fg, fontSize = 18.sp, fontWeight = FontWeight.Bold),
                 modifier = GlanceModifier.clickable(actionRunCallback<BackAction>()).padding(end = 10.dp),
             )
-            Text("Registrar", style = titleStyle())
+            Text(ctx.getString(R.string.widget_register), style = titleStyle())
         }
         Spacer(GlanceModifier.height(10.dp))
         Row(modifier = GlanceModifier.fillMaxWidth()) {
@@ -123,7 +124,11 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int
                     style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
                 )
                 Text(item.title, style = bigStyle(), maxLines = 2)
-                Text(item.contextLabel.ifBlank { "Primera sesión" }, style = softStyle(), maxLines = 1)
+                Text(
+                    item.contextLabel.ifBlank { ctx.getString(R.string.widget_first_session) },
+                    style = softStyle(),
+                    maxLines = 1,
+                )
             }
         }
         Spacer(GlanceModifier.height(12.dp))
@@ -141,7 +146,7 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int
                 // marcar un preset pone minutes=0 — "Guardar sesión" abrirá la
                 // hoja de sesión sin minutos para teclear un valor libre.
                 MinuteChip(
-                    label = "Otro",
+                    label = ctx.getString(R.string.widget_other_minutes),
                     active = minutes != 15 && minutes != 30 && minutes != 45,
                     onClick = actionRunCallback<PickMinutesAction>(actionParametersOf(MINUTES_PARAM to 0)),
                 )
@@ -153,12 +158,12 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int
                 else -> "/sesion/${item.passId}" // "Otro"/0: abre la hoja para teclear
             }
             PrimaryButton(
-                "Guardar sesión",
+                ctx.getString(R.string.widget_save_session),
                 onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, href)),
             )
         } else {
             PrimaryButton(
-                "Abrir para registrar",
+                ctx.getString(R.string.widget_open_to_register),
                 onClick = actionStartActivity(WidgetDeepLinks.intentFor(ctx, item.deepLink)),
             )
         }

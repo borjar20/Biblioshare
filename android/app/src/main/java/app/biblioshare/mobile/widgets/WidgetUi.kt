@@ -159,6 +159,7 @@ fun ContinueGrid(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>
 /** Pastilla dorada con la racha en días (icono + texto). */
 @Composable
 fun StreakPill(days: Int) {
+    val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier
@@ -167,7 +168,10 @@ fun StreakPill(days: Int) {
     ) {
         Text("◆", style = TextStyle(color = WidgetPalette.gold, fontSize = 11.sp))
         Spacer(GlanceModifier.width(7.dp))
-        Text("Racha $days d", style = TextStyle(color = WidgetPalette.fg, fontSize = 12.sp, fontWeight = FontWeight.Medium))
+        Text(
+            context.getString(R.string.widget_streak, days),
+            style = TextStyle(color = WidgetPalette.fg, fontSize = 12.sp, fontWeight = FontWeight.Medium),
+        )
     }
 }
 
@@ -203,6 +207,7 @@ fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent) {
  *  dentro de la tarjeta del widget, no es una pantalla propia. */
 @Composable
 fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
+    val context = LocalContext.current
     Row(
         modifier = GlanceModifier.fillMaxWidth().clickable(onClick).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -216,7 +221,7 @@ fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
                 Spacer(GlanceModifier.height(4.dp))
                 SoftBar(item.percentage)
             } else {
-                Text("Sin progreso", style = softStyle())
+                Text(context.getString(R.string.widget_no_progress), style = softStyle())
             }
         }
     }
