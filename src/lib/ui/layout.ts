@@ -33,6 +33,19 @@ export const SHELL_GRID = "max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[100rem
 export const RAIL = "340px";
 
 /**
+ * Envoltorio de dos columnas de la HOME (feed + raíl). Vive aquí, y no como dos
+ * literales en `(home)/page.tsx` y `(home)/loading.tsx`, para que el esqueleto y
+ * el contenido real NO puedan divergir en ancho: divergían (raíl 312 vs 328,
+ * contenedor 1080 vs 1200) y producían un salto al resolverse el streaming
+ * (#376, misma especie que #372). El `340px` es el valor de `RAIL`; Tailwind no
+ * puede interpolar la constante dentro de un valor arbitrario (necesita el
+ * literal en el fuente para generar el CSS), así que se escribe literal AQUÍ, en
+ * un solo sitio que los dos ficheros importan.
+ */
+export const HOME_TWO_COL =
+  "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7";
+
+/**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen
  * leyéndose. Las dos últimas paradas existen para que ensanchar el shell no
  * infle la portada al repartir 1600px entre cinco.
