@@ -1,13 +1,11 @@
 name: Firebase App Distribution
 
-# Disparo por PUSH de tag `vX.Y` (fiable), no por `release: published`: publicar
-# una release vía API/token (gh) a veces NO emite el evento `release` y la CI no
-# arrancaba (#498). El push de un tag sí dispara siempre. Las notas se leen de la
-# GitHub Release si existe (con fallback al tag).
+# Disparo al PUBLICAR una GitHub Release desde la web (así salió v1.1). Nota: una
+# release publicada vía API/token (gh) puede NO emitir este evento — publícala
+# desde la interfaz web. Las notas se leen de la Release (fallback al tag).
 on:
-  push:
-    tags:
-      - "v*.*"
+  release:
+    types: [published]
 
 permissions:
   contents: write
