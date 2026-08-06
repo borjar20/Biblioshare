@@ -14,7 +14,6 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.layout.Alignment
@@ -25,7 +24,6 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -94,7 +92,7 @@ private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitma
             Spacer(GlanceModifier.defaultWeight())
             Text(context.getString(R.string.widget_items_in_progress_count, items.size), style = softStyle())
         }
-        Spacer(GlanceModifier.height(8.dp))
+        Spacer(GlanceModifier.height(6.dp))
         items.forEach { item ->
             CompactRow(
                 item = item,
@@ -105,9 +103,10 @@ private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitma
     }
 }
 
-/** Paso 2: volver + ficha del elegido + vista de sesión (la misma del Completo,
- *  Task A4/#498: el paso 2 va DIRECTO al cronómetro, no a chips de minutos) +
- *  enlace secundario a la hoja de sesión completa en la app. */
+/** Paso 2: volver a la lista + la MISMA zona de foco del Completo (FocusZone),
+ *  en modo compacto para 4x2 (#498). Va directo al cronómetro al pulsar Sesión;
+ *  sin barra «Meta de hoy» ni enlace redundante «Registrar en la app»
+ *  (SessionTimerView ya ofrece Sesión/Registrar). */
 @Composable
 private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
@@ -120,32 +119,7 @@ private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: Tim
             )
             Text(ctx.getString(R.string.widget_register), style = titleStyle())
         }
-        Spacer(GlanceModifier.height(10.dp))
-        Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Cover(cover, width = 64, height = 96)
-            Spacer(GlanceModifier.width(12.dp))
-            Column(modifier = GlanceModifier.defaultWeight()) {
-                Text(
-                    item.nthLabel,
-                    style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
-                )
-                Text(item.title, style = bigStyle(), maxLines = 2)
-                Text(
-                    item.contextLabel.ifBlank { ctx.getString(R.string.widget_first_session) },
-                    style = softStyle(),
-                    maxLines = 1,
-                )
-            }
-        }
-        Spacer(GlanceModifier.height(12.dp))
-        SessionTimerView(item, running)
-        // itemLogHref ya resuelve el huérfano (passId vacío) a su ficha, así que
-        // el enlace secundario nunca navega a una ruta /sesion/ rota.
-        Text(
-            ctx.getString(R.string.widget_register_in_app),
-            style = softStyle(),
-            modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(item)))),
-        )
+        Spacer(GlanceModifier.height(8.dp))
+        FocusZone(item, cover, running, dailyGoal = null, compact = true)
     }
 }

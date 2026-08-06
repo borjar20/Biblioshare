@@ -159,16 +159,16 @@ fun ContinueGrid(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>
             Row(modifier = GlanceModifier.fillMaxWidth()) {
                 row.forEach { d ->
                     Column(
-                        modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)
+                        modifier = GlanceModifier.defaultWeight().padding(end = 6.dp)
                             .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
                     ) {
-                        Cover(d.coverUrl?.let(covers::get), width = 64, height = 92)
+                        Cover(d.coverUrl?.let(covers::get), width = 48, height = 70)
                         Spacer(GlanceModifier.height(4.dp))
                         Text(d.title, style = softStyle(), maxLines = 1)
                     }
                 }
             }
-            Spacer(GlanceModifier.height(10.dp))
+            Spacer(GlanceModifier.height(8.dp))
         }
     }
 }
@@ -244,6 +244,56 @@ fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
     }
 }
 
+/** Zona de foco compartida por el Completo y el paso 2 del Reducido (#498): portada
+ *  + ordinal + título (ellipsis a 2 líneas) + contexto, opcionalmente la barra
+ *  «Meta de hoy», y debajo la vista de sesión (Sesión/Registrar o el cronómetro).
+ *  Un solo componente para que el foco del pequeño sea casi idéntico al del grande.
+ *  `compact` encoge portada y paddings para caber en 4x2. */
+@Composable
+fun FocusZone(
+    data: CurrentProgressData,
+    cover: Bitmap?,
+    running: TimerLogic.Running?,
+    dailyGoal: DailyGoalData? = null,
+    compact: Boolean = false,
+) {
+    val ctx = LocalContext.current
+    Column(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_featured_bg))) {
+        Row(
+            GlanceModifier.fillMaxWidth().padding(
+                start = if (compact) 14.dp else 16.dp,
+                top = if (compact) 10.dp else 14.dp,
+                end = 12.dp,
+                bottom = if (compact) 10.dp else 14.dp,
+            ),
+        ) {
+            Cover(cover, width = if (compact) 52 else 64, height = if (compact) 78 else 94)
+            Spacer(GlanceModifier.width(12.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                Text(data.nthLabel, style = accentStyle())
+                Text(data.title, style = bigStyle(), maxLines = 2)
+                Text(
+                    data.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
+                    style = softStyle(),
+                    maxLines = 1,
+                )
+                if (dailyGoal != null) {
+                    Spacer(GlanceModifier.height(8.dp))
+                    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(ctx.getString(R.string.widget_today_goal), style = softStyle())
+                        Spacer(GlanceModifier.defaultWeight())
+                        Text(dailyGoal.progressLabel, style = softStyle())
+                    }
+                    Spacer(GlanceModifier.height(4.dp))
+                    SoftBar(dailyGoal.percentage)
+                }
+            }
+        }
+        Box(GlanceModifier.fillMaxWidth().padding(start = 4.dp).height(1.dp).background(WidgetPalette.border)) {}
+        SessionTimerView(data, running)
+    }
+}
+
 /** Vista de sesión compartida por el pie del Completo y el paso 2 del Reducido:
  *  Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
  *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
@@ -259,11 +309,11 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
             Text(
                 ctx.getString(R.string.widget_long_session),
                 style = softStyle(),
-                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)
                     .clickable(actionRunCallback<RegisterTimerAction>()),
             )
         } else {
-            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
                 val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
                     setChronometer(
                         R.id.widget_chrono,
@@ -272,7 +322,9 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
                         true,
                     )
                 }
-                AndroidRemoteViews(rv)
+                // Cronómetro centrado: el Chronometer es match_parent + gravity center
+                // (widget_chronometer.xml) y aquí ocupa todo el ancho.
+                AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
                 Spacer(GlanceModifier.height(8.dp))
                 Row(GlanceModifier.fillMaxWidth()) {
                     ActionCell(
@@ -292,7 +344,7 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
             }
         }
     } else {
-        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             if (d.itemType == "book") {
                 ActionCell(
                     ctx.getString(R.string.widget_session_action),
