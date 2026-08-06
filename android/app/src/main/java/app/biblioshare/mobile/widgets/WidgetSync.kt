@@ -27,7 +27,7 @@ object WidgetSync {
     }
 
     /** Descarga las portadas del snapshot, purga las que sobran y repinta si bajó alguna. */
-    fun downloadCovers(context: Context, parsed: WidgetSnapshot) {
+    private fun downloadCovers(context: Context, parsed: WidgetSnapshot) {
         val covers = parsed.inProgress.mapNotNull { it.coverUrl }
         WidgetImageCache.prune(context, covers.toSet())
         var any = false

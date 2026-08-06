@@ -10,31 +10,14 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 
-// Puente Capacitor → widgets. La web construye el snapshot (toda la lógica de
-// negocio vive en TypeScript, src/lib/widgets/) y aquí solo se valida, se
-// persiste y se notifica a las instancias instaladas. Los widgets NUNCA
-// consultan Supabase ni reciben tokens: pintan lo último que la app les dejó.
+// Puente Capacitor → widgets. Tras el giro a arquitectura híbrida (Fase 2) el
+// widget LEE su snapshot de Supabase por su cuenta (WidgetSync + la RPC
+// get_widget_snapshot); la web ya no lo construye ni lo empuja. Este plugin
+// expone solo: syncNow (refresco inmediato en primer plano) y el cronómetro
+// nativo del widget de registro. El refresco con la app cerrada lo lleva
+// WorkManager (WidgetWork), programado desde NativeAuthPlugin.
 @CapacitorPlugin(name = "BiblioshareWidget")
 class BiblioshareWidgetPlugin : Plugin() {
-
-    @PluginMethod
-    fun updateSnapshot(call: PluginCall) {
-        val snapshot = call.getObject("snapshot")
-        if (snapshot == null) {
-            call.reject("snapshot requerido")
-            return
-        }
-        val parsed = WidgetSnapshotStore.save(context, snapshot.toString())
-        if (parsed == null) {
-            call.reject("snapshot inválido o de versión incompatible")
-            return
-        }
-        // Texto primero: el contenido nunca espera a una imagen.
-        WidgetRefresh.updateAll(context)
-        // Portada en segundo plano, best-effort: si falla queda el placeholder.
-        Thread { WidgetSync.downloadCovers(context, parsed) }.start()
-        call.resolve()
-    }
 
     /**
      * Refresco inmediato tirando de Supabase (arquitectura híbrida, Fase 2): el
@@ -48,19 +31,6 @@ class BiblioshareWidgetPlugin : Plugin() {
             WidgetSync.refresh(context)
             call.resolve()
         }.start()
-    }
-
-    @PluginMethod
-    fun clearSnapshot(call: PluginCall) {
-        WidgetSnapshotStore.clear(context)
-        WidgetRefresh.updateAll(context)
-        call.resolve()
-    }
-
-    @PluginMethod
-    fun refreshWidgets(call: PluginCall) {
-        WidgetRefresh.updateAll(context)
-        call.resolve()
     }
 
     @PluginMethod

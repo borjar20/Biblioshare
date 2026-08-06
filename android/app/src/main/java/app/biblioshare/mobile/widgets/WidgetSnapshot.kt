@@ -3,10 +3,11 @@ package app.biblioshare.mobile.widgets
 import org.json.JSONArray
 import org.json.JSONObject
 
-// Modelo espejo de src/lib/widgets/types.ts. La versión DEBE coincidir con
-// WIDGET_SCHEMA_VERSION del lado web: un snapshot de otra versión se descarta
-// entero (parse devuelve null) y el widget cae al estado vacío — nunca se
-// intenta migrar a medias un formato que este APK no conoce.
+// Modelo del snapshot v2. Tras el giro a arquitectura híbrida (Fase 2) el JSON
+// lo produce la RPC get_widget_snapshot (supabase/migrations/), no el TS. La
+// versión DEBE coincidir en LOS DOS lados que quedan —esta constante y el
+// campo 'version' de la RPC—: un snapshot de otra versión se descarta entero
+// (parse devuelve null) y el widget cae al estado vacío, nunca migra a medias.
 const val WIDGET_SCHEMA_VERSION = 2
 
 data class WidgetWeekDay(val active: Boolean, val today: Boolean)

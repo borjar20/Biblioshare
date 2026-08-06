@@ -1,17 +1,19 @@
 import { registerPlugin } from "@capacitor/core";
-import { getWidgetSnapshot } from "@/lib/widgets/actions";
-import { snapshotFingerprint } from "@/lib/widgets/build-widget-snapshot";
-import type { WidgetSnapshot } from "@/lib/widgets/types";
 
 // Adaptador del plugin local BiblioshareWidget (Kotlin). SOLO se carga por
-// import dinámico desde src/lib/widgets/sync.ts cuando la plataforma es
-// Android — mismo patrón que push/android.ts: nunca entra en el bundle web
-// ni se ejecuta en SSR.
+// import dinámico desde los disparadores (android-widget-sync.tsx): nunca entra
+// en el bundle web ni corre en SSR.
+//
+// Tras el giro a arquitectura híbrida (Fase 2) el widget LEE su snapshot de
+// Supabase por su cuenta (RPC get_widget_snapshot, con la sesión nativa de la
+// Fase 1). La web ya no construye ni empuja el snapshot: solo pide un refresco
+// inmediato cuando está en primer plano (syncNow). El refresco con la app
+// cerrada lo lleva WorkManager en el lado nativo. Este módulo conserva además
+// el puente del cronómetro nativo del widget de registro.
 
 export interface BiblioshareWidgetPlugin {
-  updateSnapshot(options: { snapshot: WidgetSnapshot }): Promise<void>;
-  clearSnapshot(): Promise<void>;
-  refreshWidgets(): Promise<void>;
+  /** Refresco inmediato: el nativo pide su snapshot a la RPC (primer plano). */
+  syncNow(): Promise<void>;
   getRunningTimer(): Promise<{
     timer: NativeRunningTimer | null;
     // Lápida: el widget descartó/registró una sesión y la app aún puede tener
@@ -31,42 +33,9 @@ export type NativeClearedTimer = { passId: string; firstStartedAt: number };
 const BiblioshareWidget =
   registerPlugin<BiblioshareWidgetPlugin>("BiblioshareWidget");
 
-// Huella del último snapshot entregado, para no despertar a los widgets si el
-// contenido visible no cambió. Estado de módulo (vive lo que el WebView).
-let lastFingerprint: string | null = null;
-
-/**
- * Pide el snapshot al servidor y lo entrega al plugin. Best-effort:
- * - sin sesión → borra los datos del widget (estado "inicia sesión");
- * - error de red/servidor → conserva el snapshot anterior (útil sin conexión);
- * - contenido idéntico → no escribe nada.
- */
-export async function syncAndroidWidgets(): Promise<void> {
-  let result: Awaited<ReturnType<typeof getWidgetSnapshot>>;
-  try {
-    result = await getWidgetSnapshot();
-  } catch {
-    return; // sin red: el widget sigue mostrando lo último que supo
-  }
-  if (!result.ok) {
-    if (result.reason === "unauthenticated") await clearAndroidWidgets();
-    return;
-  }
-  const fingerprint = snapshotFingerprint(result.snapshot);
-  if (fingerprint === lastFingerprint) return;
-  await BiblioshareWidget.updateSnapshot({ snapshot: result.snapshot });
-  lastFingerprint = fingerprint;
-}
-
-/** Cierre de sesión: snapshot, portadas y preferencias fuera. */
-export async function clearAndroidWidgets(): Promise<void> {
-  lastFingerprint = null;
-  await BiblioshareWidget.clearSnapshot();
-}
-
-/** Re-render desde el store nativo, sin red (p. ej. tras cambio de tema). */
-export async function refreshAndroidWidgets(): Promise<void> {
-  await BiblioshareWidget.refreshWidgets();
+/** Pide al nativo que refresque el widget tirando de Supabase. Best-effort. */
+export async function syncWidgetsNow(): Promise<void> {
+  await BiblioshareWidget.syncNow();
 }
 
 // ── Cronómetro nativo (widget de registro) ─────────────────────────────────
