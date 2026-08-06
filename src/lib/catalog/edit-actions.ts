@@ -389,17 +389,16 @@ export async function deleteEdition(
 
   if (itemType === "series") return { error: "forbidden" };
 
-  // Chequeo amable en TypeScript: cuenta los pases que la RLS deja ver (los
-  // de perfiles públicos). NO es la protección real — un pase contra un
-  // perfil privado no entra en este count, así que puede quedarse corto. La
-  // protección de verdad es el trigger block_edition_delete_if_used
-  // (20260714_editions_f_delete_guard.sql), que ve TODOS los pases sin filtro de
-  // RLS y es lo único que de verdad impide el borrado.
-  const { count } = await supabase
-    .from("passes")
-    .select("id", { count: "exact", head: true })
-    .eq("edition_id", editionId);
-  if ((count ?? 0) > 0) return { error: "inUse" };
+  // Chequeo amable antes de intentar el borrado, vía la RPC editions_in_use
+  // (SECURITY DEFINER, ve TODOS los pases sin RLS): un select directo sobre
+  // `passes` solo vería los pases visibles y se quedaría corto con perfiles
+  // privados (#278). La protección REAL sigue siendo el trigger
+  // block_edition_delete_if_used (20260714_editions_f_delete_guard.sql); esto
+  // solo evita ofrecer un borrado que iba a fallar.
+  const { data: usedIds } = await supabase.rpc("editions_in_use", {
+    p_edition_ids: [editionId],
+  });
+  if ((usedIds ?? []).length > 0) return { error: "inUse" };
 
   const { error } =
     itemType === "book"

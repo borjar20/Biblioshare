@@ -2577,6 +2577,10 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      editions_in_use: {
+        Args: { p_edition_ids: string[] }
+        Returns: string[]
+      }
       ensure_club_round: {
         Args: {
           p_club_id: string
