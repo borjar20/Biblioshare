@@ -70,13 +70,10 @@
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:text="Salitre y Cenizas"
-                    android:textColor="@color/widget_fg"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:layout_height="14dp"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginEnd="52dp"
+                    android:background="@drawable/widget_preview_line" />
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -84,7 +81,8 @@
                     android:ellipsize="end"
                     android:text="Día 5 · 2 notas"
                     android:textColor="@color/widget_fg_soft"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:layout_marginTop="6dp" />
                 <ProgressBar
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
@@ -172,18 +170,14 @@
                 android:orientation="vertical">
                 <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:text="El Ojo del Mundo"
-                    android:textColor="@color/widget_fg"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:layout_height="11dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/widget_preview_line" />
                 <ProgressBar
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:max="100"
                     android:progress="35"
                     android:progressTint="@color/widget_accent"
@@ -211,18 +205,14 @@
                 android:orientation="vertical">
                 <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:text="Siega"
-                    android:textColor="@color/widget_fg"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:layout_height="11dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/widget_preview_line" />
                 <ProgressBar
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:max="100"
                     android:progress="10"
                     android:progressTint="@color/widget_accent"
