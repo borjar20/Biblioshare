@@ -62,6 +62,41 @@ export function widgetAnchor(state: TimerState): number | null {
   return state.startedAt - state.accumulatedMs;
 }
 
+// ── Reconciliación de los dos relojes (app ↔ widget nativo) ─────────────────
+// Desde Fase B el widget SÍ modela "pausado" (#498, deroga #489): el espejo ya
+// no lo apaga al pausar, manda el estado completo. `anchor` es el ancla efectiva
+// (0 cuando está pausado, irrelevante hasta reanudar); `accumulatedMs`/`running`
+// distinguen corriendo de pausado; `firstStartedAt` viaja aparte ("Cuándo lees").
+
+export function widgetMirror(state: TimerState): {
+  passOp: "set";
+  anchor: number;
+  accumulatedMs: number;
+  running: boolean;
+  firstStartedAt: number;
+} {
+  return {
+    passOp: "set",
+    anchor: widgetAnchor(state) ?? 0,
+    accumulatedMs: state.accumulatedMs,
+    running: state.startedAt !== null,
+    firstStartedAt: state.firstStartedAt ?? state.startedAt ?? 0,
+  };
+}
+
+export function timerStateFromWidget(n: {
+  anchor: number;
+  accumulatedMs: number;
+  running: boolean;
+  firstStartedAt: number;
+}): TimerState {
+  return {
+    startedAt: n.running ? n.anchor + n.accumulatedMs : null,
+    accumulatedMs: n.accumulatedMs,
+    firstStartedAt: n.firstStartedAt,
+  };
+}
+
 export const timerStorageKey = (passId: string) => `biblioshare:timer:${passId}`;
 
 // ── Persistencia ────────────────────────────────────────────────────────────
@@ -144,12 +179,13 @@ function mirrorToWidget(op: "write" | "clear", passId: string, state?: TimerStat
       const { Capacitor } = await import("@capacitor/core");
       if (Capacitor.getPlatform() !== "android") return;
       const w = await import("@/lib/native/android-widgets");
-      const anchor = state ? widgetAnchor(state) : null;
-      if (op === "clear" || anchor === null) {
-        // Pausa o cierre: el widget no modela "pausado", así que lo apagamos (#489).
+      if (op === "clear") {
         await w.clearRunningTimer(passId);
       } else {
-        await w.setRunningTimer(passId, anchor, state!.firstStartedAt ?? state!.startedAt!);
+        // Corriendo o PAUSADO: el widget ya modela la pausa (Fase B, #498), así
+        // que espejamos el estado completo en vez de apagarlo.
+        const m = widgetMirror(state!);
+        await w.setRunningTimer(passId, m.anchor, m.firstStartedAt, m.accumulatedMs, m.running);
       }
     } catch {
       // Best-effort: el reloj de la app no depende de esto.

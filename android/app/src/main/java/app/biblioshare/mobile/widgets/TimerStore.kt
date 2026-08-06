@@ -16,21 +16,62 @@ import android.content.Context
 // app la lee al volver a primer plano para apagar su propio reloj sembrado y
 // evitar el reloj fantasma (#493). set() la pisa (una sesión nueva la anula).
 object TimerLogic {
-    data class Running(val passId: String, val startedAt: Long, val firstStartedAt: Long)
+    // `startedAt` es el ancla EFECTIVA (mientras corre: now - startedAt == elapsed,
+    // ya sin los huecos pausados). `accumulatedMs` es el tiempo contado hasta la
+    // última pausa; `running` distingue corriendo de pausado. Pausado: manda
+    // `accumulatedMs` (congelado) y `startedAt` es irrelevante hasta reanudar.
+    data class Running(
+        val passId: String,
+        val startedAt: Long,
+        val firstStartedAt: Long,
+        val accumulatedMs: Long,
+        val running: Boolean,
+    )
     data class Cleared(val passId: String, val firstStartedAt: Long)
 
-    fun set(m: MutableMap<String, String>, passId: String, startedAt: Long, firstStartedAt: Long) {
+    /** Arranque limpio: sin pausas, ancla e inicio coinciden. */
+    fun start(m: MutableMap<String, String>, passId: String, now: Long) =
+        set(m, passId, startedAt = now, firstStartedAt = now, accumulatedMs = 0L, running = true)
+
+    fun set(
+        m: MutableMap<String, String>,
+        passId: String,
+        startedAt: Long,
+        firstStartedAt: Long,
+        accumulatedMs: Long,
+        running: Boolean,
+    ) {
         m["timer_pass_id"] = passId
         m["timer_started_at"] = startedAt.toString()
         m["timer_first_at"] = firstStartedAt.toString()
+        m["timer_accumulated"] = accumulatedMs.toString()
+        m["timer_running"] = if (running) "1" else "0"
         clearTombstone(m, null)
+    }
+
+    /** Pausa: banca el elapsed corriendo en `accumulatedMs` y congela. */
+    fun pause(m: MutableMap<String, String>, now: Long) {
+        val r = get(m) ?: return
+        if (!r.running) return
+        set(m, r.passId, startedAt = r.startedAt, firstStartedAt = r.firstStartedAt,
+            accumulatedMs = now - r.startedAt, running = false)
+    }
+
+    /** Reanuda: reancla `now - accumulatedMs` para no perder lo ya contado. */
+    fun resume(m: MutableMap<String, String>, now: Long) {
+        val r = get(m) ?: return
+        if (r.running) return
+        set(m, r.passId, startedAt = now - r.accumulatedMs, firstStartedAt = r.firstStartedAt,
+            accumulatedMs = r.accumulatedMs, running = true)
     }
 
     fun get(m: Map<String, String>): Running? {
         val id = m["timer_pass_id"] ?: return null
         val at = m["timer_started_at"]?.toLongOrNull() ?: return null
         val first = m["timer_first_at"]?.toLongOrNull() ?: at
-        return Running(id, at, first)
+        val acc = m["timer_accumulated"]?.toLongOrNull() ?: 0L
+        val running = m["timer_running"] != "0" // ausencia = corriendo (compat sesiones viejas)
+        return Running(id, at, first, acc, running)
     }
 
     fun clear(m: MutableMap<String, String>, passId: String?) {
@@ -38,6 +79,8 @@ object TimerLogic {
             m.remove("timer_pass_id")
             m.remove("timer_started_at")
             m.remove("timer_first_at")
+            m.remove("timer_accumulated")
+            m.remove("timer_running")
         }
     }
 
@@ -67,7 +110,9 @@ object TimerLogic {
 
 object TimerStore {
     private val KEYS = listOf(
-        "timer_pass_id", "timer_started_at", "timer_first_at", "cleared_pass_id", "cleared_first_at",
+        "timer_pass_id", "timer_started_at", "timer_first_at",
+        "timer_accumulated", "timer_running",
+        "cleared_pass_id", "cleared_first_at",
     )
 
     private fun prefs(c: Context) =
@@ -93,8 +138,12 @@ object TimerStore {
     fun get(c: Context): TimerLogic.Running? = read(c) { TimerLogic.get(it) }
     fun getCleared(c: Context): TimerLogic.Cleared? = read(c) { TimerLogic.getCleared(it) }
 
-    fun set(c: Context, passId: String, startedAt: Long, firstStartedAt: Long) =
-        edit(c) { TimerLogic.set(it, passId, startedAt, firstStartedAt) }
+    fun set(c: Context, passId: String, startedAt: Long, firstStartedAt: Long, accumulatedMs: Long, running: Boolean) =
+        edit(c) { TimerLogic.set(it, passId, startedAt, firstStartedAt, accumulatedMs, running) }
+
+    fun start(c: Context, passId: String, now: Long) = edit(c) { TimerLogic.start(it, passId, now) }
+    fun pause(c: Context, now: Long) = edit(c) { TimerLogic.pause(it, now) }
+    fun resume(c: Context, now: Long) = edit(c) { TimerLogic.resume(it, now) }
 
     /** Espejo app→nativo (pausa/cierre) y cierre de sesión: apaga sin dejar lápida
      *  y consume cualquier lápida pendiente de ese pase (la app ya está al día). */

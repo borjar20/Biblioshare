@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Redimensionado en Fase 3 (Task 13): "Completo" pasó a ser UN layout grande
-     único (tarjeta destacada + rejilla, SizeMode.Exact, ~380x560) en vez del
-     2x2 responsive original — a 110x110 renderizaba apretado. 250x320/4x4
-     le da sitio; el resto de la config (initialLayout, resizeMode,
-     updatePeriodMillis, description) no cambia.
-     updatePeriodMillis=1h: re-render desde el store LOCAL (sin red) — su único
-     trabajo real es que el widget note el cambio de día sin WorkManager. En
-     launchers que ignoran targetCellWidth mandan los minWidth/minHeight. -->
+<!-- «Completo» redimensionado a 4x3 (#498): antes 4x4 (~250x320) quedaba alto y
+     con hueco; 4x3 (~250x180) compacta foco + selector sin recortes. SizeMode.Exact
+     compone al tamaño real, así que el layout se adapta; los minWidth/minHeight
+     mandan en launchers que ignoran targetCell*. updatePeriodMillis=1h: re-render
+     desde el store LOCAL (sin red) solo para notar el cambio de día sin WorkManager. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="320dp"
+    android:minHeight="180dp"
     android:minResizeWidth="250dp"
-    android:minResizeHeight="320dp"
+    android:minResizeHeight="180dp"
     android:targetCellWidth="4"
-    android:targetCellHeight="4"
+    android:targetCellHeight="3"
     android:maxResizeWidth="380dp"
-    android:maxResizeHeight="560dp"
+    android:maxResizeHeight="320dp"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="3600000"
     android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/widget_preview"
+    android:previewLayout="@layout/widget_current_progress_preview"
     android:description="@string/widget_current_progress_desc" />

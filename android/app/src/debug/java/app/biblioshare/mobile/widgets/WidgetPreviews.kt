@@ -18,13 +18,15 @@ import androidx.glance.preview.Preview
 private const val COMPACT_DP = 110
 private const val WIDE_W_DP = 240
 private const val WIDE_H_DP = 110
-private const val COMPLETO_W_DP = 380
-private const val COMPLETO_H_DP = 560
-private const val QUICK_REGISTER_W_DP = 340
-private const val QUICK_REGISTER_PICK_H_DP = 420
-private const val QUICK_REGISTER_REGISTER_H_DP = 360
+// Tamaños objetivo reales (#498): Completo 4x3 (~250x180), Registro rápido 4x2
+// (~250x110). Las previews se ven al tamaño en el que de verdad viven.
+private const val COMPLETO_W_DP = 250
+private const val COMPLETO_H_DP = 190
+private const val QUICK_REGISTER_W_DP = 250
+private const val QUICK_REGISTER_PICK_H_DP = 120
+private const val QUICK_REGISTER_REGISTER_H_DP = 120
 
-// Destacado con progreso, racha y semana — ejercita FeaturedCard al completo.
+// Destacado con progreso — ejercita FocusZone (portada + título + Meta de hoy).
 private val sampleFeatured = CurrentProgressData(
     passId = "p1",
     itemType = "book",
@@ -104,7 +106,7 @@ fun PreviewCompletoTimer() {
             dailyGoal = sampleGoal,
         ),
         covers = emptyMap(),
-        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
+        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it, 0L, true) },
     )
 }
 
@@ -194,7 +196,7 @@ fun PreviewQuickRegisterRegisterBook() {
 }
 
 // El paso 2 arranca en la vista de sesión: crono corriendo, para ver el layout
-// con "Descartar"/"Registrar" + el enlace secundario debajo (Task A4/#498).
+// con "Descartar"/"Registrar" centrado (#498).
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = QUICK_REGISTER_W_DP, heightDp = QUICK_REGISTER_REGISTER_H_DP)
 @Composable
@@ -202,6 +204,6 @@ fun PreviewQuickRegisterRegisterTimer() {
     QuickRegisterContent(
         QuickRegisterState.Register(sampleFeatured),
         covers = emptyMap(),
-        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
+        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it, 0L, true) },
     )
 }

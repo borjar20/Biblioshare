@@ -1,7 +1,11 @@
 package app.biblioshare.mobile.widgets
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
-import androidx.glance.appwidget.updateAll
+import android.util.Log
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.compose
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -42,7 +46,8 @@ class BiblioshareWidgetPlugin : Plugin() {
             "timer",
             if (r == null) JSONObject.NULL
             else JSObject().put("passId", r.passId).put("startedAt", r.startedAt)
-                .put("firstStartedAt", r.firstStartedAt),
+                .put("firstStartedAt", r.firstStartedAt)
+                .put("accumulatedMs", r.accumulatedMs).put("running", r.running),
         )
         res.put(
             "cleared",
@@ -62,7 +67,10 @@ class BiblioshareWidgetPlugin : Plugin() {
         }
         // `firstStartedAt` (hora real de inicio) puede faltar en clientes viejos: cae al ancla.
         val firstStartedAt = call.getLong("firstStartedAt") ?: startedAt
-        TimerStore.set(context, passId, startedAt, firstStartedAt)
+        // Pausa (#498): clientes viejos no mandan estos → corriendo, sin acumulado.
+        val accumulatedMs = call.getLong("accumulatedMs") ?: 0L
+        val running = call.getBoolean("running", true) ?: true
+        TimerStore.set(context, passId, startedAt, firstStartedAt, accumulatedMs, running)
         WidgetRefresh.updateAll(context)
         call.resolve()
     }
@@ -77,14 +85,45 @@ class BiblioshareWidgetPlugin : Plugin() {
 
 object WidgetRefresh {
     /**
-     * Re-renderiza TODAS las instancias de ambos widgets desde el store local.
-     * runBlocking es aceptable: corre en el hilo de plugins de Capacitor (o en
-     * el Thread de la portada), nunca en el main thread, y updateAll solo
-     * recompone RemoteViews.
+     * Re-renderiza TODAS las instancias de los widgets y las EMPUJA directamente
+     * vía AppWidgetManager.updateAppWidget (compose() en proceso). Motivo (#498):
+     * GlanceAppWidget.update/updateAll solo ENCOLA la composición como
+     * OneTimeWorkRequest normal de WorkManager, y One UI difiere esos jobs con la
+     * app en background hasta el siguiente broadcast — el widget no repintaba
+     * hasta la siguiente acción. compose()+updateAppWidget pinta aquí y ahora.
+     * Fallback por instancia al update() clásico si compose() fallara.
      */
-    fun updateAll(context: Context) = runBlocking {
-        CurrentProgressWidget().updateAll(context)
-        DailyGoalWidget().updateAll(context)
-        QuickRegisterWidget().updateAll(context)
+    fun updateAll(context: Context) = runBlocking { updateAllSuspend(context) }
+
+    suspend fun updateAllSuspend(context: Context) {
+        val glanceManager = GlanceAppWidgetManager(context)
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        push(context, glanceManager, appWidgetManager, CurrentProgressWidget(), CurrentProgressWidget::class.java, "current")
+        push(context, glanceManager, appWidgetManager, DailyGoalWidget(), DailyGoalWidget::class.java, "daily")
+        push(context, glanceManager, appWidgetManager, QuickRegisterWidget(), QuickRegisterWidget::class.java, "quick")
+    }
+
+    private suspend fun <T : GlanceAppWidget> push(
+        context: Context,
+        glanceManager: GlanceAppWidgetManager,
+        appWidgetManager: AppWidgetManager,
+        widget: T,
+        provider: Class<T>,
+        label: String,
+    ) {
+        // Independiente: un fallo en un widget no impide los otros (antes lo garantizaba
+        // el runCatching por widget; #498). getGlanceIds también entra en el runCatching
+        // porque su I/O interno de DataStore puede lanzar.
+        runCatching {
+            glanceManager.getGlanceIds(provider).forEach { id ->
+                runCatching {
+                    appWidgetManager.updateAppWidget(glanceManager.getAppWidgetId(id), widget.compose(context, id))
+                }.onFailure { e ->
+                    Log.w("BiblioshareWidgets", "compose+push falló ($label/$id), caigo a update()", e)
+                    runCatching { widget.update(context, id) }
+                        .onFailure { e2 -> Log.w("BiblioshareWidgets", "update() fallback también falló ($label/$id)", e2) }
+                }
+            }
+        }.onFailure { e -> Log.w("BiblioshareWidgets", "getGlanceIds falló ($label), sin refresco", e) }
     }
 }

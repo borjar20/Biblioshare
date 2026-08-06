@@ -8,11 +8,6 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.appwidget.updateAll
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
-import androidx.work.WorkManager
 
 // Estado del widget (Preferences DataStore de Glance): qué pase decidió el
 // usuario destacar tocando la rejilla "Continúa donde lo dejaste". Se lee en
@@ -22,27 +17,10 @@ val PASS_ID_PARAM = ActionParameters.Key<String>("passId")
 
 private const val WIDGET_LOG_TAG = "BiblioshareWidgets"
 
-/** Refresca AMBOS widgets vía updateAll (el camino fiable, el del foreground).
- *  Independiente (runCatching): un fallo en uno no impide el otro. Loggea para
- *  diagnosticar el repintado intermitente (logcat -s BiblioshareWidgets). */
+/** Repinta ambos widgets en el propio proceso (compose()+updateAppWidget, #498). */
 private suspend fun refreshWidgets(context: Context, from: String) {
-    Log.i(WIDGET_LOG_TAG, "action '$from' fired → refreshWidgets")
-    val current = runCatching { CurrentProgressWidget().updateAll(context) }
-    val quick = runCatching { QuickRegisterWidget().updateAll(context) }
-    Log.i(
-        WIDGET_LOG_TAG,
-        "refreshWidgets('$from') done: current=${current.isSuccess} quick=${quick.isSuccess}" +
-            (current.exceptionOrNull()?.let { " currentErr=$it" } ?: "") +
-            (quick.exceptionOrNull()?.let { " quickErr=$it" } ?: ""),
-    )
-    // Respaldo fiable: expedited corre en un estado de proceso que One UI honra.
-    // REPLACE: toques rápidos no apilan workers. RUN_AS_NON_EXPEDITED: si se agota
-    // la cuota de expedited, cae a trabajo normal (sin crash ni notificación forzada).
-    val req = OneTimeWorkRequestBuilder<WidgetRepaintWorker>()
-        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-        .build()
-    WorkManager.getInstance(context).enqueueUniqueWork("widget_repaint", ExistingWorkPolicy.REPLACE, req)
-    Log.i(WIDGET_LOG_TAG, "refreshWidgets('$from') direct done + expedited enqueued")
+    runCatching { WidgetRefresh.updateAllSuspend(context) }
+        .onFailure { Log.w(WIDGET_LOG_TAG, "refreshWidgets('$from') falló", it) }
 }
 
 /** Tap en una portada de la rejilla: persiste el pase elegido y repinta. */
@@ -87,9 +65,8 @@ class BackAction : ActionCallback {
 class StartTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val passId = p[PASS_ID_PARAM] ?: return
-        val now = System.currentTimeMillis()
         // Arranque limpio desde el widget: sin pausas, ancla e inicio coinciden.
-        TimerStore.set(c, passId, now, now)
+        TimerStore.start(c, passId, System.currentTimeMillis())
         refreshWidgets(c, "StartTimer")
     }
 }
@@ -101,12 +78,25 @@ class DiscardTimerAction : ActionCallback {
         refreshWidgets(c, "DiscardTimer")
     }
 }
+// Pausa nativa in-widget (#498, Fase B): banca/reanuda el elapsed sin abrir la app.
+class PauseTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        TimerStore.pause(c, System.currentTimeMillis())
+        refreshWidgets(c, "PauseTimer")
+    }
+}
+class ResumeTimerAction : ActionCallback {
+    override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
+        TimerStore.resume(c, System.currentTimeMillis())
+        refreshWidgets(c, "ResumeTimer")
+    }
+}
 class RegisterTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val r = TimerStore.get(c) ?: return
-        // Minutos desde el ancla efectiva (ya sin pausas, #491); `inicio` es la
+        // Minutos del elapsed REAL (cuenta con la pausa, #498); `inicio` es la
         // hora real de arranque para "Cuándo lees".
-        val minutos = elapsedMinutes(r.startedAt, System.currentTimeMillis())
+        val minutos = elapsedMinutes(elapsedMs(r, System.currentTimeMillis()))
         val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
         TimerStore.clearFromWidget(c)
         refreshWidgets(c, "RegisterTimer")

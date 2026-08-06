@@ -432,9 +432,13 @@ de "actividad" —racha/semana por pase = sesiones ∪ episodios; racha global =
 finales de pase; minutos de hoy = solo `duration_minutes` de libros—; (2) "hoy" en
 **`Europe/Madrid`** (convención de `club_rounds`), no UTC. **En prod desde 2026-08-06**
 (verificada bajo rol `authenticated` con RLS: JSON v2 correcto para un usuario real de 2 pases
-en curso). Riesgo vivo: como la web sigue usando el TS, widget y dashboard podrían
-divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver `decisiones.md` e issue
-de reconciliación.
+en curso). **Fix 2026-08-06 (`20260806_widget_snapshot_edition_pages.sql`, dev+prod):** el total de
+páginas del libro sale de la EDICIÓN del pase (`book_editions`, precedencia edición del pase →
+primaria → cualquiera con total → y solo si no, `books.total_pages`), réplica en SQL del arreglo
+web `e6dec32`/`pickEditionPages`; antes salía «Sin progreso» porque `books.total_pages` casi
+siempre es null (la búsqueda ya no lo escribe). Riesgo vivo: como la web sigue usando el TS, widget
+y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver
+`decisiones.md` e issue de reconciliación.
 
 ## 4. Organización del usuario
 

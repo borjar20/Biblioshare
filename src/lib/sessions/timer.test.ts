@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { elapsedMs, isStale, pause, reset, start, toMinutes, widgetAnchor, type TimerState } from "./timer";
+import {
+  elapsedMs,
+  isStale,
+  pause,
+  reset,
+  start,
+  timerStateFromWidget,
+  toMinutes,
+  widgetAnchor,
+  widgetMirror,
+  type TimerState,
+} from "./timer";
 
 const T0 = 1_700_000_000_000;
 const MIN = 60_000;
@@ -97,8 +108,53 @@ describe("ancla del widget nativo", () => {
     expect(widgetAnchor(s)).toBe(widgetAnchor(s)); // no depende de `now`
   });
 
-  it("en pausa no hay ancla (el widget se apaga, #489)", () => {
+  it("en pausa no hay ancla efectiva (widgetMirror la manda como 0, #498)", () => {
     const paused = pause(start(reset(), T0), T0 + 5 * MIN);
     expect(widgetAnchor(paused)).toBeNull();
+  });
+});
+
+describe("reconciliacion de los dos relojes (app <-> widget)", () => {
+  it("widgetMirror: corriendo manda ancla efectiva + acumulado", () => {
+    const s: TimerState = { startedAt: 2000, accumulatedMs: 500, firstStartedAt: 100 };
+    expect(widgetMirror(s)).toEqual({
+      passOp: "set",
+      anchor: 1500,
+      accumulatedMs: 500,
+      running: true,
+      firstStartedAt: 100,
+    });
+  });
+
+  it("widgetMirror: pausado manda running=false y el acumulado", () => {
+    const s: TimerState = { startedAt: null, accumulatedMs: 800, firstStartedAt: 100 };
+    expect(widgetMirror(s)).toEqual({
+      passOp: "set",
+      anchor: 0,
+      accumulatedMs: 800,
+      running: false,
+      firstStartedAt: 100,
+    });
+  });
+
+  it("timerStateFromWidget: corriendo reconstruye el ancla idéntica", () => {
+    const native = { anchor: 1500, accumulatedMs: 500, running: true, firstStartedAt: 100 };
+    const st = timerStateFromWidget(native);
+    expect(st.startedAt! - st.accumulatedMs).toBe(1500); // widgetAnchor(st) == anchor
+  });
+
+  it("timerStateFromWidget: pausado deja startedAt null y el acumulado", () => {
+    const native = { anchor: 0, accumulatedMs: 800, running: false, firstStartedAt: 100 };
+    expect(timerStateFromWidget(native)).toEqual({
+      startedAt: null,
+      accumulatedMs: 800,
+      firstStartedAt: 100,
+    });
+  });
+
+  it("round-trip: widgetMirror ∘ timerStateFromWidget conserva el estado corriendo", () => {
+    const s: TimerState = { startedAt: 2000, accumulatedMs: 500, firstStartedAt: 100 };
+    const m = widgetMirror(s);
+    expect(timerStateFromWidget(m)).toEqual(s);
   });
 });

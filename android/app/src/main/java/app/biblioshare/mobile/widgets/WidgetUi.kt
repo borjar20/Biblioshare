@@ -150,28 +150,47 @@ fun ActionCell(label: String, color: ColorProvider, modifier: GlanceModifier) {
     }
 }
 
-/** Rejilla de "Continúa donde lo dejaste": 3 columnas por fila, portada + título
- *  a una línea. Tocar una celda cambia el destacado (Glance state, Task 8). */
+/** Carrusel de "Continúa donde lo dejaste": hasta 3 tarjetas HORIZONTALES que
+ *  rellenan el ancho (1/3 cada una). Cada tarjeta = portada a la izquierda +
+ *  bloque de texto a la derecha (título a 2 líneas con ellipsis, contexto a 1
+ *  línea y barra de progreso muy fina), sobre un fondo sutil redondeado. Tocar
+ *  una tarjeta cambia el destacado (Glance state, Task 8).
+ *
+ *  Glance 1.1.1 NO tiene scroll horizontal (solo LazyColumn/LazyVerticalGrid
+ *  scrollan): se muestran 3 y el resto se alcanza con «Ver todos» de la cabecera
+ *  (que ya trae el total real). `cornerRadius` clipa el fondo en API 31+; en <31
+ *  cae a esquinas rectas. */
 @Composable
-fun ContinueGrid(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
-    Column {
-        others.chunked(3).forEach { row ->
-            Row(modifier = GlanceModifier.fillMaxWidth()) {
-                row.forEach { d ->
-                    Column(
-                        modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)
-                            .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
-                    ) {
-                        Cover(d.coverUrl?.let(covers::get), width = 64, height = 92)
-                        Spacer(GlanceModifier.height(4.dp))
-                        Text(d.title, style = softStyle(), maxLines = 1)
-                    }
+fun ContinueCarousel(others: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+    val ctx = LocalContext.current
+    Row(GlanceModifier.fillMaxWidth()) {
+        others.take(CAROUSEL_MAX).forEach { d ->
+            Row(
+                // Fondo `surface`, no `track`: la barra de progreso usa `track` de
+                // fondo, así que sobre una tarjeta `track` era invisible (#498).
+                modifier = GlanceModifier.defaultWeight().padding(end = 8.dp)
+                    .background(WidgetPalette.surface).cornerRadius(12.dp).padding(8.dp)
+                    .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Cover(d.coverUrl?.let(covers::get), width = 44, height = 64)
+                Spacer(GlanceModifier.width(8.dp))
+                Column(GlanceModifier.defaultWeight()) {
+                    Text(d.title, style = titleStyle(), maxLines = 2)
+                    Text(
+                        d.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
+                        style = softStyle(),
+                        maxLines = 1,
+                    )
+                    Spacer(GlanceModifier.height(4.dp))
+                    SoftBar(d.percentage ?: 0, heightDp = 3)
                 }
             }
-            Spacer(GlanceModifier.height(10.dp))
         }
     }
 }
+
+private const val CAROUSEL_MAX = 3 // Glance sin scroll horizontal: 3 y el resto por «Ver todos»
 
 /** Pastilla dorada con la racha en días (icono + texto). */
 @Composable
@@ -208,12 +227,13 @@ fun WeekDots(week: List<WidgetWeekDay>) {
     }
 }
 
-/** Barra de progreso fina; usa el indicador nativo de Glance (no hay fillMaxWidth(fraction) en 1.1.1). */
+/** Barra de progreso fina; usa el indicador nativo de Glance (no hay fillMaxWidth(fraction) en 1.1.1).
+ *  `heightDp` permite una barra «muy fina» en las tarjetas del carrusel. */
 @Composable
-fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent) {
+fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent, heightDp: Int = 6) {
     LinearProgressIndicator(
         progress = (percent.coerceIn(0, 100)) / 100f,
-        modifier = GlanceModifier.fillMaxWidth().height(6.dp),
+        modifier = GlanceModifier.fillMaxWidth().height(heightDp.dp),
         color = color,
         backgroundColor = WidgetPalette.track,
     )
@@ -223,10 +243,10 @@ fun SoftBar(percent: Int, color: ColorProvider = WidgetPalette.accent) {
  *  progreso (o "Sin progreso"), toda la fila clicable. Sin `WidgetCard`: vive
  *  dentro de la tarjeta del widget, no es una pantalla propia. */
 @Composable
-fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
+fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action, modifier: GlanceModifier = GlanceModifier) {
     val context = LocalContext.current
     Row(
-        modifier = GlanceModifier.fillMaxWidth().clickable(onClick).padding(vertical = 6.dp),
+        modifier = GlanceModifier.fillMaxWidth().then(modifier).clickable(onClick).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Cover(cover, width = 36, height = 54)
@@ -244,55 +264,140 @@ fun CompactRow(item: CurrentProgressData, cover: Bitmap?, onClick: Action) {
     }
 }
 
+/** Zona de foco compartida por el Completo y el paso 2 del Reducido (#498): portada
+ *  + ordinal + título (ellipsis a 2 líneas) + contexto, opcionalmente la barra
+ *  «Meta de hoy», y debajo la vista de sesión (Sesión/Registrar o el cronómetro).
+ *  Un solo componente para que el foco del pequeño sea casi idéntico al del grande.
+ *  `compact` encoge portada y paddings para caber en 4x2. */
+@Composable
+fun FocusZone(
+    data: CurrentProgressData,
+    cover: Bitmap?,
+    running: TimerLogic.Running?,
+    dailyGoal: DailyGoalData? = null,
+    compact: Boolean = false,
+    coverless: Boolean = false,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    val ctx = LocalContext.current
+    // `modifier` (p. ej. defaultWeight) permite que el foco LLENE el alto cuando
+    // no hay nada debajo (Completo con crono activo, #498). `coverless` oculta la
+    // PORTADA y deja el título a una línea, conservando el texto de contexto para
+    // que la sesión quepa en 4x2 sin quedar vacío (Reducido con crono activo).
+    Column(GlanceModifier.fillMaxWidth().then(modifier).background(ImageProvider(R.drawable.widget_featured_bg))) {
+        Row(
+            GlanceModifier.fillMaxWidth().padding(
+                start = if (compact) 14.dp else 16.dp,
+                top = if (compact) 10.dp else 14.dp,
+                end = 12.dp,
+                bottom = if (compact) 10.dp else 14.dp,
+            ),
+        ) {
+            if (!coverless) {
+                Cover(cover, width = if (compact) 52 else 64, height = if (compact) 78 else 94)
+                Spacer(GlanceModifier.width(12.dp))
+            }
+            Column(GlanceModifier.defaultWeight()) {
+                Text(data.nthLabel, style = accentStyle())
+                Text(data.title, style = bigStyle(), maxLines = if (coverless) 1 else 2)
+                // Sin portada (4x2 con crono) se omite el contexto: no cabe con el
+                // reloj + los 3 controles (#498).
+                if (!coverless) {
+                    Text(
+                        data.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
+                        style = softStyle(),
+                        maxLines = 1,
+                    )
+                }
+                if (dailyGoal != null) {
+                    Spacer(GlanceModifier.height(8.dp))
+                    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(ctx.getString(R.string.widget_today_goal), style = softStyle())
+                        Spacer(GlanceModifier.defaultWeight())
+                        Text(dailyGoal.progressLabel, style = softStyle())
+                    }
+                    Spacer(GlanceModifier.height(4.dp))
+                    SoftBar(dailyGoal.percentage)
+                }
+            }
+        }
+        // Al llenar el alto, empuja la sesión al fondo (reparte el hueco arriba y
+        // abajo); al envolver, el peso no reparte nada y queda pegado.
+        Spacer(GlanceModifier.defaultWeight())
+        Box(GlanceModifier.fillMaxWidth().padding(start = 4.dp).height(1.dp).background(WidgetPalette.border)) {}
+        SessionTimerView(data, running)
+    }
+}
+
 /** Vista de sesión compartida por el pie del Completo y el paso 2 del Reducido:
- *  Sesión/Registrar como deep-link plano cuando no hay cronómetro corriendo para
- *  este pase; si lo hay, pinta el reloj nativo (Chronometer vía AndroidRemoteViews)
- *  o, pasadas 4h, invita a abrir la app en vez de seguir tickeando en segundo
- *  plano. Fase A: cronómetro SIN pausa (Descartar/Registrar); la pausa llega
- *  en Fase B (#498). */
+ *  Sesión/Registrar como deep-link plano cuando no hay cronómetro para este pase;
+ *  si lo hay, pinta el reloj nativo (Chronometer tickeando si corre, o el tiempo
+ *  CONGELADO si está pausado) + Pausar/Reanudar │ Registrar, y Descartar como
+ *  enlace secundario. Pasadas 4h corriendo, invita a abrir la app en vez de
+ *  seguir tickeando en segundo plano. Pausa nativa: Fase B (#498). */
 @Composable
 fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
     if (running != null && running.passId == d.passId) {
         val now = System.currentTimeMillis()
-        if (isLongSession(running.startedAt, now)) {
+        if (running.running && isLongSession(running.startedAt, now)) {
             Text(
                 ctx.getString(R.string.widget_long_session),
                 style = softStyle(),
-                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)
                     .clickable(actionRunCallback<RegisterTimerAction>()),
             )
         } else {
-            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
-                    setChronometer(
-                        R.id.widget_chrono,
-                        chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
-                        null,
-                        true,
-                    )
+            Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                if (running.running) {
+                    val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
+                        setChronometer(
+                            R.id.widget_chrono,
+                            chronometerBase(running.startedAt, now, SystemClock.elapsedRealtime()),
+                            null,
+                            true,
+                        )
+                    }
+                    // Cronómetro centrado: el Chronometer es match_parent + gravity center.
+                    AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
+                } else {
+                    // Pausado: tiempo congelado con el MISMO TextView monospace que el
+                    // Chronometer (widget_static_time.xml) — así no cambia la tipografía
+                    // ni el relleno de ceros al pausar (#498).
+                    val rv = RemoteViews(ctx.packageName, R.layout.widget_static_time).apply {
+                        setTextViewText(R.id.widget_static_time, fmtElapsed(elapsedMs(running, now)))
+                    }
+                    AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
                 }
-                AndroidRemoteViews(rv)
                 Spacer(GlanceModifier.height(8.dp))
+                val toggle = if (running.running) actionRunCallback<PauseTimerAction>()
+                             else actionRunCallback<ResumeTimerAction>()
                 Row(GlanceModifier.fillMaxWidth()) {
+                    ActionCell(
+                        ctx.getString(if (running.running) R.string.widget_pause else R.string.widget_resume),
+                        WidgetPalette.fg,
+                        GlanceModifier.defaultWeight().clickable(toggle),
+                    )
+                    Spacer(GlanceModifier.width(8.dp))
                     ActionCell(
                         ctx.getString(R.string.widget_discard),
                         WidgetPalette.fgSoft,
                         GlanceModifier.defaultWeight()
                             .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
                     )
-                    Spacer(GlanceModifier.width(8.dp))
-                    ActionCell(
-                        ctx.getString(R.string.widget_register),
-                        WidgetPalette.accent,
-                        GlanceModifier.defaultWeight()
-                            .clickable(actionRunCallback<RegisterTimerAction>()),
-                    )
                 }
+                Spacer(GlanceModifier.height(8.dp))
+                // Registrar = CTA principal, ancho abajo; Descartar sube junto a Pausar (#498).
+                ActionCell(
+                    ctx.getString(R.string.widget_register),
+                    WidgetPalette.accent,
+                    GlanceModifier.fillMaxWidth()
+                        .clickable(actionRunCallback<RegisterTimerAction>()),
+                )
             }
         }
     } else {
-        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             if (d.itemType == "book") {
                 ActionCell(
                     ctx.getString(R.string.widget_session_action),

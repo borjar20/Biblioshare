@@ -1,6 +1,6 @@
 "use client";
 
-import { clearTimer, readTimer, writeTimer } from "@/lib/sessions/timer";
+import { clearTimer, readTimer, timerStateFromWidget, writeTimer } from "@/lib/sessions/timer";
 
 // Sincroniza nativo→app al volver a primer plano (best-effort, no bloqueante):
 //
@@ -35,11 +35,17 @@ export async function seedTimerFromWidget(): Promise<void> {
     if (!running) return;
     const existing = readTimer(running.passId);
     if (existing.startedAt !== null || existing.accumulatedMs > 0) return; // la app ya tiene reloj: manda el suyo
-    writeTimer(running.passId, {
-      startedAt: running.startedAt,
-      accumulatedMs: 0,
-      firstStartedAt: running.firstStartedAt,
-    });
+    // Reconstruye el estado (corriendo o PAUSADO) desde el reloj nativo (#498).
+    // `running.startedAt` es el ancla efectiva que espera timerStateFromWidget.
+    writeTimer(
+      running.passId,
+      timerStateFromWidget({
+        anchor: running.startedAt,
+        accumulatedMs: running.accumulatedMs,
+        running: running.running,
+        firstStartedAt: running.firstStartedAt,
+      }),
+    );
   } catch {
     // Best-effort: sin sincronización, la app sigue funcionando con su propio estado.
   }

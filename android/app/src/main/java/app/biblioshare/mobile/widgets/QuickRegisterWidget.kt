@@ -14,7 +14,8 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.layout.Alignment
@@ -25,7 +26,6 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -84,68 +84,73 @@ fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>
     }
 }
 
-/** Paso 1: cabecera + una fila compacta por cada lectura en curso. */
+/** Paso 1: cabecera + lista de lecturas en curso con SCROLL nativo (#498) cuando
+ *  no caben en 4x2 — sin abrir la app. LazyColumn: ítems inline (API 33+) o vía
+ *  GlanceRemoteViewsService (31–32); `defaultWeight` le da el alto sobrante bajo
+ *  la cabecera. */
 @Composable
-private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
+private fun PickStep(list: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
     val context = LocalContext.current
     Column(GlanceModifier.fillMaxSize()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(context.getString(R.string.widget_register_reading_title), style = titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            Text(context.getString(R.string.widget_items_in_progress_count, items.size), style = softStyle())
+            Text(context.getString(R.string.widget_items_in_progress_count, list.size), style = softStyle())
         }
-        Spacer(GlanceModifier.height(8.dp))
-        items.forEach { item ->
-            CompactRow(
-                item = item,
-                cover = item.coverUrl?.let(covers::get),
-                onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
-            )
+        Spacer(GlanceModifier.height(6.dp))
+        // Pocas obras (≤3, lo que cabe holgado en 4x2): filas repartidas con peso
+        // que LLENAN el alto (sin hueco). Más obras: LazyColumn con scroll nativo,
+        // manteniendo el tamaño actual de fila (#498).
+        if (list.size <= 3) {
+            list.forEach { item ->
+                CompactRow(
+                    item = item,
+                    cover = item.coverUrl?.let(covers::get),
+                    onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
+                    modifier = GlanceModifier.defaultWeight(),
+                )
+            }
+        } else {
+            LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
+                items(list) { item ->
+                    CompactRow(
+                        item = item,
+                        cover = item.coverUrl?.let(covers::get),
+                        onClick = actionRunCallback<PickAction>(actionParametersOf(PASS_ID_PARAM to item.passId)),
+                    )
+                }
+            }
         }
     }
 }
 
-/** Paso 2: volver + ficha del elegido + vista de sesión (la misma del Completo,
- *  Task A4/#498: el paso 2 va DIRECTO al cronómetro, no a chips de minutos) +
- *  enlace secundario a la hoja de sesión completa en la app. */
+/** Paso 2: volver a la lista + la MISMA zona de foco del Completo (FocusZone),
+ *  en modo compacto para 4x2 (#498). Va directo al cronómetro al pulsar Sesión;
+ *  sin barra «Meta de hoy» ni enlace redundante «Registrar en la app».
+ *  Con el cronómetro ACTIVO, el foco completo (portada + título + reloj + 3
+ *  botones) NO cabe en 4x2: se oculta la cabecera «‹ Registrar» y la PORTADA
+ *  (coverless), pero se mantiene el título/contexto, y la sesión llena el
+ *  contenedor para poder tocar los controles sin que quede vacío. */
 @Composable
 private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
+    val timerActive = running?.passId == item.passId
     Column(GlanceModifier.fillMaxSize()) {
-        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "‹",
-                style = TextStyle(color = WidgetPalette.fg, fontSize = 18.sp, fontWeight = FontWeight.Bold),
-                modifier = GlanceModifier.clickable(actionRunCallback<BackAction>()).padding(end = 10.dp),
-            )
-            Text(ctx.getString(R.string.widget_register), style = titleStyle())
-        }
-        Spacer(GlanceModifier.height(10.dp))
-        Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Cover(cover, width = 64, height = 96)
-            Spacer(GlanceModifier.width(12.dp))
-            Column(modifier = GlanceModifier.defaultWeight()) {
+        if (timerActive) {
+            FocusZone(item, cover, running, compact = true, coverless = true, modifier = GlanceModifier.defaultWeight())
+        } else {
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    item.nthLabel,
-                    style = TextStyle(color = WidgetPalette.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                    "‹",
+                    style = TextStyle(color = WidgetPalette.fg, fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                    modifier = GlanceModifier.clickable(actionRunCallback<BackAction>()).padding(end = 10.dp),
                 )
-                Text(item.title, style = bigStyle(), maxLines = 2)
-                Text(
-                    item.contextLabel.ifBlank { ctx.getString(R.string.widget_first_session) },
-                    style = softStyle(),
-                    maxLines = 1,
-                )
+                Text(ctx.getString(R.string.widget_register), style = titleStyle())
             }
+            Spacer(GlanceModifier.height(8.dp))
+            // defaultWeight: el foco llena el alto sobrante bajo la cabecera (sin
+            // hueco); su spacer interno empuja Sesión/Registrar al fondo (#498).
+            FocusZone(item, cover, running, dailyGoal = null, compact = true, modifier = GlanceModifier.defaultWeight())
         }
-        Spacer(GlanceModifier.height(12.dp))
-        SessionTimerView(item, running)
-        // itemLogHref ya resuelve el huérfano (passId vacío) a su ficha, así que
-        // el enlace secundario nunca navega a una ruta /sesion/ rota.
-        Text(
-            ctx.getString(R.string.widget_register_in_app),
-            style = softStyle(),
-            modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                .clickable(actionStartActivity(WidgetDeepLinks.intentFor(ctx, itemLogHref(item)))),
-        )
     }
 }
