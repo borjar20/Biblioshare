@@ -75,8 +75,10 @@ fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>
                 context.getString(R.string.widget_open_to_start),
             )
         }
-        is QuickRegisterState.Pick -> PickStep(state.items, covers)
-        is QuickRegisterState.Register -> RegisterStep(state.item, state.item.coverUrl?.let(covers::get), minutes)
+        is QuickRegisterState.Pick -> WidgetSurface { PickStep(state.items, covers) }
+        is QuickRegisterState.Register -> WidgetSurface {
+            RegisterStep(state.item, state.item.coverUrl?.let(covers::get), minutes)
+        }
     }
 }
 
@@ -84,7 +86,7 @@ fun QuickRegisterContent(state: QuickRegisterState, covers: Map<String, Bitmap?>
 @Composable
 private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitmap?>) {
     val context = LocalContext.current
-    Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
+    Column(GlanceModifier.fillMaxSize()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(context.getString(R.string.widget_register_reading_title), style = titleStyle())
             Spacer(GlanceModifier.defaultWeight())
@@ -105,7 +107,7 @@ private fun PickStep(items: List<CurrentProgressData>, covers: Map<String, Bitma
 @Composable
 private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, minutes: Int) {
     val ctx = LocalContext.current
-    Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
+    Column(GlanceModifier.fillMaxSize()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "‹",

@@ -58,6 +58,18 @@ fun bodyStyle() = TextStyle(color = WidgetPalette.fg, fontSize = 12.sp)
 fun softStyle() = TextStyle(color = WidgetPalette.fgSoft, fontSize = 11.sp)
 fun accentStyle() = TextStyle(color = WidgetPalette.accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
 
+/** Superficie base opaca (fondo Paper redondeado + padding), SIN navegación.
+ *  Envuelve los estados de CONTENIDO —antes solo los vacíos tenían fondo, de ahí
+ *  el "fondo transparente" (#498). WidgetCard = WidgetSurface + click de pantalla. */
+@Composable
+fun WidgetSurface(content: @Composable () -> Unit) {
+    Box(
+        modifier = GlanceModifier.fillMaxSize()
+            .background(ImageProvider(R.drawable.widget_background))
+            .padding(12.dp),
+    ) { content() }
+}
+
 /** Tarjeta raíz: fondo redondeado + padding, y TODA su superficie navega al
  *  path interno indicado (validado en WidgetDeepLinks). */
 @Composable

@@ -85,7 +85,7 @@ fun CurrentProgressContent(
                 context.getString(R.string.widget_open_to_start),
             )
         }
-        is ProgressWidgetState.Content -> Completo(state, covers, running)
+        is ProgressWidgetState.Content -> WidgetSurface { Completo(state, covers, running) }
     }
 }
 
@@ -97,7 +97,7 @@ class CurrentProgressWidgetReceiver : GlanceAppWidgetReceiver() {
 private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bitmap?>, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
     val f = state.featured
-    Column(GlanceModifier.fillMaxSize().padding(4.dp)) {
+    Column(GlanceModifier.fillMaxSize()) {
         SectionHeader(
             label = ctx.getString(R.string.widget_current_progress_label),
             trailing = ctx.getString(R.string.widget_view_all, state.total),
