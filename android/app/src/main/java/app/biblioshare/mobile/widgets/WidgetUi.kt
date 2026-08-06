@@ -276,46 +276,51 @@ fun FocusZone(
     running: TimerLogic.Running?,
     dailyGoal: DailyGoalData? = null,
     compact: Boolean = false,
+    headerless: Boolean = false,
     modifier: GlanceModifier = GlanceModifier,
 ) {
     val ctx = LocalContext.current
     // `modifier` (p. ej. defaultWeight) permite que el foco LLENE el alto cuando
-    // no hay nada debajo (Completo con crono activo, #498).
+    // no hay nada debajo (Completo con crono activo, #498). `headerless` omite
+    // portada/título/divisor para que la sesión quepa sola en 4x2 (Reducido con
+    // crono activo, donde el foco completo desbordaba).
     Column(GlanceModifier.fillMaxWidth().then(modifier).background(ImageProvider(R.drawable.widget_featured_bg))) {
-        Row(
-            GlanceModifier.fillMaxWidth().padding(
-                start = if (compact) 14.dp else 16.dp,
-                top = if (compact) 10.dp else 14.dp,
-                end = 12.dp,
-                bottom = if (compact) 10.dp else 14.dp,
-            ),
-        ) {
-            Cover(cover, width = if (compact) 52 else 64, height = if (compact) 78 else 94)
-            Spacer(GlanceModifier.width(12.dp))
-            Column(GlanceModifier.defaultWeight()) {
-                Text(data.nthLabel, style = accentStyle())
-                Text(data.title, style = bigStyle(), maxLines = 2)
-                Text(
-                    data.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
-                    style = softStyle(),
-                    maxLines = 1,
-                )
-                if (dailyGoal != null) {
-                    Spacer(GlanceModifier.height(8.dp))
-                    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(ctx.getString(R.string.widget_today_goal), style = softStyle())
-                        Spacer(GlanceModifier.defaultWeight())
-                        Text(dailyGoal.progressLabel, style = softStyle())
+        if (!headerless) {
+            Row(
+                GlanceModifier.fillMaxWidth().padding(
+                    start = if (compact) 14.dp else 16.dp,
+                    top = if (compact) 10.dp else 14.dp,
+                    end = 12.dp,
+                    bottom = if (compact) 10.dp else 14.dp,
+                ),
+            ) {
+                Cover(cover, width = if (compact) 52 else 64, height = if (compact) 78 else 94)
+                Spacer(GlanceModifier.width(12.dp))
+                Column(GlanceModifier.defaultWeight()) {
+                    Text(data.nthLabel, style = accentStyle())
+                    Text(data.title, style = bigStyle(), maxLines = 2)
+                    Text(
+                        data.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
+                        style = softStyle(),
+                        maxLines = 1,
+                    )
+                    if (dailyGoal != null) {
+                        Spacer(GlanceModifier.height(8.dp))
+                        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(ctx.getString(R.string.widget_today_goal), style = softStyle())
+                            Spacer(GlanceModifier.defaultWeight())
+                            Text(dailyGoal.progressLabel, style = softStyle())
+                        }
+                        Spacer(GlanceModifier.height(4.dp))
+                        SoftBar(dailyGoal.percentage)
                     }
-                    Spacer(GlanceModifier.height(4.dp))
-                    SoftBar(dailyGoal.percentage)
                 }
             }
+            // Al llenar el alto, empuja la sesión al fondo (reparte el hueco arriba
+            // y abajo); al envolver, el peso no reparte nada y queda pegado.
+            Spacer(GlanceModifier.defaultWeight())
+            Box(GlanceModifier.fillMaxWidth().padding(start = 4.dp).height(1.dp).background(WidgetPalette.border)) {}
         }
-        // Al llenar el alto, empuja la sesión al fondo (reparte el hueco arriba y
-        // abajo); al envolver, el peso no reparte nada y queda pegado como antes.
-        Spacer(GlanceModifier.defaultWeight())
-        Box(GlanceModifier.fillMaxWidth().padding(start = 4.dp).height(1.dp).background(WidgetPalette.border)) {}
         SessionTimerView(data, running)
     }
 }

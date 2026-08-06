@@ -126,21 +126,28 @@ private fun PickStep(list: List<CurrentProgressData>, covers: Map<String, Bitmap
 
 /** Paso 2: volver a la lista + la MISMA zona de foco del Completo (FocusZone),
  *  en modo compacto para 4x2 (#498). Va directo al cronómetro al pulsar Sesión;
- *  sin barra «Meta de hoy» ni enlace redundante «Registrar en la app»
- *  (SessionTimerView ya ofrece Sesión/Registrar). */
+ *  sin barra «Meta de hoy» ni enlace redundante «Registrar en la app».
+ *  Con el cronómetro ACTIVO, el foco completo (portada + título + reloj + 3
+ *  botones) NO cabe en 4x2: se oculta la cabecera «‹ Registrar» y la portada, y
+ *  la sesión sola (headerless) llena el contenedor para poder tocar los controles. */
 @Composable
 private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
+    val timerActive = running?.passId == item.passId
     Column(GlanceModifier.fillMaxSize()) {
-        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "‹",
-                style = TextStyle(color = WidgetPalette.fg, fontSize = 18.sp, fontWeight = FontWeight.Bold),
-                modifier = GlanceModifier.clickable(actionRunCallback<BackAction>()).padding(end = 10.dp),
-            )
-            Text(ctx.getString(R.string.widget_register), style = titleStyle())
+        if (timerActive) {
+            FocusZone(item, cover, running, compact = true, headerless = true, modifier = GlanceModifier.defaultWeight())
+        } else {
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "‹",
+                    style = TextStyle(color = WidgetPalette.fg, fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                    modifier = GlanceModifier.clickable(actionRunCallback<BackAction>()).padding(end = 10.dp),
+                )
+                Text(ctx.getString(R.string.widget_register), style = titleStyle())
+            }
+            Spacer(GlanceModifier.height(8.dp))
+            FocusZone(item, cover, running, dailyGoal = null, compact = true)
         }
-        Spacer(GlanceModifier.height(8.dp))
-        FocusZone(item, cover, running, dailyGoal = null, compact = true)
     }
 }
