@@ -43,7 +43,7 @@ import app.biblioshare.mobile.R
 // duplica el loader).
 class QuickRegisterWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Exact
+    override val sizeMode = SizeMode.Single
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {

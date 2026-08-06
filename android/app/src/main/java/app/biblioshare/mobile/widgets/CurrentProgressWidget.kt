@@ -37,7 +37,7 @@ import app.biblioshare.mobile.R
 // aquí en provideGlance; si no hay elección, gana el [0] del snapshot.
 class CurrentProgressWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Exact
+    override val sizeMode = SizeMode.Single
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
