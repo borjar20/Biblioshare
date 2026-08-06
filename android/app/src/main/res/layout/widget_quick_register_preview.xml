@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- previewLayout del selector de widgets (API 31+) para "Registro rápido"
-     (Reducido). Estático: imita el paso 1 (lista de obras en curso) con Paper. -->
+     (Reducido). SOLO vistas admitidas por app widgets (sin <Space>/<View>). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -31,12 +31,11 @@
             android:textSize="11sp" />
     </LinearLayout>
 
-    <Space android:layout_width="match_parent" android:layout_height="6dp" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingTop="6dp"
@@ -46,11 +45,11 @@
             android:layout_height="54dp"
             android:scaleType="centerCrop"
             android:src="@drawable/widget_placeholder" />
-        <Space android:layout_width="10dp" android:layout_height="1dp" />
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginStart="10dp"
             android:orientation="vertical">
             <TextView
                 android:layout_width="match_parent"
@@ -69,11 +68,11 @@
                 android:textColor="@color/widget_fg"
                 android:textSize="13sp"
                 android:textStyle="bold" />
-            <Space android:layout_width="1dp" android:layout_height="4dp" />
             <ProgressBar
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="6dp"
+                android:layout_marginTop="4dp"
                 android:max="100"
                 android:progress="35"
                 android:progressTint="@color/widget_accent"
@@ -94,11 +93,11 @@
             android:layout_height="54dp"
             android:scaleType="centerCrop"
             android:src="@drawable/widget_placeholder" />
-        <Space android:layout_width="10dp" android:layout_height="1dp" />
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginStart="10dp"
             android:orientation="vertical">
             <TextView
                 android:layout_width="match_parent"
@@ -117,11 +116,11 @@
                 android:textColor="@color/widget_fg"
                 android:textSize="13sp"
                 android:textStyle="bold" />
-            <Space android:layout_width="1dp" android:layout_height="4dp" />
             <ProgressBar
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="6dp"
+                android:layout_marginTop="4dp"
                 android:max="100"
                 android:progress="10"
                 android:progressTint="@color/widget_accent"

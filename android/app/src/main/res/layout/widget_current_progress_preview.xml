@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- previewLayout del selector de widgets (API 31+) para "En curso" (Completo).
-     Estático: imita el widget real (foco + carrusel) con los tokens Paper. No es
-     interactivo; solo lo pinta el launcher escalado en el selector. -->
+     SOLO vistas admitidas por app widgets (RemoteViews): LinearLayout, TextView,
+     ImageView, ProgressBar. Sin <Space> ni <View> (no permitidos → "no se pudo
+     añadir el widget"): la separación va por margin/padding, el divisor por un
+     ImageView de 1dp. Estático, no interactivo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -33,11 +35,10 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <Space android:layout_width="match_parent" android:layout_height="8dp" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="vertical"
         android:background="@drawable/widget_featured_bg">
 
@@ -54,11 +55,11 @@
                 android:layout_height="82dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/widget_placeholder" />
-            <Space android:layout_width="12dp" android:layout_height="1dp" />
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="12dp"
                 android:orientation="vertical">
                 <TextView
                     android:layout_width="wrap_content"
@@ -84,11 +85,11 @@
                     android:text="Día 5 · 2 notas"
                     android:textColor="@color/widget_fg_soft"
                     android:textSize="11sp" />
-                <Space android:layout_width="1dp" android:layout_height="8dp" />
                 <ProgressBar
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="6dp"
+                    android:layout_marginTop="8dp"
                     android:max="100"
                     android:progress="55"
                     android:progressTint="@color/widget_accent"
@@ -96,7 +97,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <View
+        <ImageView
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginStart="4dp"
@@ -121,11 +122,11 @@
                 android:text="◷ Sesión"
                 android:textColor="@color/widget_accent"
                 android:textSize="12sp" />
-            <Space android:layout_width="8dp" android:layout_height="1dp" />
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/widget_preview_pill"
                 android:gravity="center"
                 android:paddingTop="10dp"
@@ -136,20 +137,18 @@
         </LinearLayout>
     </LinearLayout>
 
-    <Space android:layout_width="match_parent" android:layout_height="10dp" />
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
         android:text="Continúa donde lo dejaste"
         android:textColor="@color/widget_fg_soft"
         android:textSize="11sp" />
 
-    <Space android:layout_width="match_parent" android:layout_height="6dp" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
         <LinearLayout
             android:layout_width="0dp"
@@ -165,11 +164,11 @@
                 android:layout_height="64dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/widget_placeholder" />
-            <Space android:layout_width="8dp" android:layout_height="1dp" />
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:orientation="vertical">
                 <TextView
                     android:layout_width="match_parent"
@@ -180,11 +179,11 @@
                     android:textColor="@color/widget_fg"
                     android:textSize="13sp"
                     android:textStyle="bold" />
-                <Space android:layout_width="1dp" android:layout_height="6dp" />
                 <ProgressBar
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
+                    android:layout_marginTop="6dp"
                     android:max="100"
                     android:progress="35"
                     android:progressTint="@color/widget_accent"
@@ -204,11 +203,11 @@
                 android:layout_height="64dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/widget_placeholder" />
-            <Space android:layout_width="8dp" android:layout_height="1dp" />
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:orientation="vertical">
                 <TextView
                     android:layout_width="match_parent"
@@ -219,11 +218,11 @@
                     android:textColor="@color/widget_fg"
                     android:textSize="13sp"
                     android:textStyle="bold" />
-                <Space android:layout_width="1dp" android:layout_height="6dp" />
                 <ProgressBar
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
+                    android:layout_marginTop="6dp"
                     android:max="100"
                     android:progress="10"
                     android:progressTint="@color/widget_accent"
