@@ -1832,6 +1832,7 @@
       "title": "Varias coincidencias: elige cuál era",
       "hint": "Hay más de una obra con este título y año. Mira la portada y la sinopsis.",
       "none": "Ninguna de estas",
+      "back": "Ver candidatos",
       "alreadyThere": "ya estaba en tu biblioteca",
       "failed": "no se pudo añadir"
     },

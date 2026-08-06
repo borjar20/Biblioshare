@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import type { ImportRow } from "./types";
+import type { ImportCandidate, ImportRow } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -12,7 +12,24 @@ export type PendingImportRow = {
   createdAt: string;
   // Solo en la cola de revisión (colaborador): nombre del dueño de la fila.
   ownerName?: string | null;
+  // Candidatos que el matcher encontró para una fila ambigua, persistidos en el
+  // payload en el import de onboarding (issue #390). Vacío/ausente en filas sin
+  // match. El colaborador elige uno en vez de teclear los datos a mano.
+  candidates?: ImportCandidate[];
 };
+
+// El payload es un ImportRow con, opcionalmente, los candidatos de una fila
+// ambigua incrustados (los readers históricos lo tratan como ImportRow y la
+// clave extra les da igual). Se separan al leer.
+function splitPayload(payload: unknown): {
+  row: ImportRow;
+  candidates?: ImportCandidate[];
+} {
+  const { candidates, ...row } = (payload ?? {}) as ImportRow & {
+    candidates?: ImportCandidate[];
+  };
+  return { row: row as ImportRow, candidates };
+}
 
 // Filas pendientes/resueltas del propio usuario (su bandeja de import).
 export async function getMyPendingRows(
@@ -25,13 +42,17 @@ export async function getMyPendingRows(
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    itemType: r.item_type,
-    row: r.payload as unknown as ImportRow,
-    status: r.status,
-    createdAt: r.created_at,
-  }));
+  return (data ?? []).map((r) => {
+    const { row, candidates } = splitPayload(r.payload);
+    return {
+      id: r.id,
+      itemType: r.item_type,
+      row,
+      candidates,
+      status: r.status,
+      createdAt: r.created_at,
+    };
+  });
 }
 
 // Cola global de filas pendientes para colaboradores (RLS lo restringe a
@@ -56,14 +77,18 @@ export async function getReviewQueue(
     (profiles ?? []).map((p) => [p.user_id, p.display_name || p.username])
   );
 
-  return data.map((r) => ({
-    id: r.id,
-    itemType: r.item_type,
-    row: r.payload as unknown as ImportRow,
-    status: r.status,
-    createdAt: r.created_at,
-    ownerName: nameByUser.get(r.user_id) ?? null,
-  }));
+  return data.map((r) => {
+    const { row, candidates } = splitPayload(r.payload);
+    return {
+      id: r.id,
+      itemType: r.item_type,
+      row,
+      candidates,
+      status: r.status,
+      createdAt: r.created_at,
+      ownerName: nameByUser.get(r.user_id) ?? null,
+    };
+  });
 }
 
 // Recuento de pendientes del usuario (para el badge en /importar).
