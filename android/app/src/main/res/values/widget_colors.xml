@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Paleta Paper de la web (globals.css): par claro aquí, oscuro en values-night. -->
+<!-- Paleta Paper (globals.css del design system): par claro aquí, oscuro en values-night.
+     widget_bg = background (hondo); widget_surface = tarjetas (elevadas). -->
 <resources>
-    <color name="widget_bg">#FFFDF8</color>
-    <color name="widget_fg">#2C2620</color>
-    <color name="widget_fg_soft">#584F43</color>
-    <color name="widget_accent">#B0542F</color>
+    <color name="widget_bg">#F3ECE1</color>
+    <color name="widget_surface">#FFFDF8</color>
     <color name="widget_track">#ECE3D4</color>
-    <color name="widget_gold">#B08A2F</color>
-    <color name="widget_surface">#FBF5EA</color>
+    <color name="widget_fg">#2C2620</color>
+    <color name="widget_fg_soft">#877E70</color>
+    <color name="widget_accent">#B0542F</color>
+    <color name="widget_accent_fg">#FFF5EF</color>
+    <color name="widget_gold">#C98A2B</color>
+    <color name="widget_border">#242C1420</color>
 </resources>

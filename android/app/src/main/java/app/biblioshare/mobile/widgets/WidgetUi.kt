@@ -48,6 +48,8 @@ object WidgetPalette {
     val surface = ColorProvider(R.color.widget_surface)
     /** Fondo base, casi blanco: texto legible sobre un chip/botón relleno de acento. */
     val bg = ColorProvider(R.color.widget_bg)
+    val accentFg = ColorProvider(R.color.widget_accent_fg)
+    val border = ColorProvider(R.color.widget_border)
 }
 
 fun titleStyle() = TextStyle(color = WidgetPalette.fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
