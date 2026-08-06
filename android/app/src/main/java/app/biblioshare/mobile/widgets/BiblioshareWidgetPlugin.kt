@@ -46,7 +46,8 @@ class BiblioshareWidgetPlugin : Plugin() {
             "timer",
             if (r == null) JSONObject.NULL
             else JSObject().put("passId", r.passId).put("startedAt", r.startedAt)
-                .put("firstStartedAt", r.firstStartedAt),
+                .put("firstStartedAt", r.firstStartedAt)
+                .put("accumulatedMs", r.accumulatedMs).put("running", r.running),
         )
         res.put(
             "cleared",
@@ -66,7 +67,10 @@ class BiblioshareWidgetPlugin : Plugin() {
         }
         // `firstStartedAt` (hora real de inicio) puede faltar en clientes viejos: cae al ancla.
         val firstStartedAt = call.getLong("firstStartedAt") ?: startedAt
-        TimerStore.set(context, passId, startedAt, firstStartedAt)
+        // Pausa (#498): clientes viejos no mandan estos → corriendo, sin acumulado.
+        val accumulatedMs = call.getLong("accumulatedMs") ?: 0L
+        val running = call.getBoolean("running", true) ?: true
+        TimerStore.set(context, passId, startedAt, firstStartedAt, accumulatedMs, running)
         WidgetRefresh.updateAll(context)
         call.resolve()
     }

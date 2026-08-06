@@ -106,7 +106,7 @@ fun PreviewCompletoTimer() {
             dailyGoal = sampleGoal,
         ),
         covers = emptyMap(),
-        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
+        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it, 0L, true) },
     )
 }
 
@@ -204,6 +204,6 @@ fun PreviewQuickRegisterRegisterTimer() {
     QuickRegisterContent(
         QuickRegisterState.Register(sampleFeatured),
         covers = emptyMap(),
-        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it) },
+        running = (System.currentTimeMillis() - 5 * 60_000L).let { TimerLogic.Running("p1", it, it, 0L, true) },
     )
 }

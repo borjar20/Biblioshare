@@ -65,9 +65,8 @@ class BackAction : ActionCallback {
 class StartTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val passId = p[PASS_ID_PARAM] ?: return
-        val now = System.currentTimeMillis()
         // Arranque limpio desde el widget: sin pausas, ancla e inicio coinciden.
-        TimerStore.set(c, passId, now, now)
+        TimerStore.start(c, passId, System.currentTimeMillis())
         refreshWidgets(c, "StartTimer")
     }
 }
