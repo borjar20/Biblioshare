@@ -128,15 +128,16 @@ private fun PickStep(list: List<CurrentProgressData>, covers: Map<String, Bitmap
  *  en modo compacto para 4x2 (#498). Va directo al cronómetro al pulsar Sesión;
  *  sin barra «Meta de hoy» ni enlace redundante «Registrar en la app».
  *  Con el cronómetro ACTIVO, el foco completo (portada + título + reloj + 3
- *  botones) NO cabe en 4x2: se oculta la cabecera «‹ Registrar» y la portada, y
- *  la sesión sola (headerless) llena el contenedor para poder tocar los controles. */
+ *  botones) NO cabe en 4x2: se oculta la cabecera «‹ Registrar» y la PORTADA
+ *  (coverless), pero se mantiene el título/contexto, y la sesión llena el
+ *  contenedor para poder tocar los controles sin que quede vacío. */
 @Composable
 private fun RegisterStep(item: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?) {
     val ctx = LocalContext.current
     val timerActive = running?.passId == item.passId
     Column(GlanceModifier.fillMaxSize()) {
         if (timerActive) {
-            FocusZone(item, cover, running, compact = true, headerless = true, modifier = GlanceModifier.defaultWeight())
+            FocusZone(item, cover, running, compact = true, coverless = true, modifier = GlanceModifier.defaultWeight())
         } else {
             Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
