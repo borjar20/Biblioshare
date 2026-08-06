@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
@@ -8,7 +8,7 @@ import { timeAgo } from "@/lib/relative-time";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { QuickAddButton } from "@/components/library/quick-add-button";
-import { quickAddManyToLibrary } from "@/lib/library/quick-add-actions";
+import { quickAddManyToLibrary, type QuickAddManyResult } from "@/lib/library/quick-add-actions";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
 import { itemsMissingFromLibrary } from "./collection-card-items";
@@ -32,6 +32,8 @@ export function CollectionCard({
   const actorName = entry.actor.displayName || entry.actor.username;
   const missingItems = itemsMissingFromLibrary(entry.items);
   const [expanded, setExpanded] = useState(false);
+  const [saveAll, startSaveAll] = useTransition();
+  const [saveResult, setSaveResult] = useState<QuickAddManyResult | null>(null);
   const { visible, hiddenCount, collapsible } = splitCollapsedItems(entry.items, expanded);
 
   return (
@@ -92,20 +94,37 @@ export function CollectionCard({
       )}
 
       {missingItems.length > 1 && (
-        <form
-          action={async () => {
-            await quickAddManyToLibrary(
-              missingItems.map((item) => ({
-                itemType: item.itemType,
-                itemId: item.itemId,
-              })),
-            );
-          }}
-        >
-          <button type="submit" className="w-full rounded-lg border border-border py-2 text-[12.5px] font-semibold text-accent hover:bg-surface-muted">
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            disabled={saveAll}
+            onClick={() =>
+              startSaveAll(async () => {
+                // La acción captura por ítem y NUNCA lanza (issue #299): un
+                // fallo a medias ya no sube al error boundary de Next; el
+                // resumen se pinta debajo.
+                const res = await quickAddManyToLibrary(
+                  missingItems.map((item) => ({ itemType: item.itemType, itemId: item.itemId })),
+                );
+                setSaveResult(res);
+              })
+            }
+            className="w-full rounded-lg border border-border py-2 text-[12.5px] font-semibold text-accent hover:bg-surface-muted disabled:opacity-50"
+          >
             {t("grouped.saveAllToQueue", { count: missingItems.length })}
           </button>
-        </form>
+          {saveResult && (
+            <p className="font-mono text-[11px] text-muted-foreground" role="status" aria-live="polite">
+              {[
+                saveResult.added > 0 && t("grouped.savedToQueue", { count: saveResult.added }),
+                saveResult.needsDecision > 0 && t("grouped.savedNeedsDecision", { count: saveResult.needsDecision }),
+                saveResult.failed > 0 && t("grouped.savedFailed", { count: saveResult.failed }),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
+        </div>
       )}
       <span suppressHydrationWarning className="self-end font-mono text-[10px] text-muted-foreground">{timeAgo(entry.eventDate, tTime)}</span>
     </article>

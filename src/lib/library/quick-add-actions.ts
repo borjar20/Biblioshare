@@ -7,11 +7,20 @@ import { applyTransition } from "@/lib/passes/apply-transition";
 import { notifyAdded } from "@/lib/social/notify-followers";
 import type { ItemType } from "@/lib/catalog/types";
 
+// Resultado discriminado (no se lanza: Next borra el mensaje de los Error de
+// server action en prod — ver docs/TRAMPAS.md). `added` = la obra quedó en la
+// cola (o ya estaba); `askResume` = hay un pase CERRADO de esa obra, así que no
+// se insertó nada y el usuario tiene que decidir (continuar/reempezar) en su
+// ficha. El botón NO debe cantar "en tu biblioteca" en ese caso (issue #299).
+export type QuickAddResult = { kind: "added" } | { kind: "askResume" };
+
 // Alta rápida desde el feed: mete la obra en la cola (planned) reusando la
 // máquina de estados. Idempotente — si ya hay pase activo, applyTransition es
-// no-op; si devuelve askResume (re-alta tras cerrar un pase), se trata como
-// éxito silencioso (la obra ya tiene historia; el usuario decide en su ficha).
-export async function quickAddToLibrary(itemType: ItemType, itemId: string): Promise<void> {
+// no-op.
+export async function quickAddToLibrary(
+  itemType: ItemType,
+  itemId: string,
+): Promise<QuickAddResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,22 +30,46 @@ export async function quickAddToLibrary(itemType: ItemType, itemId: string): Pro
   const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned");
   await notifyAdded(supabase, user.id, outcome);
   revalidatePath("/");
+  return outcome.kind === "askResume" ? { kind: "askResume" } : { kind: "added" };
 }
+
+// Resumen del batch: cuántas quedaron en la cola, cuántas requieren decisión
+// (askResume) y cuántas fallaron de verdad. Se captura POR ÍTEM para que un
+// fallo a medias no suba al error boundary de Next (pantalla en blanco) y para
+// dar una superficie de error al usuario (issue #299).
+export type QuickAddManyResult = {
+  added: number;
+  needsDecision: number;
+  failed: number;
+};
 
 // "Guardar los N en mi cola": UNA sola acción (un round-trip), transiciones en
 // paralelo, un único revalidate al final — elegido sobre el bucle cliente por
 // rendimiento (spec D4).
 export async function quickAddManyToLibrary(
   items: { itemType: ItemType; itemId: string }[],
-): Promise<void> {
+): Promise<QuickAddManyResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await Promise.all(
-    items.map((i) => applyTransition(supabase, user.id, i.itemType, i.itemId, "planned")),
+  const outcomes = await Promise.all(
+    items.map(async (i) => {
+      try {
+        const outcome = await applyTransition(supabase, user.id, i.itemType, i.itemId, "planned");
+        return outcome.kind === "askResume" ? "needsDecision" : "added";
+      } catch {
+        // Reintentable: `planned` es idempotente, volver a pulsar reintenta.
+        return "failed";
+      }
+    }),
   );
   revalidatePath("/");
+  return {
+    added: outcomes.filter((o) => o === "added").length,
+    needsDecision: outcomes.filter((o) => o === "needsDecision").length,
+    failed: outcomes.filter((o) => o === "failed").length,
+  };
 }

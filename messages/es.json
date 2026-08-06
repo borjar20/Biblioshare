@@ -369,7 +369,10 @@
       "progressedIn": "avanzó en {title}",
       "ratedEpisodes": "valoró {count, plural, one {# episodio de} other {# episodios de}}",
       "saveAllToQueue": "＋ Guardar {count, plural, one {el título} other {los # títulos}} en mi cola",
-      "showMore": "ver {count, plural, one {# obra más} other {# obras más}}"
+      "showMore": "ver {count, plural, one {# obra más} other {# obras más}}",
+      "savedToQueue": "{count, plural, one {# guardada en tu cola} other {# guardadas en tu cola}}",
+      "savedNeedsDecision": "{count, plural, one {# ya la tienes empezada: decídela en su ficha} other {# ya las tienes empezadas: decídelas en su ficha}}",
+      "savedFailed": "{count, plural, one {# no se pudo guardar, reinténtalo} other {# no se pudieron guardar, reinténtalo}}"
     },
     "kind": {
       "collection": "Colección",
