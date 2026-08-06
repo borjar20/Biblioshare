@@ -28,12 +28,18 @@ export async function notifyFollowersOfEvent(
     if (error) throw error;
     const userIds = (data ?? []).map((r) => r.follower_id);
     if (userIds.length === 0) return;
+    const type = CATEGORY_NOTIFICATION_TYPE[category];
     await notifyMany(supabase, {
       userIds,
       actorId,
-      type: CATEGORY_NOTIFICATION_TYPE[category],
+      type,
       targetType: target.targetType,
       targetId: target.targetId,
+      // Un mismo hecho (terminó/leyó/vio/añadió X) avisa UNA vez por seguidor,
+      // no una por POST (#410). El type distingue added de finished aunque
+      // compartan targetId (ambos 'diary_entry' + passId). El actor va implícito
+      // en el target (su pase/sesión/episodio), y notifyMany añade `:${userId}`.
+      dedupeKey: `person:${type}:${target.targetId}`,
     });
   } catch (err) {
     console.error("notifyFollowersOfEvent failed", err);

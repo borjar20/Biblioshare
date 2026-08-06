@@ -205,6 +205,14 @@ export async function notifyMany(
     // (§9.3). Cuando llega, sustituye al cuerpo; el título y el enlace se siguen
     // resolviendo igual.
     pushBody?: string;
+    // Idempotencia entre llamadas (spec item 9), igual que notify() singular
+    // pero en fan-out: la clave por destinatario es `${dedupeKey}:${userId}`.
+    // Con ella, un segundo POST de la MISMA acción (doble clic, dos pestañas,
+    // reintento) no reinserta ni re-empuja a quien ya avisó — el índice único
+    // parcial idx_notifications_dedupe_key lo colapsa. Sin clave, insert normal.
+    // Cierra el self-spam de avisos por persona (#410) y el re-notify de
+    // proposeRound idempotente (#409): mismo target lógico = un aviso.
+    dedupeKey?: string;
   },
 ): Promise<string[]> {
   const candidateIds = [...new Set(params.userIds)].filter(
@@ -224,29 +232,39 @@ export async function notifyMany(
   if (userIds.length === 0) return [];
 
   // Map user_id → notificationId de la fila recién insertada (1:1: cada usuario
-  // recibe una sola fila). Viaja en el data payload del push (spec item 8).
+  // recibe una sola fila). Viaja en el data payload del push (spec item 8). Con
+  // dedupeKey el upsert(ignoreDuplicates) devuelve SOLO las filas nuevas, así que
+  // este map ya excluye a quien ya tenía el aviso: el push se manda a esos y solo
+  // a esos, y el valor de retorno refleja a quién se avisó de verdad.
   let notificationIdByUser = new Map<string, string>();
   try {
     const notificationWriter = createServiceRoleClient();
-    const { data: insertedRows, error } = await notificationWriter
-      .from("notifications")
-      .insert(
-        userIds.map((userId) => ({
-          user_id: userId,
-          actor_id: params.actorId,
-          type: params.type,
-          target_type: params.targetType ?? null,
-          target_id: params.targetId ?? null,
-          interaction_target_id: params.interactionTargetId ?? null,
-        })),
-      )
-      .select("id, user_id");
+    const rows = userIds.map((userId) => ({
+      user_id: userId,
+      actor_id: params.actorId,
+      type: params.type,
+      target_type: params.targetType ?? null,
+      target_id: params.targetId ?? null,
+      interaction_target_id: params.interactionTargetId ?? null,
+      dedupe_key: params.dedupeKey ? `${params.dedupeKey}:${userId}` : null,
+    }));
+    const { data: insertedRows, error } = params.dedupeKey
+      ? await notificationWriter
+          .from("notifications")
+          .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
+          .select("id, user_id")
+      : await notificationWriter.from("notifications").insert(rows).select("id, user_id");
     if (error) throw error;
     notificationIdByUser = new Map((insertedRows ?? []).map((r) => [r.user_id, r.id]));
   } catch (writerError) {
     console.error("notifyMany() failed", writerError);
     return [];
   }
+
+  // Solo se empuja a quien recibió fila NUEVA (con dedupeKey, los duplicados ya
+  // se filtraron arriba). Sin dedupeKey, este set es todo userIds.
+  const deliveredUserIds = [...notificationIdByUser.keys()];
+  if (deliveredUserIds.length === 0) return [];
 
   try {
     const content = await buildPushPayload(supabase, params);
@@ -255,7 +273,7 @@ export async function notifyMany(
     // hace que la notificación abra la ficha correcta.
     if (content) {
       await sendPushToUsers(
-        userIds,
+        deliveredUserIds,
         params.pushBody ? { ...content, body: params.pushBody } : content,
         { notificationIdByUser },
       );
@@ -263,7 +281,7 @@ export async function notifyMany(
   } catch (pushError) {
     console.error("notifyMany() push delivery failed", pushError);
   }
-  return userIds;
+  return deliveredUserIds;
 }
 
 export async function getUnreadCount(

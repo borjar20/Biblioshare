@@ -49,8 +49,9 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
     const neqFilters: [string, unknown][] = [];
     const isFilters: [string, unknown][] = [];
     const inFilters: [string, unknown[]][] = [];
-    let mode: "select" | "delete" | "insert" = "select";
+    let mode: "select" | "delete" | "insert" | "upsert" = "select";
     let insertRows: Row[] = [];
+    let upsertIgnoreDuplicates = false;
     let maybeSingleFlag = false;
     let singleFlag = false;
     let selectedColumns: string[] | null = null;
@@ -85,8 +86,20 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
         // No-op a propósito: el cleanup por edad no es lo que este test verifica.
         return { data: null, error: null };
       }
-      if (mode === "insert") {
-        const withIds = insertRows.map((row) =>
+      if (mode === "insert" || mode === "upsert") {
+        // upsert(ignoreDuplicates) = ON CONFLICT (dedupe_key) DO NOTHING: descarta
+        // las filas cuya dedupe_key ya existe, y .select() devuelve solo las
+        // nuevas (como supabase-js). El índice único real es sobre dedupe_key.
+        let toInsert = insertRows;
+        if (mode === "upsert" && upsertIgnoreDuplicates) {
+          const existing = new Set(
+            (tables[table] ?? []).map((r) => r.dedupe_key).filter((k) => k != null),
+          );
+          toInsert = insertRows.filter(
+            (r) => r.dedupe_key == null || !existing.has(r.dedupe_key),
+          );
+        }
+        const withIds = toInsert.map((row) =>
           row.id != null ? row : { ...row, id: `${table}-${insertCounter++}` },
         );
         tables[table] = [...(tables[table] ?? []), ...withIds];
@@ -106,9 +119,9 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
 
     const builder = {
       select(columns = "*") {
-        // Tras insert(), select() no cambia de modo: pide devolver las filas
-        // insertadas (RETURNING), como hace .insert().select() en supabase-js.
-        if (mode !== "insert") mode = "select";
+        // Tras insert()/upsert(), select() no cambia de modo: pide devolver las
+        // filas escritas (RETURNING), como hace .insert()/.upsert().select().
+        if (mode !== "insert" && mode !== "upsert") mode = "select";
         selectedColumns =
           columns === "*" ? null : columns.split(",").map((column: string) => column.trim());
         return builder;
@@ -120,6 +133,12 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
       insert(rows: Row | Row[]) {
         mode = "insert";
         insertRows = Array.isArray(rows) ? rows : [rows];
+        return builder;
+      },
+      upsert(rows: Row | Row[], opts?: { ignoreDuplicates?: boolean }) {
+        mode = "upsert";
+        insertRows = Array.isArray(rows) ? rows : [rows];
+        upsertIgnoreDuplicates = opts?.ignoreDuplicates ?? false;
         return builder;
       },
       eq(col: string, val: unknown) {
@@ -778,6 +797,38 @@ describe("deduplicación por dedupe_key (spec item 9)", () => {
     );
     // El id de la fila nueva viaja como notificationId del push.
     expect(sendPushToUser).toHaveBeenCalledWith("user-2", expect.anything(), "n-1");
+  });
+
+  // #410 / #409: fan-out idempotente. Dos llamadas del MISMO hecho (doble clic,
+  // reintento, re-propose idempotente) avisan UNA vez por destinatario.
+  it("notifyMany con dedupeKey no reinserta ni re-empuja en la segunda llamada", async () => {
+    const tables = baseTables();
+    const supabase = makeFakeSupabase(tables);
+    trustedWriter.create.mockReturnValue(supabase);
+
+    const call = () =>
+      notifyMany(supabase, {
+        userIds: ["user-2", "user-3"],
+        actorId: "actor-1",
+        type: "followed_finished",
+        targetType: "diary_entry",
+        targetId: "pass-9",
+        dedupeKey: "person:followed_finished:pass-9",
+      });
+
+    const first = await call();
+    const second = await call();
+
+    // La clave por destinatario incluye el userId: una fila por seguidor.
+    expect(tables.notifications).toHaveLength(2);
+    expect(tables.notifications.map((r) => r.dedupe_key).sort()).toEqual([
+      "person:followed_finished:pass-9:user-2",
+      "person:followed_finished:pass-9:user-3",
+    ]);
+    // La primera avisa a los dos; la segunda, a nadie (todos duplicados).
+    expect(first).toEqual(["user-2", "user-3"]);
+    expect(second).toEqual([]);
+    expect(sendPushToUsers).toHaveBeenCalledTimes(1);
   });
 });
 
