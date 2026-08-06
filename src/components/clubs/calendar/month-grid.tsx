@@ -28,13 +28,28 @@ export function MonthGrid({
   const t = useTranslations("activity");
   const cells = monthGrid(month);
   const byDate = marksByDate(marks);
+  // monthGrid rellena SIEMPRE a múltiplo de 7, así que las semanas salen enteras
+  // (necesario para envolverlas en role="row" sin celdas sueltas, #147).
+  const semanas: (typeof cells)[] = [];
+  for (let i = 0; i < cells.length; i += 7) semanas.push(cells.slice(i, i + 7));
 
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface">
-      <div className="grid grid-cols-7 border-b border-border bg-surface-muted">
+    // role="grid" + row/columnheader/gridcell: un lector de pantalla asocia cada
+    // día con su columna y recorre el mes por semanas en vez de como 42 celdas
+    // planas (#147). Las filas van con `contents` (display:contents) para NO
+    // romper el `grid grid-cols-7`: las celdas siguen siendo sus items directos,
+    // así que el aspect-square/min-h por breakpoint se mantiene intacto.
+    <div
+      role="grid"
+      aria-label={t("calendarGridLabel")}
+      className="overflow-hidden rounded-card border border-border bg-surface"
+    >
+      <div role="row" className="grid grid-cols-7 border-b border-border bg-surface-muted">
         {DIAS_CORTOS.map((corto, i) => (
           <div
             key={corto}
+            role="columnheader"
+            aria-label={DIAS_LARGOS[i]}
             className="py-2 text-center font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase"
           >
             <span className="lg:hidden">{corto}</span>
@@ -43,14 +58,17 @@ export function MonthGrid({
         ))}
       </div>
 
-      <div className="grid grid-cols-7">
-        {cells.map((cell) => {
+      <div role="rowgroup" className="grid grid-cols-7">
+        {semanas.map((semana) => (
+          <div key={semana[0].date} role="row" className="contents">
+            {semana.map((cell) => {
           const delDia = byDate.get(cell.date) ?? [];
           const esHoy = cell.date === today;
           const visibles = delDia.slice(0, MAX_CHIPS);
           return (
             <div
               key={cell.date}
+              role="gridcell"
               className={`flex aspect-square min-w-0 flex-col gap-1 border-r border-b border-border p-1.5 last:border-r-0 lg:aspect-auto lg:min-h-[112px] lg:p-2 ${
                 cell.outside ? "bg-surface-muted/50" : ""
               }`}
@@ -100,16 +118,29 @@ export function MonthGrid({
                     <span
                       key={`${mark.activityId}-${mark.markKind}-${i}`}
                       title={`${t(`markKind_${mark.markKind}`)} · ${mark.title}`}
-                      className={`flex items-center gap-1 truncate rounded-chip border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.text} ${
-                        mark.past ? "opacity-50" : ""
-                      }`}
+                      className={`flex items-center gap-1 truncate rounded-chip border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.border}`}
                     >
+                      {/* Glifo de la CLASE de marca: forma, no color. En escala de
+                          grises un `evento` (calendario) y un `cierre` (check) se
+                          distinguen sin depender del tono, y es la MISMA silueta que
+                          la leyenda (#147). Antes la clase solo vivía en `title`, que
+                          ni el teclado ni el táctil alcanzan. El color va en el icono
+                          (objeto gráfico), no en el título. */}
+                      <accent.Icon className={`h-2.5 w-2.5 shrink-0 ${accent.text}`} aria-hidden />
                       {/* La campana es FORMA, no color: en escala de grises el día
                           seguido sigue distinguiéndose del que no (§17). */}
                       {mark.followedByViewer && (
                         <BellIcon className="h-2.5 w-2.5 shrink-0 text-accent" aria-hidden />
                       )}
-                      <span className="truncate">{mark.title}</span>
+                      {/* El lector de pantalla oye la clase también en escritorio;
+                          el chip solo mostraba el título visible. */}
+                      <span className="sr-only">{t(`markKind_${mark.markKind}`)}: </span>
+                      {/* text-foreground (>10:1), no el token: da AA a 11px donde el
+                          token no llegaba. `line-through` marca lo pasado sin bajar
+                          contraste (opacity-50 tumbaba TODOS los pares, #147). */}
+                      <span className={`truncate text-foreground${mark.past ? " line-through" : ""}`}>
+                        {mark.title}
+                      </span>
                       {mark.followedByViewer && (
                         <span className="sr-only">{t("eventFollowedBadge")}</span>
                       )}
@@ -140,7 +171,9 @@ export function MonthGrid({
               )}
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

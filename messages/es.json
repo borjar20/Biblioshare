@@ -863,6 +863,7 @@
     "agendaFollowedEmpty": "No sigues ningún evento de este mes.",
     "create": "Crear",
     "calendarTitle": "Calendario",
+    "calendarGridLabel": "Calendario del mes",
     "calendarPrevMonth": "Mes anterior",
     "calendarNextMonth": "Mes siguiente",
     "calendarToday": "Hoy",

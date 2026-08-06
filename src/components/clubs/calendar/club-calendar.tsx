@@ -141,18 +141,21 @@ export function ClubCalendar({
             </button>
 
             <div className="flex flex-wrap gap-3 lg:ml-auto">
-              {CLASES_LEYENDA.map((markKind) => (
-                <span
-                  key={markKind}
-                  className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase"
-                >
+              {CLASES_LEYENDA.map((markKind) => {
+                const accent = MARK_ACCENT[markKind];
+                return (
                   <span
-                    aria-hidden
-                    className={`h-2 w-2 rounded-full ${MARK_ACCENT[markKind].bar}`}
-                  />
-                  {t(`markKind_${markKind}`)}
-                </span>
-              ))}
+                    key={markKind}
+                    className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase"
+                  >
+                    {/* Glifo (forma + color), no un punto de color: es la MISMA
+                        silueta que el chip de la rejilla, así el que no distingue
+                        los tonos empareja leyenda↔chip por la forma (#147). */}
+                    <accent.Icon className={`h-2.5 w-2.5 ${accent.text}`} aria-hidden />
+                    {t(`markKind_${markKind}`)}
+                  </span>
+                );
+              })}
               {/* La marca de seguido también en la LEYENDA, no solo en la rejilla
                   (§17): un icono nuevo en las celdas sin nada que lo explique
                   obliga a adivinar qué significa. Solo se pinta si hay algo
