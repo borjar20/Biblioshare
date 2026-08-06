@@ -170,17 +170,20 @@ fun ContinueCarousel(others: List<CurrentProgressData>, covers: Map<String, Bitm
                     .clickable(actionRunCallback<SelectFocusAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
             ) {
                 Cover(d.coverUrl?.let(covers::get), width = CAROUSEL_CARD_W, height = CAROUSEL_COVER_H)
-                Spacer(GlanceModifier.height(4.dp))
-                Text(d.title, style = softStyle(), maxLines = 1)
                 Spacer(GlanceModifier.height(3.dp))
+                Text(d.title, style = softStyle(), maxLines = 1)
+                Spacer(GlanceModifier.height(2.dp))
                 SoftBar(d.percentage ?: 0, heightDp = 3)
             }
         }
     }
 }
 
+// Portada más baja que la rejilla anterior (era 90 y se salía por abajo, cortando
+// título y barra en 4x3). 70 de alto deja caber la tarjeta ENTERA en la banda que
+// ya sostenía la rejilla. El ancho se mantiene (no era el problema).
 private const val CAROUSEL_CARD_W = 60
-private const val CAROUSEL_COVER_H = 90 // 2:3 sobre el ancho fijo
+private const val CAROUSEL_COVER_H = 70
 private const val CAROUSEL_MAX = 6 // más no caben ni scrollan (Glance sin scroll horizontal)
 
 /** Pastilla dorada con la racha en días (icono + texto). */
