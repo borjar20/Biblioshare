@@ -110,7 +110,14 @@ export async function RoundBlock({
            responder: si aquí ya hubiera contenido, el turno no valdría nada.
            Sin holderId no hay titular -- el roster puede venir vacío en un
            club sin miembros activos -- y sin titular no hay frase que
-           pintar: antes quedaba colgando "Esta semana le toca a ". */
+           pintar: antes quedaba colgando "Esta semana le toca a ".
+
+           ponytail: NO añadir aquí "el próximo: X" ni un aviso anticipado de
+           turno sin materializar la rotación primero. El titular es aritmética
+           sin estado (`weeks % nº_miembros`, roster por joined_at): un alta o
+           baja mueve el divisor y desplaza los turnos futuros. Hoy es invisible
+           —solo se anuncia el titular de ESTA semana— pero prometer el siguiente
+           lo convierte en una promesa incumplida. Es el acta #396. */
         state.holderId && (
           <div className="flex flex-col gap-1">
             <p className="font-serif text-[17px] font-semibold">

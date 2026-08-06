@@ -147,6 +147,7 @@ export default async function ClubPage({
             clubSlug={club.slug}
             initialActivities={activities}
             isModerator={canModerate}
+            today={todayISO()}
           />
         </div>
       )}
@@ -258,6 +259,7 @@ async function ClubManagementSection({
       viewerRole={club.viewerRole as "moderator" | "owner"}
       initialActivities={activities}
       initialJoinRequests={joinRequests}
+      today={todayISO()}
     />
   );
 }

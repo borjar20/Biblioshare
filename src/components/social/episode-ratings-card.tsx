@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ReviewInteractions } from "@/components/social/review-interactions";
@@ -24,14 +24,16 @@ export function EpisodeRatingsCard({
   entry,
   viewerLoggedIn,
   knownUsernames,
+  hideActor = false,
 }: {
   entry: PersonGroupEntry; // verb rated/reviewed/watchedEpisode, items = episodios desc
   viewerLoggedIn: boolean;
   /** Usernames @mencionados que existen de verdad (extractos + comentarios). */
   knownUsernames: string[];
+  /** Oculta avatar+nombre y capitaliza el verbo (Actividad del perfil, #302). */
+  hideActor?: boolean;
 }) {
   const t = useTranslations("feed");
-  const tTime = useTranslations("time");
   const actorName = entry.actor.displayName || entry.actor.username;
   const series = entry.items[0];
   // Grupos largos se colapsan a los 2 episodios más recientes; el resto queda
@@ -42,10 +44,14 @@ export function EpisodeRatingsCard({
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-center gap-2.5">
-        <UserAvatar name={actorName} avatarUrl={entry.actor.avatarUrl} size={30} />
+        {!hideActor && <UserAvatar name={actorName} avatarUrl={entry.actor.avatarUrl} size={30} />}
         <p className="min-w-0 flex-1 text-sm leading-snug text-foreground">
-          <Link href={`/u/${entry.actor.username}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
-          <span className="text-muted-foreground">{t("grouped.ratedEpisodes", { count: entry.items.length })}</span>{" "}
+          {!hideActor && (
+            <>
+              <Link href={`/u/${entry.actor.username}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
+            </>
+          )}
+          <span className={`text-muted-foreground${hideActor ? " first-letter:uppercase" : ""}`}>{t("grouped.ratedEpisodes", { count: entry.items.length })}</span>{" "}
           <Link href={itemHref("series", series.itemId)} className="font-serif font-semibold hover:underline">{series.itemTitle}</Link>
         </p>
         <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
@@ -90,7 +96,7 @@ export function EpisodeRatingsCard({
                   />
                 </div>
               )}
-              <span suppressHydrationWarning className="mt-1 block font-mono text-[9.5px] text-foreground-faint">{timeAgo(ep.eventDate, tTime)}</span>
+              <TimeAgo iso={ep.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
             </div>
           </div>
         ))}

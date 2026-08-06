@@ -369,7 +369,10 @@
       "progressedIn": "avanzó en {title}",
       "ratedEpisodes": "valoró {count, plural, one {# episodio de} other {# episodios de}}",
       "saveAllToQueue": "＋ Guardar {count, plural, one {el título} other {los # títulos}} en mi cola",
-      "showMore": "ver {count, plural, one {# obra más} other {# obras más}}"
+      "showMore": "ver {count, plural, one {# obra más} other {# obras más}}",
+      "savedToQueue": "{count, plural, one {# guardada en tu cola} other {# guardadas en tu cola}}",
+      "savedNeedsDecision": "{count, plural, one {# ya la tienes empezada: decídela en su ficha} other {# ya las tienes empezadas: decídelas en su ficha}}",
+      "savedFailed": "{count, plural, one {# no se pudo guardar, reinténtalo} other {# no se pudieron guardar, reinténtalo}}"
     },
     "kind": {
       "collection": "Colección",
@@ -860,6 +863,7 @@
     "agendaFollowedEmpty": "No sigues ningún evento de este mes.",
     "create": "Crear",
     "calendarTitle": "Calendario",
+    "calendarGridLabel": "Calendario del mes",
     "calendarPrevMonth": "Mes anterior",
     "calendarNextMonth": "Mes siguiente",
     "calendarToday": "Hoy",
@@ -1639,7 +1643,8 @@
     "errors": {
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "futureDate": "No puedes registrar una sesión con fecha futura."
     }
   },
   "stats": {
@@ -1828,6 +1833,7 @@
       "title": "Varias coincidencias: elige cuál era",
       "hint": "Hay más de una obra con este título y año. Mira la portada y la sinopsis.",
       "none": "Ninguna de estas",
+      "back": "Ver candidatos",
       "alreadyThere": "ya estaba en tu biblioteca",
       "failed": "no se pudo añadir"
     },

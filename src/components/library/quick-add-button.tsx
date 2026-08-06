@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PlusIcon, CheckIcon } from "@/components/ui/icons";
 import { quickAddToLibrary } from "@/lib/library/quick-add-actions";
+import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 
 // Botón "+" de alta rápida (feed). Optimista: al pulsar marca "en tu biblioteca"
@@ -25,6 +27,7 @@ export function QuickAddButton({
   inLibrary?: boolean;
 }) {
   const t = useTranslations("feed");
+  const router = useRouter();
   const [added, setAdded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -44,7 +47,14 @@ export function QuickAddButton({
         startTransition(async () => {
           setAdded(true);
           try {
-            await quickAddToLibrary(itemType, itemId);
+            const result = await quickAddToLibrary(itemType, itemId);
+            // askResume: no se añadió nada (hay un pase CERRADO de la obra). No
+            // mentir "en tu biblioteca"; llevar a la ficha, donde el usuario
+            // decide continuar/reempezar (issue #299).
+            if (result.kind === "askResume") {
+              setAdded(false);
+              router.push(itemHref(itemType, itemId));
+            }
           } catch {
             setAdded(false);
           }

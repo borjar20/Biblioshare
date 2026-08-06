@@ -169,6 +169,21 @@ test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad"
     const respuesta = await page.goto(`/club/${CLUB_SLUG}/actividad/${eventoId}`);
     expect(respuesta?.status()).toBe(404);
 
+    // #131: el <title> NO debe filtrar el nombre real del evento aunque el body
+    // dé 404. generateMetadata compartía distinto gate que el body y colaba el
+    // título en el <head> (pestaña, previews OG, scrapers); ahora comparten
+    // puerta. Antes de este arreglo, `not.toContain(titulo)` se pondría rojo.
+    // #131: el nombre real del evento NO debe aparecer en el <title>, ni en el
+    // HTML crudo que ve un scraper/preview OG ni en el título ya hidratado.
+    // generateMetadata comparte ahora la MISMA puerta que el body (sesión +
+    // membresía + pertenencia + hasDetailView): para un evento devuelve el
+    // título genérico en vez del real. La divergencia de las dos puertas era el
+    // bug de #131.
+    const rawHtml = (await respuesta?.text()) ?? "";
+    const rawTitle = rawHtml.match(/<title[^>]*>([^<]*)<\/title>/)?.[1] ?? "";
+    expect(rawTitle).not.toContain(titulo);
+    expect(await page.title()).not.toContain(titulo);
+
     // Control positivo: la ficha de una actividad NO-evento del mismo club sí
     // responde 200. Sin esto, un `getActivity` roto que devolviera null para
     // CUALQUIER id pasaría igual de verde -- el 404 de arriba probaría un fallo

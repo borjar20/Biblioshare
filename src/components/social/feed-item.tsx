@@ -10,11 +10,15 @@ export function FeedItem({
   entry,
   viewerLoggedIn,
   knownUsernames,
+  hideActor = false,
 }: {
   entry: FeedEntry;
   viewerLoggedIn: boolean;
   /** Usernames @mencionados que existen de verdad (Reseña, Colección, Avances). */
   knownUsernames: string[];
+  /** Oculta avatar+nombre en la cabecera: la Actividad del perfil ya está en el
+   *  perfil del actor, repetir su nombre en cada tarjeta sobra (issue #302). */
+  hideActor?: boolean;
 }) {
   if (entry.source === "club") return <ClubFeedCard event={entry.event} />;
 
@@ -22,11 +26,11 @@ export function FeedItem({
   // ya manejan items.length === 1 (sin pie "Guardar los N", timeline de 1 paso).
   if (entry.source === "person-group") {
     if (entry.verb === "added")
-      return <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+      return <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
     if (entry.verb === "progressed")
-      return <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+      return <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
     // rated / reviewed / watchedEpisode → valoraciones de episodios agrupadas.
-    return <EpisodeRatingsCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+    return <EpisodeRatingsCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
   }
 
   // source === "person": elegir por verbo del evento.
@@ -43,9 +47,9 @@ export function FeedItem({
       items: [e],
     };
     return e.verb === "added"
-      ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />
-      : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+      ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />
+      : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
   }
   // finished / rated / reviewed / watchedEpisode → Reseña
-  return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} />;
+  return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
 }

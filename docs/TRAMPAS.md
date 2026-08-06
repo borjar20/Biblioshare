@@ -326,3 +326,17 @@ tenerlo, porque da confianza falsa. Los comentarios de los dos tests de
   su canal alfa, así que `/icon-192` (terracota opaco de borde a borde) sale como un
   cuadrado macizo en la barra de estado. Por eso existe `/badge-96`, transparente. Y `icon`
   y `badge` son dos imágenes distintas: sin `badge`, Chrome pone su propio logo.
+
+## 22. Un `node_modules` enlazado por junction se VACÍA al del checkout principal
+
+Al abrir un worktree bajo `.claude/worktrees/` no viene `node_modules`, y el atajo instintivo
+para no duplicar ~400 MB —enlazarlo por junction al del checkout principal
+(`cmd /c "mklink /J node_modules ...\Biblioshare\node_modules"`)— es una trampa: `npx tsc`,
+`vitest` y `next build` funcionan varias pasadas, pero en cuanto corre Playwright (que levanta
+su propio `npm run dev` **a través** del enlace) el `npm` resuelve la ruta real y **poda el
+`node_modules` del checkout PRINCIPAL** (411 entradas → 0). El principal queda inservible: `npx
+tsc` responde «This is not the tsc command you are looking for» (se puso a instalar el paquete
+basura `tsc@2.0.4`). Se recupera con `npm ci` (~2 min), pero cuesta media hora de desconcierto.
+
+Regla: **`npm ci` DENTRO del worktree, nunca junction.** Dos árboles independientes, ningún
+estado compartido — es lo único que no vuelve a romperlo. Issue #389.

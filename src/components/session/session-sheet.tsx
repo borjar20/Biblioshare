@@ -251,6 +251,7 @@ export function SessionSheet({
               name="sessionDate"
               type="date"
               required
+              max={todayISO()}
               value={sessionDate}
               onChange={(e) => setSessionDate(e.target.value)}
             />

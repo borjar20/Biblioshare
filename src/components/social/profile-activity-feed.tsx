@@ -80,11 +80,10 @@ export function ProfileActivityFeed({
             // propio dueño) además de "person" sueltos — FeedItem despacha
             // por verbo y cubre ambos, a diferencia del FeedCard viejo que
             // solo sabía pintar "person" (los grupos quedaban invisibles
-            // aquí). Sin `hideActor`: ni Colección ni Avances lo soportan
-            // (siempre pintan su propio actor), así que esta vista ya no
-            // oculta el avatar del dueño — el encabezado del día basta para
-            // dar contexto de todos modos.
-            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
+            // aquí). `hideActor`: todas las tarjetas son del dueño del perfil,
+            // así que se oculta su avatar+nombre repetido en cada cabecera y
+            // se capitaliza el verbo (#302).
+            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} hideActor />
           ))}
         </div>
       ))}
