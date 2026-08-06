@@ -1642,7 +1642,8 @@
     "errors": {
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "futureDate": "No puedes registrar una sesión con fecha futura."
     }
   },
   "stats": {

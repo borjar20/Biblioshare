@@ -17,11 +17,16 @@ export function ProposalModeration({
   proposals,
   clubSlug,
   canModerate,
+  today,
   layout = "list",
 }: {
   proposals: ClubActivity[];
   clubSlug: string;
   canModerate: boolean;
+  /** "Hoy" del servidor, reenviado a cada ActivityCard (#271). Las propuestas
+   *  nunca son `active`, así que la píldora "Ya pasó" no aplica aquí, pero
+   *  ActivityCard lo exige por tipo y evita depender del reloj del navegador. */
+  today: string;
   /** "grid" = rejilla 2-col del frame 12 (Actividades); "list" = Gestión. */
   layout?: "list" | "grid";
 }) {
@@ -56,6 +61,7 @@ export function ProposalModeration({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            today={today}
             tint="gold"
             actions={
               canModerate ? (
