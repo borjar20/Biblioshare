@@ -300,11 +300,15 @@ fun FocusZone(
             Column(GlanceModifier.defaultWeight()) {
                 Text(data.nthLabel, style = accentStyle())
                 Text(data.title, style = bigStyle(), maxLines = if (coverless) 1 else 2)
-                Text(
-                    data.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
-                    style = softStyle(),
-                    maxLines = 1,
-                )
+                // Sin portada (4x2 con crono) se omite el contexto: no cabe con el
+                // reloj + los 3 controles (#498).
+                if (!coverless) {
+                    Text(
+                        data.contextLabel.ifBlank { ctx.getString(R.string.widget_no_progress) },
+                        style = softStyle(),
+                        maxLines = 1,
+                    )
+                }
                 if (dailyGoal != null) {
                     Spacer(GlanceModifier.height(8.dp))
                     Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -376,18 +380,19 @@ fun SessionTimerView(d: CurrentProgressData, running: TimerLogic.Running?) {
                     )
                     Spacer(GlanceModifier.width(8.dp))
                     ActionCell(
-                        ctx.getString(R.string.widget_register),
-                        WidgetPalette.accent,
+                        ctx.getString(R.string.widget_discard),
+                        WidgetPalette.fgSoft,
                         GlanceModifier.defaultWeight()
-                            .clickable(actionRunCallback<RegisterTimerAction>()),
+                            .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
                     )
                 }
                 Spacer(GlanceModifier.height(8.dp))
+                // Registrar = CTA principal, ancho abajo; Descartar sube junto a Pausar (#498).
                 ActionCell(
-                    ctx.getString(R.string.widget_discard),
-                    WidgetPalette.fgSoft,
+                    ctx.getString(R.string.widget_register),
+                    WidgetPalette.accent,
                     GlanceModifier.fillMaxWidth()
-                        .clickable(actionRunCallback<DiscardTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId))),
+                        .clickable(actionRunCallback<RegisterTimerAction>()),
                 )
             }
         }
