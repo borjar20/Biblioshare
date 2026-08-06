@@ -6,12 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -21,7 +21,6 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -118,49 +117,41 @@ private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bit
 @Composable
 private fun FeaturedCard(d: CurrentProgressData, cover: Bitmap?, running: TimerLogic.Running?, dailyGoal: DailyGoalData?) {
     val context = LocalContext.current
-    Column(GlanceModifier.fillMaxWidth().background(WidgetPalette.surface).cornerRadius(18.dp)) {
-        Row(GlanceModifier.fillMaxWidth()) {
-            // Barra de acento: Glance no tiene `::before`, se emula con un Box
-            // angosto como primer hijo del Row.
-            Box(GlanceModifier.width(4.dp).fillMaxHeight().background(WidgetPalette.accent)) {}
-            Row(GlanceModifier.defaultWeight().padding(16.dp)) {
-                Cover(cover, width = 72, height = 104)
-                Spacer(GlanceModifier.width(14.dp))
-                Column(GlanceModifier.defaultWeight()) {
-                    Text(
-                        d.nthLabel,
-                        style = accentStyle(),
-                    )
-                    Text(d.title, style = bigStyle(), maxLines = 2)
-                    Text(
-                        d.contextLabel.ifBlank { context.getString(R.string.widget_no_progress) },
-                        style = softStyle(),
-                        maxLines = 1,
-                    )
-                    if (dailyGoal != null) {
-                        Spacer(GlanceModifier.height(10.dp))
-                        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(context.getString(R.string.widget_today_goal), style = softStyle())
-                            Spacer(GlanceModifier.defaultWeight())
-                            Text(dailyGoal.progressLabel, style = softStyle())
-                        }
-                        Spacer(GlanceModifier.height(4.dp))
-                        SoftBar(dailyGoal.percentage)
+    Column(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_featured_bg))) {
+        Row(GlanceModifier.fillMaxWidth().padding(start = 18.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)) {
+            Cover(cover, width = 72, height = 104)
+            Spacer(GlanceModifier.width(14.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                Text(d.nthLabel, style = accentStyle())
+                Text(d.title, style = bigStyle(), maxLines = 2)
+                Text(
+                    d.contextLabel.ifBlank { context.getString(R.string.widget_no_progress) },
+                    style = softStyle(),
+                    maxLines = 1,
+                )
+                if (dailyGoal != null) {
+                    Spacer(GlanceModifier.height(10.dp))
+                    Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(context.getString(R.string.widget_today_goal), style = softStyle())
+                        Spacer(GlanceModifier.defaultWeight())
+                        Text(dailyGoal.progressLabel, style = softStyle())
                     }
-                    if (d.streakDays > 0 || d.week.isNotEmpty()) {
-                        Spacer(GlanceModifier.height(12.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (d.streakDays > 0) {
-                                StreakPill(d.streakDays)
-                                Spacer(GlanceModifier.defaultWeight())
-                            }
-                            WeekDots(d.week)
+                    Spacer(GlanceModifier.height(4.dp))
+                    SoftBar(dailyGoal.percentage)
+                }
+                if (d.streakDays > 0 || d.week.isNotEmpty()) {
+                    Spacer(GlanceModifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (d.streakDays > 0) {
+                            StreakPill(d.streakDays)
+                            Spacer(GlanceModifier.defaultWeight())
                         }
+                        WeekDots(d.week)
                     }
                 }
             }
         }
-        Box(GlanceModifier.fillMaxWidth().height(1.dp).background(WidgetPalette.border)) {}
+        Box(GlanceModifier.fillMaxWidth().padding(start = 4.dp).height(1.dp).background(WidgetPalette.border)) {}
         SessionTimerView(d, running)
     }
 }
