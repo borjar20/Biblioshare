@@ -92,21 +92,34 @@ object WidgetRefresh {
     fun updateAll(context: Context) = runBlocking { updateAllSuspend(context) }
 
     suspend fun updateAllSuspend(context: Context) {
-        push(context, CurrentProgressWidget(), CurrentProgressWidget::class.java)
-        push(context, DailyGoalWidget(), DailyGoalWidget::class.java)
-        push(context, QuickRegisterWidget(), QuickRegisterWidget::class.java)
-    }
-
-    private suspend fun <T : GlanceAppWidget> push(context: Context, widget: T, provider: Class<T>) {
         val glanceManager = GlanceAppWidgetManager(context)
         val appWidgetManager = AppWidgetManager.getInstance(context)
-        glanceManager.getGlanceIds(provider).forEach { id ->
-            runCatching {
-                appWidgetManager.updateAppWidget(glanceManager.getAppWidgetId(id), widget.compose(context, id))
-            }.onFailure {
-                Log.w("BiblioshareWidgets", "compose+push falló para $id, caigo a update()", it)
-                runCatching { widget.update(context, id) }
+        push(context, glanceManager, appWidgetManager, CurrentProgressWidget(), CurrentProgressWidget::class.java, "current")
+        push(context, glanceManager, appWidgetManager, DailyGoalWidget(), DailyGoalWidget::class.java, "daily")
+        push(context, glanceManager, appWidgetManager, QuickRegisterWidget(), QuickRegisterWidget::class.java, "quick")
+    }
+
+    private suspend fun <T : GlanceAppWidget> push(
+        context: Context,
+        glanceManager: GlanceAppWidgetManager,
+        appWidgetManager: AppWidgetManager,
+        widget: T,
+        provider: Class<T>,
+        label: String,
+    ) {
+        // Independiente: un fallo en un widget no impide los otros (antes lo garantizaba
+        // el runCatching por widget; #498). getGlanceIds también entra en el runCatching
+        // porque su I/O interno de DataStore puede lanzar.
+        runCatching {
+            glanceManager.getGlanceIds(provider).forEach { id ->
+                runCatching {
+                    appWidgetManager.updateAppWidget(glanceManager.getAppWidgetId(id), widget.compose(context, id))
+                }.onFailure { e ->
+                    Log.w("BiblioshareWidgets", "compose+push falló ($label/$id), caigo a update()", e)
+                    runCatching { widget.update(context, id) }
+                        .onFailure { e2 -> Log.w("BiblioshareWidgets", "update() fallback también falló ($label/$id)", e2) }
+                }
             }
-        }
+        }.onFailure { e -> Log.w("BiblioshareWidgets", "getGlanceIds falló ($label), sin refresco", e) }
     }
 }
