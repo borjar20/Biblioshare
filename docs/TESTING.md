@@ -58,6 +58,18 @@ limpieza antes y después), `e2e/sagas-itinerarios.spec.ts` (`clearRouteChoice`)
 `globalSetup` de `e2e/support/qa-seed.ts`, que reimpone la línea base de la
 semilla QA de sagas antes de toda la suite.
 
+**Semillas QA que hay que crear ANTES de correr los e2e de sagas** (issue #177).
+`qa-seed.ts` solo RE-NORMALIZA filas que ya existen; NO crea el universo. Los
+specs de itinerarios (`sagas-itinerarios.spec.ts`) navegan contra un universo QA
+dedicado que, hasta la #177, solo vivía sembrado a mano en dev — quien no lo
+tuviera veía timeouts de Playwright ("heading not visible") sin pista de qué
+falta. Ese escenario está ahora versionado e idempotente en
+`e2e/fixtures/seed-sagas-itinerarios.sql`; córrelo una vez contra dev antes de
+esa suite (SQL editor, MCP `supabase-dev`, o `psql "$DEV_DB_URL" -f
+e2e/fixtures/seed-sagas-itinerarios.sql`). El resto de universos QA de sagas
+(p. ej. `[QA Sagas v2] Era Uno`) siguen sin script de creación versionado: es
+deuda de cobertura conocida, no la introdujo la #177.
+
 ## Verificación de UI: E2E automático con Playwright (por defecto desde 2026-07-15)
 
 **Metodología actual**: tras implementar algo con UI, el camino por defecto
