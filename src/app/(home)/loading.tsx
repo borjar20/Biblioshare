@@ -2,7 +2,7 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
-import { SHELL_APP } from "@/lib/ui/layout";
+import { SHELL_APP, HOME_TWO_COL } from "@/lib/ui/layout";
 
 // Skeleton del Inicio (feed).
 //
@@ -28,7 +28,7 @@ export default function Loading() {
 
       <TodayBlockSkeleton />
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
+      <div className={`pt-5 ${HOME_TWO_COL}`}>
         <div className="min-w-0">
           {/* "Novedades" + contador de seguidos: solo móvil. */}
           <div className="flex items-baseline justify-between gap-3 pb-4 lg:hidden">
@@ -40,8 +40,10 @@ export default function Loading() {
           <div className="mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
             <SkeletonLine className="hidden h-2.5 w-32 lg:block" />
             <div className="flex flex-wrap gap-2">
-              {["w-14", "w-20", "w-16", "w-20", "w-16"].map((w) => (
-                <Skeleton key={w} className={`h-7 rounded-chip ${w}`} />
+              {/* key por índice: lista estática sin reordenación, y los anchos
+                  se repiten (w-20/w-16), así que el valor no sirve de key (#337). */}
+              {["w-14", "w-20", "w-16", "w-20", "w-16"].map((w, i) => (
+                <Skeleton key={i} className={`h-7 rounded-chip ${w}`} />
               ))}
             </div>
           </div>

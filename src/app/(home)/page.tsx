@@ -15,7 +15,7 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
-import { SHELL_APP } from "@/lib/ui/layout";
+import { SHELL_APP, HOME_TWO_COL } from "@/lib/ui/layout";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -96,7 +96,7 @@ export default async function Home({
         <TodayBlock userId={user.id} />
       </Suspense>
 
-      <div className="pt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
+      <div className={`pt-5 ${HOME_TWO_COL}`}>
         <div className="min-w-0">
           {/* En móvil "Novedades" encabeza el FEED, no la página: encima está
               el bloque de hoy, que es quien abre el Inicio (frame G). Es la
