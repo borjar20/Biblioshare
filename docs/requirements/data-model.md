@@ -51,7 +51,7 @@ recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a 
 migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
 bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
 `anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior**]**
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; prod sigue pendiente**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -1083,14 +1083,17 @@ automática de test (depende del día real de la semana); `resolveTargetHrefs` t
 «Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
 una en las issues abiertas (ver `backlog.md`).
 
-### 6.2 «Pensamiento»: tabla `thoughts` (Fase 2, SOLO EN DEV, 2026-08-06)
+### 6.2 «Pensamiento»: tabla `thoughts` (Fases 1-6, SOLO EN DEV, 2026-08-06/07)
 
 > Diseño completo en `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md`. Esta
-> es la Fase 2 (esquema) de 6; Fases 3-6 (feed, compositor, tarjeta/hilo, tests) están
-> pendientes y consumen este esquema. Migraciones `20260834_thoughts_enum_values.sql` (los
-> tres valores de enum, en transacción propia — `ALTER TYPE … ADD VALUE` no puede usarse en
-> la misma transacción que consume el valor) y `20260835_thoughts.sql` (tabla, trigger,
-> RLS, grants).
+> sección documenta la Fase 2 (esquema); Fases 3-5 (feed como 6ª fuente, compositor
+> dedicado, tarjeta/hilo con markdown-lite) y la Fase 6 (e2e + cierre documental) están
+> **completas en este branch** — la feature funciona de extremo a extremo en dev. Migraciones
+> `20260834_thoughts_enum_values.sql` (los tres valores de enum, en transacción propia —
+> `ALTER TYPE … ADD VALUE` no puede usarse en la misma transacción que consume el valor) y
+> `20260835_thoughts.sql` (tabla, trigger, RLS, grants). **Prod pendiente**: la migración
+> solo se ha aplicado en dev; el despliegue a prod (y su reverificación contra objetos
+> reales) es un paso posterior, fuera de esta sesión — ver `backlog.md`.
 
 Un **Pensamiento** es el primer contenido **autoral** del feed personal: hasta ahora
 `getFeed` es fan-out on-read puro (toda tarjeta se deriva de una acción previa — alta de
@@ -1148,17 +1151,25 @@ inferidas del esquema, ampliar el enum de la BD sin ampliarlas rompía `tsc` de 
 (`interaction-actions.ts`, `interaction-targets.ts`): se añadió `"thought"` a `TargetType` y
 `"thought_commented"`/`"thought_liked"` a `NotificationType` (+ sus entradas obligatorias en
 `NOTIFICATION_TYPE_KEY` y en `NOTIFICATION_CATEGORY` de `src/lib/push/types.ts`, categoría
-`social` — mismo criterio por contenido que `review_commented`/`activity_liked`). **Las
-claves de copy (`thoughtCommented`/`thoughtLiked`) no tienen aún cadena en
-`messages/es.json`**: nada dispara todavía este tipo de notificación (no existe compositor
-ni hilo de comentarios de Pensamientos), así que se deja para la fase que sí los dispare
-(Fase 5, tarjeta e hilo) — mismo patrón que la clave `social.like` huérfana que dejó la Fase
-1 de reacciones multi-emoji.
+`social` — mismo criterio por contenido que `review_commented`/`activity_liked`). Las
+claves de copy (`thoughtCommented`/`thoughtLiked`) ya tienen cadena en `messages/es.json`
+desde que la Fase 5 (tarjeta e hilo) las dispara de verdad — huérfanas solo mientras no
+existía compositor ni hilo de comentarios de Pensamientos.
 
-**Fuera de alcance v1** (documentado en la spec, para abrir como issues cuando arranque la
-fase correspondiente): «pensamientos sobre esta entidad» en la ficha del ítem/saga/persona
-(el índice `thoughts_anchor_idx` ya está listo para esa lectura); edición/borrado desde la
+**Fuera de alcance v1** (documentado en la spec; issues abiertas en Fase 6 — ver
+`backlog.md`): «pensamientos sobre esta entidad» en la ficha del ítem/saga/persona (el
+índice `thoughts_anchor_idx` ya está listo para esa lectura); edición/borrado desde la
 tarjeta más allá de lo que ya permite la RLS; una sola ancla por pensamiento en v1.
+
+**Fase 6 (2026-08-07, SOLO EN DEV):** e2e `e2e/thoughts.spec.ts` — publicar anclado a un
+libro de biblioteca con spoiler y `**negrita**`, comentar, reaccionar con 🔥 en post y
+comentario, recargar y comprobar que persiste; repite el anclaje (solo el chip) con saga y
+persona. Spec escrita y committeada; **no se pudo ejecutar en este entorno** (worktree sin
+`.env.local`: faltan `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`TEST_USER_*`,
+y `.claude/launch.json` apunta a un `dev.cmd` en `D:\` que no existe en esta máquina — el
+`next dev` de Playwright arranca pero cada ruta revienta al crear el cliente de Supabase).
+Queda como entregable ejecutable por quien tenga esas credenciales, no como verificación ya
+hecha.
 
 ## 7. Sagas
 
