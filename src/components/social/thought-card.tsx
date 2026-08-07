@@ -102,10 +102,11 @@ export function ThoughtCard({
           {deleteMenu}
         </div>
       ) : (
-        // Sin cabecera (perfil, hideActor): el trigger flota en la esquina
-        // sup.-der. de la tarjeta -- no hay fila de header donde encajarlo en
-        // flujo normal.
-        deleteMenu && <div className="absolute top-3 right-3">{deleteMenu}</div>
+        // Sin cabecera (perfil, hideActor): el trigger va en su PROPIA fila,
+        // en flujo normal alineado a la derecha. Un `absolute` sobre la tarjeta
+        // se solapaba con el chip del ancla (no hay banda reservada como en
+        // club-header); una fila propia no puede solaparse con nada.
+        deleteMenu && <div className="-mb-1 flex justify-end">{deleteMenu}</div>
       )}
 
       <Link
