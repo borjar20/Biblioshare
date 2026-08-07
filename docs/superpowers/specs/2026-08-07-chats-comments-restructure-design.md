@@ -39,10 +39,13 @@ para el formato de comentarios.
    usuario/hilo) y sin realtime siempre sería aproximado. Se abre issue (`tipo:feature`,
    `area:social`, `P3`). La maqueta de chat NO mostrará «Visto».
 2. **Entrega: un solo PR** en esta rama (migración + backend + ambas capas de UI).
-3. **Respuestas: profundidad real en datos, aplanadas al mostrar.** `parent_id` guarda el padre real
-   (a cualquier profundidad), pero la UI agrupa **todos los descendientes bajo su raíz** y los
-   renderiza en una sola lista plana, con prefijo `@autor` para dar contexto (como Twitter/Instagram).
-   Esto **revierte** la decisión previa de bloquear el anidamiento (ver `decisiones.md`).
+3. **Respuestas: profundidad real en datos, aplanadas a DOS niveles al mostrar.** `parent_id` guarda
+   el padre real (a cualquier profundidad), pero la UI colapsa a exactamente **dos profundidades
+   visuales**: (0) **comentario principal** = la raíz del hilo (`parent_id = null`, el ancestro de más
+   arriba, no el padre inmediato), y (1) **respuestas** = *todos* los descendientes de esa raíz
+   subidos bajo ella, en una sola lista al mismo nivel, con prefijo `@autor` para dar contexto de a
+   quién respondía cada una (como Twitter/Instagram). Esto **revierte** la decisión previa de bloquear
+   el anidamiento (ver `decisiones.md`).
 
 ## 3. Modelo de datos
 
@@ -117,8 +120,11 @@ Toda mutación termina en `revalidateInteraction()` (y `revalidateClubPages()` d
 `canDelete`).
 
 - **Agrupar/aplanar y ordenar es en cliente.** El servidor devuelve la lista plana enriquecida; la
-  presentación construye los cubos raíz→respuestas siguiendo `parent_id` dentro del conjunto cargado y
-  los aplana. Orden `recientes` / `mejor valorados` (por suma de reacciones) en cliente.
+  presentación resuelve la **raíz** de cada comentario subiendo por `parent_id` hasta el ancestro con
+  `parent_id = null` dentro del conjunto cargado, y agrupa todos los descendientes bajo esa raíz
+  (dos niveles: principal + respuestas). Orden `recientes` / `mejor valorados` (por suma de
+  reacciones) en cliente. Si el padre quedó fuera del corte de prefetch, el comentario se trata como
+  raíz (ver límite abajo).
 - Límite de prefetch se mantiene en `COMMENT_PREFETCH_LIMIT = 20`. Un hilo profundo/partido puede
   dejar respuestas fuera del corte (padre no cargado → se trata como raíz). Aceptable en v1 →
   **issue de paginación** (`tipo:deuda`).
