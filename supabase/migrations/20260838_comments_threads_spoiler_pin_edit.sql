@@ -48,6 +48,7 @@ alter table public.comments enable always trigger trg_comments_enforce_parent;
 -- corre como owner y no le afecta el revoke).
 revoke update on public.comments from anon, authenticated;
 grant update (body, is_spoiler, edited_at) on public.comments to authenticated;
+drop policy if exists "comments update own canonical" on public.comments;
 create policy "comments update own canonical" on public.comments
   for update to authenticated
   using ((select auth.uid()) = author_id and public.can_view_interaction_target(interaction_target_id))
