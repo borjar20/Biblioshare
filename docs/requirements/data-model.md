@@ -51,7 +51,7 @@ recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a 
 migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
 bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
 `anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema**]**
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -1083,6 +1083,103 @@ automática de test (depende del día real de la semana); `resolveTargetHrefs` t
 «Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
 una en las issues abiertas (ver `backlog.md`).
 
+### 6.2 «Pensamiento»: tabla `thoughts` (Fases 1-6, dev 2026-08-06/07 · **prod 2026-08-07**)
+
+> Diseño completo en `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md`. Esta
+> sección documenta la Fase 2 (esquema); Fases 3-5 (feed como 6ª fuente, compositor
+> dedicado, tarjeta/hilo con markdown-lite) y la Fase 6 (e2e + cierre documental) están
+> **completas en este branch** — la feature funciona de extremo a extremo en dev. Migraciones
+> `20260834_thoughts_enum_values.sql` (los tres valores de enum, en transacción propia —
+> `ALTER TYPE … ADD VALUE` no puede usarse en la misma transacción que consume el valor) y
+> `20260835_thoughts.sql` (tabla, trigger, RLS, grants). **Aplicada en PROD el 2026-08-07**
+> y reverificada contra objetos reales: `to_regclass('public.thoughts')` no nulo,
+> `enum_range(null::thought_anchor_type)` con los 5 valores, `'thought'` en `target_kind`,
+> `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS
+> activo, grants por columna idénticos a dev (5 con `INSERT`, 2 con `UPDATE`, 8 con `SELECT`)
+> y `get_advisors(security)` sin ningún hallazgo nuevo sobre `thoughts`. El código que la usa
+> se despliega al mergear el PR (migración-primero-luego-merge respetado).
+
+Un **Pensamiento** es el primer contenido **autoral** del feed personal: hasta ahora
+`getFeed` es fan-out on-read puro (toda tarjeta se deriva de una acción previa — alta de
+pase, sesión, actividad de club…), y un Pensamiento existe solo porque alguien lo escribió.
+Copia la forma de `club_activities`/`club_rounds`: tabla autoral que se engancha al feed y
+al sistema de interacciones por la vía estándar.
+
+`thoughts`: `id`, `user_id` (FK a `auth.users`, `on delete cascade`), `anchor_type`
+(`thought_anchor_type`: `book|movie|series|saga|person`), `anchor_id` (uuid, **sin FK SQL**
+— polimórfico sobre cinco tablas distintas, misma renuncia pragmática que `saga_items`; la
+integridad la garantiza `createThought` resolviendo el ancla antes del insert, Fase 4),
+`body` (`char_length` 1..2000), `is_spoiler` (default `false`), `created_at`, `updated_at`
+(trigger `thoughts_set_updated_at` → `set_updated_at()`). Dos índices:
+`thoughts_user_id_created_at_idx` (feed por autor) y `thoughts_anchor_idx (anchor_type,
+anchor_id)` (para «pensamientos sobre esta entidad», superficie de lectura fuera de v1).
+
+**`interaction_targets` gana la clase `thought`** (`target_kind`, 9→10 valores) vía el
+trigger resolutor `private.sync_thought_interaction_target()` (`after insert on thoughts`,
+mismo patrón que `sync_club_round_interaction_target`): `owner_id = user_id`, audiencia
+`profile`/`user_id` (igual que `pass`/`progress_session` — visible a quien pueda ver el
+perfil del autor, sin alcance de club), `commentable`/`reactable` = `true`, y los dos
+valores nuevos de `notification_type` (`thought_commented`, `thought_liked` — nombrados
+como el resto de pares `<entidad>_commented`/`<entidad>_liked`, no como el borrador inicial
+de la spec). El `href` apunta a la ficha del ancla (un pensamiento no tiene página propia,
+igual que `progress_session` usa la página del ítem): `/libro/`, `/pelicula/`, `/serie/`,
+`/saga/` o `/persona/` + `anchor_id`. `thoughts_cleanup_social_target` (`after delete`) usa
+el `private.cleanup_social_target('thought')` genérico: cascada de target, comentarios,
+reacciones y avisos; `content_reports` conserva snapshot con `target_deleted_at`.
+
+RLS: `select` con `can_view_profile(user_id)` (mismo criterio que las demás fuentes del
+feed); `insert`/`update` solo el dueño (`user_id = auth.uid()`); **`delete` el dueño O un
+admin global** (política `thoughts delete own or moderate` → `private.can_moderate_target(
+'thought', id)`, que para un pensamiento —audiencia `profile`, sin club— resuelve a
+autor+admin; se añadió la rama `'thought'` a `private.social_target_owner_id`, cerrando
+#525 — migración `20260836_thoughts_delete_moderate.sql`, **aplicada en dev el 2026-08-07 y
+en PROD el 2026-08-07**, verificada contra `pg_policy`/`pg_get_functiondef`). Sin política
+de club porque un pensamiento no tiene una. Matriz mínima en
+`supabase/tests/thoughts_rls.sql` (patrón de `social_phase1_interaction_targets.sql`):
+dueña inserta/ve el suyo, un tercero sin relación de follow no lo ve (ni el target
+canónico), un seguidor aceptado lo ve y puede comentarlo por la vía canónica, un no-dueño
+no puede escribirlo (RLS filtra la fila, no lanza excepción) y borrarlo se lleva en cascada
+el target y sus comentarios. Las cinco aserciones pasaron en dev el 2026-08-06.
+
+**Grants por columna (#375, DRIFT-CHECK superficie 6):** `id`/`created_at`/`updated_at`
+generadas (sin grant de escritura); `user_id`/`anchor_type`/`anchor_id` inmutables tras el
+insert (grant de `INSERT`, no de `UPDATE`); `body`/`is_spoiler` editables. La superficie 6
+corrida en dev el 2026-08-06 confirma `thoughts` con 8 columnas / 5 con `INSERT` / 2 con
+`UPDATE` — el mismo patrón intencionado que `passes`/`progress_sessions`, no un hueco.
+
+**Verificado en dev el 2026-08-06** contra objetos reales, nunca contra `list_migrations`:
+`to_regclass('public.thoughts')` no nulo, `enum_range(null::thought_anchor_type)` con los
+cinco valores, `'thought'` presente en `enum_range(null::target_kind)`, y `get_advisors`
+(seguridad) sin ningún hallazgo nuevo sobre `thoughts`.
+
+**Tipos TS:** `database.types.ts` regenerado y acotado a las adiciones de esta fase (el
+regen completo arrastraba reformateos y drift preexistente ajeno — comentarios a mano en
+RPCs de eventos de club, orden de funciones — que se descartó a propósito). Como
+`NotificationType`/`TargetType` en `src/lib/social/` son uniones literales manuales, no
+inferidas del esquema, ampliar el enum de la BD sin ampliarlas rompía `tsc` de inmediato
+(`interaction-actions.ts`, `interaction-targets.ts`): se añadió `"thought"` a `TargetType` y
+`"thought_commented"`/`"thought_liked"` a `NotificationType` (+ sus entradas obligatorias en
+`NOTIFICATION_TYPE_KEY` y en `NOTIFICATION_CATEGORY` de `src/lib/push/types.ts`, categoría
+`social` — mismo criterio por contenido que `review_commented`/`activity_liked`). Las
+claves de copy (`thoughtCommented`/`thoughtLiked`) ya tienen cadena en `messages/es.json`
+desde que la Fase 5 (tarjeta e hilo) las dispara de verdad — huérfanas solo mientras no
+existía compositor ni hilo de comentarios de Pensamientos.
+
+**Fuera de alcance v1** (documentado en la spec; issues abiertas en Fase 6 — ver
+`backlog.md`): «pensamientos sobre esta entidad» en la ficha del ítem/saga/persona (el
+índice `thoughts_anchor_idx` ya está listo para esa lectura); edición/borrado desde la
+tarjeta más allá de lo que ya permite la RLS; una sola ancla por pensamiento en v1.
+
+**Fase 6 (2026-08-07, SOLO EN DEV):** e2e `e2e/thoughts.spec.ts` — publicar anclado a un
+libro de biblioteca con spoiler y `**negrita**`, comentar, reaccionar con 🔥 en post y
+comentario, recargar y comprobar que persiste; repite el anclaje (solo el chip) con saga y
+persona. Spec escrita y committeada; **no se pudo ejecutar en este entorno** (worktree sin
+`.env.local`: faltan `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`TEST_USER_*`,
+y `.claude/launch.json` apunta a un `dev.cmd` en `D:\` que no existe en esta máquina — el
+`next dev` de Playwright arranca pero cada ruta revienta al crear el cliente de Supabase).
+Queda como entregable ejecutable por quien tenga esas credenciales, no como verificación ya
+hecha.
+
 ## 7. Sagas
 
 `sagas` es **jerárquica** (`parent_saga_id`): las subsagas son sagas reales anidadas.
@@ -2094,18 +2191,20 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 | `club_event_state` | `programado \| cancelado \| pospuesto` (§6.1, 2026-08-04, dev y **prod**). Solo los tres estados que una PERSONA declara: «en curso» y «finalizado» se derivan del reloj y NO se guardan |
 | `event_modality` | `presencial \| online \| hibrida` (§6.1, 2026-08-04, dev y **prod**) |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable · `club_round_proposed \| club_round_commented \| club_round_liked` (§6, la ronda, dev y **prod** 2026-08-04) · **`thought_commented \| thought_liked`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
 | `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
 | `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
-| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session` |
+| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session \| club_round` (§6, la ronda, dev y **prod** 2026-08-04 — **corregido aquí, 2026-08-06**: esta fila no lo listaba y ya estaba en los dos entornos) · **`thought`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
+| `thought_anchor_type` | `book \| movie \| series \| saga \| person` (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
 
 ## 10. Migraciones
 
-155 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
-2026-08-06; incluye los deltas que aún están solo en dev, como `20260814_notes_public_select.sql`).
+158 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+2026-08-06 tras las dos de Fase 2 de «Pensamiento»; incluye los deltas que aún están solo en dev,
+como `20260814_notes_public_select.sql` y `20260834_thoughts_enum_values.sql`/`20260835_thoughts.sql`).
 Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
 pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
 `supabase/schema-baseline.sql` es el replay ordenado para levantar un entorno limpio.

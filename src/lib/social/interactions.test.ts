@@ -1,5 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { getInteractionSummary } from "./interactions";
+import { describe, expect, it, test, vi } from "vitest";
+import { getInteractionSummary, REACTION_KINDS, emptyReactions } from "./interactions";
+
+test("emptyReactions da las 4 kinds a cero", () => {
+  const r = emptyReactions();
+  expect(REACTION_KINDS).toEqual(["like", "read", "shock", "fire"]);
+  for (const k of REACTION_KINDS) expect(r[k]).toEqual({ count: 0, viewerReacted: false });
+});
 
 type Row = Record<string, unknown>;
 
@@ -162,6 +168,27 @@ describe("getInteractionSummary", () => {
     await expect(
       getInteractionSummary(client, "diary_entry", ["entry-present", "missing"]),
     ).rejects.toThrow(/interaction target.*diary_entry:missing/i);
+  });
+
+  it("agrupa reacciones por kind y deriva el total", async () => {
+    const { client } = makeFakeSupabase({
+      interaction_targets: [
+        { id: "target-t", kind: "diary_entry", source_id: "entry-t" },
+      ],
+      reactions: [
+        { interaction_target_id: "target-t", user_id: "viewer", kind: "like" },
+        { interaction_target_id: "target-t", user_id: "other", kind: "like" },
+        { interaction_target_id: "target-t", user_id: "other", kind: "fire" },
+      ],
+      comments: [],
+      profile_identities: [],
+    });
+
+    const s = (await getInteractionSummary(client, "diary_entry", ["entry-t"])).get("entry-t")!;
+    expect(s.reactions.like).toEqual({ count: 2, viewerReacted: true });
+    expect(s.reactions.fire).toEqual({ count: 1, viewerReacted: false });
+    expect(s.reactionCount).toBe(3);
+    expect(s.viewerReacted).toBe(true);
   });
 
   // #340: un comentario cuyo target canónico no resuelve es un hecho de

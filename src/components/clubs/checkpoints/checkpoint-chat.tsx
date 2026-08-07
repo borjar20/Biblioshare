@@ -28,6 +28,7 @@ export function CheckpointChat({
       viewerReacted={summary.viewerReacted}
       commentCount={summary.commentCount}
       comments={summary.comments}
+      reactions={summary.reactions}
       viewerLoggedIn={viewerLoggedIn}
       showTargetReaction={false}
       clubId={clubId}

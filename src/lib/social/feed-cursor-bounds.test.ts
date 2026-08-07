@@ -238,6 +238,7 @@ const FAKE_SOURCE_TO_KEY: Record<string, FeedSourceKey> = {
   diary: "diary",
   episode_watches: "episodes",
   club_activities: "clubs",
+  thoughts: "thoughts",
 };
 
 async function walk(pageSize: number, data: FakeFeedData = DATA): Promise<Walk> {
@@ -315,7 +316,7 @@ describe("cotas de cursor de getFeed", () => {
         expect(filter).toBe(cursorSourceFilter(FEED_SOURCE_COLUMNS[key], parsed));
       }
     }
-    expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed"]);
+    expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed", "thoughts"]);
   });
 
   // La otra mitad de la clave de orden. `FEED_SOURCE_COLUMNS` centralizó las
@@ -348,7 +349,7 @@ describe("cotas de cursor de getFeed", () => {
       for (const orders of queries ?? []) expect(orders, fakeSource).toEqual(expected);
       seen.add(key);
     }
-    expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed"]);
+    expect([...seen].sort()).toEqual(["added", "clubs", "diary", "episodes", "progressed", "thoughts"]);
   });
 });
 

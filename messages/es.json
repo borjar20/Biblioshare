@@ -319,6 +319,12 @@
     "reject": "Rechazar",
     "backToProfile": "Volver al perfil",
     "like": "Me gusta",
+    "reaction": {
+      "like": "Me gusta",
+      "read": "Leído",
+      "shock": "Impacto",
+      "fire": "Fuego"
+    },
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
@@ -352,6 +358,36 @@
     "notifyAdded": "Añada algo a su biblioteca",
     "notifyAddedHint": "Puede llegar en ráfagas si añade muchas obras seguidas."
   },
+  "thoughtComposer": {
+    "trigger": "Compartir un pensamiento",
+    "title": "Nuevo pensamiento",
+    "close": "Cerrar",
+    "anchorLabel": "¿Sobre qué?",
+    "anchorPlaceholder": "Busca un libro, película, serie, saga o persona…",
+    "anchorEmpty": "Sin resultados",
+    "anchorClear": "Quitar",
+    "anchorType": {
+      "book": "Libro",
+      "movie": "Película",
+      "series": "Serie",
+      "saga": "Saga",
+      "person": "Persona"
+    },
+    "bodyPlaceholder": "¿Qué piensas?",
+    "boldLabel": "Negrita",
+    "italicLabel": "Cursiva",
+    "listLabel": "Lista",
+    "spoilerLabel": "Contiene spoiler",
+    "publish": "Publicar",
+    "cancel": "Cancelar",
+    "errors": {
+      "unauthenticated": "Tienes que iniciar sesión para publicar.",
+      "empty": "Escribe algo antes de publicar.",
+      "too_long": "Se ha pasado de 2000 caracteres.",
+      "anchor_not_found": "No se encuentra lo que elegiste. Búscalo de nuevo.",
+      "unknown": "No se pudo publicar. Inténtalo de nuevo."
+    }
+  },
   "feed": {
     "verbs": {
       "added": "añadió a su biblioteca",
@@ -378,8 +414,14 @@
       "collection": "Colección",
       "progress": "Avances",
       "review": "Reseña",
-      "reviews": "Reseñas"
+      "reviews": "Reseñas",
+      "thought": "Pensamiento"
     },
+    "thoughtShared": "compartió un pensamiento",
+    "thoughtMenu": "Opciones",
+    "thoughtDelete": "Eliminar",
+    "thoughtDeleteConfirm": "¿Eliminar este pensamiento? No se puede deshacer.",
+    "thoughtDeleteError": "No se pudo eliminar.",
     "episode": {
       "watched": "Visto",
       "showMore": "ver {count, plural, one {# episodio más} other {# episodios más}}"
@@ -449,6 +491,8 @@
     "clubRoundProposed": "{name} propuso la ronda de esta semana",
     "clubRoundCommented": "{name} comentó la ronda de tu club",
     "clubRoundLiked": "A {name} le gustó la ronda de tu club",
+    "thoughtCommented": "{name} comentó tu pensamiento",
+    "thoughtLiked": "A {name} le gustó tu pensamiento",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
     "mentioned": "{name} te mencionó",

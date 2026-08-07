@@ -110,6 +110,10 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, PushCategory> = {
   followed_session: "progress",
   followed_episode: "progress",
   followed_added: "progress",
+  // Fase 2 «Pensamiento»: contenido personal, misma categoría que
+  // review_commented/activity_liked.
+  thought_commented: "social",
+  thought_liked: "social",
 };
 
 // Canal de notificación Android por categoría (spec item 8). El registro nativo

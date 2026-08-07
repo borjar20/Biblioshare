@@ -28,6 +28,8 @@ export const FAKE_ACTOR_ID = "actor-1";
 export const FAKE_ITEM_ID = "book-1";
 export const FAKE_SERIES_ID = "series-1";
 export const FAKE_CLUB_ID = "club-1";
+export const FAKE_SAGA_ID = "saga-1";
+export const FAKE_PERSON_ID = "person-1";
 
 // Las dos consultas a `passes` (altas y reseñas) y la de los pases del
 // visitante solo se distinguen por las columnas que piden.
@@ -45,6 +47,9 @@ export type FakeFeedSource =
   | "club_activities"
   | "clubs"
   | "interaction_targets"
+  | "thoughts"
+  | "sagas"
+  | "people"
   | "other";
 
 export type FakeFeedData = {
@@ -58,6 +63,8 @@ export type FakeFeedData = {
   episodes?: FakeRow[];
   /** Filas de `club_activities` (la quinta fuente, columna `created_at`). */
   clubActivities?: FakeRow[];
+  /** Filas de `thoughts` (la sexta fuente, columna `created_at`). */
+  thoughts?: FakeRow[];
 };
 
 export type FakeOrderCall = { column: string; ascending: boolean };
@@ -172,6 +179,9 @@ function sourceOf(table: string, columns: string): FakeFeedSource {
     case "club_activities":
     case "clubs":
     case "interaction_targets":
+    case "thoughts":
+    case "sagas":
+    case "people":
       return table;
     default:
       return "other";
@@ -231,6 +241,14 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     created_by: FAKE_ACTOR_ID,
     ...r,
   }));
+  const thoughts: FakeRow[] = (rows.thoughts ?? []).map((r) => ({
+    user_id: FAKE_ACTOR_ID,
+    anchor_type: "book",
+    anchor_id: FAKE_ITEM_ID,
+    body: "Pensamiento",
+    is_spoiler: false,
+    ...r,
+  }));
 
   const orFilters: Record<string, string[]> = {};
   const orderCalls: Record<string, FakeOrderCall[][]> = {};
@@ -247,6 +265,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     ...sessions.map((r) => ({ kind: "progress_session", source_id: r.id })),
     ...finished.map((r) => ({ kind: "diary_entry", source_id: r.id })),
     ...episodes.map((r) => ({ kind: "episode_watch", source_id: r.id })),
+    ...thoughts.map((r) => ({ kind: "thought", source_id: r.id })),
   ].map((t) => ({ id: `interaction-target:${t.kind}:${text(t.source_id)}`, ...t }));
 
   function dataFor(source: FakeFeedSource): FakeRow[] {
@@ -267,6 +286,12 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
         return clubActivities;
       case "clubs":
         return [{ id: FAKE_CLUB_ID, name: "Club", slug: "club", cover_url: null }];
+      case "thoughts":
+        return thoughts;
+      case "sagas":
+        return [{ id: FAKE_SAGA_ID, name: "Saga", cover_url: null }];
+      case "people":
+        return [{ id: FAKE_PERSON_ID, name: "Persona", photo_url: null }];
       case "series":
         return [{ id: FAKE_SERIES_ID, title: "Serie", cover_url: null }];
       case "follows":

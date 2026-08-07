@@ -11,7 +11,8 @@ export type TargetType =
   | "club_activity"
   | "pass"
   | "progress_session"
-  | "club_round";
+  | "club_round"
+  | "thought";
 
 export type InteractionTargetRef = {
   id: string;

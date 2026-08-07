@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
 import { notifyMentions } from "./notify-mentions";
+import type { ReactionKind } from "./interactions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -24,7 +25,10 @@ async function getInteractionTarget(
   return data;
 }
 
-export async function toggleReaction(interactionTargetId: string): Promise<void> {
+export async function toggleReaction(
+  interactionTargetId: string,
+  kind: ReactionKind = "like",
+): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,7 +45,7 @@ export async function toggleReaction(interactionTargetId: string): Promise<void>
     .select("id")
     .eq("interaction_target_id", interactionTargetId)
     .eq("user_id", user.id)
-    .eq("kind", "like")
+    .eq("kind", kind)
     .maybeSingle();
   if (selectError) throw selectError;
 
@@ -51,13 +55,13 @@ export async function toggleReaction(interactionTargetId: string): Promise<void>
       .delete()
       .eq("interaction_target_id", interactionTargetId)
       .eq("user_id", user.id)
-      .eq("kind", "like");
+      .eq("kind", kind);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("reactions").insert({
       interaction_target_id: interactionTargetId,
       user_id: user.id,
-      kind: "like",
+      kind,
     });
     if (error) throw error;
 

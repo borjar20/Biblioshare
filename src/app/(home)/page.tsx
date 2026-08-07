@@ -9,6 +9,7 @@ import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { StatsRail } from "@/components/stats/stats-rail";
 import { TodayBlock } from "@/components/stats/today-block";
 import { FeedFilters } from "@/components/social/feed-filters";
+import { ThoughtComposerTrigger } from "@/components/social/thought-composer-trigger";
 import { FeedList } from "@/components/social/feed-list";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
@@ -109,6 +110,14 @@ export default async function Home({
             <span className="font-mono text-[11px] text-muted-foreground">
               {t("feed.followingCount", { count: counts.following })}
             </span>
+          </div>
+
+          {/* Disparador del compositor de «Pensamiento» (Fase 4): fila propia,
+              no comparte línea con los chips de filtro -- esos ya van "por los
+              pelos" a una fila a 360px (ver feed-filters.tsx) y no hay hueco
+              para un tercer elemento sin romperse a una segunda línea. */}
+          <div className="pb-3.5">
+            <ThoughtComposerTrigger />
           </div>
 
           {/* En PC el rótulo y los chips comparten línea (frame B); en móvil el

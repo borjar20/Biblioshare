@@ -118,6 +118,28 @@ reales en los dos entornos) — detalle en `data-model.md` §6.1 y §6.2, decisi
 semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Spec:
 `docs/superpowers/specs/2026-08-03-club-rondas-design.md` · Plan:
 `docs/superpowers/plans/2026-08-03-club-rondas.md`
+- [x] **«Pensamiento» — post manual anclado a una entidad** (2026-08-06/07) — el primer
+  contenido **autoral** del feed personal: un usuario comparte un pensamiento (markdown-lite
+  `**negrita**`/`*cursiva*`/`- lista`/`@mención`, hasta 2000 caracteres, spoiler opcional)
+  anclado a un libro/película/serie/saga/persona (ancla polimórfica, obligatoria, una sola
+  por pensamiento en v1). Tabla propia `thoughts` + clase `thought` de `interaction_targets`
+  (comentable/reaccionable por la vía canónica), 6ª fuente del feed junto a colección,
+  progreso, episodios y reseñas, compositor dedicado desde la cabecera de Inicio con
+  autocompletar de ancla (biblioteca activa para obras; catálogo público para sagas/personas).
+  Trae consigo la **paleta de reacciones multi-emoji (♡/📖/😱/🔥) para TODA la app**, no solo
+  para esta tarjeta — decisión de forma en `decisiones.md` (2026-08-07). **Migraciones
+  aplicadas y verificadas solo en dev** (`20260834_thoughts_enum_values.sql`,
+  `20260835_thoughts.sql`); **producción pendiente**, aplicación reservada al usuario —
+  detalle en `data-model.md` §6.2. E2E `e2e/thoughts.spec.ts` escrito y committeado; no se
+  pudo ejecutar en este worktree (sin `.env.local`/credenciales de prueba). Deuda y features
+  diferidas con issues: filtrado fino de thoughts por `filter` book/screen
+  ([#526](https://github.com/borjar20/Biblioshare/issues/526)), owner sin rama `thought` en
+  `social_target_owner_id` ([#525](https://github.com/borjar20/Biblioshare/issues/525)),
+  «pensamientos sobre esta entidad» agregados en ficha
+  ([#527](https://github.com/borjar20/Biblioshare/issues/527)), edición/borrado desde la
+  tarjeta ([#528](https://github.com/borjar20/Biblioshare/issues/528)). Spec:
+  `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md` · Plan:
+  `.superpowers/sdd/2026-08-06-pensamientos-post/`
 
 ### Importación
 - [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. También accesible **desde el paso 2 del onboarding**, donde las filas sin match se encolan solas. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.

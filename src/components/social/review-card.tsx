@@ -83,6 +83,7 @@ export function ReviewCard({
           viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
           comments={event.comments}
+          reactions={event.reactions}
           viewerLoggedIn={viewerLoggedIn}
           knownUsernames={knownUsernames}
         />

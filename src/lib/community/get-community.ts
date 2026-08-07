@@ -1,7 +1,12 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import {
+  emptyReactions,
+  getInteractionSummary,
+  type InteractionComment,
+  type ReactionsByKind,
+} from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { formatEdition } from "@/lib/editions/edition-label";
 import { latestRatingPerUser, type RatedPass } from "./latest-rating";
@@ -25,6 +30,7 @@ export type CommunityReview = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 export type Community = {
@@ -272,6 +278,7 @@ export async function getReviews(
           viewerReacted: false,
           commentCount: 0,
           comments: [],
+          reactions: emptyReactions(),
         };
       });
 

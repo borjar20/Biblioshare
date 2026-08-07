@@ -41,7 +41,12 @@ export type NotificationType =
   | "club_round_proposed"
   | "club_round_commented"
   | "club_round_liked"
-  | "mentioned";
+  | "mentioned"
+  // Fase 2 «Pensamiento» (2026-08-06): el disparo ya vive en la migración
+  // 20260835_thoughts.sql (comment_notification_type/reaction_notification_type
+  // de interaction_targets) — la copia de es.json llegó con la tarjeta (Fase 5).
+  | "thought_commented"
+  | "thought_liked";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -115,4 +120,6 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_round_commented: "clubRoundCommented",
   club_round_liked: "clubRoundLiked",
   mentioned: "mentioned",
+  thought_commented: "thoughtCommented",
+  thought_liked: "thoughtLiked",
 };

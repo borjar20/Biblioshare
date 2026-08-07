@@ -91,6 +91,7 @@ export function EpisodeRatingsCard({
                     viewerReacted={ep.viewerReacted}
                     commentCount={ep.commentCount}
                     comments={ep.comments}
+                    reactions={ep.reactions}
                     viewerLoggedIn={viewerLoggedIn}
                     knownUsernames={knownUsernames}
                   />

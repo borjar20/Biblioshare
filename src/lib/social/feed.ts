@@ -1,7 +1,13 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import type { AnchorRef, AnchorType } from "@/lib/catalog/anchor";
 import type { MediaStatus } from "@/lib/library/types";
-import { getInteractionSummary, type InteractionComment } from "./interactions";
+import {
+  emptyReactions,
+  getInteractionSummary,
+  type InteractionComment,
+  type ReactionsByKind,
+} from "./interactions";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
@@ -29,7 +35,8 @@ export type FeedVerb =
   | "finished"
   | "rated"
   | "reviewed"
-  | "watchedEpisode";
+  | "watchedEpisode"
+  | "thought";
 
 export type FeedEvent = {
   id: string; // `${sourceTable}:${rowId}`
@@ -44,11 +51,27 @@ export type FeedEvent = {
   itemCoverUrl: string | null;
   // Autor del catálogo — solo los libros lo tienen; películas/series no
   // guardan creador, así que queda null.
+  // itemType/itemId/itemTitle/itemCoverUrl/itemSubtitle: comunes al resto de
+  // verbos. Para "thought" el ancla real (polimórfica, puede ser saga/persona)
+  // vive en `thought.anchor` de abajo, NO aquí — ItemType no puede representar
+  // saga/persona, así que para esos casos itemType lleva un valor INERTE Y
+  // POTENCIALMENTE FALSO (ver el bucle de `thoughtRows` en getFeed): un
+  // pensamiento anclado a una saga lleva itemType:"book" con itemId = el uuid
+  // de la saga. Esto NO es inofensivo por construcción — un consumidor que no
+  // sepa distinguir el verbo "thought" y llame a `itemHref(itemType, itemId)`
+  // genera un enlace roto a una ficha de libro inexistente. El despacho del
+  // feed (`src/components/social/feed-item.tsx`) tiene que enrutar
+  // verb:"thought" a su propia tarjeta ANTES de cualquier catch-all que lea
+  // estos campos — placeholder hoy, `<ThoughtCard>` en la Fase 5 (Task 5.3).
   itemSubtitle: string | null;
   // Estado del pase; solo informa el verbo "added".
   entryStatus: MediaStatus | null;
   // Solo para `added`: pertenencia del visitante actual, resuelta por página.
   viewerHasActivePass?: boolean;
+  // Solo para `thought` (task-delete, #525): autor o admin global, resuelto
+  // por página igual que viewerHasActivePass -- batch sobre moderatable_target_ids,
+  // no un RPC por tarjeta. undefined para el resto de verbos.
+  viewerCanDelete?: boolean;
   // Fecha SEMÁNTICA, solo para presentación: el «hace x» de la tarjeta y la
   // ventana de agrupación. Puede llevar la sustitución de
   // `sessionRelativeBasis`, así que NO existe como columna y NO ordena.
@@ -80,8 +103,12 @@ export type FeedEvent = {
     percent: number | null;   // page / books.total_pages * 100, si ambos existen
     note: { body: string; isSpoiler: boolean } | null; // nota PÚBLICA (notes.is_public)
   } | null;
+  // Solo para verb "thought" (Fase 3, «Pensamiento»): cuerpo + ancla
+  // polimórfica resuelta en batch por getFeed. Ver el comentario de arriba
+  // sobre itemType/itemId para por qué el ancla NO vive ahí.
+  thought: { body: string; isSpoiler: boolean; anchor: AnchorRef } | null;
   interactionTarget: {
-    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session";
+    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session" | "thought";
     targetId: string;
     interactionTargetId: string;
   } | null;
@@ -89,6 +116,7 @@ export type FeedEvent = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 // Forma exclusivamente interna mientras getFeed agrupa las filas fuente y
@@ -96,7 +124,7 @@ export type FeedEvent = {
 // pública de arriba exige el UUID canónico para todo evento interactivo.
 type FeedEventDraft = Omit<FeedEvent, "interactionTarget"> & {
   interactionTarget: {
-    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session";
+    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session" | "thought";
     targetId: string;
     interactionTargetId: string | null;
   } | null;
@@ -261,8 +289,14 @@ export async function getFeed(
   const includeDiary = includePerson;
   const includeEpisodes =
     includePerson && (itemTypes === undefined || itemTypes.includes("series"));
+  // v1: un pensamiento sobre una saga/persona no tiene item_type, así que no
+  // sobrevive a un filtro de pantalla (book/screen), a "reseñas" ni a
+  // "clubes" — solo aparece en la vista "todo". El filtrado fino (dejarlo
+  // pasar cuando su anchor_type SÍ coincide con book/screen) queda para
+  // después de v1 (ver issue abierta).
+  const includeThoughts = includePerson && filter === undefined;
 
-  const [addedResult, progressedResult, diaryResult, episodeResult] = await Promise.all([
+  const [addedResult, progressedResult, diaryResult, episodeResult, thoughtResult] = await Promise.all([
     includeAdded
       ? (() => {
           // Cada pase es su propio evento "added" (§Tarea 9, hub): un
@@ -354,17 +388,36 @@ export async function getFeed(
           return q;
         })()
       : Promise.resolve({ data: [], error: null }),
+    includeThoughts
+      ? (() => {
+          // Espejo de `added`: misma forma timestamptz (orderDate === sortDate
+          // === created_at). A diferencia de "added", usa `followedIds` (no
+          // `addedActorIds`): tus propios pensamientos SÍ aparecen en tu
+          // propio Inicio, igual que tus reseñas/sesiones/episodios.
+          let q = supabase
+            .from("thoughts")
+            .select("id, user_id, anchor_type, anchor_id, body, is_spoiler, created_at")
+            .in("user_id", followedIds)
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(fetchLimit);
+          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.thoughts, cursor));
+          return q;
+        })()
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (addedResult.error) throw addedResult.error;
   if (progressedResult.error) throw progressedResult.error;
   if (diaryResult.error) throw diaryResult.error;
   if (episodeResult.error) throw episodeResult.error;
+  if (thoughtResult.error) throw thoughtResult.error;
 
   const addedRows = addedResult.data ?? [];
   const progressedRows = progressedResult.data ?? [];
   const diaryRowsRaw = diaryResult.data ?? [];
   const episodeRows = episodeResult.data ?? [];
+  const thoughtRows = thoughtResult.data ?? [];
 
   // El texto de la reseña vive en pass_reviews (privacidad ya aplicada): una
   // fila que no vuelva aquí es, a efectos del feed, "sin reseña visible" — da
@@ -418,7 +471,8 @@ export async function getFeed(
     progressedRows.length < fetchLimit &&
     diaryRowsRaw.length < fetchLimit &&
     episodeRows.length < fetchLimit &&
-    clubResult.rowCount < fetchLimit;
+    clubResult.rowCount < fetchLimit &&
+    thoughtRows.length < fetchLimit;
 
   // progress_sessions no tiene item_type propio (cuelga del pase vía
   // pass_id): se resuelve del pase embebido por la query de arriba
@@ -448,8 +502,19 @@ export async function getFeed(
   }
   for (const r of diaryRows) idsByType[r.item_type].add(r.item_id);
   for (const r of episodeRows) idsByType.series.add(r.series_id);
+  // Ancla de los pensamientos: book/movie/series entra en el mismo batch de
+  // catálogo de arriba; saga/persona son tablas propias, resueltas aparte
+  // (ver sagaIds/personIds abajo). El `else` deja `r.anchor_type` acotado a
+  // ItemType para TypeScript, una vez descartadas las otras dos ramas.
+  const sagaIds = new Set<string>();
+  const personIds = new Set<string>();
+  for (const r of thoughtRows) {
+    if (r.anchor_type === "saga") sagaIds.add(r.anchor_id);
+    else if (r.anchor_type === "person") personIds.add(r.anchor_id);
+    else idsByType[r.anchor_type].add(r.anchor_id);
+  }
 
-  const [books, movies, series] = await Promise.all([
+  const [books, movies, series, sagas, people] = await Promise.all([
     idsByType.book.size
       ? supabase.from("books").select("id, title, author, cover_url, total_pages").in("id", [...idsByType.book])
       : Promise.resolve({ data: [] as { id: string; title: string; author: string | null; cover_url: string | null; total_pages: number | null }[], error: null }),
@@ -459,10 +524,18 @@ export async function getFeed(
     idsByType.series.size
       ? supabase.from("series").select("id, title, cover_url").in("id", [...idsByType.series])
       : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
+    sagaIds.size
+      ? supabase.from("sagas").select("id, name, cover_url").in("id", [...sagaIds])
+      : Promise.resolve({ data: [] as { id: string; name: string; cover_url: string | null }[], error: null }),
+    personIds.size
+      ? supabase.from("people").select("id, name, photo_url").in("id", [...personIds])
+      : Promise.resolve({ data: [] as { id: string; name: string; photo_url: string | null }[], error: null }),
   ]);
   if (books.error) throw books.error;
   if (movies.error) throw movies.error;
   if (series.error) throw series.error;
+  if (sagas.error) throw sagas.error;
+  if (people.error) throw people.error;
   const catalogByKey = new Map<
     string,
     { title: string; coverUrl: string | null; subtitle: string | null; totalPages?: number | null }
@@ -478,6 +551,19 @@ export async function getFeed(
     catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
   for (const r of series.data ?? [])
     catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
+  // sagas/people entran en el MISMO mapa que book/movie/series: comparten
+  // forma (title/coverUrl/subtitle) y así `anchorFor` (abajo) no necesita un
+  // segundo mapa ni un switch por tipo.
+  for (const r of sagas.data ?? [])
+    catalogByKey.set(`saga:${r.id}`, { title: r.name, coverUrl: r.cover_url, subtitle: null });
+  for (const r of people.data ?? [])
+    catalogByKey.set(`person:${r.id}`, { title: r.name, coverUrl: r.photo_url, subtitle: null });
+
+  function anchorFor(type: AnchorType, id: string): AnchorRef | null {
+    const meta = catalogByKey.get(`${type}:${id}`);
+    if (!meta) return null;
+    return { type, id, title: meta.title, imageUrl: meta.coverUrl, subtitle: meta.subtitle };
+  }
 
   // Título de episodio, best-effort (si no está en series_episodes aún, se
   // omite sin romper el evento).
@@ -503,6 +589,7 @@ export async function getFeed(
       ...progressedRows.map((r) => r.user_id),
       ...diaryRows.map((r) => r.user_id),
       ...episodeRows.map((r) => r.user_id),
+      ...thoughtRows.map((r) => r.user_id),
     ]),
   ];
   const { data: actors, error: actorsError } = actorIds.length
@@ -555,11 +642,13 @@ export async function getFeed(
       episode: null,
       progress: null,
       reviewMeta: null,
+      thought: null,
       interactionTarget: { targetType: "pass", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -605,11 +694,13 @@ export async function getFeed(
         };
       })(),
       reviewMeta: null,
+      thought: null,
       interactionTarget: { targetType: "progress_session", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -662,11 +753,13 @@ export async function getFeed(
             : null,
         totalPages: catalogByKey.get(`${r.item_type}:${r.item_id}`)?.totalPages ?? null,
       },
+      thought: null,
       interactionTarget: { targetType: "diary_entry", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -702,11 +795,60 @@ export async function getFeed(
       },
       progress: null,
       reviewMeta: null,
+      thought: null,
       interactionTarget: { targetType: "episode_watch", targetId: r.id, interactionTargetId: null },
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
+    });
+  }
+
+  for (const r of thoughtRows) {
+    const actor = actorById.get(r.user_id);
+    if (!actor) continue;
+    // Ancla borrada (libro/saga/persona eliminados) ⇒ se descarta el evento,
+    // igual que un "added"/"diary" sin fila de catálogo (`if (!catalog)
+    // continue` arriba).
+    const anchor = anchorFor(r.anchor_type, r.anchor_id);
+    if (!anchor) continue;
+    events.push({
+      id: `thoughts:${r.id}`,
+      actorId: r.user_id,
+      actorUsername: actor.username,
+      actorDisplayName: actor.display_name,
+      actorAvatarUrl: actor.avatar_url,
+      verb: "thought",
+      // Ver el comentario de itemType/itemId en FeedEvent (feed.ts arriba):
+      // valor real solo cuando el ancla es de catálogo; saga/persona no caben
+      // en ItemType y caen a un placeholder INERTE Y POTENCIALMENTE FALSO
+      // (itemType:"book" con itemId = uuid de saga/persona) — el despacho del
+      // feed (feed-item.tsx) enruta verb:"thought" a su propia tarjeta antes
+      // de que nada lea este par.
+      itemType: anchor.type === "saga" || anchor.type === "person" ? "book" : anchor.type,
+      itemId: anchor.id,
+      itemTitle: anchor.title,
+      itemCoverUrl: anchor.imageUrl,
+      itemSubtitle: anchor.subtitle,
+      entryStatus: null,
+      // Sin sustitución de sessionRelativeBasis: created_at ya es un
+      // timestamp real (mismo criterio que "added"/"clubs").
+      eventDate: r.created_at,
+      orderDate: r.created_at,
+      sortDate: r.created_at,
+      rating: null,
+      reviewExcerpt: null,
+      episode: null,
+      progress: null,
+      reviewMeta: null,
+      thought: { body: r.body, isSpoiler: r.is_spoiler, anchor },
+      interactionTarget: { targetType: "thought", targetId: r.id, interactionTargetId: null },
+      reactionCount: 0,
+      viewerReacted: false,
+      commentCount: 0,
+      comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -778,6 +920,7 @@ export async function getFeed(
     [FEED_SOURCE_COLUMNS.diary.eventIdPrefix, diaryRowsRaw.length >= fetchLimit],
     [FEED_SOURCE_COLUMNS.episodes.eventIdPrefix, episodeRows.length >= fetchLimit],
     [FEED_SOURCE_COLUMNS.clubs.eventIdPrefix, clubResult.rowCount >= fetchLimit],
+    [FEED_SOURCE_COLUMNS.thoughts.eventIdPrefix, thoughtRows.length >= fetchLimit],
   ];
   const openTailIds = new Set<string>();
   for (const [prefix, limitHit] of sourceLimitHit) {
@@ -828,6 +971,38 @@ export async function getFeed(
     );
   }
 
+  // viewerCanDelete (task-delete, #525): dueño o admin global. Un solo batch
+  // por página, mismo patrón que viewerHasActivePass arriba -- nunca un RPC
+  // por tarjeta. `moderatable_target_ids` toma los ids FUENTE (thoughts.id,
+  // vía interactionTarget.targetId con targetType:"thought"), no el uuid del
+  // target canónico. Sin viewer o sin thoughts en la página, no hace falta el
+  // roundtrip: el campo queda undefined (falsy) para todos esos eventos.
+  const thoughtPageEvents = page.flatMap((entry) =>
+    entry.source === "person" && entry.event.verb === "thought" ? [entry.event] : [],
+  );
+  if (viewerId && thoughtPageEvents.length > 0) {
+    const thoughtSourceIds = [
+      ...new Set(
+        thoughtPageEvents
+          .map((event) => event.interactionTarget?.targetId)
+          .filter((id): id is string => id !== undefined),
+      ),
+    ];
+    const { data: moderatableThoughtIds, error: moderatableThoughtIdsError } =
+      await supabase.rpc("moderatable_target_ids", {
+        candidate_target_type: "thought",
+        candidate_target_ids: thoughtSourceIds,
+      });
+    if (moderatableThoughtIdsError) throw moderatableThoughtIdsError;
+    const moderatableThoughtIdSet = new Set((moderatableThoughtIds ?? []) as string[]);
+    for (const event of thoughtPageEvents) {
+      const sourceId = event.interactionTarget?.targetId;
+      event.viewerCanDelete =
+        event.actorId === viewerId ||
+        (sourceId !== undefined && moderatableThoughtIdSet.has(sourceId));
+    }
+  }
+
   // Interacciones de Bloque B, batch por tipo, solo para los eventos de esta
   // página que tienen target real. Las actividades de club no son un target de
   // interacción, así que aquí solo entran los de persona.
@@ -844,18 +1019,24 @@ export async function getFeed(
   const sessionTargetIds = personEvents
     .filter((e) => e.interactionTarget?.targetType === "progress_session")
     .map((e) => e.interactionTarget!.targetId);
-  const [diarySummaries, episodeSummaries, passSummaries, sessionSummaries] = await Promise.all([
-    getInteractionSummary(supabase, "diary_entry", diaryTargetIds),
-    getInteractionSummary(supabase, "episode_watch", episodeTargetIds),
-    getInteractionSummary(supabase, "pass", passTargetIds),
-    getInteractionSummary(supabase, "progress_session", sessionTargetIds),
-  ]);
+  const thoughtTargetIds = personEvents
+    .filter((e) => e.interactionTarget?.targetType === "thought")
+    .map((e) => e.interactionTarget!.targetId);
+  const [diarySummaries, episodeSummaries, passSummaries, sessionSummaries, thoughtSummaries] =
+    await Promise.all([
+      getInteractionSummary(supabase, "diary_entry", diaryTargetIds),
+      getInteractionSummary(supabase, "episode_watch", episodeTargetIds),
+      getInteractionSummary(supabase, "pass", passTargetIds),
+      getInteractionSummary(supabase, "progress_session", sessionTargetIds),
+      getInteractionSummary(supabase, "thought", thoughtTargetIds),
+    ]);
   for (const e of personEvents) {
     if (!e.interactionTarget) continue;
     const summaries =
       e.interactionTarget.targetType === "diary_entry" ? diarySummaries
       : e.interactionTarget.targetType === "episode_watch" ? episodeSummaries
       : e.interactionTarget.targetType === "pass" ? passSummaries
+      : e.interactionTarget.targetType === "thought" ? thoughtSummaries
       : sessionSummaries;
     const s = summaries.get(e.interactionTarget.targetId);
     if (!s) {
@@ -868,6 +1049,7 @@ export async function getFeed(
     e.viewerReacted = s.viewerReacted;
     e.commentCount = s.commentCount;
     e.comments = s.comments;
+    e.reactions = s.reactions;
   }
 
   const finalizedPage: FeedEntry[] = page.map((entry) => {
@@ -899,6 +1081,7 @@ export async function getFeed(
 
   const knownUsernames = await resolveKnownMentions(supabase, [
     ...personEvents.map((e) => e.reviewExcerpt).filter((t): t is string => t !== null),
+    ...personEvents.map((e) => e.thought?.body).filter((t): t is string => t !== undefined),
     ...personEvents.flatMap((e) => e.comments.map((c) => c.body)),
   ]);
 

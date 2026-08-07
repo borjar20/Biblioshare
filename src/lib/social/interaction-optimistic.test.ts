@@ -1,6 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, test } from "vitest";
 import { interactionReducer } from "./interaction-optimistic";
-import type { InteractionComment, InteractionSummary } from "./interactions";
+import { emptyReactions, type InteractionComment, type InteractionSummary } from "./interactions";
+
+test("toggleTarget alterna el kind indicado y ajusta derivados", () => {
+  const base: InteractionSummary = {
+    interactionTargetId: "t", reactionCount: 0, viewerReacted: false,
+    commentCount: 0, comments: [], reactions: emptyReactions(),
+  };
+  const s = interactionReducer(base, { type: "toggleTarget", kind: "fire" });
+  expect(s.reactions.fire).toEqual({ count: 1, viewerReacted: true });
+  expect(s.reactionCount).toBe(1);
+  expect(s.viewerReacted).toBe(true);
+});
 
 function comment(over: Partial<InteractionComment> = {}): InteractionComment {
   return {
@@ -17,6 +28,7 @@ function comment(over: Partial<InteractionComment> = {}): InteractionComment {
     canDelete: false,
     reactionCount: 0,
     viewerReacted: false,
+    reactions: emptyReactions(),
     ...over,
   };
 }
@@ -26,23 +38,32 @@ const base: InteractionSummary = {
   reactionCount: 2,
   viewerReacted: false,
   commentCount: 5, // capado: mayor que comments.length a propósito
-  comments: [comment({ id: "c1" }), comment({ id: "c2", reactionCount: 3, viewerReacted: true })],
+  comments: [
+    comment({ id: "c1" }),
+    comment({
+      id: "c2",
+      reactionCount: 3,
+      viewerReacted: true,
+      reactions: { ...emptyReactions(), like: { count: 3, viewerReacted: true } },
+    }),
+  ],
+  reactions: { ...emptyReactions(), like: { count: 2, viewerReacted: false } },
 };
 
 describe("interactionReducer", () => {
   it("toggleTarget suma/resta y hace ida y vuelta", () => {
-    const on = interactionReducer(base, { type: "toggleTarget" });
+    const on = interactionReducer(base, { type: "toggleTarget", kind: "like" });
     expect(on.interactionTargetId).toBe("target-pass-1");
     expect(on.viewerReacted).toBe(true);
     expect(on.reactionCount).toBe(3);
-    const off = interactionReducer(on, { type: "toggleTarget" });
+    const off = interactionReducer(on, { type: "toggleTarget", kind: "like" });
     expect(off.interactionTargetId).toBe("target-pass-1");
     expect(off.viewerReacted).toBe(false);
     expect(off.reactionCount).toBe(2);
   });
 
   it("toggleComment solo afecta al comentario indicado", () => {
-    const r = interactionReducer(base, { type: "toggleComment", id: "c2" });
+    const r = interactionReducer(base, { type: "toggleComment", id: "c2", kind: "like" });
     const c1 = r.comments.find((c) => c.id === "c1")!;
     const c2 = r.comments.find((c) => c.id === "c2")!;
     expect(c2.interactionTargetId).toBe("target-comment-1");

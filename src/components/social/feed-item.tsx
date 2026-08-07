@@ -4,6 +4,7 @@ import { CollectionCard } from "./collection-card";
 import { ProgressTimelineCard } from "./progress-timeline-card";
 import { EpisodeRatingsCard } from "./episode-ratings-card";
 import { ReviewCard } from "./review-card";
+import { ThoughtCard } from "./thought-card";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 
 export function FeedItem({
@@ -49,6 +50,15 @@ export function FeedItem({
     return e.verb === "added"
       ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />
       : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+  }
+  if (e.verb === "thought") {
+    // `itemType`/`itemId` de este evento son un valor INERTE (ver el
+    // comentario en feed.ts): esta tarjeta NUNCA debe leerlos, solo
+    // `e.thought`. Defensivo: `thought` siempre viene relleno para este verbo
+    // (getFeed lo garantiza), pero si algún día no lo estuviera, no hay nada
+    // seguro que pintar.
+    if (!e.thought) return null;
+    return <ThoughtCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
   }
   // finished / rated / reviewed / watchedEpisode → Reseña
   return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;

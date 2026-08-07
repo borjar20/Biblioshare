@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { groupPersonEntries } from "./group-feed-entries";
+import { emptyReactions } from "./interactions";
 import type { FeedEntry, FeedEvent } from "./feed";
 
 function ev(partial: Partial<FeedEvent> & Pick<FeedEvent, "id" | "verb" | "actorId" | "eventDate">): FeedEvent {
@@ -14,6 +15,7 @@ function ev(partial: Partial<FeedEvent> & Pick<FeedEvent, "id" | "verb" | "actor
     orderDate: partial.orderDate ?? partial.eventDate,
     sortDate: partial.sortDate ?? partial.eventDate,
     reactionCount: 0, viewerReacted: false, commentCount: 0, comments: [],
+    reactions: emptyReactions(),
     ...partial,
   } as FeedEvent;
 }
