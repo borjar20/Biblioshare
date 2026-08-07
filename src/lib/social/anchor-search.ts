@@ -23,11 +23,17 @@ export async function searchAnchors(
   if (!trimmed) return [];
   const needle = `%${trimmed}%`;
 
+  // ponytail: tope defensivo, no una paginación real -- una biblioteca activa
+  // de miles de obras no debería pasar de esto, pero sin límite aquí cada
+  // tecla del autocompletar traería la biblioteca ENTERA solo para filtrarla
+  // por título después. Si algún día hace falta más de 300, mover el filtro
+  // de título a SQL (join con books/movies/series) en vez de subir el número.
   const { data: passRows, error: passError } = await supabase
     .from("passes")
     .select("item_type, item_id")
     .eq("user_id", viewerId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .limit(300);
   if (passError) throw passError;
 
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };

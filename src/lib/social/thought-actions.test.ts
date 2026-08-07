@@ -19,6 +19,9 @@ function makeClient(params: {
   user: { id: string } | null;
   anchorFound?: boolean;
   insertError?: boolean;
+  /** Fila que devuelve el lookup de `interaction_targets` (kind='thought')
+   *  tras el insert. `undefined` (default) = ausente, igual que antes. */
+  mentionTarget?: { id: string } | null;
 }) {
   const insertedThoughts: Record<string, unknown>[] = [];
 
@@ -61,21 +64,18 @@ function makeClient(params: {
         };
       }
       if (table === "interaction_targets") {
-        // No se ejercita la resolución de menciones en detalle aquí (tiene su
-        // propia cobertura en notify-mentions.test.ts / interaction-actions
-        // vía addComment); un target ausente basta para que createThought
-        // no intente notificar y siga siendo un no-op inocuo.
-        return {
+        const builder = {
           select() {
-            return this;
+            return builder;
           },
           eq() {
-            return this;
+            return builder;
           },
           async maybeSingle() {
-            return { data: null, error: null };
+            return { data: params.mentionTarget ?? null, error: null };
           },
         };
+        return builder;
       }
       throw new Error(`Tabla inesperada: ${table}`);
     },
@@ -170,6 +170,53 @@ describe("createThought", () => {
         is_spoiler: true,
       },
     ]);
+    expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
+  });
+
+  it("resuelve el target 'thought' y notifica las menciones del cuerpo", async () => {
+    const { client } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: { id: "target-thought-1" },
+    });
+    mocks.createClient.mockResolvedValue(client);
+    mocks.notifyMentions.mockResolvedValue(["mentioned-user"]);
+
+    const result = await createThought({
+      anchorType: "book",
+      anchorId: "anchor-1",
+      body: "Qué razón tiene @otro con esto",
+      isSpoiler: false,
+    });
+
+    expect(result).toEqual({ ok: true, id: "thought-1" });
+    expect(mocks.notifyMentions).toHaveBeenCalledWith(client, {
+      authorId: "actor",
+      text: "Qué razón tiene @otro con esto",
+      interactionTargetId: "target-thought-1",
+    });
+  });
+
+  it("si notifyMentions lanza, el pensamiento sigue publicado (ok:true)", async () => {
+    const { client, insertedThoughts } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: { id: "target-thought-1" },
+    });
+    mocks.createClient.mockResolvedValue(client);
+    mocks.notifyMentions.mockRejectedValue(new Error("notify boom"));
+
+    const result = await createThought({
+      anchorType: "book",
+      anchorId: "anchor-1",
+      body: "@otro esto va a fallar al notificar",
+      isSpoiler: false,
+    });
+
+    // El insert YA sucedió (ver insertedThoughts): un fallo de notificación,
+    // best-effort, nunca debe degradar el resultado a "unknown".
+    expect(result).toEqual({ ok: true, id: "thought-1" });
+    expect(insertedThoughts).toHaveLength(1);
     expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
   });
 
