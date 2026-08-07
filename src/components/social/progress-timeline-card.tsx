@@ -90,6 +90,7 @@ export function ProgressTimelineCard({
                       viewerReacted={step.viewerReacted}
                       commentCount={step.commentCount}
                       comments={step.comments}
+                      reactions={step.reactions}
                       viewerLoggedIn={viewerLoggedIn}
                       knownUsernames={knownUsernames}
                     />

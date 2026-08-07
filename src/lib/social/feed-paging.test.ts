@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { planFeedPageCut } from "./feed-paging";
 import { groupPersonEntries, descriptorForEntry } from "./group-feed-entries";
 import { compareEntries, isAfterCursor, makeCursor, parseCursor } from "./feed-order";
+import { emptyReactions } from "./interactions";
 import type { FeedEntry, FeedEvent } from "./feed";
 
 function ev(
@@ -15,6 +16,7 @@ function ev(
     orderDate: partial.orderDate ?? partial.eventDate,
     sortDate: partial.sortDate ?? partial.eventDate,
     reactionCount: 0, viewerReacted: false, commentCount: 0, comments: [],
+    reactions: emptyReactions(),
     ...partial,
   } as FeedEvent;
 }

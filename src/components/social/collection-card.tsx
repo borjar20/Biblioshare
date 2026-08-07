@@ -73,6 +73,7 @@ export function CollectionCard({
                   viewerReacted={item.viewerReacted}
                   commentCount={item.commentCount}
                   comments={item.comments}
+                  reactions={item.reactions}
                   viewerLoggedIn={viewerLoggedIn}
                   knownUsernames={knownUsernames}
                 />

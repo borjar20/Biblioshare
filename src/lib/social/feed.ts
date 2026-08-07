@@ -1,7 +1,12 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { getInteractionSummary, type InteractionComment } from "./interactions";
+import {
+  emptyReactions,
+  getInteractionSummary,
+  type InteractionComment,
+  type ReactionsByKind,
+} from "./interactions";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
@@ -89,6 +94,7 @@ export type FeedEvent = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 // Forma exclusivamente interna mientras getFeed agrupa las filas fuente y
@@ -560,6 +566,7 @@ export async function getFeed(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -610,6 +617,7 @@ export async function getFeed(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -667,6 +675,7 @@ export async function getFeed(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -707,6 +716,7 @@ export async function getFeed(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -868,6 +878,7 @@ export async function getFeed(
     e.viewerReacted = s.viewerReacted;
     e.commentCount = s.commentCount;
     e.comments = s.comments;
+    e.reactions = s.reactions;
   }
 
   const finalizedPage: FeedEntry[] = page.map((entry) => {

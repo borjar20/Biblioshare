@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { FeedEvent } from "./feed";
-import { getInteractionSummary } from "./interactions";
+import { emptyReactions, getInteractionSummary } from "./interactions";
 
 // Reseñas recientes de UN usuario para su pestaña Actividad (mockup "IA
 // nueva", frame D). A diferencia de getFeed (fan-out por seguidos), aquí se
@@ -194,6 +194,7 @@ export async function getRecentReviews(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -231,6 +232,7 @@ export async function getRecentReviews(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
   }
 
@@ -262,6 +264,7 @@ export async function getRecentReviews(
     e.viewerReacted = s.viewerReacted;
     e.commentCount = s.commentCount;
     e.comments = s.comments;
+    e.reactions = s.reactions;
   }
 
   return page.map((event): FeedEvent => {

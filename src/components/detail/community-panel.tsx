@@ -89,6 +89,7 @@ export async function CommunityPanel({
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}
                   comments={review.comments}
+                  reactions={review.reactions}
                   knownUsernames={episodeKnownUsernames ?? []}
                   viewerLoggedIn={viewerLoggedIn}
                 />
@@ -120,6 +121,7 @@ export async function CommunityPanel({
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}
                   comments={review.comments}
+                  reactions={review.reactions}
                   knownUsernames={community.knownUsernames}
                   viewerLoggedIn={viewerLoggedIn}
                 />

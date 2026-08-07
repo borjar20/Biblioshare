@@ -73,6 +73,7 @@ export async function RoundBlock({
               viewerReacted={summary.viewerReacted}
               commentCount={summary.commentCount}
               comments={summary.comments}
+              reactions={summary.reactions}
               viewerLoggedIn
               showTargetReaction
               clubId={clubId}

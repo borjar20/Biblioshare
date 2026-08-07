@@ -11,8 +11,10 @@ import {
   addComment,
   deleteComment,
 } from "@/lib/social/interaction-actions";
-import type {
-  InteractionComment,
+import {
+  emptyReactions,
+  type InteractionComment,
+  type ReactionsByKind,
 } from "@/lib/social/interactions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
@@ -20,6 +22,7 @@ import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { MentionText } from "./mention-text";
 import { UserAvatar } from "./user-avatar";
 import { CommentActions } from "./comment-actions";
+import { ReactionBar } from "./reaction-bar";
 
 // Like + hilo de comentarios bajo una reseña (EPIC-05, Bloque B, SD-3). El
 // estado real deriva de las props que el servidor revalida tras cada acción
@@ -32,6 +35,7 @@ export function ReviewInteractions({
   viewerReacted,
   commentCount,
   comments,
+  reactions,
   viewerLoggedIn,
   showTargetReaction = true,
   clubId,
@@ -42,6 +46,10 @@ export function ReviewInteractions({
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  // Paleta de reacciones (♡/📖/😱/🔥) del target. reactionCount/viewerReacted
+  // arriba se CONSERVAN como derivados -- el estado no-logueado los sigue
+  // usando para el total, sin desglosar por emoji.
+  reactions: ReactionsByKind;
   viewerLoggedIn: boolean;
   // false para targets sin sentido de "me gusta" propio (p.ej. un checkpoint
   // de buddy_read, EPIC-05 Bloque H1) -- el like en comentarios individuales
@@ -59,7 +67,7 @@ export function ReviewInteractions({
 }) {
   const t = useTranslations("social");
   const { state, isPending, failed, run } = useOptimisticAction({
-    state: { interactionTargetId, reactionCount, viewerReacted, commentCount, comments },
+    state: { interactionTargetId, reactionCount, viewerReacted, commentCount, comments, reactions },
     reducer: interactionReducer,
   });
   const [expanded, setExpanded] = useState(false);
@@ -110,6 +118,7 @@ export function ReviewInteractions({
       canDelete: true,
       reactionCount: 0,
       viewerReacted: false,
+      reactions: emptyReactions(),
     };
     run({ type: "addComment", comment: optimistic }, () =>
       addComment(interactionTargetId, value),
@@ -121,28 +130,15 @@ export function ReviewInteractions({
     <div className="flex flex-col gap-3 border-t border-border pt-[11px]">
       <div className="flex items-center gap-4 text-[11.5px]">
         {showTargetReaction && (
-          <button
-            type="button"
+          <ReactionBar
+            reactions={state.reactions}
             disabled={isPending}
-            aria-label={t("like")}
-            aria-pressed={state.viewerReacted}
-            onClick={() =>
-              run({ type: "toggleTarget" }, () =>
-                toggleReaction(interactionTargetId),
+            onToggle={(kind) =>
+              run({ type: "toggleTarget", kind }, () =>
+                toggleReaction(interactionTargetId, kind),
               )
             }
-            className={`flex items-center gap-1.5 transition-colors ${
-              state.viewerReacted
-                ? "text-accent"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <HeartIcon
-              className="h-4 w-4"
-              fill={state.viewerReacted ? "currentColor" : "none"}
-            />
-            {state.reactionCount}
-          </button>
+          />
         )}
         <button
           type="button"
@@ -176,22 +172,15 @@ export function ReviewInteractions({
                   </span>
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isPending}
-                  aria-pressed={c.viewerReacted}
-                  onClick={() =>
-                    run({ type: "toggleComment", id: c.id }, () =>
-                      toggleReaction(c.interactionTargetId),
-                    )
-                  }
-                  className={`flex items-center gap-1 ${
-                    c.viewerReacted ? "text-accent" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <HeartIcon className="h-3 w-3" fill={c.viewerReacted ? "currentColor" : "none"} />
-                  {c.reactionCount > 0 && c.reactionCount}
-                </button>
+                  <ReactionBar
+                    reactions={c.reactions}
+                    disabled={isPending}
+                    onToggle={(kind) =>
+                      run({ type: "toggleComment", id: c.id, kind }, () =>
+                        toggleReaction(c.interactionTargetId, kind),
+                      )
+                    }
+                  />
                   <CommentActions
                     commentId={c.id}
                     canDelete={c.canDelete}

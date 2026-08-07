@@ -319,6 +319,12 @@
     "reject": "Rechazar",
     "backToProfile": "Volver al perfil",
     "like": "Me gusta",
+    "reaction": {
+      "like": "Me gusta",
+      "read": "Leído",
+      "shock": "Impacto",
+      "fire": "Fuego"
+    },
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",

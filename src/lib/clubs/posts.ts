@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notifyMany } from "@/lib/social/notifications";
 import { notifyMentions } from "@/lib/social/notify-mentions";
-import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import { getInteractionSummary, type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import {
   resolveSharedActivity,
@@ -54,6 +54,7 @@ export type ClubPost = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 export type ClubPostsPage = {
@@ -365,6 +366,7 @@ export async function listClubPosts(clubId: string, cursor?: string): Promise<Cl
         viewerReacted: summary.viewerReacted,
         commentCount: summary.commentCount,
         comments: summary.comments,
+        reactions: summary.reactions,
       };
     })
     .filter((p): p is ClubPost => p !== null);

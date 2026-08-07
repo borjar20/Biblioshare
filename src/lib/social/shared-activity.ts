@@ -34,7 +34,12 @@ export type ShareRef = {
 // no cargado (y, por tanto, un interactionTargetId nulo) al cliente.
 export type SharedActivityPreview = Omit<
   FeedEvent,
-  "interactionTarget" | "reactionCount" | "viewerReacted" | "commentCount" | "comments"
+  | "interactionTarget"
+  | "reactionCount"
+  | "viewerReacted"
+  | "commentCount"
+  | "comments"
+  | "reactions"
 >;
 
 const REVIEW_EXCERPT_LENGTH = 200;
