@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   REACTION_KINDS,
@@ -30,10 +31,12 @@ export function reactionMeta(kind: ReactionKind): { emoji: string; label: string
   return { emoji: REACTION_EMOJI[kind], label: REACTION_LABEL[kind] };
 }
 
-// Paleta de reacciones (Fase 1 de «Pensamiento»): sustituye el corazón único
-// por 4 píldoras -- una por kind, contador si >0, borde/acento cuando el
-// viewer ya reaccionó. Misma superficie que el botón heart que reemplaza:
-// mismo `run(...)` optimista en el caller, solo cambia qué kind se manda.
+// Reacciones AGRUPADAS: un solo botón resumen que despliega el selector al
+// clicar (antes eran 4 píldoras siempre visibles que comían todo el ancho en
+// móvil). Colapsado muestra los emojis con recuento >0 agrupados + el total (o
+// 🙂 si aún no hay ninguna); al abrir, un popover con las 4 opciones que se
+// alternan (`onToggle`, mismo contrato optimista que antes). Cierra al pulsar
+// fuera con un backdrop, sin useEffect (lint set-state-in-effect).
 export function ReactionBar({
   reactions,
   disabled,
@@ -44,30 +47,71 @@ export function ReactionBar({
   onToggle: (kind: ReactionKind) => void;
 }) {
   const t = useTranslations("social");
+  const [open, setOpen] = useState(false);
+
+  const total = REACTION_KINDS.reduce((n, k) => n + reactions[k].count, 0);
+  const viewerReacted = REACTION_KINDS.some((k) => reactions[k].viewerReacted);
+  const activeKinds = REACTION_KINDS.filter((k) => reactions[k].count > 0);
+
   return (
-    <div className="flex items-center gap-1">
-      {REACTION_KINDS.map((kind) => {
-        const tally = reactions[kind];
-        const { emoji } = reactionMeta(kind);
-        return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-expanded={open}
+        aria-label={t("react")}
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
+          viewerReacted
+            ? "border-accent text-accent"
+            : "border-border text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        {activeKinds.length > 0 ? (
+          <>
+            <span aria-hidden="true">{activeKinds.map((k) => REACTION_EMOJI[k]).join(" ")}</span>
+            <span>{total}</span>
+          </>
+        ) : (
+          <span aria-hidden="true">🙂</span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          {/* Cierra al pulsar fuera, sin useEffect. */}
           <button
-            key={kind}
             type="button"
-            disabled={disabled}
-            aria-pressed={tally.viewerReacted}
-            aria-label={t(`reaction.${kind}`)}
-            onClick={() => onToggle(kind)}
-            className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition-colors ${
-              tally.viewerReacted
-                ? "border-accent text-accent"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <span aria-hidden="true">{emoji}</span>
-            {tally.count > 0 && <span>{tally.count}</span>}
-          </button>
-        );
-      })}
+            aria-hidden
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div className="absolute top-full left-0 z-20 mt-1 flex items-center gap-1 rounded-full border border-border bg-surface p-1 shadow-card">
+            {REACTION_KINDS.map((kind) => {
+              const tally = reactions[kind];
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={tally.viewerReacted}
+                  aria-label={t(`reaction.${kind}`)}
+                  onClick={() => onToggle(kind)}
+                  className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors disabled:opacity-50 ${
+                    tally.viewerReacted
+                      ? "bg-accent/15 text-accent"
+                      : "text-muted-foreground hover:bg-surface-muted hover:text-foreground"
+                  }`}
+                >
+                  <span aria-hidden="true">{REACTION_EMOJI[kind]}</span>
+                  {tally.count > 0 && <span>{tally.count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
