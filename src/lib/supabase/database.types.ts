@@ -2303,6 +2303,39 @@ export type Database = {
           },
         ]
       }
+      thoughts: {
+        Row: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["thought_anchor_type"]
+          body: string
+          created_at: string
+          id: string
+          is_spoiler: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["thought_anchor_type"]
+          body: string
+          created_at?: string
+          id?: string
+          is_spoiler?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anchor_id?: string
+          anchor_type?: Database["public"]["Enums"]["thought_anchor_type"]
+          body?: string
+          created_at?: string
+          id?: string
+          is_spoiler?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_blocks: {
         Row: {
           blocked_id: string
@@ -2869,6 +2902,8 @@ export type Database = {
         | "club_event_reminder"
         | "club_event_updated"
         | "club_event_cancelled"
+        | "thought_commented"
+        | "thought_liked"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       push_platform: "web_push" | "fcm_android" | "apns_ios"
@@ -2892,6 +2927,8 @@ export type Database = {
         | "pass"
         | "progress_session"
         | "club_round"
+        | "thought"
+      thought_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       user_role: "user" | "collaborator" | "admin"
     }
     CompositeTypes: {
@@ -3076,6 +3113,8 @@ export const Constants = {
         "club_event_reminder",
         "club_event_updated",
         "club_event_cancelled",
+        "thought_commented",
+        "thought_liked",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
@@ -3101,7 +3140,9 @@ export const Constants = {
         "pass",
         "progress_session",
         "club_round",
+        "thought",
       ],
+      thought_anchor_type: ["book", "movie", "series", "saga", "person"],
       user_role: ["user", "collaborator", "admin"],
     },
   },
