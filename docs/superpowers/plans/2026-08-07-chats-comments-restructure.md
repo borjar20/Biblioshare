@@ -29,7 +29,7 @@
 - `src/lib/social/interactions.ts` — MODIFY (tipo `InteractionComment` + query + `canEdit`/`canPin`).
 - `src/lib/social/interaction-actions.ts` — MODIFY (`addComment` extendido, `editComment`, `pinComment`; a resultado discriminado).
 - `src/lib/social/interaction-optimistic.ts` — MODIFY (nuevas acciones del reducer).
-- `src/types/database.types.ts` — MODIFY (4 columnas nuevas de `comments`).
+- `src/lib/supabase/database.types.ts` — MODIFY (4 columnas nuevas de `comments`).
 
 **Lógica pura (nueva, testeable en Vitest)**
 - `src/lib/social/comment-tree.ts` — CREATE (`buildCommentThreads` para hilo, `buildChatMessages` para chat).
@@ -53,7 +53,7 @@
 
 **Files:**
 - Create: `supabase/migrations/20260838_comments_threads_spoiler_pin_edit.sql`
-- Modify: `src/types/database.types.ts` (Row/Insert/Update de `comments`)
+- Modify: `src/lib/supabase/database.types.ts` (Row/Insert/Update de `comments`)
 
 **Interfaces:**
 - Produces (SQL): columnas `comments.parent_id uuid`, `comments.is_spoiler bool`, `comments.pinned bool`, `comments.edited_at timestamptz`; función `public.pin_comment(uuid, boolean)`; política `comments update own canonical`; trigger `trg_comments_enforce_parent`.
@@ -181,7 +181,7 @@ Confirmar: (a) una respuesta con `parent_id` de OTRO `interaction_target_id` lan
 
 - [ ] **Step 5: Añadir a mano las columnas en `database.types.ts`**
 
-En `src/types/database.types.ts`, en `comments` → `Row`, `Insert`, `Update`, añadir:
+En `src/lib/supabase/database.types.ts`, en `comments` → `Row`, `Insert`, `Update`, añadir:
 ```ts
 parent_id: string | null
 is_spoiler: boolean
