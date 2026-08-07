@@ -17,7 +17,7 @@ import {
 import { buildChatMessages } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "../ui/time-ago";
 import { useMentionAutocomplete } from "../social/use-mention-autocomplete";
 import { RichTextView } from "../social/rich-text-view";
 import { SpoilerGate } from "../social/spoiler-gate";
@@ -56,7 +56,6 @@ export function ActivityChatBubbles({
   knownUsernames?: string[];
 }) {
   const t = useTranslations("social");
-  const tTime = useTranslations("time");
   const { state, isPending, failed, run } = useOptimisticAction({
     state: { interactionTargetId, reactionCount, viewerReacted, commentCount, comments, reactions },
     reducer: interactionReducer,
@@ -230,7 +229,7 @@ export function ActivityChatBubbles({
               )}
 
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                <span suppressHydrationWarning>{timeAgo(c.createdAt, tTime)}</span>
+                <TimeAgo iso={c.createdAt} />
                 {c.pinned && <span aria-label={t("pinned")}>📌</span>}
                 {c.edited && <span>· {t("edited")}</span>}
                 <ReactionBar

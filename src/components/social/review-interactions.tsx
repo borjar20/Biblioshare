@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { loginHref } from "@/lib/auth/safe-next";
 import { HeartIcon, CommentIcon } from "@/components/ui/icons";
+import { TimeAgo } from "@/components/ui/time-ago";
 import {
   toggleReaction,
   addComment,
@@ -218,6 +219,7 @@ export function ReviewInteractions({
             {c.pinned && (
               <span className="text-[10px] text-muted-foreground">📌 {t("pinned")}</span>
             )}
+            <TimeAgo iso={c.createdAt} className="text-[10px] text-muted-foreground" />
           </div>
 
           {editingId === c.id ? (
