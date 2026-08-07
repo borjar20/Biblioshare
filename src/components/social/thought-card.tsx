@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -10,6 +11,7 @@ import { ReviewInteractions } from "@/components/social/review-interactions";
 import { RichTextView } from "@/components/social/rich-text-view";
 import { SpoilerGate } from "./spoiler-gate";
 import { anchorHref } from "@/lib/catalog/anchor";
+import { deleteThought } from "@/lib/social/thought-actions";
 
 // Tarjeta de «Pensamiento» (Fase 5, Task 5.3): cabecera + píldora dorada,
 // chip del ancla (obra/saga/persona), cuerpo markdown-lite con blur de
@@ -32,10 +34,37 @@ export function ThoughtCard({
 }) {
   const t = useTranslations("feed");
   const { thought } = event;
-  if (!thought) return null;
+  // Hooks SIEMPRE antes del early return de abajo (`if (!thought || deleted)`):
+  // moverlos después rompería las Reglas de los Hooks en cuanto `thought`
+  // viniera null.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  if (!thought || deleted) return null;
   const actorName = event.actorDisplayName || event.actorUsername;
+  // El source id a borrar es el de la fila `thoughts`, que es exactamente
+  // interactionTarget.targetId cuando targetType es "thought" (ver el
+  // comentario de FeedEvent en feed.ts sobre por qué el ancla NO vive aquí).
+  const thoughtId =
+    event.interactionTarget?.targetType === "thought" ? event.interactionTarget.targetId : null;
 
   const bodyEl = <RichTextView text={thought.body} knownUsernames={knownUsernames} />;
+
+  function confirmDelete() {
+    if (!thoughtId) return;
+    setMenuOpen(false);
+    if (!window.confirm(t("thoughtDeleteConfirm"))) return;
+    setDeleteError(false);
+    startTransition(async () => {
+      const result = await deleteThought(thoughtId);
+      // Borrado optimista: solo tras confirmar `ok:true` -- si la RLS lo
+      // bloqueó (respuesta not_allowed_or_missing) o hubo un fallo, la
+      // tarjeta se queda y se avisa en línea (nunca desaparece "a ciegas").
+      if (result.ok) setDeleted(true);
+      else setDeleteError(true);
+    });
+  }
 
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
@@ -49,6 +78,31 @@ export function ThoughtCard({
           <span className="self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
             {t("kind.thought")}
           </span>
+          {event.viewerCanDelete && thoughtId && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label={t("thoughtMenu")}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+                className="rounded-full px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+              >
+                ⋯
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-7 z-20 w-32 rounded-lg border border-border bg-surface py-1 shadow-card">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={confirmDelete}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-status-dropped hover:bg-surface-muted disabled:opacity-50"
+                  >
+                    {t("thoughtDelete")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -81,6 +135,11 @@ export function ThoughtCard({
           viewerLoggedIn={viewerLoggedIn}
           knownUsernames={knownUsernames}
         />
+      )}
+      {deleteError && (
+        <p role="alert" className="text-[11px] text-status-dropped">
+          {t("thoughtDeleteError")}
+        </p>
       )}
       <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>

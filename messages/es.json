@@ -418,6 +418,10 @@
       "thought": "Pensamiento"
     },
     "thoughtShared": "compartió un pensamiento",
+    "thoughtMenu": "Opciones",
+    "thoughtDelete": "Eliminar",
+    "thoughtDeleteConfirm": "¿Eliminar este pensamiento? No se puede deshacer.",
+    "thoughtDeleteError": "No se pudo eliminar.",
     "episode": {
       "watched": "Visto",
       "showMore": "ver {count, plural, one {# episodio más} other {# episodios más}}"
