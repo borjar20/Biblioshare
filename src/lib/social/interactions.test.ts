@@ -1,5 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { getInteractionSummary } from "./interactions";
+import { describe, expect, it, test, vi } from "vitest";
+import { getInteractionSummary, REACTION_KINDS, emptyReactions } from "./interactions";
+
+test("emptyReactions da las 4 kinds a cero", () => {
+  const r = emptyReactions();
+  expect(REACTION_KINDS).toEqual(["like", "read", "shock", "fire"]);
+  for (const k of REACTION_KINDS) expect(r[k]).toEqual({ count: 0, viewerReacted: false });
+});
 
 type Row = Record<string, unknown>;
 

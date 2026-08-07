@@ -16,6 +16,19 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type TargetType = Exclude<CanonicalTargetType, "comment">;
 export type ReactableTargetType = CanonicalTargetType;
 
+export type ReactionKind = "like" | "read" | "shock" | "fire";
+export const REACTION_KINDS: readonly ReactionKind[] = ["like", "read", "shock", "fire"];
+export type ReactionTally = { count: number; viewerReacted: boolean };
+export type ReactionsByKind = Record<ReactionKind, ReactionTally>;
+export function emptyReactions(): ReactionsByKind {
+  return {
+    like: { count: 0, viewerReacted: false },
+    read: { count: 0, viewerReacted: false },
+    shock: { count: 0, viewerReacted: false },
+    fire: { count: 0, viewerReacted: false },
+  };
+}
+
 export type InteractionComment = {
   id: string;
   interactionTargetId: string;
@@ -28,8 +41,12 @@ export type InteractionComment = {
   createdAt: string;
   isOwn: boolean;
   canDelete: boolean;
+  // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todos
+  // los kinds / algún kind activo del viewer) para no romper a los 9
+  // callers que aún pintan el total sin desglosar por emoji.
   reactionCount: number;
   viewerReacted: boolean;
+  reactions: ReactionsByKind;
 };
 
 export type InteractionSummary = {
@@ -38,6 +55,7 @@ export type InteractionSummary = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 // Hilo esperado corto (Reddit-lite, Q del diseño); sin paginación en este MVP.
@@ -105,6 +123,7 @@ export async function getInteractionSummary(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
     sourceIdByTargetId.set(targetRef.id, sourceId);
     interactionTargetIds.push(targetRef.id);
@@ -199,6 +218,7 @@ export async function getInteractionSummary(
       canDelete: user?.id === c.author_id || moderatableTargetIds.has(sourceId),
       reactionCount: 0,
       viewerReacted: false,
+      reactions: emptyReactions(),
     });
   }
 
