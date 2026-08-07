@@ -76,5 +76,29 @@ begin
   end if;
 end;
 $fn$;
-revoke execute on function public.pin_comment(uuid, boolean) from public, anon;
+revoke execute on function public.pin_comment(uuid, boolean) from public, anon, authenticated;
 grant execute on function public.pin_comment(uuid, boolean) to authenticated;
+
+-- CRITICAL fix (post-review): self-pin via INSERT bypassed pin_comment entirely —
+-- the table-wide INSERT grant was untouched by the UPDATE revoke above, and the
+-- insert policy never constrained `pinned`, so `insert into comments (..., pinned)
+-- values (..., true)` let any author pin their own comment (and stack N pinned
+-- rows in one thread) without ever going through pin_comment's owner/moderator
+-- gate. Close it at the policy (pinned must start false) AND with a DB-level
+-- backstop (partial unique index) so the one-pin-per-thread invariant holds even
+-- if some future path forgets the policy. pin_comment stays compatible: it
+-- unsets the previous pinned row and sets the new one in two separate
+-- statements, never both pinned=true in the same row/moment.
+drop policy if exists "comments insert own canonical" on public.comments;
+create policy "comments insert own canonical" on public.comments
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = author_id
+    and public.can_view_interaction_target(interaction_target_id)
+    and exists (select 1 from public.interaction_targets t
+                where t.id = interaction_target_id and t.commentable)
+    and pinned = false
+  );
+
+create unique index if not exists comments_one_pinned_per_thread
+  on public.comments (interaction_target_id) where pinned;
