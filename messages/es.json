@@ -414,8 +414,10 @@
       "collection": "Colección",
       "progress": "Avances",
       "review": "Reseña",
-      "reviews": "Reseñas"
+      "reviews": "Reseñas",
+      "thought": "Pensamiento"
     },
+    "thoughtShared": "compartió un pensamiento",
     "episode": {
       "watched": "Visto",
       "showMore": "ver {count, plural, one {# episodio más} other {# episodios más}}"
@@ -485,6 +487,8 @@
     "clubRoundProposed": "{name} propuso la ronda de esta semana",
     "clubRoundCommented": "{name} comentó la ronda de tu club",
     "clubRoundLiked": "A {name} le gustó la ronda de tu club",
+    "thoughtCommented": "{name} comentó tu pensamiento",
+    "thoughtLiked": "A {name} le gustó tu pensamiento",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
     "mentioned": "{name} te mencionó",

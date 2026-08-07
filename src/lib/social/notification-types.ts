@@ -42,8 +42,9 @@ export type NotificationType =
   | "club_round_commented"
   | "club_round_liked"
   | "mentioned"
-  // Fase 2 «Pensamiento» (2026-08-06): valores del enum ya en dev; el copy y
-  // el disparo real llegan con el compositor/tarjeta (Fases 4-5).
+  // Fase 2 «Pensamiento» (2026-08-06): el disparo ya vive en la migración
+  // 20260835_thoughts.sql (comment_notification_type/reaction_notification_type
+  // de interaction_targets) — la copia de es.json llegó con la tarjeta (Fase 5).
   | "thought_commented"
   | "thought_liked";
 
@@ -119,8 +120,6 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   club_round_commented: "clubRoundCommented",
   club_round_liked: "clubRoundLiked",
   mentioned: "mentioned",
-  // Claves reservadas; el texto en messages/es.json llega con la tarjeta de
-  // Pensamiento (Fase 5) — nada dispara aún este tipo de notificación.
   thought_commented: "thoughtCommented",
   thought_liked: "thoughtLiked",
 };
