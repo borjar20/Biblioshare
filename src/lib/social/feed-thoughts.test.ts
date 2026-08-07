@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getFeed } from "./feed";
-import { fakeSupabase, FAKE_ITEM_ID, FAKE_SAGA_ID } from "./fake-feed-supabase";
+import { fakeSupabase, FAKE_ACTOR_ID, FAKE_ITEM_ID, FAKE_SAGA_ID } from "./fake-feed-supabase";
 
 // Task 3.3: thoughts como 6ª fuente del feed (on-read fan-out, ver feed.ts).
 // Un pensamiento es del actor seguido (o del propio visitante — la query usa
@@ -110,5 +110,40 @@ describe("getFeed incluye pensamientos (6ª fuente)", () => {
     });
     const page = await getFeed(fake.client, "viewer-1");
     expect(page.knownUsernames).toContain("actor");
+  });
+
+  it("task-delete #525: un pensamiento propio lleva viewerCanDelete:true", async () => {
+    const fake = fakeSupabase({
+      thoughts: [{ id: "thought-1", created_at: "2026-08-01T10:00:00.000+00:00" }],
+    });
+    // El thought de fixture ya sale con user_id: FAKE_ACTOR_ID -- verlo como
+    // ese mismo actor es "es mi propio pensamiento", sin depender del RPC de
+    // moderación (que el stub de fakeSupabase deja en `[]`).
+    const page = await getFeed(fake.client, FAKE_ACTOR_ID);
+    const entry = page.events[0];
+    if (entry.source !== "person") throw new Error("expected person entry");
+    expect(entry.event.viewerCanDelete).toBe(true);
+  });
+
+  it("un pensamiento ajeno sin moderación lleva viewerCanDelete:false", async () => {
+    const fake = fakeSupabase({
+      thoughts: [{ id: "thought-1", created_at: "2026-08-01T10:00:00.000+00:00" }],
+    });
+    // El viewer sigue al actor (mismo fixture de follows) pero no es su
+    // propio pensamiento y el RPC de moderación (stub) no devuelve nada.
+    const page = await getFeed(fake.client, "viewer-1");
+    const entry = page.events[0];
+    if (entry.source !== "person") throw new Error("expected person entry");
+    expect(entry.event.viewerCanDelete).toBe(false);
+  });
+
+  it("sin viewer (feed anónimo) no llama al RPC de moderación y deja viewerCanDelete sin definir", async () => {
+    const fake = fakeSupabase({
+      thoughts: [{ id: "thought-1", created_at: "2026-08-01T10:00:00.000+00:00" }],
+    });
+    const page = await getFeed(fake.client, null, { actorId: FAKE_ACTOR_ID });
+    const entry = page.events[0];
+    if (entry.source !== "person") throw new Error("expected person entry");
+    expect(entry.event.viewerCanDelete).toBeUndefined();
   });
 });

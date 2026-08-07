@@ -68,6 +68,10 @@ export type FeedEvent = {
   entryStatus: MediaStatus | null;
   // Solo para `added`: pertenencia del visitante actual, resuelta por página.
   viewerHasActivePass?: boolean;
+  // Solo para `thought` (task-delete, #525): autor o admin global, resuelto
+  // por página igual que viewerHasActivePass -- batch sobre moderatable_target_ids,
+  // no un RPC por tarjeta. undefined para el resto de verbos.
+  viewerCanDelete?: boolean;
   // Fecha SEMÁNTICA, solo para presentación: el «hace x» de la tarjeta y la
   // ventana de agrupación. Puede llevar la sustitución de
   // `sessionRelativeBasis`, así que NO existe como columna y NO ordena.
@@ -965,6 +969,38 @@ export async function getFeed(
     event.viewerHasActivePass = viewerPassKeys.has(
       `${event.itemType}:${event.itemId}`,
     );
+  }
+
+  // viewerCanDelete (task-delete, #525): dueño o admin global. Un solo batch
+  // por página, mismo patrón que viewerHasActivePass arriba -- nunca un RPC
+  // por tarjeta. `moderatable_target_ids` toma los ids FUENTE (thoughts.id,
+  // vía interactionTarget.targetId con targetType:"thought"), no el uuid del
+  // target canónico. Sin viewer o sin thoughts en la página, no hace falta el
+  // roundtrip: el campo queda undefined (falsy) para todos esos eventos.
+  const thoughtPageEvents = page.flatMap((entry) =>
+    entry.source === "person" && entry.event.verb === "thought" ? [entry.event] : [],
+  );
+  if (viewerId && thoughtPageEvents.length > 0) {
+    const thoughtSourceIds = [
+      ...new Set(
+        thoughtPageEvents
+          .map((event) => event.interactionTarget?.targetId)
+          .filter((id): id is string => id !== undefined),
+      ),
+    ];
+    const { data: moderatableThoughtIds, error: moderatableThoughtIdsError } =
+      await supabase.rpc("moderatable_target_ids", {
+        candidate_target_type: "thought",
+        candidate_target_ids: thoughtSourceIds,
+      });
+    if (moderatableThoughtIdsError) throw moderatableThoughtIdsError;
+    const moderatableThoughtIdSet = new Set((moderatableThoughtIds ?? []) as string[]);
+    for (const event of thoughtPageEvents) {
+      const sourceId = event.interactionTarget?.targetId;
+      event.viewerCanDelete =
+        event.actorId === viewerId ||
+        (sourceId !== undefined && moderatableThoughtIdSet.has(sourceId));
+    }
   }
 
   // Interacciones de Bloque B, batch por tipo, solo para los eventos de esta
