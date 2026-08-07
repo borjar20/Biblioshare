@@ -358,6 +358,36 @@
     "notifyAdded": "Añada algo a su biblioteca",
     "notifyAddedHint": "Puede llegar en ráfagas si añade muchas obras seguidas."
   },
+  "thoughtComposer": {
+    "trigger": "Compartir un pensamiento",
+    "title": "Nuevo pensamiento",
+    "close": "Cerrar",
+    "anchorLabel": "¿Sobre qué?",
+    "anchorPlaceholder": "Busca un libro, película, serie, saga o persona…",
+    "anchorEmpty": "Sin resultados",
+    "anchorClear": "Quitar",
+    "anchorType": {
+      "book": "Libro",
+      "movie": "Película",
+      "series": "Serie",
+      "saga": "Saga",
+      "person": "Persona"
+    },
+    "bodyPlaceholder": "¿Qué piensas?",
+    "boldLabel": "Negrita",
+    "italicLabel": "Cursiva",
+    "listLabel": "Lista",
+    "spoilerLabel": "Contiene spoiler",
+    "publish": "Publicar",
+    "cancel": "Cancelar",
+    "errors": {
+      "unauthenticated": "Tienes que iniciar sesión para publicar.",
+      "empty": "Escribe algo antes de publicar.",
+      "too_long": "Se ha pasado de 2000 caracteres.",
+      "anchor_not_found": "No se encuentra lo que elegiste. Búscalo de nuevo.",
+      "unknown": "No se pudo publicar. Inténtalo de nuevo."
+    }
+  },
   "feed": {
     "verbs": {
       "added": "añadió a su biblioteca",
