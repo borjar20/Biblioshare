@@ -876,22 +876,34 @@ export type Database = {
           author_id: string
           body: string
           created_at: string
+          edited_at: string | null
           id: string
           interaction_target_id: string
+          is_spoiler: boolean
+          parent_id: string | null
+          pinned: boolean
         }
         Insert: {
           author_id: string
           body: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           interaction_target_id: string
+          is_spoiler?: boolean
+          parent_id?: string | null
+          pinned?: boolean
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           interaction_target_id?: string
+          is_spoiler?: boolean
+          parent_id?: string | null
+          pinned?: boolean
         }
         Relationships: [
           {
