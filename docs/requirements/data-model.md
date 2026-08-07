@@ -1128,8 +1128,13 @@ el `private.cleanup_social_target('thought')` genérico: cascada de target, come
 reacciones y avisos; `content_reports` conserva snapshot con `target_deleted_at`.
 
 RLS: `select` con `can_view_profile(user_id)` (mismo criterio que las demás fuentes del
-feed); `insert`/`update`/`delete` solo el dueño (`user_id = auth.uid()`), sin política de
-club porque un pensamiento no tiene una. Matriz mínima en
+feed); `insert`/`update` solo el dueño (`user_id = auth.uid()`); **`delete` el dueño O un
+admin global** (política `thoughts delete own or moderate` → `private.can_moderate_target(
+'thought', id)`, que para un pensamiento —audiencia `profile`, sin club— resuelve a
+autor+admin; se añadió la rama `'thought'` a `private.social_target_owner_id`, cerrando
+#525 — migración `20260836_thoughts_delete_moderate.sql`, **aplicada en dev el 2026-08-07 y
+en PROD el 2026-08-07**, verificada contra `pg_policy`/`pg_get_functiondef`). Sin política
+de club porque un pensamiento no tiene una. Matriz mínima en
 `supabase/tests/thoughts_rls.sql` (patrón de `social_phase1_interaction_targets.sql`):
 dueña inserta/ve el suyo, un tercero sin relación de follow no lo ve (ni el target
 canónico), un seguidor aceptado lo ve y puede comentarlo por la vía canónica, un no-dueño
