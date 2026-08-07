@@ -130,6 +130,25 @@ create policy "comments update own canonical" on public.comments
   using ((select auth.uid()) = author_id and public.can_view_interaction_target(interaction_target_id))
   with check ((select auth.uid()) = author_id and public.can_view_interaction_target(interaction_target_id));
 
+-- INSERT: el grant de tabla de INSERT sigue vigente (cubre las columnas nuevas),
+-- pero hay que RE-crear la policy para prohibir auto-fijarse al crear
+-- (insert ... pinned=true saltaría pin_comment). pinned solo por pin_comment.
+drop policy if exists "comments insert own canonical" on public.comments;
+create policy "comments insert own canonical" on public.comments
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = author_id
+    and public.can_view_interaction_target(interaction_target_id)
+    and exists (select 1 from public.interaction_targets t
+                where t.id = interaction_target_id and t.commentable)
+    and pinned = false
+  );
+
+-- Invariante "uno fijado por hilo" a nivel de BD (defensa en profundidad; pin_comment
+-- desfija los demás antes de fijar, así que no colisiona con este índice).
+create unique index if not exists comments_one_pinned_per_thread
+  on public.comments (interaction_target_id) where pinned;
+
 -- Fijar: dueño del target o moderador. SECURITY DEFINER (corre como owner,
 -- salta RLS/grants), así que 'pinned' no necesita grant para authenticated.
 -- Invariante: uno fijado por hilo.
@@ -177,7 +196,7 @@ Con dos usuarios reales de dev (no fakes — los fakes no aplican triggers). Com
 ```sql
 -- inserta raíz y respuesta (misma thread) -> OK; respuesta a otro thread -> error 23514.
 ```
-Confirmar: (a) una respuesta con `parent_id` de OTRO `interaction_target_id` lanza `comment_parent_other_thread` (23514); (b) tras el revoke, un `update comments set pinned=true where id=<propio>` como `authenticated` es **rechazado por falta de grant** (la columna `pinned` no está en el grant), igual que `parent_id` y `author_id`; (c) `update comments set body=... , edited_at=now() where id=<propio>` SÍ funciona para el autor. Esto prueba que el autor solo puede editar cuerpo/spoiler y que fijar queda exclusivamente en `pin_comment`.
+Confirmar: (a) una respuesta con `parent_id` de OTRO `interaction_target_id` lanza `comment_parent_other_thread` (23514); (b) tras el revoke, un `update comments set pinned=true where id=<propio>` como `authenticated` es **rechazado por falta de grant** (la columna `pinned` no está en el grant), igual que `parent_id` y `author_id`; (c) `update comments set body=... , edited_at=now() where id=<propio>` SÍ funciona para el autor; (d) `insert into comments (interaction_target_id, author_id, body, pinned) values (..., true)` como autor es **rechazado por la WITH CHECK** de la policy de insert (no `pinned=true` al crear); (e) `pin_comment` sí fija y un segundo `pin_comment` en el mismo hilo deja EXACTAMENTE una fila `pinned` (invariante + índice único parcial). Esto prueba que fijar queda exclusivamente en `pin_comment`.
 
 - [ ] **Step 5: Añadir a mano las columnas en `database.types.ts`**
 
