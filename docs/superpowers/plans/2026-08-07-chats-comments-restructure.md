@@ -70,7 +70,7 @@ group by grantee, privilege_type;
 select grantee, privilege_type from information_schema.role_table_grants
 where table_schema='public' and table_name='comments' order by grantee;
 ```
-Esperado: grants a nivel de TABLA (select/insert/delete a `authenticated`), SIN grants por columna, y **sin** `UPDATE`. Esto confirma que: (a) las columnas nuevas quedan cubiertas por el grant de tabla para INSERT, (b) hace falta conceder UPDATE para poder editar. Si apareciera algún grant por columna en INSERT, habría que añadir las columnas nuevas a ese grant.
+**Estado real verificado en dev (2026-08-07):** `comments` tiene un `grant all` a nivel de TABLA a `anon` **y** `authenticated` (patrón por defecto de Supabase, presente en casi todas las tablas), es decir SÍ hay `UPDATE` de tabla y NO hay grants por columna. Esto obliga a un ajuste sobre el plan original: como los grants por columna son ADITIVOS (no pueden estrechar un grant de tabla ya concedido), hay que **`revoke update` primero** y luego conceder solo las columnas editables. Sin el revoke, la nueva policy de UPDATE dejaría al autor cambiar `pinned` (saltándose `pin_comment`) o `parent_id`. Confirmar también que existen `interaction_targets.owner_id`, `private.can_moderate_comment` y `public.can_view_interaction_target` (los usa `pin_comment` y la policy). INSERT/SELECT/DELETE de tabla siguen intactos → las columnas nuevas quedan cubiertas para INSERT.
 
 - [ ] **Step 2: Escribir la migración**
 
@@ -117,8 +117,13 @@ create trigger trg_comments_enforce_parent
 alter table public.comments enable always trigger trg_comments_enforce_parent;
 
 -- Editar el propio comentario (cuerpo/spoiler/edited_at). Hoy NO existe policy de
--- UPDATE. El grant por columna limita QUÉ puede cambiar el autor (no author_id,
--- ni parent_id, ni pinned). pinned se cambia solo por pin_comment (definer).
+-- UPDATE (así que nada puede actualizar comments todavía). `comments` tiene un
+-- grant UPDATE de TABLA por defecto de Supabase: hay que REVOCARLO antes de
+-- conceder por columna, porque los grants por columna no estrechan uno de tabla.
+-- Así el autor solo puede cambiar body/is_spoiler/edited_at; NO author_id,
+-- parent_id ni pinned. pinned se cambia solo por pin_comment (SECURITY DEFINER,
+-- corre como owner y no le afecta el revoke).
+revoke update on public.comments from anon, authenticated;
 grant update (body, is_spoiler, edited_at) on public.comments to authenticated;
 create policy "comments update own canonical" on public.comments
   for update to authenticated
@@ -172,7 +177,7 @@ Con dos usuarios reales de dev (no fakes — los fakes no aplican triggers). Com
 ```sql
 -- inserta raíz y respuesta (misma thread) -> OK; respuesta a otro thread -> error 23514.
 ```
-Confirmar que una respuesta con `parent_id` de OTRO `interaction_target_id` lanza `comment_parent_other_thread`, y que `update comments set author_id=...` como autor es rechazado por falta de grant.
+Confirmar: (a) una respuesta con `parent_id` de OTRO `interaction_target_id` lanza `comment_parent_other_thread` (23514); (b) tras el revoke, un `update comments set pinned=true where id=<propio>` como `authenticated` es **rechazado por falta de grant** (la columna `pinned` no está en el grant), igual que `parent_id` y `author_id`; (c) `update comments set body=... , edited_at=now() where id=<propio>` SÍ funciona para el autor. Esto prueba que el autor solo puede editar cuerpo/spoiler y que fijar queda exclusivamente en `pin_comment`.
 
 - [ ] **Step 5: Añadir a mano las columnas en `database.types.ts`**
 

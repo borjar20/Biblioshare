@@ -87,11 +87,19 @@ más `parent_id` apuntando al comentario al que responde. Consecuencias:
 
 ### 3.3 Grants por columna (DRIFT-CHECK superficie 6 — OBLIGATORIO)
 
-`comments` tiene grants finos. **Una columna nueva sin su grant rompe la escritura ENTERA de la
-tabla**, no solo el campo — compila, pasa typecheck y unitarios, y revienta en producción (issue
-#375, dos veces). En la MISMA migración: `grant insert/update (is_spoiler, parent_id, pinned,
-edited_at) on public.comments to authenticated` según corresponda (insert de `parent_id`/`is_spoiler`
-por el autor; `pinned`/`edited_at` según la vía que los escribe).
+**Estado real (verificado en dev 2026-08-07):** `comments` NO tiene grants por columna; tiene el
+`grant all` de tabla por defecto de Supabase a `anon` + `authenticated` (incluido UPDATE de tabla),
+pero hoy no hay policy de UPDATE, así que RLS deniega toda actualización. INSERT sigue a nivel de
+tabla → las columnas nuevas quedan cubiertas para INSERT sin grant extra.
+
+Para EDITAR hay que abrir UPDATE, y aquí está la trampa: los grants por columna son **aditivos**, no
+pueden estrechar el UPDATE de tabla ya concedido. Por eso la migración hace
+`revoke update on public.comments from anon, authenticated;` y luego
+`grant update (body, is_spoiler, edited_at) on public.comments to authenticated;`. Así el autor solo
+puede cambiar cuerpo/spoiler/edited_at; **`pinned` NO se concede** (se escribe solo por `pin_comment`,
+SECURITY DEFINER, que corre como owner y no le afecta el revoke) y `parent_id`/`author_id` tampoco.
+Regla viva: cualquier columna futura que deba ser editable por el autor hay que añadirla a ese grant
+(#375 — una columna sin grant rompe la escritura). DRIFT-CHECK superficie 6 lo verifica.
 
 ## 4. Acciones de servidor
 
