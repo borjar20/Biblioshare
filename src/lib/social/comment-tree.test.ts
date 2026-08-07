@@ -45,6 +45,14 @@ describe("buildCommentThreads", () => {
     expect(t).toHaveLength(1);
     expect(t[0].root.id).toBe("b");
   });
+  it("ciclo (no construible por la app): función total, cada nodo aparece una sola vez", () => {
+    const list = [ c({ id: "a", parentId: "b" }), c({ id: "b", parentId: "a" }) ];
+    const t = buildCommentThreads(list, "recent");
+    const ids = t.flatMap((x) => [x.root.id, ...x.replies.map((r) => r.id)]);
+    expect(ids.sort()).toEqual(["a", "b"]);
+    expect(t).toHaveLength(1);
+    expect(t[0].root.id).toBe("a");
+  });
 });
 
 describe("buildChatMessages", () => {

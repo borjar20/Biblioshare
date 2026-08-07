@@ -13,11 +13,17 @@ const asc = (a: InteractionComment, b: InteractionComment) => a.createdAt.locale
 // Sube por parentId hasta el ancestro con parentId null presente en el lote.
 // Si el padre no está cargado (corte de prefetch), el propio nodo es su raíz.
 function rootIdOf(c: InteractionComment, byId: Map<string, InteractionComment>): string {
-  let cur = c;
   const seen = new Set<string>();
-  while (cur.parentId && byId.has(cur.parentId) && !seen.has(cur.parentId)) {
+  let cur = c;
+  while (cur.parentId) {
+    const parent = byId.get(cur.parentId);
+    if (!parent) return cur.id; // huérfano (padre fuera del lote): raíz él mismo
+    if (seen.has(cur.id)) {
+      seen.add(cur.id);
+      return [...seen].sort()[0]!; // ciclo: representante canónico = id menor
+    }
     seen.add(cur.id);
-    cur = byId.get(cur.parentId)!;
+    cur = parent;
   }
   return cur.id;
 }
