@@ -8,14 +8,24 @@ import { REPORT_REASONS, type ReportReason } from "@/lib/social/moderation";
 export function CommentActions({
   commentId,
   canDelete,
+  canEdit = false,
+  canPin = false,
+  pinned = false,
   isOwn,
   isBusy,
+  onEdit,
+  onTogglePin,
   onDelete,
 }: {
   commentId: string;
   canDelete: boolean;
+  canEdit?: boolean;
+  canPin?: boolean;
+  pinned?: boolean;
   isOwn: boolean;
   isBusy: boolean;
+  onEdit?: () => void;
+  onTogglePin?: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("social");
@@ -46,6 +56,26 @@ export function CommentActions({
 
   return (
     <div className="relative flex items-center gap-2">
+      {canEdit && onEdit && (
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={onEdit}
+          className="text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          {t("editComment")}
+        </button>
+      )}
+      {canPin && onTogglePin && (
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={onTogglePin}
+          className="text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          {pinned ? t("unpin") : t("pin")}
+        </button>
+      )}
       {canDelete && (
         <button
           type="button"

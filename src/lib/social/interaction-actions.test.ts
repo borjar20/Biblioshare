@@ -305,6 +305,8 @@ describe("addComment", () => {
         interaction_target_id: "target-checkpoint",
         author_id: "actor",
         body: "Llegué",
+        parent_id: null,
+        is_spoiler: false,
       },
     ]);
     expect(mocks.notifyMentions).toHaveBeenCalledWith(fake.client, {
