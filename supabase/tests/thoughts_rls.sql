@@ -27,6 +27,14 @@ insert into public.books (id, title, author) values
 insert into public.follows (follower_id, followee_id, status) values
   ('00000000-0000-4000-8000-0000000002b2', '00000000-0000-4000-8000-0000000002a1', 'accepted');
 
+-- Dana: admin global, solo para las aserciones de borrado por moderación
+-- (issue #525 / task-delete). No sigue a nadie -- no lo necesita, admin ve y
+-- borra por `has_min_role('admin')`, no por visibilidad de seguidor.
+insert into auth.users (id, aud, role, email, created_at, updated_at) values
+  ('00000000-0000-4000-8000-0000000002d4', 'authenticated', 'authenticated', 'thoughts-dana@example.test', now(), now());
+insert into public.profiles (user_id, username, display_name, is_public, role) values
+  ('00000000-0000-4000-8000-0000000002d4', 'thoughts_dana', 'Dana', false, 'admin');
+
 -- Alice inserta su propio pensamiento anclado al libro de fixture. `id` NO se
 -- nombra en el INSERT: no tiene grant (columna generada, #375) y nombrarla
 -- explícitamente, aunque fuese con el valor que pondría el default, dispara
@@ -109,6 +117,50 @@ update public.thoughts set body = 'Secuestro de pensamiento ajeno'
 select pg_temp.assert_true(
   (select body from public.thoughts where user_id = '00000000-0000-4000-8000-0000000002a1') = 'Un pensamiento de prueba sobre Rayuela',
   'un no-dueño no puede actualizar el pensamiento de otra persona (RLS filtra la fila)'
+);
+reset role;
+
+-- Borrado: dueña, no-dueña-no-admin y admin global (task-delete, #525).
+-- Segundo pensamiento de Alice dedicado a esto, para no interferir con el
+-- primero (que la cascada de más abajo necesita intacto hasta el final).
+-- `id` NO se nombra en el INSERT (mismo motivo que el primer pensamiento,
+-- arriba): se recupera después por `body`, que es único en este fixture.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}', true);
+set local role authenticated;
+insert into public.thoughts (user_id, anchor_type, anchor_id, body, is_spoiler) values
+  ('00000000-0000-4000-8000-0000000002a1', 'book',
+   '00000000-0000-4000-8000-000000000201', 'Segundo pensamiento, para las pruebas de borrado', false);
+reset role;
+
+create temp table thoughts_rls_ids2 as
+select id as thought_id from public.thoughts
+ where body = 'Segundo pensamiento, para las pruebas de borrado';
+grant select on thoughts_rls_ids2 to authenticated;
+
+-- Carol: ni dueña ni admin. La policy USING filtra la fila -> el DELETE
+-- afecta 0 filas, sin excepción; el pensamiento sigue ahí. La comprobación
+-- usa `social_target_owner_id` (SECURITY DEFINER) en vez de un `exists`
+-- normal: Carol no tiene visibilidad de la fila por RLS (no sigue a Alice),
+-- así que un `exists` bajo su propio rol daría igual con o sin borrado --
+-- necesita una vía que no dependa de la policy de SELECT. La aserción corre
+-- ANTES de `reset role`, dentro del mismo turno de Carol.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000002c3","role":"authenticated"}', true);
+set local role authenticated;
+delete from public.thoughts where id = (select thought_id from thoughts_rls_ids2);
+select pg_temp.assert_true(
+  private.social_target_owner_id('thought', (select thought_id from thoughts_rls_ids2)) is not null,
+  'una no-dueña sin rol admin no puede borrar el pensamiento de otra persona (0 filas afectadas)'
+);
+reset role;
+
+-- Dana: admin global. can_moderate_target -> has_min_role('admin') = true,
+-- sin pasar por la rama de dueño/club. Borra el pensamiento ajeno.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000002d4","role":"authenticated"}', true);
+set local role authenticated;
+delete from public.thoughts where id = (select thought_id from thoughts_rls_ids2);
+select pg_temp.assert_true(
+  not exists (select 1 from public.thoughts where id = (select thought_id from thoughts_rls_ids2)),
+  'un admin global puede borrar el pensamiento de otra persona'
 );
 reset role;
 
