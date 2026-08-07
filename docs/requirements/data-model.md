@@ -51,7 +51,7 @@ recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a 
 migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
 bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
 `anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; prod sigue pendiente**]**
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -1083,7 +1083,7 @@ automática de test (depende del día real de la semana); `resolveTargetHrefs` t
 «Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
 una en las issues abiertas (ver `backlog.md`).
 
-### 6.2 «Pensamiento»: tabla `thoughts` (Fases 1-6, SOLO EN DEV, 2026-08-06/07)
+### 6.2 «Pensamiento»: tabla `thoughts` (Fases 1-6, dev 2026-08-06/07 · **prod 2026-08-07**)
 
 > Diseño completo en `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md`. Esta
 > sección documenta la Fase 2 (esquema); Fases 3-5 (feed como 6ª fuente, compositor
@@ -1091,9 +1091,13 @@ una en las issues abiertas (ver `backlog.md`).
 > **completas en este branch** — la feature funciona de extremo a extremo en dev. Migraciones
 > `20260834_thoughts_enum_values.sql` (los tres valores de enum, en transacción propia —
 > `ALTER TYPE … ADD VALUE` no puede usarse en la misma transacción que consume el valor) y
-> `20260835_thoughts.sql` (tabla, trigger, RLS, grants). **Prod pendiente**: la migración
-> solo se ha aplicado en dev; el despliegue a prod (y su reverificación contra objetos
-> reales) es un paso posterior, fuera de esta sesión — ver `backlog.md`.
+> `20260835_thoughts.sql` (tabla, trigger, RLS, grants). **Aplicada en PROD el 2026-08-07**
+> y reverificada contra objetos reales: `to_regclass('public.thoughts')` no nulo,
+> `enum_range(null::thought_anchor_type)` con los 5 valores, `'thought'` en `target_kind`,
+> `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS
+> activo, grants por columna idénticos a dev (5 con `INSERT`, 2 con `UPDATE`, 8 con `SELECT`)
+> y `get_advisors(security)` sin ningún hallazgo nuevo sobre `thoughts`. El código que la usa
+> se despliega al mergear el PR (migración-primero-luego-merge respetado).
 
 Un **Pensamiento** es el primer contenido **autoral** del feed personal: hasta ahora
 `getFeed` es fan-out on-read puro (toda tarjeta se deriva de una acción previa — alta de
