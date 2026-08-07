@@ -9,6 +9,7 @@ import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { RichTextView } from "@/components/social/rich-text-view";
+import { ActionMenu } from "@/components/ui/action-menu";
 import { SpoilerGate } from "./spoiler-gate";
 import { anchorHref } from "@/lib/catalog/anchor";
 import { deleteThought } from "@/lib/social/thought-actions";
@@ -37,7 +38,6 @@ export function ThoughtCard({
   // Hooks SIEMPRE antes del early return de abajo (`if (!thought || deleted)`):
   // moverlos después rompería las Reglas de los Hooks en cuanto `thought`
   // viniera null.
-  const [menuOpen, setMenuOpen] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -53,7 +53,6 @@ export function ThoughtCard({
 
   function confirmDelete() {
     if (!thoughtId) return;
-    setMenuOpen(false);
     if (!window.confirm(t("thoughtDeleteConfirm"))) return;
     setDeleteError(false);
     startTransition(async () => {
@@ -66,9 +65,31 @@ export function ThoughtCard({
     });
   }
 
+  // `event.viewerCanDelete` no depende de `hideActor` (dueño o admin puede
+  // borrar tanto en el feed de Inicio como en la pestaña Actividad de un
+  // perfil, que renderiza con hideActor=true) — así que el trigger tiene que
+  // existir SIEMPRE que se pueda borrar, con o sin cabecera. `ActionMenu` ya
+  // trae aria-haspopup, cierre por Escape/clic-fuera y el estilo `danger`
+  // (src/components/ui/action-menu.tsx) — nada de esto se reimplementa aquí.
+  const deleteMenu = event.viewerCanDelete && thoughtId && (
+    <ActionMenu
+      label={t("thoughtMenu")}
+      triggerClassName="rounded-full px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+      items={[
+        {
+          key: "delete",
+          label: t("thoughtDelete"),
+          onSelect: confirmDelete,
+          disabled: isPending,
+          danger: true,
+        },
+      ]}
+    />
+  );
+
   return (
-    <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
-      {!hideActor && (
+    <article className="relative flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
+      {!hideActor ? (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
           <p className="min-w-0 flex-1 text-sm text-foreground">
@@ -78,32 +99,13 @@ export function ThoughtCard({
           <span className="self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
             {t("kind.thought")}
           </span>
-          {event.viewerCanDelete && thoughtId && (
-            <div className="relative">
-              <button
-                type="button"
-                aria-label={t("thoughtMenu")}
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
-                className="rounded-full px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-              >
-                ⋯
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-7 z-20 w-32 rounded-lg border border-border bg-surface py-1 shadow-card">
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={confirmDelete}
-                    className="block w-full px-3 py-1.5 text-left text-xs text-status-dropped hover:bg-surface-muted disabled:opacity-50"
-                  >
-                    {t("thoughtDelete")}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          {deleteMenu}
         </div>
+      ) : (
+        // Sin cabecera (perfil, hideActor): el trigger flota en la esquina
+        // sup.-der. de la tarjeta -- no hay fila de header donde encajarlo en
+        // flujo normal.
+        deleteMenu && <div className="absolute top-3 right-3">{deleteMenu}</div>
       )}
 
       <Link

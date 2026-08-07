@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getFeed } from "./feed";
 import { fakeSupabase, FAKE_ACTOR_ID, FAKE_ITEM_ID, FAKE_SAGA_ID } from "./fake-feed-supabase";
 
@@ -141,9 +141,17 @@ describe("getFeed incluye pensamientos (6ª fuente)", () => {
     const fake = fakeSupabase({
       thoughts: [{ id: "thought-1", created_at: "2026-08-01T10:00:00.000+00:00" }],
     });
+    // El stub por defecto de `rpc` en fake-feed-supabase.ts devuelve `[]` para
+    // CUALQUIER llamada, así que un `viewerCanDelete` undefined por sí solo no
+    // prueba que el RPC se saltara -- se sustituye por un espía local (sin
+    // tocar el fixture compartido) para afirmar la llamada, no solo el
+    // resultado.
+    const rpcSpy = vi.fn(async () => ({ data: [], error: null }));
+    (fake.client as unknown as { rpc: typeof rpcSpy }).rpc = rpcSpy;
     const page = await getFeed(fake.client, null, { actorId: FAKE_ACTOR_ID });
     const entry = page.events[0];
     if (entry.source !== "person") throw new Error("expected person entry");
     expect(entry.event.viewerCanDelete).toBeUndefined();
+    expect(rpcSpy).not.toHaveBeenCalled();
   });
 });
