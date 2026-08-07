@@ -49,6 +49,7 @@ export function CommentComposer({
   onSubmit,
   onInput,
   onKeyDown,
+  onCancel,
   dropdown,
   submitLabel,
   placeholder,
@@ -63,6 +64,7 @@ export function CommentComposer({
   onSubmit: () => void;
   onInput?: React.FormEventHandler<HTMLTextAreaElement>;
   onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+  onCancel?: () => void;
   dropdown?: React.ReactNode;
   submitLabel: string;
   placeholder: string;
@@ -152,6 +154,15 @@ export function CommentComposer({
           </span>
           {dropdown}
         </div>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {t("cancel")}
+          </button>
+        )}
         <button
           type="button"
           onClick={onSubmit}

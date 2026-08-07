@@ -227,6 +227,10 @@ export function ReviewInteractions({
                     value={editDraft}
                     onChange={setEditDraft}
                     onSubmit={() => submitEdit(c.id)}
+                    onCancel={() => {
+                      setEditingId(null);
+                      setEditDraft("");
+                    }}
                     submitLabel={t("saveEdit")}
                     placeholder={t("writeComment")}
                     showFormatting
@@ -379,6 +383,10 @@ export function ReviewInteractions({
                       value={replyDraft}
                       onChange={setReplyDraft}
                       onSubmit={() => submitReply(thread.root.id)}
+                      onCancel={() => {
+                        setReplyingTo(null);
+                        setReplyDraft("");
+                      }}
                       submitLabel={t("reply")}
                       placeholder={t("writeReply")}
                       compact
