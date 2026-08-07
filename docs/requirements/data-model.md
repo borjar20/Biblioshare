@@ -723,9 +723,12 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 >   quita antes) y se concede `grant update (body, is_spoiler, edited_at) to authenticated`. El
 >   autor solo puede tocar esas tres columnas por UPDATE directo: `pinned`, `parent_id` y
 >   `author_id` **no** son escribibles por `authenticated`.
-> - **`pin_comment(p_comment_id uuid, p_pinned boolean)`** (`SECURITY DEFINER`, nueva): único
->   camino para fijar/desfijar. Gateada al dueño del target (`interaction_targets.owner_id`) o a
->   `private.can_moderate_comment`; respeta el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`.
+> - **`pin_comment(p_comment_id uuid, p_pinned boolean)`** (`SECURITY DEFINER`): único camino para
+>   fijar/desfijar. Gateada **SOLO al dueño del target** (`interaction_targets.owner_id`), NO a
+>   moderador/admin (refinado en `20260839_pin_comment_owner_only.sql`: fijar = curación del dueño;
+>   moderar/borrar sí es de admin vía `private.can_moderate_comment`, que aquí ya no se usa). Respeta
+>   el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`. `canPin` (capa de datos) = solo
+>   `viewerOwnsTarget`.
 
 ## 6. Clubes
 

@@ -242,7 +242,10 @@ export async function getInteractionSummary(
       isOwn: user?.id === c.author_id,
       canDelete: user?.id === c.author_id || moderatableTargetIds.has(sourceId),
       canEdit: user?.id === c.author_id,
-      canPin: viewerOwnsTarget.has(sourceId) || moderatableTargetIds.has(sourceId),
+      // Fijar es SOLO del dueño del target (no moderador/admin) — ver
+      // 20260839_pin_comment_owner_only.sql. `moderatableTargetIds` se sigue
+      // usando para `canDelete` (moderar = borrar sí es de admin/moderador).
+      canPin: viewerOwnsTarget.has(sourceId),
       parentId: c.parent_id,
       isSpoiler: c.is_spoiler,
       pinned: c.pinned,
