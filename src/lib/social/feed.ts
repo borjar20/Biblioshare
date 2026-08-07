@@ -52,12 +52,17 @@ export type FeedEvent = {
   // Autor del catálogo — solo los libros lo tienen; películas/series no
   // guardan creador, así que queda null.
   // itemType/itemId/itemTitle/itemCoverUrl/itemSubtitle: comunes al resto de
-  // verbos, sin uso real para "thought" — el ancla real (polimórfica, puede
-  // ser saga/persona) vive en `thought.anchor` de abajo. ItemType no puede
-  // representar saga/persona, así que para esos casos itemType lleva un
-  // valor inerte (ver el bucle de `thoughtRows` en getFeed); ningún
-  // consumidor de verb:"thought" debe leer estos cinco campos —
-  // ThoughtCard (Fase 4) usa `thought.anchor` y `anchorHref`.
+  // verbos. Para "thought" el ancla real (polimórfica, puede ser saga/persona)
+  // vive en `thought.anchor` de abajo, NO aquí — ItemType no puede representar
+  // saga/persona, así que para esos casos itemType lleva un valor INERTE Y
+  // POTENCIALMENTE FALSO (ver el bucle de `thoughtRows` en getFeed): un
+  // pensamiento anclado a una saga lleva itemType:"book" con itemId = el uuid
+  // de la saga. Esto NO es inofensivo por construcción — un consumidor que no
+  // sepa distinguir el verbo "thought" y llame a `itemHref(itemType, itemId)`
+  // genera un enlace roto a una ficha de libro inexistente. El despacho del
+  // feed (`src/components/social/feed-item.tsx`) tiene que enrutar
+  // verb:"thought" a su propia tarjeta ANTES de cualquier catch-all que lea
+  // estos campos — placeholder hoy, `<ThoughtCard>` en la Fase 5 (Task 5.3).
   itemSubtitle: string | null;
   // Estado del pase; solo informa el verbo "added".
   entryStatus: MediaStatus | null;
@@ -812,8 +817,11 @@ export async function getFeed(
       actorAvatarUrl: actor.avatar_url,
       verb: "thought",
       // Ver el comentario de itemType/itemId en FeedEvent (feed.ts arriba):
-      // solo tienen valor real cuando el ancla es de catálogo; saga/persona
-      // no caben en ItemType, así que caen a un valor inerte sin uso.
+      // valor real solo cuando el ancla es de catálogo; saga/persona no caben
+      // en ItemType y caen a un placeholder INERTE Y POTENCIALMENTE FALSO
+      // (itemType:"book" con itemId = uuid de saga/persona) — el despacho del
+      // feed (feed-item.tsx) enruta verb:"thought" a su propia tarjeta antes
+      // de que nada lea este par.
       itemType: anchor.type === "saga" || anchor.type === "person" ? "book" : anchor.type,
       itemId: anchor.id,
       itemTitle: anchor.title,

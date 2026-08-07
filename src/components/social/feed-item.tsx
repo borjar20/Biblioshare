@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { FeedEntry } from "@/lib/social/feed";
 import { ClubFeedCard } from "./club-feed-card";
 import { CollectionCard } from "./collection-card";
@@ -5,6 +6,7 @@ import { ProgressTimelineCard } from "./progress-timeline-card";
 import { EpisodeRatingsCard } from "./episode-ratings-card";
 import { ReviewCard } from "./review-card";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
+import { anchorHref } from "@/lib/catalog/anchor";
 
 export function FeedItem({
   entry,
@@ -49,6 +51,28 @@ export function FeedItem({
     return e.verb === "added"
       ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />
       : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+  }
+  if (e.verb === "thought") {
+    // ponytail: placeholder — Fase 5 (Task 5.3) lo reemplaza por
+    // <ThoughtCard>. `itemType`/`itemId` de este evento son un valor INERTE
+    // (ver el comentario en feed.ts): esta tarjeta NUNCA debe leerlos, solo
+    // `e.thought`. Defensivo: `thought` siempre viene relleno para este verbo
+    // (getFeed lo garantiza), pero si algún día no lo estuviera, no hay nada
+    // seguro que pintar.
+    if (!e.thought) return null;
+    const actorName = e.actorDisplayName || e.actorUsername;
+    return (
+      <article className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4 text-sm">
+        {!hideActor && <p className="text-foreground">{actorName} compartió un pensamiento</p>}
+        <Link
+          href={anchorHref(e.thought.anchor.type, e.thought.anchor.id)}
+          className="font-medium hover:underline"
+        >
+          {e.thought.anchor.title}
+        </Link>
+        <p className="text-muted-foreground">{e.thought.body}</p>
+      </article>
+    );
   }
   // finished / rated / reviewed / watchedEpisode → Reseña
   return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
