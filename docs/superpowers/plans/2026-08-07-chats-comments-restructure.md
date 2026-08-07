@@ -283,6 +283,14 @@ describe("buildCommentThreads", () => {
     expect(t).toHaveLength(1);
     expect(t[0].root.id).toBe("b");
   });
+  it("ciclo (no construible por la app): función total, cada nodo aparece una sola vez", () => {
+    const list = [ c({ id: "a", parentId: "b" }), c({ id: "b", parentId: "a" }) ];
+    const t = buildCommentThreads(list, "recent");
+    const ids = t.flatMap((x) => [x.root.id, ...x.replies.map((r) => r.id)]);
+    expect(ids.sort()).toEqual(["a", "b"]); // exactamente una vez cada uno, sin duplicados
+    expect(t).toHaveLength(1); // un solo hilo canónico (raíz = id menor)
+    expect(t[0].root.id).toBe("a");
+  });
 });
 
 describe("buildChatMessages", () => {
@@ -324,12 +332,23 @@ const asc = (a: InteractionComment, b: InteractionComment) => a.createdAt.locale
 
 // Sube por parentId hasta el ancestro con parentId null presente en el lote.
 // Si el padre no está cargado (corte de prefetch), el propio nodo es su raíz.
+// Un ciclo NO es construible por la app (parent_id apunta a una fila preexistente
+// al insertar y es inmutable —el grant de UPDATE lo excluye), pero se hace la
+// función TOTAL: ante un ciclo se rompe de forma DETERMINISTA devolviendo el id
+// menor del ciclo, para que todos sus nodos compartan raíz y ninguno se duplique.
 function rootIdOf(c: InteractionComment, byId: Map<string, InteractionComment>): string {
-  let cur = c;
   const seen = new Set<string>();
-  while (cur.parentId && byId.has(cur.parentId) && !seen.has(cur.parentId)) {
+  let cur = c;
+  while (cur.parentId) {
+    const parent = byId.get(cur.parentId);
+    if (!parent) return cur.id; // huérfano (padre fuera del lote): raíz él mismo
+    if (seen.has(cur.id)) {
+      // ciclo: representante canónico = id menor del ciclo (mismo para todos sus nodos)
+      seen.add(cur.id);
+      return [...seen].sort()[0]!;
+    }
     seen.add(cur.id);
-    cur = byId.get(cur.parentId)!;
+    cur = parent;
   }
   return cur.id;
 }
