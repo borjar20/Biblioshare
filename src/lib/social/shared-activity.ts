@@ -140,6 +140,7 @@ export async function resolveSharedActivity(
       episode: null,
       progress: null,
       reviewMeta: null,
+      thought: null,
     };
   }
 
@@ -214,6 +215,7 @@ export async function resolveSharedActivity(
       // La copia privada `progress_sessions.note` nunca se sirve aquí.
       progress: { durationMinutes: row.duration_minutes, page, percent, note: publicNote },
       reviewMeta: null,
+      thought: null,
     };
   }
 
@@ -282,6 +284,7 @@ export async function resolveSharedActivity(
       episode: null,
       progress: null,
       reviewMeta: null,
+      thought: null,
     };
   }
 
@@ -326,5 +329,6 @@ export async function resolveSharedActivity(
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },
     progress: null,
     reviewMeta: null,
+    thought: null,
   };
 }
