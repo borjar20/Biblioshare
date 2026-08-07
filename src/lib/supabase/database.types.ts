@@ -876,22 +876,34 @@ export type Database = {
           author_id: string
           body: string
           created_at: string
+          edited_at: string | null
           id: string
           interaction_target_id: string
+          is_spoiler: boolean
+          parent_id: string | null
+          pinned: boolean
         }
         Insert: {
           author_id: string
           body: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           interaction_target_id: string
+          is_spoiler?: boolean
+          parent_id?: string | null
+          pinned?: boolean
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           interaction_target_id?: string
+          is_spoiler?: boolean
+          parent_id?: string | null
+          pinned?: boolean
         }
         Relationships: [
           {
@@ -2519,6 +2531,10 @@ export type Database = {
         Returns: boolean
       }
       club_is_private: { Args: { p_club_id: string }; Returns: boolean }
+      pin_comment: {
+        Args: { p_comment_id: string; p_pinned: boolean }
+        Returns: undefined
+      }
       pull_pending_celebrations: {
         Args: Record<PropertyKey, never>
         Returns: {

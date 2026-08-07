@@ -10,7 +10,9 @@ export type InteractionAction =
   | { type: "toggleTarget"; kind: ReactionKind }
   | { type: "toggleComment"; id: string; kind: ReactionKind }
   | { type: "addComment"; comment: InteractionComment }
-  | { type: "deleteComment"; id: string };
+  | { type: "deleteComment"; id: string }
+  | { type: "editComment"; id: string; body: string }
+  | { type: "pinComment"; id: string; pinned: boolean };
 
 function toggleKind(r: ReactionsByKind, kind: ReactionKind): ReactionsByKind {
   const cur = r[kind];
@@ -58,6 +60,24 @@ export function interactionReducer(
         ...state,
         comments: state.comments.filter((c) => c.id !== action.id),
         commentCount: state.commentCount - 1,
+      };
+    case "editComment":
+      return {
+        ...state,
+        comments: state.comments.map((c) =>
+          c.id === action.id ? { ...c, body: action.body, edited: true } : c,
+        ),
+      };
+    case "pinComment":
+      return {
+        ...state,
+        comments: state.comments.map((c) =>
+          c.id === action.id
+            ? { ...c, pinned: action.pinned }
+            : action.pinned
+              ? { ...c, pinned: false }
+              : c,
+        ),
       };
   }
 }
