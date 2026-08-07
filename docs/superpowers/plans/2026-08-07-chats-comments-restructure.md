@@ -800,7 +800,7 @@ Recibe las mismas props que `ActivityChat` pasa hoy a `ReviewInteractions` (`int
 Render (portar el modo `chat` del mockup `CommentThread.dc.html`):
 - Cabecera: avatares apilados de participantes (derivar de `comments` autores distintos) + nombres.
 - Cada `ChatMessage`: burbuja propio-derecha (acento) / ajeno-izquierda (surface), agrupada (avatar/nombre solo si `startsGroup`); si `quoted`, línea `↳ @{quoted.author}: {quoted.body|recortado}`. Cuerpo por `RichTextView`; si `isSpoiler`, `SpoilerGate`. Bajo la burbuja: hora, 📌 si `pinned`, `ReactionBar`, menú (editar/borrar/fijar) y **Responder** (setea `replyingTo`). **Sin «Visto».**
-- Compositor pegado abajo (`sticky bottom-0`): `CommentComposer` compact con spoiler; `onSubmit` → optimista + `addComment(interactionTargetId, value, { parentId: replyingTo ?? undefined, isSpoiler })`.
+- Compositor pegado abajo (`sticky bottom-0`): `CommentComposer` compact con spoiler; `onSubmit` → optimista + `addComment(interactionTargetId, value, { parentId: replyingTo ?? undefined, isSpoiler })`. Cuando `replyingTo` está activo, pasar `onCancel={() => setReplyingTo(null)}` (el `CommentComposer` ya soporta `onCancel?`, añadido en la corrección de Task 7). Traducir el resultado discriminado a throw dentro del thunk de `run(...)` igual que en Task 7 (revert optimista).
 
 - [ ] **Step 2: Delegar desde `ActivityChat`**
 
