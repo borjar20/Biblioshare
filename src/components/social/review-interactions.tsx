@@ -207,89 +207,87 @@ export function ReviewInteractions({
       <div key={c.id} className="flex items-start gap-2 text-xs">
         <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={isReply ? 20 : 24} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="min-w-0 text-foreground">
-                {c.authorUsername ? (
-                  <Link href={`/u/${c.authorUsername}`} className="font-medium hover:underline">
-                    {c.author}
-                  </Link>
-                ) : (
-                  <span className="font-medium">{c.author}</span>
-                )}
-                {c.pinned && (
-                  <span className="ml-1.5 text-[10px] text-muted-foreground">📌 {t("pinned")}</span>
-                )}
-              </p>
-              {editingId === c.id ? (
-                <div className="mt-1">
-                  <CommentComposer
-                    value={editDraft}
-                    onChange={setEditDraft}
-                    onSubmit={() => submitEdit(c.id)}
-                    onCancel={() => {
-                      setEditingId(null);
-                      setEditDraft("");
-                    }}
-                    submitLabel={t("saveEdit")}
-                    placeholder={t("writeComment")}
-                    showFormatting
-                    compact
-                    busy={isPending}
-                  />
-                </div>
-              ) : (
-                <div className="text-muted-foreground">
-                  {c.isSpoiler ? (
-                    <SpoilerGate>
-                      <RichTextView text={c.body} knownUsernames={knownUsernames} />
-                    </SpoilerGate>
-                  ) : (
-                    <RichTextView text={c.body} knownUsernames={knownUsernames} />
-                  )}
-                  {c.edited && <span className="ml-1 text-[10px]">· {t("edited")}</span>}
-                </div>
-              )}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <ReactionBar
-                reactions={c.reactions}
-                disabled={isPending}
-                onToggle={(kind) =>
-                  run({ type: "toggleComment", id: c.id, kind }, async () => {
-                    await toggleReaction(c.interactionTargetId, kind);
-                  })
-                }
-              />
-              <CommentActions
-                commentId={c.id}
-                canDelete={c.canDelete}
-                canEdit={c.canEdit}
-                canPin={c.canPin}
-                pinned={c.pinned}
-                isOwn={c.isOwn}
-                isBusy={isPending}
-                onEdit={() => startEdit(c)}
-                onTogglePin={() =>
-                  run({ type: "pinComment", id: c.id, pinned: !c.pinned }, async () => {
-                    throwIfFailed(await pinComment(c.id, !c.pinned));
-                  })
-                }
-                onDelete={() =>
-                  run({ type: "deleteComment", id: c.id }, async () => {
-                    throwIfFailed(await deleteComment(c.id));
-                  })
-                }
-              />
-            </div>
+          <div className="flex items-center gap-1.5">
+            {c.authorUsername ? (
+              <Link href={`/u/${c.authorUsername}`} className="font-medium hover:underline">
+                {c.author}
+              </Link>
+            ) : (
+              <span className="font-medium">{c.author}</span>
+            )}
+            {c.pinned && (
+              <span className="text-[10px] text-muted-foreground">📌 {t("pinned")}</span>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => startReply(rootId, c)}
-            className="self-start text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {t("reply")}
-          </button>
+
+          {editingId === c.id ? (
+            <CommentComposer
+              value={editDraft}
+              onChange={setEditDraft}
+              onSubmit={() => submitEdit(c.id)}
+              onCancel={() => {
+                setEditingId(null);
+                setEditDraft("");
+              }}
+              submitLabel={t("saveEdit")}
+              placeholder={t("writeComment")}
+              showFormatting
+              compact
+              busy={isPending}
+            />
+          ) : (
+            <>
+              <div className="break-words text-muted-foreground">
+                {c.isSpoiler ? (
+                  <SpoilerGate>
+                    <RichTextView text={c.body} knownUsernames={knownUsernames} />
+                  </SpoilerGate>
+                ) : (
+                  <RichTextView text={c.body} knownUsernames={knownUsernames} />
+                )}
+                {c.edited && <span className="ml-1 text-[10px]">· {t("edited")}</span>}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <ReactionBar
+                  reactions={c.reactions}
+                  disabled={isPending}
+                  onToggle={(kind) =>
+                    run({ type: "toggleComment", id: c.id, kind }, async () => {
+                      await toggleReaction(c.interactionTargetId, kind);
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => startReply(rootId, c)}
+                  className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {t("reply")}
+                </button>
+                <CommentActions
+                  commentId={c.id}
+                  canDelete={c.canDelete}
+                  canEdit={c.canEdit}
+                  canPin={c.canPin}
+                  pinned={c.pinned}
+                  isOwn={c.isOwn}
+                  isBusy={isPending}
+                  onEdit={() => startEdit(c)}
+                  onTogglePin={() =>
+                    run({ type: "pinComment", id: c.id, pinned: !c.pinned }, async () => {
+                      throwIfFailed(await pinComment(c.id, !c.pinned));
+                    })
+                  }
+                  onDelete={() =>
+                    run({ type: "deleteComment", id: c.id }, async () => {
+                      throwIfFailed(await deleteComment(c.id));
+                    })
+                  }
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
