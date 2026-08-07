@@ -699,6 +699,34 @@ Los triggers de limpieza de fuente eliminan el target canónico y sus FKs se lle
 reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y queda
 `actioned` con `target_deleted_at`, incluso cuando desaparece el target.
 
+> **Delta del 2026-08-07 (hilos de comentarios, spoiler, fijado y edición — motor tras el «chat»
+> de actividad): aplicado y verificado en DEV y en PROD**, migración
+> `supabase/migrations/20260838_comments_threads_spoiler_pin_edit.sql`. `comments` gana cuatro
+> columnas: `parent_id uuid null references comments(id) on delete cascade` (una respuesta; **cuelga
+> del mismo `interaction_target_id` que su raíz** — el post —, nunca del target propio del padre),
+> `is_spoiler boolean not null default false`, `pinned boolean not null default false` y
+> `edited_at timestamptz null`. Índice `comments_parent_idx (parent_id)` y único parcial
+> `comments_one_pinned_per_thread on (interaction_target_id) where pinned` (invariante
+> un-fijado-por-hilo).
+>
+> - **Profundidad libre en datos, aplanada en UI.** El trigger `trg_comments_enforce_parent` →
+>   `private.enforce_comment_parent_same_target()` exige que el `parent_id`, si lo hay, exista y
+>   comparta `interaction_target_id` con el hijo (si no, `23514`) — pero no limita la profundidad:
+>   una respuesta a una respuesta es válida en la base. La pantalla es la que aplana a dos niveles
+>   visuales (comentario principal + respuestas), resolviendo la raíz como el ancestro con
+>   `parent_id is null`. Decisión de forma en `decisiones.md` (2026-08-07).
+> - **RLS**: política nueva `comments update own canonical` (solo el autor, cubre
+>   body/spoiler/edición). La política de INSERT `comments insert own canonical` exige ahora además
+>   `pinned = false` — nadie puede insertarse ya fijado.
+> - **Grants por columna (DRIFT-CHECK superficie 6, #375).** Se revoca primero el UPDATE de tabla
+>   completa a `anon`+`authenticated` (los grants por columna no estrechan uno de tabla si no se
+>   quita antes) y se concede `grant update (body, is_spoiler, edited_at) to authenticated`. El
+>   autor solo puede tocar esas tres columnas por UPDATE directo: `pinned`, `parent_id` y
+>   `author_id` **no** son escribibles por `authenticated`.
+> - **`pin_comment(p_comment_id uuid, p_pinned boolean)`** (`SECURITY DEFINER`, nueva): único
+>   camino para fijar/desfijar. Gateada al dueño del target (`interaction_targets.owner_id`) o a
+>   `private.can_moderate_comment`; respeta el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`.
+
 ## 6. Clubes
 
 `clubs` → `club_members` (rol `member|moderator|owner`, estado `invited|active|requested`),
