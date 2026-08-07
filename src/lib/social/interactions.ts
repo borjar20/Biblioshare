@@ -41,6 +41,12 @@ export type InteractionComment = {
   createdAt: string;
   isOwn: boolean;
   canDelete: boolean;
+  canEdit: boolean;
+  canPin: boolean;
+  parentId: string | null;
+  isSpoiler: boolean;
+  pinned: boolean;
+  edited: boolean;
   // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todos
   // los kinds / algún kind activo del viewer) para no romper a los 9
   // callers que aún pintan el total sin desglosar por emoji.
@@ -140,7 +146,7 @@ export async function getInteractionSummary(
       .in("interaction_target_id", interactionTargetIds),
     supabase
       .from("comments")
-      .select("id, interaction_target_id, author_id, body, created_at")
+      .select("id, interaction_target_id, author_id, body, created_at, parent_id, is_spoiler, pinned, edited_at")
       .in("interaction_target_id", interactionTargetIds)
       .order("created_at", { ascending: true }),
   ]);
@@ -185,6 +191,18 @@ export async function getInteractionSummary(
     moderatableTargetIds = new Set((ids ?? []) as string[]);
   }
 
+  const { data: ownerRows, error: ownerErr } = await supabase
+    .from("interaction_targets")
+    .select("id, owner_id")
+    .in("id", interactionTargetIds);
+  if (ownerErr) throw ownerErr;
+  const viewerOwnsTarget = new Set(
+    (ownerRows ?? [])
+      .filter((r) => user && r.owner_id === user.id)
+      .map((r) => sourceIdByTargetId.get(r.id)!)
+      .filter(Boolean),
+  );
+
   const seenPerTarget = new Map<string, number>();
   for (const c of commentRows) {
     const sourceId = sourceIdByTargetId.get(c.interaction_target_id);
@@ -223,6 +241,12 @@ export async function getInteractionSummary(
       createdAt: c.created_at,
       isOwn: user?.id === c.author_id,
       canDelete: user?.id === c.author_id || moderatableTargetIds.has(sourceId),
+      canEdit: user?.id === c.author_id,
+      canPin: viewerOwnsTarget.has(sourceId) || moderatableTargetIds.has(sourceId),
+      parentId: c.parent_id,
+      isSpoiler: c.is_spoiler,
+      pinned: c.pinned,
+      edited: c.edited_at != null,
       reactionCount: 0,
       viewerReacted: false,
       reactions: emptyReactions(),
