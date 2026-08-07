@@ -615,7 +615,7 @@ git commit -m "feat(social): addComment con respuesta/spoiler, editComment y pin
 
 **Files:**
 - Modify: `src/lib/social/interaction-optimistic.ts`
-- Test: `src/lib/social/interaction-optimistic.test.ts` (crear)
+- Test: `src/lib/social/interaction-optimistic.test.ts` (**YA EXISTE** — extender con los casos nuevos; su helper `comment()` ya recibió los 6 campos nuevos en Task 3). No re-crear el fichero ni tocar los casos existentes.
 
 **Interfaces:**
 - Produces: `InteractionAction` gana `{ type: "editComment"; id: string; body: string }`, `{ type: "pinComment"; id: string; pinned: boolean }`. `addComment` ya soporta un comment con `parentId` (no cambia la acción, sí el objeto que se le pasa).
