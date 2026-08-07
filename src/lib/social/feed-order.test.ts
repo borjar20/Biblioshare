@@ -94,6 +94,17 @@ describe("orden por instante, no por string de offset no verificado (#347)", () 
   });
 });
 
+describe("FEED_SOURCE_COLUMNS.thoughts", () => {
+  it("thoughts es la 6ª fuente, misma forma que added/clubs (timestamptz)", () => {
+    expect(FEED_SOURCE_COLUMNS.thoughts).toEqual({
+      dateColumn: "created_at",
+      stampColumn: "created_at",
+      kind: "timestamptz",
+      eventIdPrefix: "thoughts:",
+    });
+  });
+});
+
 describe("cursor", () => {
   it("un cursor nuevo lleva día, hora e id", () => {
     expect(makeCursor(resena)).toBe(

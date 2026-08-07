@@ -14,6 +14,7 @@
 //   diary      → passes.finished_on           / passes.updated_at
 //   episodes   → episode_watches.watched_on   / episode_watches.created_at
 //   clubs      → club_activities.created_at   / club_activities.created_at
+//   thoughts   → thoughts.created_at          / thoughts.created_at
 //
 // Por qué el DÍA y no la fecha entera: las cinco fuentes mezclan granularidades.
 // Las altas y los clubes traen un timestamptz ("2026-08-01T18:22:06+00:00") y
@@ -161,7 +162,7 @@ export type FeedSourceColumns = {
   eventIdPrefix: string;
 };
 
-export type FeedSourceKey = "added" | "progressed" | "diary" | "episodes" | "clubs";
+export type FeedSourceKey = "added" | "progressed" | "diary" | "episodes" | "clubs" | "thoughts";
 
 // Único sitio donde vive el par de columnas de cada fuente: `feed.ts` construye
 // sus queries con esto y los tests afirman contra lo mismo, de modo que no
@@ -196,6 +197,12 @@ export const FEED_SOURCE_COLUMNS: Record<FeedSourceKey, FeedSourceColumns> = {
     stampColumn: "created_at",
     kind: "timestamptz",
     eventIdPrefix: "club_activities:",
+  },
+  thoughts: {
+    dateColumn: "created_at",
+    stampColumn: "created_at",
+    kind: "timestamptz",
+    eventIdPrefix: "thoughts:",
   },
 };
 
