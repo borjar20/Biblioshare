@@ -136,7 +136,7 @@ export async function getInteractionSummary(
   const [reactionsResult, commentsResult] = await Promise.all([
     supabase
       .from("reactions")
-      .select("interaction_target_id, user_id")
+      .select("interaction_target_id, user_id, kind")
       .in("interaction_target_id", interactionTargetIds),
     supabase
       .from("comments")
@@ -152,8 +152,15 @@ export async function getInteractionSummary(
     const sourceId = sourceIdByTargetId.get(r.interaction_target_id);
     const s = sourceId ? summaries.get(sourceId) : undefined;
     if (!s) continue;
-    s.reactionCount += 1;
-    if (user && r.user_id === user.id) s.viewerReacted = true;
+    const kind = (r.kind ?? "like") as ReactionKind;
+    const tally = s.reactions[kind];
+    if (!tally) continue; // kind desconocido: ignora, no rompas
+    tally.count += 1;
+    if (user && r.user_id === user.id) tally.viewerReacted = true;
+  }
+  for (const s of summaries.values()) {
+    s.reactionCount = REACTION_KINDS.reduce((n, k) => n + s.reactions[k].count, 0);
+    s.viewerReacted = REACTION_KINDS.some((k) => s.reactions[k].viewerReacted);
   }
 
   const commentRows = commentsResult.data ?? [];
@@ -237,7 +244,7 @@ export async function getInteractionSummary(
   if (commentInteractionTargetIds.length > 0) {
     const { data: commentReactions, error: commentReactionsError } = await supabase
       .from("reactions")
-      .select("interaction_target_id, user_id")
+      .select("interaction_target_id, user_id, kind")
       .in("interaction_target_id", commentInteractionTargetIds);
     if (commentReactionsError) throw commentReactionsError;
 
@@ -248,8 +255,15 @@ export async function getInteractionSummary(
     for (const r of commentReactions ?? []) {
       const c = commentById.get(r.interaction_target_id);
       if (!c) continue;
-      c.reactionCount += 1;
-      if (user && r.user_id === user.id) c.viewerReacted = true;
+      const kind = (r.kind ?? "like") as ReactionKind;
+      const tally = c.reactions[kind];
+      if (!tally) continue;
+      tally.count += 1;
+      if (user && r.user_id === user.id) tally.viewerReacted = true;
+    }
+    for (const c of commentById.values()) {
+      c.reactionCount = REACTION_KINDS.reduce((n, k) => n + c.reactions[k].count, 0);
+      c.viewerReacted = REACTION_KINDS.some((k) => c.reactions[k].viewerReacted);
     }
   }
 

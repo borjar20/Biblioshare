@@ -170,6 +170,27 @@ describe("getInteractionSummary", () => {
     ).rejects.toThrow(/interaction target.*diary_entry:missing/i);
   });
 
+  it("agrupa reacciones por kind y deriva el total", async () => {
+    const { client } = makeFakeSupabase({
+      interaction_targets: [
+        { id: "target-t", kind: "diary_entry", source_id: "entry-t" },
+      ],
+      reactions: [
+        { interaction_target_id: "target-t", user_id: "viewer", kind: "like" },
+        { interaction_target_id: "target-t", user_id: "other", kind: "like" },
+        { interaction_target_id: "target-t", user_id: "other", kind: "fire" },
+      ],
+      comments: [],
+      profile_identities: [],
+    });
+
+    const s = (await getInteractionSummary(client, "diary_entry", ["entry-t"])).get("entry-t")!;
+    expect(s.reactions.like).toEqual({ count: 2, viewerReacted: true });
+    expect(s.reactions.fire).toEqual({ count: 1, viewerReacted: false });
+    expect(s.reactionCount).toBe(3);
+    expect(s.viewerReacted).toBe(true);
+  });
+
   // #340: un comentario cuyo target canónico no resuelve es un hecho de
   // visibilidad, no corrupción. Antes tumbaba el lote entero (una página de
   // club en 500 permanente por un solo comentario).
