@@ -2531,6 +2531,10 @@ export type Database = {
         Returns: boolean
       }
       club_is_private: { Args: { p_club_id: string }; Returns: boolean }
+      pin_comment: {
+        Args: { p_comment_id: string; p_pinned: boolean }
+        Returns: undefined
+      }
       pull_pending_celebrations: {
         Args: Record<PropertyKey, never>
         Returns: {
