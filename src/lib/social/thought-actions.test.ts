@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/reactivity/revalidate", () => ({ revalidateFeed: mocks.revalidateFeed }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
 
-import { createThought } from "./thought-actions";
+import { createThought, deleteThought } from "./thought-actions";
 
 // Doble mínimo: solo las tablas que `createThought` toca. `anchorFound`
 // controla si la tabla del ancla (books/movies/series/sagas/people, según
@@ -234,6 +234,81 @@ describe("createThought", () => {
       body: "Pensamiento",
       isSpoiler: false,
     });
+
+    expect(result).toEqual({ ok: false, error: "unknown" });
+  });
+});
+
+// deleteThought (task-delete, #525): mismo contrato discriminado que
+// createThought -- el borrado real lo decide la RLS `thoughts delete own or
+// moderate` (cliente de SESIÓN, nunca service-role); el resultado de la
+// acción solo traduce lo que la RLS ya decidió: 0 filas devueltas = bloqueado
+// o inexistente, no hay forma de distinguirlas desde aquí (ni falta que hace).
+function makeDeleteClient(params: {
+  user: { id: string } | null;
+  deletedRows?: { id: string }[];
+  deleteError?: boolean;
+}) {
+  const client = {
+    auth: { getUser: async () => ({ data: { user: params.user } }) },
+    from(table: string) {
+      if (table !== "thoughts") throw new Error(`Tabla inesperada: ${table}`);
+      const builder = {
+        delete() {
+          return builder;
+        },
+        eq() {
+          return builder;
+        },
+        async select() {
+          if (params.deleteError) return { data: null, error: new Error("db error") };
+          return { data: params.deletedRows ?? [], error: null };
+        },
+      };
+      return builder;
+    },
+  };
+  return { client };
+}
+
+describe("deleteThought", () => {
+  it("no autenticado -> error unauthenticated", async () => {
+    const { client } = makeDeleteClient({ user: null });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await deleteThought("thought-1");
+
+    expect(result).toEqual({ ok: false, error: "unauthenticated" });
+  });
+
+  it("feliz: borra y revalida el feed", async () => {
+    const { client } = makeDeleteClient({
+      user: { id: "actor" },
+      deletedRows: [{ id: "thought-1" }],
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await deleteThought("thought-1");
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
+  });
+
+  it("la RLS bloquea el borrado (0 filas) -> error not_allowed_or_missing, sin revalidar", async () => {
+    const { client } = makeDeleteClient({ user: { id: "actor" }, deletedRows: [] });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await deleteThought("thought-ajeno");
+
+    expect(result).toEqual({ ok: false, error: "not_allowed_or_missing" });
+    expect(mocks.revalidateFeed).not.toHaveBeenCalled();
+  });
+
+  it("fallo inesperado -> error unknown, nunca lanza", async () => {
+    const { client } = makeDeleteClient({ user: { id: "actor" }, deleteError: true });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await deleteThought("thought-1");
 
     expect(result).toEqual({ ok: false, error: "unknown" });
   });

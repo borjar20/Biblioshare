@@ -99,6 +99,38 @@ export async function createThought(input: CreateThoughtInput): Promise<CreateTh
   }
 }
 
+export type DeleteThoughtResult = { ok: true } | { ok: false; error: string };
+
+// Borrado de «Pensamiento» (task-delete, #525): autor o admin global, vía la
+// RLS `thoughts delete own or moderate` (private.can_moderate_target). Cliente
+// de SESIÓN, nunca service-role -- es la RLS quien de verdad decide si la fila
+// se borra o no, esta acción solo traduce el resultado. `.select("id")` tras
+// el delete es la única forma de distinguir "0 filas" (bloqueado por RLS o ya
+// no existe -- no hace falta distinguirlas) de un borrado real.
+export async function deleteThought(thoughtId: string): Promise<DeleteThoughtResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "unauthenticated" };
+
+    const { data, error } = await supabase
+      .from("thoughts")
+      .delete()
+      .eq("id", thoughtId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) return { ok: false, error: "not_allowed_or_missing" };
+
+    revalidateFeed();
+    return { ok: true };
+  } catch (error) {
+    console.error("deleteThought failed", error);
+    return { ok: false, error: "unknown" };
+  }
+}
+
 // Wrapper fino para el cliente (Task 4.3): el compositor no puede llamar a
 // searchAnchors directamente (necesita un SupabaseServerClient de sesión),
 // así que esta acción resuelve el viewer y delega. Sin sesión, lista vacía
