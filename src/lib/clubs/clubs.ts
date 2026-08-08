@@ -173,7 +173,15 @@ async function memberCountsFor(
   );
 }
 
-export async function listMyClubs(): Promise<ClubWithCount[]> {
+// Incluye los clubes a los que te han INVITADO, no solo aquellos de los que ya
+// eres miembro: un club privado invitado no aparecía en ningún listado
+// ("Descubrir" solo trae públicos), así que la única forma de llegar a su
+// invitación era la notificación de la campana — y en cuanto se pasa de largo,
+// la invitación queda inalcanzable para siempre. /clubes las separa en su
+// propia sección; el status viaja para que la tarjeta sepa cuál es cuál.
+export async function listMyClubs(): Promise<
+  (ClubWithCount & { viewerStatus: "active" | "invited" })[]
+> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -182,12 +190,13 @@ export async function listMyClubs(): Promise<ClubWithCount[]> {
 
   const { data, error } = await supabase
     .from("club_members")
-    .select("clubs(id, slug, name, description, cover_url, visibility, owner_id, created_at)")
+    .select("status, clubs(id, slug, name, description, cover_url, visibility, owner_id, created_at)")
     .eq("user_id", user.id)
-    .eq("status", "active");
+    .in("status", ["active", "invited"]);
   if (error) throw error;
 
   type ClubMemberRow = {
+    status: "active" | "invited";
     clubs: {
       id: string;
       slug: string;
@@ -201,9 +210,8 @@ export async function listMyClubs(): Promise<ClubWithCount[]> {
   };
 
   const clubs = ((data as unknown as ClubMemberRow[]) ?? [])
-    .map((row) => row.clubs)
-    .filter((c): c is NonNullable<typeof c> => c !== null)
-    .map(mapClub);
+    .filter((row) => row.clubs !== null)
+    .map((row) => ({ ...mapClub(row.clubs!), viewerStatus: row.status }));
 
   const counts = await memberCountsFor(supabase, clubs.map((c) => c.id));
   return clubs.map((c) => ({ ...c, memberCount: counts.get(c.id) ?? 0 }));
@@ -314,12 +322,25 @@ export async function listMembers(clubId: string): Promise<ClubMember[]> {
 // Resuelve un username a user_id para el formulario de invitar (manage-members.tsx) --
 // server-side, en vez de una query de cliente ad-hoc, para mantener el mismo
 // patrón de dominio del resto del fichero.
+// Tolerante con lo que la gente escribe de verdad: el placeholder invita a
+// "buscar un usuario", así que llega con espacios, con la arroba delante o con
+// mayúsculas. Antes cualquiera de las tres daba null y la UI lo mostraba como
+// "Algo falló" — indistinguible de un error real.
+//
+// Se normaliza a minúsculas y se compara con `eq`, no con `ilike`: el CHECK
+// `username_format` obliga a ^[a-z0-9_]{3,30}$, así que lo guardado ya está en
+// minúsculas y no hace falta comparar sin distinguir mayúsculas. Y `ilike`
+// sería activamente peligroso aquí, porque el guion bajo —legal en un
+// username— es un COMODÍN de LIKE: "test_import" casaría también con
+// "testximport" y el .maybeSingle() reventaría al traer dos filas.
 export async function resolveUsername(username: string): Promise<string | null> {
   const supabase = await createClient();
+  const needle = username.trim().replace(/^@+/, "").toLowerCase();
+  if (!needle) return null;
   const { data } = await supabase
     .from("profile_identities")
     .select("user_id")
-    .eq("username", username)
+    .eq("username", needle)
     .maybeSingle();
   return data?.user_id ?? null;
 }

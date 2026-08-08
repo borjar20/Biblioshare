@@ -43,6 +43,9 @@ export default async function ClubesPage({
     discoverPublicClubs(q || undefined),
   ]);
 
+  const mine = myClubs.filter((c) => c.viewerStatus === "active");
+  const invited = myClubs.filter((c) => c.viewerStatus === "invited");
+
   return (
     <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <ClubCreateToggle userId={user.id} title={t("navLabel")} createLabel={t("create")} />
@@ -51,16 +54,33 @@ export default async function ClubesPage({
           es la acción más frecuente de quien llega sin uno concreto en mente. */}
       <ClubSearch placeholder={t("searchPlaceholder")} initialQuery={q ?? ""} />
 
+      {/* Las invitaciones van ANTES que "Mis clubes": son lo único de esta
+          pantalla que te pide una respuesta. Y son la razón de que la sección
+          exista — un club privado al que te invitan no sale en "Descubrir"
+          (solo trae públicos), así que sin esto la única puerta de entrada era
+          la notificación de la campana, y pasarla de largo dejaba la
+          invitación inalcanzable. */}
+      {invited.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="label-section">{t("myInvites")}</h2>
+          <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
+            {invited.map((club) => (
+              <ClubCard key={club.id} club={club} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="flex flex-col gap-3">
         <h2 className="label-section">{t("myClubs")}</h2>
-        {myClubs.length === 0 ? (
+        {mine.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
           <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
-            {myClubs.map((club) => (
+            {mine.map((club) => (
               <ClubCard
                 key={club.id}
-                club={{ ...club, viewerStatus: "active" }}
+                club={club}
                 unread={unread.get(club.id) ?? 0}
               />
             ))}

@@ -95,6 +95,16 @@ export function ClubCard({
           >
             {t("open")}
           </Link>
+        ) : status === "invited" ? (
+          // Aceptar/rechazar vive en la cabecera del club (ClubHeader), que es
+          // donde se ve de qué club se trata antes de decidir. Aquí solo hace
+          // falta la puerta.
+          <Link
+            href={`/club/${club.slug}`}
+            className={buttonVariants("green", compact)}
+          >
+            {t("seeInvite")}
+          </Link>
         ) : status === "requested" ? (
           <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
             {t("requestPending")}
