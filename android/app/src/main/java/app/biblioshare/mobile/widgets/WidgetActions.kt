@@ -8,6 +8,7 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
+import app.biblioshare.mobile.reading.ReadingSessionController
 
 // Estado del widget (Preferences DataStore de Glance): qué pase decidió el
 // usuario destacar tocando la rejilla "Continúa donde lo dejaste". Se lee en
@@ -67,6 +68,7 @@ class StartTimerAction : ActionCallback {
         val passId = p[PASS_ID_PARAM] ?: return
         // Arranque limpio desde el widget: sin pausas, ancla e inicio coinciden.
         TimerStore.start(c, passId, System.currentTimeMillis())
+        ReadingSessionController.sync(c)
         refreshWidgets(c, "StartTimer")
     }
 }
@@ -75,6 +77,7 @@ class DiscardTimerAction : ActionCallback {
         // clearFromWidget (no clear) deja la lápida para que la app apague su
         // propio reloj sembrado al reabrir (#493).
         TimerStore.clearFromWidget(c)
+        ReadingSessionController.sync(c)
         refreshWidgets(c, "DiscardTimer")
     }
 }
@@ -82,12 +85,14 @@ class DiscardTimerAction : ActionCallback {
 class PauseTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         TimerStore.pause(c, System.currentTimeMillis())
+        ReadingSessionController.sync(c)
         refreshWidgets(c, "PauseTimer")
     }
 }
 class ResumeTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         TimerStore.resume(c, System.currentTimeMillis())
+        ReadingSessionController.sync(c)
         refreshWidgets(c, "ResumeTimer")
     }
 }
@@ -99,6 +104,7 @@ class RegisterTimerAction : ActionCallback {
         val minutos = elapsedMinutes(elapsedMs(r, System.currentTimeMillis()))
         val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
         TimerStore.clearFromWidget(c)
+        ReadingSessionController.sync(c)
         refreshWidgets(c, "RegisterTimer")
         val href = "/sesion/${r.passId}?minutos=$minutos&inicio=$inicio"
         c.startActivity(WidgetDeepLinks.intentFor(c, href))

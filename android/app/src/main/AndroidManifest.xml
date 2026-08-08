@@ -62,6 +62,17 @@
                 android:resource="@xml/quick_register_widget_info" />
         </receiver>
 
+        <!-- Foreground service: espeja el cronómetro nativo (TimerStore) en una
+             notificación persistente mientras hay una sesión de lectura activa. -->
+        <service
+            android:name=".reading.ReadingSessionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Cronómetro de la sesión de lectura activa, visible para el usuario" />
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -81,4 +92,7 @@
          En 12 y anteriores las notificaciones se reciben siempre; este permiso
          solo gobierna el prompt de POST_NOTIFICATIONS que dispara requestPermissions(). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Foreground service de la sesión de lectura (notificación persistente). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 </manifest>

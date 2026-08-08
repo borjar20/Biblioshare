@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.compose
+import app.biblioshare.mobile.reading.ReadingSessionController
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -71,6 +72,7 @@ class BiblioshareWidgetPlugin : Plugin() {
         val accumulatedMs = call.getLong("accumulatedMs") ?: 0L
         val running = call.getBoolean("running", true) ?: true
         TimerStore.set(context, passId, startedAt, firstStartedAt, accumulatedMs, running)
+        ReadingSessionController.sync(context)
         WidgetRefresh.updateAll(context)
         call.resolve()
     }
@@ -78,6 +80,7 @@ class BiblioshareWidgetPlugin : Plugin() {
     @PluginMethod
     fun clearRunningTimer(call: PluginCall) {
         TimerStore.clear(context, call.getString("passId"))
+        ReadingSessionController.sync(context)
         WidgetRefresh.updateAll(context)
         call.resolve()
     }

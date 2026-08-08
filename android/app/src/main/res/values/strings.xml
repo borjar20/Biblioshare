@@ -42,4 +42,11 @@
     <string name="widget_items_in_progress_count">%1$d en curso</string>
     <string name="widget_first_session">Primera sesión</string>
     <string name="widget_register_in_app">Registrar en la app</string>
+
+    <!-- Notificación de sesión de lectura (foreground service) -->
+    <string name="reading_channel_name">Sesión de lectura</string>
+    <string name="reading_notification_default_title">Sesión de lectura</string>
+    <string name="reading_notification_reading">Leyendo…</string>
+    <string name="reading_notification_paused">En pausa · %1$s</string>
+    <string name="reading_notification_long">Sesión larga · toca para registrar</string>
 </resources>
