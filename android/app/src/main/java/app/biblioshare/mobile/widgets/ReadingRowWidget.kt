@@ -99,9 +99,13 @@ private fun SelectorRow(state: ReadingRowState.Selector, covers: Map<String, Bit
     Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Cover(d.coverUrl?.let(covers::get), width = COVER_W, height = COVER_H)
         Spacer(GlanceModifier.width(10.dp))
-        // Título grande y a una línea, ocupando todo el ancho libre (sin barra de
-        // progreso: en una fila estorbaba más que informaba).
-        Text(d.title, style = bigStyle(), maxLines = 1, modifier = GlanceModifier.defaultWeight())
+        // Título grande + progreso como TEXTO debajo ("128 de 451 páginas", campo
+        // progressLabel del snapshot; trae su propio "Sin progreso"). Nada de barra:
+        // en una fila el número informa mejor y deja el alto para el título.
+        Column(GlanceModifier.defaultWeight()) {
+            Text(d.title, style = bigStyle(), maxLines = 1)
+            Text(d.progressLabel, style = softStyle(), maxLines = 1)
+        }
         if (d.itemType == "book") {
             IconAction(R.drawable.ic_widget_play, WidgetPalette.accent, actionRunCallback<StartTimerAction>(actionParametersOf(PASS_ID_PARAM to d.passId)))
         }
