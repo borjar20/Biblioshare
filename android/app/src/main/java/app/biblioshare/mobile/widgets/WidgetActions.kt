@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import app.biblioshare.mobile.reading.ReadingSessionController
 
 // Estado del widget (Preferences DataStore de Glance): qué pase decidió el
@@ -30,6 +32,23 @@ class SelectFocusAction : ActionCallback {
         val passId = parameters[PASS_ID_PARAM] ?: return
         updateAppWidgetState(context, glanceId) { it[SELECTED_PASS_KEY] = passId }
         refreshWidgets(context, "SelectFocus")
+    }
+}
+
+// Selección propia del widget 1-fila, independiente de SELECTED_PASS_KEY (widget
+// grande): cada uno recuerda su destacado por separado.
+val ROW_SELECTED_PASS_KEY = stringPreferencesKey("row_selected_pass_id")
+
+/** ⏭ "siguiente canción": rota circular por los in_progress y persiste. */
+class CycleFocusAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val snapshot = WidgetSnapshotStore.load(context)
+        val items = snapshot?.inProgress.orEmpty()
+        if (items.isEmpty()) return
+        val current = getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId)[ROW_SELECTED_PASS_KEY]
+        val next = nextInProgress(items, current) ?: return
+        updateAppWidgetState(context, glanceId) { it[ROW_SELECTED_PASS_KEY] = next }
+        refreshWidgets(context, "CycleFocus")
     }
 }
 

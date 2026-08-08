@@ -61,6 +61,17 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/quick_register_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widgets.ReadingRowWidgetReceiver"
+            android:label="@string/reading_row_widget_desc"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/reading_row_widget_info" />
+        </receiver>
 
         <!-- Foreground service: espeja el cronómetro nativo (TimerStore) en una
              notificación persistente mientras hay una sesión de lectura activa. -->

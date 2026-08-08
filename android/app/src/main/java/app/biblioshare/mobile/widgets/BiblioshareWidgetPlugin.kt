@@ -104,6 +104,7 @@ object WidgetRefresh {
         push(context, glanceManager, appWidgetManager, CurrentProgressWidget(), CurrentProgressWidget::class.java, "current")
         push(context, glanceManager, appWidgetManager, DailyGoalWidget(), DailyGoalWidget::class.java, "daily")
         push(context, glanceManager, appWidgetManager, QuickRegisterWidget(), QuickRegisterWidget::class.java, "quick")
+        push(context, glanceManager, appWidgetManager, ReadingRowWidget(), ReadingRowWidget::class.java, "row")
     }
 
     private suspend fun <T : GlanceAppWidget> push(
