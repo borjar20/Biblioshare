@@ -63,7 +63,8 @@ class ReadingSessionService : Service() {
         Thread {
             WidgetImageCache.ensureDownloaded(this, url)
             val cover = WidgetImageCache.loadBitmap(this, url) ?: return@Thread
-            if (TimerStore.get(this) == null) return@Thread // la sesión ya acabó
+            val current = TimerStore.get(this)
+            if (current == null || current.passId != model.passId) return@Thread // sesión terminada o cambiada
             // La MISMA notificación (NOTIF_ID) con la portada. En 33+ requiere
             // POST_NOTIFICATIONS; si falta, la notif del FGS ya está puesta y
             // esto solo la enriquece — se ignora el fallo.
