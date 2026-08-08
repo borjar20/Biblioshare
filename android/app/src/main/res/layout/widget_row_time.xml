@@ -1,0 +1,11 @@
+<!-- Tiempo congelado (pausado) del widget de 1 fila: mismo estilo que
+     widget_row_chrono (negrita + includeFontPadding=false) para que no cambie la
+     tipografía al pausar. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_row_time"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:gravity="center_vertical|center_horizontal"
+    android:includeFontPadding="false"
+    android:textColor="@color/widget_accent" android:textSize="26sp"
+    android:textStyle="bold"
+    android:fontFamily="monospace" />

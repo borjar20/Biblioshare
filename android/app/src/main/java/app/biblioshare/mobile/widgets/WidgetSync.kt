@@ -2,6 +2,7 @@ package app.biblioshare.mobile.widgets
 
 import android.content.Context
 import app.biblioshare.mobile.auth.NativeSupabase
+import app.biblioshare.mobile.reading.ReadingSessionController
 
 // Transporte de datos del widget (arquitectura híbrida, Fase 2). Antes la web
 // EMPUJABA el snapshot (BiblioshareWidgetPlugin.updateSnapshot); ahora el widget
@@ -21,6 +22,7 @@ object WidgetSync {
         val json = NativeSupabase.rpc(context, RPC) ?: return Result.FAILED
         // save valida versión/usuario y purga portadas si cambió de cuenta.
         val parsed = WidgetSnapshotStore.save(context, json) ?: return Result.FAILED
+        ReadingSessionController.sync(context) // apaga la notif si el cambio de cuenta borró el timer (y la reconcilia si no)
         WidgetRefresh.updateAll(context) // texto primero: nunca espera a una imagen
         downloadCovers(context, parsed) // portadas después, best-effort
         return Result.OK

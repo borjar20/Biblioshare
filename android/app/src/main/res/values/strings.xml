@@ -12,6 +12,7 @@
     <string name="widget_daily_goal_desc">Minutos de lectura de hoy frente a tu objetivo diario.</string>
     <string name="widget_quick_register_label">Registro rápido</string>
     <string name="widget_quick_register_desc">Registra una sesión de lectura en dos toques</string>
+    <string name="reading_row_widget_desc">Sesión de lectura en una fila</string>
     <string name="widget_open_app_title">Abre Biblioshare</string>
     <string name="widget_open_app_subtitle">Inicia sesión para ver tus datos</string>
     <string name="widget_nothing_in_progress">Nada en progreso</string>
@@ -42,4 +43,11 @@
     <string name="widget_items_in_progress_count">%1$d en curso</string>
     <string name="widget_first_session">Primera sesión</string>
     <string name="widget_register_in_app">Registrar en la app</string>
+
+    <!-- Notificación de sesión de lectura (foreground service) -->
+    <string name="reading_channel_name">Sesión de lectura</string>
+    <string name="reading_notification_default_title">Sesión de lectura</string>
+    <string name="reading_notification_reading">Leyendo…</string>
+    <string name="reading_notification_paused">En pausa · %1$s</string>
+    <string name="reading_notification_long">Sesión larga · toca para registrar</string>
 </resources>
