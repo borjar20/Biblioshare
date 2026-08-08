@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- previewLayout del selector de widgets (API 31+) para la fila 4x1: estado
+     selector (portada + título + progreso como texto + play/siguiente). SOLO
+     vistas de RemoteViews (LinearLayout, TextView, ImageView) — sin <Space>/<View>
+     (no permitidos → "no se pudo añadir el widget"): la separación va por
+     margin/padding. Estático, no interactivo. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_background"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    tools:ignore="HardcodedText,ContentDescription,SpUsage">
+
+    <ImageView
+        android:layout_width="34dp"
+        android:layout_height="50dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/widget_placeholder" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Siega"
+            android:textColor="@color/widget_fg"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="128 de 451 páginas"
+            android:textColor="@color/widget_fg_soft"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="7dp"
+        android:src="@drawable/ic_widget_play"
+        android:tint="@color/widget_accent" />
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="14dp"
+        android:src="@drawable/ic_widget_next"
+        android:tint="@color/widget_fg" />
+</LinearLayout>
