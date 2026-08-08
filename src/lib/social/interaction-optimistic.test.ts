@@ -26,6 +26,12 @@ function comment(over: Partial<InteractionComment> = {}): InteractionComment {
     createdAt: "2026-07-15T00:00:00Z",
     isOwn: false,
     canDelete: false,
+    canEdit: false,
+    canPin: false,
+    parentId: null,
+    isSpoiler: false,
+    pinned: false,
+    edited: false,
     reactionCount: 0,
     viewerReacted: false,
     reactions: emptyReactions(),
@@ -93,5 +99,21 @@ describe("interactionReducer", () => {
     expect(r.comments[0].interactionTargetId).toBe("target-comment-1");
     expect(r.interactionTargetId).toBe("target-pass-1");
     expect(r.commentCount).toBe(4);
+  });
+
+  it("editComment cambia el cuerpo y marca edited", () => {
+    const r = interactionReducer(base, { type: "editComment", id: "c1", body: "adios" });
+    const c1 = r.comments.find((c) => c.id === "c1")!;
+    const c2 = r.comments.find((c) => c.id === "c2")!;
+    expect(c1.body).toBe("adios");
+    expect(c1.edited).toBe(true);
+    expect(c2.body).toBe("hola"); // intacto
+  });
+
+  it("pinComment fija uno y desfija el resto del hilo", () => {
+    const conPin = interactionReducer(base, { type: "pinComment", id: "c1", pinned: true });
+    const r = interactionReducer(conPin, { type: "pinComment", id: "c2", pinned: true });
+    expect(r.comments.find((c) => c.id === "c2")!.pinned).toBe(true);
+    expect(r.comments.find((c) => c.id === "c1")!.pinned).toBe(false);
   });
 });

@@ -85,80 +85,172 @@ export async function toggleReaction(
   revalidateInteraction();
 }
 
+export type CommentActionResult = { ok: true } | { ok: false; error: string };
+
 export async function addComment(
   interactionTargetId: string,
   body: string,
-): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const trimmed = body.trim();
-  if (!trimmed) return;
-  if (trimmed.length > 2000) throw new Error("comment_too_long");
-
-  const target = await getInteractionTarget(supabase, interactionTargetId);
-  if (!target.commentable || !target.comment_notification_type) {
-    throw new Error("interaction_target_not_commentable");
-  }
-
-  const { data: inserted, error } = await supabase
-    .from("comments")
-    .insert({
-      interaction_target_id: interactionTargetId,
-      author_id: user.id,
-      body: trimmed,
-    })
-    .select("id")
-    .single();
-  if (error) throw error;
-
-  let mentioned: string[] = [];
+  opts?: { parentId?: string; isSpoiler?: boolean },
+): Promise<CommentActionResult> {
   try {
-    const { data: commentTarget, error: commentTargetError } = await supabase
-      .from("interaction_targets")
-      .select("id")
-      .eq("kind", "comment")
-      .eq("source_id", inserted.id)
-      .maybeSingle();
-    if (commentTargetError) throw commentTargetError;
-    if (commentTarget) {
-      mentioned = await notifyMentions(supabase, {
-        authorId: user.id,
-        text: trimmed,
-        interactionTargetId: commentTarget.id,
-      });
-    }
-  } catch (mentionError) {
-    console.error(mentionError);
-  }
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "unauthenticated" };
 
-  if (target.owner_id !== user.id && !mentioned.includes(target.owner_id)) {
+    const trimmed = body.trim();
+    if (!trimmed) return { ok: false, error: "empty" };
+    if (trimmed.length > 2000) return { ok: false, error: "too_long" };
+
+    const target = await getInteractionTarget(supabase, interactionTargetId);
+    if (!target.commentable || !target.comment_notification_type) {
+      return { ok: false, error: "not_commentable" };
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("comments")
+      .insert({
+        interaction_target_id: interactionTargetId,
+        author_id: user.id,
+        body: trimmed,
+        parent_id: opts?.parentId ?? null,
+        is_spoiler: opts?.isSpoiler ?? false,
+      })
+      .select("id, parent_id")
+      .single();
+    if (error) throw error;
+
+    let mentioned: string[] = [];
     try {
-      await notify(supabase, {
-        userId: target.owner_id,
-        actorId: user.id,
-        type: target.comment_notification_type,
-        interactionTargetId,
-      });
-    } catch (notificationError) {
-      console.error(notificationError);
+      const { data: commentTarget, error: commentTargetError } = await supabase
+        .from("interaction_targets")
+        .select("id")
+        .eq("kind", "comment")
+        .eq("source_id", inserted.id)
+        .maybeSingle();
+      if (commentTargetError) throw commentTargetError;
+      if (commentTarget) {
+        mentioned = await notifyMentions(supabase, {
+          authorId: user.id,
+          text: trimmed,
+          interactionTargetId: commentTarget.id,
+        });
+      }
+    } catch (mentionError) {
+      console.error(mentionError);
     }
-  }
 
-  revalidateInteraction();
+    if (target.owner_id !== user.id && !mentioned.includes(target.owner_id)) {
+      try {
+        await notify(supabase, {
+          userId: target.owner_id,
+          actorId: user.id,
+          type: target.comment_notification_type,
+          interactionTargetId,
+        });
+      } catch (notificationError) {
+        console.error(notificationError);
+      }
+    }
+
+    // NUEVO: si es respuesta, avisar al autor del comentario padre (salvo
+    // que sea uno mismo, el dueño del target, o ya haya sido @mencionado).
+    if (inserted.parent_id) {
+      try {
+        const { data: parent } = await supabase
+          .from("comments")
+          .select("author_id")
+          .eq("id", inserted.parent_id)
+          .maybeSingle();
+        if (
+          parent &&
+          parent.author_id !== user.id &&
+          parent.author_id !== target.owner_id &&
+          !mentioned.includes(parent.author_id)
+        ) {
+          await notify(supabase, {
+            userId: parent.author_id,
+            actorId: user.id,
+            type: target.comment_notification_type,
+            interactionTargetId,
+            dedupeKey: `reply:${inserted.id}`,
+          });
+        }
+      } catch (replyNotificationError) {
+        console.error(replyNotificationError);
+      }
+    }
+
+    revalidateInteraction();
+    return { ok: true };
+  } catch (e) {
+    console.error("addComment failed", e);
+    return { ok: false, error: "unknown" };
+  }
 }
 
-export async function deleteComment(commentId: string): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+export async function editComment(commentId: string, body: string): Promise<CommentActionResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "unauthenticated" };
+    const trimmed = body.trim();
+    if (!trimmed) return { ok: false, error: "empty" };
+    if (trimmed.length > 2000) return { ok: false, error: "too_long" };
+    // RLS `comments update own canonical` + grant por columna: solo el autor,
+    // solo body/edited_at. `.select` distingue 0 filas (bloqueado) de éxito.
+    const { data, error } = await supabase
+      .from("comments")
+      .update({ body: trimmed, edited_at: new Date().toISOString() })
+      .eq("id", commentId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) return { ok: false, error: "not_allowed_or_missing" };
+    revalidateInteraction();
+    return { ok: true };
+  } catch (e) {
+    console.error("editComment failed", e);
+    return { ok: false, error: "unknown" };
+  }
+}
 
-  const { error } = await supabase.from("comments").delete().eq("id", commentId);
-  if (error) throw error;
-  revalidateInteraction();
+export async function pinComment(commentId: string, pinned: boolean): Promise<CommentActionResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "unauthenticated" };
+    const { error } = await supabase.rpc("pin_comment", {
+      p_comment_id: commentId,
+      p_pinned: pinned,
+    });
+    if (error) return { ok: false, error: "not_allowed" }; // 42501 u otros → no autorizado
+    revalidateInteraction();
+    return { ok: true };
+  } catch (e) {
+    console.error("pinComment failed", e);
+    return { ok: false, error: "unknown" };
+  }
+}
+
+export async function deleteComment(commentId: string): Promise<CommentActionResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "unauthenticated" };
+
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    if (error) throw error;
+    revalidateInteraction();
+    return { ok: true };
+  } catch (e) {
+    console.error("deleteComment failed", e);
+    return { ok: false, error: "unknown" };
+  }
 }
