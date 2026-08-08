@@ -109,7 +109,7 @@ cabecera local.
 
 Extrae **solo** lo que se usa: `diary.csv`, `watched.csv`, `ratings.csv`,
 `reviews.csv`, `watchlist.csv` y `lists/*.csv`. `likes/`, `comments.csv` y
-`profile.csv` se ignoran (§12).
+`profile.csv` se ignoran (§10).
 
 **`detect-format.ts`** gana una rama antes de decodificar texto:
 
