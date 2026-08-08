@@ -16,7 +16,9 @@ import app.biblioshare.mobile.R
 import app.biblioshare.mobile.widgets.TimerStore
 import app.biblioshare.mobile.widgets.WidgetDeepLinks
 import app.biblioshare.mobile.widgets.WidgetImageCache
+import app.biblioshare.mobile.widgets.WidgetRefresh
 import app.biblioshare.mobile.widgets.WidgetSnapshotStore
+import app.biblioshare.mobile.widgets.registerHref
 import android.app.PendingIntent
 
 // Arranca/actualiza/para la notificación de sesión. NO guarda estado: en cada
@@ -28,13 +30,26 @@ object ReadingSessionController {
         val intent = Intent(context, ReadingSessionService::class.java)
             .setAction(ReadingSessionService.ACTION_SYNC)
         if (TimerStore.get(context) != null) {
-            // Exención de arranque de FGS en background: "el usuario interactúa
-            // con un widget" (los puntos de arranque son StartTimerAction y el
-            // espejo setRunningTimer en primer plano).
-            ContextCompat.startForegroundService(context, intent)
+            // sync puede llamarse desde background (WidgetSync/WorkManager): si no hay
+            // exención de arranque de FGS, no crashear — la notificación aparecerá en la
+            // siguiente interacción de widget o en primer plano.
+            runCatching { ContextCompat.startForegroundService(context, intent) }
         } else {
             context.stopService(intent)
         }
+    }
+
+    /** Terminar desde la notificación: resuelve el deep-link con el elapsed REAL
+     *  en el momento del toque, apaga la sesión y devuelve el href a abrir (o null
+     *  si ya no hay sesión). Lo llama MainActivity — un getActivity directo, no un
+     *  trampolín de notificación (prohibido en targetSdk 31+). */
+    fun finishFromNotification(context: Context): String? {
+        val r = TimerStore.get(context) ?: return null
+        val href = registerHref(r, System.currentTimeMillis())
+        TimerStore.clearFromWidget(context)
+        sync(context)
+        WidgetRefresh.updateAll(context)
+        return href
     }
 }
 
@@ -74,6 +89,7 @@ class ReadingSessionService : Service() {
 
     companion object {
         const val ACTION_SYNC = "app.biblioshare.mobile.reading.SYNC"
+        const val EXTRA_FINISH_SESSION = "biblioshareFinishSession"
         const val NOTIF_ID = 4820
         const val CHANNEL_ID = "reading_session"
 
@@ -123,7 +139,7 @@ class ReadingSessionService : Service() {
                 context.getString(R.string.widget_resume) to ReadingSessionReceiver.ACTION_RESUME
             }
             builder.addAction(0, toggle.first, broadcast(context, toggle.second))
-            builder.addAction(0, context.getString(R.string.widget_register), broadcast(context, ReadingSessionReceiver.ACTION_FINISH))
+            builder.addAction(0, context.getString(R.string.widget_register), finishActivity(context))
             builder.addAction(0, context.getString(R.string.widget_discard), broadcast(context, ReadingSessionReceiver.ACTION_DISCARD))
         }
 
@@ -133,6 +149,20 @@ class ReadingSessionService : Service() {
                 Intent(context, ReadingSessionReceiver::class.java).setAction(action),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+
+        // Terminar/■: activity PendingIntent DIRECTO (no vía broadcast+startActivity),
+        // que en targetSdk 31+ es un trampolín de notificación y se bloquea. MainActivity
+        // resuelve el extra al lanzar y coloca el href de registro real.
+        private fun finishActivity(context: Context): PendingIntent {
+            val intent = Intent(context, app.biblioshare.mobile.MainActivity::class.java)
+                .setAction(Intent.ACTION_VIEW)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(EXTRA_FINISH_SESSION, true)
+            return PendingIntent.getActivity(
+                context, "finishSession".hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
 
         private fun openSession(context: Context, passId: String): PendingIntent =
             PendingIntent.getActivity(
