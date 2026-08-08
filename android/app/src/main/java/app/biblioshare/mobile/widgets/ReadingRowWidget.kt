@@ -124,19 +124,18 @@ private fun SessionRow(state: ReadingRowState.Session, covers: Map<String, Bitma
     Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Cover(d.coverUrl?.let(covers::get), width = COVER_W, height = COVER_H)
         Spacer(GlanceModifier.width(10.dp))
-        Column(GlanceModifier.defaultWeight()) {
-            Text(d.title, style = titleStyle(), maxLines = 1)
-            if (r.running) {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_row_chrono).apply {
-                    setChronometer(R.id.widget_row_chrono, chronometerBase(r.startedAt, now, SystemClock.elapsedRealtime()), null, true)
-                }
-                AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
-            } else {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_row_time).apply {
-                    setTextViewText(R.id.widget_row_time, fmtElapsed(elapsedMs(r, now)))
-                }
-                AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
+        // Sin título en sesión: el cronómetro es el protagonista y ocupa todo el
+        // ancho libre entre la portada y los controles (el layout ya lo centra).
+        if (r.running) {
+            val rv = RemoteViews(ctx.packageName, R.layout.widget_row_chrono).apply {
+                setChronometer(R.id.widget_row_chrono, chronometerBase(r.startedAt, now, SystemClock.elapsedRealtime()), null, true)
             }
+            AndroidRemoteViews(rv, GlanceModifier.defaultWeight())
+        } else {
+            val rv = RemoteViews(ctx.packageName, R.layout.widget_row_time).apply {
+                setTextViewText(R.id.widget_row_time, fmtElapsed(elapsedMs(r, now)))
+            }
+            AndroidRemoteViews(rv, GlanceModifier.defaultWeight())
         }
         // Pausar/Reanudar · Terminar · Descartar. Descartar en `fgSoft` (secundario)
         // y con menos aire para que los tres quepan en 4x1.
