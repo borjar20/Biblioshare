@@ -127,13 +127,13 @@ private fun SessionRow(state: ReadingRowState.Session, covers: Map<String, Bitma
         Column(GlanceModifier.defaultWeight()) {
             Text(d.title, style = titleStyle(), maxLines = 1)
             if (r.running) {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_chronometer).apply {
-                    setChronometer(R.id.widget_chrono, chronometerBase(r.startedAt, now, SystemClock.elapsedRealtime()), null, true)
+                val rv = RemoteViews(ctx.packageName, R.layout.widget_row_chrono).apply {
+                    setChronometer(R.id.widget_row_chrono, chronometerBase(r.startedAt, now, SystemClock.elapsedRealtime()), null, true)
                 }
                 AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
             } else {
-                val rv = RemoteViews(ctx.packageName, R.layout.widget_static_time).apply {
-                    setTextViewText(R.id.widget_static_time, fmtElapsed(elapsedMs(r, now)))
+                val rv = RemoteViews(ctx.packageName, R.layout.widget_row_time).apply {
+                    setTextViewText(R.id.widget_row_time, fmtElapsed(elapsedMs(r, now)))
                 }
                 AndroidRemoteViews(rv, GlanceModifier.fillMaxWidth())
             }

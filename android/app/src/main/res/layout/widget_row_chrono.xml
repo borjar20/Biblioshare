@@ -1,0 +1,11 @@
+<!-- Cronómetro del widget de 1 fila: negrita + includeFontPadding=false para
+     centrar el número verticalmente en la fila. Propio (no el compartido con el
+     widget grande) para no cambiar la tipografía de aquél. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_row_chrono"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:gravity="center_vertical|center_horizontal"
+    android:includeFontPadding="false"
+    android:textColor="@color/widget_accent" android:textSize="22sp"
+    android:textStyle="bold"
+    android:fontFamily="monospace" android:format="%s" />
