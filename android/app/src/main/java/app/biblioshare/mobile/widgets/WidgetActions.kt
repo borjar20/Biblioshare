@@ -96,17 +96,20 @@ class ResumeTimerAction : ActionCallback {
         refreshWidgets(c, "ResumeTimer")
     }
 }
+/** Deep-link de registro con los minutos del elapsed REAL y la hora real de inicio. */
+fun registerHref(r: TimerLogic.Running, now: Long): String {
+    val minutos = elapsedMinutes(elapsedMs(r, now))
+    val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
+    return "/sesion/${r.passId}?minutos=$minutos&inicio=$inicio"
+}
+
 class RegisterTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val r = TimerStore.get(c) ?: return
-        // Minutos del elapsed REAL (cuenta con la pausa, #498); `inicio` es la
-        // hora real de arranque para "Cuándo lees".
-        val minutos = elapsedMinutes(elapsedMs(r, System.currentTimeMillis()))
-        val inicio = java.time.Instant.ofEpochMilli(r.firstStartedAt).toString()
+        val href = registerHref(r, System.currentTimeMillis())
         TimerStore.clearFromWidget(c)
         ReadingSessionController.sync(c)
         refreshWidgets(c, "RegisterTimer")
-        val href = "/sesion/${r.passId}?minutos=$minutos&inicio=$inicio"
         c.startActivity(WidgetDeepLinks.intentFor(c, href))
     }
 }

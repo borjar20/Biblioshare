@@ -73,6 +73,9 @@
                 android:value="Cronómetro de la sesión de lectura activa, visible para el usuario" />
         </service>
 
+        <!-- Botones de la notificación de sesión (pausa/reanuda/terminar/descartar). -->
+        <receiver android:name=".reading.ReadingSessionReceiver" android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

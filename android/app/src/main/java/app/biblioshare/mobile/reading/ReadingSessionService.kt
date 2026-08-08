@@ -90,8 +90,6 @@ class ReadingSessionService : Service() {
             }
         }
 
-        // Task 4 rellena addActions(); aquí queda vacío para que Task 3 compile
-        // y la notificación se vea (sin botones todavía).
         fun buildNotification(context: Context, model: ReadingNotificationModel, cover: Bitmap?): android.app.Notification {
             val title = model.title ?: context.getString(R.string.reading_notification_default_title)
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -114,12 +112,27 @@ class ReadingSessionService : Service() {
                     builder.setShowWhen(false)
                         .setContentText(context.getString(R.string.reading_notification_long))
             }
-            addActions(context, builder, model) // no-op hasta Task 4
+            addActions(context, builder, model)
             return builder.build()
         }
 
-        // Sustituido en Task 4.
-        internal fun addActions(context: Context, builder: NotificationCompat.Builder, model: ReadingNotificationModel) {}
+        internal fun addActions(context: Context, builder: NotificationCompat.Builder, model: ReadingNotificationModel) {
+            val toggle = if (model.running) {
+                context.getString(R.string.widget_pause) to ReadingSessionReceiver.ACTION_PAUSE
+            } else {
+                context.getString(R.string.widget_resume) to ReadingSessionReceiver.ACTION_RESUME
+            }
+            builder.addAction(0, toggle.first, broadcast(context, toggle.second))
+            builder.addAction(0, context.getString(R.string.widget_register), broadcast(context, ReadingSessionReceiver.ACTION_FINISH))
+            builder.addAction(0, context.getString(R.string.widget_discard), broadcast(context, ReadingSessionReceiver.ACTION_DISCARD))
+        }
+
+        private fun broadcast(context: Context, action: String): PendingIntent =
+            PendingIntent.getBroadcast(
+                context, action.hashCode(),
+                Intent(context, ReadingSessionReceiver::class.java).setAction(action),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
 
         private fun openSession(context: Context, passId: String): PendingIntent =
             PendingIntent.getActivity(
