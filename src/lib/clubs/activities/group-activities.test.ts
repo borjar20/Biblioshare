@@ -7,7 +7,7 @@ const HOY = "2026-07-22";
 function act(over: Partial<ClubActivity>): ClubActivity {
   return {
     id: "id", clubId: "c", kind: "buddy_read", title: "t", description: null,
-    status: "active", config: null, createdBy: "u", startsOn: null, endsOn: null,
+    status: "active", config: null, eventType: null, createdBy: "u", startsOn: null, endsOn: null,
     createdAt: "2026-07-01", viewerIsParticipant: false, participantCount: 0,
     spawnedFromActivityId: null, spawnedFromItem: null,
     ...over,
