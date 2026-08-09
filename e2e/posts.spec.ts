@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -55,6 +55,41 @@ async function login(page: Page) {
   await page.goto("/login");
   await page.fill('input[name="email"]', EMAIL);
   await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+}
+
+// Usuarios frescos y públicos para el flujo multi-cuenta (patrón de
+// avisos-por-persona.spec.ts): un aviso cruza de un usuario a otro.
+async function createUser(request: APIRequestContext, username: string) {
+  const email = `${username}@example.com`;
+  const password = "TestPassword123!";
+  const auth = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    headers: adminHeaders(),
+    data: { email, password, email_confirm: true },
+  });
+  expect(auth.ok()).toBe(true);
+  const user = await auth.json();
+  const profile = await request.post(`${SUPABASE_URL}/rest/v1/profiles`, {
+    headers: adminHeaders(true),
+    data: { user_id: user.id, username, is_public: true },
+  });
+  expect(profile.ok()).toBe(true);
+  return { id: user.id as string, username, email, password };
+}
+
+async function deleteUser(id: string) {
+  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
+    method: "DELETE",
+    headers: adminHeaders(),
+  }).catch(() => {});
+}
+
+async function loginAs(page: Page, email: string, password: string) {
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await page.fill('input[name="email"]', email);
+  await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL("/");
 }
@@ -199,5 +234,62 @@ test("un post tiene su página /post/[id] con cuerpo y hilo (pensamiento y hito)
     for (const bookId of bookIds) {
       await rest(`books?id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
     }
+  }
+});
+
+// Notificación al post (Task 12): un comentario ajeno avisa al autor y el aviso
+// deep-linka a /post/[id] — el href del target `post` (que el trigger fijó a
+// /post/[id]) lo lee la campana directamente por interaction_target_id.
+test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", async ({ page, request }) => {
+  test.setTimeout(120_000);
+
+  const stamp = Date.now();
+  const author = await createUser(request, `postauth${stamp}`.slice(0, 20));
+  const commenter = await createUser(request, `postcom${stamp}`.slice(0, 20));
+  const bookTitle = `E2E Post Aviso ${stamp}`;
+
+  let bookId: string | null = null;
+  let postId: string | null = null;
+
+  try {
+    const book = await insertOne<{ id: string }>("books", { title: bookTitle });
+    bookId = book.id;
+    // El post del autor por REST (service-role): el trigger
+    // `posts_sync_interaction_target` materializa su target `post` con
+    // href=/post/[id]. El autor es público (createUser), así que el comentador
+    // lo ve por la RLS `posts select visible`.
+    const post = await insertOne<{ id: string }>("posts", {
+      author_id: author.id,
+      kind: "thought",
+      anchor_type: "book",
+      anchor_id: bookId,
+      body: `Post para avisar ${stamp}`,
+    });
+    postId = post.id;
+
+    // ── El comentador ve /post/[id] y comenta (la server action avisa al autor) ──
+    await loginAs(page, commenter.email, commenter.password);
+    await page.goto(`/post/${postId}`);
+    const card = page.locator("article").filter({ hasText: bookTitle });
+    await expect(card).toBeVisible();
+    await card.getByRole("button", { name: /0 comentarios/i }).click();
+    await card.getByPlaceholder(/escribe un comentario/i).fill(`hola desde el comentador ${stamp}`);
+    await card.getByRole("button", { name: /^comentar$/i }).click();
+    await expect(card.getByText(`hola desde el comentador ${stamp}`)).toBeVisible();
+
+    // ── El autor abre la campana, ve el aviso y al pulsarlo aterriza en /post/[id] ──
+    await loginAs(page, author.email, author.password);
+    await page.getByRole("button", { name: "Notificaciones" }).click();
+    const aviso = page.getByRole("link").filter({ hasText: /comentó tu publicación/i });
+    await expect(aviso).toBeVisible();
+    await aviso.click();
+    await expect(page).toHaveURL(new RegExp(`/post/${postId}$`));
+  } finally {
+    if (bookId) {
+      await rest(`posts?anchor_id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
+      await rest(`books?id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
+    }
+    await deleteUser(author.id);
+    await deleteUser(commenter.id);
   }
 });

@@ -415,7 +415,9 @@
       "finished": "terminó",
       "rated": "valoró",
       "reviewed": "reseñó",
-      "watchedEpisode": "marcó un episodio de"
+      "watchedEpisode": "marcó un episodio de",
+      "started": "empezó",
+      "dropped": "abandonó"
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
     "quickAdd": "Añadir",
