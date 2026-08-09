@@ -2927,6 +2927,8 @@ export type Database = {
         | "club_event_cancelled"
         | "thought_commented"
         | "thought_liked"
+        | "post_commented"
+        | "post_liked"
       pending_import_status: "pending" | "resolved" | "dismissed"
       push_channel: "web"
       push_platform: "web_push" | "fcm_android" | "apns_ios"
@@ -2951,6 +2953,7 @@ export type Database = {
         | "progress_session"
         | "club_round"
         | "thought"
+        | "post"
       thought_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       user_role: "user" | "collaborator" | "admin"
     }
@@ -3139,6 +3142,8 @@ export const Constants = {
         "club_event_cancelled",
         "thought_commented",
         "thought_liked",
+        "post_commented",
+        "post_liked",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       push_channel: ["web"],
@@ -3165,6 +3170,7 @@ export const Constants = {
         "progress_session",
         "club_round",
         "thought",
+        "post",
       ],
       thought_anchor_type: ["book", "movie", "series", "saga", "person"],
       user_role: ["user", "collaborator", "admin"],
