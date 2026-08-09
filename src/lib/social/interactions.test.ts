@@ -191,6 +191,50 @@ describe("getInteractionSummary", () => {
     expect(s.viewerReacted).toBe(true);
   });
 
+  // Regresión posts (capa social): el resolutor es genérico por (kind,
+  // source_id), así que "post" agrega reacciones por kind y resuelve el target
+  // canónico de sus comentarios igual que cualquier otro target. Sin cambios de
+  // lógica: solo el tipo `TargetType` (Task 2) habilita la llamada.
+  it("agrega reacciones por kind y resuelve comentarios para un target 'post'", async () => {
+    const { client } = makeFakeSupabase({
+      interaction_targets: [
+        { id: "target-post", kind: "post", source_id: "post-1" },
+        { id: "target-comment-post", kind: "comment", source_id: "comment-1" },
+      ],
+      reactions: [
+        { interaction_target_id: "target-post", user_id: "viewer", kind: "like" },
+        { interaction_target_id: "target-post", user_id: "other", kind: "fire" },
+        { interaction_target_id: "target-post", user_id: "other2", kind: "fire" },
+      ],
+      comments: [
+        {
+          id: "comment-1",
+          interaction_target_id: "target-post",
+          author_id: "author-1",
+          body: "un comentario en un post",
+          created_at: "2026-08-09T00:00:00Z",
+        },
+      ],
+      profile_identities: [
+        { user_id: "author-1", username: "ana", display_name: "Ana", avatar_url: null },
+      ],
+    });
+
+    const s = (await getInteractionSummary(client, "post", ["post-1"])).get("post-1")!;
+
+    expect(s.interactionTargetId).toBe("target-post");
+    expect(s.reactions.like).toEqual({ count: 1, viewerReacted: true });
+    expect(s.reactions.fire).toEqual({ count: 2, viewerReacted: false });
+    expect(s.reactionCount).toBe(3);
+    expect(s.viewerReacted).toBe(true);
+    expect(s.commentCount).toBe(1);
+    expect(s.comments[0]).toMatchObject({
+      id: "comment-1",
+      interactionTargetId: "target-comment-post",
+      author: "Ana",
+    });
+  });
+
   // #340: un comentario cuyo target canónico no resuelve es un hecho de
   // visibilidad, no corrupción. Antes tumbaba el lote entero (una página de
   // club en 500 permanente por un solo comentario).
