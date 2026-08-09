@@ -1581,6 +1581,30 @@ export type Database = {
         }
         Relationships: []
       }
+      post_preferences: {
+        Row: {
+          autopost_dropped: boolean
+          autopost_finished: boolean
+          autopost_started: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          autopost_dropped?: boolean
+          autopost_finished?: boolean
+          autopost_started?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          autopost_dropped?: boolean
+          autopost_finished?: boolean
+          autopost_started?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           anchor_id: string
