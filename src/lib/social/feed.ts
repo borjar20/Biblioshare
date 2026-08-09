@@ -85,9 +85,8 @@ export type FeedEvent = {
   // Fecha de publicación (`posts.created_at`). Sirve al «hace x» de la tarjeta y
   // a las cabeceras de día del perfil. Con posts, orderDate === sortDate ===
   // eventDate: una sola columna timestamptz, sin la antigua sustitución de
-  // `sessionRelativeBasis` (el feed ordena por publicación, no por fecha
-  // semántica). Se conservan las tres para no reescribir `shared-activity.ts` ni
-  // la unión `FeedEntry`.
+  // `sessionRelativeBasis` (el feed ordena por publicación). Se conservan las
+  // tres para no reescribir `shared-activity.ts` ni la unión `FeedEntry`.
   eventDate: string;
   orderDate: string;
   sortDate: string;
@@ -120,10 +119,10 @@ export type FeedEvent = {
   reactions: ReactionsByKind;
 };
 
-// Forma interna mientras getFeed resuelve el target canónico en batch. Nunca
-// cruza el límite del loader. Todo evento del feed sale de una fila `posts`, así
-// que aquí `postId` es OBLIGATORIO (en la forma pública es opcional por las
-// previews legadas) y el target es siempre `post`, aún sin resolver.
+// Forma interna mientras se resuelve el target canónico en batch. Nunca cruza el
+// límite del loader. Todo evento del feed sale de una fila `posts`, así que aquí
+// `postId` es OBLIGATORIO (en la forma pública es opcional por las previews
+// legadas) y el target es siempre `post`, aún sin resolver.
 type FeedEventDraft = Omit<FeedEvent, "interactionTarget" | "postId"> & {
   postId: string;
   interactionTarget: {
@@ -177,6 +176,8 @@ export type FeedOptions = {
 
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_EXCERPT_LENGTH = 200;
+const POST_COLUMNS =
+  "id, author_id, kind, anchor_type, anchor_id, source_kind, source_id, body, is_spoiler, created_at";
 
 function excerpt(text: string | null): string | null {
   if (!text) return null;
@@ -197,89 +198,30 @@ function itemTypeForAnchor(anchor: AnchorType): ItemType {
   return anchor === "saga" || anchor === "person" ? "book" : anchor;
 }
 
-export async function getFeed(
+// Menciones @usuario a resolver de un evento ya resuelto (cuerpo del pensamiento,
+// excerpt de reseña, nota de progreso y comentarios prefetch).
+function mentionTextsOf(event: { reviewExcerpt: string | null; thought: FeedEvent["thought"]; progress: FeedEvent["progress"]; comments: InteractionComment[] }): string[] {
+  return [
+    ...(event.reviewExcerpt ? [event.reviewExcerpt] : []),
+    ...(event.thought?.body ? [event.thought.body] : []),
+    ...(event.progress?.note?.body ? [event.progress.note.body] : []),
+    ...event.comments.map((c) => c.body),
+  ];
+}
+
+// Resuelve en batch el catálogo del ancla + las filas fuente para display
+// (pass/pass_reviews en finished, progress_sessions en progressed,
+// episode_watches en watched) + las identidades de actor, y construye un draft
+// por post. Compartido por el feed (`getFeed`) y la ruta `/post/[id]`
+// (`getPostEvent`) para no duplicar el mapeo por kind. Descarta un post cuyo
+// autor o ancla no resuelvan, y —si `reviewsOnly`— un `finished` sin reseña.
+async function resolvePostDrafts(
   supabase: SupabaseServerClient,
-  viewerId: string | null,
-  options: FeedOptions = {},
-): Promise<FeedPage> {
-  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
-  // Sin agrupación, `pageSize + 1` basta: la fila extra por fuente solo sirve
-  // para detectar «hay más» (ver `allExhausted` abajo).
-  const fetchLimit = pageSize + 1;
-  const cursor = options.cursor ? parseCursor(options.cursor) : null;
+  postRows: PostRow[],
+  reviewsOnly: boolean,
+): Promise<FeedEventDraft[]> {
+  if (postRows.length === 0) return [];
 
-  const actorId = options.actorId;
-  const isActorFeed = actorId != null;
-
-  const filter = options.filter;
-  const reviewsOnly = filter === "reviews";
-  // "Pantalla" no es un anchor_type: son dos. saga/persona (pensamientos) no
-  // sobreviven a book/screen — solo aparecen en la vista "todo".
-  const anchorTypes: AnchorType[] | undefined =
-    filter === "book" ? ["book"] : filter === "screen" ? ["movie", "series"] : undefined;
-  const includePosts = filter !== "clubs";
-  // Los clubes son del visitante, no de la persona del perfil: fuera del feed de
-  // actor. Y no son un anchor_type, así que no sobreviven a "Libros"/"Pantalla".
-  const includeClubs =
-    viewerId !== null && !isActorFeed && (filter === undefined || filter === "clubs");
-
-  const [followResult, clubResult] = await Promise.all([
-    includePosts && !isActorFeed && viewerId !== null
-      ? supabase
-          .from("follows")
-          .select("followee_id")
-          .eq("follower_id", viewerId)
-          .eq("status", "accepted")
-      : Promise.resolve({ data: [] as { followee_id: string }[], error: null }),
-    includeClubs && viewerId !== null
-      ? getClubActivityEvents(supabase, viewerId, {
-          cursorFilter: cursor
-            ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor)
-            : undefined,
-          pageSize: fetchLimit,
-        })
-      : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
-  ]);
-  if (followResult.error) throw followResult.error;
-
-  // Feed de actor: solo sus posts. Feed personal: los tuyos ∪ los de tus
-  // seguidos (tu Inicio es "lo mío y lo de mi gente"; `follows` nunca te
-  // devuelve a ti mismo, así que te añades a mano). Ya no hay exclusión de
-  // "added": añadir no publica, así que un import en masa no crea posts y no
-  // puede inundar la primera página (garantía del writer de hito, Task 9).
-  const authorIds = isActorFeed
-    ? [actorId]
-    : [...(viewerId ? [viewerId] : []), ...(followResult.data ?? []).map((f) => f.followee_id)];
-  const includePersons = includePosts && authorIds.length > 0;
-  if (!includePersons && clubResult.events.length === 0) {
-    return { events: [], nextCursor: null, knownUsernames: [] };
-  }
-
-  const { data: postRowsRaw, error: postsError } = includePersons
-    ? await (() => {
-        let q = supabase
-          .from("posts")
-          .select(
-            "id, author_id, kind, anchor_type, anchor_id, source_kind, source_id, body, is_spoiler, created_at",
-          )
-          .in("author_id", authorIds)
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false })
-          .limit(fetchLimit);
-        if (anchorTypes) q = q.in("anchor_type", anchorTypes);
-        // "Reseñas" = terminados con texto. El kind se filtra en SQL; el texto
-        // (que vive en el pase, con su privacidad) se filtra tras resolverlo.
-        if (reviewsOnly) q = q.eq("kind", "finished");
-        if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.posts, cursor));
-        return q;
-      })()
-    : { data: [] as PostRow[], error: null };
-  if (postsError) throw postsError;
-  const postRows = (postRowsRaw ?? []) as PostRow[];
-
-  // --- Resolución en batch de lo que las tarjetas necesitan --------------------
-
-  // Catálogo del ancla, por tipo (mismo patrón batch que get-library-items).
   const anchorIdsByType: Record<AnchorType, Set<string>> = {
     book: new Set(),
     movie: new Set(),
@@ -289,12 +231,6 @@ export async function getFeed(
   };
   for (const r of postRows) anchorIdsByType[r.anchor_type].add(r.anchor_id);
 
-  // Filas fuente para display extra, por kind:
-  //  · finished  → pass.rating + reseña (pass_reviews, privacidad aplicada) +
-  //                started_on/finished_on para reviewMeta.
-  //  · progressed→ progress_sessions.position/duration; la nota pública vive ya
-  //                en posts.body (backfill / comentario al compartir).
-  //  · watched   → episode_watches (temporada/episodio/rating/reseña).
   const finishedSourceIds = postRows
     .filter((r) => r.kind === "finished" && r.source_kind === "pass" && r.source_id)
     .map((r) => r.source_id!);
@@ -368,7 +304,6 @@ export async function getFeed(
   const sessionById = new Map((sessionRows.data ?? []).map((r) => [r.id, r]));
   const episodeById = new Map((episodeRows.data ?? []).map((r) => [r.id, r]));
 
-  // Título de episodio, best-effort.
   const episodeSeriesIds = [...new Set((episodeRows.data ?? []).map((r) => r.series_id))];
   const { data: episodeTitles, error: episodeTitlesError } = episodeSeriesIds.length
     ? await supabase
@@ -381,7 +316,6 @@ export async function getFeed(
     (episodeTitles ?? []).map((e) => [`${e.series_id}:${e.season_number}:${e.episode_number}`, e.title]),
   );
 
-  // Identidades de actor.
   const actorIds = [...new Set(postRows.map((r) => r.author_id))];
   const { data: actors, error: actorsError } = actorIds.length
     ? await supabase
@@ -401,8 +335,7 @@ export async function getFeed(
     const actor = actorById.get(r.author_id);
     if (!actor) continue;
     const anchor = anchorFor(r.anchor_type, r.anchor_id);
-    // Ancla borrada (obra eliminada) ⇒ se descarta el evento, como un evento
-    // sin fila de catálogo en el feed viejo.
+    // Ancla borrada (obra eliminada) ⇒ se descarta el evento.
     if (!anchor) continue;
 
     // "Reseñas": el kind ya es 'finished' (filtro SQL); aquí se descarta el
@@ -425,7 +358,6 @@ export async function getFeed(
       itemCoverUrl: anchor.imageUrl,
       itemSubtitle: anchor.subtitle,
       entryStatus: null,
-      // El feed ordena por publicación: las tres fechas son created_at.
       eventDate: r.created_at,
       orderDate: r.created_at,
       sortDate: r.created_at,
@@ -505,6 +437,133 @@ export async function getFeed(
     drafts.push({ ...base, verb: r.kind === "started" ? "started" : "dropped" });
   }
 
+  return drafts;
+}
+
+// Resuelve borrado (dueño o admin/moderador global, un batch) e interacciones
+// (Bloque B) sobre un conjunto de drafts, MUTÁNDOLOS in-place. Sin viewer,
+// `viewerCanDelete` queda undefined (falsy).
+async function resolvePostInteractions(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  drafts: FeedEventDraft[],
+): Promise<void> {
+  if (drafts.length === 0) return;
+
+  if (viewerId) {
+    const { data: moderatablePostIds, error: moderatableError } = await supabase.rpc("moderatable_target_ids", {
+      candidate_target_type: "post",
+      candidate_target_ids: drafts.map((e) => e.postId),
+    });
+    if (moderatableError) throw moderatableError;
+    const moderatable = new Set((moderatablePostIds ?? []) as string[]);
+    for (const e of drafts) {
+      e.viewerCanDelete = e.actorId === viewerId || moderatable.has(e.postId);
+    }
+  }
+
+  const summaries = await getInteractionSummary(supabase, "post", drafts.map((e) => e.postId));
+  for (const e of drafts) {
+    if (!e.interactionTarget) continue;
+    const s = summaries.get(e.interactionTarget.targetId);
+    if (!s) throw new Error(`Interaction summary missing for post:${e.interactionTarget.targetId}`);
+    e.interactionTarget.interactionTargetId = s.interactionTargetId;
+    e.reactionCount = s.reactionCount;
+    e.viewerReacted = s.viewerReacted;
+    e.commentCount = s.commentCount;
+    e.comments = s.comments;
+    e.reactions = s.reactions;
+  }
+}
+
+function finalizePostDraft(draft: FeedEventDraft): FeedEvent {
+  const target = draft.interactionTarget;
+  if (target && target.interactionTargetId === null) {
+    throw new Error(`Interaction target unresolved for post:${target.targetId}`);
+  }
+  return {
+    ...draft,
+    interactionTarget: target ? { ...target, interactionTargetId: target.interactionTargetId! } : null,
+  };
+}
+
+export async function getFeed(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  options: FeedOptions = {},
+): Promise<FeedPage> {
+  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  // Sin agrupación, `pageSize + 1` basta: la fila extra por fuente solo sirve
+  // para detectar «hay más» (ver `allExhausted` abajo).
+  const fetchLimit = pageSize + 1;
+  const cursor = options.cursor ? parseCursor(options.cursor) : null;
+
+  const actorId = options.actorId;
+  const isActorFeed = actorId != null;
+
+  const filter = options.filter;
+  const reviewsOnly = filter === "reviews";
+  // "Pantalla" no es un anchor_type: son dos. saga/persona (pensamientos) no
+  // sobreviven a book/screen — solo aparecen en la vista "todo".
+  const anchorTypes: AnchorType[] | undefined =
+    filter === "book" ? ["book"] : filter === "screen" ? ["movie", "series"] : undefined;
+  const includePosts = filter !== "clubs";
+  // Los clubes son del visitante, no de la persona del perfil: fuera del feed de
+  // actor. Y no son un anchor_type, así que no sobreviven a "Libros"/"Pantalla".
+  const includeClubs =
+    viewerId !== null && !isActorFeed && (filter === undefined || filter === "clubs");
+
+  const [followResult, clubResult] = await Promise.all([
+    includePosts && !isActorFeed && viewerId !== null
+      ? supabase
+          .from("follows")
+          .select("followee_id")
+          .eq("follower_id", viewerId)
+          .eq("status", "accepted")
+      : Promise.resolve({ data: [] as { followee_id: string }[], error: null }),
+    includeClubs && viewerId !== null
+      ? getClubActivityEvents(supabase, viewerId, {
+          cursorFilter: cursor ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor) : undefined,
+          pageSize: fetchLimit,
+        })
+      : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
+  ]);
+  if (followResult.error) throw followResult.error;
+
+  // Feed de actor: solo sus posts. Feed personal: los tuyos ∪ los de tus
+  // seguidos; `follows` nunca te devuelve a ti mismo, así que te añades a mano.
+  // No hay exclusión de "added": añadir no publica, así que un import en masa no
+  // crea posts y no puede inundar la primera página (garantía del writer, Task 9).
+  const authorIds = isActorFeed
+    ? [actorId]
+    : [...(viewerId ? [viewerId] : []), ...(followResult.data ?? []).map((f) => f.followee_id)];
+  const includePersons = includePosts && authorIds.length > 0;
+  if (!includePersons && clubResult.events.length === 0) {
+    return { events: [], nextCursor: null, knownUsernames: [] };
+  }
+
+  const { data: postRowsRaw, error: postsError } = includePersons
+    ? await (() => {
+        let q = supabase
+          .from("posts")
+          .select(POST_COLUMNS)
+          .in("author_id", authorIds)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(fetchLimit);
+        if (anchorTypes) q = q.in("anchor_type", anchorTypes);
+        // "Reseñas" = terminados con texto. El kind se filtra en SQL; el texto
+        // (que vive en el pase, con su privacidad) se filtra tras resolverlo.
+        if (reviewsOnly) q = q.eq("kind", "finished");
+        if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.posts, cursor));
+        return q;
+      })()
+    : { data: [] as PostRow[], error: null };
+  if (postsError) throw postsError;
+  const postRows = (postRowsRaw ?? []) as PostRow[];
+
+  const drafts = await resolvePostDrafts(supabase, postRows, reviewsOnly);
+
   // --- Mezcla, orden y corte de página ----------------------------------------
 
   const entries: Array<
@@ -520,59 +579,28 @@ export async function getFeed(
   ];
 
   // Orden total (día desc, instante desc, id desc) — espejo de `isAfterCursor`.
-  // Cada post es una tarjeta y ninguna se solapa, así que el corte es un slice:
-  // no hace falta el planificador de bordes limpios del feed viejo.
+  // Cada post es una tarjeta y ninguna se solapa, así que el corte es un slice.
   entries.sort(compareEntries);
   const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
   const page = fresh.slice(0, pageSize);
 
-  // viewerCanDelete: dueño o admin/moderador global, en un batch por página
-  // sobre TODOS los posts (cualquier kind es borrable por su dueño). Sin viewer,
-  // el campo queda undefined (falsy).
-  const personEvents = page.filter((e) => e.source === "person").map((e) => e.event);
-  if (viewerId && personEvents.length > 0) {
-    const postIds = personEvents.map((e) => e.postId);
-    const { data: moderatablePostIds, error: moderatableError } = await supabase.rpc("moderatable_target_ids", {
-      candidate_target_type: "post",
-      candidate_target_ids: postIds,
-    });
-    if (moderatableError) throw moderatableError;
-    const moderatable = new Set((moderatablePostIds ?? []) as string[]);
-    for (const e of personEvents) {
-      e.viewerCanDelete = e.actorId === viewerId || moderatable.has(e.postId);
-    }
-  }
+  // Interacciones y borrado solo para los posts de ESTA página (referencias a
+  // los mismos drafts, así que finalizarlos abajo ya los ve resueltos).
+  const personDrafts = page.filter((e) => e.source === "person").map((e) => e.event);
+  await resolvePostInteractions(supabase, viewerId, personDrafts);
 
-  // Interacciones (Bloque B) por los targets `post` de esta página. Las
-  // actividades de club no son target de interacción.
-  const postIds = personEvents.map((e) => e.postId);
-  const summaries = await getInteractionSummary(supabase, "post", postIds);
-  for (const e of personEvents) {
-    if (!e.interactionTarget) continue;
-    const s = summaries.get(e.interactionTarget.targetId);
-    if (!s) {
-      throw new Error(`Interaction summary missing for post:${e.interactionTarget.targetId}`);
-    }
-    e.interactionTarget.interactionTargetId = s.interactionTargetId;
-    e.reactionCount = s.reactionCount;
-    e.viewerReacted = s.viewerReacted;
-    e.commentCount = s.commentCount;
-    e.comments = s.comments;
-    e.reactions = s.reactions;
-  }
-
-  const finalizedPage: FeedEntry[] = page.map((entry) => {
-    if (entry.source === "club") return entry;
-    const target = entry.event.interactionTarget;
-    if (target && target.interactionTargetId === null) {
-      throw new Error(`Interaction target unresolved for post:${target.targetId}`);
-    }
-    const event: FeedEvent = {
-      ...entry.event,
-      interactionTarget: target ? { ...target, interactionTargetId: target.interactionTargetId! } : null,
-    };
-    return { source: "person", id: entry.id, eventDate: entry.eventDate, orderDate: entry.orderDate, sortDate: entry.sortDate, event };
-  });
+  const finalizedPage: FeedEntry[] = page.map((entry) =>
+    entry.source === "club"
+      ? entry
+      : {
+          source: "person",
+          id: entry.id,
+          eventDate: entry.eventDate,
+          orderDate: entry.orderDate,
+          sortDate: entry.sortDate,
+          event: finalizePostDraft(entry.event),
+        },
+  );
 
   // El feed se agota solo cuando ambas fuentes trajeron menos que el fetch Y se
   // sirvió todo lo fresco. Si una fuente topó su límite, o quedaron filas sin
@@ -582,14 +610,36 @@ export async function getFeed(
   const last = page[page.length - 1];
   const nextCursor = (allExhausted && servedAll) || !last ? null : makeCursor(last);
 
-  const knownUsernames = await resolveKnownMentions(supabase, [
-    ...personEvents.map((e) => e.reviewExcerpt).filter((t): t is string => t !== null),
-    ...personEvents.map((e) => e.thought?.body).filter((t): t is string => t !== undefined),
-    ...personEvents.map((e) => e.progress?.note?.body).filter((t): t is string => t !== undefined),
-    ...personEvents.flatMap((e) => e.comments.map((c) => c.body)),
-  ]);
+  const knownUsernames = await resolveKnownMentions(
+    supabase,
+    personDrafts.flatMap((e) => mentionTextsOf(e)),
+  );
 
   return { events: finalizedPage, nextCursor, knownUsernames };
+}
+
+// Carga UN post por id para la ruta `/post/[id]`. La RLS de `posts` gatea la
+// visibilidad (audiencia = perfil), así que "no visible" y "no existe" vuelven
+// igual: `null` → la page hace `notFound()`. Reutiliza la MISMA resolución que
+// el feed (`resolvePostDrafts`/`resolvePostInteractions`), de modo que la
+// tarjeta y su hilo se pintan idénticos a como salen en el feed.
+export async function getPostEvent(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  postId: string,
+): Promise<{ event: FeedEvent; knownUsernames: string[] } | null> {
+  const { data, error } = await supabase.from("posts").select(POST_COLUMNS).eq("id", postId).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const drafts = await resolvePostDrafts(supabase, [data as PostRow], false);
+  // Ancla o autor no resolubles ⇒ nada que pintar (mismo criterio que el feed).
+  if (drafts.length === 0) return null;
+
+  await resolvePostInteractions(supabase, viewerId, drafts);
+  const event = finalizePostDraft(drafts[0]);
+  const knownUsernames = await resolveKnownMentions(supabase, mentionTextsOf(event));
+  return { event, knownUsernames };
 }
 
 // --- Tipos de fila de las queries (Supabase no los infiere del builder) --------
