@@ -26,8 +26,8 @@ export function CommunitySummary({
 }) {
   const accent = MEDIA_ACCENT[itemType];
   // La barra más alta manda: se mide contra el pico real, no contra el total,
-  // o un reparto plano se vería como diez muñones. Y el pico se resalta en
-  // --accent para dar foco visual; el resto, en oro.
+  // o un reparto plano se vería como diez muñones. Todo el histograma va en el
+  // color del tipo de obra; el pico, a plena intensidad, para dar foco visual.
   const max = Math.max(...distribution, 1);
   const peak = distribution.reduce(
     (best, count, i) => (count > distribution[best] ? i : best),
@@ -75,11 +75,16 @@ export function CommunitySummary({
               <span
                 key={i}
                 title={`${starLabel((i + 1) / 2)}★ · ${count}`}
-                className={`min-w-0 flex-1 rounded-t-[2px] ${
-                  i === peak ? "bg-accent" : "bg-gold"
-                }`}
-                // Mínimo de 4px: un voto suelto se ve, no se queda en un muñón.
-                style={{ height: `max(4px, ${(count / max) * 100}%)` }}
+                className="min-w-0 flex-1 rounded-t-[2px]"
+                style={{
+                  // Mínimo de 4px: un voto suelto se ve, no se queda en muñón.
+                  height: `max(4px, ${(count / max) * 100}%)`,
+                  // El color del TIPO de obra (var inline: Tailwind no vería una
+                  // clase interpolada). El pico a plena intensidad y el resto
+                  // atenuado, para que la moda destaque sin cambiar de tono.
+                  background: `var(${accent.varName})`,
+                  opacity: i === peak ? 1 : 0.4,
+                }}
               />
             ),
           )}
@@ -87,7 +92,7 @@ export function CommunitySummary({
         <div className="border-b border-border" />
         <div className="mt-1 flex justify-between text-[9px] leading-none">
           <span className="text-muted-foreground">★</span>
-          <span className="text-gold">★★★★★</span>
+          <span className={accent.text}>★★★★★</span>
         </div>
       </div>
     </div>
