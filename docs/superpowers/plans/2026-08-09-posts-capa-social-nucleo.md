@@ -337,9 +337,20 @@ git commit -m "feat(posts): tabla post_preferences (dev)"
 - Consumes: `posts` (Task 3), enums (Task 1).
 - Produces: una fila `posts` por cada acción histórica compartible; los `interaction_targets` de esas acciones **promovidos in-place** a `kind='post'`, `source_id=post.id`, `href='/post/'||post.id` — con `comments`/`reactions`/`notifications` INTACTOS (mismo `interaction_target_id`).
 
+> **CORRECCIÓN (bug del plan detectado antes de ejecutar):** el trigger
+> `posts_sync_interaction_target` (AFTER INSERT) crea un target `post` fresco en
+> CADA insert de backfill, que colisiona (`unique(kind, source_id)`) con la
+> promoción in-place de más abajo. Por eso el backfill **desactiva el trigger**
+> mientras inserta y promueve, y lo reactiva al final con un fallback para los
+> posts cuyo target fuente no existía.
+
 - [ ] **Step 1: Escribir el backfill — pases terminados → post `finished`**
 
 ```sql
+-- 0) Desactivar el trigger de sync: durante el backfill el target lo aporta la
+--    PROMOCIÓN in-place (preserva comentarios/reacciones), no el trigger.
+alter table public.posts disable trigger posts_sync_interaction_target;
+
 -- 1) Un post 'finished' por cada pase terminado.
 insert into public.posts (id, author_id, kind, anchor_type, anchor_id, source_kind, source_id, created_at)
 select gen_random_uuid(), p.user_id, 'finished', p.item_type::text::public.post_anchor_type,
@@ -395,6 +406,21 @@ set kind = 'post', source_id = np.id, href = '/post/' || np.id::text,
 from public.posts np
 where np.kind = 'progressed' and np.source_kind = 'progress_session'
   and it.kind = 'progress_session' and it.source_id = np.source_id;
+```
+
+- [ ] **Step 3b: Reactivar el trigger y materializar targets faltantes (fallback)**
+
+```sql
+alter table public.posts enable trigger posts_sync_interaction_target;
+-- Cualquier post backfilleado cuyo target fuente NO existía (dato viejo sin
+-- target) se materializa ahora con el MISMO helper que usa el trigger.
+select private.upsert_interaction_target(
+  'post', p.id, p.author_id, 'profile', p.author_id,
+  '/post/' || p.id::text, true, true, 'post_commented', 'post_liked')
+from public.posts p
+where not exists (
+  select 1 from public.interaction_targets it
+  where it.kind = 'post' and it.source_id = p.id);
 ```
 
 - [ ] **Step 4: Contabilizar y decidir los targets sin post (edge case)**
