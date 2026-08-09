@@ -15,6 +15,15 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type Modality = Database["public"]["Enums"]["event_modality"];
 
+// Borrador de relación en pantalla: la config guardada solo necesita
+// `EventRelation` (kind + ids), pero el chip quiere mostrar el título real
+// elegido en el picker, no solo su categoría ("Libro"). `relation.itemType`
+// ya viaja dentro de `EventRelation` cuando kind==="item", así que no hace
+// falta duplicarlo aquí -- solo el label es dato nuevo, y solo lo tienen las
+// relaciones añadidas EN ESTA sesión (las hidratadas al editar no traen
+// título y caen al fallback de categoría, limitación conocida de Task 13).
+type RelationDraft = { relation: EventRelation; label?: string };
+
 // Zonas ofrecidas. No se lista la base de datos IANA entera (600 nombres en un
 // <select> no se usa): son las de los miembros reales del proyecto más el
 // respaldo de UTC. La RPC valida contra pg_timezone_names, así que aceptar otra
@@ -154,7 +163,9 @@ export function EventForm({
   const [allDay, setAllDay] = useState(activityAllDay ?? true);
   const [pickingWork, setPickingWork] = useState(false);
   // Fecha destacada
-  const [relations, setRelations] = useState<EventRelation[]>(activityRelations ?? []);
+  const [relations, setRelations] = useState<RelationDraft[]>(
+    (activityRelations ?? []).map((r) => ({ relation: r })),
+  );
   const [pickingRelation, setPickingRelation] = useState<null | "item" | "activity">(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -206,7 +217,7 @@ export function EventForm({
             allDay,
           }
         : eventType === "fecha_destacada"
-          ? { relations, allDay: true as const }
+          ? { relations: relations.map((d) => d.relation), allDay: true as const }
           : {};
 
     const esEncuentro = eventType === "encuentro";
@@ -269,7 +280,7 @@ export function EventForm({
     <div className="flex flex-col gap-4">
       <Field label={t("eventTypeLabel")} htmlFor={`event-type-${uid}`}>
         {editing ? (
-          <p className="text-sm text-muted-foreground">
+          <p id={`event-type-${uid}`} className="text-sm text-muted-foreground">
             {t(`eventType_${eventType}`)} · {t("eventTypeFixedOnEdit")}
           </p>
         ) : (
@@ -417,43 +428,40 @@ export function EventForm({
       {eventType === "lanzamiento" && (
         <>
           <Field label={t("eventWorkLabel")} htmlFor={`event-work-${uid}`}>
-            {work ? (
-              <div
-                id={`event-work-${uid}`}
-                className="flex items-center gap-3 rounded-card border border-border bg-surface p-2"
-              >
-                {work.coverUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage, mismo criterio que otras tarjetas de catálogo
-                  <img src={work.coverUrl} alt="" className="h-12 w-8 shrink-0 rounded object-cover" />
-                )}
-                <span className="min-w-0 flex-1 truncate text-sm">{work.title}</span>
-                <button type="button" className="text-xs text-accent" onClick={() => setPickingWork(true)}>
-                  {t("eventChangeWork")}
-                </button>
-              </div>
-            ) : pickingWork ? null : (
-              <Button
-                id={`event-work-${uid}`}
-                type="button"
-                variant="secondary"
-                onClick={() => setPickingWork(true)}
-              >
-                {t("eventPickWork")}
-              </Button>
-            )}
-            {pickingWork && (
-              <ItemPicker
-                allowedItemTypes="all"
-                onPick={(item) => {
-                  setWork(item);
-                  setReleaseType("");
-                  setPlatform("");
-                  setPickingWork(false);
-                  if (!title.trim()) setTitle(item.title);
-                }}
-                onCancel={() => setPickingWork(false)}
-              />
-            )}
+            {/* Contenedor siempre presente: htmlFor necesita un id que exista en
+                CUALQUIER combinación de work/pickingWork (incluida la de "sin obra
+                y eligiendo", donde ni el resumen ni el botón se pintan). */}
+            <div id={`event-work-${uid}`} className="flex flex-col gap-2">
+              {work ? (
+                <div className="flex items-center gap-3 rounded-card border border-border bg-surface p-2">
+                  {work.coverUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage, mismo criterio que otras tarjetas de catálogo
+                    <img src={work.coverUrl} alt="" className="h-12 w-8 shrink-0 rounded object-cover" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm">{work.title}</span>
+                  <button type="button" className="text-xs text-accent" onClick={() => setPickingWork(true)}>
+                    {t("eventChangeWork")}
+                  </button>
+                </div>
+              ) : pickingWork ? null : (
+                <Button type="button" variant="secondary" onClick={() => setPickingWork(true)}>
+                  {t("eventPickWork")}
+                </Button>
+              )}
+              {pickingWork && (
+                <ItemPicker
+                  allowedItemTypes="all"
+                  onPick={(item) => {
+                    setWork(item);
+                    setReleaseType("");
+                    setPlatform("");
+                    setPickingWork(false);
+                    if (!title.trim()) setTitle(item.title);
+                  }}
+                  onCancel={() => setPickingWork(false)}
+                />
+              )}
+            </div>
           </Field>
 
           {work && (
@@ -529,10 +537,13 @@ export function EventForm({
         <Field label={t("eventRelationsLabel")} htmlFor={`event-relations-${uid}`}>
           <p className="text-xs text-muted-foreground">{t("eventRelationsHint")}</p>
           <ul id={`event-relations-${uid}`} className="flex flex-col gap-1">
-            {relations.map((r, i) => (
+            {relations.map((d, i) => (
               <li key={i} className="flex items-center gap-2 rounded-card border border-border p-2 text-sm">
                 <span className="min-w-0 flex-1 truncate">
-                  {r.kind === "item" ? t(`itemType_${r.itemType}`) : t("eventRelationActivities")}
+                  {d.label ??
+                    (d.relation.kind === "item"
+                      ? t(`itemType_${d.relation.itemType}`)
+                      : t("eventRelationActivities"))}
                 </span>
                 <button
                   type="button"
@@ -549,7 +560,13 @@ export function EventForm({
             <ItemPicker
               allowedItemTypes="all"
               onPick={(item) => {
-                setRelations([...relations, { kind: "item", itemType: item.itemType, itemId: item.itemId }]);
+                setRelations([
+                  ...relations,
+                  {
+                    relation: { kind: "item", itemType: item.itemType, itemId: item.itemId },
+                    label: item.title,
+                  },
+                ]);
                 setPickingRelation(null);
               }}
               onCancel={() => setPickingRelation(null)}
@@ -562,7 +579,7 @@ export function EventForm({
                   type="button"
                   className="truncate rounded p-1 text-left text-sm hover:bg-surface-muted"
                   onClick={() => {
-                    setRelations([...relations, { kind: "activity", activityId: a.id }]);
+                    setRelations([...relations, { relation: { kind: "activity", activityId: a.id }, label: a.title }]);
                     setPickingRelation(null);
                   }}
                 >

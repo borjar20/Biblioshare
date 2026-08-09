@@ -941,7 +941,6 @@
     "eventAllDayHint": "sin hora concreta",
     "eventRelationsLabel": "Enlaces",
     "eventRelationsHint": "Obras o actividades del club (opcional)",
-    "eventAddRelation": "Añadir obra o actividad",
     "eventRelationItems": "Obras",
     "eventRelationActivities": "Actividades del club",
     "eventRelationRemove": "Quitar",
