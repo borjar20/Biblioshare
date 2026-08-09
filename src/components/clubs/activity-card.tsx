@@ -51,7 +51,9 @@ export function ActivityCard({
   const meta = linked
     ? t("participants", { count: activity.participantCount })
     : activity.startsOn
-      ? formatEventDate(activity.startsOn)
+      ? activity.eventType && activity.eventType !== "encuentro"
+        ? `${t(`eventType_${activity.eventType}`)} · ${formatEventDate(activity.startsOn)}`
+        : formatEventDate(activity.startsOn)
       : "";
   // Gateado también a status="active": un evento archivado o finalizado ya
   // enseña su propia píldora de estado (STATUS_STYLE), y sin este gate

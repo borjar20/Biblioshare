@@ -8,6 +8,7 @@ import { EventForm } from "@/components/clubs/propose/event-form";
 import { setClubEventState } from "@/lib/clubs/activities/event-follow-actions";
 import type { DeclaredEventState } from "@/lib/clubs/activities/event-state";
 import type { ClubEventDetail } from "@/lib/clubs/activities/event-detail";
+import type { LanzamientoConfig, FechaDestacadaConfig } from "@/lib/clubs/activities/event-types";
 
 // Editar, cancelar, posponer y reprogramar. Vive en la ficha porque ahí es donde
 // el evento tiene sitio para explicarse; la tarjeta del muro sigue con sus dos
@@ -34,6 +35,12 @@ export function EventModeration({ event }: { event: ClubEventDetail }) {
     });
   }
 
+  // Accesos a `config` guardados tras comprobar `eventType`: es opaco a la BD y
+  // solo tiene la forma de LanzamientoConfig/FechaDestacadaConfig para su propio tipo.
+  const lanzamiento = event.eventType === "lanzamiento" ? (event.config as LanzamientoConfig) : null;
+  const fechaDestacada =
+    event.eventType === "fecha_destacada" ? (event.config as FechaDestacadaConfig) : null;
+
   if (editando) {
     return (
       <div className="rounded-card border border-border bg-surface p-4">
@@ -50,6 +57,13 @@ export function EventModeration({ event }: { event: ClubEventDetail }) {
             modality: event.modality,
             onlineUrl: event.onlineUrl,
           }}
+          activityEventType={event.eventType}
+          activityWork={event.hydratedItem}
+          activityReleaseType={lanzamiento?.releaseType ?? undefined}
+          activityPlatform={lanzamiento?.platform ?? undefined}
+          activityRegion={lanzamiento?.region}
+          activityAllDay={event.allDay}
+          activityRelations={fechaDestacada?.relations}
           onDone={() => {
             setEditando(false);
             router.refresh();

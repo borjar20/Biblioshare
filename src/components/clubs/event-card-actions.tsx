@@ -30,6 +30,7 @@ export function EventCardActions({ activity }: { activity: ClubActivity }) {
             description: activity.description,
             startsOn: activity.startsOn,
           }}
+          activityEventType={activity.eventType ?? "encuentro"}
           onDone={() => setEditing(false)}
           onCancel={() => setEditing(false)}
         />

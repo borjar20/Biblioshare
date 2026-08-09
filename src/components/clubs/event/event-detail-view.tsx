@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { AlertIcon, ClockIcon } from "@/components/ui/icons";
 import type { ClubEventDetail } from "@/lib/clubs/activities/event-detail";
+import type { LanzamientoConfig } from "@/lib/clubs/activities/event-types";
 import {
   formatEventWhen,
   formatEventTime,
@@ -42,12 +43,34 @@ export function EventDetailView({
 
   const viewerTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
-  const cuando = formatEventWhen(event.startsAt, event.endsAt, event.timezone);
-  const mostrarZona = shouldShowTimezone(event.timezone, viewerTz ?? null);
+  // Sin hora concreta (lanzamiento «todo el día» / fecha destacada): solo la
+  // fecha, formateada en la zona del evento -- nunca con `new Date().getDate()`,
+  // que usaría la zona del navegador y podría bailar un día.
+  const cuando =
+    event.allDay && event.startsAt
+      ? new Intl.DateTimeFormat("es-ES", {
+          timeZone: event.timezone,
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(new Date(event.startsAt))
+      : formatEventWhen(event.startsAt, event.endsAt, event.timezone);
+  const mostrarZona = !event.allDay && shouldShowTimezone(event.timezone, viewerTz ?? null);
   const horaEnMiZona =
     mostrarZona && viewerTz && event.startsAt
       ? formatEventTime(event.startsAt, viewerTz)
       : null;
+
+  const lanzamiento = event.eventType === "lanzamiento" ? (event.config as LanzamientoConfig) : null;
+  const lanzamientoMeta = lanzamiento
+    ? [
+        lanzamiento.releaseType ? t(`releaseType_${lanzamiento.releaseType}`) : null,
+        lanzamiento.platform ? t(`platform_${lanzamiento.platform}`) : null,
+        lanzamiento.region ?? null,
+      ]
+        .filter((v): v is string => Boolean(v))
+        .join(" · ")
+    : "";
 
   const seguible = canFollowEvent(event.state);
 
@@ -159,24 +182,30 @@ export function EventDetailView({
         )}
 
         <dl className="mt-6 flex flex-col gap-3">
-          {event.modality && (
-            <Field label={t("eventFieldModality")}>{t(`modality_${event.modality}`)}</Field>
-          )}
-          {event.location && <Field label={t("eventFieldLocation")}>{event.location}</Field>}
-          {/* El enlace de acceso solo se sirve a miembros: llegar aquí ya lo exige
-              (RLS + gate de la página), y se comprueba otra vez porque una ficha es
-              justo donde se filtra un enlace por descuido. */}
-          {event.onlineUrl && viewerIsMember && (
-            <Field label={t("eventFieldOnline")}>
-              <a
-                href={event.onlineUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="break-all text-accent hover:underline"
-              >
-                {event.onlineUrl}
-              </a>
-            </Field>
+          {/* Modalidad/lugar/enlace son propios de Encuentro -- Lanzamiento y
+              Fecha destacada tienen su propio bloque justo debajo. */}
+          {event.eventType === "encuentro" && (
+            <>
+              {event.modality && (
+                <Field label={t("eventFieldModality")}>{t(`modality_${event.modality}`)}</Field>
+              )}
+              {event.location && <Field label={t("eventFieldLocation")}>{event.location}</Field>}
+              {/* El enlace de acceso solo se sirve a miembros: llegar aquí ya lo exige
+                  (RLS + gate de la página), y se comprueba otra vez porque una ficha es
+                  justo donde se filtra un enlace por descuido. */}
+              {event.onlineUrl && viewerIsMember && (
+                <Field label={t("eventFieldOnline")}>
+                  <a
+                    href={event.onlineUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-all text-accent hover:underline"
+                  >
+                    {event.onlineUrl}
+                  </a>
+                </Field>
+              )}
+            </>
           )}
           <Field label={t("eventFieldOrganizer")}>
             <span className="inline-flex items-center gap-2">
@@ -198,6 +227,58 @@ export function EventDetailView({
             </span>
           </Field>
         </dl>
+
+        {event.eventType === "lanzamiento" && event.hydratedItem && (
+          <div className="mt-4 flex items-center gap-3">
+            <Link
+              href={`/${
+                event.hydratedItem.itemType === "book"
+                  ? "libro"
+                  : event.hydratedItem.itemType === "movie"
+                    ? "pelicula"
+                    : "serie"
+              }/${event.hydratedItem.itemId}`}
+              className="flex items-center gap-3 hover:opacity-80"
+            >
+              {event.hydratedItem.coverUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={event.hydratedItem.coverUrl}
+                  alt=""
+                  className="h-16 w-11 rounded object-cover"
+                />
+              )}
+              <span className="font-medium text-foreground">{event.hydratedItem.title}</span>
+            </Link>
+            {lanzamientoMeta && (
+              <span className="text-sm text-muted-foreground">{lanzamientoMeta}</span>
+            )}
+          </div>
+        )}
+
+        {event.eventType === "fecha_destacada" && event.hydratedRelations.length > 0 && (
+          <ul className="mt-4 flex flex-col gap-1">
+            {event.hydratedRelations.map((r, i) => (
+              <li key={i} className="text-sm">
+                {r.kind === "item" ? (
+                  <Link
+                    href={`/${r.itemType === "book" ? "libro" : r.itemType === "movie" ? "pelicula" : "serie"}/${r.itemId}`}
+                    className="text-accent hover:underline"
+                  >
+                    {r.title}
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/club/${r.clubSlug}/actividad/${r.activityId}`}
+                    className="text-accent hover:underline"
+                  >
+                    {r.title}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {event.description && (
           <p className="mt-5 max-w-[62ch] text-sm leading-relaxed whitespace-pre-line text-foreground-soft">
