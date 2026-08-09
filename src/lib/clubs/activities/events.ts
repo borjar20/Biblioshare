@@ -10,6 +10,7 @@ import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 import { validateEventInput } from "./validate-event-input";
 import { notifyEventFollowers } from "./event-reminders";
 import type { Database } from "@/lib/supabase/database.types";
+import type { EventType, EventConfig, LanzamientoConfig, FechaDestacadaConfig } from "./event-types";
 
 // Eventos de club (spec 2026-07-22). Módulo aparte de core.ts porque un evento
 // no comparte NADA de su ciclo de vida: no se propone, no se activa, no se une
@@ -30,6 +31,19 @@ async function requireUser() {
 }
 
 
+export type EventFormError =
+  // Del validador de cliente y de las RPC (snake_case):
+  | "title_required" | "title_too_long" | "starts_on_required" | "description_too_long"
+  | "starts_time_required"
+  | "invalid_timezone" | "location_too_long" | "online_url_too_long"
+  | "invalid_online_url" | "online_event_has_location" | "ends_before_starts"
+  | "not_found" | "not_an_event" | "event_not_active" | "forbidden"
+  // De la validación de config en esta capa:
+  | "item_required" | "release_type_required" | "relation_not_in_club"
+  | "unknown";
+
+export type EventFormResult = { ok: true; activityId: string } | { ok: false; code: EventFormError };
+
 /**
  * Campos del evento que llegan del formulario. La hora va aparte de la fecha y
  * como texto "HH:MM": el instante lo construye SQL con la zona del evento
@@ -37,6 +51,7 @@ async function requireUser() {
  * base de datos de zonas y no aritmética nuestra.
  */
 export type ClubEventFields = {
+  eventType: EventType;
   title: string;
   description?: string;
   startsOn: string;
@@ -46,20 +61,70 @@ export type ClubEventFields = {
   location?: string;
   modality?: Database["public"]["Enums"]["event_modality"];
   onlineUrl?: string;
+  /** Solo para lanzamiento/fecha_destacada. Encuentro no lo manda. */
+  config?: EventConfig;
 };
+
+const RPC_CODES: ReadonlySet<string> = new Set<EventFormError>([
+  "title_required", "title_too_long", "starts_on_required", "description_too_long",
+  "starts_time_required", "invalid_timezone", "location_too_long", "online_url_too_long",
+  "invalid_online_url", "online_event_has_location", "ends_before_starts",
+  "not_found", "not_an_event", "event_not_active", "forbidden",
+]);
+
+function mapRpcError(error: { message?: string } | null, where: string): EventFormResult {
+  const raw = error?.message?.trim() ?? "";
+  if (RPC_CODES.has(raw)) return { ok: false, code: raw as EventFormError };
+  console.error(`${where} failed`, error);
+  return { ok: false, code: "unknown" };
+}
+
+/** Validación de cliente (título/fechas) + de config, devolviendo código. No lanza. */
+function validateFields(input: ClubEventFields): EventFormError | null {
+  try {
+    validateEventInput(input); // title/starts_on/description; lanza el código
+  } catch (e) {
+    return (e as Error).message as EventFormError;
+  }
+  if (input.eventType === "lanzamiento") {
+    const cfg = input.config as LanzamientoConfig | undefined;
+    if (!cfg?.item) return "item_required";
+    if (!cfg.releaseType) return "release_type_required";
+  }
+  return null;
+}
+
+/** Las relaciones de tipo `activity` de una fecha destacada deben ser del MISMO club. */
+async function relationsInClub(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clubId: string,
+  config: EventConfig | undefined,
+): Promise<boolean> {
+  const relations = (config as FechaDestacadaConfig | undefined)?.relations ?? [];
+  const activityIds = relations.filter((r) => r.kind === "activity").map((r) => r.activityId);
+  if (activityIds.length === 0) return true;
+  const { data } = await supabase
+    .from("club_activities")
+    .select("id")
+    .eq("club_id", clubId)
+    .in("id", activityIds);
+  return (data?.length ?? 0) === activityIds.length;
+}
 
 export async function createClubEvent(
   input: { clubId: string } & ClubEventFields,
-): Promise<void> {
+): Promise<EventFormResult> {
   const { supabase, userId } = await requireUser();
-  const title = validateEventInput(input);
+
+  const invalid = validateFields(input);
+  if (invalid) return { ok: false, code: invalid };
+  if (input.eventType === "fecha_destacada" && !(await relationsInClub(supabase, input.clubId, input.config))) {
+    return { ok: false, code: "relation_not_in_club" };
+  }
 
   const { data: eventId, error } = await supabase.rpc("create_club_event", {
     p_club_id: input.clubId,
-    p_title: title,
-    // Sin cast: desde la migración 20260810 `p_description` tiene `default null`,
-    // así que el tipo generado lo marca opcional y `undefined` significa lo que
-    // parece. Antes hacía falta un `as string` sobre un null para colarlo.
+    p_title: input.title.trim(),
     p_description: input.description,
     p_starts_on: input.startsOn,
     p_starts_time: input.startsTime,
@@ -68,49 +133,43 @@ export async function createClubEvent(
     p_location: input.location,
     p_modality: input.modality,
     p_online_url: input.onlineUrl,
+    p_event_type: input.eventType,
+    p_config: (input.config ?? {}) as never,
   });
-  if (error) throw error;
+  if (error) return mapRpcError(error, "createClubEvent");
 
-  await notifyClub(
-    supabase,
-    input.clubId,
-    userId,
-    "club_event_created",
-    eventId as string,
-  );
+  await notifyClub(supabase, input.clubId, userId, "club_event_created", eventId as string);
   revalidateClubPages();
+  return { ok: true, activityId: eventId as string };
 }
 
 export async function updateClubEvent(
   input: { activityId: string } & ClubEventFields,
-): Promise<void> {
+): Promise<EventFormResult> {
   const { supabase, userId } = await requireUser();
-  const title = validateEventInput(input);
 
-  // La fecha/hora ANTERIOR, leída antes de escribir: es lo único que distingue
-  // «corregir una errata» de «mover el evento», y solo lo segundo se avisa. Sin
-  // esta lectura habría que avisar de toda edición (ruido) o de ninguna (dejar a
-  // los seguidores con una fecha vieja en la cabeza).
+  const invalid = validateFields(input);
+  if (invalid) return { ok: false, code: invalid };
+
+  // club_id + fecha ANTERIOR en una lectura: club_id para validar relaciones,
+  // starts_at para decidir si se avisa a los seguidores (solo si cambia el instante).
   const { data: antes } = await supabase
     .from("club_activities")
-    .select("starts_at")
+    .select("club_id, starts_at")
     .eq("id", input.activityId)
     .maybeSingle();
 
-  // La RPC valida moderador+ (has_min_club_role(club_id, 'moderator'); no hay
-  // rama de creador), kind='evento' y status='active' (un evento archivado ya
-  // no es editable); lanza 'not_found' | 'not_an_event' | 'forbidden' |
-  // 'title_required' | 'title_too_long' | 'starts_on_required' |
-  // 'description_too_long' | 'event_not_active'. Todos en snake_case desde la
-  // migración 20260810 (#133): antes eran frases con espacios y no casaban con
-  // la convención del cliente, así que cualquier intento de mapearlos a una
-  // clave i18n fallaba en silencio justo para estos.
-  //
-  // Se relanza tal cual -- el llamante (UI) es quien traduce/pinta el error,
-  // mismo patrón que el resto de este módulo y de core.ts.
+  if (
+    input.eventType === "fecha_destacada" &&
+    antes?.club_id &&
+    !(await relationsInClub(supabase, antes.club_id, input.config))
+  ) {
+    return { ok: false, code: "relation_not_in_club" };
+  }
+
   const { error } = await supabase.rpc("update_club_event", {
     p_activity_id: input.activityId,
-    p_title: title,
+    p_title: input.title.trim(),
     p_description: input.description,
     p_starts_on: input.startsOn,
     p_starts_time: input.startsTime,
@@ -119,17 +178,10 @@ export async function updateClubEvent(
     p_location: input.location,
     p_modality: input.modality,
     p_online_url: input.onlineUrl,
+    p_config: (input.config ?? {}) as never,
   });
-  if (error) throw error;
+  if (error) return mapRpcError(error, "updateClubEvent");
 
-  // Al club entero se le sigue sin avisar de una edición: ya se enteró de la fecha
-  // al crearse, y avisar de cada corrección de errata sería ruido (decisión de la
-  // spec 2026-07-22, intacta).
-  //
-  // Lo que sí se avisa, y solo a QUIENES LO SIGUEN, es que cambie la fecha o la
-  // hora: han apuntado ese día en su calendario mental y sus recordatorios acaban
-  // de reprogramarse solos. Se compara el instante antes/después, no «se editó»:
-  // cambiar la ubicación no mueve a nadie de sitio en su agenda.
   const { data: despues } = await supabase
     .from("club_activities")
     .select("starts_at")
@@ -145,4 +197,5 @@ export async function updateClubEvent(
   }
 
   revalidateClubPages();
+  return { ok: true, activityId: input.activityId };
 }
