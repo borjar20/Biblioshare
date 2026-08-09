@@ -61,16 +61,28 @@ export function CommunitySummary({
           el tooltip, no como texto fijo (se pierde precisión, gana legibilidad). */}
       <div className="flex-1 lg:mt-5 lg:w-full lg:flex-none">
         <div className="flex h-16 items-end gap-[3px]">
-          {distribution.map((count, i) => (
-            <span
-              key={i}
-              title={`${starLabel((i + 1) / 2)}★ · ${count}`}
-              className={`min-w-0 flex-1 rounded-t-[2px] ${
-                i === peak ? "bg-accent" : "bg-gold"
-              }`}
-              style={{ height: `${(count / max) * 100}%` }}
-            />
-          ))}
+          {distribution.map((count, i) =>
+            // Cero MEDIDO —una media estrella que nadie ha puesto—: una marca
+            // fina en la base, igual que el histograma de /estadísticas. Un
+            // hueco invisible confundiría «cero votos» con «no hay dato».
+            count === 0 ? (
+              <span
+                key={i}
+                title={`${starLabel((i + 1) / 2)}★ · 0`}
+                className="h-0.5 min-w-0 flex-1 rounded-full bg-surface-3"
+              />
+            ) : (
+              <span
+                key={i}
+                title={`${starLabel((i + 1) / 2)}★ · ${count}`}
+                className={`min-w-0 flex-1 rounded-t-[2px] ${
+                  i === peak ? "bg-accent" : "bg-gold"
+                }`}
+                // Mínimo de 4px: un voto suelto se ve, no se queda en un muñón.
+                style={{ height: `max(4px, ${(count / max) * 100}%)` }}
+              />
+            ),
+          )}
         </div>
         <div className="border-b border-border" />
         <div className="mt-1 flex justify-between text-[9px] leading-none">
