@@ -167,6 +167,27 @@ semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Spec:
   tarjeta ([#528](https://github.com/borjar20/Biblioshare/issues/528)). Spec:
   `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md` · Plan:
   `.superpowers/sdd/2026-08-06-pensamientos-post/`
+- [x] **`posts` como capa social — Núcleo (Spec 1)** (2026-08-09) — cada publicación
+  social es una entidad `posts` de primera clase con `post_id` estable y **ruta propia
+  `/post/[id]`** (donde aterrizan notificaciones y deep links). El feed deja el *fan-out
+  on-read* sobre 6 fuentes y lee UNA tabla `posts` (kind = thought|finished|progressed|
+  started|dropped|watched) mezclada con la actividad de club, **ordenando por fecha de
+  publicación** (cursor keyset trivial, sin agrupación). Comentarios/reacciones NO se
+  migran: el post es 1:1 con su `interaction_target` (`kind='post'`, href `/post/[id]`) y el
+  hilo se recupera por `post_id`. Writers de hito (`started`/`finished`/`dropped`) en la
+  acción de ficha (nunca en `applyTransition` → «el admin no publica»), con
+  `post_preferences` (opt-out). La tabla **`thoughts` se absorbe** en `posts`. La ficha
+  (community tab) resuelve ahora el hilo por el target del post — converge con el feed.
+  **Migraciones aplicadas y verificadas SOLO en dev** (`20260843`–`20260846`); código
+  committeado en el worktree `posts-capa-social` (rama `feat/posts-capa-social`), **sin
+  mergear y sin desplegar a producción** — el drop de `thoughts` (`20260847`) es POST-merge.
+  1345 unitarios + typecheck + lint en verde; e2e `e2e/posts.spec.ts` escrito y committeado,
+  no ejecutable en este worktree (sin `.env.local`). Supersede la fila «Pensamiento» de
+  arriba. **Diferido a issues**: Spec 2 (compartir en formulario + writers de hito + UI de
+  `post_preferences`), Spec 3 (episodios agrupados), retirada de triggers fuente
+  passes/sessions/episodes + migración de community/episodios a posts, gate de prototipos de
+  UI (§7.4). Spec: `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md` · Plan:
+  `docs/superpowers/plans/2026-08-09-posts-capa-social-nucleo.md`
 
 ### Importación
 - [x] **Importar biblioteca** (§7.7) — `/importar` desde Goodreads (CSV) y Letterboxd (`diary.csv`); matching contra catálogo/APIs, idempotente, resolución manual gateada a collaborator+. También accesible **desde el paso 2 del onboarding**, donde las filas sin match se encolan solas. **Bookmory (`.xlsx`) se retiró el 2026-07-20** y con él la dependencia `exceljs`.
