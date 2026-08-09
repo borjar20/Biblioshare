@@ -168,6 +168,7 @@ export type Database = {
           ends_on: string | null
           event_state: Database["public"]["Enums"]["club_event_state"]
           event_timezone: string
+          event_type: Database["public"]["Enums"]["club_event_type"]
           id: string
           kind: Database["public"]["Enums"]["activity_kind"]
           location: string | null
@@ -194,6 +195,7 @@ export type Database = {
           ends_on?: string | null
           event_state?: Database["public"]["Enums"]["club_event_state"]
           event_timezone?: string
+          event_type?: Database["public"]["Enums"]["club_event_type"]
           id?: string
           kind: Database["public"]["Enums"]["activity_kind"]
           location?: string | null
@@ -220,6 +222,7 @@ export type Database = {
           ends_on?: string | null
           event_state?: Database["public"]["Enums"]["club_event_state"]
           event_timezone?: string
+          event_type?: Database["public"]["Enums"]["club_event_type"]
           id?: string
           kind?: Database["public"]["Enums"]["activity_kind"]
           location?: string | null
@@ -2604,8 +2607,10 @@ export type Database = {
       create_club_event: {
         Args: {
           p_club_id: string
+          p_config?: Json
           p_description?: string
           p_ends_time?: string
+          p_event_type?: Database["public"]["Enums"]["club_event_type"]
           p_location?: string
           p_modality?: Database["public"]["Enums"]["event_modality"]
           p_online_url?: string
@@ -2840,6 +2845,7 @@ export type Database = {
       update_club_event: {
         Args: {
           p_activity_id: string
+          p_config?: Json
           p_description?: string
           p_ends_time?: string
           p_location?: string
@@ -2867,6 +2873,7 @@ export type Database = {
         | "evento"
       activity_status: "proposed" | "active" | "finished" | "archived"
       club_event_state: "programado" | "cancelado" | "pospuesto"
+      club_event_type: "encuentro" | "lanzamiento" | "fecha_destacada"
       club_member_status: "invited" | "active" | "requested"
       club_post_kind: "text" | "activity_share" | "poll"
       club_role: "member" | "moderator" | "owner"
@@ -3082,6 +3089,7 @@ export const Constants = {
       ],
       activity_status: ["proposed", "active", "finished", "archived"],
       club_event_state: ["programado", "cancelado", "pospuesto"],
+      club_event_type: ["encuentro", "lanzamiento", "fecha_destacada"],
       club_member_status: ["invited", "active", "requested"],
       club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
