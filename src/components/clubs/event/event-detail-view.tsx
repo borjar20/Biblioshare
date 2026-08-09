@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { AlertIcon, ClockIcon } from "@/components/ui/icons";
 import type { ClubEventDetail } from "@/lib/clubs/activities/event-detail";
 import type { LanzamientoConfig } from "@/lib/clubs/activities/event-types";
+import { isValidReleaseType, PLATFORMS } from "@/lib/clubs/activities/event-release-types";
 import {
   formatEventWhen,
   formatEventTime,
@@ -62,10 +63,28 @@ export function EventDetailView({
       : null;
 
   const lanzamiento = event.eventType === "lanzamiento" ? (event.config as LanzamientoConfig) : null;
+  // config es opaco a la BD: un valor legacy/corrupto no debe reventar contra
+  // una clave i18n que no existe -- si no está en el vocabulario vigente, se
+  // enseña el string crudo en vez de traducirlo.
+  const releaseTypeValid =
+    lanzamiento?.item && lanzamiento.releaseType
+      ? isValidReleaseType(lanzamiento.item.itemType, lanzamiento.releaseType)
+      : false;
+  const platformValid = lanzamiento?.platform
+    ? PLATFORMS.some((p) => p.value === lanzamiento.platform)
+    : false;
   const lanzamientoMeta = lanzamiento
     ? [
-        lanzamiento.releaseType ? t(`releaseType_${lanzamiento.releaseType}`) : null,
-        lanzamiento.platform ? t(`platform_${lanzamiento.platform}`) : null,
+        lanzamiento.releaseType
+          ? releaseTypeValid
+            ? t(`releaseType_${lanzamiento.releaseType}`)
+            : lanzamiento.releaseType
+          : null,
+        lanzamiento.platform
+          ? platformValid
+            ? t(`platform_${lanzamiento.platform}`)
+            : lanzamiento.platform
+          : null,
         lanzamiento.region ?? null,
       ]
         .filter((v): v is string => Boolean(v))
