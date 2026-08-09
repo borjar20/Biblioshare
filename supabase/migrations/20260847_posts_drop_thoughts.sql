@@ -8,6 +8,37 @@
 -- Regla del repo: código primero, esquema (DROP) después; dev primero, prod
 -- después; verificar contra objetos reales (to_regclass), no contra el ledger.
 
+-- 1) `social_target_owner_id` deja de referenciar `public.thoughts` (que se
+--    dropea abajo). El backfill promovió a 'post' todas las filas 'thought', así
+--    que la rama es inerte —no quedan targets 'thought' y ningún código llama a
+--    can_moderate_target('thought', …)— pero dejaría una referencia a tabla
+--    inexistente en una función SECURITY DEFINER. Se recrea sin esa rama; una
+--    llamada con 'thought' (imposible hoy) caería al CASE sin match -> NULL.
+create or replace function private.social_target_owner_id(p_target_type target_kind, p_target_id uuid)
+returns uuid
+language sql
+stable security definer
+set search_path to ''
+as $function$
+  select case p_target_type
+    when 'diary_entry' then (select p.user_id from public.passes p where p.id = p_target_id)
+    when 'pass' then (select p.user_id from public.passes p where p.id = p_target_id)
+    when 'episode_watch' then (select e.user_id from public.episode_watches e where e.id = p_target_id)
+    when 'progress_session' then (select s.user_id from public.progress_sessions s where s.id = p_target_id)
+    when 'club_post' then (select cp.author_id from public.club_posts cp where cp.id = p_target_id)
+    when 'comment' then (select c.author_id from public.comments c where c.id = p_target_id)
+    when 'activity_checkpoint' then (
+      select cc.created_by from public.club_activity_checkpoints cc where cc.id = p_target_id
+    )
+    when 'club_activity' then (
+      select ca.created_by from public.club_activities ca where ca.id = p_target_id
+    )
+    when 'post' then (select po.author_id from public.posts po where po.id = p_target_id)
+  end;
+$function$;
+
+-- 2) Retirar thoughts (absorbida). Ningún objeto EXTERNO depende de la tabla
+--    (verificado en prod: solo su check y sus 4 policies, que caen con ella).
 drop trigger if exists thoughts_sync_interaction_target on public.thoughts;
 drop trigger if exists thoughts_cleanup_social_target on public.thoughts;
 drop trigger if exists thoughts_set_updated_at on public.thoughts;
