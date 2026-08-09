@@ -12,7 +12,7 @@ import { RichTextView } from "@/components/social/rich-text-view";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { SpoilerGate } from "./spoiler-gate";
 import { anchorHref } from "@/lib/catalog/anchor";
-import { deleteThought } from "@/lib/social/thought-actions";
+import { deletePost } from "@/lib/social/post-actions";
 
 // Tarjeta de «Pensamiento» (Fase 5, Task 5.3): cabecera + píldora dorada,
 // chip del ancla (obra/saga/persona), cuerpo markdown-lite con blur de
@@ -56,7 +56,7 @@ export function ThoughtCard({
     if (!window.confirm(t("thoughtDeleteConfirm"))) return;
     setDeleteError(false);
     startTransition(async () => {
-      const result = await deleteThought(thoughtId);
+      const result = await deletePost(thoughtId);
       // Borrado optimista: solo tras confirmar `ok:true` -- si la RLS lo
       // bloqueó (respuesta not_allowed_or_missing) o hubo un fallo, la
       // tarjeta se queda y se avisa en línea (nunca desaparece "a ciegas").

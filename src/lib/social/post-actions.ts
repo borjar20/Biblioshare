@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidateFeed } from "@/lib/reactivity/revalidate";
-import type { AnchorType } from "@/lib/catalog/anchor";
+import type { AnchorType, AnchorRef } from "@/lib/catalog/anchor";
 import { notifyMentions } from "./notify-mentions";
+import { searchAnchors } from "./anchor-search";
 
 export type PostKind =
   | "thought"
@@ -144,4 +145,17 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     console.error("deletePost failed", error);
     return { ok: false, error: "unknown" };
   }
+}
+
+// Wrapper fino para el cliente (compositor de post): el compositor no puede
+// llamar a searchAnchors directamente (necesita un SupabaseServerClient de
+// sesión), así que esta acción resuelve el viewer y delega. Sin sesión, lista
+// vacía en vez de error -- el autocompletar simplemente no encuentra nada.
+export async function searchAnchorsAction(query: string): Promise<AnchorRef[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  return searchAnchors(supabase, user.id, query);
 }
