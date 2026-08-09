@@ -291,6 +291,23 @@ test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", asyn
     await card.getByRole("button", { name: /^comentar$/i }).click();
     await expect(card.getByText(`hola desde el comentador ${stamp}`)).toBeVisible();
 
+    // DIAGNÓSTICO TEMPORAL: verdad de la BD (service-role, sin RLS) justo tras el
+    // comentario, antes de que A cargue la campana. Confirma si el aviso existe y
+    // para quién, y el estado del comentario/target.
+    const diagNotifs = await rest<unknown[]>(
+      `notifications?user_id=eq.${author.id}&select=id,type,user_id,actor_id,interaction_target_id,target_type,target_id&order=created_at.desc`,
+    );
+    const diagTargets = await rest<unknown[]>(
+      `interaction_targets?source_id=eq.${postId}&select=id,kind,owner_id,comment_notification_type,commentable`,
+    );
+    const diagComments = await rest<unknown[]>(
+      `comments?select=id,author_id,interaction_target_id&order=created_at.desc&limit=3`,
+    );
+    console.log("DIAG author.id=", author.id, "commenter.id=", commenter.id, "postId=", postId);
+    console.log("DIAG notifs=", JSON.stringify(diagNotifs));
+    console.log("DIAG targets=", JSON.stringify(diagTargets));
+    console.log("DIAG comments=", JSON.stringify(diagComments));
+
     // ── El autor abre la campana, ve el aviso y al pulsarlo aterriza en /post/[id] ──
     await loginAs(page, author.email, author.password);
     await page.getByRole("button", { name: "Notificaciones" }).click();
