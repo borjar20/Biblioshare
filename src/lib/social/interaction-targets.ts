@@ -12,7 +12,8 @@ export type TargetType =
   | "pass"
   | "progress_session"
   | "club_round"
-  | "thought";
+  | "thought"
+  | "post";
 
 export type InteractionTargetRef = {
   id: string;

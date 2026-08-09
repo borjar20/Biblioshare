@@ -10,20 +10,19 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/reactivity/revalidate", () => ({ revalidateFeed: mocks.revalidateFeed }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
 
-import { createThought, deleteThought } from "./thought-actions";
+import { createPost, deletePost } from "./post-actions";
 
-// Doble mínimo: solo las tablas que `createThought` toca. `anchorFound`
-// controla si la tabla del ancla (books/movies/series/sagas/people, según
-// `anchorType`) devuelve fila.
+// Doble mínimo: solo las tablas que `createPost` toca. `anchorFound` controla
+// si la tabla del ancla (books/movies/series/sagas/people, según `anchorType`)
+// devuelve fila. `mentionTarget` es la fila que devuelve el lookup de
+// `interaction_targets` (kind='post') tras el insert.
 function makeClient(params: {
   user: { id: string } | null;
   anchorFound?: boolean;
   insertError?: boolean;
-  /** Fila que devuelve el lookup de `interaction_targets` (kind='thought')
-   *  tras el insert. `undefined` (default) = ausente, igual que antes. */
   mentionTarget?: { id: string } | null;
 }) {
-  const insertedThoughts: Record<string, unknown>[] = [];
+  const insertedPosts: Record<string, unknown>[] = [];
 
   function anchorTableQuery() {
     const builder = {
@@ -46,17 +45,17 @@ function makeClient(params: {
       if (["books", "movies", "series", "sagas", "people"].includes(table)) {
         return anchorTableQuery();
       }
-      if (table === "thoughts") {
+      if (table === "posts") {
         return {
           insert(payload: Record<string, unknown>) {
-            insertedThoughts.push(payload);
+            insertedPosts.push(payload);
             const result = {
               select() {
                 return result;
               },
               async single() {
                 if (params.insertError) return { data: null, error: new Error("db error") };
-                return { data: { id: "thought-1" }, error: null };
+                return { data: { id: "post-1" }, error: null };
               },
             };
             return result;
@@ -81,37 +80,50 @@ function makeClient(params: {
     },
   };
 
-  return { client, insertedThoughts };
+  return { client, insertedPosts };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("createThought", () => {
-  it("no autenticado -> error unauthenticated", async () => {
+describe("createPost", () => {
+  it("thought sin sesión -> error unauthenticated", async () => {
     const { client } = makeClient({ user: null });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "book",
       anchorId: "anchor-1",
-      body: "Hola",
-      isSpoiler: false,
+      body: "hola",
     });
 
     expect(result).toEqual({ ok: false, error: "unauthenticated" });
   });
 
-  it("body vacío (solo espacios) -> error empty", async () => {
+  it("thought con body vacío (solo espacios) -> error empty", async () => {
     const { client } = makeClient({ user: { id: "actor" }, anchorFound: true });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "book",
       anchorId: "anchor-1",
       body: "   ",
-      isSpoiler: false,
+    });
+
+    expect(result).toEqual({ ok: false, error: "empty" });
+  });
+
+  it("thought sin body (undefined) -> error empty", async () => {
+    const { client } = makeClient({ user: { id: "actor" }, anchorFound: true });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await createPost({
+      kind: "thought",
+      anchorType: "book",
+      anchorId: "anchor-1",
     });
 
     expect(result).toEqual({ ok: false, error: "empty" });
@@ -121,11 +133,11 @@ describe("createThought", () => {
     const { client } = makeClient({ user: { id: "actor" }, anchorFound: true });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "book",
       anchorId: "anchor-1",
       body: "a".repeat(2001),
-      isSpoiler: false,
     });
 
     expect(result).toEqual({ ok: false, error: "too_long" });
@@ -135,37 +147,72 @@ describe("createThought", () => {
     const { client } = makeClient({ user: { id: "actor" }, anchorFound: false });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "saga",
       anchorId: "anchor-missing",
       body: "Pensamiento",
-      isSpoiler: false,
     });
 
     expect(result).toEqual({ ok: false, error: "anchor_not_found" });
   });
 
-  it("feliz: inserta la fila y revalida el feed", async () => {
-    const { client, insertedThoughts } = makeClient({
+  it("finished sin body -> ok (body opcional en hitos), inserta body/source null", async () => {
+    const { client, insertedPosts } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await createPost({
+      kind: "finished",
+      anchorType: "book",
+      anchorId: "anchor-1",
+    });
+
+    expect(result).toEqual({ ok: true, id: "post-1" });
+    expect(insertedPosts).toEqual([
+      {
+        author_id: "actor",
+        kind: "finished",
+        anchor_type: "book",
+        anchor_id: "anchor-1",
+        source_kind: null,
+        source_id: null,
+        body: null,
+        is_spoiler: false,
+      },
+    ]);
+    expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
+  });
+
+  it("feliz: thought recorta el body, arrastra source, revalida el feed", async () => {
+    const { client, insertedPosts } = makeClient({
       user: { id: "actor" },
       anchorFound: true,
     });
     mocks.createClient.mockResolvedValue(client);
     mocks.notifyMentions.mockResolvedValue([]);
 
-    const result = await createThought({
-      anchorType: "book",
+    const result = await createPost({
+      kind: "watched",
+      anchorType: "movie",
       anchorId: "anchor-1",
+      sourceKind: "episode_watch",
+      sourceId: "watch-1",
       body: "  Qué buen giro final  ",
       isSpoiler: true,
     });
 
-    expect(result).toEqual({ ok: true, id: "thought-1" });
-    expect(insertedThoughts).toEqual([
+    expect(result).toEqual({ ok: true, id: "post-1" });
+    expect(insertedPosts).toEqual([
       {
-        user_id: "actor",
-        anchor_type: "book",
+        author_id: "actor",
+        kind: "watched",
+        anchor_type: "movie",
         anchor_id: "anchor-1",
+        source_kind: "episode_watch",
+        source_id: "watch-1",
         body: "Qué buen giro final",
         is_spoiler: true,
       },
@@ -173,50 +220,48 @@ describe("createThought", () => {
     expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
   });
 
-  it("resuelve el target 'thought' y notifica las menciones del cuerpo", async () => {
+  it("resuelve el target 'post' y notifica las menciones del cuerpo", async () => {
     const { client } = makeClient({
       user: { id: "actor" },
       anchorFound: true,
-      mentionTarget: { id: "target-thought-1" },
+      mentionTarget: { id: "target-post-1" },
     });
     mocks.createClient.mockResolvedValue(client);
     mocks.notifyMentions.mockResolvedValue(["mentioned-user"]);
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "book",
       anchorId: "anchor-1",
       body: "Qué razón tiene @otro con esto",
-      isSpoiler: false,
     });
 
-    expect(result).toEqual({ ok: true, id: "thought-1" });
+    expect(result).toEqual({ ok: true, id: "post-1" });
     expect(mocks.notifyMentions).toHaveBeenCalledWith(client, {
       authorId: "actor",
       text: "Qué razón tiene @otro con esto",
-      interactionTargetId: "target-thought-1",
+      interactionTargetId: "target-post-1",
     });
   });
 
-  it("si notifyMentions lanza, el pensamiento sigue publicado (ok:true)", async () => {
-    const { client, insertedThoughts } = makeClient({
+  it("si notifyMentions lanza, el post sigue publicado (ok:true)", async () => {
+    const { client, insertedPosts } = makeClient({
       user: { id: "actor" },
       anchorFound: true,
-      mentionTarget: { id: "target-thought-1" },
+      mentionTarget: { id: "target-post-1" },
     });
     mocks.createClient.mockResolvedValue(client);
     mocks.notifyMentions.mockRejectedValue(new Error("notify boom"));
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "book",
       anchorId: "anchor-1",
       body: "@otro esto va a fallar al notificar",
-      isSpoiler: false,
     });
 
-    // El insert YA sucedió (ver insertedThoughts): un fallo de notificación,
-    // best-effort, nunca debe degradar el resultado a "unknown".
-    expect(result).toEqual({ ok: true, id: "thought-1" });
-    expect(insertedThoughts).toHaveLength(1);
+    expect(result).toEqual({ ok: true, id: "post-1" });
+    expect(insertedPosts).toHaveLength(1);
     expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
   });
 
@@ -228,22 +273,20 @@ describe("createThought", () => {
     });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await createThought({
+    const result = await createPost({
+      kind: "thought",
       anchorType: "book",
       anchorId: "anchor-1",
       body: "Pensamiento",
-      isSpoiler: false,
     });
 
     expect(result).toEqual({ ok: false, error: "unknown" });
   });
 });
 
-// deleteThought (task-delete, #525): mismo contrato discriminado que
-// createThought -- el borrado real lo decide la RLS `thoughts delete own or
-// moderate` (cliente de SESIÓN, nunca service-role); el resultado de la
-// acción solo traduce lo que la RLS ya decidió: 0 filas devueltas = bloqueado
-// o inexistente, no hay forma de distinguirlas desde aquí (ni falta que hace).
+// deletePost: espejo de deleteThought -- el borrado real lo decide la RLS
+// `posts delete own or moderate` (cliente de SESIÓN, nunca service-role); 0
+// filas devueltas = bloqueado o inexistente, sin forma de distinguirlas.
 function makeDeleteClient(params: {
   user: { id: string } | null;
   deletedRows?: { id: string }[];
@@ -252,7 +295,7 @@ function makeDeleteClient(params: {
   const client = {
     auth: { getUser: async () => ({ data: { user: params.user } }) },
     from(table: string) {
-      if (table !== "thoughts") throw new Error(`Tabla inesperada: ${table}`);
+      if (table !== "posts") throw new Error(`Tabla inesperada: ${table}`);
       const builder = {
         delete() {
           return builder;
@@ -271,12 +314,12 @@ function makeDeleteClient(params: {
   return { client };
 }
 
-describe("deleteThought", () => {
+describe("deletePost", () => {
   it("no autenticado -> error unauthenticated", async () => {
     const { client } = makeDeleteClient({ user: null });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await deleteThought("thought-1");
+    const result = await deletePost("post-1");
 
     expect(result).toEqual({ ok: false, error: "unauthenticated" });
   });
@@ -284,11 +327,11 @@ describe("deleteThought", () => {
   it("feliz: borra y revalida el feed", async () => {
     const { client } = makeDeleteClient({
       user: { id: "actor" },
-      deletedRows: [{ id: "thought-1" }],
+      deletedRows: [{ id: "post-1" }],
     });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await deleteThought("thought-1");
+    const result = await deletePost("post-1");
 
     expect(result).toEqual({ ok: true });
     expect(mocks.revalidateFeed).toHaveBeenCalledOnce();
@@ -298,7 +341,7 @@ describe("deleteThought", () => {
     const { client } = makeDeleteClient({ user: { id: "actor" }, deletedRows: [] });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await deleteThought("thought-ajeno");
+    const result = await deletePost("post-ajeno");
 
     expect(result).toEqual({ ok: false, error: "not_allowed_or_missing" });
     expect(mocks.revalidateFeed).not.toHaveBeenCalled();
@@ -308,7 +351,7 @@ describe("deleteThought", () => {
     const { client } = makeDeleteClient({ user: { id: "actor" }, deleteError: true });
     mocks.createClient.mockResolvedValue(client);
 
-    const result = await deleteThought("thought-1");
+    const result = await deletePost("post-1");
 
     expect(result).toEqual({ ok: false, error: "unknown" });
   });

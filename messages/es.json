@@ -415,7 +415,9 @@
       "finished": "terminó",
       "rated": "valoró",
       "reviewed": "reseñó",
-      "watchedEpisode": "marcó un episodio de"
+      "watchedEpisode": "marcó un episodio de",
+      "started": "empezó",
+      "dropped": "abandonó"
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
     "quickAdd": "Añadir",
@@ -513,6 +515,8 @@
     "clubRoundLiked": "A {name} le gustó la ronda de tu club",
     "thoughtCommented": "{name} comentó tu pensamiento",
     "thoughtLiked": "A {name} le gustó tu pensamiento",
+    "postCommented": "{name} comentó tu publicación",
+    "postLiked": "A {name} le gustó tu publicación",
     "clubJoinRequest": "{name} quiere unirse a tu club",
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
     "mentioned": "{name} te mencionó",

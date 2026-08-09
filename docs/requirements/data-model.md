@@ -742,6 +742,62 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 >   el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`. `canPin` (capa de datos) = solo
 >   `viewerOwnsTarget`.
 
+### 5.1 `posts` — la capa social canónica (SOLO dev, 2026-08-09; SUPERSEDE §6.2 `thoughts`)
+
+> Diseño en `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md`. Aplicado y
+> verificado **SOLO EN DEV** (migraciones `20260843`–`20260846`); **producción pendiente** de
+> mergear el código y desplegar en orden (enums → tabla+trigger+prefs → backfill → **merge del
+> código** → drop de `thoughts` `20260847`, este último POST-merge). El código vive en el
+> worktree/rama `feat/posts-capa-social`.
+
+Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
+La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de
+verdad; `posts` la **referencia** y representa lo que se muestra socialmente.
+
+`posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
+`kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`
+(`post_anchor_type`: `book|movie|series|saga|person`, SIEMPRE — «no posts libres», sin FK, ancla
+polimórfica como `thoughts`/`saga_items`), `anchor_id`, `source_kind` (`post_source_kind`:
+`pass|progress_session|episode_watch`, null en `thought`), `source_id`, `body` (text ≤2000,
+null salvo `thought` y el comentario opcional de `progressed`), `is_spoiler`, `created_at`,
+`updated_at`. Índices: `unique(source_kind, source_id, kind) where source_id is not null`
+(**idempotencia**: un pase puede tener `started` y `finished`, pero no dos `finished`),
+`posts_author_created_idx (author_id, created_at desc, id desc)` (clave de orden del feed),
+`posts_anchor_idx (anchor_type, anchor_id)`. RLS: select `can_view_profile(author_id)`, insert/
+update/delete propios (delete también admin/moderador vía `can_moderate_target('post', id)`).
+**Grants por columna** (#375) en la misma migración. `rated`/`reviewed` NO son `kind`: son
+atributos del pase que el post `finished` MUESTRA leyendo `pass.rating`/`pass.review` en vivo.
+
+**Enlace con `interaction_targets`**: trigger `private.sync_post_interaction_target()` (`after
+insert on posts`, espejo del de `thoughts`) materializa UN target `kind='post'`,
+`source_id=post.id`, audiencia `profile`/`author_id`, **`href='/post/'||id`** (la diferencia
+clave con `thoughts`, que apuntaba a la ficha del ancla), `commentable=reactable=true`,
+avisos `post_commented`/`post_liked`. `posts_cleanup_social_target` en delete. Rama `'post'`
+añadida a `private.social_target_owner_id`. Valores de enum nuevos: `'post'` en `target_kind`,
+`post_commented`/`post_liked` en `notification_type`.
+
+`post_preferences` (una fila por usuario, **opt-out**, sin fila = defaults): `user_id` (pk →
+`auth.users`), `autopost_started` (default **false**), `autopost_finished` (default **true**),
+`autopost_dropped` (default **false**), `updated_at`. RLS self-only, grants por columna. La lee
+`maybeAutopostMilestone`; su UI de ajustes es Spec 2.
+
+**Backfill / absorción** (`20260846`, in-place, preserva comentarios/reacciones): por cada pase
+terminado un post `finished` que **promueve** su target `diary_entry` → `post` (misma fila
+`interaction_targets.id`, cambia `kind`/`source_id`/`href`); cada `thought` → post `thought`
+(reusa su id, promueve el target); sesiones con **nota pública** → post `progressed`. Los targets
+`pass`/`progress_session`(sin nota)/`episode_watch` **NO** se promueven ni se retiran en Spec 1
+(ver `decisiones.md` 2026-08-09): `get-episode-reviews` sigue leyendo `episode_watch`, así que su
+trigger se conserva; los de `passes`/`progress_sessions` crean residuo inerte, diferido a limpieza.
+
+**Consecuencia verificada (fix incluido)**: como el backfill promovió los `diary_entry` a `post`,
+la ficha (`get-community.getReviews`, community tab) resuelve ahora el hilo por el target del post
+`finished` (el MISMO que ve el feed y `/post/[id]` — la conversación converge); un pase terminado
+sin post se muestra sin hilo (`interactionTargetId` null), no se rompe.
+
+**§6.2 `thoughts` queda SUPERSEDIDA**: la tabla se absorbe en `posts` y se elimina en `20260847`
+(POST-merge); los valores de enum muertos (`thought` en `target_kind`, `thought_*` en
+`notification_type`) se dejan inertes (recrear el tipo es caro).
+
 ## 6. Clubes
 
 `clubs` → `club_members` (rol `member|moderator|owner`, estado `invited|active|requested`),

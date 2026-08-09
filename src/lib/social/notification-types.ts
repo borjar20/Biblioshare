@@ -46,7 +46,12 @@ export type NotificationType =
   // 20260835_thoughts.sql (comment_notification_type/reaction_notification_type
   // de interaction_targets) — la copia de es.json llegó con la tarjeta (Fase 5).
   | "thought_commented"
-  | "thought_liked";
+  | "thought_liked"
+  // Fase «Posts» (2026-08-09): mismo patrón que thought_* — el disparo vive en
+  // la migración de posts (comment/reaction_notification_type de
+  // interaction_targets). La copia de es.json va con esta tarjeta.
+  | "post_commented"
+  | "post_liked";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -122,4 +127,6 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   mentioned: "mentioned",
   thought_commented: "thoughtCommented",
   thought_liked: "thoughtLiked",
+  post_commented: "postCommented",
+  post_liked: "postLiked",
 };
