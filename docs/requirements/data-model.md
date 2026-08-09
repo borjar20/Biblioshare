@@ -742,13 +742,22 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 >   el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`. `canPin` (capa de datos) = solo
 >   `viewerOwnsTarget`.
 
-### 5.1 `posts` — la capa social canónica (SOLO dev, 2026-08-09; SUPERSEDE §6.2 `thoughts`)
+### 5.1 `posts` — la capa social canónica (dev y **PROD**, 2026-08-09; SUPERSEDE §6.2 `thoughts`)
 
 > Diseño en `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md`. Aplicado y
-> verificado **SOLO EN DEV** (migraciones `20260843`–`20260846`); **producción pendiente** de
-> mergear el código y desplegar en orden (enums → tabla+trigger+prefs → backfill → **merge del
-> código** → drop de `thoughts` `20260847`, este último POST-merge). El código vive en el
-> worktree/rama `feat/posts-capa-social`.
+> **verificado en dev Y EN PRODUCCIÓN el 2026-08-09** contra objetos reales (`to_regclass`,
+> `enum_range`, grants por columna DRIFT-CHECK superficie 6 —`posts` 11/8/2, `post_preferences`
+> 5/4/3—, `get_advisors(security)` sin hallazgos nuevos). Migraciones `20260843`–`20260847`.
+>
+> **Orden de despliegue que recibió prod (CORRIGE el orden ingenuo del plan):** el backfill muta
+> los targets que el código VIEJO lee, así que **el código va ANTES del backfill**, no después
+> (si no, el feed y la ficha de prod se caen en la ventana). Secuencia real: (1) enums `20260843`
+> → (2) tabla+trigger+prefs `20260844`/`45` → (3) **merge + deploy del código** (feed lee `posts`)
+> → (4) backfill `20260846` (in-place; comentarios/reacciones invariantes 41/33; `posts_sin_target=0`;
+> 319 posts) → (5) drop de `thoughts` `20260847` (recrea `social_target_owner_id` sin la rama
+> `thought` y hace `drop table`). El código vive en la rama `feat/posts-capa-social` (PR #557 + fixes
+> #559/#560). Interacciones huérfanas del backfill (10, sobre `pass`/`progress_session` sin nota) →
+> issue #558.
 
 Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
 La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de
@@ -1182,7 +1191,14 @@ automática de test (depende del día real de la semana); `resolveTargetHrefs` t
 «Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
 una en las issues abiertas (ver `backlog.md`).
 
-### 6.2 «Pensamiento»: tabla `thoughts` (Fases 1-6, dev 2026-08-06/07 · **prod 2026-08-07**)
+### 6.2 «Pensamiento»: tabla `thoughts` — SUPERSEDIDA y RETIRADA (dev y **prod**, 2026-08-09)
+
+> **⚠️ HISTÓRICO.** La tabla `thoughts` se **absorbió en `posts`** (§5.1) y se **eliminó de dev y
+> prod el 2026-08-09** (migración `20260847`, `to_regclass('public.thoughts')` = null en ambos).
+> Un pensamiento es hoy un `posts` con `kind='thought'`. Los valores de enum muertos (`'thought'`
+> en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`) se dejan inertes
+> (recrear el tipo es caro). Lo de abajo describe el modelo ORIGINAL, ya no vigente; se conserva
+> por el *porqué*.
 
 > Diseño completo en `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md`. Esta
 > sección documenta la Fase 2 (esquema); Fases 3-5 (feed como 6ª fuente, compositor
