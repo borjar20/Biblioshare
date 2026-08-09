@@ -65,7 +65,7 @@ export function ReviewCard({
           <Link href={itemHref(event.itemType, event.itemId)} className="mt-1 block font-serif text-[15px] leading-tight font-semibold hover:underline">
             {event.itemTitle}
           </Link>
-          {event.rating != null && <div className="mt-2"><RatingDots value={event.rating} /></div>}
+          {event.rating != null && <div className="mt-2"><RatingDots value={event.rating} itemType={event.itemType} /></div>}
           {meta && <p className="mt-1.5 font-mono text-[10px] text-foreground-faint">{meta}</p>}
         </div>
       </div>

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { MentionText } from "@/components/social/mention-text";
+import type { ItemType } from "@/lib/catalog/types";
 
 // Los avatares subidos a Storage van por next/image (remotePatterns); las URLs
 // externas legado, por <img>. Mismo criterio que user-avatar/profile-header.
@@ -21,6 +22,7 @@ export function ReviewRow({
   avatarUrl,
   dateLabel,
   rating,
+  itemType,
   text,
   knownUsernames,
   chip,
@@ -34,6 +36,8 @@ export function ReviewRow({
   avatarUrl: string | null;
   dateLabel: string;
   rating: number | null;
+  /** Tiñe la nota con el color del tipo de obra. */
+  itemType?: ItemType;
   text: string;
   /** Usernames @mencionados en `text` que existen de verdad — ver MentionText. */
   knownUsernames: string[];
@@ -104,7 +108,7 @@ export function ReviewRow({
         )}
         {rating !== null && (
           <div className="ml-auto shrink-0">
-            <RatingDots value={rating} size="sm" />
+            <RatingDots value={rating} size="sm" itemType={itemType} />
           </div>
         )}
       </div>

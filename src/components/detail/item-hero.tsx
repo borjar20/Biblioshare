@@ -150,7 +150,7 @@ export function ItemHero({
                   </small>
                 </span>
                 <div className="flex flex-col gap-1">
-                  <RatingDots value={avgRating} size="sm" />
+                  <RatingDots value={avgRating} size="sm" itemType={itemType} />
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {ratingsLabel}
                   </span>

@@ -47,8 +47,8 @@ export function CommunitySummary({
           {formatDots(avgRating)}
         </div>
         <div className="mt-1 flex justify-center lg:mt-2.5">
-          <RatingDots value={avgRating} size="sm" className="lg:hidden" />
-          <RatingDots value={avgRating} size="md" className="hidden lg:flex" />
+          <RatingDots value={avgRating} size="sm" className="lg:hidden" itemType={itemType} />
+          <RatingDots value={avgRating} size="md" className="hidden lg:flex" itemType={itemType} />
         </div>
         <div className="mt-[5px] font-mono text-[10px] text-muted-foreground lg:text-[11px]">
           {ratingsLabel}

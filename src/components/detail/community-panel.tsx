@@ -74,6 +74,7 @@ export async function CommunityPanel({
                 avatarUrl={review.avatarUrl}
                 dateLabel={shortDate(review.watchedOn)}
                 rating={review.rating}
+                itemType={itemType}
                 text={review.text}
                 knownUsernames={episodeKnownUsernames ?? []}
                 chip={
@@ -107,6 +108,7 @@ export async function CommunityPanel({
                 avatarUrl={review.avatarUrl}
                 dateLabel={shortDate(review.finishedOn)}
                 rating={review.rating}
+                itemType={itemType}
                 text={review.text}
                 knownUsernames={community.knownUsernames}
                 chip={

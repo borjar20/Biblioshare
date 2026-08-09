@@ -186,7 +186,7 @@ function PassCard({
       }`}
     >
       <div className="mb-1.5 flex items-center gap-2">
-        <RatingDots value={pass.rating} size="sm" />
+        <RatingDots value={pass.rating} size="sm" itemType={itemType} />
         {deltaLabel && (
           <span
             className={`ml-auto font-mono text-[10px] ${
@@ -266,7 +266,7 @@ function PassCard({
             <span className="label-section">
               {t("rating")}
             </span>
-            <RatingDots value={rating} onChange={setRating} size="sm" />
+            <RatingDots value={rating} onChange={setRating} size="sm" itemType={itemType} />
             <input type="hidden" name="rating" value={rating ?? ""} />
           </div>
 

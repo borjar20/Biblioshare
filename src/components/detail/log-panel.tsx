@@ -698,6 +698,7 @@ function PassDataPanel({
               );
             }}
             size="sm"
+            itemType={itemType}
           />
         </div>
 
