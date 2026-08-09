@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { createThought, searchAnchorsAction } from "@/lib/social/thought-actions";
+import { createPost, searchAnchorsAction } from "@/lib/social/post-actions";
 import type { AnchorRef } from "@/lib/catalog/anchor";
 import { Button } from "@/components/ui/button";
 
@@ -73,7 +73,8 @@ export function ThoughtComposer({ onDone }: { onDone: () => void }) {
     if (!trimmed) return;
     setError(null);
     startTransition(async () => {
-      const result = await createThought({
+      const result = await createPost({
+        kind: "thought",
         anchorType: anchor.type,
         anchorId: anchor.id,
         body,

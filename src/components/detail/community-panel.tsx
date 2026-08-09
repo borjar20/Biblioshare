@@ -117,16 +117,20 @@ export async function CommunityPanel({
                   ) : undefined
                 }
               >
-                <ReviewInteractions
-                  interactionTargetId={review.interactionTargetId}
-                  reactionCount={review.reactionCount}
-                  viewerReacted={review.viewerReacted}
-                  commentCount={review.commentCount}
-                  comments={review.comments}
-                  reactions={review.reactions}
-                  knownUsernames={community.knownUsernames}
-                  viewerLoggedIn={viewerLoggedIn}
-                />
+                {/* Sin post (reseña de un import no autopublicado) no hay hilo
+                    que enganchar: la reseña se muestra sin barra de interacción. */}
+                {review.interactionTargetId && (
+                  <ReviewInteractions
+                    interactionTargetId={review.interactionTargetId}
+                    reactionCount={review.reactionCount}
+                    viewerReacted={review.viewerReacted}
+                    commentCount={review.commentCount}
+                    comments={review.comments}
+                    reactions={review.reactions}
+                    knownUsernames={community.knownUsernames}
+                    viewerLoggedIn={viewerLoggedIn}
+                  />
+                )}
               </ReviewRow>
             ))}
           </div>

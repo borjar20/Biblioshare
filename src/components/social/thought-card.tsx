@@ -12,7 +12,7 @@ import { RichTextView } from "@/components/social/rich-text-view";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { SpoilerGate } from "./spoiler-gate";
 import { anchorHref } from "@/lib/catalog/anchor";
-import { deleteThought } from "@/lib/social/thought-actions";
+import { deletePost } from "@/lib/social/post-actions";
 
 // Tarjeta de «Pensamiento» (Fase 5, Task 5.3): cabecera + píldora dorada,
 // chip del ancla (obra/saga/persona), cuerpo markdown-lite con blur de
@@ -43,11 +43,9 @@ export function ThoughtCard({
   const [isPending, startTransition] = useTransition();
   if (!thought || deleted) return null;
   const actorName = event.actorDisplayName || event.actorUsername;
-  // El source id a borrar es el de la fila `thoughts`, que es exactamente
-  // interactionTarget.targetId cuando targetType es "thought" (ver el
-  // comentario de FeedEvent en feed.ts sobre por qué el ancla NO vive aquí).
-  const thoughtId =
-    event.interactionTarget?.targetType === "thought" ? event.interactionTarget.targetId : null;
+  // Un pensamiento es ahora un post (kind='thought'): se borra por su `postId`
+  // (= interactionTarget.targetId del target `post`), vía `deletePost`.
+  const thoughtId = event.postId ?? null;
 
   const bodyEl = <RichTextView text={thought.body} knownUsernames={knownUsernames} />;
 
@@ -56,7 +54,7 @@ export function ThoughtCard({
     if (!window.confirm(t("thoughtDeleteConfirm"))) return;
     setDeleteError(false);
     startTransition(async () => {
-      const result = await deleteThought(thoughtId);
+      const result = await deletePost(thoughtId);
       // Borrado optimista: solo tras confirmar `ok:true` -- si la RLS lo
       // bloqueó (respuesta not_allowed_or_missing) o hubo un fallo, la
       // tarjeta se queda y se avisa en línea (nunca desaparece "a ciegas").
