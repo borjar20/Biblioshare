@@ -183,10 +183,12 @@ semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Spec:
   mergear y sin desplegar a producción** — el drop de `thoughts` (`20260847`) es POST-merge.
   1345 unitarios + typecheck + lint en verde; e2e `e2e/posts.spec.ts` escrito y committeado,
   no ejecutable en este worktree (sin `.env.local`). Supersede la fila «Pensamiento» de
-  arriba. **Diferido a issues**: Spec 2 (compartir en formulario + writers de hito + UI de
-  `post_preferences`), Spec 3 (episodios agrupados), retirada de triggers fuente
-  passes/sessions/episodes + migración de community/episodios a posts, gate de prototipos de
-  UI (§7.4). Spec: `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md` · Plan:
+  arriba. **Diferido a issues**: Spec 2 — compartir en formulario + UI de `post_preferences`
+  + gate de prototipos §7.4 ([#554](https://github.com/borjar20/Biblioshare/issues/554));
+  Spec 3 — episodios agrupados ([#555](https://github.com/borjar20/Biblioshare/issues/555));
+  migrar community-tab/episode-reviews a posts + retirar triggers fuente restantes
+  ([#556](https://github.com/borjar20/Biblioshare/issues/556)). Spec:
+  `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md` · Plan:
   `docs/superpowers/plans/2026-08-09-posts-capa-social-nucleo.md`
 
 ### Importación
