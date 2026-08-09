@@ -1280,18 +1280,18 @@ relación irresoluble), pero el ref queda muerto (issue
 `create_club_event`/`update_club_event` (`20260842`, `DROP`+`CREATE` como ya usaba la firma
 de 10 argumentos — no overload, para que el bundle anterior siga resolviendo por defaults)
 ganan `p_event_type` (solo en `create`; `update` lee el tipo de la fila y no lo cambia) y
-`p_config jsonb`. `p_starts_time` pasa a **verdaderamente opcional**: si es null, `starts_at`
-se ancla a `00:00` en `p_timezone` del día `starts_on`, y `config.allDay = true` registra el
-hecho para el display — no se puede derivar de forma fiable de `starts_at` (medianoche es una
-hora legítima). Los renderizadores reciben el booleano `allDay` ya calculado por los loaders,
-nunca leen `config` crudo.
+`p_config jsonb`. `p_starts_time` es **opcional en todos los tipos**, pero el default sin hora
+DIFIERE por tipo: en **Lanzamiento/Fecha destacada** una hora ausente hace el evento de «todo
+el día» — `starts_at` se ancla a `00:00` en `p_timezone` del día `starts_on` y `config.allDay =
+true` registra el hecho para el display (no se puede derivar de forma fiable de `starts_at`,
+porque medianoche es una hora legítima). Los renderizadores reciben el booleano `allDay` ya
+calculado por los loaders, nunca leen `config` crudo.
 
-**Excepción: Encuentro EXIGE hora de inicio.** El guard nuevo
-`event_type = 'encuentro' AND p_starts_time IS NULL` lanza `starts_time_required`. **Esto
-retira el comportamiento anterior**: hasta esta migración, una hora ausente se rellenaba con
-las 19:00 (el mismo valor que usó el backfill de §6.1 al añadir `starts_at`); desde
-`20260842` esa puerta de escape ya no existe para Encuentro. Cambio de comportamiento
-deliberado, registrado en `decisiones.md` (2026-08-09) — no un efecto colateral.
+**Encuentro conserva el comportamiento heredado: la hora es opcional y sin ella se asume las
+19:00** (`coalesce(p_starts_time, '19:00')` en `create`; en `update`, la hora vieja de la fila o
+19:00). Es el mismo default que usó el backfill de §6.1 al añadir `starts_at`, y **no hay guarda
+`starts_time_required`**: un Encuentro sin hora sigue siendo válido, como antes de los tipos de
+evento. Encuentro nunca es «todo el día» (siempre tiene una hora, real o asumida).
 
 **Aplicado y verificado en dev** el 2026-08-09 contra objetos reales: `pg_proc` devuelve una
 sola firma por nombre de `create_club_event`/`update_club_event` (12 y 11 argumentos), la

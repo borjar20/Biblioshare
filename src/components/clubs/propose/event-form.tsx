@@ -184,11 +184,9 @@ export function EventForm({
     }
     if (eventType === "encuentro") {
       // Se valida ANTES del viaje lo mismo que valida la RPC, para no pagar el
-      // roundtrip entero por un fin anterior al inicio (#133).
-      if (!startsTime) {
-        setError(t("eventStartsTimeRequired"));
-        return;
-      }
+      // roundtrip entero por un fin anterior al inicio (#133). La hora de inicio
+      // es OPCIONAL: si no se pone, la RPC asume las 19:00 (comportamiento
+      // heredado), igual que antes de los tipos de evento.
       if (startsTime && endsTime && endsTime <= startsTime) {
         setError(t("eventEndsBeforeStarts"));
         return;
