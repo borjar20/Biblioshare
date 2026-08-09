@@ -46,10 +46,12 @@ export type ClubEventDetail = {
   config: EventConfig;
   /** Lanzamiento: la obra ya hidratada (título/portada) o null si no resuelve. */
   hydratedItem: { itemType: ItemType; itemId: string; title: string; coverUrl: string | null } | null;
-  /** Fecha destacada: relaciones ya hidratadas para pintar como enlaces. */
+  /** Fecha destacada: relaciones ya hidratadas para pintar como enlaces. `href`
+   *  ya resuelve la ruta correcta por `kind` de la actividad enlazada (evento
+   *  vs. el resto -- `/evento/` y `/actividad/` son rutas distintas). */
   hydratedRelations: Array<
     | { kind: "item"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
-    | { kind: "activity"; activityId: string; title: string; clubSlug: string }
+    | { kind: "activity"; activityId: string; title: string; href: string }
   >;
   declaredState: DeclaredEventState;
   /** Derivado del reloj en el servidor: incluye en_curso y finalizado. */
@@ -208,14 +210,23 @@ export async function getClubEvent(
   for (const r of movieRows.data ?? []) catalogTitles.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url });
   for (const r of seriesRows.data ?? []) catalogTitles.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url });
 
-  const relTitles = new Map<string, string>();
+  // El href depende del `kind`: un evento vive en /evento/[id], el resto (que
+  // SÍ tiene ficha propia) en /actividad/[id] -- mezclarlos da 404 (#T13 fix
+  // round 1: enlazaba todo a /actividad/ y un evento enlazado 404aba).
+  const relInfo = new Map<string, { title: string; href: string }>();
   if (relActivityIds.length) {
     const { data } = await supabase
       .from("club_activities")
-      .select("id, title")
+      .select("id, title, kind")
       .eq("club_id", row.club_id)
       .in("id", relActivityIds);
-    for (const a of data ?? []) relTitles.set(a.id, a.title);
+    for (const a of data ?? []) {
+      const href =
+        a.kind === "evento"
+          ? `/club/${club.slug}/evento/${a.id}`
+          : `/club/${club.slug}/actividad/${a.id}`;
+      relInfo.set(a.id, { title: a.title, href });
+    }
   }
 
   let hydratedItem: ClubEventDetail["hydratedItem"] = null;
@@ -234,8 +245,8 @@ export async function getClubEvent(
         const hit = catalogTitles.get(`${r.itemType}:${r.itemId}`);
         if (hit) hydratedRelations.push({ kind: "item", itemType: r.itemType, itemId: r.itemId, ...hit });
       } else {
-        const title = relTitles.get(r.activityId);
-        if (title) hydratedRelations.push({ kind: "activity", activityId: r.activityId, title, clubSlug: club.slug });
+        const info = relInfo.get(r.activityId);
+        if (info) hydratedRelations.push({ kind: "activity", activityId: r.activityId, ...info });
       }
     }
   }

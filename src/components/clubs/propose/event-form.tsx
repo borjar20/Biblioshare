@@ -166,7 +166,13 @@ export function EventForm({
   const [relations, setRelations] = useState<RelationDraft[]>(
     (activityRelations ?? []).map((r) => ({ relation: r })),
   );
-  const [pickingRelation, setPickingRelation] = useState<null | "item" | "activity">(null);
+  // Sin `clubActivities` (ningún mount lo pasa todavía -- issue abierta) el tab
+  // "Actividades del club" no tiene nada que listar; se abre directo en Obras en
+  // vez de enseñar un selector con una única opción sin sentido.
+  const hasClubActivities = (clubActivities?.length ?? 0) > 0;
+  const [pickingRelation, setPickingRelation] = useState<null | "item" | "activity">(
+    hasClubActivities ? null : "item",
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -599,9 +605,11 @@ export function EventForm({
               <Button type="button" variant="secondary" onClick={() => setPickingRelation("item")}>
                 {t("eventRelationItems")}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => setPickingRelation("activity")}>
-                {t("eventRelationActivities")}
-              </Button>
+              {hasClubActivities && (
+                <Button type="button" variant="secondary" onClick={() => setPickingRelation("activity")}>
+                  {t("eventRelationActivities")}
+                </Button>
+              )}
             </div>
           )}
         </Field>

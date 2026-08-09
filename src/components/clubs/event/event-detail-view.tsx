@@ -268,10 +268,7 @@ export function EventDetailView({
                     {r.title}
                   </Link>
                 ) : (
-                  <Link
-                    href={`/club/${r.clubSlug}/actividad/${r.activityId}`}
-                    className="text-accent hover:underline"
-                  >
+                  <Link href={r.href} className="text-accent hover:underline">
                     {r.title}
                   </Link>
                 )}
