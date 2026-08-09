@@ -1581,6 +1581,48 @@ export type Database = {
         }
         Relationships: []
       }
+      posts: {
+        Row: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["post_anchor_type"]
+          author_id: string
+          body: string | null
+          created_at: string
+          id: string
+          is_spoiler: boolean
+          kind: Database["public"]["Enums"]["post_kind"]
+          source_id: string | null
+          source_kind: Database["public"]["Enums"]["post_source_kind"] | null
+          updated_at: string
+        }
+        Insert: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["post_anchor_type"]
+          author_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_spoiler?: boolean
+          kind: Database["public"]["Enums"]["post_kind"]
+          source_id?: string | null
+          source_kind?: Database["public"]["Enums"]["post_source_kind"] | null
+          updated_at?: string
+        }
+        Update: {
+          anchor_id?: string
+          anchor_type?: Database["public"]["Enums"]["post_anchor_type"]
+          author_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_spoiler?: boolean
+          kind?: Database["public"]["Enums"]["post_kind"]
+          source_id?: string | null
+          source_kind?: Database["public"]["Enums"]["post_source_kind"] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2930,6 +2972,15 @@ export type Database = {
         | "post_commented"
         | "post_liked"
       pending_import_status: "pending" | "resolved" | "dismissed"
+      post_anchor_type: "book" | "movie" | "series" | "saga" | "person"
+      post_kind:
+        | "started"
+        | "finished"
+        | "dropped"
+        | "progressed"
+        | "watched"
+        | "thought"
+      post_source_kind: "pass" | "progress_session" | "episode_watch"
       push_channel: "web"
       push_platform: "web_push" | "fcm_android" | "apns_ios"
       saga_item_role:
@@ -3146,6 +3197,16 @@ export const Constants = {
         "post_liked",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
+      post_anchor_type: ["book", "movie", "series", "saga", "person"],
+      post_kind: [
+        "started",
+        "finished",
+        "dropped",
+        "progressed",
+        "watched",
+        "thought",
+      ],
+      post_source_kind: ["pass", "progress_session", "episode_watch"],
       push_channel: ["web"],
       push_platform: ["web_push", "fcm_android", "apns_ios"],
       saga_item_role: [
