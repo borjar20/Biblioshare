@@ -40,7 +40,7 @@ export type ClubActivity = {
   // la capa de app. criteria_challenge (Bloque H4) es su primer consumidor real: ahí vive el
   // criterio del reto (modo, tipo, meta, género, saga).
   config: Json | null;
-  /** Solo para kind='evento'; null para el resto. Discrimina el subtipo. */
+  /** null salvo kind='evento'. Discrimina el subtipo. */
   eventType: EventType | null;
   createdBy: string;
   startsOn: string | null;
@@ -284,7 +284,7 @@ export async function listClubActivities(clubId: string): Promise<ClubActivity[]
     description: r.description,
     status: r.status,
     config: r.config,
-    eventType: r.event_type ?? null,
+    eventType: r.kind === "evento" ? (r.event_type as EventType) : null,
     createdBy: r.created_by,
     startsOn: r.starts_on,
     endsOn: r.ends_on,
@@ -452,7 +452,7 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     description: row.description,
     status: row.status,
     config: row.config,
-    eventType: row.event_type ?? null,
+    eventType: row.kind === "evento" ? (row.event_type as EventType) : null,
     createdBy: row.created_by,
     startsOn: row.starts_on,
     endsOn: row.ends_on,
