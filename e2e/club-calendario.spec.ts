@@ -83,6 +83,10 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
     await page.getByRole("button", { name: /^nuevo evento$/i }).click();
     await page.getByLabel(/^título$/i).fill(titulo);
     await page.getByLabel(/^fecha$/i).fill(FECHA);
+    // Encuentro (el tipo por defecto, y el único que monta este botón) exige
+    // hora desde el selector de tipo (T10-T12, spec 2026-08-09-tipos-de-evento):
+    // sin esto el submit se queda en el formulario con "eventStartsTimeRequired".
+    await page.getByLabel(/^hora de inicio$/i).fill("18:00");
     await page.getByRole("button", { name: /^crear evento$/i }).click();
 
     // Existe en la BD. Se comprueba antes que la pantalla: la UI puede pintar
