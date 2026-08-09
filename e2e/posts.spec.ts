@@ -291,22 +291,23 @@ test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", asyn
     await card.getByRole("button", { name: /^comentar$/i }).click();
     await expect(card.getByText(`hola desde el comentador ${stamp}`)).toBeVisible();
 
-    // DIAGNÓSTICO TEMPORAL: verdad de la BD (service-role, sin RLS) justo tras el
-    // comentario, antes de que A cargue la campana. Confirma si el aviso existe y
-    // para quién, y el estado del comentario/target.
-    const diagNotifs = await rest<unknown[]>(
-      `notifications?user_id=eq.${author.id}&select=id,type,user_id,actor_id,interaction_target_id,target_type,target_id&order=created_at.desc`,
-    );
-    const diagTargets = await rest<unknown[]>(
-      `interaction_targets?source_id=eq.${postId}&select=id,kind,owner_id,comment_notification_type,commentable`,
-    );
-    const diagComments = await rest<unknown[]>(
-      `comments?select=id,author_id,interaction_target_id&order=created_at.desc&limit=3`,
-    );
-    console.log("DIAG author.id=", author.id, "commenter.id=", commenter.id, "postId=", postId);
-    console.log("DIAG notifs=", JSON.stringify(diagNotifs));
-    console.log("DIAG targets=", JSON.stringify(diagTargets));
-    console.log("DIAG comments=", JSON.stringify(diagComments));
+    // El compositor de comentarios es OPTIMISTA: pinta el comentario en el DOM al
+    // instante mientras la server action (addComment → notify) corre en una
+    // transición de React. Sin esperar a la verdad del SERVIDOR, A abriría la
+    // campana antes de que el aviso exista — carrera (el test salía "flaky", con
+    // la BD aún vacía justo tras el render optimista). Se espera al aviso
+    // `post_commented` del autor en la BD (service-role) antes de seguir.
+    await expect
+      .poll(
+        async () =>
+          (
+            await rest<{ id: string }[]>(
+              `notifications?user_id=eq.${author.id}&type=eq.post_commented&select=id`,
+            )
+          ).length,
+        { timeout: 15_000, message: "el aviso post_commented del autor debe persistir" },
+      )
+      .toBeGreaterThan(0);
 
     // ── El autor abre la campana, ve el aviso y al pulsarlo aterriza en /post/[id] ──
     await loginAs(page, author.email, author.password);
