@@ -15,7 +15,11 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type CommunityReview = {
   id: string;
-  interactionTargetId: string;
+  // null = la reseña no tiene post (un pase terminado por import sin
+  // autopublicar): se muestra sin hilo social. Los pases terminados con post
+  // (backfill/autopost) llevan el target del post `finished`, el MISMO que ve
+  // el feed y /post/[id] — la conversación converge.
+  interactionTargetId: string | null;
   author: string;
   initials: string;
   /** Username del autor para enlazar a /u/:username. null = perfil sin username. */
@@ -274,6 +278,7 @@ export async function getReviews(
           rating: r.rating,
           text: (r.review ?? "").trim(),
           editionLabel: r.edition_id ? (editionLabelById.get(r.edition_id) ?? null) : null,
+          interactionTargetId: null as string | null,
           reactionCount: 0,
           viewerReacted: false,
           commentCount: 0,
@@ -282,15 +287,31 @@ export async function getReviews(
         };
       });
 
-      const summaries = await getInteractionSummary(
-        supabase,
-        "diary_entry",
-        reviewBases.map((r) => r.id),
+      // El hilo de una reseña vive ahora en el target del post `finished`
+      // (kind='post', source_id=post.id): el backfill promovió los diary_entry
+      // in-place, así que ficha y feed convergen en el MISMO target. Un pase
+      // terminado SIN post (import no autopublicado) se muestra sin hilo — no se
+      // rompe. `rows` son pases (r.id = pass.id), que es el `source_id` del post.
+      const passIds = reviewBases.map((r) => r.id);
+      const { data: finishedPosts } = await supabase
+        .from("posts")
+        .select("id, source_id")
+        .eq("kind", "finished")
+        .eq("source_kind", "pass")
+        .in("source_id", passIds);
+      const postIdByPass = new Map(
+        (finishedPosts ?? [])
+          .filter((p): p is { id: string; source_id: string } => p.source_id !== null)
+          .map((p) => [p.source_id, p.id]),
       );
+      const postIds = [...postIdByPass.values()];
+      const summaries = postIds.length
+        ? await getInteractionSummary(supabase, "post", postIds)
+        : new Map();
       reviews = reviewBases.map((review) => {
-        const summary = summaries.get(review.id);
-        if (!summary) throw new Error(`Interaction summary missing for diary_entry:${review.id}`);
-        return { ...review, ...summary };
+        const postId = postIdByPass.get(review.id);
+        const summary = postId ? summaries.get(postId) : undefined;
+        return summary ? { ...review, ...summary } : review;
       });
     }
   }
