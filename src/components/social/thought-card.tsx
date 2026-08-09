@@ -43,11 +43,9 @@ export function ThoughtCard({
   const [isPending, startTransition] = useTransition();
   if (!thought || deleted) return null;
   const actorName = event.actorDisplayName || event.actorUsername;
-  // El source id a borrar es el de la fila `thoughts`, que es exactamente
-  // interactionTarget.targetId cuando targetType es "thought" (ver el
-  // comentario de FeedEvent en feed.ts sobre por qué el ancla NO vive aquí).
-  const thoughtId =
-    event.interactionTarget?.targetType === "thought" ? event.interactionTarget.targetId : null;
+  // Un pensamiento es ahora un post (kind='thought'): se borra por su `postId`
+  // (= interactionTarget.targetId del target `post`), vía `deletePost`.
+  const thoughtId = event.postId ?? null;
 
   const bodyEl = <RichTextView text={thought.body} knownUsernames={knownUsernames} />;
 

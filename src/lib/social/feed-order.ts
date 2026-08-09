@@ -145,14 +145,6 @@ export type FeedSourceColumns = {
   /** Columna de la hora de registro: el segundo componente de la clave. */
   stampColumn: string;
   /**
-   * `date`        → la columna ES el día, así que el día se compara directo.
-   * `timestamptz` → el día hay que acotarlo por instantes. Solo se usa donde
-   *                 `dateColumn === stampColumn` (altas y clubes), que es lo
-   *                 que permite colapsar «mismo día Y hora ≤ cursor» en un
-   *                 único intervalo sobre esa columna.
-   */
-  kind: "date" | "timestamptz";
-  /**
    * Prefijo del id de EVENTO de esta fuente. El tercer componente de la clave
    * de orden es el id de evento (`diary_entries_added:<uuid>`), pero la columna
    * `id` guarda el uuid pelado: sin el prefijo no se puede traducir el
@@ -162,47 +154,26 @@ export type FeedSourceColumns = {
   eventIdPrefix: string;
 };
 
-export type FeedSourceKey = "added" | "progressed" | "diary" | "episodes" | "clubs" | "thoughts";
+// El feed lee ahora UNA tabla de contenido, `posts`, mezclada con la actividad
+// de club. Las dos fuentes son timestamptz sobre `created_at` (el feed ordena
+// por fecha de PUBLICACIÓN, no por la fecha semántica backdateada): el cursor
+// keyset es `(created_at, id)` para ambas y la única diferencia es el prefijo de
+// id de evento, que decide el desempate cruzado cuando coinciden en el instante.
+export type FeedSourceKey = "posts" | "clubs";
 
 // Único sitio donde vive el par de columnas de cada fuente: `feed.ts` construye
 // sus queries con esto y los tests afirman contra lo mismo, de modo que no
 // pueden separarse.
 export const FEED_SOURCE_COLUMNS: Record<FeedSourceKey, FeedSourceColumns> = {
-  added: {
+  posts: {
     dateColumn: "created_at",
     stampColumn: "created_at",
-    kind: "timestamptz",
-    eventIdPrefix: "diary_entries_added:",
-  },
-  progressed: {
-    dateColumn: "session_date",
-    stampColumn: "created_at",
-    kind: "date",
-    eventIdPrefix: "progress_sessions:",
-  },
-  diary: {
-    dateColumn: "finished_on",
-    stampColumn: "updated_at",
-    kind: "date",
-    eventIdPrefix: "diary_entries:",
-  },
-  episodes: {
-    dateColumn: "watched_on",
-    stampColumn: "created_at",
-    kind: "date",
-    eventIdPrefix: "episode_watches:",
+    eventIdPrefix: "posts:",
   },
   clubs: {
     dateColumn: "created_at",
     stampColumn: "created_at",
-    kind: "timestamptz",
     eventIdPrefix: "club_activities:",
-  },
-  thoughts: {
-    dateColumn: "created_at",
-    stampColumn: "created_at",
-    kind: "timestamptz",
-    eventIdPrefix: "thoughts:",
   },
 };
 
@@ -264,28 +235,10 @@ function tieBound(
 }
 
 export function cursorSourceFilter(columns: FeedSourceColumns, cursor: FeedCursor): string {
-  const { dateColumn, stampColumn, kind } = columns;
+  const { dateColumn, stampColumn } = columns;
 
-  if (kind === "date") {
-    // Cursor legado: no hay hora, así que lo único acotable es el día. Toda
-    // fila que la comparación legada acepta (`orderDate < legacyFullDate` como
-    // cadenas) tiene su día ≤ `cursor.day`, así que `lte` es superconjunto.
-    if (cursor.sortDate === null) return `${dateColumn}.lte.${quoted(cursor.day)}`;
-    const sameDay = `${dateColumn}.eq.${quoted(cursor.day)}`;
-    const tie = tieBound(columns, cursor);
-    const clauses = [
-      `${dateColumn}.lt.${quoted(cursor.day)}`,
-      `and(${sameDay},${stampColumn}.${tie.op}.${quoted(cursor.sortDate)})`,
-    ];
-    if (tie.ownId !== null) {
-      clauses.push(
-        `and(${sameDay},${stampColumn}.eq.${quoted(cursor.sortDate)},id.lt.${quoted(tie.ownId)})`,
-      );
-    }
-    return clauses.join(",");
-  }
-
-  // timestamptz: el día del cursor se traduce a su intervalo de instantes.
+  // Las dos fuentes vivas (posts, clubes) son timestamptz sobre `created_at`: el
+  // día del cursor se traduce a su intervalo de instantes.
   const dayStart = `${cursor.day}T00:00:00.000+00:00`;
   const nextDayStart = `${addDaysUTC(cursor.day, 1)}T00:00:00.000+00:00`;
   if (cursor.sortDate === null) return `${dateColumn}.lt.${quoted(nextDayStart)}`;
