@@ -110,6 +110,33 @@ reales en los dos entornos) — detalle en `data-model.md` §6.1 y §6.2, decisi
 (el aviso de turno de ronda sigue por construir, pero ya hay planificador). Spec:
 `docs/superpowers/specs/2026-08-04-club-event-following-design.md`; prototipo:
 `docs/superpowers/specs/2026-08-04-club-event-following-prototype.html`
+- [x] **Tipos de evento de club** (2026-08-09) — el evento deja de ser un único formato:
+gana un discriminador `event_type` (`encuentro | lanzamiento | fecha_destacada`) y usa el
+`config` jsonb —ya opaco a la BD, como en tierlist/reto— para los campos propios de cada
+tipo, sin columnas por subtipo ni actividad nueva. **Encuentro** es el comportamiento actual
+sin tocar. **Lanzamiento**: obra del catálogo (`ItemPicker`), tipo de lanzamiento por medio,
+plataforma opcional (película/serie), región libre, fecha con switch «todo el día».
+**Fecha destacada**: título + fecha (siempre todo el día) + relaciones opcionales a obras
+del catálogo y/o actividades del propio club, solo como enlaces. La hora de inicio pasa a
+**opcional** para Lanzamiento/Fecha destacada (`starts_at` se ancla a 00:00 en la zona del
+evento, `config.allDay=true` para el display) y, al contrario, **Encuentro pasa a EXIGIR
+hora** — se retira el default de las 19:00 que aplicaba hasta hoy (cambio de comportamiento
+deliberado). `create_club_event`/`update_club_event` ganan `p_event_type` (solo en create) y
+`p_config jsonb`. **Migraciones aplicadas y verificadas solo en dev** (`20260840`–`20260842`,
+verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca contra
+`list_migrations`); **producción pendiente del merge**. Detalle de esquema en
+`data-model.md` §6.3; decisiones de forma en `decisiones.md` (2026-08-09). Deuda y cobertura
+diferidas con issues: referencias de `config` sin guard de borrado
+([#546](https://github.com/borjar20/Biblioshare/issues/546)), editar desde la tarjeta del
+muro sin prehidratar obra/relaciones
+([#547](https://github.com/borjar20/Biblioshare/issues/547)), `clubActivities` sin cablear en
+los mounts de crear/editar — bloquea también el e2e de esa rama de Fecha destacada
+([#548](https://github.com/borjar20/Biblioshare/issues/548)), roving-tabindex del selector de
+tipo ([#549](https://github.com/borjar20/Biblioshare/issues/549)), e hidratación de
+relaciones de Fecha destacada sin filtrar por `status`
+([#550](https://github.com/borjar20/Biblioshare/issues/550)). Spec:
+`docs/superpowers/specs/2026-08-09-tipos-de-evento-design.md` · Plan:
+`.superpowers/sdd/2026-08-09-tipos-de-evento/`
 - [x] **La ronda — latido semanal de club** (2026-08-03) — cada semana le toca a un miembro proponer una pregunta al club (con o sin obra adjunta); si no aparece en 48h, entra una consigna de la casa. Turno y periodo (semana ISO en `Europe/Madrid`) se calculan en SQL, nunca los envía el cliente; tabla propia `club_rounds` (deliberadamente NO un `kind` de `club_activities`, contra SD-8 — ver `decisiones.md`), RPCs `get_club_round_state`/`ensure_club_round`, registro en `interaction_targets` (comentable/reaccionable). **Migración aplicada y verificada solo en dev** (`20260803_club_rounds.sql`, llegó en cuatro entradas sucesivas); **producción pendiente**, aplicación reservada al usuario — detalle en `data-model.md` §6. Deuda abierta con issues: cobertura de test de la consigna de la casa
 ([#401](https://github.com/borjar20/Biblioshare/issues/401)), tipado de `resolveTargetHrefs`
 ([#402](https://github.com/borjar20/Biblioshare/issues/402)), huecos «Sin ronda» en el histórico

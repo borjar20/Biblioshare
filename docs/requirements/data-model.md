@@ -210,6 +210,18 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > leían de esta vista y seguían con `created_at` porque la vista no lo exponía; ahora usan
 > `updated_at` como `sortDate`, igual que `getFeed`. Trade-off asumido (mismo que el feed):
 > `updated_at` lo mueve cualquier update del pase. Migración `20260833_pass_reviews_updated_at.sql`.
+>
+> **Delta del 2026-08-09 — tipos de evento de club (§6.3), SOLO EN DEV.** Nuevo enum
+> `club_event_type` (`encuentro | lanzamiento | fecha_destacada`, migración `20260840`) y
+> columna `club_activities.event_type NOT NULL DEFAULT 'encuentro'` con grant por columna
+> idéntico a `modality` (migración `20260841`, verificado contra
+> `information_schema.column_privileges`). `create_club_event`/`update_club_event` ganan
+> `p_event_type` (solo en create) y `p_config jsonb` (migración `20260842`), y la hora de
+> inicio pasa a OPCIONAL para Lanzamiento/Fecha destacada (ancla `starts_at` a 00:00 en
+> `event_timezone`); **Encuentro, al contrario, pasa a EXIGIR hora** — retira el default de
+> las 19:00 que aplicaba hasta hoy a todo evento sin hora (§6.3, `decisiones.md` 2026-08-09).
+> Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
+> contra `list_migrations`. **Producción pendiente del merge.**
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -1210,6 +1222,82 @@ y `.claude/launch.json` apunta a un `dev.cmd` en `D:\` que no existe en esta má
 `next dev` de Playwright arranca pero cada ruta revienta al crear el cliente de Supabase).
 Queda como entregable ejecutable por quien tenga esas credenciales, no como verificación ya
 hecha.
+
+### 6.3 Tipos de evento: `club_event_type` + `config` por tipo (SOLO EN DEV, 2026-08-09)
+
+> Diseño en `docs/superpowers/specs/2026-08-09-tipos-de-evento-design.md`. Migraciones
+> `20260840_club_event_type_enum.sql`, `20260841_club_event_type_column.sql` y
+> `20260842_club_event_typed_rpcs.sql`, **aplicadas y verificadas en dev**; producción
+> pendiente del merge del bundle (migración primero, merge después, §10 de la spec).
+
+Un evento (§6, `kind='evento'`) deja de ser un único formato: gana un discriminador
+`event_type` y usa el `config` jsonb —ya opaco a la BD para toda actividad, §6— para los
+campos propios de cada tipo, sin columnas por subtipo ni actividad nueva. Decisión de forma
+en `decisiones.md` (2026-08-09).
+
+**Enum y columna:**
+
+| Qué | Detalle |
+|---|---|
+| `club_event_type` (enum) | `encuentro \| lanzamiento \| fecha_destacada`, en su propia transacción (`20260840`) — mismo motivo que `activity_kind` en 2026-07-22: Postgres prohíbe usar un valor de enum recién creado en la misma transacción que lo crea. |
+| `club_activities.event_type` | `club_event_type NOT NULL DEFAULT 'encuentro'` (`20260841`). El DEFAULT hace el backfill gratis para los eventos existentes (todos eran Encuentro, lo único creable hasta hoy), **pero se aplica a la tabla entera**: un `buddy_read`/`tierlist`/`list_challenge`/`criteria_challenge` también recibe `event_type = 'encuentro'` sin que signifique nada — la app trata `eventType` como significativo SOLO cuando `kind='evento'`; el mapper de `ClubActivity` (`src/lib/clubs/activities/core.ts`) lo devuelve `null` para los demás kinds. |
+| Grant | Por columna, idéntico a `modality`: `SELECT`/`INSERT`/`UPDATE`/`REFERENCES` para `anon`, `authenticated` y `service_role` (issue #375, DRIFT-CHECK superficie 6). |
+
+**Forma de `config` por tipo** (opaca a la BD; tipada y validada en TS por
+`parseEventConfig`, `src/lib/clubs/activities/event-types.ts` — tolerante a formas viejas o
+corruptas para que un jsonb raro no reviente una ficha):
+
+```jsonc
+// encuentro → sin config; usa las columnas ya existentes (location/modality/online_url/…)
+{}
+
+// lanzamiento
+{
+  "item":        { "itemType": "book" | "movie" | "series", "itemId": "<uuid catálogo>" },
+  "releaseType": "estreno_temporada",   // vocabulario por medio, event-release-types.ts
+  "platform":    "netflix",             // opcional, solo movie/series
+  "region":      "España",              // opcional, texto libre
+  "allDay":      true
+}
+
+// fecha_destacada
+{
+  "relations": [
+    { "kind": "item",     "itemType": "book", "itemId": "<uuid>" },
+    { "kind": "activity", "activityId": "<uuid de club_activities del MISMO club>" }
+  ],
+  "allDay": true
+}
+```
+
+`config.item` y `config.relations[].itemId` son referencias polimórficas **sin FK** al
+catálogo (mismo trato que `passes`, §3): `forbid_delete_with_passes` NO las cubre, así que
+borrar la obra puede dejar la referencia colgando — el display degrada con gracia (omite la
+relación irresoluble), pero el ref queda muerto (issue
+[#546](https://github.com/borjar20/Biblioshare/issues/546), `tipo:deuda`).
+
+**«Todo el día» (hora opcional) y el cambio de comportamiento de Encuentro:**
+`create_club_event`/`update_club_event` (`20260842`, `DROP`+`CREATE` como ya usaba la firma
+de 10 argumentos — no overload, para que el bundle anterior siga resolviendo por defaults)
+ganan `p_event_type` (solo en `create`; `update` lee el tipo de la fila y no lo cambia) y
+`p_config jsonb`. `p_starts_time` es **opcional en todos los tipos**, pero el default sin hora
+DIFIERE por tipo: en **Lanzamiento/Fecha destacada** una hora ausente hace el evento de «todo
+el día» — `starts_at` se ancla a `00:00` en `p_timezone` del día `starts_on` y `config.allDay =
+true` registra el hecho para el display (no se puede derivar de forma fiable de `starts_at`,
+porque medianoche es una hora legítima). Los renderizadores reciben el booleano `allDay` ya
+calculado por los loaders, nunca leen `config` crudo.
+
+**Encuentro conserva el comportamiento heredado: la hora es opcional y sin ella se asume las
+19:00** (`coalesce(p_starts_time, '19:00')` en `create`; en `update`, la hora vieja de la fila o
+19:00). Es el mismo default que usó el backfill de §6.1 al añadir `starts_at`, y **no hay guarda
+`starts_time_required`**: un Encuentro sin hora sigue siendo válido, como antes de los tipos de
+evento. Encuentro nunca es «todo el día» (siempre tiene una hora, real o asumida).
+
+**Aplicado y verificado en dev** el 2026-08-09 contra objetos reales: `pg_proc` devuelve una
+sola firma por nombre de `create_club_event`/`update_club_event` (12 y 11 argumentos), la
+firma de 10 argumentos anterior ya no existe, `to_regtype('public.club_event_type')` no es
+nulo, y `information_schema.column_privileges` para `event_type` es idéntico al de
+`modality`. **Producción pendiente del merge.**
 
 ## 7. Sagas
 

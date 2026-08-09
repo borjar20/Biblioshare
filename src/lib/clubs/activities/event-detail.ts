@@ -1,7 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
+import type { ItemType } from "@/lib/catalog/types";
 import { orderFollowers, type FollowerRow } from "./event-follow-optimistic";
 import { deriveEventState, type DeclaredEventState, type EventState } from "./event-state";
+import {
+  parseEventConfig,
+  type EventType,
+  type EventConfig,
+  type LanzamientoConfig,
+  type FechaDestacadaConfig,
+} from "./event-types";
 
 // Lecturas de la ficha de un evento. Módulo aparte de events.ts (que es
 // `"use server"` y solo puede exportar acciones) y de core.ts, que está montado
@@ -32,6 +40,19 @@ export type ClubEventDetail = {
   location: string | null;
   modality: Database["public"]["Enums"]["event_modality"] | null;
   onlineUrl: string | null;
+  eventType: EventType;
+  /** true = sin hora concreta (lanzamiento «todo el día» / fecha destacada). */
+  allDay: boolean;
+  config: EventConfig;
+  /** Lanzamiento: la obra ya hidratada (título/portada) o null si no resuelve. */
+  hydratedItem: { itemType: ItemType; itemId: string; title: string; coverUrl: string | null } | null;
+  /** Fecha destacada: relaciones ya hidratadas para pintar como enlaces. `href`
+   *  ya resuelve la ruta correcta por `kind` de la actividad enlazada (evento
+   *  vs. el resto -- `/evento/` y `/actividad/` son rutas distintas). */
+  hydratedRelations: Array<
+    | { kind: "item"; itemType: ItemType; itemId: string; title: string; coverUrl: string | null }
+    | { kind: "activity"; activityId: string; title: string; href: string }
+  >;
   declaredState: DeclaredEventState;
   /** Derivado del reloj en el servidor: incluye en_curso y finalizado. */
   state: EventState;
@@ -85,7 +106,7 @@ export async function getClubEvent(
   const { data: row, error } = await supabase
     .from("club_activities")
     .select(
-      "id, club_id, kind, title, description, status, created_by, created_at, updated_at, starts_at, ends_at, event_timezone, location, modality, online_url, event_state, clubs!inner(slug, name)",
+      "id, club_id, kind, title, description, status, created_by, created_at, updated_at, starts_at, ends_at, event_timezone, location, modality, online_url, event_state, event_type, config, clubs!inner(slug, name)",
     )
     .eq("id", activityId)
     .maybeSingle();
@@ -148,6 +169,88 @@ export async function getClubEvent(
   ).slice(0, FOLLOWER_PREVIEW);
 
   const declaredState = row.event_state;
+
+  const eventType = (row.event_type ?? "encuentro") as EventType;
+  const config = parseEventConfig(eventType, row.config);
+  const allDay =
+    eventType === "fecha_destacada" ||
+    (eventType === "lanzamiento" && (config as LanzamientoConfig).allDay);
+
+  // Reúne los ids de catálogo a hidratar (obra del lanzamiento + relaciones item)
+  // y las actividades relacionadas de una fecha destacada. Mismo patrón de
+  // resolución por tabla que core.ts: nunca una consulta por ítem.
+  const catalogRefs: Array<{ itemType: ItemType; itemId: string }> = [];
+  if (eventType === "lanzamiento") {
+    const it = (config as LanzamientoConfig).item;
+    if (it) catalogRefs.push(it);
+  }
+  const relActivityIds: string[] = [];
+  if (eventType === "fecha_destacada") {
+    for (const r of (config as FechaDestacadaConfig).relations) {
+      if (r.kind === "item") catalogRefs.push({ itemType: r.itemType, itemId: r.itemId });
+      else relActivityIds.push(r.activityId);
+    }
+  }
+
+  const byType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
+  for (const r of catalogRefs) byType[r.itemType].push(r.itemId);
+  const catalogTitles = new Map<string, { title: string; coverUrl: string | null }>();
+  const [bookRows, movieRows, seriesRows] = await Promise.all([
+    byType.book.length
+      ? supabase.from("books").select("id, title, cover_url").in("id", byType.book)
+      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
+    byType.movie.length
+      ? supabase.from("movies").select("id, title, cover_url").in("id", byType.movie)
+      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
+    byType.series.length
+      ? supabase.from("series").select("id, title, cover_url").in("id", byType.series)
+      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
+  ]);
+  for (const r of bookRows.data ?? []) catalogTitles.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+  for (const r of movieRows.data ?? []) catalogTitles.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+  for (const r of seriesRows.data ?? []) catalogTitles.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+
+  // El href depende del `kind`: un evento vive en /evento/[id], el resto (que
+  // SÍ tiene ficha propia) en /actividad/[id] -- mezclarlos da 404 (#T13 fix
+  // round 1: enlazaba todo a /actividad/ y un evento enlazado 404aba).
+  const relInfo = new Map<string, { title: string; href: string }>();
+  if (relActivityIds.length) {
+    const { data } = await supabase
+      .from("club_activities")
+      .select("id, title, kind")
+      .eq("club_id", row.club_id)
+      .in("id", relActivityIds);
+    for (const a of data ?? []) {
+      const href =
+        a.kind === "evento"
+          ? `/club/${club.slug}/evento/${a.id}`
+          : `/club/${club.slug}/actividad/${a.id}`;
+      relInfo.set(a.id, { title: a.title, href });
+    }
+  }
+
+  let hydratedItem: ClubEventDetail["hydratedItem"] = null;
+  if (eventType === "lanzamiento") {
+    const it = (config as LanzamientoConfig).item;
+    if (it) {
+      const hit = catalogTitles.get(`${it.itemType}:${it.itemId}`);
+      if (hit) hydratedItem = { ...it, title: hit.title, coverUrl: hit.coverUrl };
+    }
+  }
+
+  const hydratedRelations: ClubEventDetail["hydratedRelations"] = [];
+  if (eventType === "fecha_destacada") {
+    for (const r of (config as FechaDestacadaConfig).relations) {
+      if (r.kind === "item") {
+        const hit = catalogTitles.get(`${r.itemType}:${r.itemId}`);
+        if (hit) hydratedRelations.push({ kind: "item", itemType: r.itemType, itemId: r.itemId, ...hit });
+      } else {
+        const info = relInfo.get(r.activityId);
+        if (info) hydratedRelations.push({ kind: "activity", activityId: r.activityId, ...info });
+      }
+    }
+  }
+
   return {
     id: row.id,
     clubId: row.club_id,
@@ -164,6 +267,11 @@ export async function getClubEvent(
     // exige serlo (RLS + el gate de la página). Se deja explícito para que
     // añadir una superficie nueva no lo filtre por descuido.
     onlineUrl: row.online_url,
+    eventType,
+    allDay,
+    config,
+    hydratedItem,
+    hydratedRelations,
     declaredState,
     state: deriveEventState(
       { eventState: declaredState, startsAt: row.starts_at, endsAt: row.ends_at },

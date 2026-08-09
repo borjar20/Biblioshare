@@ -82,6 +82,10 @@ test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad"
     await expect(page.getByLabel(/^fecha$/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /^añadir ítem$/i })).toHaveCount(0);
     await page.getByLabel(/^fecha$/i).fill("2027-03-15");
+    // Encuentro (el tipo por defecto) exige hora desde el selector de tipo
+    // (T10-T12, spec 2026-08-09-tipos-de-evento): sin esto el submit se queda
+    // en el formulario con "eventStartsTimeRequired" y nunca llega a crearse.
+    await page.getByLabel(/^hora de inicio$/i).fill("18:00");
     await page.getByRole("button", { name: /^crear evento$/i }).click();
 
     // Existe en la BD. Se comprueba antes que la pantalla: la UI puede pintar el
