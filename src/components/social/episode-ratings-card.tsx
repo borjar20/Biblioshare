@@ -75,7 +75,7 @@ export function EpisodeRatingsCard({
               </span>
               {ep.rating != null && (
                 <div className="mt-1">
-                  <RatingDots value={ep.rating} size="sm" />
+                  <RatingDots value={ep.rating} size="sm" itemType="series" />
                 </div>
               )}
               {ep.reviewExcerpt && (

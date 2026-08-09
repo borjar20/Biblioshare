@@ -130,7 +130,7 @@ export function ItemRailActions({
         <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
           {ratingLabel}
         </span>
-        <RatingDots value={rating} />
+        <RatingDots value={rating} itemType={itemType} />
       </div>
     </>
   );

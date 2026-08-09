@@ -130,7 +130,7 @@ export function ClosePassSheet({
             <span className="label-section">
               {t("rating")}
             </span>
-            <RatingDots value={rating} onChange={setRating} />
+            <RatingDots value={rating} onChange={setRating} itemType={itemType} />
             {/* RatingDots es solo presentación: la nota real viaja al
                 formulario por este input oculto (1-10, o vacío = sin
                 puntuar, que closePass acepta igual que un cierre sin nota). */}

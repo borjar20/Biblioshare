@@ -9,6 +9,7 @@ import {
 } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { formatEdition } from "@/lib/editions/edition-label";
+import { toStar } from "@/lib/stats/rating";
 import { latestRatingPerUser, type RatedPass } from "./latest-rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -40,7 +41,8 @@ export type CommunityReview = {
 export type Community = {
   avgRating: number | null; // 1–10, un decimal; null si nadie ha puntuado
   ratingCount: number;
-  distribution: number[]; // porcentajes [5★, 4★, 3★, 2★, 1★]
+  // Recuentos por MEDIA estrella, ascendente: [0,5★, 1★, …, 4,5★, 5★] (10 cubos).
+  distribution: number[];
   reviews: CommunityReview[];
   // Usernames @mencionados en `reviews` (texto + comentarios) que existen de
   // verdad — resuelto en UNA query (resolveKnownMentions) para que
@@ -184,17 +186,18 @@ export async function getRatingSummary(
   const ratings = latestRatingPerUser(ratedPasses).map((r) => r.rating);
 
   let avgRating: number | null = null;
-  // Índice 0 = 5★ … índice 4 = 1★ (mismo orden que renderiza el panel).
-  const distribution = [0, 0, 0, 0, 0];
+  // Diez cubos por MEDIA estrella, ascendente: índice 0 = 0,5★ … índice 9 = 5★.
+  // Recuentos, no porcentajes: la barra se normaliza contra el pico al pintarse,
+  // y el porcentaje solo alimentaba un «%» por fila que ya no se enseña. Antes
+  // agrupaba en cinco estrellas enteras con ceil(r/2), y toda nota impar —cada
+  // media estrella— saltaba a la entera de arriba; esa distribución se perdía.
+  const distribution = Array<number>(10).fill(0);
   if (ratings.length > 0) {
     avgRating =
       Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
     for (const r of ratings) {
-      const stars = Math.min(5, Math.max(1, Math.ceil(r / 2)));
-      distribution[5 - stars] += 1;
-    }
-    for (let i = 0; i < distribution.length; i++) {
-      distribution[i] = Math.round((distribution[i] / ratings.length) * 100);
+      // toStar: 1→0,5★ … 10→5★ (acotado). El cubo es estrella*2 − 1.
+      distribution[Math.round(toStar(r) * 2) - 1] += 1;
     }
   }
 
