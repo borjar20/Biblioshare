@@ -178,11 +178,12 @@ semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Spec:
   acción de ficha (nunca en `applyTransition` → «el admin no publica»), con
   `post_preferences` (opt-out). La tabla **`thoughts` se absorbe** en `posts`. La ficha
   (community tab) resuelve ahora el hilo por el target del post — converge con el feed.
-  **Migraciones aplicadas y verificadas SOLO en dev** (`20260843`–`20260846`); código
-  committeado en el worktree `posts-capa-social` (rama `feat/posts-capa-social`), **sin
-  mergear y sin desplegar a producción** — el drop de `thoughts` (`20260847`) es POST-merge.
-  1345 unitarios + typecheck + lint en verde; e2e `e2e/posts.spec.ts` escrito y committeado,
-  no ejecutable en este worktree (sin `.env.local`). Supersede la fila «Pensamiento» de
+  **Desplegado y verificado en DEV y PROD el 2026-08-09** (migraciones `20260843`–`20260847`).
+  **Orden de despliegue corregido respecto al plan: el código va ANTES del backfill** (el
+  backfill muta targets que el código viejo lee; al revés tumba el feed/ficha de prod en la
+  ventana) — ver `data-model.md` §5.1. 1345 unitarios + typecheck + lint verdes; e2e
+  `e2e/posts.spec.ts` (2 tests) **verde contra build de producción** (PR #557; fixes de i18n de
+  ruta, gate 404 por PPR #514 y carrera del compositor optimista en #559/#560). Supersede la fila «Pensamiento» de
   arriba. **Diferido a issues**: Spec 2 — compartir en formulario + UI de `post_preferences`
   + gate de prototipos §7.4 ([#554](https://github.com/borjar20/Biblioshare/issues/554));
   Spec 3 — episodios agrupados ([#555](https://github.com/borjar20/Biblioshare/issues/555));
