@@ -171,6 +171,9 @@ test("un post tiene su página /post/[id] con cuerpo y hilo (pensamiento y hito)
     await expect(card.getByText(comentario)).toBeVisible();
     await expect(card.getByRole("button", { name: /1 comentario/i })).toBeVisible();
 
+    // La reacción es un selector desplegable (ReactionBar): hay un "Reaccionar"
+    // por barra —el del post va primero en el DOM—; se abre y se pulsa Fuego (🔥).
+    await card.getByRole("button", { name: "Reaccionar" }).first().click();
     const fire = card.getByRole("button", { name: "Fuego" }).first();
     await expect(fire).toHaveAttribute("aria-pressed", "false");
     await fire.click();
@@ -179,8 +182,12 @@ test("un post tiene su página /post/[id] con cuerpo y hilo (pensamiento y hito)
     // ── Persiste: recargar /post/[id] y la verdad del servidor lo confirma ──
     await page.reload();
     const reloaded = page.locator("article").filter({ hasText: thoughtBookTitle });
-    await expect(reloaded.getByText(comentario)).toBeVisible();
+    // El hilo vuelve colapsado tras recargar (estado de cliente): se re-expande.
     await expect(reloaded.getByRole("button", { name: /1 comentario/i })).toBeVisible();
+    await reloaded.getByRole("button", { name: /1 comentario/i }).click();
+    await expect(reloaded.getByText(comentario)).toBeVisible();
+    // Reabrir el selector para leer el estado persistido de la reacción.
+    await reloaded.getByRole("button", { name: "Reaccionar" }).first().click();
     await expect(reloaded.getByRole("button", { name: "Fuego" }).first()).toHaveAttribute(
       "aria-pressed",
       "true",
