@@ -468,15 +468,18 @@ body {
 
 /* Rejilla de tres áreas de `/post/[id]`: OBRA · CONVERSACIÓN · SOCIAL. Vive aquí
    —no en utilidades de Tailwind— por los `grid-template-areas` con comillas y por
-   ser CUATRO reflows, igual que `.home-grid`. Prioridad responsive CONVERSACIÓN >
-   SOCIAL > OBRA: los raíles se compactan (su CONTENIDO, con variantes `min-[Npx]:`
-   en los componentes) antes de que la rejilla los tire a <1000.
+   ser tres reflows, igual que `.home-grid`. Prioridad responsive CONVERSACIÓN >
+   SOCIAL > OBRA.
+
+   Decisión (2026-08-11): las columnas laterales NO reducen su información por
+   ancho — mientras están visibles muestran TODO su contenido; el único cambio de
+   información ocurre a <1023, donde OBRA se OCULTA (la obra se alcanza por la
+   tarjeta vinculada dentro del post) y SOCIAL se reorganiza bajo el hilo. Los
+   saltos de 1180/1440 solo cambian el ANCHO de las columnas, no lo que muestran.
 
    El orden VISUAL lo fijan las áreas, no el DOM. El DOM va conversación → obra →
-   social; a <1000 es una sola columna y OBRA se OCULTA (la obra se alcanza por la
-   tarjeta vinculada dentro del post), quedando conversación → social. A ≥1000 son
-   tres columnas y las áreas recolocan OBRA a la izquierda. Los saltos (1000 /
-   1180 / 1440) los comparten los componentes de los raíles. */
+   social; a <1023 es una sola columna (conversación → social); a ≥1023 son tres
+   columnas y las áreas recolocan OBRA a la izquierda. */
 .post-grid {
   display: block;
 }
@@ -486,14 +489,13 @@ body {
      overflow en ningún breakpoint". */
   min-width: 0;
 }
-/* <1000: una columna, la conversación manda; el raíl de obra no se pinta. */
+/* <1023: una columna, la conversación manda; el raíl de obra no se pinta. */
 .post-grid > [data-area="obra"] {
   display: none;
 }
 
-/* Desktop pequeño / tablet landscape (1000–1179): 3 columnas muy compactas. La
-   central conserva ≥500px útiles (criterio para mantener las 3 columnas). */
-@media (min-width: 1000px) {
+/* ≥1023: 3 columnas muy compactas. La central conserva ≥500px útiles. */
+@media (min-width: 1023px) {
   .post-grid {
     display: grid;
     grid-template-columns: 180px minmax(500px, 1fr) 220px;
@@ -522,7 +524,7 @@ body {
   }
 }
 
-/* Desktop compacto (1180–1439): 3 columnas, la central algo más ancha. */
+/* Desktop compacto (1180–1439): SOLO más ancho de columna (misma información). */
 @media (min-width: 1180px) {
   .post-grid {
     grid-template-columns: 220px minmax(560px, 1fr) 260px;
@@ -536,22 +538,6 @@ body {
   .post-grid {
     grid-template-columns: 250px minmax(620px, 760px) 300px;
     gap: 24px;
-  }
-}
-
-/* Degradación del raíl SOCIAL: las listas de "más del autor"/"más sobre la obra"
-   muestran menos ítems cuanto más estrecha la columna (2 a 1000–1179, 3 a
-   1180–1439, 4 a ≥1440). Solo en el raíl vertical (≥1000): a <1000 es un carrusel
-   con scroll y se ven todos. Se hace por CSS —no recortando datos— para no
-   depender del viewport en servidor. */
-@media (min-width: 1000px) and (max-width: 1179px) {
-  .post-grid .related-list > *:nth-child(n + 3) {
-    display: none;
-  }
-}
-@media (min-width: 1180px) and (max-width: 1439px) {
-  .post-grid .related-list > *:nth-child(n + 4) {
-    display: none;
   }
 }
 

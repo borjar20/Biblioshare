@@ -93,35 +93,35 @@ function RelatedSection({
   facet: "work" | "author";
 }) {
   const t = useTranslations("social");
-  // Carrusel horizontal en móvil (<1000, todos los ítems, scroll); lista
-  // vertical en el raíl (≥1000). El salto va a 1000 (`min-[1000px]:`) para
-  // coincidir con `.post-grid`, no con `lg` (1024). `related-list` deja que la
-  // rejilla degrade el NÚMERO de ítems visibles por ancho (2/3/4) sin tocar aquí.
+  // Carrusel horizontal cuando el raíl cae al flujo (<1023, todos los ítems con
+  // scroll); lista vertical en el raíl (≥1023, mismo salto que `.post-grid`). No
+  // hay degradación del nº de ítems por ancho: mientras el raíl es visible
+  // muestra todos (decisión 2026-08-11).
   return (
     <div className={CARD_CLASS}>
       <p className={LABEL_CLASS}>{title}</p>
-      <div className="related-list flex gap-2.5 overflow-x-auto pb-1 min-[1000px]:flex-col min-[1000px]:gap-1 min-[1000px]:overflow-visible min-[1000px]:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="related-list flex gap-2.5 overflow-x-auto pb-1 min-[1023px]:flex-col min-[1023px]:gap-1 min-[1023px]:overflow-visible min-[1023px]:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {posts.map((p) => {
           const primary = facet === "work" ? p.itemTitle : p.authorDisplayName || p.authorUsername;
           return (
             <Link
               key={p.postId}
               href={`/post/${p.postId}`}
-              className="flex w-[92px] shrink-0 flex-col gap-1.5 rounded-lg transition-opacity hover:opacity-80 min-[1000px]:w-auto min-[1000px]:flex-row min-[1000px]:items-center min-[1000px]:gap-2.5 min-[1000px]:rounded-none min-[1000px]:px-0 min-[1000px]:py-1"
+              className="flex w-[92px] shrink-0 flex-col gap-1.5 rounded-lg transition-opacity hover:opacity-80 min-[1023px]:w-auto min-[1023px]:flex-row min-[1023px]:items-center min-[1023px]:gap-2.5 min-[1023px]:rounded-none min-[1023px]:px-0 min-[1023px]:py-1"
             >
               {facet === "work" ? (
                 <SpineCover
                   coverUrl={p.itemCoverUrl}
                   title={p.itemTitle}
-                  className="aspect-[2/3] w-full min-[1000px]:w-9 min-[1000px]:shrink-0"
+                  className="aspect-[2/3] w-full min-[1023px]:w-9 min-[1023px]:shrink-0"
                 />
               ) : (
-                <div className="self-start min-[1000px]:self-auto">
+                <div className="self-start min-[1023px]:self-auto">
                   <UserAvatar name={primary} avatarUrl={p.authorAvatarUrl} size={36} />
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 font-serif text-[12.5px] leading-tight font-semibold text-foreground min-[1000px]:truncate">
+                <p className="line-clamp-2 font-serif text-[12.5px] leading-tight font-semibold text-foreground min-[1023px]:truncate">
                   {primary}
                 </p>
                 <p className="mt-0.5 font-mono text-[9px] tracking-[0.05em] uppercase text-muted-foreground">

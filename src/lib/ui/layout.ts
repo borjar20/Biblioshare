@@ -63,14 +63,15 @@ export const SHELL_HOME = "max-w-2xl min-[1100px]:max-w-[1440px]";
  * (OBRA · CONVERSACIÓN · SOCIAL). Su propio ancho, NO `SHELL_APP`: el reparto en
  * tres columnas cómodas a ≥1440 (250 / minmax(620,760) / 300 + gaps) necesita
  * ~1358px, más que los 1200 de `SHELL_APP`, y el diseño pide un contenedor de
- * ~1450. Por debajo de 1000 la página va en UNA columna (la CONVERSACIÓN manda y
+ * ~1450. Por debajo de 1023 la página va en UNA columna (la CONVERSACIÓN manda y
  * conserva un ancho de lectura), así que ahí se queda en `max-w-2xl` (672) y NO
- * se estira; a partir de 1000, donde arrancan las tres columnas, crece hasta
+ * se estira; a partir de 1023, donde arrancan las tres columnas, crece hasta
  * 1450 y el reparto lo hace la rejilla `.post-grid` (en `globals.css`). La
- * prioridad responsive es CONVERSACIÓN > SOCIAL > OBRA: los raíles se compactan
- * progresivamente (contenido, no la rejilla) antes de desaparecer a <1000.
+ * prioridad responsive es CONVERSACIÓN > SOCIAL > OBRA: las columnas laterales
+ * conservan TODA su información mientras son visibles y solo desaparecen a <1023
+ * (sin reducción progresiva de contenido — decisión 2026-08-11).
  */
-export const SHELL_POST = "max-w-2xl min-[1000px]:max-w-[1450px]";
+export const SHELL_POST = "max-w-2xl min-[1023px]:max-w-[1450px]";
 
 /**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen

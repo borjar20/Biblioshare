@@ -80,16 +80,17 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // crudas. Mismos ns que el feed de Inicio.
   // Tres áreas (`.post-grid`): OBRA · CONVERSACIÓN · SOCIAL. Jerarquía visual
   // OBRA→CONVERSACIÓN→SOCIAL, pero prioridad responsive CONVERSACIÓN>SOCIAL>OBRA
-  // — a <1000 cae a una columna, OBRA se oculta (accesible por la tarjeta
-  // vinculada del post) y SOCIAL cae bajo el hilo. El DOM va conversación→obra→
-  // social; las `grid-template-areas` recolocan OBRA a la izquierda a ≥1000.
+  // — a <1023 cae a una columna, OBRA se oculta (accesible por la tarjeta
+  // vinculada del post) y SOCIAL cae bajo el hilo. Los raíles conservan TODA su
+  // información mientras son visibles (sin degradación por ancho). El DOM va
+  // conversación→obra→social; las `grid-template-areas` recolocan OBRA a ≥1023.
   // `pb-28` en móvil deja aire para el composer fijo del hilo (que posee la
   // página; el árbol ya no lo añade). Cabecera = el post (tarjeta-hero, SIN su
   // barra de interacción) y debajo el hilo anidado con su composer y deep-link.
   return (
     <RouteMessages ns={["feed", "social"]}>
       <div className={`mx-auto w-full ${SHELL_POST} flex-1 px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
-        <div className="post-grid pb-28 min-[1000px]:pb-0">
+        <div className="post-grid pb-28 min-[1023px]:pb-0">
           <div data-area="conversacion" className="flex min-w-0 flex-col gap-4">
             <FeedItem
               entry={entry}
