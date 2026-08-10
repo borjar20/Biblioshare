@@ -55,6 +55,66 @@ export function buildCommentThreads(comments: InteractionComment[], sort: Commen
   return list;
 }
 
+// Árbol de comentarios REAL (posts Spec 2b, /post/[id]): a diferencia de
+// `buildCommentThreads` —que aplana todo a raíz + respuestas planas para el feed
+// y las superficies compartidas—, este conserva la jerarquía por `parentId`. La
+// UI de `/post/[id]` la renderiza anidada. La profundidad de DATOS es libre; la
+// de RENDER (sangría) la capa la vista a `MAX_THREAD_DEPTH` niveles: más adentro
+// no se sangra más, el nodo se pinta al nivel tope (con la @mención dando el
+// contexto de a quién responde).
+export const MAX_THREAD_DEPTH = 4;
+
+export type CommentNode = {
+  comment: InteractionComment;
+  depth: number; // real, 0 = raíz de hilo; el render satura la sangría en MAX_THREAD_DEPTH
+  children: CommentNode[];
+};
+
+export function buildCommentTree(
+  comments: InteractionComment[],
+  sort: CommentSort,
+): CommentNode[] {
+  const byId = new Map(comments.map((c) => [c.id, c]));
+  const childrenOf = new Map<string, InteractionComment[]>();
+  const roots: InteractionComment[] = [];
+  for (const c of comments) {
+    // Padre presente en el lote → cuelga de él; si no (raíz real, o padre fuera
+    // del corte de prefetch), es raíz de hilo.
+    const parent = c.parentId ? byId.get(c.parentId) : undefined;
+    if (parent && parent.id !== c.id) {
+      const arr = childrenOf.get(parent.id);
+      if (arr) arr.push(c);
+      else childrenOf.set(parent.id, [c]);
+    } else {
+      roots.push(c);
+    }
+  }
+  // `placed` corta ciclos (imposibles con las constraints de BD, pero barato de
+  // blindar) y evita doble colocación: cada comentario tiene un único padre, así
+  // que aparece una sola vez. Nunca recursión infinita.
+  const placed = new Set<string>();
+  const build = (c: InteractionComment, depth: number): CommentNode => {
+    placed.add(c.id);
+    const children = (childrenOf.get(c.id) ?? [])
+      .filter((k) => !placed.has(k.id))
+      .sort(asc) // respuestas en orden cronológico (viejas primero, estilo hilo)
+      .map((k) => build(k, depth + 1));
+    return { comment: c, depth, children };
+  };
+  const nodes = roots.map((r) => build(r, 0));
+  // Comentarios atrapados en un ciclo no cuelgan de ninguna raíz: se promueven a
+  // raíz (en orden de aparición) para que la función sea TOTAL, sin perderlos.
+  for (const cm of comments) if (!placed.has(cm.id)) nodes.push(build(cm, 0));
+  nodes.sort((a, b) => {
+    if (a.comment.pinned !== b.comment.pinned) return a.comment.pinned ? -1 : 1;
+    if (sort === "top" && b.comment.reactionCount !== a.comment.reactionCount) {
+      return b.comment.reactionCount - a.comment.reactionCount;
+    }
+    return b.comment.createdAt.localeCompare(a.comment.createdAt); // recientes primero
+  });
+  return nodes;
+}
+
 export function buildChatMessages(comments: InteractionComment[]): ChatMessage[] {
   const byId = new Map(comments.map((c) => [c.id, c]));
   const ordered = [...comments].sort(asc);
