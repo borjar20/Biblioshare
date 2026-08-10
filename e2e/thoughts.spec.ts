@@ -61,28 +61,29 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
-// Abre el compositor desde la cabecera del feed, ancla `anchorTitle` (debe
-// devolver un único resultado del autocompletar), escribe `body` y publica.
-// El dialog se cierra solo (onDone) cuando createThought devuelve ok:true.
+// Compositor desplegado inline en la cabecera del feed (ya no hay modal):
+// ancla `anchorTitle` (debe devolver un único resultado del autocompletar),
+// escribe `body` y publica. Al terminar el formulario se remonta limpio
+// (onDone), así que la señal de éxito es que el textarea vuelve a estar vacío.
 async function publishThought(
   page: Page,
   opts: { anchorTitle: string; body: string; spoiler?: boolean },
 ) {
-  await page.getByRole("button", { name: "Compartir un pensamiento" }).click();
-  const dialog = page.getByRole("dialog", { name: "Nuevo pensamiento" });
-  await expect(dialog).toBeVisible();
+  const composer = page.getByRole("region", { name: "Compartir un pensamiento" });
+  await expect(composer).toBeVisible();
 
-  await dialog.getByPlaceholder(/busca un libro/i).fill(opts.anchorTitle);
-  const result = dialog.getByRole("button", { name: opts.anchorTitle });
+  await composer.getByPlaceholder(/busca un libro/i).fill(opts.anchorTitle);
+  const result = composer.getByRole("button", { name: opts.anchorTitle });
   await expect(result).toBeVisible();
   await result.click();
 
-  await dialog.getByPlaceholder("¿Qué piensas?").fill(opts.body);
+  const bodyField = composer.getByPlaceholder("¿Qué piensas?");
+  await bodyField.fill(opts.body);
   if (opts.spoiler) {
-    await dialog.getByRole("checkbox", { name: "Contiene spoiler" }).check();
+    await composer.getByRole("checkbox", { name: "Contiene spoiler" }).check();
   }
-  await dialog.getByRole("button", { name: "Publicar" }).click();
-  await expect(dialog).toBeHidden();
+  await composer.getByRole("button", { name: "Publicar" }).click();
+  await expect(bodyField).toHaveValue("");
 }
 
 // «Pensamiento» (Fase 6, Task 6.1): publicar anclado a una obra de biblioteca,

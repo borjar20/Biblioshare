@@ -12,9 +12,9 @@ const MAX_BODY = 2000;
 // Formulario de «Pensamiento» (Fase 4, Task 4.3): ancla obligatoria (nunca se
 // publica sin ella, la spec es explícita), cuerpo con contador y una barra
 // markdown-lite (negrita/cursiva/lista, mismo micro-formato que soportará
-// ThoughtCard en Fase 5), y spoiler opcional. `onDone` cierra el modal que lo
-// aloja (thought-composer-trigger.tsx) -- este componente no sabe que vive en
-// un <dialog>.
+// ThoughtCard en Fase 5), y spoiler opcional. `onDone` avisa a quien lo aloja
+// (hoy thought-composer-inline.tsx, que lo remonta limpio) al publicar o
+// cancelar -- este componente no sabe si vive inline o en un modal.
 export function ThoughtComposer({ onDone }: { onDone: () => void }) {
   const t = useTranslations("thoughtComposer");
   const [anchor, setAnchor] = useState<AnchorRef | null>(null);

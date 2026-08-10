@@ -9,7 +9,7 @@ import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { StatsRail } from "@/components/stats/stats-rail";
 import { TodayBlock } from "@/components/stats/today-block";
 import { FeedFilters } from "@/components/social/feed-filters";
-import { ThoughtComposerTrigger } from "@/components/social/thought-composer-trigger";
+import { ThoughtComposerInline } from "@/components/social/thought-composer-inline";
 import { FeedList } from "@/components/social/feed-list";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
@@ -101,12 +101,11 @@ export default async function Home({
 
         {/* FEED: compartir un pensamiento + filtros + actividad de tu gente. */}
         <div data-area="feed">
-          {/* Disparador del compositor de «Pensamiento» (Fase 4): fila propia,
-              no comparte línea con los chips de filtro -- esos ya van "por los
-              pelos" a una fila a 360px (ver feed-filters.tsx) y no hay hueco
-              para un tercer elemento sin romperse a una segunda línea. */}
+          {/* Compositor de «Pensamiento» (Fase 4), desplegado a ancho completo
+              de la columna: escribir es la acción de cabecera del feed, así que
+              va abierto, no tras un botón + modal. */}
           <div className="pb-3.5">
-            <ThoughtComposerTrigger />
+            <ThoughtComposerInline />
           </div>
 
           {/* Rótulo de sección ("Actividad de tu gente") + chips de filtro en

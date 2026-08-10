@@ -95,20 +95,22 @@ async function loginAs(page: Page, email: string, password: string) {
 }
 
 // Publica un Pensamiento (post kind=thought) desde la cabecera del feed. El
-// compositor escribe `posts` (Task 8: repuntado de createThought a createPost).
+// compositor escribe `posts` (Task 8: repuntado de createThought a createPost)
+// y va desplegado inline (ya no en un modal): al terminar se remonta limpio, así
+// que el éxito se comprueba con el textarea de nuevo vacío.
 async function publishThought(page: Page, opts: { anchorTitle: string; body: string }) {
-  await page.getByRole("button", { name: "Compartir un pensamiento" }).click();
-  const dialog = page.getByRole("dialog", { name: "Nuevo pensamiento" });
-  await expect(dialog).toBeVisible();
+  const composer = page.getByRole("region", { name: "Compartir un pensamiento" });
+  await expect(composer).toBeVisible();
 
-  await dialog.getByPlaceholder(/busca un libro/i).fill(opts.anchorTitle);
-  const result = dialog.getByRole("button", { name: opts.anchorTitle });
+  await composer.getByPlaceholder(/busca un libro/i).fill(opts.anchorTitle);
+  const result = composer.getByRole("button", { name: opts.anchorTitle });
   await expect(result).toBeVisible();
   await result.click();
 
-  await dialog.getByPlaceholder("¿Qué piensas?").fill(opts.body);
-  await dialog.getByRole("button", { name: "Publicar" }).click();
-  await expect(dialog).toBeHidden();
+  const bodyField = composer.getByPlaceholder("¿Qué piensas?");
+  await bodyField.fill(opts.body);
+  await composer.getByRole("button", { name: "Publicar" }).click();
+  await expect(bodyField).toHaveValue("");
 }
 
 // Ruta propia del post `/post/[id]` (Spec 1, Task 11): el post es la entidad
