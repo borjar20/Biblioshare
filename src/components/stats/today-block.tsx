@@ -82,8 +82,13 @@ export async function TodayBlock({ userId }: { userId: string }) {
     .replace(/^./, (c) => c.toUpperCase());
 
   return (
-    <section className="flex flex-col gap-3">
-      <div>
+    // `today-block` = container query (globals.css): la sección se reparte en dos
+    // columnas internas cuando tiene ≥560px (tablet a 2 columnas y móvil ancho) y
+    // se apila cuando es estrecha (la columna de las 3 columnas del Inicio).
+    <section className="today-block flex flex-col gap-3">
+      {/* `today-head`: apilado (fecha sobre título) en estrecho; en fila (título
+          izquierda, fecha derecha) a ≥560. */}
+      <div className="today-head">
         <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-muted-foreground">
           {dateLabel}
         </p>
@@ -92,12 +97,9 @@ export async function TodayBlock({ userId }: { userId: string }) {
         </h2>
       </div>
 
-      {/* En móvil el bloque se apila (frame G). En escritorio NO se estira: una
-          tarjeta de 1024px deja la portada en 58px y convierte la barra de
-          progreso en una línea de 800px — el "móvil estirado" que prohíbe P-T7.
-          Así que el ancho se usa de verdad: a la izquierda el destacado con sus
-          mini debajo, y "Para más tarde" de rail a la derecha (el reparto lo
-          hace TodayPicker). */}
+      {/* Reparto interno (destacado | estanterías) a cargo de TodayPicker vía el
+          container query `.today-split`. En estrecho se apila: en curso → para
+          más tarde → continúa. */}
       <TodayPicker
         keepGoingLabel={t("keepGoing")}
         later={later}

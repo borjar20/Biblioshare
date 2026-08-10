@@ -22,13 +22,12 @@ export function LaterShelf({ items, total }: { items: LibraryItem[]; total: numb
   return (
     <section className="flex flex-col gap-2">
       <Header total={total} />
-      {/* Carrusel de una fila salvo con 3 columnas. Móvil (<768): sangra hasta
-          el borde (frame G). Tablet (768–1099): carrusel CONTENIDO (`mx-0`, sin
-          sangrado que se meta en la columna de stats, sin envolver) para que lo
-          personal no crezca en alto y empuje el feed. Solo de 1100 para arriba
-          —donde lo personal tiene columna propia y alta— las portadas envuelven
-          en filas. */}
-      <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+      {/* `today-shelf`: carrusel de una fila. Móvil estrecho (<768): sangra hasta
+          el borde (frame G). Tablet/desktop y en la columna derecha del split
+          (≥560): contenido (`mx-0`, sin sangrado que se meta en la columna
+          vecina, sin envolver). Solo en las 3 columnas del Inicio (≥1100) las
+          portadas envuelven en filas. */}
+      <div className="today-shelf -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
         {items.map((item) => (
           <Cover key={item.entryId} item={item} />
         ))}

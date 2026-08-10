@@ -45,13 +45,15 @@ export function TodayPicker({
   const rest = entries.filter((e) => e.id !== featured.id);
 
   return (
-    // Una sola columna, apilada: el destacado, "Para más tarde" y las mini de
-    // "Continúa". La columna PERSONAL del Inicio ya no es un banner a dos
-    // columnas (era 520px | "Para más tarde"): es una de las tres áreas de
-    // `.home-grid`, así que aquí se apila y el reparto lo hace la rejilla de
-    // fuera. El orden lo fija el spec: en curso → para más tarde → continúa.
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2">
+    // Dos áreas: IZQUIERDA el destacado, DERECHA "Para más tarde" + "Continúa"
+    // apiladas. `today-split` (globals.css) lo pinta a DOS COLUMNAS cuando la
+    // sección tiene ≥560px (mockup C: cabe sin scroll) y APILADO en estrecho
+    // —donde el orden queda en curso → para más tarde → continúa, que es como
+    // caen los dos bloques uno tras otro—. La columna estrecha de las 3 columnas
+    // del Inicio nunca llega a 560, así que ahí se queda apilado.
+    <div className="today-split flex flex-col gap-3">
+      {/* IZQUIERDA: En curso + destacado. */}
+      <div className="flex min-w-0 flex-col gap-2">
         {heading}
         {/* La key fuerza el REMONTAJE al cambiar de destacado. Sin ella React
             reutiliza el mismo <img> y le cambia el src, pero el navegador sigue
@@ -61,32 +63,35 @@ export function TodayPicker({
         <Fragment key={featured.id}>{featured.card}</Fragment>
       </div>
 
-      {later}
+      {/* DERECHA: "Para más tarde" y "Continúa" apiladas. */}
+      <div className="flex min-w-0 flex-col gap-3">
+        {later}
 
-      {rest.length > 0 && (
-        <div className="mt-1 flex flex-col gap-2">
-          <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
-            {keepGoingLabel}
-          </span>
-          {/* Carrusel de una fila salvo con 3 columnas. Móvil (<768): sangra al
-              borde. Tablet (768–1099): carrusel CONTENIDO (`mx-0`, sin envolver)
-              para no crecer en alto y no empujar el feed. Solo de 1100 arriba
-              —columna personal propia y alta— las mini envuelven en filas. */}
-          <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
-            {rest.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                aria-label={entry.focusLabel}
-                onClick={() => setSelectedId(entry.id)}
-                className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
-              >
-                {entry.mini}
-              </button>
-            ))}
+        {rest.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
+              {keepGoingLabel}
+            </span>
+            {/* `today-shelf`: carrusel de una fila. Móvil estrecho (<768): sangra
+                al borde. Tablet/desktop y en la columna derecha del split (≥560):
+                contenido (`mx-0`, sin envolver). Solo en las 3 columnas del
+                Inicio (≥1100) las mini envuelven en filas. */}
+            <div className="today-shelf -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+              {rest.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  aria-label={entry.focusLabel}
+                  onClick={() => setSelectedId(entry.id)}
+                  className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+                >
+                  {entry.mini}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -367,6 +367,51 @@ body {
   }
 }
 
+/* "¿Qué has disfrutado hoy?" (la columna personal del Inicio): se compacta a DOS
+   columnas internas cuando la sección tiene ≥560px —el destacado a la izquierda;
+   "Para más tarde" + "Continúa" apiladas a la derecha—, para que entre sin
+   scroll. Es un CONTAINER QUERY, no un breakpoint de ventana: así se aplica igual
+   en el tablet a 2 columnas y en móvil ancho, y se queda APILADA en la columna
+   estrecha de las 3 columnas del Inicio (que nunca llega a 560, así que ahí no
+   dispara). El container es la sección; el sticky de la columna personal (que la
+   envuelve) no se ve afectado porque `inline-size` solo contiene el ancho. */
+.today-block {
+  container-type: inline-size;
+}
+@container (min-width: 560px) {
+  /* Cabecera en fila: título a la izquierda, fecha a la derecha (mockup C).
+     `row-reverse` porque en el DOM la fecha va primera (para apilarse ENCIMA del
+     título en móvil, que es como debe verse estrecho). */
+  .today-head {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .today-head > h2 {
+    margin-top: 0;
+  }
+  /* Destacado | estanterías. El destacado se lleva algo más de ancho (1.3fr). */
+  .today-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  /* En la columna derecha las estanterías van contenidas y en UNA fila (sin el
+     sangrado a los bordes del móvil ni el envolver de las 3 columnas). Regla sin
+     capa: gana a las utilidades `-mx-5`/`md:mx-0`/`flex-wrap` de Tailwind, que
+     viven en @layer utilities. */
+  .today-shelf {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    flex-wrap: nowrap;
+  }
+}
+
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */
 @keyframes sorteo-flip-in {
   from {
