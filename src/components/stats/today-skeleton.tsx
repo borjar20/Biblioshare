@@ -51,22 +51,25 @@ export function TodayBlockSkeleton() {
           </div>
         </div>
 
-        {/* DERECHA: rótulo "Continúa" + carrusel. Como el real, cada ítem trae
-            la tarjeta mini (por defecto) y la mini-portada (compacto), y el CSS
-            enseña una u otra. */}
-        <div className="flex min-w-0 flex-col gap-2">
-          <SkeletonLine className="h-2.5 w-28" />
-          <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="continue-item shrink-0">
-                <span className="continue-card">
-                  <MiniCardSkeleton />
-                </span>
-                <span className="continue-thumb">
-                  <Skeleton className="aspect-[2/3] w-11 rounded-md" />
-                </span>
-              </div>
-            ))}
+        {/* DEBAJO: las estanterías. Una sola sección fantasma (`:only-child` la
+            deja a media anchura, como el split lateral real); 6 huecos = las 2
+            filas del grid 3×2, para reservar su alto (CLS #284). Cada ítem trae
+            la tarjeta mini (≥1100) y la mini-portada (grid lateral, <1100). */}
+        <div className="today-shelves flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-2">
+            <SkeletonLine className="h-2.5 w-28" />
+            <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="continue-item shrink-0">
+                  <span className="continue-card">
+                    <MiniCardSkeleton />
+                  </span>
+                  <span className="continue-thumb">
+                    <Skeleton className="aspect-[2/3] w-11 rounded-md" />
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

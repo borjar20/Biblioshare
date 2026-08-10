@@ -361,36 +361,69 @@ body {
   }
 }
 
-/* "¿Qué has disfrutado hoy?" (la columna personal del Inicio) va SIEMPRE en una
-   columna: el destacado arriba y debajo las tiras "Continúa" y "Para más tarde"
-   (`.today-split` es solo un flex-col; el nombre es herencia). El Inicio salta de
-   3 columnas (≥1100) a 1 (<1100) sin paso intermedio, así que la sección ya no se
-   reparte en dos columnas internas —eso era la vieja fila de tablet, ya retirada—
-   y por eso no lleva `container-type`. */
+/* "¿Qué has disfrutado hoy?" (la columna personal del Inicio) va en una columna
+   principal: el destacado arriba y, debajo, las tiras "Continúa" y "Para más
+   tarde" (`.today-split` es solo un flex-col; el nombre es herencia). El Inicio
+   salta de 3 columnas (≥1100) a 1 (<1100) sin paso intermedio; la sección no se
+   reparte a dos columnas internas (eso era la vieja fila de tablet) y por eso no
+   lleva `container-type`. */
 
-/* La mini-portada de "Continúa" (`thumb`) solo se ve en la tira slim; por defecto
-   mandan las tarjetas mini. */
+/* La mini-portada de "Continúa" (`thumb`) solo se ve bajo 1100 (grid lateral);
+   por defecto (≥1100) mandan las tarjetas mini. */
 .continue-item .continue-thumb {
   display: none;
 }
 
-/* Tira SLIM de las estanterías de "¿Qué has disfrutado hoy?": TODO el rango por
-   debajo de 1100, donde el Inicio va en una columna y el feed queda DEBAJO. A
-   ≥1100 (3 columnas, con el feed AL LADO) no aplica y las tiras van ricas. La
-   tarjeta destacada NO cambia —mismo diseño a todos los tamaños (decisión del
-   usuario, 2026-08-10)—; lo que se encoge son las dos tiras: "Continúa" pasa de
-   tarjetas mini a mini-portadas, y "Para más tarde" reduce sus portadas (y suelta
-   el título) para igualar a la de arriba. Lo interactivo (Sesión, Registrar,
-   cambiar destacado, ir a la ficha) queda intacto. */
+/* Bajo 1100 (una sola columna, feed DEBAJO): el destacado se queda full-width y,
+   debajo, "Continúa" y "Para más tarde" van LADO A LADO (split lateral), cada una
+   como un grid de 3 columnas × 2 filas de portadas. A ≥1100 (3 columnas del
+   Inicio, feed AL LADO) esto no aplica: las tiras van apiladas y ricas (tarjetas
+   mini + portadas con título, envolviendo). La tarjeta destacada NO cambia —mismo
+   diseño a todos los tamaños (decisión del usuario, 2026-08-10)—. Lo interactivo
+   (subir al destacado, Sesión, Registrar, ir a la ficha) queda intacto. */
 @media (max-width: 1099px) {
+  /* Las dos estanterías, una al lado de la otra bajo el destacado. */
+  .today-shelves {
+    flex-direction: row;
+    align-items: start;
+  }
+  .today-shelves > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* Si solo hay una estantería (p. ej. un único título en curso, sin "Continúa",
+     o sin cola en "Para más tarde"), se queda a media anchura para que sus
+     portadas midan lo mismo que cuando están las dos, en vez de estirarse. */
+  .today-shelves > *:only-child {
+    max-width: 50%;
+  }
+  /* Cada estantería: grid 3×2 en vez de tira con scroll. Regla sin capa: gana a
+     las utilidades de Tailwind (`-mx-5`/`px-5`/`overflow-x-auto`/`flex`). */
+  .today-shelf {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  /* Solo 2 filas (6 portadas); el resto se ve desde "Ver todos". */
+  .today-shelf > *:nth-child(n + 7) {
+    display: none;
+  }
+  /* Las portadas llenan la celda (ni la tarjeta mini ni el ancho fijo de 66px). */
+  .continue-item,
+  .later-item {
+    width: 100%;
+  }
   .continue-item .continue-card {
     display: none;
   }
   .continue-item .continue-thumb {
     display: block;
   }
-  .later-item {
-    width: 44px;
+  .continue-item .continue-thumb > * {
+    width: 100%;
   }
   .later-item > p {
     display: none;
