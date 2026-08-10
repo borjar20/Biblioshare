@@ -80,7 +80,10 @@ export function FeedList({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    // `feed-list`: en móvil (<640) los posts rompen el margen del shell y van a
+    // ancho completo del layout, separados por una línea en vez de ir como
+    // tarjetas sueltas (globals.css). A ≥640 siguen siendo tarjetas con `gap-3`.
+    <div className="feed-list flex flex-col gap-3">
       {events.map((entry) => (
         <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
       ))}

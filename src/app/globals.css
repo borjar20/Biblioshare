@@ -376,15 +376,15 @@ body {
 
 /* Bajo 1100 (una sola columna, feed DEBAJO): el destacado se queda full-width y,
    debajo, "Continúa" y "Para más tarde" van LADO A LADO en un split ASIMÉTRICO
-   (decisión del usuario, 2026-08-10): "Continúa" es un grid 2×2 de portadas
-   GRANDES con título (lo que estás leyendo, para actuar) y "Para más tarde" un
-   4×2 de portadas pequeñas sin título (la cola, de un vistazo). Los anchos siguen
-   50/50, así que cada celda de "Continúa" mide el doble que una de "Para más
-   tarde" — la jerarquía sale sola. A ≥1100 (3 columnas del Inicio, feed AL LADO)
-   esto no aplica: las tiras van apiladas y ricas (tarjetas mini + portadas con
-   título, envolviendo). La tarjeta destacada NO cambia —mismo diseño a todos los
-   tamaños—. Lo interactivo (subir al destacado, Sesión, Registrar, ir a la
-   ficha) queda intacto. */
+   (decisión del usuario, 2026-08-10): "Continúa" es un grid 2×2 (lo que estás
+   leyendo, para actuar) y "Para más tarde" un 4×2 (la cola, de un vistazo), las
+   dos de portadas SIN título. Los anchos van 1:2 ("Más tarde" el doble de ancho),
+   así que las portadas de las dos miden casi lo mismo; lo que separa las dos
+   secciones es un BORDE vertical, no el tamaño. A ≥1100 (3 columnas del Inicio,
+   feed AL LADO) esto no aplica: las tiras van apiladas y ricas (tarjetas mini +
+   portadas con título, envolviendo). La tarjeta destacada NO cambia —mismo diseño
+   a todos los tamaños—. Lo interactivo (subir al destacado, Sesión, Registrar, ir
+   a la ficha) queda intacto. */
 @media (max-width: 1099px) {
   /* Las dos estanterías, una al lado de la otra bajo el destacado. */
   .today-shelves {
@@ -397,9 +397,18 @@ body {
   }
   /* Split ASIMÉTRICO por ancho: "Para más tarde" (4 columnas) ocupa el doble que
      "Continúa" (2 columnas), así las portadas de las dos miden casi lo mismo en
-     vez de que las de "Continúa" salgan enormes. */
+     vez de que las de "Continúa" salgan enormes. El borde izquierdo es el
+     SEPARADOR entre las dos secciones (ahora que ninguna lleva título, es lo que
+     las distingue); el padding lo aparta de las portadas de la cola. */
   .today-shelves > .today-later-col {
     flex: 2 1 0;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+  }
+  /* Hija única (falta "Continúa"): sin nada a la izquierda no hay que separar. */
+  .today-shelves > .today-later-col:only-child {
+    border-left: 0;
+    padding-left: 0;
   }
   /* Si solo hay una estantería (p. ej. un único título en curso, sin "Continúa",
      o sin cola en "Para más tarde"), se queda a media anchura para que sus
@@ -417,7 +426,7 @@ body {
     padding: 0;
     overflow: visible;
   }
-  /* "Continúa": 2×2 (portada grande + título). Solo 4 items; el resto, "Ver
+  /* "Continúa": 2×2 (portada grande, sin título). Solo 4 items; el resto, "Ver
      todos". */
   .today-shelf-continue {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -438,8 +447,8 @@ body {
   .later-item {
     width: 100%;
   }
-  /* "Continúa" enseña la mini-portada CON título (`thumb`), no la tarjeta mini;
-     portada y título llenan el ancho de la celda. */
+  /* "Continúa" enseña la mini-portada (`thumb`), no la tarjeta mini; la portada
+     llena el ancho de la celda. */
   .continue-item .continue-card {
     display: none;
   }
@@ -449,11 +458,42 @@ body {
   .continue-item .continue-thumb > * {
     width: 100%;
   }
-  /* "Para más tarde" sigue siendo solo portada en compacto: su título (el `<p>`
-     del Cover) se oculta. El título de "Continúa" vive en su thumb, no aquí, así
-     que esta regla no lo toca. */
+  /* "Para más tarde" es solo portada en compacto: su título (el `<p>` del Cover)
+     se oculta. "Continúa" ya no tiene título que ocultar, así que esto no le
+     afecta (su thumb no lleva `<p>`). */
   .later-item > p {
     display: none;
+  }
+}
+
+/* Feed a ANCHO COMPLETO del layout en móvil (<640): los posts rompen el px-5 del
+   shell y van de borde a borde, separados por una línea, en vez de ir como
+   tarjetas sueltas con sombra y hueco (se perdió al pasar el Inicio a 3 áreas; se
+   recupera — decisión del usuario, 2026-08-10). Solo afecta a la LISTA
+   (`.feed-list`, en Inicio y su loading); el compositor y el rótulo de sección
+   siguen dentro del margen. Reglas sin capa: ganan a `rounded-card`/`border`/
+   `shadow-card`/`gap-3` de las tarjetas. */
+@media (max-width: 639px) {
+  .feed-list {
+    gap: 0;
+    /* -20px = el px-5 del shell; deja los posts a ancho de viewport (mismo truco
+       que `-mx-5` de las estanterías de "hoy"). */
+    margin-inline: -20px;
+  }
+  .feed-list > article {
+    border-radius: 0;
+    border-inline-width: 0;
+    border-top-width: 0;
+    box-shadow: none;
+    border-bottom: 1px solid var(--border);
+  }
+  /* El último post no necesita línea de cierre. */
+  .feed-list > article:last-of-type {
+    border-bottom-width: 0;
+  }
+  /* "Cargar más" recupera aire tras el último post ya pegado (gap:0). */
+  .feed-list > button {
+    margin-top: 16px;
   }
 }
 

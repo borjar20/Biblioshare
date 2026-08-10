@@ -53,10 +53,10 @@ export function TodayPicker({
   return (
     // Una columna principal: arriba el destacado (full-width), debajo las tiras
     // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO en un
-    // split asimétrico ("Continúa" 2×2 con título, "Para más tarde" 4×2 solo
-    // portada); a ≥1100 van apiladas y ricas. Lo pinta `today-shelves`
-    // (globals.css). `today-split` es hoy solo un flex-col (el destacado sobre
-    // las tiras); el nombre es herencia.
+    // split asimétrico ("Continúa" 2×2, "Para más tarde" 4×2, las dos solo
+    // portada, separadas por un borde vertical); a ≥1100 van apiladas y ricas. Lo
+    // pinta `today-shelves` (globals.css). `today-split` es hoy solo un flex-col
+    // (el destacado sobre las tiras); el nombre es herencia.
     <div className="today-split flex flex-col gap-3">
       {/* IZQUIERDA: En curso + destacado. */}
       <div className="flex min-w-0 flex-col gap-2">
@@ -80,12 +80,11 @@ export function TodayPicker({
             </span>
             {/* `today-shelf-continue`: a ≥1100 es un carrusel/rejilla de tarjetas
                 mini que envuelve en la columna estrecha; bajo 1100 se vuelve el
-                grid 2×2 de mini-portadas CON título del split lateral
-                (globals.css).
+                grid 2×2 de mini-portadas del split lateral (globals.css).
 
                 Cada botón trae DOS vistas: la tarjeta mini (≥1100) y la
-                mini-portada con título (grid lateral, <1100). El CSS enseña una u
-                otra; el clic que sube al destacado es el mismo. */}
+                mini-portada (grid lateral, <1100). El CSS enseña una u otra; el
+                clic que sube al destacado es el mismo. */}
             <div className="today-shelf today-shelf-continue -mx-5 flex items-start gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
               {rest.map((entry) => (
                 <button

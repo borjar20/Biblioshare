@@ -53,10 +53,10 @@ export function TodayBlockSkeleton() {
 
         {/* DEBAJO: el split lateral fantasma. Se fantasmean LAS DOS columnas con
             sus mismos pesos (1 vs 2), que es el caso común, para que el alto y el
-            ancho reservados casen con el real (CLS #284): "Continúa" 2×2 con
-            título (4 huecos) y "Para más tarde" 4×2 solo portada (8 huecos). Cada
-            ítem de "Continúa" trae la tarjeta mini (≥1100) y la mini-portada con
-            título (<1100). */}
+            ancho reservados casen con el real (CLS #284): "Continúa" 2×2 solo
+            portada (4 huecos) y "Para más tarde" 4×2 solo portada (8 huecos). Cada
+            ítem de "Continúa" trae la tarjeta mini (≥1100) y la mini-portada
+            (<1100). */}
         <div className="today-shelves flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 flex-col gap-2">
             <SkeletonLine className="h-2.5 w-28" />
@@ -68,7 +68,6 @@ export function TodayBlockSkeleton() {
                   </span>
                   <span className="continue-thumb">
                     <Skeleton className="aspect-[2/3] w-11 rounded-md" />
-                    <SkeletonLine className="mt-[5px] h-2.5 w-full" />
                   </span>
                 </div>
               ))}
