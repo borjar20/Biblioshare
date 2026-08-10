@@ -16,6 +16,7 @@ export function ProgressTimelineCard({
   viewerLoggedIn,
   knownUsernames,
   hideActor = false,
+  showInteractions = true,
 }: {
   entry: PersonGroupEntry; // verb === "progressed", items = pasos desc
   viewerLoggedIn: boolean;
@@ -23,6 +24,8 @@ export function ProgressTimelineCard({
   knownUsernames: string[];
   /** Oculta avatar+nombre y capitaliza el verbo (Actividad del perfil, #302). */
   hideActor?: boolean;
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = entry.actor.displayName || entry.actor.username;
@@ -82,7 +85,7 @@ export function ProgressTimelineCard({
                     {step.progress.note.isSpoiler ? <SpoilerGate>{noteEl}</SpoilerGate> : noteEl}
                   </div>
                 )}
-                {step.interactionTarget?.interactionTargetId && (
+                {showInteractions && step.interactionTarget?.interactionTargetId && (
                   <div className="mt-1.5">
                     <ReviewInteractions
                       interactionTargetId={step.interactionTarget.interactionTargetId}

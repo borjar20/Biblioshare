@@ -369,6 +369,93 @@ test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", asyn
   }
 });
 
+// Spec 2b — /post/[id] con hilo anidado (PostThread) + deep-link al subhilo: una
+// RESPUESTA a un comentario avisa a su autor, y ese aviso lleva a `/post/[id]#c-<id>`
+// (target del comentario con ancla, migración 20260848) — no a la cabecera genérica.
+// Tres usuarios: el aviso de respuesta solo salta si quien responde ≠ autor del
+// comentario ≠ dueño del post (si coincidieran, lo cubre el aviso al dueño, sin ancla).
+test("el hilo de /post/[id] anida una respuesta y el aviso deep-linka al subhilo", async ({ page, request }) => {
+  test.setTimeout(150_000);
+  const stamp = Date.now();
+  const owner = await createUser(request, `hilon${stamp}`.slice(0, 20));
+  const commenter = await createUser(request, `hiloc${stamp}`.slice(0, 20));
+  const replier = await createUser(request, `hilor${stamp}`.slice(0, 20));
+  const bookTitle = `E2E Hilo Post ${stamp}`;
+
+  let bookId: string | null = null;
+  let postId: string | null = null;
+
+  try {
+    const book = await insertOne<{ id: string }>("books", { title: bookTitle });
+    bookId = book.id;
+    const post = await insertOne<{ id: string }>("posts", {
+      author_id: owner.id,
+      kind: "thought",
+      anchor_type: "book",
+      anchor_id: bookId,
+      body: `Post con hilo ${stamp}`,
+    });
+    postId = post.id;
+    const [postTarget] = await rest<{ id: string }[]>(
+      `interaction_targets?kind=eq.post&source_id=eq.${postId}&select=id`,
+    );
+    expect(postTarget?.id).toBeTruthy();
+    // Comentario raíz del `commenter` (autor distinto del dueño del post).
+    await insertOne<{ id: string }>("comments", {
+      interaction_target_id: postTarget.id,
+      author_id: commenter.id,
+      body: `Comentario raíz ${stamp}`,
+    });
+
+    // ── `replier` abre el post, ve el hilo y responde al comentario raíz ──
+    await loginAs(page, replier.email, replier.password);
+    await page.goto(`/post/${postId}`);
+    await expect(page.getByText(`Comentario raíz ${stamp}`)).toBeVisible();
+
+    await page.getByRole("button", { name: /^responder$/i }).first().click();
+    await page.getByPlaceholder(/escribe una respuesta/i).fill(`Respuesta anidada ${stamp}`);
+    await page.getByRole("button", { name: /^comentar$/i }).click();
+    // La respuesta se pinta anidada en el hilo (optimista).
+    await expect(page.getByText(`Respuesta anidada ${stamp}`)).toBeVisible();
+
+    // ── El aviso de respuesta del `commenter` deep-linka a `#c-<id>` (verdad del
+    //    servidor: la server action addComment lo crea apuntando al target del
+    //    comentario, con ancla). ──
+    await expect
+      .poll(
+        async () => {
+          const rows = await rest<{ interaction_target_id: string | null }[]>(
+            `notifications?user_id=eq.${commenter.id}&select=interaction_target_id&order=created_at.desc&limit=1`,
+          );
+          const targetId = rows[0]?.interaction_target_id;
+          if (!targetId) return "";
+          const [tgt] = await rest<{ href: string }[]>(
+            `interaction_targets?id=eq.${targetId}&select=href`,
+          );
+          return tgt?.href ?? "";
+        },
+        { timeout: 15_000, message: "el aviso de respuesta debe deep-linkar a /post/[id]#c-" },
+      )
+      .toContain(`/post/${postId}#c-`);
+
+    // ── El `commenter` abre la campana y el aviso le lleva al subhilo (#c-) ──
+    await loginAs(page, commenter.email, commenter.password);
+    await page.getByRole("button", { name: "Notificaciones" }).click();
+    const aviso = page.getByRole("link").filter({ hasText: /comentó|respondió/i }).first();
+    await expect(aviso).toBeVisible();
+    await aviso.click();
+    await expect(page).toHaveURL(new RegExp(`/post/${postId}#c-`));
+  } finally {
+    if (bookId) {
+      await rest(`posts?anchor_id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
+      await rest(`books?id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
+    }
+    await deleteUser(owner.id);
+    await deleteUser(commenter.id);
+    await deleteUser(replier.id);
+  }
+});
+
 // Spec 2 — Compartir desde el formulario: el toggle «Compartir en mi perfil» de
 // la hoja de sesión publica un post `progressed` con el texto opcional como
 // cuerpo social; sin marcar, la sesión queda privada (comportamiento previo).

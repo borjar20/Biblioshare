@@ -26,12 +26,15 @@ export function ThoughtCard({
   viewerLoggedIn,
   hideActor = false,
   knownUsernames,
+  showInteractions = true,
 }: {
   event: FeedEvent;
   viewerLoggedIn: boolean;
   hideActor?: boolean;
   /** Usernames @mencionados que existen de verdad (cuerpo + comentarios). */
   knownUsernames: string[];
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const { thought } = event;
@@ -125,7 +128,7 @@ export function ThoughtCard({
         {thought.isSpoiler ? <SpoilerGate>{bodyEl}</SpoilerGate> : bodyEl}
       </div>
 
-      {event.interactionTarget?.interactionTargetId && (
+      {showInteractions && event.interactionTarget?.interactionTargetId && (
         <ReviewInteractions
           interactionTargetId={event.interactionTarget.interactionTargetId}
           reactionCount={event.reactionCount}

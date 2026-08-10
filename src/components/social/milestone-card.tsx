@@ -20,12 +20,15 @@ export function MilestoneCard({
   viewerLoggedIn,
   hideActor = false,
   knownUsernames,
+  showInteractions = true,
 }: {
   event: FeedEvent;
   viewerLoggedIn: boolean;
   hideActor?: boolean;
   /** Usernames @mencionados que existen de verdad (comentarios del hilo). */
   knownUsernames: string[];
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = event.actorDisplayName || event.actorUsername;
@@ -61,7 +64,7 @@ export function MilestoneCard({
         </div>
       </div>
 
-      {event.interactionTarget?.interactionTargetId && (
+      {showInteractions && event.interactionTarget?.interactionTargetId && (
         <ReviewInteractions
           interactionTargetId={event.interactionTarget.interactionTargetId}
           reactionCount={event.reactionCount}

@@ -13,6 +13,7 @@ export function FeedItem({
   viewerLoggedIn,
   knownUsernames,
   hideActor = false,
+  showInteractions = true,
 }: {
   entry: FeedEntry;
   viewerLoggedIn: boolean;
@@ -21,6 +22,10 @@ export function FeedItem({
   /** Oculta avatar+nombre en la cabecera: la Actividad del perfil ya está en el
    *  perfil del actor, repetir su nombre en cada tarjeta sobra (issue #302). */
   hideActor?: boolean;
+  /** `false` en la CABECERA de /post/[id] (posts Spec 2b): allí el hilo lo pinta
+   *  `PostThread` aparte, así que la tarjeta-hero no debe repetir su barra de
+   *  interacción. En el feed queda `true` (resumen/enlace al post). */
+  showInteractions?: boolean;
 }) {
   if (entry.source === "club") return <ClubFeedCard event={entry.event} />;
 
@@ -29,11 +34,11 @@ export function FeedItem({
   // una superficie vuelve a agrupar.
   if (entry.source === "person-group") {
     if (entry.verb === "added")
-      return <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+      return <CollectionCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
     if (entry.verb === "progressed")
-      return <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+      return <ProgressTimelineCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
     // rated / reviewed / watchedEpisode → valoraciones de episodios agrupadas.
-    return <EpisodeRatingsCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+    return <EpisodeRatingsCard entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
   }
 
   // source === "person": el feed emite SIEMPRE `kind` (posts); las previews
@@ -45,11 +50,11 @@ export function FeedItem({
     // `itemType`/`itemId` de un pensamiento son un valor INERTE (ver feed.ts):
     // esta tarjeta solo lee `e.thought`. Defensivo: getFeed lo garantiza relleno.
     if (!e.thought) return null;
-    return <ThoughtCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+    return <ThoughtCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
   }
 
   if (kind === "started" || kind === "dropped") {
-    return <MilestoneCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+    return <MilestoneCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
   }
 
   // progressed (posts) y "added"/"progressed" legados: las tarjetas de Colección
@@ -67,10 +72,10 @@ export function FeedItem({
       items: [e],
     };
     return e.verb === "added"
-      ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />
-      : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+      ? <CollectionCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />
+      : <ProgressTimelineCard entry={asGroup} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
   }
 
   // finished / watched (posts) y rated / reviewed / watchedEpisode (legado) → Reseña.
-  return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} />;
+  return <ReviewCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
 }
