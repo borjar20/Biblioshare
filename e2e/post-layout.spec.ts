@@ -103,6 +103,8 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
   let viewedPostId: string | null = null;
   let relatedPostId: string | null = null;
   let neutralPostId: string | null = null;
+  let personId: string | null = null;
+  const creditName = `Real Autora ${ts}`;
 
   try {
     const viewed = await insertOne<{ id: string }>("books", {
@@ -126,6 +128,33 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
       genres: ["Documental"],
     });
     neutralBookId = neutral.id;
+
+    // Creador desde `credits` (camino nuevo): `movies.director`/`series.creator`
+    // están SIEMPRE a null en catálogo — el creador real vive en `credits`. Se
+    // prueba con un libro: un crédito de autor con un nombre DISTINTO del de la
+    // fila (`books.author = "E2E Autora"`). Si OBRA muestra el del crédito,
+    // `pickCreator` (credits) manda sobre la columna.
+    const person = await insertOne<{ id: string }>("people", { name: creditName });
+    personId = person.id;
+    await insertOne("credits", {
+      item_type: "book",
+      item_id: viewedBookId,
+      person_id: personId,
+      role: "author",
+      billing_order: 0,
+    });
+    // Un voto público cerrado → la comunidad tiene 1 nota → histograma en OBRA.
+    await insertOne("passes", {
+      user_id: author.id,
+      item_type: "book",
+      item_id: viewedBookId,
+      status: "completed",
+      rating: 8,
+      finished_on: "2026-01-01",
+      is_public: true,
+      is_active: false,
+      position: {},
+    });
 
     // Tres pensamientos del MISMO autor. `created_at` ascendente (viewed→related
     // →neutral) para que, si dependiera solo de recencia, la neutra ganara: así
@@ -161,6 +190,10 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
     await expect(obra.getByRole("link", { name: /Ver ficha completa/i })).toBeVisible();
     await expect(obra.locator(`a[href="/libro/${viewedBookId}"]`).first()).toBeVisible();
     await expect(obra.getByText("Fantasía", { exact: true })).toBeVisible();
+    // Creador tomado de `credits` (no de `books.author`): prueba `pickCreator`.
+    await expect(obra.getByText(creditName)).toBeVisible();
+    // Valoración de la comunidad = histograma (10 barras, una por media estrella).
+    await expect(obra.locator('[title*="★ ·"]')).toHaveCount(10);
     // El bloque social lleva a OTRO post del autor (el relacionado) y NUNCA al
     // post actual (requisito #12).
     await expect(social.locator(`a[href="/post/${relatedPostId}"]`).first()).toBeVisible();
@@ -185,10 +218,14 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
       await expectNoHorizontalOverflow(page, width);
     }
   } finally {
-    await deleteUser(author.id); // cascade: borra sus posts (author_id on delete cascade)
+    await deleteUser(author.id); // cascade: borra sus posts y pases (FK a auth.users)
     for (const id of [viewedBookId, relatedBookId, neutralBookId]) {
-      if (id) await rest(`books?id=eq.${id}`, { method: "DELETE" }).catch(() => {});
+      if (!id) continue;
+      await rest(`credits?item_id=eq.${id}`, { method: "DELETE" }).catch(() => {});
+      await rest(`passes?item_id=eq.${id}`, { method: "DELETE" }).catch(() => {});
+      await rest(`books?id=eq.${id}`, { method: "DELETE" }).catch(() => {});
     }
+    if (personId) await rest(`people?id=eq.${personId}`, { method: "DELETE" }).catch(() => {});
     void [relatedPostId, neutralPostId, viewedPostId];
   }
 });

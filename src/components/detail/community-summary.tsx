@@ -1,7 +1,7 @@
 import { RatingDots } from "@/components/ui/rating-dots";
 import { formatDots } from "@/lib/rating/dots";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { starLabel } from "@/lib/stats/rating";
+import { RatingHistogram } from "./rating-histogram";
 import type { ItemType } from "@/lib/catalog/types";
 
 // El resumen de notas de la comunidad: la media grande, los dots, los votos y
@@ -25,14 +25,6 @@ export function CommunitySummary({
   ratingsLabel: string;
 }) {
   const accent = MEDIA_ACCENT[itemType];
-  // La barra más alta manda: se mide contra el pico real, no contra el total,
-  // o un reparto plano se vería como diez muñones. Todo el histograma va en el
-  // color del tipo de obra; el pico, a plena intensidad, para dar foco visual.
-  const max = Math.max(...distribution, 1);
-  const peak = distribution.reduce(
-    (best, count, i) => (count > distribution[best] ? i : best),
-    0,
-  );
 
   return (
     <div className="flex items-center gap-5 rounded-[12px] border border-border bg-surface p-4 lg:flex-col lg:gap-0 lg:p-6 lg:text-center">
@@ -56,44 +48,9 @@ export function CommunitySummary({
       </div>
 
       {/* El histograma: al lado en móvil (flex-1), debajo y a lo ancho en PC.
-          Diez barras verticales, una por media estrella; el eje se marca con
-          ★ … ★★★★★ debajo, sin rotular cada barra. El recuento exacto vive en
-          el tooltip, no como texto fijo (se pierde precisión, gana legibilidad). */}
+          Mismo componente que el raíl OBRA de `/post/[id]` (RatingHistogram). */}
       <div className="flex-1 lg:mt-5 lg:w-full lg:flex-none">
-        <div className="flex h-16 items-end gap-[3px]">
-          {distribution.map((count, i) =>
-            // Cero MEDIDO —una media estrella que nadie ha puesto—: una marca
-            // fina en la base, igual que el histograma de /estadísticas. Un
-            // hueco invisible confundiría «cero votos» con «no hay dato».
-            count === 0 ? (
-              <span
-                key={i}
-                title={`${starLabel((i + 1) / 2)}★ · 0`}
-                className="h-0.5 min-w-0 flex-1 rounded-full bg-surface-3"
-              />
-            ) : (
-              <span
-                key={i}
-                title={`${starLabel((i + 1) / 2)}★ · ${count}`}
-                className="min-w-0 flex-1 rounded-t-[2px]"
-                style={{
-                  // Mínimo de 4px: un voto suelto se ve, no se queda en muñón.
-                  height: `max(4px, ${(count / max) * 100}%)`,
-                  // El color del TIPO de obra (var inline: Tailwind no vería una
-                  // clase interpolada). El pico a plena intensidad y el resto
-                  // atenuado, para que la moda destaque sin cambiar de tono.
-                  background: `var(${accent.varName})`,
-                  opacity: i === peak ? 1 : 0.4,
-                }}
-              />
-            ),
-          )}
-        </div>
-        <div className="border-b border-border" />
-        <div className="mt-1 flex justify-between text-[9px] leading-none">
-          <span className="text-muted-foreground">★</span>
-          <span className={accent.text}>★★★★★</span>
-        </div>
+        <RatingHistogram itemType={itemType} distribution={distribution} />
       </div>
     </div>
   );

@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { formatDots } from "@/lib/rating/dots";
 import { statusVerbs } from "@/lib/library/hero-status-labels";
 import type { ItemType } from "@/lib/catalog/types";
 import type { WorkSummary } from "@/lib/social/work-summary";
 import { SpineCover } from "./spine-cover";
 import { RatingDots } from "@/components/ui/rating-dots";
+import { RatingHistogram } from "@/components/detail/rating-histogram";
 
 // Área OBRA de `/post/[id]`: resumen CONTEXTUAL de la obra del post (no la
-// ficha). Server component —usa `getTranslations`— con `RatingDots`/`SpineCover`
-// como hojas. Decisión (2026-08-11): NO se reduce la información por ancho —
+// ficha). Server component —usa `getTranslations`— con `SpineCover`,
+// `RatingHistogram` (misma pieza que la ficha) y `RatingDots` (tu nota) como
+// hojas. Decisión (2026-08-11): NO se reduce la información por ancho —
 // mientras la columna es visible (≥1023) muestra SIEMPRE todo: portada · título ·
 // tipo·año · creador · nota comunidad · tu nota · tu estado · géneros · CTA. La
 // portada escala sola con el ancho de la columna (180→250px). A <1023 la columna
@@ -64,17 +65,17 @@ export async function WorkSummaryCard({ work }: { work: WorkSummary }) {
         )}
       </div>
 
-      {/* Valoración de la comunidad. */}
+      {/* Valoración de la comunidad: histograma pequeño (mismo componente que la
+          ficha) + recuento. Sin votos, solo el «sin valoraciones». */}
       {itemType && work.community && (
-        <div className="flex items-center gap-2">
-          {work.community.avgRating !== null ? (
-            <>
-              <RatingDots value={work.community.avgRating} size="sm" itemType={itemType} />
-              <span className="text-[12px] font-medium text-foreground">
-                {formatDots(work.community.avgRating)}
-              </span>
-            </>
-          ) : null}
+        <div className="flex flex-col gap-1.5">
+          {work.community.avgRating !== null && (
+            <RatingHistogram
+              itemType={itemType}
+              distribution={work.community.distribution}
+              barsHeight="h-9"
+            />
+          )}
           <span className="text-[11px] text-muted-foreground">
             {tDetail("ratings", { count: work.community.ratingCount })}
           </span>
