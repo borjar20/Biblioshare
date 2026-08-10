@@ -20,14 +20,18 @@ import { ChevronRightIcon } from "@/components/ui/icons";
 // siendo cosa de Buscar, donde vive la escalera de hidratación.
 export function LaterShelf({ items, total }: { items: LibraryItem[]; total: number }) {
   return (
-    <section className="flex flex-col gap-2">
+    // `today-later-col`: en el split lateral (<1100) esta columna vale el DOBLE
+    // que "Continúa" (flex 2 vs 1, globals.css) — 4 portadas frente a 2, para que
+    // midan casi lo mismo en las dos. A ≥1100 (columna) el flex-grow es inocuo.
+    <section className="today-later-col flex flex-col gap-2">
       <Header total={total} />
-      {/* `today-shelf`: carrusel de una fila. Móvil estrecho (<768): sangra hasta
-          el borde (frame G). Tablet/desktop y en la columna derecha del split
-          (≥560): contenido (`mx-0`, sin sangrado que se meta en la columna
-          vecina, sin envolver). Solo en las 3 columnas del Inicio (≥1100) las
-          portadas envuelven en filas. */}
-      <div className="today-shelf -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+      {/* `today-shelf-later`: carrusel de una fila. Móvil estrecho (<768): sangra
+          hasta el borde (frame G). Tablet/desktop y en la columna derecha del
+          split (≥560): contenido (`mx-0`, sin sangrado que se meta en la columna
+          vecina, sin envolver). Bajo 1100 es el grid 4×2 (solo portada) del split
+          lateral; solo en las 3 columnas del Inicio (≥1100) las portadas
+          envuelven en filas CON título. */}
+      <div className="today-shelf today-shelf-later -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
         {items.map((item) => (
           <Cover key={item.entryId} item={item} />
         ))}

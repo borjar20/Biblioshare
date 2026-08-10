@@ -52,10 +52,11 @@ export function TodayPicker({
 
   return (
     // Una columna principal: arriba el destacado (full-width), debajo las tiras
-    // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO (split
-    // lateral, cada una un grid 4×2 de portadas); a ≥1100 van apiladas y ricas.
-    // Lo pinta `today-shelves` (globals.css). `today-split` es hoy solo un
-    // flex-col (el destacado sobre las tiras); el nombre es herencia.
+    // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO en un
+    // split asimétrico ("Continúa" 2×2 con título, "Para más tarde" 4×2 solo
+    // portada); a ≥1100 van apiladas y ricas. Lo pinta `today-shelves`
+    // (globals.css). `today-split` es hoy solo un flex-col (el destacado sobre
+    // las tiras); el nombre es herencia.
     <div className="today-split flex flex-col gap-3">
       {/* IZQUIERDA: En curso + destacado. */}
       <div className="flex min-w-0 flex-col gap-2">
@@ -68,22 +69,24 @@ export function TodayPicker({
         <Fragment key={featured.id}>{featured.card}</Fragment>
       </div>
 
-      {/* "Continúa" y "Para más tarde": apiladas a ≥1100, lado a lado (grid 4×2)
-          bajo 1100 — lo decide `today-shelves` en globals.css. */}
+      {/* "Continúa" y "Para más tarde": apiladas a ≥1100, lado a lado bajo 1100
+          en un split asimétrico (2×2 vs 4×2) — lo decide `today-shelves` en
+          globals.css. */}
       <div className="today-shelves flex min-w-0 flex-col gap-3">
         {rest.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
               {keepGoingLabel}
             </span>
-            {/* `today-shelf`: a ≥1100 es un carrusel/rejilla de tarjetas mini que
-                envuelve en la columna estrecha; bajo 1100 se vuelve el grid 4×2 de
-                mini-portadas del split lateral (globals.css).
+            {/* `today-shelf-continue`: a ≥1100 es un carrusel/rejilla de tarjetas
+                mini que envuelve en la columna estrecha; bajo 1100 se vuelve el
+                grid 2×2 de mini-portadas CON título del split lateral
+                (globals.css).
 
                 Cada botón trae DOS vistas: la tarjeta mini (≥1100) y la
-                mini-portada (grid lateral, <1100). El CSS enseña una u otra; el
-                clic que sube al destacado es el mismo. */}
-            <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+                mini-portada con título (grid lateral, <1100). El CSS enseña una u
+                otra; el clic que sube al destacado es el mismo. */}
+            <div className="today-shelf today-shelf-continue -mx-5 flex items-start gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
               {rest.map((entry) => (
                 <button
                   key={entry.id}

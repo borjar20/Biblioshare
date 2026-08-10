@@ -182,24 +182,36 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
   );
 }
 
-// La mini-portada de "Continúa" en modo compacto (tablet estrecho / móvil): solo
-// la carátula, sin el chrome de la tarjeta mini. El botón que la envuelve
-// (TodayPicker) la sube al destacado, y su aria-label lleva el título; por eso
-// aquí no hay texto. Su gemela con datos es MiniCard, que manda cuando hay sitio.
+// La mini-portada de "Continúa" en modo compacto (tablet estrecho / móvil):
+// carátula GRANDE (2×2) con el título debajo. El botón que la envuelve
+// (TodayPicker) la sube al destacado. En pantalla pequeña el título se resume a
+// una línea (`max-sm:line-clamp-1`) para que la celda no crezca; en tablet caben
+// dos. Su gemela con datos ricos es MiniCard, que manda cuando hay sitio (≥1100).
 function MiniThumb({ pass }: { pass: TodayPass }) {
   const { item } = pass;
   const accent = MEDIA_ACCENT[item.itemType];
   return (
-    <div
-      className="relative aspect-[2/3] w-11 overflow-hidden rounded-md bg-surface-muted shadow-cover"
-      style={{ ["--acc" as string]: `var(${accent.varName})` }}
-    >
-      {item.coverUrl ? (
-        <Image src={item.coverUrl} alt="" fill sizes="44px" className="object-cover" />
-      ) : (
-        <span aria-hidden className="absolute inset-0 bg-[var(--acc)]/15" />
-      )}
-      <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-[var(--acc)]" />
-    </div>
+    <>
+      <div
+        className="relative aspect-[2/3] w-11 overflow-hidden rounded-md bg-surface-muted shadow-cover"
+        style={{ ["--acc" as string]: `var(${accent.varName})` }}
+      >
+        {item.coverUrl ? (
+          <Image
+            src={item.coverUrl}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 90px, 150px"
+            className="object-cover"
+          />
+        ) : (
+          <span aria-hidden className="absolute inset-0 bg-[var(--acc)]/15" />
+        )}
+        <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-[var(--acc)]" />
+      </div>
+      <p className="mt-[5px] line-clamp-2 font-serif text-[10.5px] leading-[1.12] font-semibold text-foreground max-sm:line-clamp-1">
+        {item.title}
+      </p>
+    </>
   );
 }

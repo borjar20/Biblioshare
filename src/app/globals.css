@@ -375,12 +375,16 @@ body {
 }
 
 /* Bajo 1100 (una sola columna, feed DEBAJO): el destacado se queda full-width y,
-   debajo, "Continúa" y "Para más tarde" van LADO A LADO (split lateral), cada una
-   como un grid de 3 columnas × 2 filas de portadas. A ≥1100 (3 columnas del
-   Inicio, feed AL LADO) esto no aplica: las tiras van apiladas y ricas (tarjetas
-   mini + portadas con título, envolviendo). La tarjeta destacada NO cambia —mismo
-   diseño a todos los tamaños (decisión del usuario, 2026-08-10)—. Lo interactivo
-   (subir al destacado, Sesión, Registrar, ir a la ficha) queda intacto. */
+   debajo, "Continúa" y "Para más tarde" van LADO A LADO en un split ASIMÉTRICO
+   (decisión del usuario, 2026-08-10): "Continúa" es un grid 2×2 de portadas
+   GRANDES con título (lo que estás leyendo, para actuar) y "Para más tarde" un
+   4×2 de portadas pequeñas sin título (la cola, de un vistazo). Los anchos siguen
+   50/50, así que cada celda de "Continúa" mide el doble que una de "Para más
+   tarde" — la jerarquía sale sola. A ≥1100 (3 columnas del Inicio, feed AL LADO)
+   esto no aplica: las tiras van apiladas y ricas (tarjetas mini + portadas con
+   título, envolviendo). La tarjeta destacada NO cambia —mismo diseño a todos los
+   tamaños—. Lo interactivo (subir al destacado, Sesión, Registrar, ir a la
+   ficha) queda intacto. */
 @media (max-width: 1099px) {
   /* Las dos estanterías, una al lado de la otra bajo el destacado. */
   .today-shelves {
@@ -391,24 +395,42 @@ body {
     flex: 1 1 0;
     min-width: 0;
   }
+  /* Split ASIMÉTRICO por ancho: "Para más tarde" (4 columnas) ocupa el doble que
+     "Continúa" (2 columnas), así las portadas de las dos miden casi lo mismo en
+     vez de que las de "Continúa" salgan enormes. */
+  .today-shelves > .today-later-col {
+    flex: 2 1 0;
+  }
   /* Si solo hay una estantería (p. ej. un único título en curso, sin "Continúa",
      o sin cola en "Para más tarde"), se queda a media anchura para que sus
      portadas midan lo mismo que cuando están las dos, en vez de estirarse. */
   .today-shelves > *:only-child {
     max-width: 50%;
   }
-  /* Cada estantería: grid 4×2 en vez de tira con scroll. Regla sin capa: gana a
-     las utilidades de Tailwind (`-mx-5`/`px-5`/`overflow-x-auto`/`flex`). */
+  /* Grid en vez de tira con scroll. Regla sin capa: gana a las utilidades de
+     Tailwind (`-mx-5`/`px-5`/`overflow-x-auto`/`flex`). Las columnas y el corte
+     de filas los fija cada modificador (continue/later), no la base. */
   .today-shelf {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin: 0;
     padding: 0;
     overflow: visible;
   }
-  /* Solo 2 filas (8 portadas); el resto se ve desde "Ver todos". */
-  .today-shelf > *:nth-child(n + 9) {
+  /* "Continúa": 2×2 (portada grande + título). Solo 4 items; el resto, "Ver
+     todos". */
+  .today-shelf-continue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .today-shelf-continue > *:nth-child(n + 5) {
+    display: none;
+  }
+  /* "Para más tarde": 4×2 (portada pequeña). Solo 8 items; el resto, "Ver
+     todos". */
+  .today-shelf-later {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .today-shelf-later > *:nth-child(n + 9) {
     display: none;
   }
   /* Las portadas llenan la celda (ni la tarjeta mini ni el ancho fijo de 66px). */
@@ -416,6 +438,8 @@ body {
   .later-item {
     width: 100%;
   }
+  /* "Continúa" enseña la mini-portada CON título (`thumb`), no la tarjeta mini;
+     portada y título llenan el ancho de la celda. */
   .continue-item .continue-card {
     display: none;
   }
@@ -425,6 +449,9 @@ body {
   .continue-item .continue-thumb > * {
     width: 100%;
   }
+  /* "Para más tarde" sigue siendo solo portada en compacto: su título (el `<p>`
+     del Cover) se oculta. El título de "Continúa" vive en su thumb, no aquí, así
+     que esta regla no lo toca. */
   .later-item > p {
     display: none;
   }

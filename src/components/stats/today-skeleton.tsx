@@ -51,22 +51,35 @@ export function TodayBlockSkeleton() {
           </div>
         </div>
 
-        {/* DEBAJO: las estanterías. Una sola sección fantasma (`:only-child` la
-            deja a media anchura, como el split lateral real); 8 huecos = las 2
-            filas del grid 4×2, para reservar su alto (CLS #284). Cada ítem trae
-            la tarjeta mini (≥1100) y la mini-portada (grid lateral, <1100). */}
+        {/* DEBAJO: el split lateral fantasma. Se fantasmean LAS DOS columnas con
+            sus mismos pesos (1 vs 2), que es el caso común, para que el alto y el
+            ancho reservados casen con el real (CLS #284): "Continúa" 2×2 con
+            título (4 huecos) y "Para más tarde" 4×2 solo portada (8 huecos). Cada
+            ítem de "Continúa" trae la tarjeta mini (≥1100) y la mini-portada con
+            título (<1100). */}
         <div className="today-shelves flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 flex-col gap-2">
             <SkeletonLine className="h-2.5 w-28" />
-            <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
-              {Array.from({ length: 8 }).map((_, i) => (
+            <div className="today-shelf today-shelf-continue -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+              {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="continue-item shrink-0">
                   <span className="continue-card">
                     <MiniCardSkeleton />
                   </span>
                   <span className="continue-thumb">
                     <Skeleton className="aspect-[2/3] w-11 rounded-md" />
+                    <SkeletonLine className="mt-[5px] h-2.5 w-full" />
                   </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="today-later-col flex min-w-0 flex-col gap-2">
+            <SkeletonLine className="h-2.5 w-24" />
+            <div className="today-shelf today-shelf-later -mx-5 flex gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="later-item w-[66px] shrink-0">
+                  <Skeleton className="aspect-[2/3] w-full rounded-md" />
                 </div>
               ))}
             </div>
