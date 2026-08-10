@@ -2,29 +2,53 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { PencilIcon } from "@/components/ui/icons";
 import { ThoughtComposer } from "./thought-composer";
 
-// El compositor de «Pensamiento» desplegado en la columna del feed. Antes vivía
-// tras un botón que abría un <dialog> (thought-composer-trigger.tsx, retirado):
-// escribir un pensamiento es la acción de cabecera del feed, esconderla tras un
-// botón + modal la penalizaba. Va inline y a ancho completo de su columna, con
-// el mismo chasis de tarjeta que el resto del feed (rounded-card / border /
-// bg-surface / shadow-card).
+// El compositor de «Pensamiento» plegable inline en la columna del feed. Antes
+// vivía tras un botón que abría un <dialog> (thought-composer-trigger.tsx,
+// retirado): escribir es la acción de cabecera del feed, y un modal la sacaba
+// de la columna. Ahora se despliega EN SITIO —misma tarjeta que el resto del
+// feed— y se recoge al terminar.
 //
-// `key={round}` remonta el ThoughtComposer al terminar (publicar o cancelar):
-// así vuelve limpio sin que el formulario tenga que saber resetearse a sí mismo
-// -- el mismo `onDone` que antes cerraba el modal.
+// Al plegar, el ThoughtComposer se DESMONTA (no queda oculto): así cada vez que
+// se abre arranca limpio, sin que el formulario tenga que resetearse a sí mismo.
+// `onDone` (publicar o cancelar) lo pliega; es el mismo callback que antes
+// cerraba el modal.
 export function ThoughtComposerInline() {
   const t = useTranslations("thoughtComposer");
-  const [round, setRound] = useState(0);
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center gap-2.5 rounded-card border border-border bg-surface p-4 text-left shadow-card transition-colors hover:border-accent"
+      >
+        <PencilIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="font-serif text-[15px] text-muted-foreground">{t("trigger")}</span>
+      </button>
+    );
+  }
 
   return (
     <section
-      aria-label={t("trigger")}
+      aria-label={t("title")}
       className="rounded-card border border-border bg-surface p-4 shadow-card"
     >
-      <b className="mb-3 block font-serif text-[16px] font-semibold">{t("trigger")}</b>
-      <ThoughtComposer key={round} onDone={() => setRound((n) => n + 1)} />
+      <div className="mb-3 flex items-center justify-between gap-2.5">
+        <b className="font-serif text-[16px] font-semibold">{t("title")}</b>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label={t("close")}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
+        >
+          ✕
+        </button>
+      </div>
+      <ThoughtComposer onDone={() => setOpen(false)} />
     </section>
   );
 }

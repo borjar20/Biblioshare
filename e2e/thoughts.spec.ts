@@ -61,15 +61,16 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
-// Compositor desplegado inline en la cabecera del feed (ya no hay modal):
-// ancla `anchorTitle` (debe devolver un único resultado del autocompletar),
-// escribe `body` y publica. Al terminar el formulario se remonta limpio
-// (onDone), así que la señal de éxito es que el textarea vuelve a estar vacío.
+// Compositor plegable inline en la cabecera del feed (ya no hay modal): se
+// despliega desde su botón, ancla `anchorTitle` (debe devolver un único
+// resultado del autocompletar), escribe `body` y publica. Al terminar se pliega
+// solo (onDone), así que la señal de éxito es que la región desaparece.
 async function publishThought(
   page: Page,
   opts: { anchorTitle: string; body: string; spoiler?: boolean },
 ) {
-  const composer = page.getByRole("region", { name: "Compartir un pensamiento" });
+  await page.getByRole("button", { name: "Compartir un pensamiento" }).click();
+  const composer = page.getByRole("region", { name: "Nuevo pensamiento" });
   await expect(composer).toBeVisible();
 
   await composer.getByPlaceholder(/busca un libro/i).fill(opts.anchorTitle);
@@ -77,13 +78,12 @@ async function publishThought(
   await expect(result).toBeVisible();
   await result.click();
 
-  const bodyField = composer.getByPlaceholder("¿Qué piensas?");
-  await bodyField.fill(opts.body);
+  await composer.getByPlaceholder("¿Qué piensas?").fill(opts.body);
   if (opts.spoiler) {
     await composer.getByRole("checkbox", { name: "Contiene spoiler" }).check();
   }
   await composer.getByRole("button", { name: "Publicar" }).click();
-  await expect(bodyField).toHaveValue("");
+  await expect(composer).toBeHidden();
 }
 
 // «Pensamiento» (Fase 6, Task 6.1): publicar anclado a una obra de biblioteca,
