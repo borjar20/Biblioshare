@@ -33,17 +33,16 @@ export const SHELL_GRID = "max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[100rem
 export const RAIL = "340px";
 
 /**
- * Envoltorio de dos columnas de la HOME (feed + raíl). Vive aquí, y no como dos
- * literales en `(home)/page.tsx` y `(home)/loading.tsx`, para que el esqueleto y
- * el contenido real NO puedan divergir en ancho: divergían (raíl 312 vs 328,
- * contenedor 1080 vs 1200) y producían un salto al resolverse el streaming
- * (#376, misma especie que #372). El `340px` es el valor de `RAIL`; Tailwind no
- * puede interpolar la constante dentro de un valor arbitrario (necesita el
- * literal en el fuente para generar el CSS), así que se escribe literal AQUÍ, en
- * un solo sitio que los dos ficheros importan.
+ * Contenedor de la HOME de tres áreas (personal · feed · stats). Su propio
+ * ancho, NO `SHELL_APP`: el reparto en tres columnas amplias (≥1440) necesita
+ * ~1368px, más que los 1200 de `SHELL_APP`, y la fila de 2 columnas del tablet
+ * (≥768) necesita más que los 672 a los que `SHELL_APP` cierra por debajo de
+ * `lg`. Se deja crecer hasta 1440 y el reparto interno lo hace la rejilla
+ * `.home-grid` (en `globals.css`), que `page.tsx` y `loading.tsx` comparten por
+ * nombre para no poder divergir en ancho de columnas (era el motivo de la vieja
+ * `HOME_TWO_COL`; ver #376). A ≥1440 y con `px-7` da columnas de ~531/505/300.
  */
-export const HOME_TWO_COL =
-  "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7";
+export const SHELL_HOME = "max-w-2xl md:max-w-[1440px]";
 
 /**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen

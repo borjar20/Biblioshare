@@ -289,6 +289,79 @@ body {
   color: var(--muted-foreground);
 }
 
+/* Rejilla de tres áreas del Inicio: PERSONAL · FEED · STATS (consumir →
+   socializar → medir). Vive aquí y no en utilidades de Tailwind porque son
+   CUATRO reflows con `grid-template-areas`, y el `[grid-template-areas:...]`
+   arbitrario de Tailwind es ilegible con las comillas y los guiones-bajos.
+   `page.tsx` y `loading.tsx` comparten esta clase por nombre, así que NO pueden
+   divergir en ancho de columnas (era el motivo de la vieja `HOME_TWO_COL`; ver
+   #376). El orden VISUAL lo fija el área, no el DOM: el DOM va personal→feed→
+   stats, pero en móvil las stats se cuelan entre lo personal y el feed y en
+   tablet el feed baja a ancho completo. */
+.home-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "personal"
+    "stats"
+    "feed";
+}
+.home-grid > [data-area="personal"] {
+  grid-area: personal;
+}
+.home-grid > [data-area="feed"] {
+  grid-area: feed;
+}
+.home-grid > [data-area="stats"] {
+  grid-area: stats;
+}
+/* min-width:0 en las tres para que el contenido largo (una tarjeta de feed, un
+   título sin espacios) no fuerce scroll horizontal — la trampa clásica de
+   grid+flex, y el requisito de "cero overflow en ningún breakpoint". */
+.home-grid > * {
+  min-width: 0;
+}
+
+/* Tablet horizontal: 2 columnas arriba (personal · stats), feed a ancho
+   completo debajo — el feed necesita más ancho que las estadísticas. */
+@media (min-width: 768px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-areas:
+      "personal stats"
+      "feed feed";
+  }
+}
+
+/* Desktop compacto (1100–1439): 3 columnas flexibles. Stats es la primera que
+   cede ancho (columna fija de 260); el feed no se comprime de más (min 360). */
+@media (min-width: 1100px) {
+  .home-grid {
+    grid-template-columns: minmax(330px, 1fr) minmax(360px, 1fr) 260px;
+    grid-template-areas: "personal feed stats";
+  }
+  /* Sticky SOLO con 3 columnas: en tablet el feed va debajo y pegar las stats no
+     aporta. `align-self:start` para que la caja sticky tome su alto de contenido
+     y no se estire a la fila (si no, `position:sticky` no engancha). Se pega bajo
+     la topbar, que mide --topbar-h y también es sticky. */
+  .home-grid > [data-area="stats"] {
+    position: sticky;
+    top: calc(var(--topbar-h) + 16px);
+    align-self: start;
+  }
+}
+
+/* Desktop grande (≥1440): 3 columnas amplias (~520 / ~500 / 300 dentro del
+   contenedor de 1440) y gap mayor. */
+@media (min-width: 1440px) {
+  .home-grid {
+    grid-template-columns: 1.05fr 1fr 300px;
+    gap: 24px;
+    grid-template-areas: "personal feed stats";
+  }
+}
+
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */
 @keyframes sorteo-flip-in {
   from {

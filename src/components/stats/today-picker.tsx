@@ -31,8 +31,8 @@ export function TodayPicker({
    *  "Para más tarde" manda sobre su estantería. Cruzando las dos columnas, su
    *  "Ver todos" caía a 27px del otro "Ver todos" y con distinto destino. */
   heading?: ReactNode;
-  /** "Para más tarde", pintado en servidor: aquí solo ocupa la columna de la
-   *  derecha. Otro slot, por la misma razón que las tarjetas. */
+  /** "Para más tarde", pintado en servidor: se apila entre el destacado y las
+   *  mini de "Continúa". Otro slot, por la misma razón que las tarjetas. */
   later?: ReactNode;
 }) {
   const [selectedId, setSelectedId] = useState(entries[0]?.id);
@@ -45,11 +45,12 @@ export function TodayPicker({
   const rest = entries.filter((e) => e.id !== featured.id);
 
   return (
-    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] lg:items-start lg:gap-6">
-      {/* Columna izquierda: el destacado y, debajo, las mini (decisión del
-          usuario, 2026-07-17). Antes las mini iban al lado, pero ese hueco lo
-          ocupa ahora "Para más tarde" — y apiladas bajo una tarjeta de 520px
-          caben tres por fila, que es lo que suele haber en curso. */}
+    // Una sola columna, apilada: el destacado, "Para más tarde" y las mini de
+    // "Continúa". La columna PERSONAL del Inicio ya no es un banner a dos
+    // columnas (era 520px | "Para más tarde"): es una de las tres áreas de
+    // `.home-grid`, así que aquí se apila y el reparto lo hace la rejilla de
+    // fuera. El orden lo fija el spec: en curso → para más tarde → continúa.
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
         {heading}
         {/* La key fuerza el REMONTAJE al cambiar de destacado. Sin ella React
@@ -58,32 +59,34 @@ export function TodayPicker({
             unos cientos de ms se veía la portada de un libro bajo el título de
             otro. Vacío mientras carga es honesto; la portada equivocada, no. */}
         <Fragment key={featured.id}>{featured.card}</Fragment>
-
-        {rest.length > 0 && (
-          <div className="mt-1 flex flex-col gap-2">
-            <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
-              {keepGoingLabel}
-            </span>
-            {/* Carrusel, no lista: con 5 en curso una lista vertical empujaría
-                el feed fuera de la pantalla. El frame G lo dice explícitamente. */}
-            <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
-              {rest.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  aria-label={entry.focusLabel}
-                  onClick={() => setSelectedId(entry.id)}
-                  className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
-                >
-                  {entry.mini}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {later}
+
+      {rest.length > 0 && (
+        <div className="mt-1 flex flex-col gap-2">
+          <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
+            {keepGoingLabel}
+          </span>
+          {/* Carrusel de una fila salvo con 3 columnas. Móvil (<768): sangra al
+              borde. Tablet (768–1099): carrusel CONTENIDO (`mx-0`, sin envolver)
+              para no crecer en alto y no empujar el feed. Solo de 1100 arriba
+              —columna personal propia y alta— las mini envuelven en filas. */}
+          <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+            {rest.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                aria-label={entry.focusLabel}
+                onClick={() => setSelectedId(entry.id)}
+                className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+              >
+                {entry.mini}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

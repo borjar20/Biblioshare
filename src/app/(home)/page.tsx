@@ -16,7 +16,7 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
-import { SHELL_APP, HOME_TWO_COL } from "@/lib/ui/layout";
+import { SHELL_HOME } from "@/lib/ui/layout";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -66,52 +66,41 @@ export default async function Home({
     getOwnProfile(user.id),
   ]);
 
-  // Dos cabeceras, una por breakpoint (P-T7): en móvil el frame A abre con
-  // "Novedades" a secas; en escritorio el frame B saluda, porque ahí el feed
-  // comparte pantalla con tus stats y la página deja de ser solo una lista.
-  // Duplicados sin estado, así que el patrón de dos árboles es seguro.
+  // Inicio de tres áreas: PERSONAL · FEED · STATS (consumir → socializar →
+  // medir). El reflow por breakpoint lo hace `.home-grid` con grid-template-
+  // areas (globals.css); aquí solo va el marcado, con `data-area` por columna.
+  // El orden del DOM (personal → feed → stats) NO fija el orden visual: en móvil
+  // las stats se cuelan entre lo personal y el feed, y en tablet el feed baja a
+  // ancho completo. Un solo <h1> visible (el saludo), a todos los tamaños:
+  // sustituye al par saludo-escritorio / "Novedades"-móvil de antes.
   return (
-    <div className={`mx-auto flex w-full ${SHELL_APP} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
-      <div className="hidden pb-2.5 lg:block">
-        <h1 className="font-serif text-[30px] leading-none font-semibold tracking-tight">
+    <div className={`mx-auto flex w-full ${SHELL_HOME} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
+      {/* Saludo a ancho completo, sobre las columnas (paso 1 del orden móvil).
+          Compacto en móvil, grande en escritorio. */}
+      <div className="pb-3.5 md:pb-4">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight md:text-[30px] md:leading-none">
           {t("home.greeting", { name: profile?.displayName || profile?.username || "" })}
         </h1>
         {profile?.username && (
-          <p className="mt-[5px] font-mono text-[12.5px] text-muted-foreground">
+          <p className="mt-1 font-mono text-[12px] text-muted-foreground md:mt-[5px] md:text-[12.5px]">
             {`@${profile.username} · ${t("feed.followingPeople", { count: counts.following })}`}
           </p>
         )}
       </div>
 
-      {/* "¿Qué has disfrutado hoy?" (frame G) encabeza el Inicio, sobre el
-          feed: primero lo tuyo a medias, después lo de los demás. En escritorio
-          cruza las DOS columnas (decisión del usuario) — el frame G solo está
-          dibujado para móvil. Detrás de su propio <Suspense> para no retrasar
-          el shell, igual que el feed y el rail.
+      <div className="home-grid">
+        {/* PERSONAL: "¿Qué has disfrutado hoy?" + en curso + para más tarde +
+            continúa. Detrás de su <Suspense> con fallback que RESERVA su alto:
+            con `fallback={null}` empujaba el feed al llegar — 0.51 de CLS en
+            móvil, la peor métrica de la app (issue #284). */}
+        <div data-area="personal">
+          <Suspense fallback={<TodayBlockSkeleton />}>
+            <TodayBlock userId={user.id} />
+          </Suspense>
+        </div>
 
-          El fallback RESERVA su alto. Con `fallback={null}` no reservaba nada y,
-          como el bloque encabeza la página, al llegar empujaba el feed entero
-          hacia abajo: 0.51 de CLS en móvil, la peor métrica de la app
-          (issue #284). */}
-      <Suspense fallback={<TodayBlockSkeleton />}>
-        <TodayBlock userId={user.id} />
-      </Suspense>
-
-      <div className={`pt-5 ${HOME_TWO_COL}`}>
-        <div className="min-w-0">
-          {/* En móvil "Novedades" encabeza el FEED, no la página: encima está
-              el bloque de hoy, que es quien abre el Inicio (frame G). Es la
-              misma estructura que ya tenía el escritorio con "Actividad de tu
-              gente" — primero lo tuyo, luego lo de los demás. */}
-          <div className="flex items-baseline justify-between gap-3 pb-4 lg:hidden">
-            <h1 className="font-serif text-2xl font-semibold tracking-tight">
-              {t("home.feedTitle")}
-            </h1>
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {t("feed.followingCount", { count: counts.following })}
-            </span>
-          </div>
-
+        {/* FEED: compartir un pensamiento + filtros + actividad de tu gente. */}
+        <div data-area="feed">
           {/* Disparador del compositor de «Pensamiento» (Fase 4): fila propia,
               no comparte línea con los chips de filtro -- esos ya van "por los
               pelos" a una fila a 360px (ver feed-filters.tsx) y no hay hueco
@@ -120,12 +109,11 @@ export default async function Home({
             <ThoughtComposerTrigger />
           </div>
 
-          {/* En PC el rótulo y los chips comparten línea (frame B); en móvil el
-              rótulo no está y los chips se quedan solos a la izquierda. */}
+          {/* Rótulo de sección ("Actividad de tu gente") + chips de filtro en
+              una línea. El rótulo es la cabecera del feed en todos los tamaños,
+              ya no solo en escritorio: el feed es ahora su propia columna/área. */}
           <div className="mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
-            <span className="hidden label-section lg:block">
-              {t("feed.sectionTitle")}
-            </span>
+            <span className="label-section">{t("feed.sectionTitle")}</span>
             <FeedFilters filter={filter} />
           </div>
 
@@ -134,9 +122,10 @@ export default async function Home({
           </Suspense>
         </div>
 
-        {/* El rail se pega bajo la topbar, que mide --topbar-h y también es
-            sticky: sin el calc se metería debajo. */}
-        <aside className="hidden lg:sticky lg:top-[calc(var(--topbar-h)+16px)] lg:block">
+        {/* STATS: resumen semanal / meta anual / racha. En móvil StatsRail pinta
+            un resumen compacto (tres cifras); de md para arriba, el detalle. El
+            sticky (solo con 3 columnas) lo pone `.home-grid`. */}
+        <aside data-area="stats">
           <Suspense fallback={null}>
             <StatsRail userId={user.id} />
           </Suspense>
