@@ -52,14 +52,14 @@ export function TodayBlockSkeleton() {
         </div>
 
         {/* DEBAJO: las estanterías. Una sola sección fantasma (`:only-child` la
-            deja a media anchura, como el split lateral real); 6 huecos = las 2
-            filas del grid 3×2, para reservar su alto (CLS #284). Cada ítem trae
+            deja a media anchura, como el split lateral real); 8 huecos = las 2
+            filas del grid 4×2, para reservar su alto (CLS #284). Cada ítem trae
             la tarjeta mini (≥1100) y la mini-portada (grid lateral, <1100). */}
         <div className="today-shelves flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 flex-col gap-2">
             <SkeletonLine className="h-2.5 w-28" />
             <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="continue-item shrink-0">
                   <span className="continue-card">
                     <MiniCardSkeleton />

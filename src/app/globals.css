@@ -397,18 +397,18 @@ body {
   .today-shelves > *:only-child {
     max-width: 50%;
   }
-  /* Cada estantería: grid 3×2 en vez de tira con scroll. Regla sin capa: gana a
+  /* Cada estantería: grid 4×2 en vez de tira con scroll. Regla sin capa: gana a
      las utilidades de Tailwind (`-mx-5`/`px-5`/`overflow-x-auto`/`flex`). */
   .today-shelf {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin: 0;
     padding: 0;
     overflow: visible;
   }
-  /* Solo 2 filas (6 portadas); el resto se ve desde "Ver todos". */
-  .today-shelf > *:nth-child(n + 7) {
+  /* Solo 2 filas (8 portadas); el resto se ve desde "Ver todos". */
+  .today-shelf > *:nth-child(n + 9) {
     display: none;
   }
   /* Las portadas llenan la celda (ni la tarjeta mini ni el ancho fijo de 66px). */

@@ -53,7 +53,7 @@ export function TodayPicker({
   return (
     // Una columna principal: arriba el destacado (full-width), debajo las tiras
     // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO (split
-    // lateral, cada una un grid 3×2 de portadas); a ≥1100 van apiladas y ricas.
+    // lateral, cada una un grid 4×2 de portadas); a ≥1100 van apiladas y ricas.
     // Lo pinta `today-shelves` (globals.css). `today-split` es hoy solo un
     // flex-col (el destacado sobre las tiras); el nombre es herencia.
     <div className="today-split flex flex-col gap-3">
@@ -68,7 +68,7 @@ export function TodayPicker({
         <Fragment key={featured.id}>{featured.card}</Fragment>
       </div>
 
-      {/* "Continúa" y "Para más tarde": apiladas a ≥1100, lado a lado (grid 3×2)
+      {/* "Continúa" y "Para más tarde": apiladas a ≥1100, lado a lado (grid 4×2)
           bajo 1100 — lo decide `today-shelves` en globals.css. */}
       <div className="today-shelves flex min-w-0 flex-col gap-3">
         {rest.length > 0 && (
@@ -77,7 +77,7 @@ export function TodayPicker({
               {keepGoingLabel}
             </span>
             {/* `today-shelf`: a ≥1100 es un carrusel/rejilla de tarjetas mini que
-                envuelve en la columna estrecha; bajo 1100 se vuelve el grid 3×2 de
+                envuelve en la columna estrecha; bajo 1100 se vuelve el grid 4×2 de
                 mini-portadas del split lateral (globals.css).
 
                 Cada botón trae DOS vistas: la tarjeta mini (≥1100) y la
