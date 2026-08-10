@@ -384,6 +384,19 @@
       "autopost_finished": "Al terminar o marcar como visto",
       "autopost_started": "Al empezar una obra",
       "autopost_dropped": "Al abandonar una obra"
+    },
+    "participants": "Participantes",
+    "participantsCount": "{count, plural, one {1 persona comentando} other {# personas comentando}}",
+    "moreByAuthor": "Más de {name}",
+    "moreAboutWork": "Más sobre {title}",
+    "viewProfile": "Ver perfil de {name}",
+    "relatedKind": {
+      "thought": "Pensamiento",
+      "finished": "Reseña",
+      "progressed": "Progreso",
+      "watched": "Episodio",
+      "started": "Empezó",
+      "dropped": "Abandonó"
     }
   },
   "thoughtComposer": {

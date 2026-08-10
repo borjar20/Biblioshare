@@ -642,6 +642,90 @@ export async function getPostEvent(
   return { event, knownUsernames };
 }
 
+// --- Contexto de descubrimiento de `/post/[id]` (posts Spec 2b, Propuesta B) ---
+// Enriquece la página del post para que no quede vacía: otros posts DEL AUTOR y
+// otros posts SOBRE LA MISMA OBRA (de otra gente). No lleva interacciones (los
+// mini-cards no las pintan), así que evita el batch de reacciones/comentarios.
+// La RLS de `posts` filtra por audiencia: un tercero solo ve lo que puede ver.
+export type RelatedPost = {
+  postId: string;
+  kind: PostKind;
+  itemTitle: string;
+  itemCoverUrl: string | null;
+  authorUsername: string;
+  authorDisplayName: string | null;
+  authorAvatarUrl: string | null;
+};
+
+export type PostContext = {
+  moreByAuthor: RelatedPost[];
+  moreAboutWork: RelatedPost[];
+};
+
+const RELATED_LIMIT = 4;
+
+function toRelatedPost(d: FeedEventDraft): RelatedPost {
+  return {
+    postId: d.postId,
+    kind: d.kind!, // resolvePostDrafts siempre lo informa (base.kind = r.kind)
+    itemTitle: d.itemTitle,
+    itemCoverUrl: d.itemCoverUrl,
+    authorUsername: d.actorUsername,
+    authorDisplayName: d.actorDisplayName,
+    authorAvatarUrl: d.actorAvatarUrl,
+  };
+}
+
+export async function getPostContext(
+  supabase: SupabaseServerClient,
+  event: FeedEvent,
+): Promise<PostContext> {
+  const empty: PostContext = { moreByAuthor: [], moreAboutWork: [] };
+  if (!event.postId) return empty;
+  // Ancla REAL de la obra: para un pensamiento vive en `thought.anchor`
+  // (itemType/itemId son un placeholder inerte, ver FeedEvent); para el resto,
+  // el par itemType/itemId ES el ancla de catálogo.
+  const anchorType: AnchorType = event.thought?.anchor.type ?? event.itemType;
+  const anchorId = event.thought?.anchor.id ?? event.itemId;
+
+  // Se pide un pequeño excedente sobre RELATED_LIMIT: `resolvePostDrafts`
+  // descarta posts con ancla/autor no resolubles, y así el corte no se queda
+  // corto por uno descartado.
+  const fetchLimit = RELATED_LIMIT + 2;
+  const [byAuthor, aboutWork] = await Promise.all([
+    supabase
+      .from("posts")
+      .select(POST_COLUMNS)
+      .eq("author_id", event.actorId)
+      .neq("id", event.postId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(fetchLimit),
+    supabase
+      .from("posts")
+      .select(POST_COLUMNS)
+      .eq("anchor_type", anchorType)
+      .eq("anchor_id", anchorId)
+      .neq("author_id", event.actorId)
+      .neq("id", event.postId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(fetchLimit),
+  ]);
+  if (byAuthor.error) throw byAuthor.error;
+  if (aboutWork.error) throw aboutWork.error;
+
+  const [byAuthorDrafts, aboutWorkDrafts] = await Promise.all([
+    resolvePostDrafts(supabase, (byAuthor.data ?? []) as PostRow[], false),
+    resolvePostDrafts(supabase, (aboutWork.data ?? []) as PostRow[], false),
+  ]);
+
+  return {
+    moreByAuthor: byAuthorDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
+    moreAboutWork: aboutWorkDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
+  };
+}
+
 // --- Tipos de fila de las queries (Supabase no los infiere del builder) --------
 type PostRow = {
   id: string;

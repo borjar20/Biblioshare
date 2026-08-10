@@ -370,9 +370,11 @@ export function PostThread({
         </div>
       )}
 
-      {/* El árbol. `pb` en móvil deja aire para que el composer fijo no tape las
-          últimas respuestas. */}
-      <div className="flex flex-col gap-1 pb-28 lg:pb-0">
+      {/* El árbol. El aire para que el composer fijo (móvil) no tape lo último
+          lo pone AHORA la página (`/post/[id]`), porque bajo el hilo va el raíl
+          de contexto: el `pb` tiene que estar en el último bloque de la
+          columna, no aquí. */}
+      <div className="flex flex-col gap-1">
         {nodes.map(renderNode)}
       </div>
 
