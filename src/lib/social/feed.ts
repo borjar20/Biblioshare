@@ -693,14 +693,20 @@ export async function getPostContext(
   // corto por uno descartado.
   const fetchLimit = RELATED_LIMIT + 2;
   const [byAuthor, aboutWork] = await Promise.all([
-    supabase
-      .from("posts")
-      .select(POST_COLUMNS)
-      .eq("author_id", event.actorId)
-      .neq("id", event.postId)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(fetchLimit),
+    // "Más de {usuario}" por CONTINUIDAD TEMÁTICA: no los más recientes a secas,
+    // sino los del autor sobre obras EMPARENTADAS con la del post actual
+    // (misma saga > misma obra > géneros compartidos), rellenando con recientes
+    // si no hay bastante. El ranking vive en SQL (`related_posts_by_author`,
+    // 20260851) — un round-trip, usa el índice GIN de géneros, y devuelve
+    // `setof posts` para reusar `resolvePostDrafts`, que conserva el orden. RLS
+    // de `posts` sigue filtrando audiencia (la función es SECURITY INVOKER).
+    supabase.rpc("related_posts_by_author", {
+      p_author_id: event.actorId,
+      p_anchor_type: anchorType,
+      p_anchor_id: anchorId,
+      p_exclude_post_id: event.postId,
+      p_limit: fetchLimit,
+    }),
     supabase
       .from("posts")
       .select(POST_COLUMNS)

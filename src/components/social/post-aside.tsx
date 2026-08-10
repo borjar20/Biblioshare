@@ -37,8 +37,11 @@ export function PostAside({
 }) {
   const t = useTranslations("social");
 
+  // El sticky y el ancho del raíl los pone la rejilla `.post-grid` (área
+  // "social"), no este componente — así el salto a columna (1000px) y el pegado
+  // se deciden en un solo sitio, junto a los otros dos raíles.
   return (
-    <aside className="flex flex-col gap-3 lg:sticky lg:top-[26px] lg:self-start">
+    <aside className="flex flex-col gap-3">
       {participants.length > 0 && (
         <div className={CARD_CLASS}>
           <p className={LABEL_CLASS}>{t("participants")}</p>
@@ -90,31 +93,35 @@ function RelatedSection({
   facet: "work" | "author";
 }) {
   const t = useTranslations("social");
+  // Carrusel horizontal cuando el raíl cae al flujo (<1023, todos los ítems con
+  // scroll); lista vertical en el raíl (≥1023, mismo salto que `.post-grid`). No
+  // hay degradación del nº de ítems por ancho: mientras el raíl es visible
+  // muestra todos (decisión 2026-08-11).
   return (
     <div className={CARD_CLASS}>
       <p className={LABEL_CLASS}>{title}</p>
-      <div className="flex gap-2.5 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="related-list flex gap-2.5 overflow-x-auto pb-1 min-[1023px]:flex-col min-[1023px]:gap-1 min-[1023px]:overflow-visible min-[1023px]:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {posts.map((p) => {
           const primary = facet === "work" ? p.itemTitle : p.authorDisplayName || p.authorUsername;
           return (
             <Link
               key={p.postId}
               href={`/post/${p.postId}`}
-              className="flex w-[92px] shrink-0 flex-col gap-1.5 rounded-lg transition-opacity hover:opacity-80 lg:w-auto lg:flex-row lg:items-center lg:gap-2.5 lg:rounded-none lg:px-0 lg:py-1"
+              className="flex w-[92px] shrink-0 flex-col gap-1.5 rounded-lg transition-opacity hover:opacity-80 min-[1023px]:w-auto min-[1023px]:flex-row min-[1023px]:items-center min-[1023px]:gap-2.5 min-[1023px]:rounded-none min-[1023px]:px-0 min-[1023px]:py-1"
             >
               {facet === "work" ? (
                 <SpineCover
                   coverUrl={p.itemCoverUrl}
                   title={p.itemTitle}
-                  className="aspect-[2/3] w-full lg:w-9 lg:shrink-0"
+                  className="aspect-[2/3] w-full min-[1023px]:w-9 min-[1023px]:shrink-0"
                 />
               ) : (
-                <div className="self-start lg:self-auto">
+                <div className="self-start min-[1023px]:self-auto">
                   <UserAvatar name={primary} avatarUrl={p.authorAvatarUrl} size={36} />
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 font-serif text-[12.5px] leading-tight font-semibold text-foreground lg:truncate">
+                <p className="line-clamp-2 font-serif text-[12.5px] leading-tight font-semibold text-foreground min-[1023px]:truncate">
                   {primary}
                 </p>
                 <p className="mt-0.5 font-mono text-[9px] tracking-[0.05em] uppercase text-muted-foreground">

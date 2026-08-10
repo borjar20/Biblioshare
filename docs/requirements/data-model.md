@@ -822,6 +822,32 @@ sin post se muestra sin hilo (`interactionTargetId` null), no se rompe.
 (POST-merge); los valores de enum muertos (`thought` en `target_kind`, `thought_*` en
 `notification_type`) se dejan inertes (recrear el tipo es caro).
 
+### 5.2 `related_posts_by_author()` — ranking del raíl social de `/post/[id]` (dev y **PROD**, 2026-08-10)
+
+RPC de LECTURA que alimenta el bloque «Más de {usuario}» de la columna SOCIAL de `/post/[id]`
+(layout de 3 áreas OBRA · CONVERSACIÓN · SOCIAL): en vez de los posts más recientes del autor a
+secas, prioriza los suyos sobre obras EMPARENTADAS con la del post actual. Firma
+`related_posts_by_author(p_author_id uuid, p_anchor_type post_anchor_type, p_anchor_id uuid,
+p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para reusar
+`resolvePostDrafts`, que conserva el orden). Migración `20260851_related_posts_by_author.sql`.
+
+- **Puntuación** (deliberadamente simple, NO un recomendador): `3·misma_saga + 2·misma_obra +
+  1·géneros_solapan`; orden `score DESC, created_at DESC, id DESC`. Los de score 0 quedan al final
+  → el bloque muestra primero lo relacionado y RELLENA con recientes. Relaciones reusadas: `saga_items`
+  (+ jerarquía `parent_saga_id` si el ancla ES una saga) y los arrays `genres` de `books/movies/series`
+  (solape booleano `&&`, apoyado en los índices GIN de §2). Deuda asumida (creador/subgénero/tema y
+  solape ponderado por conteo): issue abierta.
+- **`SECURITY INVOKER`** a propósito: corre como quien llama, así que la RLS de `posts`
+  (`can_view_profile(author_id)`) sigue filtrando la audiencia. `set search_path = ''`, todo
+  cualificado con `public.`; comparaciones ancla↔`saga_items` en TEXTO (`::text`) porque
+  `posts.anchor_type` es `post_anchor_type` {…,saga,person} y `saga_items.item_type` es `item_type`
+  {book,movie,series}. `grant execute … to authenticated, anon` (la ruta la ve también un anónimo).
+- Verificado en dev contra datos reales (gradiente 5/1/0, orden por recencia dentro del score, post
+  actual excluido) + e2e `post-layout.spec.ts`. **Aplicada y verificada en PROD el 2026-08-10**
+  (`pg_proc`: `prosecdef=false` → INVOKER, grants execute a `authenticated`+`anon`; smoke sobre un
+  post real: 4 filas, no incluye el propio). Solo falta mergear el código (PR #570) que la consume —
+  regla de despliegue de §5.1: migración primero (hecho), código después.
+
 ## 6. Clubes
 
 `clubs` → `club_members` (rol `member|moderator|owner`, estado `invited|active|requested`),

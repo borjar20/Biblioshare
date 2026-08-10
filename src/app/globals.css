@@ -466,6 +466,81 @@ body {
   }
 }
 
+/* Rejilla de tres áreas de `/post/[id]`: OBRA · CONVERSACIÓN · SOCIAL. Vive aquí
+   —no en utilidades de Tailwind— por los `grid-template-areas` con comillas y por
+   ser tres reflows, igual que `.home-grid`. Prioridad responsive CONVERSACIÓN >
+   SOCIAL > OBRA.
+
+   Decisión (2026-08-11): las columnas laterales NO reducen su información por
+   ancho — mientras están visibles muestran TODO su contenido; el único cambio de
+   información ocurre a <1023, donde OBRA se OCULTA (la obra se alcanza por la
+   tarjeta vinculada dentro del post) y SOCIAL se reorganiza bajo el hilo. Los
+   saltos de 1180/1440 solo cambian el ANCHO de las columnas, no lo que muestran.
+
+   El orden VISUAL lo fijan las áreas, no el DOM. El DOM va conversación → obra →
+   social; a <1023 es una sola columna (conversación → social); a ≥1023 son tres
+   columnas y las áreas recolocan OBRA a la izquierda. */
+.post-grid {
+  display: block;
+}
+.post-grid > * {
+  /* min-width:0 para que una tarjeta de feed o un título sin espacios no fuercen
+     scroll horizontal — la trampa clásica de grid+flex, y el requisito de "cero
+     overflow en ningún breakpoint". */
+  min-width: 0;
+}
+/* <1023: una columna, la conversación manda; el raíl de obra no se pinta. */
+.post-grid > [data-area="obra"] {
+  display: none;
+}
+
+/* ≥1023: 3 columnas muy compactas. La central conserva ≥500px útiles. */
+@media (min-width: 1023px) {
+  .post-grid {
+    display: grid;
+    grid-template-columns: 180px minmax(500px, 1fr) 220px;
+    grid-template-areas: "obra conversacion social";
+    gap: 16px;
+    align-items: start;
+  }
+  .post-grid > [data-area="obra"] {
+    display: block;
+    grid-area: obra;
+  }
+  .post-grid > [data-area="conversacion"] {
+    grid-area: conversacion;
+  }
+  .post-grid > [data-area="social"] {
+    grid-area: social;
+  }
+  /* Los dos raíles se pegan mientras se recorre la conversación (la columna
+     alta). `align-self:start` para que cada caja sticky tome su alto de contenido
+     y `position:sticky` enganche. Bajo la topbar (sticky, --topbar-h). */
+  .post-grid > [data-area="obra"],
+  .post-grid > [data-area="social"] {
+    position: sticky;
+    top: calc(var(--topbar-h) + 16px);
+    align-self: start;
+  }
+}
+
+/* Desktop compacto (1180–1439): SOLO más ancho de columna (misma información). */
+@media (min-width: 1180px) {
+  .post-grid {
+    grid-template-columns: 220px minmax(560px, 1fr) 260px;
+    gap: 20px;
+  }
+}
+
+/* Desktop grande (≥1440): 3 columnas cómodas; la central topa en 760 para no
+   estirar la línea de lectura de la conversación. */
+@media (min-width: 1440px) {
+  .post-grid {
+    grid-template-columns: 250px minmax(620px, 760px) 300px;
+    gap: 24px;
+  }
+}
+
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */
 @keyframes sorteo-flip-in {
   from {
