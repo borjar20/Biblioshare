@@ -35,15 +35,16 @@ export const RAIL = "340px";
 /**
  * Contenedor de la HOME de tres áreas (personal · feed · stats). Su propio
  * ancho, NO `SHELL_APP`: el reparto en tres columnas amplias (≥1440) necesita
- * ~1368px, más que los 1200 de `SHELL_APP`, y la fila de 2 columnas del tablet
- * (≥768) necesita más que los 672 a los que `SHELL_APP` cierra por debajo de
- * `lg`. Se deja crecer hasta 1440 y el reparto interno lo hace la rejilla
- * `.home-grid` (en `globals.css`), que `page.tsx` y `loading.tsx` comparten por
- * nombre para no poder divergir en ancho de columnas (era el motivo de la vieja
- * `HOME_TWO_COL`; ver #376). A ≥1440 y con `px-7` da columnas de ~493/543/300
- * (la central, el feed, algo más ancha que la izquierda).
+ * ~1368px, más que los 1200 de `SHELL_APP`. Por debajo de 1100 el Inicio va en
+ * UNA columna, así que ahí se queda en `max-w-2xl` (672) —un ancho de lectura,
+ * no una columna estirada a 1440—; a partir de 1100, donde arrancan las tres
+ * columnas, crece hasta 1440 y el reparto lo hace la rejilla `.home-grid` (en
+ * `globals.css`), que `page.tsx` y `loading.tsx` comparten por nombre para no
+ * poder divergir (era el motivo de la vieja `HOME_TWO_COL`; ver #376). A ≥1440 y
+ * con `px-7` da columnas de ~493/543/300 (la central, el feed, algo más ancha
+ * que la izquierda).
  */
-export const SHELL_HOME = "max-w-2xl md:max-w-[1440px]";
+export const SHELL_HOME = "max-w-2xl min-[1100px]:max-w-[1440px]";
 
 /**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen

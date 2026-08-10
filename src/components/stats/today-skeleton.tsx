@@ -28,10 +28,9 @@ export function TodayBlockSkeleton() {
         <div className="flex min-w-0 flex-col gap-2">
           <SkeletonLine className="h-2.5 w-24" />
           {/* Tarjeta destacada: el chrome real (radio 14 + borde + sombra) con
-              el interior en pulso, igual que hace `SkeletonCard`. */}
-          {/* Mismas clases `today-card-*` que el real: así el modo compacto
-              (globals.css) también encoge la portada y esconde la meta aquí, y
-              el fantasma no queda más alto que la tarjeta slim (CLS #284). */}
+              el interior en pulso, igual que hace `SkeletonCard`. Mantiene el
+              mismo diseño a todos los tamaños (como la real), así que el fantasma
+              no se recorta y no desalinea alturas (CLS #284). */}
           <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface shadow-card">
             <div className="today-card-body flex gap-3.5 p-3.5">
               <Skeleton className="today-card-cover h-[87px] w-[58px] shrink-0 rounded-md" />

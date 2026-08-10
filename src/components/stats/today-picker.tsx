@@ -38,8 +38,8 @@ export function TodayPicker({
    *  "Para más tarde" manda sobre su estantería. Cruzando las dos columnas, su
    *  "Ver todos" caía a 27px del otro "Ver todos" y con distinto destino. */
   heading?: ReactNode;
-  /** "Para más tarde", pintado en servidor: se apila entre el destacado y las
-   *  mini de "Continúa". Otro slot, por la misma razón que las tarjetas. */
+  /** "Para más tarde", pintado en servidor: se apila debajo de "Continúa", al
+   *  final de la columna derecha. Otro slot, por la misma razón que las tarjetas. */
   later?: ReactNode;
 }) {
   const [selectedId, setSelectedId] = useState(entries[0]?.id);
@@ -52,10 +52,10 @@ export function TodayPicker({
   const rest = entries.filter((e) => e.id !== featured.id);
 
   return (
-    // Dos áreas: IZQUIERDA el destacado, DERECHA "Para más tarde" + "Continúa"
+    // Dos áreas: IZQUIERDA el destacado, DERECHA "Continúa" + "Para más tarde"
     // apiladas. `today-split` (globals.css) lo pinta a DOS COLUMNAS cuando la
     // sección tiene ≥560px (mockup C: cabe sin scroll) y APILADO en estrecho
-    // —donde el orden queda en curso → para más tarde → continúa, que es como
+    // —donde el orden queda en curso → continúa → para más tarde, que es como
     // caen los dos bloques uno tras otro—. La columna estrecha de las 3 columnas
     // del Inicio nunca llega a 560, así que ahí se queda apilado.
     <div className="today-split flex flex-col gap-3">
@@ -70,10 +70,8 @@ export function TodayPicker({
         <Fragment key={featured.id}>{featured.card}</Fragment>
       </div>
 
-      {/* DERECHA: "Para más tarde" y "Continúa" apiladas. */}
+      {/* DERECHA: "Continúa" y "Para más tarde" apiladas. */}
       <div className="flex min-w-0 flex-col gap-3">
-        {later}
-
         {rest.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
@@ -103,6 +101,8 @@ export function TodayPicker({
             </div>
           </div>
         )}
+
+        {later}
       </div>
     </div>
   );

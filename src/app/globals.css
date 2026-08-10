@@ -296,8 +296,8 @@ body {
    `page.tsx` y `loading.tsx` comparten esta clase por nombre, así que NO pueden
    divergir en ancho de columnas (era el motivo de la vieja `HOME_TWO_COL`; ver
    #376). El orden VISUAL lo fija el área, no el DOM: el DOM va personal→feed→
-   stats, pero en móvil las stats se cuelan entre lo personal y el feed y en
-   tablet el feed baja a ancho completo. */
+   stats, pero por debajo de 1100 va en UNA columna con las stats coladas entre
+   lo personal y el feed (personal→stats→feed), y a ≥1100 en tres columnas. */
 .home-grid {
   display: grid;
   gap: 20px;
@@ -323,16 +323,10 @@ body {
   min-width: 0;
 }
 
-/* Tablet horizontal: 2 columnas arriba (personal · stats), feed a ancho
-   completo debajo — el feed necesita más ancho que las estadísticas. */
-@media (min-width: 768px) {
-  .home-grid {
-    grid-template-columns: minmax(0, 1fr) 260px;
-    grid-template-areas:
-      "personal stats"
-      "feed feed";
-  }
-}
+/* No hay fila de 2 columnas: por debajo de 1100 el Inicio va en UNA columna
+   (personal → stats → feed) y salta directo a las 3 columnas a ≥1100. El shell
+   acompaña —`SHELL_HOME` se queda en `max-w-2xl` hasta 1100— para que esa única
+   columna no se estire a 1440px de ancho. */
 
 /* Desktop compacto (1100–1439): 3 columnas flexibles. Stats es la primera que
    cede ancho (columna fija de 260); el feed —la columna central— va algo más
@@ -385,35 +379,28 @@ body {
   display: none;
 }
 
-/* Modo COMPACTO de "¿Qué has disfrutado hoy?": SOLO donde el feed va DEBAJO
-   (viewport <1100 = tablet/móvil) Y la sección no cabe a dos columnas (container
-   <560). En 3 columnas (≥1100) el feed va AL LADO, así que ahí no se compacta
-   (queda rica); y en el tablet ancho que sí cabe a dos columnas (≥560) también
-   se queda rica. La tarjeta destacada suelta la meta secundaria (tipo, "Día ·
-   desde · nota", meta de hoy, racha+semana) y encoge la portada; "Continúa"
-   pasa a una tira de mini-portadas. Lo interactivo (Sesión, Registrar, cambiar
-   destacado, ir a la ficha) se queda intacto. */
+/* Modo COMPACTO (tira slim) de las estanterías de "¿Qué has disfrutado hoy?":
+   SOLO donde el feed va DEBAJO (viewport <1100) Y la sección no cabe a dos
+   columnas (container <560, o sea móvil). En 3 columnas (≥1100) el feed va AL
+   LADO, y en el tablet que sí cabe a dos columnas (≥560) hay sitio, así que ahí
+   no se compacta. La tarjeta destacada NO cambia —mismo diseño a todos los
+   tamaños (decisión del usuario, 2026-08-10)—; lo que se encoge son las dos
+   tiras: "Continúa" pasa de tarjetas mini a mini-portadas, y "Para más tarde"
+   reduce sus portadas (y suelta el título) para igualar a la de arriba. Lo
+   interactivo (Sesión, Registrar, cambiar destacado, ir a la ficha) intacto. */
 @media (max-width: 1099px) {
   @container (max-width: 559px) {
-    .today-card-nth,
-    .today-card-meta,
-    .today-card-goal,
-    .today-card-streak {
-      display: none;
-    }
-    .today-card-body {
-      gap: 0.75rem;
-      padding: 0.75rem;
-    }
-    .today-card-cover {
-      height: 66px;
-      width: 44px;
-    }
     .continue-item .continue-card {
       display: none;
     }
     .continue-item .continue-thumb {
       display: block;
+    }
+    .later-item {
+      width: 44px;
+    }
+    .later-item > p {
+      display: none;
     }
   }
 }

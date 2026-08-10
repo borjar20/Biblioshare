@@ -62,7 +62,7 @@ function Cover({ item }: { item: LibraryItem }) {
   return (
     <Link
       href={itemHref(item.itemType, item.itemId)}
-      className="w-[66px] shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="later-item w-[66px] shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <div
         className="relative aspect-[2/3] overflow-hidden rounded-md bg-surface-muted shadow-cover"
