@@ -178,14 +178,14 @@ export function PostThread({
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex items-center gap-2 text-[12.5px]">
               {c.authorUsername ? (
-                <Link href={`/u/${c.authorUsername}`} className="font-semibold hover:underline">
+                <Link href={`/u/${c.authorUsername}`} className="min-w-0 truncate font-semibold hover:underline">
                   {c.author}
                 </Link>
               ) : (
-                <span className="font-semibold">{c.author}</span>
+                <span className="min-w-0 truncate font-semibold">{c.author}</span>
               )}
-              {c.pinned && <span className="text-[10px] text-muted-foreground">📌 {t("pinned")}</span>}
-              <TimeAgo iso={c.createdAt} className="text-[10.5px] text-muted-foreground" />
+              {c.pinned && <span className="shrink-0 text-[10px] text-muted-foreground">📌 {t("pinned")}</span>}
+              <TimeAgo iso={c.createdAt} className="shrink-0 text-[10.5px] text-muted-foreground" />
             </div>
 
             {editingId === c.id ? (
@@ -258,20 +258,21 @@ export function PostThread({
                 </div>
               </>
             )}
-
-            {node.children.length > 0 &&
-              (node.depth < MAX_THREAD_DEPTH - 1 ? (
-                // Riel de sangría corta (~11px/nivel) hasta el tope de 4 niveles.
-                <div className="mt-2 flex flex-col gap-1 border-l-2 border-border pl-3">
-                  {node.children.map(renderNode)}
-                </div>
-              ) : (
-                // Tope de profundidad: más adentro no se sangra; los hijos van al
-                // mismo nivel (la @mención da el contexto de a quién responden).
-                <div className="mt-2 flex flex-col gap-1">{node.children.map(renderNode)}</div>
-              ))}
           </div>
         </div>
+        {node.children.length > 0 &&
+          (node.depth < MAX_THREAD_DEPTH - 1 ? (
+            // Riel de sangría CORTA (~16px/nivel), HERMANO de la fila (no dentro
+            // de la columna de texto) — así el ancho del avatar no se acumula por
+            // nivel y el rail baja desde el avatar del padre, estilo Reddit.
+            <div className="ml-1 flex flex-col gap-1 border-l-2 border-border pl-3">
+              {node.children.map(renderNode)}
+            </div>
+          ) : (
+            // Tope de 4 niveles: más adentro no se sangra; los hijos siguen al
+            // mismo nivel (la @mención da el contexto de a quién responden).
+            <div className="flex flex-col gap-1">{node.children.map(renderNode)}</div>
+          ))}
       </div>
     );
   }

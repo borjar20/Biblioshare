@@ -46,11 +46,11 @@ export function ReviewCard({
       {!hideActor && (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
-          <p className="min-w-0 flex-1 text-sm text-foreground">
+          <p className="min-w-0 flex-1 truncate text-sm text-foreground">
             <Link href={`/u/${event.actorUsername}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
             <span className="text-muted-foreground">{t(`verbs.${event.verb}`)}</span>
           </p>
-          <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
+          <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
             {t("kind.review")}
           </span>
         </div>

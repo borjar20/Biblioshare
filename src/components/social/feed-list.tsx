@@ -86,7 +86,7 @@ export function FeedList({
     // a cada article se le quita radio/sombra/bordes laterales-y-superior dejando
     // solo el inferior como separador (el del último se retira). En sm+ vuelve a
     // ser la lista de tarjetas de siempre.
-    <div className="flex flex-col gap-3 max-sm:gap-0 max-sm:[&>article]:rounded-none max-sm:[&>article]:border-x-0 max-sm:[&>article]:border-t-0 max-sm:[&>article]:shadow-none max-sm:[&>article:last-of-type]:border-b-0">
+    <div className="flex flex-col gap-3 max-sm:-mx-5 max-sm:gap-0 max-sm:[&>article]:rounded-none max-sm:[&>article]:border-x-0 max-sm:[&>article]:border-t-0 max-sm:[&>article]:shadow-none max-sm:[&>article:last-of-type]:border-b-0">
       {events.map((entry) => (
         <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
       ))}
