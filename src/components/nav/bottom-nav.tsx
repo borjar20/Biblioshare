@@ -11,6 +11,10 @@ import { anonNavItems, navItems, isNavItemActive } from "./nav-items";
 export function BottomNav({ username }: { username: string | null }) {
   const t = useTranslations("nav.items");
   const pathname = usePathname();
+  // En /post/[id] (posts Spec 2b) el composer del hilo va anclado al borde
+  // inferior en móvil; la nav le cedería el sitio o se solaparían, así que se
+  // retira en esa pantalla-conversación (se vuelve por el back de la topbar).
+  if (pathname.startsWith("/post/")) return null;
   const items = username ? navItems(username) : anonNavItems();
 
   return (

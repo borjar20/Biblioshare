@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
-import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { RichTextView } from "@/components/social/rich-text-view";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { SpoilerGate } from "./spoiler-gate";
@@ -23,15 +23,17 @@ import { deletePost } from "@/lib/social/post-actions";
 // pero el tipo de FeedEvent lo deja nullable, así que aquí también se guarda.
 export function ThoughtCard({
   event,
-  viewerLoggedIn,
   hideActor = false,
   knownUsernames,
+  showInteractions = true,
 }: {
   event: FeedEvent;
   viewerLoggedIn: boolean;
   hideActor?: boolean;
   /** Usernames @mencionados que existen de verdad (cuerpo + comentarios). */
   knownUsernames: string[];
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const { thought } = event;
@@ -90,11 +92,11 @@ export function ThoughtCard({
       {!hideActor ? (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
-          <p className="min-w-0 flex-1 text-sm text-foreground">
+          <p className="min-w-0 flex-1 truncate text-sm text-foreground">
             <Link href={`/u/${event.actorUsername}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
             <span className="text-muted-foreground">{t("thoughtShared")}</span>
           </p>
-          <span className="self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
+          <span className="shrink-0 self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
             {t("kind.thought")}
           </span>
           {deleteMenu}
@@ -125,16 +127,11 @@ export function ThoughtCard({
         {thought.isSpoiler ? <SpoilerGate>{bodyEl}</SpoilerGate> : bodyEl}
       </div>
 
-      {event.interactionTarget?.interactionTargetId && (
-        <ReviewInteractions
-          interactionTargetId={event.interactionTarget.interactionTargetId}
+      {showInteractions && event.postId && (
+        <PostSummary
+          postId={event.postId}
           reactionCount={event.reactionCount}
-          viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
-          comments={event.comments}
-          reactions={event.reactions}
-          viewerLoggedIn={viewerLoggedIn}
-          knownUsernames={knownUsernames}
         />
       )}
       {deleteError && (

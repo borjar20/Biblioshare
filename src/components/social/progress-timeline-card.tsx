@@ -7,6 +7,7 @@ import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { SpoilerGate } from "./spoiler-gate";
 import { itemHref } from "@/lib/catalog/item-href";
 import { splitCollapsedItems } from "./feed-collapse";
@@ -16,6 +17,7 @@ export function ProgressTimelineCard({
   viewerLoggedIn,
   knownUsernames,
   hideActor = false,
+  showInteractions = true,
 }: {
   entry: PersonGroupEntry; // verb === "progressed", items = pasos desc
   viewerLoggedIn: boolean;
@@ -23,6 +25,8 @@ export function ProgressTimelineCard({
   knownUsernames: string[];
   /** Oculta avatar+nombre y capitaliza el verbo (Actividad del perfil, #302). */
   hideActor?: boolean;
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = entry.actor.displayName || entry.actor.username;
@@ -82,7 +86,15 @@ export function ProgressTimelineCard({
                     {step.progress.note.isSpoiler ? <SpoilerGate>{noteEl}</SpoilerGate> : noteEl}
                   </div>
                 )}
-                {step.interactionTarget?.interactionTargetId && (
+                {showInteractions && step.postId ? (
+                  // Post de progreso: resumen que enlaza a /post/[id] (Spec 2b).
+                  <PostSummary
+                    postId={step.postId}
+                    reactionCount={step.reactionCount}
+                    commentCount={step.commentCount}
+                  />
+                ) : showInteractions && step.interactionTarget?.interactionTargetId ? (
+                  // Progreso legado sin post (no tiene página propia): hilo inline.
                   <div className="mt-1.5">
                     <ReviewInteractions
                       interactionTargetId={step.interactionTarget.interactionTargetId}
@@ -95,7 +107,7 @@ export function ProgressTimelineCard({
                       knownUsernames={knownUsernames}
                     />
                   </div>
-                )}
+                ) : null}
                 <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
               </div>
             </div>

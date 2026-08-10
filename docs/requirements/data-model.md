@@ -758,6 +758,21 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 > `thought` y hace `drop table`). El código vive en la rama `feat/posts-capa-social` (PR #557 + fixes
 > #559/#560). Interacciones huérfanas del backfill (10, sobre `pass`/`progress_session` sin nota) →
 > issue #558.
+>
+> **Delta del 2026-08-10 (posts Spec 2b — superficies de lectura + deep-link, SOLO EN DEV; prod
+> pendiente):** dos cambios de esquema, verificados en dev contra objetos reales:
+> `20260848_comment_target_anchor.sql` reescribe `private.sync_comment_interaction_target` para que
+> el target `kind='comment'` lleve **`#c-<id>` en su href** (heredando la ruta del padre) + backfill
+> de los existentes — así una notificación que apunte al target del comentario (una RESPUESTA a tu
+> comentario, o un like) deep-linka al subhilo `/post/[id]#c-<cid>` (`listNotifications`/push leen el
+> href tal cual). `20260849_notifications_dedupe_unique_index.sql` sustituye el índice único PARCIAL
+> `idx_notifications_dedupe_key` (`WHERE dedupe_key IS NOT NULL`) por uno **no parcial**: PostgREST no
+> puede usar un índice parcial como árbitro de `ON CONFLICT (dedupe_key)`, así que el upsert de
+> `notify()`/`notifyMany()` con `dedupeKey` reventaba y la notificación dedupeada (la de respuesta,
+> entre otras) NUNCA se creaba — bug preexistente destapado por el deep-link (misma semántica de
+> unicidad; los NULL siguen distintos). El código de lectura (`PostThread`, feed → `PostSummary`) va
+> en la rama `feat/posts-spec2-compartir`. Diferidos: 500 anon de `/post/[id]` (#561, preexistente),
+> copy del aviso de respuesta (#562). Ver `decisiones.md` (2026-08-10).
 
 Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
 La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de

@@ -22,6 +22,7 @@ export function CollectionCard({
   viewerLoggedIn,
   knownUsernames,
   hideActor = false,
+  showInteractions = true,
 }: {
   entry: PersonGroupEntry; // verb === "added"
   viewerLoggedIn: boolean;
@@ -29,6 +30,8 @@ export function CollectionCard({
   knownUsernames: string[];
   /** Oculta avatar+nombre y capitaliza el verbo (Actividad del perfil, #302). */
   hideActor?: boolean;
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = entry.actor.displayName || entry.actor.username;
@@ -66,7 +69,7 @@ export function CollectionCard({
                 {item.itemTitle}
               </Link>
               {item.itemSubtitle && <span className="text-[11px] text-foreground-faint">{item.itemSubtitle}</span>}
-              {item.interactionTarget?.interactionTargetId && (
+              {showInteractions && item.interactionTarget?.interactionTargetId && (
                 <ReviewInteractions
                   interactionTargetId={item.interactionTarget.interactionTargetId}
                   reactionCount={item.reactionCount}

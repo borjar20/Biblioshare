@@ -25,6 +25,7 @@ export function EpisodeRatingsCard({
   viewerLoggedIn,
   knownUsernames,
   hideActor = false,
+  showInteractions = true,
 }: {
   entry: PersonGroupEntry; // verb rated/reviewed/watchedEpisode, items = episodios desc
   viewerLoggedIn: boolean;
@@ -32,6 +33,8 @@ export function EpisodeRatingsCard({
   knownUsernames: string[];
   /** Oculta avatar+nombre y capitaliza el verbo (Actividad del perfil, #302). */
   hideActor?: boolean;
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = entry.actor.displayName || entry.actor.username;
@@ -83,7 +86,7 @@ export function EpisodeRatingsCard({
                   <MentionText text={ep.reviewExcerpt} knownUsernames={knownUsernames} />
                 </p>
               )}
-              {ep.interactionTarget?.interactionTargetId && (
+              {showInteractions && ep.interactionTarget?.interactionTargetId && (
                 <div className="mt-1.5">
                   <ReviewInteractions
                     interactionTargetId={ep.interactionTarget.interactionTargetId}

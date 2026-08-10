@@ -16,6 +16,7 @@ import {
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
+import { createPost } from "@/lib/social/post-actions";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 
 const VALID_STATUSES: MediaStatus[] = [
@@ -200,6 +201,27 @@ export async function addSession(
       .eq("pass_id", passId)
       .is("session_id", null)
       .in("id", noteIds);
+  }
+
+  // Compartir en el perfil (Spec 2, §8): opt-in del formulario. La sesión
+  // (fuente de verdad) ya está guardada; si el usuario marcó «Compartir», además
+  // se publica un post 'progressed' anclado a la obra, con el texto opcional como
+  // cuerpo social (el compositor de Pensamiento hace el mismo gesto con
+  // createPost). Best-effort: createPost devuelve un resultado discriminado y
+  // NUNCA lanza, así que un fallo al compartir no tumba el guardado de la sesión
+  // que el usuario sí pidió. Idempotente por el índice único de posts
+  // (source_kind, source_id, kind): `inserted.id` es esta sesión, única.
+  if (formData.get("share") === "on") {
+    const shareBody = String(formData.get("shareBody") ?? "").trim();
+    await createPost({
+      kind: "progressed",
+      anchorType: itemType,
+      anchorId: itemId,
+      sourceKind: "progress_session",
+      sourceId: inserted.id,
+      body: shareBody || undefined,
+      isSpoiler: formData.get("shareSpoiler") === "on",
+    });
   }
 
   // Serie: marca cada episodio reutilizando la MISMA escritura que la

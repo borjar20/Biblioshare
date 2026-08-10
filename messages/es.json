@@ -326,6 +326,7 @@
       "fire": "Fuego"
     },
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
+    "viewThread": "Ver hilo",
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
     "deleteComment": "Borrar",
@@ -376,7 +377,14 @@
     "notifySession": "Registre una sesión",
     "notifyEpisode": "Vea un episodio",
     "notifyAdded": "Añada algo a su biblioteca",
-    "notifyAddedHint": "Puede llegar en ráfagas si añade muchas obras seguidas."
+    "notifyAddedHint": "Puede llegar en ráfagas si añade muchas obras seguidas.",
+    "postPrefs": {
+      "label": "Autopublicar hitos",
+      "hint": "Publica en tu perfil automáticamente al cambiar el estado de una obra. El progreso y los pensamientos se comparten aparte, cuando tú quieras.",
+      "autopost_finished": "Al terminar o marcar como visto",
+      "autopost_started": "Al empezar una obra",
+      "autopost_dropped": "Al abandonar una obra"
+    }
   },
   "thoughtComposer": {
     "trigger": "Compartir un pensamiento",
@@ -1758,6 +1766,9 @@
       "unseen": "sin ver"
     },
     "status": "Estado",
+    "shareLabel": "Compartir en mi perfil",
+    "sharePlaceholder": "¿Algo que contar sobre esta sesión? (opcional)",
+    "shareSpoiler": "Marcar como spoiler",
     "submit": "Guardar sesión",
     "submitting": "Guardando...",
     "errors": {

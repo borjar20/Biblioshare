@@ -122,6 +122,11 @@ export async function addComment(
     if (error) throw error;
 
     let mentioned: string[] = [];
+    // Target `kind='comment'` de este comentario (lo materializa el trigger
+    // durante el insert). Su href lleva `#c-<id>` (migración 20260848), así que
+    // apuntar una notificación a él hace deep-link al SUBHILO en vez de a la
+    // cabecera del post. Lo reutilizan las menciones y el aviso de respuesta.
+    let commentTargetId: string | null = null;
     try {
       const { data: commentTarget, error: commentTargetError } = await supabase
         .from("interaction_targets")
@@ -131,6 +136,7 @@ export async function addComment(
         .maybeSingle();
       if (commentTargetError) throw commentTargetError;
       if (commentTarget) {
+        commentTargetId = commentTarget.id;
         mentioned = await notifyMentions(supabase, {
           authorId: user.id,
           text: trimmed,
@@ -173,7 +179,11 @@ export async function addComment(
             userId: parent.author_id,
             actorId: user.id,
             type: target.comment_notification_type,
-            interactionTargetId,
+            // Deep-link al SUBHILO: apunta al target del propio comentario
+            // (href con `#c-<id>`, 20260848), no al del post — así el aviso
+            // aterriza en la respuesta dentro del hilo, no en la cabecera
+            // genérica. Fallback al post si el target no se resolvió.
+            interactionTargetId: commentTargetId ?? interactionTargetId,
             dedupeKey: `reply:${inserted.id}`,
           });
         }

@@ -6,7 +6,7 @@ import type { FeedEvent } from "@/lib/social/feed";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
-import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { MentionText } from "@/components/social/mention-text";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -20,15 +20,17 @@ import { itemHref } from "@/lib/catalog/item-href";
 // la reseña se publica siempre.
 export function ReviewCard({
   event,
-  viewerLoggedIn,
   hideActor = false,
   knownUsernames,
+  showInteractions = true,
 }: {
   event: FeedEvent;
   viewerLoggedIn: boolean;
   hideActor?: boolean;
   /** Usernames @mencionados que existen de verdad (extracto + comentarios). */
   knownUsernames: string[];
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
   const actorName = event.actorDisplayName || event.actorUsername;
@@ -44,11 +46,11 @@ export function ReviewCard({
       {!hideActor && (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
-          <p className="min-w-0 flex-1 text-sm text-foreground">
+          <p className="min-w-0 flex-1 truncate text-sm text-foreground">
             <Link href={`/u/${event.actorUsername}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
             <span className="text-muted-foreground">{t(`verbs.${event.verb}`)}</span>
           </p>
-          <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
+          <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
             {t("kind.review")}
           </span>
         </div>
@@ -76,16 +78,11 @@ export function ReviewCard({
         </p>
       )}
 
-      {event.interactionTarget?.interactionTargetId && (
-        <ReviewInteractions
-          interactionTargetId={event.interactionTarget.interactionTargetId}
+      {showInteractions && event.postId && (
+        <PostSummary
+          postId={event.postId}
           reactionCount={event.reactionCount}
-          viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
-          comments={event.comments}
-          reactions={event.reactions}
-          viewerLoggedIn={viewerLoggedIn}
-          knownUsernames={knownUsernames}
         />
       )}
       <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
