@@ -67,10 +67,10 @@ export function ProfileActivityFeed({
   return (
     <div className="flex flex-col gap-6">
       {groups.map((group) => (
-        <div key={group.key} className="flex flex-col gap-3">
+        <div key={group.key} className="flex flex-col gap-3 max-sm:gap-0 max-sm:[&>article]:rounded-none max-sm:[&>article]:border-x-0 max-sm:[&>article]:border-t-0 max-sm:[&>article]:shadow-none max-sm:[&>article:last-of-type]:border-b-0">
           <h5
             suppressHydrationWarning
-            className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase"
+            className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase max-sm:mb-1.5"
           >
             {labelFor(group.key)}
           </h5>
