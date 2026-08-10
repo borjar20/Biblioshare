@@ -335,10 +335,11 @@ body {
 }
 
 /* Desktop compacto (1100–1439): 3 columnas flexibles. Stats es la primera que
-   cede ancho (columna fija de 260); el feed no se comprime de más (min 360). */
+   cede ancho (columna fija de 260); el feed —la columna central— va algo más
+   ancho que lo personal (1.1fr vs 1fr) y no se comprime de más (min 360). */
 @media (min-width: 1100px) {
   .home-grid {
-    grid-template-columns: minmax(330px, 1fr) minmax(360px, 1fr) 260px;
+    grid-template-columns: minmax(330px, 1fr) minmax(360px, 1.1fr) 260px;
     grid-template-areas: "personal feed stats";
   }
   /* Sticky SOLO con 3 columnas: en tablet el feed va debajo y pegar las stats no
@@ -352,11 +353,12 @@ body {
   }
 }
 
-/* Desktop grande (≥1440): 3 columnas amplias (~520 / ~500 / 300 dentro del
-   contenedor de 1440) y gap mayor. */
+/* Desktop grande (≥1440): 3 columnas amplias (~493 / ~543 / 300 dentro del
+   contenedor de 1440) y gap mayor. La central (feed) va algo más ancha que la
+   izquierda (personal): 1.1fr vs 1fr. */
 @media (min-width: 1440px) {
   .home-grid {
-    grid-template-columns: 1.05fr 1fr 300px;
+    grid-template-columns: 1fr 1.1fr 300px;
     gap: 24px;
     grid-template-areas: "personal feed stats";
   }

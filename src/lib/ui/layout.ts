@@ -40,7 +40,8 @@ export const RAIL = "340px";
  * `lg`. Se deja crecer hasta 1440 y el reparto interno lo hace la rejilla
  * `.home-grid` (en `globals.css`), que `page.tsx` y `loading.tsx` comparten por
  * nombre para no poder divergir en ancho de columnas (era el motivo de la vieja
- * `HOME_TWO_COL`; ver #376). A ≥1440 y con `px-7` da columnas de ~531/505/300.
+ * `HOME_TWO_COL`; ver #376). A ≥1440 y con `px-7` da columnas de ~493/543/300
+ * (la central, el feed, algo más ancha que la izquierda).
  */
 export const SHELL_HOME = "max-w-2xl md:max-w-[1440px]";
 
