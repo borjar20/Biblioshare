@@ -16,7 +16,14 @@ import { Fragment, useState, type ReactNode } from "react";
 // `focusLabel` viene ya formateado ("Poner Dune arriba") por entrada, no como
 // una función que lo construya: una función NO cruza la frontera
 // servidor→cliente. Es la misma regla que impide pasar `t` hacia dentro.
-export type TodayEntry = { id: string; card: ReactNode; mini: ReactNode; focusLabel: string };
+export type TodayEntry = {
+  id: string;
+  card: ReactNode;
+  mini: ReactNode;
+  /** Mini-portada (solo carátula) para el modo compacto. */
+  thumb: ReactNode;
+  focusLabel: string;
+};
 
 export function TodayPicker({
   entries,
@@ -75,17 +82,22 @@ export function TodayPicker({
             {/* `today-shelf`: carrusel de una fila. Móvil estrecho (<768): sangra
                 al borde. Tablet/desktop y en la columna derecha del split (≥560):
                 contenido (`mx-0`, sin envolver). Solo en las 3 columnas del
-                Inicio (≥1100) las mini envuelven en filas. */}
-            <div className="today-shelf -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+                Inicio (≥1100) las mini envuelven en filas.
+
+                Cada botón trae DOS vistas: la tarjeta mini (por defecto) y la
+                mini-portada (compacto: tablet estrecho/móvil). El CSS enseña una
+                u otra; el clic que sube al destacado es el mismo. */}
+            <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
               {rest.map((entry) => (
                 <button
                   key={entry.id}
                   type="button"
                   aria-label={entry.focusLabel}
                   onClick={() => setSelectedId(entry.id)}
-                  className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+                  className="continue-item shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
                 >
-                  {entry.mini}
+                  <span className="continue-card">{entry.mini}</span>
+                  <span className="continue-thumb">{entry.thumb}</span>
                 </button>
               ))}
             </div>

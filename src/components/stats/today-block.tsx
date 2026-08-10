@@ -129,6 +129,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
             />
           ),
           mini: <MiniCard pass={pass} />,
+          thumb: <MiniThumb pass={pass} />,
         }))}
       />
     </section>
@@ -179,6 +180,28 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
           <span className="shrink-0 text-gold-ink">{t("streakShort", { count: pass.streakDays })}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// La mini-portada de "Continúa" en modo compacto (tablet estrecho / móvil): solo
+// la carátula, sin el chrome de la tarjeta mini. El botón que la envuelve
+// (TodayPicker) la sube al destacado, y su aria-label lleva el título; por eso
+// aquí no hay texto. Su gemela con datos es MiniCard, que manda cuando hay sitio.
+function MiniThumb({ pass }: { pass: TodayPass }) {
+  const { item } = pass;
+  const accent = MEDIA_ACCENT[item.itemType];
+  return (
+    <div
+      className="relative aspect-[2/3] w-11 overflow-hidden rounded-md bg-surface-muted shadow-cover"
+      style={{ ["--acc" as string]: `var(${accent.varName})` }}
+    >
+      {item.coverUrl ? (
+        <Image src={item.coverUrl} alt="" fill sizes="44px" className="object-cover" />
+      ) : (
+        <span aria-hidden className="absolute inset-0 bg-[var(--acc)]/15" />
+      )}
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-[var(--acc)]" />
     </div>
   );
 }

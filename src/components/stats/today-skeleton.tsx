@@ -29,13 +29,16 @@ export function TodayBlockSkeleton() {
           <SkeletonLine className="h-2.5 w-24" />
           {/* Tarjeta destacada: el chrome real (radio 14 + borde + sombra) con
               el interior en pulso, igual que hace `SkeletonCard`. */}
+          {/* Mismas clases `today-card-*` que el real: así el modo compacto
+              (globals.css) también encoge la portada y esconde la meta aquí, y
+              el fantasma no queda más alto que la tarjeta slim (CLS #284). */}
           <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface shadow-card">
-            <div className="flex gap-3.5 p-3.5">
-              <Skeleton className="h-[87px] w-[58px] shrink-0 rounded-md" />
+            <div className="today-card-body flex gap-3.5 p-3.5">
+              <Skeleton className="today-card-cover h-[87px] w-[58px] shrink-0 rounded-md" />
               <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <SkeletonLine className="h-2.5 w-16" />
+                <SkeletonLine className="today-card-nth h-2.5 w-16" />
                 <SkeletonLine className="w-3/4" />
-                <SkeletonLine className="h-3 w-1/2" />
+                <SkeletonLine className="today-card-meta h-3 w-1/2" />
                 <Skeleton className="mt-1 h-[5px] w-full rounded-full" />
               </div>
             </div>
@@ -49,13 +52,21 @@ export function TodayBlockSkeleton() {
           </div>
         </div>
 
-        {/* DERECHA: rótulo "Continúa" + carrusel de mini. Como el real:
-            contenido y en una fila, envuelve solo en las 3 columnas (≥1100). */}
+        {/* DERECHA: rótulo "Continúa" + carrusel. Como el real, cada ítem trae
+            la tarjeta mini (por defecto) y la mini-portada (compacto), y el CSS
+            enseña una u otra. */}
         <div className="flex min-w-0 flex-col gap-2">
           <SkeletonLine className="h-2.5 w-28" />
-          <div className="today-shelf -mx-5 flex gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+          <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
             {Array.from({ length: 3 }).map((_, i) => (
-              <MiniCardSkeleton key={i} />
+              <div key={i} className="continue-item shrink-0">
+                <span className="continue-card">
+                  <MiniCardSkeleton />
+                </span>
+                <span className="continue-thumb">
+                  <Skeleton className="aspect-[2/3] w-11 rounded-md" />
+                </span>
+              </div>
             ))}
           </div>
         </div>

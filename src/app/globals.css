@@ -378,6 +378,46 @@ body {
 .today-block {
   container-type: inline-size;
 }
+
+/* La mini-portada de "Continúa" (`thumb`) solo se ve en compacto; por defecto
+   mandan las tarjetas mini. */
+.continue-item .continue-thumb {
+  display: none;
+}
+
+/* Modo COMPACTO de "¿Qué has disfrutado hoy?": SOLO donde el feed va DEBAJO
+   (viewport <1100 = tablet/móvil) Y la sección no cabe a dos columnas (container
+   <560). En 3 columnas (≥1100) el feed va AL LADO, así que ahí no se compacta
+   (queda rica); y en el tablet ancho que sí cabe a dos columnas (≥560) también
+   se queda rica. La tarjeta destacada suelta la meta secundaria (tipo, "Día ·
+   desde · nota", meta de hoy, racha+semana) y encoge la portada; "Continúa"
+   pasa a una tira de mini-portadas. Lo interactivo (Sesión, Registrar, cambiar
+   destacado, ir a la ficha) se queda intacto. */
+@media (max-width: 1099px) {
+  @container (max-width: 559px) {
+    .today-card-nth,
+    .today-card-meta,
+    .today-card-goal,
+    .today-card-streak {
+      display: none;
+    }
+    .today-card-body {
+      gap: 0.75rem;
+      padding: 0.75rem;
+    }
+    .today-card-cover {
+      height: 66px;
+      width: 44px;
+    }
+    .continue-item .continue-card {
+      display: none;
+    }
+    .continue-item .continue-thumb {
+      display: block;
+    }
+  }
+}
+
 @container (min-width: 560px) {
   /* Cabecera en fila: título a la izquierda, fecha a la derecha (mockup C).
      `row-reverse` porque en el DOM la fecha va primera (para apilarse ENCIMA del
