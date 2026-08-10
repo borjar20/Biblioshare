@@ -5,8 +5,10 @@ import { getPostEvent, getPostContext, type FeedEntry } from "@/lib/social/feed"
 import { FeedItem } from "@/components/social/feed-item";
 import { PostThread } from "@/components/social/post-thread";
 import { PostAside, type AsideParticipant } from "@/components/social/post-aside";
+import { WorkSummaryCard } from "@/components/social/work-summary-card";
+import { getWorkSummary } from "@/lib/social/work-summary";
 import { RouteMessages } from "@/components/route-messages";
-import { SHELL_APP, HOME_TWO_COL } from "@/lib/ui/layout";
+import { SHELL_POST } from "@/lib/ui/layout";
 
 // Ruta propia del post (`/post/[id]`): donde aterrizan notificaciones y deep
 // links —incluido el deep-link al SUBHILO `#c-<id>` (posts Spec 2b)—. Es una
@@ -44,10 +46,21 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   };
   const targetId = event.interactionTarget?.interactionTargetId ?? null;
 
-  // Contexto de descubrimiento del raíl (Propuesta B). Participantes = autores
-  // DISTINTOS de los comentarios ya cargados (el hilo es corto, prefetch ≤20);
-  // "más del autor"/"más sobre la obra" son dos consultas propias.
-  const context = await getPostContext(supabase, event);
+  // Ancla REAL de la obra: para un pensamiento vive en `thought.anchor`
+  // (itemType/itemId son un placeholder inerte); para el resto, el par
+  // itemType/itemId ES el ancla de catálogo. Mismo criterio que `getPostContext`.
+  const anchorType = event.thought?.anchor.type ?? event.itemType;
+  const anchorId = event.thought?.anchor.id ?? event.itemId;
+
+  // Contexto SOCIAL del raíl derecho + resumen de la OBRA del raíl izquierdo, en
+  // paralelo (ambos dependen solo de `event`). Participantes = autores DISTINTOS
+  // de los comentarios ya cargados (el hilo es corto, prefetch ≤20); "más del
+  // autor" (por continuidad temática, RPC) y "más sobre la obra" son consultas
+  // propias de `getPostContext`.
+  const [context, workSummary] = await Promise.all([
+    getPostContext(supabase, event),
+    getWorkSummary(supabase, user?.id ?? null, anchorType, anchorId),
+  ]);
   const participantsById = new Map<string, AsideParticipant>();
   for (const c of event.comments) {
     if (!participantsById.has(c.authorId)) {
@@ -65,15 +78,19 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // `RouteMessages` con feed+social (patrón #444): sin este envoltorio las
   // piezas de cliente (ThoughtCard/PostThread…) pintarían las CLAVES i18n
   // crudas. Mismos ns que el feed de Inicio.
+  // Tres áreas (`.post-grid`): OBRA · CONVERSACIÓN · SOCIAL. Jerarquía visual
+  // OBRA→CONVERSACIÓN→SOCIAL, pero prioridad responsive CONVERSACIÓN>SOCIAL>OBRA
+  // — a <1000 cae a una columna, OBRA se oculta (accesible por la tarjeta
+  // vinculada del post) y SOCIAL cae bajo el hilo. El DOM va conversación→obra→
+  // social; las `grid-template-areas` recolocan OBRA a la izquierda a ≥1000.
+  // `pb-28` en móvil deja aire para el composer fijo del hilo (que posee la
+  // página; el árbol ya no lo añade). Cabecera = el post (tarjeta-hero, SIN su
+  // barra de interacción) y debajo el hilo anidado con su composer y deep-link.
   return (
     <RouteMessages ns={["feed", "social"]}>
-      <div className={`mx-auto w-full ${SHELL_APP} flex-1 px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
-        {/* Post + hilo a la izquierda, raíl de contexto a la derecha (Propuesta
-            B). En móvil `HOME_TWO_COL` no es rejilla: el raíl cae bajo el hilo.
-            `pb-28` en móvil deja aire para el composer fijo del hilo, que ahora
-            lo posee la página (el árbol ya no lo añade). */}
-        <div className={`${HOME_TWO_COL} pb-28 lg:pb-0`}>
-          <div className="flex min-w-0 flex-col gap-4">
+      <div className={`mx-auto w-full ${SHELL_POST} flex-1 px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
+        <div className="post-grid pb-28 min-[1000px]:pb-0">
+          <div data-area="conversacion" className="flex min-w-0 flex-col gap-4">
             <FeedItem
               entry={entry}
               viewerLoggedIn={!!user}
@@ -93,15 +110,24 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               />
             )}
           </div>
-          <PostAside
-            authorUsername={event.actorUsername}
-            authorName={event.actorDisplayName || event.actorUsername}
-            workTitle={workTitle}
-            participants={participants}
-            participantCount={participants.length}
-            moreByAuthor={context.moreByAuthor}
-            moreAboutWork={context.moreAboutWork}
-          />
+
+          {workSummary && (
+            <div data-area="obra">
+              <WorkSummaryCard work={workSummary} />
+            </div>
+          )}
+
+          <div data-area="social">
+            <PostAside
+              authorUsername={event.actorUsername}
+              authorName={event.actorDisplayName || event.actorUsername}
+              workTitle={workTitle}
+              participants={participants}
+              participantCount={participants.length}
+              moreByAuthor={context.moreByAuthor}
+              moreAboutWork={context.moreAboutWork}
+            />
+          </div>
         </div>
       </div>
     </RouteMessages>

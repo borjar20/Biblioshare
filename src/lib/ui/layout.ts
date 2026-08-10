@@ -59,6 +59,20 @@ export const HOME_TWO_COL =
 export const SHELL_HOME = "max-w-2xl min-[1100px]:max-w-[1440px]";
 
 /**
+ * Contenedor de `/post/[id]`, la página individual de un post en TRES áreas
+ * (OBRA · CONVERSACIÓN · SOCIAL). Su propio ancho, NO `SHELL_APP`: el reparto en
+ * tres columnas cómodas a ≥1440 (250 / minmax(620,760) / 300 + gaps) necesita
+ * ~1358px, más que los 1200 de `SHELL_APP`, y el diseño pide un contenedor de
+ * ~1450. Por debajo de 1000 la página va en UNA columna (la CONVERSACIÓN manda y
+ * conserva un ancho de lectura), así que ahí se queda en `max-w-2xl` (672) y NO
+ * se estira; a partir de 1000, donde arrancan las tres columnas, crece hasta
+ * 1450 y el reparto lo hace la rejilla `.post-grid` (en `globals.css`). La
+ * prioridad responsive es CONVERSACIÓN > SOCIAL > OBRA: los raíles se compactan
+ * progresivamente (contenido, no la rejilla) antes de desaparecer a <1000.
+ */
+export const SHELL_POST = "max-w-2xl min-[1000px]:max-w-[1450px]";
+
+/**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen
  * leyéndose. Las dos últimas paradas existen para que ensanchar el shell no
  * infle la portada al repartir 1600px entre cinco.

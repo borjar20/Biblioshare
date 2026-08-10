@@ -2587,6 +2587,16 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      related_posts_by_author: {
+        Args: {
+          p_anchor_id: string
+          p_anchor_type: Database["public"]["Enums"]["post_anchor_type"]
+          p_author_id: string
+          p_exclude_post_id: string
+          p_limit?: number
+        }
+        Returns: Database["public"]["Tables"]["posts"]["Row"][]
+      }
       can_view_interaction_target: {
         Args: { p_interaction_target_id: string }
         Returns: boolean
