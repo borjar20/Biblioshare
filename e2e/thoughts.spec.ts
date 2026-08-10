@@ -80,7 +80,7 @@ async function publishThought(
 
   await composer.getByPlaceholder("¿Qué piensas?").fill(opts.body);
   if (opts.spoiler) {
-    await composer.getByRole("checkbox", { name: "Contiene spoiler" }).check();
+    await composer.getByRole("button", { name: "Contiene spoiler" }).click();
   }
   await composer.getByRole("button", { name: "Publicar" }).click();
   await expect(composer).toBeHidden();
