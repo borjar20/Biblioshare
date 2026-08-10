@@ -119,7 +119,6 @@ export async function TodayBlock({ userId }: { userId: string }) {
         }
         entries={passes.map((pass) => ({
           id: pass.item.entryId,
-          title: pass.item.title,
           focusLabel: t("focusMini", { title: pass.item.title }),
           card: (
             <TodayCard
