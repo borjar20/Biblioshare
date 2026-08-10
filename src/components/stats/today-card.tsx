@@ -93,20 +93,23 @@ export async function TodayCard({
               .join(" · ")}
           </p>
 
-          {progress && percent != null && (
-            <div className="mt-2">
-              <div className="h-[5px] overflow-hidden rounded-full bg-surface-3">
-                <div
-                  className="h-full rounded-full bg-[var(--acc)]"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-              <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-                <span>{progressLabel(item.itemType, progress, t)}</span>
-                <span>{`${percent}%`}</span>
-              </div>
+          {/* La barra va SIEMPRE, aunque no haya avance numérico (película, o
+              libro/serie sin posición registrada): 0% con "Sin avance" en vez de
+              omitir el bloque. Si no, el destacado saltaba de alto al pasar de un
+              ítem con avance a otro sin él —son intercambiables con un clic—.
+              Mismo criterio que la mini (today-block.tsx). */}
+          <div className="mt-2">
+            <div className="h-[5px] overflow-hidden rounded-full bg-surface-3">
+              <div
+                className="h-full rounded-full bg-[var(--acc)]"
+                style={{ width: `${percent ?? 0}%` }}
+              />
             </div>
-          )}
+            <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+              <span>{progress ? progressLabel(item.itemType, progress, t) : t("noProgress")}</span>
+              {percent != null && <span>{`${percent}%`}</span>}
+            </div>
+          </div>
 
           {dailyGoalMinutes ? (
             <div className="today-card-goal mt-[9px] flex items-center gap-2">
@@ -126,7 +129,10 @@ export async function TodayCard({
               concreto, "Racha 6 d" solo puede querer decir seis días seguidos
               con ESE título. La global sigue en el rail y en Perfil › Panel,
               donde sí habla de ti. */}
-          <div className="today-card-streak mt-2.5 flex flex-wrap items-center gap-2">
+          {/* `min-h`: reserva el alto de la píldora ◆ para que un pase sin racha
+              (solo WeekDots, más bajos) no encoja la fila y descuadre el destacado
+              al intercambiarlo. */}
+          <div className="today-card-streak mt-2.5 flex min-h-[22px] flex-wrap items-center gap-2">
             {pass.streakDays > 0 && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/16 px-2.5 py-[3px] font-mono text-[10px] font-medium text-gold-ink">
                 <span aria-hidden className="text-gold">
