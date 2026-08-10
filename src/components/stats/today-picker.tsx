@@ -16,7 +16,14 @@ import { Fragment, useState, type ReactNode } from "react";
 // `focusLabel` viene ya formateado ("Poner Dune arriba") por entrada, no como
 // una función que lo construya: una función NO cruza la frontera
 // servidor→cliente. Es la misma regla que impide pasar `t` hacia dentro.
-export type TodayEntry = { id: string; card: ReactNode; mini: ReactNode; focusLabel: string };
+export type TodayEntry = {
+  id: string;
+  card: ReactNode;
+  mini: ReactNode;
+  /** Mini-portada (solo carátula) para el modo compacto. */
+  thumb: ReactNode;
+  focusLabel: string;
+};
 
 export function TodayPicker({
   entries,
@@ -26,13 +33,12 @@ export function TodayPicker({
 }: {
   entries: TodayEntry[];
   keepGoingLabel: string;
-  /** El rótulo "En curso · N · Ver todos". Va DENTRO de la columna izquierda,
-   *  no sobre el bloque entero: manda sobre el destacado y sus mini, igual que
-   *  "Para más tarde" manda sobre su estantería. Cruzando las dos columnas, su
-   *  "Ver todos" caía a 27px del otro "Ver todos" y con distinto destino. */
+  /** El rótulo "En curso · N · Ver todos". Va pegado al destacado, no sobre el
+   *  bloque entero: manda sobre el destacado y sus mini, igual que "Para más
+   *  tarde" manda sobre su estantería. */
   heading?: ReactNode;
-  /** "Para más tarde", pintado en servidor: aquí solo ocupa la columna de la
-   *  derecha. Otro slot, por la misma razón que las tarjetas. */
+  /** "Para más tarde", pintado en servidor: se apila debajo de "Continúa", al
+   *  final de la columna derecha. Otro slot, por la misma razón que las tarjetas. */
   later?: ReactNode;
 }) {
   const [selectedId, setSelectedId] = useState(entries[0]?.id);
@@ -45,12 +51,15 @@ export function TodayPicker({
   const rest = entries.filter((e) => e.id !== featured.id);
 
   return (
-    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] lg:items-start lg:gap-6">
-      {/* Columna izquierda: el destacado y, debajo, las mini (decisión del
-          usuario, 2026-07-17). Antes las mini iban al lado, pero ese hueco lo
-          ocupa ahora "Para más tarde" — y apiladas bajo una tarjeta de 520px
-          caben tres por fila, que es lo que suele haber en curso. */}
-      <div className="flex flex-col gap-2">
+    // Una columna principal: arriba el destacado (full-width), debajo las tiras
+    // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO en un
+    // split asimétrico ("Continúa" 2×2, "Para más tarde" 4×2, las dos solo
+    // portada, separadas por un borde vertical); a ≥1100 van apiladas y ricas. Lo
+    // pinta `today-shelves` (globals.css). `today-split` es hoy solo un flex-col
+    // (el destacado sobre las tiras); el nombre es herencia.
+    <div className="today-split flex flex-col gap-3">
+      {/* IZQUIERDA: En curso + destacado. */}
+      <div className="flex min-w-0 flex-col gap-2">
         {heading}
         {/* La key fuerza el REMONTAJE al cambiar de destacado. Sin ella React
             reutiliza el mismo <img> y le cambia el src, pero el navegador sigue
@@ -58,32 +67,43 @@ export function TodayPicker({
             unos cientos de ms se veía la portada de un libro bajo el título de
             otro. Vacío mientras carga es honesto; la portada equivocada, no. */}
         <Fragment key={featured.id}>{featured.card}</Fragment>
+      </div>
 
+      {/* "Continúa" y "Para más tarde": apiladas a ≥1100, lado a lado bajo 1100
+          en un split asimétrico (2×2 vs 4×2) — lo decide `today-shelves` en
+          globals.css. */}
+      <div className="today-shelves flex min-w-0 flex-col gap-3">
         {rest.length > 0 && (
-          <div className="mt-1 flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
               {keepGoingLabel}
             </span>
-            {/* Carrusel, no lista: con 5 en curso una lista vertical empujaría
-                el feed fuera de la pantalla. El frame G lo dice explícitamente. */}
-            <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
+            {/* `today-shelf-continue`: a ≥1100 es un carrusel/rejilla de tarjetas
+                mini que envuelve en la columna estrecha; bajo 1100 se vuelve el
+                grid 2×2 de mini-portadas del split lateral (globals.css).
+
+                Cada botón trae DOS vistas: la tarjeta mini (≥1100) y la
+                mini-portada (grid lateral, <1100). El CSS enseña una u otra; el
+                clic que sube al destacado es el mismo. */}
+            <div className="today-shelf today-shelf-continue -mx-5 flex items-start gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
               {rest.map((entry) => (
                 <button
                   key={entry.id}
                   type="button"
                   aria-label={entry.focusLabel}
                   onClick={() => setSelectedId(entry.id)}
-                  className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+                  className="continue-item shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
                 >
-                  {entry.mini}
+                  <span className="continue-card">{entry.mini}</span>
+                  <span className="continue-thumb">{entry.thumb}</span>
                 </button>
               ))}
             </div>
           </div>
         )}
-      </div>
 
-      {later}
+        {later}
+      </div>
     </div>
   );
 }

@@ -289,6 +289,183 @@ body {
   color: var(--muted-foreground);
 }
 
+/* Rejilla de tres áreas del Inicio: PERSONAL · FEED · STATS (consumir →
+   socializar → medir). Vive aquí y no en utilidades de Tailwind porque son
+   CUATRO reflows con `grid-template-areas`, y el `[grid-template-areas:...]`
+   arbitrario de Tailwind es ilegible con las comillas y los guiones-bajos.
+   `page.tsx` y `loading.tsx` comparten esta clase por nombre, así que NO pueden
+   divergir en ancho de columnas (era el motivo de la vieja `HOME_TWO_COL`; ver
+   #376). El orden VISUAL lo fija el área, no el DOM: el DOM va personal→feed→
+   stats, pero por debajo de 1100 va en UNA columna con las stats coladas entre
+   lo personal y el feed (personal→stats→feed), y a ≥1100 en tres columnas. */
+.home-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "personal"
+    "stats"
+    "feed";
+}
+.home-grid > [data-area="personal"] {
+  grid-area: personal;
+}
+.home-grid > [data-area="feed"] {
+  grid-area: feed;
+}
+.home-grid > [data-area="stats"] {
+  grid-area: stats;
+}
+/* min-width:0 en las tres para que el contenido largo (una tarjeta de feed, un
+   título sin espacios) no fuerce scroll horizontal — la trampa clásica de
+   grid+flex, y el requisito de "cero overflow en ningún breakpoint". */
+.home-grid > * {
+  min-width: 0;
+}
+
+/* No hay fila de 2 columnas: por debajo de 1100 el Inicio va en UNA columna
+   (personal → stats → feed) y salta directo a las 3 columnas a ≥1100. El shell
+   acompaña —`SHELL_HOME` se queda en `max-w-2xl` hasta 1100— para que esa única
+   columna no se estire a 1440px de ancho. */
+
+/* Desktop compacto (1100–1439): 3 columnas flexibles. Stats es la primera que
+   cede ancho (columna fija de 260); el feed —la columna central— va algo más
+   ancho que lo personal (1.1fr vs 1fr) y no se comprime de más (min 360). */
+@media (min-width: 1100px) {
+  .home-grid {
+    grid-template-columns: minmax(330px, 1fr) minmax(360px, 1.1fr) 260px;
+    grid-template-areas: "personal feed stats";
+  }
+  /* Sticky SOLO con 3 columnas: las DOS columnas laterales (personal y stats) se
+     pegan mientras se recorre el feed —la columna alta del centro—; en tablet el
+     feed va debajo y pegarlas no aporta. `align-self:start` para que cada caja
+     sticky tome su alto de contenido y no se estire a la fila (si no,
+     `position:sticky` no engancha). Se pegan bajo la topbar, que mide
+     --topbar-h y también es sticky. */
+  .home-grid > [data-area="personal"],
+  .home-grid > [data-area="stats"] {
+    position: sticky;
+    top: calc(var(--topbar-h) + 16px);
+    align-self: start;
+  }
+}
+
+/* Desktop grande (≥1440): 3 columnas amplias (~493 / ~543 / 300 dentro del
+   contenedor de 1440) y gap mayor. La central (feed) va algo más ancha que la
+   izquierda (personal): 1.1fr vs 1fr. */
+@media (min-width: 1440px) {
+  .home-grid {
+    grid-template-columns: 1fr 1.1fr 300px;
+    gap: 24px;
+    grid-template-areas: "personal feed stats";
+  }
+}
+
+/* "¿Qué has disfrutado hoy?" (la columna personal del Inicio) va en una columna
+   principal: el destacado arriba y, debajo, las tiras "Continúa" y "Para más
+   tarde" (`.today-split` es solo un flex-col; el nombre es herencia). El Inicio
+   salta de 3 columnas (≥1100) a 1 (<1100) sin paso intermedio; la sección no se
+   reparte a dos columnas internas (eso era la vieja fila de tablet) y por eso no
+   lleva `container-type`. */
+
+/* La mini-portada de "Continúa" (`thumb`) solo se ve bajo 1100 (grid lateral);
+   por defecto (≥1100) mandan las tarjetas mini. */
+.continue-item .continue-thumb {
+  display: none;
+}
+
+/* Bajo 1100 (una sola columna, feed DEBAJO): el destacado se queda full-width y,
+   debajo, "Continúa" y "Para más tarde" van LADO A LADO en un split ASIMÉTRICO
+   (decisión del usuario, 2026-08-10): "Continúa" es un grid 2×2 (lo que estás
+   leyendo, para actuar) y "Para más tarde" un 4×2 (la cola, de un vistazo), las
+   dos de portadas SIN título. Los anchos van 1:2 ("Más tarde" el doble de ancho),
+   así que las portadas de las dos miden casi lo mismo; lo que separa las dos
+   secciones es un BORDE vertical, no el tamaño. A ≥1100 (3 columnas del Inicio,
+   feed AL LADO) esto no aplica: las tiras van apiladas y ricas (tarjetas mini +
+   portadas con título, envolviendo). La tarjeta destacada NO cambia —mismo diseño
+   a todos los tamaños—. Lo interactivo (subir al destacado, Sesión, Registrar, ir
+   a la ficha) queda intacto. */
+@media (max-width: 1099px) {
+  /* Las dos estanterías, una al lado de la otra bajo el destacado. */
+  .today-shelves {
+    flex-direction: row;
+    align-items: start;
+  }
+  .today-shelves > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* Split ASIMÉTRICO por ancho: "Para más tarde" (4 columnas) ocupa el doble que
+     "Continúa" (2 columnas), así las portadas de las dos miden casi lo mismo en
+     vez de que las de "Continúa" salgan enormes. El borde izquierdo es el
+     SEPARADOR entre las dos secciones (ahora que ninguna lleva título, es lo que
+     las distingue); el padding lo aparta de las portadas de la cola. */
+  .today-shelves > .today-later-col {
+    flex: 2 1 0;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+  }
+  /* Hija única (falta "Continúa"): sin nada a la izquierda no hay que separar. */
+  .today-shelves > .today-later-col:only-child {
+    border-left: 0;
+    padding-left: 0;
+  }
+  /* Si solo hay una estantería (p. ej. un único título en curso, sin "Continúa",
+     o sin cola en "Para más tarde"), se queda a media anchura para que sus
+     portadas midan lo mismo que cuando están las dos, en vez de estirarse. */
+  .today-shelves > *:only-child {
+    max-width: 50%;
+  }
+  /* Grid en vez de tira con scroll. Regla sin capa: gana a las utilidades de
+     Tailwind (`-mx-5`/`px-5`/`overflow-x-auto`/`flex`). Las columnas y el corte
+     de filas los fija cada modificador (continue/later), no la base. */
+  .today-shelf {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  /* "Continúa": 2×2 (portada grande, sin título). Solo 4 items; el resto, "Ver
+     todos". */
+  .today-shelf-continue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .today-shelf-continue > *:nth-child(n + 5) {
+    display: none;
+  }
+  /* "Para más tarde": 4×2 (portada pequeña). Solo 8 items; el resto, "Ver
+     todos". */
+  .today-shelf-later {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .today-shelf-later > *:nth-child(n + 9) {
+    display: none;
+  }
+  /* Las portadas llenan la celda (ni la tarjeta mini ni el ancho fijo de 66px). */
+  .continue-item,
+  .later-item {
+    width: 100%;
+  }
+  /* "Continúa" enseña la mini-portada (`thumb`), no la tarjeta mini; la portada
+     llena el ancho de la celda. */
+  .continue-item .continue-card {
+    display: none;
+  }
+  .continue-item .continue-thumb {
+    display: block;
+  }
+  .continue-item .continue-thumb > * {
+    width: 100%;
+  }
+  /* "Para más tarde" es solo portada en compacto: su título (el `<p>` del Cover)
+     se oculta. "Continúa" ya no tiene título que ocultar, así que esto no le
+     afecta (su thumb no lleva `<p>`). */
+  .later-item > p {
+    display: none;
+  }
+}
+
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */
 @keyframes sorteo-flip-in {
   from {

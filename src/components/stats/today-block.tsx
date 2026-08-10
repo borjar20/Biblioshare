@@ -82,22 +82,22 @@ export async function TodayBlock({ userId }: { userId: string }) {
     .replace(/^./, (c) => c.toUpperCase());
 
   return (
-    <section className="flex flex-col gap-3">
-      <div>
+    // `today-block`: la sección personal del Inicio. Va SIEMPRE en una columna
+    // (destacado arriba, tiras debajo); la fila de tablet a dos columnas se
+    // retiró, así que ya no hay container query.
+    <section className="today-block flex flex-col gap-3">
+      {/* `today-head`: fecha sobre título, apilado a todos los tamaños. */}
+      <div className="today-head">
         <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-muted-foreground">
           {dateLabel}
         </p>
-        <h2 className="mt-1.5 font-serif text-[26px] leading-[1.02] font-semibold tracking-[-0.01em]">
+        <h2 className="mt-1.5 font-serif text-[26px] leading-[1.02] font-semibold tracking-[-0.01em] max-[639px]:text-[21px]">
           {t("title")}
         </h2>
       </div>
 
-      {/* En móvil el bloque se apila (frame G). En escritorio NO se estira: una
-          tarjeta de 1024px deja la portada en 58px y convierte la barra de
-          progreso en una línea de 800px — el "móvil estirado" que prohíbe P-T7.
-          Así que el ancho se usa de verdad: a la izquierda el destacado con sus
-          mini debajo, y "Para más tarde" de rail a la derecha (el reparto lo
-          hace TodayPicker). */}
+      {/* Apilado por TodayPicker (`.today-split`, hoy solo flex-col): en curso →
+          continúa → para más tarde. */}
       <TodayPicker
         keepGoingLabel={t("keepGoing")}
         later={later}
@@ -127,6 +127,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
             />
           ),
           mini: <MiniCard pass={pass} />,
+          thumb: <MiniThumb pass={pass} />,
         }))}
       />
     </section>
@@ -177,6 +178,35 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
           <span className="shrink-0 text-gold-ink">{t("streakShort", { count: pass.streakDays })}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// La mini-portada de "Continúa" en modo compacto (tablet estrecho / móvil): solo
+// la carátula GRANDE (2×2), SIN título (el usuario lo quitó, 2026-08-10) — lo que
+// distingue "Continúa" de "Para más tarde" es el separador vertical, no un texto.
+// El título solo vive en la tarjeta mini rica de ≥1100. El botón que la envuelve
+// (TodayPicker) la sube al destacado, y su aria-label ya lleva el título.
+function MiniThumb({ pass }: { pass: TodayPass }) {
+  const { item } = pass;
+  const accent = MEDIA_ACCENT[item.itemType];
+  return (
+    <div
+      className="relative aspect-[2/3] w-11 overflow-hidden rounded-md bg-surface-muted shadow-cover"
+      style={{ ["--acc" as string]: `var(${accent.varName})` }}
+    >
+      {item.coverUrl ? (
+        <Image
+          src={item.coverUrl}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 90px, 150px"
+          className="object-cover"
+        />
+      ) : (
+        <span aria-hidden className="absolute inset-0 bg-[var(--acc)]/15" />
+      )}
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-[var(--acc)]" />
     </div>
   );
 }

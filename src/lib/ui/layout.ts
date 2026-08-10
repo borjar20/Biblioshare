@@ -33,17 +33,30 @@ export const SHELL_GRID = "max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[100rem
 export const RAIL = "340px";
 
 /**
- * Envoltorio de dos columnas de la HOME (feed + raíl). Vive aquí, y no como dos
- * literales en `(home)/page.tsx` y `(home)/loading.tsx`, para que el esqueleto y
- * el contenido real NO puedan divergir en ancho: divergían (raíl 312 vs 328,
- * contenedor 1080 vs 1200) y producían un salto al resolverse el streaming
- * (#376, misma especie que #372). El `340px` es el valor de `RAIL`; Tailwind no
- * puede interpolar la constante dentro de un valor arbitrario (necesita el
- * literal en el fuente para generar el CSS), así que se escribe literal AQUÍ, en
- * un solo sitio que los dos ficheros importan.
+ * Envoltorio de DOS columnas (contenido + raíl de 340px). Nació para la HOME
+ * (feed + raíl), pero la HOME pasó a tres áreas (`SHELL_HOME` + `.home-grid`);
+ * hoy lo usa `/post/[id]` (post + raíl de contexto), así que sobrevive pese al
+ * nombre heredado. Vive aquí, no como literal en cada página, para que esqueleto
+ * y contenido no diverjan en ancho (#376). El `340px` es el valor de `RAIL`;
+ * Tailwind necesita el literal en el fuente para generar el CSS, así que se
+ * escribe literal aquí, en un solo sitio que los consumidores importan.
  */
 export const HOME_TWO_COL =
   "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7";
+
+/**
+ * Contenedor de la HOME de tres áreas (personal · feed · stats). Su propio
+ * ancho, NO `SHELL_APP`: el reparto en tres columnas amplias (≥1440) necesita
+ * ~1368px, más que los 1200 de `SHELL_APP`. Por debajo de 1100 el Inicio va en
+ * UNA columna, así que ahí se queda en `max-w-2xl` (672) —un ancho de lectura,
+ * no una columna estirada a 1440—; a partir de 1100, donde arrancan las tres
+ * columnas, crece hasta 1440 y el reparto lo hace la rejilla `.home-grid` (en
+ * `globals.css`), que `page.tsx` y `loading.tsx` comparten por nombre para no
+ * poder divergir (era el motivo de la vieja `HOME_TWO_COL`; ver #376). A ≥1440 y
+ * con `px-7` da columnas de ~493/543/300 (la central, el feed, algo más ancha
+ * que la izquierda).
+ */
+export const SHELL_HOME = "max-w-2xl min-[1100px]:max-w-[1440px]";
 
 /**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen

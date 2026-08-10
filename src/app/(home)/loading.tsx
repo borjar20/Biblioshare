@@ -2,7 +2,7 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
-import { SHELL_APP, HOME_TWO_COL } from "@/lib/ui/layout";
+import { SHELL_HOME } from "@/lib/ui/layout";
 
 // Skeleton del Inicio (feed).
 //
@@ -17,28 +17,32 @@ import { SHELL_APP, HOME_TWO_COL } from "@/lib/ui/layout";
 // no hay `src/app/loading.tsx`.)
 export default function Loading() {
   return (
-    <div className={`mx-auto flex w-full ${SHELL_APP} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
+    <div className={`mx-auto flex w-full ${SHELL_HOME} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
       <LoadingAnnounce />
 
-      {/* Saludo de escritorio (frame B). En móvil no existe. */}
-      <div className="hidden pb-2.5 lg:block">
-        <Skeleton className="h-[30px] w-72 max-w-full rounded-md" />
-        <SkeletonLine className="mt-[5px] h-3 w-48" />
+      {/* Saludo a ancho completo (fantasma del <h1> real), a todos los tamaños. */}
+      <div className="pb-3.5 md:pb-4">
+        <Skeleton className="h-6 w-56 max-w-full rounded-md md:h-[30px] md:w-72" />
+        <SkeletonLine className="mt-1 h-3 w-40 md:mt-[5px] md:w-48" />
       </div>
 
-      <TodayBlockSkeleton />
+      <div className="home-grid">
+        {/* PERSONAL */}
+        <div data-area="personal">
+          <TodayBlockSkeleton />
+        </div>
 
-      <div className={`pt-5 ${HOME_TWO_COL}`}>
-        <div className="min-w-0">
-          {/* "Novedades" + contador de seguidos: solo móvil. */}
-          <div className="flex items-baseline justify-between gap-3 pb-4 lg:hidden">
-            <Skeleton className="h-6 w-40 rounded-md" />
-            <SkeletonLine className="h-2.5 w-16" />
+        {/* FEED: compositor + rótulo de sección + chips de filtro + lista. */}
+        <div data-area="feed">
+          {/* Fantasma del disparador de «Pensamiento» (fila propia, ~44px):
+              lo pinta el shell de la página, no un <Suspense>, así que sin
+              reservarlo aparecería de golpe al reemplazar este loading. */}
+          <div className="pb-3.5">
+            <Skeleton className="h-11 w-full rounded-card" />
           </div>
 
-          {/* Rótulo de sección (escritorio) + chips de filtro. */}
           <div className="mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
-            <SkeletonLine className="hidden h-2.5 w-32 lg:block" />
+            <SkeletonLine className="h-2.5 w-32" />
             <div className="flex flex-wrap gap-2">
               {/* key por índice: lista estática sin reordenación, y los anchos
                   se repiten (w-20/w-16), así que el valor no sirve de key (#337). */}
@@ -51,7 +55,8 @@ export default function Loading() {
           <FeedListSkeleton count={4} />
         </div>
 
-        <aside className="hidden lg:block" />
+        {/* STATS: vacío — StatsRail real llega tras su <Suspense fallback={null}>. */}
+        <aside data-area="stats" />
       </div>
     </div>
   );

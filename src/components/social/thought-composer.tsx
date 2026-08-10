@@ -6,15 +6,16 @@ import { useTranslations } from "next-intl";
 import { createPost, searchAnchorsAction } from "@/lib/social/post-actions";
 import type { AnchorRef } from "@/lib/catalog/anchor";
 import { Button } from "@/components/ui/button";
+import { EyeIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 
 const MAX_BODY = 2000;
 
 // Formulario de «Pensamiento» (Fase 4, Task 4.3): ancla obligatoria (nunca se
 // publica sin ella, la spec es explícita), cuerpo con contador y una barra
 // markdown-lite (negrita/cursiva/lista, mismo micro-formato que soportará
-// ThoughtCard en Fase 5), y spoiler opcional. `onDone` cierra el modal que lo
-// aloja (thought-composer-trigger.tsx) -- este componente no sabe que vive en
-// un <dialog>.
+// ThoughtCard en Fase 5), y spoiler opcional. `onDone` avisa a quien lo aloja
+// (hoy thought-composer-inline.tsx, que lo remonta limpio) al publicar o
+// cancelar -- este componente no sabe si vive inline o en un modal.
 export function ThoughtComposer({ onDone }: { onDone: () => void }) {
   const t = useTranslations("thoughtComposer");
   const [anchor, setAnchor] = useState<AnchorRef | null>(null);
@@ -95,7 +96,7 @@ export function ThoughtComposer({ onDone }: { onDone: () => void }) {
           {t("anchorLabel")}
         </span>
         {anchor ? (
-          <div className="flex items-center gap-2.5 rounded-lg border border-border px-2.5 py-2">
+          <div className="flex items-center gap-2.5 rounded-lg border border-accent/40 bg-accent/5 px-2.5 py-2">
             <div className="relative h-9 w-7 shrink-0 overflow-hidden rounded bg-surface-muted">
               {anchor.imageUrl && (
                 <Image src={anchor.imageUrl} alt="" fill sizes="28px" className="object-cover" />
@@ -113,23 +114,26 @@ export function ThoughtComposer({ onDone }: { onDone: () => void }) {
               aria-label={t("anchorClear")}
               className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-surface-muted hover:text-foreground"
             >
-              ✕
+              <XIcon className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <input
-              type="search"
-              value={anchorQuery}
-              onChange={(e) => {
-                setAnchorQuery(e.target.value);
-                if (!e.target.value.trim()) setAnchorResults([]);
-              }}
-              placeholder={t("anchorPlaceholder")}
-              className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={anchorQuery}
+                onChange={(e) => {
+                  setAnchorQuery(e.target.value);
+                  if (!e.target.value.trim()) setAnchorResults([]);
+                }}
+                placeholder={t("anchorPlaceholder")}
+                className="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
             {anchorQuery.trim() && (
-              <div className="flex max-h-48 flex-col overflow-y-auto rounded-md border border-border">
+              <div className="flex max-h-48 flex-col divide-y divide-border overflow-y-auto rounded-md border border-border bg-surface">
                 {anchorResults.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">{t("anchorEmpty")}</p>
                 ) : (
@@ -164,30 +168,49 @@ export function ThoughtComposer({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center gap-0.5 rounded-lg border border-border p-0.5 text-muted-foreground">
+          <button
+            type="button"
+            aria-label={t("boldLabel")}
+            onClick={() => wrapSelection("**", "**")}
+            className="grid h-7 w-7 place-items-center rounded-md font-bold hover:bg-surface-muted hover:text-foreground"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            aria-label={t("italicLabel")}
+            onClick={() => wrapSelection("*", "*")}
+            className="grid h-7 w-7 place-items-center rounded-md italic hover:bg-surface-muted hover:text-foreground"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            aria-label={t("listLabel")}
+            onClick={prefixLine}
+            className="grid h-7 w-7 place-items-center rounded-md hover:bg-surface-muted hover:text-foreground"
+          >
+            •
+          </button>
+        </div>
+
+        {/* Spoiler como toggle en la MISMA fila que el formato (aria-pressed, ya
+            no un checkbox suelto): tiñe de acento cuando está activo. EyeIcon =
+            "esto va velado". */}
         <button
           type="button"
-          aria-label={t("boldLabel")}
-          onClick={() => wrapSelection("**", "**")}
-          className="grid h-7 w-7 place-items-center rounded-md font-bold hover:bg-surface-muted hover:text-foreground"
+          aria-pressed={isSpoiler}
+          onClick={() => setIsSpoiler((v) => !v)}
+          className={`ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+            isSpoiler
+              ? "border-accent bg-accent/10 text-accent"
+              : "border-border text-muted-foreground hover:bg-surface-muted hover:text-foreground"
+          }`}
         >
-          B
-        </button>
-        <button
-          type="button"
-          aria-label={t("italicLabel")}
-          onClick={() => wrapSelection("*", "*")}
-          className="grid h-7 w-7 place-items-center rounded-md italic hover:bg-surface-muted hover:text-foreground"
-        >
-          I
-        </button>
-        <button
-          type="button"
-          aria-label={t("listLabel")}
-          onClick={prefixLine}
-          className="grid h-7 w-7 place-items-center rounded-md hover:bg-surface-muted hover:text-foreground"
-        >
-          •
+          <EyeIcon className="h-4 w-4" />
+          {t("spoilerLabel")}
         </button>
       </div>
 
@@ -201,20 +224,10 @@ export function ThoughtComposer({ onDone }: { onDone: () => void }) {
           placeholder={t("bodyPlaceholder")}
           className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
-        <span className="pointer-events-none absolute bottom-2 right-2.5 font-mono text-[10px] text-muted-foreground">
+        <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
           {body.length}/{MAX_BODY}
         </span>
       </div>
-
-      <label className="flex items-center gap-2 text-sm text-foreground">
-        <input
-          type="checkbox"
-          checked={isSpoiler}
-          onChange={(e) => setIsSpoiler(e.target.checked)}
-          className="h-4 w-4 rounded border-border accent-accent"
-        />
-        {t("spoilerLabel")}
-      </label>
 
       {error && (
         <p role="alert" className="text-xs text-status-dropped">
@@ -222,16 +235,16 @@ export function ThoughtComposer({ onDone }: { onDone: () => void }) {
         </p>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex justify-end gap-2 border-t border-border pt-3.5">
+        <Button type="button" variant="ghost" onClick={onDone}>
+          {t("cancel")}
+        </Button>
         <Button
           type="button"
           disabled={isPending || !anchor || !body.trim()}
           onClick={publish}
         >
           {t("publish")}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onDone}>
-          {t("cancel")}
         </Button>
       </div>
     </div>

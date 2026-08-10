@@ -1884,7 +1884,12 @@
     "completedDelta": "{sign}{count} vs {year}"
   },
   "statsRail": {
-    "year2026": "Tu 2026"
+    "year2026": "Tu 2026",
+    "summaryWeek": "Esta semana",
+    "summaryYear": "Este año",
+    "summaryStreak": "Racha",
+    "summaryBooks": "{count, plural, one {libro} other {libros}}",
+    "summaryDays": "{count, plural, one {día} other {días}}"
   },
   "whoToFollow": {
     "title": "A quién seguir",

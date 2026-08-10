@@ -20,13 +20,18 @@ import { ChevronRightIcon } from "@/components/ui/icons";
 // siendo cosa de Buscar, donde vive la escalera de hidratación.
 export function LaterShelf({ items, total }: { items: LibraryItem[]; total: number }) {
   return (
-    <section className="flex flex-col gap-2">
+    // `today-later-col`: en el split lateral (<1100) esta columna vale el DOBLE
+    // que "Continúa" (flex 2 vs 1, globals.css) — 4 portadas frente a 2, para que
+    // midan casi lo mismo en las dos. A ≥1100 (columna) el flex-grow es inocuo.
+    <section className="today-later-col flex flex-col gap-2">
       <Header total={total} />
-      {/* Móvil: carrusel que sangra hasta el borde (frame G). Escritorio: la
-          columna de la derecha del bloque de hoy, donde las portadas se
-          reparten en filas en vez de esconderse tras un scroll horizontal que
-          en PC nadie descubre. */}
-      <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
+      {/* `today-shelf-later`: carrusel de una fila. Móvil estrecho (<768): sangra
+          hasta el borde (frame G). Tablet/desktop y en la columna derecha del
+          split (≥560): contenido (`mx-0`, sin sangrado que se meta en la columna
+          vecina, sin envolver). Bajo 1100 es el grid 4×2 (solo portada) del split
+          lateral; solo en las 3 columnas del Inicio (≥1100) las portadas
+          envuelven en filas CON título. */}
+      <div className="today-shelf today-shelf-later -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
         {items.map((item) => (
           <Cover key={item.entryId} item={item} />
         ))}
@@ -61,7 +66,7 @@ function Cover({ item }: { item: LibraryItem }) {
   return (
     <Link
       href={itemHref(item.itemType, item.itemId)}
-      className="w-[66px] shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="later-item w-[66px] shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <div
         className="relative aspect-[2/3] overflow-hidden rounded-md bg-surface-muted shadow-cover"
