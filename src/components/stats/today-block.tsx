@@ -82,12 +82,11 @@ export async function TodayBlock({ userId }: { userId: string }) {
     .replace(/^./, (c) => c.toUpperCase());
 
   return (
-    // `today-block` = container query (globals.css): la sección se reparte en dos
-    // columnas internas cuando tiene ≥560px (tablet a 2 columnas y móvil ancho) y
-    // se apila cuando es estrecha (la columna de las 3 columnas del Inicio).
+    // `today-block`: la sección personal del Inicio. Va SIEMPRE en una columna
+    // (destacado arriba, tiras debajo); la fila de tablet a dos columnas se
+    // retiró, así que ya no hay container query.
     <section className="today-block flex flex-col gap-3">
-      {/* `today-head`: apilado (fecha sobre título) en estrecho; en fila (título
-          izquierda, fecha derecha) a ≥560. */}
+      {/* `today-head`: fecha sobre título, apilado a todos los tamaños. */}
       <div className="today-head">
         <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-muted-foreground">
           {dateLabel}
@@ -97,9 +96,8 @@ export async function TodayBlock({ userId }: { userId: string }) {
         </h2>
       </div>
 
-      {/* Reparto interno (destacado | estanterías) a cargo de TodayPicker vía el
-          container query `.today-split`. En estrecho se apila: en curso → para
-          más tarde → continúa. */}
+      {/* Apilado por TodayPicker (`.today-split`, hoy solo flex-col): en curso →
+          continúa → para más tarde. */}
       <TodayPicker
         keepGoingLabel={t("keepGoing")}
         later={later}

@@ -20,9 +20,9 @@ export function TodayBlockSkeleton() {
         <Skeleton className="mt-1.5 h-[27px] w-64 max-w-full rounded-md" />
       </div>
 
-      {/* Mismo reparto que `TodayPicker` (`today-split`): destacado a la
-          izquierda; a la derecha las mini de "Continúa" ("Para más tarde" no se
-          fantasmea —es opcional y llega por streaming—). En estrecho se apila. */}
+      {/* Mismo reparto que `TodayPicker` (`today-split`, apilado): el destacado y
+          debajo las mini de "Continúa" ("Para más tarde" no se fantasmea —es
+          opcional y llega por streaming—). */}
       <div className="today-split flex flex-col gap-3">
         {/* IZQUIERDA: rótulo "En curso" + tarjeta destacada. */}
         <div className="flex min-w-0 flex-col gap-2">

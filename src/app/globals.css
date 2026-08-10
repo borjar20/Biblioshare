@@ -361,81 +361,39 @@ body {
   }
 }
 
-/* "¿Qué has disfrutado hoy?" (la columna personal del Inicio): se compacta a DOS
-   columnas internas cuando la sección tiene ≥560px —el destacado a la izquierda;
-   "Para más tarde" + "Continúa" apiladas a la derecha—, para que entre sin
-   scroll. Es un CONTAINER QUERY, no un breakpoint de ventana: así se aplica igual
-   en el tablet a 2 columnas y en móvil ancho, y se queda APILADA en la columna
-   estrecha de las 3 columnas del Inicio (que nunca llega a 560, así que ahí no
-   dispara). El container es la sección; el sticky de la columna personal (que la
-   envuelve) no se ve afectado porque `inline-size` solo contiene el ancho. */
-.today-block {
-  container-type: inline-size;
-}
+/* "¿Qué has disfrutado hoy?" (la columna personal del Inicio) va SIEMPRE en una
+   columna: el destacado arriba y debajo las tiras "Continúa" y "Para más tarde"
+   (`.today-split` es solo un flex-col; el nombre es herencia). El Inicio salta de
+   3 columnas (≥1100) a 1 (<1100) sin paso intermedio, así que la sección ya no se
+   reparte en dos columnas internas —eso era la vieja fila de tablet, ya retirada—
+   y por eso no lleva `container-type`. */
 
-/* La mini-portada de "Continúa" (`thumb`) solo se ve en compacto; por defecto
+/* La mini-portada de "Continúa" (`thumb`) solo se ve en la tira slim; por defecto
    mandan las tarjetas mini. */
 .continue-item .continue-thumb {
   display: none;
 }
 
-/* Modo COMPACTO (tira slim) de las estanterías de "¿Qué has disfrutado hoy?":
-   SOLO donde el feed va DEBAJO (viewport <1100) Y la sección no cabe a dos
-   columnas (container <560, o sea móvil). En 3 columnas (≥1100) el feed va AL
-   LADO, y en el tablet que sí cabe a dos columnas (≥560) hay sitio, así que ahí
-   no se compacta. La tarjeta destacada NO cambia —mismo diseño a todos los
-   tamaños (decisión del usuario, 2026-08-10)—; lo que se encoge son las dos
-   tiras: "Continúa" pasa de tarjetas mini a mini-portadas, y "Para más tarde"
-   reduce sus portadas (y suelta el título) para igualar a la de arriba. Lo
-   interactivo (Sesión, Registrar, cambiar destacado, ir a la ficha) intacto. */
+/* Tira SLIM de las estanterías de "¿Qué has disfrutado hoy?": TODO el rango por
+   debajo de 1100, donde el Inicio va en una columna y el feed queda DEBAJO. A
+   ≥1100 (3 columnas, con el feed AL LADO) no aplica y las tiras van ricas. La
+   tarjeta destacada NO cambia —mismo diseño a todos los tamaños (decisión del
+   usuario, 2026-08-10)—; lo que se encoge son las dos tiras: "Continúa" pasa de
+   tarjetas mini a mini-portadas, y "Para más tarde" reduce sus portadas (y suelta
+   el título) para igualar a la de arriba. Lo interactivo (Sesión, Registrar,
+   cambiar destacado, ir a la ficha) queda intacto. */
 @media (max-width: 1099px) {
-  @container (max-width: 559px) {
-    .continue-item .continue-card {
-      display: none;
-    }
-    .continue-item .continue-thumb {
-      display: block;
-    }
-    .later-item {
-      width: 44px;
-    }
-    .later-item > p {
-      display: none;
-    }
+  .continue-item .continue-card {
+    display: none;
   }
-}
-
-@container (min-width: 560px) {
-  /* Cabecera en fila: título a la izquierda, fecha a la derecha (mockup C).
-     `row-reverse` porque en el DOM la fecha va primera (para apilarse ENCIMA del
-     título en móvil, que es como debe verse estrecho). */
-  .today-head {
-    display: flex;
-    flex-direction: row-reverse;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
+  .continue-item .continue-thumb {
+    display: block;
   }
-  .today-head > h2 {
-    margin-top: 0;
+  .later-item {
+    width: 44px;
   }
-  /* Destacado | estanterías. El destacado se lleva algo más de ancho (1.3fr). */
-  .today-split {
-    display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-    gap: 20px;
-    align-items: start;
-  }
-  /* En la columna derecha las estanterías van contenidas y en UNA fila (sin el
-     sangrado a los bordes del móvil ni el envolver de las 3 columnas). Regla sin
-     capa: gana a las utilidades `-mx-5`/`md:mx-0`/`flex-wrap` de Tailwind, que
-     viven en @layer utilities. */
-  .today-shelf {
-    margin-left: 0;
-    margin-right: 0;
-    padding-left: 0;
-    padding-right: 0;
-    flex-wrap: nowrap;
+  .later-item > p {
+    display: none;
   }
 }
 

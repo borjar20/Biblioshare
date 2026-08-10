@@ -33,10 +33,9 @@ export function TodayPicker({
 }: {
   entries: TodayEntry[];
   keepGoingLabel: string;
-  /** El rótulo "En curso · N · Ver todos". Va DENTRO de la columna izquierda,
-   *  no sobre el bloque entero: manda sobre el destacado y sus mini, igual que
-   *  "Para más tarde" manda sobre su estantería. Cruzando las dos columnas, su
-   *  "Ver todos" caía a 27px del otro "Ver todos" y con distinto destino. */
+  /** El rótulo "En curso · N · Ver todos". Va pegado al destacado, no sobre el
+   *  bloque entero: manda sobre el destacado y sus mini, igual que "Para más
+   *  tarde" manda sobre su estantería. */
   heading?: ReactNode;
   /** "Para más tarde", pintado en servidor: se apila debajo de "Continúa", al
    *  final de la columna derecha. Otro slot, por la misma razón que las tarjetas. */
@@ -52,12 +51,11 @@ export function TodayPicker({
   const rest = entries.filter((e) => e.id !== featured.id);
 
   return (
-    // Dos áreas: IZQUIERDA el destacado, DERECHA "Continúa" + "Para más tarde"
-    // apiladas. `today-split` (globals.css) lo pinta a DOS COLUMNAS cuando la
-    // sección tiene ≥560px (mockup C: cabe sin scroll) y APILADO en estrecho
-    // —donde el orden queda en curso → continúa → para más tarde, que es como
-    // caen los dos bloques uno tras otro—. La columna estrecha de las 3 columnas
-    // del Inicio nunca llega a 560, así que ahí se queda apilado.
+    // Dos bloques APILADOS, en una sola columna a todos los tamaños: arriba el
+    // destacado, debajo "Continúa" + "Para más tarde". El orden es en curso →
+    // continúa → para más tarde. `today-split` (globals.css) hoy es solo un
+    // flex-col; el nombre es herencia del reparto a dos columnas que había en la
+    // fila de tablet, ya retirada.
     <div className="today-split flex flex-col gap-3">
       {/* IZQUIERDA: En curso + destacado. */}
       <div className="flex min-w-0 flex-col gap-2">
@@ -78,13 +76,13 @@ export function TodayPicker({
               {keepGoingLabel}
             </span>
             {/* `today-shelf`: carrusel de una fila. Móvil estrecho (<768): sangra
-                al borde. Tablet/desktop y en la columna derecha del split (≥560):
-                contenido (`mx-0`, sin envolver). Solo en las 3 columnas del
-                Inicio (≥1100) las mini envuelven en filas.
+                al borde. De 768 en adelante: contenido (`mx-0`, sin envolver).
+                Solo en las 3 columnas del Inicio (≥1100) las mini envuelven en
+                filas.
 
-                Cada botón trae DOS vistas: la tarjeta mini (por defecto) y la
-                mini-portada (compacto: tablet estrecho/móvil). El CSS enseña una
-                u otra; el clic que sube al destacado es el mismo. */}
+                Cada botón trae DOS vistas: la tarjeta mini (por defecto, ≥1100) y
+                la mini-portada (tira slim, <1100). El CSS enseña una u otra; el
+                clic que sube al destacado es el mismo. */}
             <div className="today-shelf -mx-5 flex items-start gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
               {rest.map((entry) => (
                 <button
