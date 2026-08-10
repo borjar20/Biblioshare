@@ -342,10 +342,13 @@ body {
     grid-template-columns: minmax(330px, 1fr) minmax(360px, 1.1fr) 260px;
     grid-template-areas: "personal feed stats";
   }
-  /* Sticky SOLO con 3 columnas: en tablet el feed va debajo y pegar las stats no
-     aporta. `align-self:start` para que la caja sticky tome su alto de contenido
-     y no se estire a la fila (si no, `position:sticky` no engancha). Se pega bajo
-     la topbar, que mide --topbar-h y también es sticky. */
+  /* Sticky SOLO con 3 columnas: las DOS columnas laterales (personal y stats) se
+     pegan mientras se recorre el feed —la columna alta del centro—; en tablet el
+     feed va debajo y pegarlas no aporta. `align-self:start` para que cada caja
+     sticky tome su alto de contenido y no se estire a la fila (si no,
+     `position:sticky` no engancha). Se pegan bajo la topbar, que mide
+     --topbar-h y también es sticky. */
+  .home-grid > [data-area="personal"],
   .home-grid > [data-area="stats"] {
     position: sticky;
     top: calc(var(--topbar-h) + 16px);
