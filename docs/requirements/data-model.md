@@ -822,7 +822,7 @@ sin post se muestra sin hilo (`interactionTargetId` null), no se rompe.
 (POST-merge); los valores de enum muertos (`thought` en `target_kind`, `thought_*` en
 `notification_type`) se dejan inertes (recrear el tipo es caro).
 
-### 5.2 `related_posts_by_author()` — ranking del raíl social de `/post/[id]` (SOLO EN DEV, 2026-08-10)
+### 5.2 `related_posts_by_author()` — ranking del raíl social de `/post/[id]` (dev y **PROD**, 2026-08-10)
 
 RPC de LECTURA que alimenta el bloque «Más de {usuario}» de la columna SOCIAL de `/post/[id]`
 (layout de 3 áreas OBRA · CONVERSACIÓN · SOCIAL): en vez de los posts más recientes del autor a
@@ -843,8 +843,10 @@ p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para re
   `posts.anchor_type` es `post_anchor_type` {…,saga,person} y `saga_items.item_type` es `item_type`
   {book,movie,series}. `grant execute … to authenticated, anon` (la ruta la ve también un anónimo).
 - Verificado en dev contra datos reales (gradiente 5/1/0, orden por recencia dentro del score, post
-  actual excluido) + e2e `post-layout.spec.ts`. **Prod pendiente del merge** (migración primero,
-  código después — regla de despliegue de §5.1).
+  actual excluido) + e2e `post-layout.spec.ts`. **Aplicada y verificada en PROD el 2026-08-10**
+  (`pg_proc`: `prosecdef=false` → INVOKER, grants execute a `authenticated`+`anon`; smoke sobre un
+  post real: 4 filas, no incluye el propio). Solo falta mergear el código (PR #570) que la consume —
+  regla de despliegue de §5.1: migración primero (hecho), código después.
 
 ## 6. Clubes
 
