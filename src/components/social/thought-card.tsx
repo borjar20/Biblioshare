@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
-import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { RichTextView } from "@/components/social/rich-text-view";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { SpoilerGate } from "./spoiler-gate";
@@ -23,7 +23,6 @@ import { deletePost } from "@/lib/social/post-actions";
 // pero el tipo de FeedEvent lo deja nullable, así que aquí también se guarda.
 export function ThoughtCard({
   event,
-  viewerLoggedIn,
   hideActor = false,
   knownUsernames,
   showInteractions = true,
@@ -128,16 +127,11 @@ export function ThoughtCard({
         {thought.isSpoiler ? <SpoilerGate>{bodyEl}</SpoilerGate> : bodyEl}
       </div>
 
-      {showInteractions && event.interactionTarget?.interactionTargetId && (
-        <ReviewInteractions
-          interactionTargetId={event.interactionTarget.interactionTargetId}
+      {showInteractions && event.postId && (
+        <PostSummary
+          postId={event.postId}
           reactionCount={event.reactionCount}
-          viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
-          comments={event.comments}
-          reactions={event.reactions}
-          viewerLoggedIn={viewerLoggedIn}
-          knownUsernames={knownUsernames}
         />
       )}
       {deleteError && (

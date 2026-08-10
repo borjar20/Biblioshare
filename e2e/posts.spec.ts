@@ -201,37 +201,31 @@ test("un post tiene su página /post/[id] con cuerpo y hilo (pensamiento y hito)
     );
     expect(thoughtPost?.id).toBeTruthy();
 
-    // ── /post/[id]: cuerpo + hilo, comentar y reaccionar ──
+    // ── /post/[id]: cabecera-post + hilo (PostThread, Spec 2b). El composer va
+    //    SIEMPRE visible (sin expandir) y el hilo se pinta abierto. ──
     await page.goto(`/post/${thoughtPost.id}`);
-    const card = page.locator("article").filter({ hasText: thoughtBookTitle });
-    await expect(card).toBeVisible();
-    await expect(card.getByText(body)).toBeVisible();
+    await expect(page.locator("article").filter({ hasText: thoughtBookTitle })).toBeVisible();
+    await expect(page.getByText(body)).toBeVisible();
 
     const comentario = `comentario en /post ${ts}`;
-    await card.getByRole("button", { name: /0 comentarios/i }).click();
-    await card.getByPlaceholder(/escribe un comentario/i).fill(comentario);
-    await card.getByRole("button", { name: /^comentar$/i }).click();
-    await expect(card.getByText(comentario)).toBeVisible();
-    await expect(card.getByRole("button", { name: /1 comentario/i })).toBeVisible();
+    await page.getByPlaceholder(/escribe un comentario/i).fill(comentario);
+    await page.getByRole("button", { name: /^comentar$/i }).click();
+    await expect(page.getByText(comentario)).toBeVisible();
 
-    // La reacción es un selector desplegable (ReactionBar): hay un "Reaccionar"
-    // por barra —el del post va primero en el DOM—; se abre y se pulsa Fuego (🔥).
-    await card.getByRole("button", { name: "Reaccionar" }).first().click();
-    const fire = card.getByRole("button", { name: "Fuego" }).first();
+    // Reacción al post: barra de acciones del hilo. El selector desplegable
+    // (ReactionBar) se abre y se pulsa Fuego (🔥); la del post va primera.
+    await page.getByRole("button", { name: "Reaccionar" }).first().click();
+    const fire = page.getByRole("button", { name: "Fuego" }).first();
     await expect(fire).toHaveAttribute("aria-pressed", "false");
     await fire.click();
     await expect(fire).toHaveAttribute("aria-pressed", "true");
 
-    // ── Persiste: recargar /post/[id] y la verdad del servidor lo confirma ──
+    // ── Persiste: recargar /post/[id] y la verdad del servidor lo confirma
+    //    (el hilo se pinta abierto, el comentario sigue ahí). ──
     await page.reload();
-    const reloaded = page.locator("article").filter({ hasText: thoughtBookTitle });
-    // El hilo vuelve colapsado tras recargar (estado de cliente): se re-expande.
-    await expect(reloaded.getByRole("button", { name: /1 comentario/i })).toBeVisible();
-    await reloaded.getByRole("button", { name: /1 comentario/i }).click();
-    await expect(reloaded.getByText(comentario)).toBeVisible();
-    // Reabrir el selector para leer el estado persistido de la reacción.
-    await reloaded.getByRole("button", { name: "Reaccionar" }).first().click();
-    await expect(reloaded.getByRole("button", { name: "Fuego" }).first()).toHaveAttribute(
+    await expect(page.getByText(comentario)).toBeVisible();
+    await page.getByRole("button", { name: "Reaccionar" }).first().click();
+    await expect(page.getByRole("button", { name: "Fuego" }).first()).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -327,12 +321,11 @@ test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", asyn
     // ── El comentador ve /post/[id] y comenta (la server action avisa al autor) ──
     await loginAs(page, commenter.email, commenter.password);
     await page.goto(`/post/${postId}`);
-    const card = page.locator("article").filter({ hasText: bookTitle });
-    await expect(card).toBeVisible();
-    await card.getByRole("button", { name: /0 comentarios/i }).click();
-    await card.getByPlaceholder(/escribe un comentario/i).fill(`hola desde el comentador ${stamp}`);
-    await card.getByRole("button", { name: /^comentar$/i }).click();
-    await expect(card.getByText(`hola desde el comentador ${stamp}`)).toBeVisible();
+    await expect(page.locator("article").filter({ hasText: bookTitle })).toBeVisible();
+    // Composer del hilo siempre visible (PostThread): sin expandir.
+    await page.getByPlaceholder(/escribe un comentario/i).fill(`hola desde el comentador ${stamp}`);
+    await page.getByRole("button", { name: /^comentar$/i }).click();
+    await expect(page.getByText(`hola desde el comentador ${stamp}`)).toBeVisible();
 
     // El compositor de comentarios es OPTIMISTA: pinta el comentario en el DOM al
     // instante mientras la server action (addComment → notify) corre en una

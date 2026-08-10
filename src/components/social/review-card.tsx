@@ -6,7 +6,7 @@ import type { FeedEvent } from "@/lib/social/feed";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
-import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { MentionText } from "@/components/social/mention-text";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -20,7 +20,6 @@ import { itemHref } from "@/lib/catalog/item-href";
 // la reseña se publica siempre.
 export function ReviewCard({
   event,
-  viewerLoggedIn,
   hideActor = false,
   knownUsernames,
   showInteractions = true,
@@ -79,16 +78,11 @@ export function ReviewCard({
         </p>
       )}
 
-      {showInteractions && event.interactionTarget?.interactionTargetId && (
-        <ReviewInteractions
-          interactionTargetId={event.interactionTarget.interactionTargetId}
+      {showInteractions && event.postId && (
+        <PostSummary
+          postId={event.postId}
           reactionCount={event.reactionCount}
-          viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
-          comments={event.comments}
-          reactions={event.reactions}
-          viewerLoggedIn={viewerLoggedIn}
-          knownUsernames={knownUsernames}
         />
       )}
       <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />

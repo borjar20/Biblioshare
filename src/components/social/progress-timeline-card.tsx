@@ -7,6 +7,7 @@ import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { SpoilerGate } from "./spoiler-gate";
 import { itemHref } from "@/lib/catalog/item-href";
 import { splitCollapsedItems } from "./feed-collapse";
@@ -85,7 +86,15 @@ export function ProgressTimelineCard({
                     {step.progress.note.isSpoiler ? <SpoilerGate>{noteEl}</SpoilerGate> : noteEl}
                   </div>
                 )}
-                {showInteractions && step.interactionTarget?.interactionTargetId && (
+                {showInteractions && step.postId ? (
+                  // Post de progreso: resumen que enlaza a /post/[id] (Spec 2b).
+                  <PostSummary
+                    postId={step.postId}
+                    reactionCount={step.reactionCount}
+                    commentCount={step.commentCount}
+                  />
+                ) : showInteractions && step.interactionTarget?.interactionTargetId ? (
+                  // Progreso legado sin post (no tiene página propia): hilo inline.
                   <div className="mt-1.5">
                     <ReviewInteractions
                       interactionTargetId={step.interactionTarget.interactionTargetId}
@@ -98,7 +107,7 @@ export function ProgressTimelineCard({
                       knownUsernames={knownUsernames}
                     />
                   </div>
-                )}
+                ) : null}
                 <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
               </div>
             </div>

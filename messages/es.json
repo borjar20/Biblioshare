@@ -326,6 +326,7 @@
       "fire": "Fuego"
     },
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
+    "viewThread": "Ver hilo",
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
     "deleteComment": "Borrar",

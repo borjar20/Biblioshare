@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
-import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
 
@@ -17,9 +17,7 @@ import { itemHref } from "@/lib/catalog/item-href";
 // como «Finalizado» (por eso no reutiliza ReviewCard).
 export function MilestoneCard({
   event,
-  viewerLoggedIn,
   hideActor = false,
-  knownUsernames,
   showInteractions = true,
 }: {
   event: FeedEvent;
@@ -64,16 +62,11 @@ export function MilestoneCard({
         </div>
       </div>
 
-      {showInteractions && event.interactionTarget?.interactionTargetId && (
-        <ReviewInteractions
-          interactionTargetId={event.interactionTarget.interactionTargetId}
+      {showInteractions && event.postId && (
+        <PostSummary
+          postId={event.postId}
           reactionCount={event.reactionCount}
-          viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
-          comments={event.comments}
-          reactions={event.reactions}
-          viewerLoggedIn={viewerLoggedIn}
-          knownUsernames={knownUsernames}
         />
       )}
       <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
