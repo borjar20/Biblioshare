@@ -2,19 +2,14 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { createPost, type PostKind } from "./post-actions";
+import { DEFAULT_POST_PREFERENCES, type PostPreferences } from "./post-preferences";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-type PrefColumn = "autopost_started" | "autopost_finished" | "autopost_dropped";
-
-// Sin fila de post_preferences => estos defaults (idénticos a los DEFAULT de
-// columna en 20260845_post_preferences.sql): terminar publica, empezar y
-// abandonar no.
-const DEFAULTS: Record<PrefColumn, boolean> = {
-  autopost_started: false,
-  autopost_finished: true,
-  autopost_dropped: false,
-};
+// Sin fila de post_preferences => defaults compartidos (fuente única con la UI
+// de ajustes y con los DEFAULT de columna en 20260845_post_preferences.sql):
+// terminar publica, empezar y abandonar no.
+type PrefColumn = keyof PostPreferences;
 
 // Mapea la transición a hito publicable. Solo estos tres: progressed/watched
 // (share) son Spec 2. `started` no exige `closed`; `finished`/`dropped` sí, para
@@ -60,7 +55,7 @@ export async function maybeAutopostMilestone(
       .eq("user_id", input.userId)
       .maybeSingle();
 
-    const enabled = (prefs ?? DEFAULTS)[milestone.prefColumn];
+    const enabled = (prefs ?? DEFAULT_POST_PREFERENCES)[milestone.prefColumn];
     if (!enabled) return;
 
     await createPost({
