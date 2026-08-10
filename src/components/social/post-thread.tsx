@@ -95,6 +95,23 @@ export function PostThread({
     return () => window.removeEventListener("hashchange", jump);
   }, [state.comments.length]);
 
+  // Al empezar a responder, enfoca el composer inline y deja el cursor al final
+  // (tras la @mención que `startReply` insertó). Enfocar ya lo trae a la vista en
+  // escritorio; en móvil abre el teclado sobre el composer fijo. Es lo que evita
+  // subir a la cabecera para escribir la respuesta.
+  useEffect(() => {
+    if (!replyingTo) return;
+    const el = document.querySelector<HTMLTextAreaElement>("#reply-composer textarea");
+    if (!el) return;
+    el.focus();
+    const end = el.value.length;
+    try {
+      el.setSelectionRange(end, end);
+    } catch {
+      // el textarea pudo desmontarse entre el render y esta línea
+    }
+  }, [replyingTo]);
+
   const throwIfFailed = (res: { ok: true } | { ok: false; error: string }) => {
     if (!res.ok) throw new Error(res.error);
   };
@@ -163,6 +180,56 @@ export function PostThread({
   }
 
   const nodes = buildCommentTree(state.comments, sort);
+
+  // Composer ÚNICO. Sin responder = comentario raíz en la cabecera del hilo; al
+  // responder SALTA inline bajo el comentario (renderNode), a su altura, para no
+  // obligar a subir a la cabecera en escritorio. En móvil el wrapper es `fixed`
+  // abajo en AMBOS casos (con `position:fixed` la posición en el DOM da igual),
+  // así que sigue siempre a mano. Una sola instancia montada a la vez (arriba XOR
+  // inline), así el borrador y el autocompletado de menciones no se duplican.
+  const composer = (
+    <div className="flex flex-col gap-2">
+      {replyingTo && (
+        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <span>
+            {t("reply")} <span className="font-semibold text-accent">@{replyingTo.authorUsername ?? replyingTo.author}</span>
+          </span>
+          <button
+            type="button"
+            aria-label={t("cancel")}
+            onClick={() => {
+              setReplyingTo(null);
+              setDraft("");
+            }}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      <div className="relative">
+        <CommentComposer
+          value={draft}
+          onChange={setDraft}
+          onSubmit={submit}
+          onInput={mention.onInput}
+          onKeyDown={mention.onKeyDown}
+          dropdown={mention.dropdown}
+          submitLabel={t("postComment")}
+          placeholder={replyingTo ? t("writeReply") : t("writeComment")}
+          isSpoiler={replyingTo ? false : spoiler}
+          onToggleSpoiler={replyingTo ? undefined : () => setSpoiler((v) => !v)}
+          showFormatting
+          busy={isPending}
+        />
+      </div>
+    </div>
+  );
+  const composerWrapper = (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:static lg:z-auto lg:border lg:border-border lg:rounded-xl lg:bg-surface lg:px-3.5 lg:py-3 lg:backdrop-blur-none">
+      {composer}
+    </div>
+  );
 
   function renderNode(node: CommentNode) {
     const c = node.comment;
@@ -260,6 +327,15 @@ export function PostThread({
             )}
           </div>
         </div>
+        {replyingTo?.id === c.id && (
+          // Respuesta INLINE, a la altura del comentario (no en la cabecera): en
+          // escritorio evita subir a lo alto del hilo; en móvil sigue anclado
+          // abajo (fixed). Se alinea con el comentario (sangría del nivel, corta
+          // y capada a 4). `id` para enfocarlo al abrir.
+          <div id="reply-composer" className="lg:mt-1">
+            {composerWrapper}
+          </div>
+        )}
         {node.children.length > 0 &&
           (node.depth < MAX_THREAD_DEPTH - 1 ? (
             // Riel de sangría CORTA (~16px/nivel), HERMANO de la fila (no dentro
@@ -276,45 +352,6 @@ export function PostThread({
       </div>
     );
   }
-
-  const composer = (
-    <div className="flex flex-col gap-2">
-      {replyingTo && (
-        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-          <span>
-            {t("reply")} <span className="font-semibold text-accent">@{replyingTo.authorUsername ?? replyingTo.author}</span>
-          </span>
-          <button
-            type="button"
-            aria-label={t("cancel")}
-            onClick={() => {
-              setReplyingTo(null);
-              setDraft("");
-            }}
-            className="ml-auto text-muted-foreground hover:text-foreground"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      <div className="relative">
-        <CommentComposer
-          value={draft}
-          onChange={setDraft}
-          onSubmit={submit}
-          onInput={mention.onInput}
-          onKeyDown={mention.onKeyDown}
-          dropdown={mention.dropdown}
-          submitLabel={t("postComment")}
-          placeholder={replyingTo ? t("writeReply") : t("writeComment")}
-          isSpoiler={replyingTo ? false : spoiler}
-          onToggleSpoiler={replyingTo ? undefined : () => setSpoiler((v) => !v)}
-          showFormatting
-          busy={isPending}
-        />
-      </div>
-    </div>
-  );
 
   return (
     <section className="flex flex-col gap-4">
@@ -336,13 +373,10 @@ export function PostThread({
       </div>
 
       {viewerLoggedIn ? (
-        // Composer del hilo principal: en escritorio va aquí (bajo el post); en
-        // móvil, anclado abajo (fixed) para tenerlo a mano en cualquier scroll —
-        // la nav inferior se oculta en /post/* para dejarle el borde. A todo el
-        // ancho también al responder (no se encoge a la columna del nivel).
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:static lg:z-auto lg:border lg:border-border lg:rounded-xl lg:bg-surface lg:px-3.5 lg:py-3 lg:backdrop-blur-none">
-          {composer}
-        </div>
+        // Cabecera del hilo = composer RAÍZ (comentario nuevo), SOLO cuando no se
+        // responde: al responder, el composer salta inline bajo el comentario
+        // (renderNode). En móvil el wrapper es `fixed` abajo en ambos casos.
+        !replyingTo && composerWrapper
       ) : (
         <Link href={loginHref(pathname)} className="rounded-xl border border-border bg-surface px-3.5 py-3 text-[13px] text-muted-foreground hover:text-foreground">
           {t("writeComment")}
@@ -370,9 +404,11 @@ export function PostThread({
         </div>
       )}
 
-      {/* El árbol. `pb` en móvil deja aire para que el composer fijo no tape las
-          últimas respuestas. */}
-      <div className="flex flex-col gap-1 pb-28 lg:pb-0">
+      {/* El árbol. El aire para que el composer fijo (móvil) no tape lo último
+          lo pone AHORA la página (`/post/[id]`), porque bajo el hilo va el raíl
+          de contexto: el `pb` tiene que estar en el último bloque de la
+          columna, no aquí. */}
+      <div className="flex flex-col gap-1">
         {nodes.map(renderNode)}
       </div>
 
