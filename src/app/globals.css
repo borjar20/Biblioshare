@@ -378,6 +378,41 @@ body {
 .today-block {
   container-type: inline-size;
 }
+
+/* "Continúa donde lo dejaste". APILADO (por defecto, container <560 — el tablet
+   a ~880 donde no cabe el split, y el móvil): CHIPS de solo título en una
+   rejilla horizontal de 2 filas con scroll-x (`grid-auto-flow:column`), para no
+   crecer en alto ni desperdiciar el ancho. A ≥560 vuelven a las tarjetas mini
+   (regla dentro del @container de abajo). Cada botón trae las dos vistas; el CSS
+   enseña una u otra. */
+.continue-shelf {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  gap: 6px 8px;
+  overflow-x: auto;
+}
+.continue-item .continue-card {
+  display: none;
+}
+.continue-item .continue-title {
+  display: block;
+  max-width: 15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-serif);
+  font-size: 12.5px;
+  line-height: 1.1;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
 @container (min-width: 560px) {
   /* Cabecera en fila: título a la izquierda, fecha a la derecha (mockup C).
      `row-reverse` porque en el DOM la fecha va primera (para apilarse ENCIMA del
@@ -409,6 +444,19 @@ body {
     padding-left: 0;
     padding-right: 0;
     flex-wrap: nowrap;
+  }
+  /* En 2 columnas "Continúa" vuelve al carrusel de tarjetas mini (chips solo en
+     apilado): en la columna derecha hay sitio para la portada y el progreso. */
+  .continue-shelf {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .continue-item .continue-title {
+    display: none;
+  }
+  .continue-item .continue-card {
+    display: block;
   }
 }
 

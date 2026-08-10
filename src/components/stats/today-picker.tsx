@@ -16,7 +16,13 @@ import { Fragment, useState, type ReactNode } from "react";
 // `focusLabel` viene ya formateado ("Poner Dune arriba") por entrada, no como
 // una función que lo construya: una función NO cruza la frontera
 // servidor→cliente. Es la misma regla que impide pasar `t` hacia dentro.
-export type TodayEntry = { id: string; card: ReactNode; mini: ReactNode; focusLabel: string };
+export type TodayEntry = {
+  id: string;
+  title: string;
+  card: ReactNode;
+  mini: ReactNode;
+  focusLabel: string;
+};
 
 export function TodayPicker({
   entries,
@@ -72,20 +78,25 @@ export function TodayPicker({
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
               {keepGoingLabel}
             </span>
-            {/* `today-shelf`: carrusel de una fila. Móvil estrecho (<768): sangra
-                al borde. Tablet/desktop y en la columna derecha del split (≥560):
-                contenido (`mx-0`, sin envolver). Solo en las 3 columnas del
-                Inicio (≥1100) las mini envuelven en filas. */}
-            <div className="today-shelf -mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+            {/* `continue-shelf` (globals.css): APILADO (<560, p. ej. el tablet a
+                ~880 donde no cabe el split) los ítems se compactan a CHIPS de
+                solo título en una rejilla horizontal de 2 filas —no desperdicia
+                el ancho cuando la sección va vertical—; en 2 columnas (≥560)
+                vuelven a las tarjetas mini. Un solo botón por ítem con las dos
+                vistas dentro (una u otra por CSS), así el clic no se duplica. */}
+            <div className="continue-shelf pb-1">
               {rest.map((entry) => (
                 <button
                   key={entry.id}
                   type="button"
                   aria-label={entry.focusLabel}
                   onClick={() => setSelectedId(entry.id)}
-                  className="shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+                  className="continue-item shrink-0 rounded-[12px] text-left transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
                 >
-                  {entry.mini}
+                  <span className="continue-title" title={entry.title}>
+                    {entry.title}
+                  </span>
+                  <span className="continue-card">{entry.mini}</span>
                 </button>
               ))}
             </div>
