@@ -1,0 +1,19 @@
+-- #561: `/post/[id]` (y la actividad del perfil) daban HTTP 500 para un visitante
+-- SIN sesión.
+--
+-- Causa: la política SELECT `posts select moderate` (migración 20260844) se creó
+-- SIN `to authenticated`, a diferencia de su ESPEJO DECLARADO `comments select
+-- moderate` (20260730191702), que sí lo lleva. Al no estar acotada por rol,
+-- aplica también a `anon`; y su `USING` llama a `private.can_moderate_target`,
+-- sobre la que `anon` NO tiene EXECUTE (solo `authenticated`, 20260730191702).
+-- Como las políticas SELECT se OR-ean, un anónimo que SELECT-a `posts` evalúa
+-- esta policy y revienta con «permission denied for function can_moderate_target»
+-- -> 500 en toda superficie que lea `posts` sin sesión (ficha del post, feed de
+-- actividad del perfil público).
+--
+-- Fix: acotar la política `to authenticated`, exactamente como la de comentarios.
+-- Un anónimo ya ve los posts públicos por `posts select visible`
+-- (= `can_view_profile`); la vía de moderación no le aplica (un anónimo no
+-- modera). Sin tocar grants ni la función. `ALTER POLICY ... TO` solo cambia los
+-- roles a los que aplica; el `USING` se conserva.
+alter policy "posts select moderate" on public.posts to authenticated;

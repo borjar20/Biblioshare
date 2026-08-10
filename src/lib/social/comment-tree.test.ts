@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCommentThreads, buildChatMessages } from "./comment-tree";
+import { buildCommentThreads, buildCommentTree, buildChatMessages } from "./comment-tree";
 import type { InteractionComment } from "./interactions";
 
 function c(over: Partial<InteractionComment> & { id: string }): InteractionComment {
@@ -52,6 +52,57 @@ describe("buildCommentThreads", () => {
     expect(ids.sort()).toEqual(["a", "b"]);
     expect(t).toHaveLength(1);
     expect(t[0].root.id).toBe("a");
+  });
+});
+
+describe("buildCommentTree", () => {
+  it("conserva la jerarquía real con profundidad (a > b > cc)", () => {
+    const list = [
+      c({ id: "a" }),
+      c({ id: "b", parentId: "a", createdAt: "2026-01-01T01:00:00Z" }),
+      c({ id: "cc", parentId: "b", createdAt: "2026-01-01T02:00:00Z" }),
+    ];
+    const t = buildCommentTree(list, "recent");
+    expect(t).toHaveLength(1);
+    expect(t[0].comment.id).toBe("a");
+    expect(t[0].depth).toBe(0);
+    expect(t[0].children.map((n) => n.comment.id)).toEqual(["b"]);
+    expect(t[0].children[0].depth).toBe(1);
+    expect(t[0].children[0].children.map((n) => n.comment.id)).toEqual(["cc"]);
+    expect(t[0].children[0].children[0].depth).toBe(2);
+  });
+  it("respuestas hermanas en orden cronológico ascendente", () => {
+    const list = [
+      c({ id: "a" }),
+      c({ id: "b2", parentId: "a", createdAt: "2026-01-01T02:00:00Z" }),
+      c({ id: "b1", parentId: "a", createdAt: "2026-01-01T01:00:00Z" }),
+    ];
+    const t = buildCommentTree(list, "recent");
+    expect(t[0].children.map((n) => n.comment.id)).toEqual(["b1", "b2"]);
+  });
+  it("orden de raíces: fijado primero, luego recientes / top", () => {
+    const list = [
+      c({ id: "a", createdAt: "2026-01-01T00:00:00Z", reactionCount: 1 }),
+      c({ id: "b", createdAt: "2026-01-02T00:00:00Z", reactionCount: 5 }),
+      c({ id: "p", createdAt: "2026-01-01T00:00:00Z", pinned: true }),
+    ];
+    expect(buildCommentTree(list, "recent").map((n) => n.comment.id)).toEqual(["p", "b", "a"]);
+    expect(buildCommentTree(list, "top").map((n) => n.comment.id)).toEqual(["p", "b", "a"]);
+  });
+  it("padre fuera del lote: el huérfano es raíz", () => {
+    const t = buildCommentTree([c({ id: "b", parentId: "missing" })], "recent");
+    expect(t).toHaveLength(1);
+    expect(t[0].comment.id).toBe("b");
+    expect(t[0].depth).toBe(0);
+  });
+  it("ciclo (no construible por la app): total, cada nodo una sola vez", () => {
+    const t = buildCommentTree([c({ id: "a", parentId: "b" }), c({ id: "b", parentId: "a" })], "recent");
+    const ids: string[] = [];
+    const walk = (nodes: ReturnType<typeof buildCommentTree>) => {
+      for (const n of nodes) { ids.push(n.comment.id); walk(n.children); }
+    };
+    walk(t);
+    expect(ids.sort()).toEqual(["a", "b"]);
   });
 });
 

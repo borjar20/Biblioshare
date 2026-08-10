@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { GearIcon, LockIcon } from "@/components/ui/icons";
 import { CelebrationPreferenceToggle } from "@/components/celebrations/celebration-preference-toggle";
 import { NotificationPreferences } from "@/components/push/notification-preferences";
+import { PostPreferences } from "@/components/social/post-preferences";
 import { getNotificationPlatform } from "@/lib/push/platform";
 import { updateProfileVisibility } from "./actions";
 
@@ -96,6 +97,8 @@ export function ProfileSettingsSheet({
             <CelebrationPreferenceToggle />
 
             <NotificationPreferences />
+
+            <PostPreferences />
 
             {isAdmin && (
               <Link

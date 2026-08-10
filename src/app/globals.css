@@ -466,37 +466,6 @@ body {
   }
 }
 
-/* Feed a ANCHO COMPLETO del layout en móvil (<640): los posts rompen el px-5 del
-   shell y van de borde a borde, separados por una línea, en vez de ir como
-   tarjetas sueltas con sombra y hueco (se perdió al pasar el Inicio a 3 áreas; se
-   recupera — decisión del usuario, 2026-08-10). Solo afecta a la LISTA
-   (`.feed-list`, en Inicio y su loading); el compositor y el rótulo de sección
-   siguen dentro del margen. Reglas sin capa: ganan a `rounded-card`/`border`/
-   `shadow-card`/`gap-3` de las tarjetas. */
-@media (max-width: 639px) {
-  .feed-list {
-    gap: 0;
-    /* -20px = el px-5 del shell; deja los posts a ancho de viewport (mismo truco
-       que `-mx-5` de las estanterías de "hoy"). */
-    margin-inline: -20px;
-  }
-  .feed-list > article {
-    border-radius: 0;
-    border-inline-width: 0;
-    border-top-width: 0;
-    box-shadow: none;
-    border-bottom: 1px solid var(--border);
-  }
-  /* El último post no necesita línea de cierre. */
-  .feed-list > article:last-of-type {
-    border-bottom-width: 0;
-  }
-  /* "Cargar más" recupera aire tras el último post ya pegado (gap:0). */
-  .feed-list > button {
-    margin-top: 16px;
-  }
-}
-
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */
 @keyframes sorteo-flip-in {
   from {

@@ -28,11 +28,9 @@ export function FeedCardSkeleton() {
 }
 
 // Lista de feed fantasma. Fallback de `<Suspense>` del feed y del loading.tsx.
-// Lleva `feed-list` para que el fantasma también vaya a ancho completo en móvil
-// (<640) y no haya salto al llegar la lista real (CLS #284).
 export function FeedListSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="feed-list flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {Array.from({ length: count }).map((_, i) => (
         <FeedCardSkeleton key={i} />
       ))}

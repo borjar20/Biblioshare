@@ -33,6 +33,18 @@ export const SHELL_GRID = "max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[100rem
 export const RAIL = "340px";
 
 /**
+ * Envoltorio de DOS columnas (contenido + raíl de 340px). Nació para la HOME
+ * (feed + raíl), pero la HOME pasó a tres áreas (`SHELL_HOME` + `.home-grid`);
+ * hoy lo usa `/post/[id]` (post + raíl de contexto), así que sobrevive pese al
+ * nombre heredado. Vive aquí, no como literal en cada página, para que esqueleto
+ * y contenido no diverjan en ancho (#376). El `340px` es el valor de `RAIL`;
+ * Tailwind necesita el literal en el fuente para generar el CSS, así que se
+ * escribe literal aquí, en un solo sitio que los consumidores importan.
+ */
+export const HOME_TWO_COL =
+  "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7";
+
+/**
  * Contenedor de la HOME de tres áreas (personal · feed · stats). Su propio
  * ancho, NO `SHELL_APP`: el reparto en tres columnas amplias (≥1440) necesita
  * ~1368px, más que los 1200 de `SHELL_APP`. Por debajo de 1100 el Inicio va en

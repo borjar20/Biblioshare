@@ -150,6 +150,9 @@ export function SessionSheet({
   );
   const [noteCount, setNoteCount] = useState(0);
   const [notePending, setNotePending] = useState(false);
+  // Compartir en el perfil (Spec 2): opt-in. Controla si se despliega el texto
+  // social; sin marcar, la sesión queda privada (+ notas) como hasta ahora.
+  const [share, setShare] = useState(false);
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -286,6 +289,43 @@ export function SessionSheet({
             onPendingChange={setNotePending}
             onCountChange={setNoteCount}
           />
+
+          {/* Compartir en el perfil (Spec 2): opt-in explícito dentro del propio
+              formulario — la decisión de compartir vive aquí, no en un compositor
+              aparte. Marcado, addSession publica un post 'progressed' con el
+              texto opcional como cuerpo social; las notas del cuaderno siguen
+              siendo privadas. */}
+          <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                name="share"
+                checked={share}
+                onChange={(e) => setShare(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-accent"
+              />
+              {t("shareLabel")}
+            </label>
+            {share && (
+              <>
+                <textarea
+                  name="shareBody"
+                  maxLength={2000}
+                  rows={2}
+                  placeholder={t("sharePlaceholder")}
+                  className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    name="shareSpoiler"
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                  {t("shareSpoiler")}
+                </label>
+              </>
+            )}
+          </div>
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
               Sigue disponible para abandonar o completar a mano sin ir a la ficha. */}
