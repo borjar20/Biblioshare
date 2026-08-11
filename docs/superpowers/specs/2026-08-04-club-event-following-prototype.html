@@ -1,0 +1,1235 @@
+<title>Seguimiento de eventos de club — prototipo</title>
+
+<style>
+  /* Tokens copiados de src/app/globals.css: el prototipo no inventa color. */
+  :root {
+    --background: #f3ece1;
+    --surface: #fffdf8;
+    --surface-muted: #ece3d4;
+    --surface-3: #e2d7c4;
+    --foreground: #2c2620;
+    --foreground-soft: #584f43;
+    --muted-foreground: #877e70;
+    --foreground-faint: #a89e8d;
+    --border: rgba(44, 20, 32, 0.14);
+    --scrim: rgba(44, 38, 32, 0.45);
+    --accent: #b0542f;
+    --accent-foreground: #fff5ef;
+    --accent-hover: #9a4526;
+    --gold: #c98a2b;
+    --green: #5c7052;
+    --status-dropped: #b0492f;
+    --type-series: #7a5676;
+    --type-movie: #3f6b6e;
+
+    --serif: ui-serif, "Iowan Old Style", Georgia, Cambria, serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+    --r-chip: 6px;
+    --r-cover: 10px;
+    --r-card: 14px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #1f1a16;
+      --surface: #2a231d;
+      --surface-muted: #332b23;
+      --surface-3: #3d342b;
+      --foreground: #f0e8db;
+      --foreground-soft: #cabfb0;
+      --muted-foreground: #a99e8c;
+      --foreground-faint: #6f665a;
+      --border: rgba(240, 232, 219, 0.12);
+      --scrim: rgba(12, 9, 7, 0.6);
+      --accent: #d98a5c;
+      --accent-foreground: #1f1409;
+      --accent-hover: #e5a074;
+      --gold: #e0a94a;
+      --green: #8ba57b;
+      --status-dropped: #d97a63;
+      --type-series: #b592bd;
+      --type-movie: #6bb0b4;
+    }
+  }
+
+  /* El toggle del visor manda sobre la media query, en los dos sentidos. */
+  :root[data-theme="dark"] {
+    --background: #1f1a16;
+    --surface: #2a231d;
+    --surface-muted: #332b23;
+    --surface-3: #3d342b;
+    --foreground: #f0e8db;
+    --foreground-soft: #cabfb0;
+    --muted-foreground: #a99e8c;
+    --foreground-faint: #6f665a;
+    --border: rgba(240, 232, 219, 0.12);
+    --scrim: rgba(12, 9, 7, 0.6);
+    --accent: #d98a5c;
+    --accent-foreground: #1f1409;
+    --accent-hover: #e5a074;
+    --gold: #e0a94a;
+    --green: #8ba57b;
+    --status-dropped: #d97a63;
+    --type-series: #b592bd;
+    --type-movie: #6bb0b4;
+  }
+
+  :root[data-theme="light"] {
+    --background: #f3ece1;
+    --surface: #fffdf8;
+    --surface-muted: #ece3d4;
+    --surface-3: #e2d7c4;
+    --foreground: #2c2620;
+    --foreground-soft: #584f43;
+    --muted-foreground: #877e70;
+    --foreground-faint: #a89e8d;
+    --border: rgba(44, 20, 32, 0.14);
+    --scrim: rgba(44, 38, 32, 0.45);
+    --accent: #b0542f;
+    --accent-foreground: #fff5ef;
+    --accent-hover: #9a4526;
+    --gold: #c98a2b;
+    --green: #5c7052;
+    --status-dropped: #b0492f;
+    --type-series: #7a5676;
+    --type-movie: #3f6b6e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Foco visible global, como globals.css. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 40px 22px 100px; }
+
+  .doc-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+  .doc-head h1 {
+    font-family: var(--serif);
+    font-size: clamp(28px, 4.4vw, 40px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .doc-head p { margin: 0; max-width: 66ch; color: var(--foreground-soft); }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 12px 0 0;
+  }
+
+  .note {
+    border-left: 2px solid var(--accent);
+    padding: 2px 0 2px 14px;
+    color: var(--foreground-soft);
+    font-size: 13.5px;
+    max-width: 74ch;
+    margin: 0;
+  }
+
+  /* Especímenes ------------------------------------------------------- */
+  .spec { margin-top: 52px; }
+  .spec > header { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+  .spec > header h2 {
+    font-family: var(--serif);
+    font-size: 21px; font-weight: 600; margin: 0; letter-spacing: -0.01em;
+  }
+  .spec-frame {
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .grid-2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+  /* Piezas de la app --------------------------------------------------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+  }
+
+  .btn {
+    font-family: var(--sans);
+    font-size: 13.5px; font-weight: 500;
+    padding: 8px 14px;
+    border-radius: var(--r-cover);
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--accent); color: var(--accent-foreground);
+    line-height: 1.2;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface); color: var(--foreground); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--surface-muted); }
+  .btn-ghost { background: transparent; color: var(--muted-foreground); }
+  .btn-ghost:hover { color: var(--foreground); background: var(--surface-muted); }
+  .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--r-chip);
+  }
+  .chip-evento { background: color-mix(in srgb, var(--type-series) 12%, transparent); color: var(--type-series); }
+  .chip-hito   { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .chip-inicio { background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); }
+  .chip-cierre { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); }
+  .chip-cancel { background: color-mix(in srgb, var(--status-dropped) 14%, transparent); color: var(--status-dropped); }
+  .chip-live   { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+  .dot { width: 6px; height: 6px; border-radius: 2px; flex: none; }
+
+  /* Fila de agenda */
+  .agenda { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
+  .agenda-row {
+    display: flex; align-items: stretch; gap: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-card); overflow: hidden;
+  }
+  .agenda-link {
+    display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 0;
+    padding: 12px; text-decoration: none; color: inherit;
+  }
+  .agenda-link:hover { background: var(--surface-muted); }
+  .agenda-date { width: 38px; flex: none; text-align: center; line-height: 1; }
+  .agenda-date b { font-family: var(--serif); font-size: 20px; font-weight: 600; display: block; }
+  .agenda-date span { font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; color: var(--muted-foreground); }
+  .agenda-body { min-width: 0; border-left: 1px solid var(--border); padding-left: 12px; flex: 1; }
+  .agenda-title {
+    font-family: var(--serif); font-size: 14.5px; font-weight: 600;
+    margin: 6px 0 0; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .agenda-meta { font-size: 11.5px; color: var(--muted-foreground); margin: 3px 0 0; }
+  .agenda-follow {
+    flex: none; display: grid; place-items: center; width: 46px;
+    border-left: 1px solid var(--border); background: transparent;
+    cursor: pointer; color: var(--muted-foreground);
+  }
+  .agenda-follow:hover { background: var(--surface-muted); color: var(--foreground); }
+  .agenda-follow[aria-pressed="true"] { color: var(--accent); }
+  .agenda-row.past { opacity: 0.5; }
+
+  /* Rejilla de mes */
+  .month { border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; background: var(--surface); min-width: 520px; }
+  .month-head { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--surface-muted); border-bottom: 1px solid var(--border); }
+  .month-head div { padding: 7px 0; text-align: center; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); }
+  .month-body { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .day { min-height: 92px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .day:nth-child(7n) { border-right: none; }
+  .day.outside { background: color-mix(in srgb, var(--surface-muted) 50%, transparent); }
+  .day.outside .day-n { color: var(--foreground-faint); }
+  .day-n { font-size: 11.5px; font-weight: 600; align-self: flex-start; padding: 2px 6px; border-radius: var(--r-chip); line-height: 1; }
+  .day.today .day-n { background: var(--accent); color: var(--accent-foreground); }
+  .day-mark {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10.5px; padding: 2px 4px; border-radius: 4px;
+    background: var(--surface-muted); color: var(--foreground-soft);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bell { flex: none; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+
+  /* Ficha */
+  .detail { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+  @media (max-width: 900px) { .detail { grid-template-columns: minmax(0, 1fr); } }
+
+  .crumb { font-size: 12.5px; color: var(--muted-foreground); }
+  .crumb a { color: var(--muted-foreground); }
+  .detail h3 {
+    font-family: var(--serif); font-size: 27px; font-weight: 600;
+    margin: 8px 0 0; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance;
+  }
+  .when { font-family: var(--serif); font-size: 17px; margin: 14px 0 2px; }
+  .tz { font-family: var(--mono); font-size: 11px; color: var(--muted-foreground); }
+  .facts { display: flex; flex-direction: column; gap: 12px; margin: 20px 0 0; padding: 0; }
+  .fact { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+  .fact dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); }
+  .fact dd { margin: 0; font-size: 14px; }
+  .prose { margin: 20px 0 0; color: var(--foreground-soft); max-width: 62ch; font-size: 14.5px; }
+  .updated { font-family: var(--mono); font-size: 10.5px; color: var(--foreground-faint); margin: 22px 0 0; }
+
+  .rail { display: flex; flex-direction: column; gap: 14px; }
+  .rail-box { padding: 16px; }
+  .rail-box > h4 { margin: 0 0 12px; }
+
+  .avatars { display: flex; align-items: center; }
+  .av {
+    width: 32px; height: 32px; border-radius: 999px;
+    display: grid; place-items: center;
+    font-family: var(--serif); font-size: 12px; font-weight: 600;
+    color: var(--accent-foreground);
+    background: linear-gradient(135deg, var(--green), var(--type-movie));
+    border: 2px solid var(--surface); margin-left: -8px; flex: none;
+  }
+  .av:first-child { margin-left: 0; }
+  .av-more { background: var(--surface-3); color: var(--foreground-soft); font-family: var(--mono); font-size: 10px; }
+  .count { font-size: 13px; color: var(--foreground-soft); margin: 10px 0 0; }
+
+  .flist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .flist li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .flist li:last-child { border-bottom: none; }
+  .flist .nm { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flist .un { font-family: var(--mono); font-size: 10.5px; color: var(--muted-foreground); }
+  .you { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); padding: 1px 5px; border-radius: var(--r-chip); flex: none; }
+  .org { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); flex: none; }
+
+  /* Selector de recordatorio */
+  .radios { display: flex; flex-direction: column; gap: 2px; }
+  .radio { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: var(--r-cover); cursor: pointer; font-size: 13.5px; }
+  .radio:hover { background: var(--surface-muted); }
+  .radio input { accent-color: var(--accent); margin: 0; }
+  .radio.on { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); font-weight: 500; }
+  .hint { font-size: 12px; color: var(--muted-foreground); margin: 10px 0 0; }
+
+  /* Estados */
+  .sk { background: var(--surface-3); border-radius: var(--r-chip); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
+
+  .empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 5px; padding: 40px 20px; }
+  .empty-glyph { width: 60px; height: 60px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); color: var(--accent); margin-bottom: 8px; }
+  .empty h4 { font-family: var(--serif); font-size: 19px; font-weight: 600; margin: 0; }
+  .empty p { margin: 0; max-width: 34ch; font-size: 13.5px; color: var(--muted-foreground); }
+
+  .alert { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; color: var(--status-dropped); }
+  .banner {
+    display: flex; gap: 10px; align-items: flex-start;
+    border: 1px solid color-mix(in srgb, var(--status-dropped) 40%, transparent);
+    background: color-mix(in srgb, var(--status-dropped) 9%, transparent);
+    border-radius: var(--r-cover); padding: 12px 14px; font-size: 13.5px;
+  }
+  .banner.calm {
+    border-color: var(--border);
+    background: var(--surface-muted);
+    color: var(--foreground-soft);
+  }
+  .strike { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+  /* Marco móvil */
+  .phones { display: flex; flex-wrap: wrap; gap: 22px; }
+  .phone { width: 390px; max-width: 100%; flex: none; }
+  .phone-screen {
+    border: 1px solid var(--border); border-radius: 22px; overflow: hidden;
+    background: var(--background); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .phone-top {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+    font-family: var(--serif); font-weight: 600; font-size: 14px;
+  }
+  .phone-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+  .phone-tabbar {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    border-top: 1px solid var(--border); background: var(--surface); padding: 7px 0;
+  }
+  .phone-tabbar div { display: grid; place-items: center; gap: 3px; font-family: var(--mono); font-size: 8px; text-transform: uppercase; color: var(--muted-foreground); }
+  .phone-tabbar div.on { color: var(--accent); }
+  .phone-cap { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 8px; }
+
+  .sticky-cta {
+    position: sticky; bottom: 0;
+    display: flex; gap: 8px; padding: 10px;
+    border-top: 1px solid var(--border); background: var(--surface);
+  }
+  .sticky-cta .btn { flex: 1; justify-content: center; }
+
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-cover); overflow: hidden; background: var(--surface); }
+  .seg button { border: none; background: transparent; padding: 6px 13px; font-size: 12.5px; cursor: pointer; color: var(--muted-foreground); font-family: var(--sans); }
+  .seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-foreground); font-weight: 500; }
+
+  .collapsed-head { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; padding: 9px 0; cursor: pointer; color: var(--muted-foreground); font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  table.a11y { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 520px; }
+  table.a11y th, table.a11y td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.a11y th { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); font-weight: 400; }
+  table.a11y code { font-family: var(--mono); font-size: 12px; background: var(--surface-muted); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<div class="page">
+
+  <header class="doc-head">
+    <p class="label">Biblioshare · prototipo para validación · 2026-08-04</p>
+    <h1>Seguimiento de eventos de club</h1>
+    <p>
+      Los diez especímenes de abajo cubren las ocho vistas que pide el encargo, en claro y oscuro,
+      escritorio y móvil. <strong>Actualizado el 2026-08-04 tras implementarlo</strong>: cuatro
+      especímenes llevan una nota de «corregido tras la implementación», porque verlo funcionando en
+      un navegador real destapó cosas que el mockup daba por buenas. Se dejan a la vista en vez de
+      reescribirlas en silencio: el prototipo es también el registro de en qué se equivocó. El color sale tal cual de <code>globals.css</code>; la tipografía usa pilas
+      del sistema en lugar de Fraunces y Geist, porque lo que se valida aquí es jerarquía, estados y
+      accesibilidad, no el renderizado de la fuente.
+    </p>
+    <div class="toolbar">
+      <button type="button" class="btn btn-secondary" id="theme">Cambiar a oscuro</button>
+      <span class="label" id="theme-state">Tema: claro</span>
+    </div>
+  </header>
+
+  <!-- 1 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 1 · encargo §4.1 y §4.2 · agenda del calendario</p>
+      <h2>La leyenda abre el detalle, y seguir es un control aparte</h2>
+    </header>
+    <div class="spec-frame">
+      <div class="agenda">
+
+        <div class="agenda-row">
+          <a class="agenda-link" href="#detalle">
+            <span class="agenda-date" aria-hidden="true"><b>12</b><span>AGO</span></span>
+            <span class="agenda-body">
+              <span class="chip chip-evento"><span class="dot" style="background: var(--type-series)"></span>Evento</span>
+              <p class="agenda-title">Club de verano: Dune, primera parte</p>
+              <p class="agenda-meta">18:00 · Biblioteca Central</p>
+            </span>
+          </a>
+          <button type="button" class="agenda-follow" aria-pressed="false" aria-label="Seguir «Club de verano: Dune, primera parte»">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="agenda-row">
+          <a class="agenda-link" href="#detalle">
+            <span class="agenda-date" aria-hidden="true"><b>19</b><span>AGO</span></span>
+            <span class="agenda-body">
+              <span class="chip chip-evento"><span class="dot" style="background: var(--type-series)"></span>Evento</span>
+              <p class="agenda-title">Charla con la traductora</p>
+              <p class="agenda-meta">
+                20:30 · Online
+                <span class="chip chip-hito" style="margin-left: 4px;">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" /></svg>
+                  Sigues
+                </span>
+              </p>
+            </span>
+          </a>
+          <button type="button" class="agenda-follow" aria-pressed="true" aria-label="Dejar de seguir «Charla con la traductora»">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" fill="none" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="agenda-row">
+          <a class="agenda-link" href="#detalle">
+            <span class="agenda-date" aria-hidden="true"><b>21</b><span>AGO</span></span>
+            <span class="agenda-body">
+              <span class="chip chip-hito"><span class="dot" style="background: var(--accent)"></span>Hito</span>
+              <p class="agenda-title">Capítulos 1 a 12</p>
+              <p class="agenda-meta">Lectura conjunta de Dune</p>
+            </span>
+          </a>
+        </div>
+
+        <div class="agenda-row past">
+          <a class="agenda-link" href="#detalle">
+            <span class="agenda-date" aria-hidden="true"><b>02</b><span>AGO</span></span>
+            <span class="agenda-body">
+              <span class="chip chip-evento"><span class="dot" style="background: var(--type-series)"></span>Evento</span>
+              <p class="agenda-title">Encuentro inaugural</p>
+              <p class="agenda-meta">Ya pasó · 19:00</p>
+            </span>
+          </a>
+        </div>
+
+      </div>
+      <p class="note" style="margin-top: 18px;">
+        El bloque entero es el enlace, que es lo que la agenda ya hace con los hitos: no se
+        introduce un patrón nuevo. La campana es un <code>&lt;button&gt;</code> <strong>hermano</strong>,
+        nunca dentro del <code>&lt;a&gt;</code> — anidarlo es HTML inválido y rompe el tabulador. Un
+        hito conserva su fila sin campana: no se sigue un hito, se sigue un evento.
+      </p>
+    </div>
+  </section>
+
+  <!-- 2 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 2 · encargo §17 · rejilla y leyenda</p>
+      <h2>Lo que sigues se distingue sin depender del color</h2>
+    </header>
+    <div class="spec-frame">
+      <div class="month">
+        <div class="month-head">
+          <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div class="month-body">
+          <div class="day outside"><span class="day-n">28</span></div>
+          <div class="day outside"><span class="day-n">29</span></div>
+          <div class="day outside"><span class="day-n">30</span></div>
+          <div class="day outside"><span class="day-n">31</span></div>
+          <div class="day"><span class="day-n">1</span></div>
+          <div class="day"><span class="day-n">2</span>
+            <span class="day-mark"><span class="dot" style="background: var(--type-series)"></span>Encuentro</span>
+          </div>
+          <div class="day"><span class="day-n">3</span></div>
+
+          <div class="day"><span class="day-n">4</span></div>
+          <div class="day today"><span class="day-n">5</span></div>
+          <div class="day"><span class="day-n">6</span></div>
+          <div class="day"><span class="day-n">7</span>
+            <span class="day-mark"><span class="dot" style="background: var(--green)"></span>Empieza</span>
+          </div>
+          <div class="day"><span class="day-n">8</span></div>
+          <div class="day"><span class="day-n">9</span></div>
+          <div class="day"><span class="day-n">10</span></div>
+
+          <div class="day"><span class="day-n">11</span></div>
+          <div class="day"><span class="day-n">12</span>
+            <span class="day-mark"><span class="dot" style="background: var(--type-series)"></span>Dune, 1ª parte</span>
+          </div>
+          <div class="day"><span class="day-n">13</span></div>
+          <div class="day"><span class="day-n">14</span></div>
+          <div class="day"><span class="day-n">15</span>
+            <span class="day-mark"><span class="dot" style="background: var(--accent)"></span>Cap. 1-12</span>
+          </div>
+          <div class="day"><span class="day-n">16</span></div>
+          <div class="day"><span class="day-n">17</span></div>
+
+          <div class="day"><span class="day-n">18</span></div>
+          <div class="day"><span class="day-n">19</span>
+            <span class="day-mark">
+              <span class="dot" style="background: var(--type-series)"></span>
+              <svg class="bell" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color: var(--accent)">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+              </svg>
+              <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Evento seguido.</span>
+              Charla
+            </span>
+          </div>
+          <div class="day"><span class="day-n">20</span></div>
+          <div class="day"><span class="day-n">21</span></div>
+          <div class="day"><span class="day-n">22</span></div>
+          <div class="day"><span class="day-n">23</span></div>
+          <div class="day"><span class="day-n">24</span></div>
+        </div>
+      </div>
+
+      <div class="legend" style="margin-top: 16px;">
+        <span><span class="dot" style="border-radius:999px;background: var(--green)"></span>Empieza</span>
+        <span><span class="dot" style="border-radius:999px;background: var(--accent)"></span>Hito</span>
+        <span><span class="dot" style="border-radius:999px;background: var(--type-series)"></span>Evento</span>
+        <span><span class="dot" style="border-radius:999px;background: var(--gold)"></span>Cierre</span>
+        <span style="color: var(--accent)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+          Evento seguido
+        </span>
+      </div>
+
+      <p class="note" style="margin-top: 18px;">
+        La campana es forma, no tono: en escala de grises el día 19 sigue distinguiéndose del 12.
+        El texto accesible «Evento seguido» va en el nombre del día, así que un lector de pantalla lo
+        anuncia al recorrer la rejilla. La leyenda gana esa quinta entrada y conserva el orden de
+        <code>ORDEN_MARCA</code>, que es el mismo que desempata las marcas del mismo día.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3 ------------------------------------------------------------- -->
+  <section class="spec" id="detalle">
+    <header>
+      <p class="label">Especimen 3 · encargo §4.3, §7 y §4.5 · escritorio</p>
+      <h2>Ficha del evento</h2>
+    </header>
+    <div class="spec-frame">
+      <div class="detail">
+        <div>
+          <p class="crumb"><a href="#">Club Horizonte</a> › <a href="#">Calendario</a></p>
+          <span class="chip chip-live" style="margin-top: 10px;">
+            <span class="dot" style="border-radius:999px;background: var(--green)"></span>Programado
+          </span>
+          <h3>Club de verano: Dune, primera parte</h3>
+
+          <p class="when">Miércoles, 12 de agosto de 2026 · 18:00 – 20:00</p>
+          <p class="tz">Europe/Madrid (CEST, UTC+2) · tu zona: Atlantic/Canary, 17:00</p>
+
+          <dl class="facts">
+            <div class="fact">
+              <dt>Modalidad</dt>
+              <dd>Híbrida — presencial y en línea</dd>
+            </div>
+            <div class="fact">
+              <dt>Ubicación</dt>
+              <dd>Biblioteca Central, sala 2. Calle Mayor 14, Madrid</dd>
+            </div>
+            <div class="fact">
+              <dt>Acceso online</dt>
+              <dd><a href="#">meet.example.org/dune-verano</a></dd>
+            </div>
+            <div class="fact">
+              <dt>Organiza</dt>
+              <dd>
+                <span style="display:inline-flex;align-items:center;gap:7px;">
+                  <span class="av" style="width:24px;height:24px;font-size:10px;border-width:0;">MR</span>
+                  Marta Ruiz · moderadora
+                </span>
+              </dd>
+            </div>
+          </dl>
+
+          <p class="prose">
+            Charlamos sobre la primera mitad de Dune, hasta el final del libro primero. Traed
+            anotada una escena que os haya descolocado: empezamos por ahí y luego abrimos el turno
+            de preguntas. Habrá café, y quien venga desde fuera de Madrid puede seguirla por
+            videollamada con el enlace de arriba.
+          </p>
+
+          <p class="updated">Actualizado el 4 de agosto a las 11:20</p>
+        </div>
+
+        <div class="rail">
+          <div class="card rail-box">
+            <button type="button" class="btn" style="width:100%;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+              </svg>
+              Seguir evento
+            </button>
+            <p class="hint">Recibirás un recordatorio antes del evento.</p>
+          </div>
+
+          <div class="card rail-box">
+            <h4 class="label">Recordatorio</h4>
+            <div class="radios" role="radiogroup" aria-label="Cuándo avisarte">
+              <label class="radio"><input type="radio" name="rem-a" /> Al empezar</label>
+              <label class="radio"><input type="radio" name="rem-a" /> 15 minutos antes</label>
+              <label class="radio"><input type="radio" name="rem-a" /> 1 hora antes</label>
+              <label class="radio on"><input type="radio" name="rem-a" checked /> 24 horas antes</label>
+              <label class="radio"><input type="radio" name="rem-a" /> 1 semana antes</label>
+              <label class="radio"><input type="radio" name="rem-a" /> Sin recordatorio</label>
+            </div>
+            <p class="hint">Te avisaremos el 11 de agosto a las 18:00.</p>
+          </div>
+
+          <div class="card rail-box">
+            <h4 class="label">Quién lo sigue</h4>
+            <div class="avatars">
+              <span class="av" title="Tú">BR</span>
+              <span class="av" title="Marta Ruiz">MR</span>
+              <span class="av" title="Julián Paz">JP</span>
+              <span class="av" title="Nadia El Amrani">NE</span>
+              <span class="av" title="Tomás Vega">TV</span>
+              <span class="av" title="Leire Otxoa">LO</span>
+              <span class="av" title="Sam Okafor">SO</span>
+              <span class="av" title="Chen Wei">CW</span>
+              <span class="av av-more">+9</span>
+            </div>
+            <p class="count">17 personas siguen este evento.</p>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:12px;">Ver todos</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 4 · encargo §8 · seguidores</p>
+      <h2>La lista completa, y la lista vacía</h2>
+    </header>
+    <div class="grid-2">
+      <div class="spec-frame">
+        <p class="phone-cap">Panel «Ver todos» · orden estable</p>
+        <div class="card rail-box">
+          <ul class="flist">
+            <li>
+              <span class="av" style="width:34px;height:34px;">BR</span>
+              <span style="min-width:0;flex:1;">
+                <span class="nm">Borja Rondán</span><br />
+                <span class="un">@borja</span>
+              </span>
+              <span class="you">Tú</span>
+            </li>
+            <li>
+              <a href="#" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:inherit;text-decoration:none;">
+                <span class="av" style="width:34px;height:34px;">MR</span>
+                <span style="min-width:0;flex:1;">
+                  <span class="nm">Marta Ruiz</span><br />
+                  <span class="un">@martaruiz</span>
+                </span>
+              </a>
+              <span class="org">Organiza</span>
+            </li>
+            <li>
+              <a href="#" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:inherit;text-decoration:none;">
+                <span class="av" style="width:34px;height:34px;">NE</span>
+                <span style="min-width:0;flex:1;">
+                  <span class="nm">Nadia El Amrani Fernández de la Vega</span><br />
+                  <span class="un">@nadia</span>
+                </span>
+              </a>
+            </li>
+            <li>
+              <span class="av" style="width:34px;height:34px;">JP</span>
+              <span style="min-width:0;flex:1;">
+                <span class="nm">Julián Paz</span><br />
+                <span class="un">perfil privado</span>
+              </span>
+            </li>
+            <li>
+              <a href="#" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:inherit;text-decoration:none;">
+                <span class="av" style="width:34px;height:34px;">TV</span>
+                <span style="min-width:0;flex:1;">
+                  <span class="nm">Tomás Vega</span><br />
+                  <span class="un">@tvega</span>
+                </span>
+              </a>
+            </li>
+          </ul>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:14px;">Cargar más · 12 restantes</button>
+        </div>
+        <p class="note" style="margin-top:16px;">
+          Tú primero, después quien organiza, después por fecha de seguimiento. Nombre y avatar y
+          nada más: ni correo ni teléfono. Julián no enlaza porque su perfil no es alcanzable —
+          la fila existe, el enlace no.
+        </p>
+      </div>
+
+      <div class="spec-frame">
+        <p class="phone-cap">Cero seguidores</p>
+        <div class="card">
+          <div class="empty">
+            <span class="empty-glyph">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+              </svg>
+            </span>
+            <h4>Nadie lo sigue todavía</h4>
+            <p>Sé la primera persona en apuntarse y te avisamos antes de que empiece.</p>
+          </div>
+        </div>
+        <p class="note" style="margin-top:16px;">
+          El estado vacío invita a actuar solo si esa persona puede seguirlo. A quien no es miembro
+          activo se le muestra el recuento sin el botón.
+        </p>
+        <p class="note" style="margin-top:12px;">
+          <strong>Corregido tras la implementación:</strong> el prototipo repetía aquí el botón
+          «Seguir evento». En la ficha real el CTA está justo encima, en el rail, así que
+          duplicarlo dejaba dos controles con el mismo nombre accesible en la misma pantalla. El
+          mensaje solo ya cumple la invitación.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 5 · encargo §15 · el botón</p>
+      <h2>Siete estados, ninguno ambiguo</h2>
+    </header>
+    <div class="spec-frame">
+      <div class="grid-2">
+
+        <div class="card rail-box">
+          <p class="phone-cap">No seguido</p>
+          <button type="button" class="btn" style="width:100%;justify-content:center;">Seguir evento</button>
+          <p class="hint">Recibirás un recordatorio antes del evento.</p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Seguido · reposo</p>
+          <button type="button" class="btn btn-secondary" style="width:100%;justify-content:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+            Siguiendo
+          </button>
+          <p class="hint">Te avisamos 24 horas antes.</p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Seguido · al pasar el ratón o con el foco</p>
+          <button type="button" class="btn btn-secondary" style="width:100%;justify-content:center;color:var(--status-dropped);border-color:color-mix(in srgb, var(--status-dropped) 40%, transparent);">
+            Dejar de seguir
+          </button>
+          <p class="hint">La etiqueta cambia a la acción, no al estado.</p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Guardando</p>
+          <button type="button" class="btn" style="width:100%;justify-content:center;" disabled aria-busy="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-opacity="0.3" /><path d="M21 12a9 9 0 0 0-9-9" stroke-linecap="round" /></svg>
+            Guardando…
+          </button>
+          <p class="hint">Deshabilitado mientras vuela: la doble pulsación no llega a salir.</p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Error</p>
+          <button type="button" class="btn" style="width:100%;justify-content:center;">Seguir evento</button>
+          <p class="alert" style="margin-top:10px;" role="alert">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex:none;margin-top:2px;"><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
+            No se ha podido actualizar el seguimiento. Vuelve a intentarlo.
+          </p>
+          <p class="hint">El botón ya revirtió a «Seguir»: nunca miente diciendo «Siguiendo».</p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Evento finalizado</p>
+          <button type="button" class="btn" style="width:100%;justify-content:center;" disabled>Seguir evento</button>
+          <p class="hint">Este evento ya ha finalizado.</p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Evento cancelado · siguiéndolo ya</p>
+          <button type="button" class="btn btn-secondary" style="width:100%;justify-content:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+            Siguiendo
+          </button>
+          <p class="hint">Este evento ha sido cancelado.</p>
+          <p class="note" style="margin-top:10px;font-size:12px;">
+            <strong>Corregido tras la implementación:</strong> aquí decía «Recibirás un recordatorio
+            antes del evento», porque el motivo de bloqueo solo se pintaba a quien NO seguía el
+            evento. Era una promesa falsa. El motivo manda ahora sobre el estado de seguimiento.
+          </p>
+        </div>
+
+        <div class="card rail-box">
+          <p class="phone-cap">Sin permiso (no eres miembro activo)</p>
+          <a class="btn btn-secondary" href="#" style="width:100%;justify-content:center;">Únete al club</a>
+          <p class="hint">17 personas lo siguen. El recuento se ve; el botón de seguir, no.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 6 · encargo §4.6 · carga y error de la ficha</p>
+      <h2>Cargando, y cuando la ficha no llega</h2>
+    </header>
+    <div class="grid-2">
+      <div class="spec-frame">
+        <p class="phone-cap">Esqueleto de la ficha</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="sk" style="height:11px;width:38%;"></div>
+          <div class="sk" style="height:20px;width:26%;border-radius:6px;"></div>
+          <div class="sk" style="height:30px;width:76%;"></div>
+          <div class="sk" style="height:15px;width:54%;"></div>
+          <div style="display:flex;gap:12px;margin-top:8px;">
+            <div class="sk" style="height:76px;flex:1;border-radius:14px;"></div>
+            <div class="sk" style="height:76px;width:130px;border-radius:14px;"></div>
+          </div>
+          <div class="sk" style="height:13px;width:92%;margin-top:6px;"></div>
+          <div class="sk" style="height:13px;width:84%;"></div>
+        </div>
+        <p class="note" style="margin-top:16px;">
+          Los huecos tienen la forma de lo que va a llegar, así que el contenido no salta al
+          aparecer. Es el <code>Skeleton</code> que ya usa el club, no uno nuevo.
+        </p>
+      </div>
+
+      <div class="spec-frame">
+        <p class="phone-cap">Error de carga</p>
+        <div class="card">
+          <div class="empty">
+            <span class="empty-glyph">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
+            </span>
+            <h4>No hemos podido cargar el evento</h4>
+            <p>Puede ser un corte de red. Vuelve a intentarlo.</p>
+            <button type="button" class="btn" style="margin-top:16px;">Reintentar</button>
+            <a href="#" style="margin-top:12px;font-size:12.5px;color:var(--muted-foreground);">Volver al calendario</a>
+          </div>
+        </div>
+        <p class="note" style="margin-top:16px;">
+          Un evento que no existe, borrado, o que no puedes ver, no llega aquí: es
+          <code>notFound()</code>. Esta pantalla es solo para el fallo de red o de servidor.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 7 · encargo §4.6 y §9.4 · estados del evento</p>
+      <h2>Cancelado, pospuesto, en curso, finalizado</h2>
+    </header>
+    <div class="spec-frame" style="display:flex;flex-direction:column;gap:20px;">
+
+      <div class="card rail-box">
+        <div class="banner">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex:none;margin-top:1px;"><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></svg>
+          <span>
+            <strong>Este evento ha sido cancelado.</strong><br />
+            Marta Ruiz lo canceló el 4 de agosto. No recibirás ningún recordatorio.
+          </span>
+        </div>
+        <h3 class="strike" style="font-family:var(--serif);font-size:22px;font-weight:600;margin:16px 0 0;color:var(--muted-foreground);">
+          Club de verano: Dune, primera parte
+        </h3>
+        <p class="tz" style="margin-top:6px;">Estaba previsto el miércoles 12 de agosto a las 18:00</p>
+        <p class="hint">La ficha sigue accesible y los 17 seguidores se conservan: el contexto no desaparece en silencio.</p>
+      </div>
+
+      <div class="card rail-box">
+        <div class="banner calm">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex:none;margin-top:1px;"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          <span>
+            <strong>Pospuesto, sin fecha nueva todavía.</strong><br />
+            Sigues el evento y te avisaremos en cuanto haya fecha. Los recordatorios están en pausa.
+          </span>
+        </div>
+      </div>
+
+      <div class="card rail-box">
+        <span class="chip chip-live"><span class="dot" style="border-radius:999px;background:var(--green)"></span>En curso ahora</span>
+        <h3 style="font-family:var(--serif);font-size:22px;font-weight:600;margin:12px 0 0;">Charla con la traductora</h3>
+        <p class="tz" style="margin-top:6px;">Empezó a las 20:30 · termina a las 22:00</p>
+        <a class="btn" href="#" style="margin-top:14px;">Entrar ahora</a>
+        <p class="note" style="margin-top:12px;">
+          <strong>Precisado tras la implementación:</strong> un evento en curso <strong>sí</strong> se
+          puede seguir — es lo que permite la RPC, hasta que termina. Lo que no llega es un
+          recordatorio, porque un recordatorio avisa antes y ya no hay nada que anticipar. El
+          prototipo no lo decía y las tres capas (agenda, ficha y BD) no coincidían.
+        </p>
+      </div>
+
+      <div class="card rail-box" style="opacity:0.75;">
+        <span class="chip" style="background:var(--surface-muted);color:var(--muted-foreground);">
+          <span class="dot" style="border-radius:999px;background:var(--foreground-faint)"></span>Finalizado
+        </span>
+        <h3 style="font-family:var(--serif);font-size:22px;font-weight:600;margin:12px 0 0;">Encuentro inaugural</h3>
+        <p class="tz" style="margin-top:6px;">Domingo 2 de agosto · 19:00 – 21:00</p>
+        <p class="hint">Este evento ya ha finalizado. Puedes ver quién lo siguió, pero ya no se puede seguir.</p>
+      </div>
+
+      <p class="note">
+        «En curso» y «finalizado» se deducen del reloj, no se guardan: un estado guardado es un
+        estado que hay que mantener al día. Solo se persisten los tres que alguien declara —
+        programado, cancelado, pospuesto.
+      </p>
+    </div>
+  </section>
+
+  <!-- 8 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 8 · encargo §4.8 · móvil, 390 px</p>
+      <h2>Móvil</h2>
+    </header>
+    <div class="spec-frame">
+      <div class="phones">
+
+        <div class="phone">
+          <p class="phone-cap">Ficha · la acción no se pierde al hacer scroll</p>
+          <div class="phone-screen">
+            <div class="phone-top">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+              Club Horizonte
+            </div>
+            <div class="phone-body">
+              <div>
+                <span class="chip chip-live"><span class="dot" style="border-radius:999px;background:var(--green)"></span>Programado</span>
+                <h3 style="font-family:var(--serif);font-size:21px;font-weight:600;margin:10px 0 0;line-height:1.2;">Club de verano: Dune, primera parte</h3>
+                <p class="when" style="font-size:15px;margin:10px 0 2px;">Mié 12 ago · 18:00 – 20:00</p>
+                <p class="tz">Europe/Madrid · tu zona: 17:00</p>
+              </div>
+
+              <dl class="facts" style="gap:9px;margin:0;">
+                <div class="fact" style="grid-template-columns:84px minmax(0,1fr);">
+                  <dt>Modalidad</dt><dd style="font-size:13.5px;">Híbrida</dd>
+                </div>
+                <div class="fact" style="grid-template-columns:84px minmax(0,1fr);">
+                  <dt>Dónde</dt><dd style="font-size:13.5px;">Biblioteca Central, sala 2</dd>
+                </div>
+                <div class="fact" style="grid-template-columns:84px minmax(0,1fr);">
+                  <dt>Organiza</dt><dd style="font-size:13.5px;">Marta Ruiz</dd>
+                </div>
+              </dl>
+
+              <div class="card rail-box" style="padding:13px;">
+                <h4 class="label" style="margin-bottom:9px;">Quién lo sigue · 17</h4>
+                <div class="avatars">
+                  <span class="av" style="width:29px;height:29px;font-size:11px;">BR</span>
+                  <span class="av" style="width:29px;height:29px;font-size:11px;">MR</span>
+                  <span class="av" style="width:29px;height:29px;font-size:11px;">JP</span>
+                  <span class="av" style="width:29px;height:29px;font-size:11px;">NE</span>
+                  <span class="av av-more" style="width:29px;height:29px;">+13</span>
+                </div>
+              </div>
+
+              <p style="font-size:13.5px;color:var(--foreground-soft);margin:0;">
+                Charlamos sobre la primera mitad de Dune, hasta el final del libro primero. Traed
+                anotada una escena que os haya descolocado.
+              </p>
+            </div>
+            <div class="sticky-cta">
+              <button type="button" class="btn">Seguir evento</button>
+              <button type="button" class="btn btn-secondary" aria-label="Ajustar recordatorio">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+              </button>
+            </div>
+            <div class="phone-tabbar">
+              <div><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" /></svg>Inicio</div>
+              <div><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h6v16H4zM14 4h6v16h-6z" /></svg>Colección</div>
+              <div><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>Buscar</div>
+              <div class="on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.4" /><path d="M2 20a7 7 0 0 1 14 0" /></svg>Clubes</div>
+              <div><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>Perfil</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone">
+          <p class="phone-cap">Recordatorio en hoja inferior · §4.5</p>
+          <div class="phone-screen">
+            <div class="phone-top">Recordatorio</div>
+            <div class="phone-body">
+              <div class="radios" role="radiogroup" aria-label="Cuándo avisarte">
+                <label class="radio"><input type="radio" name="rem-b" /> Al empezar</label>
+                <label class="radio"><input type="radio" name="rem-b" /> 15 minutos antes</label>
+                <label class="radio on"><input type="radio" name="rem-b" checked /> 1 hora antes</label>
+                <label class="radio"><input type="radio" name="rem-b" /> 24 horas antes</label>
+                <label class="radio"><input type="radio" name="rem-b" /> 1 semana antes</label>
+                <label class="radio"><input type="radio" name="rem-b" /> Sin recordatorio</label>
+              </div>
+              <p class="hint" style="margin:0;">Te avisaremos el 12 de agosto a las 17:00.</p>
+              <div class="banner calm" style="font-size:12.5px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="flex:none;margin-top:1px;"><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
+                Este evento empieza en 40 minutos, así que «24 horas antes» y «1 semana antes» ya no
+                pueden avisarte. Si eliges una de las dos, te avisamos ahora.
+              </div>
+              <button type="button" class="btn" style="justify-content:center;">Guardar</button>
+              <button type="button" class="btn btn-ghost" style="justify-content:center;">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone">
+          <p class="phone-cap">Agenda con el conmutador · §4.1 y encargo §16</p>
+          <div class="phone-screen">
+            <div class="phone-top">Calendario · Agosto 2026</div>
+            <div class="phone-body">
+              <div class="seg" role="tablist" aria-label="Filtrar la agenda">
+                <button type="button" role="tab" aria-selected="false">Todo</button>
+                <button type="button" role="tab" aria-selected="true">Sigues · 3</button>
+              </div>
+
+              <div class="agenda" style="max-width:none;">
+                <div class="agenda-row">
+                  <a class="agenda-link" href="#detalle">
+                    <span class="agenda-date" aria-hidden="true"><b>12</b><span>AGO</span></span>
+                    <span class="agenda-body">
+                      <span class="chip chip-evento"><span class="dot" style="background:var(--type-series)"></span>Evento</span>
+                      <p class="agenda-title">Dune, primera parte</p>
+                      <p class="agenda-meta">18:00 · en 7 días</p>
+                    </span>
+                  </a>
+                  <button type="button" class="agenda-follow" aria-pressed="true" aria-label="Dejar de seguir «Dune, primera parte»">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+                  </button>
+                </div>
+                <div class="agenda-row">
+                  <a class="agenda-link" href="#detalle">
+                    <span class="agenda-date" aria-hidden="true"><b>19</b><span>AGO</span></span>
+                    <span class="agenda-body">
+                      <span class="chip chip-evento"><span class="dot" style="background:var(--type-series)"></span>Evento</span>
+                      <p class="agenda-title">Charla con la traductora</p>
+                      <p class="agenda-meta">20:30 · Online</p>
+                    </span>
+                  </a>
+                  <button type="button" class="agenda-follow" aria-pressed="true" aria-label="Dejar de seguir «Charla con la traductora»">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+                  </button>
+                </div>
+
+                <button type="button" class="collapsed-head" aria-expanded="false">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                  Finalizados · 1
+                </button>
+              </div>
+            </div>
+            <div class="phone-tabbar">
+              <div>Inicio</div><div>Colección</div><div>Buscar</div><div class="on">Clubes</div><div>Perfil</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 ------------------------------------------------------------- -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 9 · encargo §9.3 · la notificación</p>
+      <h2>El recordatorio, en la campana y en el sistema</h2>
+    </header>
+    <div class="grid-2">
+      <div class="spec-frame">
+        <p class="phone-cap">Bandeja de la campana</p>
+        <div class="card rail-box">
+          <ul class="flist">
+            <li style="align-items:flex-start;">
+              <span class="av" style="width:34px;height:34px;">MR</span>
+              <span style="min-width:0;flex:1;">
+                <span style="font-size:13.5px;">
+                  <strong>Mañana</strong>: «Club de verano: Dune, primera parte», del Club Horizonte,
+                  empieza a las 18:00.
+                </span><br />
+                <span class="un">hace 5 minutos</span>
+              </span>
+              <span class="dot" style="border-radius:999px;background:var(--accent);margin-top:6px;"></span>
+            </li>
+            <li style="align-items:flex-start;">
+              <span class="av" style="width:34px;height:34px;">MR</span>
+              <span style="min-width:0;flex:1;">
+                <span style="font-size:13.5px;">
+                  Marta Ruiz cambió la fecha de «Charla con la traductora»: ahora el 19 de agosto a
+                  las 20:30.
+                </span><br />
+                <span class="un">ayer</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="spec-frame">
+        <p class="phone-cap">Notificación del sistema (push)</p>
+        <div class="card" style="padding:13px;display:flex;gap:11px;align-items:flex-start;">
+          <span style="width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-foreground);display:grid;place-items:center;font-family:var(--serif);font-weight:600;font-size:15px;flex:none;">B</span>
+          <span>
+            <strong style="font-size:13.5px;">Biblioshare</strong><br />
+            <span style="font-size:13px;color:var(--foreground-soft);">
+              Evento mañana: Club de verano: Dune, primera parte, del Club Horizonte, comienza a
+              las 18:00.
+            </span>
+          </span>
+        </div>
+        <p class="note" style="margin-top:16px;">
+          El enlace abre la ficha del evento, no la del club. El <code>online_url</code>
+          <strong>nunca</strong> viaja en la notificación: acabaría visible en una pantalla
+          bloqueada.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 ------------------------------------------------------------ -->
+  <section class="spec">
+    <header>
+      <p class="label">Especimen 10 · encargo §4 final · accesibilidad</p>
+      <h2>Teclado, foco y etiquetas</h2>
+    </header>
+    <div class="spec-frame">
+      <table class="a11y">
+        <thead>
+          <tr><th>Elemento</th><th>Teclado</th><th>Lo que anuncia</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Fila de la agenda</td>
+            <td>Tabulador la alcanza; <kbd>Enter</kbd> abre la ficha</td>
+            <td>Un enlace con la fecha completa, no «12 AGO»: <code>&lt;span class="sr-only"&gt;</code> lleva «miércoles 12 de agosto de 2026»</td>
+          </tr>
+          <tr>
+            <td>Campana de la fila</td>
+            <td>Es la parada de tabulador siguiente, nunca dentro del enlace</td>
+            <td><code>aria-pressed</code> más <code>aria-label</code> con el título del evento: «Seguir Charla con la traductora», alternante</td>
+          </tr>
+          <tr>
+            <td>Botón seguir de la ficha</td>
+            <td><kbd>Espacio</kbd> o <kbd>Enter</kbd>; deshabilitado mientras guarda</td>
+            <td><code>aria-busy</code> al guardar; el error va en <code>role="alert"</code> y se lee sin mover el foco</td>
+          </tr>
+          <tr>
+            <td>Selector de recordatorio</td>
+            <td>Flechas entre opciones dentro del <code>radiogroup</code>, una sola parada de tabulador</td>
+            <td>«Cuándo avisarte» como nombre del grupo, más la opción marcada</td>
+          </tr>
+          <tr>
+            <td>Panel «Ver todos»</td>
+            <td>El foco entra al abrir y vuelve al botón al cerrar; <kbd>Esc</kbd> cierra</td>
+            <td>Nombre accesible «Quién sigue este evento», con el total</td>
+          </tr>
+          <tr>
+            <td>Marca de la rejilla</td>
+            <td>No es interactiva: la celda no roba paradas de tabulador</td>
+            <td>«Evento seguido» en el texto del día, no solo como color</td>
+          </tr>
+          <tr>
+            <td>Conmutador Todo / Sigues</td>
+            <td>Flechas entre pestañas, <kbd>Tab</kbd> salta al panel</td>
+            <td><code>aria-selected</code>; el recuento va en la etiqueta, no solo como badge</td>
+          </tr>
+          <tr>
+            <td>Foco visible</td>
+            <td>Anillo de acento de 2 px con 2 px de separación, en toda la página</td>
+            <td>Lo pone <code>globals.css</code> a nivel global; ningún componente lo apaga</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById("theme");
+    var state = document.getElementById("theme-state");
+    btn.addEventListener("click", function () {
+      var dark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+      btn.textContent = dark ? "Cambiar a oscuro" : "Cambiar a claro";
+      state.textContent = dark ? "Tema: claro" : "Tema: oscuro";
+    });
+
+    // Los radios del prototipo pintan su fila activa, para que el especimen
+    // sea comprobable con el ratón y con el teclado.
+    document.querySelectorAll('.radios').forEach(function (group) {
+      group.addEventListener("change", function () {
+        group.querySelectorAll(".radio").forEach(function (row) {
+          row.classList.toggle("on", row.querySelector("input").checked);
+        });
+      });
+    });
+
+    document.querySelectorAll(".agenda-follow").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var on = b.getAttribute("aria-pressed") === "true";
+        b.setAttribute("aria-pressed", on ? "false" : "true");
+      });
+    });
+  })();
+</script>

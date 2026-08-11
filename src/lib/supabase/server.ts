@@ -42,6 +42,30 @@ export async function createClient() {
   );
 }
 
+// Cliente de servidor SIN sesión: mismas credenciales anónimas, pero SIN leer
+// cookies. Es SÍNCRONO a propósito —no hay `await cookies()`— y ese es todo el
+// punto: una función que solo use este cliente no toca APIs de request, así que
+// no ata la ruta al render dinámico y podrá envolverse en `use cache` (Fase 4 de
+// la auditoría #448).
+//
+// Solo vale para lecturas cuyo resultado es IDÉNTICO para todo el mundo: RLS
+// sigue aplicando con rol ANÓNIMO, así que devuelve exactamente lo que ve un
+// visitante sin cuenta —el subconjunto público—. Para catálogo, ediciones,
+// créditos y sagas eso es todo (esas tablas son `SELECT USING (true)`); para el
+// agregado de notas es, por diseño, la media de los perfiles PÚBLICOS (issue
+// #436). NUNCA lo uses para datos que dependan de quién mira ni para escribir
+// (el rol anónimo no tiene grants de escritura).
+export function createPublicClient() {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      // Sin sesión: no hay cookies que leer ni que escribir.
+      cookies: { getAll: () => [], setAll: () => {} },
+    }
+  );
+}
+
 // La sesión del usuario, UNA vez por petición.
 //
 // `auth.getUser()` no decodifica el JWT en local: hace una llamada de red a

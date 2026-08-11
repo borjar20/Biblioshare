@@ -1,11 +1,16 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getSagaRoutes, sortCuratedRoutes } from "@/lib/sagas/get-saga-routes";
 import { countRouteEntries, type RawRouteEntryCountRow } from "@/lib/sagas/count-route-entries";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { RoutesManager } from "@/components/saga/routes/routes-manager";
 import type { RouteRowData } from "@/components/saga/routes/route-row";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 // Curación de itinerarios. Gate DURO collaborator+, igual que
 // /saga/[id]/editar: gestionar rutas SÍ es curación (a diferencia de
@@ -15,7 +20,7 @@ export default async function SagaRoutesPage({ params }: { params: Promise<{ id:
   const supabase = await createClient();
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/saga/${id}/rutas`));
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(sagaHref(id));
 
   // `show_map` decide el TEXTO de la fila del mapa generado, no si se pinta:

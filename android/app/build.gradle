@@ -1,4 +1,7 @@
 apply plugin: 'com.android.application'
+// Kotlin + Compose compiler, solo para los widgets Glance (src/main/java/**/widgets/).
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 // Firma de release. Ni la keystore ni sus contrasenas se versionan: viven fuera
 // del repo y se declaran en `android/keystore.properties` (gitignorado), con la
@@ -28,8 +31,8 @@ android {
         applicationId "app.biblioshare.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode project.hasProperty('appVersionCode') ? (project.appVersionCode as Integer) : 1
+        versionName project.hasProperty('appVersionName') ? project.appVersionName : "1.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -46,6 +49,14 @@ android {
                 keyPassword keystoreProperties['keyPassword']
             }
         }
+    }
+
+    // Mismo target que el Java 21 que fija capacitor.build.gradle.
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+    buildFeatures {
+        compose = true
     }
 
     buildTypes {
@@ -71,7 +82,19 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Widgets nativos (Jetpack Glance). Trae Compose runtime y coroutines.
+    implementation "androidx.glance:glance-appwidget:1.1.1"
+    // Refresco de widgets con la app cerrada (arquitectura híbrida, Fase 2):
+    // WorkManager ejecuta el fetch a Supabase periódicamente respetando Doze.
+    implementation "androidx.work:work-runtime-ktx:2.10.1"
+    // Previews de los widgets en Android Studio (src/debug/**/WidgetPreviews.kt):
+    // pintan cada estado sin emulador y sin instalar nada. Solo debug: no viajan
+    // en el APK de release.
+    debugImplementation "androidx.glance:glance-preview:1.1.1"
+    debugImplementation "androidx.glance:glance-appwidget-preview:1.1.1"
     testImplementation "junit:junit:$junitVersion"
+    // org.json real para los tests JVM del snapshot (en unit tests el del SDK es un stub).
+    testImplementation "org.json:json:20240303"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

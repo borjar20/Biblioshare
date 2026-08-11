@@ -56,7 +56,7 @@ export async function CommunityPanel({
       <section className="order-2 flex flex-col lg:order-none">
         {/* `.h5` con el recuento dentro ("Reseñas · 312") como el frame: la
             cifra sale del mismo dato que el rótulo, no es un badge aparte. */}
-        <h2 className="mb-[11px] font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase lg:mb-[15px]">
+        <h2 className="mb-[11px] label-section lg:mb-[15px]">
           {t("reviews")}
           {reviewCount > 0 && ` · ${reviewCount}`}
         </h2>
@@ -74,6 +74,7 @@ export async function CommunityPanel({
                 avatarUrl={review.avatarUrl}
                 dateLabel={shortDate(review.watchedOn)}
                 rating={review.rating}
+                itemType={itemType}
                 text={review.text}
                 knownUsernames={episodeKnownUsernames ?? []}
                 chip={
@@ -89,6 +90,7 @@ export async function CommunityPanel({
                   viewerReacted={review.viewerReacted}
                   commentCount={review.commentCount}
                   comments={review.comments}
+                  reactions={review.reactions}
                   knownUsernames={episodeKnownUsernames ?? []}
                   viewerLoggedIn={viewerLoggedIn}
                 />
@@ -106,6 +108,7 @@ export async function CommunityPanel({
                 avatarUrl={review.avatarUrl}
                 dateLabel={shortDate(review.finishedOn)}
                 rating={review.rating}
+                itemType={itemType}
                 text={review.text}
                 knownUsernames={community.knownUsernames}
                 chip={
@@ -114,15 +117,20 @@ export async function CommunityPanel({
                   ) : undefined
                 }
               >
-                <ReviewInteractions
-                  interactionTargetId={review.interactionTargetId}
-                  reactionCount={review.reactionCount}
-                  viewerReacted={review.viewerReacted}
-                  commentCount={review.commentCount}
-                  comments={review.comments}
-                  knownUsernames={community.knownUsernames}
-                  viewerLoggedIn={viewerLoggedIn}
-                />
+                {/* Sin post (reseña de un import no autopublicado) no hay hilo
+                    que enganchar: la reseña se muestra sin barra de interacción. */}
+                {review.interactionTargetId && (
+                  <ReviewInteractions
+                    interactionTargetId={review.interactionTargetId}
+                    reactionCount={review.reactionCount}
+                    viewerReacted={review.viewerReacted}
+                    commentCount={review.commentCount}
+                    comments={review.comments}
+                    reactions={review.reactions}
+                    knownUsernames={community.knownUsernames}
+                    viewerLoggedIn={viewerLoggedIn}
+                  />
+                )}
               </ReviewRow>
             ))}
           </div>

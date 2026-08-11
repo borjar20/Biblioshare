@@ -37,8 +37,8 @@ describe("durationBucket", () => {
     expect(durationBucket(301)).toBe("long");
   });
 
-  it("sin estimación no hay bucket", () => {
-    expect(durationBucket(null)).toBeNull();
+  it("sin estimación cae en el bucket 'none'", () => {
+    expect(durationBucket(null)).toBe("none");
   });
 });
 
@@ -62,6 +62,20 @@ describe("eligibleItems", () => {
   it("filtra por duración y excluye los ítems sin estimación", () => {
     const out = eligibleItems(pool, { ...DEFAULT_FILTERS, dur: "short" });
     expect(out.map((i) => i.itemId)).toEqual(["b1", "m1"]);
+  });
+
+  it("'sin estimar' recoge justo los ítems sin duración", () => {
+    const out = eligibleItems(pool, { ...DEFAULT_FILTERS, dur: "none" });
+    expect(out.map((i) => i.itemId)).toEqual(["b2"]);
+  });
+
+  it("los cuatro tramos suman 'Cualquiera' (sin huecos ni solapes)", () => {
+    const bands = ["short", "med", "long", "none"] as const;
+    const total = bands.reduce(
+      (n, dur) => n + eligibleItems(pool, { ...DEFAULT_FILTERS, dur }).length,
+      0
+    );
+    expect(total).toBe(eligibleItems(pool, DEFAULT_FILTERS).length);
   });
 
   it("'sin empezar' deja solo los fresh", () => {

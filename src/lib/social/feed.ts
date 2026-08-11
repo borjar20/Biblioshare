@@ -1,11 +1,17 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import type { AnchorRef, AnchorType } from "@/lib/catalog/anchor";
 import type { MediaStatus } from "@/lib/library/types";
-import { getInteractionSummary, type InteractionComment } from "./interactions";
+import type { PostKind } from "./post-actions";
+import {
+  emptyReactions,
+  getInteractionSummary,
+  type InteractionComment,
+  type ReactionsByKind,
+} from "./interactions";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
-import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
-import { groupPersonEntries, type PersonGroupEntry } from "./group-feed-entries";
+import type { PersonGroupEntry } from "./group-feed-entries";
 import {
   compareEntries,
   cursorSourceFilter,
@@ -15,72 +21,94 @@ import {
   parseCursor,
 } from "./feed-order";
 
-// Feed de actividad personal (EPIC-05, Bloque C, SD-1). On-read fan-out sobre
-// cuatro tablas fuente ya existentes — sin tabla nueva. La RLS de cada fuente
-// (can_view_profile) ya resuelve la visibilidad "seguidor aceptado"; el feed
-// no necesita lógica de visibilidad propia, solo filtra por seguidos.
+// Feed de actividad social (posts como capa canónica). Antes esto era un
+// fan-out on-read sobre seis tablas fuente; ahora lee UNA tabla, `posts`
+// (kind = thought|finished|progressed|started|dropped|watched), y mezcla la
+// actividad de club como segunda fuente. El feed ordena por fecha de
+// PUBLICACIÓN (`posts.created_at`), no por la fecha semántica backdateada: un
+// terminado marcado «la semana pasada» aparece al publicarlo. Cada post es su
+// propia tarjeta — sin agrupación de presentación, así que el cursor keyset es
+// trivial `(created_at, id)` y el corte de página es un `slice(pageSize)`.
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type FeedVerb =
+  // "added" ya no lo emite ningún post (añadir a la biblioteca no publica);
+  // se conserva en la unión porque `shared-activity.ts` (compartir a un club,
+  // Bloque F) sigue derivando previews desde las tablas fuente legadas.
   | "added"
   | "progressed"
   | "finished"
   | "rated"
   | "reviewed"
-  | "watchedEpisode";
+  | "watchedEpisode"
+  | "started"
+  | "dropped"
+  | "thought";
 
 export type FeedEvent = {
-  id: string; // `${sourceTable}:${rowId}`
+  id: string; // `posts:${postId}` en el feed; etiqueta de fuente en previews legadas
+  // El id estable del post → ruta propia `/post/[id]` (deep-link de
+  // notificaciones y superficie de lectura). Opcional: solo lo llevan los
+  // eventos que salen de una fila `posts` (el feed). Las previews legadas
+  // (`recent-reviews`, `shared-activity`, que derivan de pases/sesiones/reseñas
+  // sin post) lo omiten.
+  postId?: string;
+  // El `kind` crudo del post. El despacho de tarjeta (feed-item.tsx) enruta por
+  // aquí; `verb` es una vista derivada de `kind`+reseña que conservan las
+  // tarjetas existentes. Opcional por el mismo motivo que `postId`.
+  kind?: PostKind;
   actorId: string;
   actorUsername: string;
   actorDisplayName: string | null;
   actorAvatarUrl: string | null;
   verb: FeedVerb;
+  // itemType/itemId/itemTitle/itemCoverUrl/itemSubtitle: comunes a las tarjetas
+  // de catálogo. Para "thought" el ancla real (polimórfica, puede ser
+  // saga/persona) vive en `thought.anchor` — ItemType no puede representar
+  // saga/persona, así que en esos casos itemType lleva un valor INERTE Y
+  // POTENCIALMENTE FALSO (itemType:"book" con itemId = uuid de la saga). El
+  // despacho del feed enruta verb:"thought" a su propia tarjeta ANTES de que
+  // nada lea este par.
   itemType: ItemType;
   itemId: string;
   itemTitle: string;
   itemCoverUrl: string | null;
-  // Autor del catálogo — solo los libros lo tienen; películas/series no
-  // guardan creador, así que queda null.
   itemSubtitle: string | null;
-  // Estado del pase; solo informa el verbo "added".
+  // Estado del pase; lo informaba el verbo "added" (legado, sin uso en posts).
   entryStatus: MediaStatus | null;
-  // Solo para `added`: pertenencia del visitante actual, resuelta por página.
+  // Solo "added" (legado): pertenencia del visitante, resuelta por página.
   viewerHasActivePass?: boolean;
-  // Fecha SEMÁNTICA, solo para presentación: el «hace x» de la tarjeta y la
-  // ventana de agrupación. Puede llevar la sustitución de
-  // `sessionRelativeBasis`, así que NO existe como columna y NO ordena.
+  // Autor o admin/moderador global: puede borrar el post. Resuelto por página en
+  // un batch (`moderatable_target_ids('post', …)`), nunca un RPC por tarjeta.
+  viewerCanDelete?: boolean;
+  // Fecha de publicación (`posts.created_at`). Sirve al «hace x» de la tarjeta y
+  // a las cabeceras de día del perfil. Con posts, orderDate === sortDate ===
+  // eventDate: una sola columna timestamptz, sin la antigua sustitución de
+  // `sessionRelativeBasis` (el feed ordena por publicación). Se conservan las
+  // tres para no reescribir `shared-activity.ts` ni la unión `FeedEntry`.
   eventDate: string;
-  // Columna de fecha de la fuente, EN CRUDO: el primer componente de la clave
-  // de orden (ver feed-order.ts). Existe tal cual en la tabla, que es lo que
-  // permite que el filtro SQL de cada query sea el espejo exacto de
-  // `isAfterCursor` en vez de una aproximación.
   orderDate: string;
-  // Hora real de registro. SIEMPRE presente: es el segundo componente de la
-  // clave de orden. `orderDate` puede ser date-only —finished_on, watched_on,
-  // session_date— y por sí solo no distingue dos eventos del mismo día.
   sortDate: string;
   rating: number | null;
   reviewExcerpt: string | null;
   episode: { season: number; episode: number; title: string | null } | null;
-  // Meta de la tarjeta de reseña (variant C): solo se rellena para
-  // finished/rated/reviewed (bucle de diary). El resto de verbos van a null.
+  // Meta de la tarjeta de reseña: solo `finished`. El resto va a null.
   reviewMeta: { readingDays: number | null; totalPages: number | null } | null;
-  // `progress_sessions.note` (la copia privada) NUNCA se sirve aquí, a
-  // propósito: sigue sin política de lectura pública — es el "por ahora nadie
-  // más la ve" que promete el compositor. El texto que SÍ se sirve es la fila
-  // de `notes` que el usuario haya marcado pública (`notes.is_public = true`,
-  // política de Task 1), resuelta en un batch aparte por `session_id` — nunca
-  // esta columna.
   progress: {
     durationMinutes: number | null;
-    page: number | null;      // position.page de la sesión (libros)
-    percent: number | null;   // page / books.total_pages * 100, si ambos existen
-    note: { body: string; isSpoiler: boolean } | null; // nota PÚBLICA (notes.is_public)
+    page: number | null;
+    percent: number | null;
+    note: { body: string; isSpoiler: boolean } | null;
   } | null;
+  // Solo `thought`: cuerpo + ancla polimórfica. El ancla NO vive en itemType/
+  // itemId (ver comentario de arriba).
+  thought: { body: string; isSpoiler: boolean; anchor: AnchorRef } | null;
+  // El feed emite SIEMPRE `post` (el target canónico del post). Las previews
+  // legadas (`recent-reviews`) siguen sirviendo `diary_entry`/`episode_watch`
+  // sobre las mismas tarjetas, así que la unión los conserva.
   interactionTarget: {
-    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session";
+    targetType: "post" | "diary_entry" | "episode_watch" | "pass" | "progress_session" | "thought";
     targetId: string;
     interactionTargetId: string;
   } | null;
@@ -88,23 +116,27 @@ export type FeedEvent = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
-// Forma exclusivamente interna mientras getFeed agrupa las filas fuente y
-// resuelve los targets en batch. Nunca cruza el límite del loader: la forma
-// pública de arriba exige el UUID canónico para todo evento interactivo.
-type FeedEventDraft = Omit<FeedEvent, "interactionTarget"> & {
+// Forma interna mientras se resuelve el target canónico en batch. Nunca cruza el
+// límite del loader. Todo evento del feed sale de una fila `posts`, así que aquí
+// `postId` es OBLIGATORIO (en la forma pública es opcional por las previews
+// legadas) y el target es siempre `post`, aún sin resolver.
+type FeedEventDraft = Omit<FeedEvent, "interactionTarget" | "postId"> & {
+  postId: string;
   interactionTarget: {
-    targetType: "diary_entry" | "episode_watch" | "pass" | "progress_session";
+    targetType: "post";
     targetId: string;
     interactionTargetId: string | null;
   } | null;
 };
 
-// El feed mezcla dos cosas que no comparten forma: los eventos de personas
-// (siempre sobre un ítem del catálogo) y los de club (una actividad, que puede
-// no tener ítem — una tierlist, un reto). En vez de forzar un ítem falso en el
-// evento de club, la lista transporta la unión y cada tarjeta lee lo suyo.
+// El feed mezcla eventos de persona (un post) y de club (una actividad, que
+// puede no tener ítem). En vez de forzar un ítem falso, la lista transporta la
+// unión y cada tarjeta lee lo suyo. `person-group` lo produce solo el perfil
+// (agrupación por día, `profile-feed-buckets.ts`); getFeed emite entradas
+// singleton `person` y `club`.
 export type FeedEntry =
   | { source: "person"; id: string; eventDate: string; orderDate: string; sortDate: string; event: FeedEvent }
   | PersonGroupEntry
@@ -113,17 +145,13 @@ export type FeedEntry =
 export type FeedPage = {
   events: FeedEntry[];
   nextCursor: string | null;
-  // Usernames @mencionados (en reviewExcerpt y en los comentarios de los
-  // eventos de persona de esta página) que existen de verdad — resuelto en
-  // UNA query. Los eventos de club (ClubFeedCard) no están cableados a
-  // MentionText (fuera de alcance de la Tarea 7).
   knownUsernames: string[];
 };
 
-// El set del frame A. Es de selección única: "Reseñas" ya no se combina con un
-// tipo como hacía el antiguo reviewsOnly.
+// El set del frame A. Selección única.
 //   · book   → libros
-//   · screen → "Pantalla": películas Y series juntas
+//   · screen → "Pantalla": películas Y series
+//   · reviews→ solo terminados con reseña
 //   · clubs  → solo la actividad de tus clubes
 export type FeedFilter = "reviews" | "book" | "screen" | "clubs";
 
@@ -140,21 +168,16 @@ export type FeedOptions = {
   /** Sin filtro = todo. */
   filter?: FeedFilter;
   /**
-   * Feed de un actor concreto (la pestaña Actividad del perfil, plan 05 P4):
-   * se salta la consulta de `follows` y sirve los eventos de ESE usuario en
-   * vez de los de tus seguidos. Los clubes quedan fuera — la Actividad de un
-   * perfil es lo que esa persona hizo con sus obras, no sus clubes.
+   * Feed de un actor concreto (la pestaña Actividad del perfil): sirve los
+   * posts de ESE usuario en vez de los de tus seguidos. Los clubes quedan fuera.
    */
   actorId?: string;
 };
 
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_EXCERPT_LENGTH = 200;
-
-// El orden total, el formato del cursor y el filtro de las queries viven en
-// `./feed-order` (módulo puro, con sus propios tests): la clave de orden, el
-// filtro SQL y `isAfterCursor` tienen que moverse siempre juntos, o la
-// paginación pierde o repite filas sin romper ningún tipo.
+const POST_COLUMNS =
+  "id, author_id, kind, anchor_type, anchor_id, source_kind, source_id, body, is_spoiler, created_at";
 
 function excerpt(text: string | null): string | null {
   if (!text) return null;
@@ -169,12 +192,310 @@ function verbForReviewable(rating: number | null, review: string | null, floor: 
   return floor;
 }
 
+// Ancla saga/persona no cabe en ItemType: cae a un placeholder inerte que el
+// despacho de "thought" nunca lee (ver comentario de itemType en FeedEvent).
+function itemTypeForAnchor(anchor: AnchorType): ItemType {
+  return anchor === "saga" || anchor === "person" ? "book" : anchor;
+}
+
+// Menciones @usuario a resolver de un evento ya resuelto (cuerpo del pensamiento,
+// excerpt de reseña, nota de progreso y comentarios prefetch).
+function mentionTextsOf(event: { reviewExcerpt: string | null; thought: FeedEvent["thought"]; progress: FeedEvent["progress"]; comments: InteractionComment[] }): string[] {
+  return [
+    ...(event.reviewExcerpt ? [event.reviewExcerpt] : []),
+    ...(event.thought?.body ? [event.thought.body] : []),
+    ...(event.progress?.note?.body ? [event.progress.note.body] : []),
+    ...event.comments.map((c) => c.body),
+  ];
+}
+
+// Resuelve en batch el catálogo del ancla + las filas fuente para display
+// (pass/pass_reviews en finished, progress_sessions en progressed,
+// episode_watches en watched) + las identidades de actor, y construye un draft
+// por post. Compartido por el feed (`getFeed`) y la ruta `/post/[id]`
+// (`getPostEvent`) para no duplicar el mapeo por kind. Descarta un post cuyo
+// autor o ancla no resuelvan, y —si `reviewsOnly`— un `finished` sin reseña.
+async function resolvePostDrafts(
+  supabase: SupabaseServerClient,
+  postRows: PostRow[],
+  reviewsOnly: boolean,
+): Promise<FeedEventDraft[]> {
+  if (postRows.length === 0) return [];
+
+  const anchorIdsByType: Record<AnchorType, Set<string>> = {
+    book: new Set(),
+    movie: new Set(),
+    series: new Set(),
+    saga: new Set(),
+    person: new Set(),
+  };
+  for (const r of postRows) anchorIdsByType[r.anchor_type].add(r.anchor_id);
+
+  const finishedSourceIds = postRows
+    .filter((r) => r.kind === "finished" && r.source_kind === "pass" && r.source_id)
+    .map((r) => r.source_id!);
+  const progressedSourceIds = postRows
+    .filter((r) => r.kind === "progressed" && r.source_kind === "progress_session" && r.source_id)
+    .map((r) => r.source_id!);
+  const watchedSourceIds = postRows
+    .filter((r) => r.kind === "watched" && r.source_kind === "episode_watch" && r.source_id)
+    .map((r) => r.source_id!);
+
+  const [books, movies, series, sagas, people, passRows, reviewRows, sessionRows, episodeRows] =
+    await Promise.all([
+      anchorIdsByType.book.size
+        ? supabase.from("books").select("id, title, author, cover_url, total_pages").in("id", [...anchorIdsByType.book])
+        : Promise.resolve({ data: [] as BookRow[], error: null }),
+      anchorIdsByType.movie.size
+        ? supabase.from("movies").select("id, title, cover_url").in("id", [...anchorIdsByType.movie])
+        : Promise.resolve({ data: [] as ScreenRow[], error: null }),
+      anchorIdsByType.series.size
+        ? supabase.from("series").select("id, title, cover_url").in("id", [...anchorIdsByType.series])
+        : Promise.resolve({ data: [] as ScreenRow[], error: null }),
+      anchorIdsByType.saga.size
+        ? supabase.from("sagas").select("id, name, cover_url").in("id", [...anchorIdsByType.saga])
+        : Promise.resolve({ data: [] as NamedRow[], error: null }),
+      anchorIdsByType.person.size
+        ? supabase.from("people").select("id, name, photo_url").in("id", [...anchorIdsByType.person])
+        : Promise.resolve({ data: [] as PersonRow[], error: null }),
+      finishedSourceIds.length
+        ? supabase.from("passes").select("id, started_on, finished_on, rating").in("id", finishedSourceIds)
+        : Promise.resolve({ data: [] as PassRow[], error: null }),
+      finishedSourceIds.length
+        ? supabase.from("pass_reviews").select("id, review").in("id", finishedSourceIds)
+        : Promise.resolve({ data: [] as { id: string | null; review: string | null }[], error: null }),
+      progressedSourceIds.length
+        ? supabase.from("progress_sessions").select("id, duration_minutes, position").in("id", progressedSourceIds)
+        : Promise.resolve({ data: [] as SessionRow[], error: null }),
+      watchedSourceIds.length
+        ? supabase
+            .from("episode_watches")
+            .select("id, series_id, season_number, episode_number, rating, review")
+            .in("id", watchedSourceIds)
+        : Promise.resolve({ data: [] as EpisodeRow[], error: null }),
+    ]);
+  for (const r of [books, movies, series, sagas, people, passRows, reviewRows, sessionRows, episodeRows]) {
+    if (r.error) throw r.error;
+  }
+
+  const catalogByKey = new Map<
+    string,
+    { title: string; coverUrl: string | null; subtitle: string | null; totalPages: number | null }
+  >();
+  for (const r of books.data ?? [])
+    catalogByKey.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: r.author, totalPages: r.total_pages });
+  for (const r of movies.data ?? [])
+    catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null, totalPages: null });
+  for (const r of series.data ?? [])
+    catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null, totalPages: null });
+  for (const r of sagas.data ?? [])
+    catalogByKey.set(`saga:${r.id}`, { title: r.name, coverUrl: r.cover_url, subtitle: null, totalPages: null });
+  for (const r of people.data ?? [])
+    catalogByKey.set(`person:${r.id}`, { title: r.name, coverUrl: r.photo_url, subtitle: null, totalPages: null });
+
+  function anchorFor(type: AnchorType, id: string): AnchorRef | null {
+    const meta = catalogByKey.get(`${type}:${id}`);
+    if (!meta) return null;
+    return { type, id, title: meta.title, imageUrl: meta.coverUrl, subtitle: meta.subtitle };
+  }
+
+  const passById = new Map((passRows.data ?? []).map((r) => [r.id, r]));
+  const reviewById = new Map((reviewRows.data ?? []).map((r) => [r.id, r.review]));
+  const sessionById = new Map((sessionRows.data ?? []).map((r) => [r.id, r]));
+  const episodeById = new Map((episodeRows.data ?? []).map((r) => [r.id, r]));
+
+  const episodeSeriesIds = [...new Set((episodeRows.data ?? []).map((r) => r.series_id))];
+  const { data: episodeTitles, error: episodeTitlesError } = episodeSeriesIds.length
+    ? await supabase
+        .from("series_episodes")
+        .select("series_id, season_number, episode_number, title")
+        .in("series_id", episodeSeriesIds)
+    : { data: [] as EpisodeTitleRow[], error: null };
+  if (episodeTitlesError) throw episodeTitlesError;
+  const titleByEpisode = new Map(
+    (episodeTitles ?? []).map((e) => [`${e.series_id}:${e.season_number}:${e.episode_number}`, e.title]),
+  );
+
+  const actorIds = [...new Set(postRows.map((r) => r.author_id))];
+  const { data: actors, error: actorsError } = actorIds.length
+    ? await supabase
+        .from("profile_identities")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", actorIds)
+    : { data: [] as ActorRow[], error: null };
+  if (actorsError) throw actorsError;
+  const actorById = new Map(
+    (actors ?? [])
+      .filter((a): a is ActorRow & { user_id: string; username: string } => a.user_id != null && a.username != null)
+      .map((a) => [a.user_id, a]),
+  );
+
+  const drafts: FeedEventDraft[] = [];
+  for (const r of postRows) {
+    const actor = actorById.get(r.author_id);
+    if (!actor) continue;
+    const anchor = anchorFor(r.anchor_type, r.anchor_id);
+    // Ancla borrada (obra eliminada) ⇒ se descarta el evento.
+    if (!anchor) continue;
+
+    // "Reseñas": el kind ya es 'finished' (filtro SQL); aquí se descarta el
+    // terminado SIN texto visible. Se hace tras resolver el pase.
+    const pass = r.source_id ? passById.get(r.source_id) : undefined;
+    const reviewText = r.kind === "finished" && r.source_id ? reviewById.get(r.source_id) ?? null : null;
+    if (reviewsOnly && (reviewText ?? "").trim() === "") continue;
+
+    const base = {
+      id: `posts:${r.id}`,
+      postId: r.id,
+      kind: r.kind,
+      actorId: r.author_id,
+      actorUsername: actor.username,
+      actorDisplayName: actor.display_name,
+      actorAvatarUrl: actor.avatar_url,
+      itemType: itemTypeForAnchor(r.anchor_type),
+      itemId: r.anchor_id,
+      itemTitle: anchor.title,
+      itemCoverUrl: anchor.imageUrl,
+      itemSubtitle: anchor.subtitle,
+      entryStatus: null,
+      eventDate: r.created_at,
+      orderDate: r.created_at,
+      sortDate: r.created_at,
+      rating: null as number | null,
+      reviewExcerpt: null as string | null,
+      episode: null as FeedEvent["episode"],
+      reviewMeta: null as FeedEvent["reviewMeta"],
+      progress: null as FeedEvent["progress"],
+      thought: null as FeedEvent["thought"],
+      interactionTarget: { targetType: "post" as const, targetId: r.id, interactionTargetId: null },
+      reactionCount: 0,
+      viewerReacted: false,
+      commentCount: 0,
+      comments: [],
+      reactions: emptyReactions(),
+    };
+
+    if (r.kind === "thought") {
+      drafts.push({ ...base, verb: "thought", thought: { body: r.body ?? "", isSpoiler: r.is_spoiler, anchor } });
+      continue;
+    }
+    if (r.kind === "finished") {
+      const totalPages = catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.totalPages ?? null;
+      drafts.push({
+        ...base,
+        verb: verbForReviewable(pass?.rating ?? null, reviewText, "finished"),
+        rating: pass?.rating ?? null,
+        reviewExcerpt: excerpt(reviewText),
+        reviewMeta: {
+          readingDays:
+            r.anchor_type === "book" && pass?.started_on && pass?.finished_on
+              ? Math.max(1, Math.round((Date.parse(pass.finished_on) - Date.parse(pass.started_on)) / 86_400_000) + 1)
+              : null,
+          totalPages,
+        },
+      });
+      continue;
+    }
+    if (r.kind === "progressed") {
+      const session = r.source_id ? sessionById.get(r.source_id) : undefined;
+      const pos = (session?.position ?? {}) as { page?: number };
+      const page = typeof pos.page === "number" ? pos.page : null;
+      const totalPages = catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.totalPages ?? null;
+      const percent = page != null && totalPages ? Math.min(100, Math.round((page / totalPages) * 100)) : null;
+      drafts.push({
+        ...base,
+        verb: "progressed",
+        progress: {
+          durationMinutes: session?.duration_minutes ?? null,
+          page,
+          percent,
+          // El cuerpo del post ES la nota pública (backfill) o el comentario al
+          // compartir; la copia privada de la sesión nunca se sirve.
+          note: r.body ? { body: r.body, isSpoiler: r.is_spoiler } : null,
+        },
+      });
+      continue;
+    }
+    if (r.kind === "watched") {
+      const ep = r.source_id ? episodeById.get(r.source_id) : undefined;
+      drafts.push({
+        ...base,
+        verb: verbForReviewable(ep?.rating ?? null, ep?.review ?? null, "watchedEpisode"),
+        rating: ep?.rating ?? null,
+        reviewExcerpt: excerpt(ep?.review ?? null),
+        episode: ep
+          ? {
+              season: ep.season_number,
+              episode: ep.episode_number,
+              title: titleByEpisode.get(`${ep.series_id}:${ep.season_number}:${ep.episode_number}`) ?? null,
+            }
+          : null,
+      });
+      continue;
+    }
+    // started / dropped: hito sin display extra.
+    drafts.push({ ...base, verb: r.kind === "started" ? "started" : "dropped" });
+  }
+
+  return drafts;
+}
+
+// Resuelve borrado (dueño o admin/moderador global, un batch) e interacciones
+// (Bloque B) sobre un conjunto de drafts, MUTÁNDOLOS in-place. Sin viewer,
+// `viewerCanDelete` queda undefined (falsy).
+async function resolvePostInteractions(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  drafts: FeedEventDraft[],
+): Promise<void> {
+  if (drafts.length === 0) return;
+
+  if (viewerId) {
+    const { data: moderatablePostIds, error: moderatableError } = await supabase.rpc("moderatable_target_ids", {
+      candidate_target_type: "post",
+      candidate_target_ids: drafts.map((e) => e.postId),
+    });
+    if (moderatableError) throw moderatableError;
+    const moderatable = new Set((moderatablePostIds ?? []) as string[]);
+    for (const e of drafts) {
+      e.viewerCanDelete = e.actorId === viewerId || moderatable.has(e.postId);
+    }
+  }
+
+  const summaries = await getInteractionSummary(supabase, "post", drafts.map((e) => e.postId));
+  for (const e of drafts) {
+    if (!e.interactionTarget) continue;
+    const s = summaries.get(e.interactionTarget.targetId);
+    if (!s) throw new Error(`Interaction summary missing for post:${e.interactionTarget.targetId}`);
+    e.interactionTarget.interactionTargetId = s.interactionTargetId;
+    e.reactionCount = s.reactionCount;
+    e.viewerReacted = s.viewerReacted;
+    e.commentCount = s.commentCount;
+    e.comments = s.comments;
+    e.reactions = s.reactions;
+  }
+}
+
+function finalizePostDraft(draft: FeedEventDraft): FeedEvent {
+  const target = draft.interactionTarget;
+  if (target && target.interactionTargetId === null) {
+    throw new Error(`Interaction target unresolved for post:${target.targetId}`);
+  }
+  return {
+    ...draft,
+    interactionTarget: target ? { ...target, interactionTargetId: target.interactionTargetId! } : null,
+  };
+}
+
 export async function getFeed(
   supabase: SupabaseServerClient,
   viewerId: string | null,
   options: FeedOptions = {},
 ): Promise<FeedPage> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  // Sin agrupación, `pageSize + 1` basta: la fila extra por fuente solo sirve
+  // para detectar «hay más» (ver `allExhausted` abajo).
+  const fetchLimit = pageSize + 1;
   const cursor = options.cursor ? parseCursor(options.cursor) : null;
 
   const actorId = options.actorId;
@@ -182,652 +503,254 @@ export async function getFeed(
 
   const filter = options.filter;
   const reviewsOnly = filter === "reviews";
-  // "Pantalla" es un filtro de la maqueta, no un item_type: son dos.
-  const itemTypes: ItemType[] | undefined =
+  // "Pantalla" no es un anchor_type: son dos. saga/persona (pensamientos) no
+  // sobreviven a book/screen — solo aparecen en la vista "todo".
+  const anchorTypes: AnchorType[] | undefined =
     filter === "book" ? ["book"] : filter === "screen" ? ["movie", "series"] : undefined;
-  const includePeople = filter !== "clubs";
-  // Los eventos de club no son de un tipo de ítem, así que no sobreviven a
-  // "Libros" ni a "Pantalla"; y no son reseñas. En el feed de un actor tampoco:
-  // los clubes son del visitante, no de la persona del perfil.
+  const includePosts = filter !== "clubs";
+  // Los clubes son del visitante, no de la persona del perfil: fuera del feed de
+  // actor. Y no son un anchor_type, así que no sobreviven a "Libros"/"Pantalla".
   const includeClubs =
-    viewerId !== null &&
-    !isActorFeed &&
-    (filter === undefined || filter === "clubs");
+    viewerId !== null && !isActorFeed && (filter === undefined || filter === "clubs");
 
   const [followResult, clubResult] = await Promise.all([
-    includePeople && !isActorFeed && viewerId !== null
+    includePosts && !isActorFeed && viewerId !== null
       ? supabase
           .from("follows")
           .select("followee_id")
           .eq("follower_id", viewerId)
           .eq("status", "accepted")
       : Promise.resolve({ data: [] as { followee_id: string }[], error: null }),
-    includeClubs
+    includeClubs && viewerId !== null
       ? getClubActivityEvents(supabase, viewerId, {
-          // Un evento de club tiene orderDate === sortDate === created_at
-          // (club-feed.ts), la MISMA forma que la fuente `added`.
-          cursorFilter: cursor
-            ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor)
-            : undefined,
-          pageSize,
+          cursorFilter: cursor ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor) : undefined,
+          pageSize: fetchLimit,
         })
       : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
   ]);
   if (followResult.error) throw followResult.error;
 
-  // Feed de actor: la fuente son sus propios eventos, no los de tus seguidos.
-  const followedIds = isActorFeed
+  // Feed de actor: solo sus posts. Feed personal: los tuyos ∪ los de tus
+  // seguidos; `follows` nunca te devuelve a ti mismo, así que te añades a mano.
+  // No hay exclusión de "added": añadir no publica, así que un import en masa no
+  // crea posts y no puede inundar la primera página (garantía del writer, Task 9).
+  const authorIds = isActorFeed
     ? [actorId]
-    : (followResult.data ?? []).map((f) => f.followee_id);
-  // Seguir a nadie ya no vacía el feed: puedes tener clubes igualmente.
-  const includePerson = includePeople && followedIds.length > 0;
-  if (!includePerson && clubResult.events.length === 0) {
+    : [...(viewerId ? [viewerId] : []), ...(followResult.data ?? []).map((f) => f.followee_id)];
+  const includePersons = includePosts && authorIds.length > 0;
+  if (!includePersons && clubResult.events.length === 0) {
     return { events: [], nextCursor: null, knownUsernames: [] };
   }
 
-  // item_type/item_id ya son columnas propias del pase (§Tarea 9): sin el
-  // paso previo por library_entries que resolvía qué entradas eran de un
-  // tipo. progress_sessions no tiene item_type propio (cuelga del pase vía
-  // pass_id), así que su query se une a diary_entries para filtrar.
-  const includeAdded = includePerson && !reviewsOnly;
-  const includeProgressed = includePerson && !reviewsOnly;
-  const includeDiary = includePerson;
-  const includeEpisodes =
-    includePerson && (itemTypes === undefined || itemTypes.includes("series"));
+  const { data: postRowsRaw, error: postsError } = includePersons
+    ? await (() => {
+        let q = supabase
+          .from("posts")
+          .select(POST_COLUMNS)
+          .in("author_id", authorIds)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(fetchLimit);
+        if (anchorTypes) q = q.in("anchor_type", anchorTypes);
+        // "Reseñas" = terminados con texto. El kind se filtra en SQL; el texto
+        // (que vive en el pase, con su privacidad) se filtra tras resolverlo.
+        if (reviewsOnly) q = q.eq("kind", "finished");
+        if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.posts, cursor));
+        return q;
+      })()
+    : { data: [] as PostRow[], error: null };
+  if (postsError) throw postsError;
+  const postRows = (postRowsRaw ?? []) as PostRow[];
 
-  const [addedResult, progressedResult, diaryResult, episodeResult] = await Promise.all([
-    includeAdded
-      ? (() => {
-          // Cada pase es su propio evento "added" (§Tarea 9, hub): un
-          // segundo pase de la misma obra (relectura) tiene su propio
-          // created_at y es tan "added" como el primero — igual que ya
-          // pasaba con "finished" más abajo, que nunca se filtró por pase
-          // activo.
-          let q = supabase
-            .from("passes")
-            .select("id, user_id, item_type, item_id, status, created_at")
-            .in("user_id", followedIds)
-            // La clave de orden entera, en columnas reales: aquí la fecha y la
-            // hora de registro son la MISMA (un alta no se puede backdatear).
-            .order("created_at", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(pageSize);
-          if (itemTypes) q = q.in("item_type", itemTypes);
-          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.added, cursor));
-          return q;
-        })()
-      : Promise.resolve({ data: [], error: null }),
-    includeProgressed
-      ? (() => {
-          let q = supabase
-            .from("progress_sessions")
-            .select(
-              // `note` NO se pide: es texto privado del autor (ver el comentario
-              // del campo `progress` en FeedEvent). `position` sí, para
-              // derivar page/percent (libros).
-              "id, user_id, pass_id, session_date, duration_minutes, created_at, position, passes!inner(item_type, item_id)"
-            )
-            .in("user_id", followedIds)
-            .order("session_date", { ascending: false })
-            .order("created_at", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(pageSize);
-          if (itemTypes) q = q.in("passes.item_type", itemTypes);
-          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.progressed, cursor));
-          return q;
-        })()
-      : Promise.resolve({ data: [], error: null }),
-    includeDiary
-      ? (() => {
-          // is_public es SOLO si el texto de la reseña es visible, no si el
-          // evento "terminó X" lo es: que alguien acabó un libro no es
-          // secreto, así que aquí no se filtra por is_public (Hallazgo 3).
-          // review tampoco se selecciona: ya no es una columna legible de
-          // diary_entries: el texto (si lo hay y es visible) se resuelve
-          // después vía pass_reviews.
-          let q = supabase
-            .from("passes")
-            // updated_at, no created_at: un pase se CREA al añadir la obra a
-            // la biblioteca y se termina después con un UPDATE
-            // (planTransition → updateActive, passes/transitions.ts), así que
-            // created_at no es la hora de registro del terminado — puede ir
-            // semanas por delante. `updated_at` lo mantiene el trigger
-            // `passes_set_updated_at` y para la transición de cierre ES ese
-            // instante. Coste aceptado: una edición posterior (nota, edición)
-            // mueve la reseña en el feed.
-            .select("id, user_id, item_type, item_id, finished_on, started_on, rating, created_at, updated_at")
-            .in("user_id", followedIds)
-            // Un pase abierto no es actividad terminada: no aparece en el
-            // feed social de gente a la que sigues.
-            .not("finished_on", "is", null)
-            .order("finished_on", { ascending: false })
-            .order("updated_at", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(pageSize);
-          if (itemTypes) q = q.in("item_type", itemTypes);
-          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.diary, cursor));
-          return q;
-        })()
-      : Promise.resolve({ data: [], error: null }),
-    includeEpisodes
-      ? (() => {
-          let q = supabase
-            .from("episode_watches")
-            .select(
-              "id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at",
-            )
-            .in("user_id", followedIds)
-            .order("watched_on", { ascending: false })
-            .order("created_at", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(pageSize);
-          if (reviewsOnly) q = q.not("review", "is", null);
-          if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.episodes, cursor));
-          return q;
-        })()
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  const drafts = await resolvePostDrafts(supabase, postRows, reviewsOnly);
 
-  if (addedResult.error) throw addedResult.error;
-  if (progressedResult.error) throw progressedResult.error;
-  if (diaryResult.error) throw diaryResult.error;
-  if (episodeResult.error) throw episodeResult.error;
+  // --- Mezcla, orden y corte de página ----------------------------------------
 
-  const addedRows = addedResult.data ?? [];
-  const progressedRows = progressedResult.data ?? [];
-  const diaryRowsRaw = diaryResult.data ?? [];
-  const episodeRows = episodeResult.data ?? [];
-
-  // El texto de la reseña vive en pass_reviews (privacidad ya aplicada): una
-  // fila que no vuelva aquí es, a efectos del feed, "sin reseña visible" — da
-  // igual si es porque no escribió nada o porque la escribió en privado. El
-  // evento en sí (arriba) no se filtró por is_public, así que este mapa es la
-  // única pieza que decide si se ve el TEXTO.
-  const diaryIds = diaryRowsRaw.map((r) => r.id);
-  const { data: reviewRows, error: reviewError } = diaryIds.length
-    ? await supabase.from("pass_reviews").select("id, review").in("id", diaryIds)
-    : { data: [] as { id: string | null; review: string | null }[], error: null };
-  if (reviewError) throw reviewError;
-  const reviewById = new Map((reviewRows ?? []).map((r) => [r.id, r.review]));
-
-  // Nota pública por sesión (Task 1: política RLS `public notes select` en
-  // `notes`). El `.eq("is_public", true)` es cinturón-y-tirantes sobre la
-  // RLS: nunca debe salir una fila privada de aquí, ni siquiera en el feed
-  // propio del dueño.
-  const sessionIds = progressedRows.map((r) => r.id);
-  const { data: publicNotes, error: notesError } = sessionIds.length
-    ? await supabase
-        .from("notes")
-        .select("session_id, body, is_spoiler")
-        .in("session_id", sessionIds)
-        .eq("is_public", true)
-        .order("created_at", { ascending: false })
-    : { data: [] as { session_id: string | null; body: string | null; is_spoiler: boolean | null }[], error: null };
-  if (notesError) throw notesError;
-  // Una nota por sesión: la más reciente pública (el order desc + first-wins).
-  const noteBySession = new Map<string, { body: string; isSpoiler: boolean }>();
-  for (const n of publicNotes ?? []) {
-    if (!n.session_id || n.body == null || noteBySession.has(n.session_id)) continue;
-    noteBySession.set(n.session_id, { body: n.body, isSpoiler: n.is_spoiler ?? false });
-  }
-
-  // "Solo reseñas" ya no puede filtrarse en la query (review no es una
-  // columna filtrable desde diary_entries): se aplica aquí, sobre el texto
-  // ya resuelto con privacidad.
-  const diaryRows = reviewsOnly
-    ? diaryRowsRaw.filter((r) => (reviewById.get(r.id) ?? "").trim() !== "")
-    : diaryRowsRaw;
-
-  // "Se agotaron todas las fuentes" se mide sobre el fetch bruto de cada
-  // query de arriba (antes del merge/corte de más abajo), no sobre cuántas
-  // filas de cada fuente sobreviven al corte a pageSize.
-  // OJO: `diaryRowsRaw`, no `diaryRows`. Si se mide sobre las filas ya
-  // filtradas por "solo reseñas", casi nunca llegan a pageSize (los pases sin
-  // texto caen), el feed se da por agotado y la paginación muere en la primera
-  // tanda: las reseñas antiguas no se cargarían nunca.
-  const allExhausted =
-    addedRows.length < pageSize &&
-    progressedRows.length < pageSize &&
-    diaryRowsRaw.length < pageSize &&
-    episodeRows.length < pageSize &&
-    clubResult.rowCount < pageSize;
-
-  // progress_sessions no tiene item_type propio (cuelga del pase vía
-  // pass_id): se resuelve del pase embebido por la query de arriba
-  // (passes!inner). Se normaliza array-vs-objeto por si Supabase lo
-  // tipa como array — mismo patrón que get-month-calendar.ts.
-  type ProgressedRow = (typeof progressedRows)[number];
-  function progressedItem(row: ProgressedRow): { itemType: ItemType; itemId: string } | null {
-    const embed = row.passes as unknown as
-      | { item_type: ItemType; item_id: string }
-      | { item_type: ItemType; item_id: string }[]
-      | null;
-    const entry = Array.isArray(embed) ? embed[0] : embed;
-    return entry ? { itemType: entry.item_type, itemId: entry.item_id } : null;
-  }
-
-  // Catálogo (título/portada) por tipo, mismo patrón batch que
-  // get-library-items.ts.
-  const idsByType: Record<ItemType, Set<string>> = {
-    book: new Set(),
-    movie: new Set(),
-    series: new Set(),
-  };
-  for (const r of addedRows) idsByType[r.item_type].add(r.item_id);
-  for (const r of progressedRows) {
-    const it = progressedItem(r);
-    if (it) idsByType[it.itemType].add(it.itemId);
-  }
-  for (const r of diaryRows) idsByType[r.item_type].add(r.item_id);
-  for (const r of episodeRows) idsByType.series.add(r.series_id);
-
-  const [books, movies, series] = await Promise.all([
-    idsByType.book.size
-      ? supabase.from("books").select("id, title, author, cover_url, total_pages").in("id", [...idsByType.book])
-      : Promise.resolve({ data: [] as { id: string; title: string; author: string | null; cover_url: string | null; total_pages: number | null }[], error: null }),
-    idsByType.movie.size
-      ? supabase.from("movies").select("id, title, cover_url").in("id", [...idsByType.movie])
-      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
-    idsByType.series.size
-      ? supabase.from("series").select("id, title, cover_url").in("id", [...idsByType.series])
-      : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[], error: null }),
-  ]);
-  if (books.error) throw books.error;
-  if (movies.error) throw movies.error;
-  if (series.error) throw series.error;
-  const catalogByKey = new Map<
-    string,
-    { title: string; coverUrl: string | null; subtitle: string | null; totalPages?: number | null }
-  >();
-  for (const r of books.data ?? [])
-    catalogByKey.set(`book:${r.id}`, {
-      title: r.title,
-      coverUrl: r.cover_url,
-      subtitle: r.author,
-      totalPages: r.total_pages,
-    });
-  for (const r of movies.data ?? [])
-    catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
-  for (const r of series.data ?? [])
-    catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
-
-  // Título de episodio, best-effort (si no está en series_episodes aún, se
-  // omite sin romper el evento).
-  const episodeSeriesIds = [...new Set(episodeRows.map((r) => r.series_id))];
-  const { data: episodeTitles, error: episodeTitlesError } = episodeSeriesIds.length
-    ? await supabase
-        .from("series_episodes")
-        .select("series_id, season_number, episode_number, title")
-        .in("series_id", episodeSeriesIds)
-    : { data: [] as { series_id: string; season_number: number; episode_number: number; title: string | null }[], error: null };
-  if (episodeTitlesError) throw episodeTitlesError;
-  const titleByEpisode = new Map(
-    (episodeTitles ?? []).map((e) => [
-      `${e.series_id}:${e.season_number}:${e.episode_number}`,
-      e.title,
-    ]),
-  );
-
-  // Identidades de actor.
-  const actorIds = [
-    ...new Set([
-      ...addedRows.map((r) => r.user_id),
-      ...progressedRows.map((r) => r.user_id),
-      ...diaryRows.map((r) => r.user_id),
-      ...episodeRows.map((r) => r.user_id),
-    ]),
-  ];
-  const { data: actors, error: actorsError } = actorIds.length
-    ? await supabase
-        .from("profile_identities")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", actorIds)
-    : { data: [] as { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null }[], error: null };
-  if (actorsError) throw actorsError;
-  const actorById = new Map(
-    (actors ?? [])
-      .filter(
-        (a): a is typeof a & { user_id: string; username: string } =>
-          a.user_id != null && a.username != null,
-      )
-      .map((a) => [a.user_id, a]),
-  );
-
-  const events: FeedEventDraft[] = [];
-
-  for (const r of addedRows) {
-    const actor = actorById.get(r.user_id);
-    const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
-    if (!actor || !catalog) continue;
-    events.push({
-      // "diary_entries_added", no "library_entries" (§Tarea 9, hub): el
-      // evento "added" ahora sale del propio pase — ver ShareRef en
-      // shared-activity.ts para por qué necesita una etiqueta propia y no
-      // puede compartir la de "finished" (`diary_entries:${id}`) aunque sea
-      // la MISMA fila.
-      id: `diary_entries_added:${r.id}`,
-      actorId: r.user_id,
-      actorUsername: actor.username,
-      actorDisplayName: actor.display_name,
-      actorAvatarUrl: actor.avatar_url,
-      verb: "added",
-      itemType: r.item_type,
-      itemId: r.item_id,
-      itemTitle: catalog.title,
-      itemCoverUrl: catalog.coverUrl,
-      itemSubtitle: catalog.subtitle,
-      entryStatus: r.status,
-      eventDate: r.created_at,
-      // En esta fuente la fecha semántica, la columna de orden y la hora de
-      // registro son la misma columna: un alta no se puede backdatear.
-      orderDate: r.created_at,
-      sortDate: r.created_at,
-      rating: null,
-      reviewExcerpt: null,
-      episode: null,
-      progress: null,
-      reviewMeta: null,
-      interactionTarget: { targetType: "pass", targetId: r.id, interactionTargetId: null },
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
-    });
-  }
-
-  for (const r of progressedRows) {
-    const actor = actorById.get(r.user_id);
-    const it = progressedItem(r);
-    if (!actor || !it) continue;
-    const catalog = catalogByKey.get(`${it.itemType}:${it.itemId}`);
-    if (!catalog) continue;
-    events.push({
-      id: `progress_sessions:${r.id}`,
-      actorId: r.user_id,
-      actorUsername: actor.username,
-      actorDisplayName: actor.display_name,
-      actorAvatarUrl: actor.avatar_url,
-      verb: "progressed",
-      itemType: it.itemType,
-      itemId: it.itemId,
-      itemTitle: catalog.title,
-      itemCoverUrl: catalog.coverUrl,
-      itemSubtitle: catalog.subtitle,
-      entryStatus: null,
-      eventDate: sessionRelativeBasis(r.session_date, r.created_at),
-      // El orden va por la columna EN CRUDO, sin la sustitución de arriba: es
-      // lo que la query puede filtrar y ordenar.
-      orderDate: r.session_date,
-      // Hora real de registro: desempata sesiones backdateadas del mismo día
-      // (ver comentario del campo en FeedEvent).
-      sortDate: r.created_at,
-      rating: null,
-      reviewExcerpt: null,
-      episode: null,
-      progress: (() => {
-        const pos = (r.position ?? {}) as { page?: number };
-        const page = typeof pos.page === "number" ? pos.page : null;
-        const total = catalog.totalPages ?? null;
-        const percent = page != null && total ? Math.min(100, Math.round((page / total) * 100)) : null;
-        return {
-          durationMinutes: r.duration_minutes,
-          page,
-          percent,
-          note: noteBySession.get(r.id) ?? null,
-        };
-      })(),
-      reviewMeta: null,
-      interactionTarget: { targetType: "progress_session", targetId: r.id, interactionTargetId: null },
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
-    });
-  }
-
-  for (const r of diaryRows) {
-    const actor = actorById.get(r.user_id);
-    const catalog = catalogByKey.get(`${r.item_type}:${r.item_id}`);
-    if (!actor || !catalog) continue;
-    // El filtro .not("finished_on", "is", null) de la query ya garantiza
-    // esto en runtime; la comprobación es solo para que el compilador vea
-    // el tipo correcto (Supabase no lo infiere de la query).
-    if (r.finished_on === null) continue;
-    // undefined (no vino de pass_reviews) y null (vino pero sin texto) se
-    // tratan igual: sin reseña visible. Reviews privadas de otros caen aquí.
-    const reviewText = reviewById.get(r.id) ?? null;
-    events.push({
-      id: `diary_entries:${r.id}`,
-      actorId: r.user_id,
-      actorUsername: actor.username,
-      actorDisplayName: actor.display_name,
-      actorAvatarUrl: actor.avatar_url,
-      verb: verbForReviewable(r.rating, reviewText, "finished"),
-      itemType: r.item_type,
-      itemId: r.item_id,
-      itemTitle: catalog.title,
-      itemCoverUrl: catalog.coverUrl,
-      itemSubtitle: catalog.subtitle,
-      entryStatus: null,
-      // finished_on es una columna `date`: sin hora, timeAgo la interpreta como
-      // medianoche UTC y en Madrid arranca con 2 horas de desfase. Mismo criterio
-      // que las sesiones: si es de hoy, la hora de registro es precisa y se usa;
-      // si está backdateada, no hay hora real que mostrar.
-      //
-      // La hora de registro aquí es `updated_at`, NO `created_at`: a diferencia
-      // de progress_sessions / episode_watches —que insertan una fila por
-      // evento—, el pase se crea al AÑADIR la obra y el terminado llega después
-      // como UPDATE. Con created_at el «hace x» mediría desde el alta, y el
-      // segundo componente de la clave de orden dejaría de ser la hora en que
-      // el terminado se registró (ver feed-cursor-bounds.test.ts).
-      eventDate: sessionRelativeBasis(r.finished_on, r.updated_at),
-      orderDate: r.finished_on,
-      sortDate: r.updated_at,
-      rating: r.rating,
-      reviewExcerpt: excerpt(reviewText),
-      episode: null,
-      progress: null,
-      reviewMeta: {
-        readingDays:
-          r.item_type === "book" && r.started_on && r.finished_on
-            ? Math.max(1, Math.round((Date.parse(r.finished_on) - Date.parse(r.started_on)) / 86_400_000) + 1)
-            : null,
-        totalPages: catalogByKey.get(`${r.item_type}:${r.item_id}`)?.totalPages ?? null,
-      },
-      interactionTarget: { targetType: "diary_entry", targetId: r.id, interactionTargetId: null },
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
-    });
-  }
-
-  for (const r of episodeRows) {
-    const actor = actorById.get(r.user_id);
-    const catalog = catalogByKey.get(`series:${r.series_id}`);
-    if (!actor || !catalog) continue;
-    events.push({
-      id: `episode_watches:${r.id}`,
-      actorId: r.user_id,
-      actorUsername: actor.username,
-      actorDisplayName: actor.display_name,
-      actorAvatarUrl: actor.avatar_url,
-      verb: verbForReviewable(r.rating, r.review, "watchedEpisode"),
-      itemType: "series",
-      itemId: r.series_id,
-      itemTitle: catalog.title,
-      itemCoverUrl: catalog.coverUrl,
-      itemSubtitle: catalog.subtitle,
-      entryStatus: null,
-      // watched_on también es `date`: mismo criterio que finished_on y que las
-      // sesiones (ver el bucle de reseñas).
-      eventDate: sessionRelativeBasis(r.watched_on, r.created_at),
-      orderDate: r.watched_on,
-      sortDate: r.created_at,
-      rating: r.rating,
-      reviewExcerpt: excerpt(r.review),
-      episode: {
-        season: r.season_number,
-        episode: r.episode_number,
-        title:
-          titleByEpisode.get(`${r.series_id}:${r.season_number}:${r.episode_number}`) ?? null,
-      },
-      progress: null,
-      reviewMeta: null,
-      interactionTarget: { targetType: "episode_watch", targetId: r.id, interactionTargetId: null },
-      reactionCount: 0,
-      viewerReacted: false,
-      commentCount: 0,
-      comments: [],
-    });
-  }
-
-  // Las dos familias se mezclan aquí, ya como entradas: a partir de este punto
-  // el orden, el cursor y el corte son los mismos para ambas.
-  // Espeja a `FeedEntry` salvo en el evento de persona, que aquí sigue siendo
-  // el borrador (interactionTargetId aún sin resolver). `orderDate` y `sortDate`
-  // son obligatorios en las dos ramas: son los dos primeros componentes de la
-  // clave de orden (`OrderableEntry`, feed-order.ts) y sin ellos ni
-  // `compareEntries` ni `isAfterCursor` ni `makeCursor` aceptan estas entradas.
   const entries: Array<
     | { source: "person"; id: string; eventDate: string; orderDate: string; sortDate: string; event: FeedEventDraft }
     | { source: "club"; id: string; eventDate: string; orderDate: string; sortDate: string; event: ClubFeedEvent }
   > = [
-    ...events.map(
-      (event) => ({
-        source: "person",
-        id: event.id,
-        eventDate: event.eventDate,
-        orderDate: event.orderDate,
-        sortDate: event.sortDate,
-        event,
-      }) as const,
+    ...drafts.map(
+      (event) => ({ source: "person", id: event.id, eventDate: event.eventDate, orderDate: event.orderDate, sortDate: event.sortDate, event }) as const,
     ),
     ...clubResult.events.map(
-      (event) => ({
-        source: "club",
-        id: event.id,
-        eventDate: event.eventDate,
-        // El evento de club ya ES su created_at (club-feed.ts), así que su
-        // columna de orden, su hora real de registro y su fecha semántica
-        // coinciden.
-        orderDate: event.eventDate,
-        sortDate: event.eventDate,
-        event,
-      }) as const,
+      (event) => ({ source: "club", id: event.id, eventDate: event.eventDate, orderDate: event.eventDate, sortDate: event.eventDate, event }) as const,
     ),
   ];
 
-  // Orden total (día de la columna de fecha desc, hora de registro desc, id
-  // desc) — ver feed-order.ts. El comparador y `isAfterCursor` son una sola
-  // invariante: si dejan de coincidir, la paginación pierde o repite filas.
+  // Orden total (día desc, instante desc, id desc) — espejo de `isAfterCursor`.
+  // Cada post es una tarjeta y ninguna se solapa, así que el corte es un slice.
   entries.sort(compareEntries);
-  // Los filtros de query son inclusivos en el borde, así que aquí se descarta lo
-  // ya servido en páginas anteriores — incluido el propio evento del cursor.
   const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
   const page = fresh.slice(0, pageSize);
 
-  const addedPageEvents = page.flatMap((entry) =>
-    entry.source === "person" && entry.event.verb === "added"
-      ? [entry.event]
-      : [],
-  );
-  const addedItemIds = [
-    ...new Set(addedPageEvents.map((event) => event.itemId)),
-  ];
-  const { data: viewerPasses, error: viewerPassesError } =
-    viewerId && addedItemIds.length > 0
-      ? await supabase
-          .from("passes")
-          .select("item_type, item_id")
-          .eq("user_id", viewerId)
-          .eq("is_active", true)
-          .in("item_id", addedItemIds)
+  // Interacciones y borrado solo para los posts de ESTA página (referencias a
+  // los mismos drafts, así que finalizarlos abajo ya los ve resueltos).
+  const personDrafts = page.filter((e) => e.source === "person").map((e) => e.event);
+  await resolvePostInteractions(supabase, viewerId, personDrafts);
+
+  const finalizedPage: FeedEntry[] = page.map((entry) =>
+    entry.source === "club"
+      ? entry
       : {
-          data: [] as { item_type: ItemType; item_id: string }[],
-          error: null,
-        };
-  if (viewerPassesError) throw viewerPassesError;
-
-  const viewerPassKeys = new Set(
-    (viewerPasses ?? []).map((pass) => `${pass.item_type}:${pass.item_id}`),
+          source: "person",
+          id: entry.id,
+          eventDate: entry.eventDate,
+          orderDate: entry.orderDate,
+          sortDate: entry.sortDate,
+          event: finalizePostDraft(entry.event),
+        },
   );
-  for (const event of addedPageEvents) {
-    event.viewerHasActivePass = viewerPassKeys.has(
-      `${event.itemType}:${event.itemId}`,
-    );
-  }
 
-  // Interacciones de Bloque B, batch por tipo, solo para los eventos de esta
-  // página que tienen target real. Las actividades de club no son un target de
-  // interacción, así que aquí solo entran los de persona.
-  const personEvents = page.filter((e) => e.source === "person").map((e) => e.event);
-  const diaryTargetIds = personEvents
-    .filter((e) => e.interactionTarget?.targetType === "diary_entry")
-    .map((e) => e.interactionTarget!.targetId);
-  const episodeTargetIds = personEvents
-    .filter((e) => e.interactionTarget?.targetType === "episode_watch")
-    .map((e) => e.interactionTarget!.targetId);
-  const passTargetIds = personEvents
-    .filter((e) => e.interactionTarget?.targetType === "pass")
-    .map((e) => e.interactionTarget!.targetId);
-  const sessionTargetIds = personEvents
-    .filter((e) => e.interactionTarget?.targetType === "progress_session")
-    .map((e) => e.interactionTarget!.targetId);
-  const [diarySummaries, episodeSummaries, passSummaries, sessionSummaries] = await Promise.all([
-    getInteractionSummary(supabase, "diary_entry", diaryTargetIds),
-    getInteractionSummary(supabase, "episode_watch", episodeTargetIds),
-    getInteractionSummary(supabase, "pass", passTargetIds),
-    getInteractionSummary(supabase, "progress_session", sessionTargetIds),
-  ]);
-  for (const e of personEvents) {
-    if (!e.interactionTarget) continue;
-    const summaries =
-      e.interactionTarget.targetType === "diary_entry" ? diarySummaries
-      : e.interactionTarget.targetType === "episode_watch" ? episodeSummaries
-      : e.interactionTarget.targetType === "pass" ? passSummaries
-      : sessionSummaries;
-    const s = summaries.get(e.interactionTarget.targetId);
-    if (!s) {
-      throw new Error(
-        `Interaction summary missing for ${e.interactionTarget.targetType}:${e.interactionTarget.targetId}`,
-      );
-    }
-    e.interactionTarget.interactionTargetId = s.interactionTargetId;
-    e.reactionCount = s.reactionCount;
-    e.viewerReacted = s.viewerReacted;
-    e.commentCount = s.commentCount;
-    e.comments = s.comments;
-  }
-
-  const finalizedPage: FeedEntry[] = page.map((entry) => {
-    if (entry.source === "club") return entry;
-    const target = entry.event.interactionTarget;
-    if (!target) {
-      return { ...entry, event: { ...entry.event, interactionTarget: null } };
-    }
-    const { interactionTargetId } = target;
-    if (interactionTargetId === null) {
-      throw new Error(`Interaction target unresolved for ${target.targetType}:${target.targetId}`);
-    }
-    const event: FeedEvent = {
-      ...entry.event,
-      interactionTarget: { ...target, interactionTargetId },
-    };
-    return { ...entry, event };
-  });
-
+  // El feed se agota solo cuando ambas fuentes trajeron menos que el fetch Y se
+  // sirvió todo lo fresco. Si una fuente topó su límite, o quedaron filas sin
+  // servir tras el slice, hay más y el cursor es el keyset de la última servida.
+  const allExhausted = postRows.length < fetchLimit && clubResult.rowCount < fetchLimit;
+  const servedAll = page.length >= fresh.length;
   const last = page[page.length - 1];
-  const nextCursor = allExhausted || !last ? null : makeCursor(last);
+  const nextCursor = (allExhausted && servedAll) || !last ? null : makeCursor(last);
 
-  const knownUsernames = await resolveKnownMentions(supabase, [
-    ...personEvents.map((e) => e.reviewExcerpt).filter((t): t is string => t !== null),
-    ...personEvents.flatMap((e) => e.comments.map((c) => c.body)),
+  const knownUsernames = await resolveKnownMentions(
+    supabase,
+    personDrafts.flatMap((e) => mentionTextsOf(e)),
+  );
+
+  return { events: finalizedPage, nextCursor, knownUsernames };
+}
+
+// Carga UN post por id para la ruta `/post/[id]`. La RLS de `posts` gatea la
+// visibilidad (audiencia = perfil), así que "no visible" y "no existe" vuelven
+// igual: `null` → la page hace `notFound()`. Reutiliza la MISMA resolución que
+// el feed (`resolvePostDrafts`/`resolvePostInteractions`), de modo que la
+// tarjeta y su hilo se pintan idénticos a como salen en el feed.
+export async function getPostEvent(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  postId: string,
+): Promise<{ event: FeedEvent; knownUsernames: string[] } | null> {
+  const { data, error } = await supabase.from("posts").select(POST_COLUMNS).eq("id", postId).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const drafts = await resolvePostDrafts(supabase, [data as PostRow], false);
+  // Ancla o autor no resolubles ⇒ nada que pintar (mismo criterio que el feed).
+  if (drafts.length === 0) return null;
+
+  await resolvePostInteractions(supabase, viewerId, drafts);
+  const event = finalizePostDraft(drafts[0]);
+  const knownUsernames = await resolveKnownMentions(supabase, mentionTextsOf(event));
+  return { event, knownUsernames };
+}
+
+// --- Contexto de descubrimiento de `/post/[id]` (posts Spec 2b, Propuesta B) ---
+// Enriquece la página del post para que no quede vacía: otros posts DEL AUTOR y
+// otros posts SOBRE LA MISMA OBRA (de otra gente). No lleva interacciones (los
+// mini-cards no las pintan), así que evita el batch de reacciones/comentarios.
+// La RLS de `posts` filtra por audiencia: un tercero solo ve lo que puede ver.
+export type RelatedPost = {
+  postId: string;
+  kind: PostKind;
+  itemTitle: string;
+  itemCoverUrl: string | null;
+  authorUsername: string;
+  authorDisplayName: string | null;
+  authorAvatarUrl: string | null;
+};
+
+export type PostContext = {
+  moreByAuthor: RelatedPost[];
+  moreAboutWork: RelatedPost[];
+};
+
+const RELATED_LIMIT = 4;
+
+function toRelatedPost(d: FeedEventDraft): RelatedPost {
+  return {
+    postId: d.postId,
+    kind: d.kind!, // resolvePostDrafts siempre lo informa (base.kind = r.kind)
+    itemTitle: d.itemTitle,
+    itemCoverUrl: d.itemCoverUrl,
+    authorUsername: d.actorUsername,
+    authorDisplayName: d.actorDisplayName,
+    authorAvatarUrl: d.actorAvatarUrl,
+  };
+}
+
+export async function getPostContext(
+  supabase: SupabaseServerClient,
+  event: FeedEvent,
+): Promise<PostContext> {
+  const empty: PostContext = { moreByAuthor: [], moreAboutWork: [] };
+  if (!event.postId) return empty;
+  // Ancla REAL de la obra: para un pensamiento vive en `thought.anchor`
+  // (itemType/itemId son un placeholder inerte, ver FeedEvent); para el resto,
+  // el par itemType/itemId ES el ancla de catálogo.
+  const anchorType: AnchorType = event.thought?.anchor.type ?? event.itemType;
+  const anchorId = event.thought?.anchor.id ?? event.itemId;
+
+  // Se pide un pequeño excedente sobre RELATED_LIMIT: `resolvePostDrafts`
+  // descarta posts con ancla/autor no resolubles, y así el corte no se queda
+  // corto por uno descartado.
+  const fetchLimit = RELATED_LIMIT + 2;
+  const [byAuthor, aboutWork] = await Promise.all([
+    // "Más de {usuario}" por CONTINUIDAD TEMÁTICA: no los más recientes a secas,
+    // sino los del autor sobre obras EMPARENTADAS con la del post actual
+    // (misma saga > misma obra > géneros compartidos), rellenando con recientes
+    // si no hay bastante. El ranking vive en SQL (`related_posts_by_author`,
+    // 20260851) — un round-trip, usa el índice GIN de géneros, y devuelve
+    // `setof posts` para reusar `resolvePostDrafts`, que conserva el orden. RLS
+    // de `posts` sigue filtrando audiencia (la función es SECURITY INVOKER).
+    supabase.rpc("related_posts_by_author", {
+      p_author_id: event.actorId,
+      p_anchor_type: anchorType,
+      p_anchor_id: anchorId,
+      p_exclude_post_id: event.postId,
+      p_limit: fetchLimit,
+    }),
+    supabase
+      .from("posts")
+      .select(POST_COLUMNS)
+      .eq("anchor_type", anchorType)
+      .eq("anchor_id", anchorId)
+      .neq("author_id", event.actorId)
+      .neq("id", event.postId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(fetchLimit),
+  ]);
+  if (byAuthor.error) throw byAuthor.error;
+  if (aboutWork.error) throw aboutWork.error;
+
+  const [byAuthorDrafts, aboutWorkDrafts] = await Promise.all([
+    resolvePostDrafts(supabase, (byAuthor.data ?? []) as PostRow[], false),
+    resolvePostDrafts(supabase, (aboutWork.data ?? []) as PostRow[], false),
   ]);
 
-  // La agrupación es solo de presentación y se aplica DESPUÉS de fijar el
-  // cursor: nextCursor apunta a un evento real de `page`, no a un grupo
-  // sintético. Un grupo partido en el borde de página reaparece como grupo
-  // propio en la siguiente tanda (limitación conocida → issue).
-  return { events: groupPersonEntries(finalizedPage), nextCursor, knownUsernames };
+  return {
+    moreByAuthor: byAuthorDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
+    moreAboutWork: aboutWorkDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
+  };
 }
+
+// --- Tipos de fila de las queries (Supabase no los infiere del builder) --------
+type PostRow = {
+  id: string;
+  author_id: string;
+  kind: PostKind;
+  anchor_type: AnchorType;
+  anchor_id: string;
+  source_kind: "pass" | "progress_session" | "episode_watch" | null;
+  source_id: string | null;
+  body: string | null;
+  is_spoiler: boolean;
+  created_at: string;
+};
+type BookRow = { id: string; title: string; author: string | null; cover_url: string | null; total_pages: number | null };
+type ScreenRow = { id: string; title: string; cover_url: string | null };
+type NamedRow = { id: string; name: string; cover_url: string | null };
+type PersonRow = { id: string; name: string; photo_url: string | null };
+type PassRow = { id: string; started_on: string | null; finished_on: string | null; rating: number | null };
+type SessionRow = { id: string; duration_minutes: number | null; position: unknown };
+type EpisodeRow = { id: string; series_id: string; season_number: number; episode_number: number; rating: number | null; review: string | null };
+type EpisodeTitleRow = { series_id: string; season_number: number; episode_number: number; title: string | null };
+type ActorRow = { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null };

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getClub } from "@/lib/clubs/clubs";
 import { getClubIdentity, hasPendingRequest } from "@/lib/clubs/join-requests";
 import { PrivateClubStub } from "@/components/clubs/private-club-stub";
@@ -8,6 +9,10 @@ import { listClubActivities } from "@/lib/clubs/activities/core";
 import { listClubDirectory } from "@/lib/clubs/directory";
 import { MemberDirectory } from "@/components/clubs/member-directory";
 import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -31,7 +36,7 @@ export default async function ClubMembersPage({
   const { slug } = await params;
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/club/${slug}/miembros`));
 
   const club = await getClub(slug);
 

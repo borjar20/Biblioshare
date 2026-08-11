@@ -9,7 +9,7 @@ import { TodayHeader } from "./today-header";
 export async function EmptyDiscovery() {
   const t = await getTranslations("today");
   return (
-    <section className="flex flex-col gap-3">
+    <section className="today-block flex flex-col gap-3">
       <TodayHeader title={t("emptyTitle")} />
       <div className="flex flex-col gap-3 rounded-[14px] border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center">
         <p className="text-[13px] leading-relaxed text-muted-foreground">

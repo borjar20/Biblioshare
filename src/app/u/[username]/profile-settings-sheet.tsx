@@ -6,6 +6,10 @@ import { useTranslations } from "next-intl";
 import { logout } from "@/app/(auth)/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { GearIcon, LockIcon } from "@/components/ui/icons";
+import { CelebrationPreferenceToggle } from "@/components/celebrations/celebration-preference-toggle";
+import { NotificationPreferences } from "@/components/push/notification-preferences";
+import { PostPreferences } from "@/components/social/post-preferences";
+import { getNotificationPlatform } from "@/lib/push/platform";
 import { updateProfileVisibility } from "./actions";
 
 // Hoja de ajustes tras el engranaje (plan 05, P1 — versión interina sin el ⚙
@@ -69,7 +73,7 @@ export function ProfileSettingsSheet({
           <div className="flex flex-col gap-4 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                <span className="label-section">
                   {t("visibilityLabel")}
                 </span>
                 <span className="text-sm text-foreground">
@@ -90,10 +94,16 @@ export function ProfileSettingsSheet({
               </Button>
             </div>
 
+            <CelebrationPreferenceToggle />
+
+            <NotificationPreferences />
+
+            <PostPreferences />
+
             {isAdmin && (
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground uppercase underline hover:text-foreground"
+                className="inline-flex items-center gap-1.5 label-section underline hover:text-foreground"
               >
                 <LockIcon className="h-3.5 w-3.5" />
                 {adminLabel}
@@ -102,11 +112,40 @@ export function ProfileSettingsSheet({
           </div>
 
           <div className="flex justify-end border-t border-border px-5 py-4">
-            <form action={logout}>
-              <button type="submit" className={buttonVariants("secondary", "px-4")}>
-                {t("logout")}
-              </button>
-            </form>
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-4"
+              disabled={isPending}
+              onClick={() =>
+                startTransition(async () => {
+                  // Cierre de sesión (spec item 2): en nativo, baja el token FCM
+                  // del dispositivo ANTES de salir, para que la sesión cerrada no
+                  // siga recibiendo push. Best-effort; no bloquea el logout.
+                  if (getNotificationPlatform() === "android") {
+                    try {
+                      const { teardownAndroidPush } = await import("@/lib/push/android");
+                      await teardownAndroidPush();
+                    } catch {
+                      // best-effort
+                    }
+                    // Sesión nativa (arquitectura híbrida): revócala ANTES de
+                    // salir. teardown cancela el refresco periódico y vacía el
+                    // widget, para que la pantalla de inicio no siga enseñando
+                    // datos de la sesión cerrada. Best-effort, no bloquea el logout.
+                    try {
+                      const { teardownNativeSession } = await import("@/lib/native/native-auth");
+                      await teardownNativeSession();
+                    } catch {
+                      // best-effort
+                    }
+                  }
+                  await logout();
+                })
+              }
+            >
+              {t("logout")}
+            </Button>
           </div>
         </div>
       </dialog>

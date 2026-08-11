@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { type ClubActivity } from "@/lib/clubs/activities/core";
 import { groupActivities } from "@/lib/clubs/activities/group-activities";
-import { todayISO } from "@/lib/stats/dates";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
@@ -18,20 +17,23 @@ export function ActivityList({
   clubSlug,
   initialActivities,
   isModerator,
+  today,
 }: {
   clubId: string;
   clubSlug: string;
   initialActivities: ClubActivity[];
   isModerator: boolean;
+  /** "Hoy" del SERVIDOR (YYYY-MM-DD). Antes se calculaba con `todayISO()` en el
+   *  navegador, así que el "pasado" del agrupado y de la píldora "Ya pasó"
+   *  respondía al huso del visitante y podía contradecir al calendario del club,
+   *  que lo lee del servidor (#271). Ahora viaja como prop desde la página. */
+  today: string;
 }) {
   const t = useTranslations("activity");
   // Deriva de props: proponer/moderar revalida (Fase 1) y la RSC re-ejecuta con
   // las actividades frescas. Sin espejo local ni re-fetch cliente.
   const activities = initialActivities;
 
-  // Hoy se calcula en cliente a propósito: "pasado" depende del huso de quien
-  // mira, y este componente ya es "use client".
-  const today = todayISO();
   const { events, active, proposed, finished } = groupActivities(
     activities,
     today,
@@ -51,6 +53,7 @@ export function ActivityList({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            today={today}
             actions={isModerator ? <EventCardActions activity={activity} /> : undefined}
           />
         ))}
@@ -62,6 +65,7 @@ export function ActivityList({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            today={today}
           />
         ))}
       </Group>
@@ -70,6 +74,7 @@ export function ActivityList({
         proposals={proposed}
         clubSlug={clubSlug}
         canModerate={isModerator}
+        today={today}
         layout="grid"
       />
 
@@ -79,6 +84,7 @@ export function ActivityList({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            today={today}
             muted
           />
         ))}
@@ -94,7 +100,7 @@ function Group({ title, children }: { title: string; children: ReactNode[] }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <h2 className="label-section">
         {title}
       </h2>
       <div className="grid gap-2 lg:grid-cols-2">{children}</div>

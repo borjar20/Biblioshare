@@ -22,7 +22,7 @@ export function MetadataSidebar({
           key={row.label}
           className={`flex flex-col gap-0.5 ${i > 0 ? "border-t border-border pt-3.5" : ""}`}
         >
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {row.label}
           </span>
           <span className="text-sm text-foreground">{row.value}</span>
@@ -33,7 +33,7 @@ export function MetadataSidebar({
         <div
           className={`flex flex-col gap-1.5 ${rows.length > 0 ? "border-t border-border pt-3.5" : ""}`}
         >
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {genresLabel}
           </span>
           <div className="flex flex-wrap gap-1.5">

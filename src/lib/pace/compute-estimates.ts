@@ -3,13 +3,21 @@ import type { BookPace } from "./get-reading-pace";
 import type { MoviePace } from "./get-movie-cadence";
 import { formatDuration } from "./format-duration";
 
+// Ritmo lector de reserva mientras el usuario no tiene ≥3 sesiones propias
+// (getBookPace devuelve null hasta entonces). Un libro con páginas conocidas SÍ
+// tiene duración estimable; sin este fallback caía en "sin estimar" y no entraba
+// en ningún tramo del filtro de duración. ~250 palabras/página ÷ ~225 ppm.
+// ponytail: media fija; el ritmo personal la sustituye en cuanto hay datos.
+const DEFAULT_PAGES_PER_MINUTE = 0.9;
+
 // Pure — no I/O. Builds a per-item, transparent formula string alongside the
 // numeric estimate (docs/REQUIREMENTS.md §7.22: show the calculation, don't
 // hide it behind a model). Items without enough data are excluded from the
 // total but counted separately, never silently dropped.
 //
-// Only books need a measured pace: their speed is personal (páginas/min). A
-// movie's and a series' duration are properties of the item itself, taken from
+// Only books use a pace: their speed is personal (páginas/min), refined from the
+// user's sessions and falling back to a default average until there are enough.
+// A movie's and a series' duration are properties of the item itself, taken from
 // TMDB — so both are deterministic and need no session history.
 export function computePaceEstimates(
   items: EstimableItem[],
@@ -44,7 +52,16 @@ export function computePaceEstimates(
 function estimateItem(item: EstimableItem, bookPace: BookPace): ItemEstimate {
   if (item.itemType === "book") {
     if (!item.totalPages) return { minutes: null, formulaText: "Nº de páginas desconocido" };
-    if (!bookPace) return { minutes: null, formulaText: "Sin datos suficientes de ritmo todavía" };
+
+    // Sin ritmo personal todavía → media de reserva, marcada como tal para no
+    // fingir que el dato es del usuario (§7.22: la fórmula se enseña, no se oculta).
+    if (!bookPace) {
+      const minutes = item.totalPages / DEFAULT_PAGES_PER_MINUTE;
+      return {
+        minutes,
+        formulaText: `${item.totalPages} páginas ÷ ${DEFAULT_PAGES_PER_MINUTE} páginas/min (ritmo medio, aún sin datos tuyos) ≈ ${formatDuration(minutes)}`,
+      };
+    }
 
     const minutes = item.totalPages / bookPace.pagesPerMinute;
     return {

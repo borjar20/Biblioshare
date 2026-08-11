@@ -52,6 +52,12 @@ export function ManageMembers({
   useEffect(refresh, [clubId]);
 
   const active = members.filter((m) => m.status === "active");
+  // listMembers() ya traía los invitados, pero la lista solo pintaba los
+  // activos y los tiraba: invitar a alguien no cambiaba NADA en pantalla y era
+  // indistinguible de que la acción hubiera fallado (y reinvitar es un no-op
+  // silencioso en inviteMember, así que insistir tampoco daba señal). La
+  // invitación es un estado real del club y tiene que verse mientras dure.
+  const pending = members.filter((m) => m.status === "invited");
 
   function handleRemove(userId: string) {
     startTransition(async () => {
@@ -70,8 +76,10 @@ export function ManageMembers({
     startTransition(async () => {
       try {
         const userId = await resolveUsername(inviteUsername);
+        // "Ese usuario no existe" y "algo se rompió" pedían la misma acción al
+        // dueño (reintentar) y solo una de las dos servía de algo.
         if (!userId) {
-          setError(t("formError"));
+          setError(t("inviteNotFound", { username: inviteUsername.trim() }));
           return;
         }
         await inviteMember(clubId, userId);
@@ -110,7 +118,7 @@ export function ManageMembers({
   return (
     <div className="flex flex-col gap-4 rounded-card border border-border bg-surface shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <h2 className="label-section">
           {t("membersCount", { count: active.length })}
         </h2>
         <Button
@@ -139,6 +147,38 @@ export function ManageMembers({
         </form>
       )}
       {error && <p className="text-xs text-status-dropped">{error}</p>}
+
+      {/* Invitaciones enviadas y aún sin responder. Se pueden retirar: la
+          política de borrado ya deja a un moderator+ quitar una fila de rol
+          inferior, y una invitación siempre es role='member'. */}
+      {pending.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg bg-surface-muted p-3">
+          <h3 className="label-section">
+            {t("pendingInvites", { count: pending.length })}
+          </h3>
+          {pending.map((m) => (
+            <div key={m.userId} className="flex items-center gap-3">
+              <UserAvatar
+                name={m.displayName || m.username}
+                avatarUrl={m.avatarUrl}
+                size={28}
+              />
+              <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+                {m.displayName || m.username}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                className={compact}
+                disabled={isPending}
+                onClick={() => handleRemove(m.userId)}
+              >
+                {t("cancelInvite")}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col">
         {active.map((m) => (

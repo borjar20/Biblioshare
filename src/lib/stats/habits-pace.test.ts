@@ -8,7 +8,23 @@ describe("computeHabits", () => {
       favoriteBand: null,
       favoriteWeekday: null,
       averageMinutes: null,
+      sessions: 0,
+      activeDays: 0,
     });
+  });
+
+  it("cuenta las sesiones TODAS y los días DISTINTOS", () => {
+    const rows: HabitRow[] = [
+      { session_date: "2026-07-11", duration_minutes: 30, started_at: null },
+      // Segunda sesión del mismo día: suma sesión, no suma día.
+      { session_date: "2026-07-11", duration_minutes: null, started_at: null },
+      { session_date: "2026-07-12", duration_minutes: 10, started_at: null },
+    ];
+    const h = computeHabits(rows);
+    expect(h.sessions).toBe(3);
+    expect(h.activeDays).toBe(2);
+    // La media solo promedia las que traen duración: (30+10)/2, no /3.
+    expect(h.averageMinutes).toBe(20);
   });
 
   it("franja sale de started_at; las filas sin ella no cuentan para la franja", () => {

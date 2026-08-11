@@ -12,7 +12,7 @@ import {
   type Notification,
   type NotificationType,
 } from "@/lib/social/notification-types";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "./user-avatar";
 import { BellIcon } from "@/components/ui/icons";
 import { PushToggle } from "@/components/push/push-toggle";
@@ -37,7 +37,7 @@ export function NotificationBell({
   initialUnreadCount: number;
 }) {
   const t = useTranslations("notifications");
-  const tTime = useTranslations("time");
+  const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   // null = todavía no se ha pedido nunca (o está en vuelo la primera vez).
@@ -121,11 +121,25 @@ export function NotificationBell({
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-surface-muted"
                   >
-                    <UserAvatar
-                      name={n.actorDisplayName || n.actorUsername}
-                      avatarUrl={n.actorAvatarUrl}
-                      size={32}
-                    />
+                    {/* Un aviso del sistema (recordatorio de evento) no tiene
+                        actor: en su hueco va un glifo de campana, no un avatar de
+                        nadie. `name` cae a la marca para que la copy con {name}
+                        siga teniendo algo, aunque las claves de los avisos del
+                        sistema no lo usan. */}
+                    {n.actorId ? (
+                      <UserAvatar
+                        name={n.actorDisplayName || n.actorUsername || ""}
+                        avatarUrl={n.actorAvatarUrl}
+                        size={32}
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface-muted text-accent"
+                      >
+                        <BellIcon className="h-4 w-4" />
+                      </span>
+                    )}
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="text-sm text-foreground">
                         {n.extraActorsCount
@@ -133,20 +147,20 @@ export function NotificationBell({
                               GROUPED_NOTIFICATION_TYPE_KEY[n.type] ??
                                 NOTIFICATION_TYPE_KEY[n.type],
                               {
-                                name: n.actorDisplayName || n.actorUsername,
+                                name:
+                                  n.actorDisplayName || n.actorUsername || tCommon("appName"),
                                 count: n.extraActorsCount,
                               },
                             )
                           : t(NOTIFICATION_TYPE_KEY[n.type], {
-                              name: n.actorDisplayName || n.actorUsername,
+                              name:
+                                n.actorDisplayName || n.actorUsername || tCommon("appName"),
                             })}
                       </span>
-                      <span
-                        suppressHydrationWarning
+                      <TimeAgo
+                        iso={n.createdAt}
                         className="font-mono text-[10px] text-muted-foreground"
-                      >
-                        {timeAgo(n.createdAt, tTime)}
-                      </span>
+                      />
                     </div>
 
                     {/* Punto de no leída. Se calcula sobre la lista que se trajo

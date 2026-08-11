@@ -28,8 +28,12 @@ export function InfoPanel({
     : [];
 
   return (
+    // El raíl va a 340px como el del resto de la app, pero además sube de `md:`
+    // a `lg:`: a 768px un raíl de 340 dejaba la sinopsis en ~350px de columna,
+    // más estrecha que en móvil. Por debajo de lg se apila, que es mejor que
+    // dos columnas apretadas.
     <div
-      className={`grid items-start gap-8 ${sidebar ? "md:grid-cols-[1fr_260px]" : ""}`}
+      className={`grid items-start gap-8 ${sidebar ? "lg:grid-cols-[1fr_340px]" : ""}`}
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">

@@ -9,6 +9,14 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
+import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
+import { RouteMessages } from "@/components/route-messages";
+
+// Namespaces de cliente de la ficha (medidos por su subárbol, #444).
+const DETAIL_NS = [
+  "catalogEdit", "collection", "detail", "editions",
+  "item", "library", "notes", "passes", "social",
+] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -28,7 +36,12 @@ import { ItemStatusProvider } from "@/components/detail/item-status-context";
 import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
-import { getCommunity } from "@/lib/community/get-community";
+import {
+  getRatingSummary,
+  getReviews,
+  type Community,
+  type RatingSummary,
+} from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
 import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
@@ -46,6 +59,10 @@ import {
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
 import { NotesSection } from "@/components/notes/notes-section";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -76,7 +93,6 @@ function fetchMovie(supabase: Supa, id: string) {
 }
 
 type MovieRow = NonNullable<Awaited<ReturnType<typeof fetchMovie>>["data"]>;
-type Community = Awaited<ReturnType<typeof getCommunity>>;
 
 // "2h 35m" como escribe la maqueta (o "47m" si no llega a la hora).
 function formatRuntime(minutes: number): string {
@@ -85,13 +101,24 @@ function formatRuntime(minutes: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default async function MovieDetailPage({
-  params,
-  searchParams,
-}: {
+type MovieDetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ cerrar?: string }>;
-}) {
+};
+
+// Página síncrona: `params`/`searchParams` bajan a MovieDetail, por DEBAJO del
+// <Suspense> (#442). Ver /libro para el porqué.
+export default function MovieDetailPage(props: MovieDetailProps) {
+  return (
+    <Suspense fallback={<ItemShellSkeleton itemType="movie" />}>
+      <RouteMessages ns={DETAIL_NS}>
+        <MovieDetail {...props} />
+      </RouteMessages>
+    </Suspense>
+  );
+}
+
+async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
@@ -111,8 +138,8 @@ export default async function MovieDetailPage({
   // progreso donde lo hay). Misma consulta, mismo viaje.
   // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
   // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
-  const [community, activePass, shellRole] = await Promise.all([
-    getCommunity(supabase, "movie", movie.id),
+  const [ratingSummary, activePass, shellRole] = await Promise.all([
+    getRatingSummary("movie", movie.id),
     user
       ? supabase
           .from("passes")
@@ -161,8 +188,8 @@ export default async function MovieDetailPage({
         byline={byline}
         genres={genres}
         coverUrl={movie.cover_url}
-        avgRating={community.avgRating}
-        ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
+        avgRating={ratingSummary.avgRating}
+        ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
         statusSlot={
           <HeroStatusOrFollow
@@ -198,7 +225,7 @@ export default async function MovieDetailPage({
             <MovieTabs
               movie={movie}
               userId={user?.id ?? null}
-              community={community}
+              ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
           </Suspense>
@@ -213,12 +240,12 @@ export default async function MovieDetailPage({
 async function MovieTabs({
   movie,
   userId,
-  community,
+  ratingSummary,
   cerrar,
 }: {
   movie: MovieRow;
   userId: string | null;
-  community: Community;
+  ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
   const supabase = await createClient();
@@ -230,15 +257,18 @@ async function MovieTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. La única
   // dependencia real aquí es que ensureItemEnriched escribe lo que
   // getItemCredits lee; el resto va en paralelo aunque se lea en orden.
-  const [watchProviders, , sagas, editions, activeRow, role] =
+  const [watchProviders, , sagas, editions, activeRow, role, reviewsResult] =
     await Promise.all([
       movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
       ensureItemEnriched(supabase, "movie", {
         id: movie.id,
         tmdbId: movie.tmdb_id,
+        // La duración se hidrata aquí (misma respuesta que los créditos); sin
+        // pasarla no habría con qué decidir si ya está. Ver #365.
+        durationMinutes: movie.duration_minutes,
       }),
-      getItemSagas(supabase, "movie", movie.id),
-      getEditions(supabase, "movie", movie.id),
+      getItemSagas("movie", movie.id),
+      getEditions("movie", movie.id),
       // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
       userId
         ? supabase
@@ -252,10 +282,17 @@ async function MovieTabs({
             .then(({ data }) => data)
         : null,
         userId ? getCurrentUserRole(supabase) : null,
+      // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
+      // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
+      getReviews(supabase, "movie", movie.id),
     ]);
 
+  // Community que espera CommunityPanel = el agregado (ya resuelto en el hero)
+  // más las reseñas (aquí).
+  const community: Community = { ...ratingSummary, ...reviewsResult };
+
   // Lo único que de verdad esperaba a ensureItemEnriched.
-  const credits = await getItemCredits(supabase, "movie", movie.id);
+  const credits = await getItemCredits("movie", movie.id);
 
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];

@@ -3,7 +3,6 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { EstimableItem } from "@/lib/pace/types";
 import type { SorteoCollection, SorteoItem } from "@/components/rincon/sorteo-logic";
 import { fetchCatalogMeta, type CatalogMeta } from "@/lib/pace/fetch-catalog-meta";
-import { backfillSizes } from "@/lib/pace/backfill-sizes";
 import { computePaceEstimates } from "@/lib/pace/compute-estimates";
 import { getBookPace } from "@/lib/pace/get-reading-pace";
 import { getMoviePace } from "@/lib/pace/get-movie-cadence";
@@ -40,7 +39,7 @@ export async function getSorteoPool(
 ): Promise<SorteoPool> {
   const { data: entries, error } = await supabase
     .from("passes")
-    .select("id, item_type, item_id")
+    .select("id, item_type, item_id, edition_id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("status", "planned");
@@ -48,10 +47,16 @@ export async function getSorteoPool(
   if (!entries || entries.length === 0) return { items: [], collections: [] };
 
   const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
-  for (const entry of entries) idsByType[entry.item_type].push(entry.item_id);
+  // Las páginas dependen de la EDICIÓN que el usuario dijo estar leyendo, no de
+  // la obra — sin esto los libros salían "sin estimar" (ver fetchCatalogMeta).
+  const editionIdByItem = new Map<string, string | null>();
+  for (const entry of entries) {
+    idsByType[entry.item_type].push(entry.item_id);
+    editionIdByItem.set(`${entry.item_type}:${entry.item_id}`, entry.edition_id);
+  }
 
   const [metaByKey, bookPace, moviePace, previous, sorteables] = await Promise.all([
-    fetchCatalogMeta(supabase, idsByType),
+    fetchCatalogMeta(supabase, idsByType, editionIdByItem),
     getBookPace(supabase, userId),
     getMoviePace(supabase, userId),
     // Pases archivados = la obra ya se leyó/vio alguna vez → no es "sin empezar".
@@ -111,28 +116,12 @@ export async function getSorteoPool(
       ];
     });
 
-  let estimable = build(metaByKey);
-
-  // El catálogo llega con huecos: TMDB trae duración y nº de episodios, pero
-  // nadie los persistía hasta que alguien abría la pantalla que los pedía.
-  // Ese backfill vivía en el panel de Colas, que quedó inalcanzable al integrar
-  // Colección v2 y llevaba tiempo sin ejecutarse. Ahora cuelga del sorteo, que
-  // es quien necesita los minutos para el filtro de duración.
-  const missingMovies = estimable
-    .filter((item) => item.itemType === "movie" && item.durationMinutes === null)
-    .map((item) => ({ id: item.itemId, tmdbId: item.tmdbId }));
-  const missingSeries = estimable
-    .filter(
-      (item) =>
-        item.itemType === "series" &&
-        (item.totalEpisodes === null || item.episodeRuntimeMinutes === null)
-    )
-    .map((item) => ({ id: item.itemId, tmdbId: item.tmdbId }));
-
-  if (missingMovies.length > 0 || missingSeries.length > 0) {
-    await backfillSizes(supabase, missingMovies, missingSeries);
-    estimable = build(await fetchCatalogMeta(supabase, idsByType));
-  }
+  // Los tamaños (duración, nº de episodios) NO se rellenan aquí: son dato de
+  // catálogo compartido y los hidrata `ensureItemEnriched` al abrir la ficha,
+  // de la misma respuesta de TMDB que ya pedía para los créditos. Colgarlo del
+  // sorteo solo alcanzaba las obras PENDIENTES de quien abriera SU Rincón —en
+  // producción, 1 de 354 películas—. Ver #365 y decisiones.md 2026-08-03.
+  const estimable = build(metaByKey);
 
   const estimates = computePaceEstimates(estimable, bookPace, moviePace);
 

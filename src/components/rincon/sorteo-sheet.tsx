@@ -37,6 +37,7 @@ const DUR_FILTERS: { value: SorteoFilters["dur"]; labelKey: string }[] = [
   { value: "short", labelKey: "sorteoFilterDurShort" },
   { value: "med", labelKey: "sorteoFilterDurMed" },
   { value: "long", labelKey: "sorteoFilterDurLong" },
+  { value: "none", labelKey: "sorteoFilterDurNone" },
 ];
 
 const STATE_FILTERS: { value: SorteoFilters["state"]; labelKey: string }[] = [

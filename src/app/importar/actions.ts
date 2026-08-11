@@ -9,8 +9,18 @@ import type { Json } from "@/lib/supabase/database.types";
 import { detectFormat } from "@/lib/import/detect-format";
 import { parseGoodreads } from "@/lib/import/parse-goodreads";
 import { parseLetterboxd } from "@/lib/import/parse-letterboxd";
-import { commitImportRow, commitManualImportRow } from "@/lib/import/commit-row";
-import type { ImportFormat, ImportRow, ImportRowResult } from "@/lib/import/types";
+import {
+  catalogIdForCandidate,
+  commitImportRow,
+  commitImportRowWithCandidate,
+  commitManualImportRow,
+} from "@/lib/import/commit-row";
+import type {
+  ImportCandidate,
+  ImportFormat,
+  ImportRow,
+  ImportRowResult,
+} from "@/lib/import/types";
 
 const CATALOG_TABLE_BY_TYPE = {
   book: "books",
@@ -92,6 +102,31 @@ export async function commitImportBatch(
     results.push(...chunkResults);
   }
   return results;
+}
+
+/**
+ * El usuario elige cuál de las coincidencias era la suya ("The Visit" de 2015
+ * son tres películas distintas). Se invoca imperativamente desde la pantalla de
+ * triaje, una fila por click.
+ *
+ * NO exige rol de colaborador, a diferencia de `resolveUnmatchedImportRow`: eso
+ * da de alta catálogo a mano (datos inventados por el usuario), mientras que
+ * esto solo confirma un resultado de TMDB. Es exactamente el mismo nivel de
+ * confianza que `addToLibrary` en `/buscar`, que ya acepta un `SearchResult`
+ * devuelto por el cliente.
+ */
+export async function resolveAmbiguousImportRow(
+  itemType: ItemType,
+  row: ImportRow,
+  candidate: ImportCandidate
+): Promise<ImportRowResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  return commitImportRowWithCandidate(supabase, user.id, itemType, row, candidate);
 }
 
 export type ResolveUnmatchedState = {
@@ -243,6 +278,17 @@ export async function dismissPendingRow(pendingId: string) {
 
 export type SaveUnmatchedBatchState = { saved: number } | { error: "generic" };
 
+// Una entrada de la tanda: la fila del CSV y, si el matcher casó con VARIAS
+// obras (ambigua), los candidatos que encontró. Se persisten dentro del payload
+// para que el colaborador que resuelva la fila en `/importar/pendientes` pueda
+// elegir uno en vez de teclear a mano lo que el importador ya había encontrado
+// (issue #390). El RPC `resolve_pending_import` y los lectores de `payload`
+// (que lo tratan como `ImportRow`) ignoran la clave `candidates` extra.
+export type UnmatchedBatchEntry = {
+  row: ImportRow;
+  candidates?: ImportCandidate[];
+};
+
 /**
  * Guarda TODAS las filas sin match de una importación en la cola de revisión,
  * en un solo insert. La variante de una en una (`saveUnmatchedForReview`) sigue
@@ -255,9 +301,9 @@ export type SaveUnmatchedBatchState = { saved: number } | { error: "generic" };
  */
 export async function saveUnmatchedBatch(
   itemType: ItemType,
-  rows: ImportRow[]
+  entries: UnmatchedBatchEntry[]
 ): Promise<SaveUnmatchedBatchState> {
-  if (rows.length === 0) return { saved: 0 };
+  if (entries.length === 0) return { saved: 0 };
 
   const supabase = await createClient();
   const {
@@ -266,13 +312,52 @@ export async function saveUnmatchedBatch(
   if (!user) redirect("/login");
 
   const { error } = await supabase.from("pending_import_rows").insert(
-    rows.map((row) => ({
+    entries.map(({ row, candidates }) => ({
       user_id: user.id,
       item_type: itemType,
-      payload: row as unknown as Json,
+      payload: (candidates && candidates.length > 0
+        ? { ...row, candidates }
+        : row) as unknown as Json,
     }))
   );
 
   if (error) return { error: "generic" };
-  return { saved: rows.length };
+  return { saved: entries.length };
+}
+
+// La cola de revisión resuelve una fila ambigua eligiendo uno de los candidatos
+// persistidos, en vez de teclear los datos a mano (issue #390). Da de alta el
+// catálogo del candidato y llama a `resolve_pending_import`, que crea los pases
+// a nombre del DUEÑO de la fila (no del colaborador que resuelve). Mismo gate de
+// rol y misma revalidación que `resolvePendingRow`.
+export async function resolvePendingRowWithCandidate(
+  pendingId: string,
+  itemType: ItemType,
+  candidate: ImportCandidate
+): Promise<ResolvePendingState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+    return { error: "forbidden" };
+  }
+
+  const catalogId = await catalogIdForCandidate(
+    supabase,
+    itemType,
+    candidate,
+    user.id
+  );
+
+  const { error } = await supabase.rpc("resolve_pending_import", {
+    p_pending_id: pendingId,
+    p_catalog_item_id: catalogId,
+  });
+  if (error) return { error: "generic" };
+
+  revalidatePath("/importar/pendientes");
+  return { done: true };
 }

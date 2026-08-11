@@ -45,7 +45,11 @@ export function ClubCard({
   const compact = "px-3.5 py-1.5 text-xs";
 
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
+    // `h-full` + el pie con `mt-auto`: en una fila de la rejilla, un club sin
+    // descripción quedaba más bajo que sus vecinos y su botón «Abrir» flotaba a
+    // media altura. La celda ya se estira sola (`items-stretch` es el defecto de
+    // grid); lo que faltaba era que la tarjeta ocupase la celda entera.
+    <div className="flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
       <Link href={`/club/${club.slug}`} className="block">
         <ClubCoverBand coverUrl={club.coverUrl} seed={club.id} className="h-[74px]">
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-surface/85 px-2 py-0.5 font-mono text-[9px] tracking-wide text-foreground uppercase backdrop-blur-sm">
@@ -66,7 +70,7 @@ export function ClubCard({
         </span>
       </Link>
 
-      <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-3.5">
+      <div className="mt-auto flex items-center justify-between gap-3 px-4 pt-3 pb-3.5">
         <span className="flex min-w-0 items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
           {unread > 0 && (
             <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-accent" />
@@ -90,6 +94,16 @@ export function ClubCard({
             className={buttonVariants("secondary", compact)}
           >
             {t("open")}
+          </Link>
+        ) : status === "invited" ? (
+          // Aceptar/rechazar vive en la cabecera del club (ClubHeader), que es
+          // donde se ve de qué club se trata antes de decidir. Aquí solo hace
+          // falta la puerta.
+          <Link
+            href={`/club/${club.slug}`}
+            className={buttonVariants("green", compact)}
+          >
+            {t("seeInvite")}
           </Link>
         ) : status === "requested" ? (
           <span className="shrink-0 font-mono text-[10px] text-muted-foreground">

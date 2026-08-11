@@ -7,7 +7,7 @@ import { getActivePass } from "./get-passes";
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type TransitionOutcome =
-  | { kind: "done"; passId: string; closed: boolean }
+  | { kind: "done"; passId: string; closed: boolean; created: boolean }
   | { kind: "askResume" };
 
 function today(): string {
@@ -37,7 +37,7 @@ export async function applyTransition(
   if (plan.kind === "askResume") return { kind: "askResume" };
 
   if (plan.kind === "none") {
-    return { kind: "done", passId: active!.id, closed: false };
+    return { kind: "done", passId: active!.id, closed: false, created: false };
   }
 
   if (plan.kind === "updateActive") {
@@ -53,6 +53,7 @@ export async function applyTransition(
       kind: "done",
       passId: active!.id,
       closed: to === "completed" || to === "dropped",
+      created: false,
     };
   }
 
@@ -79,6 +80,7 @@ export async function applyTransition(
       position: {},
       started_on: startedOn,
       finished_on: finishedOn,
+      planned_on: plan.plannedOn,
       is_public: true,
       // El fijado es de la relación con la obra: lo hereda el pase nuevo.
       pinned_order: plan.kind === "archiveAndCreate" ? (active!.pinnedOrder ?? null) : null,
@@ -90,5 +92,6 @@ export async function applyTransition(
     kind: "done",
     passId: created?.id ?? active?.id ?? "",
     closed: plan.status === "completed" || plan.status === "dropped",
+    created: true,
   };
 }

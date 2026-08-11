@@ -1,7 +1,14 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Position } from "@/lib/library/position";
-import type { ImportDiaryDate, ImportRow, ImportRowResult } from "./types";
+import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
+import { catalogIdForMovieCandidate } from "./match-row";
+import type {
+  ImportCandidate,
+  ImportDiaryDate,
+  ImportRow,
+  ImportRowResult,
+} from "./types";
 import { matchImportRow } from "./match-row";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -188,11 +195,63 @@ export async function commitImportRow(
   row: ImportRow
 ): Promise<ImportRowResult> {
   try {
-    const catalogId = await matchImportRow(supabase, itemType, row);
-    if (!catalogId) {
+    const match = await matchImportRow(supabase, itemType, row);
+    if (match.kind === "unmatched") {
       return { rowNumber: row.rowNumber, title: row.title, outcome: "unmatched" };
     }
+    // No se escribe NADA todavía: la fila espera a que el usuario elija cuál de
+    // las obras es en la pantalla de triaje (resolveAmbiguousImportRow).
+    if (match.kind === "ambiguous") {
+      return {
+        rowNumber: row.rowNumber,
+        title: row.title,
+        outcome: "ambiguous",
+        candidates: match.candidates,
+      };
+    }
 
+    return await commitPasses(supabase, userId, itemType, match.catalogId, row);
+  } catch (err) {
+    return {
+      rowNumber: row.rowNumber,
+      title: row.title,
+      outcome: "error",
+      errorMessage: err instanceof Error ? err.message : "unknown error",
+    };
+  }
+}
+
+// El usuario ya desempató: se importa la fila contra la obra que eligió. El
+// candidato puede venir del catálogo local (trae catalogId) o directo de TMDB
+// (hay que darle de alta), igual que en `/buscar`. Las películas pasan por
+// catalogIdForMovieCandidate para no cachear en inglés lo que el matcher
+// tampoco cachea en inglés (ver su comentario).
+// Da de alta (o localiza) el ítem de catálogo de un candidato de TMDB, sin
+// crear pases: las películas pasan por catalogIdForMovieCandidate (no cachear en
+// inglés), el resto por su catalogId local o findOrCreateCatalogItem. Extraído
+// para reusarlo al resolver una fila de la cola de revisión con un candidato
+// (issue #390), donde el pase se crea a nombre del DUEÑO, no del que resuelve.
+export async function catalogIdForCandidate(
+  supabase: SupabaseServerClient,
+  itemType: ItemType,
+  candidate: ImportCandidate,
+  userId: string
+): Promise<string> {
+  return itemType === "movie"
+    ? await catalogIdForMovieCandidate(supabase, candidate, userId)
+    : (candidate.catalogId ??
+        (await findOrCreateCatalogItem(supabase, candidate, userId)));
+}
+
+export async function commitImportRowWithCandidate(
+  supabase: SupabaseServerClient,
+  userId: string,
+  itemType: ItemType,
+  row: ImportRow,
+  candidate: ImportCandidate
+): Promise<ImportRowResult> {
+  try {
+    const catalogId = await catalogIdForCandidate(supabase, itemType, candidate, userId);
     return await commitPasses(supabase, userId, itemType, catalogId, row);
   } catch (err) {
     return {

@@ -7,6 +7,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { LibraryItemCard } from "@/components/library/library-item-card";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
+import { COVER_GRID_COLS } from "@/lib/ui/layout";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = ["planned", "in_progress", "completed", "dropped"];
@@ -70,7 +71,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
       >
         {/* Tipo */}
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterType")}
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -96,7 +97,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
 
         {/* Estado */}
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterStatus")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
@@ -118,7 +119,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
 
         {/* Orden */}
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("collection.filterSort")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
@@ -151,7 +152,7 @@ export function CollectionItems({ items }: { items: LibraryItem[] }) {
           {t("collection.noMatch")}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-3.5">
+        <div className={`grid gap-3.5 ${COVER_GRID_COLS}`}>
           {filtered.map((item) => (
             <LibraryItemCard
               key={item.entryId}

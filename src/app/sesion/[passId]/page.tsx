@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { loadSessionContext, parseMinutes } from "@/lib/sessions/load-context";
+import { parseStartedAt } from "@/lib/sessions/parse-started-at";
 import { SessionSheet } from "@/components/session/session-sheet";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Guardar sesión — Biblioshare",
@@ -11,19 +16,24 @@ export default async function SessionPage({
   searchParams,
 }: {
   params: Promise<{ passId: string }>;
-  // `minutos`: lo trae el cronómetro de la tarjeta de hoy (plan 01 T5) cuando
-  // pulsas "Registrar" — llegas con el tiempo ya escrito en vez de tener que
-  // acordarte de él.
-  searchParams: Promise<{ minutos?: string }>;
+  // `minutos` e `inicio`: los trae el cronómetro de la tarjeta de hoy (plan 01
+  // T5) cuando pulsas "Registrar" — llegas con el tiempo y la hora de inicio ya
+  // escritos en vez de tener que acordarte de ellos.
+  searchParams: Promise<{ minutos?: string; inicio?: string }>;
 }) {
   const { passId } = await params;
-  const { minutos } = await searchParams;
+  const { minutos, inicio } = await searchParams;
 
   const ctx = await loadSessionContext(passId);
 
   return (
     <div className="mx-auto w-full max-w-lg">
-      <SessionSheet ctx={ctx} initialMinutes={parseMinutes(minutos)} mode="page" />
+      <SessionSheet
+        ctx={ctx}
+        initialMinutes={parseMinutes(minutos)}
+        initialStartedAt={parseStartedAt(inicio)}
+        mode="page"
+      />
     </div>
   );
 }

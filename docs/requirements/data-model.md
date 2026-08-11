@@ -48,7 +48,10 @@ conserva sus tres columnas nullable, la unicidad de reacción es `(interaction_t
 user_id, kind)` y `comments_no_nesting` ha desaparecido. Cero pérdida de datos en todo el
 recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a paso.
 `schema-baseline.sql` **ya no está sin anexar**: lleva el «ANEXO 2026-08-02» con las ocho
-migraciones en el orden en que las recibió producción**]**
+migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
+bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
+`anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -138,6 +141,87 @@ migraciones en el orden en que las recibió producción**]**
 > **ya está anexado** («ANEXO 2026-08-02»), en la misma pasada en que se cerró el ciclo en prod.
 > Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
 > `diary_entries`, que **ya no existe** (ver §0).
+>
+> **Delta del 2026-08-03 (issue #361): `passes.planned_on date` añadida y verificada en DEV y
+> en PROD** (`information_schema.columns` → `date`, nullable). Migración
+> `20260817_passes_planned_on.sql`. Es forward-only (la fija `planTransition` al entrar en
+> `planned`); el historial importado se queda en `NULL`. Ningún RPC cambió; sin backfill. Ver §3.
+>
+> **Delta del 2026-08-03 (bis): la columna anterior salió SIN su grant y rompió «Seguir» en
+> producción.** `passes` tiene grants **por columna**, y Postgres exige privilegio sobre toda
+> columna nombrada en el INSERT/UPDATE aunque su valor sea `NULL`: al desplegar #366, el insert de
+> `applyTransition` (que siempre nombra `planned_on`) empezó a dar `42501 permission denied for
+> table passes` y toda alta de pase caía en el error boundary. Migración
+> `20260819_grant_passes_planned_on.sql`, **aplicada y verificada en DEV y en PROD el 2026-08-03**
+> (`information_schema.column_privileges` → `anon: SELECT`; `authenticated: INSERT, SELECT,
+> UPDATE`, idéntico a `started_on`). Se le dieron los tres privilegios de sus hermanas, no solo
+> los dos rotos, para que el SELECT no vuelva a faltar cuando `/estadisticas` lea la columna.
+> **Es el MISMO fallo que `episode_runtime_minutes` un día antes** (`20260818`): columna nueva sin
+> grant compila, pasa los tests y solo revienta contra la BD real (issue #375).
+>
+> Auditada de paso **toda** la tabla en prod: no queda ninguna otra columna con hueco. Sin
+> INSERT/UPDATE para `authenticated` solo están `id`, `created_at` y `updated_at` (default y
+> trigger, correcto), y `review` sigue **sin SELECT** a propósito — se lee por la vista
+> `pass_reviews`, que es la que aplica la privacidad.
+>
+> **Delta del 2026-08-04 (avisos por persona, §5): `follows.notify_events` y los cuatro valores
+> `followed_*` de `notification_type` añadidos y verificados en DEV Y EN PROD** el 2026-08-04
+> (`information_schema.columns` y `pg_enum`: prod devuelve `has_column=1`, `followed_enum_values=4`). Migraciones
+> `20260804000000_follow_notify_events.sql` y `20260804000001_notification_type_followed.sql`. Sin
+> tabla nueva: el interruptor de aviso por persona vive en `follows.notify_events`
+> (`finished|session|episode|added`), escrito por **service-role** porque la RLS de `follows` solo
+> concede UPDATE al followee. Ver §5 y `decisiones.md` (2026-08-04).
+>
+> **Delta del 2026-08-04 (barrido de P0), aplicado y verificado en DEV Y EN PROD** — ninguna
+> columna ni tabla nueva, solo dos guardas: `private.enforce_comment_target_commentable` pasa a
+> rechazar el reapuntado de un comentario (§5, issue #339) y nace
+> `private.forbid_delete_with_passes` con sus tres triggers `BEFORE DELETE` sobre
+> `books`/`movies`/`series` (§3, issue #272). Migraciones `20260820_comments_forbid_retarget.sql`
+> y `20260821_catalog_delete_guard_passes.sql`. Verificado además que **no había datos ya
+> derivados**: cero comentarios con audiencia/href distintos de los de su padre en los dos
+> entornos, y cero pases huérfanos en prod (en dev había 4, borrados). El control preventivo de
+> los grants por columna vive ahora en `docs/DRIFT-CHECK.md` §6 (issue #375), con la referencia
+> de las 10 tablas con hueco intencionado — idéntica en dev y prod.
+
+> **Delta del 2026-08-04 — seguimiento de eventos de club (§6.1) y el primer trabajo
+> programado del repo (§6.2): aplicado y verificado en dev Y EN PRODUCCIÓN** el mismo día.
+> Verificado contra los objetos reales de los dos entornos (`information_schema.columns`,
+> `pg_constraint`, `pg_policies`, `pg_proc`, `cron.job`, `cron.job_run_details`,
+> `net._http_response`), nunca contra `list_migrations`, y con 12 checks de impersonación en
+> dev. Incluye un cambio en una tabla del núcleo: `notifications.actor_id` pasa a
+> **nullable**. El trabajo programado está **entregando de verdad** en producción (200 desde
+> el propio cron, ver §6.2).
+
+> **Delta del 2026-08-05 — hitos de `buddy_read` autodeclarados (§6, issues #470/#471):
+> aplicado y verificado en DEV y EN PROD** contra `pg_proc` (nunca contra `list_migrations`).
+> `confirm_checkpoint` deja de revalidar la posición del lector: la comparaba contra
+> `library_entries` (CONGELADA — tercer bug real de esa tabla) y, aunque leyera `passes`, la
+> página objetivo depende de la edición de cada participante. Dos migraciones,
+> `20260826_confirm_checkpoint_lee_passes.sql` y `20260827_hitos_autodeclarados.sql`; sin
+> columnas nuevas ni cambios de grants (ACL de la función preservada por `create or replace`
+> y verificada: `authenticated=X`, sin `anon`).
+>
+> **Delta del 2026-08-06 — la vista `public.pass_reviews` proyecta ahora `d.updated_at` (Bloque 3
+> del triage #496, issue #345), aplicado y verificado en DEV y EN PROD** (`pg_get_viewdef`).
+> `updated_at` se añadió AL FINAL (`create or replace view` solo admite columnas nuevas al final;
+> el WHERE de RLS no cambió, grants a `anon, authenticated` preservados). Motivo: es la hora REAL
+> del terminado —un pase se CREA al añadir la obra y el «terminado» llega después como UPDATE, así
+> que `created_at` puede ir semanas por delante—. `recent-reviews.ts` y `shared-activity.ts` ya
+> leían de esta vista y seguían con `created_at` porque la vista no lo exponía; ahora usan
+> `updated_at` como `sortDate`, igual que `getFeed`. Trade-off asumido (mismo que el feed):
+> `updated_at` lo mueve cualquier update del pase. Migración `20260833_pass_reviews_updated_at.sql`.
+>
+> **Delta del 2026-08-09 — tipos de evento de club (§6.3), SOLO EN DEV.** Nuevo enum
+> `club_event_type` (`encuentro | lanzamiento | fecha_destacada`, migración `20260840`) y
+> columna `club_activities.event_type NOT NULL DEFAULT 'encuentro'` con grant por columna
+> idéntico a `modality` (migración `20260841`, verificado contra
+> `information_schema.column_privileges`). `create_club_event`/`update_club_event` ganan
+> `p_event_type` (solo en create) y `p_config jsonb` (migración `20260842`), y la hora de
+> inicio pasa a OPCIONAL para Lanzamiento/Fecha destacada (ancla `starts_at` a 00:00 en
+> `event_timezone`); **Encuentro, al contrario, pasa a EXIGIR hora** — retira el default de
+> las 19:00 que aplicaba hasta hoy a todo evento sin hora (§6.3, `decisiones.md` 2026-08-09).
+> Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
+> contra `list_migrations`. **Producción pendiente del merge.**
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -149,9 +233,10 @@ de la doc vieja aún la presenta así. Ya no lo es: **el estado vivo del usuario
 `passes`**. `library_entries` sigue existiendo porque conserva `pinned_order`
 (sus columnas de cola se borraron con la retirada de colas, ver más abajo), pero **su
 `status` y su `position` no se actualizan** — leerlos
-da datos de hace meses. Esto ya ha causado dos bugs reales en producción (avance de sagas
-al 0%, PR #96). Regla: **cualquier feature que necesite el estado del usuario lo deriva de
-`passes`, nunca de `library_entries`.**
+da datos de hace meses. Esto ya ha causado tres bugs reales en producción (avance de sagas
+al 0%, PR #96; confirmación de hitos de lectura conjunta rechazada, issue #470). Regla:
+**cualquier feature que necesite el estado del usuario lo deriva de `passes`, nunca de
+`library_entries`.**
 
 ## 1. La forma general
 
@@ -227,11 +312,34 @@ y en prod el 2026-07-30.
 `movies.original_title` / `series.original_title` (`text`, nullable; migración
 `20260802_screen_original_title.sql`, aplicada y verificada en DEV y en PROD el 2026-08-02 —
 movies 354/354 y series 26/26 con valor en prod, 0 null). El `title` se cachea traducido a
-**es-ES** desde TMDB (`language=es-ES`), pero Letterboxd exporta el título **original**; el
-matcher de importación (`src/lib/import/match-row.ts`) casa contra cualquiera de los dos. Lo
+**es-ES** desde TMDB (`language=es-ES`); `original_title` guarda el del idioma de rodaje. Lo
 escribe `find-or-create.ts` en cada alta; las filas previas se rellenaron por un backfill
-puntual que consulta TMDB por `tmdb_id` (idioma-independiente). Ver `decisiones.md`
-(2026-08-02).
+puntual que consulta TMDB por `tmdb_id` (idioma-independiente).
+
+⚠️ **El motivo que daba esta sección era falso** (corregido el 2026-08-03): Letterboxd NO
+exporta el título original, exporta el **internacional en inglés** — su catálogo es TMDB
+en-US. Ese tercer título **no está en BD**: el matcher de importación
+(`src/lib/import/match-row.ts`) lo pide a TMDB en cada fila (`searchMoviesForImport`), así que
+la búsqueda en el catálogo LOCAL sigue sin poder casar «Spirited Away» con la fila cacheada
+como «El viaje de Chihiro» — resuelve igualmente, pero gastando la llamada a TMDB. Ver
+`decisiones.md` (2026-08-03).
+
+**Columnas de TAMAÑO** (`movies.duration_minutes`, `series.total_episodes` / `total_seasons` /
+`episode_runtime_minutes`): alimentan la estimación de tiempo y los tramos de duración del
+sorteo. No las trae la búsqueda (TMDB solo da `runtime` en la respuesta de **detalles**), así
+que las hidrata `ensureItemEnriched` al abrir la ficha, de la misma llamada que ya pedía para
+los créditos. Van fuera del trigger `enforce_catalog_edit_collaborator_only` a propósito: son
+de sincronización, no curadas, y las rellena cualquier `authenticated` que visite la ficha.
+
+> **Delta del 2026-08-03 (issue #365): `grant update (episode_runtime_minutes) on series to
+> authenticated`, aplicado y verificado en DEV y en PROD** (`information_schema.column_privileges`
+> → las 9 columnas, ya con `episode_runtime_minutes`). Migración
+> `20260818_grant_series_episode_runtime.sql`. La columna nació en `20260710` **después** del
+> grant de tamaños original y se quedó fuera; como la hidratación escribe las tres en un único
+> patch, el UPDATE fallaba entero en cuanto faltaba la duración de episodio. Sin cambio de
+> esquema: solo el grant. En la misma issue, el punto de captura de los tamaños pasó del sorteo
+> a la ficha (eran dato compartido rellenado por un backfill que solo alcanzaba pendientes del
+> dueño: 1 de 354 películas y 0 de 26 series en prod). Ver `decisiones.md` (2026-08-03).
 
 Tres tablas de "tirada concreta" cuelgan del catálogo:
 
@@ -256,8 +364,14 @@ concreto de un ítem. Releer un libro es un pase nuevo, no una edición del ante
 
 Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status`:
 `planned|in_progress|completed|dropped`), `is_active`, `position` (jsonb), `rating`,
-`review`, `is_public`, `started_on`/`finished_on`, `edition_id`, y `pinned_order` (las de
-cola se borraron, ver «`queues` ya no existe»).
+`review`, `is_public`, `planned_on`/`started_on`/`finished_on`, `edition_id`, y
+`pinned_order` (las de cola se borraron, ver «`queues` ya no existe»).
+
+- **Fechas hito**: `planned_on` (entró en la pila), `started_on` (se empezó a leer/ver) y
+  `finished_on` (se terminó). Las fija `planTransition` (`src/lib/passes/transitions.ts`) en
+  cada cambio de estado. ⚠️ `planned_on` es **forward-only** (issue #361): el historial
+  importado nace como pases cerrados que nunca pasaron por `planned`, así que ahí es `NULL`.
+  Por eso «la pila» ordena por `created_at` (proxy con datos para todos) y no por `planned_on`.
 
 - **`is_active`** distingue el pase en curso de los cerrados. Solo uno activo por ítem.
 - **El pase es dueño de la nota y la reseña**, no la entrada de biblioteca: cada relectura
@@ -268,6 +382,18 @@ cola se borraron, ver «`queues` ya no existe»).
 - ⚠️ **`rereadCount` NO es el ordinal del pase**: cuenta los pases CERRADOS. El actual es
   +1. La primera lectura siempre sale bien, así que el fallo pasa desapercibido hasta que
   alguien relee.
+- ⚠️ **La referencia al ítem es POLIMÓRFICA (`item_type` + `item_id`) y por eso NO hay FK.**
+  Borrar una obra del catálogo dejaba pases colgando en silencio (issue #272: 4 filas en dev;
+  prod estaba limpio). Como el síntoma no se parece a la causa —`getSorteoPool` descarta los
+  pases sin obra en catálogo, así que el pool salía vacío y el e2e moría con un timeout que
+  no mencionaba ni el sorteo ni los pendientes—, desde el **2026-08-04** lo cierra en la BD
+  el trigger `private.forbid_delete_with_passes` (`20260821_catalog_delete_guard_passes.sql`,
+  aplicado en **dev y prod**), `BEFORE DELETE` sobre `books`, `movies` y `series`: **rechaza
+  el borrado** (`catalog_item_has_passes`, `23503`) si quedan pases apuntando a la obra.
+  No cascadea a propósito — un pase guarda nota y reseña del usuario, ver `decisiones.md`.
+  La trampa al depurar: `count(*) from passes where is_active and status='planned'` cuenta
+  los huérfanos, así que parece que el usuario SÍ tiene pendientes; la cuenta que importa es
+  la de pendientes **con obra en catálogo**.
 
 Cuelgan del pase:
 
@@ -304,6 +430,27 @@ Cuelgan del pase:
 
 **Las series no tienen `progress_sessions`**: se miden en episodios. Cualquier orden por
 "última sesión" las manda al final si no se contempla.
+
+### RPC `get_widget_snapshot()` — lectura para widgets nativos (dev + prod, 2026-08-06)
+
+Arquitectura híbrida Fase 2 (`20260806_get_widget_snapshot.sql`, epic #497): el widget
+Android la llama DIRECTAMENTE por PostgREST con su sesión nativa (Fase 1) y recibe el mismo
+JSON v2 que antes construía el TS y empujaba el WebView (`build-widget-snapshot.ts`) — cambia
+el transporte, no el contrato. `SECURITY INVOKER` (RLS del que llama; no puede ver a otro),
+`STABLE`, sin argumentos (usa `auth.uid()`), `EXECUTE` a `authenticated`. Es un **port fiel**
+de `getTodayFocus` + `hydrateItems` + `getProgress` + `getWeeklyActivity` + `getStreaks`; no
+cambia el esquema (solo lee). Dos trampas que el port respeta: (1) tres definiciones distintas
+de "actividad" —racha/semana por pase = sesiones ∪ episodios; racha global = sesiones ∪
+finales de pase; minutos de hoy = solo `duration_minutes` de libros—; (2) "hoy" en
+**`Europe/Madrid`** (convención de `club_rounds`), no UTC. **En prod desde 2026-08-06**
+(verificada bajo rol `authenticated` con RLS: JSON v2 correcto para un usuario real de 2 pases
+en curso). **Fix 2026-08-06 (`20260806_widget_snapshot_edition_pages.sql`, dev+prod):** el total de
+páginas del libro sale de la EDICIÓN del pase (`book_editions`, precedencia edición del pase →
+primaria → cualquiera con total → y solo si no, `books.total_pages`), réplica en SQL del arreglo
+web `e6dec32`/`pickEditionPages`; antes salía «Sin progreso» porque `books.total_pages` casi
+siempre es null (la búsqueda ya no lo escribe). Riesgo vivo: como la web sigue usando el TS, widget
+y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver
+`decisiones.md` e issue de reconciliación.
 
 ## 4. Organización del usuario
 
@@ -354,6 +501,36 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.
 
+> **Delta del 2026-08-04 (avisos por persona): `follows.notify_events` añadida y verificada
+> en DEV Y EN PROD** el 2026-08-04 (`information_schema.columns`: `text[]`, `not null`, default `'{}'::text[]`).
+> Migración `20260804000000_follow_notify_events.sql`. Categorías de
+> aviso (`finished|session|episode|added`) que el **follower** activó sobre el followee — campana
+> apagada = array vacío. **La escribe service-role, no el follower**: la RLS de `follows` solo
+> concede UPDATE al followee (evita el auto-accept en perfiles privados si se le abriera al
+> follower), así que el interruptor pasa por una server action con service-role
+> (`setFollowNotify`) en vez de un UPDATE directo del cliente. Sin tabla nueva. Ver
+> `decisiones.md` (2026-08-04).
+
+> **Delta del 2026-08-05 (notificaciones push unificadas Web+Android): aplicado en DEV;
+> PROD pendiente del merge.** Migraciones `20260828_push_devices.sql`,
+> `20260829_notification_preferences.sql`, `20260830_notifications_dedupe_key.sql`.
+> - **`push_devices`** (NUEVA): dispositivos push unificados. Enum `push_platform`
+>   (`web_push|fcm_android|apns_ios`). `web_push` usa `endpoint`+`p256dh`+`auth` (VAPID);
+>   nativo usa `token`. CHECK `push_devices_credentials_shape` impide mezclar los dos mundos.
+>   Salud por dispositivo (`enabled`, `last_success_at`, `last_error`, `last_error_at`,
+>   `failure_count`) para apagar tokens muertos sin borrarlos. RLS self-only; el dispatcher
+>   lee/escribe salud con service_role. **Sustituye a `push_subscriptions`** (que sigue en
+>   pie, con sus filas COPIADAS a `push_devices`; su retirada es un issue aparte tras
+>   verificar en prod).
+> - **`notification_preferences`** (NUEVA): una fila por usuario, opt-out (sin fila = todo
+>   activo). Canales `web_push_enabled`/`android_push_enabled` × categorías
+>   `category_social|clubs|progress|system`. El dispatcher las cruza. RLS self-only.
+> - **`notifications.dedupe_key`** (COLUMNA NUEVA, nullable): idempotencia opcional; índice
+>   único parcial `where dedupe_key is not null`. Hoy la usan las reacciones. **Grants por
+>   columna añadidos** (DRIFT-CHECK superficie 6, #375): `dedupe_key` concedida con el mismo
+>   patrón que las demás columnas de `notifications`. Ver `decisiones.md` (2026-08-05) y
+>   `docs/push-notifications-android.md`.
+
 **Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
 `20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
 el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor y por
@@ -375,6 +552,15 @@ reacciones y feed de club. Las RPC públicas `users_are_blocked(other_user_id)` 
 `filter_unblocked_user_ids(candidate_ids)` son `SECURITY INVOKER`; la segunda filtra un lote
 sin perder el orden de la primera aparición. Retirar el bloqueo no reconstruye follows ni
 notificaciones borrados.
+
+> **Grants a `anon` (dev y prod, 2026-08-02, migración `grant_anon_read_block_helpers`).** Con la
+> navegación anónima, un visitante sin sesión llega a perfiles públicos y su feed, cuyas políticas
+> SELECT `{anon,authenticated}` (passes, progress_sessions, follows) llaman a estos dos helpers.
+> Como son `SECURITY INVOKER` y SQL inlinable, `anon` necesita **EXECUTE** sobre ambas funciones y
+> **SELECT** sobre `user_blocks` (el privilegio de tabla se comprueba en planificación aunque el
+> guard `auth.uid() is null → false/'{}'` impida tocarla en runtime). Sin ello, la lectura anónima
+> lanzaba `permission denied` y devolvía 500. `user_blocks` no tiene política RLS para `anon`, así
+> que el grant solo satisface el chequeo de privilegio: un anónimo nunca ve una fila.
 
 Las notificaciones sociales se escriben desde servidor con `service_role`; el cliente ya no
 puede hacer INSERT directo (`anon` y `authenticated` sin privilegio, y 0 políticas INSERT).
@@ -489,6 +675,16 @@ En comentarios y reacciones, en cambio, **el id canónico es la única identidad
   —`pg_restore --disable-triggers`, restauraciones y ramas de Supabase, aplicación de replicación
   lógica—, justo los caminos en los que el CHECK que sustituye **sí** se aplicaba; el invariante
   habría quedado más débil que antes sin que nada lo delatara.
+  ⚠️ **Y desde el 2026-08-04 ese mismo trigger PROHÍBE reapuntar un comentario a otro padre**
+  (`comment_retarget_forbidden`, `23514` — migración `20260820_comments_forbid_retarget.sql`,
+  aplicada en **dev y prod**). Cubrir el UPDATE para impedir el anidamiento dejaba abierto un
+  agujero peor: `private.sync_comment_interaction_target` es `AFTER INSERT` y no tiene
+  equivalente en UPDATE, así que el reapuntado pasaba el control y dejaba el target del
+  comentario con la **audiencia y el `href` del padre anterior** — visibilidad resuelta contra
+  un público que ya no le corresponde y deep link a la página equivocada (issue #339). Se
+  prohíbe en vez de sincronizar: `addComment` inserta y nunca reapunta, así que el derivado
+  no puede quedar obsoleto por construcción. Verificado que ni dev ni prod tenían filas ya
+  derivadas. Los UPDATE que no tocan `interaction_target_id` siguen funcionando igual.
 - **El flag del que ahora depende el invariante está blindado.** Como el trigger lee
   `interaction_targets.commentable`, un `update … set commentable = true where kind = 'comment'`
   habría reabierto el anidamiento por la puerta de atrás. Lo impide el check
@@ -515,6 +711,143 @@ Los triggers de limpieza de fuente eliminan el target canónico y sus FKs se lle
 reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva snapshot y queda
 `actioned` con `target_deleted_at`, incluso cuando desaparece el target.
 
+> **Delta del 2026-08-07 (hilos de comentarios, spoiler, fijado y edición — motor tras el «chat»
+> de actividad): aplicado y verificado en DEV y en PROD**, migración
+> `supabase/migrations/20260838_comments_threads_spoiler_pin_edit.sql`. `comments` gana cuatro
+> columnas: `parent_id uuid null references comments(id) on delete cascade` (una respuesta; **cuelga
+> del mismo `interaction_target_id` que su raíz** — el post —, nunca del target propio del padre),
+> `is_spoiler boolean not null default false`, `pinned boolean not null default false` y
+> `edited_at timestamptz null`. Índice `comments_parent_idx (parent_id)` y único parcial
+> `comments_one_pinned_per_thread on (interaction_target_id) where pinned` (invariante
+> un-fijado-por-hilo).
+>
+> - **Profundidad libre en datos, aplanada en UI.** El trigger `trg_comments_enforce_parent` →
+>   `private.enforce_comment_parent_same_target()` exige que el `parent_id`, si lo hay, exista y
+>   comparta `interaction_target_id` con el hijo (si no, `23514`) — pero no limita la profundidad:
+>   una respuesta a una respuesta es válida en la base. La pantalla es la que aplana a dos niveles
+>   visuales (comentario principal + respuestas), resolviendo la raíz como el ancestro con
+>   `parent_id is null`. Decisión de forma en `decisiones.md` (2026-08-07).
+> - **RLS**: política nueva `comments update own canonical` (solo el autor, cubre
+>   body/spoiler/edición). La política de INSERT `comments insert own canonical` exige ahora además
+>   `pinned = false` — nadie puede insertarse ya fijado.
+> - **Grants por columna (DRIFT-CHECK superficie 6, #375).** Se revoca primero el UPDATE de tabla
+>   completa a `anon`+`authenticated` (los grants por columna no estrechan uno de tabla si no se
+>   quita antes) y se concede `grant update (body, is_spoiler, edited_at) to authenticated`. El
+>   autor solo puede tocar esas tres columnas por UPDATE directo: `pinned`, `parent_id` y
+>   `author_id` **no** son escribibles por `authenticated`.
+> - **`pin_comment(p_comment_id uuid, p_pinned boolean)`** (`SECURITY DEFINER`): único camino para
+>   fijar/desfijar. Gateada **SOLO al dueño del target** (`interaction_targets.owner_id`), NO a
+>   moderador/admin (refinado en `20260839_pin_comment_owner_only.sql`: fijar = curación del dueño;
+>   moderar/borrar sí es de admin vía `private.can_moderate_comment`, que aquí ya no se usa). Respeta
+>   el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`. `canPin` (capa de datos) = solo
+>   `viewerOwnsTarget`.
+
+### 5.1 `posts` — la capa social canónica (dev y **PROD**, 2026-08-09; SUPERSEDE §6.2 `thoughts`)
+
+> Diseño en `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md`. Aplicado y
+> **verificado en dev Y EN PRODUCCIÓN el 2026-08-09** contra objetos reales (`to_regclass`,
+> `enum_range`, grants por columna DRIFT-CHECK superficie 6 —`posts` 11/8/2, `post_preferences`
+> 5/4/3—, `get_advisors(security)` sin hallazgos nuevos). Migraciones `20260843`–`20260847`.
+>
+> **Orden de despliegue que recibió prod (CORRIGE el orden ingenuo del plan):** el backfill muta
+> los targets que el código VIEJO lee, así que **el código va ANTES del backfill**, no después
+> (si no, el feed y la ficha de prod se caen en la ventana). Secuencia real: (1) enums `20260843`
+> → (2) tabla+trigger+prefs `20260844`/`45` → (3) **merge + deploy del código** (feed lee `posts`)
+> → (4) backfill `20260846` (in-place; comentarios/reacciones invariantes 41/33; `posts_sin_target=0`;
+> 319 posts) → (5) drop de `thoughts` `20260847` (recrea `social_target_owner_id` sin la rama
+> `thought` y hace `drop table`). El código vive en la rama `feat/posts-capa-social` (PR #557 + fixes
+> #559/#560). Interacciones huérfanas del backfill (10, sobre `pass`/`progress_session` sin nota) →
+> issue #558.
+>
+> **Delta del 2026-08-10 (posts Spec 2b — superficies de lectura + deep-link, SOLO EN DEV; prod
+> pendiente):** dos cambios de esquema, verificados en dev contra objetos reales:
+> `20260848_comment_target_anchor.sql` reescribe `private.sync_comment_interaction_target` para que
+> el target `kind='comment'` lleve **`#c-<id>` en su href** (heredando la ruta del padre) + backfill
+> de los existentes — así una notificación que apunte al target del comentario (una RESPUESTA a tu
+> comentario, o un like) deep-linka al subhilo `/post/[id]#c-<cid>` (`listNotifications`/push leen el
+> href tal cual). `20260849_notifications_dedupe_unique_index.sql` sustituye el índice único PARCIAL
+> `idx_notifications_dedupe_key` (`WHERE dedupe_key IS NOT NULL`) por uno **no parcial**: PostgREST no
+> puede usar un índice parcial como árbitro de `ON CONFLICT (dedupe_key)`, así que el upsert de
+> `notify()`/`notifyMany()` con `dedupeKey` reventaba y la notificación dedupeada (la de respuesta,
+> entre otras) NUNCA se creaba — bug preexistente destapado por el deep-link (misma semántica de
+> unicidad; los NULL siguen distintos). El código de lectura (`PostThread`, feed → `PostSummary`) va
+> en la rama `feat/posts-spec2-compartir`. Diferidos: 500 anon de `/post/[id]` (#561, preexistente),
+> copy del aviso de respuesta (#562). Ver `decisiones.md` (2026-08-10).
+
+Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
+La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de
+verdad; `posts` la **referencia** y representa lo que se muestra socialmente.
+
+`posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
+`kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`
+(`post_anchor_type`: `book|movie|series|saga|person`, SIEMPRE — «no posts libres», sin FK, ancla
+polimórfica como `thoughts`/`saga_items`), `anchor_id`, `source_kind` (`post_source_kind`:
+`pass|progress_session|episode_watch`, null en `thought`), `source_id`, `body` (text ≤2000,
+null salvo `thought` y el comentario opcional de `progressed`), `is_spoiler`, `created_at`,
+`updated_at`. Índices: `unique(source_kind, source_id, kind) where source_id is not null`
+(**idempotencia**: un pase puede tener `started` y `finished`, pero no dos `finished`),
+`posts_author_created_idx (author_id, created_at desc, id desc)` (clave de orden del feed),
+`posts_anchor_idx (anchor_type, anchor_id)`. RLS: select `can_view_profile(author_id)`, insert/
+update/delete propios (delete también admin/moderador vía `can_moderate_target('post', id)`).
+**Grants por columna** (#375) en la misma migración. `rated`/`reviewed` NO son `kind`: son
+atributos del pase que el post `finished` MUESTRA leyendo `pass.rating`/`pass.review` en vivo.
+
+**Enlace con `interaction_targets`**: trigger `private.sync_post_interaction_target()` (`after
+insert on posts`, espejo del de `thoughts`) materializa UN target `kind='post'`,
+`source_id=post.id`, audiencia `profile`/`author_id`, **`href='/post/'||id`** (la diferencia
+clave con `thoughts`, que apuntaba a la ficha del ancla), `commentable=reactable=true`,
+avisos `post_commented`/`post_liked`. `posts_cleanup_social_target` en delete. Rama `'post'`
+añadida a `private.social_target_owner_id`. Valores de enum nuevos: `'post'` en `target_kind`,
+`post_commented`/`post_liked` en `notification_type`.
+
+`post_preferences` (una fila por usuario, **opt-out**, sin fila = defaults): `user_id` (pk →
+`auth.users`), `autopost_started` (default **false**), `autopost_finished` (default **true**),
+`autopost_dropped` (default **false**), `updated_at`. RLS self-only, grants por columna. La lee
+`maybeAutopostMilestone`; su UI de ajustes es Spec 2.
+
+**Backfill / absorción** (`20260846`, in-place, preserva comentarios/reacciones): por cada pase
+terminado un post `finished` que **promueve** su target `diary_entry` → `post` (misma fila
+`interaction_targets.id`, cambia `kind`/`source_id`/`href`); cada `thought` → post `thought`
+(reusa su id, promueve el target); sesiones con **nota pública** → post `progressed`. Los targets
+`pass`/`progress_session`(sin nota)/`episode_watch` **NO** se promueven ni se retiran en Spec 1
+(ver `decisiones.md` 2026-08-09): `get-episode-reviews` sigue leyendo `episode_watch`, así que su
+trigger se conserva; los de `passes`/`progress_sessions` crean residuo inerte, diferido a limpieza.
+
+**Consecuencia verificada (fix incluido)**: como el backfill promovió los `diary_entry` a `post`,
+la ficha (`get-community.getReviews`, community tab) resuelve ahora el hilo por el target del post
+`finished` (el MISMO que ve el feed y `/post/[id]` — la conversación converge); un pase terminado
+sin post se muestra sin hilo (`interactionTargetId` null), no se rompe.
+
+**§6.2 `thoughts` queda SUPERSEDIDA**: la tabla se absorbe en `posts` y se elimina en `20260847`
+(POST-merge); los valores de enum muertos (`thought` en `target_kind`, `thought_*` en
+`notification_type`) se dejan inertes (recrear el tipo es caro).
+
+### 5.2 `related_posts_by_author()` — ranking del raíl social de `/post/[id]` (dev y **PROD**, 2026-08-10)
+
+RPC de LECTURA que alimenta el bloque «Más de {usuario}» de la columna SOCIAL de `/post/[id]`
+(layout de 3 áreas OBRA · CONVERSACIÓN · SOCIAL): en vez de los posts más recientes del autor a
+secas, prioriza los suyos sobre obras EMPARENTADAS con la del post actual. Firma
+`related_posts_by_author(p_author_id uuid, p_anchor_type post_anchor_type, p_anchor_id uuid,
+p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para reusar
+`resolvePostDrafts`, que conserva el orden). Migración `20260851_related_posts_by_author.sql`.
+
+- **Puntuación** (deliberadamente simple, NO un recomendador): `3·misma_saga + 2·misma_obra +
+  1·géneros_solapan`; orden `score DESC, created_at DESC, id DESC`. Los de score 0 quedan al final
+  → el bloque muestra primero lo relacionado y RELLENA con recientes. Relaciones reusadas: `saga_items`
+  (+ jerarquía `parent_saga_id` si el ancla ES una saga) y los arrays `genres` de `books/movies/series`
+  (solape booleano `&&`, apoyado en los índices GIN de §2). Deuda asumida (creador/subgénero/tema y
+  solape ponderado por conteo): issue abierta.
+- **`SECURITY INVOKER`** a propósito: corre como quien llama, así que la RLS de `posts`
+  (`can_view_profile(author_id)`) sigue filtrando la audiencia. `set search_path = ''`, todo
+  cualificado con `public.`; comparaciones ancla↔`saga_items` en TEXTO (`::text`) porque
+  `posts.anchor_type` es `post_anchor_type` {…,saga,person} y `saga_items.item_type` es `item_type`
+  {book,movie,series}. `grant execute … to authenticated, anon` (la ruta la ve también un anónimo).
+- Verificado en dev contra datos reales (gradiente 5/1/0, orden por recencia dentro del score, post
+  actual excluido) + e2e `post-layout.spec.ts`. **Aplicada y verificada en PROD el 2026-08-10**
+  (`pg_proc`: `prosecdef=false` → INVOKER, grants execute a `authenticated`+`anon`; smoke sobre un
+  post real: 4 filas, no incluye el propio). Solo falta mergear el código (PR #570) que la consume —
+  regla de despliegue de §5.1: migración primero (hecho), código después.
+
 ## 6. Clubes
 
 `clubs` → `club_members` (rol `member|moderator|owner`, estado `invited|active|requested`),
@@ -528,16 +861,45 @@ archived`) con sus satélites `club_activity_items`, `_participants`, `_opinions
 **`config` (jsonb) es opaco a la BD**: lo interpreta la app según el `kind`. Ahí viven el
 criterio del reto, los tiers de la tierlist y el `completionMode` del reto por lista.
 
+### Hitos de `buddy_read` autodeclarados (dev y prod, 2026-08-05 — issues #470/#471)
+
+Confirmar un hito (`confirm_checkpoint`, SECURITY DEFINER, único camino de escritura a
+`club_activity_checkpoint_reads`) **ya no revalida la posición del lector**: exige ser
+participante y cascada idempotente sobre los hitos anteriores, nada más. Dos migraciones
+encadenadas (`20260826_confirm_checkpoint_lee_passes.sql` y
+`20260827_hitos_autodeclarados.sql`):
+
+- **#470** — la RPC original (20260713) leía `library_entries.position`, tabla CONGELADA
+  desde el pase-hub: comparaba contra una posición muerta y rechazaba confirmaciones que la
+  UI (que lee `passes`) daba por alcanzables. La 20260826 la pasó al pase activo… 
+- **#471** — …y la 20260827 eliminó el gate entero: la página objetivo la fijaba el
+  moderador según SU edición y cada participante mide en páginas de la SUYA
+  (`book_editions.total_pages` varía), así que el mismo número cae en puntos distintos de
+  la historia (bloqueo con ediciones compactas, spoilers con ediciones más paginadas).
+
+`club_activity_checkpoints.position` sigue existiendo (jsonb not null) pero como **pista
+visual opcional**: `{}` = hito sin pista, y la app ya no compara posiciones
+(`hasReachedPosition` eliminada de `src/lib/library/position.ts`). El spoiler guard del
+chat no cambia: `can_view_target('activity_checkpoint', …)` sigue exigiendo
+`is_activity_participant` **y** `has_reached_checkpoint`.
+
 ### `evento` — actividad no participativa (dev y prod, 2026-07-22)
 
 Quinto `kind` de `club_activities`, distinto de los otros cuatro en que **nace `active`
 directamente** (nunca pasa por `proposed`) y no tiene pool de ítems ni participantes: sus
 filas dejan sin usar `config`, `ends_on`, `spawned_from_*` y los tres satélites
 `club_activity_participants`/`_items`/`_opinions` (kind nuevo en vez de tabla nueva,
-aplicando SD-8 — ver `decisiones.md`). Solo usa `title`, `description` y `starts_on`.
+aplicando SD-8 — ver `decisiones.md`).
 "Pasado" se **deriva** de `starts_on < hoy` al leer (`isPastEvent`,
 `src/lib/clubs/activities/group-activities.ts`); no hay ninguna transición ni columna que
-lo persista. Sin ficha propia (`hasDetailView: false` en su `ActivityKindDefinition`).
+lo persista.
+
+> **Ampliado el 2026-08-04 por el seguimiento de eventos (§6.1).** Desde entonces un evento
+> usa además `starts_at`/`ends_at`/`event_timezone`/`location`/`modality`/`online_url`/
+> `event_state`/`updated_at`, y **sí tiene ficha propia**, en `/club/[slug]/evento/[id]`.
+> `hasDetailView` sigue siendo `false` porque describe la ruta *genérica* de actividad, que
+> continúa devolviendo 404 para eventos. Lo de arriba («solo usa title, description y
+> starts_on») queda como historia de la versión de 2026-07-22.
 
 Dos RPCs `SECURITY DEFINER`, moderador+ (`has_min_club_role(club_id, 'moderator')`),
 migración `supabase/migrations/20260722_club_event_rpcs.sql`:
@@ -580,11 +942,475 @@ y `20260811_spawn_linked_activity_defaults.sql`).** Cuatro huecos de la misma ca
   tiene ficha: `hasDetailView: false`), pero sí por la puerta de atrás. Ahora el invariante
   es del esquema, no del comentario.
 
+**Endurecimiento del 2026-08-06 (issue #129, dev y prod, `20260831_club_activity_role_gate_first.sql`).**
+El gate de rol (`has_min_club_role`) se evaluaba DESPUÉS de los checks de existencia/kind/estado
+en `update_club_event`, `set_club_event_state`, `finish_club_activity` y `archive_club_activity`.
+Como son `SECURITY DEFINER`, cualquier `authenticated` (sin ser miembro) distinguía por el mensaje
+de error si un uuid existía, si era un evento y si estaba activo — un oráculo sobre lo que la RLS de
+SELECT (`club_activities select member`) protege. Ahora el rol va PRIMERO: con la fila inexistente
+`has_min_club_role(null, …)` es `false` y el no-autorizado recibe `forbidden` genérico. Solo tras
+pasar el gate (= eres moderador del club dueño, que ya puede ver la fila) se revela kind/estado.
+`finish_club_activity` usa `coalesce(v_created_by = auth.uid(), false)` para su rama creador-O-mod
+(un `null = uuid` daría NULL y dejaría pasar el gate). `create_club_event` ya comprobaba rol primero
+desde `20260823`, no se tocó.
+
 El enum se añade en `supabase/migrations/20260722_activity_kind_evento.sql`, sola en su
 fichero porque Postgres prohíbe usar un valor de enum en la misma transacción que lo añade.
 
-**Aplicadas en dev (`supabase-dev`) el 2026-07-22; prod queda pendiente** — aplicación
-reservada explícitamente al usuario, no ejecutada en la sesión que cerró esta feature.
+**Aplicadas en dev (`supabase-dev`) el 2026-07-22.** *Corregido aquí el 2026-08-04*: esta línea
+decía «prod queda pendiente» y ya no era cierto — al preparar §6.1 se leyó `pg_proc` de PROD y
+las dos RPC estaban allí con su firma de julio (4 argumentos). Desde el 2026-08-04 tienen en los
+dos entornos la firma ampliada de 10 (ver §6.1).
+
+### 6.1 Seguimiento de eventos: `club_event_followers` (dev y **prod**, 2026-08-04)
+
+Un miembro **sigue** un evento para declarar interés, ver quién más lo sigue y recibir un
+recordatorio antes de que empiece. Spec:
+`docs/superpowers/specs/2026-08-04-club-event-following-design.md`.
+
+**El evento gana los datos que su ficha necesita** (columnas nuevas en `club_activities`,
+todas con sentido solo cuando `kind='evento'`, SD-8 intacto):
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| `starts_at` | `timestamptz` | El instante real. Única fuente para programar recordatorios |
+| `ends_at` | `timestamptz` | Fin opcional; decide «en curso» vs «finalizado» |
+| `event_timezone` | `text` NOT NULL DEFAULT `'Europe/Madrid'` | Nombre IANA, validado contra `pg_timezone_names` en la RPC |
+| `location` | `text` | ≤ 200 (`club_activities_location_len`) |
+| `modality` | `event_modality` | `presencial` · `online` · `hibrida` |
+| `online_url` | `text` | ≤ 500 (`club_activities_online_url_len`), debe ser `http(s)://` |
+| `event_state` | `club_event_state` NOT NULL DEFAULT `'programado'` | `programado` · `cancelado` · `pospuesto` |
+| `updated_at` | `timestamptz` | Lo pone un trigger, nunca el cliente |
+
+Más el CHECK `club_activities_event_window` (`ends_at >= starts_at`).
+
+**«En curso» y «finalizado» NO se guardan**: se derivan del reloj en `deriveEventState`
+(`src/lib/clubs/activities/event-state.ts`). Solo se persisten los tres estados que una
+*persona declara*. Un estado guardado es un estado que hay que mantener sincronizado.
+
+**`starts_on` se queda y lo deriva un trigger** (`private.sync_club_event_date`), no una
+columna generada: `timezone(text, timestamptz)` es `STABLE`, no `IMMUTABLE`, y Postgres
+rechaza una `GENERATED` que la invoque. Así **ninguna** consulta del calendario cambió.
+*Backfill:* los eventos anteriores reciben `starts_at = starts_on` a las **19:00
+`Europe/Madrid`** — hora inventada y asumida a la vista.
+
+**La tabla:**
+
+```sql
+club_event_followers (
+  activity_id  uuid → club_activities(id) on delete cascade,
+  user_id      uuid → auth.users(id)      on delete cascade,
+  followed_at            timestamptz not null default now(),
+  remind_minutes_before  integer,      -- null = sin recordatorio (una elección)
+  reminder_due_at        timestamptz,  -- DERIVADO por trigger
+  reminded_at            timestamptz,  -- sello de entrega = la idempotencia
+  primary key (activity_id, user_id)
+)
+```
+
+La **PK compuesta es** la restricción única de «un usuario sigue una vez» *y* el índice de
+«seguidores de este evento». Más `club_event_followers_user_idx (user_id, activity_id)` y el
+índice parcial `club_event_followers_due_idx (reminder_due_at) where reminded_at is null`
+para el barrido.
+
+`reminder_due_at` es la **única desnormalización**, y está justificada: el barrido corre cada
+5 min sobre todos los clubes y con el instante precalculado es una búsqueda por índice.
+No puede derivar porque nadie lo escribe a mano — lo recalculan
+`private.sync_event_follower_reminder` (en la fila de seguimiento) y
+`private.reschedule_event_reminders` (cuando el evento cambia de fecha, zona o estado).
+Un cambio de `starts_at` pone `reminded_at = null`: re-arma el aviso, incluso uno ya
+entregado, porque quien recibió «mañana a las 18:00» necesita saberlo si pasa al jueves.
+
+**Coherencia (no hay cola ni proceso de reconciliación):** el recordatorio es un *campo* de
+la fila de seguimiento, mantenido en la misma transacción. No hay dos escrituras que puedan
+quedar desparejadas, así que no puede existir un seguidor sin recordatorio ni al revés.
+
+**Abandonar el club / ser expulsado: se INVALIDA, no se borra.** El barrido y las lecturas
+hacen `join club_members` exigiendo `status='active'`, así que un seguimiento sin membresía
+activa es inerte — en un solo sitio, sin triggers sobre la membresía. Si vuelve, su interés
+sigue ahí.
+
+**RLS y grants.** `select` para miembros activos del club del evento (mismo gate que el
+calendario; **la lista de seguidores es de los miembros aunque el club sea público** —
+privacidad primero, §12 del encargo). **Sin política de escritura**, a propósito: todo por
+RPC. Las 8 columnas nuevas de `club_activities` llevan su `grant` por columna (issue #375;
+verificado con la superficie 6 de `DRIFT-CHECK.md`, que sigue dando las mismas 10 tablas).
+
+**RPCs** (`20260823_club_event_following_rpcs.sql`):
+
+- `follow_club_event(p_activity_id, p_remind_minutes_before default 1440)` — `on conflict
+  do update`: **idempotente y a prueba de carrera**.
+- `unfollow_club_event(p_activity_id)` — idempotente; permitido **siempre**, incluso en un
+  evento cancelado o pasado.
+- `set_club_event_reminder(p_activity_id, p_remind_minutes_before)` — exige seguirlo ya
+  (`not_following`).
+- `set_club_event_state(p_activity_id, p_state)` — moderador+.
+- `claim_due_event_reminders(p_limit, p_activity_id)` y `release_event_reminders(...)` —
+  **solo `service_role`**. La primera reclama y devuelve en la MISMA sentencia (`skip
+  locked`): dos barridos solapados no entregan el mismo aviso dos veces. La segunda es la
+  compensación si la entrega falla.
+- `create_club_event` / `update_club_event` **cambian de firma** (10 argumentos): se hizo con
+  `DROP` + `CREATE`, no con overload — una llamada de 4 argumentos con las dos firmas vivas
+  quedaría ambigua (42725). Con `DROP` + `CREATE` el bundle anterior sigue resolviendo por
+  defaults, que es lo que hace segura la regla «migración primero, merge después».
+
+`private.valid_event_reminder` acota el offset a `{null, 0, 15, 60, 1440, 10080}` — los
+mismos seis que ofrece `REMINDER_OPTIONS` en TS, con una prueba que lo fija.
+
+**`notifications.actor_id` pasa a NULLABLE** (`20260825_notifications_system_actor.sql`) y el
+CHECK se relaja a `actor_id is null or user_id <> actor_id`. Un recordatorio lo emite el
+*sistema*, no una persona. Se intentó evitarlo poniendo al organizador como actor y falló por
+dos sitios: el CHECK dejaba **sin aviso justo al organizador** que sigue su propio evento
+(23514), y la campana decía «Marta te avisa» cuando Marta no había hecho nada. Tres valores
+nuevos de `notification_type`: `club_event_reminder`, `club_event_updated`,
+`club_event_cancelled`.
+
+**El planificador** (`20260824_club_event_reminder_scheduler.sql`) — primer trabajo programado
+del repo, ver §6.2.
+
+**Aplicado y verificado en dev** el 2026-08-04 (12 checks de impersonación: idempotencia,
+extraño rechazado, privacidad de la lista, cancelar/reprogramar/evento pasado, expulsión,
+reclamo atómico y compensación) **y en PRODUCCIÓN** el mismo día, comprobando allí las firmas
+de las 9 RPC (una sola por nombre, sin ambigüedad), la tabla con su política e índices, el
+`actor_id` nullable con su CHECK relajado, el job activo, el backfill de los 2 eventos reales
+a las 19:00 `Europe/Madrid`, y la superficie 6 de `DRIFT-CHECK.md` (mismas 10 tablas de
+referencia: `club_activities` NO aparece, o sea que sus 8 columnas nuevas tienen su grant).
+
+### 6.2 El planificador: `pg_cron` + `pg_net` (dev y **prod**, 2026-08-04)
+
+El repo **no tenía ningún trabajo programado** y la issue #394 lo dejó escrito como decisión
+de plataforma pendiente, prohibiendo expresamente resolverlo «escribiendo al renderizar».
+
+```
+pg_cron (cada 5 min) → private.dispatch_event_reminders()   [SQL, lee Vault]
+                     → pg_net.http_post con cabecera secreta
+                     → POST /api/cron/event-reminders        [Node, en Vercel]
+                     → notifyMany() + sendPushToUsers()      [lo que YA existe]
+```
+
+**Por qué no Vercel Cron:** la cuenta es Hobby, donde un cron corre una vez al día y a hora
+no garantizada — incompatible con «15 minutos antes». **Por qué salta a HTTP:** firmar VAPID
+es `web-push`, o sea Node; un job que solo insertara filas llenaría la campana sin enviar
+ningún push. Reutiliza `notifyMany`, no duplica el sistema de notificaciones.
+
+**Error de puntualidad, explícito:** un recordatorio se entrega entre 0 y 5 minutos DESPUÉS
+de su momento teórico, nunca antes.
+
+**Los dos secretos van en Vault, una vez por entorno** (no están en git, y sin ellos la
+función avisa por `raise warning` y no despacha nada):
+
+```sql
+select vault.create_secret('https://<host-de-prod>', 'app_base_url');
+select vault.create_secret('<mismo valor que CRON_SECRET en Vercel>', 'cron_secret');
+```
+
+Y `CRON_SECRET` como variable de entorno en Vercel. La ruta compara en tiempo constante y
+responde **503 si la variable falta** (cerrada, no abierta) y 401 sin cabecera válida.
+
+**Dos trampas confirmadas al ponerlo en producción, y las dos cuestan una hora si no se saben:**
+
+1. **La URL tiene que ser el ALIAS DE PRODUCCIÓN, no el de la rama.** La protección de
+   despliegue del proyecto está en `all_except_custom_domains` y no hay dominio propio, así
+   que `biblioshare-git-main-*.vercel.app` devuelve **302** al muro de SSO de Vercel y la
+   petición nunca llega a la ruta. `biblioshare-nine.vercel.app` sí llega. Queda anotado en la
+   descripción del propio secreto `app_base_url`.
+2. **Cambiar `CRON_SECRET` en Vercel exige REDEPLOY.** Mientras no se redespliega, la ruta
+   sigue respondiendo 503 aunque la variable ya esté guardada.
+
+**Verificado funcionando en producción el 2026-08-04** (issue #434, cerrada): `cron.job_run_details`
+da `succeeded` cada 5 minutos en punto y `net._http_response` da **200** con
+`{"claimed":…}` — incluida una respuesta cuyo `created` coincide al milisegundo con el
+`end_time` de una ejecución del cron, o sea disparada por el job y no a mano. Los `claimed: 0`
+de las primeras son correctos: todavía no hay eventos seguidos con recordatorio vencido.
+
+Esto **no cierra #394** (el aviso de turno de ronda sigue por construir) pero le retira el
+bloqueo: el mecanismo queda montado y §7.17 puede colgarse del mismo job.
+
+### La ronda — latido semanal de club (dev y **prod**, 2026-08-04)
+
+Tabla propia, **no** un `kind` de `club_activities` — a propósito y contra SD-8, con el
+argumento completo en `decisiones.md` (2026-08-03) y en la spec
+`docs/superpowers/specs/2026-08-03-club-rondas-design.md` §1. Migración
+`supabase/migrations/20260803_club_rounds.sql`.
+
+`club_rounds`: `id`, `club_id` (FK a `clubs`, `on delete cascade`), `period_key` (semana ISO
+`IYYY-"W"IW` de `timezone('Europe/Madrid', now())`, calculada en SQL — el cliente nunca la
+manda), `author_id` (FK a `auth.users`, `on delete set null`; NULL = consigna de la casa),
+`prompt` (`char_length` 1..500), `item_type`/`item_id` (par polimórfico sin FK, igual que
+`club_activity_items`; `num_nonnulls` fuerza los dos NULL o los dos con valor),
+`created_at`. **`unique (club_id, period_key)`**: quien escribe primero define la ronda del
+periodo — sin lock, lo resuelve el índice.
+
+Cuatro valores de enum nuevos: `target_kind.club_round`,
+`notification_type.club_round_proposed|club_round_commented|club_round_liked`.
+
+RLS activa, **dos políticas, sin INSERT ni UPDATE** — la única puerta de escritura es
+`ensure_club_round()` (`SECURITY DEFINER`), y una ronda es inmutable (sus respuestas
+contestan a ESA pregunta):
+- `club rounds select members` (`select`, `authenticated`) — solo miembros del club, con
+  independencia de `clubs.visibility` (SD-4).
+- `club rounds delete moderators` (`delete`, `authenticated`) — moderador+
+  (`has_min_club_role`), para retirar una consigna abusiva antes de que se quede una semana
+  entera arriba.
+
+Dos triggers:
+- `club_rounds_sync_interaction_target` (`after insert`) → registra el target canónico
+  (`kind = 'club_round'`), owner `coalesce(author_id, clubs.owner_id)` (la casa no es un
+  usuario y `owner_id` es `not null`), audiencia `club_member`, href
+  `/club/{slug}?ronda={period_key}`, comentable y reaccionable.
+- `club_rounds_cleanup_social_target` (`after delete`) → `private.cleanup_social_target`
+  genérico: reportes, target, comentarios, reacciones y avisos.
+
+Cuatro funciones, todas con `search_path = ''` y `revoke`/`grant` explícitos (mismo patrón
+que el resto de RPC del repo):
+- `private.club_now()` — la hora del servidor en `Europe/Madrid`, no UTC (con UTC la semana
+  cambiaría a las 02:00 del lunes en verano). Sin costura de inyección para forzar el día en
+  test — ver Pendiente más abajo.
+- `private.house_prompt(club_id, period_key)` — 10 consignas fijas en SQL, índice
+  determinista `hashtext(club_id || period_key)` (casteado a `bigint` antes de `abs()` para
+  no desbordar en el valor más negativo de `int4`). `execute` revocado incluso a
+  `authenticated`: el cliente nunca la llama directo.
+- `public.get_club_round_state(club_id) returns table(period_key, day_index, holder_id,
+  round_id, round_author, round_prompt, round_item_type, round_item_id, house_prompt)`
+  (`SECURITY DEFINER`) — periodo y día ISO actuales, titular por rotación aritmética sobre
+  miembros activos (`(semanas desde clubs.created_at) % nº miembros`), la ronda existente si
+  la hay, y `house_prompt` (la consigna de la casa PENDIENTE de materializar, solo si
+  `day_index >= 3` y aún no hay ronda). Puerta de membresía a mano (`is_club_member`) porque
+  es `SECURITY DEFINER`.
+- `public.ensure_club_round(club_id, prompt default null, item_type default null, item_id
+  default null) returns uuid` (`SECURITY DEFINER`) — único camino de escritura. Con
+  `prompt`: exige ser el titular si el periodo sigue libre; si ya hay ronda devuelve la
+  misma solo cuando el autor coincide con quien llama, si no `round_already_open`. Sin
+  `prompt`: materializa la consigna de la casa, solo desde el día 3, idempotente sin
+  condición — la carrera entre dos respuestas simultáneas la resuelve el `unique`
+  (`insert … on conflict do nothing` + relectura de la fila ganadora si perdimos).
+
+**Verificado en dev (`tyvzpuhxfwxrnkcpzxyg`) el 2026-08-04** contra objetos reales
+(`information_schema.columns`, `pg_policy`, `pg_trigger`, `pg_proc`, `pg_enum`), nunca
+contra `list_migrations`: las 8 columnas, las 2 políticas, los 2 triggers, las 4 funciones
+(`get_club_round_state` ya con las 9 columnas de salida, `house_prompt` incluida) y los 4
+valores de enum, todos presentes y con la forma exacta del fichero de migración.
+
+**Producción: APLICADA Y VERIFICADA el 2026-08-04** (`vmutcradmodhiltuohys`), en **una sola**
+llamada con el fichero consolidado y **antes** de mergear el código — al revés la página de
+todos los clubes habría reventado, porque `RoundBlock` llama a `get_club_round_state` en
+cada render. Verificado contra objetos reales (`pg_class`, `pg_policy`, `pg_trigger`,
+`pg_constraint`, `pg_enum`, `pg_proc`, `pg_proc.proacl`), **nunca contra
+`list_migrations`**: tabla con RLS activa, las dos políticas (`select` de miembros y
+`delete` de moderador+) y **ninguna** de `insert`/`update`, los dos triggers, las seis
+restricciones, los cuatro valores de enum y las cinco funciones con `search_path` fijado —
+las dos RPC públicas `security definer`, las dos de `private` no. Privilegios correctos:
+`get_club_round_state` y `ensure_club_round` quedan en `{postgres, authenticated,
+service_role}`, **sin `anon` ni `PUBLIC`**, y `club_now`/`house_prompt` solo en `postgres`.
+Advisors de seguridad **66 → 68**: los dos nuevos son
+`authenticated_security_definer_function_executable` para esas dos RPC, la misma categoría
+ya aceptada para las otras 41 del proyecto; **ninguno** en la categoría `anon`, lo que
+confirma que los `revoke` surtieron efecto.
+
+El `drop function if exists` que precede a `get_club_round_state` fue un no-op en este
+apply (prod no tenía la función); está ahí para el próximo cambio de columnas de salida.
+
+Dato histórico de dev: la migración llegó allí en
+**cuatro** entradas sucesivas, no tres — corregido aquí tras verificar
+`supabase_migrations.schema_migrations` (el dato de partida de esta sesión decía tres):
+`club_rounds` (tabla + RLS + triggers + los 4 valores de enum), `club_rounds_functions` (las
+cuatro funciones, `get_club_round_state` todavía sin `house_prompt`),
+`club_rounds_functions_fixes` (mismo día: corrige `ensure_club_round`, que devolvía la ronda
+existente sin comprobar autoría cuando alguien proponía tarde — `round_already_open` no se
+lanzaba nunca) y `club_rounds_house_prompt_column` (`drop function` + `create function` de
+`get_club_round_state` para añadir la columna, obligado porque `create or replace` no puede
+cambiar la lista de columnas de salida de una función `returns table`). El fichero que vive
+en `supabase/migrations/20260803_club_rounds.sql` ya está consolidado en una sola pasada con
+la forma FINAL: aplicarlo a prod tal cual, como fichero único, es correcto y no necesita
+reproducir el `drop`+`create` — prod nunca pasó por la forma intermedia de
+`get_club_round_state` que lo obligó en dev. Decisión de despliegue en `decisiones.md`
+(2026-08-03).
+
+**Pendiente, con issue:** el camino de la consigna de la casa no tiene cobertura
+automática de test (depende del día real de la semana); `resolveTargetHrefs` toma
+`targetType` como `string` en vez de una unión de tipos; el histórico no pinta los huecos
+«Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
+una en las issues abiertas (ver `backlog.md`).
+
+### 6.2 «Pensamiento»: tabla `thoughts` — SUPERSEDIDA y RETIRADA (dev y **prod**, 2026-08-09)
+
+> **⚠️ HISTÓRICO.** La tabla `thoughts` se **absorbió en `posts`** (§5.1) y se **eliminó de dev y
+> prod el 2026-08-09** (migración `20260847`, `to_regclass('public.thoughts')` = null en ambos).
+> Un pensamiento es hoy un `posts` con `kind='thought'`. Los valores de enum muertos (`'thought'`
+> en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`) se dejan inertes
+> (recrear el tipo es caro). Lo de abajo describe el modelo ORIGINAL, ya no vigente; se conserva
+> por el *porqué*.
+
+> Diseño completo en `docs/superpowers/specs/2026-08-06-pensamientos-post-design.md`. Esta
+> sección documenta la Fase 2 (esquema); Fases 3-5 (feed como 6ª fuente, compositor
+> dedicado, tarjeta/hilo con markdown-lite) y la Fase 6 (e2e + cierre documental) están
+> **completas en este branch** — la feature funciona de extremo a extremo en dev. Migraciones
+> `20260834_thoughts_enum_values.sql` (los tres valores de enum, en transacción propia —
+> `ALTER TYPE … ADD VALUE` no puede usarse en la misma transacción que consume el valor) y
+> `20260835_thoughts.sql` (tabla, trigger, RLS, grants). **Aplicada en PROD el 2026-08-07**
+> y reverificada contra objetos reales: `to_regclass('public.thoughts')` no nulo,
+> `enum_range(null::thought_anchor_type)` con los 5 valores, `'thought'` en `target_kind`,
+> `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS
+> activo, grants por columna idénticos a dev (5 con `INSERT`, 2 con `UPDATE`, 8 con `SELECT`)
+> y `get_advisors(security)` sin ningún hallazgo nuevo sobre `thoughts`. El código que la usa
+> se despliega al mergear el PR (migración-primero-luego-merge respetado).
+
+Un **Pensamiento** es el primer contenido **autoral** del feed personal: hasta ahora
+`getFeed` es fan-out on-read puro (toda tarjeta se deriva de una acción previa — alta de
+pase, sesión, actividad de club…), y un Pensamiento existe solo porque alguien lo escribió.
+Copia la forma de `club_activities`/`club_rounds`: tabla autoral que se engancha al feed y
+al sistema de interacciones por la vía estándar.
+
+`thoughts`: `id`, `user_id` (FK a `auth.users`, `on delete cascade`), `anchor_type`
+(`thought_anchor_type`: `book|movie|series|saga|person`), `anchor_id` (uuid, **sin FK SQL**
+— polimórfico sobre cinco tablas distintas, misma renuncia pragmática que `saga_items`; la
+integridad la garantiza `createThought` resolviendo el ancla antes del insert, Fase 4),
+`body` (`char_length` 1..2000), `is_spoiler` (default `false`), `created_at`, `updated_at`
+(trigger `thoughts_set_updated_at` → `set_updated_at()`). Dos índices:
+`thoughts_user_id_created_at_idx` (feed por autor) y `thoughts_anchor_idx (anchor_type,
+anchor_id)` (para «pensamientos sobre esta entidad», superficie de lectura fuera de v1).
+
+**`interaction_targets` gana la clase `thought`** (`target_kind`, 9→10 valores) vía el
+trigger resolutor `private.sync_thought_interaction_target()` (`after insert on thoughts`,
+mismo patrón que `sync_club_round_interaction_target`): `owner_id = user_id`, audiencia
+`profile`/`user_id` (igual que `pass`/`progress_session` — visible a quien pueda ver el
+perfil del autor, sin alcance de club), `commentable`/`reactable` = `true`, y los dos
+valores nuevos de `notification_type` (`thought_commented`, `thought_liked` — nombrados
+como el resto de pares `<entidad>_commented`/`<entidad>_liked`, no como el borrador inicial
+de la spec). El `href` apunta a la ficha del ancla (un pensamiento no tiene página propia,
+igual que `progress_session` usa la página del ítem): `/libro/`, `/pelicula/`, `/serie/`,
+`/saga/` o `/persona/` + `anchor_id`. `thoughts_cleanup_social_target` (`after delete`) usa
+el `private.cleanup_social_target('thought')` genérico: cascada de target, comentarios,
+reacciones y avisos; `content_reports` conserva snapshot con `target_deleted_at`.
+
+RLS: `select` con `can_view_profile(user_id)` (mismo criterio que las demás fuentes del
+feed); `insert`/`update` solo el dueño (`user_id = auth.uid()`); **`delete` el dueño O un
+admin global** (política `thoughts delete own or moderate` → `private.can_moderate_target(
+'thought', id)`, que para un pensamiento —audiencia `profile`, sin club— resuelve a
+autor+admin; se añadió la rama `'thought'` a `private.social_target_owner_id`, cerrando
+#525 — migración `20260836_thoughts_delete_moderate.sql`, **aplicada en dev el 2026-08-07 y
+en PROD el 2026-08-07**, verificada contra `pg_policy`/`pg_get_functiondef`). Sin política
+de club porque un pensamiento no tiene una. Matriz mínima en
+`supabase/tests/thoughts_rls.sql` (patrón de `social_phase1_interaction_targets.sql`):
+dueña inserta/ve el suyo, un tercero sin relación de follow no lo ve (ni el target
+canónico), un seguidor aceptado lo ve y puede comentarlo por la vía canónica, un no-dueño
+no puede escribirlo (RLS filtra la fila, no lanza excepción) y borrarlo se lleva en cascada
+el target y sus comentarios. Las cinco aserciones pasaron en dev el 2026-08-06.
+
+**Grants por columna (#375, DRIFT-CHECK superficie 6):** `id`/`created_at`/`updated_at`
+generadas (sin grant de escritura); `user_id`/`anchor_type`/`anchor_id` inmutables tras el
+insert (grant de `INSERT`, no de `UPDATE`); `body`/`is_spoiler` editables. La superficie 6
+corrida en dev el 2026-08-06 confirma `thoughts` con 8 columnas / 5 con `INSERT` / 2 con
+`UPDATE` — el mismo patrón intencionado que `passes`/`progress_sessions`, no un hueco.
+
+**Verificado en dev el 2026-08-06** contra objetos reales, nunca contra `list_migrations`:
+`to_regclass('public.thoughts')` no nulo, `enum_range(null::thought_anchor_type)` con los
+cinco valores, `'thought'` presente en `enum_range(null::target_kind)`, y `get_advisors`
+(seguridad) sin ningún hallazgo nuevo sobre `thoughts`.
+
+**Tipos TS:** `database.types.ts` regenerado y acotado a las adiciones de esta fase (el
+regen completo arrastraba reformateos y drift preexistente ajeno — comentarios a mano en
+RPCs de eventos de club, orden de funciones — que se descartó a propósito). Como
+`NotificationType`/`TargetType` en `src/lib/social/` son uniones literales manuales, no
+inferidas del esquema, ampliar el enum de la BD sin ampliarlas rompía `tsc` de inmediato
+(`interaction-actions.ts`, `interaction-targets.ts`): se añadió `"thought"` a `TargetType` y
+`"thought_commented"`/`"thought_liked"` a `NotificationType` (+ sus entradas obligatorias en
+`NOTIFICATION_TYPE_KEY` y en `NOTIFICATION_CATEGORY` de `src/lib/push/types.ts`, categoría
+`social` — mismo criterio por contenido que `review_commented`/`activity_liked`). Las
+claves de copy (`thoughtCommented`/`thoughtLiked`) ya tienen cadena en `messages/es.json`
+desde que la Fase 5 (tarjeta e hilo) las dispara de verdad — huérfanas solo mientras no
+existía compositor ni hilo de comentarios de Pensamientos.
+
+**Fuera de alcance v1** (documentado en la spec; issues abiertas en Fase 6 — ver
+`backlog.md`): «pensamientos sobre esta entidad» en la ficha del ítem/saga/persona (el
+índice `thoughts_anchor_idx` ya está listo para esa lectura); edición/borrado desde la
+tarjeta más allá de lo que ya permite la RLS; una sola ancla por pensamiento en v1.
+
+**Fase 6 (2026-08-07, SOLO EN DEV):** e2e `e2e/thoughts.spec.ts` — publicar anclado a un
+libro de biblioteca con spoiler y `**negrita**`, comentar, reaccionar con 🔥 en post y
+comentario, recargar y comprobar que persiste; repite el anclaje (solo el chip) con saga y
+persona. Spec escrita y committeada; **no se pudo ejecutar en este entorno** (worktree sin
+`.env.local`: faltan `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`TEST_USER_*`,
+y `.claude/launch.json` apunta a un `dev.cmd` en `D:\` que no existe en esta máquina — el
+`next dev` de Playwright arranca pero cada ruta revienta al crear el cliente de Supabase).
+Queda como entregable ejecutable por quien tenga esas credenciales, no como verificación ya
+hecha.
+
+### 6.3 Tipos de evento: `club_event_type` + `config` por tipo (SOLO EN DEV, 2026-08-09)
+
+> Diseño en `docs/superpowers/specs/2026-08-09-tipos-de-evento-design.md`. Migraciones
+> `20260840_club_event_type_enum.sql`, `20260841_club_event_type_column.sql` y
+> `20260842_club_event_typed_rpcs.sql`, **aplicadas y verificadas en dev**; producción
+> pendiente del merge del bundle (migración primero, merge después, §10 de la spec).
+
+Un evento (§6, `kind='evento'`) deja de ser un único formato: gana un discriminador
+`event_type` y usa el `config` jsonb —ya opaco a la BD para toda actividad, §6— para los
+campos propios de cada tipo, sin columnas por subtipo ni actividad nueva. Decisión de forma
+en `decisiones.md` (2026-08-09).
+
+**Enum y columna:**
+
+| Qué | Detalle |
+|---|---|
+| `club_event_type` (enum) | `encuentro \| lanzamiento \| fecha_destacada`, en su propia transacción (`20260840`) — mismo motivo que `activity_kind` en 2026-07-22: Postgres prohíbe usar un valor de enum recién creado en la misma transacción que lo crea. |
+| `club_activities.event_type` | `club_event_type NOT NULL DEFAULT 'encuentro'` (`20260841`). El DEFAULT hace el backfill gratis para los eventos existentes (todos eran Encuentro, lo único creable hasta hoy), **pero se aplica a la tabla entera**: un `buddy_read`/`tierlist`/`list_challenge`/`criteria_challenge` también recibe `event_type = 'encuentro'` sin que signifique nada — la app trata `eventType` como significativo SOLO cuando `kind='evento'`; el mapper de `ClubActivity` (`src/lib/clubs/activities/core.ts`) lo devuelve `null` para los demás kinds. |
+| Grant | Por columna, idéntico a `modality`: `SELECT`/`INSERT`/`UPDATE`/`REFERENCES` para `anon`, `authenticated` y `service_role` (issue #375, DRIFT-CHECK superficie 6). |
+
+**Forma de `config` por tipo** (opaca a la BD; tipada y validada en TS por
+`parseEventConfig`, `src/lib/clubs/activities/event-types.ts` — tolerante a formas viejas o
+corruptas para que un jsonb raro no reviente una ficha):
+
+```jsonc
+// encuentro → sin config; usa las columnas ya existentes (location/modality/online_url/…)
+{}
+
+// lanzamiento
+{
+  "item":        { "itemType": "book" | "movie" | "series", "itemId": "<uuid catálogo>" },
+  "releaseType": "estreno_temporada",   // vocabulario por medio, event-release-types.ts
+  "platform":    "netflix",             // opcional, solo movie/series
+  "region":      "España",              // opcional, texto libre
+  "allDay":      true
+}
+
+// fecha_destacada
+{
+  "relations": [
+    { "kind": "item",     "itemType": "book", "itemId": "<uuid>" },
+    { "kind": "activity", "activityId": "<uuid de club_activities del MISMO club>" }
+  ],
+  "allDay": true
+}
+```
+
+`config.item` y `config.relations[].itemId` son referencias polimórficas **sin FK** al
+catálogo (mismo trato que `passes`, §3): `forbid_delete_with_passes` NO las cubre, así que
+borrar la obra puede dejar la referencia colgando — el display degrada con gracia (omite la
+relación irresoluble), pero el ref queda muerto (issue
+[#546](https://github.com/borjar20/Biblioshare/issues/546), `tipo:deuda`).
+
+**«Todo el día» (hora opcional) y el cambio de comportamiento de Encuentro:**
+`create_club_event`/`update_club_event` (`20260842`, `DROP`+`CREATE` como ya usaba la firma
+de 10 argumentos — no overload, para que el bundle anterior siga resolviendo por defaults)
+ganan `p_event_type` (solo en `create`; `update` lee el tipo de la fila y no lo cambia) y
+`p_config jsonb`. `p_starts_time` es **opcional en todos los tipos**, pero el default sin hora
+DIFIERE por tipo: en **Lanzamiento/Fecha destacada** una hora ausente hace el evento de «todo
+el día» — `starts_at` se ancla a `00:00` en `p_timezone` del día `starts_on` y `config.allDay =
+true` registra el hecho para el display (no se puede derivar de forma fiable de `starts_at`,
+porque medianoche es una hora legítima). Los renderizadores reciben el booleano `allDay` ya
+calculado por los loaders, nunca leen `config` crudo.
+
+**Encuentro conserva el comportamiento heredado: la hora es opcional y sin ella se asume las
+19:00** (`coalesce(p_starts_time, '19:00')` en `create`; en `update`, la hora vieja de la fila o
+19:00). Es el mismo default que usó el backfill de §6.1 al añadir `starts_at`, y **no hay guarda
+`starts_time_required`**: un Encuentro sin hora sigue siendo válido, como antes de los tipos de
+evento. Encuentro nunca es «todo el día» (siempre tiene una hora, real o asumida).
+
+**Aplicado y verificado en dev** el 2026-08-09 contra objetos reales: `pg_proc` devuelve una
+sola firma por nombre de `create_club_event`/`update_club_event` (12 y 11 argumentos), la
+firma de 10 argumentos anterior ya no existe, `to_regtype('public.club_event_type')` no es
+nulo, y `information_schema.column_privileges` para `event_type` es idéntico al de
+`modality`. **Producción pendiente del merge.**
 
 ## 7. Sagas
 
@@ -616,6 +1442,26 @@ La exclusión de nodos huérfanos que introdujo #170 **sigue viva**, pero desde 
 afecta a la **presentación** (qué se pinta en el timeline/grafo), nunca al número: la asimetría
 de #185 en la ORDENACIÓN (no en el cómputo) sigue sin resolver y queda abierta como issue — ya no
 puede descuadrar el progreso porque el progreso no la mira.
+
+**Columnas de `saga_items`** (verificado contra `information_schema.columns` de prod el
+2026-08-06; el doc solo las tenía en prosa dispersa —`role` en §7.3, `placement` en §7.4,
+`optional` en §7.10— y reconstruirlas obligaba a perseguir tres `ALTER`):
+
+| columna | tipo | null | default | notas |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | |
+| `saga_id` | `uuid` | NO | — | |
+| `item_type` | `item_type` (enum) | NO | — | |
+| `item_id` | `uuid` | NO | — | |
+| `position` | `integer` | SÍ | — | hueco en la secuencia curada |
+| `created_at` | `timestamptz` | NO | `now()` | |
+| `is_primary` | `boolean` | NO | `false` | membresía principal (multi-membresía) |
+| `role` | `saga_item_role` (enum) | SÍ | — | §7.3, issue #167 |
+| `placement` | `saga_placement` (enum) | SÍ | — | `fijo`/`libre`, §7.4 |
+| `optional` | `boolean` | NO | `false` | §7.10, opcionales saltables |
+
+Unique vigente: `(saga_id, item_type, item_id)` (`saga_items_saga_item_key`) — el antiguo
+`saga_items_item_key` sobre `(item_type, item_id)` se retiró al abrir la multi-membresía.
 
 ### 7.1 Escritura de `saga_items` (issue #169)
 
@@ -693,8 +1539,11 @@ dentro de una saga. Tres tablas:
     `buildRouteList` — `saga_routes.name` no tiene unique, así que renombrarla dejaría dos chips
     con el mismo texto en cuanto alguien la desdesignara. Sin backfill a propósito: designar
     cambia la vista POR DEFECTO de esa saga y no se hace en nombre del curador.
-- `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), y **XOR**
-  `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos).
+- `saga_route_entries` — los pasos: `route_id`, `position` (único por ruta), **XOR**
+  `(item_type, item_id)` / `child_saga_id` (una obra o un bloque-subsaga, nunca los dos), y
+  `note` (`text` nullable, `CHECK (note is null or char_length(note) <= 200)`, la nota del paso;
+  una cadena vacía `''` cuenta como sin nota, ver `count-route-entries.ts`). Columnas reales en
+  prod: `id`, `route_id`, `position`, `item_type`, `item_id`, `child_saga_id`, `note`, `created_at`.
   Guardado por **full-replace atómico** vía RPC `save_saga_route(p_route_id, p_entries)`
   (`SECURITY DEFINER`, gate `collaborator+` interno) — nunca se escribe fila a fila desde el
   cliente. **Desde el 2026-07-29 (issue #176, `20260809_save_saga_route_valida_subarbol.sql`,
@@ -1485,6 +2334,44 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
+## 7.9 Celebraciones — `user_celebrations` (dev y **prod**, 2026-08-05)
+
+Memoria de las microanimaciones ganadas por usuario, para que un hito **no se repita** entre
+recargas ni entre dispositivos (localStorage no se comparte). **No es estado de progreso** —
+el estado vivo sigue en `passes`; esta tabla es memoria de UI persistida.
+
+**La tabla** `user_celebrations`: `id`, `user_id` (FK `auth.users`, `on delete cascade`),
+`event_type text` (no enum: añadir un evento no debe exigir migración de tipo; el registro de
+la app en `src/lib/celebrations/registry.ts` es la fuente de verdad), `event_key text`,
+`payload jsonb`, `first_triggered_at`, `last_triggered_at`, `displayed_at` (NULL = ganada sin
+animar todavía), `created_at`. **`unique (user_id, event_type, event_key)` ES la
+deduplicación**: ganar dos veces el mismo hito no crea segunda fila. Índice parcial
+`idx_user_celebrations_pending on (user_id) where displayed_at is null` para el drenado.
+
+**RLS**: `select`/`insert`/`update` solo de las propias (`auth.uid() = user_id`) — cada quien
+gana SUS celebraciones con su sesión, sin service-role. `grant select, insert, update` a
+`authenticated`.
+
+**RPC** `pull_pending_celebrations()` (`security definer`, `search_path` fijado, `revoke` de
+`anon`/`public`): reclama y devuelve las no mostradas del usuario en **una** sentencia
+(`update … where displayed_at is null returning …`), atómica ante dos pestañas.
+
+Modelo **ganar → drenar**: el dominio gana (idempotente vía upsert `ignoreDuplicates`) desde
+`addSession` (eventos «primera actividad», «objetivo diario», «hito de racha») y desde las
+acciones de club (join/accept/post/poll/vote → «primera participación»); el cliente drena por
+la RPC, anima una vez y sella `displayed_at`. Migración
+`supabase/migrations/20260805_user_celebrations.sql`.
+
+**Aplicada a prod el 2026-08-05** (misma pasada que dev): verificado contra objetos reales —
+`user_celebrations` con RLS activa y 3 políticas, 3 índices, y `pull_pending_celebrations`
+`security definer` con `search_path=public`, ejecutable por `authenticated` y **no** por `anon`.
+
+**Pendiente (issues abiertas):** #459 marcar episodios desde la pestaña Episodios
+(`episode-actions.ts`) y publicar/votar en club aún no disparan `checkCelebrations()` en cliente
+(la celebración se gana igual y se drena en el siguiente pull/visibilidad, solo se retrasa);
+#460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
+`annual_challenge_completed` y `club_activity_completed`.
+
 ## 8. Seguridad
 
 Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
@@ -1529,24 +2416,30 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 | `item_type` | `book \| movie \| series` |
 | `media_status` | `planned \| in_progress \| completed \| dropped` |
 | `user_role` | `user \| collaborator \| admin` |
-| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge \| evento` (`evento`: 2026-07-22) |
+| `activity_kind` | `buddy_read \| tierlist \| list_challenge \| criteria_challenge \| evento` (`evento`: 2026-07-22; sin cambios en 2026-08-04 — el seguimiento de eventos amplió las COLUMNAS de `club_activities`, no este enum) |
 | `activity_status` | `proposed \| active \| finished \| archived` |
 | `club_role` / `club_visibility` | `member \| moderator \| owner` / `public \| private` |
 | `club_member_status` | `invited \| active \| requested` |
+| `club_event_state` | `programado \| cancelado \| pospuesto` (§6.1, 2026-08-04, dev y **prod**). Solo los tres estados que una PERSONA declara: «en curso» y «finalizado» se derivan del reloj y NO se guardan |
+| `event_modality` | `presencial \| online \| hibrida` (§6.1, 2026-08-04, dev y **prod**) |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres últimos: Social fase 1, dev y **prod** 2026-08-02) |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable · `club_round_proposed \| club_round_commented \| club_round_liked` (§6, la ronda, dev y **prod** 2026-08-04) · **`thought_commented \| thought_liked`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
 | `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
 | `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
-| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session` |
+| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session \| club_round` (§6, la ronda, dev y **prod** 2026-08-04 — **corregido aquí, 2026-08-06**: esta fila no lo listaba y ya estaba en los dos entornos) · **`thought`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
+| `thought_anchor_type` | `book \| movie \| series \| saga \| person` (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
 
 ## 10. Migraciones
 
-131 ficheros en `supabase/migrations/` (recontado el 2026-08-02; incluye los deltas que aún
-están solo en dev, como `20260814_notes_public_select.sql`). `supabase/schema-baseline.sql` es el
-replay ordenado para levantar un entorno limpio.
+158 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+2026-08-06 tras las dos de Fase 2 de «Pensamiento»; incluye los deltas que aún están solo en dev,
+como `20260814_notes_public_select.sql` y `20260834_thoughts_enum_values.sql`/`20260835_thoughts.sql`).
+Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
+pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
+`supabase/schema-baseline.sql` es el replay ordenado para levantar un entorno limpio.
 
 ⚠️ **Aplicar a prod y actualizar `schema-baseline.sql` es UN SOLO paso, no dos.** Ese fichero
 es un replay de PRODUCCIÓN, no de dev, y registra que ya se desincronizó dos veces (notas

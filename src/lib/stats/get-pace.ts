@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { parsePosition } from "@/lib/library/position";
-import { type StatsPeriod, yearBounds } from "./period";
+import { type StatsPeriod, periodBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -54,9 +54,11 @@ export async function getPagesPerDay(
     .eq("user_id", userId)
     .eq("passes.item_type", "book");
 
-  if (period !== "all") {
-    const { start, endExclusive } = yearBounds(period);
-    query = query.gte("session_date", start).lt("session_date", endExclusive);
+  const bounds = periodBounds(period);
+  if (bounds) {
+    query = query
+      .gte("session_date", bounds.start)
+      .lt("session_date", bounds.endExclusive);
   }
 
   const { data, error } = await query;

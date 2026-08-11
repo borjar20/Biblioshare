@@ -54,9 +54,20 @@ export function SkeletonCard({
 // Rejilla de portadas (2→5 col) con su línea de título debajo, igual que los
 // grids reales de Colección/Buscar/Perfil. Centralizar las clases mantiene
 // alineadas las dimensiones (anti-CLS).
-export function SkeletonCoverGrid({ count = 10 }: { count?: number }) {
+//
+// `cols` existe porque las breakpoints de Tailwind miran el VIEWPORT, no el
+// contenedor: la rejilla ancha de `Colección › Todo` llega a 8 columnas en 2xl
+// y necesita que su skeleton haga lo mismo, mientras que las demás (que siguen
+// en una columna de 4xl) no. Sin esto, cargar `Todo` saltaba de 5 a 8 columnas.
+export function SkeletonCoverGrid({
+  count = 10,
+  cols = "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+}: {
+  count?: number;
+  cols?: string;
+}) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className={`grid gap-4 ${cols}`}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex flex-col gap-2">
           <SkeletonCover />

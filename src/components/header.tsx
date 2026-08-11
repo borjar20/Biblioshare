@@ -5,6 +5,7 @@ import { NotificationBell } from "@/components/social/notification-bell";
 import { Wordmark } from "@/components/ui/wordmark";
 import { TopNav } from "@/components/nav/top-nav";
 import { UserAvatar } from "@/components/social/user-avatar";
+import { buttonVariants } from "@/components/ui/button";
 
 // Topbar. En escritorio ES la navegación (P-T1): wordmark + las cuatro
 // entradas + acciones a la derecha, como los frames de escritorio del handoff.
@@ -17,12 +18,12 @@ export async function Header({
   unreadCount,
 }: {
   loggedIn: boolean;
-  /** null mientras el usuario no tiene perfil (onboarding): topbar sin nav. */
+  /** null para el usuario anónimo y durante el onboarding (aún sin perfil): topbar sin nav. */
   username: string | null;
   avatarUrl: string | null;
   unreadCount: number;
 }) {
-  const t = await getTranslations("nav.items");
+  const t = await getTranslations("nav");
 
   return (
     // Altura fija (--topbar-h) en vez de crecer con el contenido: las
@@ -33,7 +34,7 @@ export async function Header({
         <Link href="/" className="shrink-0">
           <Wordmark />
         </Link>
-        {username && <TopNav username={username} />}
+        {(username || !loggedIn) && <TopNav username={username} />}
       </div>
 
       <div className="flex items-center gap-1">
@@ -44,11 +45,21 @@ export async function Header({
         {username && (
           <Link
             href={`/u/${username}`}
-            aria-label={t("profile")}
+            aria-label={t("items.profile")}
             className="ml-1 hidden shrink-0 rounded-full sm:block"
           >
             <UserAvatar name={username} avatarUrl={avatarUrl} size={34} />
           </Link>
+        )}
+        {!loggedIn && (
+          <div className="ml-1 flex items-center gap-2">
+            <Link href="/login" className={buttonVariants("ghost", "hidden px-3 py-1.5 text-[13px] sm:inline-flex")}>
+              {t("auth.signIn")}
+            </Link>
+            <Link href="/signup" className={buttonVariants("primary", "px-3 py-1.5 text-[13px]")}>
+              {t("auth.signUp")}
+            </Link>
+          </div>
         )}
       </div>
     </header>

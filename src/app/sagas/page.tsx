@@ -15,6 +15,11 @@ import { SagaIndexCard } from "@/components/saga/saga-index-card";
 import { SagaLoadMore } from "@/components/saga/saga-load-more";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchIcon } from "@/components/ui/icons";
+import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = { title: "Sagas — Biblioshare" };
 
@@ -73,7 +78,7 @@ export default async function SagasIndexPage({
     // 1152 px: el índice es una REJILLA (a 896 px se quedaba en dos columnas
     // con media pantalla vacía en escritorio), no una columna de lectura como
     // /coleccion o /buscar. El marco del mockup es de 1240 px.
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
         <h1 className="font-serif text-2xl font-semibold tracking-tight">{t("title")}</h1>
         {/* «38 SAGAS · 6 UNIVERSOS · SIGUES 4»: el pulso del catálogo entero,
@@ -113,7 +118,7 @@ export default async function SagasIndexPage({
               solo en su fila con medio ancho vacío al lado): el hueco lo ocupa
               la siguiente tarjeta que quepa, a costa de alterar el alfabético
               en ese punto. */}
-          <div className="grid grid-flow-row-dense gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid grid-flow-row-dense gap-2.5 ${CARD_GRID_COLS}`}>
             {visible.map((card) => (
               <div key={card.id} className={card.children.length > 0 ? "sm:col-span-2" : undefined}>
                 <SagaIndexCard card={card} isAuthenticated={data.isAuthenticated} />

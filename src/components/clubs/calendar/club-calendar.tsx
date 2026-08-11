@@ -14,7 +14,7 @@ import {
 import { formatMonthYear } from "@/lib/clubs/activities/format-date";
 import { EventForm } from "@/components/clubs/propose/event-form";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
 import { MARK_ACCENT } from "./mark-accent";
@@ -39,19 +39,27 @@ export function ClubCalendar({
   today,
   clubId,
   canModerate,
+  viewerIsMember,
 }: {
   marks: CalendarMark[];
   today: string;
   clubId: string;
   canModerate: boolean;
+  viewerIsMember: boolean;
 }) {
   const t = useTranslations("activity");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [creando, setCreando] = useState(false);
+  // «Sigues» filtra la AGENDA, no la rejilla: la rejilla es el mapa del mes y
+  // vaciarla dejaría al usuario sin contexto de qué más hay. Es estado local y no
+  // un search param porque no es un enlace que nadie vaya a compartir.
+  const [soloSeguidos, setSoloSeguidos] = useState(false);
 
   const month = parseMonthParam(searchParams.get("mes"), today);
-  const agenda = agendaForMonth(marks, month, today);
+  const agendaDelMes = agendaForMonth(marks, month, today);
+  const seguidosDelMes = agendaDelMes.filter((m) => m.followedByViewer);
+  const agenda = soloSeguidos ? seguidosDelMes : agendaDelMes;
 
   function irAlMes(destino: string) {
     // Sin esta guarda, pulsar "Hoy" estando ya en el mes actual apila una
@@ -96,7 +104,7 @@ export function ClubCalendar({
         />
       )}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <button
@@ -133,18 +141,32 @@ export function ClubCalendar({
             </button>
 
             <div className="flex flex-wrap gap-3 lg:ml-auto">
-              {CLASES_LEYENDA.map((markKind) => (
-                <span
-                  key={markKind}
-                  className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase"
-                >
+              {CLASES_LEYENDA.map((markKind) => {
+                const accent = MARK_ACCENT[markKind];
+                return (
                   <span
-                    aria-hidden
-                    className={`h-2 w-2 rounded-full ${MARK_ACCENT[markKind].bar}`}
-                  />
-                  {t(`markKind_${markKind}`)}
+                    key={markKind}
+                    className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase"
+                  >
+                    {/* Glifo (forma + color), no un punto de color: es la MISMA
+                        silueta que el chip de la rejilla, así el que no distingue
+                        los tonos empareja leyenda↔chip por la forma (#147). */}
+                    <accent.Icon className={`h-2.5 w-2.5 ${accent.text}`} aria-hidden />
+                    {t(`markKind_${markKind}`)}
+                  </span>
+                );
+              })}
+              {/* La marca de seguido también en la LEYENDA, no solo en la rejilla
+                  (§17): un icono nuevo en las celdas sin nada que lo explique
+                  obliga a adivinar qué significa. Solo se pinta si hay algo
+                  seguido este mes -- una leyenda para un símbolo que no aparece es
+                  ruido. */}
+              {viewerIsMember && seguidosDelMes.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
+                  <BellIcon className="h-2.5 w-2.5" aria-hidden />
+                  {t("eventFollowedBadge")}
                 </span>
-              ))}
+              )}
             </div>
           </div>
 
@@ -152,10 +174,50 @@ export function ClubCalendar({
         </div>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-[96px]">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            {t("calendarAgenda")}
-          </h2>
-          <AgendaList marks={agenda} />
+          <h2 className="label-section">{t("calendarAgenda")}</h2>
+
+          {/* El filtro solo aparece si hay algo que filtrar: un conmutador
+              «Sigues · 0» permanente sería un control que nunca hace nada. */}
+          {viewerIsMember && seguidosDelMes.length > 0 && (
+            <div
+              role="tablist"
+              aria-label={t("agendaFilterLabel")}
+              className="inline-flex w-fit overflow-hidden rounded-lg border border-border bg-surface"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!soloSeguidos}
+                onClick={() => setSoloSeguidos(false)}
+                className={`px-3 py-1.5 text-xs transition-colors ${
+                  soloSeguidos
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "bg-accent font-medium text-accent-foreground"
+                }`}
+              >
+                {t("agendaFilterAll")}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={soloSeguidos}
+                onClick={() => setSoloSeguidos(true)}
+                className={`px-3 py-1.5 text-xs transition-colors ${
+                  soloSeguidos
+                    ? "bg-accent font-medium text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t("agendaFilterFollowed", { count: seguidosDelMes.length })}
+              </button>
+            </div>
+          )}
+
+          <AgendaList
+            marks={agenda}
+            viewerIsMember={viewerIsMember}
+            emptyMessage={soloSeguidos ? t("agendaFollowedEmpty") : undefined}
+          />
         </aside>
       </div>
     </div>

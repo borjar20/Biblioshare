@@ -8,10 +8,12 @@ import {
 } from "@/lib/profile/get-profile-by-username";
 import {
   getFollowCounts,
+  getFollowNotify,
   getFollowState,
   getPendingRequests,
 } from "@/lib/social/follows";
 import { FollowButton } from "@/components/social/follow-button";
+import { NotifyBell } from "@/components/social/notify-bell";
 import { ProfileSafetyActions } from "@/components/social/profile-safety-actions";
 import { getBlockState } from "@/lib/social/block-state";
 import { FollowRequests } from "@/components/social/follow-requests";
@@ -30,6 +32,11 @@ import { ActivityTab } from "./_tabs/activity-tab";
 import { CollectionTab } from "./_tabs/collection-tab";
 import { StatsTab } from "./_tabs/stats-tab";
 import { RinconTab } from "./_tabs/rincon-tab";
+import { SHELL_APP } from "@/lib/ui/layout";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 const VALID_TABS: SectionTab[] = [
   "actividad",
@@ -62,6 +69,9 @@ export default async function PublicProfilePage({
     q?: string;
     sort?: string;
     month?: string;
+    periodo?: string;
+    tipo?: string;
+    medida?: string;
     archivados?: string;
   }>;
 }) {
@@ -133,8 +143,13 @@ export default async function PublicProfilePage({
     user ? getBlockState(supabase, user.id, profile.userId) : Promise.resolve("none" as const),
   ]);
 
+  const notifyEvents =
+    !isOwner && blockState === "none" && followState === "accepted"
+      ? await getFollowNotify(supabase, user?.id ?? null, profile.userId)
+      : [];
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <ProfileHeader
         profile={profile}
         stats={stats}
@@ -142,12 +157,21 @@ export default async function PublicProfilePage({
         counts={counts}
         followButton={
           !isOwner && blockState === "none" ? (
-            <FollowButton
-              targetUserId={profile.userId}
-              targetIsPublic={profile.isPublic}
-              state={followState}
-              viewerLoggedIn={!!user}
-            />
+            <div className="flex items-start gap-2">
+              <FollowButton
+                targetUserId={profile.userId}
+                targetIsPublic={profile.isPublic}
+                state={followState}
+                viewerLoggedIn={!!user}
+              />
+              {followState === "accepted" && (
+                <NotifyBell
+                  targetUserId={profile.userId}
+                  username={profile.username}
+                  initial={notifyEvents}
+                />
+              )}
+            </div>
           ) : undefined
         }
         safetyActions={
@@ -176,7 +200,12 @@ export default async function PublicProfilePage({
 
       {tab === "estadisticas" && (
         <Suspense fallback={<ProfileSectionSkeleton />}>
-          <StatsTab userId={profile.userId} monthParam={parsedParams.month} />
+          <StatsTab
+            userId={profile.userId}
+            basePath={basePath}
+            monthParam={parsedParams.month}
+            metricParam={parsedParams.medida}
+          />
         </Suspense>
       )}
 

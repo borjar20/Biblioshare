@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import type { ItemType } from "@/lib/catalog/types";
 import { createProfileFromMetadata } from "../(auth)/actions";
 import { Wordmark } from "@/components/ui/wordmark";
@@ -21,6 +22,10 @@ import {
   getSocialSuggestions,
 } from "@/lib/onboarding/get-social-suggestions";
 import { getSuggestions } from "@/lib/onboarding/get-suggestions";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Te damos la bienvenida — Biblioshare",
@@ -43,7 +48,7 @@ export default async function OnboardingPage({
   const result = await createProfileFromMetadata(supabase);
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/onboarding"));
 
   const { data: profile } = await supabase
     .from("profiles")

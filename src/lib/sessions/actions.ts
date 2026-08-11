@@ -7,6 +7,7 @@ import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getActivePass } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
+import { todayISO } from "@/lib/stats/dates";
 import { getEditions } from "@/lib/editions/get-editions";
 import { primaryEdition } from "@/lib/editions/edition-label";
 import {
@@ -14,6 +15,9 @@ import {
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
+import { createPost } from "@/lib/social/post-actions";
+import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 
 const VALID_STATUSES: MediaStatus[] = [
   "planned",
@@ -27,7 +31,7 @@ const VALID_STATUSES: MediaStatus[] = [
 // directa. `passClosed` avisa de que la sesión completó el pase: el cliente
 // encadena la hoja de cierre en vez de irse (D4 de la spec).
 export type AddSessionState = {
-  error?: "invalidPosition" | "invalidDuration" | "generic";
+  error?: "invalidPosition" | "invalidDuration" | "futureDate" | "generic";
   ok?: boolean;
   passClosed?: boolean;
 };
@@ -57,6 +61,14 @@ export async function addSession(
   if (!pass || pass.id !== passId) return { error: "generic" };
 
   const sessionDate = String(formData.get("sessionDate") ?? "").trim();
+
+  // No se registran sesiones en el FUTURO. El date picker ya pone `max`, pero
+  // una server action es un POST público, así que se rechaza también aquí
+  // (#352): además de ser un dato absurdo, una sesión futura envenena la clave
+  // de orden del feed (sessionRelativeBasis). Se compara contra el "hoy" del
+  // servidor; el borde de huso (tu "hoy" ya es el "mañana" del servidor) lo
+  // cubre el `max` del cliente, que va en tu calendario local.
+  if (sessionDate && sessionDate > todayISO()) return { error: "futureDate" };
 
   // Los minutos son solo de lectura (§7.14): una sesión de serie registra qué
   // episodio alcanzaste, no cuánto tardaste — la duración de una serie es una
@@ -103,7 +115,7 @@ export async function addSession(
   // Episodios), no aquí.
   let maxPosition: number | null = null;
   if (itemType === "book") {
-    const editions = await getEditions(supabase, "book", itemId);
+    const editions = await getEditions("book", itemId);
     const edition =
       editions.find((e) => e.id === pass.editionId) ?? primaryEdition(editions);
     maxPosition = edition?.totalUnits ?? null;
@@ -170,6 +182,11 @@ export async function addSession(
 
   if (insertError || !inserted) return { error: "generic" };
 
+  await notifyFollowersOfEvent(supabase, user.id, "session", {
+    targetType: "diary_entry",
+    targetId: passId,
+  });
+
   // Las notas de esta sesión ya se guardaron sueltas (SessionNotebook,
   // session_id null) mientras la hoja estaba abierta — aquí solo se
   // enlazan a la sesión recién creada. Best-effort a propósito (D4 de la
@@ -184,6 +201,27 @@ export async function addSession(
       .eq("pass_id", passId)
       .is("session_id", null)
       .in("id", noteIds);
+  }
+
+  // Compartir en el perfil (Spec 2, §8): opt-in del formulario. La sesión
+  // (fuente de verdad) ya está guardada; si el usuario marcó «Compartir», además
+  // se publica un post 'progressed' anclado a la obra, con el texto opcional como
+  // cuerpo social (el compositor de Pensamiento hace el mismo gesto con
+  // createPost). Best-effort: createPost devuelve un resultado discriminado y
+  // NUNCA lanza, así que un fallo al compartir no tumba el guardado de la sesión
+  // que el usuario sí pidió. Idempotente por el índice único de posts
+  // (source_kind, source_id, kind): `inserted.id` es esta sesión, única.
+  if (formData.get("share") === "on") {
+    const shareBody = String(formData.get("shareBody") ?? "").trim();
+    await createPost({
+      kind: "progressed",
+      anchorType: itemType,
+      anchorId: itemId,
+      sourceKind: "progress_session",
+      sourceId: inserted.id,
+      body: shareBody || undefined,
+      isSpoiler: formData.get("shareSpoiler") === "on",
+    });
   }
 
   // Serie: marca cada episodio reutilizando la MISMA escritura que la
@@ -229,6 +267,11 @@ export async function addSession(
       .eq("user_id", user.id);
     if (updateError) return { error: "generic" };
   }
+
+  // Microanimaciones del bucle diario (primera actividad, objetivo diario,
+  // hito de racha): best-effort, nunca tumba el guardado de la sesión. El
+  // cliente drena y anima tras recibir `ok` (checkCelebrations en session-sheet).
+  await earnDailyLoopCelebrations(supabase, user.id);
 
   // Auto-cierre de libro o serie (Regla 5 del esquema de flujo): si la
   // sesión alcanza la última página de TU edición (libro) o el último

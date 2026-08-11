@@ -1,0 +1,856 @@
+<title>Prototipo · Tipos de evento</title>
+<style>
+  :root{
+    --paper:#f7f4ee; --surface:#ffffff; --surface-2:#f1ece2; --inset:#faf8f3;
+    --ink:#2a2621; --ink-soft:#4d473f; --muted:#8a8172; --faint:#b4ab9a;
+    --hair:#e7e0d4; --hair-strong:#d7cdba;
+    --enc:#b0762a; --lan:#3f57cf; --fec:#b0396a;
+    --enc-soft:#f6ead6; --lan-soft:#e4e8fb; --fec-soft:#f8e2ec;
+    --book:#3f7a52; --movie:#3f57cf; --series:#8a4bbf;
+    --danger:#bb3b2e;
+    --shadow:0 1px 2px rgba(42,38,33,.05), 0 12px 30px -18px rgba(42,38,33,.28);
+    --shadow-lift:0 2px 4px rgba(42,38,33,.06), 0 20px 44px -22px rgba(42,38,33,.35);
+    --accent:var(--enc); --accent-soft:var(--enc-soft);
+    --serif:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  :root:not([data-theme="light"]){ }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#141109; --surface:#1e1a11; --surface-2:#282216; --inset:#191509;
+      --ink:#efe8d9; --ink-soft:#cfc7b6; --muted:#a1978512; --muted:#a49a86; --faint:#6f6656;
+      --hair:#322b1c; --hair-strong:#463d29;
+      --enc:#d69a4a; --lan:#8496f2; --fec:#e37ba4;
+      --enc-soft:#3a2e18; --lan-soft:#232743; --fec-soft:#3b2029;
+      --book:#5fae78; --movie:#8496f2; --series:#b587e0;
+      --danger:#e0705f;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -18px rgba(0,0,0,.7);
+      --shadow-lift:0 2px 4px rgba(0,0,0,.45), 0 22px 48px -22px rgba(0,0,0,.75);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#141109; --surface:#1e1a11; --surface-2:#282216; --inset:#191509;
+    --ink:#efe8d9; --ink-soft:#cfc7b6; --muted:#a49a86; --faint:#6f6656;
+    --hair:#322b1c; --hair-strong:#463d29;
+    --enc:#d69a4a; --lan:#8496f2; --fec:#e37ba4;
+    --enc-soft:#3a2e18; --lan-soft:#232743; --fec-soft:#3b2029;
+    --book:#5fae78; --movie:#8496f2; --series:#b587e0;
+    --danger:#e0705f;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -18px rgba(0,0,0,.7);
+    --shadow-lift:0 2px 4px rgba(0,0,0,.45), 0 22px 48px -22px rgba(0,0,0,.75);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+
+  .wrap{max-width:1060px; margin:0 auto; padding:32px 20px 88px}
+
+  /* ---- header ---- */
+  .top{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:26px}
+  .eyebrow{font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  h1{font-family:var(--serif); font-weight:600; font-size:clamp(26px,4vw,36px); line-height:1.05; margin:.28em 0 .18em; text-wrap:balance}
+  .lede{color:var(--ink-soft); max-width:52ch; margin:0}
+  .theme-btn{flex:none; appearance:none; border:1px solid var(--hair-strong); background:var(--surface); color:var(--ink-soft);
+    width:38px; height:38px; border-radius:11px; cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center; box-shadow:var(--shadow)}
+  .theme-btn:hover{border-color:var(--accent); color:var(--accent)}
+
+  /* ---- type selector ---- */
+  .types{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:26px}
+  .type{
+    text-align:left; appearance:none; cursor:pointer; background:var(--surface);
+    border:1.5px solid var(--hair); border-radius:15px; padding:15px 15px 14px; display:flex; flex-direction:column; gap:9px;
+    transition:border-color .16s, box-shadow .16s, transform .16s; box-shadow:var(--shadow); position:relative; color:inherit;
+  }
+  .type:hover{transform:translateY(-2px)}
+  .type .tico{width:34px; height:34px; border-radius:10px; display:grid; place-items:center; color:#fff}
+  .type .tico svg{width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+  .type[data-t="encuentro"] .tico{background:var(--enc)}
+  .type[data-t="lanzamiento"] .tico{background:var(--lan)}
+  .type[data-t="fecha_destacada"] .tico{background:var(--fec)}
+  .type .tname{font-family:var(--serif); font-size:17px; font-weight:600}
+  .type .tdesc{font-size:12.5px; color:var(--muted); line-height:1.35}
+  .type[aria-pressed="true"]{border-color:var(--accent); box-shadow:var(--shadow-lift)}
+  .type[aria-pressed="true"]::after{content:""; position:absolute; inset:0; border-radius:14px; border:1.5px solid var(--accent); pointer-events:none}
+  .type .check{position:absolute; top:12px; right:12px; width:18px; height:18px; border-radius:50%; background:var(--accent); display:none; place-items:center}
+  .type .check svg{width:11px; height:11px; stroke:#fff; stroke-width:2.4; fill:none}
+  .type[aria-pressed="true"] .check{display:grid}
+
+  /* ---- layout ---- */
+  .cols{display:grid; grid-template-columns:minmax(0,1fr) 352px; gap:24px; align-items:start}
+  @media (max-width:900px){ .cols{grid-template-columns:1fr} .types{grid-template-columns:1fr} }
+
+  /* ---- form card ---- */
+  form.card{background:var(--surface); border:1px solid var(--hair); border-radius:18px; box-shadow:var(--shadow); overflow:hidden}
+  .card-head{padding:16px 22px; border-bottom:1px solid var(--hair); background:var(--accent-soft); display:flex; align-items:center; gap:11px; transition:background .2s}
+  .card-head .dot{width:9px; height:9px; border-radius:50%; background:var(--accent)}
+  .card-head h2{margin:0; font-family:var(--serif); font-size:16.5px; font-weight:600}
+  .card-head .sub{margin-left:auto; font-size:12px; color:var(--muted)}
+  .card-body{padding:22px}
+  .core, .group{display:flex; flex-direction:column; gap:17px}
+  .group{display:none}
+  form[data-type="encuentro"] .group-encuentro,
+  form[data-type="lanzamiento"] .group-lanzamiento,
+  form[data-type="fecha_destacada"] .group-fecha{display:flex}
+  .sep{height:1px; background:var(--hair); margin:21px 0; border:0}
+  .sec-label{font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint); font-weight:700; margin-bottom:-4px}
+
+  /* ---- fields ---- */
+  .field{display:flex; flex-direction:column; gap:6px}
+  .field > label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:7px}
+  .req{color:var(--accent); font-size:15px; line-height:0}
+  .opt{color:var(--faint); font-weight:500; font-size:11px; letter-spacing:.04em; text-transform:uppercase}
+  .hint{font-size:12px; color:var(--muted); margin-top:-1px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media (max-width:520px){ .grid2{grid-template-columns:1fr} }
+
+  input[type=text], input[type=url], input[type=time], input[type=date], select, textarea{
+    font:inherit; color:var(--ink); background:var(--inset); border:1.5px solid var(--hair-strong);
+    border-radius:11px; padding:11px 12px; width:100%; transition:border-color .15s, box-shadow .15s;
+  }
+  textarea{resize:vertical; min-height:64px; line-height:1.45}
+  input::placeholder, textarea::placeholder{color:var(--faint)}
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent)}
+  select{appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:34px}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* conditional rows */
+  form[data-modality="online"] .row-location{display:none}
+  form[data-modality="presencial"] .row-url{display:none}
+  form[data-allday="true"] .row-launchtime{display:none}
+  .row-platform{display:none}
+  form[data-work-media="movie"] .row-platform, form[data-work-media="series"] .row-platform{display:flex}
+
+  /* switch */
+  .switch{display:flex; align-items:center; gap:11px; padding:11px 13px; background:var(--inset); border:1.5px solid var(--hair-strong); border-radius:11px; cursor:pointer}
+  .switch input{position:absolute; opacity:0; width:0; height:0}
+  .track{width:38px; height:22px; border-radius:99px; background:var(--hair-strong); position:relative; flex:none; transition:background .16s}
+  .track::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transition:transform .16s}
+  .switch input:checked + .track{background:var(--accent)}
+  .switch input:checked + .track::after{transform:translateX(16px)}
+  .switch .sw-text{font-size:13.5px; font-weight:600; color:var(--ink-soft)}
+  .switch .sw-sub{font-size:12px; color:var(--muted); font-weight:400}
+
+  /* ---- item picker ---- */
+  .pickbox{border:1.5px dashed var(--hair-strong); border-radius:12px; padding:4px; background:var(--inset)}
+  .pick-add{appearance:none; border:0; background:transparent; color:var(--accent); font:inherit; font-weight:600; font-size:13.5px;
+    cursor:pointer; padding:9px 10px; display:flex; align-items:center; gap:8px; width:100%; border-radius:9px}
+  .pick-add:hover{background:var(--accent-soft)}
+  .pick-add svg{width:16px; height:16px; stroke:currentColor; stroke-width:2; fill:none}
+  .picker{display:none; padding:6px}
+  .picker.open{display:block}
+  .picker-search{margin-bottom:8px}
+  .tabs{display:flex; gap:6px; margin-bottom:8px}
+  .tab{appearance:none; border:1px solid var(--hair-strong); background:var(--surface); color:var(--ink-soft); font:inherit; font-size:12.5px; font-weight:600;
+    padding:6px 12px; border-radius:99px; cursor:pointer}
+  .tab[aria-selected="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+  .results{display:flex; flex-direction:column; gap:2px; max-height:236px; overflow-y:auto}
+  .res{display:flex; align-items:center; gap:11px; padding:8px; border-radius:10px; cursor:pointer; text-align:left; background:transparent; border:0; font:inherit; color:inherit; width:100%}
+  .res:hover{background:var(--surface-2)}
+  .res .cov{flex:none}
+  .res .rt{display:flex; flex-direction:column; gap:2px; min-width:0}
+  .res .rtitle{font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .res .rmeta{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .res-empty{padding:14px 8px; color:var(--muted); font-size:13px; text-align:center}
+
+  /* cover tile */
+  .cov{width:38px; height:52px; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#fff; flex:none; box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .cov.sm{width:30px; height:42px; font-size:15px; border-radius:5px}
+  .cov[data-m="book"]{background:linear-gradient(150deg,var(--book),color-mix(in srgb,var(--book) 62%, #000))}
+  .cov[data-m="movie"]{background:linear-gradient(150deg,var(--movie),color-mix(in srgb,var(--movie) 62%, #000))}
+  .cov[data-m="series"]{background:linear-gradient(150deg,var(--series),color-mix(in srgb,var(--series) 62%, #000))}
+
+  .mchip{font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:99px; flex:none}
+  .mchip[data-m="book"]{color:var(--book); background:color-mix(in srgb,var(--book) 15%, transparent)}
+  .mchip[data-m="movie"]{color:var(--movie); background:color-mix(in srgb,var(--movie) 15%, transparent)}
+  .mchip[data-m="series"]{color:var(--series); background:color-mix(in srgb,var(--series) 15%, transparent)}
+
+  /* selected work card */
+  .work-card{display:none; align-items:center; gap:12px; padding:11px; border:1.5px solid var(--hair-strong); border-radius:12px; background:var(--inset)}
+  .work-card.set{display:flex}
+  .work-card .wt{display:flex; flex-direction:column; gap:3px; min-width:0; flex:1}
+  .work-card .wtitle{font-weight:600; font-size:14px}
+  .work-card .wmeta{font-size:12px; color:var(--muted)}
+  .link-btn{appearance:none; border:0; background:transparent; color:var(--accent); font:inherit; font-weight:600; font-size:12.5px; cursor:pointer; padding:4px 6px; border-radius:7px}
+  .link-btn:hover{background:var(--accent-soft)}
+  .link-btn.danger{color:var(--danger)}
+  .link-btn.danger:hover{background:color-mix(in srgb,var(--danger) 12%, transparent)}
+
+  /* relations chips */
+  .rel-list{display:flex; flex-direction:column; gap:8px}
+  .rel-chip{display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--hair-strong); border-radius:11px; background:var(--inset)}
+  .rel-chip .rc-t{flex:1; min-width:0}
+  .rel-chip .rc-title{font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .rel-chip .rc-kind{font-size:11.5px; color:var(--muted)}
+  .rel-chip .ic{width:30px; height:30px; border-radius:8px; display:grid; place-items:center; flex:none; background:var(--surface-2); color:var(--fec)}
+  .rel-chip .ic svg{width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.8}
+  .x-btn{appearance:none; border:0; background:transparent; color:var(--muted); cursor:pointer; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; flex:none}
+  .x-btn:hover{background:color-mix(in srgb,var(--danger) 14%, transparent); color:var(--danger)}
+  .x-btn svg{width:13px; height:13px; stroke:currentColor; stroke-width:2.2; fill:none}
+
+  /* ---- footer ---- */
+  .foot{display:flex; align-items:center; gap:12px; padding:16px 22px; border-top:1px solid var(--hair); background:var(--surface-2)}
+  .foot .spacer{flex:1}
+  .btn{appearance:none; font:inherit; font-weight:600; font-size:14px; border-radius:11px; padding:11px 20px; cursor:pointer; border:1.5px solid transparent; transition:filter .15s, background .15s}
+  .btn.ghost{background:transparent; color:var(--ink-soft); border-color:var(--hair-strong)}
+  .btn.ghost:hover{background:var(--surface)}
+  .btn.primary{background:var(--accent); color:#fff}
+  .btn.primary:hover{filter:brightness(1.06)}
+
+  /* ---- aside ---- */
+  aside{display:flex; flex-direction:column; gap:16px; position:sticky; top:24px}
+  @media (max-width:900px){ aside{position:static} }
+  .aside-label{font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint); font-weight:700; margin:0 0 -6px 2px}
+
+  .preview{background:var(--surface); border:1px solid var(--hair); border-radius:16px; box-shadow:var(--shadow); overflow:hidden}
+  .pv-accent{height:5px; background:var(--accent); transition:background .2s}
+  .pv-body{padding:17px 18px}
+  .pv-badge{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--accent); background:var(--accent-soft); padding:4px 10px; border-radius:99px}
+  .pv-title{font-family:var(--serif); font-size:20px; font-weight:600; line-height:1.15; margin:11px 0 6px; text-wrap:balance; word-break:break-word}
+  .pv-title.empty{color:var(--faint); font-style:italic}
+  .pv-when{display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:13.5px; font-weight:500}
+  .pv-when svg{width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.7; flex:none; color:var(--accent)}
+  .pv-desc{font-size:13px; color:var(--muted); margin:9px 0 0; line-height:1.5; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+  .pv-detail{margin-top:13px; padding-top:13px; border-top:1px solid var(--hair); display:flex; flex-direction:column; gap:9px}
+  .pv-row{display:flex; gap:9px; align-items:flex-start; font-size:13px}
+  .pv-row .k{color:var(--faint); font-size:11px; letter-spacing:.05em; text-transform:uppercase; font-weight:700; width:74px; flex:none; padding-top:2px}
+  .pv-row .v{color:var(--ink-soft); min-width:0}
+  .pv-work{display:inline-flex; align-items:center; gap:8px}
+  .pv-rel{display:flex; align-items:center; gap:7px; margin-bottom:5px}
+  .pv-rel:last-child{margin-bottom:0}
+  .pv-rel .rdot{width:6px; height:6px; border-radius:50%; background:var(--accent); flex:none}
+  .pv-remind{display:flex; align-items:center; gap:8px; margin-top:13px; padding-top:12px; border-top:1px solid var(--hair); color:var(--muted); font-size:12.5px}
+  .pv-remind svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.7; color:var(--accent)}
+
+  .peek{background:var(--surface); border:1px solid var(--hair); border-radius:14px; box-shadow:var(--shadow); overflow:hidden}
+  .peek summary{cursor:pointer; padding:12px 16px; font-size:12.5px; font-weight:600; color:var(--ink-soft); list-style:none; display:flex; align-items:center; gap:9px}
+  .peek summary::-webkit-details-marker{display:none}
+  .peek summary .chev{width:14px; height:14px; stroke:var(--muted); stroke-width:2; fill:none; transition:transform .18s; margin-left:auto}
+  .peek[open] summary .chev{transform:rotate(90deg)}
+  .peek pre{margin:0; padding:0 16px 16px; font-family:var(--mono); font-size:11.5px; line-height:1.55; color:var(--ink-soft); overflow-x:auto; white-space:pre; tab-size:2}
+  .peek .k-key{color:var(--accent)}
+  .peek .k-str{color:var(--book)}
+  .peek .k-num{color:var(--fec)}
+  .peek .k-null{color:var(--faint); font-style:italic}
+
+  /* toast */
+  .toast{position:fixed; left:50%; bottom:26px; transform:translate(-50%,120%); background:var(--ink); color:var(--paper);
+    padding:12px 20px; border-radius:12px; font-size:14px; font-weight:600; box-shadow:var(--shadow-lift); display:flex; align-items:center; gap:10px; z-index:50; transition:transform .28s cubic-bezier(.2,.9,.3,1.2)}
+  .toast.show{transform:translate(-50%,0)}
+  .toast svg{width:17px; height:17px; stroke:var(--enc); stroke-width:2.4; fill:none}
+
+  .foot-note{text-align:center; color:var(--muted); font-size:12px; margin-top:26px; max-width:60ch; margin-left:auto; margin-right:auto; line-height:1.5}
+  .foot-note strong{color:var(--ink-soft); font-weight:600}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="eyebrow">Biblioshare · Clubes</div>
+      <h1>Nuevo evento</h1>
+      <p class="lede">Un solo sistema, tres tipos. Elige el tipo y el formulario se adapta — mismo motor, distintos campos.</p>
+    </div>
+    <button class="theme-btn" id="theme" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+  </div>
+
+  <div class="types" role="group" aria-label="Tipo de evento">
+    <button class="type" data-t="encuentro" aria-pressed="true">
+      <span class="check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+      <span class="tico"><svg viewBox="0 0 24 24"><circle cx="8.5" cy="9" r="3"/><circle cx="15.5" cy="9" r="3"/><path d="M3.5 19c0-2.6 2.2-4 5-4M20.5 19c0-2.6-2.2-4-5-4"/></svg></span>
+      <span class="tname">Encuentro</span>
+      <span class="tdesc">Quedada del club, presencial u online. Fecha, horas y lugar.</span>
+    </button>
+    <button class="type" data-t="lanzamiento" aria-pressed="false">
+      <span class="check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+      <span class="tico"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></span>
+      <span class="tname">Lanzamiento</span>
+      <span class="tdesc">Estreno o publicación de una obra del catálogo.</span>
+    </button>
+    <button class="type" data-t="fecha_destacada" aria-pressed="false">
+      <span class="check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+      <span class="tico"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span>
+      <span class="tname">Fecha destacada</span>
+      <span class="tdesc">Un día señalado, con enlaces opcionales a obras o actividades.</span>
+    </button>
+  </div>
+
+  <div class="cols">
+    <!-- ================= FORM ================= -->
+    <form class="card" id="form" data-type="encuentro" data-modality="presencial" data-allday="true" data-work-media="none" novalidate>
+      <div class="card-head">
+        <span class="dot"></span>
+        <h2 id="head-title">Encuentro</h2>
+        <span class="sub" id="head-sub">Nace activo · visible en el calendario</span>
+      </div>
+
+      <div class="card-body">
+        <!-- CORE -->
+        <div class="core">
+          <div class="field">
+            <label for="f-title">Título <span class="req">*</span></label>
+            <input type="text" id="f-title" maxlength="120" placeholder="p. ej. Club de mayo — El nombre del viento" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="f-date">Fecha <span class="req">*</span></label>
+            <input type="date" id="f-date">
+          </div>
+        </div>
+
+        <hr class="sep">
+
+        <!-- ===== ENCUENTRO ===== -->
+        <div class="group group-encuentro">
+          <div class="sec-label">Cuándo y dónde</div>
+          <div class="grid2">
+            <div class="field">
+              <label for="f-start">Hora de inicio <span class="req">*</span></label>
+              <input type="time" id="f-start" value="18:00">
+            </div>
+            <div class="field">
+              <label for="f-end">Hora de fin <span class="opt">opcional</span></label>
+              <input type="time" id="f-end">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-tz">Zona horaria</label>
+            <select id="f-tz">
+              <option value="Europe/Madrid" selected>Europe/Madrid (España peninsular)</option>
+              <option value="Atlantic/Canary">Atlantic/Canary (Canarias)</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="America/Mexico_City">America/Mexico_City</option>
+              <option value="America/Bogota">America/Bogota</option>
+              <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-modality">Modalidad</label>
+            <select id="f-modality">
+              <option value="presencial" selected>Presencial</option>
+              <option value="online">Online</option>
+              <option value="hibrida">Híbrida</option>
+            </select>
+          </div>
+          <div class="field row-location">
+            <label for="f-location">Ubicación <span class="opt">opcional</span></label>
+            <input type="text" id="f-location" maxlength="200" placeholder="Biblioteca Central, sala 2" autocomplete="off">
+          </div>
+          <div class="field row-url">
+            <label for="f-url">Enlace de la reunión <span class="opt">opcional</span></label>
+            <input type="url" id="f-url" maxlength="500" placeholder="https://meet.example.com/club">
+            <span class="hint">Debe empezar por http:// o https://</span>
+          </div>
+        </div>
+
+        <!-- ===== LANZAMIENTO ===== -->
+        <div class="group group-lanzamiento">
+          <div class="sec-label">La obra</div>
+          <div class="field">
+            <label>Obra que se lanza <span class="req">*</span></label>
+            <div class="work-card" id="work-card">
+              <span class="cov sm" id="work-cov" data-m="book">📖</span>
+              <span class="wt">
+                <span class="wtitle" id="work-title">—</span>
+                <span class="wmeta" id="work-meta"></span>
+              </span>
+              <button type="button" class="link-btn" data-picker="work">Cambiar</button>
+            </div>
+            <div class="pickbox" id="work-pickbox">
+              <button type="button" class="pick-add" data-picker="work">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Seleccionar libro, película o serie
+              </button>
+              <div class="picker" id="picker-work">
+                <input type="text" class="picker-search" id="search-work" placeholder="Busca en el catálogo…" autocomplete="off">
+                <div class="results" id="results-work"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label for="f-release">Tipo de lanzamiento <span class="req">*</span></label>
+              <select id="f-release"><option value="">Elige una obra primero</option></select>
+            </div>
+            <div class="field row-platform">
+              <label for="f-platform">Plataforma <span class="opt">opcional</span></label>
+              <select id="f-platform">
+                <option value="">—</option>
+                <option value="netflix">Netflix</option>
+                <option value="prime">Prime Video</option>
+                <option value="disney">Disney+</option>
+                <option value="max">Max</option>
+                <option value="appletv">Apple TV+</option>
+                <option value="filmin">Filmin</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="switch" for="f-allday">
+            <input type="checkbox" id="f-allday" checked>
+            <span class="track"></span>
+            <span><span class="sw-text">Todo el día</span> &nbsp;<span class="sw-sub">sin hora concreta</span></span>
+          </label>
+          <div class="field row-launchtime">
+            <label for="f-launchtime">Hora del lanzamiento <span class="opt">opcional</span></label>
+            <input type="time" id="f-launchtime">
+          </div>
+
+          <div class="field">
+            <label for="f-region">Región <span class="opt">opcional</span></label>
+            <input type="text" id="f-region" maxlength="120" placeholder="España · Latinoamérica · Global…" autocomplete="off">
+          </div>
+        </div>
+
+        <!-- ===== FECHA DESTACADA ===== -->
+        <div class="group group-fecha">
+          <div class="field">
+            <label for="f-desc-fec">Descripción <span class="opt">opcional</span></label>
+            <textarea id="f-desc-fec" maxlength="2000" placeholder="¿Qué se celebra ese día?"></textarea>
+          </div>
+          <div class="sec-label">Enlaces <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted)">— opcionales</span></div>
+          <div class="pickbox">
+            <div class="rel-list" id="rel-list"></div>
+            <button type="button" class="pick-add" data-picker="rel">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Añadir obra o actividad del club
+            </button>
+            <div class="picker" id="picker-rel">
+              <div class="tabs" role="tablist">
+                <button type="button" class="tab" role="tab" data-tab="item" aria-selected="true">Obras</button>
+                <button type="button" class="tab" role="tab" data-tab="activity" aria-selected="false">Actividades del club</button>
+              </div>
+              <input type="text" class="picker-search" id="search-rel" placeholder="Buscar…" autocomplete="off">
+              <div class="results" id="results-rel"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- shared description for encuentro/lanzamiento -->
+        <div class="field" id="desc-shared" style="margin-top:17px">
+          <label for="f-desc">Descripción <span class="opt">opcional</span></label>
+          <textarea id="f-desc" maxlength="2000" placeholder="Detalles, orden del día, notas…"></textarea>
+        </div>
+      </div>
+
+      <div class="foot">
+        <button type="button" class="btn ghost" id="btn-cancel">Cancelar</button>
+        <span class="spacer"></span>
+        <button type="submit" class="btn primary" id="btn-submit">Crear evento</button>
+      </div>
+    </form>
+
+    <!-- ================= ASIDE ================= -->
+    <aside>
+      <p class="aside-label">Vista previa</p>
+      <div class="preview">
+        <div class="pv-accent"></div>
+        <div class="pv-body">
+          <span class="pv-badge" id="pv-badge">Encuentro</span>
+          <div class="pv-title empty" id="pv-title">Sin título</div>
+          <div class="pv-when" id="pv-when">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>
+            <span>Sin fecha</span>
+          </div>
+          <p class="pv-desc" id="pv-desc" hidden></p>
+          <div class="pv-detail" id="pv-detail"></div>
+          <div class="pv-remind" id="pv-remind">
+            <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>
+            <span>Te avisaré 1 día antes (te apuntas al crearlo)</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="aside-label">Qué se guarda</p>
+      <details class="peek" open>
+        <summary>Payload de la RPC <code style="font-family:var(--mono);font-size:11px">create_club_event</code>
+          <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </summary>
+        <pre id="payload"></pre>
+      </details>
+    </aside>
+  </div>
+
+  <p class="foot-note">Prototipo interactivo. Los datos específicos de cada tipo viven en <strong>config (jsonb)</strong> — la misma pieza que ya usan tierlists y retos — así que añadir tipos o subtipos futuros no toca el esquema.</p>
+</div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg><span id="toast-msg">Evento creado</span></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var CATALOG = [
+    {id:"b1", m:"book",  title:"El nombre del viento", meta:"Patrick Rothfuss"},
+    {id:"b2", m:"book",  title:"Klara y el Sol", meta:"Kazuo Ishiguro"},
+    {id:"b3", m:"book",  title:"Tokio blues", meta:"Haruki Murakami"},
+    {id:"b4", m:"book",  title:"La sombra del viento", meta:"Carlos Ruiz Zafón"},
+    {id:"m1", m:"movie", title:"Dune: Parte Dos", meta:"2024 · Denis Villeneuve"},
+    {id:"m2", m:"movie", title:"Pobres criaturas", meta:"2023 · Yorgos Lanthimos"},
+    {id:"m3", m:"movie", title:"El viaje de Chihiro", meta:"2001 · Hayao Miyazaki"},
+    {id:"s1", m:"series",title:"Severance", meta:"Apple TV+"},
+    {id:"s2", m:"series",title:"The Last of Us", meta:"HBO Max"},
+    {id:"s3", m:"series",title:"Fallout", meta:"Prime Video"}
+  ];
+  var ACTIVITIES = [
+    {id:"a1", title:"Lectura conjunta: Klara y el Sol", kind:"Lectura conjunta"},
+    {id:"a2", title:"Reto de verano 2026", kind:"Reto por lista"},
+    {id:"a3", title:"Tierlist: mejores finales", kind:"Tierlist"},
+    {id:"a4", title:"La ronda de esta semana", kind:"Ronda"}
+  ];
+  var RELEASE = {
+    book:  [["publicacion","Publicación"],["tapa_dura","Tapa dura"],["bolsillo","Edición de bolsillo"],["ebook","Ebook"],["audiolibro","Audiolibro"]],
+    movie: [["cine","Estreno en cine"],["streaming","Streaming"],["fisico","Edición física"]],
+    series:[["estreno_temporada","Estreno de temporada"],["final_temporada","Final de temporada"],["episodio","Episodio especial"],["estreno","Estreno"]]
+  };
+  var COV = {book:"📖", movie:"🎬", series:"📺"};
+  var MEDIA_LABEL = {book:"Libro", movie:"Película", series:"Serie"};
+  var TYPE_META = {
+    encuentro:      {name:"Encuentro",      head:"Nace activo · visible en el calendario"},
+    lanzamiento:    {name:"Lanzamiento",    head:"Estreno o publicación de una obra"},
+    fecha_destacada:{name:"Fecha destacada",head:"Un día señalado del club"}
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var form = $("form");
+
+  var state = {
+    type:"encuentro", title:"", date:"", desc:"", descFec:"",
+    startTime:"18:00", endTime:"", tz:"Europe/Madrid", modality:"presencial", location:"", url:"",
+    work:null, release:"", platform:"", allDay:true, launchTime:"", region:"",
+    relations:[]
+  };
+
+  // ---------- type selector ----------
+  var typeBtns = document.querySelectorAll(".type");
+  typeBtns.forEach(function(b){
+    b.addEventListener("click", function(){
+      var t = b.getAttribute("data-t");
+      if(t === state.type) return;
+      state.type = t;
+      typeBtns.forEach(function(x){ x.setAttribute("aria-pressed", x===b ? "true":"false"); });
+      // accent swap on :root
+      var root = document.documentElement;
+      root.style.setProperty("--accent", "var(--"+shortAccent(t)+")");
+      root.style.setProperty("--accent-soft", "var(--"+shortAccent(t)+"-soft)");
+      form.setAttribute("data-type", t);
+      $("head-title").textContent = TYPE_META[t].name;
+      $("head-sub").textContent = TYPE_META[t].head;
+      // shared description only for encuentro/lanzamiento (fecha has its own inside the group)
+      $("desc-shared").style.display = (t==="fecha_destacada") ? "none" : "flex";
+      closePickers();
+      render();
+    });
+  });
+  function shortAccent(t){ return t==="encuentro"?"enc": t==="lanzamiento"?"lan":"fec"; }
+
+  // ---------- simple field bindings ----------
+  function bind(id, key, after){
+    var el = $(id);
+    el.addEventListener("input", function(){ state[key] = el.value; if(after) after(); render(); });
+  }
+  bind("f-title","title");
+  bind("f-date","date");
+  bind("f-desc","desc");
+  bind("f-desc-fec","descFec");
+  bind("f-start","startTime");
+  bind("f-end","endTime");
+  bind("f-region","region");
+  bind("f-launchtime","launchTime");
+
+  $("f-tz").addEventListener("change", function(){ state.tz = this.value; render(); });
+  $("f-modality").addEventListener("change", function(){
+    state.modality = this.value; form.setAttribute("data-modality", this.value); render();
+  });
+  $("f-release").addEventListener("change", function(){ state.release = this.value; render(); });
+  $("f-platform").addEventListener("change", function(){ state.platform = this.value; render(); });
+  $("f-allday").addEventListener("change", function(){
+    state.allDay = this.checked; form.setAttribute("data-allday", this.checked ? "true":"false"); render();
+  });
+
+  // ---------- pickers ----------
+  var relTab = "item";
+  document.querySelectorAll("[data-picker]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var which = btn.getAttribute("data-picker");
+      var p = which==="work" ? $("picker-work") : $("picker-rel");
+      var isOpen = p.classList.contains("open");
+      closePickers();
+      if(!isOpen){
+        p.classList.add("open");
+        if(which==="work"){ renderResults("work"); $("search-work").focus(); }
+        else { renderResults("rel"); $("search-rel").focus(); }
+      }
+    });
+  });
+  function closePickers(){
+    $("picker-work").classList.remove("open");
+    $("picker-rel").classList.remove("open");
+  }
+  $("search-work").addEventListener("input", function(){ renderResults("work"); });
+  $("search-rel").addEventListener("input", function(){ renderResults("rel"); });
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){
+      relTab = t.getAttribute("data-tab");
+      document.querySelectorAll(".tab").forEach(function(x){ x.setAttribute("aria-selected", x===t?"true":"false"); });
+      $("search-rel").value = ""; $("search-rel").placeholder = relTab==="item" ? "Buscar obra…" : "Buscar actividad…";
+      renderResults("rel");
+    });
+  });
+
+  function renderResults(which){
+    if(which==="work"){
+      var q = $("search-work").value.trim().toLowerCase();
+      var list = CATALOG.filter(function(c){ return !q || c.title.toLowerCase().indexOf(q)>=0; });
+      $("results-work").innerHTML = list.length ? list.map(function(c){ return workRow(c); }).join("")
+        : '<div class="res-empty">Sin resultados</div>';
+      $("results-work").querySelectorAll(".res").forEach(function(r){
+        r.addEventListener("click", function(){ pickWork(r.getAttribute("data-id")); });
+      });
+    } else {
+      var q2 = $("search-rel").value.trim().toLowerCase();
+      var out, box = $("results-rel");
+      if(relTab==="item"){
+        out = CATALOG.filter(function(c){ return !q2 || c.title.toLowerCase().indexOf(q2)>=0; });
+        box.innerHTML = out.length ? out.map(function(c){ return workRow(c); }).join("") : '<div class="res-empty">Sin resultados</div>';
+        box.querySelectorAll(".res").forEach(function(r){ r.addEventListener("click", function(){ addRelation("item", r.getAttribute("data-id")); }); });
+      } else {
+        out = ACTIVITIES.filter(function(a){ return !q2 || a.title.toLowerCase().indexOf(q2)>=0; });
+        box.innerHTML = out.length ? out.map(function(a){ return actRow(a); }).join("") : '<div class="res-empty">Sin resultados</div>';
+        box.querySelectorAll(".res").forEach(function(r){ r.addEventListener("click", function(){ addRelation("activity", r.getAttribute("data-id")); }); });
+      }
+    }
+  }
+  function workRow(c){
+    return '<button type="button" class="res" data-id="'+c.id+'">'+
+      '<span class="cov sm" data-m="'+c.m+'">'+COV[c.m]+'</span>'+
+      '<span class="rt"><span class="rtitle">'+esc(c.title)+'</span>'+
+      '<span class="rmeta"><span class="mchip" data-m="'+c.m+'">'+MEDIA_LABEL[c.m]+'</span> &nbsp;'+esc(c.meta)+'</span></span></button>';
+  }
+  function actRow(a){
+    return '<button type="button" class="res" data-id="'+a.id+'">'+
+      '<span class="ic" style="width:38px;height:38px;border-radius:9px;display:grid;place-items:center;background:var(--surface-2);color:var(--accent)">'+
+      '<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg></span>'+
+      '<span class="rt"><span class="rtitle">'+esc(a.title)+'</span><span class="rmeta">'+esc(a.kind)+'</span></span></button>';
+  }
+
+  function pickWork(id){
+    var c = CATALOG.find(function(x){ return x.id===id; });
+    state.work = {id:c.id, m:c.m, title:c.title, meta:c.meta};
+    state.release = ""; state.platform = "";
+    form.setAttribute("data-work-media", c.m);
+    // selected card
+    $("work-card").classList.add("set");
+    $("work-cov").setAttribute("data-m", c.m); $("work-cov").textContent = COV[c.m];
+    $("work-title").textContent = c.title;
+    $("work-meta").innerHTML = '<span class="mchip" data-m="'+c.m+'">'+MEDIA_LABEL[c.m]+'</span> &nbsp;'+esc(c.meta);
+    // hide the "select" prompt, keep only the change button in the card
+    $("work-pickbox").querySelector(".pick-add").style.display = "none";
+    // release options
+    var sel = $("f-release");
+    sel.innerHTML = '<option value="">Elige el tipo…</option>' + RELEASE[c.m].map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join("");
+    // auto-title
+    var tEl = $("f-title");
+    if(!tEl.value.trim()){ tEl.value = "Estreno · " + c.title; state.title = tEl.value; }
+    $("f-platform").value = "";
+    closePickers();
+    render();
+  }
+
+  function addRelation(kind, id){
+    var exists = state.relations.some(function(r){ return r.kind===kind && r.id===id; });
+    if(!exists){
+      if(kind==="item"){ var c = CATALOG.find(function(x){ return x.id===id; }); state.relations.push({kind:"item", id:c.id, m:c.m, title:c.title, meta:c.meta}); }
+      else { var a = ACTIVITIES.find(function(x){ return x.id===id; }); state.relations.push({kind:"activity", id:a.id, title:a.title, meta:a.kind}); }
+    }
+    $("search-rel").value = "";
+    closePickers();
+    renderRelations();
+    render();
+  }
+  function removeRelation(kind, id){
+    state.relations = state.relations.filter(function(r){ return !(r.kind===kind && r.id===id); });
+    renderRelations(); render();
+  }
+  function renderRelations(){
+    var box = $("rel-list");
+    if(!state.relations.length){ box.innerHTML = ""; return; }
+    box.innerHTML = state.relations.map(function(r){
+      var left = r.kind==="item"
+        ? '<span class="cov sm" data-m="'+r.m+'">'+COV[r.m]+'</span>'
+        : '<span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg></span>';
+      var kindLabel = r.kind==="item" ? MEDIA_LABEL[r.m] : ("Actividad · "+esc(r.meta));
+      return '<div class="rel-chip">'+left+
+        '<span class="rc-t"><span class="rc-title">'+esc(r.title)+'</span><span class="rc-kind">'+kindLabel+'</span></span>'+
+        '<button type="button" class="x-btn" data-k="'+r.kind+'" data-id="'+r.id+'" aria-label="Quitar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+    }).join("");
+    box.querySelectorAll(".x-btn").forEach(function(b){
+      b.addEventListener("click", function(){ removeRelation(b.getAttribute("data-k"), b.getAttribute("data-id")); });
+    });
+  }
+
+  // ---------- render preview + payload ----------
+  function fmtDate(iso, withWeekday){
+    if(!iso) return null;
+    var d = new Date(iso + "T00:00:00");
+    if(isNaN(d)) return null;
+    var s = new Intl.DateTimeFormat("es-ES", {weekday: withWeekday?"long":undefined, day:"numeric", month:"long", year:"numeric"}).format(d);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function currentDesc(){ return state.type==="fecha_destacada" ? state.descFec : state.desc; }
+  function isAllDay(){ return state.type==="fecha_destacada" ? true : (state.type==="lanzamiento" ? state.allDay : false); }
+
+  function render(){
+    var t = state.type;
+    // badge / accent
+    $("pv-badge").textContent = TYPE_META[t].name;
+    // title
+    var pt = $("pv-title");
+    if(state.title.trim()){ pt.textContent = state.title; pt.classList.remove("empty"); }
+    else { pt.textContent = "Sin título"; pt.classList.add("empty"); }
+    // when
+    var when = $("pv-when").querySelector("span");
+    var dstr = fmtDate(state.date, true);
+    if(!dstr){ when.textContent = "Sin fecha"; }
+    else {
+      var timeStr = "";
+      if(t==="encuentro" && state.startTime){ timeStr = " · " + state.startTime + (state.endTime? "–"+state.endTime : ""); }
+      else if(t==="lanzamiento" && !state.allDay && state.launchTime){ timeStr = " · " + state.launchTime; }
+      when.textContent = dstr + timeStr + (isAllDay() ? "  ·  todo el día" : "");
+    }
+    // desc
+    var pd = $("pv-desc");
+    if(currentDesc().trim()){ pd.hidden=false; pd.textContent = currentDesc(); } else { pd.hidden=true; }
+    // detail
+    $("pv-detail").innerHTML = detailHTML(t);
+    // reminder (all types followable)
+    $("pv-remind").style.display = "flex";
+    // payload
+    $("payload").innerHTML = colorJSON(buildPayload());
+  }
+
+  function detailHTML(t){
+    if(t==="encuentro"){
+      var modLabel = {presencial:"Presencial", online:"Online", hibrida:"Híbrida"}[state.modality];
+      var rows = '<div class="pv-row"><span class="k">Modalidad</span><span class="v">'+modLabel+'</span></div>';
+      if(state.modality!=="online" && state.location.trim())
+        rows += '<div class="pv-row"><span class="k">Lugar</span><span class="v">'+esc(state.location)+'</span></div>';
+      if((state.modality==="online"||state.modality==="hibrida") && state.url.trim())
+        rows += '<div class="pv-row"><span class="k">Enlace</span><span class="v" style="color:var(--accent);word-break:break-all">'+esc(state.url)+'</span></div>';
+      return rows;
+    }
+    if(t==="lanzamiento"){
+      if(!state.work) return '<div class="pv-row"><span class="k">Obra</span><span class="v" style="color:var(--faint)">Sin seleccionar</span></div>';
+      var rel = "";
+      var found = RELEASE[state.work.m].find(function(o){ return o[0]===state.release; });
+      if(found) rel = found[1];
+      var platLabel = ({netflix:"Netflix",prime:"Prime Video",disney:"Disney+",max:"Max",appletv:"Apple TV+",filmin:"Filmin",otro:"Otro"})[state.platform] || "";
+      var out = '<div class="pv-row"><span class="k">Obra</span><span class="v"><span class="pv-work"><span class="cov sm" data-m="'+state.work.m+'">'+COV[state.work.m]+'</span> '+esc(state.work.title)+'</span></span></div>';
+      var line = [];
+      if(rel) line.push(rel);
+      if(platLabel && state.work.m!=="book") line.push(platLabel);
+      if(state.region.trim()) line.push(esc(state.region));
+      if(line.length) out += '<div class="pv-row"><span class="k">Detalle</span><span class="v">'+line.join(" · ")+'</span></div>';
+      return out;
+    }
+    // fecha destacada
+    if(!state.relations.length) return '<div class="pv-row"><span class="k">Enlaces</span><span class="v" style="color:var(--faint)">Ninguno (opcional)</span></div>';
+    var chips = state.relations.map(function(r){
+      var lbl = r.kind==="item" ? (MEDIA_LABEL[r.m]+" · "+esc(r.title)) : ("Actividad · "+esc(r.title));
+      return '<span class="pv-rel"><span class="rdot"></span>'+lbl+'</span>';
+    }).join("");
+    return '<div class="pv-row"><span class="k">Enlaces</span><span class="v">'+chips+'</span></div>';
+  }
+
+  function buildPayload(){
+    var p = {
+      event_type: state.type,
+      p_title: state.title || null,
+      p_starts_on: state.date || null,
+      p_event_timezone: (state.type==="encuentro") ? state.tz : "Europe/Madrid"
+    };
+    if(state.type==="encuentro"){
+      p.p_description = state.desc || null;
+      p.p_starts_time = state.startTime || null;
+      p.p_ends_time = state.endTime || null;
+      p.p_modality = state.modality;
+      p.p_location = state.modality==="online" ? null : (state.location || null);
+      p.p_online_url = (state.modality==="online"||state.modality==="hibrida") ? (state.url || null) : null;
+      p.p_config = {};
+    } else if(state.type==="lanzamiento"){
+      p.p_description = state.desc || null;
+      p.p_starts_time = state.allDay ? null : (state.launchTime || null);
+      var cfg = {
+        item: state.work ? {itemType: state.work.m, itemId: state.work.id} : null,
+        releaseType: state.release || null
+      };
+      if(state.work && state.work.m!=="book") cfg.platform = state.platform || null;
+      if(state.region.trim()) cfg.region = state.region;
+      cfg.allDay = !!state.allDay;
+      p.p_config = cfg;
+    } else {
+      p.p_description = state.descFec || null;
+      p.p_starts_time = null;
+      p.p_config = {
+        relations: state.relations.map(function(r){
+          return r.kind==="item" ? {kind:"item", itemType:r.m, itemId:r.id} : {kind:"activity", activityId:r.id};
+        }),
+        allDay: true
+      };
+    }
+    return p;
+  }
+
+  // pretty + colorized JSON
+  function colorJSON(obj){
+    var json = JSON.stringify(obj, null, 2);
+    json = json.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    json = json.replace(/"([^"\\]*)":/g, '<span class="k-key">"$1"</span>:');
+    json = json.replace(/: "([^"\\]*)"/g, ': <span class="k-str">"$1"</span>');
+    json = json.replace(/: (true|false)/g, ': <span class="k-num">$1</span>');
+    json = json.replace(/: (-?\d+\.?\d*)/g, ': <span class="k-num">$1</span>');
+    json = json.replace(/: null/g, ': <span class="k-null">null</span>');
+    return json;
+  }
+
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+  // ---------- footer actions ----------
+  var toastT;
+  function toast(msg){
+    $("toast-msg").textContent = msg;
+    var el = $("toast"); el.classList.add("show");
+    clearTimeout(toastT); toastT = setTimeout(function(){ el.classList.remove("show"); }, 2200);
+  }
+  $("form").addEventListener("submit", function(e){
+    e.preventDefault();
+    if(!state.title.trim()){ toast("Falta el título"); $("f-title").focus(); return; }
+    if(!state.date){ toast("Falta la fecha"); $("f-date").focus(); return; }
+    if(state.type==="encuentro" && !state.startTime){ toast("Falta la hora de inicio"); return; }
+    if(state.type==="lanzamiento" && !state.work){ toast("Elige la obra que se lanza"); return; }
+    toast("Evento creado · " + TYPE_META[state.type].name);
+  });
+  $("btn-cancel").addEventListener("click", function(){ toast("Cancelado"); });
+
+  // ---------- theme toggle ----------
+  $("theme").addEventListener("click", function(){
+    var root = document.documentElement;
+    var cur = root.getAttribute("data-theme");
+    var isDark = cur==="dark" || (!cur && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    root.setAttribute("data-theme", isDark ? "light" : "dark");
+  });
+
+  // ---------- init ----------
+  document.documentElement.style.setProperty("--accent", "var(--enc)");
+  document.documentElement.style.setProperty("--accent-soft", "var(--enc-soft)");
+  render();
+})();
+</script>

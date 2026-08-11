@@ -5,7 +5,7 @@
 > 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122)
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
-Compara cinco superficies y reporta solo lo que **no cuadra**.
+Compara seis superficies y reporta solo lo que **no cuadra**.
 
 ## Qué se compara
 
@@ -182,12 +182,79 @@ select t.typname, string_agg(e.enumlabel, ',' order by e.enumsortorder) as label
  group by t.typname;
 ```
 
+### 6. Grants por columna ↔ columnas reales (issue #375)
+
+Varias tablas no tienen grant de tabla sino **por columna** (`revoke all` + `grant` fino).
+Postgres exige privilegio sobre **toda columna nombrada** en un INSERT/UPDATE, aunque su
+valor sea `NULL`. Consecuencia: **añadir una columna sin añadir su grant rompe la escritura
+entera de esa tabla**, no solo el campo nuevo — y no lo detecta nada antes de producción
+(compila, pasa el typecheck y pasa los unitarios, que no tocan la BD).
+
+Pasó **dos veces en dos días**: `series.episode_runtime_minutes` (hidratación de tamaños
+caída entera) y `passes.planned_on` (**«Seguir» → pantalla de error**, toda alta de pase).
+El aviso por escrito ya existía en `schema-baseline.sql` y aun así se olvidó dos veces: por
+eso el control vive aquí, en un barrido que se ejecuta, y no en otro comentario.
+
+La consulta devuelve **solo las tablas donde no todas las columnas tienen INSERT/UPDATE**.
+Una columna nueva sin grant hace aparecer su tabla en la lista (o le cambia los números si
+ya estaba). Si sale exactamente la tabla de referencia de abajo, no hay deriva:
+
+```sql
+with cols as (
+  select c.table_name, c.column_name,
+         has_column_privilege('authenticated', ('public.'||c.table_name)::regclass, c.column_name, 'INSERT')::int as ins,
+         has_column_privilege('authenticated', ('public.'||c.table_name)::regclass, c.column_name, 'UPDATE')::int as upd
+    from information_schema.columns c
+   where c.table_schema='public'
+     and c.table_name in (select table_name from information_schema.column_privileges
+                           where grantee='authenticated' and table_schema='public'
+                             and privilege_type in ('INSERT','UPDATE') group by table_name)
+)
+select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_update
+  from cols group by table_name
+ having count(*) <> sum(ins) or count(*) <> sum(upd)
+ order by table_name;
+```
+
+**Referencia (prod y dev, 2026-08-04 — 48 tablas con grants por columna, 10 con hueco):**
+
+> **Nota del 2026-08-04 (seguimiento de eventos, solo dev por ahora).** `club_activities` ganó
+> **8 columnas** (`starts_at`, `ends_at`, `event_timezone`, `location`, `modality`, `online_url`,
+> `event_state`, `updated_at`) **con su grant de INSERT/UPDATE**, así que sigue **sin aparecer**
+> en esta lista — que es exactamente la señal de que no hay hueco. En dev la consulta devuelve
+> las mismas 10 tablas con los mismos números. Si al aplicar en prod apareciera
+> `club_activities`, falta uno de esos 8 grants.
+>
+> `club_event_followers` **no** entra en la lista por otra razón: solo tiene `grant select`
+> (se escribe únicamente por RPC `SECURITY DEFINER`), así que no es una tabla con grants de
+> escritura por columna y la consulta no la mira.
+
+| tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
+|---|---|---|---|---|
+| `books` | 14 | 14 | 9 | la hidratación solo reescribe parte de la ficha |
+| `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
+| `movies` | 11 | 11 | 7 | ídem `books` |
+| `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
+| `passes` | 17 | 14 | 11 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables |
+| `people` | 11 | 11 | 5 | ídem `books` |
+| `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
+| `series` | 13 | 13 | 9 | ídem `books` |
+| `series_episodes` | 10 | 10 | 0 | catálogo de episodios, alta-only |
+| `user_blocks` | 3 | 3 | 0 | un bloqueo se crea o se borra, no se edita |
+
+Si aparece una tabla que **no** está en esta lista, o a una de estas le sube `cols` sin
+subir el grant correspondiente, eso es el bug: falta el `grant ... (columna_nueva)`.
+
+> `passes.review` tiene INSERT/UPDATE pero **no** SELECT, y es correcto: se lee por la vista
+> `pass_reviews` (`src/lib/library/get-library-items.ts:181`). No lo cuenta esta consulta,
+> que solo mira escritura.
+
 ## Salida
 Un informe corto por superficie: "coincide" o la lista de divergencias concretas, con la
 acción sugerida (actualizar doc / anexar migración / marcar checkbox / aplicar al entorno
 que va por detrás). No modifica nada solo.
 
 ## Cómo pedirlo
-Basta con: *"corre el chequeo de deriva"*. Se ejecutan las cinco comparaciones contra los
+Basta con: *"corre el chequeo de deriva"*. Se ejecutan las seis comparaciones contra los
 proyectos de prod y dev y el repo conectado, y se actualiza la fecha de "Última ejecución"
 de arriba.

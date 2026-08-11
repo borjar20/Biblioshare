@@ -1,122 +1,86 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { createClient } from "@/lib/supabase/client";
-import {
-  listMyClubs,
-  discoverPublicClubs,
-  type ClubWithCount,
-  type ClubMembershipStatus,
-} from "@/lib/clubs/clubs";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
+import { listMyClubs, discoverPublicClubs } from "@/lib/clubs/clubs";
 import { getClubUnreadCounts } from "@/lib/clubs/unread";
 import { ClubCard } from "@/components/clubs/club-card";
-import { ClubForm } from "@/components/clubs/club-form";
-import { ClubListSkeleton } from "@/components/clubs/club-skeletons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SearchIcon } from "@/components/ui/icons";
+import { ClubSearch } from "@/components/clubs/club-search";
+import { ClubCreateToggle } from "@/components/clubs/club-create-toggle";
+import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 
-export default function ClubesPage() {
-  const t = useTranslations("club");
-  const [userId, setUserId] = useState<string | null>(null);
-  const [myClubs, setMyClubs] = useState<ClubWithCount[]>([]);
-  const [discovered, setDiscovered] = useState<(ClubWithCount & { viewerStatus: ClubMembershipStatus })[]>([]);
-  const [unread, setUnread] = useState<Map<string, number>>(new Map());
-  const [query, setQuery] = useState("");
-  const [creating, setCreating] = useState(false);
-  // Estos fetches son de cliente (useEffect): sin un flag de carga, el primer
-  // render pintaría el mensaje "no hay clubes" con la lista aún vacía. Mientras
-  // no resuelvan, se muestran skeletons.
-  const [myClubsLoading, setMyClubsLoading] = useState(true);
-  const [discoverLoading, setDiscoverLoading] = useState(true);
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-    listMyClubs().then((clubs) => {
-      setMyClubs(clubs);
-      setMyClubsLoading(false);
-    });
-    getClubUnreadCounts().then(setUnread);
-  }, []);
+export const metadata: Metadata = {
+  title: "Clubes — Biblioshare",
+};
 
-  useEffect(() => {
-    // Cubre también la carga inicial (query = ""; discoverLoading arranca en
-    // true). Durante la búsqueda vuelve a mostrar skeleton hasta que llegan los
-    // nuevos resultados. El setState va dentro del timeout (no en el cuerpo del
-    // efecto) para no disparar renders en cascada.
-    const handle = setTimeout(() => {
-      setDiscoverLoading(true);
-      discoverPublicClubs(query || undefined).then((clubs) => {
-        setDiscovered(clubs);
-        setDiscoverLoading(false);
-      });
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [query]);
+// Server Component (#438): antes era `"use client"` y lanzaba sus lecturas en
+// `useEffect`, lo que (1) dejaba el HTML sin ningún club, (2) despachaba las
+// server actions de una en una —el cliente no las paraleliza— y (3) arrastraba
+// `@supabase/supabase-js` (252 KB, el mayor chunk del build) al navegador por el
+// único `import "@/lib/supabase/client"` del repo. Ahora las tres lecturas van
+// en un `Promise.all` de servidor, el HTML llega con los clubes dentro y el
+// chunk de Supabase desaparece del bundle. El buscador y el botón de crear
+// quedan como islas de cliente (ClubSearch sobre `?q=`, ClubCreateToggle).
+export default async function ClubesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const user = await getCurrentUser();
+  if (!user) redirect(loginHref("/clubes"));
 
-  if (!userId) return null;
+  const { q } = await searchParams;
+  const t = await getTranslations("club");
+
+  const [myClubs, unread, discovered] = await Promise.all([
+    listMyClubs(),
+    getClubUnreadCounts(),
+    discoverPublicClubs(q || undefined),
+  ]);
+
+  const mine = myClubs.filter((c) => c.viewerStatus === "active");
+  const invited = myClubs.filter((c) => c.viewerStatus === "invited");
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 lg:max-w-5xl">
-      <div className="flex items-center justify-between">
-        <h1 className="font-serif text-2xl font-semibold text-foreground">
-          {t("navLabel")}
-        </h1>
-        <Button
-          type="button"
-          className="px-3.5 py-1.5 text-xs"
-          onClick={() => setCreating((v) => !v)}
-        >
-          + {t("create")}
-        </Button>
-      </div>
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+      <ClubCreateToggle userId={user.id} title={t("navLabel")} createLabel={t("create")} />
 
-      {/* El buscador va antes que nada, como en el handoff: buscar un club es
-          la acción más frecuente de quien llega aquí sin uno concreto en mente.
-          Píldora estilo composer (radio 12px + lupa) como en el frame 1. */}
-      <div className="relative">
-        <SearchIcon
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("searchPlaceholder")}
-          className="w-full rounded-xl py-2.5 pl-10"
-        />
-      </div>
+      {/* El buscador va antes que las listas, como en el handoff: buscar un club
+          es la acción más frecuente de quien llega sin uno concreto en mente. */}
+      <ClubSearch placeholder={t("searchPlaceholder")} initialQuery={q ?? ""} />
 
-      {creating && (
-        <ClubForm
-          userId={userId}
-          mode="create"
-          onCreated={(club) => {
-            // Acabas de crearlo: eres su único miembro.
-            setMyClubs((prev) => [{ ...club, memberCount: 1 }, ...prev]);
-            setCreating(false);
-          }}
-          onCancel={() => setCreating(false)}
-        />
+      {/* Las invitaciones van ANTES que "Mis clubes": son lo único de esta
+          pantalla que te pide una respuesta. Y son la razón de que la sección
+          exista — un club privado al que te invitan no sale en "Descubrir"
+          (solo trae públicos), así que sin esto la única puerta de entrada era
+          la notificación de la campana, y pasarla de largo dejaba la
+          invitación inalcanzable. */}
+      {invited.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="label-section">{t("myInvites")}</h2>
+          <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
+            {invited.map((club) => (
+              <ClubCard key={club.id} club={club} />
+            ))}
+          </div>
+        </section>
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          {t("myClubs")}
-        </h2>
-        {myClubsLoading ? (
-          <ClubListSkeleton count={2} />
-        ) : myClubs.length === 0 ? (
+        <h2 className="label-section">{t("myClubs")}</h2>
+        {mine.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-            {myClubs.map((club) => (
+          <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
+            {mine.map((club) => (
               <ClubCard
                 key={club.id}
-                club={{ ...club, viewerStatus: "active" }}
+                club={club}
                 unread={unread.get(club.id) ?? 0}
               />
             ))}
@@ -125,15 +89,11 @@ export default function ClubesPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          {t("discover")}
-        </h2>
-        {discoverLoading ? (
-          <ClubListSkeleton count={2} />
-        ) : discovered.length === 0 ? (
+        <h2 className="label-section">{t("discover")}</h2>
+        {discovered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
         ) : (
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
             {discovered.map((club) => (
               <ClubCard key={club.id} club={club} />
             ))}

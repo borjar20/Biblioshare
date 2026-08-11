@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- «Completo» redimensionado a 4x3 (#498): antes 4x4 (~250x320) quedaba alto y
+     con hueco; 4x3 (~250x180) compacta foco + selector sin recortes. SizeMode.Exact
+     compone al tamaño real, así que el layout se adapta; los minWidth/minHeight
+     mandan en launchers que ignoran targetCell*. updatePeriodMillis=1h: re-render
+     desde el store LOCAL (sin red) solo para notar el cambio de día sin WorkManager. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="180dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="180dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:maxResizeWidth="380dp"
+    android:maxResizeHeight="320dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="3600000"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/widget_preview"
+    android:previewLayout="@layout/widget_current_progress_preview"
+    android:description="@string/widget_current_progress_desc" />

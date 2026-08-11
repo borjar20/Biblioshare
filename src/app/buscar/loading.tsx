@@ -4,12 +4,13 @@ import {
   SkeletonCoverGrid,
 } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
+import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 
 // Skeleton de /buscar: h1 + conmutador Títulos/Personas + píldoras de tipo +
 // barra de búsqueda + rejilla de resultados.
 export default function Loading() {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <LoadingAnnounce />
       <SkeletonLine className="h-7 w-32" />
 
@@ -29,7 +30,7 @@ export default function Loading() {
       {/* Barra de búsqueda */}
       <Skeleton className="h-11 w-full rounded-lg" />
 
-      <SkeletonCoverGrid count={10} />
+      <SkeletonCoverGrid count={16} cols={COVER_GRID_COLS} />
     </div>
   );
 }

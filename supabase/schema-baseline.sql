@@ -20,6 +20,13 @@
 -- NOTA (2026-07-22): anexadas las 2 migraciones de eventos de club en la misma
 -- pasada en que se aplicaron a prod, que es la única forma de que este fichero
 -- no vuelva a quedarse atrás. Ver "ANEXO 2026-07-22" al final.
+-- NOTA (2026-08-04): "ANEXO 2026-08-03 — La ronda" ROMPE la regla de arriba a
+-- propósito: se anexa mientras la migración SOLO está en dev, porque el cierre
+-- documental de la feature (issue de gobernanza, ver AGENTS.md) no puede
+-- esperar a que alguien aplique prod en otra sesión. El anexo lo dice en su
+-- propia cabecera. RESUELTO el 2026-08-04: prod recibió esa migración ese mismo
+-- día, en una sola llamada y con este mismo contenido consolidado; la cabecera
+-- del anexo ya no dice "PENDIENTE" y no se añadió un segundo anexo.
 -- Este fichero se mantiene a mano y ya se desincronizó DOS veces; ante la duda,
 -- regenerarlo con `pg_dump --schema-only` de prod.
 -- ============================================================================
@@ -10996,3 +11003,1392 @@ alter table public.comments drop constraint if exists comments_no_nesting;
 alter table public.comments drop column if exists target_type, drop column if exists target_id;
 alter table public.reactions drop column if exists target_type, drop column if exists target_id;
 
+
+-- ANEXO 2026-08-02 — grants de lectura anónima a los helpers de bloqueo
+-- (migración 20260816_grant_anon_read_block_helpers, aplicada en dev y prod).
+-- Con la navegación anónima, un visitante sin sesión llega a perfiles públicos y
+-- su feed; las políticas SELECT {anon,authenticated} de passes/progress_sessions/
+-- follows llaman a users_are_blocked() y el feed a filter_unblocked_user_ids().
+-- Al inlinearse (SQL STABLE SECURITY INVOKER), anon necesita EXECUTE sobre ambas
+-- Y SELECT sobre user_blocks (privilegio comprobado en planificación). Seguro:
+-- user_blocks no tiene política RLS para anon, así que nunca ve una fila.
+grant execute on function public.users_are_blocked(uuid) to anon;
+grant execute on function public.filter_unblocked_user_ids(uuid[]) to anon;
+grant select on table public.user_blocks to anon;
+
+
+-- ANEXO 2026-08-03 — columna hito planned_on en passes (issue #361, migración
+-- 20260817_passes_planned_on, aplicada en dev y prod). Marca cuándo un pase
+-- entró en la pila (estado planned); la fija planTransition en cada transición a
+-- planned. Forward-only: el historial importado nace como pases cerrados que
+-- nunca pasaron por planned, así que ahí queda NULL. Sin backfill.
+alter table public.passes add column if not exists planned_on date;
+
+-- ANEXO 2026-08-03 — grant de UPDATE sobre series.episode_runtime_minutes
+-- (issue #365, migración 20260818_grant_series_episode_runtime, aplicada en dev
+-- y prod). La columna se añadió en 20260710 DESPUÉS del grant de tamaños
+-- original (total_episodes/total_seasons) y se quedó fuera: como la hidratación
+-- escribe las tres en un ÚNICO patch, el UPDATE fallaba ENTERO en cuanto una
+-- serie llegaba sin duración de episodio. No se veía porque el backfill colgaba
+-- del sorteo y no había series pendientes; ahora corre al abrir cualquier ficha.
+grant update (episode_runtime_minutes) on public.series to authenticated;
+
+-- ============================================================================
+-- ANEXO 2026-08-03 — La ronda: latido semanal de club (spec
+-- docs/superpowers/specs/2026-08-03-club-rondas-design.md; decisión de fondo
+-- en decisiones.md, 2026-08-03). Fichero
+-- supabase/migrations/20260803_club_rounds.sql.
+--
+-- ESTADO: aplicada y verificada en DEV (tyvzpuhxfwxrnkcpzxyg) y en PROD
+-- (vmutcradmodhiltuohys), las dos el 2026-08-04, contra objetos reales
+-- (information_schema.columns, pg_class, pg_policy, pg_trigger, pg_constraint,
+-- pg_proc, pg_proc.proacl, pg_enum) — nunca contra list_migrations.
+-- A prod entró en UNA sola llamada con este mismo contenido consolidado, y
+-- ANTES de mergear el código: al revés, `RoundBlock` habría llamado a una
+-- get_club_round_state inexistente y habría tumbado la página de todos los
+-- clubes. Advisors de seguridad 66 -> 68, los dos nuevos de la categoría
+-- authenticated_security_definer_function_executable ya aceptada para las
+-- otras 41 RPC del proyecto; ninguno en la categoría anon.
+--
+-- Contexto para quien aplique a prod: en dev, la migración llegó en CUATRO
+-- entradas sucesivas, no en una — porque las tareas de implementación fueron
+-- añadiendo al mismo fichero lógico según avanzaban: (1) `club_rounds` (tabla
+-- + RLS + triggers + los 4 valores de enum), (2) `club_rounds_functions` (las
+-- cuatro funciones, con `get_club_round_state` SIN la columna `house_prompt`
+-- todavía), (3) `club_rounds_functions_fixes` (mismo día: corrige
+-- `ensure_club_round`, que devolvía la ronda existente sin comprobar autoría
+-- cuando alguien proponía tarde — `round_already_open` no llegaba a
+-- lanzarse), y (4) `club_rounds_house_prompt_column` (`drop function` +
+-- `create function` de `get_club_round_state` para añadir esa columna:
+-- `create or replace` no puede cambiar la lista de columnas de salida de una
+-- función `returns table`, así que hizo falta el DROP). Lo que sigue es la
+-- forma FINAL, consolidada, idéntica a `20260803_club_rounds.sql`: aplicarla
+-- tal cual a prod, como pieza única, es correcto — prod nunca pasará por la
+-- forma intermedia de `get_club_round_state` que obligó al DROP en dev, así
+-- que no hace falta reproducir los cuatro pasos, solo entender por qué dev
+-- los tiene.
+-- ============================================================================
+
+alter type public.target_kind       add value if not exists 'club_round';
+alter type public.notification_type add value if not exists 'club_round_proposed';
+alter type public.notification_type add value if not exists 'club_round_commented';
+alter type public.notification_type add value if not exists 'club_round_liked';
+
+-- Postgres prohíbe USAR una etiqueta de enum en la misma transacción que la
+-- crea: sin este commit, el trigger de más abajo que menciona 'club_round'
+-- hace fallar la migración entera. Misma trampa que 20260712_club_posts.sql.
+commit;
+
+create table public.club_rounds (
+  id         uuid primary key default gen_random_uuid(),
+  club_id    uuid not null references public.clubs(id) on delete cascade,
+  period_key text not null,
+  -- NULL = consigna de la casa. `on delete set null` a propósito: con cascade
+  -- se perdería la conversación del club al borrarse una cuenta, y sin acción
+  -- explícita la cuenta no se podría borrar.
+  author_id  uuid references auth.users(id) on delete set null,
+  prompt     text not null,
+  -- Par (tipo, id) sin FK, igual que club_activity_items: el catálogo no es
+  -- una sola tabla.
+  item_type  public.item_type,
+  item_id    uuid,
+  created_at timestamptz not null default now(),
+  unique (club_id, period_key),
+  constraint club_rounds_prompt_len check (char_length(prompt) between 1 and 500),
+  constraint club_rounds_item_pair check (num_nonnulls(item_type, item_id) <> 1)
+);
+
+create index idx_club_rounds_club on public.club_rounds (club_id, created_at desc);
+
+comment on table public.club_rounds is
+  'Rondas semanales de club (La ronda). author_id NULL = consigna de la casa. La escritura pasa SOLO por ensure_club_round(); no hay política INSERT.';
+
+alter table public.club_rounds enable row level security;
+
+-- Contenido siempre solo-miembros, con independencia de clubs.visibility (SD-4).
+create policy "club rounds select members" on public.club_rounds
+  for select to authenticated
+  using (public.is_club_member(club_id));
+
+-- Una consigna abusiva se queda una semana entera en lo alto del club.
+create policy "club rounds delete moderators" on public.club_rounds
+  for delete to authenticated
+  using (public.has_min_club_role(club_id, 'moderator'));
+
+-- Sin política INSERT ni UPDATE, a propósito: el único camino de escritura es
+-- ensure_club_round() (SECURITY DEFINER), y una ronda es inmutable -- sus
+-- respuestas contestan a ESA pregunta.
+
+grant select, delete on table public.club_rounds to authenticated;
+
+-- ── Registro canónico de interacción ─────────────────────────────────
+create or replace function private.sync_club_round_interaction_target()
+returns trigger language plpgsql security definer set search_path = '' as $function$
+declare v_slug text; v_club_owner uuid;
+begin
+  select c.slug, c.owner_id into v_slug, v_club_owner
+  from public.clubs c where c.id = new.club_id;
+  perform private.upsert_interaction_target(
+    'club_round', new.id,
+    -- La casa no es un usuario, y owner_id es NOT NULL.
+    coalesce(new.author_id, v_club_owner),
+    'club_member', new.club_id,
+    '/club/' || v_slug || '?ronda=' || new.period_key,
+    true, true, 'club_round_commented', 'club_round_liked');
+  return new;
+end;
+$function$;
+revoke execute on function private.sync_club_round_interaction_target() from public, anon, authenticated;
+
+create trigger club_rounds_sync_interaction_target
+  after insert on public.club_rounds
+  for each row execute function private.sync_club_round_interaction_target();
+
+-- cleanup_social_target() es genérico y toma los kinds por trigger args: cierra
+-- los reportes pendientes y barre target, comentarios, reacciones y avisos.
+create trigger club_rounds_cleanup_social_target
+  after delete on public.club_rounds
+  for each row execute function private.cleanup_social_target('club_round');
+
+-- ── La semana y el turno viven AQUÍ, nunca en TypeScript ─────────────
+-- El cliente no calcula ni envía el periodo: así la clase de bug de la issue
+-- #271 (fecha del NAVEGADOR, no del servidor) no puede reproducirse.
+-- Europe/Madrid y no UTC: con UTC la semana cambiaría a las 02:00 del lunes
+-- en verano, y el producto es de un solo huso.
+create or replace function private.club_now()
+returns timestamp language sql stable set search_path = '' as $function$
+  select timezone('Europe/Madrid', now());
+$function$;
+
+create or replace function private.house_prompt(p_club_id uuid, p_period_key text)
+returns text language sql immutable set search_path = '' as $function$
+  -- Índice determinista por club Y periodo: dos clubes no reciben la misma
+  -- consigna la misma semana, y un club recibe siempre la misma para una
+  -- semana dada (lo que hace idempotente materializarla dos veces).
+  -- hashtext devuelve int4: abs() del valor más negativo de int4 desborda
+  -- ('integer out of range'). Se castea a bigint antes de abs() para que
+  -- ningún club quede permanentemente roto por esa colisión.
+  select (array[
+    'El libro que llevas más tiempo diciendo que vas a leer. ¿Cuánto llevas ya?',
+    'Un libro que abandonaste y no te arrepientes.',
+    'Una adaptación que mejora al original. Defiéndela.',
+    '¿Releer es perder el tiempo?',
+    'El personaje secundario que se merecía su propio libro.',
+    'Algo que leíste por obligación y acabó gustándote.',
+    'Un final que te sigue doliendo.',
+    'La recomendación que más veces has hecho.',
+    '¿Qué estás leyendo ahora mismo y qué tal va?',
+    'Un libro que te vendieron mal y era otra cosa.'
+  ])[1 + (abs(hashtext(p_club_id::text || p_period_key)::bigint) % 10)];
+$function$;
+
+create or replace function public.get_club_round_state(p_club_id uuid)
+returns table (
+  period_key      text,
+  day_index       int,
+  holder_id       uuid,
+  round_id        uuid,
+  round_author    uuid,
+  round_prompt    text,
+  round_item_type public.item_type,
+  round_item_id   uuid,
+  -- La consigna de la casa PENDIENTE de materializar (día >= 3, sin ronda
+  -- todavía): private.house_prompt() tiene el execute revocado a
+  -- `authenticated` a propósito (el 05: house_prompt es un cabo suelto que
+  -- no puede llamar el cliente), pero esta función es SECURITY DEFINER y sí
+  -- puede. Sin esto, la UI anunciaba "Ronda de la casa" + el botón
+  -- «Responder» sin la pregunta a la vista -- issue detectada en la review
+  -- de la Task 4. NULL en cualquier otro caso (ya hay ronda, o aún no toca).
+  house_prompt    text
+)
+language sql stable security definer set search_path = '' as $function$
+  with ctx as (
+    select to_char(private.club_now(), 'IYYY-"W"IW')     as period_key,
+           extract(isodow from private.club_now())::int  as day_index,
+           c.created_at
+    from public.clubs c
+    -- Sin ser miembro no hay estado que devolver: la función es SECURITY
+    -- DEFINER, así que la puerta se pone aquí a mano.
+    where c.id = p_club_id and public.is_club_member(p_club_id)
+  ),
+  roster as (
+    select m.user_id,
+           row_number() over (order by m.joined_at, m.user_id) - 1 as idx,
+           count(*) over ()                                        as n
+    from public.club_members m
+    where m.club_id = p_club_id and m.status = 'active'
+  ),
+  turno as (
+    select (
+      extract(epoch from (
+        date_trunc('week', private.club_now())
+        - date_trunc('week', timezone('Europe/Madrid', ctx.created_at))
+      )) / 604800
+    )::bigint as weeks
+    from ctx
+  )
+  select ctx.period_key,
+         ctx.day_index,
+         (select r.user_id from roster r
+           where r.idx = (select weeks from turno) % nullif((select n from roster limit 1), 0)),
+         rd.id, rd.author_id, rd.prompt, rd.item_type, rd.item_id,
+         case when rd.id is null and ctx.day_index >= 3
+              then private.house_prompt(p_club_id, ctx.period_key)
+         end as house_prompt
+  from ctx
+  left join public.club_rounds rd
+    on rd.club_id = p_club_id and rd.period_key = ctx.period_key;
+$function$;
+
+create or replace function public.ensure_club_round(
+  p_club_id   uuid,
+  p_prompt    text default null,
+  p_item_type public.item_type default null,
+  p_item_id   uuid default null
+) returns uuid
+language plpgsql security definer set search_path = '' as $function$
+declare
+  v_period text; v_day int; v_holder uuid; v_existing uuid; v_existing_author uuid;
+  v_prompt text; v_author uuid; v_id uuid;
+begin
+  if not public.is_club_member(p_club_id) then
+    raise exception 'not_a_member' using errcode = '42501';
+  end if;
+
+  select s.period_key, s.day_index, s.holder_id, s.round_id, s.round_author
+    into v_period, v_day, v_holder, v_existing, v_existing_author
+  from public.get_club_round_state(p_club_id) s;
+
+  if p_prompt is not null then
+    if v_existing is not null then
+      -- Ya hay ronda de este periodo. Si la escribió quien llama, idempotente
+      -- (devuelve la misma). Si no, un retorno silencioso perdería el texto
+      -- de quien llega tarde sin que nadie se entere: mejor un error que la
+      -- UI pueda mostrar como "se te pasó el turno".
+      if v_existing_author is not distinct from (select auth.uid()) then
+        return v_existing;
+      end if;
+      raise exception 'round_already_open' using errcode = '42501';
+    end if;
+
+    if (select auth.uid()) is distinct from v_holder then
+      raise exception 'not_your_turn' using errcode = '42501';
+    end if;
+    v_prompt := btrim(p_prompt);
+    if v_prompt = '' then
+      raise exception 'prompt_required' using errcode = '22023';
+    end if;
+    v_author := v_holder;
+  else
+    -- Consigna de la casa: idempotente sin condiciones -- dos respuestas
+    -- simultáneas a la casa deben acabar en la misma ronda, sea quien sea
+    -- quien la dispare.
+    if v_existing is not null then
+      return v_existing;
+    end if;
+    -- Solo del día 3 en adelante, para que el titular tenga sus 48 h de
+    -- exclusividad.
+    if v_day < 3 then
+      raise exception 'house_round_too_early' using errcode = '42501';
+    end if;
+    v_prompt := private.house_prompt(p_club_id, v_period);
+    v_author := null;
+  end if;
+
+  insert into public.club_rounds (club_id, period_key, author_id, prompt, item_type, item_id)
+  values (p_club_id, v_period, v_author, v_prompt,
+          case when p_prompt is not null then p_item_type end,
+          case when p_prompt is not null then p_item_id  end)
+  on conflict (club_id, period_key) do nothing
+  returning id into v_id;
+
+  -- La carrera entre dos respuestas simultáneas a la consigna de la casa la
+  -- resuelve el índice único, no un lock: si perdimos, leemos la ganadora.
+  if v_id is null then
+    select id into v_id from public.club_rounds
+     where club_id = p_club_id and period_key = v_period;
+  end if;
+  return v_id;
+end;
+$function$;
+
+revoke execute on function private.club_now()            from public, anon, authenticated;
+revoke execute on function private.house_prompt(uuid, text) from public, anon, authenticated;
+-- Postgres concede EXECUTE a PUBLIC por defecto al crear una función, y
+-- Supabase añade anon: sin este revoke, un llamante sin autenticar podría
+-- invocar una función SECURITY DEFINER. Mismo patrón que el resto de RPC del
+-- repo (create_club_poll, create_club, vote_club_poll, activate_club_activity...).
+revoke execute on function public.get_club_round_state(uuid) from public, anon;
+revoke execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) from public, anon;
+grant  execute on function public.get_club_round_state(uuid) to authenticated;
+grant  execute on function public.ensure_club_round(uuid, text, public.item_type, uuid) to authenticated;
+
+-- ===========================================================================
+-- ANEXO 2026-08-04 — Seguimiento de eventos de club + el primer trabajo
+-- programado del repo (spec docs/superpowers/specs/2026-08-04-club-event-following-design.md)
+--
+-- ESTADO: aplicado y verificado en DEV Y EN PRODUCCIÓN el 2026-08-04, contra los
+-- objetos reales de los dos entornos (nunca contra list_migrations). El trabajo
+-- programado entrega de verdad en prod: cron.job_run_details en 'succeeded' cada
+-- 5 min y net._http_response con 200 (issue #434, cerrada).
+--
+-- ORDEN DE APLICACIÓN (importa: las RPC dependen de las columnas y de la tabla):
+--   1. 20260822_club_event_following.sql          columnas, enums, tabla, triggers, RLS, grants
+--   2. 20260823_club_event_following_rpcs.sql     RPCs + barrido + valores de notification_type
+--   3. 20260824_club_event_reminder_scheduler.sql pg_cron + pg_net + el job
+--   4. 20260825_notifications_system_actor.sql    notifications.actor_id pasa a nullable
+--
+-- OJO al desplegar: **migración primero, merge después** (lección de #393). Y el
+-- job no hace nada hasta que existan los dos secretos de Vault (ver el fichero 3).
+-- ===========================================================================
+
+-- --- 20260822_club_event_following.sql ---------------------------------
+
+-- Seguimiento de eventos de club (spec 2026-08-04).
+--
+-- Tres cosas a la vez, porque las tres son la misma feature:
+--   1. El evento gana los datos que su ficha necesita (hora, zona, sitio, estado).
+--   2. `club_event_followers`: quién sigue qué, y cuándo quiere que le avisemos.
+--   3. El primer trabajo programado del repo (pg_cron + pg_net), que retira el
+--      bloqueo de #394.
+--
+-- Por qué COLUMNAS y no `config jsonb`, que es donde van los campos por kind:
+-- el barrido de recordatorios tiene que comparar y indexar `starts_at`. En jsonb
+-- una fecha es una CADENA, y comparar fechas como cadenas es exactamente lo que
+-- prohíbe §10 de la spec (y lo que calendar-marks.ts ya documenta como trampa).
+--
+-- SD-8 sigue en pie: el evento es un `kind` de club_activities, no una tabla
+-- aparte. Estas columnas son nulas para los otros cuatro kinds, a propósito.
+
+-- ---------------------------------------------------------------------------
+-- 1. Enums
+-- ---------------------------------------------------------------------------
+
+do $$ begin
+  create type public.event_modality as enum ('presencial', 'online', 'hibrida');
+exception when duplicate_object then null; end $$;
+
+-- Solo los tres estados que una PERSONA declara. "En curso" y "finalizado" NO
+-- están aquí: se deducen del reloj (starts_at/ends_at) en una función pura
+-- compartida por servidor y cliente. Un estado guardado es un estado que hay
+-- que mantener sincronizado, y group-activities.ts ya dejó esa lección escrita
+-- en este mismo módulo.
+do $$ begin
+  create type public.club_event_state as enum ('programado', 'cancelado', 'pospuesto');
+exception when duplicate_object then null; end $$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Columnas del evento
+-- ---------------------------------------------------------------------------
+
+alter table public.club_activities
+  add column if not exists starts_at      timestamptz,
+  add column if not exists ends_at        timestamptz,
+  add column if not exists event_timezone text not null default 'Europe/Madrid',
+  add column if not exists location       text,
+  add column if not exists modality       public.event_modality,
+  add column if not exists online_url     text,
+  add column if not exists event_state    public.club_event_state not null default 'programado',
+  add column if not exists updated_at     timestamptz;
+
+-- Los topes son los mismos que ya usa la tabla para title/description
+-- (20260715_text_length_limits.sql): si divergieran, habría un rango de
+-- longitudes que pasa la validación del cliente y muere en Postgres con un
+-- 23514 crudo que la UI no traduce.
+do $$ begin
+  alter table public.club_activities
+    add constraint club_activities_location_len check (char_length(location) <= 200);
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table public.club_activities
+    add constraint club_activities_online_url_len check (char_length(online_url) <= 500);
+exception when duplicate_object then null; end $$;
+
+-- Un fin anterior al inicio no es un dato, es un bug. En BD para que no dependa
+-- de que todos los escritores se acuerden.
+do $$ begin
+  alter table public.club_activities
+    add constraint club_activities_event_window check (ends_at is null or starts_at is null or ends_at >= starts_at);
+exception when duplicate_object then null; end $$;
+
+-- Backfill: los eventos que existen se crearon cuando el modelo no tenía hora.
+-- 19:00 Europe/Madrid es una hora INVENTADA, y se asume a la vista: es la que
+-- menos sorprende para un club de lectura. La alternativa (dejarlos sin
+-- instante) obligaría a que toda la feature tratara "evento sin hora" como caso
+-- especial permanente.
+update public.club_activities
+   set starts_at = (starts_on::text || ' 19:00')::timestamp at time zone 'Europe/Madrid'
+ where kind = 'evento' and starts_on is not null and starts_at is null;
+
+-- ---------------------------------------------------------------------------
+-- 3. starts_on se mantiene solo, y no puede divergir
+-- ---------------------------------------------------------------------------
+
+-- `starts_on` SE QUEDA: de él cuelgan el calendario, group-activities, la tira
+-- "Próximo" del feed y los eventos que ya existen. Lo deriva un trigger.
+--
+-- NO es una columna generada porque no PUEDE serlo: timezone(text, timestamptz)
+-- es STABLE, no IMMUTABLE (depende de la base de datos de zonas), y Postgres
+-- rechaza una GENERATED que la invoque. El trigger consigue lo mismo —
+-- divergencia estructuralmente imposible, sea quien sea quien escriba — y deja
+-- intactos TODOS los lectores actuales: ni una consulta del calendario cambia.
+create or replace function private.sync_club_event_date()
+returns trigger
+language plpgsql
+set search_path to ''
+as $$
+begin
+  if new.kind = 'evento' and new.starts_at is not null then
+    new.starts_on := (new.starts_at at time zone new.event_timezone)::date;
+  end if;
+
+  -- updated_at lo pone la BD, nunca el cliente: es el dato de "última
+  -- actualización" que la ficha muestra, y un cliente puede mentir.
+  if tg_op = 'UPDATE' then
+    new.updated_at := now();
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_club_event_date on public.club_activities;
+create trigger sync_club_event_date
+  before insert or update on public.club_activities
+  for each row execute function private.sync_club_event_date();
+
+-- ---------------------------------------------------------------------------
+-- 4. Cuándo toca avisar
+-- ---------------------------------------------------------------------------
+
+-- STABLE, no IMMUTABLE: mira now() para no armar nunca el recordatorio de algo
+-- que ya terminó. Por eso tampoco puede ir en un índice; el índice va sobre la
+-- columna que esta función rellena.
+create or replace function private.club_event_reminder_due(
+  p_starts_at   timestamptz,
+  p_ends_at     timestamptz,
+  p_event_state public.club_event_state,
+  p_minutes     integer
+) returns timestamptz
+language sql
+stable
+set search_path to ''
+as $$
+  select case
+    -- Sin preferencia = sin recordatorio. Es una elección, no un hueco.
+    when p_minutes is null then null
+    when p_starts_at is null then null
+    -- Cancelado o pospuesto: los recordatorios futuros se apagan (§9.4).
+    when p_event_state <> 'programado' then null
+    -- Ya empezado (en curso) o terminado: no hay nada que anticipar. Un
+    -- «recordatorio» de algo que ya está pasando no es un recordatorio -- por
+    -- definición avisa ANTES. Ojo: la condición es sobre `starts_at`, NO sobre
+    -- `coalesce(ends_at, starts_at)`; con la segunda, seguir un evento en curso
+    -- con «24 horas antes» disparaba un aviso inmediato de algo ya empezado.
+    when p_starts_at <= now() then null
+    -- Si el momento ya pasó pero el evento no ha empezado ("muy próximo"), el
+    -- resultado queda en el pasado y el primer barrido lo coge. No hace falta
+    -- un caso especial: `reminder_due_at <= now()` ya es cierto.
+    else p_starts_at - make_interval(mins => p_minutes)
+  end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 5. La tabla de seguimiento
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.club_event_followers (
+  activity_id           uuid        not null references public.club_activities(id) on delete cascade,
+  user_id               uuid        not null references auth.users(id)             on delete cascade,
+  followed_at           timestamptz not null default now(),
+  -- null = "sin recordatorio". Los valores que ofrece la UI son 0, 15, 60,
+  -- 1440 y 10080; el CHECK deja cualquier positivo porque el tope real lo pone
+  -- la UI y un valor raro no rompe nada (solo adelanta el aviso).
+  remind_minutes_before integer,
+  -- DERIVADO por trigger, nunca escrito a mano. Es la única desnormalización de
+  -- la feature y tiene justificación: el barrido corre cada 5 min sobre TODOS
+  -- los clubes, y con el instante precalculado es una búsqueda por índice.
+  -- Calculando `starts_at - interval` por fila no hay índice posible.
+  reminder_due_at       timestamptz,
+  -- Sello de entrega: es la idempotencia del barrido y del reclamo atómico.
+  reminded_at           timestamptz,
+  -- La PK compuesta ES la restricción única de "un usuario sigue una vez" Y el
+  -- índice de "seguidores de este evento". Una columna `id` sintética añadiría
+  -- una unique aparte para no ganar nada.
+  primary key (activity_id, user_id),
+  constraint club_event_followers_remind_positive
+    check (remind_minutes_before is null or remind_minutes_before >= 0)
+);
+
+comment on table public.club_event_followers is
+  'Interés en un evento de club (kind=evento). Seguir NO es asistir: expresa interés y arma un recordatorio.';
+
+-- "Eventos que sigue esta persona" (§16).
+create index if not exists club_event_followers_user_idx
+  on public.club_event_followers (user_id, activity_id);
+
+-- El barrido. Parcial: las filas ya entregadas no ocupan índice.
+create index if not exists club_event_followers_due_idx
+  on public.club_event_followers (reminder_due_at)
+  where reminded_at is null;
+
+-- El recordatorio es un CAMPO de la fila de seguimiento, mantenido en la MISMA
+-- transacción que la escritura que lo provoca. De ahí sale, sin código, que no
+-- pueda existir un seguidor sin recordatorio ni un recordatorio sin seguidor:
+-- no hay dos escrituras que puedan quedar desparejadas (§21).
+create or replace function private.sync_event_follower_reminder()
+returns trigger
+language plpgsql
+set search_path to ''
+as $$
+declare
+  v_starts_at   timestamptz;
+  v_ends_at     timestamptz;
+  v_event_state public.club_event_state;
+begin
+  select starts_at, ends_at, event_state
+    into v_starts_at, v_ends_at, v_event_state
+    from public.club_activities
+   where id = new.activity_id;
+
+  new.reminder_due_at := private.club_event_reminder_due(
+    v_starts_at, v_ends_at, v_event_state, new.remind_minutes_before
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_event_follower_reminder on public.club_event_followers;
+create trigger sync_event_follower_reminder
+  before insert or update on public.club_event_followers
+  for each row execute function private.sync_event_follower_reminder();
+
+-- Cambia la fecha, la zona o el estado del evento ⇒ se reprograma a TODOS sus
+-- seguidores. El cálculo no se repite aquí: este trigger solo toca `reminded_at`
+-- y deja que el trigger de arriba recalcule (un UPDATE dispara su BEFORE aunque
+-- el valor no cambie). Un solo sitio calcula el instante.
+--
+-- Que un cambio de fecha re-arme incluso un recordatorio YA entregado es
+-- deliberado: quien recibió "mañana a las 18:00" necesita enterarse cuando pase
+-- a ser el jueves.
+create or replace function private.reschedule_event_reminders()
+returns trigger
+language plpgsql
+set search_path to ''
+as $$
+begin
+  update public.club_event_followers
+     set reminded_at = case
+           when new.starts_at is distinct from old.starts_at then null
+           else reminded_at
+         end
+   where activity_id = new.id;
+  return null;
+end;
+$$;
+
+drop trigger if exists reschedule_event_reminders on public.club_activities;
+create trigger reschedule_event_reminders
+  after update of starts_at, ends_at, event_state, event_timezone
+  on public.club_activities
+  for each row
+  when (new.kind = 'evento')
+  execute function private.reschedule_event_reminders();
+
+-- ---------------------------------------------------------------------------
+-- 6. RLS y grants
+-- ---------------------------------------------------------------------------
+
+alter table public.club_event_followers enable row level security;
+
+-- Ver quién sigue un evento = ser miembro ACTIVO de su club. Mismo gate que el
+-- calendario, y el que decide la privacidad de §12: aunque el club sea público,
+-- la lista de seguidores es de sus miembros. Se prioriza la privacidad.
+drop policy if exists "members read event followers" on public.club_event_followers;
+create policy "members read event followers"
+  on public.club_event_followers for select
+  using (
+    exists (
+      select 1 from public.club_activities a
+       where a.id = club_event_followers.activity_id
+         and public.is_club_member(a.club_id)
+    )
+  );
+
+-- Sin política insert/update/delete a propósito (SD-8): se escribe SOLO por RPC
+-- SECURITY DEFINER, igual que el resto del motor de actividades.
+
+revoke all on public.club_event_followers from anon, authenticated;
+grant select on public.club_event_followers to authenticated;
+
+-- club_activities tiene grant POR COLUMNA. Postgres exige privilegio sobre toda
+-- columna nombrada en un INSERT/UPDATE aunque su valor sea NULL, así que una
+-- columna nueva sin grant rompe la escritura ENTERA de la tabla, no solo el
+-- campo nuevo. Ha pasado dos veces (issue #375, superficie 6 de DRIFT-CHECK).
+grant insert (starts_at, ends_at, event_timezone, location, modality, online_url, event_state, updated_at),
+      update (starts_at, ends_at, event_timezone, location, modality, online_url, event_state, updated_at)
+   on public.club_activities to authenticated, anon, service_role;
+
+-- --- 20260823_club_event_following_rpcs.sql ----------------------------
+
+-- RPCs del seguimiento de eventos (spec 2026-08-04).
+--
+-- Todo SECURITY DEFINER: club_activities no tiene política UPDATE (SD-8) y
+-- club_event_followers no tiene ninguna política de escritura, a propósito. La
+-- autoridad de permisos está aquí, en servidor, no en que la UI esconda un botón.
+
+-- ---------------------------------------------------------------------------
+-- 1. create/update de evento, con los campos nuevos
+-- ---------------------------------------------------------------------------
+
+-- Se AMPLÍAN las firmas con DROP + CREATE, no con overload: una sobrecarga de 10
+-- argumentos con defaults conviviría con la de 4, y una llamada de 4 argumentos
+-- quedaría AMBIGUA (42725). Con DROP + CREATE, la llamada de 4 argumentos del
+-- bundle ANTERIOR sigue resolviendo contra la función nueva usando sus defaults
+-- — que es lo que hace segura la regla «migración primero, merge después» (#393).
+--
+-- La hora viaja como `time` aparte de `p_starts_on date`, no como un timestamptz
+-- ya resuelto por el cliente: así el instante lo construye SQL con la zona del
+-- evento y el horario de verano lo resuelve la base de datos de zonas, no
+-- aritmética nuestra. Sin hora se asume 19:00, la misma que el backfill.
+
+drop function if exists public.create_club_event(uuid, text, text, date);
+drop function if exists public.update_club_event(uuid, text, text, date);
+
+create or replace function private.validate_event_fields(
+  p_timezone   text,
+  p_location   text,
+  p_online_url text,
+  p_modality   public.event_modality,
+  p_starts_time time,
+  p_ends_time   time
+) returns void
+language plpgsql
+set search_path to ''
+as $$
+begin
+  if p_timezone is null or not exists (
+    select 1 from pg_catalog.pg_timezone_names where name = p_timezone
+  ) then
+    raise exception 'invalid_timezone';
+  end if;
+  if char_length(coalesce(p_location, '')) > 200 then
+    raise exception 'location_too_long';
+  end if;
+  if char_length(coalesce(p_online_url, '')) > 500 then
+    raise exception 'online_url_too_long';
+  end if;
+  -- Un evento online sin enlace es admisible (puede llegar después), pero un
+  -- enlace que no es http(s) es un error del formulario, no un dato.
+  if p_online_url is not null and p_online_url !~* '^https?://' then
+    raise exception 'invalid_online_url';
+  end if;
+  if p_modality = 'online' and p_location is not null then
+    raise exception 'online_event_has_location';
+  end if;
+  if p_ends_time is not null and p_starts_time is not null and p_ends_time <= p_starts_time then
+    raise exception 'ends_before_starts';
+  end if;
+end;
+$$;
+
+create or replace function public.create_club_event(
+  p_club_id     uuid,
+  p_title       text,
+  p_description text default null,
+  p_starts_on   date default null,
+  p_starts_time time default null,
+  p_ends_time   time default null,
+  p_timezone    text default 'Europe/Madrid',
+  p_location    text default null,
+  p_modality    public.event_modality default null,
+  p_online_url  text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_id uuid;
+  v_title text := trim(p_title);
+  v_description text := nullif(trim(coalesce(p_description, '')), '');
+  v_location text := nullif(trim(coalesce(p_location, '')), '');
+  v_online_url text := nullif(trim(coalesce(p_online_url, '')), '');
+  v_starts_time time := coalesce(p_starts_time, '19:00'::time);
+  v_starts_at timestamptz;
+  v_ends_at timestamptz;
+begin
+  if not public.has_min_club_role(p_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if coalesce(v_title, '') = '' then
+    raise exception 'title_required';
+  end if;
+  if char_length(v_title) > 120 then
+    raise exception 'title_too_long';
+  end if;
+  if char_length(coalesce(v_description, '')) > 2000 then
+    raise exception 'description_too_long';
+  end if;
+  if p_starts_on is null then
+    raise exception 'starts_on_required';
+  end if;
+
+  perform private.validate_event_fields(
+    p_timezone, v_location, v_online_url, p_modality, v_starts_time, p_ends_time
+  );
+
+  v_starts_at := (p_starts_on::text || ' ' || v_starts_time::text)::timestamp
+                   at time zone p_timezone;
+  if p_ends_time is not null then
+    v_ends_at := (p_starts_on::text || ' ' || p_ends_time::text)::timestamp
+                   at time zone p_timezone;
+  end if;
+
+  -- Un evento nace ACTIVO: no se propone ni se activa (la política de INSERT
+  -- fuerza status='proposed', y por eso esto va por RPC).
+  insert into public.club_activities (
+    club_id, kind, title, description, status, created_by,
+    starts_at, ends_at, event_timezone, location, modality, online_url
+  ) values (
+    p_club_id, 'evento', v_title, v_description, 'active', auth.uid(),
+    v_starts_at, v_ends_at, p_timezone, v_location, p_modality, v_online_url
+  ) returning id into v_id;
+
+  -- El organizador queda como seguidor desde la creación (§18): figura entre
+  -- quienes lo siguen y recibe su recordatorio, y puede apagarlo sin dejar de
+  -- ser el organizador. Seguir y organizar siguen siendo cosas distintas: esto
+  -- solo declara que quien lo monta también está interesado.
+  insert into public.club_event_followers (activity_id, user_id, remind_minutes_before)
+  values (v_id, auth.uid(), 1440)
+  on conflict (activity_id, user_id) do nothing;
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.update_club_event(
+  p_activity_id uuid,
+  p_title       text,
+  p_description text default null,
+  p_starts_on   date default null,
+  p_starts_time time default null,
+  p_ends_time   time default null,
+  p_timezone    text default null,
+  p_location    text default null,
+  p_modality    public.event_modality default null,
+  p_online_url  text default null
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_club_id uuid;
+  v_kind public.activity_kind;
+  v_status public.activity_status;
+  v_old_tz text;
+  v_old_time time;
+  v_title text := trim(p_title);
+  v_description text := nullif(trim(coalesce(p_description, '')), '');
+  v_location text := nullif(trim(coalesce(p_location, '')), '');
+  v_online_url text := nullif(trim(coalesce(p_online_url, '')), '');
+  v_tz text;
+  v_starts_time time;
+  v_starts_at timestamptz;
+  v_ends_at timestamptz;
+begin
+  select club_id, kind, status, event_timezone,
+         (starts_at at time zone event_timezone)::time
+    into v_club_id, v_kind, v_status, v_old_tz, v_old_time
+    from public.club_activities where id = p_activity_id;
+
+  if v_club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v_kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  if not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+  if p_starts_on is null then
+    raise exception 'starts_on_required';
+  end if;
+  if coalesce(v_title, '') = '' then
+    raise exception 'title_required';
+  end if;
+  if char_length(v_title) > 120 then
+    raise exception 'title_too_long';
+  end if;
+  if char_length(coalesce(v_description, '')) > 2000 then
+    raise exception 'description_too_long';
+  end if;
+
+  -- Sin zona ni hora explícitas se conservan las que tenía: así el bundle
+  -- anterior, que solo manda título/descripción/fecha, no borra la hora.
+  v_tz := coalesce(p_timezone, v_old_tz, 'Europe/Madrid');
+  v_starts_time := coalesce(p_starts_time, v_old_time, '19:00'::time);
+
+  perform private.validate_event_fields(
+    v_tz, v_location, v_online_url, p_modality, v_starts_time, p_ends_time
+  );
+
+  v_starts_at := (p_starts_on::text || ' ' || v_starts_time::text)::timestamp
+                   at time zone v_tz;
+  if p_ends_time is not null then
+    v_ends_at := (p_starts_on::text || ' ' || p_ends_time::text)::timestamp
+                   at time zone v_tz;
+  end if;
+
+  update public.club_activities
+     set title = v_title,
+         description = v_description,
+         starts_at = v_starts_at,
+         ends_at = v_ends_at,
+         event_timezone = v_tz,
+         location = v_location,
+         modality = p_modality,
+         online_url = v_online_url
+   where id = p_activity_id and kind = 'evento' and status = 'active';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Seguir / dejar de seguir / recordatorio / estado
+-- ---------------------------------------------------------------------------
+
+-- Los seis valores que ofrece la UI (§9.2), validados en SQL para que un cliente
+-- no pueda colar un offset arbitrario.
+create or replace function private.valid_event_reminder(p_minutes integer)
+returns boolean
+language sql
+immutable
+set search_path to ''
+as $$
+  select p_minutes is null or p_minutes in (0, 15, 60, 1440, 10080);
+$$;
+
+create or replace function private.assert_can_follow_event(p_activity_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v record;
+begin
+  select club_id, kind, status, event_state, starts_at, ends_at
+    into v
+    from public.club_activities where id = p_activity_id;
+
+  if v.club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v.kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  -- Archivado o propuesto: no es un evento vigente del club.
+  if v.status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  -- Cubre de una vez a quien no es miembro, a quien lo dejó, al expulsado y al
+  -- invitado que no ha aceptado: is_club_member exige status='active'.
+  if not public.is_club_member(v.club_id) then
+    raise exception 'not_a_member';
+  end if;
+  if v.event_state = 'cancelado' then
+    raise exception 'event_cancelled';
+  end if;
+  if coalesce(v.ends_at, v.starts_at) is not null
+     and coalesce(v.ends_at, v.starts_at) <= now() then
+    raise exception 'event_finished';
+  end if;
+
+  return v.club_id;
+end;
+$$;
+
+-- IDEMPOTENTE por construcción: el `on conflict do update` hace que dos
+-- peticiones simultáneas dejen UNA fila en vez de un 23505 en la cara del
+-- usuario. Es la garantía de «pulsar varias veces rápido» y de «dos solicitudes
+-- concurrentes» (§20) en la BD, no en la UI.
+create or replace function public.follow_club_event(
+  p_activity_id uuid,
+  p_remind_minutes_before integer default 1440
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if not private.valid_event_reminder(p_remind_minutes_before) then
+    raise exception 'invalid_reminder';
+  end if;
+  perform private.assert_can_follow_event(p_activity_id);
+
+  insert into public.club_event_followers (activity_id, user_id, remind_minutes_before)
+  values (p_activity_id, auth.uid(), p_remind_minutes_before)
+  on conflict (activity_id, user_id)
+    do update set remind_minutes_before = excluded.remind_minutes_before;
+end;
+$$;
+
+-- Borrar lo que no está no es un error: idempotente sin mirar antes. Y se
+-- permite SIEMPRE, incluso en un evento cancelado o ya pasado — dejar de seguir
+-- nunca puede quedar bloqueado.
+create or replace function public.unfollow_club_event(p_activity_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  delete from public.club_event_followers
+   where activity_id = p_activity_id and user_id = auth.uid();
+end;
+$$;
+
+create or replace function public.set_club_event_reminder(
+  p_activity_id uuid,
+  p_remind_minutes_before integer
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if not private.valid_event_reminder(p_remind_minutes_before) then
+    raise exception 'invalid_reminder';
+  end if;
+  perform private.assert_can_follow_event(p_activity_id);
+
+  update public.club_event_followers
+     set remind_minutes_before = p_remind_minutes_before
+   where activity_id = p_activity_id and user_id = auth.uid();
+
+  -- Cambiar el recordatorio de algo que no sigues es un error del cliente, no un
+  -- alta implícita: distinguirlo evita que un fallo de estado en la UI cree
+  -- seguimientos que nadie pidió.
+  if not found then
+    raise exception 'not_following';
+  end if;
+end;
+$$;
+
+-- Cancelar / posponer / reprogramar. Los recordatorios los apaga y los vuelve a
+-- armar el trigger; aquí solo se declara el estado.
+create or replace function public.set_club_event_state(
+  p_activity_id uuid,
+  p_state public.club_event_state
+) returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_club_id uuid;
+  v_kind public.activity_kind;
+  v_status public.activity_status;
+begin
+  select club_id, kind, status into v_club_id, v_kind, v_status
+    from public.club_activities where id = p_activity_id;
+
+  if v_club_id is null then
+    raise exception 'not_found';
+  end if;
+  if v_kind <> 'evento' then
+    raise exception 'not_an_event';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'event_not_active';
+  end if;
+  if not public.has_min_club_role(v_club_id, 'moderator') then
+    raise exception 'forbidden';
+  end if;
+
+  update public.club_activities set event_state = p_state where id = p_activity_id;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 3. El barrido: reclamo atómico y compensación
+-- ---------------------------------------------------------------------------
+
+-- Reclamar y devolver en la MISMA sentencia es lo que hace que dos barridos
+-- solapados no entreguen el mismo aviso dos veces: el segundo ya no encuentra
+-- `reminded_at is null`, y `skip locked` evita además que se queden esperándose.
+--
+-- El precio es que una caída entre reclamar y entregar PIERDE el aviso, así que
+-- la ruta compensa: si la entrega falla, llama a release_event_reminders y la
+-- fila vuelve a estar disponible para el barrido siguiente. Es la compensación
+-- explícita que pide §21, no un «ya se verá».
+--
+-- El join con club_members es la pieza que resuelve de una vez «abandona el
+-- club», «es expulsado» y «pierde permisos» (§20): un seguimiento sin membresía
+-- activa es INERTE. No se borra la fila — si vuelve al club, su interés sigue
+-- ahí — se invalida.
+-- `p_activity_id` opcional para poder reclamar SOLO los de un evento. Lo necesita
+-- la entrega inmediata: al seguir un evento que empieza dentro del propio offset
+-- elegido, §9.1 pide avisar ya en vez de esperar al barrido. Sin este parámetro
+-- una acción de usuario tendría que llamar al reclamo GLOBAL, y acabaría
+-- entregando los avisos de todos los clubes — trabajo no acotado dentro de un clic.
+create or replace function public.claim_due_event_reminders(
+  p_limit integer default 200,
+  p_activity_id uuid default null
+)
+returns table (
+  activity_id     uuid,
+  user_id         uuid,
+  club_id         uuid,
+  club_slug       text,
+  club_name       text,
+  title           text,
+  starts_at       timestamptz,
+  event_timezone  text,
+  location        text,
+  modality        public.event_modality,
+  organizer_id    uuid,
+  minutes_before  integer
+)
+language sql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+  with due as (
+    select f.activity_id, f.user_id
+      from public.club_event_followers f
+      join public.club_activities a on a.id = f.activity_id
+      join public.club_members m
+        on m.club_id = a.club_id and m.user_id = f.user_id and m.status = 'active'
+     where f.reminded_at is null
+       and f.reminder_due_at is not null
+       and f.reminder_due_at <= now()
+       and a.kind = 'evento'
+       and a.status = 'active'
+       and a.event_state = 'programado'
+       -- Nunca se recuerda algo que ya empezó (§9.1). El trigger ya no arma
+       -- recordatorios de eventos pasados, pero un evento EMPIEZA sin que nadie
+       -- escriba nada: esta condición es la autoridad.
+       and a.starts_at > now()
+       and (p_activity_id is null or f.activity_id = p_activity_id)
+     order by f.reminder_due_at
+     limit greatest(p_limit, 1)
+     for update of f skip locked
+  ),
+  claimed as (
+    update public.club_event_followers f
+       set reminded_at = now()
+      from due
+     where f.activity_id = due.activity_id and f.user_id = due.user_id
+    returning f.activity_id, f.user_id, f.remind_minutes_before
+  )
+  select c.activity_id, c.user_id, a.club_id, cl.slug, cl.name, a.title,
+         a.starts_at, a.event_timezone, a.location, a.modality, a.created_by,
+         c.remind_minutes_before
+    from claimed c
+    join public.club_activities a on a.id = c.activity_id
+    join public.clubs cl on cl.id = a.club_id;
+$$;
+
+-- Devuelve al barrido las filas que se reclamaron y no se pudieron entregar.
+-- Ante la duda, ruido antes que silencio.
+create or replace function public.release_event_reminders(
+  p_activity_id uuid,
+  p_user_ids uuid[]
+) returns integer
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_count integer;
+begin
+  update public.club_event_followers
+     set reminded_at = null
+   where activity_id = p_activity_id
+     and user_id = any(p_user_ids);
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- Las dos son del barrido, no de la app: solo service_role. Sin esto, cualquier
+-- sesión autenticada podría sellar los recordatorios de todo el mundo (y con ello
+-- impedir que se entreguen).
+revoke all on function public.claim_due_event_reminders(integer, uuid) from public, anon, authenticated;
+revoke all on function public.release_event_reminders(uuid, uuid[]) from public, anon, authenticated;
+grant execute on function public.claim_due_event_reminders(integer, uuid) to service_role;
+grant execute on function public.release_event_reminders(uuid, uuid[]) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 4. Tipos de notificación
+-- ---------------------------------------------------------------------------
+
+-- Ampliar un enum es la dirección INOFENSIVA (el bundle anterior no conoce los
+-- valores nuevos y no los recibe); retirar valores es la peligrosa. Ningún objeto
+-- de esta migración USA los valores nuevos, así que pueden añadirse aquí mismo.
+alter type public.notification_type add value if not exists 'club_event_reminder';
+alter type public.notification_type add value if not exists 'club_event_updated';
+alter type public.notification_type add value if not exists 'club_event_cancelled';
+
+-- --- 20260824_club_event_reminder_scheduler.sql ------------------------
+
+-- El PRIMER trabajo programado del repo. Retira el bloqueo de #394.
+--
+-- Va en su propia migración a propósito: es la única pieza que necesita secretos
+-- en Vault y la única que se puede retirar sola (`cron.unschedule`) sin tocar la
+-- feature. Si algún día se cambia de mecanismo, este fichero es el que se
+-- reemplaza.
+--
+-- Por qué pg_cron y no Vercel Cron: la cuenta de Vercel es Hobby, donde un cron
+-- corre UNA vez al día y a una hora no garantizada — incompatible con un
+-- recordatorio «15 minutos antes». pg_cron da granularidad de minutos en el plan
+-- gratuito de Supabase.
+--
+-- Por qué salta a HTTP en vez de escribir en `notifications` desde SQL: firmar
+-- VAPID es web-push, o sea Node. Un job que solo insertara filas llenaría la
+-- campana y no enviaría ni un push. Saltando a la ruta se reutiliza el
+-- notifyMany/sendPushToUsers que ya existe, en vez de duplicar el sistema de
+-- notificaciones (§25 del encargo).
+--
+-- ANTES DE QUE ESTO HAGA NADA hay que crear los dos secretos, una vez por
+-- entorno (no van en git):
+--
+--   select vault.create_secret('https://biblioshare.vercel.app', 'app_base_url');
+--   select vault.create_secret('<mismo valor que CRON_SECRET en Vercel>', 'cron_secret');
+--
+-- Sin ellos la función avisa y no despacha: nunca entra en un bucle de errores
+-- contra una URL vacía.
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+create or replace function private.dispatch_event_reminders()
+returns void
+language plpgsql
+security definer
+set search_path to ''
+as $$
+declare
+  v_url text;
+  v_secret text;
+begin
+  select decrypted_secret into v_url
+    from vault.decrypted_secrets where name = 'app_base_url';
+  select decrypted_secret into v_secret
+    from vault.decrypted_secrets where name = 'cron_secret';
+
+  if v_url is null or v_secret is null then
+    raise warning 'dispatch_event_reminders: faltan los secretos app_base_url/cron_secret en Vault; no se despacha nada';
+    return;
+  end if;
+
+  perform net.http_post(
+    url     := v_url || '/api/cron/event-reminders',
+    headers := jsonb_build_object(
+                 'content-type', 'application/json',
+                 'x-cron-secret', v_secret
+               ),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 20000
+  );
+end;
+$$;
+
+revoke all on function private.dispatch_event_reminders() from public, anon, authenticated;
+
+-- Cada 5 minutos. Es el ÚNICO error de puntualidad del sistema y es explícito: un
+-- recordatorio se entrega entre 0 y 5 minutos DESPUÉS de su momento teórico,
+-- nunca antes.
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'event-reminders') then
+    perform cron.unschedule('event-reminders');
+  end if;
+  perform cron.schedule(
+    'event-reminders',
+    '*/5 * * * *',
+    $job$ select private.dispatch_event_reminders(); $job$
+  );
+end $$;
+
+-- --- 20260825_notifications_system_actor.sql ---------------------------
+
+-- Una notificación EMITIDA POR EL SISTEMA no tiene actor humano.
+--
+-- Hasta ahora toda notificación era «alguien te hizo algo»: `actor_id` NOT NULL y
+-- `CHECK (user_id <> actor_id)`. El recordatorio de evento (spec 2026-08-04) es el
+-- primero que no encaja en esa forma — lo dispara un trabajo programado, no una
+-- persona.
+--
+-- Se intentó evitar este cambio poniendo al ORGANIZADOR del evento como actor, y
+-- fue peor por dos motivos que solo aparecieron al probarlo contra dev:
+--
+--   1. El organizador que sigue su propio evento choca con el CHECK: su
+--      recordatorio no se puede insertar (23514), así que justo quien monta el
+--      evento se quedaba sin aviso — lo contrario de lo que pide §18.
+--   2. Miente en la pantalla: «Marta te avisa» cuando Marta no ha hecho nada.
+--
+-- Las dos son el mismo síntoma de forzar un evento del sistema por un modelo con
+-- forma de persona. Se arregla el modelo, no se parchea alrededor.
+--
+-- Consumidores que ya tratan el actor nulo (son todos los que leen la bandeja):
+-- listNotifications, buildPushPayload y notification-bell.tsx.
+alter table public.notifications alter column actor_id drop not null;
+
+-- El invariante se conserva donde sigue teniendo sentido: si HAY actor, no puede
+-- ser el propio destinatario (nadie quiere «has comentado tu propio post»).
+alter table public.notifications drop constraint if exists notifications_check;
+alter table public.notifications
+  add constraint notifications_check
+  check (actor_id is null or user_id <> actor_id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ANEXO 2026-08-05 — Hitos de buddy_read autodeclarados (issues #470/#471)
+-- Dos migraciones aplicadas en dev y prod el 2026-08-05, en este orden.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── 20260826_confirm_checkpoint_lee_passes.sql ──────────────────────────────
+-- Issue #470 — confirm_checkpoint validaba contra library_entries, CONGELADA desde el
+-- pase-hub (PR #42): addSession solo escribe en passes y no hay trigger que sincronice,
+-- así que la RPC comparaba contra una posición muerta y lanzaba checkpoint_not_reached
+-- aunque la UI (getActivityCheckpoints, que ya lee passes) diera el hito por alcanzable.
+-- Verificado en prod (2026-08-05): en las 3 buddy_read con pases activos, 4/4 posiciones
+-- de passes difieren de library_entries. Único cambio: la posición del usuario sale del
+-- pase ACTIVO. El resto del cuerpo se preserva verbatim de 20260713_activity_checkpoints.sql.
+
+create or replace function public.confirm_checkpoint(p_checkpoint_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_activity_id uuid;
+  v_order smallint;
+  v_target_position jsonb;
+  v_item_type public.item_type;
+  v_item_id uuid;
+  v_item_count int;
+  v_user_position jsonb;
+begin
+  select activity_id, "order", position into v_activity_id, v_order, v_target_position
+    from public.club_activity_checkpoints
+    where id = p_checkpoint_id;
+
+  if v_activity_id is null then
+    raise exception 'not found';
+  end if;
+  if not public.is_activity_participant(v_activity_id) then
+    raise exception 'forbidden';
+  end if;
+
+  select count(*) into v_item_count
+    from public.club_activity_items
+    where activity_id = v_activity_id;
+  if v_item_count = 0 then
+    raise exception 'no item in activity';
+  end if;
+
+  -- buddy_read = exactamente un ítem en el pool (enforce_buddy_read_item_rules lo garantiza)
+  -- -- limit 1 es solo defensivo, no una elección arbitraria entre varios.
+  select item_type, item_id into v_item_type, v_item_id
+    from public.club_activity_items
+    where activity_id = v_activity_id
+    limit 1;
+
+  select p.position into v_user_position
+    from public.passes p
+    where p.user_id = auth.uid()
+      and p.item_type = v_item_type
+      and p.item_id = v_item_id
+      and p.is_active;
+
+  if v_user_position is null then
+    raise exception 'checkpoint_not_reached';
+  end if;
+
+  if v_item_type = 'book' then
+    if coalesce((v_user_position->>'page')::numeric, 0) < coalesce((v_target_position->>'page')::numeric, 0) then
+      raise exception 'checkpoint_not_reached';
+    end if;
+  elsif v_item_type = 'series' then
+    if row(
+      coalesce((v_user_position->>'season')::int, 0),
+      coalesce((v_user_position->>'episode')::int, 0)
+    ) < row(
+      coalesce((v_target_position->>'season')::int, 0),
+      coalesce((v_target_position->>'episode')::int, 0)
+    ) then
+      raise exception 'checkpoint_not_reached';
+    end if;
+  else
+    raise exception 'unsupported item type for buddy_read';
+  end if;
+
+  insert into public.club_activity_checkpoint_reads (checkpoint_id, user_id)
+  select id, auth.uid()
+    from public.club_activity_checkpoints
+    where activity_id = v_activity_id and "order" <= v_order
+  on conflict (checkpoint_id, user_id) do nothing;
+end;
+$$;
+
+comment on table public.club_activity_checkpoint_reads is 'Quién ha confirmado haber llegado a qué checkpoint (tablero de progreso grupal). Sin política de escritura de cliente -- solo vía confirm_checkpoint() (SECURITY DEFINER), que revalida server-side contra la posición del pase ACTIVO (passes) antes de insertar.';
+
+-- ── 20260827_hitos_autodeclarados.sql ───────────────────────────────────────
+-- Issue #471 (opción B) — los hitos de buddy_read dejan de ser una página absoluta con
+-- gate numérico y pasan a ser autodeclarados. Motivo: la página objetivo la fijaba el
+-- moderador según SU edición, y cada participante mide en páginas de LA SUYA
+-- (book_editions.total_pages varía): el mismo número cae en puntos distintos de la
+-- historia. Con edición más compacta no podías confirmar aunque hubieras terminado el
+-- tramo; con edición más paginada se te abría el chat (spoiler guard) antes de llegar.
+--
+-- Confirmar es ahora declarar «ya llegué»: solo exige ser participante. El spoiler guard
+-- (can_view_target: participante + has_reached_checkpoint) no cambia — el chat sigue
+-- cerrado hasta que confirmas. La posición del checkpoint queda como pista visual
+-- opcional ({} = sin pista); la comparación TS (hasReachedPosition) se elimina en el
+-- mismo cambio de app.
+--
+-- Sustituye a 20260826_confirm_checkpoint_lee_passes.sql, que arregló el drift de
+-- library_entries→passes (#470) dentro del gate que aquí desaparece.
+
+create or replace function public.confirm_checkpoint(p_checkpoint_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_activity_id uuid;
+  v_order smallint;
+begin
+  select activity_id, "order" into v_activity_id, v_order
+    from public.club_activity_checkpoints
+    where id = p_checkpoint_id;
+
+  if v_activity_id is null then
+    raise exception 'not found';
+  end if;
+  if not public.is_activity_participant(v_activity_id) then
+    raise exception 'forbidden';
+  end if;
+
+  -- Confirmar el checkpoint N auto-confirma 1..N-1 (idempotente) -- evita que quien
+  -- salta directo a un checkpoint tardío se quede sin fila en los anteriores.
+  insert into public.club_activity_checkpoint_reads (checkpoint_id, user_id)
+  select id, auth.uid()
+    from public.club_activity_checkpoints
+    where activity_id = v_activity_id and "order" <= v_order
+  on conflict (checkpoint_id, user_id) do nothing;
+end;
+$$;
+
+comment on table public.club_activity_checkpoints is 'Checkpoints ordenados de una actividad buddy_read (EPIC-05 Bloque H1). position es el mismo shape polimórfico que passes.position, como PISTA visual opcional ({} = sin pista) -- desde #471 no gatea nada: la página depende de la edición de cada participante. Visibles a todo el club; solo moderator+ los crea/edita/borra, y solo mientras la actividad está active.';
+
+comment on table public.club_activity_checkpoint_reads is 'Quién ha declarado haber llegado a qué checkpoint (tablero de progreso grupal). Sin política de escritura de cliente -- solo vía confirm_checkpoint() (SECURITY DEFINER), que desde #471 es autodeclarativa: exige ser participante, sin revalidación de posición (las ediciones hacen incomparables las páginas).';

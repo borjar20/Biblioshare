@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getClub } from "@/lib/clubs/clubs";
 import { listClubActivities } from "@/lib/clubs/activities/core";
 import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
@@ -10,6 +11,10 @@ import { todayISO } from "@/lib/stats/dates";
 import { ClubShell, ClubSidebar, ClubMainHeader } from "@/components/clubs/club-shell";
 import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubCalendar } from "@/components/clubs/calendar/club-calendar";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -27,9 +32,8 @@ export default async function ClubCalendarPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/club/${slug}/calendario`));
 
   const club = await getClub(slug);
   // Mismo gate que la vista de actividad: un club privado no filtra sus fechas
@@ -83,6 +87,9 @@ export default async function ClubCalendarPage({
           today={hoy}
           clubId={club.id}
           canModerate={canModerate}
+          // Llegar aquí ya exige `viewerRole`, que solo lo tienen los miembros
+          // activos: el gate de arriba hace 404 para todo lo demás.
+          viewerIsMember
         />
       </Suspense>
     </ClubShell>

@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import type { MediaStatus } from "@/lib/library/types";
 import { addSession, type AddSessionState } from "@/lib/sessions/actions";
+import { checkCelebrations } from "@/lib/celebrations/preference";
 import { itemHref } from "@/lib/catalog/item-href";
 import { timerStorageKey } from "@/lib/sessions/timer";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
@@ -42,11 +43,16 @@ function todayISO() {
 export function SessionSheet({
   ctx,
   initialMinutes,
+  initialStartedAt,
   mode,
 }: {
   ctx: SessionContext;
   /** Minutos que trae el cronómetro de la tarjeta de hoy (?minutos=). */
   initialMinutes?: number | null;
+  /** Hora de inicio (ISO) que trae el mismo cronómetro (?inicio=): sin ella,
+   *  "Cuándo lees" no vería la sesión. La hoja la envía tal cual en un input
+   *  oculto salvo que el usuario ponga una hora a mano. */
+  initialStartedAt?: string | null;
   /** Dónde vive la hoja: decide a dónde ir tras guardar/cerrar. */
   mode: "modal" | "page";
 }) {
@@ -100,7 +106,13 @@ export function SessionSheet({
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
   useEffect(() => {
-    if (!state.ok || state.passClosed) return;
+    if (!state.ok) return;
+    // El guardado pudo ganar celebraciones en servidor (primera actividad,
+    // objetivo diario, hito de racha): que el provider las drene y anime. Va
+    // aquí y no en el bloque de derivación porque disparar un evento es un
+    // efecto, no estado derivado. Se pide también cuando el pase se cierra.
+    checkCelebrations();
+    if (state.passClosed) return;
     closeSheet();
   }, [state, closeSheet]);
 
@@ -138,6 +150,9 @@ export function SessionSheet({
   );
   const [noteCount, setNoteCount] = useState(0);
   const [notePending, setNotePending] = useState(false);
+  // Compartir en el perfil (Spec 2): opt-in. Controla si se despliega el texto
+  // social; sin marcar, la sesión queda privada (+ notas) como hasta ahora.
+  const [share, setShare] = useState(false);
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -239,6 +254,7 @@ export function SessionSheet({
               name="sessionDate"
               type="date"
               required
+              max={todayISO()}
               value={sessionDate}
               onChange={(e) => setSessionDate(e.target.value)}
             />
@@ -250,6 +266,7 @@ export function SessionSheet({
               fromPage={currentPage}
               total={total}
               initialMinutes={initialMinutes}
+              initialStartedAt={initialStartedAt}
               onPageChange={setLivePage}
               sessionDate={sessionDate}
             />
@@ -272,6 +289,43 @@ export function SessionSheet({
             onPendingChange={setNotePending}
             onCountChange={setNoteCount}
           />
+
+          {/* Compartir en el perfil (Spec 2): opt-in explícito dentro del propio
+              formulario — la decisión de compartir vive aquí, no en un compositor
+              aparte. Marcado, addSession publica un post 'progressed' con el
+              texto opcional como cuerpo social; las notas del cuaderno siguen
+              siendo privadas. */}
+          <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                name="share"
+                checked={share}
+                onChange={(e) => setShare(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-accent"
+              />
+              {t("shareLabel")}
+            </label>
+            {share && (
+              <>
+                <textarea
+                  name="shareBody"
+                  maxLength={2000}
+                  rows={2}
+                  placeholder={t("sharePlaceholder")}
+                  className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    name="shareSpoiler"
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                  {t("shareSpoiler")}
+                </label>
+              </>
+            )}
+          </div>
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
               Sigue disponible para abandonar o completar a mano sin ir a la ficha. */}

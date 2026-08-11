@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getClub, getViewerIdentity } from "@/lib/clubs/clubs";
 import { SkeletonCard, SkeletonLine, Skeleton } from "@/components/ui/skeleton";
 import { listClubPosts } from "@/lib/clubs/posts";
@@ -30,6 +31,11 @@ import {
   ClubMainHeader,
 } from "@/components/clubs/club-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { RoundBlock } from "@/components/clubs/round/round-block";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -52,7 +58,7 @@ export default async function ClubPage({
   const { tab: tabParam } = await searchParams;
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/club/${slug}`));
 
   const club = await getClub(slug);
 
@@ -141,6 +147,7 @@ export default async function ClubPage({
             clubSlug={club.slug}
             initialActivities={activities}
             isModerator={canModerate}
+            today={todayISO()}
           />
         </div>
       )}
@@ -195,7 +202,7 @@ async function ClubFeedSection({
   // rail derecho sticky. Un solo árbol — el rail se coloca con `order` (el
   // resumen queda ARRIBA en móvil, como el frame 2, y a la derecha en `lg`).
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
       <aside className="flex flex-col gap-5 lg:order-2 lg:sticky lg:top-[96px]">
         <ClubSummary
           activities={activities}
@@ -203,7 +210,7 @@ async function ClubFeedSection({
           clubSlug={club.slug}
         />
         <div className="hidden rounded-card border border-border bg-surface p-4 shadow-card lg:block">
-          <h2 className="mb-3 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="mb-3 label-section">
             {t("directorySectionMembers")} · {club.memberCount}
           </h2>
           <Link
@@ -216,6 +223,9 @@ async function ClubFeedSection({
       </aside>
 
       <div className="min-w-0 lg:order-1">
+        <div className="mb-5">
+          <RoundBlock clubId={club.id} viewerId={userId} />
+        </div>
         <ClubFeed
           clubId={club.id}
           viewerId={userId}
@@ -249,6 +259,7 @@ async function ClubManagementSection({
       viewerRole={club.viewerRole as "moderator" | "owner"}
       initialActivities={activities}
       initialJoinRequests={joinRequests}
+      today={todayISO()}
     />
   );
 }

@@ -104,7 +104,7 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
       }
       body={
         <div className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("checkpoints")}
           </h2>
           <CheckpointList
@@ -114,6 +114,7 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
             onChanged={refresh}
             clubId={activity.clubId}
             knownUsernames={view.knownUsernames}
+            viewerIsParticipant={activity.viewerIsParticipant}
           />
         </div>
       }
@@ -125,7 +126,7 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
         // para él.
         activity.viewerIsParticipant && upcoming ? (
           <div className="flex flex-col gap-2">
-            <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h3 className="label-section">
               {t("nextCheckpoint")}
             </h3>
             <div className="rounded-card border border-border bg-surface p-3 shadow-card">

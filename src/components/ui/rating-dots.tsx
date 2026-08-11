@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatDots } from "@/lib/rating/dots";
+import type { ItemType } from "@/lib/catalog/types";
 
 // EL control de valoración de Paper: cinco dots sobre la nota 1–10, en modo
 // lectura o interactivo. Único en la app — no hay estrellas en ninguna parte.
@@ -17,23 +18,25 @@ import { formatDots } from "@/lib/rating/dots";
 // presentación, igual que hacía el StarRating al que jubila. Ningún consumidor
 // piensa en dots.
 //
-// El relleno es ORO, no el acento del tipo de medio: en Paper la valoración es
-// oro en todas partes y el color de tipo se reserva para identificar el medio.
-
-const FILL = "var(--gold)";
+// El relleno toma el color del TIPO de obra (--type-book/movie/series): la nota
+// se lee dentro de la ficha o la tarjeta de un medio y se tiñe con su identidad.
+// Antes era ORO fijo en toda la app (el color de tipo se reservaba para
+// identificar el medio); se cambió a propósito — ver decisiones.md. Sin
+// `itemType` cae a oro, para no dejar sin relleno un sitio que aún no lo pase.
+const GOLD = "var(--gold)";
 // El dot apagado va en --surface-3, no en --border: con el borde (alfa .14) no
 // se distinguía del fondo y una nota de 2/10 parecía "sin valorar".
 const EMPTY = "var(--surface-3)";
 
 const SIZES = { sm: 7, md: 10, lg: 14 } as const;
 
-function dotBackground(rating: number, index: number): string {
+function dotBackground(rating: number, index: number, fill: string): string {
   // index 0..4 → cubre las notas (2i+1, 2i+2).
   const full = 2 * index + 2;
   const half = 2 * index + 1;
-  if (rating >= full) return FILL;
+  if (rating >= full) return fill;
   if (rating >= half)
-    return `linear-gradient(90deg, ${FILL} 50%, ${EMPTY} 50%)`;
+    return `linear-gradient(90deg, ${fill} 50%, ${EMPTY} 50%)`;
   return EMPTY;
 }
 
@@ -43,6 +46,7 @@ export function RatingDots({
   size = "md",
   disabled = false,
   className = "",
+  itemType,
 }: {
   /** Nota 1–10, o null si no hay. */
   value: number | null;
@@ -51,11 +55,14 @@ export function RatingDots({
   size?: keyof typeof SIZES | number;
   disabled?: boolean;
   className?: string;
+  /** Tiñe la nota con el color del tipo de obra. Sin él, oro. */
+  itemType?: ItemType;
 }) {
   const [preview, setPreview] = useState<number | null>(null);
   const interactive = Boolean(onChange) && !disabled;
   const shown = (interactive ? (preview ?? value) : value) ?? 0;
   const px = typeof size === "number" ? size : SIZES[size];
+  const fill = itemType ? `var(--type-${itemType})` : GOLD;
 
   const dots = (
     <div
@@ -71,7 +78,7 @@ export function RatingDots({
             style={{
               width: px,
               height: px,
-              background: dotBackground(shown, i),
+              background: dotBackground(shown, i, fill),
               cursor: interactive ? "pointer" : "default",
             }}
             aria-hidden={!interactive}

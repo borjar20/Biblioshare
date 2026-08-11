@@ -1,4 +1,4 @@
-import type { ItemType } from "@/lib/catalog/types";
+import type { ItemType, SearchResult } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import type { BookFormat } from "@/lib/library/position";
 
@@ -35,7 +35,20 @@ export type ParsedImport = {
   rows: ImportRow[];
 };
 
-export type ImportRowOutcome = "imported" | "duplicate" | "unmatched" | "error";
+export type ImportRowOutcome =
+  | "imported"
+  | "duplicate"
+  | "unmatched"
+  // Hay más de una obra que encaja con la fila y el matcher NO desempata solo:
+  // "The Visit (2015)" son tres películas distintas en TMDB. Antes se cogía la
+  // primera a ciegas; ahora la elige el usuario en la pantalla de triaje.
+  | "ambiguous"
+  | "error";
+
+// Un candidato que se le ofrece al usuario para desempatar. Es un `SearchResult`
+// tal cual: lo mismo que `/buscar` manda de vuelta al servidor en addToLibrary,
+// así que `findOrCreateCatalogItem` lo consume sin traducción.
+export type ImportCandidate = SearchResult;
 
 export type ImportRowResult = {
   rowNumber: number;
@@ -43,4 +56,13 @@ export type ImportRowResult = {
   outcome: ImportRowOutcome;
   unknownStatus?: string;
   errorMessage?: string;
+  // Solo en outcome "ambiguous".
+  candidates?: ImportCandidate[];
 };
+
+// Lo que devuelve el matcher. Tres desenlaces, no dos: además de acertar o no
+// acertar, puede acertar DEMASIADO (varias obras válidas) y ceder la decisión.
+export type ImportMatch =
+  | { kind: "matched"; catalogId: string }
+  | { kind: "ambiguous"; candidates: ImportCandidate[] }
+  | { kind: "unmatched" };

@@ -1,0 +1,115 @@
+package app.biblioshare.mobile.widgets
+
+import android.content.Context
+import android.graphics.Bitmap
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.layout.Column
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.height
+import androidx.glance.text.Text
+import app.biblioshare.mobile.R
+
+// Widget «En curso»: un solo tamaño grande (Completo) con el destacado (por
+// defecto el que decide el servidor, misma regla que getTodayFocus del
+// dashboard) y, si hay más lecturas a medias, la rejilla "Continúa donde lo
+// dejaste". Tocar una portada de la rejilla cambia el foco SIN abrir la app:
+// el passId elegido se guarda en el estado Glance (SELECTED_PASS_KEY) y se lee
+// aquí en provideGlance; si no hay elección, gana el [0] del snapshot.
+class CurrentProgressWidget : GlanceAppWidget() {
+
+    override val sizeMode = SizeMode.Exact
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // I/O fuera de la composición: store, selección y portadas se resuelven una vez aquí.
+        val snapshot = WidgetSnapshotStore.load(context)
+        val selected = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[SELECTED_PASS_KEY]
+        val state = currentProgressState(snapshot, selectedPassId = selected)
+        val covers = loadCovers(context, snapshot)
+        val running = TimerStore.get(context)
+        provideContent { CurrentProgressContent(state, covers, running) }
+    }
+}
+
+internal suspend fun loadCovers(context: Context, snapshot: WidgetSnapshot?): Map<String, Bitmap?> {
+    val urls = snapshot?.inProgress?.mapNotNull { it.coverUrl }?.distinct().orEmpty()
+    return urls.associateWith { WidgetImageCache.loadBitmap(context, it) }
+}
+
+/** Contenido puro: mismo dibujo en el widget real y en las previews (src/debug). */
+@Composable
+fun CurrentProgressContent(
+    state: ProgressWidgetState,
+    covers: Map<String, Bitmap?>,
+    running: TimerLogic.Running? = null,
+) {
+    val context = LocalContext.current
+    when (state) {
+        ProgressWidgetState.SignedOut -> WidgetCard("/") {
+            EmptyState(
+                context.getString(R.string.widget_open_app_title),
+                context.getString(R.string.widget_open_app_subtitle),
+            )
+        }
+        ProgressWidgetState.NothingInProgress -> WidgetCard("/coleccion") {
+            EmptyState(
+                context.getString(R.string.widget_nothing_in_progress),
+                context.getString(R.string.widget_open_to_start),
+            )
+        }
+        is ProgressWidgetState.Content -> WidgetSurface { Completo(state, covers, running) }
+    }
+}
+
+class CurrentProgressWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = CurrentProgressWidget()
+}
+
+@Composable
+private fun Completo(state: ProgressWidgetState.Content, covers: Map<String, Bitmap?>, running: TimerLogic.Running?) {
+    val ctx = LocalContext.current
+    val f = state.featured
+    Column(GlanceModifier.fillMaxSize()) {
+        SectionHeader(
+            label = ctx.getString(R.string.widget_current_progress_label),
+            trailing = ctx.getString(R.string.widget_view_all, state.total),
+            onTrailing = actionStartActivity(WidgetDeepLinks.intentFor(ctx, "/coleccion?status=in_progress")),
+        )
+        // Snapshot sin refrescar en 48h: avisa de que los números pueden ser
+        // viejos (se perdió al reescribir el layout en Fase 2, #492).
+        if (state.stale) {
+            Spacer(GlanceModifier.height(4.dp))
+            Text(ctx.getString(R.string.widget_stale_data), style = softStyle())
+        }
+        Spacer(GlanceModifier.height(8.dp))
+        // Zona de foco compartida con el paso 2 del Reducido; el Completo mantiene
+        // la barra «Meta de hoy». Racha/semana se retiran para caber en 4x3 (#498).
+        // Con el cronómetro activo para el destacado, el foco crece (reloj +
+        // acciones) y aplastaría el carrusel: lo ocultamos mientras dure la sesión
+        // y el foco LLENA el alto sobrante (sin hueco). Vuelve al registrar/descartar.
+        val timerActive = running?.passId == f.passId
+        FocusZone(
+            f, f.coverUrl?.let(covers::get), running,
+            dailyGoal = state.dailyGoal,
+            modifier = if (timerActive) GlanceModifier.defaultWeight() else GlanceModifier,
+        )
+        if (state.others.isNotEmpty() && !timerActive) {
+            Spacer(GlanceModifier.height(10.dp))
+            Text(ctx.getString(R.string.widget_continue_where_left_off), style = softStyle())
+            Spacer(GlanceModifier.height(6.dp))
+            ContinueCarousel(state.others, covers)
+        }
+    }
+}

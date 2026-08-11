@@ -17,7 +17,8 @@ export async function notifyClub(
     | "club_activity_proposed"
     | "club_activity_activated"
     | "club_activity_spawned"
-    | "club_event_created",
+    | "club_event_created"
+    | "club_round_proposed",
   activityId: string,
 ): Promise<void> {
   try {
@@ -37,8 +38,17 @@ export async function notifyClub(
       // propio target_type ('club_event') para que resolveTargetHrefs()
       // (notifications.ts) lo lleve a la ficha del club en vez de a
       // /club/[slug]/actividad/[id].
-      targetType: type === "club_event_created" ? "club_event" : "club_activity",
+      targetType:
+        type === "club_event_created" ? "club_event"
+        : type === "club_round_proposed" ? "club_round"
+        : "club_activity",
       targetId: activityId,
+      // Un aviso de club es un hecho de una sola vez sobre esa fila ("X propuso
+      // la ronda/actividad/evento"). Con dedupeKey, una re-llamada idempotente no
+      // vuelve a avisar a todo el club: cierra el re-notify de proposeRound
+      // cuando ensure_club_round devuelve la ronda ya existente del propio autor
+      // (#409), y de paso endurece los hermanos (proposed/activated/spawned).
+      dedupeKey: `club:${type}:${activityId}`,
     });
   } catch (error) {
     console.error("notifyClub failed", error);

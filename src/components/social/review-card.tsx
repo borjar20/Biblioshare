@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
-import { ReviewInteractions } from "@/components/social/review-interactions";
+import { PostSummary } from "@/components/social/post-summary";
 import { MentionText } from "@/components/social/mention-text";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -20,18 +20,19 @@ import { itemHref } from "@/lib/catalog/item-href";
 // la reseña se publica siempre.
 export function ReviewCard({
   event,
-  viewerLoggedIn,
   hideActor = false,
   knownUsernames,
+  showInteractions = true,
 }: {
   event: FeedEvent;
   viewerLoggedIn: boolean;
   hideActor?: boolean;
   /** Usernames @mencionados que existen de verdad (extracto + comentarios). */
   knownUsernames: string[];
+  /** `false` en la cabecera de /post/[id]: el hilo lo pinta PostThread aparte. */
+  showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
-  const tTime = useTranslations("time");
   const actorName = event.actorDisplayName || event.actorUsername;
   const meta = [
     event.itemSubtitle,
@@ -45,11 +46,11 @@ export function ReviewCard({
       {!hideActor && (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
-          <p className="min-w-0 flex-1 text-sm text-foreground">
+          <p className="min-w-0 flex-1 truncate text-sm text-foreground">
             <Link href={`/u/${event.actorUsername}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
             <span className="text-muted-foreground">{t(`verbs.${event.verb}`)}</span>
           </p>
-          <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
+          <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
             {t("kind.review")}
           </span>
         </div>
@@ -66,7 +67,7 @@ export function ReviewCard({
           <Link href={itemHref(event.itemType, event.itemId)} className="mt-1 block font-serif text-[15px] leading-tight font-semibold hover:underline">
             {event.itemTitle}
           </Link>
-          {event.rating != null && <div className="mt-2"><RatingDots value={event.rating} /></div>}
+          {event.rating != null && <div className="mt-2"><RatingDots value={event.rating} itemType={event.itemType} /></div>}
           {meta && <p className="mt-1.5 font-mono text-[10px] text-foreground-faint">{meta}</p>}
         </div>
       </div>
@@ -77,18 +78,14 @@ export function ReviewCard({
         </p>
       )}
 
-      {event.interactionTarget?.interactionTargetId && (
-        <ReviewInteractions
-          interactionTargetId={event.interactionTarget.interactionTargetId}
+      {showInteractions && event.postId && (
+        <PostSummary
+          postId={event.postId}
           reactionCount={event.reactionCount}
-          viewerReacted={event.viewerReacted}
           commentCount={event.commentCount}
-          comments={event.comments}
-          viewerLoggedIn={viewerLoggedIn}
-          knownUsernames={knownUsernames}
         />
       )}
-      <span suppressHydrationWarning className="self-end font-mono text-[10px] text-muted-foreground">{timeAgo(event.eventDate, tTime)}</span>
+      <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );
 }

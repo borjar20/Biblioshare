@@ -9,6 +9,15 @@ import {
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
+import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
+import { RouteMessages } from "@/components/route-messages";
+
+// Namespaces de cliente de la ficha de serie (medidos, #444): como libro/película
+// más `episode` (rejilla de episodios).
+const DETAIL_NS = [
+  "catalogEdit", "collection", "detail", "editions", "episode",
+  "item", "library", "notes", "passes", "social",
+] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -27,7 +36,12 @@ import { ItemStatusProvider } from "@/components/detail/item-status-context";
 import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
-import { getCommunity } from "@/lib/community/get-community";
+import {
+  getRatingSummary,
+  getReviews,
+  type Community,
+  type RatingSummary,
+} from "@/lib/community/get-community";
 import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
@@ -48,6 +62,10 @@ import {
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
 import { NotesSection } from "@/components/notes/notes-section";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -71,22 +89,32 @@ function fetchSeries(supabase: Supa, id: string) {
   return supabase
     .from("series")
     .select(
-      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, genres, tmdb_id",
+      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id",
     )
     .eq("id", id)
     .maybeSingle();
 }
 
 type SeriesRow = NonNullable<Awaited<ReturnType<typeof fetchSeries>>["data"]>;
-type Community = Awaited<ReturnType<typeof getCommunity>>;
 
-export default async function SeriesDetailPage({
-  params,
-  searchParams,
-}: {
+type SeriesDetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ cerrar?: string }>;
-}) {
+};
+
+// Página síncrona: `params`/`searchParams` bajan a SeriesDetail, por DEBAJO del
+// <Suspense> (#442). Ver /libro para el porqué.
+export default function SeriesDetailPage(props: SeriesDetailProps) {
+  return (
+    <Suspense fallback={<ItemShellSkeleton itemType="series" />}>
+      <RouteMessages ns={DETAIL_NS}>
+        <SeriesDetail {...props} />
+      </RouteMessages>
+    </Suspense>
+  );
+}
+
+async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
@@ -109,9 +137,9 @@ export default async function SeriesDetailPage({
   // activo sin conocer su id, con el join embebido (passes!inner) — verificado
   // contra dev que devuelve lo mismo que la consulta en dos pasos.
   // El rol también (menú ⋯ del hero, P2): todo paralelo, coste cero en serie.
-  const [community, activePass, watchedEpisodes, catalogEpisodes, shellRole] =
+  const [ratingSummary, activePass, watchedEpisodes, catalogEpisodes, shellRole] =
     await Promise.all([
-      getCommunity(supabase, "series", series.id),
+      getRatingSummary("series", series.id),
       user
         ? supabase
             .from("passes")
@@ -196,8 +224,8 @@ export default async function SeriesDetailPage({
         byline={byline}
         genres={genres}
         coverUrl={series.cover_url}
-        avgRating={community.avgRating}
-        ratingsLabel={tDetail("ratings", { count: community.ratingCount })}
+        avgRating={ratingSummary.avgRating}
+        ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
         statusSlot={
           <HeroStatusOrFollow
@@ -233,7 +261,7 @@ export default async function SeriesDetailPage({
             <SeriesTabs
               series={series}
               userId={user?.id ?? null}
-              community={community}
+              ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
           </Suspense>
@@ -248,12 +276,12 @@ export default async function SeriesDetailPage({
 async function SeriesTabs({
   series,
   userId,
-  community,
+  ratingSummary,
   cerrar,
 }: {
   series: SeriesRow;
   userId: string | null;
-  community: Community;
+  ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
   const supabase = await createClient();
@@ -266,11 +294,15 @@ async function SeriesTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
   // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
   // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
-  const [, , watchProviders, sagas, activeRow, role] =
+  const [, , watchProviders, sagas, activeRow, role, reviewsResult] =
     await Promise.all([
       ensureItemEnriched(supabase, "series", {
         id: series.id,
         tmdbId: series.tmdb_id,
+        // Episodios y duración de episodio se hidratan aquí (misma respuesta
+        // que los créditos); sin pasarlos no hay con qué decidir. Ver #365.
+        totalEpisodes: series.total_episodes,
+        episodeRuntimeMinutes: series.episode_runtime_minutes,
       }),
       ensureSeriesEpisodes(supabase, {
         id: series.id,
@@ -278,7 +310,7 @@ async function SeriesTabs({
         totalSeasons: series.total_seasons,
       }),
       series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
-      getItemSagas(supabase, "series", series.id),
+      getItemSagas("series", series.id),
       // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
       userId
         ? supabase
@@ -292,10 +324,17 @@ async function SeriesTabs({
             .then(({ data }) => data)
         : null,
         userId ? getCurrentUserRole(supabase) : null,
+      // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
+      // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
+      getReviews(supabase, "series", series.id),
     ]);
 
+  // Community que espera CommunityPanel = el agregado (ya resuelto en el hero)
+  // más las reseñas (aquí).
+  const community: Community = { ...ratingSummary, ...reviewsResult };
+
   // Lo único que de verdad esperaba a ensureItemEnriched.
-  const credits = await getItemCredits(supabase, "series", series.id);
+  const credits = await getItemCredits("series", series.id);
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];

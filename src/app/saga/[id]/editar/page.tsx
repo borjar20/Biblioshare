@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
@@ -13,13 +14,17 @@ import { SagaMetaEditor } from "@/components/saga/saga-meta-editor";
 import { SequenceEditor } from "@/components/saga/sequence/sequence-editor";
 import { SequenceItineraries } from "@/components/saga/sequence/sequence-itineraries";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export const metadata: Metadata = { title: "Editar saga — Biblioshare" };
 
 export default async function EditSagaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/saga/${id}/editar`));
   if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${id}`);
 
   const { data: saga } = await supabase

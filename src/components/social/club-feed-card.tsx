@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ClubFeedEvent } from "@/lib/social/club-feed";
-import { timeAgo } from "@/lib/relative-time";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { UserAvatar } from "@/components/social/user-avatar";
 
 // La tarjeta de club del frame A. Comparte el chasis de FeedCard (.fcard) pero
@@ -12,7 +12,6 @@ import { UserAvatar } from "@/components/social/user-avatar";
 export function ClubFeedCard({ event }: { event: ClubFeedEvent }) {
   const t = useTranslations("feed.club");
   const tActivity = useTranslations("activity");
-  const tTime = useTranslations("time");
 
   const proposer = event.proposerDisplayName || event.proposerUsername;
 
@@ -26,12 +25,10 @@ export function ClubFeedCard({ event }: { event: ClubFeedEvent }) {
           </Link>{" "}
           <span className="text-muted-foreground">{t("verb")}</span>
         </p>
-        <span
-          suppressHydrationWarning
+        <TimeAgo
+          iso={event.eventDate}
           className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground"
-        >
-          {timeAgo(event.eventDate, tTime)}
-        </span>
+        />
       </div>
 
       <div className="flex flex-col items-start gap-2 text-[13px] leading-[1.5] text-foreground-soft">

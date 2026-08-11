@@ -1,4 +1,5 @@
-import type { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
+import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/auth/roles";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -11,6 +12,9 @@ export type Profile = {
   avatarUrl: string | null;
   bio: string | null;
   createdAt: string;
+  // Cuándo terminó el onboarding, o NULL si aún no. Lo consume AppShell para
+  // decidir si pinta la navegación (ver #456: antes lo leía por su cuenta).
+  onboardedAt: string | null;
   // Objetivo diario de lectura en minutos (docs/REQUIREMENTS.md §7.14). NULL =
   // sin objetivo. La meta ANUAL ya no vive aquí: tras la fusión (plan 05, P6)
   // es un reto — ver `lib/challenges/annual-goals.ts`.
@@ -20,7 +24,7 @@ export type Profile = {
 };
 
 const PROFILE_COLUMNS =
-  "user_id, username, is_public, display_name, avatar_url, bio, created_at, daily_goal_minutes, role";
+  "user_id, username, is_public, display_name, avatar_url, bio, created_at, onboarded_at, daily_goal_minutes, role";
 
 function toProfile(data: {
   user_id: string;
@@ -30,6 +34,7 @@ function toProfile(data: {
   avatar_url: string | null;
   bio: string | null;
   created_at: string;
+  onboarded_at: string | null;
   daily_goal_minutes: number | null;
   role: UserRole;
 }): Profile {
@@ -41,6 +46,7 @@ function toProfile(data: {
     avatarUrl: data.avatar_url,
     bio: data.bio,
     createdAt: data.created_at,
+    onboardedAt: data.onboarded_at,
     dailyGoalMinutes: data.daily_goal_minutes,
     role: data.role,
   };
@@ -100,18 +106,33 @@ export async function getProfileIdentity(
   };
 }
 
-export async function getOwnProfile(
-  supabase: SupabaseServerClient,
-  userId: string
-): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(PROFILE_COLUMNS)
-    .eq("user_id", userId)
-    .maybeSingle();
+// El perfil PROPIO por userId, memoizado POR PETICIÓN con cache() de React. En
+// cada ruta logueada se leía DOS veces: la inline de AppShell (chrome) y la de
+// la página. Eran funciones distintas con columnas distintas, así que no se
+// deduplicaban solas (#456). Ahora AppShell y la página llaman a ESTA, y como
+// cache() indexa por identidad del argumento y el userId es un string estable,
+// la segunda es un acierto: una sola consulta a `profiles` por petición.
+//
+// Cliente propio dentro: se memoiza el RESULTADO, no la instancia — misma regla
+// que getCurrentUser (server.ts) y roleByUserId (roles.ts). Por eso ya no toma
+// `supabase`: con el cliente como argumento, cada componente pasa el suyo y la
+// caché no acertaría nunca.
+//
+// Sigue haciendo throw en error (las páginas lo tratan como hoy, vía su error
+// boundary). AppShell, que hoy tolera el fallo, lo envuelve en .catch() para que
+// un error de perfil no tumbe el chrome de todas las rutas.
+export const getOwnProfile = cache(
+  async (userId: string): Promise<Profile | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(PROFILE_COLUMNS)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
+    if (error) throw error;
+    if (!data) return null;
 
-  return toProfile(data);
-}
+    return toProfile(data);
+  }
+);

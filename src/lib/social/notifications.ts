@@ -2,7 +2,8 @@ import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
-import { sendPushToUser, sendPushToUsers, type PushPayload } from "@/lib/push/send-push";
+import { sendPushToUser, sendPushToUsers } from "@/lib/push/send-push";
+import { NOTIFICATION_CATEGORY, type PushContent } from "@/lib/push/types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   NOTIFICATION_TYPE_KEY,
@@ -24,6 +25,8 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const LIST_LIMIT = 20;
 
+// notify() (singular) sigue exigiendo actor: todos sus llamantes son acciones de
+// una persona. El aviso sin actor va por notifyMany con systemDelivery.
 export async function notify(
   supabase: SupabaseServerClient,
   params: {
@@ -33,6 +36,11 @@ export async function notify(
     targetType?: ReviewTargetType;
     targetId?: string;
     interactionTargetId?: string;
+    // Clave de idempotencia opcional (spec item 9). Si se pasa y ya existe una
+    // notificación con esa clave, no se inserta otra NI se manda push. Hoy la
+    // usan las reacciones (un relike no debe volver a avisar). Sin clave, el
+    // comportamiento es el de siempre (insert normal).
+    dedupeKey?: string;
   },
 ): Promise<void> {
   try {
@@ -43,25 +51,38 @@ export async function notify(
   }
 
   const notificationWriter = createServiceRoleClient();
-  const { error } = await notificationWriter.from("notifications").insert({
+  const row = {
     user_id: params.userId,
     actor_id: params.actorId,
     type: params.type,
     target_type: params.targetType ?? null,
     target_id: params.targetId ?? null,
     interaction_target_id: params.interactionTargetId ?? null,
-  });
+    dedupe_key: params.dedupeKey ?? null,
+  };
+  // .select() recupera el id de la fila (viaja en el data payload del push, spec
+  // item 8). Con dedupeKey se hace upsert(ignoreDuplicates): si ya existía, no
+  // devuelve fila (maybeSingle → null) y se salta también el push.
+  const { data: inserted, error } = params.dedupeKey
+    ? await notificationWriter
+        .from("notifications")
+        .upsert(row, { onConflict: "dedupe_key", ignoreDuplicates: true })
+        .select("id")
+        .maybeSingle()
+    : await notificationWriter.from("notifications").insert(row).select("id").single();
   // Best-effort: no se propaga. Una notificación fallida no debe deshacer la
   // acción real (follow/accept/reacción/comentario) que ya se confirmó.
   if (error) {
     console.error("notify() failed", error);
     return;
   }
+  // Duplicada (dedupeKey ya existía): la notificación no es nueva, no hay push.
+  if (params.dedupeKey && !inserted) return;
 
   // Entrega push (E5.D4), también best-effort — nunca debe afectar a la
   // notificación in-app, que ya se insertó arriba con éxito.
   try {
-    await deliverPush(supabase, params);
+    await deliverPush(supabase, params, inserted?.id);
   } catch (pushError) {
     console.error("notify() push delivery failed", pushError);
   }
@@ -75,21 +96,26 @@ export async function notify(
 async function buildPushPayload(
   supabase: SupabaseServerClient,
   params: {
-    actorId: string;
+    actorId: string | null;
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
     interactionTargetId?: string;
   },
-): Promise<PushPayload | null> {
-  const { data: actor } = await supabase
-    .from("profile_identities")
-    .select("username, display_name")
-    .eq("user_id", params.actorId)
-    .maybeSingle();
-  if (!actor?.username) return null;
+): Promise<PushContent | null> {
+  // Sin actor (aviso del sistema) no se busca perfil y no se aborta: el enlace sale
+  // del target. Con actor que no resuelve sí se aborta, porque la copy por defecto
+  // lleva su nombre.
+  const { data: actor } = params.actorId
+    ? await supabase
+        .from("profile_identities")
+        .select("username, display_name")
+        .eq("user_id", params.actorId)
+        .maybeSingle()
+    : { data: null };
+  if (params.actorId && !actor?.username) return null;
 
-  let href = `/u/${actor.username}`;
+  let href = actor?.username ? `/u/${actor.username}` : "/";
   if (params.interactionTargetId) {
     const targetById = await resolveInteractionTargetMetadata(supabase, [
       params.interactionTargetId,
@@ -104,12 +130,20 @@ async function buildPushPayload(
 
   const t = await getTranslations("notifications");
   const tCommon = await getTranslations("common");
-  const name = actor.display_name || actor.username;
+  // Sin actor el `{name}` de la copy no tiene con qué rellenarse. Los avisos del
+  // sistema siempre traen su propio `pushBody` (que lo sustituye entero), así que
+  // este cuerpo por defecto solo es el respaldo de un caso que no debería darse.
+  const name = actor?.display_name || actor?.username || tCommon("appName");
 
   return {
+    // La categoría se deriva del tipo (no se pasa suelta): gobierna las
+    // preferencias del destinatario y el canal Android.
+    category: NOTIFICATION_CATEGORY[params.type],
+    type: params.type,
     title: tCommon("appName"),
     body: t(NOTIFICATION_TYPE_KEY[params.type], { name }),
-    url: href,
+    path: href,
+    actorUserId: params.actorId ?? undefined,
   };
 }
 
@@ -123,10 +157,11 @@ async function deliverPush(
     targetId?: string;
     interactionTargetId?: string;
   },
+  notificationId?: string,
 ): Promise<void> {
-  const payload = await buildPushPayload(supabase, params);
-  if (!payload) return;
-  await sendPushToUser(params.userId, payload);
+  const content = await buildPushPayload(supabase, params);
+  if (!content) return;
+  await sendPushToUser(params.userId, content, notificationId);
 }
 
 // Fan-out a varios destinatarios (post/actividad de club): UNA inserción
@@ -138,48 +173,115 @@ export async function notifyMany(
   supabase: SupabaseServerClient,
   params: {
     userIds: string[];
-    actorId: string;
+    /** null = aviso del sistema, sin persona detrás. Exige systemDelivery. */
+    actorId: string | null;
     type: NotificationType;
     targetType?: ReviewTargetType;
     targetId?: string;
     interactionTargetId?: string;
+    // Aviso EMITIDO POR EL SISTEMA, no por una persona: hoy solo el recordatorio
+    // de evento (spec 2026-08-04), disparado por el trabajo programado. Cambia dos
+    // cosas, y las dos por la misma razón — que aquí no hay un actor que actúe:
+    //
+    //  1. El actor SÍ se notifica a sí mismo. Normalmente no (nadie quiere «has
+    //     comentado tu propio post»), pero el actor de un recordatorio es el
+    //     organizador solo porque notifications.actor_id es NOT NULL, y el
+    //     organizador debe recibir el recordatorio de su propio evento (§18).
+    //  2. Se salta el filtro de bloqueos. No es una comodidad: es obligatorio y
+    //     además es lo correcto.
+    //     - Obligatorio porque `filter_unblocked_user_ids` devuelve un array VACÍO
+    //       cuando `auth.uid()` es null, y el barrido corre con service_role, sin
+    //       sesión. Sin esto NINGÚN recordatorio se entrega jamás (medido: claimed
+    //       3, delivered 0).
+    //     - Correcto porque quien recibe el recordatorio LO PIDIÓ al seguir el
+    //       evento. El aviso es sobre el evento, no sobre el organizador; que haya
+    //       bloqueado a esa persona no es motivo para tragarse un recordatorio que
+    //       configuró él mismo.
+    //     Nótese que esto NO afloja el filtro para nadie más: el resto de
+    //     llamantes lo siguen pasando, y la función SQL sigue igual de estricta.
+    systemDelivery?: boolean;
+    // pushBody: el cuerpo por defecto se construye desde una clave i18n con solo
+    // {name}, y un recordatorio necesita evento, club, hora y tiempo restante
+    // (§9.3). Cuando llega, sustituye al cuerpo; el título y el enlace se siguen
+    // resolviendo igual.
+    pushBody?: string;
+    // Idempotencia entre llamadas (spec item 9), igual que notify() singular
+    // pero en fan-out: la clave por destinatario es `${dedupeKey}:${userId}`.
+    // Con ella, un segundo POST de la MISMA acción (doble clic, dos pestañas,
+    // reintento) no reinserta ni re-empuja a quien ya avisó — el índice único
+    // parcial idx_notifications_dedupe_key lo colapsa. Sin clave, insert normal.
+    // Cierra el self-spam de avisos por persona (#410) y el re-notify de
+    // proposeRound idempotente (#409): mismo target lógico = un aviso.
+    dedupeKey?: string;
   },
 ): Promise<string[]> {
-  const candidateIds = [...new Set(params.userIds)].filter((id) => id !== params.actorId);
+  const candidateIds = [...new Set(params.userIds)].filter(
+    (id) => params.systemDelivery || id !== params.actorId,
+  );
   let userIds: string[];
-  try {
-    userIds = await filterUnblockedUserIds(supabase, candidateIds);
-  } catch (blockError) {
-    console.error("notifyMany() block check failed", blockError);
-    return [];
+  if (params.systemDelivery) {
+    userIds = candidateIds;
+  } else {
+    try {
+      userIds = await filterUnblockedUserIds(supabase, candidateIds);
+    } catch (blockError) {
+      console.error("notifyMany() block check failed", blockError);
+      return [];
+    }
   }
   if (userIds.length === 0) return [];
 
+  // Map user_id → notificationId de la fila recién insertada (1:1: cada usuario
+  // recibe una sola fila). Viaja en el data payload del push (spec item 8). Con
+  // dedupeKey el upsert(ignoreDuplicates) devuelve SOLO las filas nuevas, así que
+  // este map ya excluye a quien ya tenía el aviso: el push se manda a esos y solo
+  // a esos, y el valor de retorno refleja a quién se avisó de verdad.
+  let notificationIdByUser = new Map<string, string>();
   try {
     const notificationWriter = createServiceRoleClient();
-    const { error } = await notificationWriter.from("notifications").insert(
-      userIds.map((userId) => ({
-        user_id: userId,
-        actor_id: params.actorId,
-        type: params.type,
-        target_type: params.targetType ?? null,
-        target_id: params.targetId ?? null,
-        interaction_target_id: params.interactionTargetId ?? null,
-      })),
-    );
+    const rows = userIds.map((userId) => ({
+      user_id: userId,
+      actor_id: params.actorId,
+      type: params.type,
+      target_type: params.targetType ?? null,
+      target_id: params.targetId ?? null,
+      interaction_target_id: params.interactionTargetId ?? null,
+      dedupe_key: params.dedupeKey ? `${params.dedupeKey}:${userId}` : null,
+    }));
+    const { data: insertedRows, error } = params.dedupeKey
+      ? await notificationWriter
+          .from("notifications")
+          .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
+          .select("id, user_id")
+      : await notificationWriter.from("notifications").insert(rows).select("id, user_id");
     if (error) throw error;
+    notificationIdByUser = new Map((insertedRows ?? []).map((r) => [r.user_id, r.id]));
   } catch (writerError) {
     console.error("notifyMany() failed", writerError);
     return [];
   }
 
+  // Solo se empuja a quien recibió fila NUEVA (con dedupeKey, los duplicados ya
+  // se filtraron arriba). Sin dedupeKey, este set es todo userIds.
+  const deliveredUserIds = [...notificationIdByUser.keys()];
+  if (deliveredUserIds.length === 0) return [];
+
   try {
-    const payload = await buildPushPayload(supabase, params);
-    if (payload) await sendPushToUsers(userIds, payload);
+    const content = await buildPushPayload(supabase, params);
+    // El cuerpo a medida sustituye al de la clave i18n, pero se conserva el
+    // título y —sobre todo— la ruta que ya resolvió buildPushPayload: es lo que
+    // hace que la notificación abra la ficha correcta.
+    if (content) {
+      await sendPushToUsers(
+        deliveredUserIds,
+        params.pushBody ? { ...content, body: params.pushBody } : content,
+        { notificationIdByUser },
+      );
+    }
   } catch (pushError) {
     console.error("notifyMany() push delivery failed", pushError);
   }
-  return userIds;
+  return deliveredUserIds;
 }
 
 export async function getUnreadCount(
@@ -285,9 +387,13 @@ async function resolveTargetHrefs(
   }
 
   // club_event: misma tabla que club_activity (un evento es una fila de
-  // club_activities con kind='evento'), pero sin página de detalle propia por
-  // diseño (hasDetailView en kinds/evento.ts) -- así que enlaza a la ficha del
-  // club, no a /actividad/[id].
+  // club_activities con kind='evento'), pero su ficha NO es /actividad/[id] --
+  // esa ruta sigue devolviendo 404 para eventos (hasDetailView es false, y con
+  // razón: ActivityDetailView está montado sobre el pool de ítems, los
+  // participantes y las opiniones, que un evento no tiene). Desde la spec
+  // 2026-08-04 tiene la suya en /evento/[id], que es donde debe abrir el
+  // recordatorio: llevar a la ficha del club dejaría al usuario buscando a mano
+  // el evento del que le acabamos de avisar.
   if (clubEventIds.length > 0) {
     const { data: eventRows } = await supabase
       .from("club_activities")
@@ -300,7 +406,7 @@ async function resolveTargetHrefs(
     const slugByClub = new Map((clubRows ?? []).map((c) => [c.id, c.slug]));
     for (const a of eventRows ?? []) {
       const slug = slugByClub.get(a.club_id);
-      if (slug) hrefByKey.set(`club_event:${a.id}`, `/club/${slug}`);
+      if (slug) hrefByKey.set(`club_event:${a.id}`, `/club/${slug}/evento/${a.id}`);
     }
   }
 
@@ -315,6 +421,23 @@ async function resolveTargetHrefs(
       .in("source_id", commentIds);
     for (const t of commentTargets ?? []) {
       hrefByKey.set(`comment:${t.source_id}`, t.href);
+    }
+  }
+
+  const clubRoundIds = targets.filter((t) => t.targetType === "club_round").map((t) => t.targetId);
+  if (clubRoundIds.length > 0) {
+    // Igual que comment arriba: private.sync_club_round_interaction_target
+    // (20260803_club_rounds.sql) ya calcula y guarda
+    // '/club/' || slug || '?ronda=' || period_key al insertar la ronda. Se
+    // lee de ahí en vez de recalcularlo con un segundo join a clubs -- así
+    // los dos caminos no pueden divergir, son literalmente el mismo valor.
+    const { data: roundTargets } = await supabase
+      .from("interaction_targets")
+      .select("source_id, href")
+      .eq("kind", "club_round")
+      .in("source_id", clubRoundIds);
+    for (const t of roundTargets ?? []) {
+      hrefByKey.set(`club_round:${t.source_id}`, t.href);
     }
   }
 
@@ -420,7 +543,13 @@ export async function listNotifications(
   const grouped = groupOrder.map((key) => groups.get(key)!);
   const representativeRows = grouped.map((g) => g.row);
 
-  const actorIds = [...new Set(representativeRows.map((n) => n.actor_id))];
+  const actorIds = [
+    ...new Set(
+      representativeRows
+        .map((n) => n.actor_id)
+        .filter((id): id is string => id != null),
+    ),
+  ];
   const { data: actors, error: actorsError } = await supabase
     .from("profile_identities")
     .select("user_id, username, display_name, avatar_url")
@@ -445,26 +574,31 @@ export async function listNotifications(
     .map((n) => ({ targetType: n.target_type, targetId: n.target_id }));
   const hrefByKey = await resolveTargetHrefs(supabase, targets);
 
-  // Si el actor ya no es resoluble (cuenta borrada, RLS), se descarta la fila:
-  // no hay a quién enlazar ni qué nombre mostrar.
+  // Sin actor_id la notificación la emitió el SISTEMA (recordatorio de evento) y
+  // es válida: su enlace sale del target, no del perfil de nadie.
+  //
+  // Con actor_id que ya no resuelve (cuenta borrada, RLS) SÍ se descarta la fila:
+  // ahí sí faltaría el nombre que la copy necesita. Son dos casos distintos y no
+  // se pueden colapsar en un solo `if (!actor)`.
   return grouped
     .map(({ row: n, extraActorsCount }): Notification | null => {
-      const actor = byId.get(n.actor_id);
-      if (!actor) return null;
+      const actor = n.actor_id ? byId.get(n.actor_id) : null;
+      if (n.actor_id && !actor) return null;
+
+      const fallbackHref = actor ? `/u/${actor.username}` : "/";
       const href =
         n.interaction_target_id
-          ? (targetById.get(n.interaction_target_id)?.href ?? `/u/${actor.username}`)
+          ? (targetById.get(n.interaction_target_id)?.href ?? fallbackHref)
           : n.target_type && n.target_id
-          ? (hrefByKey.get(`${n.target_type}:${n.target_id}`) ??
-            `/u/${actor.username}`)
-          : `/u/${actor.username}`;
+          ? (hrefByKey.get(`${n.target_type}:${n.target_id}`) ?? fallbackHref)
+          : fallbackHref;
       return {
         id: n.id,
         type: n.type as NotificationType,
         actorId: n.actor_id,
-        actorUsername: actor.username,
-        actorDisplayName: actor.display_name,
-        actorAvatarUrl: actor.avatar_url,
+        actorUsername: actor?.username ?? null,
+        actorDisplayName: actor?.display_name ?? null,
+        actorAvatarUrl: actor?.avatar_url ?? null,
         href,
         interactionTargetId: n.interaction_target_id ?? undefined,
         readAt: n.read_at,

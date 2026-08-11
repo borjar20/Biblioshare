@@ -1,8 +1,7 @@
-import type { createClient } from "@/lib/supabase/server";
+import { cacheLife, cacheTag } from "next/cache";
+import { createPublicClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Credit, CreditRole, ItemCredits } from "./types";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // Orden de aparición del equipo en la ficha.
 const CREW_ORDER: Record<CreditRole, number> = {
@@ -22,11 +21,21 @@ type CreditRow = {
 
 // Lectura pura de los créditos ya cacheados de un ítem (el enriquecimiento vive
 // en ensureItemEnriched). Devuelve reparto y equipo ya separados y ordenados.
+//
+// Cliente SIN sesión (créditos y personas son `SELECT USING (true)`): resultado
+// idéntico para todos → cacheable en Fase 4 (#436).
 export async function getItemCredits(
-  supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string
 ): Promise<ItemCredits> {
+  "use cache";
+  // Idéntico para todo el mundo (#437): créditos/personas son SELECT USING(true)
+  // y el cliente es anónimo. El espectador nunca escribe créditos —los rellena
+  // ensureItemEnriched, backfill idempotente—, así que no hay read-your-own-writes
+  // que invalidar aquí; `days` acota la rareza de un re-enriquecido.
+  cacheLife("days");
+  cacheTag(`credits:${itemType}:${itemId}`);
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("credits")
     .select("role, character, billing_order, person:people(id, name, photo_url)")

@@ -252,7 +252,7 @@ export function EditionPicker({
             action={createFormAction}
             className="flex flex-col gap-3 rounded-[10px] border border-dashed border-border bg-surface-muted p-3"
           >
-            <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">
+            <span className="label-section">
               {itemType === "movie" ? t("addMovie") : t("add")}
             </span>
             <EditionFields isMovie={itemType === "movie"} />

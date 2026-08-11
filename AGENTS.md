@@ -1,7 +1,11 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
 <!-- END:nextjs-agent-rules -->
 
 <!-- BEGIN:biblioshare-docs -->
@@ -26,12 +30,48 @@ El estado vivo del usuario vive en **`passes`**, nunca en `library_entries` (CON
 **Migraciones:** "no aparece en `list_migrations`" **≠** "no está en prod" — verifica contra los
 objetos reales (`pg_proc`/`pg_class`), no el ledger. Regla: dev primero (`supabase-dev`), luego prod.
 
+## Caché y RLS: solo se cachea lo que es idéntico para TODO el mundo (regla #437)
+
+**En una app cuya privacidad descansa en RLS, un `use cache` mal puesto no es una regresión de
+rendimiento: es una fuga de datos ENTRE CUENTAS.** El resultado de una consulta depende de quién la
+hace (RLS filtra por `auth.uid()`); si cacheas esa función y compartes la entrada, le sirves a un
+usuario las filas que solo otro podía ver. Y es traicionero porque **no se ve en desarrollo**: con
+una sola cuenta abierta la caché acierta siempre y todo parece correcto — sale en producción, que ya
+tiene 3 cuentas reales.
+
+Una función con `use cache` recibe **argumentos escalares** y usa un **cliente SIN sesión**
+(`createPublicClient()` de `src/lib/supabase/server.ts`, rol anónimo), **nunca el cliente de la
+petición**. Al escribir CUALQUIER `use cache`, contesta por escrito en la PR:
+
+1. **¿El dato es el mismo para un anónimo, para el dueño y para un tercero?**
+   - **Sí** → cacheable. Cliente sin sesión, argumentos escalares.
+   - **No** → no se cachea; se queda detrás de `<Suspense>`.
+   - **Depende de la sesión pero con vida útil conocida** → `use cache: private` (cachea en el
+     navegador, no en el servidor; no entra en el shell estático).
+2. **¿La función, o algo que llama, toca `cookies()`, `headers()` o `searchParams`?** Si sí, no
+   compila como cacheada (`next-request-in-use-cache`) — y **pasa `next build` y falla en `next
+   start`**, así que prueba los e2e contra build de producción, no solo `next dev`. Extrae el valor
+   fuera y pásalo como argumento.
+
+**Cambio semántico que hay que decidir a propósito:** cachear un agregado público (p. ej. la media
+de notas de una obra) mueve el cálculo de «sobre las filas que el que mira puede ver» a «sobre las
+filas públicas». Casi seguro es lo que se quiere, pero **es un cambio de comportamiento** y se
+decide explícito, no se cuela en un refactor de rendimiento (ya pasó con `getRatingSummary`, #436 —
+ver `decisiones.md`).
+
+Origen: auditoría Next.js 16, issue #437 (`tipo:acta`). Es el único punto del informe donde el
+riesgo no es «va más lento de lo que podría».
+
 ## Definición de «hecho»: no cierres un cambio sin sincronizar la doc
 
 Antes de dar por terminado cualquier cambio, repasa:
 
 1. **¿Tocaste el esquema** (tablas, columnas, RLS, enums, funciones, migraciones)**?**
    → actualiza `docs/requirements/data-model.md` y su fecha de verificación.
+   **¿Añadiste una COLUMNA?** → corre la superficie 6 de `docs/DRIFT-CHECK.md` (grants por
+   columna). Varias tablas tienen `grant` fino y **una columna sin su grant rompe la
+   escritura ENTERA de la tabla**, no solo el campo nuevo — compila, pasa el typecheck y
+   pasa los unitarios, y revienta en producción. Ha pasado dos veces (issue #375).
 2. **¿Cerraste o cambiaste el estado de una feature?**
    → marca la casilla en `docs/requirements/backlog.md`. La narrativa de *cómo* se hizo va en una
    spec de `docs/superpowers/specs/`, **nunca** en el backlog (eso fue lo que lo pudrió antes).
@@ -72,6 +112,47 @@ medición, pégalos: una tabla de «antes/después» vale más que un párrafo d
 que sobrevive en el repo es peor que no tener issue: manda a la siguiente persona en la dirección
 contraria. Ha pasado ya dos veces (#106 y #117): en ambas, lo que la issue daba por causa era un
 síntoma que apuntaba a otro sitio.
+
+### Toda issue nace con sus tres etiquetas
+
+Sin etiquetas, 140 issues son un muro: no se puede distinguir «rompe producción» de «pulido que
+decidimos no hacer», y el backlog deja de servir para decidir. **Etiqueta al crearla**, en el mismo
+comando — ponerlas después no lo hace nadie:
+
+```sh
+gh issue create --label "area:social,tipo:bug,P1" --title "…" --body-file …
+```
+
+Exactamente **una de cada dimensión**, ni más ni menos:
+
+| Dimensión | Valores |
+|---|---|
+| **Área** | `area:sagas` · `area:clubes` · `area:social` · `area:catalogo` · `area:ui` · `area:infra` |
+| **Tipo** | `tipo:bug` · `tipo:deuda` · `tipo:cobertura` · `tipo:feature` · `tipo:acta` · `tipo:sospecha` |
+| **Prioridad** | `P0` · `P1` · `P2` · `P3` |
+
+Qué significa cada tipo, que es donde se falla al elegir:
+
+- **`tipo:bug`** — hace algo que no debe. Si no puedes escribir «se esperaba X y pasa Y», no es esto.
+- **`tipo:deuda`** — límite asumido a sabiendas, o código que hay que ordenar. Funciona hoy y su
+  consecuencia es previsible.
+- **`tipo:cobertura`** — el código está bien; lo que falta es el test que distinguiría una
+  implementación correcta de una rota.
+- **`tipo:feature`** — funcionalidad que nadie ha construido aún.
+- **`tipo:acta`** — se decidió **no** hacerlo, y se registra para que nadie lo reimplemente leyendo
+  un mockup viejo. No es trabajo pendiente: es memoria. No se hace ni se cierra.
+- **`tipo:sospecha`** — no reproducido. Hay que confirmarlo **antes** de arreglar nada.
+
+Y la prioridad, que es la que se infla sola:
+
+- **`P0`** — rompe producción, datos o seguridad. Se arregla antes de construir nada nuevo. Si hay
+  más de un puñado a la vez, no son todas P0.
+- **`P1`** — bug con víctima real, o algo que hace desconfiar de lo que la pantalla dice.
+- **`P2`** — deuda, cobertura y pulido con consecuencia previsible. **El sitio por defecto.**
+- **`P3`** — feature, idea o registro. No bloquea a nadie.
+
+Regla contra la inflación: **la prioridad la fija el daño a quien usa la app, no lo cerca que esté
+de lo que estás tocando ahora.** Un `tipo:deuda` que te molesta hoy sigue siendo P2.
 <!-- END:biblioshare-docs -->
 
 <!-- BEGIN:biblioshare-cleanup -->

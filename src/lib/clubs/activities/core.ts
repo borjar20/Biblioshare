@@ -8,6 +8,7 @@ import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 import { getInteractionSummary, type InteractionSummary } from "@/lib/social/interactions";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
+import type { EventType } from "./event-types";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -39,6 +40,8 @@ export type ClubActivity = {
   // la capa de app. criteria_challenge (Bloque H4) es su primer consumidor real: ahí vive el
   // criterio del reto (modo, tipo, meta, género, saga).
   config: Json | null;
+  /** null salvo kind='evento'. Discrimina el subtipo. */
+  eventType: EventType | null;
   createdBy: string;
   startsOn: string | null;
   endsOn: string | null;
@@ -254,7 +257,7 @@ export async function listClubActivities(clubId: string): Promise<ClubActivity[]
   const { data: rows, error } = await supabase
     .from("club_activities")
     .select(
-      "id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at, spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id",
+      "id, club_id, kind, title, description, status, config, event_type, created_by, starts_on, ends_on, created_at, spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id",
     )
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
@@ -281,6 +284,7 @@ export async function listClubActivities(clubId: string): Promise<ClubActivity[]
     description: r.description,
     status: r.status,
     config: r.config,
+    eventType: r.kind === "evento" ? (r.event_type as EventType) : null,
     createdBy: r.created_by,
     startsOn: r.starts_on,
     endsOn: r.ends_on,
@@ -301,7 +305,7 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
   const { data: row, error } = await supabase
     .from("club_activities")
     .select(
-      "id, club_id, kind, title, description, status, config, created_by, starts_on, ends_on, created_at, spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id",
+      "id, club_id, kind, title, description, status, config, event_type, created_by, starts_on, ends_on, created_at, spawned_from_activity_id, spawned_from_item_type, spawned_from_item_id",
     )
     .eq("id", activityId)
     .maybeSingle();
@@ -448,6 +452,7 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     description: row.description,
     status: row.status,
     config: row.config,
+    eventType: row.kind === "evento" ? (row.event_type as EventType) : null,
     createdBy: row.created_by,
     startsOn: row.starts_on,
     endsOn: row.ends_on,

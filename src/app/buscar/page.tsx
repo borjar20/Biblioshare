@@ -13,6 +13,12 @@ import { SearchForm } from "./search-form";
 import { SearchResultCard } from "./search-result-card";
 import { PeopleResults } from "./people-results";
 import { ResultsEyebrow } from "./results-eyebrow";
+import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Buscar — Biblioshare",
@@ -68,10 +74,8 @@ export default async function SearchPage({
   const canContribute = hasMinRole(role, "collaborator");
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="font-serif text-[26px] font-semibold tracking-tight">
-        {t("title")}
-      </h1>
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+      <PageHeader title={t("title")} />
 
       <ModeSwitch mode={mode} query={query} itemType={itemType} />
 
@@ -117,7 +121,7 @@ export default async function SearchPage({
             <>
               <ResultsEyebrow count={results.length} />
 
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
                 {results.map((result) => (
                   <SearchResultCard
                     key={`${result.itemType}-${result.externalId}`}

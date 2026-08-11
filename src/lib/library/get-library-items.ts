@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "./position";
+import { pickEditionPages } from "@/lib/pace/fetch-catalog-meta";
 import { keepLatestClosedPass } from "@/lib/community/latest-rating";
 import type { LibraryItem, LibrarySort, MediaStatus } from "./types";
 import { loadGenres } from "@/lib/challenges/load-catalog-facets";
@@ -22,6 +23,7 @@ type ActivePassMeta = {
   status: MediaStatus;
   position: unknown;
   pinnedOrder: number | null;
+  editionId: string | null;
 };
 
 // Hidratación compartida biblioteca/colección: a partir de un conjunto de
@@ -53,7 +55,7 @@ export async function hydrateItems(
 
   const catalogByKey = new Map<string, CatalogMeta>();
 
-  const [books, movies, series] = await Promise.all([
+  const [books, movies, series, editions] = await Promise.all([
     idsByType.book.length
       ? supabase
           .from("books")
@@ -72,7 +74,25 @@ export async function hydrateItems(
           .select("id, title, cover_url, total_episodes")
           .in("id", idsByType.series)
       : Promise.resolve({ data: [] }),
+    // Las páginas son un dato de la TIRADA, no de la obra: la búsqueda ya no
+    // escribe `books.total_pages`, así que para casi todo lo que entra hoy el
+    // total vive solo en `book_editions` (misma precedencia que load-context y
+    // el sorteo, vía `pickEditionPages`). Sin esto, un libro con páginas
+    // conocidas salía como "Sin progreso" en la portada y en Colección.
+    idsByType.book.length
+      ? supabase
+          .from("book_editions")
+          .select("id, book_id, total_pages, is_primary")
+          .in("book_id", idsByType.book)
+      : Promise.resolve({ data: [] }),
   ]);
+
+  const editionsByBook = new Map<string, { id: string; total_pages: number | null; is_primary: boolean }[]>();
+  for (const row of editions.data ?? []) {
+    const list = editionsByBook.get(row.book_id);
+    if (list) list.push(row);
+    else editionsByBook.set(row.book_id, [row]);
+  }
 
   for (const row of books.data ?? []) {
     catalogByKey.set(`book:${row.id}`, {
@@ -114,7 +134,7 @@ export async function hydrateItems(
   // claves no vienen de `passes`.
   const { data: activePassRows } = await supabase
     .from("passes")
-    .select("id, item_type, item_id, status, position, pinned_order")
+    .select("id, item_type, item_id, status, position, pinned_order, edition_id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .in("item_id", allItemIds);
@@ -126,6 +146,7 @@ export async function hydrateItems(
       status: row.status,
       position: row.position,
       pinnedOrder: row.pinned_order,
+      editionId: row.edition_id,
     });
   }
 
@@ -192,6 +213,14 @@ export async function hydrateItems(
       if (!meta) return null;
       const activePass = activePassByKey.get(itemKey);
       if (!activePass) return null;
+      // El total de páginas manda desde la edición del pase (o la primaria),
+      // no desde books.total_pages: bolsillo y tapa dura no tienen las mismas
+      // páginas, y muchos libros solo las tienen en `book_editions`.
+      const pageCount =
+        key.item_type === "book"
+          ? (pickEditionPages(editionsByBook.get(key.item_id) ?? [], activePass.editionId) ??
+            meta.pageCount)
+          : meta.pageCount;
       return {
         // entryId/activePassId son ahora el MISMO id: el pase activo es la
         // entrada de biblioteca (§Tarea 9, hub). Se conservan ambos campos en
@@ -209,7 +238,7 @@ export async function hydrateItems(
         coverUrl: meta.coverUrl,
         subtitle: meta.subtitle,
         publisher: meta.publisher,
-        pageCount: meta.pageCount,
+        pageCount,
         totalEpisodes: meta.totalEpisodes,
         rereadCount: rereadCountByItem.get(itemKey) ?? 0,
         pinnedOrder: activePass.pinnedOrder,
@@ -321,16 +350,17 @@ export async function getLibraryItems(
 // los que tiene, no los ~45 del vocabulario entero). Cuenta obras distintas por
 // género — una obra con varios géneros suma 1 a cada uno, no se pesa por total.
 //
-// `itemType` opcional: cuando la página bloquea implícitamente un tipo (lock de
-// onboarding con un único interés, o `?type=` explícito) hay que pasar ese
-// MISMO tipo aquí para que la faceta no ofrezca chips de un tipo que la rejilla
-// no está mostrando (si no, un chip filtra a 0 resultados). Sin él, se cuenta
-// la biblioteca activa completa (comportamiento previo, sin cambios).
-// La faceta no refleja el filtro de estado activo — ver issue #306.
+// `itemType`/`status` opcionales: cuando la página acota la rejilla (lock de
+// onboarding con un único interés o `?type=`; filtro de estado `?status=`) hay
+// que pasar los MISMOS filtros aquí para que la faceta no ofrezca chips de un
+// subconjunto que la rejilla no está mostrando (si no, un chip filtra a 0
+// resultados — issue #306 para `status`, mismo defecto que ya se acotó por
+// `itemType`). Sin ellos, se cuenta la biblioteca activa completa (sin cambios).
 export async function getUserGenres(
   supabase: SupabaseServerClient,
   userId: string,
-  itemType?: ItemType
+  itemType?: ItemType,
+  status?: MediaStatus
 ): Promise<{ slug: string; label: string; count: number }[]> {
   let query = supabase
     .from("passes")
@@ -338,6 +368,7 @@ export async function getUserGenres(
     .eq("user_id", userId)
     .eq("is_active", true);
   if (itemType) query = query.eq("item_type", itemType);
+  if (status) query = query.eq("status", status);
   const { data: entries } = await query;
 
   const refs = (entries ?? []).map((e) => ({

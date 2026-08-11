@@ -125,7 +125,7 @@ export function ItemPicker({
 
   return (
     <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
-      <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <span className="label-section">
         {t("pickItem")}
       </span>
 
@@ -177,6 +177,7 @@ export function ItemPicker({
               <button
                 key={item.entryId}
                 type="button"
+                data-testid="item-picker-library-result"
                 onClick={() => pickLibrary(item)}
                 className="flex items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-surface-muted"
               >

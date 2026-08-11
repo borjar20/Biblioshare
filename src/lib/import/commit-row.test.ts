@@ -8,7 +8,9 @@ import type { ImportRow } from "./types";
 // para devolver siempre el mismo catalogId y poder centrarse en
 // addHistoricalPasses/ensureActivePass.
 vi.mock("./match-row", () => ({
-  matchImportRow: vi.fn().mockResolvedValue("catalog-item-1"),
+  matchImportRow: vi
+    .fn()
+    .mockResolvedValue({ kind: "matched", catalogId: "catalog-item-1" }),
 }));
 
 // Fake mínimo del query builder de Supabase, suficiente para el flujo real de

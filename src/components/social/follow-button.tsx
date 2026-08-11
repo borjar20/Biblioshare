@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { loginHref } from "@/lib/auth/safe-next";
 import { followUser, unfollowUser } from "@/lib/social/actions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { followReducer } from "@/lib/social/follow-optimistic";
@@ -23,6 +25,7 @@ export function FollowButton({
   viewerLoggedIn: boolean;
 }) {
   const t = useTranslations("social");
+  const pathname = usePathname();
   const {
     state: current,
     isPending,
@@ -34,7 +37,7 @@ export function FollowButton({
 
   if (!viewerLoggedIn) {
     return (
-      <Link href="/login" className={buttonVariants("primary")}>
+      <Link href={loginHref(pathname)} className={buttonVariants("primary")}>
         {targetIsPublic ? t("follow") : t("requestFollow")}
       </Link>
     );
@@ -67,7 +70,7 @@ export function FollowButton({
         {label}
       </Button>
       {failed && (
-        <p role="alert" className="max-w-48 text-right text-xs text-destructive">
+        <p role="alert" className="max-w-48 text-right text-xs text-status-dropped">
           {t("actionError")}
         </p>
       )}

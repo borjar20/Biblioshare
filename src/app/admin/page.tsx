@@ -3,8 +3,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole, type UserRole } from "@/lib/auth/roles";
 import { RoleSelect } from "./role-select";
+import { PageHeader } from "@/components/ui/page-header";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Gestión de usuarios — Biblioshare",
@@ -15,7 +21,7 @@ export default async function AdminPage() {
   const supabase = await createClient();
 
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/admin"));
   if (!hasMinRole(await getCurrentUserRole(supabase), "admin")) redirect("/");
 
   // La política RLS "admins select all profiles" permite leer todos (incl.
@@ -29,7 +35,7 @@ export default async function AdminPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <PageHeader title={t("title")} />
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </div>
 

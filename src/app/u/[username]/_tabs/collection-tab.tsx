@@ -110,7 +110,7 @@ export async function CollectionTab({
         />
       ) : (
         <div className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {tLibrary("titlesCount", { count: items.length })}
           </h2>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">

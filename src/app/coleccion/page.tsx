@@ -4,21 +4,25 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import { getLibraryItems, getUserGenres } from "@/lib/library/get-library-items";
+import { loginHref } from "@/lib/auth/safe-next";
+import {
+  getLibraryItems,
+  getUserGenres,
+} from "@/lib/library/get-library-items";
 import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
-import { resolveEffectiveType, ALL_TYPES_PARAM } from "@/lib/library/effective-type";
+import {
+  resolveEffectiveType,
+  ALL_TYPES_PARAM,
+} from "@/lib/library/effective-type";
 import { buttonVariants } from "@/components/ui/button";
 import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { InboxIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
-import {
-  CollectionTabs,
-  KNOWN_TABS,
-  type KnownTab,
-} from "./collection-tabs";
+import { CollectionTabs, KNOWN_TABS, type KnownTab } from "./collection-tabs";
 import { CollectionSummary } from "@/components/library/collection-summary";
 import { FavoritesShelf } from "@/components/favorites-shelf";
 import { CollectionsGrid } from "@/components/library/collections-grid";
@@ -26,10 +30,15 @@ import { getLibrarySummary } from "@/lib/library/get-library-summary";
 import { getFollowedSagas } from "@/lib/sagas/get-followed-sagas";
 import { SagaLibraryCard } from "@/components/library/saga-library-card";
 import { SkeletonCoverGrid } from "@/components/ui/skeleton";
+import { COVER_GRID_COLS, SHELL_GRID, SHELL_READ } from "@/lib/ui/layout";
 import {
   CollectionOverviewSkeleton,
   CollectionsGridSkeleton,
 } from "@/components/library/collection-skeletons";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Mi Biblioteca — Biblioshare",
@@ -70,12 +79,12 @@ export default async function CollectionPage({
 }) {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/coleccion"));
 
   const params = await searchParams;
   const tab: KnownTab = KNOWN_TABS.includes(params.tab as KnownTab)
     ? (params.tab as KnownTab)
-    : "colecciones";
+    : "todo";
   const status = VALID_STATUSES.includes(params.status as MediaStatus)
     ? (params.status as MediaStatus)
     : undefined;
@@ -85,7 +94,8 @@ export default async function CollectionPage({
     : "recent";
   // Slug inválido -> se trata como si no hubiera filtro (no se propaga a
   // getLibraryItems, que devolvería la biblioteca vacía para un slug basura).
-  const genre = params.genero && genreDefForSlug(params.genero) ? params.genero : undefined;
+  const genre =
+    params.genero && genreDefForSlug(params.genero) ? params.genero : undefined;
   // Con ?type= explícito manda la URL. Sin él, y SOLO si el usuario declaró
   // exactamente UN interés en el onboarding, el filtro de «Todo» arranca ahí:
   // con dos o tres no hay un tipo "obvio" y forzar uno escondería media
@@ -99,7 +109,8 @@ export default async function CollectionPage({
   // `interests` solo se consulta en el caso por defecto (ni tipo válido ni
   // `todos`): es la única rama que los necesita, y así se ahorra la query.
   const isExplicitType =
-    VALID_TYPES.includes(params.type as ItemType) || params.type === ALL_TYPES_PARAM;
+    VALID_TYPES.includes(params.type as ItemType) ||
+    params.type === ALL_TYPES_PARAM;
   let interests: ItemType[] = [];
   if (!isExplicitType) {
     const { data: prefs } = await supabase
@@ -109,14 +120,18 @@ export default async function CollectionPage({
       .maybeSingle();
     interests = (prefs?.interests ?? []) as ItemType[];
   }
-  const itemType: ItemType | undefined = resolveEffectiveType(params.type, interests);
+  const itemType: ItemType | undefined = resolveEffectiveType(
+    params.type,
+    interests,
+  );
 
   // Géneros del selector: solo se consultan en la pestaña `todo`, donde vive
   // `LibraryFilters` — evita la query extra en `colecciones`/`sagas`. Se acota
-  // al MISMO `itemType` efectivo (lock de onboarding o `?type=`) que recibe
-  // `getLibraryItems` más abajo: si no, un chip de género de un tipo bloqueado
-  // filtraría la rejilla a 0 resultados.
-  const genres = tab === "todo" ? await getUserGenres(supabase, user.id, itemType) : [];
+  // al MISMO `itemType` efectivo (lock de onboarding o `?type=`) Y al MISMO
+  // `status` que recibe `getLibraryItems` más abajo: si no, un chip de un tipo
+  // bloqueado o de un estado no filtrado filtraría la rejilla a 0 (issue #306).
+  const genres =
+    tab === "todo" ? await getUserGenres(supabase, user.id, itemType, status) : [];
 
   const t = await getTranslations("collection");
   const tLibrary = await getTranslations("library");
@@ -125,20 +140,22 @@ export default async function CollectionPage({
   // streaming detrás de su <Suspense> con skeleton (Fase B del plan de
   // navegación). El `key` de los boundaries es la consulta: al cambiar un
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
+  // `Todo` es la única subpestaña que es una REJILLA larga de portadas, y en
+  // escritorio ancho la columna de 4xl la dejaba en cinco columnas con dos
+  // palmos de margen muerto a cada lado. Solo esa pestaña se ensancha: en
+  // `Colecciones` y `Sagas` las tarjetas son grandes y estirarlas a 1600px las
+  // deja desangeladas. Cambiar de pestaña es una navegación, así que el salto
+  // de ancho no ocurre "en vivo".
+  const shell = tab === "todo" ? SHELL_GRID : SHELL_READ;
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div
+      className={`mx-auto flex w-full ${shell} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
+    >
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
           da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className="h-[22px] w-2 shrink-0 rounded-full bg-accent"
-        />
-        <h1 className="font-serif text-2xl font-semibold text-foreground lg:text-[28px]">
-          {t("title")}
-        </h1>
-      </div>
+      <PageHeader title={t("title")} />
 
       <CollectionTabs active={tab} />
 
@@ -178,7 +195,7 @@ export default async function CollectionPage({
           />
           <Suspense
             key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}:${genre ?? ""}`}
-            fallback={<SkeletonCoverGrid count={10} />}
+            fallback={<SkeletonCoverGrid count={16} cols={COVER_GRID_COLS} />}
           >
             <LibraryGrid
               userId={user.id}
@@ -200,7 +217,6 @@ export default async function CollectionPage({
           <FollowedSagasPanel userId={user.id} />
         </Suspense>
       )}
-
     </div>
   );
 }
@@ -235,11 +251,31 @@ async function TodoOverview({ userId }: { userId: string }) {
     getLibraryItems(supabase, userId, { favoritesOnly: true }),
   ]);
 
+  if (summary.total === 0) return null;
+
+  // En escritorio ancho el Resumen y los Destacados van EN PARALELO: apilados
+  // a 1600px, la tarjeta del Resumen quedaba con la leyenda «En curso ····· 4»
+  // separada medio metro y el estante de portadas se inflaba a 6 portadas
+  // gigantes. Sin destacados que poner al lado, el Resumen se topa en vez de
+  // estirarse — una tarjeta de 1600px de ancho y cuatro líneas de alto no la
+  // quiere nadie.
+  const hasFavorites = favorites.length > 0;
+
   return (
-    <>
-      <CollectionSummary summary={summary} />
-      <FavoritesShelf items={favorites} />
-    </>
+    <div
+      className={`flex flex-col gap-6 ${hasFavorites ? "xl:flex-row xl:items-start" : ""}`}
+    >
+      <div
+        className={hasFavorites ? "xl:w-[360px] xl:shrink-0" : "xl:max-w-3xl"}
+      >
+        <CollectionSummary summary={summary} />
+      </div>
+      {hasFavorites && (
+        <div className="min-w-0 flex-1">
+          <FavoritesShelf items={favorites} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -292,7 +328,7 @@ async function LibraryGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
       {items.map((item) => (
         <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
       ))}

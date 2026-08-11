@@ -62,11 +62,17 @@ export function CheckpointManager({
     setError(null);
   }
 
+  // La posición es una PISTA opcional desde #471 (autodeclarado: la página
+  // depende de la edición de cada uno): vacía -> {} (hito sin pista); null solo
+  // si lo escrito no es interpretable (p. ej. temporada sin episodio).
   function buildPosition(): Position | null {
     if (itemType === "book") {
+      if (page.trim() === "") return {};
       const p = Number(page);
       return Number.isFinite(p) && p >= 0 ? { page: p } : null;
     }
+    if (season.trim() === "" && episode.trim() === "") return {};
+    if (season.trim() === "" || episode.trim() === "") return null;
     const s = Number(season);
     const e = Number(episode);
     return Number.isFinite(s) && Number.isFinite(e) && s >= 0 && e >= 0 ? { season: s, episode: e } : null;
@@ -128,7 +134,7 @@ export function CheckpointManager({
 
   return (
     <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
-      <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <span className="label-section">
         {t("checkpoints")}
       </span>
 

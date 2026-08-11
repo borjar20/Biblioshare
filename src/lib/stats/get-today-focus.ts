@@ -79,6 +79,25 @@ export async function getNextEpisode(
   return null;
 }
 
+// Sesión más reciente primero; los que no tienen ninguna van al final (nunca
+// los has tocado, así que no son "donde lo dejaste"). Empate: el pase abierto
+// más recientemente, y el título como último desempate para que el orden sea
+// estable entre renders. Exportada y pura porque también decide qué pase
+// muestra el widget Android «En curso» (misma regla, un solo sitio).
+export function compareTodayPasses(a: TodayPass, b: TodayPass): number {
+  if (a.lastSessionDate !== b.lastSessionDate) {
+    if (!a.lastSessionDate) return 1;
+    if (!b.lastSessionDate) return -1;
+    return a.lastSessionDate < b.lastSessionDate ? 1 : -1;
+  }
+  if (a.startedOn !== b.startedOn) {
+    if (!a.startedOn) return 1;
+    if (!b.startedOn) return -1;
+    return a.startedOn < b.startedOn ? 1 : -1;
+  }
+  return a.item.title.localeCompare(b.item.title);
+}
+
 function daysBetween(fromISO: string, toISO: string): number {
   const [fy, fm, fd] = fromISO.split("-").map(Number);
   const [ty, tm, td] = toISO.split("-").map(Number);
@@ -165,23 +184,7 @@ export async function getTodayFocus(
     };
   });
 
-  // Sesión más reciente primero; los que no tienen ninguna van al final (nunca
-  // los has tocado, así que no son "donde lo dejaste"). Empate: el pase abierto
-  // más recientemente, y el título como último desempate para que el orden sea
-  // estable entre renders.
-  passesToday.sort((a, b) => {
-    if (a.lastSessionDate !== b.lastSessionDate) {
-      if (!a.lastSessionDate) return 1;
-      if (!b.lastSessionDate) return -1;
-      return a.lastSessionDate < b.lastSessionDate ? 1 : -1;
-    }
-    if (a.startedOn !== b.startedOn) {
-      if (!a.startedOn) return 1;
-      if (!b.startedOn) return -1;
-      return a.startedOn < b.startedOn ? 1 : -1;
-    }
-    return a.item.title.localeCompare(b.item.title);
-  });
+  passesToday.sort(compareTodayPasses);
 
   return {
     featured: passesToday[0] ?? null,

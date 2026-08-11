@@ -39,6 +39,7 @@ export function MonthCalendar({
   todayKey?: string;
 }) {
   const t = useTranslations("stats");
+  const tCommon = useTranslations("common");
   const [calendar, setCalendar] = useState<MonthCalendarData>(initialCalendar);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +107,7 @@ export function MonthCalendar({
         </div>
         {loading && (
           <span className="text-sm text-muted-foreground">
-            {t("common.loading")}
+            {tCommon("loading")}
           </span>
         )}
       </div>

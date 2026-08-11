@@ -29,7 +29,7 @@ export function EditionFields({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {t("label")}
         </span>
         <Input
@@ -42,14 +42,14 @@ export function EditionFields({
       </label>
       {!isMovie && (
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("publisher")}
           </span>
           <Input name="publisher" defaultValue={defaultValues?.publisher ?? ""} />
         </label>
       )}
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {t("year")}
         </span>
         <Input
@@ -61,14 +61,14 @@ export function EditionFields({
       </label>
       {!isMovie && (
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("language")}
           </span>
           <Input name="language" defaultValue={defaultValues?.language ?? ""} />
         </label>
       )}
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+        <span className="label-section">
           {isMovie ? t("duration") : t("pages")}
         </span>
         <Input
@@ -80,7 +80,7 @@ export function EditionFields({
       </label>
       {!isMovie && (
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="label-section">
             {t("isbn")}
           </span>
           <Input name="isbn" defaultValue={defaultValues?.isbn ?? ""} />

@@ -17,11 +17,16 @@ export function ProposalModeration({
   proposals,
   clubSlug,
   canModerate,
+  today,
   layout = "list",
 }: {
   proposals: ClubActivity[];
   clubSlug: string;
   canModerate: boolean;
+  /** "Hoy" del servidor, reenviado a cada ActivityCard (#271). Las propuestas
+   *  nunca son `active`, así que la píldora "Ya pasó" no aplica aquí, pero
+   *  ActivityCard lo exige por tipo y evita depender del reloj del navegador. */
+  today: string;
   /** "grid" = rejilla 2-col del frame 12 (Actividades); "list" = Gestión. */
   layout?: "list" | "grid";
 }) {
@@ -46,7 +51,7 @@ export function ProposalModeration({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <h2 className="label-section">
         {t("groupProposed", { count: proposals.length })}
       </h2>
 
@@ -56,6 +61,7 @@ export function ProposalModeration({
             key={activity.id}
             activity={activity}
             clubSlug={clubSlug}
+            today={today}
             tint="gold"
             actions={
               canModerate ? (

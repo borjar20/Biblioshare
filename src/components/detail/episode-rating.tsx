@@ -24,6 +24,8 @@ export function EpisodeRating({
       onChange={onRate}
       disabled={disabled}
       size={size}
+      // Un episodio es siempre de una serie: la nota se tiñe de ese color.
+      itemType="series"
     />
   );
 }

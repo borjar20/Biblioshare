@@ -1,0 +1,194 @@
+package app.biblioshare.mobile.auth
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.net.HttpURLConnection
+import java.net.URL
+
+// Sesión Supabase NATIVA, independiente de la del WebView (arquitectura híbrida,
+// Fase 1). El WebView (autenticado por cookies) pide a /api/native/session un
+// `token_hash` de magic-link y lo pasa al plugin; verificarlo aquí crea una
+// sesión NUEVA con su propia cadena de refresh. Así web y nativo se refrescan
+// por separado y nunca se pisan el refresh token — esa colisión dispara la
+// detección de reúso de Supabase y revoca la familia entera (logout mutuo).
+// Ver docs/requirements/decisiones.md (2026-08-06).
+//
+// Sin SDK: cuatro llamadas HTTP (verify, refresh, logout, un select de prueba)
+// no justifican arrastrar supabase-kt + ktor al APK. HttpURLConnection +
+// org.json (ambos gratis en el dispositivo), aislado en este fichero para que
+// migrar a supabase-kt más adelante quede contenido si hace falta Realtime.
+object NativeSupabase {
+    private const val PREFS = "native_supabase"
+    private const val K_URL = "url"
+    private const val K_ANON = "anon"
+    private const val K_ACCESS = "access_token"
+    private const val K_REFRESH = "refresh_token"
+    private const val K_EXPIRES = "expires_at" // epoch segundos
+    private const val SKEW_S = 60L // refresca 1 min antes de caducar
+
+    // ponytail: tokens en SharedPreferences app-privadas, SIN cifrar en reposo —
+    // mismo nivel de protección que las cookies del WebView (sandbox por app).
+    // No bajamos el listón actual, lo igualamos. Endurecer con Android Keystore
+    // si se decide: issue de deuda abierta, no Jetpack Security (alpha, crashea
+    // en algunos dispositivos).
+    private fun prefs(context: Context) =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    data class Who(val userId: String)
+
+    /**
+     * Verifica el token_hash del magic-link y guarda la sesión resultante junto
+     * con url+anonKey (los necesita el refresh en segundo plano, cuando el
+     * WebView no está para volver a pasarlos). Devuelve el userId o null.
+     */
+    fun establish(context: Context, url: String, anonKey: String, tokenHash: String): String? {
+        val body = JSONObject().put("type", "magiclink").put("token_hash", tokenHash).toString()
+        val (code, text) = request("POST", "$url/auth/v1/verify", anonKey, null, body)
+        if (code !in 200..299) return null
+        val json = JSONObject(text)
+        prefs(context).edit().putString(K_URL, url).putString(K_ANON, anonKey).apply()
+        saveSession(context, json)
+        return json.optJSONObject("user")?.optString("id")?.ifEmpty { null }
+    }
+
+    /** Access token válido (refrescando si hace falta), o null si no hay sesión viva. */
+    private fun freshAccessToken(context: Context): String? {
+        val p = prefs(context)
+        val access = p.getString(K_ACCESS, null) ?: return null
+        val expiresAt = p.getLong(K_EXPIRES, 0L)
+        val now = System.currentTimeMillis() / 1000
+        if (now < expiresAt - SKEW_S) return access
+        return refresh(context)
+    }
+
+    private fun refresh(context: Context): String? {
+        val p = prefs(context)
+        val url = p.getString(K_URL, null) ?: return null
+        val anon = p.getString(K_ANON, null) ?: return null
+        val refreshToken = p.getString(K_REFRESH, null) ?: return null
+        val body = JSONObject().put("refresh_token", refreshToken).toString()
+        val (code, text) = request(
+            "POST", "$url/auth/v1/token?grant_type=refresh_token", anon, null, body,
+        )
+        if (code !in 200..299) {
+            // 4xx = refresh inválido (revocado/expirado): la sesión murió, se limpia.
+            // 5xx/red = transitorio: se conserva para reintentar más tarde.
+            if (code in 400..499) clear(context)
+            return null
+        }
+        val json = JSONObject(text)
+        saveSession(context, json)
+        return json.optString("access_token").ifEmpty { null }
+    }
+
+    private fun saveSession(context: Context, json: JSONObject) {
+        val access = json.optString("access_token")
+        val refresh = json.optString("refresh_token")
+        // expires_at (epoch s) si viene; si no, ahora + expires_in.
+        val expiresAt = if (json.has("expires_at")) {
+            json.optLong("expires_at")
+        } else {
+            System.currentTimeMillis() / 1000 + json.optLong("expires_in", 3600)
+        }
+        prefs(context).edit()
+            .putString(K_ACCESS, access)
+            .putString(K_REFRESH, refresh)
+            .putLong(K_EXPIRES, expiresAt)
+            .apply()
+    }
+
+    /**
+     * Prueba de vida (Fase 1): un SELECT con RLS sobre el propio perfil. Si
+     * devuelve la fila, el handoff + la persistencia + el refresh funcionan y
+     * `auth.uid()` es quien debe. Devuelve el userId o null.
+     */
+    fun whoAmI(context: Context): Who? {
+        val token = freshAccessToken(context) ?: return null
+        val p = prefs(context)
+        val url = p.getString(K_URL, null) ?: return null
+        val anon = p.getString(K_ANON, null) ?: return null
+        val (code, text) = request(
+            "GET", "$url/rest/v1/profiles?select=user_id&limit=1", anon, token, null,
+        )
+        if (code !in 200..299) return null
+        val arr = JSONArray(text)
+        if (arr.length() == 0) return null
+        val userId = arr.getJSONObject(0).optString("user_id")
+        return if (userId.isEmpty()) null else Who(userId)
+    }
+
+    /**
+     * ¿Hay sesión guardada? Solo mira los tokens en disco (sin red), para que el
+     * refresco en segundo plano no dispare llamadas cuando ya no hay sesión.
+     */
+    fun hasSession(context: Context): Boolean =
+        prefs(context).getString(K_REFRESH, null) != null
+
+    /**
+     * Llama una RPC de PostgREST con la sesión nativa y devuelve el cuerpo JSON
+     * crudo, o null si no hay sesión viva o el servidor no respondió 2xx. Sin
+     * argumentos: cuerpo "{}". La RLS de la función filtra por auth.uid(), así
+     * que el nativo solo puede leer lo suyo. Base del transporte de widgets
+     * (arquitectura híbrida, Fase 2): get_widget_snapshot devuelve el JSON v2
+     * que el parser ya consume.
+     */
+    fun rpc(context: Context, fn: String): String? {
+        val token = freshAccessToken(context) ?: return null
+        val p = prefs(context)
+        val url = p.getString(K_URL, null) ?: return null
+        val anon = p.getString(K_ANON, null) ?: return null
+        val (code, text) = request("POST", "$url/rest/v1/rpc/$fn", anon, token, "{}")
+        return if (code in 200..299) text else null
+    }
+
+    fun signOut(context: Context) {
+        val p = prefs(context)
+        val url = p.getString(K_URL, null)
+        val anon = p.getString(K_ANON, null)
+        val token = p.getString(K_ACCESS, null)
+        if (url != null && anon != null && token != null) {
+            // best-effort: revoca la sesión en el servidor antes de olvidarla.
+            try {
+                request("POST", "$url/auth/v1/logout", anon, token, "{}")
+            } catch (_: Exception) {
+            }
+        }
+        clear(context)
+    }
+
+    fun clear(context: Context) {
+        prefs(context).edit().clear().apply()
+    }
+
+    // ── HTTP (HttpURLConnection + org.json, cero dependencias nuevas) ──────────
+
+    private fun request(
+        method: String,
+        urlStr: String,
+        apiKey: String,
+        bearer: String?,
+        body: String?,
+    ): Pair<Int, String> {
+        val conn = URL(urlStr).openConnection() as HttpURLConnection
+        return try {
+            conn.requestMethod = method
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
+            conn.setRequestProperty("apikey", apiKey)
+            conn.setRequestProperty("Content-Type", "application/json")
+            bearer?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            if (body != null) {
+                conn.doOutput = true
+                conn.outputStream.use { it.write(body.toByteArray()) }
+            }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val text = stream?.bufferedReader()?.use(BufferedReader::readText) ?: ""
+            code to text
+        } finally {
+            conn.disconnect()
+        }
+    }
+}

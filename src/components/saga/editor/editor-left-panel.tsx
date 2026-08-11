@@ -139,7 +139,7 @@ export function EditorLeftPanel({
                     {t("unnestConfirm")}
                   </button>
                 </div>
-                {unnestErrorId === c.id && <p className="text-[11px] text-red-600">{t("genericError")}</p>}
+                {unnestErrorId === c.id && <p className="text-[11px] text-status-dropped">{t("genericError")}</p>}
               </li>
             ) : (
               <li key={c.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-2">
@@ -184,11 +184,11 @@ export function EditorLeftPanel({
             ＋
           </button>
         </div>
-        {newError && <p className="mt-1 text-[11px] text-red-600">{t("createError")}</p>}
+        {newError && <p className="mt-1 text-[11px] text-status-dropped">{t("createError")}</p>}
         {nesting ? (
           <div className="mt-2">
             <SagaPicker value={nestValue} onChange={submitNest} />
-            {nestError && <p className="mt-1 text-[11px] text-red-600">{t("cycleError")}</p>}
+            {nestError && <p className="mt-1 text-[11px] text-status-dropped">{t("cycleError")}</p>}
           </div>
         ) : (
           <button type="button" onClick={() => setNesting(true)} className="mt-2 text-[11px] font-semibold text-accent">

@@ -8,8 +8,8 @@ import {
   parseImportFile,
   saveUnmatchedBatch,
   type ParseImportState,
+  type UnmatchedBatchEntry,
 } from "@/app/importar/actions";
-import type { ImportRow } from "@/lib/import/types";
 
 const initialParseState: ParseImportState = {};
 
@@ -46,10 +46,18 @@ export function ImportPanel({
       // Las filas sin match se guardan TODAS de golpe, sin pedirle nada al
       // usuario. `outcome` viene por número de fila, así que hay que volver a
       // casarlo con la fila original para tener el payload completo.
+      //
+      // Las ambiguas van al mismo saco —aquí no hay pantalla de triaje donde
+      // elegir— pero SÍ arrastramos sus candidatos: se persisten para que el
+      // colaborador que las revise pueda elegir uno en vez de rebuscar a mano
+      // lo que el importador ya encontró (issue #390).
       const unmatched = results
-        .filter((r) => r.outcome === "unmatched")
-        .map((r) => parsed.rows.find((row) => row.rowNumber === r.rowNumber))
-        .filter((row): row is ImportRow => row !== undefined);
+        .filter((r) => r.outcome === "unmatched" || r.outcome === "ambiguous")
+        .map((r): UnmatchedBatchEntry | undefined => {
+          const row = parsed.rows.find((row) => row.rowNumber === r.rowNumber);
+          return row ? { row, candidates: r.candidates } : undefined;
+        })
+        .filter((e): e is UnmatchedBatchEntry => e !== undefined);
 
       if (unmatched.length > 0) {
         await saveUnmatchedBatch(parsed.itemType, unmatched);

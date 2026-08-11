@@ -59,7 +59,7 @@ export async function CreditsSection({ credits }: { credits: ItemCredits }) {
 
   return (
     <section className="flex flex-col gap-3 lg:gap-[15px]">
-      <h2 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+      <h2 className="label-section">
         {t("creditsTitle")}
       </h2>
 

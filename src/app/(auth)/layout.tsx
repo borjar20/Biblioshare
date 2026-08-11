@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/ui/wordmark";
+import { RouteMessages } from "@/components/route-messages";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 // Bienvenida con la marca: la estantería + el wordmark presiden login, registro
 // y recuperación (handoff "Marca en producto").
@@ -15,7 +20,7 @@ export default function AuthLayout({
       </Link>
 
       <div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
-        {children}
+        <RouteMessages ns={["auth"]}>{children}</RouteMessages>
       </div>
     </div>
   );

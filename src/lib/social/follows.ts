@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { parseNotifyCategories, type NotifyCategory } from "./notify-categories";
 
 // Capa de consultas del grafo social (EPIC-05, Bloque A). Las mutaciones viven
 // en src/lib/social/actions.ts ("use server"). La visibilidad de las filas la
@@ -151,4 +152,22 @@ export async function getFollowing(
 
   if (error) throw error;
   return resolveUsers(supabase, (data ?? []).map((r) => r.followee_id));
+}
+
+// Categorías de aviso que el viewer tiene activadas sobre target. Lee la propia
+// fila de follows del follower (la RLS se la deja). Sin sesión o sin relación → [].
+export async function getFollowNotify(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  targetUserId: string,
+): Promise<NotifyCategory[]> {
+  if (!viewerId || viewerId === targetUserId) return [];
+  const { data, error } = await supabase
+    .from("follows")
+    .select("notify_events")
+    .eq("follower_id", viewerId)
+    .eq("followee_id", targetUserId)
+    .maybeSingle();
+  if (error) throw error;
+  return parseNotifyCategories(data?.notify_events);
 }

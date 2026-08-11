@@ -13,26 +13,31 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 // texto puede desviarse una línea, según lleve o no barra de progreso y meta.
 export function TodayBlockSkeleton() {
   return (
-    <section aria-hidden className="flex flex-col gap-3">
+    <section aria-hidden className="today-block flex flex-col gap-3">
       {/* Cabecera: fecha (font-mono 11px) + título serif de 26px. */}
-      <div>
+      <div className="today-head">
         <SkeletonLine className="h-3 w-32" />
         <Skeleton className="mt-1.5 h-[27px] w-64 max-w-full rounded-md" />
       </div>
 
-      {/* Mismo reparto que `TodayPicker`: destacado a la izquierda, "Para más
-          tarde" de rail a la derecha en escritorio. */}
-      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] lg:items-start lg:gap-6">
-        <div className="flex flex-col gap-2">
+      {/* Mismo reparto que `TodayPicker` (`today-split`, apilado): el destacado y
+          debajo las mini de "Continúa" ("Para más tarde" no se fantasmea —es
+          opcional y llega por streaming—). */}
+      <div className="today-split flex flex-col gap-3">
+        {/* IZQUIERDA: rótulo "En curso" + tarjeta destacada. */}
+        <div className="flex min-w-0 flex-col gap-2">
+          <SkeletonLine className="h-2.5 w-24" />
           {/* Tarjeta destacada: el chrome real (radio 14 + borde + sombra) con
-              el interior en pulso, igual que hace `SkeletonCard`. */}
+              el interior en pulso, igual que hace `SkeletonCard`. Mantiene el
+              mismo diseño a todos los tamaños (como la real), así que el fantasma
+              no se recorta y no desalinea alturas (CLS #284). */}
           <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface shadow-card">
-            <div className="flex gap-3.5 p-3.5">
-              <Skeleton className="h-[87px] w-[58px] shrink-0 rounded-md" />
+            <div className="today-card-body flex gap-3.5 p-3.5">
+              <Skeleton className="today-card-cover h-[87px] w-[58px] shrink-0 rounded-md" />
               <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <SkeletonLine className="h-2.5 w-16" />
+                <SkeletonLine className="today-card-nth h-2.5 w-16" />
                 <SkeletonLine className="w-3/4" />
-                <SkeletonLine className="h-3 w-1/2" />
+                <SkeletonLine className="today-card-meta h-3 w-1/2" />
                 <Skeleton className="mt-1 h-[5px] w-full rounded-full" />
               </div>
             </div>
@@ -44,13 +49,37 @@ export function TodayBlockSkeleton() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Rótulo "En curso" + carrusel de mini. */}
-          <div className="mt-1 flex flex-col gap-2">
+        {/* DEBAJO: el split lateral fantasma. Se fantasmean LAS DOS columnas con
+            sus mismos pesos (1 vs 2), que es el caso común, para que el alto y el
+            ancho reservados casen con el real (CLS #284): "Continúa" 2×2 solo
+            portada (4 huecos) y "Para más tarde" 4×2 solo portada (8 huecos). Cada
+            ítem de "Continúa" trae la tarjeta mini (≥1100) y la mini-portada
+            (<1100). */}
+        <div className="today-shelves flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-2">
             <SkeletonLine className="h-2.5 w-28" />
-            <div className="-mx-5 flex gap-2.5 overflow-hidden px-5 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <MiniCardSkeleton key={i} />
+            <div className="today-shelf today-shelf-continue -mx-5 flex items-start gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="continue-item shrink-0">
+                  <span className="continue-card">
+                    <MiniCardSkeleton />
+                  </span>
+                  <span className="continue-thumb">
+                    <Skeleton className="aspect-[2/3] w-11 rounded-md" />
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="today-later-col flex min-w-0 flex-col gap-2">
+            <SkeletonLine className="h-2.5 w-24" />
+            <div className="today-shelf today-shelf-later -mx-5 flex gap-2.5 overflow-hidden px-5 pb-1 md:mx-0 md:px-0 min-[1100px]:flex-wrap">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="later-item w-[66px] shrink-0">
+                  <Skeleton className="aspect-[2/3] w-full rounded-md" />
+                </div>
               ))}
             </div>
           </div>

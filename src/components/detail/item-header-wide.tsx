@@ -65,7 +65,7 @@ export function ItemHeaderWide({
 
         {avgRating !== null && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <RatingDots value={avgRating} size="lg" />
+            <RatingDots value={avgRating} size="lg" itemType={itemType} />
             <span
               className={`font-serif text-[26px] leading-none font-semibold ${accent.text}`}
             >

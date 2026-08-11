@@ -27,7 +27,7 @@ export function ActivityLayout({
   railExtra,
 }: ActivityLayoutProps) {
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_296px] lg:items-start lg:gap-7">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
       {(railTop || railExtra) && (
         <div
           className={`flex-col gap-4 empty:hidden lg:col-start-2 lg:row-start-1 ${

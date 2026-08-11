@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { groupPersonEntries } from "./group-feed-entries";
+import { emptyReactions } from "./interactions";
 import type { FeedEntry, FeedEvent } from "./feed";
 
 function ev(partial: Partial<FeedEvent> & Pick<FeedEvent, "id" | "verb" | "actorId" | "eventDate">): FeedEvent {
@@ -14,6 +15,7 @@ function ev(partial: Partial<FeedEvent> & Pick<FeedEvent, "id" | "verb" | "actor
     orderDate: partial.orderDate ?? partial.eventDate,
     sortDate: partial.sortDate ?? partial.eventDate,
     reactionCount: 0, viewerReacted: false, commentCount: 0, comments: [],
+    reactions: emptyReactions(),
     ...partial,
   } as FeedEvent;
 }
@@ -128,6 +130,37 @@ describe("groupPersonEntries", () => {
     ]);
     expect(out).toHaveLength(1);
     if (out[0].source === "person-group") expect(out[0].items).toHaveLength(5);
+  });
+
+  const epi = (id: string, date: string, season: number, episode: number, verb: FeedEvent["verb"] = "rated") =>
+    person(ev({ id: `episode_watches:${id}`, verb, actorId: "x", eventDate: date, itemType: "series", itemId: "loki", episode: { season, episode, title: null } }));
+
+  it("agrupa valoraciones de varios episodios de la misma serie (atracón)", () => {
+    const out = groupPersonEntries([
+      epi("e4", "2026-08-04", 1, 4),
+      epi("e3", "2026-08-03", 1, 3),
+      epi("e2", "2026-08-02", 1, 2, "watchedEpisode"),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("person-group");
+    if (out[0].source === "person-group") {
+      expect(out[0].verb).toBe("rated"); // el del episodio más reciente
+      expect(out[0].items.map((i) => i.episode?.episode)).toEqual([4, 3, 2]);
+    }
+  });
+
+  it("un solo episodio valorado NO se agrupa (queda como person → ReviewCard)", () => {
+    const out = groupPersonEntries([epi("e4", "2026-08-04", 1, 4)]);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("person");
+  });
+
+  it("episodios de series distintas no se mezclan", () => {
+    const out = groupPersonEntries([
+      epi("e1", "2026-08-04", 1, 1),
+      person(ev({ id: "episode_watches:o1", verb: "rated", actorId: "x", eventDate: "2026-08-04", itemType: "series", itemId: "otra", episode: { season: 1, episode: 1, title: null } })),
+    ]);
+    expect(out.every((e) => e.source === "person")).toBe(true);
   });
 
   it("no agrupa verbos no agrupables (finished/reviewed)", () => {

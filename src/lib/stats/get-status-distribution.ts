@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { MediaStatus } from "@/lib/library/types";
+import type { ItemFilter } from "./filter";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -17,12 +18,16 @@ const ORDER: MediaStatus[] = ["completed", "planned", "in_progress", "dropped"];
 export async function getStatusDistribution(
   supabase: SupabaseServerClient,
   userId: string,
+  itemFilter: ItemFilter = "all",
 ): Promise<StatusDistribution> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("passes")
     .select("status")
     .eq("user_id", userId)
     .eq("is_active", true);
+  if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

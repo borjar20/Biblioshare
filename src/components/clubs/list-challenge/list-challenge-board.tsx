@@ -84,7 +84,7 @@ export function ListChallengeBoard({
         railExtra={railExtra}
         body={
           <div className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h2 className="label-section">
               {t("listChallengeProgress")}
             </h2>
             <p className="text-xs text-muted-foreground">{t("listChallengeEmptyList")}</p>
@@ -103,7 +103,7 @@ export function ListChallengeBoard({
         railExtra={railExtra}
         body={
           <div className="flex flex-col gap-2">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <h2 className="label-section">
               {t("listChallengeProgress")}
             </h2>
             <p className="text-xs text-muted-foreground">{t("listChallengeJoinToSee")}</p>
@@ -130,7 +130,7 @@ export function ListChallengeBoard({
       railExtra={railExtra}
       railTop={
         <div className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("listChallengeProgress")}
           </h2>
           <ListChallengeSummary
@@ -143,7 +143,7 @@ export function ListChallengeBoard({
       }
       body={
         <div className="flex flex-col gap-3">
-          <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h3 className="label-section">
             {t("listChallengeList")}
           </h3>
           {/* En PC la rejilla gana ancho: 8 columnas como el frame 2 del mockup. */}
@@ -194,7 +194,7 @@ export function ListChallengeBoard({
           </div>
 
           <details className="group">
-            <summary className="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 label-section">
               <ChevronDownIcon
                 aria-hidden
                 className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
@@ -225,7 +225,7 @@ export function ListChallengeBoard({
       }
       railBottom={
         <div className="flex flex-col gap-3">
-          <h3 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <h3 className="label-section">
             {t("listChallengeRanking")}
           </h3>
           <div className="flex flex-col">

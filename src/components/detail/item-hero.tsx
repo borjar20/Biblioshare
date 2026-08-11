@@ -7,6 +7,7 @@ import { formatDots } from "@/lib/rating/dots";
 import { GenreTag } from "@/components/ui/genre-tag";
 import { BackButton } from "./back-button";
 import { BookIcon, FilmIcon, SeriesIcon } from "@/components/ui/icons";
+import { ImageZoom } from "@/components/ui/image-zoom";
 
 const TYPE_ICON = {
   book: BookIcon,
@@ -51,6 +52,9 @@ export function ItemHero({
 }) {
   const accent = MEDIA_ACCENT[itemType];
   const Icon = TYPE_ICON[itemType];
+  // El mismo hueco lo ocupa el botón de ampliar (con portada) o un div mudo
+  // (sin ella): las clases van a una constante para no escribirlas dos veces.
+  const coverClass = `relative h-[174px] w-[116px] shrink-0 overflow-hidden rounded-[6px] border-2 ${accent.border} bg-surface-muted shadow-cover sm:h-[240px] sm:w-40`;
 
   return (
     // Sin border-b: la línea la pone la barra de pestañas, que va pegada
@@ -85,23 +89,29 @@ export function ItemHero({
         </div>
 
         <div className="mt-2 flex gap-4 sm:mt-4 sm:gap-6">
-          <div
-            className={`relative h-[174px] w-[116px] shrink-0 overflow-hidden rounded-[6px] border-2 ${accent.border} bg-surface-muted shadow-cover sm:h-[240px] sm:w-40`}
-          >
-            {coverUrl ? (
+          {coverUrl ? (
+            <ImageZoom src={coverUrl} alt={title} className={coverClass}>
+              {/* La portada en primer plano es el LCP de la vista móvil (#441).
+                  `priority` la saca del lazy y la precarga. El fondo difuminado
+                  de arriba se queda lazy: comparte esta misma URL (el loader
+                  custom colapsa los buckets, ver cdn-loader.ts), así que
+                  reaprovecha esta precarga sin una segunda descarga. */}
               <Image
                 src={coverUrl}
                 alt={title}
                 fill
+                priority
                 sizes="(max-width: 640px) 116px, 160px"
                 className="object-cover"
               />
-            ) : (
+            </ImageZoom>
+          ) : (
+            <div className={coverClass}>
               <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
                 {title}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="min-w-0 flex-1 pt-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
@@ -140,7 +150,7 @@ export function ItemHero({
                   </small>
                 </span>
                 <div className="flex flex-col gap-1">
-                  <RatingDots value={avgRating} size="sm" />
+                  <RatingDots value={avgRating} size="sm" itemType={itemType} />
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {ratingsLabel}
                   </span>

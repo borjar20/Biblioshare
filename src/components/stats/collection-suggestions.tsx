@@ -15,9 +15,12 @@ export async function CollectionSuggestions({ items }: { items: LibraryItem[] })
   const t = await getTranslations("today");
   const tMedia = await getTranslations("detail.mediaLabel");
   return (
-    <section className="flex flex-col gap-3">
+    <section className="today-block flex flex-col gap-3">
       <TodayHeader title={t("collectionTitle")} />
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Tarjetas horizontales apiladas: la columna personal es estrecha
+          (~493px a ≥1100), así que una rejilla de 2-3 columnas las apretaría.
+          En vertical se leen como una lista corta a cualquier ancho. */}
+      <div className="flex flex-col gap-2.5">
         {items.map((item) => {
           const accent = MEDIA_ACCENT[item.itemType];
           return (

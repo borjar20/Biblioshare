@@ -45,12 +45,12 @@ export function ProfileSafetyActions({
         variant="ghost"
         disabled={isPending}
         onClick={toggleBlock}
-        className={state === "none" ? "text-destructive" : ""}
+        className={state === "none" ? "text-status-dropped" : ""}
       >
         {state === "blocked" ? t("unblock") : t("block")}
       </Button>
       {failed && (
-        <p role="alert" className="max-w-48 text-right text-xs text-destructive">
+        <p role="alert" className="max-w-48 text-right text-xs text-status-dropped">
           {t("actionError")}
         </p>
       )}

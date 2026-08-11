@@ -32,5 +32,5 @@ export async function loadBookEditions(
   // el editor y el registro (ver BookDetailPage); sin diferenciar ambas
   // peticiones, Next las trata como la misma llamada y sirve aquí la
   // respuesta vacía de antes del sync. Ver el comentario en getEditions.
-  return getEditions(supabase, "book", book.id, true);
+  return getEditions("book", book.id, true);
 }

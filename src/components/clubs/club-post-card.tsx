@@ -152,6 +152,7 @@ export function ClubPostCard({
         viewerReacted={post.viewerReacted}
         commentCount={post.commentCount}
         comments={post.comments}
+        reactions={post.reactions}
         viewerLoggedIn={viewerLoggedIn}
         clubId={post.clubId}
         knownUsernames={knownUsernames}

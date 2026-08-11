@@ -21,7 +21,7 @@ export async function ContinueStrip({ items }: { items: LibraryItem[] }) {
       {/* pin-head del mockup: dot de acento + eyebrow + contador a la derecha. */}
       <div className="flex items-center gap-2">
         <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full bg-accent" />
-        <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <h2 className="label-section">
           {t("continue")}
         </h2>
         <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">

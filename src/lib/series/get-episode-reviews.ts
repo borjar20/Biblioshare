@@ -1,5 +1,10 @@
 import type { createClient } from "@/lib/supabase/server";
-import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import {
+  emptyReactions,
+  getInteractionSummary,
+  type InteractionComment,
+  type ReactionsByKind,
+} from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -24,6 +29,7 @@ export type EpisodeReview = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 export type EpisodeReviewsResult = {
@@ -103,6 +109,7 @@ export async function getEpisodeReviews(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     };
   });
 

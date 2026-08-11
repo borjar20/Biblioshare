@@ -16,6 +16,19 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type TargetType = Exclude<CanonicalTargetType, "comment">;
 export type ReactableTargetType = CanonicalTargetType;
 
+export type ReactionKind = "like" | "read" | "shock" | "fire";
+export const REACTION_KINDS: readonly ReactionKind[] = ["like", "read", "shock", "fire"];
+export type ReactionTally = { count: number; viewerReacted: boolean };
+export type ReactionsByKind = Record<ReactionKind, ReactionTally>;
+export function emptyReactions(): ReactionsByKind {
+  return {
+    like: { count: 0, viewerReacted: false },
+    read: { count: 0, viewerReacted: false },
+    shock: { count: 0, viewerReacted: false },
+    fire: { count: 0, viewerReacted: false },
+  };
+}
+
 export type InteractionComment = {
   id: string;
   interactionTargetId: string;
@@ -28,8 +41,18 @@ export type InteractionComment = {
   createdAt: string;
   isOwn: boolean;
   canDelete: boolean;
+  canEdit: boolean;
+  canPin: boolean;
+  parentId: string | null;
+  isSpoiler: boolean;
+  pinned: boolean;
+  edited: boolean;
+  // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todos
+  // los kinds / algún kind activo del viewer) para no romper a los 9
+  // callers que aún pintan el total sin desglosar por emoji.
   reactionCount: number;
   viewerReacted: boolean;
+  reactions: ReactionsByKind;
 };
 
 export type InteractionSummary = {
@@ -38,6 +61,7 @@ export type InteractionSummary = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 // Hilo esperado corto (Reddit-lite, Q del diseño); sin paginación en este MVP.
@@ -105,6 +129,7 @@ export async function getInteractionSummary(
       viewerReacted: false,
       commentCount: 0,
       comments: [],
+      reactions: emptyReactions(),
     });
     sourceIdByTargetId.set(targetRef.id, sourceId);
     interactionTargetIds.push(targetRef.id);
@@ -117,11 +142,11 @@ export async function getInteractionSummary(
   const [reactionsResult, commentsResult] = await Promise.all([
     supabase
       .from("reactions")
-      .select("interaction_target_id, user_id")
+      .select("interaction_target_id, user_id, kind")
       .in("interaction_target_id", interactionTargetIds),
     supabase
       .from("comments")
-      .select("id, interaction_target_id, author_id, body, created_at")
+      .select("id, interaction_target_id, author_id, body, created_at, parent_id, is_spoiler, pinned, edited_at")
       .in("interaction_target_id", interactionTargetIds)
       .order("created_at", { ascending: true }),
   ]);
@@ -130,12 +155,18 @@ export async function getInteractionSummary(
   if (commentsResult.error) throw commentsResult.error;
 
   for (const r of reactionsResult.data ?? []) {
-    if (!r.interaction_target_id) continue;
     const sourceId = sourceIdByTargetId.get(r.interaction_target_id);
     const s = sourceId ? summaries.get(sourceId) : undefined;
     if (!s) continue;
-    s.reactionCount += 1;
-    if (user && r.user_id === user.id) s.viewerReacted = true;
+    const kind = (r.kind ?? "like") as ReactionKind;
+    const tally = s.reactions[kind];
+    if (!tally) continue; // kind desconocido: ignora, no rompas
+    tally.count += 1;
+    if (user && r.user_id === user.id) tally.viewerReacted = true;
+  }
+  for (const s of summaries.values()) {
+    s.reactionCount = REACTION_KINDS.reduce((n, k) => n + s.reactions[k].count, 0);
+    s.viewerReacted = REACTION_KINDS.some((k) => s.reactions[k].viewerReacted);
   }
 
   const commentRows = commentsResult.data ?? [];
@@ -160,16 +191,34 @@ export async function getInteractionSummary(
     moderatableTargetIds = new Set((ids ?? []) as string[]);
   }
 
+  const { data: ownerRows, error: ownerErr } = await supabase
+    .from("interaction_targets")
+    .select("id, owner_id")
+    .in("id", interactionTargetIds);
+  if (ownerErr) throw ownerErr;
+  const viewerOwnsTarget = new Set(
+    (ownerRows ?? [])
+      .filter((r) => user && r.owner_id === user.id)
+      .map((r) => sourceIdByTargetId.get(r.id)!)
+      .filter(Boolean),
+  );
+
   const seenPerTarget = new Map<string, number>();
   for (const c of commentRows) {
-    if (!c.interaction_target_id) continue;
     const sourceId = sourceIdByTargetId.get(c.interaction_target_id);
     if (!sourceId) continue;
     const s = summaries.get(sourceId);
     if (!s) continue;
     const commentTargetRef = commentTargetRefs.get(`comment:${c.id}`);
     if (!commentTargetRef) {
-      throw new Error(`Interaction target missing for comment:${c.id}`);
+      // Un comentario cuyo target canónico no resuelve es un hecho de
+      // VISIBILIDAD (el espectador no lo ve por RLS), no corrupción: se
+      // descarta ese comentario, no el lote entero (#340). El throw estricto
+      // se mantiene solo a nivel de fuente, arriba.
+      console.error(
+        `[social] interaction target unresolved, skipping comment:${c.id}`,
+      );
+      continue;
     }
     s.commentCount += 1;
     const seen = (seenPerTarget.get(c.interaction_target_id) ?? 0) + 1;
@@ -192,8 +241,18 @@ export async function getInteractionSummary(
       createdAt: c.created_at,
       isOwn: user?.id === c.author_id,
       canDelete: user?.id === c.author_id || moderatableTargetIds.has(sourceId),
+      canEdit: user?.id === c.author_id,
+      // Fijar es SOLO del dueño del target (no moderador/admin) — ver
+      // 20260839_pin_comment_owner_only.sql. `moderatableTargetIds` se sigue
+      // usando para `canDelete` (moderar = borrar sí es de admin/moderador).
+      canPin: viewerOwnsTarget.has(sourceId),
+      parentId: c.parent_id,
+      isSpoiler: c.is_spoiler,
+      pinned: c.pinned,
+      edited: c.edited_at != null,
       reactionCount: 0,
       viewerReacted: false,
+      reactions: emptyReactions(),
     });
   }
 
@@ -204,18 +263,15 @@ export async function getInteractionSummary(
   // COMMENT_PREFETCH_LIMIT que ya están en s.comments) para no complicar el
   // filtrado -- reacciones de comentarios fuera de la página prefetch
   // simplemente no encuentran destino en el bucle de abajo y se ignoran.
-  const allCommentIds = commentRows.map((c) => c.id);
-  if (allCommentIds.length > 0) {
-    const commentInteractionTargetIds = allCommentIds.map((commentId) => {
-      const targetRef = commentTargetRefs.get(`comment:${commentId}`);
-      if (!targetRef) {
-        throw new Error(`Interaction target missing for comment:${commentId}`);
-      }
-      return targetRef.id;
-    });
+  // Mismo criterio que arriba: los comentarios sin target resoluble se caen
+  // del lote en vez de tumbarlo (#340).
+  const commentInteractionTargetIds = commentRows
+    .map((c) => commentTargetRefs.get(`comment:${c.id}`)?.id)
+    .filter((id): id is string => id !== undefined);
+  if (commentInteractionTargetIds.length > 0) {
     const { data: commentReactions, error: commentReactionsError } = await supabase
       .from("reactions")
-      .select("interaction_target_id, user_id")
+      .select("interaction_target_id, user_id, kind")
       .in("interaction_target_id", commentInteractionTargetIds);
     if (commentReactionsError) throw commentReactionsError;
 
@@ -224,11 +280,17 @@ export async function getInteractionSummary(
       for (const c of s.comments) commentById.set(c.interactionTargetId, c);
     }
     for (const r of commentReactions ?? []) {
-      if (!r.interaction_target_id) continue;
       const c = commentById.get(r.interaction_target_id);
       if (!c) continue;
-      c.reactionCount += 1;
-      if (user && r.user_id === user.id) c.viewerReacted = true;
+      const kind = (r.kind ?? "like") as ReactionKind;
+      const tally = c.reactions[kind];
+      if (!tally) continue;
+      tally.count += 1;
+      if (user && r.user_id === user.id) tally.viewerReacted = true;
+    }
+    for (const c of commentById.values()) {
+      c.reactionCount = REACTION_KINDS.reduce((n, k) => n + c.reactions[k].count, 0);
+      c.viewerReacted = REACTION_KINDS.some((k) => c.reactions[k].viewerReacted);
     }
   }
 

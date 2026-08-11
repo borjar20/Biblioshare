@@ -78,6 +78,27 @@ Donde un plan no trae frame de escritorio (Clubes, Ficha, detalle de actividad, 
 5. Onboarding (§2.4) y auth con marca (§2.5).
 6. App icon/manifest (§2.6, con pwa-shell).
 
+## 4bis. Pasada de consistencia transversal (2026-08-04)
+
+Revisión completa de vistas y componentes pedida aparte de las tareas de arriba. Lo que cerró, y lo que
+destapó (detalle y porqués en `docs/requirements/decisiones.md`, entrada del 2026-08-04):
+
+- **Hallazgo de fondo, no estético:** `h1,h2,h3 { font-family: serif }` estaba **sin capa** en `globals.css`, así
+  que ganaba a toda utilidad de Tailwind: **53** titulares que pedían `font-mono` se pintaban en Fraunces y el
+  marcado no podía enmendarlo. Ahora en `@layer base`. Si tocas ese bloque, no lo saques de la capa.
+- **Foco de teclado resuelto para toda la app** (§2 lo daba por hecho y no lo estaba): `Button` no declaraba
+  ninguno. Una regla `:focus-visible` sin capa en `globals.css`, que además vence a los 30 `focus:outline-none`
+  ya escritos.
+- **`label-section`**: la etiqueta mono de sección tenía quince variantes; unificada en 106 sitios.
+- **`ui/page-header.tsx`**: ocho tratamientos del `<h1>` → uno (barrita de acento + Fraunces), migradas
+  Colección, Clubes, Buscar, Notas, Estadísticas, Importar (×2), Admin y Género.
+- **Radios de Tailwind reapuntados** a la escala Paper en `@theme`; 270 llamadas caen en la escala sin tocarlas.
+- **`text-destructive` no existía** (8 usos, cinco con `role="alert"`) → `text-status-dropped`.
+
+Sigue **PENDIENTE** de este plan lo que ya decía §2/§4: P-T3 (topbar contextual), notificaciones, los 6 estados,
+auditoría de iconos, auth con marca y app icon. Y la decisión del `mono` de `Field` (§ prop opt-in) **sigue sin
+tomar**: restylea 17 formularios y es de este plan, no de una pasada de consistencia — issue abierta.
+
 ## 5. Verificación de cierre
 
 - [ ] Notificaciones A/B, los 6 estados y onboarding comparados con sus maquetas (light y dark).

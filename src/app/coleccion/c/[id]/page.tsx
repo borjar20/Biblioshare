@@ -3,10 +3,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCollection } from "@/lib/library/collections";
 import { CollectionDetail } from "@/components/library/collection-detail";
 import { CollectionMenu } from "@/components/library/collection-menu";
 import { ChevronLeftIcon } from "@/components/ui/icons";
+import { SHELL_GRID } from "@/lib/ui/layout";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -43,7 +49,7 @@ export default async function CollectionDetailPage({
   const { id } = await params;
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref(`/coleccion/c/${id}`));
 
   const detail = await getCollection(supabase, user.id, id);
   if (!detail) notFound();
@@ -51,7 +57,7 @@ export default async function CollectionDetailPage({
   const t = await getTranslations("collection");
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       {/* Topbar del frame B: «‹» a /coleccion + nombre + menú «⋯»
           (renombrar/descripción/borrar, Sesión 2). */}
       <div className="flex items-center gap-2.5">

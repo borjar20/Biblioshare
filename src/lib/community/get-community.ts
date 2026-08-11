@@ -1,15 +1,26 @@
-import type { createClient } from "@/lib/supabase/server";
+import { cacheLife, cacheTag } from "next/cache";
+import { createPublicClient, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { getInteractionSummary, type InteractionComment } from "@/lib/social/interactions";
+import {
+  emptyReactions,
+  getInteractionSummary,
+  type InteractionComment,
+  type ReactionsByKind,
+} from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { formatEdition } from "@/lib/editions/edition-label";
+import { toStar } from "@/lib/stats/rating";
 import { latestRatingPerUser, type RatedPass } from "./latest-rating";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type CommunityReview = {
   id: string;
-  interactionTargetId: string;
+  // null = la reseña no tiene post (un pase terminado por import sin
+  // autopublicar): se muestra sin hilo social. Los pases terminados con post
+  // (backfill/autopost) llevan el target del post `finished`, el MISMO que ve
+  // el feed y /post/[id] — la conversación converge.
+  interactionTargetId: string | null;
   author: string;
   initials: string;
   /** Username del autor para enlazar a /u/:username. null = perfil sin username. */
@@ -24,12 +35,14 @@ export type CommunityReview = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
+  reactions: ReactionsByKind;
 };
 
 export type Community = {
   avgRating: number | null; // 1–10, un decimal; null si nadie ha puntuado
   ratingCount: number;
-  distribution: number[]; // porcentajes [5★, 4★, 3★, 2★, 1★]
+  // Recuentos por MEDIA estrella, ascendente: [0,5★, 1★, …, 4,5★, 5★] (10 cubos).
+  distribution: number[];
   reviews: CommunityReview[];
   // Usernames @mencionados en `reviews` (texto + comentarios) que existen de
   // verdad — resuelto en UNA query (resolveKnownMentions) para que
@@ -108,18 +121,45 @@ async function loadEditionLabels(
   );
 }
 
+/** Solo el agregado de puntuación: lo único que el hero de la ficha necesita. */
+export type RatingSummary = Pick<
+  Community,
+  "avgRating" | "ratingCount" | "distribution"
+>;
+
 // Agregados reales de la comunidad para una ficha: la media y el histograma
 // salen de los pases (diary_entries), no de library_entries.rating — esa
 // columna se está jubilando y una entrada puede acumular varios pases
-// (relecturas, revisionados). Las reseñas también son pases: los que tienen
-// texto público. La visibilidad la resuelve RLS: solo se ven filas de
-// perfiles públicos (más las propias del que mira), así que aquí no hay
-// filtro extra.
-export async function getCommunity(
-  supabase: SupabaseServerClient,
+// (relecturas, revisionados).
+//
+// Partido en dos (#439): el HERO solo pinta `avgRating`/`ratingCount`, así que
+// espera a `getRatingSummary` —una consulta a `passes`—. Las reseñas y todo lo
+// que cuelga de ellas (perfiles, ediciones, reacciones, menciones) son ~4
+// roundtrips más que solo pinta `CommunityPanel`, detrás del <Suspense> de las
+// pestañas: viven en `getReviews`.
+//
+// Cliente SIN sesión (#436): el agregado es, por diseño, la media de los
+// perfiles PÚBLICOS —lo que ve un visitante sin cuenta—, IDÉNTICO para todo el
+// mundo y por tanto cacheable en Fase 4. CAMBIO DE COMPORTAMIENTO respecto a
+// antes: con el cliente de sesión, RLS colaba en la media los pases del propio
+// espectador y los de perfiles privados que sigue; ahora NO cuentan. Es la
+// definición canónica de "media de la comunidad" (decisión en decisiones.md).
+// getReviews NO puede seguir el mismo camino: lleva `viewerReacted`, que sí
+// depende de quién mira.
+export async function getRatingSummary(
   itemType: ItemType,
   itemId: string
-): Promise<Community> {
+): Promise<RatingSummary> {
+  "use cache";
+  // Cacheable por #437: es la media de perfiles PÚBLICOS (cliente anónimo,
+  // escalares), idéntica para todo el mundo — decisión de #436/decisiones.md.
+  // A diferencia de créditos/sagas, el espectador SÍ la cambia al cerrar un pase
+  // con nota, así que se invalida con `updateTag(ratings:*)` desde
+  // `revalidateReadingLog` (read-your-own-writes). `hours` acota la ventana si
+  // algún escritor futuro se saltara ese único punto de invalidación.
+  cacheLife("hours");
+  cacheTag(`ratings:${itemType}:${itemId}`);
+  const supabase = createPublicClient();
   // Notas: un voto por usuario, el de su pase cerrado más reciente, sin
   // contar las entradas abandonadas (dropped). latestRatingPerUser hace el
   // "quédate con el último pase por user_id" en TypeScript porque Supabase
@@ -146,20 +186,33 @@ export async function getCommunity(
   const ratings = latestRatingPerUser(ratedPasses).map((r) => r.rating);
 
   let avgRating: number | null = null;
-  // Índice 0 = 5★ … índice 4 = 1★ (mismo orden que renderiza el panel).
-  const distribution = [0, 0, 0, 0, 0];
+  // Diez cubos por MEDIA estrella, ascendente: índice 0 = 0,5★ … índice 9 = 5★.
+  // Recuentos, no porcentajes: la barra se normaliza contra el pico al pintarse,
+  // y el porcentaje solo alimentaba un «%» por fila que ya no se enseña. Antes
+  // agrupaba en cinco estrellas enteras con ceil(r/2), y toda nota impar —cada
+  // media estrella— saltaba a la entera de arriba; esa distribución se perdía.
+  const distribution = Array<number>(10).fill(0);
   if (ratings.length > 0) {
     avgRating =
       Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
     for (const r of ratings) {
-      const stars = Math.min(5, Math.max(1, Math.ceil(r / 2)));
-      distribution[5 - stars] += 1;
-    }
-    for (let i = 0; i < distribution.length; i++) {
-      distribution[i] = Math.round((distribution[i] / ratings.length) * 100);
+      // toStar: 1→0,5★ … 10→5★ (acotado). El cubo es estrella*2 − 1.
+      distribution[Math.round(toStar(r) * 2) - 1] += 1;
     }
   }
 
+  return { avgRating, ratingCount: ratings.length, distribution };
+}
+
+// Reseñas de la comunidad (texto público) + los @usernames que mencionan.
+// ~4 roundtrips; vive detrás del <Suspense> de las pestañas, nunca en el hero
+// (#439). Mismo cliente de sesión: RLS solo sirve filas de perfiles públicos
+// más las propias del que mira.
+export async function getReviews(
+  supabase: SupabaseServerClient,
+  itemType: ItemType,
+  itemId: string
+): Promise<Pick<Community, "reviews" | "knownUsernames">> {
   // Reseñas: pases con texto, de cualquier pase de esta obra (incluidos los
   // abandonados — una reseña sigue siendo válida aunque el pase no vote).
   // pass_reviews ya expone item_type/item_id directamente: sin el paso previo
@@ -228,22 +281,40 @@ export async function getCommunity(
           rating: r.rating,
           text: (r.review ?? "").trim(),
           editionLabel: r.edition_id ? (editionLabelById.get(r.edition_id) ?? null) : null,
+          interactionTargetId: null as string | null,
           reactionCount: 0,
           viewerReacted: false,
           commentCount: 0,
           comments: [],
+          reactions: emptyReactions(),
         };
       });
 
-      const summaries = await getInteractionSummary(
-        supabase,
-        "diary_entry",
-        reviewBases.map((r) => r.id),
+      // El hilo de una reseña vive ahora en el target del post `finished`
+      // (kind='post', source_id=post.id): el backfill promovió los diary_entry
+      // in-place, así que ficha y feed convergen en el MISMO target. Un pase
+      // terminado SIN post (import no autopublicado) se muestra sin hilo — no se
+      // rompe. `rows` son pases (r.id = pass.id), que es el `source_id` del post.
+      const passIds = reviewBases.map((r) => r.id);
+      const { data: finishedPosts } = await supabase
+        .from("posts")
+        .select("id, source_id")
+        .eq("kind", "finished")
+        .eq("source_kind", "pass")
+        .in("source_id", passIds);
+      const postIdByPass = new Map(
+        (finishedPosts ?? [])
+          .filter((p): p is { id: string; source_id: string } => p.source_id !== null)
+          .map((p) => [p.source_id, p.id]),
       );
+      const postIds = [...postIdByPass.values()];
+      const summaries = postIds.length
+        ? await getInteractionSummary(supabase, "post", postIds)
+        : new Map();
       reviews = reviewBases.map((review) => {
-        const summary = summaries.get(review.id);
-        if (!summary) throw new Error(`Interaction summary missing for diary_entry:${review.id}`);
-        return { ...review, ...summary };
+        const postId = postIdByPass.get(review.id);
+        const summary = postId ? summaries.get(postId) : undefined;
+        return summary ? { ...review, ...summary } : review;
       });
     }
   }
@@ -253,5 +324,20 @@ export async function getCommunity(
     ...reviews.flatMap((r) => r.comments.map((c) => c.body)),
   ]);
 
-  return { avgRating, ratingCount: ratings.length, distribution, reviews, knownUsernames };
+  return { reviews, knownUsernames };
+}
+
+// El objeto entero. Ya no se usa en el camino crítico de la ficha (la página
+// llama a getRatingSummary para el hero y getReviews con las pestañas), pero se
+// mantiene como combinador para quien quiera la comunidad completa de una vez.
+export async function getCommunity(
+  supabase: SupabaseServerClient,
+  itemType: ItemType,
+  itemId: string
+): Promise<Community> {
+  const [summary, reviews] = await Promise.all([
+    getRatingSummary(itemType, itemId),
+    getReviews(supabase, itemType, itemId),
+  ]);
+  return { ...summary, ...reviews };
 }

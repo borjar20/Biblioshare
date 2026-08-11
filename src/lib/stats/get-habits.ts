@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
-import { type StatsPeriod, yearBounds } from "./period";
+import type { ItemFilter } from "./filter";
+import { type StatsPeriod, periodBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -12,6 +13,12 @@ export type Habits = {
   // Duración media de sesión en minutos (solo sesiones con duración). null sin
   // datos.
   averageMinutes: number | null;
+  // Sesiones registradas, TODAS (con duración o sin ella). No es el divisor de
+  // `averageMinutes`: esa media solo promedia las que sí la traen.
+  sessions: number;
+  // Días distintos con al menos una sesión. Sirve de divisor honesto para
+  // «sesiones por día activo» sin contar los días en blanco.
+  activeDays: number;
 };
 
 export type HabitRow = {
@@ -56,6 +63,8 @@ export function computeHabits(rows: HabitRow[]): Habits {
     favoriteBand: favoriteBand === null ? null : { startHour: favoriteBand * 2 },
     favoriteWeekday,
     averageMinutes,
+    sessions: rows.length,
+    activeDays: new Set(rows.map((r) => r.session_date)).size,
   };
 }
 
@@ -76,19 +85,34 @@ export async function getHabits(
   supabase: SupabaseServerClient,
   userId: string,
   period: StatsPeriod = "all",
+  itemFilter: ItemFilter = "all",
 ): Promise<Habits> {
+  // El `!inner` solo se pide cuando hace falta: sin filtro, una sesión sin pase
+  // (histórico anterior al hub) seguiría contando, y con él desaparecería.
+  const columns =
+    itemFilter === "all"
+      ? "session_date, duration_minutes, started_at"
+      : "session_date, duration_minutes, started_at, passes!inner(item_type)";
+
   let query = supabase
     .from("progress_sessions")
-    .select("session_date, duration_minutes, started_at")
+    .select(columns)
     .eq("user_id", userId);
 
-  if (period !== "all") {
-    const { start, endExclusive } = yearBounds(period);
-    query = query.gte("session_date", start).lt("session_date", endExclusive);
+  if (itemFilter !== "all") query = query.eq("passes.item_type", itemFilter);
+
+  const bounds = periodBounds(period);
+  if (bounds) {
+    query = query
+      .gte("session_date", bounds.start)
+      .lt("session_date", bounds.endExclusive);
   }
 
   const { data, error } = await query;
 
   if (error) throw error;
-  return computeHabits((data ?? []) as HabitRow[]);
+  // `select()` recibe la lista de columnas como variable, así que Supabase no
+  // puede inferir la forma y devuelve su tipo de error de parseo. El doble paso
+  // por `unknown` es lo que cuesta poder pedir el join solo cuando hace falta.
+  return computeHabits((data ?? []) as unknown as HabitRow[]);
 }

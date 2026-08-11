@@ -3,10 +3,17 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getMyPendingRows, getReviewQueue } from "@/lib/import/pending";
+import { FORM_CARD_GRID_COLS, SHELL_APP } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 import { ResolveForm } from "./resolve-form";
 import { DismissButton } from "./dismiss-button";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Import pendiente — Biblioshare",
@@ -15,7 +22,7 @@ export const metadata: Metadata = {
 export default async function PendingImportPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/importar/pendientes"));
 
   const t = await getTranslations("import");
   const isCollaborator = hasMinRole(await getCurrentUserRole(supabase), "collaborator");
@@ -26,9 +33,9 @@ export default async function PendingImportPage() {
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-8 sm:px-6">
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("pendingTitle")}</h1>
+        <PageHeader title={t("pendingTitle")} />
         <p className="text-sm text-muted-foreground">{t("pendingDescription")}</p>
         <Link href="/importar" className="text-sm text-accent underline">
           {t("backToImport")}
@@ -40,7 +47,10 @@ export default async function PendingImportPage() {
         {mine.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("noPending")}</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          /* Fichas mínimas —título, estado, descartar—, así que caben tres. En
+             una sola columna eran barras anchas con un palmo de vacío entre el
+             título y el botón. */
+          (<ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {mine.map((p) => (
               <li
                 key={p.id}
@@ -55,7 +65,7 @@ export default async function PendingImportPage() {
                 <DismissButton pendingId={p.id} label={t("dismiss")} />
               </li>
             ))}
-          </ul>
+          </ul>)
         )}
       </section>
 
@@ -65,7 +75,10 @@ export default async function PendingImportPage() {
           {queue.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("emptyQueue")}</p>
           ) : (
-            <ul className="flex flex-col gap-3">
+            /* La cola de revisión es donde más se nota: cada elemento es un
+               formulario completo, y a dos columnas se ven el doble de filas
+               sin que ningún campo quede apretado. */
+            (<ul className={`grid items-start gap-3 ${FORM_CARD_GRID_COLS}`}>
               {queue.map((p) => (
                 <li key={p.id}>
                   <ResolveForm
@@ -73,10 +86,11 @@ export default async function PendingImportPage() {
                     itemType={p.itemType}
                     row={p.row}
                     ownerName={p.ownerName ?? null}
+                    candidates={p.candidates}
                   />
                 </li>
               ))}
-            </ul>
+            </ul>)
           )}
         </section>
       )}

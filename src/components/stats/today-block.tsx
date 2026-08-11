@@ -10,9 +10,9 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { TodayCard } from "./today-card";
-import { TodayHeader } from "./today-header";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
+import { TodayHeader } from "./today-header";
 import { ProximaLectura } from "./proxima-lectura";
 import { CollectionSuggestions } from "./collection-suggestions";
 import { EmptyDiscovery } from "./empty-discovery";
@@ -26,10 +26,9 @@ const LATER_SHOWN = 12;
 // El bloque "¿Qué has disfrutado hoy?" (frame G). Encabeza el Inicio, sobre el
 // feed: primero lo tuyo a medias, después lo de los demás.
 //
-// Si no tienes nada en curso no se pregunta qué has disfrutado hoy: un bloque
-// que lo pregunta y no ofrece nada que tocar sería un hueco, no una invitación.
-// Pero "Para más tarde" SÍ sobrevive solo, porque es justo cuando más sirve:
-// sin nada a medias, lo que necesitas es elegir lo próximo.
+// Escalera de estados de la columna personal (nunca un hueco): en curso →
+// próxima lectura → sugerencias de colección → descubrimiento. Ver
+// docs/superpowers/specs/2026-08-11-inicio-estado-vacio-columna-personal-design.md.
 //
 // De "Registrar algo nuevo" (el tercer bloque del frame G) no queda nada:
 // descartado por el usuario, 2026-07-17.
@@ -41,7 +40,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
   const [focus, weekly, profile, planned] = await Promise.all([
     getTodayFocus(supabase, userId),
     getWeeklyActivity(supabase, userId),
-    getOwnProfile(supabase, userId),
+    getOwnProfile(userId),
     getLibraryItems(supabase, userId, { status: "planned" }),
   ]);
 
@@ -50,9 +49,9 @@ export async function TodayBlock({ userId }: { userId: string }) {
       <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} />
     ) : null;
 
-  // Escalera de estados de la columna personal (nunca un hueco): en curso →
-  // próxima lectura → sugerencias de colección → descubrimiento. Ver
-  // docs/superpowers/specs/2026-08-11-inicio-estado-vacio-columna-personal-design.md.
+  // Escalera de estados: si no hay nada en curso, la columna no queda vacía —
+  // ofrece la próxima lectura, luego sugerencias de colección, luego
+  // descubrimiento. El estado "En curso" (focus.featured) sigue debajo intacto.
   if (!focus.featured) {
     if (planned.length > 0) {
       const nextUp: NextUpItem[] = planned.map((item) => ({
@@ -113,15 +112,14 @@ export async function TodayBlock({ userId }: { userId: string }) {
   const t = await getTranslations("today");
 
   return (
-    <section className="flex flex-col gap-3">
+    // `today-block`: la sección personal del Inicio. Va SIEMPRE en una columna
+    // (destacado arriba, tiras debajo); la fila de tablet a dos columnas se
+    // retiró, así que ya no hay container query.
+    <section className="today-block flex flex-col gap-3">
       <TodayHeader title={t("title")} />
 
-      {/* En móvil el bloque se apila (frame G). En escritorio NO se estira: una
-          tarjeta de 1024px deja la portada en 58px y convierte la barra de
-          progreso en una línea de 800px — el "móvil estirado" que prohíbe P-T7.
-          Así que el ancho se usa de verdad: a la izquierda el destacado con sus
-          mini debajo, y "Para más tarde" de rail a la derecha (el reparto lo
-          hace TodayPicker). */}
+      {/* Apilado por TodayPicker (`.today-split`, hoy solo flex-col): en curso →
+          continúa → para más tarde. */}
       <TodayPicker
         keepGoingLabel={t("keepGoing")}
         later={later}
@@ -151,6 +149,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
             />
           ),
           mini: <MiniCard pass={pass} />,
+          thumb: <MiniThumb pass={pass} />,
         }))}
       />
     </section>
@@ -201,6 +200,35 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
           <span className="shrink-0 text-gold-ink">{t("streakShort", { count: pass.streakDays })}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// La mini-portada de "Continúa" en modo compacto (tablet estrecho / móvil): solo
+// la carátula GRANDE (2×2), SIN título (el usuario lo quitó, 2026-08-10) — lo que
+// distingue "Continúa" de "Para más tarde" es el separador vertical, no un texto.
+// El título solo vive en la tarjeta mini rica de ≥1100. El botón que la envuelve
+// (TodayPicker) la sube al destacado, y su aria-label ya lleva el título.
+function MiniThumb({ pass }: { pass: TodayPass }) {
+  const { item } = pass;
+  const accent = MEDIA_ACCENT[item.itemType];
+  return (
+    <div
+      className="relative aspect-[2/3] w-11 overflow-hidden rounded-md bg-surface-muted shadow-cover"
+      style={{ ["--acc" as string]: `var(${accent.varName})` }}
+    >
+      {item.coverUrl ? (
+        <Image
+          src={item.coverUrl}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 90px, 150px"
+          className="object-cover"
+        />
+      ) : (
+        <span aria-hidden className="absolute inset-0 bg-[var(--acc)]/15" />
+      )}
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-[var(--acc)]" />
     </div>
   );
 }

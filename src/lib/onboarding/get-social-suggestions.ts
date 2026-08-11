@@ -40,6 +40,10 @@ export async function getSocialCounts(
 export async function getSocialSuggestions(
   supabase: SupabaseServerClient,
   selfId: string,
+  // Onboarding pide justo LIMIT (no sigues a nadie aún). "A quién seguir" filtra
+  // seguidos DESPUÉS, así que sobre-pide para no vaciar la tarjeta al recortar
+  // los ya-seguidos (issue #297).
+  limit: number = LIMIT,
 ): Promise<{ profiles: PersonSuggestion[]; clubs: ClubSuggestion[] }> {
   const [profilesRes, clubsRes] = await Promise.all([
     supabase
@@ -47,12 +51,12 @@ export async function getSocialSuggestions(
       .select("user_id, username, display_name, avatar_url")
       .eq("is_public", true)
       .neq("user_id", selfId)
-      .limit(LIMIT),
+      .limit(limit),
     supabase
       .from("clubs")
       .select("id, slug, name, club_members(count)")
       .eq("visibility", "public")
-      .limit(LIMIT),
+      .limit(limit),
   ]);
 
   return {

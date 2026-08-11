@@ -3,9 +3,16 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { countMyPending } from "@/lib/import/pending";
+import { SHELL_APP } from "@/lib/ui/layout";
+import { PageHeader } from "@/components/ui/page-header";
 import { ImportForm } from "./import-form";
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Importar biblioteca — Biblioshare",
@@ -19,7 +26,7 @@ export const maxDuration = 60;
 export default async function ImportPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(loginHref("/importar"));
 
   const role = await getCurrentUserRole(supabase);
   // Resolving an unmatched row manually creates a freeform catalog entry —
@@ -31,9 +38,13 @@ export default async function ImportPage() {
   const t = await getTranslations("import");
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6">
+    // El contenedor se ensancha SIEMPRE, pero quien decide si eso se nota es
+    // ImportForm: sus fases «subir» y «procesar» se ponen su propio tope. El
+    // ancho no puede depender de la fase desde aquí — la fase es estado de
+    // cliente y esto es un server component.
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <PageHeader title={t("title")} />
         <p className="text-sm text-muted-foreground">{t("description")}</p>
         <Link href="/importar/pendientes" className="text-sm text-accent underline">
           {pendingCount > 0

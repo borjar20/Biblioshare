@@ -268,9 +268,75 @@ sin ejecutarse sin que nadie lo notara.
 el código anterior hasta que despliegas; si borras la tabla antes, el código viejo la sigue
 pidiendo y se lleva por delante las rutas que la usan.
 
-## 18. Otras dos, cortas
+## 18. Un aviso del sistema no cabe en un modelo con forma de persona
+
+Al montar el recordatorio de evento (2026-08-04) hacía falta escribir en `notifications` sin
+que hubiera nadie que hubiera *hecho* nada: lo dispara un trabajo programado. Se intentó
+evitar tocar la tabla poniendo al **organizador del evento** como actor, y falló por dos
+sitios distintos que solo aparecieron ejecutándolo:
+
+1. **`filter_unblocked_user_ids` devuelve un array VACÍO cuando `auth.uid()` es null**, y el
+   barrido corre con `service_role`, sin sesión. Resultado: `claimed 3, delivered 0`, y
+   **ni un error en el log** — `notifyMany` es best-effort y devolver `[]` es un camino
+   silencioso. Si un fan-out entrega cero sin quejarse, sospecha del filtro de bloqueos antes
+   que de la escritura.
+2. **`notifications` tiene `CHECK (user_id <> actor_id)`**, así que el organizador que sigue
+   su propio evento no podía recibir su recordatorio (23514): justo la persona que lo monta
+   se quedaba sin aviso.
+
+Las dos son el mismo síntoma. La solución fue **arreglar el modelo** (`actor_id` nullable,
+CHECK relajado a «si hay actor, no puede ser el destinatario») en vez de seguir parcheando
+alrededor. Regla: **cuando hacen falta dos parches seguidos para meter algo por un modelo, el
+bug es el modelo.** Un aviso emitido por el sistema va con `actorId: null` y
+`systemDelivery: true` en `notifyMany`.
+
+## 19. Deshabilitar un botón enfocado le roba el foco, y no se lo devuelve
+
+`disabled={isPending}` es el patrón normal para cortar la doble pulsación, y en un CTA suelto
+no molesta. **Dentro de una lista sí**: al pulsar con teclado, el navegador blurea el elemento
+que acaba de deshabilitarse y al re-habilitarlo el foco NO vuelve — quien navega con teclado
+acaba en el `body` habiendo perdido su sitio entre las filas. Lo cazó un test de teclado del
+seguimiento de eventos, no una revisión visual.
+
+Para un control dentro de una lista: **`aria-disabled` en vez de `disabled`**, más una guarda
+`if (isPending) return;` en el handler (y la idempotencia de la RPC detrás, que es la que de
+verdad protege). Así sigue siendo enfocable y la tecnología asistiva sabe que está inerte.
+
+## 20. Que un test pase no significa que proteja lo que dice proteger
+
+En el mismo trabajo se escribió un test de teclado «para que el botón de seguir no acabe
+dentro del `<a>` de la fila». Se comprobó **mutando el código a propósito** —metiendo el
+`<button>` dentro del `<a>`— y el test **siguió pasando**: Chrome mantiene enfocable un botón
+anidado aunque el HTML sea inválido, así que el orden de tabulación no distingue los dos
+casos. Lo que sí caza ese bug es otro test, el del clic, porque con el botón anidado el clic
+**navega** y la marca que se esperaba en el calendario nunca aparece.
+
+Moraleja práctica: cuando escribas un test para impedir un bug concreto, **provoca el bug y
+comprueba que el test se pone rojo**. Si no lo hace, el test mide otra cosa — y es peor que no
+tenerlo, porque da confianza falsa. Los comentarios de los dos tests de
+`club-evento-seguimiento.spec.ts` dicen ahora explícitamente qué protege cada uno y qué no.
+
+## 21. Otras dos, cortas
 
 - **Un `.next` a medias** (p. ej. borrar `.next/dev/types` con el server vivo) hace que
   **todas** las rutas den 404, `/` incluida. Se cura con `rm -rf .next`.
 - **`test-results/error-context.md` guarda la contraseña del login en claro.** Está
   gitignorado, pero no lo pegues en una conversación ni en una PR.
+- **El `badge` de una notificación NO admite el icono normal.** Android se queda solo con
+  su canal alfa, así que `/icon-192` (terracota opaco de borde a borde) sale como un
+  cuadrado macizo en la barra de estado. Por eso existe `/badge-96`, transparente. Y `icon`
+  y `badge` son dos imágenes distintas: sin `badge`, Chrome pone su propio logo.
+
+## 22. Un `node_modules` enlazado por junction se VACÍA al del checkout principal
+
+Al abrir un worktree bajo `.claude/worktrees/` no viene `node_modules`, y el atajo instintivo
+para no duplicar ~400 MB —enlazarlo por junction al del checkout principal
+(`cmd /c "mklink /J node_modules ...\Biblioshare\node_modules"`)— es una trampa: `npx tsc`,
+`vitest` y `next build` funcionan varias pasadas, pero en cuanto corre Playwright (que levanta
+su propio `npm run dev` **a través** del enlace) el `npm` resuelve la ruta real y **poda el
+`node_modules` del checkout PRINCIPAL** (411 entradas → 0). El principal queda inservible: `npx
+tsc` responde «This is not the tsc command you are looking for» (se puso a instalar el paquete
+basura `tsc@2.0.4`). Se recupera con `npm ci` (~2 min), pero cuesta media hora de desconcierto.
+
+Regla: **`npm ci` DENTRO del worktree, nunca junction.** Dos árboles independientes, ningún
+estado compartido — es lo único que no vuelve a romperlo. Issue #389.

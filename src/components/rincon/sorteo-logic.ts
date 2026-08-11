@@ -22,7 +22,7 @@ export type SorteoCollection = { id: string; name: string };
 
 export type SorteoFilters = {
   type: "all" | ItemType;
-  dur: "any" | "short" | "med" | "long";
+  dur: "any" | "short" | "med" | "long" | "none";
   state: "any" | "fresh";
   // "all" = toda la biblioteca (comportamiento previo al filtro por colección).
   collection: "all" | string;
@@ -35,10 +35,11 @@ export const DEFAULT_FILTERS: SorteoFilters = {
   collection: "all",
 };
 
-// Tramos del mockup: ‹2 h / 2–5 h / +5 h. Sin estimación → sin bucket (solo
-// entra con el filtro "Cualquiera").
-export function durationBucket(minutes: number | null): "short" | "med" | "long" | null {
-  if (minutes === null) return null;
+// Tramos del mockup: ‹2 h / 2–5 h / +5 h, más "none" para lo que no tiene
+// estimación (libro sin páginas, obra sin datos en TMDB). Con "none" como bucket
+// propio, los cuatro tramos particionan el pool y suman "Cualquiera".
+export function durationBucket(minutes: number | null): "short" | "med" | "long" | "none" {
+  if (minutes === null) return "none";
   if (minutes < 120) return "short";
   if (minutes <= 300) return "med";
   return "long";

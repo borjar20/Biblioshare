@@ -156,6 +156,8 @@ describe("toggleReaction", () => {
       actorId: "actor",
       type: "activity_liked",
       interactionTargetId: "target-pass",
+      // Idempotencia de reacciones (spec item 9): un relike no reavisa.
+      dedupeKey: "reaction:target-pass:actor",
     });
   });
 
@@ -178,6 +180,95 @@ describe("toggleReaction", () => {
     await expect(toggleReaction("hidden-target")).rejects.toThrow(
       "interaction_target_not_found",
     );
+  });
+
+  it("inserta y borra por kind sin tocar otros kinds", async () => {
+    // Fake con estado real de la tabla reactions (a diferencia de
+    // makeActionClient, que no rastrea filtros entre llamadas): dos toggles
+    // consecutivos necesitan ver el resultado del primero.
+    let rows: Array<{ interaction_target_id: string; user_id: string; kind: string }> = [
+      { interaction_target_id: "target-pass", user_id: "actor", kind: "like" },
+    ];
+    function reactionsTable() {
+      const filters: Array<[string, unknown]> = [];
+      const builder = {
+        select() {
+          return builder;
+        },
+        eq(column: string, value: unknown) {
+          filters.push([column, value]);
+          return builder;
+        },
+        async maybeSingle() {
+          const match = rows.find((r) =>
+            filters.every(([c, v]) => (r as Record<string, unknown>)[c] === v),
+          );
+          return { data: match ? { id: "reaction-id" } : null, error: null };
+        },
+        delete() {
+          return {
+            eq(column: string, value: unknown) {
+              filters.push([column, value]);
+              return this;
+            },
+            then(resolve: (v: unknown) => void) {
+              rows = rows.filter(
+                (r) => !filters.every(([c, v]) => (r as Record<string, unknown>)[c] === v),
+              );
+              resolve({ error: null });
+            },
+          };
+        },
+        insert(payload: Record<string, unknown>) {
+          rows.push(payload as { interaction_target_id: string; user_id: string; kind: string });
+          return Promise.resolve({ error: null });
+        },
+      };
+      return builder;
+    }
+    const client = {
+      auth: { getUser: async () => ({ data: { user: { id: "actor" } } }) },
+      from(table: string) {
+        if (table === "interaction_targets") {
+          return {
+            select() {
+              return this;
+            },
+            eq() {
+              return this;
+            },
+            async maybeSingle() {
+              return { data: passTarget, error: null };
+            },
+          };
+        }
+        if (table === "reactions") return reactionsTable();
+        throw new Error(`Tabla inesperada: ${table}`);
+      },
+    };
+    mocks.createClient.mockResolvedValue(client);
+
+    await toggleReaction("target-pass", "fire");
+    expect(rows).toContainEqual({
+      interaction_target_id: "target-pass",
+      user_id: "actor",
+      kind: "fire",
+    });
+    expect(rows).toContainEqual({
+      interaction_target_id: "target-pass",
+      user_id: "actor",
+      kind: "like",
+    });
+
+    await toggleReaction("target-pass", "fire");
+    expect(rows).not.toContainEqual(
+      expect.objectContaining({ kind: "fire" }),
+    );
+    expect(rows).toContainEqual({
+      interaction_target_id: "target-pass",
+      user_id: "actor",
+      kind: "like",
+    });
   });
 });
 
@@ -214,6 +305,8 @@ describe("addComment", () => {
         interaction_target_id: "target-checkpoint",
         author_id: "actor",
         body: "Llegué",
+        parent_id: null,
+        is_spoiler: false,
       },
     ]);
     expect(mocks.notifyMentions).toHaveBeenCalledWith(fake.client, {

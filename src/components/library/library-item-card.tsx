@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { LibraryItem } from "@/lib/library/types";
 import { itemHref } from "@/lib/catalog/item-href";
+import { formatDots } from "@/lib/rating/dots";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { toggleFavorite } from "@/lib/library/favorite-actions";
@@ -117,18 +118,22 @@ export function LibraryItemCard({
         )}
       </div>
 
-      <Link href={itemHref(item.itemType, item.itemId)} className="block">
-        <span className="line-clamp-2 min-h-[2.5rem] font-serif text-sm leading-tight font-semibold text-foreground">
-          {item.title}
-        </span>
-      </Link>
-
-      {/* Metadatos de altura FIJA (autor + nota/relecturas). Reservar el alto
-          —aunque el ítem no traiga datos— es lo que mantiene la rejilla sin
-          saltos entre tarjetas con y sin metadatos. Editorial y barra de
+      {/* Título + metadatos (autor + nota/relecturas) en un solo bloque
+          compacto. SIN alturas reservadas (`min-h-[2.5rem]` en el título,
+          `h-8` aquí): reservaban dos líneas de título y dos de metadatos
+          SIEMPRE, y en la mayoría de tarjetas —título de una línea, sin
+          nota— eso era un pasillo en blanco entre el título y el autor. La
+          rejilla no las necesitaba para alinearse: las filas de CSS grid ya
+          igualan su alto y las portadas son `aspect-[2/3]`, así que las
+          cubiertas de una misma fila quedan a ras igual. Editorial y barra de
           progreso quedan en la ficha; el estado ya lo da el badge de la
           portada. */}
-      <div className="flex h-8 flex-col justify-start gap-0.5 overflow-hidden">
+      <div className="flex flex-col gap-0.5">
+        <Link href={itemHref(item.itemType, item.itemId)} className="block">
+          <span className="line-clamp-2 font-serif text-sm leading-tight font-semibold text-foreground">
+            {item.title}
+          </span>
+        </Link>
         {item.subtitle && (
           <span className="line-clamp-1 font-serif text-xs italic text-muted-foreground">
             {item.subtitle}
@@ -140,7 +145,11 @@ export function LibraryItemCard({
               item.rereadCount > 0
                 ? t(`rereadCount.${item.itemType}`, { count: item.rereadCount })
                 : null,
-              item.rating !== null ? `★ ${item.rating}` : null,
+              // La nota se guarda 1–10 pero se ENSEÑA sobre 5 en toda la app
+              // (RatingDots, media de comunidad, /estadisticas). Esta línea era
+              // el único sitio que escupía el valor crudo: un «★ 10» aquí y
+              // cinco dots llenos en la ficha eran la misma nota.
+              item.rating !== null ? `★ ${formatDots(item.rating)}` : null,
             ]
               .filter(Boolean)
               .join(" · ")}

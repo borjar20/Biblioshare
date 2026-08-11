@@ -4,6 +4,11 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
 import { archiveActivity } from "@/lib/clubs/activities/core";
+import {
+  parseEventConfig,
+  type LanzamientoConfig,
+  type FechaDestacadaConfig,
+} from "@/lib/clubs/activities/event-types";
 import { EventForm } from "./propose/event-form";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +24,15 @@ export function EventCardActions({ activity }: { activity: ClubActivity }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // La tarjeta SÍ tiene `activity.config` (a diferencia del resto de props
+  // hidratadas de la ficha): hay que reenviarlo al formulario tal cual, o
+  // `submit()` reconstruye un config vacío y `updateClubEvent` lo escribe --
+  // editar un lanzamiento/fecha destacada desde la tarjeta borraría su
+  // obra/relaciones en silencio. El título de la obra queda vacío a propósito
+  // (la tarjeta no la tiene hidratada, solo itemType/itemId) -- issue #547.
+  const cfg = parseEventConfig(activity.eventType ?? "encuentro", activity.config);
+  const lan = activity.eventType === "lanzamiento" ? (cfg as LanzamientoConfig) : null;
+
   if (editing) {
     return (
       <div className="w-full">
@@ -30,6 +44,21 @@ export function EventCardActions({ activity }: { activity: ClubActivity }) {
             description: activity.description,
             startsOn: activity.startsOn,
           }}
+          activityEventType={activity.eventType ?? "encuentro"}
+          activityWork={
+            lan?.item
+              ? { itemType: lan.item.itemType, itemId: lan.item.itemId, title: "", coverUrl: null }
+              : undefined
+          }
+          activityReleaseType={lan?.releaseType ?? undefined}
+          activityPlatform={lan?.platform ?? undefined}
+          activityRegion={lan?.region}
+          activityAllDay={activity.eventType === "lanzamiento" ? lan?.allDay : undefined}
+          activityRelations={
+            activity.eventType === "fecha_destacada"
+              ? (cfg as FechaDestacadaConfig).relations
+              : undefined
+          }
           onDone={() => setEditing(false)}
           onCancel={() => setEditing(false)}
         />

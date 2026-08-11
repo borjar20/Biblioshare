@@ -66,12 +66,10 @@ const BOOK_FORMAT_LABELS: Record<BookFormat, string> = {
   hardcover: "Tapa dura",
 };
 
-// Comparador de posición (EPIC-05 Bloque H1) — solo book/series tienen
-// sub-posición significativa (ver comentario de MoviePosition arriba); un
-// buddy_read ya excluye movie, así que el caso `0` de abajo nunca decide nada
-// en la práctica. Duplicado deliberadamente en SQL (RPC confirm_checkpoint)
-// como revalidación autoritativa de servidor — este comparador en TS solo
-// alimenta la sugerencia no autoritativa en la UI.
+// Comparador de posición — solo book/series tienen sub-posición significativa
+// (ver comentario de MoviePosition arriba). Ya no participa en los hitos de
+// buddy_read (autodeclarados desde #471: las páginas no son comparables entre
+// ediciones); hoy solo ordena las notas de un pase (src/lib/notes/sort.ts).
 export function comparePositions(itemType: ItemType, a: Position, b: Position): number {
   if (itemType === "book") {
     const ap = "page" in a && a.page !== undefined ? a.page : -1;
@@ -87,8 +85,4 @@ export function comparePositions(itemType: ItemType, a: Position, b: Position): 
     return aEpisode - bEpisode;
   }
   return 0;
-}
-
-export function hasReachedPosition(itemType: ItemType, current: Position, target: Position): boolean {
-  return comparePositions(itemType, current, target) >= 0;
 }

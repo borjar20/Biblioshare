@@ -41,7 +41,7 @@ export function NoteCard({
       {showItem && (
         <Link
           href={itemHref(note.itemType, note.itemId)}
-          className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase hover:text-accent"
+          className="label-section hover:text-accent"
         >
           {note.itemTitle ?? t("notebookUnknownWork")}
         </Link>

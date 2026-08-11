@@ -253,7 +253,7 @@ export async function SagaInfo({
   return (
     <div className="flex flex-col gap-5 px-4 pb-10">
       <section>
-        <h2 className="mb-2 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+        <h2 className="mb-2 label-section">
           {t("synopsis")}
         </h2>
         <p className="text-[13.5px] leading-relaxed text-foreground sm:columns-2 sm:gap-11">
@@ -282,7 +282,7 @@ export async function SagaInfo({
             fila no cabe; el shrink-0 del bloque de botones impedía encoger y
             desbordaba la página entera en horizontal. */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+          <h2 className="label-section">
             {t("itemsTitle")}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
@@ -381,7 +381,7 @@ export async function SagaInfo({
           porque un bloque sin sus obras no dice nada. */}
       {hasVisibleFreeSection && (
         <section>
-          <h2 className="mb-3 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+          <h2 className="mb-3 label-section">
             {t("freeSection")}
           </h2>
           <div className="flex flex-col gap-5">

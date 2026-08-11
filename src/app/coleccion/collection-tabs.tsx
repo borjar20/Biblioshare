@@ -30,8 +30,7 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
     // una barra de scroll fantasma al desbordar el borde inferior 1px.
     <div className="flex gap-6 border-b border-border">
       {COLLECTION_TABS.map((tab) => {
-        const href =
-          tab === "colecciones" ? "/coleccion" : `/coleccion?tab=${tab}`;
+        const href = tab === "todo" ? "/coleccion" : `/coleccion?tab=${tab}`;
         const isActive = tab === active;
         return (
           <Link

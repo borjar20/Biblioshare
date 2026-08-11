@@ -114,7 +114,7 @@ export function ClosePassSheet({
 
         <div className="flex flex-col gap-4 px-5 py-4">
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("finishedOn")}
             </span>
             <input
@@ -127,10 +127,10 @@ export function ClosePassSheet({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("rating")}
             </span>
-            <RatingDots value={rating} onChange={setRating} />
+            <RatingDots value={rating} onChange={setRating} itemType={itemType} />
             {/* RatingDots es solo presentación: la nota real viaja al
                 formulario por este input oculto (1-10, o vacío = sin
                 puntuar, que closePass acepta igual que un cierre sin nota). */}
@@ -138,7 +138,7 @@ export function ClosePassSheet({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+            <span className="label-section">
               {t("review")}
             </span>
             <div className="relative">

@@ -4,14 +4,8 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { FeedEntry } from "@/lib/social/feed";
 import { loadMoreProfileFeed } from "@/lib/social/feed-actions";
+import { bucketProfileFeed } from "@/lib/social/profile-feed-buckets";
 import { FeedItem } from "./feed-item";
-
-// Agrupa por día natural. La clave es la parte de fecha (los eventos "added"
-// traen timestamp completo; los demás, date), para no partir un mismo día por
-// husos horarios.
-function dayKey(eventDate: string): string {
-  return eventDate.slice(0, 10);
-}
 
 // La Actividad del perfil (plan 05, P4/P5): el mismo feed que ve un visitante,
 // agrupado por día — cada tarjeta se despacha con FeedItem, igual que el feed
@@ -65,23 +59,18 @@ export function ProfileActivityFeed({
     });
   }
 
-  // Agrupación en orden: los eventos ya vienen ordenados por fecha desc, así
-  // que basta recorrerlos y abrir un grupo nuevo cuando cambia el día.
-  const groups: { key: string; entries: FeedEntry[] }[] = [];
-  for (const entry of events) {
-    const key = dayKey(entry.eventDate);
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) last.entries.push(entry);
-    else groups.push({ key, entries: [entry] });
-  }
+  // Bucketiza por día natural. Reparte las tarjetas de altas que abarcan 2 días
+  // (person-group `added`) en un sub-grupo por día, para que las altas de ayer
+  // caigan bajo "Ayer" y no queden ocultas bajo "Hoy" (#348).
+  const groups = bucketProfileFeed(events);
 
   return (
     <div className="flex flex-col gap-6">
       {groups.map((group) => (
-        <div key={group.key} className="flex flex-col gap-3">
+        <div key={group.key} className="flex flex-col gap-3 max-sm:gap-0 max-sm:[&>article]:rounded-none max-sm:[&>article]:border-x-0 max-sm:[&>article]:border-t-0 max-sm:[&>article]:shadow-none max-sm:[&>article:last-of-type]:border-b-0">
           <h5
             suppressHydrationWarning
-            className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase"
+            className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase max-sm:mb-1.5"
           >
             {labelFor(group.key)}
           </h5>
@@ -91,11 +80,10 @@ export function ProfileActivityFeed({
             // propio dueño) además de "person" sueltos — FeedItem despacha
             // por verbo y cubre ambos, a diferencia del FeedCard viejo que
             // solo sabía pintar "person" (los grupos quedaban invisibles
-            // aquí). Sin `hideActor`: ni Colección ni Avances lo soportan
-            // (siempre pintan su propio actor), así que esta vista ya no
-            // oculta el avatar del dueño — el encabezado del día basta para
-            // dar contexto de todos modos.
-            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
+            // aquí). `hideActor`: todas las tarjetas son del dueño del perfil,
+            // así que se oculta su avatar+nombre repetido en cada cabecera y
+            // se capitaliza el verbo (#302).
+            <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} hideActor />
           ))}
         </div>
       ))}
