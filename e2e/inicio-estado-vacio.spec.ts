@@ -136,19 +136,32 @@ test.describe("Inicio · estados de la columna personal", () => {
     await expect(page.getByRole("button", { name: /^empezar$/i }).first()).toBeVisible();
   });
 
-  test("estado 2: con cola ve 'próxima lectura' y 'Empezar' lo pasa a en curso", async ({ page }) => {
+  test("estado 2: con cola ve el sorteo y el sorteo pasa un pase a en curso", async ({ page }) => {
     const user = await createOnboardedUser(`${USER_PREFIX}p${Date.now()}`.slice(0, 20));
     await seedBookPass(user.id, e2eBookId("a"), "planned");
     await loginAs(page, user.email);
 
+    // La próxima lectura ya no destaca un pendiente con "Empezar": la decide el
+    // sorteo "Sacar un lomo" (la misma ceremonia del Rincón, aquí en el Inicio).
     await expect(page.getByRole("heading", { name: /¿qué te apetece hoy\?/i })).toBeVisible();
-    await expect(page.getByText(/lo tienes guardado para más tarde/i)).toBeVisible();
+    const draw = page.getByRole("button", { name: /sacar un lomo/i });
+    await expect(draw).toBeVisible();
 
-    await page.getByRole("button", { name: /^empezar$/i }).click();
+    await draw.click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
 
-    // Tras empezar, el bloque pasa a "En curso" (estado 1).
-    await expect(page.getByRole("heading", { name: /¿qué has disfrutado hoy\?/i })).toBeVisible({ timeout: 15_000 });
-    // Y el efecto real: el pase queda in_progress.
+    await sheet.getByRole("button", { name: /sorpréndeme/i }).click();
+    // Con un solo pendiente la ruleta revela al instante (sin animación larga).
+    const cta = sheet.getByRole("button", {
+      name: /empezar a leer|ver esta noche|empezar la t1/i,
+    });
+    await expect(cta).toBeVisible({ timeout: 15_000 });
+
+    await cta.click();
+    await expect(sheet.getByRole("button", { name: /en curso/i })).toBeVisible();
+
+    // El efecto real: el pase queda in_progress.
     await expect
       .poll(async () => {
         const rows = (await (
