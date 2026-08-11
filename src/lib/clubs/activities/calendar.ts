@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityKind } from "./core";
+import type { EventType } from "./event-types";
 import {
   buildCalendarMarks,
   type CalendarActivityRow,
@@ -52,7 +53,9 @@ export async function getClubCalendarMarks(
   const [actividades, hitos, seguidos] = await Promise.all([
     supabase
       .from("club_activities")
-      .select("id, kind, title, status, starts_on, ends_on", { count: "exact" })
+      .select("id, kind, title, status, starts_on, ends_on, event_type, config", {
+        count: "exact",
+      })
       .eq("club_id", clubId)
       .in("status", ["active", "finished"]),
     supabase
@@ -101,6 +104,9 @@ export async function getClubCalendarMarks(
       status: row.status,
       startsOn: row.starts_on,
       endsOn: row.ends_on,
+      // Igual que hace core.ts: event_type solo significa algo en un evento.
+      eventType: row.kind === "evento" ? (row.event_type as EventType) : null,
+      config: row.config,
     }),
   );
 

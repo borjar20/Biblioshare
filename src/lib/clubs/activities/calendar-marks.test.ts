@@ -21,6 +21,8 @@ function actividad(over: Partial<CalendarActivityRow> = {}): CalendarActivityRow
     status: "active",
     startsOn: null,
     endsOn: null,
+    eventType: null,
+    config: null,
     ...over,
   };
 }
@@ -217,6 +219,89 @@ describe("buildCalendarMarks", () => {
       SLUG,
     );
     expect(marks.map((m) => m.markKind)).toEqual(["inicio", "hito", "evento", "cierre"]);
+  });
+
+  it("un lanzamiento con ítem propaga tipo y medio", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({
+          kind: "evento",
+          title: "Dune 3",
+          startsOn: "2026-07-04",
+          eventType: "lanzamiento",
+          config: { item: { itemType: "movie", itemId: "m1" }, allDay: true },
+        }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].eventType).toBe("lanzamiento");
+    expect(marks[0].medium).toBe("movie");
+  });
+
+  it("un lanzamiento SIN ítem deja el medio a null — config.item es nullable", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({
+          kind: "evento",
+          startsOn: "2026-07-04",
+          eventType: "lanzamiento",
+          config: { allDay: true },
+        }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].eventType).toBe("lanzamiento");
+    expect(marks[0].medium).toBeNull();
+  });
+
+  it("un encuentro no tiene medio", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04", eventType: "encuentro", config: {} })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].eventType).toBe("encuentro");
+    expect(marks[0].medium).toBeNull();
+  });
+
+  it("una actividad NO-evento deja los dos campos a null", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ startsOn: "2026-07-20", endsOn: "2026-07-31" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks.map((m) => m.eventType)).toEqual([null, null]);
+    expect(marks.map((m) => m.medium)).toEqual([null, null]);
+  });
+
+  it("un HITO de una actividad evento tampoco lleva tipo ni medio", () => {
+    // La marca es del checkpoint, no del evento: heredar su tipo la pintaría
+    // del color del lanzamiento en vez del de hito.
+    const marks = buildCalendarMarks(
+      [],
+      [
+        {
+          id: "h1",
+          label: "Capítulo 5",
+          dueOn: "2026-07-30",
+          activityId: "a1",
+          activityTitle: "Un evento raro",
+          activityKind: "evento",
+          activityStatus: "active",
+        } satisfies CalendarCheckpointRow,
+      ],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].markKind).toBe("hito");
+    expect(marks[0].eventType).toBeNull();
+    expect(marks[0].medium).toBeNull();
   });
 });
 

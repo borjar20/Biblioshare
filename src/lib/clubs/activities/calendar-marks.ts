@@ -1,5 +1,8 @@
 import { daysInMonth, shiftMonth } from "@/lib/stats/dates";
 import type { ActivityKind } from "./core";
+import type { ItemType } from "@/lib/catalog/types";
+import type { Json } from "@/lib/supabase/database.types";
+import { parseEventConfig, type EventType, type LanzamientoConfig } from "./event-types";
 
 // Una sola forma para las TRES fuentes de fecha de un club: el due_on de los
 // hitos, el starts_on de los eventos y la ventana starts_on/ends_on de las
@@ -36,6 +39,15 @@ export type CalendarMark = {
    * siguen.
    */
   followedByViewer: boolean;
+  /**
+   * Los dos SOLO están puestos en una marca de evento (markKind === "evento").
+   * En hito/inicio/cierre son null, incluido el hito de una actividad evento:
+   * esa marca es del checkpoint, y heredar el tipo del evento la pintaría del
+   * color equivocado.
+   */
+  eventType: EventType | null;
+  /** El medio de un lanzamiento, de `config.item.itemType`. null si no es lanzamiento o no tiene ítem. */
+  medium: ItemType | null;
 };
 
 export type CalendarActivityRow = {
@@ -45,6 +57,8 @@ export type CalendarActivityRow = {
   status: string;
   startsOn: string | null;
   endsOn: string | null;
+  eventType: EventType | null;
+  config: Json | null;
 };
 
 export type CalendarCheckpointRow = {
@@ -92,6 +106,16 @@ export function buildCalendarMarks(
     // Un evento enlaza a su ficha propia, que NO es /actividad/[id].
     if (activity.kind === "evento") {
       if (activity.startsOn) {
+        // El medio sale del parser que ya existe, no de un segundo parser aquí:
+        // `config` es opaca a la BD y `parseEventConfig` es su única puerta
+        // tipada. Dos parsers sobre la misma jsonb son dos verdades.
+        const eventType = activity.eventType;
+        const config = eventType ? parseEventConfig(eventType, activity.config) : null;
+        const medium =
+          eventType === "lanzamiento"
+            ? ((config as LanzamientoConfig).item?.itemType ?? null)
+            : null;
+
         marks.push({
           date: activity.startsOn,
           markKind: "evento",
@@ -102,6 +126,8 @@ export function buildCalendarMarks(
           href: `/club/${clubSlug}/evento/${activity.id}`,
           past: activity.startsOn < today,
           followedByViewer: followedEventIds.has(activity.id),
+          eventType,
+          medium,
         });
       }
       // Su ends_on se ignora SIEMPRE: el kind no lo usa.
@@ -121,6 +147,8 @@ export function buildCalendarMarks(
         href,
         past: activity.startsOn < today,
         followedByViewer: false,
+        eventType: null,
+        medium: null,
       });
     }
     if (activity.endsOn) {
@@ -134,6 +162,8 @@ export function buildCalendarMarks(
         href,
         past: activity.endsOn < today,
         followedByViewer: false,
+        eventType: null,
+        medium: null,
       });
     }
   }
@@ -155,6 +185,8 @@ export function buildCalendarMarks(
           : `/club/${clubSlug}/actividad/${checkpoint.activityId}`,
       past: checkpoint.dueOn < today,
       followedByViewer: false,
+      eventType: null,
+      medium: null,
     });
   }
 
