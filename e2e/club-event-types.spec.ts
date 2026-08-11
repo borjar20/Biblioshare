@@ -170,8 +170,13 @@ async function abrirEventoEnAsistente(page: Page, titulo: string) {
   await page.getByRole("button", { name: /^continuar$/i }).click();
 }
 
-const seccionEventos = (page: Page) =>
-  page.locator("section").filter({ has: page.getByRole("heading", { name: "Fechas señaladas" }) });
+// Desde la spec 2026-08-11 un evento ya no aparece en la pestaña Actividades:
+// vive en el calendario (marca coloreada por tipo/medio) y en su ficha propia.
+// Se ancla por el encabezado "Agenda", nunca con getByRole("complementary"):
+// ClubShell pinta su propio <aside> de sidebar, así que ese rol casa DOS veces
+// y el modo estricto de Playwright aborta.
+const agenda = (page: Page) =>
+  page.locator("aside").filter({ has: page.getByRole("heading", { name: "Agenda" }) });
 
 // ---------------------------------------------------------------------------
 
@@ -200,18 +205,34 @@ test.describe("tipos de evento de club", () => {
       await page.getByLabel(/^modalidad$/i).selectOption("presencial");
       await page.getByRole("button", { name: /^crear evento$/i }).click();
 
-      // Se ve DENTRO de su grupo (misma cautela que club-evento.spec.ts: no
-      // basta con que el texto exista en cualquier parte de la página).
-      await expect(seccionEventos(page).getByText(titulo)).toBeVisible({ timeout: 15000 });
+      // El asistente se cierra y el evento NO aparece en esta pestaña -- desde
+      // la spec 2026-08-11 vive en el calendario y en su ficha propia, no en un
+      // grupo "Fechas señaladas" de Actividades. Se espera PRIMERO algo
+      // positivo (que el composer siga pintado, ya cerrado) para que la
+      // ausencia no sea trivialmente cierta por no haber cargado nada todavía.
+      await expect(
+        page.getByRole("button", { name: /proponer actividad/i }).first(),
+      ).toBeVisible();
+      await expect(page.getByText(titulo)).toHaveCount(0);
 
       // Persistido de verdad, con el TIPO correcto -- no solo pintado. Esta es
       // la aserción que protege contra un submit() que fuerce siempre
       // eventType="encuentro": aquí no lo notaría (es el default), pero si esa
       // regresión existiera, los dos tests siguientes sí quedarían en rojo.
+      // Se comprueba ANTES de mirar el calendario: pollActividad reintenta (con
+      // timeout) hasta que REST refleja la escritura, y una lectura server-side
+      // fresca como la del calendario corre la MISMA carrera de replicación que
+      // REST -- comprobarlo primero evita que el goto de abajo llegue antes de
+      // que la fila exista de verdad.
       const fila = await pollActividad(club.id, titulo);
       expect(fila.event_type).toBe("encuentro");
       expect(fila.modality).toBe("presencial");
       expect(fila.starts_at).not.toBeNull();
+
+      // Se ve en la agenda del calendario, del mes en que se creó (no basta con
+      // que el texto exista en cualquier parte de la página).
+      await page.goto(`/club/${club.slug}/calendario?mes=2027-05`);
+      await expect(agenda(page).getByText(titulo)).toBeVisible({ timeout: 15000 });
 
       console.log("ENCUENTRO OK:", fila.id);
     } finally {
@@ -253,8 +274,11 @@ test.describe("tipos de evento de club", () => {
       await page.getByLabel(/^fecha$/i).fill("2027-06-15");
       await page.getByRole("button", { name: /^crear evento$/i }).click();
 
-      await expect(seccionEventos(page).getByText(titulo)).toBeVisible({ timeout: 15000 });
-
+      // Persistido de verdad ANTES de mirar el calendario: pollActividad
+      // reintenta (con timeout) hasta que REST refleja la escritura, y una
+      // lectura server-side fresca como la del calendario corre la MISMA
+      // carrera de replicación que REST -- comprobar el calendario primero
+      // deja la comprobación expuesta a esa carrera.
       const fila = await pollActividad(club.id, titulo);
       expect(fila.event_type).toBe("lanzamiento");
       const config = fila.config as {
@@ -267,6 +291,18 @@ test.describe("tipos de evento de club", () => {
       expect(config.releaseType).toBe("estreno_temporada");
       expect(config.platform).toBe("netflix");
       expect(config.allDay).toBe(true);
+
+      // El asistente se cierra; el evento vive ahora en el calendario, no en la
+      // pestaña Actividades (ver comentario de la agenda arriba).
+      await page.goto(`/club/${club.slug}/calendario?mes=2027-06`);
+      const filaAgenda = agenda(page).locator("li").filter({ hasText: titulo });
+      await expect(filaAgenda).toBeVisible({ timeout: 15000 });
+      // El chip dice tipo Y medio: "Lanzamiento · Serie". Se comprueba el
+      // TEXTO, no la clase de Tailwind que lo colorea -- la clase es un
+      // detalle de implementación, el texto es lo que hace la distinción
+      // accesible (un lanzamiento de serie vs. uno de libro/película solo se
+      // diferencian por él).
+      await expect(filaAgenda.getByText("Lanzamiento · Serie")).toBeVisible();
 
       // La ficha: la obra enlazada y el tipo (releaseType + plataforma) se
       // ven, y -- por ser «todo el día» -- sin hora.
@@ -322,8 +358,11 @@ test.describe("tipos de evento de club", () => {
       await page.getByLabel(/^fecha$/i).fill("2027-07-04");
       await page.getByRole("button", { name: /^crear evento$/i }).click();
 
-      await expect(seccionEventos(page).getByText(titulo)).toBeVisible({ timeout: 15000 });
-
+      // Persistido de verdad ANTES de mirar el calendario: pollActividad
+      // reintenta (con timeout) hasta que REST refleja la escritura, y una
+      // lectura server-side fresca como la del calendario corre la MISMA
+      // carrera de replicación que REST -- comprobar el calendario primero
+      // deja la comprobación expuesta a esa carrera.
       const fila = await pollActividad(club.id, titulo);
       expect(fila.event_type).toBe("fecha_destacada");
       const config = fila.config as {
@@ -332,6 +371,11 @@ test.describe("tipos de evento de club", () => {
       };
       expect(config.relations).toEqual([{ kind: "item", itemType: "series", itemId: serie.id }]);
       expect(config.allDay).toBe(true);
+
+      // El asistente se cierra; el evento vive ahora en el calendario, no en la
+      // pestaña Actividades (ver comentario de la agenda arriba).
+      await page.goto(`/club/${club.slug}/calendario?mes=2027-07`);
+      await expect(agenda(page).getByText(titulo)).toBeVisible({ timeout: 15000 });
 
       // La ficha muestra el enlace a la obra.
       await page.goto(`/club/${club.slug}/evento/${fila.id}`);

@@ -43,11 +43,13 @@ async function crearUsuario(request: APIRequestContext, username: string) {
 }
 
 // Un moderador marca una fecha en el club. Se comprueba que se crea de verdad
-// (no solo que se pinte), que NO navega a ninguna ficha, que su URL de detalle
-// devuelve 404 (con control positivo), y que EDITAR/ARCHIVAR desde la tarjeta
-// -- controles solo de moderador+ -- funcionan de verdad contra la RPC con un
-// auth.uid() real. Se autolimpia.
-test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad", async ({
+// (no solo que se pinte), que NO aparece en la pestaña Actividades y SÍ en el
+// calendario (spec 2026-08-11: event-card-actions.tsx se borró, un evento vive
+// ahora en el calendario y en su ficha propia), que la ruta genérica de
+// actividad devuelve 404 para él (con control positivo), y que EDITAR/CANCELAR
+// desde la FICHA -- controles solo de moderador+, en EventModeration -- funcionan
+// de verdad contra la RPC con un auth.uid() real. Se autolimpia.
+test("evento: se crea, no aparece en Actividades, se ve en el calendario, y se modera desde su ficha", async ({
   page,
   request,
 }) => {
@@ -111,13 +113,29 @@ test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad"
     expect(creado!.status).toBe("active"); // nace activo, no propuesto
     expect(creado!.starts_on).toBe("2027-03-15");
 
-    // La tarjeta se ve DENTRO de su grupo, no en cualquier parte de la página: si
-    // una regresión la colara en "Activas", este test seguiría en verde con
-    // getByText sueltos mientras exista cualquier otro evento en el DOM.
-    const seccionEventos = page
-      .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Fechas señaladas" }) });
-    await expect(seccionEventos.getByText(titulo)).toBeVisible({ timeout: 15000 });
+    // NUEVO (spec 2026-08-11): el evento salió de la pestaña Actividades por
+    // completo -- ni tarjeta, ni grupo "Fechas señaladas": ese grupo ya no
+    // existe, EventCardActions se borró con él. Se espera PRIMERO algo
+    // positivo (que el composer siga ahí) y SOLO ENTONCES se afirma la
+    // ausencia -- afirmarla como primera acción tras el goto sería
+    // trivialmente cierta si la página aún no hubiera pintado nada.
+    await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
+    await expect(
+      page.getByRole("button", { name: /proponer actividad/i }).first(),
+    ).toBeVisible();
+    await expect(page.getByText(titulo)).toHaveCount(0);
+
+    // ...y SÍ está en el calendario, dentro de la agenda del mes en que se
+    // creó (no basta con que el texto exista en cualquier parte de la
+    // página). Se ancla por el encabezado "Agenda", nunca con
+    // getByRole("complementary"): ClubShell pinta su propio <aside> de
+    // sidebar, así que ese rol casa DOS veces y el modo estricto de
+    // Playwright aborta.
+    await page.goto(`/club/${CLUB_SLUG}/calendario?mes=2027-03`);
+    const agenda = page
+      .locator("aside")
+      .filter({ has: page.getByRole("heading", { name: "Agenda" }) });
+    await expect(agenda.getByText(titulo)).toBeVisible({ timeout: 15000 });
 
     // ...y también en el resumen del club, ahora en la tira unificada
     // "Próximo" (el calendario fundió "Próximos hitos" y "Próximas fechas").
@@ -141,32 +159,22 @@ test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad"
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Próximo" }) });
     await expect(seccionProximo.getByText(titulo)).toBeVisible({ timeout: 15000 });
-    await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
 
-    // ...y su TARJETA no enlaza a /actividad/[id].
+    // ...y su MARCA en la agenda SÍ enlaza, de verdad, a su propia ficha: se
+    // clica de verdad, no solo se mira el href, para ejercer el mismo camino
+    // que seguiría alguien navegando.
     //
-    // Ojo con leer esto como «un evento no tiene ficha»: desde la spec 2026-08-04
-    // SÍ la tiene, en /club/[slug]/evento/[id] (ver club-evento-seguimiento.spec.ts).
-    // Lo que sigue siendo cierto, y es lo que protege este bloque, es que la ruta
-    // GENÉRICA de actividad no sirve eventos: hasDetailView sigue en false porque
-    // ActivityDetailView está montado sobre el pool de ítems, los participantes y
-    // las opiniones, y un evento no tiene ninguna de las tres.
-    //
-    // Se comprueba que la URL no cambia, no solo que falte un <a>: lo que rompería
-    // de verdad es que el envoltorio condicional se invierta y la tarjeta vuelva a
-    // ser un Link a /actividad/.
-    await expect(
-      page.locator(`a[href*="/actividad/"]`).filter({ hasText: titulo }),
-    ).toHaveCount(0);
-    const urlAntes = page.url();
-    await page.getByText(titulo).first().click();
-    // Comprobación determinista de que no navegó: en vez de un sleep a ciegas, se
-    // espera (con el auto-reintento normal de Playwright) a que un control que
-    // SOLO existe en la vista de actividades siga presente.
-    await expect(
-      page.getByRole("button", { name: /proponer actividad/i }).first(),
-    ).toBeVisible();
-    expect(page.url()).toBe(urlAntes);
+    // Ojo con leer el 404 de más abajo como «un evento no tiene ficha»: desde
+    // la spec 2026-08-04 SÍ la tiene, en /club/[slug]/evento/[id] (ver
+    // club-evento-seguimiento.spec.ts). Lo que protege ese 404 es que la ruta
+    // GENÉRICA de actividad no sirve eventos: hasDetailView sigue en false
+    // porque ActivityDetailView está montado sobre el pool de ítems, los
+    // participantes y las opiniones, y un evento no tiene ninguna de las tres.
+    await page.goto(`/club/${CLUB_SLUG}/calendario?mes=2027-03`);
+    await expect(agenda.getByText(titulo)).toBeVisible({ timeout: 15000 });
+    await agenda.getByText(titulo).click();
+    await expect(page).toHaveURL(new RegExp(`/club/${CLUB_SLUG}/evento/${eventoId}$`));
+    await expect(page.getByRole("heading", { name: titulo })).toBeVisible();
 
     // Y la ruta genérica de actividad, pedida a mano, sigue dando 404 para un
     // evento (su ficha propia vive en otra ruta).
@@ -211,12 +219,12 @@ test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad"
     // ── Editar (Gap 1): updateClubEvent/update_club_event nunca había corrido
     // con un moderador autenticado de verdad -- solo por conexión directa a la
     // BD, donde auth.uid() es NULL y has_min_club_role nunca se evaluó de
-    // verdad. Aquí se ejerce el camino real: UI -> Server Action -> RPC. ──
-    await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
-    const seccionEventosEdit = page
-      .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Fechas señaladas" }) });
-    await seccionEventosEdit.getByRole("button", { name: /^editar evento$/i }).click();
+    // verdad. Aquí se ejerce el camino real: UI -> Server Action -> RPC. Vive
+    // en la FICHA del evento (EventModeration), no en una tarjeta de la
+    // pestaña Actividades: event-card-actions.tsx se borró con la spec
+    // 2026-08-11 y ese es ahora el ÚNICO sitio de moderación. ──
+    await page.goto(`/club/${CLUB_SLUG}/evento/${eventoId}`);
+    await page.getByRole("button", { name: /^editar evento$/i }).click();
 
     const tituloEditado = `e2e evento editado ${Date.now()}`;
     await page.getByLabel(/^título$/i).fill(tituloEditado);
@@ -239,56 +247,56 @@ test("evento: se crea, se edita, se archiva y su tarjeta no enlaza a /actividad"
       )
       .toBe(tituloEditado);
     expect(editado!.starts_on).toBe("2027-04-20");
-    expect(editado!.status).toBe("active"); // editar no cambia el estado
+    expect(editado!.status).toBe("active"); // editar no cambia el estado ni el status
 
-    // Y en pantalla, dentro del mismo grupo: el título viejo ya no está, el
+    // Y en pantalla, en la propia ficha: el título viejo ya no está, el
     // nuevo sí.
-    await expect(seccionEventosEdit.getByText(tituloEditado)).toBeVisible({
+    await expect(page.getByRole("heading", { name: tituloEditado })).toBeVisible({
       timeout: 15000,
     });
-    await expect(seccionEventosEdit.getByText(titulo, { exact: true })).toHaveCount(0);
+    await expect(page.getByText(titulo, { exact: true })).toHaveCount(0);
 
-    // ── Archivar (Gap 1): mismo motivo -- archiveActivity/archive_club_activity
-    // gateado por has_min_club_role, ejercido aquí con un auth.uid() real. ──
-    await seccionEventosEdit.getByRole("button", { name: /^archivar$/i }).click();
+    // ── Cancelar (Gap 1, sustituye a "archivar"): un evento ya no se archiva
+    // -- ese grupo desapareció de la pestaña Actividades junto con el resto de
+    // event-card-actions.tsx. Lo equivalente hoy es DECLARAR el evento
+    // cancelado (columna `event_state`), gestionado por
+    // setClubEventState/set_club_event_state y gateado igual por
+    // has_min_club_role. Se ejerce igual que editar: con un auth.uid() real. ──
+    await page.getByRole("button", { name: /^cancelar evento$/i }).click();
 
-    let archivado: { status: string } | undefined;
+    let cancelado: { event_state: string; status: string } | undefined;
     await expect
       .poll(
         async () => {
           const res = await request.get(
-            `${SUPABASE_URL}/rest/v1/club_activities?id=eq.${eventoId}&select=status`,
+            `${SUPABASE_URL}/rest/v1/club_activities?id=eq.${eventoId}&select=event_state,status`,
             { headers },
           );
-          [archivado] = await res.json();
-          return archivado?.status ?? null;
+          [cancelado] = await res.json();
+          return cancelado?.event_state ?? null;
         },
         { timeout: 15000 },
       )
-      .toBe("archived");
+      .toBe("cancelado");
+    // Cancelar declara un ESTADO, no archiva la fila: `status` se queda
+    // "active". Si esta afirmación se pusiera roja, alguien habría fundido
+    // otra vez los dos conceptos -- mismo bug de fondo que el comentario de
+    // arriba en "editar no cambia el estado ni el status".
+    expect(cancelado!.status).toBe("active");
 
-    // La tarjeta cae en "Finalizadas", donde ya no lleva acciones de edición.
-    // Se espera PRIMERO lo positivo (misma regla que en :78-82): afirmar la
-    // ausencia de "Fechas señaladas" antes de comprobar que la tarjeta aterrizó
-    // en "Finalizadas" sería trivialmente cierto si la página aún no ha
-    // repintado nada.
-    const seccionFinalizadas = page
-      .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Finalizadas" }) });
-    await expect(seccionFinalizadas.getByText(tituloEditado)).toBeVisible();
-    // La comprobación que de verdad importa es que ESTE evento ya no está en
-    // "Fechas señaladas" -- no que la sección entera haya desaparecido: el club
-    // acumula eventos huérfanos de otras specs, así que asumir que este era el
-    // único evento (toHaveCount(0) sobre el heading) convertiría un huérfano
-    // ajeno en un fallo permanente de este test.
+    // La ficha lo anuncia arriba del todo, y el botón "Cancelar evento" --que
+    // solo tiene sentido mientras el evento no está ya cancelado-- desaparece.
+    //
+    // OJO con el ancla: el texto "Este evento ha sido cancelado." aparece DOS
+    // veces en la ficha -- una en el banner de arriba, otra como motivo del
+    // botón "Seguir evento" deshabilitado (mismo patrón que
+    // club-evento-seguimiento.spec.ts:283). `.first()` evita el modo estricto.
     await expect(
-      page
-        .locator("section")
-        .filter({ has: page.getByRole("heading", { name: "Fechas señaladas" }) })
-        .getByText(tituloEditado),
-    ).toHaveCount(0);
+      page.getByText(/este evento ha sido cancelado/i).first(),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: /^cancelar evento$/i })).toHaveCount(0);
 
-    console.log("EVENTO OK: creado, editado y archivado con moderador real", eventoId);
+    console.log("EVENTO OK: creado, editado y cancelado con moderador real", eventoId);
   } finally {
     if (eventoId) {
       // fetch nativo, NO el `request` de Playwright: ese fixture muere junto con
