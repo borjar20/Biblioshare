@@ -313,7 +313,7 @@ export function validateEventConfig(input: {
 npx vitest run src/lib/clubs/activities/event-config.test.ts
 ```
 
-Expected: PASS, 16 tests.
+Expected: PASS, 17 tests.
 
 - [ ] **Step 5: Typecheck**
 
@@ -339,7 +339,9 @@ git commit -m "feat(clubes): tipo y medio de un evento, con parseo tolerante"
 
 **Interfaces:**
 - Consumes: las firmas actuales `create_club_event(uuid, text, text, date)` y `update_club_event(uuid, text, text, date)` de `20260810_club_event_validacion.sql`
-- Produces: `create_club_event(uuid, text, text, date, text, text)` y `update_club_event(uuid, text, text, date, text, text)`, que escriben `club_activities.config`
+- Produces:
+  - `club_event_config(text, text) returns jsonb` — valida tipo/medio y devuelve el objeto de config; lanza `event_type_invalid` / `medium_required` / `medium_invalid`
+  - `create_club_event(uuid, text, text, date, text, text)` y `update_club_event(uuid, text, text, date, text, text)`, que escriben `club_activities.config` llamando al helper
 
 **La trampa que hunde esta tarea:** `create or replace function` con una lista de parámetros distinta **no reemplaza — crea una sobrecarga**. Si no se hace `drop function` de la firma vieja, PostgREST puede seguir resolviendo a la antigua y los eventos nuevos nacerían sin `config`, en silencio.
 
@@ -365,6 +367,50 @@ Crear `supabase/migrations/20260811_club_event_tipo_y_medio.sql`:
 -- puede resolver a la vieja -- que no escribe config -- sin dar ningún error.
 drop function if exists public.create_club_event(uuid, text, text, date);
 drop function if exists public.update_club_event(uuid, text, text, date);
+
+-- Validar el par (tipo, medio) y componer el objeto es EXACTAMENTE lo mismo al
+-- crear y al editar. Va en una función suya y no copiado en las dos: son ~20
+-- líneas con tres raise, y dos copias divergen en cuanto alguien toque una.
+--
+-- No es SECURITY DEFINER: no toca ninguna tabla, así que no necesita saltarse
+-- ninguna RLS. La llaman las dos RPCs, que sí lo son y corren como su
+-- propietario, de modo que su EXECUTE les alcanza aunque aquí se revoque a todo
+-- el mundo. Y se revoca a propósito: cualquier función de `public` ejecutable
+-- por `authenticated` es un endpoint de PostgREST, y esta no tiene por qué serlo.
+create or replace function public.club_event_config(
+  p_event_type text,
+  p_medium text
+)
+returns jsonb
+language plpgsql
+immutable
+set search_path = public, pg_temp
+as $$
+begin
+  if p_event_type not in ('estreno', 'quedada', 'otro') then
+    raise exception 'event_type_invalid';
+  end if;
+
+  -- Un medio sobrante en un no-estreno se descarta: es lo que pasa al cambiar
+  -- el select de tipo con un medio ya elegido, y no es un error del usuario.
+  if p_event_type <> 'estreno' then
+    return jsonb_build_object('eventType', p_event_type);
+  end if;
+
+  if p_medium is null then
+    raise exception 'medium_required';
+  end if;
+  if p_medium not in ('book', 'movie', 'series') then
+    raise exception 'medium_invalid';
+  end if;
+  return jsonb_build_object('eventType', p_event_type, 'medium', p_medium);
+end;
+$$;
+
+revoke execute on function public.club_event_config(text, text) from public, anon, authenticated;
+
+comment on function public.club_event_config(text, text) is
+  'Valida el par (tipo, medio) de un evento de club y devuelve su config jsonb. Uso interno de create_club_event/update_club_event; no expuesta por PostgREST.';
 
 create or replace function public.create_club_event(
   p_club_id uuid,
@@ -404,23 +450,7 @@ begin
   if char_length(coalesce(v_description, '')) > 2000 then
     raise exception 'description_too_long';
   end if;
-  if v_event_type not in ('estreno', 'quedada', 'otro') then
-    raise exception 'event_type_invalid';
-  end if;
-
-  if v_event_type = 'estreno' then
-    if v_medium is null then
-      raise exception 'medium_required';
-    end if;
-    if v_medium not in ('book', 'movie', 'series') then
-      raise exception 'medium_invalid';
-    end if;
-    v_config := jsonb_build_object('eventType', v_event_type, 'medium', v_medium);
-  else
-    -- Un medio sobrante en un no-estreno se descarta: es lo que pasa al cambiar
-    -- el select de tipo con un medio ya elegido, y no es un error.
-    v_config := jsonb_build_object('eventType', v_event_type);
-  end if;
+  v_config := public.club_event_config(v_event_type, v_medium);
 
   insert into public.club_activities
     (club_id, kind, title, description, status, created_by, starts_on, config)
@@ -491,21 +521,7 @@ begin
   if char_length(coalesce(v_description, '')) > 2000 then
     raise exception 'description_too_long';
   end if;
-  if v_event_type not in ('estreno', 'quedada', 'otro') then
-    raise exception 'event_type_invalid';
-  end if;
-
-  if v_event_type = 'estreno' then
-    if v_medium is null then
-      raise exception 'medium_required';
-    end if;
-    if v_medium not in ('book', 'movie', 'series') then
-      raise exception 'medium_invalid';
-    end if;
-    v_config := jsonb_build_object('eventType', v_event_type, 'medium', v_medium);
-  else
-    v_config := jsonb_build_object('eventType', v_event_type);
-  end if;
+  v_config := public.club_event_config(v_event_type, v_medium);
 
   -- REEMPLAZA el objeto entero, no lo mezcla con el previo (nada de `config ||
   -- v_config`): mezclando, pasar un estreno a quedada dejaría colgado el
@@ -560,6 +576,31 @@ order by 1, 2;
 Expected: **exactamente dos filas**, ambas con `args` terminando en `, text, text`. Si salen cuatro, el `drop function` no coincidió con la firma real: mirar los `args` de las sobrantes y dropearlas por esa firma exacta antes de seguir.
 
 Esta comprobación va contra los objetos reales (`pg_proc`), no contra `list_migrations`: "no aparece en el ledger" ≠ "no está".
+
+Y que el helper NO quedó expuesto como endpoint:
+
+```sql
+select has_function_privilege('authenticated', 'public.club_event_config(text, text)', 'execute') as expuesto;
+```
+
+Expected: `expuesto = false`.
+
+- [ ] **Step 3b: Ejercer el helper — es la única validación que vive en SQL**
+
+```sql
+select public.club_event_config('quedada', 'movie') as descarta_medio_sobrante,
+       public.club_event_config('estreno', 'book')  as estreno_ok;
+```
+
+Expected: `{"eventType": "quedada"}` y `{"eventType": "estreno", "medium": "book"}` — el primero **sin** `medium`.
+
+Y los tres errores, uno por consulta (cada una debe fallar con ese mensaje exacto):
+
+```sql
+select public.club_event_config('concierto', null);   -- event_type_invalid
+select public.club_event_config('estreno', null);     -- medium_required
+select public.club_event_config('estreno', 'manga');  -- medium_invalid
+```
 
 - [ ] **Step 4: Verificar el backfill**
 
@@ -2365,9 +2406,9 @@ Con `mcp__supabase-prod__apply_migration`, mismo nombre y mismo contenido que en
 
 - [ ] **Step 2: Verificar prod contra los objetos reales**
 
-Con `mcp__supabase-prod__execute_sql`, las **dos** consultas de Task 2 (Steps 3 y 4).
+Con `mcp__supabase-prod__execute_sql`, las mismas consultas de Task 2 (Steps 3, 3b y 4).
 
-Expected: exactamente dos funciones, ambas con la firma de seis parámetros; `sin_tipo = 0`.
+Expected: exactamente dos funciones `*_club_event`, ambas con la firma de seis parámetros; `club_event_config` no ejecutable por `authenticated`; `sin_tipo = 0`.
 
 "No aparece en `list_migrations`" ≠ "no está en prod": la comprobación va contra `pg_proc`, no contra el ledger.
 
