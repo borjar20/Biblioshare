@@ -13,6 +13,10 @@ import { TodayCard } from "./today-card";
 import { TodayHeader } from "./today-header";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
+import { ProximaLectura } from "./proxima-lectura";
+import { CollectionSuggestions } from "./collection-suggestions";
+import { EmptyDiscovery } from "./empty-discovery";
+import type { NextUpItem } from "./next-up-card";
 
 // Cuántas portadas de la cola se enseñan. En móvil el resto queda tras el
 // scroll; en escritorio caben seis por fila, así que doce son dos filas, la
@@ -46,7 +50,44 @@ export async function TodayBlock({ userId }: { userId: string }) {
       <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} />
     ) : null;
 
-  if (!focus.featured) return later && <div className="pb-1">{later}</div>;
+  // Escalera de estados de la columna personal (nunca un hueco): en curso →
+  // próxima lectura → sugerencias de colección → descubrimiento. Ver
+  // docs/superpowers/specs/2026-08-11-inicio-estado-vacio-columna-personal-design.md.
+  if (!focus.featured) {
+    if (planned.length > 0) {
+      const nextUp: NextUpItem[] = planned.map((item) => ({
+        itemId: item.itemId,
+        itemType: item.itemType,
+        title: item.title,
+        coverUrl: item.coverUrl,
+      }));
+      return (
+        <div className="pb-1">
+          <ProximaLectura items={nextUp} later={later} />
+        </div>
+      );
+    }
+    // Solo se pide la colección cuando de verdad hace falta (sin en curso y sin
+    // cola): un query menos en el camino feliz. Solo completados — releer es
+    // limpio; los abandonados caerían en la hoja de retomar y por eso van al
+    // estado 4 (ver spec).
+    const collection = await getLibraryItems(supabase, userId, {
+      status: "completed",
+      limit: 3,
+    });
+    if (collection.length > 0) {
+      return (
+        <div className="pb-1">
+          <CollectionSuggestions items={collection} />
+        </div>
+      );
+    }
+    return (
+      <div className="pb-1">
+        <EmptyDiscovery />
+      </div>
+    );
+  }
 
   const passes = [focus.featured, ...focus.rest];
 
