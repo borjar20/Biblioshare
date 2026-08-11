@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -11,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { rotateIndex } from "@/lib/stats/rotate-index";
 import { StartButton } from "./start-button";
 
+// Lo que today-block mapea desde la cola `planned` (dato serializable puro).
 export type NextUpItem = {
   itemId: string;
   itemType: ItemType;
@@ -18,14 +18,31 @@ export type NextUpItem = {
   coverUrl: string | null;
 };
 
+// Lo que recibe la tarjeta: cada ítem con su etiqueta de tipo ya traducida en
+// servidor. El namespace `detail` (y `today`) NO viajan al cliente en el Inicio
+// (route-messages, #444), así que las resuelve ProximaLectura y las pasa como
+// props — mismo patrón que TodayActions/TodayPicker, que reciben sus textos ya
+// pintados en vez de llamar a useTranslations.
+export type NextUpCardItem = NextUpItem & { mediaLabel: string };
+
+export type NextUpLabels = {
+  context: string;
+  start: string;
+  suggest: string;
+};
+
 // Estado 2: destaca UN pendiente para empezar. "Sugerirme otro" rota entre los
 // que ya hay en la cola (sin recomendador). "Empezar" lo marca en curso y el
 // bloque pasa solo a "En curso" (StartButton refresca). Es cliente porque el
 // índice destacado y la rotación viven aquí; imágenes y etiquetas llegan ya
-// resueltas del servidor a través de props/next-intl.
-export function NextUpCard({ items }: { items: NextUpItem[] }) {
-  const t = useTranslations("today");
-  const tMedia = useTranslations("detail.mediaLabel");
+// resueltas del servidor como props.
+export function NextUpCard({
+  items,
+  labels,
+}: {
+  items: NextUpCardItem[];
+  labels: NextUpLabels;
+}) {
   const [index, setIndex] = useState(0);
 
   const item = items[index] ?? items[0];
@@ -49,7 +66,7 @@ export function NextUpCard({ items }: { items: NextUpItem[] }) {
         </Link>
         <div className="flex min-w-0 flex-1 flex-col">
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--acc)]">
-            {tMedia(item.itemType)}
+            {item.mediaLabel}
           </p>
           <Link
             href={itemHref(item.itemType, item.itemId)}
@@ -57,16 +74,14 @@ export function NextUpCard({ items }: { items: NextUpItem[] }) {
           >
             {item.title}
           </Link>
-          <p className="mt-1 font-mono text-[10.5px] text-muted-foreground">
-            {t("nextUpContext")}
-          </p>
+          <p className="mt-1 font-mono text-[10.5px] text-muted-foreground">{labels.context}</p>
         </div>
       </div>
       <div className="mt-3.5 flex flex-wrap items-center gap-3">
         <StartButton
           itemType={item.itemType}
           itemId={item.itemId}
-          label={t("startCta")}
+          label={labels.start}
           className={buttonVariants("primary", "w-full sm:w-auto")}
         />
         {items.length > 1 && (
@@ -75,7 +90,7 @@ export function NextUpCard({ items }: { items: NextUpItem[] }) {
             onClick={() => setIndex((i) => rotateIndex(i, items.length))}
             className="font-mono text-[11px] tracking-[0.04em] uppercase text-accent hover:underline"
           >
-            {t("suggestAnother")}
+            {labels.suggest}
           </button>
         )}
       </div>
