@@ -1900,7 +1900,11 @@
     "summaryYear": "Este año",
     "summaryStreak": "Racha",
     "summaryBooks": "{count, plural, one {libro} other {libros}}",
-    "summaryDays": "{count, plural, one {día} other {días}}"
+    "summaryDays": "{count, plural, one {día} other {días}}",
+    "welcomeTitle": "Aquí verás cómo vas",
+    "welcomeBody": "Tu semana de lectura, tu año y tu racha aparecerán a medida que registres lo que disfrutas.",
+    "welcomeGoalCta": "Fijar una meta 2026",
+    "welcomeExploreCta": "Explorar la colección"
   },
   "whoToFollow": {
     "title": "A quién seguir",
