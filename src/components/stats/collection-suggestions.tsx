@@ -32,7 +32,7 @@ export async function CollectionSuggestions({ items }: { items: LibraryItem[] })
                 className="relative h-[72px] w-12 shrink-0 overflow-hidden rounded-sm bg-surface-muted shadow-cover"
               >
                 {item.coverUrl && (
-                  <Image src={item.coverUrl} alt="" fill sizes="48px" className="object-cover" />
+                  <Image src={item.coverUrl} alt={item.title} fill sizes="48px" className="object-cover" />
                 )}
               </Link>
               <div className="flex min-w-0 flex-1 flex-col">
