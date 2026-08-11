@@ -6,7 +6,9 @@ import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import { getAnnualCompleted } from "@/lib/stats/get-annual-completed";
 import { getWhoToFollow } from "@/lib/social/get-who-to-follow";
+import { deriveRailState } from "@/lib/stats/derive-rail-state";
 import { WeeklyStrip } from "./weekly-strip";
+import { StatsWelcome } from "./stats-welcome";
 import { StreakCard } from "./streak-card";
 import { BookGoalCard } from "./book-goal-card";
 import { GoalRows } from "./goal-rows";
@@ -58,6 +60,20 @@ export async function StatsRail({ userId }: { userId: string }) {
       ? tStats("weekTotal", { hours: Math.floor(weekMinutes / 60), minutes: weekMinutes % 60 })
       : tStats("minutesCount", { count: weekMinutes });
 
+  const username = profile?.username ?? "";
+  const anyGoalSet =
+    annualGoals.book != null || annualGoals.movie != null || annualGoals.series != null;
+  const { showWeek, showYear, cold } = deriveRailState({
+    weekMinutes,
+    annualTotal: annual.total,
+    anyGoalSet,
+    streakCurrent: streaks.current,
+  });
+  // Sub-guards del bloque "Tu 2026": ninguna sub-parte lidera con un cero.
+  const showBookGoal = annualGoals.book != null || annual.byType.book > 0;
+  const showGoalRows = anyGoalSet || annual.total > 0;
+  const showStreak = streaks.current > 0 || streaks.best > 0;
+
   return (
     <div className="grid gap-4">
       {/* Resumen compacto: móvil y tablet (<1100). Lista de tres filas
@@ -66,41 +82,62 @@ export async function StatsRail({ userId }: { userId: string }) {
           propósito: el detalle de ≥1100 ya trae el <h3> "Lectura esta semana", y
           dos encabezados con el mismo nombre accesible chocarían con los tests
           que buscan ese heading dentro del <aside>. */}
-      <div className="rounded-card border border-border bg-surface shadow-card p-3.5 min-[1100px]:hidden">
-        <div className="flex flex-col gap-2.5">
-          <SummaryRow label={tRail("summaryWeek")} value={weekLabel} />
-          <SummaryRow
-            label={tRail("summaryYear")}
-            value={`${annual.byType.book} ${tRail("summaryBooks", { count: annual.byType.book })}`}
-          />
-          <SummaryRow
-            label={tRail("summaryStreak")}
-            value={`${streaks.current} ${tRail("summaryDays", { count: streaks.current })}`}
-          />
-        </div>
-      </div>
-
-      {/* Detalle: de 1100 para arriba, donde el Inicio da COLUMNA propia a las
-          estadísticas (las tres áreas). En tablet manda el resumen de arriba. */}
-      <div className="hidden gap-4 min-[1100px]:grid">
-        <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          <WeeklyStrip
-            days={weekly}
-            dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
-            showDailyGoal={false}
-          />
-        </div>
-
-        <div className="rounded-card border border-border bg-surface shadow-card p-4">
-          <p className="mb-3 font-serif text-[15px] font-semibold">{tRail("year2026")}</p>
-          <div className="flex flex-col gap-3">
-            <BookGoalCard completed={annual.byType.book} goal={annualGoals.book} />
-            <GoalRows annual={annual} annualGoals={annualGoals} />
-            <div className="border-t border-border pt-3">
-              <StreakCard streaks={streaks} />
+      <div className="min-[1100px]:hidden">
+        {cold ? (
+          <StatsWelcome username={username} compact />
+        ) : (
+          <div className="rounded-card border border-border bg-surface shadow-card p-3.5">
+            <div className="flex flex-col gap-2.5">
+              <SummaryRow label={tRail("summaryWeek")} value={weekLabel} />
+              <SummaryRow
+                label={tRail("summaryYear")}
+                value={`${annual.byType.book} ${tRail("summaryBooks", { count: annual.byType.book })}`}
+              />
+              <SummaryRow
+                label={tRail("summaryStreak")}
+                value={`${streaks.current} ${tRail("summaryDays", { count: streaks.current })}`}
+              />
             </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Detalle: de 1100 para arriba. En frío, una sola bienvenida; si no,
+          cada bloque aparece cuando tiene datos (nunca un cero). "A quién
+          seguir" va SIEMPRE debajo (ya se degrada a null si no hay a quién). */}
+      <div className="hidden gap-4 min-[1100px]:grid">
+        {cold ? (
+          <StatsWelcome username={username} />
+        ) : (
+          <>
+            {showWeek && (
+              <div className="rounded-card border border-border bg-surface shadow-card p-4">
+                <WeeklyStrip
+                  days={weekly}
+                  dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
+                  showDailyGoal={false}
+                />
+              </div>
+            )}
+
+            {showYear && (
+              <div className="rounded-card border border-border bg-surface shadow-card p-4">
+                <p className="mb-3 font-serif text-[15px] font-semibold">{tRail("year2026")}</p>
+                <div className="flex flex-col gap-3">
+                  {showBookGoal && (
+                    <BookGoalCard completed={annual.byType.book} goal={annualGoals.book} />
+                  )}
+                  {showGoalRows && <GoalRows annual={annual} annualGoals={annualGoals} />}
+                  {showStreak && (
+                    <div className={showBookGoal || showGoalRows ? "border-t border-border pt-3" : ""}>
+                      <StreakCard streaks={streaks} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
         <WhoToFollowCard suggestions={whoToFollow} />
       </div>
