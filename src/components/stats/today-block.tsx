@@ -10,6 +10,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { TodayCard } from "./today-card";
+import { TodayHeader } from "./today-header";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
 
@@ -69,28 +70,10 @@ export async function TodayBlock({ userId }: { userId: string }) {
   );
 
   const t = await getTranslations("today");
-  // "Viernes · 17 jul". El español pone el día en minúscula y el frame lo
-  // escribe capitalizado; como el texto ya va en `uppercase` por CSS, la
-  // capitalización solo importa si algún día se quita.
-  const dateLabel = new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-  })
-    .format(new Date())
-    .replace(",", " ·")
-    .replace(/^./, (c) => c.toUpperCase());
 
   return (
     <section className="flex flex-col gap-3">
-      <div>
-        <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-muted-foreground">
-          {dateLabel}
-        </p>
-        <h2 className="mt-1.5 font-serif text-[26px] leading-[1.02] font-semibold tracking-[-0.01em]">
-          {t("title")}
-        </h2>
-      </div>
+      <TodayHeader title={t("title")} />
 
       {/* En móvil el bloque se apila (frame G). En escritorio NO se estira: una
           tarjeta de 1024px deja la portada en 58px y convierte la barra de
