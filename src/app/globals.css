@@ -87,6 +87,16 @@
      púrpura, verde, oro, naranja y beige. */
   --event-highlight: #4a6f9e;
 
+  /* Color propio de "encuentro" (issue de contraste post-#357): compartía
+     --spine con el nexo de sagas, pero ese token se afinó para el lienzo
+     OSCURO del grafo y sobre el --surface casi blanco del calendario en tema
+     claro medía 2.27:1 -- por debajo del 3:1 que exige WCAG 1.4.1 para un
+     objeto gráfico (aquí, el icono y la muestra de la leyenda). No se puede
+     oscurecer --spine para arreglarlo: lo comparten las sagas y cambiarlo las
+     restilaría. --event-meetup es el mismo beige/tostado, solo más oscuro en
+     claro (3.68:1); en oscuro reutiliza el valor de --spine, que ahí sí pasa. */
+  --event-meetup: #94825c;
+
   /* Episode rating scale (§7.36). Data colours, but themed: they must stay
      legible against --tier-foreground in both modes. */
   --tier-awesome: #46663c;
@@ -128,6 +138,7 @@
   --type-movie: #6bb0b4;
   --type-series: #b592bd;
   --event-highlight: #7fa8d8;
+  --event-meetup: #8a7d63;
 
   --tier-awesome: #7fa86a;
   --tier-great: #9dbf7a;
@@ -169,6 +180,7 @@
     --type-movie: #6bb0b4;
     --type-series: #b592bd;
     --event-highlight: #7fa8d8;
+    --event-meetup: #8a7d63;
 
     --tier-awesome: #7fa86a;
     --tier-great: #9dbf7a;
@@ -213,6 +225,7 @@
   --color-type-movie: var(--type-movie);
   --color-type-series: var(--type-series);
   --color-event-highlight: var(--event-highlight);
+  --color-event-meetup: var(--event-meetup);
 
   --color-tier-foreground: var(--tier-foreground);
 

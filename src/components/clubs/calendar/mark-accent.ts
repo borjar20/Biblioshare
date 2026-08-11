@@ -76,11 +76,18 @@ export const MARK_ACCENT: Record<MarkAccentKey, MarkAccent> = {
     border: "border-gold",
     Icon: CheckIcon,
   },
+  // Token propio, NO --spine: se probó con --spine (mismo beige del nexo de
+  // sagas) pero ese color se afinó para el lienzo OSCURO del grafo, y sobre
+  // el --surface casi blanco del calendario en tema claro medía 2.27:1 --
+  // por debajo del 3:1 que exige WCAG 1.4.1 para un objeto gráfico (aquí, el
+  // icono y la muestra de la leyenda). No se puede oscurecer --spine para
+  // arreglarlo: lo comparten las sagas y cambiarlo las restilaría, así que
+  // --event-meetup nace como hermano casi idéntico, solo más oscuro en claro.
   encuentro: {
-    text: "text-spine",
-    bgSoft: "bg-spine/10",
-    bar: "bg-spine",
-    border: "border-spine",
+    text: "text-event-meetup",
+    bgSoft: "bg-event-meetup/10",
+    bar: "bg-event-meetup",
+    border: "border-event-meetup",
     Icon: UsersIcon,
   },
   fecha_destacada: {
