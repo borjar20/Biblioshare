@@ -22,60 +22,39 @@ describe("isPastEvent", () => {
   it("sin fecha no cuenta como pasado", () => expect(isPastEvent(null, HOY)).toBe(false));
 });
 
-describe("groupActivities", () => {
-  it("saca los eventos del grupo de activas — si no, salen dos veces", () => {
-    const groups = groupActivities(
-      [
-        act({ id: "e", kind: "evento", status: "active", startsOn: "2026-08-01" }),
-        act({ id: "a", kind: "buddy_read", status: "active" }),
-      ],
-      HOY,
-    );
-    expect(groups.events.map((a) => a.id)).toEqual(["e"]);
+describe("groupActivities — los eventos viven en el calendario y en su ficha, no aquí", () => {
+  it("un evento activo no está en ninguno de los tres grupos", () => {
+    const groups = groupActivities([
+      act({ id: "e", kind: "evento", status: "active", startsOn: "2026-08-01" }),
+      act({ id: "a", kind: "buddy_read", status: "active" }),
+    ]);
     expect(groups.active.map((a) => a.id)).toEqual(["a"]);
+    expect(groups.proposed).toHaveLength(0);
+    expect(groups.finished).toHaveLength(0);
   });
 
-  it("los futuros van primero, del más próximo al más lejano", () => {
-    const groups = groupActivities(
-      [
-        act({ id: "lejos", kind: "evento", status: "active", startsOn: "2026-12-01" }),
-        act({ id: "cerca", kind: "evento", status: "active", startsOn: "2026-07-25" }),
-      ],
-      HOY,
-    );
-    expect(groups.events.map((a) => a.id)).toEqual(["cerca", "lejos"]);
-  });
-
-  it("los pasados van al final, del más reciente al más antiguo", () => {
-    const groups = groupActivities(
-      [
-        act({ id: "viejo", kind: "evento", status: "active", startsOn: "2026-01-01" }),
-        act({ id: "reciente", kind: "evento", status: "active", startsOn: "2026-07-20" }),
-        act({ id: "futuro", kind: "evento", status: "active", startsOn: "2026-08-01" }),
-      ],
-      HOY,
-    );
-    expect(groups.events.map((a) => a.id)).toEqual(["futuro", "reciente", "viejo"]);
-  });
-
-  it("un evento archivado sale de 'events' y cae en 'finished'", () => {
-    const groups = groupActivities(
-      [act({ id: "e", kind: "evento", status: "archived", startsOn: "2026-08-01" })],
-      HOY,
-    );
-    expect(groups.events).toHaveLength(0);
-    expect(groups.finished.map((a) => a.id)).toEqual(["e"]);
-  });
-
-  it("propuestas y finalizadas se agrupan como antes", () => {
-    const groups = groupActivities(
-      [
-        act({ id: "p", status: "proposed" }),
-        act({ id: "f", status: "finished" }),
-      ],
-      HOY,
-    );
-    expect(groups.proposed.map((a) => a.id)).toEqual(["p"]);
+  it("un evento ARCHIVADO tampoco cae en finalizadas — es el que se olvida", () => {
+    const groups = groupActivities([
+      act({ id: "e", kind: "evento", status: "archived", startsOn: "2026-08-01" }),
+      act({ id: "f", kind: "tierlist", status: "finished" }),
+    ]);
     expect(groups.finished.map((a) => a.id)).toEqual(["f"]);
+  });
+
+  it("un evento 'finished' tampoco: el filtro es por kind, no por estado", () => {
+    const groups = groupActivities([
+      act({ id: "e", kind: "evento", status: "finished", startsOn: "2026-08-01" }),
+    ]);
+    expect(groups.finished).toHaveLength(0);
+  });
+
+  it("propuestas y finalizadas no-evento se agrupan como antes", () => {
+    const groups = groupActivities([
+      act({ id: "p", status: "proposed" }),
+      act({ id: "f", status: "finished" }),
+      act({ id: "ar", status: "archived" }),
+    ]);
+    expect(groups.proposed.map((a) => a.id)).toEqual(["p"]);
+    expect(groups.finished.map((a) => a.id)).toEqual(["f", "ar"]);
   });
 });

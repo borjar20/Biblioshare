@@ -112,10 +112,11 @@ export function EventForm({
   const t = useTranslations("activity");
   const editing = Boolean(activity);
 
-  // Ids por instancia: Task 10 monta este formulario una vez por tarjeta
-  // (EventCardActions), con un `editing` independiente por tarjeta -- dos
-  // ediciones pueden estar abiertas a la vez. Con ids fijos, cada <label
-  // htmlFor> se ligaba siempre al primer formulario del DOM.
+  // Ids por instancia: este formulario se monta en varios sitios (la ficha del
+  // evento en EventModeration, el calendario, el asistente de propuesta), cada
+  // uno con su propio `editing` -- no hay garantía de que solo haya una
+  // instancia en el DOM a la vez. Con ids fijos, cada <label htmlFor> se
+  // ligaba siempre al primer formulario del DOM.
   const uid = useId();
   const titleId = `event-title-${uid}`;
   const descriptionId = `event-description-${uid}`;

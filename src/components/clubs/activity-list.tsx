@@ -7,7 +7,6 @@ import { groupActivities } from "@/lib/clubs/activities/group-activities";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
-import { EventCardActions } from "./event-card-actions";
 
 // Las actividades se agrupan por estado, no en una lista plana: "esperan
 // moderación" es lo que un moderador viene a resolver, y "activas" lo que un
@@ -34,10 +33,7 @@ export function ActivityList({
   // las actividades frescas. Sin espejo local ni re-fetch cliente.
   const activities = initialActivities;
 
-  const { events, active, proposed, finished } = groupActivities(
-    activities,
-    today,
-  );
+  const { active, proposed, finished } = groupActivities(activities);
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,18 +42,6 @@ export function ActivityList({
       {activities.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       )}
-
-      <Group title={t("groupEvents")}>
-        {events.map((activity) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            clubSlug={clubSlug}
-            today={today}
-            actions={isModerator ? <EventCardActions activity={activity} /> : undefined}
-          />
-        ))}
-      </Group>
 
       <Group title={t("groupActive", { count: active.length })}>
         {active.map((activity) => (
