@@ -205,11 +205,24 @@ test.describe("tipos de evento de club", () => {
       await page.getByLabel(/^modalidad$/i).selectOption("presencial");
       await page.getByRole("button", { name: /^crear evento$/i }).click();
 
-      // El asistente se cierra y el evento NO aparece en esta pestaña -- desde
-      // la spec 2026-08-11 vive en el calendario y en su ficha propia, no en un
-      // grupo "Fechas señaladas" de Actividades. Se espera PRIMERO algo
-      // positivo (que el composer siga pintado, ya cerrado) para que la
-      // ausencia no sea trivialmente cierta por no haber cargado nada todavía.
+      // El asistente NAVEGA a la ficha del evento recién creado. Antes solo
+      // cerraba el panel, y como el evento ya no aparece en Actividades el
+      // moderador se quedaba mirando un listado sin ninguna señal de que su
+      // evento existiera. El id todavía no se conoce aquí (pollActividad viene
+      // después), así que se ancla por forma de URL.
+      await expect(page).toHaveURL(
+        new RegExp(`/club/${club.slug}/evento/[0-9a-f-]{36}$`),
+        { timeout: 15000 },
+      );
+      await expect(page.getByRole("heading", { name: titulo })).toBeVisible();
+
+      // Y sigue sin aparecer en la pestaña Actividades -- desde la spec
+      // 2026-08-11 vive en el calendario y en su ficha propia, no en un grupo
+      // "Fechas señaladas". Hay que VOLVER a la pestaña: tras el arreglo de
+      // arriba ya no estamos en ella. Se espera PRIMERO algo positivo (que el
+      // composer esté pintado) para que la ausencia no sea trivialmente cierta
+      // por no haber cargado nada todavía.
+      await page.goto(`/club/${club.slug}?tab=actividades`);
       await expect(
         page.getByRole("button", { name: /proponer actividad/i }).first(),
       ).toBeVisible();
@@ -273,6 +286,15 @@ test.describe("tipos de evento de club", () => {
 
       await page.getByLabel(/^fecha$/i).fill("2027-06-15");
       await page.getByRole("button", { name: /^crear evento$/i }).click();
+
+      // El asistente navega a la ficha del evento recién creado (ver el test de
+      // Encuentro). Se afirma aquí además de allí porque también sirve de
+      // barrera: sin ella, el `page.goto` de más abajo podría carrerear con el
+      // router.push que dispara el formulario.
+      await expect(page).toHaveURL(
+        new RegExp(`/club/${club.slug}/evento/[0-9a-f-]{36}$`),
+        { timeout: 15000 },
+      );
 
       // Persistido de verdad ANTES de mirar el calendario: pollActividad
       // reintenta (con timeout) hasta que REST refleja la escritura, y una
@@ -357,6 +379,15 @@ test.describe("tipos de evento de club", () => {
 
       await page.getByLabel(/^fecha$/i).fill("2027-07-04");
       await page.getByRole("button", { name: /^crear evento$/i }).click();
+
+      // El asistente navega a la ficha del evento recién creado (ver el test de
+      // Encuentro). Se afirma aquí además de allí porque también sirve de
+      // barrera: sin ella, el `page.goto` de más abajo podría carrerear con el
+      // router.push que dispara el formulario.
+      await expect(page).toHaveURL(
+        new RegExp(`/club/${club.slug}/evento/[0-9a-f-]{36}$`),
+        { timeout: 15000 },
+      );
 
       // Persistido de verdad ANTES de mirar el calendario: pollActividad
       // reintenta (con timeout) hasta que REST refleja la escritura, y una

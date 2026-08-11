@@ -35,11 +35,24 @@ export function ActivityList({
 
   const { active, proposed, finished } = groupActivities(activities);
 
+  // El vacío se gatea por los TRES grupos ya filtrados, nunca por
+  // `activities.length`: la lista cruda SIGUE trayendo los eventos (es
+  // groupActivities quien los descarta, spec 2026-08-11), así que en un club
+  // cuyas únicas actividades son eventos `activities.length` es > 0, los tres
+  // <Group> devuelven null por vacíos y el mensaje no se pintaba -- se veía el
+  // botón "Proponer actividad" sobre un hueco, sin ninguna explicación.
+  const sinActividades =
+    active.length === 0 && proposed.length === 0 && finished.length === 0;
+
   return (
     <div className="flex flex-col gap-6">
-      <ActivityComposer clubId={clubId} isModerator={isModerator} />
+      <ActivityComposer
+        clubId={clubId}
+        clubSlug={clubSlug}
+        isModerator={isModerator}
+      />
 
-      {activities.length === 0 && (
+      {sinActividades && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       )}
 

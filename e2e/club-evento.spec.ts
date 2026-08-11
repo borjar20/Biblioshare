@@ -43,7 +43,9 @@ async function crearUsuario(request: APIRequestContext, username: string) {
 }
 
 // Un moderador marca una fecha en el club. Se comprueba que se crea de verdad
-// (no solo que se pinte), que NO aparece en la pestaña Actividades y SÍ en el
+// (no solo que se pinte), que el asistente LLEVA a su ficha al terminar (esa es
+// la única señal de éxito desde que un evento no aparece en el listado), que NO
+// aparece en la pestaña Actividades y SÍ en el
 // calendario (spec 2026-08-11: event-card-actions.tsx se borró, un evento vive
 // ahora en el calendario y en su ficha propia), que la ruta genérica de
 // actividad devuelve 404 para él (con control positivo), y que EDITAR/CANCELAR
@@ -89,6 +91,17 @@ test("evento: se crea, no aparece en Actividades, se ve en el calendario, y se m
     // en el formulario con "eventStartsTimeRequired" y nunca llega a crearse.
     await page.getByLabel(/^hora de inicio$/i).fill("18:00");
     await page.getByRole("button", { name: /^crear evento$/i }).click();
+
+    // El asistente NAVEGA a la ficha del evento recién creado, no se limita a
+    // cerrar el panel: como el evento ya no aparece en Actividades, cerrar sin
+    // más dejaba al moderador sin ninguna señal de que su evento existiera. El
+    // id todavía no se conoce (la comprobación en BD viene justo debajo), así
+    // que se ancla por forma de URL. Sirve además de barrera para que el
+    // `page.goto` de más abajo no carreree con el router.push del formulario.
+    await expect(page).toHaveURL(
+      new RegExp(`/club/${CLUB_SLUG}/evento/[0-9a-f-]{36}$`),
+      { timeout: 15000 },
+    );
 
     // Existe en la BD. Se comprueba antes que la pantalla: la UI puede pintar el
     // título desde su propio estado aunque el submit falle (falso verde ya visto

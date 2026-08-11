@@ -80,7 +80,7 @@ export function ClubCalendar({
       {creando && (
         <EventForm
           clubId={clubId}
-          onDone={(startsOn) => {
+          onDone={(_activityId, startsOn) => {
             setCreando(false);
             // Si el evento creado cae fuera del mes visible, saltar a su mes
             // es la única señal de que algo ha pasado: si no, el formulario

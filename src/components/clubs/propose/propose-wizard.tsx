@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { Json } from "@/lib/supabase/database.types";
 import type { ItemType } from "@/lib/catalog/types";
@@ -36,16 +37,20 @@ import { EventForm } from "./event-form";
 // ítems y los hitos. Aquí se propone ya montada.
 export function ProposeWizard({
   clubId,
+  clubSlug,
   isModerator,
   onProposed,
   onCancel,
 }: {
   clubId: string;
+  /** Solo lo usa la rama de evento, para navegar a la ficha recién creada. */
+  clubSlug: string;
   isModerator: boolean;
   onProposed: () => void;
   onCancel: () => void;
 }) {
   const t = useTranslations("activity");
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [kind, setKind] = useState<ActivityKind | null>(null);
 
@@ -189,7 +194,17 @@ export function ProposeWizard({
           clubId={clubId}
           initialTitle={title}
           initialDescription={description}
-          onDone={onProposed}
+          // Cerrar el panel y nada más NO vale para un evento: desde que salió
+          // de la pestaña Actividades no queda tarjeta que mirar, así que el
+          // moderador rellenaba el formulario, el panel se cerraba y no pasaba
+          // nada visible. Se navega a su ficha, que es donde vive ahora.
+          //
+          // Solo esta rama navega: los demás kinds SÍ aparecen en el listado
+          // (como propuesta pendiente), y ahí cerrar el panel ya es señal.
+          onDone={(activityId) => {
+            onProposed();
+            router.push(`/club/${clubSlug}/evento/${activityId}`);
+          }}
           onCancel={() => setStep(1)}
           // Aquí sí hay un paso 1 al que volver de verdad -- "Atrás" es correcto.
           hasPreviousStep
