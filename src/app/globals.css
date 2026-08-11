@@ -79,6 +79,14 @@
   --type-movie: #3f6b6e;
   --type-series: #7a5676;
 
+  /* Azul de "fecha destacada" en el calendario del club. Token propio y no un
+     reciclado: los otros siete de la leyenda ya están comprometidos (green =
+     inicio, accent = hito, gold = cierre, spine = encuentro, type-* = los tres
+     medios de lanzamiento), y dos clases con el mismo tono anulan el sentido de
+     colorear por tipo. Azul porque es el hueco que queda tras terracota, teal,
+     púrpura, verde, oro, naranja y beige. */
+  --event-highlight: #4a6f9e;
+
   /* Episode rating scale (§7.36). Data colours, but themed: they must stay
      legible against --tier-foreground in both modes. */
   --tier-awesome: #46663c;
@@ -119,6 +127,7 @@
   --type-book: #cf8a54;
   --type-movie: #6bb0b4;
   --type-series: #b592bd;
+  --event-highlight: #7fa8d8;
 
   --tier-awesome: #7fa86a;
   --tier-great: #9dbf7a;
@@ -159,6 +168,7 @@
     --type-book: #cf8a54;
     --type-movie: #6bb0b4;
     --type-series: #b592bd;
+    --event-highlight: #7fa8d8;
 
     --tier-awesome: #7fa86a;
     --tier-great: #9dbf7a;
@@ -202,6 +212,7 @@
   --color-type-book: var(--type-book);
   --color-type-movie: var(--type-movie);
   --color-type-series: var(--type-series);
+  --color-event-highlight: var(--event-highlight);
 
   --color-tier-foreground: var(--tier-foreground);
 

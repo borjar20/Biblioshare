@@ -3,7 +3,8 @@ import { getTranslations } from "next-intl/server";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
 import type { CalendarMark } from "@/lib/clubs/activities/calendar-marks";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
-import { MARK_ACCENT } from "./calendar/mark-accent";
+import { MARK_ACCENT, accentKeyFor } from "./calendar/mark-accent";
+import { markLabel } from "./calendar/mark-label";
 import { formatDayMonth } from "@/lib/clubs/activities/format-date";
 
 // % de tiempo transcurrido entre las fechas de la actividad. Es una barra
@@ -115,7 +116,7 @@ export async function ClubSummary({
           <div className="flex gap-2.5 overflow-x-auto pb-1">
             {upcoming.map((mark, i) => {
               const { day, month } = formatDayMonth(mark.date);
-              const accent = MARK_ACCENT[mark.markKind];
+              const accent = MARK_ACCENT[accentKeyFor(mark)];
 
               const inner = (
                 <>
@@ -130,7 +131,7 @@ export async function ClubSummary({
                   <span className="flex max-w-44 min-w-0 flex-col text-xs leading-tight">
                     <span className="truncate text-foreground">{mark.title}</span>
                     <span className={`truncate ${accent.text}`}>
-                      {mark.detail ?? t(`markKind_${mark.markKind}`)}
+                      {mark.detail ?? markLabel(mark, t)}
                     </span>
                   </span>
                 </>

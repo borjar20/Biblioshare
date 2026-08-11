@@ -7,7 +7,8 @@ import {
   type CalendarMark,
 } from "@/lib/clubs/activities/calendar-marks";
 import { BellIcon } from "@/components/ui/icons";
-import { MARK_ACCENT } from "./mark-accent";
+import { MARK_ACCENT, accentKeyFor } from "./mark-accent";
+import { markLabel } from "./mark-label";
 
 const DIAS_CORTOS = ["L", "M", "X", "J", "V", "S", "D"];
 const DIAS_LARGOS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -93,7 +94,7 @@ export function MonthGrid({
                     <span
                       key={`${mark.activityId}-${mark.markKind}-${i}`}
                       aria-hidden
-                      className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[mark.markKind].bar} ${
+                      className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[accentKeyFor(mark)].bar} ${
                         mark.followedByViewer ? "ring-1 ring-accent ring-offset-1" : ""
                       }`}
                     />
@@ -113,11 +114,11 @@ export function MonthGrid({
 
               <div className="hidden min-w-0 flex-col gap-0.5 lg:flex">
                 {visibles.map((mark, i) => {
-                  const accent = MARK_ACCENT[mark.markKind];
+                  const accent = MARK_ACCENT[accentKeyFor(mark)];
                   return (
                     <span
                       key={`${mark.activityId}-${mark.markKind}-${i}`}
-                      title={`${t(`markKind_${mark.markKind}`)} · ${mark.title}`}
+                      title={`${markLabel(mark, t)} · ${mark.title}`}
                       className={`flex items-center gap-1 truncate rounded-chip border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight ${accent.bgSoft} ${accent.border}`}
                     >
                       {/* Glifo de la CLASE de marca: forma, no color. En escala de
@@ -134,7 +135,7 @@ export function MonthGrid({
                       )}
                       {/* El lector de pantalla oye la clase también en escritorio;
                           el chip solo mostraba el título visible. */}
-                      <span className="sr-only">{t(`markKind_${mark.markKind}`)}: </span>
+                      <span className="sr-only">{markLabel(mark, t)}: </span>
                       {/* text-foreground (>10:1), no el token: da AA a 11px donde el
                           token no llegaba. `line-through` marca lo pasado sin bajar
                           contraste (opacity-50 tumbaba TODOS los pares, #147). */}
@@ -162,7 +163,7 @@ export function MonthGrid({
                   {delDia
                     .map(
                       (m) =>
-                        `${t(`markKind_${m.markKind}`)}: ${m.title}${
+                        `${markLabel(m, t)}: ${m.title}${
                           m.followedByViewer ? `. ${t("eventFollowedBadge")}` : ""
                         }`,
                     )

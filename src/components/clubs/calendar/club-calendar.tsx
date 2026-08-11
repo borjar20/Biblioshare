@@ -7,9 +7,7 @@ import { shiftMonth } from "@/lib/stats/dates";
 import {
   agendaForMonth,
   parseMonthParam,
-  ORDEN_MARCA,
   type CalendarMark,
-  type CalendarMarkKind,
 } from "@/lib/clubs/activities/calendar-marks";
 import { formatMonthYear } from "@/lib/clubs/activities/format-date";
 import { EventForm } from "@/components/clubs/propose/event-form";
@@ -17,17 +15,13 @@ import { Button } from "@/components/ui/button";
 import { BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
-import { MARK_ACCENT } from "./mark-accent";
-
-// La leyenda se deriva de las claves de MARK_ACCENT (un Record sobre
-// CalendarMarkKind, así que un tipo de marca nuevo rompe la compilación allí en
-// vez de quedar omitido en silencio aquí), ordenada por el MISMO ORDEN_MARCA que
-// desempata las marcas del mismo día en la rejilla. Se importa en vez de
-// copiarse: dos constantes gemelas en dos ficheros acaban divergiendo, y la
-// leyenda contradiría a la rejilla sin que nada avisara.
-const CLASES_LEYENDA = (Object.keys(MARK_ACCENT) as CalendarMarkKind[]).sort(
-  (a, b) => ORDEN_MARCA[a] - ORDEN_MARCA[b],
-);
+import {
+  MARK_ACCENT,
+  LEYENDA_MARCAS,
+  LEYENDA_EVENTOS,
+  LEYENDA_LANZAMIENTOS,
+  type MarkAccentKey,
+} from "./mark-accent";
 
 // El mes visible vive en el search param `mes`, y se cambia con
 // window.history.pushState -- NO con router.push/replace. El App Router
@@ -140,33 +134,41 @@ export function ClubCalendar({
               {t("calendarToday")}
             </button>
 
-            <div className="flex flex-wrap gap-3 lg:ml-auto">
-              {CLASES_LEYENDA.map((markKind) => {
-                const accent = MARK_ACCENT[markKind];
-                return (
-                  <span
-                    key={markKind}
-                    className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase"
-                  >
-                    {/* Glifo (forma + color), no un punto de color: es la MISMA
-                        silueta que el chip de la rejilla, así el que no distingue
-                        los tonos empareja leyenda↔chip por la forma (#147). */}
-                    <accent.Icon className={`h-2.5 w-2.5 ${accent.text}`} aria-hidden />
-                    {t(`markKind_${markKind}`)}
+            {/* Tres filas, no una tira de ocho: "qué clase de marca es", "qué
+                clase de evento es" y "de qué medio es el lanzamiento" son tres
+                preguntas, y mezcladas en una línea envuelven en móvil. Las tres
+                se DERIVAN de las claves de MARK_ACCENT, así que una clave nueva
+                aparece sola en su sitio. */}
+            <div className="flex flex-col gap-1.5 lg:ml-auto lg:items-end">
+              <div className="flex flex-wrap items-center gap-3">
+                <LegendLabel>{t("legendMarks")}</LegendLabel>
+                {LEYENDA_MARCAS.map((key) => (
+                  <LegendItem key={key} accentKey={key} t={t} />
+                ))}
+                {/* La marca de seguido también en la LEYENDA, no solo en la
+                    rejilla (§17): un icono nuevo en las celdas sin nada que lo
+                    explique obliga a adivinar qué significa. Solo se pinta si
+                    hay algo seguido este mes -- una leyenda para un símbolo que
+                    no aparece es ruido. */}
+                {viewerIsMember && seguidosDelMes.length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
+                    <BellIcon className="h-2.5 w-2.5" aria-hidden />
+                    {t("eventFollowedBadge")}
                   </span>
-                );
-              })}
-              {/* La marca de seguido también en la LEYENDA, no solo en la rejilla
-                  (§17): un icono nuevo en las celdas sin nada que lo explique
-                  obliga a adivinar qué significa. Solo se pinta si hay algo
-                  seguido este mes -- una leyenda para un símbolo que no aparece es
-                  ruido. */}
-              {viewerIsMember && seguidosDelMes.length > 0 && (
-                <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
-                  <BellIcon className="h-2.5 w-2.5" aria-hidden />
-                  {t("eventFollowedBadge")}
-                </span>
-              )}
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <LegendLabel>{t("legendEvents")}</LegendLabel>
+                {LEYENDA_EVENTOS.map((key) => (
+                  <LegendItem key={key} accentKey={key} t={t} />
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <LegendLabel>{t("legendPremieres")}</LegendLabel>
+                {LEYENDA_LANZAMIENTOS.map((key) => (
+                  <LegendItem key={key} accentKey={key} t={t} />
+                ))}
+              </div>
             </div>
           </div>
 
@@ -221,5 +223,32 @@ export function ClubCalendar({
         </aside>
       </div>
     </div>
+  );
+}
+
+function LegendLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[9.5px] tracking-wide text-foreground-faint uppercase">
+      {children}
+    </span>
+  );
+}
+
+function LegendItem({
+  accentKey,
+  t,
+}: {
+  accentKey: MarkAccentKey;
+  t: (key: string) => string;
+}) {
+  const accent = MARK_ACCENT[accentKey];
+  return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase">
+      {/* Glifo (forma + color), no un punto de color: es la MISMA silueta que el
+          chip de la rejilla, así el que no distingue los tonos empareja
+          leyenda↔chip por la forma (#147). */}
+      <accent.Icon className={`h-2.5 w-2.5 ${accent.text}`} aria-hidden />
+      {t(`markAccent_${accentKey}`)}
+    </span>
   );
 }

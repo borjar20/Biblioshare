@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import type { CalendarMark } from "@/lib/clubs/activities/calendar-marks";
 import { formatDayMonth, formatEventDate } from "@/lib/clubs/activities/format-date";
 import { BellIcon } from "@/components/ui/icons";
-import { MARK_ACCENT } from "./mark-accent";
+import { MARK_ACCENT, accentKeyFor } from "./mark-accent";
+import { markLabel } from "./mark-label";
 import { AgendaFollowToggle } from "./agenda-follow-toggle";
 
 export function AgendaList({
@@ -32,7 +33,7 @@ export function AgendaList({
     <ul className="flex flex-col gap-2.5">
       {marks.map((mark, i) => {
         const { day, month } = formatDayMonth(mark.date);
-        const accent = MARK_ACCENT[mark.markKind];
+        const accent = MARK_ACCENT[accentKeyFor(mark)];
         const esEvento = mark.markKind === "evento";
 
         const inner = (
@@ -49,7 +50,7 @@ export function AgendaList({
                 className={`mb-1.5 inline-flex w-fit items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
               >
                 <span aria-hidden className={`h-1.5 w-1.5 rounded-[2px] ${accent.bar}`} />
-                {t(`markKind_${mark.markKind}`)}
+                {markLabel(mark, t)}
                 {/* La marca de seguido lleva icono Y texto accesible: no depende del
                     color, así que sobrevive a la escala de grises y a un lector de
                     pantalla (§17). */}
