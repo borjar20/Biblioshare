@@ -29,11 +29,17 @@ import {
 // color, para no acabar con dos mapas por clase que diverjan.
 //
 // Tailwind v4 necesita las clases enteras y literales, nunca concatenadas.
-// `text` colorea el ICONO y la muestra de la leyenda (objeto gráfico, umbral
-// 3:1), NUNCA el título del chip: el token vívido sobre el tinte al 10% no llega
-// a 4.5:1 para texto pequeño (gold da 2.63 en claro, medido en #147). El título
-// va en `text-foreground` (>10:1) y el color de la clase viaja por icono, tinte
-// (`bgSoft`) y borde (`border`).
+//
+// `text` NUNCA colorea el TÍTULO de una marca (ese va en `text-foreground`,
+// >10:1); el color de la clase viaja por icono, tinte (`bgSoft`) y borde
+// (`border`). Pero sí colorea DOS textos pequeños: la etiqueta del chip de
+// agenda-list.tsx (9px, mayúsculas) y el subtítulo de la tira "Próximo" de
+// club-summary.tsx (12px), ambos sobre `bgSoft`. Ahí el umbral es el de TEXTO
+// (4.5:1), no el 3:1 de objeto gráfico, y mark-accent.test.ts mide los dos:
+// `bar` contra --surface a 3:1 y `text` contra el tinte compuesto a 4.5:1.
+// Por eso --event-meetup y --event-highlight son más oscuros de lo que pedía
+// el objeto gráfico solo, y por eso gold (cierre, 2.64:1) y accent (hito,
+// 4.35:1) están excluidos con issue: son tokens compartidos con media app.
 export type MarkAccent = {
   text: string;
   bgSoft: string;
@@ -82,7 +88,8 @@ export const MARK_ACCENT: Record<MarkAccentKey, MarkAccent> = {
   // por debajo del 3:1 que exige WCAG 1.4.1 para un objeto gráfico (aquí, el
   // icono y la muestra de la leyenda). No se puede oscurecer --spine para
   // arreglarlo: lo comparten las sagas y cambiarlo las restilaría, así que
-  // --event-meetup nace como hermano casi idéntico, solo más oscuro en claro.
+  // --event-meetup nace como hermano del mismo beige, más oscuro en claro y
+  // más claro en oscuro para llegar también al 4.5:1 de TEXTO (ver arriba).
   encuentro: {
     text: "text-event-meetup",
     bgSoft: "bg-event-meetup/10",

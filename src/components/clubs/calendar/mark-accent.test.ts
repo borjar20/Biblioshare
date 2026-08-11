@@ -83,6 +83,15 @@ describe("la leyenda cubre TODO MARK_ACCENT", () => {
     ];
     expect(LEYENDA_LANZAMIENTOS).toEqual(esperado);
   });
+
+  // Las otras dos filas ya tenían su orden clavado; esta no, y la asimetría
+  // invitaba a pensar que el suyo daba igual. Da lo mismo que las demás: la
+  // leyenda se lee de izquierda a derecha y reordenarla sin querer (al insertar
+  // una clave nueva en el Record) mueve dos muestras de sitio.
+  it("la fila de eventos va encuentro, fecha destacada", () => {
+    const esperado: MarkAccentKey[] = ["encuentro", "fecha_destacada"];
+    expect(LEYENDA_EVENTOS).toEqual(esperado);
+  });
 });
 
 describe("los colores de evento son distinguibles entre sí", () => {
@@ -103,30 +112,52 @@ describe("los colores de evento son distinguibles entre sí", () => {
   });
 });
 
-// Regresión del fallo de `encuentro` con `--spine` (2.27:1 en claro, por
-// debajo del 3:1 de objeto gráfico -- WCAG 1.4.1): este test lee el CSS real
-// de globals.css, extrae el token que colorea cada clase de MARK_ACCENT y
-// mide su contraste contra --surface en los dos temas. Así, si alguien
-// vuelve a apuntar una clave a un token que no llega al umbral, el test
-// revienta ANTES de que el fallo llegue al navegador.
-describe("contraste de las clases de MARK_ACCENT contra --surface", () => {
+// Regresión de DOS fallos de contraste, con DOS umbrales distintos:
+//
+//   1. `encuentro` con `--spine`: 2.27:1 contra --surface en claro, por debajo
+//      del 3:1 que WCAG 1.4.1 exige a un OBJETO GRÁFICO (aquí, el punto del
+//      chip y la muestra de la leyenda, que van en `bar`).
+//   2. `encuentro` con el primer `--event-meetup` (#94825c): 3.32:1 contra su
+//      propio tinte, por debajo del 4.5:1 que WCAG 1.4.3 exige al TEXTO. El
+//      `text` de una clase no colorea solo iconos: colorea la etiqueta del chip
+//      de agenda-list.tsx (9px, mayúsculas) y el subtítulo de la tira "Próximo"
+//      de club-summary.tsx (12px), ambos sobre `bgSoft` -- el mismo token al
+//      10% compuesto sobre --surface. Medir solo el 3:1 dejó pasar ese fallo.
+//
+// El test lee el CSS REAL de globals.css en vez de duplicar los valores a mano
+// (duplicarlos es justo lo que dejó pasar el fallo original), y lo hace en los
+// TRES bloques de tema, no en dos: `:root`, `.dark` y el
+// `@media (prefers-color-scheme: dark)`. Ese tercero es el tema oscuro de quien
+// no ha tocado el interruptor -- el caso por defecto, no un borde-- y antes no
+// se parseaba: una edición que cambiara `.dark` y olvidara espejar el @media no
+// la cazaba nada. Que es exactamente la deriva contra la que existe este test.
+describe("contraste de las clases de MARK_ACCENT", () => {
   // Vitest corre con environment: "node" en este repo (vitest.config.ts), así
-  // que node:fs está disponible; se lee el CSS de verdad en vez de duplicar
-  // los valores a mano, que es justo lo que dejó pasar el fallo original.
+  // que node:fs está disponible.
   const globalsCss = readFileSync("src/app/globals.css", "utf8");
 
-  /** Recorta el bloque `{ ... }` que sigue a la primera aparición de `selector` (sin llaves anidadas dentro). */
+  /**
+   * Recorta el bloque `{ ... }` que sigue a `selector`, CONTANDO LLAVES. El
+   * recorte anterior buscaba el primer "\n}" y por eso no podía entrar en el
+   * `@media`, cuyo bloque interno cierra indentado ("\n  }") y cuyo bloque
+   * externo contiene otro anidado.
+   */
   function extraerBloque(css: string, selector: RegExp): string {
     const inicio = selector.exec(css);
     if (!inicio) {
       throw new Error(`No se encontró el selector ${selector} en globals.css`);
     }
+    // `selector` incluye la llave de apertura: se empieza a contar en 1.
+    let profundidad = 1;
     const desde = inicio.index + inicio[0].length;
-    const hasta = css.indexOf("\n}", desde);
-    if (hasta === -1) {
-      throw new Error(`No se encontró el cierre del bloque de ${selector} en globals.css`);
+    for (let i = desde; i < css.length; i++) {
+      if (css[i] === "{") profundidad++;
+      else if (css[i] === "}") {
+        profundidad--;
+        if (profundidad === 0) return css.slice(desde, i);
+      }
     }
-    return css.slice(desde, hasta);
+    throw new Error(`No se encontró el cierre del bloque de ${selector} en globals.css`);
   }
 
   /** `--token: #rrggbb;` -> { token: "#rrggbb" } dentro de un bloque. */
@@ -140,12 +171,26 @@ describe("contraste de las clases de MARK_ACCENT contra --surface", () => {
     return tokens;
   }
 
-  // Bloque claro: la primera declaración `:root {` (no ":root:not(.light)..."
-  // del @media, que el patrón exige que vaya seguido de "{" directamente).
+  // Bloque claro: la primera declaración `:root {` (el patrón exige la llave
+  // pegada, así que no casa con el ":root:not(.light):not(.dark)" del @media).
   const tokensClaro = extraerTokens(extraerBloque(globalsCss, /:root\s*\{/));
-  // Bloque oscuro manual: `.dark {` (el @media prefers-color-scheme espeja
-  // estos mismos valores para el tema oscuro por defecto del sistema).
-  const tokensOscuro = extraerTokens(extraerBloque(globalsCss, /\.dark\s*\{/));
+  // Oscuro manual: el que impone el interruptor del tema.
+  const tokensOscuroManual = extraerTokens(extraerBloque(globalsCss, /\.dark\s*\{/));
+  // Oscuro por preferencia del sistema: el DEFECTO de quien no ha tocado el
+  // interruptor. Se extrae el @media entero y de ahí su :root anidado.
+  const bloqueMedia = extraerBloque(
+    globalsCss,
+    /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{/,
+  );
+  const tokensOscuroSistema = extraerTokens(
+    extraerBloque(bloqueMedia, /:root:not\(\.light\):not\(\.dark\)\s*\{/),
+  );
+
+  const TEMAS = [
+    ["claro", tokensClaro],
+    ["oscuro (.dark)", tokensOscuroManual],
+    ["oscuro (@media prefers-color-scheme)", tokensOscuroSistema],
+  ] as const;
 
   function luminanciaRelativa(hex: string): number {
     const canal = (c: number) => {
@@ -166,38 +211,103 @@ describe("contraste de las clases de MARK_ACCENT contra --surface", () => {
     return (claro + 0.05) / (oscuro + 0.05);
   }
 
-  /** "bg-event-meetup" -> "event-meetup" (quita el prefijo `bg-` y un posible `/NN` de opacidad). */
-  function tokenDeClaseBar(bar: string): string {
-    return bar.replace(/^bg-/, "").split("/")[0];
+  /**
+   * El color que se VE cuando se pinta `bg-<token>/10` sobre --surface. La
+   * composición va en sRGB, canal a canal y a 8 bits, que es lo que hace el
+   * compositor del navegador con el resultado de `color-mix(..., transparent)`
+   * que genera el modificador de opacidad de Tailwind v4.
+   */
+  function componer(token: string, fondo: string, alfa = 0.1): string {
+    const canal = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16);
+    let salida = "#";
+    for (let i = 1; i < 7; i += 2) {
+      const v = Math.round(alfa * canal(token, i) + (1 - alfa) * canal(fondo, i));
+      salida += v.toString(16).padStart(2, "0");
+    }
+    return salida;
+  }
+
+  /** "bg-event-meetup" / "text-event-meetup" -> "event-meetup" (sin prefijo ni `/NN`). */
+  function nombreDeToken(clase: string): string {
+    return clase.replace(/^(bg|text|border)-/, "").split("/")[0];
+  }
+
+  function valorDelToken(tokens: Record<string, string>, nombre: string, tema: string): string {
+    const color = tokens[nombre];
+    expect(color, `--${nombre} no aparece en el bloque de tema "${tema}" de globals.css`).toBeDefined();
+    return color as string;
   }
 
   const UMBRAL_OBJETO_GRAFICO = 3;
+  const UMBRAL_TEXTO = 4.5;
 
-  // `cierre` (gold, #c98a2b) da 2.89:1 contra --surface en tema claro: es un
-  // fallo PREEXISTENTE, no introducido por este cambio, y no se corrige aquí
-  // (issue #577 -- oscurecer --gold pide revisar su blast radius fuera del
-  // calendario, --gold-ink existe por la misma razón para texto). Se excluye
-  // explícitamente en vez de dejar el test rojo desde el día uno, que es como
-  // un test acaba desactivado del todo.
-  const EXCLUIDAS_FALLO_PREEXISTENTE = new Set<MarkAccentKey>(["cierre"]);
+  const TODAS_LAS_CLAVES = Object.keys(MARK_ACCENT) as MarkAccentKey[];
 
-  const clavesAComprobar = (Object.keys(MARK_ACCENT) as MarkAccentKey[]).filter(
-    (clave) => !EXCLUIDAS_FALLO_PREEXISTENTE.has(clave),
-  );
+  // ── Exclusiones. Ninguna es muda: cada una lleva su motivo y su issue. ──
+  //
+  // `cierre` usa --gold, que da 2.89:1 contra --surface en tema claro. Falla
+  // desde ANTES de esta rama y no se corrige aquí: oscurecer --gold pide
+  // revisar su blast radius fuera del calendario (--gold-ink existe justo por
+  // eso, para texto sobre tinte dorado). Issue #577.
+  const EXCLUIDAS_OBJETO_GRAFICO = new Set<MarkAccentKey>(["cierre"]);
 
-  it.each(clavesAComprobar)("%s pasa 3:1 contra --surface en tema claro", (clave) => {
-    const token = tokenDeClaseBar(MARK_ACCENT[clave].bar);
-    const color = tokensClaro[token];
-    expect(color, `--${token} no aparece en el bloque :root de globals.css`).toBeDefined();
-    const ratio = contraste(color as string, tokensClaro.surface);
-    expect(ratio).toBeGreaterThanOrEqual(UMBRAL_OBJETO_GRAFICO);
+  // Para el umbral de TEXTO se excluyen las claves que apuntan a un token
+  // COMPARTIDO con el resto de la app, que no se puede mover sin restilar media
+  // aplicación -- a diferencia de --event-meetup y --event-highlight, que solo
+  // consume MARK_ACCENT y por eso sí se ajustaron hasta pasar:
+  //   - `cierre` -> --gold, 2.64:1 en claro. Issue #577.
+  //   - `hito`   -> --accent (el terracota de marca), 4.35:1 en claro. Issue #586.
+  // Los `type-*` de lanzamiento NO se excluyen: pasan, aunque type-book quede
+  // al filo (4.51:1 en claro). Si algún día dejaran de pasar, la salida es la
+  // misma que la de #586 (un token `-ink` para texto), no relajar el umbral.
+  const EXCLUIDAS_TEXTO_TOKEN_COMPARTIDO = new Set<MarkAccentKey>(["cierre", "hito"]);
+
+  // El espejo del @media es un invariante por sí mismo, aparte del contraste:
+  // si alguien cambia `.dark` y olvida el @media, el tema oscuro por defecto
+  // del sistema se queda con el valor viejo y NINGUNA aserción de contraste lo
+  // notaría (ambos bloques pasarían, cada uno con su color).
+  it("el @media (prefers-color-scheme: dark) espeja .dark token a token", () => {
+    const nombres = new Set(
+      TODAS_LAS_CLAVES.flatMap((clave) => [
+        nombreDeToken(MARK_ACCENT[clave].bar),
+        nombreDeToken(MARK_ACCENT[clave].text),
+      ]).concat("surface"),
+    );
+    for (const nombre of nombres) {
+      expect(
+        tokensOscuroSistema[nombre],
+        `--${nombre} difiere entre .dark y el @media prefers-color-scheme`,
+      ).toBe(tokensOscuroManual[nombre]);
+    }
   });
 
-  it.each(clavesAComprobar)("%s pasa 3:1 contra --surface en tema oscuro", (clave) => {
-    const token = tokenDeClaseBar(MARK_ACCENT[clave].bar);
-    const color = tokensOscuro[token];
-    expect(color, `--${token} no aparece en el bloque .dark de globals.css`).toBeDefined();
-    const ratio = contraste(color as string, tokensOscuro.surface);
-    expect(ratio).toBeGreaterThanOrEqual(UMBRAL_OBJETO_GRAFICO);
+  describe.each(TEMAS)("tema %s", (tema, tokens) => {
+    // Objeto gráfico (WCAG 1.4.1): el punto del chip y la muestra de leyenda,
+    // que van en `bar`, sobre el --surface de la tarjeta.
+    const clavesGrafico = TODAS_LAS_CLAVES.filter((c) => !EXCLUIDAS_OBJETO_GRAFICO.has(c));
+    it.each(clavesGrafico)("%s: `bar` pasa 3:1 contra --surface", (clave) => {
+      const color = valorDelToken(tokens, nombreDeToken(MARK_ACCENT[clave].bar), tema);
+      const surface = valorDelToken(tokens, "surface", tema);
+      expect(contraste(color, surface)).toBeGreaterThanOrEqual(UMBRAL_OBJETO_GRAFICO);
+    });
+
+    // Texto (WCAG 1.4.3): la etiqueta del chip de agenda-list.tsx y el
+    // subtítulo de la tira "Próximo" de club-summary.tsx, ambos con `text`
+    // sobre `bgSoft` -- el MISMO token al 10% compuesto sobre --surface, no
+    // sobre --surface a secas. Medirlo contra --surface daría un número mejor
+    // que el real y volvería a dejar pasar el fallo.
+    const clavesTexto = TODAS_LAS_CLAVES.filter((c) => !EXCLUIDAS_TEXTO_TOKEN_COMPARTIDO.has(c));
+    it.each(clavesTexto)("%s: `text` pasa 4.5:1 contra su propio `bgSoft`", (clave) => {
+      const accent = MARK_ACCENT[clave];
+      // El token de `text` y el de `bgSoft` son el mismo por construcción, pero
+      // se leen por separado: si alguien los desparea, el test debe medir lo
+      // que se pinta de verdad, no lo que suponemos.
+      const colorTexto = valorDelToken(tokens, nombreDeToken(accent.text), tema);
+      const colorTinte = valorDelToken(tokens, nombreDeToken(accent.bgSoft), tema);
+      const surface = valorDelToken(tokens, "surface", tema);
+      const tinte = componer(colorTinte, surface);
+      expect(contraste(colorTexto, tinte)).toBeGreaterThanOrEqual(UMBRAL_TEXTO);
+    });
   });
 });
+
