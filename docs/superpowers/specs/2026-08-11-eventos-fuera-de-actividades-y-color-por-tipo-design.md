@@ -193,8 +193,22 @@ Al caer el grupo, la función deja de necesitar `today` —era su único consumi
 para ordenar futuros antes que pasados. La firma pasa a
 `groupActivities(activities)`.
 
-`isPastEvent` **no** se borra: la usa `activity-card.tsx` para atenuar cualquier
-actividad activa cuya fecha de inicio ya pasó, no solo eventos.
+`isPastEvent` **no** se borra aquí, pero conviene decir por qué de verdad. Una
+versión anterior de esta spec afirmaba que se conservaba «porque
+`activity-card.tsx` la usa para atenuar cualquier actividad activa cuya fecha de
+inicio ya pasó, no solo eventos». **Eso es falso.** Su uso en `activity-card.tsx`
+está gateado tras `!linked`, y `linked` es `definition.hasDetailView`, que solo
+vale `false` para `evento` —el único kind que lo tiene así—, justo el kind que
+este cambio saca del listado. Con los eventos fuera, `linked` es **siempre
+`true`** para todo lo que puede llegar a esa tarjeta, y `isPastEvent` se queda
+**sin ningún llamador de producción**: solo la llama su test.
+
+No se borra en esta tarea para no mezclar dos diagnósticos en la misma revisión.
+El borrado —`isPastEvent`, la rama de meta de evento, la píldora «Ya pasó» y el
+envoltorio alternativo de `activity-card.tsx`— vive en la **issue #587**, con la
+cadena completa y las trampas (entre ellas que `data-model.md` cita `isPastEvent`
+como evidencia, y que la lógica de «pasado» del calendario es otra distinta y sí
+está viva).
 
 ### 5.2 Listado y código muerto
 
@@ -241,9 +255,22 @@ inventarían al planificar: `grep -rn "Fechas señaladas" e2e/`.
 **`spine` y el token nuevo, en los dos temas.** `spine` se eligió para el lienzo
 oscuro del grafo de sagas, pero su muestra de leyenda va sobre `--surface`. Y
 `--event-highlight` nace aquí. Ambos hay que mirarlos en claro y en oscuro antes
-de cerrar; el umbral que aplica es 3:1 (objeto gráfico), porque desde #147 el
-token colorea icono, tinte y borde —nunca el título del chip, que va en
-`text-foreground`.
+de cerrar.
+
+> **Corrección posterior a la implementación.** Este párrafo decía que el umbral
+> aplicable era 3:1 (objeto gráfico) «porque el token colorea icono, tinte y
+> borde —nunca el título del chip». El **título** en efecto va en
+> `text-foreground`, pero el token SÍ colorea otros dos textos pequeños sobre su
+> propio tinte al 10%: la **etiqueta** del chip en `agenda-list.tsx` (9px,
+> mayúsculas) y el **subtítulo** de la tira "Próximo" en `club-summary.tsx`
+> (12px). Ahí manda el **4.5:1** de WCAG 1.4.3, no el 3:1. Con ese umbral,
+> `spine` como `encuentro` daba 3.32/3.39 y ni siquiera el `#94825c` con que
+> nació `--event-meetup` llegaba; los valores finales son `--event-meetup`
+> `#756747`/`#a89c85` (4.78/4.85) y `--event-highlight` `#456895`/`#7fa8d8`
+> (4.92/5.29). El test de `mark-accent.test.ts` mide **los dos** umbrales y en
+> **los tres** bloques de tema. Lo que NO se arregla aquí son los tokens
+> compartidos: `gold` (`cierre`, 2.64 en claro, #577) y `accent` (`hito`, 4.35
+> en claro, #586) van a issue, porque moverlos restila media aplicación.
 
 **Cuatro consumidores de `MARK_ACCENT`, no tres.** `club-summary.tsx:118` (la
 tira "Próximo" del resumen del club) es fácil de olvidar porque no está en

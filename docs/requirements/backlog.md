@@ -147,10 +147,16 @@ sale de `config.item.itemType`, que **ya estaba guardado** desde los tipos de ev
 migración: cero SQL.** La leyenda pasa a tres filas derivadas de las claves del `Record`, y el
 chip dice su clase en texto («Lanzamiento · Película»), porque el color nunca puede ser la única
 señal (WCAG 1.4.1, #147). `encuentro` y `fecha_destacada` estrenan token propio
-(`--event-meetup`, `--event-highlight`): `spine` daba **2.27:1** sobre `--surface` en tema claro,
-por debajo del 3:1 de objeto gráfico, y no se podía oscurecer porque lo comparten las sagas. Se
-añade un test que lee `globals.css` y mide el contraste de todos los tokens de la leyenda —
-excluye `gold`, que falla desde antes ([#577](https://github.com/borjar20/Biblioshare/issues/577)).
+(`--event-meetup` `#756747`/`#a89c85`, `--event-highlight` `#456895`/`#7fa8d8`): `spine` daba
+**2.27:1** sobre `--surface` en tema claro, por debajo del 3:1 de objeto gráfico, y no se podía
+oscurecer porque lo comparten las sagas. Los valores finales no responden al 3:1 sino al
+**4.5:1 de TEXTO**: el token también colorea la etiqueta del chip de la agenda y el subtítulo de
+la tira «Próximo» sobre su propio tinte al 10%. Se añade un test que lee `globals.css` y mide
+**los dos umbrales en los tres bloques de tema** (`:root`, `.dark` y el `@media
+prefers-color-scheme`) — excluye del de texto `gold` y `accent`, que fallan desde antes
+([#577](https://github.com/borjar20/Biblioshare/issues/577),
+[#586](https://github.com/borjar20/Biblioshare/issues/586)). Deuda abierta: código muerto tras
+sacar los eventos del listado ([#587](https://github.com/borjar20/Biblioshare/issues/587)).
 Spec: `docs/superpowers/specs/2026-08-11-eventos-fuera-de-actividades-y-color-por-tipo-design.md`
 · Plan: `docs/superpowers/plans/2026-08-11-eventos-fuera-de-actividades-y-color-por-tipo.md`
 - [x] **La ronda — latido semanal de club** (2026-08-03) — cada semana le toca a un miembro proponer una pregunta al club (con o sin obra adjunta); si no aparece en 48h, entra una consigna de la casa. Turno y periodo (semana ISO en `Europe/Madrid`) se calculan en SQL, nunca los envía el cliente; tabla propia `club_rounds` (deliberadamente NO un `kind` de `club_activities`, contra SD-8 — ver `decisiones.md`), RPCs `get_club_round_state`/`ensure_club_round`, registro en `interaction_targets` (comentable/reaccionable). **Migración aplicada y verificada solo en dev** (`20260803_club_rounds.sql`, llegó en cuatro entradas sucesivas); **producción pendiente**, aplicación reservada al usuario — detalle en `data-model.md` §6. Deuda abierta con issues: cobertura de test de la consigna de la casa

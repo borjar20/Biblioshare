@@ -14,9 +14,16 @@ export type ActivityGroups = {
 //
 // Un evento que es HOY no ha pasado: sigue siendo la fecha señalada.
 //
-// Ya NO la usa groupActivities (los eventos salieron de la pestaña), pero sí
-// activity-card.tsx, que atenúa cualquier actividad activa cuya fecha de inicio
-// ya pasó -- no solo eventos.
+// OJO: esta función se ha quedado SIN NINGÚN LLAMADOR DE PRODUCCIÓN, solo la
+// llama su test. Ya no la usa groupActivities (los eventos salieron de la
+// pestaña) y su único uso restante, en activity-card.tsx, está gateado tras
+// `!linked` -- y `linked` es `definition.hasDetailView`, que solo es false para
+// `evento`, el kind que groupActivities acaba de sacar del listado. Es decir:
+// `linked` es siempre true para todo lo que puede llegar a esa tarjeta.
+//
+// Se conserva a propósito, no por descuido: el borrado (aquí y en
+// activity-card.tsx) va aparte, en la issue #587, para no mezclar dos
+// diagnósticos en la misma revisión. Ahí está la cadena entera y las trampas.
 export function isPastEvent(startsOn: string | null, today: string): boolean {
   if (!startsOn) return false;
   return startsOn < today;
