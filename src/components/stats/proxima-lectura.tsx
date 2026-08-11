@@ -1,51 +1,40 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
+import { RouteMessages } from "@/components/route-messages";
+import { SpineDraw } from "@/components/rincon/spine-draw";
+import type { SorteoCollection, SorteoItem } from "@/components/rincon/sorteo-logic";
 import { TodayHeader } from "./today-header";
-import { NextUpCard, type NextUpItem, type NextUpCardItem } from "./next-up-card";
 
 // Estado 2 (nada en curso, pero hay cola): la cabecera pregunta "¿Qué te
-// apetece hoy?" y en vez de "En curso" se destaca la próxima lectura. Como el
-// estado "En curso", va SIEMPRE en una columna (`today-block`): el destacado
-// arriba y, debajo, "Para más tarde" (LaterShelf, pintado en servidor y pasado
-// como `later`). La vieja fila de dos columnas se retiró con el rediseño del
-// bloque (2026-08-10).
+// apetece hoy?" y en vez de destacar UN pendiente con "Empezar"/"Sugerirme
+// otro", la elección se deja al SORTEO — la misma ceremonia "Sacar un lomo" del
+// Rincón (SpineDraw + SorteoSheet): estantería animada, filtros y, al revelar,
+// deja el ítem en curso. La cola completa sigue debajo en "Para más tarde"
+// (LaterShelf, pintado en servidor y pasado como `later`).
 //
-// Las etiquetas (tipo de medio + textos del CTA) se resuelven AQUÍ, en
-// servidor, y viajan como props a NextUpCard: el Inicio no manda los namespaces
-// `today`/`detail` al cliente (route-messages, #444), así que un
-// useTranslations dentro de la tarjeta cliente pintaría la clave cruda.
+// El sorteo es cliente y usa el namespace `rincon`, que el Inicio NO manda al
+// cliente (route-messages, #444: home solo envía activity/feed/social/…). Se
+// envuelve SOLO la entrada del sorteo en un <RouteMessages ns={["rincon"]}>, así
+// esas cadenas viajan únicamente cuando este estado se pinta, no en cada visita
+// al Inicio. `later` queda fuera: se resuelve en servidor y no las necesita.
 export async function ProximaLectura({
-  items,
+  pool,
+  collections,
   later,
 }: {
-  items: NextUpItem[];
+  pool: SorteoItem[];
+  collections: SorteoCollection[];
   later: ReactNode;
 }) {
   const t = await getTranslations("today");
-  const tMedia = await getTranslations("detail.mediaLabel");
-
-  const cardItems: NextUpCardItem[] = items.map((item) => ({
-    ...item,
-    mediaLabel: tMedia(item.itemType),
-  }));
 
   return (
     <section className="today-block flex flex-col gap-3">
       <TodayHeader title={t("nextUpTitle")} />
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
-            {t("nextUpSection")}
-          </span>
-          <NextUpCard
-            items={cardItems}
-            labels={{
-              context: t("nextUpContext"),
-              start: t("startCta"),
-              suggest: t("suggestAnother"),
-            }}
-          />
-        </div>
+        <RouteMessages ns={["rincon"]}>
+          <SpineDraw pool={pool} collections={collections} />
+        </RouteMessages>
         {later}
       </div>
     </section>

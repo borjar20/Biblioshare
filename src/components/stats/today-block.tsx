@@ -6,6 +6,7 @@ import { getTodayFocus, getNextEpisode, type TodayPass } from "@/lib/stats/get-t
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
@@ -16,7 +17,6 @@ import { TodayHeader } from "./today-header";
 import { ProximaLectura } from "./proxima-lectura";
 import { CollectionSuggestions } from "./collection-suggestions";
 import { EmptyDiscovery } from "./empty-discovery";
-import type { NextUpItem } from "./next-up-card";
 
 // Cuántas portadas de la cola se enseñan. En móvil el resto queda tras el
 // scroll; en escritorio caben seis por fila, así que doce son dos filas, la
@@ -54,15 +54,13 @@ export async function TodayBlock({ userId }: { userId: string }) {
   // descubrimiento. El estado "En curso" (focus.featured) sigue debajo intacto.
   if (!focus.featured) {
     if (planned.length > 0) {
-      const nextUp: NextUpItem[] = planned.map((item) => ({
-        itemId: item.itemId,
-        itemType: item.itemType,
-        title: item.title,
-        coverUrl: item.coverUrl,
-      }));
+      // La próxima lectura la decide el SORTEO (mismo pool que "Sacar un lomo"
+      // del Rincón: pases planned activos con su estimación). Perezoso: solo se
+      // pide cuando de verdad estamos en el estado 2.
+      const pool = await getSorteoPool(supabase, userId);
       return (
         <div className="pb-1">
-          <ProximaLectura items={nextUp} later={later} />
+          <ProximaLectura pool={pool.items} collections={pool.collections} later={later} />
         </div>
       );
     }
