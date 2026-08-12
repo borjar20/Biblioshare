@@ -2742,6 +2742,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_activities_progress: {
+        Args: { p_activity_ids: string[] }
+        Returns: {
+          activity_id: string
+          collective_done: number
+          collective_total: number
+          kind: string
+          participants: number
+          viewer_done: number
+          viewer_total: number
+        }[]
+      }
       get_activity_diary_passes: {
         Args: { p_activity_id: string }
         Returns: {
@@ -2763,18 +2775,6 @@ export type Database = {
           round_item_id: string
           round_item_type: Database["public"]["Enums"]["item_type"]
           round_prompt: string
-        }[]
-      }
-      get_activities_progress: {
-        Args: { p_activity_ids: string[] }
-        Returns: {
-          activity_id: string
-          collective_done: number
-          collective_total: number
-          kind: string
-          participants: number
-          viewer_done: number
-          viewer_total: number
         }[]
       }
       get_list_challenge_progress: {
