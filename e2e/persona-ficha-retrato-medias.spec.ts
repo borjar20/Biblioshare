@@ -202,6 +202,15 @@ test.describe("ficha de persona · retrato y medias", () => {
       // estirarse y obligar a recorrer la página entera para leer el final.
       expect(despues.areaAlto!).toBeLessThanOrEqual(despues.ventana);
 
+      // 1b. EN MÓVIL el retrato es una MINIATURA, no un cuadrado a ancho
+      //     completo: a 390px ese cuadrado medía ~350 y se comía la pantalla
+      //     antes de que apareciera una sola obra.
+      await page.setViewportSize({ width: 390, height: 900 });
+      const movil = await medirFicha(page);
+      expect(movil.alto, "el retrato ocupa media pantalla en móvil").toBeLessThanOrEqual(120);
+      expect(movil.alto).toBe(movil.ancho);
+      await page.setViewportSize({ width: 1700, height: 900 });
+
       // 2. LAS MEDIAS. Dots de verdad (RatingDots pone role="img" con la nota
       //    en el aria-label), y ni rastro del viejo texto «/ 5».
       const ficha = page.locator('[data-area="ficha"]');

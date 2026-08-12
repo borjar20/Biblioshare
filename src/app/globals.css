@@ -626,6 +626,14 @@ body {
     grid-template-areas:
       "ficha obras"
       "rail  obras";
+    /* `auto 1fr` NO es cosmético. `obras` ocupa LAS DOS filas y es la columna
+       alta (una filmografía entera); sin filas declaradas, las dos son `auto` y
+       el sobrante de altura de `obras` se REPARTE entre ellas, así que la fila
+       del raíl empezaba a media página y el raíl aparecía flotando en mitad del
+       hueco en vez de justo debajo de la ficha. Con la segunda fila a `1fr`,
+       ella se queda todo el sobrante y el raíl —alineado a `start`— se pega
+       arriba, pegado a la ficha. */
+    grid-template-rows: auto 1fr;
     gap: 24px;
     align-items: start;
   }

@@ -64,47 +64,63 @@ export async function PersonCard({
 
   return (
     <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-[18px]">
-      {/* `shrink-0` NO es decorativo. A ≥1600 esta card es el contenedor que
-          scrollea (ver `.person-grid` en globals.css), y en un flex column los
-          hijos ENCOGEN antes de provocar desbordamiento. El retrato es un
-          `aspect-square` sin contenido dentro —la Image va absoluta con
-          `fill`—, así que su altura mínima es 0 y era el primero en ceder: al
-          desplegar la biografía con "Ver más", la cara se aplastaba. Con esto
-          el retrato mantiene su cuadrado y lo que crece es el scroll. */}
-      <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-xl bg-surface-muted">
-        {person.photoUrl ? (
-          <Image
-            src={person.photoUrl}
-            alt={person.name}
-            fill
-            sizes="(max-width: 1000px) 100vw, 308px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-4xl font-semibold text-muted-foreground">
-            {initials(person.name)}
-          </div>
-        )}
-      </div>
-
-      <h1 className="font-serif text-2xl font-semibold leading-tight text-foreground">
-        {person.name}
-      </h1>
-
-      {roleCounts.length > 0 && (
-        // Ordenados por VOLUMEN de obras (deriveRoleCounts ya los da así): quien
-        // actúa más de lo que dirige lee "Reparto · Dirección", en ese orden.
-        <div className="flex flex-wrap gap-1.5">
-          {roleCounts.map(({ role }) => (
-            <span
-              key={role}
-              className="rounded-full bg-surface-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
-            >
-              {t(ROLE_KEY[role])}
-            </span>
-          ))}
+      {/* POR DEBAJO DE 1000px el retrato NO ocupa el ancho: un cuadrado a ancho
+          completo mide lo que mide la columna —350px en un móvil, casi 670 en
+          una tablet— y se comía la pantalla entera antes de que apareciera una
+          sola obra. Ahí es una miniatura de 104px con el nombre y los roles al
+          lado. Desde 1000px, donde la ficha ya es una columna estrecha propia,
+          vuelve el retrato grande del mockup: el envoltorio se disuelve con
+          `display:contents` y nombre y roles vuelven a ser hijos directos de la
+          card, sin duplicar markup. */}
+      {/* `shrink-0` también AQUÍ: desde 1000px este envoltorio es el hijo
+          directo de la card que contiene al retrato, así que si él cede, cede
+          la foto — el aplastamiento al desplegar la biografía volvería, una
+          capa más arriba. */}
+      <div className="flex shrink-0 gap-3 min-[1000px]:flex-col min-[1000px]:gap-3">
+        {/* `shrink-0` NO es decorativo. A ≥1600 esta card es el contenedor que
+            scrollea (ver `.person-grid` en globals.css), y en un flex column los
+            hijos ENCOGEN antes de provocar desbordamiento. El retrato es un
+            `aspect-square` sin contenido dentro —la Image va absoluta con
+            `fill`—, así que su altura mínima es 0 y era el primero en ceder: al
+            desplegar la biografía con "Ver más", la cara se aplastaba. Con esto
+            el retrato mantiene su cuadrado y lo que crece es el scroll. */}
+        <div className="relative aspect-square w-[104px] shrink-0 overflow-hidden rounded-xl bg-surface-muted min-[1000px]:w-full">
+          {person.photoUrl ? (
+            <Image
+              src={person.photoUrl}
+              alt={person.name}
+              fill
+              sizes="(max-width: 1000px) 104px, 360px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-4xl font-semibold text-muted-foreground">
+              {initials(person.name)}
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="flex min-w-0 flex-col justify-center gap-2 min-[1000px]:contents">
+          <h1 className="font-serif text-2xl font-semibold leading-tight text-foreground">
+            {person.name}
+          </h1>
+
+          {roleCounts.length > 0 && (
+            // Ordenados por VOLUMEN de obras (deriveRoleCounts ya los da así):
+            // quien actúa más de lo que dirige lee "Reparto · Dirección".
+            <div className="flex flex-wrap gap-1.5">
+              {roleCounts.map(({ role }) => (
+                <span
+                  key={role}
+                  className="rounded-full bg-surface-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
+                >
+                  {t(ROLE_KEY[role])}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {meta.length > 0 && (
         <div className="flex flex-col gap-0.5 text-[12.5px] text-muted-foreground">

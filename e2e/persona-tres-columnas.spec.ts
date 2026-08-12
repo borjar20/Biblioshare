@@ -274,6 +274,40 @@ test.describe("ficha de persona", () => {
     }
   });
 
+  test("a dos columnas el raíl queda PEGADO bajo la ficha, no flotando a media página", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const target = await findPersonWithRealWork();
+
+    await login(page);
+    await page.setViewportSize({ width: 1300, height: 1000 });
+    await page.goto(`/persona/${target.id}`);
+    await waitForWorks(page);
+
+    const cajas = await page.evaluate(() => {
+      const caja = (area: string) => {
+        const el = document.querySelector(`[data-area="${area}"]`);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, left: r.left };
+      };
+      return { ficha: caja("ficha"), rail: caja("rail"), obras: caja("obras") };
+    });
+
+    // Si esta persona no tiene raíl (menos de 2 obras) el test no mide nada.
+    expect(cajas.rail, "la persona elegida debería tener raíl").not.toBeNull();
+
+    // Misma columna que la ficha…
+    expect(Math.round(cajas.rail!.left)).toBe(Math.round(cajas.ficha!.left));
+    // …y justo debajo: el hueco es el `gap` de 24px, no media página. Sin
+    // `grid-template-rows: auto 1fr`, el sobrante de altura de la columna
+    // central se repartía entre las dos filas y el raíl bajaba cientos de px.
+    const hueco = cajas.rail!.top - cajas.ficha!.bottom;
+    expect(hueco, `el raíl arranca ${Math.round(hueco)}px por debajo de la ficha`).toBeLessThan(40);
+    expect(hueco).toBeGreaterThanOrEqual(0);
+  });
+
   test("cero scroll horizontal en todos los anchos", async ({ page }) => {
     test.setTimeout(180_000);
     const target = await findPersonWithRealWork();
