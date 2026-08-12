@@ -256,6 +256,22 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > con el resto de RPC del proyecto**: la función existe precisamente para dar a un miembro
 > autenticado un agregado que la RLS no le dejaría calcular. Lo que importaba era no aparecer
 > bajo `anon_security_definer_function_executable`, y no aparece.
+>
+> **Delta del 2026-08-12 (editar título/descripción/fechas de una actividad, §6.5): estado
+> MIXTO, léase con cuidado.** Migración `supabase/migrations/20260854_update_activity_details.sql`,
+> nueva RPC `update_activity_details(uuid, text, text, date, date)`. **NO está en producción**
+> (pendiente del merge de esta rama, Task 7 Step 4). **En DEV el fichero committeado y lo que
+> hay realmente aplicado DIVERGEN**: dev tiene la primera versión de la función (commit
+> `00eed96c`), que llevaba un fallo de seguridad — el gate de rol se comprobaba DESPUÉS de
+> revelar si la fila existía y de qué `kind` era. Se corrigió en el propio código (commit
+> `eec82b0e`, ver §6.5 y `decisiones.md`) copiando el patrón gate-primero de
+> `20260831_club_activity_role_gate_first.sql`, pero el MCP de Supabase se cayó justo después
+> del arreglo y **la versión corregida nunca se reaplicó en dev**. Antes de dar esta RPC por
+> resuelta en ningún entorno: reaplicar `20260854_update_activity_details.sql` en dev y
+> reverificar los tres casos que motivaron el arreglo (extraño al club contra una actividad
+> normal, contra un evento y contra un uuid inexistente — los tres deben dar `forbidden`; si
+> alguno da otro código distinto, la fuga sigue). Los otros seis casos y el camino feliz sí se
+> verificaron contra dev, pero sobre la versión VIEJA, así que no bastan para cerrar esto.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -1523,6 +1539,93 @@ Es **intencionado**: la función existe justo para dar a un miembro autenticado 
 la RLS no le dejaría calcular, y el WARN lo comparten las demás RPC `security definer` del
 proyecto. Lo que sí importaba —no aparecer bajo `anon_security_definer_function_executable`— se
 verificó y no aparece.
+
+### 6.5 Editar título, descripción y fechas de una actividad ya creada: `update_activity_details` (SOLO DEV, y con una versión vulnerable todavía aplicada — leer entero, 2026-08-12)
+
+> Spec: `docs/superpowers/specs/2026-08-12-editar-actividades-design.md`. Migración
+> `supabase/migrations/20260854_update_activity_details.sql`. Issue #596. Decisiones de forma
+> en `decisiones.md` (2026-08-12).
+
+RPC `security definer`, firma:
+
+```sql
+update_activity_details(
+  p_activity_id uuid, p_title text, p_description text,
+  p_starts_on date, p_ends_on date
+) returns void
+```
+
+Edita **`title`, `description`, `starts_on` y `ends_on`** de la cabecera de una actividad de
+club. Es la primera escritura de cliente sobre esa cabecera (`club_activities` no tiene
+política UPDATE, a propósito, desde `20260713_club_activities.sql:196`).
+
+**Quién:**
+
+- **Moderador+ del club, siempre.**
+- **El creador que no modera, SOLO mientras la actividad está en `proposed`.** Mientras nadie
+  la ha aprobado, la actividad es de quien la propuso; en cuanto el club la activa hay gente
+  apuntada y progreso contándose, así que pasa a ser un compromiso del club y la gobierna la
+  moderación — el creador que no modera deja de poder corregir hasta una errata de su propio
+  título. Justificación completa en `decisiones.md` (2026-08-12).
+
+**Hasta cuándo:** `proposed` y `active`. **`finished` y `archived` quedan CONGELADAS**
+(`dates_frozen`): la ventana `starts_on..ends_on` alimenta `activity_window()`, que decide qué
+lecturas cuentan en los retos, y mover esa ventana en algo ya terminado reescribiría el
+historial de quién completó qué.
+
+**Los eventos (`kind = 'evento'`) quedan fuera** (`use_update_club_event`): ya tienen
+`update_club_event` (§6), que además maneja hora, zona, modalidad y enlace. Dos RPC
+escribiendo los mismos campos divergirían en silencio en cuanto una de las dos se olvidara de
+actualizar.
+
+Códigos de error, en el orden en que la función los evalúa (el orden es diseño, no casualidad
+— ver el fallo de seguridad más abajo):
+
+1. `not_found` — la fila no existe, o la RLS no la deja ver a este `auth.uid()`. No se
+   distinguen los dos casos a propósito.
+2. `use_update_club_event` — es un evento.
+3. `forbidden` — ni moderador+ ni (creador Y `proposed`).
+4. `dates_frozen` — estado `finished`/`archived`.
+5. `title_required` — título vacío tras `btrim`.
+6. `invalid_range` — `p_ends_on < p_starts_on` (solo se rechaza la ventana INVERTIDA; una
+   fecha de fin en el pasado es válida — cerrar hoy una lectura con la fecha en que de verdad
+   terminó es un uso normal).
+
+**Fallo de seguridad corregido antes de aplicar en ningún sitio real (commit `eec82b0e`):**
+la primera versión del código comprobaba el permiso (código 3) DESPUÉS de revelar si la fila
+existía (código 1) y de qué `kind` era (código 2). Como es `security definer`, cualquier
+`authenticated` que no fuera miembro del club podía distinguir por el código de excepción
+devuelto si un uuid existía y si era un evento — fuga de información, no de escritura. **Era
+una REGRESIÓN de algo ya arreglado en este repo**: `20260831_club_activity_role_gate_first.sql`
+(issue #129) corrigió exactamente este patrón en `update_club_event`, `set_club_event_state`,
+`finish_club_activity` y `archive_club_activity`. El plan de esta RPC lo reintrodujo sin
+querer. Se corrigió copiando ese mismo patrón: el gate de rol (`v_created_by <> auth.uid() and
+not v_is_mod`) va PRIMERO, con `coalesce(...)` para que un creador NULL (fila inexistente) no
+cuele por un `null = auth.uid()` que da NULL en vez de `false`. **Regla que queda para
+cualquier RPC nueva sobre `club_activities`: el gate de rol va PRIMERO, siempre** — leer
+`20260831_club_activity_role_gate_first.sql` antes de escribir la siguiente.
+
+**Estado real, no el que el fichero committeado sugiere:**
+
+- **Producción: no tiene la función en absoluto.** Aplicarla es la Task 7 Step 4 del plan, y
+  la decide el usuario — no se ha hecho.
+- **Dev: tiene la función, pero la versión VULNERABLE (commit `00eed96c`, gate de rol
+  DESPUÉS).** El arreglo `eec82b0e` existe en el repo pero el MCP de Supabase se cayó justo
+  después de escribirlo y **no se ha podido reaplicar contra dev todavía**. Los ocho casos y
+  el camino feliz del Step 5 del plan sí se verificaron contra dev, pero sobre la versión
+  vieja — no cubren el fallo de seguridad, que se arregló después de esa verificación.
+
+**Pendiente antes de dar esta RPC por buena en cualquier entorno:** reaplicar
+`20260854_update_activity_details.sql` en dev (con `mcp__supabase-dev__apply_migration`, en
+cuanto el MCP vuelva) y correr contra dev los tres casos que motivan el arreglo, que deben dar
+los TRES `forbidden`:
+
+- extraño al club + actividad normal existente
+- extraño al club + actividad `evento` existente (aquí estaba la fuga: antes daba
+  `use_update_club_event`, revelando el `kind`)
+- extraño al club + uuid inexistente
+
+Si alguno difiere de `forbidden`, la fuga sigue.
 
 ## 7. Sagas
 
