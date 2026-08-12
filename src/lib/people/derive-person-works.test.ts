@@ -5,8 +5,10 @@ import {
   deriveCollaborators,
   deriveDominantType,
   deriveLibrarySummary,
+  deriveRatingBuckets,
   deriveRoleCounts,
   deriveRoleSections,
+  dominantItemType,
   filterWorks,
   groupByYear,
   pickFeatured,
@@ -89,6 +91,69 @@ describe("deriveDominantType", () => {
   });
 });
 
+describe("dominantItemType", () => {
+  it("el tipo más frecuente manda", () => {
+    expect(
+      dominantItemType([
+        work({ itemId: "1", itemType: "series" }),
+        work({ itemId: "2", itemType: "series" }),
+        work({ itemId: "3", itemType: "movie" }),
+      ])
+    ).toBe("series");
+  });
+
+  it("responde distinto que deriveDominantType: 3 series + 2 pelis es «watched» pero `series`", () => {
+    const works = [
+      work({ itemId: "1", itemType: "series" }),
+      work({ itemId: "2", itemType: "series" }),
+      work({ itemId: "3", itemType: "series" }),
+      work({ itemId: "4", itemType: "movie" }),
+      work({ itemId: "5", itemType: "movie" }),
+    ];
+    expect(deriveDominantType(works)).toBe("watched");
+    expect(dominantItemType(works)).toBe("series");
+  });
+
+  it("sin obras -> movie (no revienta)", () => {
+    expect(dominantItemType([])).toBe("movie");
+  });
+});
+
+describe("deriveRatingBuckets", () => {
+  it("diez cubos, uno por cada nota interna 1–10", () => {
+    expect(deriveRatingBuckets([])).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it("cada nota cae en SU cubo, sin agrupar de dos en dos", () => {
+    const buckets = deriveRatingBuckets([
+      work({ itemId: "a", userRating: 7 }),
+      work({ itemId: "b", userRating: 8 }),
+      work({ itemId: "c", userRating: 8 }),
+      work({ itemId: "d", userRating: 10 }),
+    ]);
+    // 7 -> índice 6 (3,5★); 8 -> índice 7 (4★); 10 -> índice 9 (5★)
+    expect(buckets).toEqual([0, 0, 0, 0, 0, 0, 1, 2, 0, 1]);
+  });
+
+  it("las obras sin nota no cuentan", () => {
+    const buckets = deriveRatingBuckets([
+      work({ itemId: "a", userRating: null }),
+      work({ itemId: "b", userRating: 2 }),
+    ]);
+    expect(buckets.reduce((x, y) => x + y, 0)).toBe(1);
+  });
+
+  it("los extremos 1 y 10 no se salen del array", () => {
+    const buckets = deriveRatingBuckets([
+      work({ itemId: "a", userRating: 1 }),
+      work({ itemId: "b", userRating: 10 }),
+    ]);
+    expect(buckets[0]).toBe(1);
+    expect(buckets[9]).toBe(1);
+    expect(buckets).toHaveLength(10);
+  });
+});
+
 describe("deriveLibrarySummary", () => {
   it("M>=3 y N>=1 -> visible, con recuento y verbo", () => {
     const works = [
@@ -131,6 +196,27 @@ describe("pickFeatured", () => {
       "global",
       "reciente",
       "vieja",
+    ]);
+  });
+
+  it("el caso Phil Lord: su obra como director gana a los making-of recientes", () => {
+    // Sin peso de rol, en catálogo recién hidratado las dos notas son null y
+    // manda el AÑO, así que los featurettes de 2023 salían destacados por
+    // delante de su cine. Ver `workRoleWeight`.
+    const works = [
+      work({ itemId: "makingof1", year: 2023, roles: ["cast"], character: "Self" }),
+      work({ itemId: "makingof2", year: 2023, roles: ["cast"], character: "Self - Presenter" }),
+      work({ itemId: "lluvia", year: 2009, roles: ["director", "writer"] }),
+      work({ itemId: "lego", year: 2014, roles: ["director", "writer"] }),
+      work({ itemId: "cameo", year: 2022, roles: ["cast"], character: "Additional Voices" }),
+    ];
+
+    expect(pickFeatured(works).map((w) => w.itemId)).toEqual([
+      "lego",
+      "lluvia",
+      "cameo",
+      "makingof1",
+      "makingof2",
     ]);
   });
 

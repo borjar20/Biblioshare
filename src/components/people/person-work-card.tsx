@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { ProfileWork } from "@/lib/people/profile-types";
+import { strongestRole } from "@/lib/people/credit-noise";
 import { ROLE_KEY, STATUS_KEY } from "./role-labels";
 
 // La obra como TARJETA, para la rejilla de 2 columnas de móvil (mockup marco 2).
@@ -16,7 +17,9 @@ import { ROLE_KEY, STATUS_KEY } from "./role-labels";
 export async function PersonWorkCard({ work }: { work: ProfileWork }) {
   const t = await getTranslations("person");
 
-  const subtitle = [work.year, work.roles[0] ? t(ROLE_KEY[work.roles[0]]) : null]
+  // El rol MÁS FUERTE, no `roles[0]`: ese es el orden en que vinieron las filas
+  // de `credits` y etiquetaba «Reparto» una obra que la persona creó.
+  const subtitle = [work.year, work.roles.length ? t(ROLE_KEY[strongestRole(work.roles)]) : null]
     .filter(Boolean)
     .join(" · ");
 

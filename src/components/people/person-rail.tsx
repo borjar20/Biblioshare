@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { formatDots } from "@/lib/rating/dots";
 import type { PersonProfile } from "@/lib/people/profile-types";
 import { ROLE_KEY } from "./role-labels";
 
@@ -123,14 +124,16 @@ export async function PersonRail({ profile }: { profile: PersonProfile }) {
                 {t("railLastFinished")}: {lastFinished.title} · {lastFinished.finishedOn}
               </span>
             )}
+            {/* Sobre 5, como en toda la app: la nota se guarda 1–10 y se
+                enseña con cinco dots (`formatDots`). */}
             {profile.userAverage != null && (
               <span>
-                {t("yourAverage")}: {profile.userAverage.toFixed(1)}
+                {t("yourAverage")}: {formatDots(profile.userAverage)} / 5
               </span>
             )}
             {profile.globalAverage != null && (
               <span>
-                {t("railGlobalAverage")}: {profile.globalAverage.toFixed(1)}
+                {t("railGlobalAverage")}: {formatDots(profile.globalAverage)} / 5
               </span>
             )}
           </div>

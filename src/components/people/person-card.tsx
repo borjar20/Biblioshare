@@ -1,8 +1,14 @@
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { PersonProfile } from "@/lib/people/profile-types";
-import { deriveLibrarySummary } from "@/lib/people/derive-person-works";
+import {
+  deriveLibrarySummary,
+  deriveRatingBuckets,
+  dominantItemType,
+} from "@/lib/people/derive-person-works";
+import { formatDots } from "@/lib/rating/dots";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { RatingHistogram } from "@/components/detail/rating-histogram";
 import { BioClamp } from "./bio-clamp";
 import { ROLE_KEY } from "./role-labels";
 
@@ -49,6 +55,11 @@ export async function PersonCard({
 
   const pending = works.filter((w) => w.status === "planned").length;
   const inProgress = works.filter((w) => w.status === "in_progress").length;
+
+  // El histograma solo con al menos tres notas: con una o dos son barras
+  // sueltas que no describen ningún gusto, y ocupan lo mismo.
+  const buckets = deriveRatingBuckets(works);
+  const ratedCount = buckets.reduce((a, b) => a + b, 0);
 
   return (
     <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-[18px]">
@@ -112,10 +123,26 @@ export async function PersonCard({
               {t(SUMMARY_KEY[summary.verb], { done: summary.done, total: summary.total })}
             </p>
             <ProgressBar current={summary.done} total={summary.total} />
+
+            {ratedCount >= 3 && (
+              // Mismo histograma que la ficha de obra y el raíl de `/post/[id]`
+              // (`RatingHistogram`, presentacional puro): aquí describe TU gusto
+              // sobre la obra de esta persona, no el de la comunidad.
+              <div className="flex flex-col gap-1">
+                <RatingHistogram
+                  itemType={dominantItemType(works)}
+                  distribution={buckets}
+                  barsHeight="h-10"
+                />
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
               {userAverage != null && (
+                // La nota se guarda 1–10 y se ENSEÑA sobre 5, como en toda la
+                // app (`formatDots`); el "/5" lo pone quien pinta.
                 <span>
-                  {t("yourAverage")}: {userAverage.toFixed(1)}
+                  {t("yourAverage")}: {formatDots(userAverage)} / 5
                 </span>
               )}
               {pending > 0 && (

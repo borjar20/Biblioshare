@@ -3,6 +3,7 @@ import { CoverCard } from "@/components/ui/cover-card";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { ProfileWork } from "@/lib/people/profile-types";
+import { strongestRole } from "@/lib/people/credit-noise";
 import { ROLE_KEY, STATUS_KEY } from "./role-labels";
 
 // Hasta 5 obras destacadas. Las que salen aquí NO se repiten en la lista de
@@ -30,7 +31,9 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
               href={work.href}
               coverUrl={work.coverUrl}
               title={work.title}
-              subtitle={[work.year, t(ROLE_KEY[work.roles[0]])].filter(Boolean).join(" · ")}
+              subtitle={[work.year, t(ROLE_KEY[strongestRole(work.roles)])]
+                .filter(Boolean)
+                .join(" · ")}
             />
             {(work.userRating != null || work.status) && (
               <div className="flex items-center justify-between gap-1">

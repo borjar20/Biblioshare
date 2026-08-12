@@ -1,6 +1,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { personHref } from "@/lib/catalog/item-href";
 import type { CreditRole } from "./types";
+import { workRoleWeight } from "./credit-noise";
 import type { Collaborator, ProfileWork } from "./profile-types";
 
 // Toda la lógica de FORMA de la ficha de persona, en funciones puras: no tocan
@@ -44,6 +45,44 @@ export function deriveDominantType(works: ProfileWork[]): DominantType {
   return screen > books ? "watched" : "read";
 }
 
+// El tipo de obra con el que teñir lo que necesita un acento (el histograma de
+// notas). `deriveDominantType` responde a "¿visto o leído?"; esto responde a
+// "¿de qué color?", que no es lo mismo: una persona con 3 series y 2 películas
+// es "watched" en la primera y `series` en esta.
+export function dominantItemType(works: ProfileWork[]): ItemType {
+  const counts = new Map<ItemType, number>();
+  for (const w of works) counts.set(w.itemType, (counts.get(w.itemType) ?? 0) + 1);
+  let best: ItemType = "movie";
+  let bestCount = -1;
+  for (const [type, count] of counts) {
+    if (count > bestCount) {
+      best = type;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/**
+ * Las notas del VISITANTE sobre las obras de esta persona, en los diez cubos de
+ * MEDIA estrella que espera `RatingHistogram` (ascendente: 0,5★ … 5★).
+ *
+ * Diez cubos y no cinco, por el mismo motivo que `get-rating-distribution.ts`:
+ * la nota interna es 1–10 y agrupar de dos en dos mete cada nota impar en la
+ * estrella siguiente, con lo que la barra más alta y la media de la misma
+ * tarjeta acaban discrepando en medio punto.
+ */
+export function deriveRatingBuckets(works: ProfileWork[]): number[] {
+  const buckets = new Array<number>(10).fill(0);
+  for (const w of works) {
+    if (w.userRating == null) continue;
+    // rating 1..10 -> índice 0..9
+    const index = Math.min(9, Math.max(0, Math.round(w.userRating) - 1));
+    buckets[index] += 1;
+  }
+  return buckets;
+}
+
 export type LibrarySummary = {
   visible: boolean;
   total: number;
@@ -64,14 +103,28 @@ export function deriveLibrarySummary(works: ProfileWork[]): LibrarySummary {
   };
 }
 
-// Criterio del spec, EN ESTE ORDEN: tu nota alta > mejor nota global > más
-// reciente. El desempate final por itemId hace el orden ESTABLE: sin él, dos
-// renders del mismo perfil podían bailar.
+/**
+ * Criterio, EN ESTE ORDEN: peso del rol > tu nota alta > mejor nota global >
+ * más reciente. El desempate final por itemId hace el orden ESTABLE: sin él,
+ * dos renders del mismo perfil podían bailar.
+ *
+ * El PESO DEL ROL va primero, y es un añadido del 2026-08-12 a petición del
+ * dueño. Sin él, en un catálogo recién hidratado las dos notas son null para
+ * todo y el desempate real era el AÑO — así que en la ficha de Phil Lord los
+ * making-of de 2023 salían destacados por delante de su obra como director.
+ * Con el peso, la autoría (dirección, guion, creación, autoría) manda sobre el
+ * reparto, y una aparición como sí mismo no destaca jamás.
+ *
+ * Consecuencia asumida: en una persona que dirige Y actúa mucho, las destacadas
+ * tiran hacia lo que dirige. Su obra como intérprete no se pierde — está en su
+ * sección de rol y en la lista por año, y el chip de crédito la filtra.
+ */
 export function pickFeatured(works: ProfileWork[], max = FEATURED_MAX): ProfileWork[] {
   if (works.length < FEATURED_MIN_WORKS) return [];
   return [...works]
     .sort(
       (a, b) =>
+        workRoleWeight(b.roles, b.character) - workRoleWeight(a.roles, a.character) ||
         (b.userRating ?? 0) - (a.userRating ?? 0) ||
         (b.globalRating ?? 0) - (a.globalRating ?? 0) ||
         (b.year ?? 0) - (a.year ?? 0) ||

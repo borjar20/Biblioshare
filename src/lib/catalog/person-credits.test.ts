@@ -144,6 +144,35 @@ describe("getPersonCombinedCredits", () => {
     expect(credits[0]).toMatchObject({ coverUrl: null, year: null });
   });
 
+  it("descarta las apariciones COMO SÍ MISMO, pero no los papeles de verdad", async () => {
+    // Datos calcados de Phil Lord (tmdb 107446), medidos el 2026-08-12.
+    mockResponse({
+      cast: [
+        { id: 1, media_type: "movie", title: "Making of Spider-Verse", poster_path: null, character: "Self" },
+        { id: 2, media_type: "tv", name: "Jeopardy!", poster_path: null, character: "Self - Clue Presenter" },
+        { id: 3, media_type: "tv", name: "Clone High", poster_path: null, character: "Principal Dr. Cinnamon" },
+        { id: 4, media_type: "movie", title: "Lluvia de albóndigas", poster_path: null, character: "Additional Voices (voice)" },
+      ],
+      crew: [],
+    });
+
+    const credits = await getPersonCombinedCredits(107446);
+
+    expect(credits.map((c) => c.tmdbId)).toEqual([3, 4]);
+  });
+
+  it("un «Self» que ADEMÁS dirige conserva su crédito de dirección", async () => {
+    mockResponse({
+      cast: [{ id: 9, media_type: "movie", title: "Doc", poster_path: null, character: "Self" }],
+      crew: [{ id: 9, media_type: "movie", title: "Doc", poster_path: null, job: "Director" }],
+    });
+
+    const credits = await getPersonCombinedCredits(107446);
+
+    expect(credits).toHaveLength(1);
+    expect(credits[0].role).toBe("director");
+  });
+
   it("sin TMDB_API_KEY -> [] sin llamar a fetch", async () => {
     delete process.env.TMDB_API_KEY;
     const fetchMock = vi.fn();

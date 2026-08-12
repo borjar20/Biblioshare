@@ -1,5 +1,6 @@
 import type { CreditRole } from "@/lib/people/types";
 import { mapTmdbJob } from "@/lib/people/map-tmdb-job";
+import { isSelfAppearance } from "@/lib/people/credit-noise";
 import type { SearchResult } from "./types";
 import { resolveGenresFromIds } from "./tmdb-genres";
 
@@ -581,6 +582,11 @@ export async function getPersonCombinedCredits(
   const seen = new Set<string>();
 
   const push = (raw: TmdbCombinedCreditEntry, role: CreditRole) => {
+    // Las apariciones COMO SÍ MISMO no se traen: no son obra, y cada una
+    // crearía además una fila de catálogo COMPARTIDA (un making-of, un
+    // concurso) que luego sale en búsqueda, géneros y estadísticas. Decisión
+    // del dueño, 2026-08-12. Ver `isSelfAppearance`.
+    if (role === "cast" && isSelfAppearance(raw.character)) return;
     const entry = mapCombinedEntry(raw, role);
     if (!entry) return;
     const key = `${entry.itemType}:${entry.tmdbId}:${entry.role}`;
