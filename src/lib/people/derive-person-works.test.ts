@@ -8,12 +8,11 @@ import {
   libraryPercent,
   deriveRatingBuckets,
   deriveRoleCounts,
-  deriveRoleSections,
   dominantItemType,
   filterWorks,
   groupByYear,
+  groupWorks,
   pickFeatured,
-  splitFeaturedAndRest,
 } from "./derive-person-works";
 
 function work(over: Partial<ProfileWork> & { itemId: string }): ProfileWork {
@@ -32,6 +31,7 @@ function work(over: Partial<ProfileWork> & { itemId: string }): ProfileWork {
     status: null,
     userRating: null,
     finishedOn: null,
+    progressLabel: null,
     progressPercent: null,
     ...over,
   } as ProfileWork;
@@ -261,21 +261,6 @@ describe("pickFeatured", () => {
   });
 });
 
-describe("splitFeaturedAndRest", () => {
-  it("las destacadas NO se repiten en el resto", () => {
-    const works = Array.from({ length: 8 }, (_, i) =>
-      work({ itemId: String(i), year: 2000 + i })
-    );
-
-    const { featured, rest } = splitFeaturedAndRest(works);
-
-    expect(featured).toHaveLength(5);
-    expect(rest).toHaveLength(3);
-    const featuredIds = new Set(featured.map((w) => w.itemId));
-    expect(rest.every((w) => !featuredIds.has(w.itemId))).toBe(true);
-  });
-});
-
 describe("groupByYear", () => {
   it("agrupa por año descendente; los sin año van al final", () => {
     const groups = groupByYear([
@@ -290,42 +275,66 @@ describe("groupByYear", () => {
   });
 });
 
-describe("deriveRoleSections", () => {
-  it("rol secundario con >=3 obras -> secciones", () => {
-    const works = [
-      ...Array.from({ length: 4 }, (_, i) => work({ itemId: `d${i}`, roles: ["director"] })),
-      ...Array.from({ length: 3 }, (_, i) => work({ itemId: `c${i}`, roles: ["cast"] })),
-    ];
+describe("groupWorks", () => {
+  it("cronología: un tramo por año, descendente y los sin año al final", () => {
+    const groups = groupWorks(
+      [
+        work({ itemId: "a", year: 1999 }),
+        work({ itemId: "b", year: 2020 }),
+        work({ itemId: "c", year: null }),
+      ],
+      "chronology"
+    );
 
-    const sections = deriveRoleSections(works);
-
-    expect(sections.map((s) => [s.role, s.works.length])).toEqual([
-      ["director", 4],
-      ["cast", 3],
-    ]);
+    expect(groups.map((g) => g.year)).toEqual([2020, 1999, null]);
+    expect(groups.every((g) => g.role === null)).toBe(true);
   });
 
-  it("rol secundario con >=20% del total -> secciones aunque sean 2 obras", () => {
-    const works = [
-      ...Array.from({ length: 8 }, (_, i) => work({ itemId: `d${i}`, roles: ["director"] })),
-      work({ itemId: "c0", roles: ["cast"] }),
-      work({ itemId: "c1", roles: ["cast"] }),
-    ];
+  it("por categoría: un tramo por rol, autoría antes que reparto", () => {
+    const groups = groupWorks(
+      [
+        work({ itemId: "1", roles: ["cast"] }),
+        work({ itemId: "2", roles: ["director"] }),
+        work({ itemId: "3", roles: ["writer"] }),
+      ],
+      "role"
+    );
 
-    expect(deriveRoleSections(works)).toHaveLength(2);
+    expect(groups.map((g) => g.role)).toEqual(["director", "writer", "cast"]);
   });
 
-  it("un cameo suelto NO genera sección -> lista plana ([])", () => {
-    const works = [
-      ...Array.from({ length: 10 }, (_, i) => work({ itemId: `d${i}`, roles: ["director"] })),
-      work({ itemId: "c0", roles: ["cast"] }),
-    ];
+  it("por categoría, una obra con varios roles sale UNA vez, en el de más peso", () => {
+    // Repetir la fila en «Dirección» y en «Reparto» descuadraría el recuento de
+    // la cabecera y rompería la lectura de la lista.
+    const groups = groupWorks([work({ itemId: "1", roles: ["cast", "director"] })], "role");
 
-    expect(deriveRoleSections(works)).toEqual([]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].role).toBe("director");
+    expect(groups[0].works.map((w) => w.itemId)).toEqual(["1"]);
   });
 
-  it("un solo rol -> lista plana", () => {
-    expect(deriveRoleSections([work({ itemId: "1", roles: ["cast"] })])).toEqual([]);
+  it("por categoría, dentro del tramo manda el año descendente", () => {
+    const groups = groupWorks(
+      [
+        work({ itemId: "viejo", roles: ["director"], year: 1990 }),
+        work({ itemId: "nuevo", roles: ["director"], year: 2020 }),
+      ],
+      "role"
+    );
+
+    expect(groups[0].works.map((w) => w.itemId)).toEqual(["nuevo", "viejo"]);
+  });
+
+  it("NINGÚN orden pierde obras: lo que entra, sale", () => {
+    const works = Array.from({ length: 9 }, (_, i) =>
+      work({ itemId: String(i), year: 2000 + (i % 3), roles: [(["cast", "director", "writer"] as CreditRole[])[i % 3]] })
+    );
+
+    for (const order of ["chronology", "role"] as const) {
+      const salidas = groupWorks(works, order).flatMap((g) => g.works.map((w) => w.itemId));
+      expect(new Set(salidas).size).toBe(9);
+      expect(salidas).toHaveLength(9);
+    }
   });
 });
 

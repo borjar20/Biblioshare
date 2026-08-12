@@ -5,6 +5,7 @@ import { chunkIds } from "@/lib/supabase/in-chunks";
 import { PERSON_COLUMNS, enrichTmdbBio, toPerson, type PersonRow } from "./get-person";
 import { hydratePersonCredits, needsCreditHydration } from "./hydrate-person-credits";
 import { deriveCollaborators, deriveRoleCounts, type CollaboratorRow } from "./derive-person-works";
+import { deriveWorkProgress } from "./work-progress";
 import type { CreditRole } from "./types";
 import type { PersonProfile, ProfileWork, SagaProgress, WorkStatus } from "./profile-types";
 
@@ -105,11 +106,23 @@ export async function getPersonProfile(
   // todo en paralelo: no dependen entre sí.
   const meta = new Map<
     string,
-    { title: string; coverUrl: string | null; year: number | null; durationMinutes: number | null }
+    {
+      title: string;
+      coverUrl: string | null;
+      year: number | null;
+      durationMinutes: number | null;
+      /** Páginas del libro: el denominador del progreso. Null en el resto. */
+      totalPages: number | null;
+    }
   >();
   const statusByItem = new Map<
     string,
-    { status: WorkStatus; rating: number | null; finishedOn: string | null }
+    {
+      status: WorkStatus;
+      rating: number | null;
+      finishedOn: string | null;
+      position: unknown;
+    }
   >();
   const globalByItem = new Map<string, { sum: number; count: number }>();
   const sagaByItem = new Map<string, { sagaId: string; name: string }>();
@@ -137,6 +150,8 @@ export async function getPersonProfile(
             // fila usa este campo solo para cine y series.
             durationMinutes:
               type === "book" ? null : ((r[SIZE_COLUMN[type]] as number | null) ?? null),
+            totalPages:
+              type === "book" ? ((r[SIZE_COLUMN[type]] as number | null) ?? null) : null,
           });
         }
       })
@@ -148,7 +163,7 @@ export async function getPersonProfile(
           chunkIds(idsByType[type]).map(async (ids) => {
             const { data } = await supabase
               .from("passes")
-              .select("item_id, status, is_active, rating, finished_on")
+              .select("item_id, status, is_active, rating, finished_on, position")
               .eq("user_id", viewerId)
               .eq("item_type", type)
               .in("item_id", ids);
@@ -162,12 +177,14 @@ export async function getPersonProfile(
                   status: "completed",
                   rating: (r.rating as number | null) ?? prev?.rating ?? null,
                   finishedOn: (r.finished_on as string | null) ?? prev?.finishedOn ?? null,
+                  position: r.position,
                 });
               } else if (prev?.status !== "completed" && r.is_active) {
                 statusByItem.set(key, {
                   status: r.status as WorkStatus,
                   rating: (r.rating as number | null) ?? null,
                   finishedOn: (r.finished_on as string | null) ?? null,
+                  position: r.position,
                 });
               }
             }
@@ -249,11 +266,10 @@ export async function getPersonProfile(
       status: state?.status ?? null,
       userRating: state?.rating ?? null,
       finishedOn: state?.finishedOn ?? null,
-      // El porcentaje de avance vive en `passes.position` (jsonb) y su cálculo
-      // depende del tipo (página ÷ total_pages en libros, episodio sobre
-      // total_episodes en series). Se deja en null a sabiendas: la fila "en
-      // progreso" pinta la etiqueta sin barra. Ver la issue de cobertura.
-      progressPercent: null,
+      ...(() => {
+        const p = deriveWorkProgress(c.item_type, state?.status ?? null, state?.position, m.totalPages);
+        return { progressLabel: p.label, progressPercent: p.percent };
+      })(),
     });
   }
 

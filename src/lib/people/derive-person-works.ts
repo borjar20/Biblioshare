@@ -1,7 +1,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { personHref } from "@/lib/catalog/item-href";
 import type { CreditRole } from "./types";
-import { workRoleWeight } from "./credit-noise";
+import { strongestRole, workRoleWeight } from "./credit-noise";
 import type { Collaborator, ProfileWork } from "./profile-types";
 
 // Toda la lógica de FORMA de la ficha de persona, en funciones puras: no tocan
@@ -11,9 +11,6 @@ const FEATURED_MAX = 5;
 // Con 3 obras o menos no hay «destacadas»: destacar 3 de 3 no destaca nada, y la
 // lista de abajo se quedaría vacía. Ver los estados de volumen del spec.
 const FEATURED_MIN_WORKS = 4;
-// Umbral de sección por rol: un cameo suelto no parte el centro en dos.
-const SECTION_MIN_WORKS = 3;
-const SECTION_MIN_SHARE = 0.2;
 const COLLABORATOR_MIN_SHARED = 2;
 
 export function deriveRoleCounts(works: ProfileWork[]): Array<{ role: CreditRole; count: number }> {
@@ -152,17 +149,6 @@ export function pickFeatured(works: ProfileWork[], max = FEATURED_MAX): ProfileW
     .slice(0, max);
 }
 
-// La exclusión ES la razón de que la lista de abajo se titule "El resto, por
-// año": sin ella las cinco destacadas salían DOS veces en la misma pantalla.
-export function splitFeaturedAndRest(works: ProfileWork[]): {
-  featured: ProfileWork[];
-  rest: ProfileWork[];
-} {
-  const featured = pickFeatured(works);
-  const ids = new Set(featured.map((w) => `${w.itemType}:${w.itemId}`));
-  return { featured, rest: works.filter((w) => !ids.has(`${w.itemType}:${w.itemId}`)) };
-}
-
 export type YearGroup = { year: number | null; works: ProfileWork[] };
 
 export function groupByYear(works: ProfileWork[]): YearGroup[] {
@@ -179,24 +165,66 @@ export function groupByYear(works: ProfileWork[]): YearGroup[] {
     .sort((a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity));
 }
 
-export type RoleSection = { role: CreditRole; works: ProfileWork[] };
+/** Cómo se ordena la filmografía. Vive en la URL (`?orden=`). */
+export type WorkOrder = "chronology" | "role";
 
-// Parte el centro en "Como directora" / "Como intérprete" solo cuando el rol
-// secundario pesa de verdad: >=3 obras o >=20% del total. Devuelve [] para "no
-// partas nada, pinta una lista plana".
-export function deriveRoleSections(works: ProfileWork[]): RoleSection[] {
-  const counts = deriveRoleCounts(works);
-  if (counts.length < 2) return [];
+/**
+ * Un tramo de la lista. `year` manda en cronología y `role` en el orden por
+ * categoría; el otro va a null. La lista es SIEMPRE una sola columna vertical:
+ * el grupo solo pone la etiqueta de la izquierda, no abre otra lista.
+ */
+export type WorkGroup = {
+  key: string;
+  year: number | null;
+  role: CreditRole | null;
+  works: ProfileWork[];
+};
 
-  const total = works.length;
-  const qualifying = counts.filter(
-    (c) => c.count >= SECTION_MIN_WORKS || c.count / total >= SECTION_MIN_SHARE
+// Orden de las categorías cuando se agrupa por rol: autoría primero, reparto al
+// final. Es el mismo criterio que `workRoleWeight` usa para destacar, para que
+// «lo importante primero» signifique lo mismo en las dos partes de la página.
+const ROLE_ORDER: CreditRole[] = ["director", "creator", "author", "writer", "cast"];
+
+// Dentro de un tramo: primero lo que más pesa, luego lo más reciente, y el
+// desempate final por id para que dos renders no bailen.
+function byWeightThenYear(a: ProfileWork, b: ProfileWork): number {
+  return (
+    workRoleWeight(b.roles, b.character) - workRoleWeight(a.roles, a.character) ||
+    (b.year ?? 0) - (a.year ?? 0) ||
+    a.itemId.localeCompare(b.itemId)
   );
-  if (qualifying.length < 2) return [];
+}
 
-  return qualifying.map(({ role }) => ({
-    role,
-    works: works.filter((w) => w.roles.includes(role)),
+/**
+ * La lista, agrupada según el orden elegido.
+ *
+ * **Cada obra sale UNA vez, también agrupando por rol**: la sección la decide
+ * `strongestRole`, no «todas las categorías en las que aparece». Quien dirige y
+ * además actúa en la misma película la ve en Dirección y no dos veces — repetir
+ * filas rompería el recuento de la cabecera y la lectura cronológica.
+ */
+export function groupWorks(works: ProfileWork[], order: WorkOrder): WorkGroup[] {
+  if (order === "role") {
+    const byRole = new Map<CreditRole, ProfileWork[]>();
+    for (const w of works) {
+      const role = strongestRole(w.roles);
+      const bucket = byRole.get(role);
+      if (bucket) bucket.push(w);
+      else byRole.set(role, [w]);
+    }
+    return ROLE_ORDER.filter((role) => byRole.has(role)).map((role) => ({
+      key: role,
+      year: null,
+      role,
+      works: [...byRole.get(role)!].sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.itemId.localeCompare(b.itemId)),
+    }));
+  }
+
+  return groupByYear(works).map((group) => ({
+    key: String(group.year ?? "sin-anio"),
+    year: group.year,
+    role: null,
+    works: [...group.works].sort(byWeightThenYear),
   }));
 }
 

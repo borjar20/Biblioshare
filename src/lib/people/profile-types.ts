@@ -31,6 +31,18 @@ export type ProfileWork = {
   status: WorkStatus | null;
   userRating: number | null;
   finishedOn: string | null;
+  /**
+   * Dónde vas, con las palabras de cada medio: «Pág. 120» en libro, «T2E5» en
+   * serie. Sale de `formatPosition`, el único sitio que interpreta el jsonb
+   * `passes.position`. Null en película (no tiene sub-posición) y en cualquier
+   * obra que no esté en curso.
+   */
+  progressLabel: string | null;
+  /**
+   * Solo cuando se puede calcular DE VERDAD: libro con página y `total_pages`.
+   * En serie haría falta contar `episode_watches` (una consulta más por obra) y
+   * en película no significa nada. Null no es «0%», es «no se sabe».
+   */
   progressPercent: number | null;
 };
 

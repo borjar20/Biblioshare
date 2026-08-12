@@ -9,7 +9,8 @@ import { getPersonProfile } from "@/lib/people/get-person-profile";
 import { PersonCard } from "@/components/people/person-card";
 import { PersonWorks } from "@/components/people/person-works";
 import { PersonRail } from "@/components/people/person-rail";
-import { parseRoleSlug, parseTypeSlug } from "@/components/people/role-labels";
+import type { WorkOrder } from "@/lib/people/derive-person-works";
+import { parseOrderSlug, parseRoleSlug, parseTypeSlug } from "@/components/people/role-labels";
 import { PersonSkeleton } from "./person-skeleton";
 import { SHELL_PERSON } from "@/lib/ui/layout";
 
@@ -50,10 +51,12 @@ async function PersonBody({
   id,
   activeType,
   activeRole,
+  activeOrder,
 }: {
   id: string;
   activeType?: ItemType;
   activeRole?: CreditRole;
+  activeOrder: WorkOrder;
 }) {
   const t = await getTranslations("person");
   const user = await getCurrentUser();
@@ -83,6 +86,8 @@ async function PersonBody({
             basePath={`/persona/${id}`}
             activeType={activeType}
             activeRole={activeRole}
+            activeOrder={activeOrder}
+            loggedIn={Boolean(user)}
           />
         )}
       </div>
@@ -97,10 +102,10 @@ export default async function PersonDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tipo?: string; credito?: string }>;
+  searchParams: Promise<{ tipo?: string; credito?: string; orden?: string }>;
 }) {
   const { id } = await params;
-  const { tipo, credito } = await searchParams;
+  const { tipo, credito, orden } = await searchParams;
 
   return (
     <div className={`mx-auto w-full ${SHELL_PERSON} px-5 pb-10 pt-[26px] lg:px-[30px]`}>
@@ -110,6 +115,7 @@ export default async function PersonDetailPage({
             id={id}
             activeType={parseTypeSlug(tipo)}
             activeRole={parseRoleSlug(credito)}
+            activeOrder={parseOrderSlug(orden)}
           />
         </Suspense>
       </div>

@@ -189,27 +189,34 @@ test.describe("ficha de persona", () => {
       expect(fichaFits!.alto).toBeLessThanOrEqual(fichaFits!.ventana);
       expect(fichaFits!.hijoDesplazable).toBe("auto");
 
-      // 3. Destacadas + «El resto, por año», y LA regla del diseño: una obra
-      //    destacada NO vuelve a salir en la lista de abajo.
+      // 3. Destacadas + filmografía, y LA regla del diseño (cambiada el
+      //    2026-08-12 a petición del dueño): una obra destacada SÍ vuelve a
+      //    salir en la lista. La tira de arriba es un atajo, no un cajón donde
+      //    meter cinco obras y sacarlas del recorrido cronológico.
       const featuredBlock = page.getByTestId("person-featured");
-      const restBlocks = page.getByTestId("person-rest");
+      const timeline = page.getByTestId("person-rest");
       await expect(featuredBlock).toBeVisible();
-      await expect(restBlocks.first()).toBeVisible();
+      await expect(timeline).toBeVisible();
 
-      const featuredTitles = (await featuredBlock.locator("a span.font-serif").allInnerTexts())
+      // El TÍTULO de la tarjeta destacada, no su subtítulo: `CoverCard` pinta
+      // los dos con `font-serif` y el subtítulo («2008 · Dirección») no es el
+      // nombre de ninguna obra — compararlo contra la lista fallaba siempre.
+      const featuredTitles = (
+        await featuredBlock.locator("a span.font-serif.font-semibold").allInnerTexts()
+      )
         .map((s) => s.trim())
         .filter(Boolean);
       // Si esto no encuentra nada, la comprobación de abajo sería vacua: el
       // test tiene que fallar aquí, no pasar por no haber mirado nada.
       expect(featuredTitles.length).toBeGreaterThan(0);
 
-      const restTitles = (await restBlocks.locator("a span.font-serif").allInnerTexts())
+      const listTitles = (await timeline.locator("span.font-serif").allInnerTexts())
         .map((s) => s.trim())
         .filter(Boolean);
-      expect(restTitles.length).toBeGreaterThan(0);
+      expect(listTitles.length).toBeGreaterThan(0);
 
       for (const title of featuredTitles) {
-        expect(restTitles, `«${title}» está destacada y además en la lista`).not.toContain(title);
+        expect(listTitles, `«${title}» está destacada y NO sale en la filmografía`).toContain(title);
       }
     } finally {
       // Los créditos primero: `credits.person_id` referencia a `people`.

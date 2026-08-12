@@ -6,9 +6,11 @@ import type { ProfileWork } from "@/lib/people/profile-types";
 import { strongestRole } from "@/lib/people/credit-noise";
 import { ROLE_KEY, STATUS_KEY } from "./role-labels";
 
-// Hasta 5 obras destacadas. Las que salen aquí NO se repiten en la lista de
-// abajo (ver splitFeaturedAndRest): sin esa exclusión la misma película aparecía
-// DOS veces en la misma pantalla, que era el defecto del primer planteamiento.
+// Hasta 5 obras destacadas. Desde el 2026-08-12 SÍ vuelven a salir en la
+// filmografía de abajo (petición del dueño): esta tira es un atajo —«por aquí se
+// empieza»—, no un cajón donde meter cinco obras y sacarlas del recorrido
+// cronológico. Antes se excluían, y el precio era una filmografía a la que le
+// faltaban justo sus cinco títulos más importantes.
 export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
   const t = await getTranslations("person");
 
