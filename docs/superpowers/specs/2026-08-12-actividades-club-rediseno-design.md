@@ -161,8 +161,23 @@ inventa aritmética nueva):
 |---|---|---|---|
 | `buddy_read` | hito seguro del grupo / total de hitos | hitos alcanzados / total | `club_activity_checkpoints` + `club_activity_checkpoint_reads` |
 | `list_challenge` | ítems completados por alguien / tamaño del pool | completados por el viewer / pool | cuerpo de `get_list_challenge_progress` |
-| `criteria_challenge` | conseguidos / meta | del viewer | cuerpo de `get_criteria_challenge_progress` |
 | `tierlist` | participantes que ya han colocado algo / participantes | votó: 1/1 o 0/1 | `club_activity_placements` |
+| `criteria_challenge` | **no lo calcula la RPC** — ver abajo | | |
+
+**`criteria_challenge` se queda fuera de la RPC, a propósito.** Su progreso no es
+una consulta: `getCriteriaChallengeProgress` (`criteria-challenge.ts:36`)
+construye un `Challenge` sintético desde `config` + la ventana de la actividad y
+se lo pasa a `countForChallenge` (`src/lib/challenges/match.ts`), enriqueciendo
+antes cada pase con géneros y sagas del catálogo cuando el criterio los usa.
+Reescribir eso en SQL crearía un **segundo motor de conteo de retos**, que es
+justo lo que el propio fichero dice haber evitado («un solo motor de conteo, ya
+testeado»). Dos motores divergen, y el día que divergen nadie sabe cuál miente.
+
+Se resuelve en TS: `getActivitiesProgress` llama a `getCriteriaChallengeProgress`
+por cada `criteria_challenge` que reciba y normaliza su resultado a la misma
+forma. Coste real acotado: solo se pide para **En curso**, y un club rara vez
+tiene más de una o dos a la vez. Si algún día un club tiene ocho, la respuesta es
+mover el motor de conteo a un sitio compartido — no duplicarlo.
 
 **«Hito seguro del grupo»** es el `groupSafeOrder` que ya calcula
 `getActivityCheckpoints` (`checkpoints.ts:112`): el mínimo de los máximos por
@@ -170,12 +185,20 @@ participante. Se mantiene idéntico a propósito — dos definiciones distintas 
 mismo número en dos pantallas es una discrepancia que alguien acabará reportando
 como bug.
 
-**Visibilidad.** Gate idéntico al de las funciones que reemplaza: ser miembro del
-club de la actividad (`is_activity_participant` / pertenencia, según el kind).
-La función devuelve **solo** las filas que el llamante puede ver; un id no
-visible sencillamente no sale, sin error. La agregación se hace *dentro* de la
-función precisamente porque el detalle por usuario no es visible al llamante:
-sale un contador, no una lista de quién ha leído qué.
+**Visibilidad.** El gate es **ser miembro activo del club** (`is_club_member`).
+La función devuelve solo las filas que el llamante puede ver; un id no visible
+sencillamente no sale, sin error. La agregación se hace *dentro* de la función
+precisamente porque el detalle por usuario no lo es: sale un contador, no una
+lista de quién ha leído qué.
+
+Esto **ensancha a propósito** el gate de `get_list_challenge_progress`, que exige
+`is_activity_participant`. El motivo: la tarjeta de «En curso» la ve todo el club,
+y el número colectivo es justo lo que ayuda a decidir si unirse — el mismo
+criterio que ya aplica a los hitos, cuya tabla documenta que son *«visibles a todo
+el club (no solo a participantes) para que puedan decidir si unirse»*
+(`20260713_activity_checkpoints.sql:36`). Lo que **no** se ensancha es el detalle:
+quién ha completado qué sigue necesitando ser participante, y esta función no lo
+devuelve. `viewer_done` es siempre del propio llamante.
 
 Fichero: `supabase/migrations/20260853_activities_progress.sql` (siguiente libre
 tras `20260852`; confirmar el número al implementar). **Dev primero
@@ -486,12 +509,17 @@ comprobación de la regla #437 y no se detecta con una sola sesión abierta.
 
 ## 12. Riesgos
 
-**La RPC agrega cuatro lógicas distintas en una función.** Es su peor rasgo: si
+**La RPC agrega tres lógicas distintas en una función.** Es su peor rasgo: si
 mañana cambia cómo se cuenta un `list_challenge`, hay dos sitios que actualizar
 (la RPC de detalle y esta). Se acepta a cambio de una sola consulta en lugar de
 N, y se mitiga reutilizando literalmente el cuerpo de las funciones existentes en
 vez de reescribir la aritmética. Alternativa descartada: N llamadas por actividad,
 que es justo lo que hoy impide enseñar progreso.
+
+**`criteria_challenge` es la excepción, y sigue siendo N.** Una llamada por cada
+reto por criterio en curso. Es el precio de no duplicar el motor de conteo (§4.1)
+y está acotado a un grupo que casi siempre tiene una o dos actividades. Si el
+grupo «En curso» creciera, esto es lo primero que hay que medir.
 
 **`security definer` sobre datos de otros usuarios.** La función lee `passes` de
 todos los participantes. Devuelve **solo contadores agregados**, nunca filas por
