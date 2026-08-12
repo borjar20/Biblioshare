@@ -48,20 +48,25 @@ begin
     from public.club_activities
    where id = p_activity_id;
 
+  v_is_mod := public.has_min_club_role(v_club_id, 'moderator');
+
+  -- Gate de permiso PRIMERO (#129, migración 20260831). Con la fila inexistente
+  -- -- o invisible -- v_club_id es null, has_min_club_role da false y
+  -- v_created_by es null, así que quien no está autorizado recibe `forbidden`
+  -- genérico y no aprende NADA: ni si el uuid existe, ni si es un evento. Solo
+  -- después de pasar el gate (eres creador, o moderador del club dueño, que ya
+  -- puede ver la fila por RLS) se revelan kind y estado.
+  --
+  -- El `coalesce` no es adorno: `null = auth.uid()` da NULL, no false, y en el
+  -- `or` de abajo dejaría pasar el gate en silencio con la fila inexistente.
+  if not (coalesce(v_created_by = auth.uid(), false) or v_is_mod) then
+    raise exception 'forbidden';
+  end if;
+
   -- No se distingue "no existe" de "la RLS no te la deja ver", a propósito: la
   -- diferencia le diría a un extraño que ese id existe.
   if v_club_id is null then
     raise exception 'not_found';
-  end if;
-
-  if v_kind = 'evento' then
-    raise exception 'use_update_club_event';
-  end if;
-
-  v_is_mod := public.has_min_club_role(v_club_id, 'moderator');
-
-  if v_created_by <> auth.uid() and not v_is_mod then
-    raise exception 'forbidden';
   end if;
 
   -- El creador que no modera manda solo mientras sea propuesta. Este gate va
@@ -70,6 +75,10 @@ begin
   -- también le faltaría el permiso.
   if not v_is_mod and v_status <> 'proposed' then
     raise exception 'forbidden';
+  end if;
+
+  if v_kind = 'evento' then
+    raise exception 'use_update_club_event';
   end if;
 
   if v_status not in ('proposed', 'active') then
