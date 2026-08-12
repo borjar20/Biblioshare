@@ -8,6 +8,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type HydratablePerson = {
   id: string;
+  name: string;
   tmdbId: number | null;
   openlibraryKey: string | null;
   creditsHydratedAt: string | null;
@@ -76,7 +77,11 @@ export async function hydratePersonCredits(
           itemType: "book",
           externalId: w.workKey,
           title: w.title,
-          subtitle: null,
+          // `subtitle` acaba en `books.author`. Lo sabemos —es la persona cuya
+          // ficha estamos hidratando—, y dejarlo a null haría nacer el libro sin
+          // autor: la ficha lo mostraría vacío y `ensureItemEnriched` se plantaría
+          // en su `if (!item.author) return`.
+          subtitle: person.name,
           coverUrl: w.coverUrl,
           year: null,
           synopsis: null,

@@ -60,6 +60,7 @@ export async function getPersonProfile(
 
   const hydratable = {
     id: enriched.id,
+    name: enriched.name,
     tmdbId: enriched.tmdb_id,
     openlibraryKey: enriched.openlibrary_key,
     creditsHydratedAt: enriched.credits_hydrated_at,
