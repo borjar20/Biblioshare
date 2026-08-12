@@ -37,7 +37,9 @@ as $$
     select ca.id, ca.kind::text as kind, ca.config
       from public.club_activities ca
      where ca.id = any(p_activity_ids)
-       and ca.kind <> 'evento'
+       and ca.kind not in ('evento', 'criteria_challenge')
+       -- criteria_challenge se excluye aquí porque su conteo vive en countForChallenge
+       -- (match.ts), no en SQL. Un resultado 0/0 silencioso es peor que no devolver la fila.
        and public.is_club_member(ca.club_id)
   ),
   roster as (
@@ -69,13 +71,13 @@ as $$
            coalesce((
              select min(per_user.max_order)
                from (
-                 select coalesce(max(c."order"), -1) as max_order
+                 select coalesce(max(c."order") filter (where r.user_id is not null), -1) as max_order
                    from public.club_activity_participants p
-                   left join public.club_activity_checkpoint_reads r
-                     on r.user_id = p.user_id
                    left join public.club_activity_checkpoints c
-                     on c.id = r.checkpoint_id
-                    and c.activity_id = v.id
+                     on c.activity_id = v.id
+                   left join public.club_activity_checkpoint_reads r
+                     on r.checkpoint_id = c.id
+                    and r.user_id = p.user_id
                   where p.activity_id = v.id
                   group by p.user_id
                ) per_user
