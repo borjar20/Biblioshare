@@ -24,6 +24,8 @@ function actividad(over: Partial<CalendarActivityRow> = {}): CalendarActivityRow
     endsOn: null,
     eventType: null,
     config: null,
+    startsAt: null,
+    eventTimezone: null,
     ...over,
   };
 }
@@ -60,9 +62,69 @@ describe("buildCalendarMarks", () => {
       [],
       HOY,
       SLUG,
-      new Set(["a1"]),
+      new Map([["a1", 1440]]),
     );
     expect(seguido.followedByViewer).toBe(true);
+  });
+
+  // La CLAVE dice que lo sigue; el VALOR, cuándo se le avisa. Son dos preguntas
+  // distintas, y confundirlas es el bug fácil: un evento seguido SIN aviso tiene
+  // `remindMinutesBefore` a null y sigue estando seguido.
+  it("seguido sin recordatorio sigue contando como seguido", () => {
+    const [marca] = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+      new Map([["a1", null]]),
+    );
+    expect(marca.followedByViewer).toBe(true);
+    expect(marca.remindMinutesBefore).toBeNull();
+  });
+
+  it("el offset guardado llega a la marca", () => {
+    const [marca] = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+      new Map([["a1", 10080]]),
+    );
+    expect(marca.remindMinutesBefore).toBe(10080);
+  });
+
+  // La hoja de aviso necesita el INSTANTE y la ZONA para decir a qué hora
+  // avisaría. `startsOn` (fecha suelta) no sirve para eso.
+  it("un evento lleva su instante y su zona; un hito no", () => {
+    const checkpoint: CalendarCheckpointRow = {
+      id: "c1",
+      label: "Hito 1",
+      dueOn: "2026-07-10",
+      activityId: "a1",
+      activityTitle: "Fundación",
+      activityKind: "buddy_read",
+      activityStatus: "active",
+    };
+    const marks = buildCalendarMarks(
+      [
+        actividad({
+          kind: "evento",
+          startsOn: "2026-07-04",
+          startsAt: "2026-07-04T17:00:00.000Z",
+          eventTimezone: "Europe/Madrid",
+        }),
+      ],
+      [checkpoint],
+      HOY,
+      SLUG,
+    );
+    const evento = marks.find((m) => m.markKind === "evento");
+    expect(evento?.startsAt).toBe("2026-07-04T17:00:00.000Z");
+    expect(evento?.eventTimezone).toBe("Europe/Madrid");
+
+    const hito = marks.find((m) => m.markKind === "hito");
+    expect(hito?.startsAt).toBeNull();
+    expect(hito?.eventTimezone).toBeNull();
   });
 
   // Un hito no se sigue: aunque su actividad esté en el conjunto, la marca de
@@ -82,7 +144,7 @@ describe("buildCalendarMarks", () => {
       [checkpoint],
       HOY,
       SLUG,
-      new Set(["a1"]),
+      new Map([["a1", 1440]]),
     );
     const hitoMark = marks.find((m) => m.markKind === "hito");
     expect(hitoMark?.followedByViewer).toBe(false);

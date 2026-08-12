@@ -48,6 +48,18 @@ export type CalendarMark = {
   eventType: EventType | null;
   /** El medio de un lanzamiento, de `config.item.itemType`. null si no es lanzamiento o no tiene ítem. */
   medium: ItemType | null;
+  /**
+   * Los tres siguientes SOLO están puestos en una marca de evento; en
+   * hito/inicio/cierre son null. Los pide la hoja de aviso de la agenda, que
+   * necesita decir A QUÉ HORA avisaría y qué hay guardado ahora mismo.
+   *
+   * `remindMinutesBefore` es null tanto cuando NO se sigue el evento como
+   * cuando se sigue sin recordatorio: para saber si se sigue está
+   * `followedByViewer`, que es el campo que responde esa pregunta.
+   */
+  startsAt: string | null;
+  eventTimezone: string | null;
+  remindMinutesBefore: number | null;
 };
 
 export type CalendarActivityRow = {
@@ -59,6 +71,9 @@ export type CalendarActivityRow = {
   endsOn: string | null;
   eventType: EventType | null;
   config: Json | null;
+  /** El INSTANTE del evento (con zona), no la fecha suelta de `startsOn`. */
+  startsAt: string | null;
+  eventTimezone: string | null;
 };
 
 export type CalendarCheckpointRow = {
@@ -94,9 +109,16 @@ export function buildCalendarMarks(
   checkpoints: CalendarCheckpointRow[],
   today: string,
   clubSlug: string,
-  /** Ids de los eventos que sigue quien mira. Vacío = nadie los sigue o no hay
-   *  sesión; la función sigue siendo pura y no consulta nada. */
-  followedEventIds: ReadonlySet<string> = new Set(),
+  /**
+   * Los eventos que sigue QUIEN MIRA, del id al offset de recordatorio que tiene
+   * guardado (null = los sigue sin aviso). Vacío = no sigue ninguno o no hay
+   * sesión; la función sigue siendo pura y no consulta nada.
+   *
+   * Es un Map y no un Set porque la presencia de la clave y su valor responden a
+   * dos preguntas distintas: `has()` dice si lo sigue, y el valor dice cuándo se
+   * le avisa. Un `get() != null` NO significa «lo sigue».
+   */
+  followedEvents: ReadonlyMap<string, number | null> = new Map(),
 ): CalendarMark[] {
   const marks: CalendarMark[] = [];
 
@@ -125,9 +147,12 @@ export function buildCalendarMarks(
           activityKind: activity.kind,
           href: `/club/${clubSlug}/evento/${activity.id}`,
           past: activity.startsOn < today,
-          followedByViewer: followedEventIds.has(activity.id),
+          followedByViewer: followedEvents.has(activity.id),
           eventType,
           medium,
+          startsAt: activity.startsAt,
+          eventTimezone: activity.eventTimezone,
+          remindMinutesBefore: followedEvents.get(activity.id) ?? null,
         });
       }
       // Su ends_on se ignora SIEMPRE: el kind no lo usa.
@@ -149,6 +174,9 @@ export function buildCalendarMarks(
         followedByViewer: false,
         eventType: null,
         medium: null,
+        startsAt: null,
+        eventTimezone: null,
+        remindMinutesBefore: null,
       });
     }
     if (activity.endsOn) {
@@ -164,6 +192,9 @@ export function buildCalendarMarks(
         followedByViewer: false,
         eventType: null,
         medium: null,
+        startsAt: null,
+        eventTimezone: null,
+        remindMinutesBefore: null,
       });
     }
   }
@@ -187,6 +218,9 @@ export function buildCalendarMarks(
       followedByViewer: false,
       eventType: null,
       medium: null,
+      startsAt: null,
+      eventTimezone: null,
+      remindMinutesBefore: null,
     });
   }
 

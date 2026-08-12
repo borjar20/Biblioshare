@@ -75,8 +75,21 @@ export const REMINDER_OPTIONS = [
   { minutes: 10080, labelKey: "reminder1w" },
 ] as const satisfies ReadonlyArray<{ minutes: number | null; labelKey: string }>;
 
-/** El predeterminado: 24 horas antes (§9.1). */
-export const DEFAULT_REMINDER_MINUTES = 1440;
+/**
+ * El predeterminado: UNA SEMANA antes (§9.1). Era 24 h; se cambió porque un día
+ * no da margen para reorganizar la agenda, que es para lo que sirve seguir un
+ * evento.
+ *
+ * Esta constante es la que gobierna: la capa de acciones SIEMPRE manda el valor
+ * explícito a la RPC, así que el `default` de `follow_club_event` en SQL no se
+ * llega a ejercitar desde la app (se mantiene en el mismo valor de todas formas,
+ * migración 20260852).
+ *
+ * Efecto de borde asumido: seguir un evento que cae dentro de la próxima semana
+ * deja el recordatorio ya vencido y se entrega en el acto (§9.1). La UI lo avisa
+ * antes de guardar con `reminderTooLate`.
+ */
+export const DEFAULT_REMINDER_MINUTES = 10080;
 
 const VALORES_VALIDOS = new Set(REMINDER_OPTIONS.map((o) => o.minutes));
 

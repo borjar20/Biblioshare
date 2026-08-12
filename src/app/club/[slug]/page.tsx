@@ -195,7 +195,7 @@ async function ClubFeedSection({
 
   const [initialPage, marks, viewer, t] = await Promise.all([
     listClubPosts(club.id),
-    getClubCalendarMarks(club.id, club.slug, hoy),
+    getClubCalendarMarks(club.id, club.slug, hoy, userId),
     getViewerIdentity(),
     getTranslations("club"),
   ]);

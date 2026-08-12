@@ -50,7 +50,7 @@ export default async function ClubCalendarPage({
   const hoy = todayISO();
 
   const [marks, activities, tt] = await Promise.all([
-    getClubCalendarMarks(club.id, club.slug, hoy),
+    getClubCalendarMarks(club.id, club.slug, hoy, user.id),
     // El pip de propuestas pendientes en el sidebar solo se ve si eres
     // moderador (club-shell.tsx: `pip: canModerate ? pendingProposals : ...`);
     // para un miembro raso, pedir la lista entera solo para tirarla es dos

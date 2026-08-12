@@ -47,15 +47,24 @@ export async function getClubCalendarMarks(
   clubId: string,
   clubSlug: string,
   today: string,
+  /**
+   * Quién mira. Sin sesión va null y no se consultan seguimientos: nadie sigue
+   * nada. Es OBLIGATORIO pasarlo -- ver el filtro por `user_id` de abajo.
+   */
+  viewerId: string | null,
 ): Promise<CalendarMark[]> {
   const supabase = await createClient();
 
   const [actividades, hitos, seguidos] = await Promise.all([
     supabase
       .from("club_activities")
-      .select("id, kind, title, status, starts_on, ends_on, event_type, config", {
-        count: "exact",
-      })
+      // `starts_at` y `event_timezone` los pide la hoja de aviso de la agenda:
+      // sin el instante y su zona no se puede decir «te avisaremos el 8 a las
+      // 18:00». `starts_on` (fecha suelta) no sirve para eso.
+      .select(
+        "id, kind, title, status, starts_on, ends_on, event_type, config, starts_at, event_timezone",
+        { count: "exact" },
+      )
       .eq("club_id", clubId)
       .in("status", ["active", "finished"]),
     supabase
@@ -67,22 +76,32 @@ export async function getClubCalendarMarks(
       .eq("club_activities.club_id", clubId)
       .in("club_activities.status", ["active", "finished"])
       .not("due_on", "is", null),
-    // Los eventos que sigue quien mira, para la marca accesible de la rejilla y el
-    // filtro «Sigues» de la agenda. La RLS de club_event_followers ya limita las
-    // filas a los eventos de clubes donde es miembro activo, y aquí se acota al
-    // club de esta página. Va en el MISMO Promise.all: es una tercera consulta en
-    // paralelo, no un viaje extra en serie.
-    supabase
-      .from("club_event_followers")
-      .select("activity_id, club_activities!inner(club_id)")
-      .eq("club_activities.club_id", clubId),
+    // Los eventos que sigue quien mira, para la marca accesible de la rejilla, el
+    // filtro «Sigues» de la agenda y la hoja de aviso. Va en el MISMO Promise.all:
+    // es una tercera consulta en paralelo, no un viaje extra en serie.
+    //
+    // El `.eq("user_id", ...)` NO es redundante con la RLS, y esto era un bug
+    // (issue #591): la política de `club_event_followers` deja leer las filas de
+    // TODOS los miembros del club -- la necesita la lista de seguidores. Sin el
+    // filtro, un club con dos socios marcaba «sigues» los eventos que seguía el
+    // otro, y el botón de dejar de seguir borraba una fila que no existía y se
+    // quedaba encendido. No se veía en un club de un solo miembro.
+    //
+    // Sin sesión no se consulta nada: nadie sigue nada.
+    viewerId
+      ? supabase
+          .from("club_event_followers")
+          .select("activity_id, remind_minutes_before, club_activities!inner(club_id)")
+          .eq("club_activities.club_id", clubId)
+          .eq("user_id", viewerId)
+      : null,
   ]);
 
   if (actividades.error) throw actividades.error;
   if (hitos.error) throw hitos.error;
   // Los seguimientos son decoración: si fallan, el calendario se pinta sin marcas
   // de «seguido» en vez de caerse entero.
-  if (seguidos.error) {
+  if (seguidos?.error) {
     console.error("getClubCalendarMarks: no se pudieron leer los seguimientos", seguidos.error);
   }
 
@@ -107,6 +126,9 @@ export async function getClubCalendarMarks(
       // Igual que hace core.ts: event_type solo significa algo en un evento.
       eventType: row.kind === "evento" ? (row.event_type as EventType) : null,
       config: row.config,
+      // Mismo criterio que `eventType`: solo significan algo en un evento.
+      startsAt: row.kind === "evento" ? row.starts_at : null,
+      eventTimezone: row.kind === "evento" ? row.event_timezone : null,
     }),
   );
 
@@ -137,8 +159,11 @@ export async function getClubCalendarMarks(
   // petición justo a medianoche podría dar dos nociones de "hoy" distintas en
   // la misma respuesta (ya pasó en el antiguo upcoming.ts, ya borrado, con UTC
   // y hora local mezcladas en el mismo fichero).
-  const followedEventIds = new Set(
-    (seguidos.data ?? []).map((row) => row.activity_id),
+  // Map y no Set: la CLAVE dice que lo sigue y el VALOR cuándo se le avisa, que
+  // son dos preguntas distintas. Un evento seguido «sin recordatorio» tiene
+  // clave con valor null.
+  const followedEvents = new Map<string, number | null>(
+    (seguidos?.data ?? []).map((row) => [row.activity_id, row.remind_minutes_before]),
   );
 
   return buildCalendarMarks(
@@ -146,6 +171,6 @@ export async function getClubCalendarMarks(
     checkpointRows,
     today,
     clubSlug,
-    followedEventIds,
+    followedEvents,
   );
 }

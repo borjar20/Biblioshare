@@ -189,17 +189,39 @@ test("calendario móvil: ni la celda ni el chip de la agenda desbordan su caja",
     // El nombre accesible se ancla ENTERO (`^...$`): el botón de la celda del
     // mes también lleva el título dentro de su nombre (el resumen `sr-only` de
     // sus marcas), así que una expresión suelta casaría con los dos.
+    // La campana abre la hoja de aviso y es la ELECCIÓN la que sigue el evento.
+    // Se cierra con Escape antes de seguir: si se quedara abierta, la aserción 6
+    // (que mide `dialog[open]`) mediría esta hoja en vez de la del día.
     await page
-      .getByRole("button", { name: new RegExp(`^Seguir evento: Estreno seguido ${ts}$`) })
+      .getByRole("button", {
+        name: new RegExp(`^Seguir evento y elegir aviso: Estreno seguido ${ts}$`),
+      })
       .click();
+    await page.getByRole("radio", { name: "1 semana antes" }).check();
+    await page.keyboard.press("Escape");
 
     // Recarga: el estado optimista vive en el toggle, y lo que se va a medir es
     // lo que pinta el SERVIDOR (la campana de la celda sale de `followedByViewer`).
     await page.goto(`/club/${club.slug}/calendario?mes=${MES}`);
     await expect(page.getByTestId("calendar-month")).toHaveText("Septiembre 2027");
     await expect(
-      page.getByRole("button", { name: new RegExp(`^Dejar de seguir: Estreno seguido ${ts}$`) }),
+      page.getByRole("button", {
+        name: new RegExp(`^Cambiar aviso o dejar de seguir: Estreno seguido ${ts}$`),
+      }),
     ).toBeVisible();
+
+    // El rango elegido tiene que haber llegado a la BD, no quedarse en el estado
+    // local del componente: se reabre la hoja DESPUÉS de recargar y se comprueba
+    // qué opción viene marcada. Sin esto, la hoja podría no guardar nada y el
+    // test seguiría en verde -- basta con que la campana cambie de nombre.
+    await page
+      .getByRole("button", {
+        name: new RegExp(`^Cambiar aviso o dejar de seguir: Estreno seguido ${ts}$`),
+      })
+      .click();
+    await expect(page.getByRole("radio", { name: "1 semana antes" })).toBeChecked();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
 
     // ── 1. La celda no derrama ──
     //

@@ -19,6 +19,9 @@ function marca(over: Partial<CalendarMark> = {}): CalendarMark {
     followedByViewer: false,
     eventType: "encuentro",
     medium: null,
+    startsAt: null,
+    eventTimezone: null,
+    remindMinutesBefore: null,
     ...over,
   };
 }

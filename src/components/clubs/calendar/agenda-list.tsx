@@ -10,7 +10,7 @@ import { formatEventDate } from "@/lib/clubs/activities/format-date";
 import { BellIcon } from "@/components/ui/icons";
 import { MARK_ACCENT, accentKeyFor } from "./mark-accent";
 import { markLabel } from "./mark-label";
-import { AgendaFollowToggle } from "./agenda-follow-toggle";
+import { AgendaReminderButton } from "./agenda-reminder-button";
 
 export function AgendaList({
   marks,
@@ -152,14 +152,17 @@ export function AgendaList({
                     <div className={clases}>{inner}</div>
                   )}
 
-                  {/* El control de seguir es HERMANO del enlace, nunca dentro:
+                  {/* El control de aviso es HERMANO del enlace, nunca dentro:
                       un <button> dentro de un <a> es HTML inválido y rompe el
                       tabulador. Y así pulsarlo no navega a ningún sitio. */}
                   {hayToggle && (
-                    <AgendaFollowToggle
+                    <AgendaReminderButton
                       activityId={mark.activityId}
                       title={mark.title}
+                      startsAt={mark.startsAt}
+                      timezone={mark.eventTimezone}
                       following={mark.followedByViewer}
+                      remindMinutesBefore={mark.remindMinutesBefore}
                     />
                   )}
                 </li>
