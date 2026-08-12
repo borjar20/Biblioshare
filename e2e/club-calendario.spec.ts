@@ -534,7 +534,16 @@ test("calendario: tocar un día en móvil abre la hoja con sus marcas", async ({
     // vez siembra otra marca el mismo día. Comprobado leyendo el código de la
     // celda, no asumido -- si esto empieza a fallar, lo primero a mirar es si
     // el resumen sr-only se movió fuera del <button> o perdió el título.
-    await page.getByRole("button", { name: new RegExp(titulo, "i") }).click();
+    //
+    // Y se acota a la REJILLA (`role="grid"`), no a la página: el título del
+    // evento aparece también en el botón «Dejar de seguir» de la agenda, que
+    // vive en el <aside> de abajo. Sin acotar, el ancla casa con dos elementos
+    // y el modo estricto de Playwright aborta -- exactamente lo que pasó la
+    // primera vez que se ejecutó este test.
+    await page
+      .getByRole("grid")
+      .getByRole("button", { name: new RegExp(titulo, "i") })
+      .click();
 
     const hoja = page.getByRole("dialog");
     await expect(hoja).toBeVisible();
