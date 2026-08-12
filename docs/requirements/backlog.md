@@ -159,6 +159,15 @@ prefers-color-scheme`) — excluye del de texto `gold` y `accent`, que fallan de
 sacar los eventos del listado ([#587](https://github.com/borjar20/Biblioshare/issues/587)).
 Spec: `docs/superpowers/specs/2026-08-11-eventos-fuera-de-actividades-y-color-por-tipo-design.md`
 · Plan: `docs/superpowers/plans/2026-08-11-eventos-fuera-de-actividades-y-color-por-tipo.md`
+- [x] **Calendario de club legible en móvil** (2026-08-12) — la celda del mes pinta el **icono**
+de la clase en vez de un punto de color (el punto obligaba a distinguir por tono a 6 px, y
+contradecía a una leyenda que habla de iconos); tocar un día abre una **hoja** con todas sus
+marcas, incluidas las que el `+N` esconde; la **leyenda se pliega** en móvil (ocupaba ~120 px
+antes de la rejilla); y la **agenda agrupa por día** en dos columnas (tres desde tablet), en vez
+de repetir la fecha en cada tarjeta. Además el **calendario pasa a ser una pestaña** en móvil
+(Feed · Actividades · Calendario · Gestión): antes solo se alcanzaba por el enlace «Ver
+calendario ›» del resumen. Sin migración. Spec:
+`docs/superpowers/specs/2026-08-12-calendario-movil-legibilidad-y-pestana-design.md`
 - [x] **La ronda — latido semanal de club** (2026-08-03) — cada semana le toca a un miembro proponer una pregunta al club (con o sin obra adjunta); si no aparece en 48h, entra una consigna de la casa. Turno y periodo (semana ISO en `Europe/Madrid`) se calculan en SQL, nunca los envía el cliente; tabla propia `club_rounds` (deliberadamente NO un `kind` de `club_activities`, contra SD-8 — ver `decisiones.md`), RPCs `get_club_round_state`/`ensure_club_round`, registro en `interaction_targets` (comentable/reaccionable). **Migración aplicada y verificada solo en dev** (`20260803_club_rounds.sql`, llegó en cuatro entradas sucesivas); **producción pendiente**, aplicación reservada al usuario — detalle en `data-model.md` §6. Deuda abierta con issues: cobertura de test de la consigna de la casa
 ([#401](https://github.com/borjar20/Biblioshare/issues/401)), tipado de `resolveTargetHrefs`
 ([#402](https://github.com/borjar20/Biblioshare/issues/402)), huecos «Sin ronda» en el histórico
