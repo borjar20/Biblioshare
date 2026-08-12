@@ -9,6 +9,12 @@ import { getInteractionSummary, type InteractionSummary } from "@/lib/social/int
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
 import type { EventType } from "./event-types";
+import {
+  validateActivityDetails,
+  type ActivityDetailsError,
+  type ActivityDetailsInput,
+  type ActivityDetailsResult,
+} from "./activity-details";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -469,4 +475,48 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
     chat,
     linkedChildren,
   };
+}
+
+const DETAILS_CODIGOS: ReadonlySet<string> = new Set<ActivityDetailsError>([
+  "not_found",
+  "use_update_club_event",
+  "forbidden",
+  "dates_frozen",
+  "title_required",
+  "invalid_range",
+]);
+
+// Editar la cabecera de una actividad (spec 2026-08-12, #596).
+//
+// NO LANZA, y no es estilo: Next.js BORRA el mensaje de un Error lanzado desde
+// una server action al compilar producción (llega un digest opaco), así que un
+// catch que mire error.message funciona en dev y falla en silencio en prod.
+// Mismo patrón que event-follow-actions.ts, que documenta el problema.
+export async function updateActivityDetails(
+  activityId: string,
+  input: ActivityDetailsInput,
+): Promise<ActivityDetailsResult> {
+  // Se valida también aquí, antes del viaje. La autoridad sigue siendo el SQL.
+  const local = validateActivityDetails(input);
+  if (local) return { ok: false, code: local };
+
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("update_activity_details", {
+    p_activity_id: activityId,
+    p_title: input.title,
+    p_description: input.description,
+    // "" es "sin fecha": la columna es nullable y el formulario manda cadena.
+    p_starts_on: input.startsOn || null,
+    p_ends_on: input.endsOn || null,
+  });
+
+  if (error) {
+    const raw = error.message?.trim() ?? "";
+    if (DETAILS_CODIGOS.has(raw)) return { ok: false, code: raw as ActivityDetailsError };
+    console.error("updateActivityDetails failed", error);
+    return { ok: false, code: "unknown" };
+  }
+
+  revalidateClubPages();
+  return { ok: true };
 }
