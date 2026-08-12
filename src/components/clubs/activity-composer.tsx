@@ -4,26 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
+import { proposeHref } from "@/lib/clubs/activities/propose-url";
 import { ProposeWizard } from "./propose/propose-wizard";
 
-/** El href único de "proponer". Los TRES puntos de entrada (cabecera de
- *  escritorio, cabecera móvil, estado vacío de Próximas) apuntan aquí, y hay una
- *  sola instancia del asistente. */
-export function proposeHref(clubSlug: string): string {
-  return `/club/${clubSlug}?tab=actividades&nueva=1`;
-}
-
-/** Si el parámetro pide el asistente abierto. Vive junto a `proposeHref` porque
- *  son las dos caras de lo mismo: quien construye la URL y quien la lee. La
- *  comparación se hace en UN solo sitio a propósito -- repartida por la página y
- *  la cabecera, cambiar qué abre el asistente obligaría a acordarse de tres
- *  sitios y nada avisaría del que se olvide.
- *
- *  Estricto contra `"1"`: `?nueva=0` o `?nueva=loquesea` no abren nada, y una
- *  clave repetida (que Next entrega como array) tampoco. Ante la duda, cerrado. */
-export function isComposerOpen(nueva: string | string[] | undefined): boolean {
-  return nueva === "1";
-}
+// `proposeHref` e `isComposerOpen` viven en @/lib/clubs/activities/propose-url,
+// NO aquí: este fichero es "use client", y en Next 16 eso convierte hasta una
+// función pura en referencia de cliente -- llamarla desde un Server Component
+// devuelve un 500 en tiempo de ejecución que ni tsc ni next build detectan
+// (issue #595). Un fichero "use client" exporta componentes, no utilidades.
 
 // El botón. Es un <Link>, no un <button> con estado: así puede vivir en la
 // cabecera del shell (servidor) mientras el asistente vive en el contenido.

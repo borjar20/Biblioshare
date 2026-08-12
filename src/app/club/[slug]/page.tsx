@@ -28,7 +28,8 @@ import { markClubRead } from "@/lib/clubs/unread";
 import { ClubFeed } from "@/components/clubs/club-feed";
 import { ActivityList } from "@/components/clubs/activity-list";
 import { ActivitiesAside } from "@/components/clubs/activities-aside";
-import { ProposeActivityLink, isComposerOpen } from "@/components/clubs/activity-composer";
+import { ProposeActivityLink } from "@/components/clubs/activity-composer";
+import { isComposerOpen } from "@/lib/clubs/activities/propose-url";
 import {
   ClubShell,
   ClubSidebar,
