@@ -6,6 +6,7 @@ import type { DayActivity } from "@/lib/stats/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { itemHref } from "@/lib/catalog/item-href";
+import { RouteMessages } from "@/components/route-messages";
 import { TodayActions } from "./today-actions";
 
 // La tarjeta destacada del frame G: el ítem sobre el que más vas a actuar hoy,
@@ -48,6 +49,30 @@ export async function TodayCard({
   // es la ficha. Mismo criterio que NowConsuming.
   const sessionHref =
     item.itemType !== "movie" && item.activePassId ? `/sesion/${item.activePassId}` : null;
+
+  const actions = (
+    <TodayActions
+      passId={item.activePassId}
+      itemType={item.itemType}
+      itemId={item.itemId}
+      seriesId={item.itemId}
+      nextEpisode={nextEpisode}
+      sessionHref={sessionHref}
+      logHref={`${itemHref(item.itemType, item.itemId)}?tab=log`}
+      labels={{
+        session: t("session"),
+        log: t("log"),
+        cancel: t("timerCancel"),
+        register: t("timerRegister"),
+        notes: t("timerNotes"),
+        timerLabel: t("timerLabel"),
+        markSeen: t("markSeen"),
+        nextEpisode: nextEpisode
+          ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
+          : null,
+      }}
+    />
+  );
 
   return (
     <article
@@ -156,27 +181,15 @@ export async function TodayCard({
         </div>
       </div>
 
-      <TodayActions
-        passId={item.activePassId}
-        itemType={item.itemType}
-        itemId={item.itemId}
-        seriesId={item.itemId}
-        nextEpisode={nextEpisode}
-        sessionHref={sessionHref}
-        logHref={`${itemHref(item.itemType, item.itemId)}?tab=log`}
-        labels={{
-          session: t("session"),
-          log: t("log"),
-          cancel: t("timerCancel"),
-          register: t("timerRegister"),
-          notes: t("timerNotes"),
-          timerLabel: t("timerLabel"),
-          markSeen: t("markSeen"),
-          nextEpisode: nextEpisode
-            ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
-            : null,
-        }}
-      />
+      {/* La peli encadena la hoja de puntuar (ClosePassSheet, ns `passes`) al
+          marcar Vista; ese namespace no viaja al Inicio por defecto (#444), así
+          que solo estas acciones lo llevan, y solo cuando hay una peli en el
+          foco. Libro/serie no lo necesitan. */}
+      {item.itemType === "movie" ? (
+        <RouteMessages ns={["passes"]}>{actions}</RouteMessages>
+      ) : (
+        actions
+      )}
     </article>
   );
 }

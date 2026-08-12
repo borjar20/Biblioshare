@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { setEpisodeWatched } from "@/lib/series/episode-actions";
 import { updateStatus } from "@/lib/library/manage-actions";
+import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import { clearTimer, elapsedMs, pause, start, toMinutes, writeTimer } from "@/lib/sessions/timer";
 import { hasTime, useTimerState } from "@/lib/sessions/use-timer-state";
 import { ClockIcon, PencilIcon, CheckIcon } from "@/components/ui/icons";
@@ -138,29 +139,59 @@ function MarkNextEpisode({
 
 // «Marcar Vista» de la película elegida por el sorteo (foco del home). La saca
 // del estado de sistema «para ver» (in_progress) y la cierra como Vista con el
-// mismo server action que el resto de la app; `router.refresh()` re-evalúa la
-// escalera del foco, así que la tarjeta desaparece sola. La puntuación se deja
-// para la ficha (no se encadena hoja desde aquí, a diferencia de marcar Vista
-// en la ficha) — ver issue de deuda en decisiones.md 2026-08-12.
+// mismo server action que el resto de la app. Igual que marcar Vista EN LA
+// FICHA, encadena la hoja de cierre (`ClosePassSheet`) para puntuar y reseñar:
+// el pase ya quedó cerrado en BD, la hoja solo añade nota/rating/visibilidad
+// por encima. Al cerrarla, `router.refresh()` re-evalúa la escalera del foco y
+// la película sale sola.
+//
+// La hoja usa el namespace `passes`, que el Inicio NO manda al cliente
+// (route-messages #444): por eso `TodayCard` envuelve las acciones de una
+// película en `<RouteMessages ns={["passes"]}>` — esas cadenas viajan solo
+// cuando hay una peli en el foco, no en cada visita al Inicio.
 function MarkSeen({ itemId, label }: { itemId: string; label: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [closingPassId, setClosingPassId] = useState<string | null>(null);
 
   return (
-    <button
-      type="button"
-      disabled={isPending}
-      onClick={() =>
-        startTransition(async () => {
-          await updateStatus("movie", itemId, "completed");
-          router.refresh();
-        })
-      }
-      className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"
-    >
-      <CheckIcon className="h-4 w-4" />
-      {label}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() =>
+          startTransition(async () => {
+            const outcome = await updateStatus("movie", itemId, "completed");
+            // El cierre trae el passId de la Vista recién cerrada: con él se abre
+            // la hoja de puntuar. Si por lo que sea no cerró, al menos refresca
+            // para sacarla del foco.
+            if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+              setClosingPassId(outcome.passId);
+            } else {
+              router.refresh();
+            }
+          })
+        }
+        className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"
+      >
+        <CheckIcon className="h-4 w-4" />
+        {label}
+      </button>
+      {closingPassId && (
+        <ClosePassSheet
+          passId={closingPassId}
+          itemType="movie"
+          itemId={itemId}
+          open
+          onClose={() => {
+            // Guardada o saltada, la Vista ya está cerrada: refrescar saca la
+            // película del foco (deja de ser in_progress).
+            setClosingPassId(null);
+            router.refresh();
+          }}
+        />
+      )}
+    </>
   );
 }
 
