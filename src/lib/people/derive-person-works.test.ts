@@ -212,7 +212,7 @@ describe("libraryPercent", () => {
 });
 
 describe("pickFeatured", () => {
-  it("prioriza tu nota alta, luego la global, luego la más reciente", () => {
+  it("manda la nota: primero las tuyas, luego las globales, al final las sin nota", () => {
     const works = [
       work({ itemId: "reciente", year: 2024 }),
       work({ itemId: "global", globalRating: 9 }),
@@ -228,10 +228,34 @@ describe("pickFeatured", () => {
     ]);
   });
 
-  it("el caso Phil Lord: su obra como director gana a los making-of recientes", () => {
-    // Sin peso de rol, en catálogo recién hidratado las dos notas son null y
-    // manda el AÑO, así que los featurettes de 2023 salían destacados por
-    // delante de su cine. Ver `workRoleWeight`.
+  it("una nota tuya baja gana a una global alta: son tramos, no números comparables", () => {
+    const works = [
+      work({ itemId: "global10", globalRating: 10 }),
+      work({ itemId: "mia6", userRating: 6 }),
+      work({ itemId: "x" }),
+      work({ itemId: "y" }),
+    ];
+
+    expect(pickFeatured(works).map((w) => w.itemId).slice(0, 2)).toEqual(["mia6", "global10"]);
+  });
+
+  it("la nota gana al rol: una peli que ACTÚA y puntuaste alto pasa por delante de una que dirige sin nota", () => {
+    // Este es el cambio del 2026-08-12 (segunda enmienda): antes el peso del rol
+    // iba primero y «dirige» ganaba siempre, puntuases lo que puntuases.
+    const works = [
+      work({ itemId: "dirige", roles: ["director"], year: 2014 }),
+      work({ itemId: "actua", roles: ["cast"], character: "Bill", userRating: 9 }),
+      work({ itemId: "x" }),
+      work({ itemId: "y" }),
+    ];
+
+    expect(pickFeatured(works).map((w) => w.itemId).slice(0, 2)).toEqual(["actua", "dirige"]);
+  });
+
+  it("el caso Phil Lord: SIN notas, su obra como director gana a los making-of recientes", () => {
+    // En catálogo recién hidratado nadie tiene nota, así que todo cae al tramo
+    // de «sin nota» y el desempate real sería el AÑO — los featurettes de 2023
+    // por delante de su cine. Lo sostiene el peso del rol. Ver `workRoleWeight`.
     const works = [
       work({ itemId: "makingof1", year: 2023, roles: ["cast"], character: "Self" }),
       work({ itemId: "makingof2", year: 2023, roles: ["cast"], character: "Self - Presenter" }),
@@ -247,6 +271,19 @@ describe("pickFeatured", () => {
       "makingof1",
       "makingof2",
     ]);
+  });
+
+  it("las apariciones como sí mismo van al final AUNQUE las hayas puntuado alto", () => {
+    // El único sitio donde la nota no manda: el late night con un 10 tuyo
+    // sigue sin ser obra suya.
+    const works = [
+      work({ itemId: "latenight", roles: ["cast"], character: "Himself", userRating: 10 }),
+      work({ itemId: "peli", roles: ["director"], userRating: 5 }),
+      work({ itemId: "x" }),
+      work({ itemId: "y" }),
+    ];
+
+    expect(pickFeatured(works).map((w) => w.itemId)).toEqual(["peli", "x", "y", "latenight"]);
   });
 
   it("tope de 5", () => {

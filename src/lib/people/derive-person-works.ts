@@ -1,7 +1,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { personHref } from "@/lib/catalog/item-href";
 import type { CreditRole } from "./types";
-import { strongestRole, workRoleWeight } from "./credit-noise";
+import { isSelfAppearance, strongestRole, workRoleWeight } from "./credit-noise";
 import type { Collaborator, ProfileWork } from "./profile-types";
 
 // Toda la lógica de FORMA de la ficha de persona, en funciones puras: no tocan
@@ -120,32 +120,50 @@ export function deriveLibrarySummary(works: ProfileWork[]): LibrarySummary {
 }
 
 /**
- * Criterio, EN ESTE ORDEN: peso del rol > tu nota alta > mejor nota global >
- * más reciente. El desempate final por itemId hace el orden ESTABLE: sin él,
- * dos renders del mismo perfil podían bailar.
+ * De qué nota se destaca una obra. Son TRAMOS, no un número comparable entre
+ * ellos: tu 6 destaca por delante de un 9 de la comunidad. En TU ficha de una
+ * persona, lo que ordena es tu criterio; la nota global solo rellena donde no
+ * has puesto la tuya.
+ */
+function ratingTier(work: ProfileWork): { tier: 0 | 1 | 2; score: number } {
+  if (work.userRating != null) return { tier: 0, score: work.userRating };
+  if (work.globalRating != null) return { tier: 1, score: work.globalRating };
+  return { tier: 2, score: 0 };
+}
+
+/**
+ * Criterio, EN ESTE ORDEN: **la nota manda** (petición del dueño). Primero lo
+ * que has puntuado tú, de mayor a menor; después lo que ha puntuado la
+ * comunidad; al final lo que no tiene nota de nadie. Entre lo no puntuado
+ * desempata el peso del rol, luego el año, y por último el itemId — ese último
+ * hace el orden ESTABLE: sin él, dos renders del mismo perfil podían bailar.
  *
- * El PESO DEL ROL va primero, y es un añadido del 2026-08-12 a petición del
- * dueño. Sin él, en un catálogo recién hidratado las dos notas son null para
- * todo y el desempate real era el AÑO — así que en la ficha de Phil Lord los
- * making-of de 2023 salían destacados por delante de su obra como director.
- * Con el peso, la autoría (dirección, guion, creación, autoría) manda sobre el
- * reparto, y una aparición como sí mismo no destaca jamás.
+ * EL PESO DEL ROL BAJA A DESEMPATE, no desaparece: es lo único que sostiene la
+ * tira en el caso que la rompió (Phil Lord, 2026-08-12). En un catálogo recién
+ * hidratado NADIE tiene nota, así que todo cae al tramo 2 y sin el peso volvería
+ * a mandar el AÑO — es decir, los making-of de 2023 por delante de su cine.
  *
- * Consecuencia asumida: en una persona que dirige Y actúa mucho, las destacadas
- * tiran hacia lo que dirige. Su obra como intérprete no se pierde — está en su
- * sección de rol y en la lista por año, y el chip de crédito la filtra.
+ * Las apariciones COMO SÍ MISMO van siempre al final, tengan la nota que
+ * tengan: el late night que puntuaste con un 9 sigue sin ser obra suya. Es el
+ * único sitio donde la nota no manda, y es a propósito.
  */
 export function pickFeatured(works: ProfileWork[], max = FEATURED_MAX): ProfileWork[] {
   if (works.length < FEATURED_MIN_WORKS) return [];
   return [...works]
-    .sort(
-      (a, b) =>
+    .sort((a, b) => {
+      const selfA = isSelfAppearance(a.character) ? 1 : 0;
+      const selfB = isSelfAppearance(b.character) ? 1 : 0;
+      const ra = ratingTier(a);
+      const rb = ratingTier(b);
+      return (
+        selfA - selfB ||
+        ra.tier - rb.tier ||
+        rb.score - ra.score ||
         workRoleWeight(b.roles, b.character) - workRoleWeight(a.roles, a.character) ||
-        (b.userRating ?? 0) - (a.userRating ?? 0) ||
-        (b.globalRating ?? 0) - (a.globalRating ?? 0) ||
         (b.year ?? 0) - (a.year ?? 0) ||
         a.itemId.localeCompare(b.itemId)
-    )
+      );
+    })
     .slice(0, max);
 }
 
