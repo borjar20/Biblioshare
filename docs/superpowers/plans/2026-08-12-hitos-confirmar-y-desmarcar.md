@@ -178,7 +178,7 @@ select p.proname, p.prosecdef, p.proconfig,
  where n.nspname = 'public'
    and p.proname in ('unconfirm_checkpoint','confirm_checkpoint');
 ```
-Expected: las dos con `prosecdef = true`, `proconfig = {search_path=public}`, y `authenticated` en permisos **sin `anon`**.
+Expected: las dos con `prosecdef = true`, `proconfig = {search_path=public, pg_temp}`, y `authenticated` en permisos **sin `anon`**.
 
 - [ ] **Step 6: Probar el comportamiento contra dev**
 

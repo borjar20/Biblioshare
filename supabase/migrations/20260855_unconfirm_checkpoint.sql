@@ -21,7 +21,7 @@ create or replace function public.unconfirm_checkpoint(p_checkpoint_id uuid)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_activity_id uuid;
@@ -73,7 +73,7 @@ create or replace function public.confirm_checkpoint(p_checkpoint_id uuid)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_activity_id uuid;
@@ -100,3 +100,12 @@ begin
   on conflict (checkpoint_id, user_id) do nothing;
 end;
 $$;
+
+comment on function public.confirm_checkpoint(uuid) is
+  'Declara haber llegado a un hito, y auto-confirma también los anteriores (cascada 1..N, idempotente): el progreso de cada participante es siempre un tramo continuo desde el principio. Autodeclarativa desde #471 -- exige ser participante, sin revalidación de posición contra library_entries/passes. El gate de participante va PRIMERO (issue #129): comprobarlo después de `not found` revelaba a un no participante si un uuid de hito existe.';
+
+-- La tabla ya no la escribe solo confirm_checkpoint: unconfirm_checkpoint borra
+-- (arriba). El comentario original (20260713_activity_checkpoints.sql, matizado
+-- en 20260826 y 20260827) se conserva casi entero -- solo se nombra a la gemela.
+comment on table public.club_activity_checkpoint_reads is
+  'Quién ha declarado haber llegado a qué checkpoint (tablero de progreso grupal). Sin política de escritura de cliente -- solo vía confirm_checkpoint() y unconfirm_checkpoint() (las dos SECURITY DEFINER), que desde #471 son autodeclarativas: exigen ser participante, sin revalidación de posición (las ediciones hacen incomparables las páginas). confirm_checkpoint inserta la cascada 1..N; unconfirm_checkpoint borra la cascada N..último, y solo las filas del propio llamante.';
