@@ -84,7 +84,7 @@ export function DaySheet({
                     {markLabel(mark, t)}
                     {mark.followedByViewer && (
                       <>
-                        <BellIcon className="h-2.5 w-2.5 text-accent" aria-hidden />
+                        <BellIcon className="h-2.5 w-2.5 text-accent" filled aria-hidden />
                         <span className="sr-only">{t("eventFollowedBadge")}</span>
                       </>
                     )}

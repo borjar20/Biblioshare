@@ -51,7 +51,12 @@ export function AgendaList({
               es alta y estrecha; en el raíl el problema nunca existió.
               A 390 px cada tarjeta tiene ~185 px: el título se trunca antes que
               el chip, que es lo que identifica la marca. */}
-          <ul className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-1">
+          {/* Y UNA sola columna por debajo de 340 px. Ahí las dos columnas dejan
+              ~120 px útiles por tarjeta y «LANZAMIENTO» (~62 px) ya no cabe ni
+              apretando el relleno al mínimo: se partía por la mitad. Medido, no
+              supuesto -- con dos columnas el test falla a 320 px y pasa a 360.
+              A una columna la tarjeta coge el ancho entero y sobra sitio. */}
+          <ul className="grid grid-cols-1 gap-2 min-[340px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
             {grupo.marks.map((mark, i) => {
               const accent = MARK_ACCENT[accentKeyFor(mark)];
               const esEvento = mark.markKind === "evento";
@@ -68,7 +73,7 @@ export function AgendaList({
                     // así que sin esto el chip desbordaba la tarjeta y se metía
                     // debajo del separador del botón de campana (reportado a 390
                     // px con la agenda a dos columnas).
-                    className={`mb-1.5 inline-flex w-fit max-w-full items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
+                    className={`mb-1.5 inline-flex w-fit max-w-full items-center gap-1 rounded-chip px-1.5 py-0.5 font-mono text-[9px] tracking-wide uppercase min-[375px]:gap-1.5 min-[375px]:px-2 ${accent.bgSoft} ${accent.text}`}
                   >
                     {/* El GLIFO de la clase, no el cuadrito de color que había
                         antes. Es el mismo cambio que la celda del mes: la
@@ -82,7 +87,13 @@ export function AgendaList({
                         su min-content («LANZAMIENTO» son ~62 px de los ~102 que
                         deja la tarjeta): es lo que permite que `max-w-full` de
                         arriba se cumpla de verdad en vez de desbordar. */}
-                    <span className="min-w-0 break-words">{markLabel(mark, t)}</span>
+                    {/* El testid engancha la aserción que comprueba que ninguna
+                        PALABRA se parte por la mitad en pantallas estrechas: hay
+                        que medir este nodo de texto en concreto, y sin el gancho
+                        el test tendría que adivinarlo por su clase. */}
+                    <span data-testid="agenda-chip-label" className="min-w-0 break-words">
+                      {markLabel(mark, t)}
+                    </span>
                     {/* La marca de seguido lleva icono Y texto accesible: no
                         depende del color, así que sobrevive a la escala de
                         grises y a un lector de pantalla (§17). El ICONO se
@@ -93,7 +104,11 @@ export function AgendaList({
                     {mark.followedByViewer && (
                       <>
                         {!hayToggle && (
-                          <BellIcon className="h-2.5 w-2.5 shrink-0 text-accent" aria-hidden />
+                          <BellIcon
+                            className="h-2.5 w-2.5 shrink-0 text-accent"
+                            filled
+                            aria-hidden
+                          />
                         )}
                         <span className="sr-only">{t("eventFollowedBadge")}</span>
                       </>
@@ -110,7 +125,15 @@ export function AgendaList({
                 </span>
               );
 
-              const clases = `flex min-w-0 flex-1 items-start gap-3 px-3 py-2.5 ${
+              // El relleno se encoge por debajo de 375 px. No es estética: a dos
+              // columnas la tarjeta deja ~160 px, y de ahí se van 48 en el botón
+              // de campana; con `px-3` en la tarjeta y `px-2` en el chip, la
+              // palabra «LANZAMIENTO» (~62 px en mono de 9 px) ya no cabe entera
+              // y `break-words` la parte POR LA MITAD («LANZAMIEN / TO»), que es
+              // lo que se reportó. Los píxeles que devuelve el relleno son justo
+              // los que faltaban. A partir de 375 px se restaura el original: ahí
+              // la palabra cabe y apretarla no compra nada.
+              const clases = `flex min-w-0 flex-1 items-start gap-3 px-2 py-2 min-[375px]:px-3 min-[375px]:py-2.5 ${
                 mark.past ? "opacity-50" : ""
               }`;
 

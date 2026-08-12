@@ -63,7 +63,9 @@ export function ClubCalendar({
   const seguidoBadge =
     viewerIsMember && seguidosDelMes.length > 0 ? (
       <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
-        <BellIcon className="h-2.5 w-2.5" aria-hidden />
+        {/* Rellena, igual que las campanas que explica: una leyenda que dibuja
+            otra silueta que el símbolo real no es una leyenda. */}
+        <BellIcon className="h-2.5 w-2.5" filled aria-hidden />
         {t("eventFollowedBadge")}
       </span>
     ) : null;

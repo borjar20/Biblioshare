@@ -381,6 +381,51 @@ test("calendario móvil: ni la celda ni el chip de la agenda desbordan su caja",
       [],
     );
 
+    // ── 8. En pantallas estrechas ninguna PALABRA se parte por la mitad ──
+    //
+    // A dos columnas la tarjeta deja ~160 px a 360 px de ancho, y de ahí se van
+    // 48 en el botón de campana. Con el relleno de antes, «LANZAMIENTO» (~62 px
+    // en mono de 9 px) no cabía entera y `break-words` la cortaba: «LANZAMIEN /
+    // TO». Ojo: eso NO es un desborde, así que la aserción 4 lo daba por bueno
+    // -- el contenido cabía en su caja, partido.
+    //
+    // Se mide con un Range por palabra: si una palabra devuelve más de un
+    // rectángulo de línea, ocupa dos renglones, y eso es exactamente «se partió».
+    // Contar líneas del chip entero no valdría: «LANZAMIENTO · PELÍCULA» ocupa
+    // dos renglones también cuando parte bien, por el espacio.
+    for (const ancho of [360, 320]) {
+      await page.setViewportSize({ width: ancho, height: 900 });
+      await page.goto(`/club/${club.slug}/calendario?mes=${MES}`);
+      await expect(page.getByTestId("calendar-month")).toHaveText("Septiembre 2027");
+      await expect(page.getByTestId("agenda-chip-label").first()).toBeVisible();
+
+      const partidas = await page.evaluate(() => {
+        const malas: string[] = [];
+        for (const el of document.querySelectorAll('[data-testid="agenda-chip-label"]')) {
+          const nodo = el.firstChild;
+          if (!nodo || nodo.nodeType !== Node.TEXT_NODE) continue;
+          const texto = nodo.textContent ?? "";
+          const rango = document.createRange();
+          for (const m of texto.matchAll(/\S+/g)) {
+            rango.setStart(nodo, m.index);
+            rango.setEnd(nodo, m.index + m[0].length);
+            const renglones = rango.getClientRects().length;
+            if (renglones > 1) malas.push(`«${m[0]}» en ${renglones} renglones`);
+          }
+        }
+        return malas;
+      });
+      expect(
+        partidas,
+        `a ${ancho} px ninguna palabra del chip debe partirse por la mitad`,
+      ).toEqual([]);
+
+      const desborde = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(desborde, `la agenda no debe desbordar a lo ancho a ${ancho} px`).toBe(0);
+    }
+
     console.log("CALENDARIO MÓVIL OK:", club.slug);
   } finally {
     // fetch nativo, NO el fixture `request`: ese muere con el contexto del

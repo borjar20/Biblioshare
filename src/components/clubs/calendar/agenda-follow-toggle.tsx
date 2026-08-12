@@ -73,7 +73,11 @@ export function AgendaFollowToggle({
         state.following ? "text-accent" : "text-muted-foreground hover:text-foreground"
       }`}
     >
-      <BellIcon className="h-4 w-4" aria-hidden />
+      {/* Campana SÓLIDA cuando se sigue. La silueta y el relleno se distinguen
+          en escala de grises, así que el estado deja de descansar solo en el
+          color de acento -- que a 16 px sobre un fondo claro es justo donde
+          peor se ve (§17). Mismo patrón que notify-bell.tsx. */}
+      <BellIcon className="h-4 w-4" filled={state.following} aria-hidden />
       {fallo && <span className="sr-only">{t("eventFollowError")}</span>}
     </button>
   );

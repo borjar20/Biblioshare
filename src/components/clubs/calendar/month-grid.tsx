@@ -128,7 +128,7 @@ export function MonthGrid({
                       mismo desaparece el anillo que rodeaba el punto seguido:
                       alrededor de un glifo es ruido, y la campana ya lo dice. */}
                   {visibles.some((m) => m.followedByViewer) && (
-                    <BellIcon className="h-2 w-2 shrink-0 text-accent" aria-hidden />
+                    <BellIcon className="h-2 w-2 shrink-0 text-accent" filled aria-hidden />
                   )}
                   {delDia.length > MAX_CHIPS && (
                     <span className="font-mono text-[8px] leading-none text-muted-foreground">
@@ -157,7 +157,11 @@ export function MonthGrid({
                       {/* La campana es FORMA, no color: en escala de grises el día
                           seguido sigue distinguiéndose del que no (§17). */}
                       {mark.followedByViewer && (
-                        <BellIcon className="h-2.5 w-2.5 shrink-0 text-accent" aria-hidden />
+                        <BellIcon
+                          className="h-2.5 w-2.5 shrink-0 text-accent"
+                          filled
+                          aria-hidden
+                        />
                       )}
                       {/* El lector de pantalla oye la clase también en escritorio;
                           el chip solo mostraba el título visible. */}
