@@ -1415,15 +1415,68 @@ export function ActivityComposer({
 }
 ```
 
-- [ ] **Step 2: Verificar que compila**
+- [ ] **Step 2: Pasar el parámetro hasta el asistente**
 
-Run: `npx tsc --noEmit 2>&1 | grep "activity-composer"`
-Expected: sin salida.
+`ActivityComposer` gana la prop `open`, así que su llamador deja de compilar — y
+si se dejara para la Task 10, además de no compilar, **proponer dejaría de
+funcionar a mitad de rama**: el botón navegaría a `?nueva=1` y no lo leería
+nadie. Se cablea aquí, que es donde el cambio tiene sentido.
 
-- [ ] **Step 3: Commit**
+En `src/components/clubs/activity-list.tsx`, añadir la prop y pasarla:
+
+```tsx
+  composerOpen,
+}: {
+  // … las props que ya tenía
+  composerOpen: boolean;
+}) {
+```
+
+```tsx
+      <ActivityComposer
+        clubId={clubId}
+        clubSlug={clubSlug}
+        isModerator={isModerator}
+        open={composerOpen}
+      />
+```
+
+El botón que antes pintaba el propio composer ahora es un enlace aparte, así que
+se monta justo encima:
+
+```tsx
+      <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+```
+
+En `src/app/club/[slug]/page.tsx`, leer el parámetro y bajarlo:
+
+```tsx
+  searchParams: Promise<{ tab?: string; nueva?: string }>;
+```
+```tsx
+  const { tab: tabParam, nueva } = await searchParams;
+```
+```tsx
+            initialActivities={activities}
+            isModerator={canModerate}
+            today={todayISO()}
+            composerOpen={nueva === "1"}
+```
+
+Nada más de `page.tsx`: la cabecera con acción y el rail son de la Task 10.
+
+- [ ] **Step 3: Verificar que compila y que proponer sigue funcionando**
+
+Run: `npx tsc --noEmit`
+Expected: **sin errores**.
+
+Run: `npm test`
+Expected: PASS.
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/components/clubs/activity-composer.tsx
+git add src/components/clubs/activity-composer.tsx src/components/clubs/activity-list.tsx src/app/club/\[slug\]/page.tsx
 git commit -m "feat(actividades): abrir el asistente por parámetro de URL"
 ```
 
