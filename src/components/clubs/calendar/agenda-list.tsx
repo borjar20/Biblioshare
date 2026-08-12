@@ -43,10 +43,15 @@ export function AgendaList({
             {formatEventDate(grupo.date)}
           </h3>
 
-          {/* Dos columnas en móvil, tres desde tablet. A 390 px cada tarjeta
-              tiene ~185 px: el título se trunca antes que el chip de clase, que
-              es lo que identifica la marca. */}
-          <ul className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          {/* Dos columnas en móvil, tres desde tablet, y de vuelta a UNA desde
+              `lg`. Lo último no es un capricho: ahí la agenda vive en el raíl de
+              340 px de club-calendar.tsx, donde dos columnas dejan ~166 px por
+              tarjeta y el chip de clase («LANZAMIENTO · PELÍCULA») ya no cabe.
+              Las columnas resuelven el scroll de MÓVIL, que es donde la pantalla
+              es alta y estrecha; en el raíl el problema nunca existió.
+              A 390 px cada tarjeta tiene ~185 px: el título se trunca antes que
+              el chip, que es lo que identifica la marca. */}
+          <ul className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-1">
             {grupo.marks.map((mark, i) => {
               const accent = MARK_ACCENT[accentKeyFor(mark)];
               const esEvento = mark.markKind === "evento";

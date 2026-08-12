@@ -45,7 +45,13 @@ lateral sí lo tiene como par de Feed y Actividades desde que existe.
 
 **Fuera:**
 
-- El escritorio: los chips, la leyenda y la agenda de `lg` arriba no se tocan.
+- El escritorio: los chips de la rejilla y la leyenda de `lg` arriba no se tocan.
+  **Matiz sobre la agenda**, corregido durante la implementación: agrupar por día
+  no es una decisión de breakpoint, así que la cabecera de día y la pérdida del
+  bloque de fecha por tarjeta aplican también en escritorio. Lo que sí se acota a
+  móvil y tablet son las COLUMNAS: desde `lg` la agenda vuelve a una, porque ahí
+  vive en un raíl de 340 px donde dos columnas dejarían ~166 px por tarjeta y el
+  chip de clase no cabría. En el raíl el scroll nunca fue el problema.
 - El modelo de datos, el color y los tokens: los fijó el spec del 2026-08-11.
 - `Miembros`, que tiene el mismo hueco de navegación que el calendario. Queda
   como issue, no se resuelve aquí.
