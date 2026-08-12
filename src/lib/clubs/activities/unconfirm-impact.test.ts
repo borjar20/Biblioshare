@@ -108,4 +108,24 @@ describe("unconfirmImpact — el aviso del chat", () => {
     const c = cp({ order: 0, chat: chat(Array(20).fill(comment(false)), 50) });
     expect(unconfirmImpact(c, [c]).chat).toEqual({ count: null });
   });
+
+  it("mensajes tuyos solo en un hito POSTERIOR: el aviso aplica igual", () => {
+    // El pulsado no tiene chat propio, pero desmarcarlo arrastra al posterior
+    // donde SÍ escribiste -- el guard es «participante Y ha llegado», así que
+    // pierdes acceso a los dos, no solo al que tocaste.
+    const target = cp({ order: 0, chat: chat([comment(false)]) });
+    const posterior = cp({ order: 1, chat: chat([comment(true), comment(true)]) });
+    expect(unconfirmImpact(target, [target, posterior]).chat).toEqual({ count: 2 });
+  });
+
+  it("recorte en un posterior pero no en el pulsado: {count: null} igualmente", () => {
+    // El pulsado va sin recorte y sin mensajes tuyos; basta con que el chat que
+    // cae detrás esté recortado para que no se pueda afirmar un número.
+    const target = cp({ order: 0, chat: chat([comment(false)]) });
+    const posterior = cp({
+      order: 1,
+      chat: chat([comment(true), ...Array(19).fill(comment(false))], 50),
+    });
+    expect(unconfirmImpact(target, [target, posterior]).chat).toEqual({ count: null });
+  });
 });
