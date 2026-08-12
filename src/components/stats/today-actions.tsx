@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { setEpisodeWatched } from "@/lib/series/episode-actions";
 import { updateStatus } from "@/lib/library/manage-actions";
-import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
+import { itemHref } from "@/lib/catalog/item-href";
 import { clearTimer, elapsedMs, pause, start, toMinutes, writeTimer } from "@/lib/sessions/timer";
 import { hasTime, useTimerState } from "@/lib/sessions/use-timer-state";
 import { ClockIcon, PencilIcon, CheckIcon } from "@/components/ui/icons";
@@ -140,58 +140,39 @@ function MarkNextEpisode({
 // «Marcar Vista» de la película elegida por el sorteo (foco del home). La saca
 // del estado de sistema «para ver» (in_progress) y la cierra como Vista con el
 // mismo server action que el resto de la app. Igual que marcar Vista EN LA
-// FICHA, encadena la hoja de cierre (`ClosePassSheet`) para puntuar y reseñar:
-// el pase ya quedó cerrado en BD, la hoja solo añade nota/rating/visibilidad
-// por encima. Al cerrarla, `router.refresh()` re-evalúa la escalera del foco y
-// la película sale sola.
+// FICHA, encadena la hoja de puntuar/reseñar — pero se abre EN LA FICHA vía
+// `?cerrar=<passId>`, no incrustada en el foco.
 //
-// La hoja usa el namespace `passes`, que el Inicio NO manda al cliente
-// (route-messages #444): por eso `TodayCard` envuelve las acciones de una
-// película en `<RouteMessages ns={["passes"]}>` — esas cadenas viajan solo
-// cuando hay una peli en el foco, no en cada visita al Inicio.
+// Por qué en la ficha y no aquí: al completar, la película deja de ser
+// in_progress, así que la revalidación saca su tarjeta del foco; un modal
+// incrustado en esa tarjeta se desmontaría en el acto («salta y se pierde»). La
+// ficha es un host estable y `/pelicula/[id]?cerrar=<passId>` ya abre esa misma
+// hoja (validando que el passId sea el del pase activo). El pase completado
+// sigue `is_active`, así que la validación pasa.
 function MarkSeen({ itemId, label }: { itemId: string; label: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [closingPassId, setClosingPassId] = useState<string | null>(null);
 
   return (
-    <>
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() =>
-          startTransition(async () => {
-            const outcome = await updateStatus("movie", itemId, "completed");
-            // El cierre trae el passId de la Vista recién cerrada: con él se abre
-            // la hoja de puntuar. Si por lo que sea no cerró, al menos refresca
-            // para sacarla del foco.
-            if (outcome.kind === "done" && outcome.closed && outcome.passId) {
-              setClosingPassId(outcome.passId);
-            } else {
-              router.refresh();
-            }
-          })
-        }
-        className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"
-      >
-        <CheckIcon className="h-4 w-4" />
-        {label}
-      </button>
-      {closingPassId && (
-        <ClosePassSheet
-          passId={closingPassId}
-          itemType="movie"
-          itemId={itemId}
-          open
-          onClose={() => {
-            // Guardada o saltada, la Vista ya está cerrada: refrescar saca la
-            // película del foco (deja de ser in_progress).
-            setClosingPassId(null);
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() =>
+        startTransition(async () => {
+          const outcome = await updateStatus("movie", itemId, "completed");
+          if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+            router.push(`${itemHref("movie", itemId)}?cerrar=${outcome.passId}&tab=log`);
+          } else {
+            // Sin cierre no hay nada que puntuar: solo refresca para sacarla del foco.
             router.refresh();
-          }}
-        />
-      )}
-    </>
+          }
+        })
+      }
+      className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"
+    >
+      <CheckIcon className="h-4 w-4" />
+      {label}
+    </button>
   );
 }
 

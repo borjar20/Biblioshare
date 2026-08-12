@@ -6,7 +6,6 @@ import type { DayActivity } from "@/lib/stats/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { itemHref } from "@/lib/catalog/item-href";
-import { RouteMessages } from "@/components/route-messages";
 import { TodayActions } from "./today-actions";
 
 // La tarjeta destacada del frame G: el ítem sobre el que más vas a actuar hoy,
@@ -181,15 +180,7 @@ export async function TodayCard({
         </div>
       </div>
 
-      {/* La peli encadena la hoja de puntuar (ClosePassSheet, ns `passes`) al
-          marcar Vista; ese namespace no viaja al Inicio por defecto (#444), así
-          que solo estas acciones lo llevan, y solo cuando hay una peli en el
-          foco. Libro/serie no lo necesitan. */}
-      {item.itemType === "movie" ? (
-        <RouteMessages ns={["passes"]}>{actions}</RouteMessages>
-      ) : (
-        actions
-      )}
+      {actions}
     </article>
   );
 }
