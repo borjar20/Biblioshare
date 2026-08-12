@@ -75,9 +75,22 @@ export function MonthGrid({
           const esHoy = cell.date === today;
           const visibles = delDia.slice(0, MAX_CHIPS);
           const conMarcas = delDia.length > 0;
-          const claseCelda = `flex aspect-square min-w-0 flex-col gap-1 border-r border-b border-border p-1.5 text-left last:border-r-0 lg:aspect-auto lg:min-h-[112px] lg:p-2 ${
+          // La celda NO es `aspect-square`. Un grid item con `aspect-ratio`
+          // calcula su tamaño mínimo automático desde el ratio (transferred
+          // size suggestion), no desde su contenido: la altura queda clavada al
+          // ancho y lo que no cabe se DERRAMA por debajo del borde -- que es el
+          // fallo que se reportó (un día con dos glifos + campana envuelve a dos
+          // líneas y se sale de su casilla).
+          //
+          // Con `min-h` la altura la fija el contenido, y como las filas son
+          // `display:contents` todas las celdas comparten pista de grid: crece
+          // la FILA ENTERA a la vez, sin escalones dentro de la semana.
+          const claseCelda = `flex min-h-[3.25rem] min-w-0 flex-col border-r border-b border-border last:border-r-0 sm:min-h-[4.5rem] lg:min-h-[112px] ${
             cell.outside ? "bg-surface-muted/50" : ""
           }`;
+          // El relleno vive en el interior, no en la celda: así el área pulsable
+          // del botón llega hasta el borde en vez de dejar un marco muerto.
+          const claseInterior = "flex min-w-0 flex-1 flex-col gap-1 p-1.5 text-left lg:p-2";
           const contenido = (
             <>
               <span
@@ -193,8 +206,14 @@ export function MonthGrid({
           // necesita (los glifos de la celda no dan el título). Así el árbol de
           // accesibilidad conserva las dos cosas: la celda de la rejilla (#147)
           // y el control que la abre.
+          //
+          // Y el gridcell es la CAJA (bordes, alto), no un `contents`: con
+          // `contents` el botón pasaba a ser hijo único de su envoltorio, así
+          // que `last:border-r-0` se cumplía en las SIETE celdas y la rejilla se
+          // quedaba sin líneas verticales. Ahora `:last-child` vuelve a ser el
+          // domingo, que es lo que la clase quería decir.
           return (
-            <div key={cell.date} role="gridcell" className="contents">
+            <div key={cell.date} role="gridcell" className={claseCelda}>
               {conMarcas ? (
                 <button
                   type="button"
@@ -205,12 +224,12 @@ export function MonthGrid({
                     if (window.matchMedia("(min-width: 1024px)").matches) return;
                     setDiaAbierto(cell.date);
                   }}
-                  className={claseCelda}
+                  className={claseInterior}
                 >
                   {contenido}
                 </button>
               ) : (
-                <div className={claseCelda}>{contenido}</div>
+                <div className={claseInterior}>{contenido}</div>
               )}
             </div>
           );

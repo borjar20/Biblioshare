@@ -55,11 +55,20 @@ export function AgendaList({
             {grupo.marks.map((mark, i) => {
               const accent = MARK_ACCENT[accentKeyFor(mark)];
               const esEvento = mark.markKind === "evento";
+              // Se calcula UNA vez y se usa en los dos sitios que dependen de
+              // ello (la campana del chip y el control de la derecha). Repetir
+              // la condición dejaría dos versiones de la misma regla.
+              const hayToggle = esEvento && viewerIsMember && !mark.past;
 
               const inner = (
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span
-                    className={`mb-1.5 inline-flex w-fit items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
+                    // `max-w-full` + un texto que puede encoger: `w-fit` es
+                    // `fit-content`, y fit-content NUNCA baja de su min-content,
+                    // así que sin esto el chip desbordaba la tarjeta y se metía
+                    // debajo del separador del botón de campana (reportado a 390
+                    // px con la agenda a dos columnas).
+                    className={`mb-1.5 inline-flex w-fit max-w-full items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
                   >
                     {/* El GLIFO de la clase, no el cuadrito de color que había
                         antes. Es el mismo cambio que la celda del mes: la
@@ -69,13 +78,23 @@ export function AgendaList({
                         que es lo que permite emparejarlas de un vistazo (#147).
                         Aplica en todos los anchos, escritorio incluido. */}
                     <accent.Icon className="h-2.5 w-2.5 shrink-0" aria-hidden />
-                    {markLabel(mark, t)}
+                    {/* `min-w-0` para que el texto pueda encoger por debajo de
+                        su min-content («LANZAMIENTO» son ~62 px de los ~102 que
+                        deja la tarjeta): es lo que permite que `max-w-full` de
+                        arriba se cumpla de verdad en vez de desbordar. */}
+                    <span className="min-w-0 break-words">{markLabel(mark, t)}</span>
                     {/* La marca de seguido lleva icono Y texto accesible: no
                         depende del color, así que sobrevive a la escala de
-                        grises y a un lector de pantalla (§17). */}
+                        grises y a un lector de pantalla (§17). El ICONO se
+                        omite cuando la fila ya trae el control de campana a la
+                        derecha: ahí es redundante y son los 16 px que hacían
+                        que el chip no cupiese. El texto accesible se queda
+                        siempre -- no ocupa ancho (va absolute). */}
                     {mark.followedByViewer && (
                       <>
-                        <BellIcon className="h-2.5 w-2.5 text-accent" aria-hidden />
+                        {!hayToggle && (
+                          <BellIcon className="h-2.5 w-2.5 shrink-0 text-accent" aria-hidden />
+                        )}
                         <span className="sr-only">{t("eventFollowedBadge")}</span>
                       </>
                     )}
@@ -113,7 +132,7 @@ export function AgendaList({
                   {/* El control de seguir es HERMANO del enlace, nunca dentro:
                       un <button> dentro de un <a> es HTML inválido y rompe el
                       tabulador. Y así pulsarlo no navega a ningún sitio. */}
-                  {esEvento && viewerIsMember && !mark.past && (
+                  {hayToggle && (
                     <AgendaFollowToggle
                       activityId={mark.activityId}
                       title={mark.title}
