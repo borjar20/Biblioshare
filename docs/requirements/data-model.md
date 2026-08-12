@@ -259,19 +259,15 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 >
 > **Delta del 2026-08-12 (editar título/descripción/fechas de una actividad, §6.5): estado
 > MIXTO, léase con cuidado.** Migración `supabase/migrations/20260854_update_activity_details.sql`,
-> nueva RPC `update_activity_details(uuid, text, text, date, date)`. **NO está en producción**
-> (pendiente del merge de esta rama, Task 7 Step 4). **En DEV el fichero committeado y lo que
-> hay realmente aplicado DIVERGEN**: dev tiene la primera versión de la función (commit
-> `00eed96c`), que llevaba un fallo de seguridad — el gate de rol se comprobaba DESPUÉS de
-> revelar si la fila existía y de qué `kind` era. Se corrigió en el propio código (commit
-> `eec82b0e`, ver §6.5 y `decisiones.md`) copiando el patrón gate-primero de
-> `20260831_club_activity_role_gate_first.sql`, pero el MCP de Supabase se cayó justo después
-> del arreglo y **la versión corregida nunca se reaplicó en dev**. Antes de dar esta RPC por
-> resuelta en ningún entorno: reaplicar `20260854_update_activity_details.sql` en dev y
-> reverificar los tres casos que motivaron el arreglo (extraño al club contra una actividad
-> normal, contra un evento y contra un uuid inexistente — los tres deben dar `forbidden`; si
-> alguno da otro código distinto, la fuga sigue). Los otros seis casos y el camino feliz sí se
-> verificaron contra dev, pero sobre la versión VIEJA, así que no bastan para cerrar esto.
+> nueva RPC `update_activity_details(uuid, text, text, date, date)`, **aplicada y verificada en
+> DEV y en PRODUCCIÓN** con la versión corregida (gate de rol primero, commit `eec82b0e`).
+>
+> Hubo un tramo en que dev tuvo la primera versión, con un fallo de seguridad: el gate de rol
+> se comprobaba DESPUÉS de revelar si la fila existía y de qué `kind` era, así que alguien
+> ajeno al club podía sondear uuids por el código de excepción. Era una **regresión** de lo que
+> `20260831_club_activity_role_gate_first.sql` (issue #129) ya había corregido en otras cuatro
+> RPC de esta misma tabla. Corregido y verificado en los dos entornos: los tres casos del
+> sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -1540,7 +1536,7 @@ la RLS no le dejaría calcular, y el WARN lo comparten las demás RPC `security 
 proyecto. Lo que sí importaba —no aparecer bajo `anon_security_definer_function_executable`— se
 verificó y no aparece.
 
-### 6.5 Editar título, descripción y fechas de una actividad ya creada: `update_activity_details` (SOLO DEV, y con una versión vulnerable todavía aplicada — leer entero, 2026-08-12)
+### 6.5 Editar título, descripción y fechas de una actividad ya creada: `update_activity_details` (DEV Y PROD, 2026-08-12)
 
 > Spec: `docs/superpowers/specs/2026-08-12-editar-actividades-design.md`. Migración
 > `supabase/migrations/20260854_update_activity_details.sql`. Issue #596. Decisiones de forma
@@ -1617,27 +1613,28 @@ cuele por un `null = auth.uid()` que da NULL en vez de `false`. **Regla que qued
 cualquier RPC nueva sobre `club_activities`: el gate de rol va PRIMERO, siempre** — leer
 `20260831_club_activity_role_gate_first.sql` antes de escribir la siguiente.
 
-**Estado real, no el que el fichero committeado sugiere:**
+**Aplicada y verificada en DEV y en PRODUCCIÓN el 2026-08-12**, con la versión corregida
+(gate de rol primero, commit `eec82b0e`). En prod: `prosecdef=true`,
+`proconfig=search_path=public`, ACL `authenticated/postgres/service_role` **sin `anon`**,
+verificado contra `pg_proc` y nunca contra `list_migrations`.
 
-- **Producción: no tiene la función en absoluto.** Aplicarla es la Task 7 Step 4 del plan, y
-  la decide el usuario — no se ha hecho.
-- **Dev: tiene la función, pero la versión VULNERABLE (commit `00eed96c`, gate de rol
-  DESPUÉS).** El arreglo `eec82b0e` existe en el repo pero el MCP de Supabase se cayó justo
-  después de escribirlo y **no se ha podido reaplicar contra dev todavía**. Los ocho casos y
-  el camino feliz del Step 5 del plan sí se verificaron contra dev, pero sobre la versión
-  vieja — no cubren el fallo de seguridad, que se arregló después de esa verificación.
+Los tres casos que motivaron el arreglo se corrieron **contra producción**, y fue la primera
+ejecución real del cuerpo corregido en cualquier entorno. Los tres dan `forbidden`, y los tres
+desde el **primer** gate (línea 27 de la función), que es lo que se estaba comprobando:
 
-**Pendiente antes de dar esta RPC por buena en cualquier entorno:** reaplicar
-`20260854_update_activity_details.sql` en dev (con `mcp__supabase-dev__apply_migration`, en
-cuanto el MCP vuelva) y correr contra dev los tres casos que motivan el arreglo, que deben dar
-los TRES `forbidden`:
+- extraño al club + actividad normal existente → `forbidden`
+- extraño al club + actividad `evento` existente → `forbidden` (aquí estaba la fuga: antes
+  daba `use_update_club_event` y le revelaba el `kind` a quien no podía ni ver la fila)
+- extraño al club + uuid inexistente → `forbidden`
 
-- extraño al club + actividad normal existente
-- extraño al club + actividad `evento` existente (aquí estaba la fuga: antes daba
-  `use_update_club_event`, revelando el `kind`)
-- extraño al club + uuid inexistente
+Si alguno diera un código distinto, la fuga seguiría. En dev se comprobó el tercero, que es el
+que distingue la versión corregida de la vieja (antes daba `not_found`).
 
-Si alguno difiere de `forbidden`, la fuga sigue.
+**Trampa al montar esta prueba, para quien la repita:** el primer intento usó un usuario que
+resultó ser **owner** del club dueño del evento, así que recibió `use_update_club_event` — y
+eso es correcto, no una fuga. Hay que asegurarse de que el usuario simulado NO tiene membresía
+en el club de la actividad; en prod no había ninguno, así que se simuló la sesión con un uuid
+que no pertenece a nadie (al gate le da igual quién seas: comprueba la membresía).
 
 ## 7. Sagas
 
