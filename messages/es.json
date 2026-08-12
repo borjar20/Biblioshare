@@ -1009,6 +1009,7 @@
     "calendarAgenda": "Agenda",
     "calendarEmptyMonth": "Nada marcado en este mes.",
     "calendarMore": "+{count}",
+    "daySheetClose": "Cerrar",
     "markKind_evento": "Evento",
     "markKind_hito": "Hito",
     "markKind_inicio": "Empieza",

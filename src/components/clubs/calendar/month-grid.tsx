@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   monthGrid,
@@ -9,6 +10,7 @@ import {
 import { BellIcon } from "@/components/ui/icons";
 import { MARK_ACCENT, accentKeyFor } from "./mark-accent";
 import { markLabel } from "./mark-label";
+import { DaySheet } from "./day-sheet";
 
 const DIAS_CORTOS = ["L", "M", "X", "J", "V", "S", "D"];
 const DIAS_LARGOS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -29,17 +31,23 @@ export function MonthGrid({
   const t = useTranslations("activity");
   const cells = monthGrid(month);
   const byDate = marksByDate(marks);
+  // El día cuya hoja está abierta. null = cerrada.
+  const [diaAbierto, setDiaAbierto] = useState<string | null>(null);
   // monthGrid rellena SIEMPRE a múltiplo de 7, así que las semanas salen enteras
   // (necesario para envolverlas en role="row" sin celdas sueltas, #147).
   const semanas: (typeof cells)[] = [];
   for (let i = 0; i < cells.length; i += 7) semanas.push(cells.slice(i, i + 7));
 
   return (
-    // role="grid" + row/columnheader/gridcell: un lector de pantalla asocia cada
-    // día con su columna y recorre el mes por semanas en vez de como 42 celdas
-    // planas (#147). Las filas van con `contents` (display:contents) para NO
-    // romper el `grid grid-cols-7`: las celdas siguen siendo sus items directos,
-    // así que el aspect-square/min-h por breakpoint se mantiene intacto.
+    // La hoja del día (DaySheet) se monta fuera de la rejilla, como hermana del
+    // <div role="grid">: es una sola instancia compartida por todas las
+    // celdas, no una por celda.
+    <>
+    {/* role="grid" + row/columnheader/gridcell: un lector de pantalla asocia cada
+        día con su columna y recorre el mes por semanas en vez de como 42 celdas
+        planas (#147). Las filas van con `contents` (display:contents) para NO
+        romper el `grid grid-cols-7`: las celdas siguen siendo sus items directos,
+        así que el aspect-square/min-h por breakpoint se mantiene intacto. */}
     <div
       role="grid"
       aria-label={t("calendarGridLabel")}
@@ -66,14 +74,12 @@ export function MonthGrid({
           const delDia = byDate.get(cell.date) ?? [];
           const esHoy = cell.date === today;
           const visibles = delDia.slice(0, MAX_CHIPS);
-          return (
-            <div
-              key={cell.date}
-              role="gridcell"
-              className={`flex aspect-square min-w-0 flex-col gap-1 border-r border-b border-border p-1.5 last:border-r-0 lg:aspect-auto lg:min-h-[112px] lg:p-2 ${
-                cell.outside ? "bg-surface-muted/50" : ""
-              }`}
-            >
+          const conMarcas = delDia.length > 0;
+          const claseCelda = `flex aspect-square min-w-0 flex-col gap-1 border-r border-b border-border p-1.5 text-left last:border-r-0 lg:aspect-auto lg:min-h-[112px] lg:p-2 ${
+            cell.outside ? "bg-surface-muted/50" : ""
+          }`;
+          const contenido = (
+            <>
               <span
                 className={`self-start rounded-md px-1.5 py-0.5 text-xs leading-none font-semibold ${
                   esHoy
@@ -177,6 +183,27 @@ export function MonthGrid({
                     .join(". ")}
                 </span>
               )}
+            </>
+          );
+
+          return conMarcas ? (
+            <button
+              key={cell.date}
+              type="button"
+              role="gridcell"
+              // La hoja es de MÓVIL: en escritorio el chip ya lleva el texto.
+              // El botón se queda (no estorba) pero no abre nada desde `lg`.
+              onClick={() => {
+                if (window.matchMedia("(min-width: 1024px)").matches) return;
+                setDiaAbierto(cell.date);
+              }}
+              className={claseCelda}
+            >
+              {contenido}
+            </button>
+          ) : (
+            <div key={cell.date} role="gridcell" className={claseCelda}>
+              {contenido}
             </div>
           );
             })}
@@ -184,5 +211,12 @@ export function MonthGrid({
         ))}
       </div>
     </div>
+
+    <DaySheet
+      date={diaAbierto}
+      marks={diaAbierto ? (byDate.get(diaAbierto) ?? []) : []}
+      onClose={() => setDiaAbierto(null)}
+    />
+    </>
   );
 }
