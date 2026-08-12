@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
+import { AgendaColumnsToggle } from "./agenda-columns-toggle";
+import { useAgendaColumns } from "./agenda-columns";
 import {
   MARK_ACCENT,
   LEYENDA_MARCAS,
@@ -49,6 +51,9 @@ export function ClubCalendar({
   // vaciarla dejaría al usuario sin contexto de qué más hay. Es estado local y no
   // un search param porque no es un enlace que nadie vaya a compartir.
   const [soloSeguidos, setSoloSeguidos] = useState(false);
+  // Las columnas de la agenda SÍ sobreviven a la recarga (localStorage): es una
+  // preferencia de lectura, no un filtro de esta visita. Ver agenda-columns.ts.
+  const [columnas, elegirColumnas] = useAgendaColumns();
 
   const month = parseMonthParam(searchParams.get("mes"), today);
   const agendaDelMes = agendaForMonth(marks, month, today);
@@ -197,46 +202,66 @@ export function ClubCalendar({
         <aside className="flex flex-col gap-3 lg:sticky lg:top-[96px]">
           <h2 className="label-section">{t("calendarAgenda")}</h2>
 
-          {/* El filtro solo aparece si hay algo que filtrar: un conmutador
-              «Sigues · 0» permanente sería un control que nunca hace nada. */}
-          {viewerIsMember && seguidosDelMes.length > 0 && (
-            <div
-              role="tablist"
-              aria-label={t("agendaFilterLabel")}
-              className="inline-flex w-fit overflow-hidden rounded-lg border border-border bg-surface"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={!soloSeguidos}
-                onClick={() => setSoloSeguidos(false)}
-                className={`px-3 py-1.5 text-xs transition-colors ${
-                  soloSeguidos
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "bg-accent font-medium text-accent-foreground"
-                }`}
+          {/* Filtro y columnas comparten fila: son los dos mandos de la misma
+              lista, y apilados se comían una franja de alto en la pantalla donde
+              el alto es lo que escasea. El toggle se va a la derecha con
+              `ml-auto` para que la posición del filtro no dependa de si el
+              toggle está o no. */}
+          {/* `lg:contents` disuelve la fila desde `lg`, donde el toggle no se
+              pinta: si no, quedaría un contenedor vacío sumando el `gap-3` del
+              aside -- una franja de aire bajo el título en escritorio. */}
+          <div className="flex flex-wrap items-center gap-2 lg:contents">
+            {/* El filtro solo aparece si hay algo que filtrar: un conmutador
+                «Sigues · 0» permanente sería un control que nunca hace nada. */}
+            {viewerIsMember && seguidosDelMes.length > 0 && (
+              <div
+                role="tablist"
+                aria-label={t("agendaFilterLabel")}
+                className="inline-flex w-fit overflow-hidden rounded-lg border border-border bg-surface"
               >
-                {t("agendaFilterAll")}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={soloSeguidos}
-                onClick={() => setSoloSeguidos(true)}
-                className={`px-3 py-1.5 text-xs transition-colors ${
-                  soloSeguidos
-                    ? "bg-accent font-medium text-accent-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t("agendaFilterFollowed", { count: seguidosDelMes.length })}
-              </button>
-            </div>
-          )}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!soloSeguidos}
+                  onClick={() => setSoloSeguidos(false)}
+                  className={`px-3 py-1.5 text-xs transition-colors ${
+                    soloSeguidos
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "bg-accent font-medium text-accent-foreground"
+                  }`}
+                >
+                  {t("agendaFilterAll")}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={soloSeguidos}
+                  onClick={() => setSoloSeguidos(true)}
+                  className={`px-3 py-1.5 text-xs transition-colors ${
+                    soloSeguidos
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t("agendaFilterFollowed", { count: seguidosDelMes.length })}
+                </button>
+              </div>
+            )}
+
+            {/* Último y con `ml-auto`: así el filtro no cambia de sitio según
+                esté o no el toggle. Y no se pinta sobre una agenda vacía: no
+                hay nada que recolocar. */}
+            {agenda.length > 0 && (
+              <div className="ml-auto lg:hidden">
+                <AgendaColumnsToggle value={columnas} onChange={elegirColumnas} />
+              </div>
+            )}
+          </div>
 
           <AgendaList
             marks={agenda}
             viewerIsMember={viewerIsMember}
+            columns={columnas}
             emptyMessage={soloSeguidos ? t("agendaFollowedEmpty") : undefined}
           />
         </aside>

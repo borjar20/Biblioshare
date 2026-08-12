@@ -11,16 +11,20 @@ import { BellIcon } from "@/components/ui/icons";
 import { MARK_ACCENT, accentKeyFor } from "./mark-accent";
 import { markLabel } from "./mark-label";
 import { AgendaReminderButton } from "./agenda-reminder-button";
+import type { AgendaColumns } from "./agenda-columns";
 
 export function AgendaList({
   marks,
   /** Copy del vacío: cambia según el filtro activo (todo vs. solo los seguidos). */
   emptyMessage,
   viewerIsMember = false,
+  columns = 2,
 }: {
   marks: CalendarMark[];
   emptyMessage?: string;
   viewerIsMember?: boolean;
+  /** Lo elige quien mira con el toggle; 2 es lo que la agenda hacía antes. */
+  columns?: AgendaColumns;
 }) {
   const t = useTranslations("activity");
 
@@ -43,20 +47,27 @@ export function AgendaList({
             {formatEventDate(grupo.date)}
           </h3>
 
-          {/* Dos columnas en móvil, tres desde tablet, y de vuelta a UNA desde
-              `lg`. Lo último no es un capricho: ahí la agenda vive en el raíl de
-              340 px de club-calendar.tsx, donde dos columnas dejan ~166 px por
-              tarjeta y el chip de clase («LANZAMIENTO · PELÍCULA») ya no cabe.
-              Las columnas resuelven el scroll de MÓVIL, que es donde la pantalla
-              es alta y estrecha; en el raíl el problema nunca existió.
-              A 390 px cada tarjeta tiene ~185 px: el título se trunca antes que
-              el chip, que es lo que identifica la marca. */}
-          {/* Y UNA sola columna por debajo de 340 px. Ahí las dos columnas dejan
-              ~120 px útiles por tarjeta y «LANZAMIENTO» (~62 px) ya no cabe ni
-              apretando el relleno al mínimo: se partía por la mitad. Medido, no
-              supuesto -- con dos columnas el test falla a 320 px y pasa a 360.
-              A una columna la tarjeta coge el ancho entero y sobra sitio. */}
-          <ul className="grid grid-cols-1 gap-2 min-[340px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
+          {/* Las columnas resuelven el scroll de MÓVIL, que es donde la pantalla
+              es alta y estrecha. Cuántas hay lo decide quien mira con el toggle,
+              porque la respuesta depende de lo que se venga a hacer: dos
+              columnas enseñan el doble de mes de un vistazo, una deja el título
+              entero (a 390 px cada tarjeta tiene ~185 px y el título se trunca
+              antes que el chip). Antes lo decidía la hoja de estilos por todos.
+
+              Dos límites NO son negociables y por eso siguen en CSS y no en el
+              estado:
+              - Por debajo de 340 px, siempre una. Ahí dos columnas dejan ~120 px
+                útiles y «LANZAMIENTO» (~62 px) no cabe ni apretando el relleno
+                al mínimo: se partía por la mitad. Medido, no supuesto.
+              - Desde `lg`, siempre una. Ahí la agenda vive en el raíl de 340 px
+                de club-calendar.tsx, donde dos columnas dejan ~166 px por
+                tarjeta y el chip de clase («LANZAMIENTO · PELÍCULA») ya no cabe.
+                Es también la razón de que el toggle se esconda desde `lg`. */}
+          <ul
+            className={`grid gap-2 lg:grid-cols-1 ${
+              columns === 1 ? "grid-cols-1" : "grid-cols-1 min-[340px]:grid-cols-2"
+            }`}
+          >
             {grupo.marks.map((mark, i) => {
               const accent = MARK_ACCENT[accentKeyFor(mark)];
               const esEvento = mark.markKind === "evento";

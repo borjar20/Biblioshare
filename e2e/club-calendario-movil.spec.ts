@@ -448,6 +448,62 @@ test("calendario móvil: ni la celda ni el chip de la agenda desbordan su caja",
       expect(desborde, `la agenda no debe desbordar a lo ancho a ${ancho} px`).toBe(0);
     }
 
+    // ── 9. El toggle de columnas cambia la agenda Y sobrevive a la recarga ──
+    //
+    // Se cuentan RENGLONES, no clases: se agrupan las tarjetas por su `top`
+    // redondeado. Cuatro tarjetas del mismo día en dos renglones = dos
+    // columnas; en cuatro renglones = una. Comprobar la clase del <ul> pasaría
+    // igual si la rejilla no llegara a aplicarse.
+    const renglonesDeAgenda = () =>
+      page.evaluate(() => {
+        const tops = new Set<number>();
+        for (const el of document.querySelectorAll('[data-testid="agenda-chip-label"]')) {
+          const tarjeta = el.closest("li");
+          if (tarjeta) tops.add(Math.round(tarjeta.getBoundingClientRect().top));
+        }
+        return tops.size;
+      });
+
+    await page.setViewportSize({ width: 360, height: 900 });
+    await page.goto(`/club/${club.slug}/calendario?mes=${MES}`);
+    await expect(page.getByTestId("agenda-chip-label").first()).toBeVisible();
+    expect(await renglonesDeAgenda(), "por defecto la agenda va a dos columnas").toBe(2);
+
+    await page.getByRole("button", { name: "Una columna" }).click();
+    await expect
+      .poll(renglonesDeAgenda, {
+        message: "al elegir una columna las cuatro tarjetas quedan apiladas",
+      })
+      .toBe(4);
+
+    // La recarga es lo que distingue una preferencia guardada de un `useState`.
+    // Se comprueban las DOS mitades por separado: que el valor esté escrito, y
+    // que el render acabe obedeciéndolo. Si solo se mirasen los renglones, un
+    // fallo al guardar y un fallo al leer darían el mismo mensaje.
+    await page.reload();
+    await expect(page.getByTestId("agenda-chip-label").first()).toBeVisible();
+    expect(
+      await page.evaluate(() => localStorage.getItem("biblioshare:agenda-columnas")),
+      "la preferencia debe quedar escrita en localStorage",
+    ).toBe("1");
+    // `poll` y no una lectura seca: el valor guardado se aplica DESPUÉS de la
+    // hidratación (el HTML del servidor no puede saberlo), así que hay un
+    // fotograma a dos columnas. Es el precio documentado en agenda-columns.ts.
+    await expect
+      .poll(renglonesDeAgenda, {
+        message: "la preferencia de columnas debe sobrevivir a la recarga",
+      })
+      .toBe(4);
+    await expect(page.getByRole("button", { name: "Una columna" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await page.getByRole("button", { name: "Dos columnas" }).click();
+    await expect
+      .poll(renglonesDeAgenda, { message: "se puede volver a dos columnas" })
+      .toBe(2);
+
     console.log("CALENDARIO MÓVIL OK:", club.slug);
   } finally {
     // fetch nativo, NO el fixture `request`: ese muere con el contexto del
