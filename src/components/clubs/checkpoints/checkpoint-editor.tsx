@@ -53,7 +53,6 @@ export function BuddyReadCheckpointEditor({
   if (!view.itemType) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="label-section">{t("checkpoints")}</h2>
         <p className="text-[12.5px] text-muted-foreground">
           {t("checkpointsPickItemFirst")}
         </p>
@@ -65,7 +64,8 @@ export function BuddyReadCheckpointEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="label-section">{t("checkpoints")}</h2>
+      {/* Sin h2 propio: el tablero (BuddyReadCheckpoints) ya titula esta
+          sección con "Hitos"; repetirlo aquí lo duplicaría bajo la lista. */}
       {/* La RLS solo permite tocar hitos con la actividad ACTIVE
           (20260713_activity_checkpoints.sql:225-250). Se dice, en vez de dejar
           unos controles apagados sin explicación. */}
