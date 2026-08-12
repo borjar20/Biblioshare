@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { confirmCheckpoint, unconfirmCheckpoint, type CheckpointViewModel } from "@/lib/clubs/activities/checkpoints";
 import { unconfirmImpact } from "@/lib/clubs/activities/unconfirm-impact";
@@ -97,7 +97,7 @@ export function CheckpointList({
       partes.push(
         impacto.extraCount > 0
           ? t("unconfirmAlsoFallingMore", { labels, count: impacto.extraCount })
-          : t("unconfirmAlsoFalling", { labels }),
+          : t("unconfirmAlsoFalling", { labels, count: impacto.alsoFalling.length }),
       );
     }
 
@@ -268,12 +268,29 @@ function Ask({
   yesLabel: string;
   noLabel: string;
 }) {
+  // El botón que abrió esta pregunta se desmonta al montarse esta, así que el
+  // foco cae al <body> si nadie lo recoge -- quien navega por teclado se queda
+  // sin rastro de dónde está. Lo movemos al "Sí" al montar.
+  const yesRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    yesRef.current?.focus();
+  }, []);
+
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <span className="max-w-[220px] text-right text-[11px] text-muted-foreground">
+      {/* role="status": el texto que explica qué va a caer es el propósito
+          entero de esta pantalla intermedia. Sin una región viva, un lector de
+          pantalla no lo anuncia -- solo vería aparecer dos botones nuevos. */}
+      <span role="status" className="max-w-[220px] text-right text-[11px] text-muted-foreground">
         {message}
       </span>
-      <Button type="button" className="px-3 py-1 text-xs" disabled={disabled} onClick={onYes}>
+      <Button
+        ref={yesRef}
+        type="button"
+        className="px-3 py-1 text-xs"
+        disabled={disabled}
+        onClick={onYes}
+      >
         {yesLabel}
       </Button>
       <Button

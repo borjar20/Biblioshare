@@ -775,7 +775,7 @@
     "confirmCheckpointError": "No se pudo confirmar el hito. Inténtalo de nuevo.",
     "unconfirmCheckpoint": "Desmarcar",
     "unconfirmAsk": "¿Seguro?",
-    "unconfirmAlsoFalling": "Caen también {labels}.",
+    "unconfirmAlsoFalling": "{count, plural, one {Cae también {labels}.} other {Caen también {labels}.}}",
     "unconfirmAlsoFallingMore": "Caen también {labels} y {count} más.",
     "unconfirmChat": "Dejarás de ver su chat; tus mensajes se quedan.",
     "unconfirmChatCount": "Dejarás de ver su chat; {count, plural, one {tu # mensaje se queda} other {tus # mensajes se quedan}}.",

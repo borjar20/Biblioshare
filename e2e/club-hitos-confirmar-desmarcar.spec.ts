@@ -235,6 +235,12 @@ test.describe("confirmar y desmarcar hitos de una lectura conjunta", () => {
     // cabecera "Notificaciones" (strict mode violation).
     await page.getByRole("button", { name: "No", exact: true }).click();
     await expect(page.getByRole("button", { name: "Ya llegué aquí" }).first()).toBeVisible();
+
+    // Sin recargar, un fallo que marcara en BD pero no repintara pasaría igual
+    // este test -- el reload es lo que de verdad prueba que no quedó nada escrito.
+    await page.reload();
+    await expect(page.getByText("Chat abierto")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Ya llegué aquí" }).first()).toBeVisible();
   });
 
   test("confirmar marca el hito y abre su chat", async ({ page }) => {
