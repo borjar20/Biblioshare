@@ -183,11 +183,11 @@ export function SorteoSheet({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="m-0 h-dvh max-h-none w-screen max-w-none rounded-none p-0 backdrop:bg-black/60 sm:m-auto sm:h-auto sm:max-h-[92dvh] sm:w-[540px] sm:rounded-[20px]"
+      className="m-0 w-screen max-w-none rounded-none p-0 backdrop:bg-black/60 max-sm:h-dvh sm:m-auto sm:w-[540px] sm:rounded-[20px]"
       style={{ background: "#1f1a16", color: "#f0e8db", border: "1px solid rgba(240,232,219,.12)" }}
       aria-label={t("sorteoTitle")}
     >
-      <div className="flex h-full flex-col overflow-y-auto p-5 sm:p-6">
+      <div className="flex flex-col overflow-y-auto p-5 max-sm:h-full sm:max-h-[92dvh] sm:p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl font-semibold">{t("sorteoTitle")}</h2>
           <button
