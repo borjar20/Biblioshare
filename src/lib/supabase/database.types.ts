@@ -1544,6 +1544,7 @@ export type Database = {
           bio: string | null
           birth_date: string | null
           created_at: string
+          credits_hydrated_at: string | null
           death_date: string | null
           id: string
           known_for: string | null
@@ -1557,6 +1558,7 @@ export type Database = {
           bio?: string | null
           birth_date?: string | null
           created_at?: string
+          credits_hydrated_at?: string | null
           death_date?: string | null
           id?: string
           known_for?: string | null
@@ -1570,6 +1572,7 @@ export type Database = {
           bio?: string | null
           birth_date?: string | null
           created_at?: string
+          credits_hydrated_at?: string | null
           death_date?: string | null
           id?: string
           known_for?: string | null

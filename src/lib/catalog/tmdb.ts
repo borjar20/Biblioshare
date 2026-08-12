@@ -1,4 +1,6 @@
 import type { CreditRole } from "@/lib/people/types";
+import { mapTmdbJob } from "@/lib/people/map-tmdb-job";
+import { isSelfAppearance } from "@/lib/people/credit-noise";
 import type { SearchResult } from "./types";
 import { resolveGenresFromIds } from "./tmdb-genres";
 
@@ -490,6 +492,116 @@ export async function getPersonDetails(
     deathDate: data.deathday || null,
     placeOfBirth: data.place_of_birth || null,
   };
+}
+
+// La obra COMPLETA de una persona en UNA sola llamada. Es lo que arregla el bug
+// de fondo de la ficha de persona: `credits` solo tenía lo que alguien hubiera
+// abierto alguna vez, así que una persona con una sola película en BD afirmaba
+// —sin matices— que esa era toda su obra.
+//
+// SIN TOPE (decisión 2026-08-12): se devuelve la filmografía entera. Los dos
+// filtros que hay no son recorte de volumen sino necesidad de esquema:
+//   1. `media_type` fuera de movie/tv no es obra de catálogo.
+//   2. `job` que no mapee a CreditRole se descarta (ver mapTmdbJob).
+// Las obras SIN póster y SIN fecha SÍ entran: descartarlas sería recortar la
+// obra de la persona, que es justo el bug que arreglamos.
+export type PersonCreditEntry = {
+  itemType: "movie" | "series";
+  tmdbId: number;
+  title: string;
+  originalTitle: string | null;
+  coverUrl: string | null;
+  year: number | null;
+  synopsis: string | null;
+  genres: string[] | null;
+  role: CreditRole;
+  character: string | null;
+  voteAverage: number | null;
+};
+
+type TmdbCombinedCreditEntry = {
+  id: number;
+  media_type?: string;
+  title?: string;
+  original_title?: string;
+  name?: string;
+  original_name?: string;
+  poster_path?: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  overview?: string;
+  genre_ids?: number[];
+  character?: string | null;
+  job?: string | null;
+  vote_average?: number | null;
+};
+
+function mapCombinedEntry(
+  raw: TmdbCombinedCreditEntry,
+  role: CreditRole
+): PersonCreditEntry | null {
+  const itemType =
+    raw.media_type === "movie" ? "movie" : raw.media_type === "tv" ? "series" : null;
+  if (!itemType) return null;
+
+  const title = (itemType === "movie" ? raw.title : raw.name)?.trim();
+  if (!title) return null;
+
+  const date = itemType === "movie" ? raw.release_date : raw.first_air_date;
+
+  return {
+    itemType,
+    tmdbId: raw.id,
+    title,
+    originalTitle:
+      (itemType === "movie" ? raw.original_title : raw.original_name)?.trim() || null,
+    coverUrl: raw.poster_path ? `${TMDB_IMAGE_BASE}${raw.poster_path}` : null,
+    year: date ? Number(date.slice(0, 4)) || null : null,
+    synopsis: raw.overview?.trim() || null,
+    genres: resolveGenresFromIds(raw.genre_ids),
+    role,
+    character: role === "cast" ? raw.character?.trim() || null : null,
+    voteAverage: typeof raw.vote_average === "number" ? raw.vote_average : null,
+  };
+}
+
+export async function getPersonCombinedCredits(
+  tmdbId: number
+): Promise<PersonCreditEntry[]> {
+  const data = await tmdbGet<{
+    cast?: TmdbCombinedCreditEntry[];
+    crew?: TmdbCombinedCreditEntry[];
+  }>(`/person/${tmdbId}/combined_credits?language=es-ES`);
+  if (!data) return [];
+
+  const out: PersonCreditEntry[] = [];
+  // Dedupe por (ítem, ROL), no por ítem: quien actúa y además dirige la misma
+  // película tiene DOS créditos ahí, y el centro de la ficha los pinta como dos
+  // chips en una sola fila. Lo que sí colapsa es "Writer" + "Story" en la misma
+  // obra, que mapean los dos a `writer`.
+  const seen = new Set<string>();
+
+  const push = (raw: TmdbCombinedCreditEntry, role: CreditRole) => {
+    // Las apariciones COMO SÍ MISMO no se traen: no son obra, y cada una
+    // crearía además una fila de catálogo COMPARTIDA (un making-of, un
+    // concurso) que luego sale en búsqueda, géneros y estadísticas. Decisión
+    // del dueño, 2026-08-12. Ver `isSelfAppearance`.
+    if (role === "cast" && isSelfAppearance(raw.character)) return;
+    const entry = mapCombinedEntry(raw, role);
+    if (!entry) return;
+    const key = `${entry.itemType}:${entry.tmdbId}:${entry.role}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(entry);
+  };
+
+  for (const raw of data.cast ?? []) push(raw, "cast");
+  for (const raw of data.crew ?? []) {
+    const role = mapTmdbJob(raw.job);
+    if (role) push(raw, role);
+  }
+
+  return out;
 }
 
 export type CollectionDetails = {

@@ -580,6 +580,109 @@ body {
   }
 }
 
+/* Ficha de persona (`/persona/[id]`) en TRES áreas: FICHA · OBRAS · RAÍL.
+   Mismo patrón que `.post-grid` y `.home-grid`: la clase la comparten página y
+   esqueleto para que no puedan divergir en ancho.
+
+   Prioridad responsive OBRAS > FICHA > RAÍL. El DOM va ficha → obras → raíl y
+   las áreas recolocan; a <1000 es una columna (ficha como hero, luego obras, y
+   el raíl al final).
+
+   Decisión (2026-08-12): el corte 1000–1600 va a DOS columnas —el handoff dejaba
+   sin definir la franja 1000–1200—. A 1100px ya caben ficha y centro sin apretar,
+   y bajar ahí a una columna desperdicia 300px. En dos columnas el raíl se pliega
+   DEBAJO de la ficha izquierda, no debajo del centro: es información derivada,
+   acompaña al contexto, no a la exploración. */
+.person-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "ficha"
+    "obras"
+    "rail";
+}
+.person-grid > [data-area="ficha"] {
+  grid-area: ficha;
+}
+.person-grid > [data-area="obras"] {
+  grid-area: obras;
+}
+.person-grid > [data-area="rail"] {
+  grid-area: rail;
+}
+/* min-width:0 para que un título largo sin espacios no fuerce scroll
+   horizontal — la trampa clásica de grid+flex, y el requisito de "cero overflow
+   en ningún breakpoint". */
+.person-grid > * {
+  min-width: 0;
+}
+
+/* 1000–1599: dos columnas. La izquierda apila ficha y raíl; el centro ocupa las
+   dos filas. */
+@media (min-width: 1000px) {
+  .person-grid {
+    grid-template-columns: 308px minmax(0, 1fr);
+    grid-template-areas:
+      "ficha obras"
+      "rail  obras";
+    /* `auto 1fr` NO es cosmético. `obras` ocupa LAS DOS filas y es la columna
+       alta (una filmografía entera); sin filas declaradas, las dos son `auto` y
+       el sobrante de altura de `obras` se REPARTE entre ellas, así que la fila
+       del raíl empezaba a media página y el raíl aparecía flotando en mitad del
+       hueco en vez de justo debajo de la ficha. Con la segunda fila a `1fr`,
+       ella se queda todo el sobrante y el raíl —alineado a `start`— se pega
+       arriba, pegado a la ficha. */
+    grid-template-rows: auto 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+/* ≥1600: las tres columnas del mockup (marco 5 · 1e).
+
+   La izquierda es 360, no los 308 del mockup (petición del dueño, 2026-08-12):
+   la biografía es el contenido que peor sufre una columna estrecha —a 308px son
+   ~40 caracteres por línea— y el centro puede ceder ese ancho sin apretarse. */
+@media (min-width: 1600px) {
+  .person-grid {
+    grid-template-columns: 360px minmax(0, 1fr) 344px;
+    grid-template-areas: "ficha obras rail";
+    gap: 28px;
+  }
+  /* Las dos laterales se pegan mientras se recorre el centro (la columna alta).
+     `align-self:start` para que cada caja tome su alto de contenido y
+     `position:sticky` enganche. Bajo la topbar, que también es sticky.
+
+     ⚠️ `sticky` NO basta cuando la caja es más alta que la ventana: se pega, sí,
+     pero su parte de abajo queda fuera y solo se alcanza haciendo scroll de la
+     PÁGINA ENTERA — que es justo lo que pasaba al desplegar «Ver más» en una
+     biografía larga. Por eso la caja se topa a la altura visible y la que
+     desborda es ELLA. `min-height:0` en el hijo es imprescindible: sin él, un
+     hijo flex no se deja encoger por debajo de su contenido y el `overflow`
+     nunca llega a activarse.
+
+     El scroll va en el HIJO, no en el envoltorio, para que la barra quede
+     DENTRO del borde redondeado de la tarjeta y no flotando entre columnas.
+     `overscroll-behavior: contain` evita que al llegar al final de la biografía
+     el gesto siga y arrastre la página. */
+  .person-grid > [data-area="ficha"],
+  .person-grid > [data-area="rail"] {
+    position: sticky;
+    top: calc(var(--topbar-h) + 16px);
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - var(--topbar-h) - 32px);
+  }
+  .person-grid > [data-area="ficha"] > *,
+  .person-grid > [data-area="rail"] > * {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 /* Sorteo «sacar un lomo» (Rincón): flip-in de la portada al revelar. */
 @keyframes sorteo-flip-in {
   from {

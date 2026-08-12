@@ -28,6 +28,7 @@
 - [x] **"¿Dónde lo veo?"** (§7.25) — disponibilidad en streaming vía TMDB/JustWatch en cine y series.
 - [x] **Búsqueda "local primero"** (§7.32) — catálogo local + persistencia automática. *Superado por §7.39 para libros.*
 - [x] **Personas** (§7.34) — fichas de autor/reparto/equipo (`people`/`credits`), enriquecimiento perezoso TMDB/Open Library.
+- [x] **Ficha de persona a tres columnas + obra completa** — `/persona/[id]` pasa de ficha biográfica a explorador de créditos (ficha · obras · raíl), y la obra de la persona se hidrata ENTERA desde TMDB `combined_credits` / Open Library `author works` en la primera visita (`people.credits_hydrated_at`). Spec: `docs/superpowers/specs/2026-08-12-ficha-persona-tres-columnas-design.md`
 - [x] **Registro de pases y ediciones** (§7.37) — `diary_entries` pasa a ser el "pase" (dueño de nota/reseña), `book_editions`/`movie_versions`, cronómetro persistente, comunidad agregada desde pases. Spec: `docs/superpowers/specs/2026-07-14-registro-pases-ediciones-design.md`
 - [x] **Ediciones en la ficha + editor oficial** (§7.38) — la ficha muestra la edición mirada, sync de ediciones desde OpenLibrary, editor de catálogo collaborator+ (título/sinopsis/géneros/portada/ediciones/sagas). Spec: `docs/superpowers/specs/2026-07-14-ediciones-ficha-y-editor-design.md`
 - [x] **Búsqueda e hidratación de libros** (§7.39) — la "escalera de tres peldaños" sobre OpenLibrary (tarjeta / ficha hidratada / géneros canónicos); la búsqueda ya no escribe en BD. Spec: `docs/superpowers/specs/2026-07-14-busqueda-e-hidratacion-de-libros-design.md`
