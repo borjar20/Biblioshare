@@ -778,7 +778,7 @@
     "unconfirmAlsoFalling": "Caen también {labels}.",
     "unconfirmAlsoFallingMore": "Caen también {labels} y {count} más.",
     "unconfirmChat": "Dejarás de ver su chat; tus mensajes se quedan.",
-    "unconfirmChatCount": "Dejarás de ver su chat; tus {count} mensajes se quedan.",
+    "unconfirmChatCount": "Dejarás de ver su chat; {count, plural, one {tu # mensaje se queda} other {tus # mensajes se quedan}}.",
     "unconfirmCheckpointError": "No se pudo desmarcar el hito. Inténtalo de nuevo.",
     "checkpointError": "Algo falló. Inténtalo de nuevo.",
     "checkpointsEmpty": "Todavía no hay hitos en esta lectura conjunta.",
