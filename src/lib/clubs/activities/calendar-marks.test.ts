@@ -6,6 +6,7 @@ import {
   agendaForMonth,
   parseMonthParam,
   proximasMarcas,
+  groupMarksByDay,
   type CalendarActivityRow,
   type CalendarCheckpointRow,
 } from "./calendar-marks";
@@ -482,5 +483,72 @@ describe("parseMonthParam", () => {
   });
   it("rechaza un año con cero inicial (mezclaría siglos en monthGrid)", () => {
     expect(parseMonthParam("0050-03", HOY)).toBe("2026-07");
+  });
+});
+
+describe("groupMarksByDay", () => {
+  it("una lista vacía no produce grupos", () => {
+    expect(groupMarksByDay([])).toEqual([]);
+  });
+
+  it("dos marcas del mismo día caen en UN grupo", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a", kind: "evento", title: "Uno", startsOn: "2026-07-04" }),
+        actividad({ id: "b", kind: "evento", title: "Dos", startsOn: "2026-07-04" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    const grupos = groupMarksByDay(marks);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].date).toBe("2026-07-04");
+    expect(grupos[0].marks.map((m) => m.title)).toEqual(["Dos", "Uno"]);
+  });
+
+  it("días distintos producen grupos distintos, en el orden de entrada", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a", kind: "evento", title: "Cuatro", startsOn: "2026-07-04" }),
+        actividad({ id: "b", kind: "evento", title: "Nueve", startsOn: "2026-07-09" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(groupMarksByDay(marks).map((g) => g.date)).toEqual(["2026-07-04", "2026-07-09"]);
+  });
+
+  it("NO reordena: agrupa consecutivos y respeta el orden que recibe", () => {
+    // Depende de que buildCalendarMarks entregue ordenado (ya testeado). Si esta
+    // función reordenara, habría dos responsables del orden y podrían divergir.
+    // Con una entrada desordenada a propósito, el mismo día partido en dos
+    // grupos es el comportamiento CORRECTO, no un bug.
+    const marks = buildCalendarMarks(
+      [actividad({ id: "a", kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    const desordenada = [marks[0], { ...marks[0], date: "2026-07-09" }, marks[0]];
+    expect(groupMarksByDay(desordenada).map((g) => g.date)).toEqual([
+      "2026-07-04",
+      "2026-07-09",
+      "2026-07-04",
+    ]);
+  });
+
+  it("no inventa días sin marcas entre dos fechas lejanas", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a", kind: "evento", startsOn: "2026-07-01" }),
+        actividad({ id: "b", kind: "evento", startsOn: "2026-07-28" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(groupMarksByDay(marks)).toHaveLength(2);
   });
 });

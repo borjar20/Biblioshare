@@ -296,3 +296,22 @@ export function parseMonthParam(
   if (raw && /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(raw)) return raw;
   return today.slice(0, 7);
 }
+
+export type DayGroup = { date: string; marks: CalendarMark[] };
+
+/**
+ * Agrupa marcas CONSECUTIVAS del mismo día. No ordena: depende de que `marks`
+ * llegue ya ordenada por fecha ascendente, que es lo que garantiza (y testea)
+ * `buildCalendarMarks`. Reordenar aquí crearía un segundo responsable del orden
+ * y los dos podrían divergir -- el mismo motivo por el que `proximasMarcas`
+ * tampoco reordena.
+ */
+export function groupMarksByDay(marks: CalendarMark[]): DayGroup[] {
+  const grupos: DayGroup[] = [];
+  for (const mark of marks) {
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.date === mark.date) ultimo.marks.push(mark);
+    else grupos.push({ date: mark.date, marks: [mark] });
+  }
+  return grupos;
+}
