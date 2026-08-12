@@ -168,6 +168,44 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
       formatMonthYear(mesActualISO()),
     );
 
+    // La pestaña Calendario existe y lleva a la RUTA, no a ?tab=calendario
+    // (spec 2026-08-12). Se comprueba desde la página del club, en viewport de
+    // móvil: en escritorio las pestañas no se pintan (ClubShell las monta en
+    // `mobileHeader`, `lg:hidden`).
+    //
+    // Va AQUÍ, al final del test y no justo tras crear el evento como sugiere
+    // el brief al pie de la letra: el contador `peticionesRsc` de más arriba
+    // sigue enganchado hasta el `page.off` de la navegación de mes, y navegar
+    // a `/club/${CLUB_SLUG}` en medio habría contado peticiones RSC ajenas al
+    // cambio de mes, dando un falso positivo en el assert "=== 0" de esa
+    // sección. Aquí el listener ya está desenganchado y no hay nada que
+    // ensuciar.
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(`/club/${CLUB_SLUG}`);
+
+    // La barra de pestañas NO puede desbordar la página a lo ancho. Con cuatro
+    // pestañas (Feed · Actividades · Calendario · Gestión) y en la vista de
+    // MODERADOR —la peor: «Gestión» con su ◈ y el badge de propuestas— la fila
+    // dejó de caber a 390 px y lo que se deslizaba era la página entera.
+    //
+    // Se afirma sobre `documentElement`, no sobre la barra: que la barra scrolle
+    // por dentro es aceptable (está contenida a propósito); que lo haga la
+    // PÁGINA no lo es. Es exactamente el fallo que se reportó, así que va con
+    // red automática en vez de fiarse de mirarlo.
+    const desbordeHorizontal = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(desbordeHorizontal, "la página no debe desbordar a lo ancho a 390 px").toBe(0);
+
+    await page.getByRole("link", { name: /^calendario$/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/club/${CLUB_SLUG}/calendario$`));
+
+    // Un ?tab=calendario a mano redirige a la ruta de verdad (el server
+    // component de /club/[slug] ve `calendario` en CLUB_TABS -para que salga
+    // como pestaña- pero no es un estado suyo: es otra ruta).
+    await page.goto(`/club/${CLUB_SLUG}?tab=calendario`);
+    await expect(page).toHaveURL(new RegExp(`/club/${CLUB_SLUG}/calendario$`));
+
     console.log("CALENDARIO OK:", eventoId);
   } finally {
     if (tituloEvento) {
@@ -443,4 +481,104 @@ test("calendario: el rail conserva aria-current tras cambiar de mes", async ({ p
   await expect(page.getByTestId("calendar-month")).not.toHaveText(mesAntes ?? "");
 
   await expect(railCalendario).toHaveAttribute("aria-current", "page");
+});
+
+// Tocar un día con marcas en móvil abre la hoja (spec 2026-08-12, §4). Cierra
+// el hueco del `+N`: hoy un día con más de tres marcas esconde el resto sin
+// decir cuáles (issue #583); la hoja las enseña todas.
+test("calendario: tocar un día en móvil abre la hoja con sus marcas", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await login(page, EMAIL, PASSWORD);
+
+  let eventoId: string | null = null;
+  let tituloEvento: string | null = null;
+  const titulo = `e2e hoja ${Date.now()}`;
+
+  try {
+    await page.goto(`/club/${CLUB_SLUG}/calendario?mes=${MES}`);
+    await expect(page.getByTestId("calendar-month")).toHaveText("Septiembre 2027");
+
+    // Mismo patrón de creación que el primer test de este fichero: por la UI
+    // (no por API directa, para ejercitar también `EventForm`), con el título
+    // asignado a la variable de limpieza ANTES de crear -- así el `finally`
+    // siempre encuentra la fila aunque el poll de abajo expire.
+    tituloEvento = titulo;
+    await page.getByRole("button", { name: /^nuevo evento$/i }).click();
+    await page.getByLabel(/^título$/i).fill(titulo);
+    await page.getByLabel(/^fecha$/i).fill(FECHA);
+    await page.getByLabel(/^hora de inicio$/i).fill("18:00");
+    await page.getByRole("button", { name: /^crear evento$/i }).click();
+
+    // Existe en la BD antes de tocar la celda: si el submit hubiera fallado,
+    // la celda nunca pasaría de <div> a <button> y el siguiente paso fallaría
+    // con un mensaje que acusaría a la hoja sin tener nada que ver con ella.
+    let creado: { id: string } | undefined;
+    await expect
+      .poll(
+        async () => {
+          const res = await request.get(
+            `${SUPABASE_URL}/rest/v1/club_activities?title=eq.${encodeURIComponent(titulo)}&select=id`,
+            { headers: adminHeaders() },
+          );
+          [creado] = await res.json();
+          return creado?.id ?? null;
+        },
+        { timeout: 15000 },
+      )
+      .not.toBeNull();
+    eventoId = creado!.id;
+
+    // Recarga a limpio: tras crear, el formulario se cierra sobre el propio
+    // mes, pero entrar de nuevo por la URL deja la celda en el mismo estado
+    // que tendría cualquier visitante que llegue después.
+    await page.goto(`/club/${CLUB_SLUG}/calendario?mes=${MES}`);
+    await expect(page.getByTestId("calendar-month")).toHaveText("Septiembre 2027");
+
+    // Se ancla por el TÍTULO del evento, no por el día ("15"): el nombre
+    // accesible de la celda (`month-grid.tsx`) es el número de día seguido del
+    // resumen `sr-only` de sus marcas ("evento: <título>. ..."), y ese resumen
+    // SÍ entra en el nombre accesible a este viewport -- la clase que lo oculta
+    // es `sr-only lg:hidden`, que en 390 px no aplica `display:none`, solo lo
+    // hace en escritorio. Anclar por título es más robusto porque el título
+    // lleva un timestamp único (cero ambigüedad con otras marcas del mes de
+    // prueba); anclar por `/^15/` sería frágil si el club de pruebas alguna
+    // vez siembra otra marca el mismo día. Comprobado leyendo el código de la
+    // celda, no asumido -- si esto empieza a fallar, lo primero a mirar es si
+    // el resumen sr-only se movió fuera del <button> o perdió el título.
+    //
+    // Y se acota a la REJILLA (`role="grid"`), no a la página: el título del
+    // evento aparece también en el botón «Dejar de seguir» de la agenda, que
+    // vive en el <aside> de abajo. Sin acotar, el ancla casa con dos elementos
+    // y el modo estricto de Playwright aborta -- exactamente lo que pasó la
+    // primera vez que se ejecutó este test.
+    await page
+      .getByRole("grid")
+      .getByRole("button", { name: new RegExp(titulo, "i") })
+      .click();
+
+    const hoja = page.getByRole("dialog");
+    await expect(hoja).toBeVisible();
+    await expect(hoja.getByText(titulo)).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(hoja).not.toBeVisible();
+
+    console.log("HOJA DEL DÍA OK:", eventoId);
+  } finally {
+    if (tituloEvento) {
+      // fetch nativo, NO el `request` de Playwright: ese fixture muere junto
+      // con el contexto del navegador, así que un timeout dejaría la fila
+      // suelta (ya pasó: 8 filas huérfanas motivaron esta regla en el primer
+      // test de este fichero).
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/club_activities?title=eq.${encodeURIComponent(tituloEvento)}`,
+        { method: "DELETE", headers: adminHeaders() },
+      );
+      console.log("LIMPIEZA OK: evento con título", tituloEvento, "borrado");
+    }
+  }
 });

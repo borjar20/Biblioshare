@@ -6,6 +6,7 @@ import {
   agendaForMonth,
   parseMonthParam,
   proximasMarcas,
+  groupMarksByDay,
   type CalendarActivityRow,
   type CalendarCheckpointRow,
 } from "./calendar-marks";
@@ -21,6 +22,10 @@ function actividad(over: Partial<CalendarActivityRow> = {}): CalendarActivityRow
     status: "active",
     startsOn: null,
     endsOn: null,
+    eventType: null,
+    config: null,
+    startsAt: null,
+    eventTimezone: null,
     ...over,
   };
 }
@@ -57,9 +62,69 @@ describe("buildCalendarMarks", () => {
       [],
       HOY,
       SLUG,
-      new Set(["a1"]),
+      new Map([["a1", 1440]]),
     );
     expect(seguido.followedByViewer).toBe(true);
+  });
+
+  // La CLAVE dice que lo sigue; el VALOR, cuándo se le avisa. Son dos preguntas
+  // distintas, y confundirlas es el bug fácil: un evento seguido SIN aviso tiene
+  // `remindMinutesBefore` a null y sigue estando seguido.
+  it("seguido sin recordatorio sigue contando como seguido", () => {
+    const [marca] = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+      new Map([["a1", null]]),
+    );
+    expect(marca.followedByViewer).toBe(true);
+    expect(marca.remindMinutesBefore).toBeNull();
+  });
+
+  it("el offset guardado llega a la marca", () => {
+    const [marca] = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+      new Map([["a1", 10080]]),
+    );
+    expect(marca.remindMinutesBefore).toBe(10080);
+  });
+
+  // La hoja de aviso necesita el INSTANTE y la ZONA para decir a qué hora
+  // avisaría. `startsOn` (fecha suelta) no sirve para eso.
+  it("un evento lleva su instante y su zona; un hito no", () => {
+    const checkpoint: CalendarCheckpointRow = {
+      id: "c1",
+      label: "Hito 1",
+      dueOn: "2026-07-10",
+      activityId: "a1",
+      activityTitle: "Fundación",
+      activityKind: "buddy_read",
+      activityStatus: "active",
+    };
+    const marks = buildCalendarMarks(
+      [
+        actividad({
+          kind: "evento",
+          startsOn: "2026-07-04",
+          startsAt: "2026-07-04T17:00:00.000Z",
+          eventTimezone: "Europe/Madrid",
+        }),
+      ],
+      [checkpoint],
+      HOY,
+      SLUG,
+    );
+    const evento = marks.find((m) => m.markKind === "evento");
+    expect(evento?.startsAt).toBe("2026-07-04T17:00:00.000Z");
+    expect(evento?.eventTimezone).toBe("Europe/Madrid");
+
+    const hito = marks.find((m) => m.markKind === "hito");
+    expect(hito?.startsAt).toBeNull();
+    expect(hito?.eventTimezone).toBeNull();
   });
 
   // Un hito no se sigue: aunque su actividad esté en el conjunto, la marca de
@@ -79,7 +144,7 @@ describe("buildCalendarMarks", () => {
       [checkpoint],
       HOY,
       SLUG,
-      new Set(["a1"]),
+      new Map([["a1", 1440]]),
     );
     const hitoMark = marks.find((m) => m.markKind === "hito");
     expect(hitoMark?.followedByViewer).toBe(false);
@@ -217,6 +282,89 @@ describe("buildCalendarMarks", () => {
       SLUG,
     );
     expect(marks.map((m) => m.markKind)).toEqual(["inicio", "hito", "evento", "cierre"]);
+  });
+
+  it("un lanzamiento con ítem propaga tipo y medio", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({
+          kind: "evento",
+          title: "Dune 3",
+          startsOn: "2026-07-04",
+          eventType: "lanzamiento",
+          config: { item: { itemType: "movie", itemId: "m1" }, allDay: true },
+        }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].eventType).toBe("lanzamiento");
+    expect(marks[0].medium).toBe("movie");
+  });
+
+  it("un lanzamiento SIN ítem deja el medio a null — config.item es nullable", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({
+          kind: "evento",
+          startsOn: "2026-07-04",
+          eventType: "lanzamiento",
+          config: { allDay: true },
+        }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].eventType).toBe("lanzamiento");
+    expect(marks[0].medium).toBeNull();
+  });
+
+  it("un encuentro no tiene medio", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: "2026-07-04", eventType: "encuentro", config: {} })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].eventType).toBe("encuentro");
+    expect(marks[0].medium).toBeNull();
+  });
+
+  it("una actividad NO-evento deja los dos campos a null", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ startsOn: "2026-07-20", endsOn: "2026-07-31" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks.map((m) => m.eventType)).toEqual([null, null]);
+    expect(marks.map((m) => m.medium)).toEqual([null, null]);
+  });
+
+  it("un HITO de una actividad evento tampoco lleva tipo ni medio", () => {
+    // La marca es del checkpoint, no del evento: heredar su tipo la pintaría
+    // del color del lanzamiento en vez del de hito.
+    const marks = buildCalendarMarks(
+      [],
+      [
+        {
+          id: "h1",
+          label: "Capítulo 5",
+          dueOn: "2026-07-30",
+          activityId: "a1",
+          activityTitle: "Un evento raro",
+          activityKind: "evento",
+          activityStatus: "active",
+        } satisfies CalendarCheckpointRow,
+      ],
+      HOY,
+      SLUG,
+    );
+    expect(marks[0].markKind).toBe("hito");
+    expect(marks[0].eventType).toBeNull();
+    expect(marks[0].medium).toBeNull();
   });
 });
 
@@ -397,5 +545,77 @@ describe("parseMonthParam", () => {
   });
   it("rechaza un año con cero inicial (mezclaría siglos en monthGrid)", () => {
     expect(parseMonthParam("0050-03", HOY)).toBe("2026-07");
+  });
+});
+
+describe("groupMarksByDay", () => {
+  it("una lista vacía no produce grupos", () => {
+    expect(groupMarksByDay([])).toEqual([]);
+  });
+
+  it("dos marcas del mismo día caen en UN grupo", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a", kind: "evento", title: "Uno", startsOn: "2026-07-04" }),
+        actividad({ id: "b", kind: "evento", title: "Dos", startsOn: "2026-07-04" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    const grupos = groupMarksByDay(marks);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].date).toBe("2026-07-04");
+    // "Dos" antes que "Uno" NO es una errata: en igualdad de fecha y clase de
+    // marca, buildCalendarMarks desempata por TÍTULO, y "Dos" < "Uno". Esa es
+    // justamente la prueba de que groupMarksByDay conserva el orden que RECIBE
+    // en vez de reordenar por su cuenta. Si alguien lo "corrige" al orden en que
+    // se construyó el array de entrada, este test deja de probar nada.
+    expect(grupos[0].marks.map((m) => m.title)).toEqual(["Dos", "Uno"]);
+  });
+
+  it("días distintos producen grupos distintos, en el orden de entrada", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a", kind: "evento", title: "Cuatro", startsOn: "2026-07-04" }),
+        actividad({ id: "b", kind: "evento", title: "Nueve", startsOn: "2026-07-09" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(groupMarksByDay(marks).map((g) => g.date)).toEqual(["2026-07-04", "2026-07-09"]);
+  });
+
+  it("NO reordena: agrupa consecutivos y respeta el orden que recibe", () => {
+    // Depende de que buildCalendarMarks entregue ordenado (ya testeado). Si esta
+    // función reordenara, habría dos responsables del orden y podrían divergir.
+    // Con una entrada desordenada a propósito, el mismo día partido en dos
+    // grupos es el comportamiento CORRECTO, no un bug.
+    const marks = buildCalendarMarks(
+      [actividad({ id: "a", kind: "evento", startsOn: "2026-07-04" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    const desordenada = [marks[0], { ...marks[0], date: "2026-07-09" }, marks[0]];
+    expect(groupMarksByDay(desordenada).map((g) => g.date)).toEqual([
+      "2026-07-04",
+      "2026-07-09",
+      "2026-07-04",
+    ]);
+  });
+
+  it("no inventa días sin marcas entre dos fechas lejanas", () => {
+    const marks = buildCalendarMarks(
+      [
+        actividad({ id: "a", kind: "evento", startsOn: "2026-07-01" }),
+        actividad({ id: "b", kind: "evento", startsOn: "2026-07-28" }),
+      ],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(groupMarksByDay(marks)).toHaveLength(2);
   });
 });

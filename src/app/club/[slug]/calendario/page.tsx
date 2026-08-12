@@ -10,6 +10,7 @@ import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
 import { todayISO } from "@/lib/stats/dates";
 import { ClubShell, ClubSidebar, ClubMainHeader } from "@/components/clubs/club-shell";
 import { ClubHeader } from "@/components/clubs/club-header";
+import { ClubTabs } from "@/components/clubs/club-tabs";
 import { ClubCalendar } from "@/components/clubs/calendar/club-calendar";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -49,7 +50,7 @@ export default async function ClubCalendarPage({
   const hoy = todayISO();
 
   const [marks, activities, tt] = await Promise.all([
-    getClubCalendarMarks(club.id, club.slug, hoy),
+    getClubCalendarMarks(club.id, club.slug, hoy, user.id),
     // El pip de propuestas pendientes en el sidebar solo se ve si eres
     // moderador (club-shell.tsx: `pip: canModerate ? pendingProposals : ...`);
     // para un miembro raso, pedir la lista entera solo para tirarla es dos
@@ -72,11 +73,22 @@ export default async function ClubCalendarPage({
       mobileHeader={
         // Sin esto, en móvil no había ni nombre/portada del club ni forma de
         // volver salvo el atrás del navegador (el sidebar con esa identidad
-        // solo se pinta desde `lg`). ClubHeader trae ambas cosas: identidad
-        // del club y el enlace de vuelta a /clubes. NO se añade ClubTabs
-        // aquí: el calendario es una decisión de diseño para que NO sea una
-        // pestaña más, así que no debe pintar la tabbar de pestañas.
-        <ClubHeader club={club} userId={user.id} />
+        // solo se pinta desde `lg`). ClubHeader trae ambas cosas.
+        //
+        // Y SÍ se pintan las pestañas: desde la spec 2026-08-12 el calendario es
+        // una pestaña más en móvil. Antes no lo era, y el resultado es que en
+        // móvil no había forma de llegar aquí salvo el enlace «Ver calendario ›»
+        // del resumen del club. En PC esto no se ve: el raíl lo sustituye, y ahí
+        // el calendario ya era un par de Feed y Actividades.
+        <>
+          <ClubHeader club={club} userId={user.id} />
+          <ClubTabs
+            active="calendario"
+            basePath={`/club/${club.slug}`}
+            canModerate={canModerate}
+            activityCount={canModerate ? pendingProposals : 0}
+          />
+        </>
       }
       desktopHeader={<ClubMainHeader title={tt("calendario")} />}
     >

@@ -7,7 +7,6 @@ import { groupActivities } from "@/lib/clubs/activities/group-activities";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
-import { EventCardActions } from "./event-card-actions";
 
 // Las actividades se agrupan por estado, no en una lista plana: "esperan
 // moderación" es lo que un moderador viene a resolver, y "activas" lo que un
@@ -34,30 +33,28 @@ export function ActivityList({
   // las actividades frescas. Sin espejo local ni re-fetch cliente.
   const activities = initialActivities;
 
-  const { events, active, proposed, finished } = groupActivities(
-    activities,
-    today,
-  );
+  const { active, proposed, finished } = groupActivities(activities);
+
+  // El vacío se gatea por los TRES grupos ya filtrados, nunca por
+  // `activities.length`: la lista cruda SIGUE trayendo los eventos (es
+  // groupActivities quien los descarta, spec 2026-08-11), así que en un club
+  // cuyas únicas actividades son eventos `activities.length` es > 0, los tres
+  // <Group> devuelven null por vacíos y el mensaje no se pintaba -- se veía el
+  // botón "Proponer actividad" sobre un hueco, sin ninguna explicación.
+  const sinActividades =
+    active.length === 0 && proposed.length === 0 && finished.length === 0;
 
   return (
     <div className="flex flex-col gap-6">
-      <ActivityComposer clubId={clubId} isModerator={isModerator} />
+      <ActivityComposer
+        clubId={clubId}
+        clubSlug={clubSlug}
+        isModerator={isModerator}
+      />
 
-      {activities.length === 0 && (
+      {sinActividades && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       )}
-
-      <Group title={t("groupEvents")}>
-        {events.map((activity) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            clubSlug={clubSlug}
-            today={today}
-            actions={isModerator ? <EventCardActions activity={activity} /> : undefined}
-          />
-        ))}
-      </Group>
 
       <Group title={t("groupActive", { count: active.length })}>
         {active.map((activity) => (

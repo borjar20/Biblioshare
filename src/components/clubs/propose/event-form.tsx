@@ -95,12 +95,19 @@ export function EventForm({
   activityRelations?: EventRelation[];
   /** Actividades del club (id + título) para enlazar desde una fecha destacada. */
   clubActivities?: Array<{ id: string; title: string }>;
-  // La fecha guardada se propaga al terminar: el calendario la usa para saltar
-  // al mes del evento recién creado (si no, un evento creado fuera del mes
-  // visible no da ninguna señal de que ha pasado algo). Los demás
-  // consumidores (asistente, tarjeta) ignoran el argumento -- una función que
-  // no lo usa sigue siendo asignable a este tipo.
-  onDone: (startsOn?: string) => void;
+  // Qué se propaga al terminar, y por qué cada cosa:
+  //   - `activityId`: el id del evento guardado. Va PRIMERO y NO es opcional
+  //     porque siempre existe -- tanto createClubEvent como updateClubEvent
+  //     devuelven `{ ok: true, activityId }`. El asistente lo usa para navegar
+  //     a la ficha del evento (`/club/[slug]/evento/[id]`), que es la única
+  //     señal de que la creación ha ido bien desde que un evento no aparece en
+  //     la pestaña Actividades.
+  //   - `startsOn`: la fecha guardada. El calendario la usa para saltar al mes
+  //     del evento recién creado (si no, uno creado fuera del mes visible no da
+  //     ninguna señal de que ha pasado algo).
+  // Los consumidores que no necesitan un argumento simplemente no lo declaran:
+  // una función de menos parámetros sigue siendo asignable a este tipo.
+  onDone: (activityId: string, startsOn?: string) => void;
   onCancel: () => void;
   // Determina la copy del botón secundario: "Atrás" solo tiene sentido si
   // quien monta el formulario tiene de verdad un paso anterior al que volver
@@ -112,10 +119,11 @@ export function EventForm({
   const t = useTranslations("activity");
   const editing = Boolean(activity);
 
-  // Ids por instancia: Task 10 monta este formulario una vez por tarjeta
-  // (EventCardActions), con un `editing` independiente por tarjeta -- dos
-  // ediciones pueden estar abiertas a la vez. Con ids fijos, cada <label
-  // htmlFor> se ligaba siempre al primer formulario del DOM.
+  // Ids por instancia: este formulario se monta en varios sitios (la ficha del
+  // evento en EventModeration, el calendario, el asistente de propuesta), cada
+  // uno con su propio `editing` -- no hay garantía de que solo haya una
+  // instancia en el DOM a la vez. Con ids fijos, cada <label htmlFor> se
+  // ligaba siempre al primer formulario del DOM.
   const uid = useId();
   const titleId = `event-title-${uid}`;
   const descriptionId = `event-description-${uid}`;
@@ -249,7 +257,7 @@ export function EventForm({
         ? await updateClubEvent({ activityId: activity.id, ...campos })
         : await createClubEvent({ clubId, ...campos });
       if (result.ok) {
-        onDone(startsOn);
+        onDone(result.activityId, startsOn);
       } else {
         setError(errorLabel(result.code));
       }

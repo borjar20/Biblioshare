@@ -11,8 +11,9 @@ import type { ClubEventDetail } from "@/lib/clubs/activities/event-detail";
 import type { LanzamientoConfig, FechaDestacadaConfig } from "@/lib/clubs/activities/event-types";
 
 // Editar, cancelar, posponer y reprogramar. Vive en la ficha porque ahí es donde
-// el evento tiene sitio para explicarse; la tarjeta del muro sigue con sus dos
-// controles de siempre (EventCardActions), que no se toca.
+// el evento tiene sitio para explicarse, y desde la spec 2026-08-11 es el ÚNICO
+// sitio: los eventos salieron del listado de Actividades y EventCardActions se
+// borró con él.
 //
 // Cancelar y posponer avisan a quienes lo siguen y apagan sus recordatorios; lo
 // primero lo hace la server action y lo segundo el trigger de la BD.

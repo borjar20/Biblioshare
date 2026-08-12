@@ -234,16 +234,32 @@ test("evento: la marca de «seguido» y el filtro «Sigues» de la agenda", asyn
     await page.goto(`/club/${club.slug}/calendario`);
 
     // Seguir desde la propia fila, sin abrir la ficha: el control es hermano del
-    // enlace, así que pulsarlo NO navega.
-    await page.getByRole("button", { name: `Seguir evento: ${seguido}` }).click();
+    // enlace, así que pulsarlo NO navega. Desde la spec 2026-08-12 la campana no
+    // sigue de un toque: abre la hoja donde se ELIGE el aviso, y es la elección
+    // la que sigue el evento.
+    await page
+      .getByRole("button", { name: `Seguir evento y elegir aviso: ${seguido}` })
+      .click();
+    await page.getByRole("radio", { name: "24 horas antes" }).check();
+    await page.keyboard.press("Escape");
     await expect(
-      page.getByRole("button", { name: `Dejar de seguir: ${seguido}` }),
+      page.getByRole("button", { name: `Cambiar aviso o dejar de seguir: ${seguido}` }),
     ).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/club/${club.slug}/calendario`));
 
     // El texto accesible equivalente a «Evento seguido» aparece (§17): es lo que
     // hace que la marca no dependa solo del color.
-    await expect(page.getByText("Evento seguido").first()).toBeVisible();
+    //
+    // OJO con el `.first()` que había aquí: desde la spec 2026-08-12 la leyenda
+    // se pinta DOS veces en el DOM —la plegable de móvil (`lg:hidden`) y la fija
+    // de escritorio (`hidden lg:flex`)— porque el atributo `open` de <details>
+    // no tiene variante responsive en Tailwind. Solo UNA es visible a la vez,
+    // pero la de móvil va primero en el DOM, así que `.first()` cazaba la
+    // oculta y fallaba a 1280 px. Se filtra por visibilidad en vez de por
+    // posición: así el assert vale a cualquier ancho.
+    await expect(
+      page.getByText("Evento seguido").filter({ visible: true }).first(),
+    ).toBeVisible();
 
     // El filtro «Sigues» deja solo el evento seguido.
     await page.getByRole("tab", { name: /Sigues/ }).click();
@@ -387,14 +403,18 @@ test("evento: el teclado llega al detalle y al control de seguir por separado", 
     await page.goto(`/club/${club.slug}/calendario`);
 
     const enlace = page.getByRole("link", { name: new RegExp(titulo) });
-    const boton = page.getByRole("button", { name: `Seguir evento: ${titulo}` });
+    const boton = page.getByRole("button", {
+      name: `Seguir evento y elegir aviso: ${titulo}`,
+    });
 
     // Lo que ESTE test protege, comprobado con mutaciones deliberadas:
-    //   - Que el botón sigue siendo alcanzable y accionable con teclado, y que al
-    //     accionarlo NO se pierde el foco. Esto último cazó un bug real: con el
-    //     atributo `disabled` durante el guardado, el navegador blurea el botón
-    //     enfocado y quien navega con teclado se queda en el body, perdiendo su
-    //     sitio en la lista. Se arregló con aria-disabled.
+    //   - Que la campana sigue siendo alcanzable y accionable con teclado, y que
+    //     al accionarla NO se navega a la ficha.
+    //   - Que al cerrar la hoja el foco VUELVE a la campana. Lo devuelve el
+    //     <dialog> nativo, pero solo si se abre con showModal(): si alguien lo
+    //     cambiara por un div con `hidden`, quien navega con teclado acabaría en
+    //     el body habiendo perdido su sitio en la lista. Es el mismo fallo que
+    //     antes provocaba el atributo `disabled`, por otra vía.
     //
     // Lo que NO protege, y conviene saberlo para no confiarse: anidar el botón
     // dentro del <a>. Se probó metiéndolo dentro a mano y este test siguió pasando
@@ -407,12 +427,21 @@ test("evento: el teclado llega al detalle y al control de seguir por separado", 
     await page.keyboard.press("Tab");
     await expect(boton).toBeFocused();
 
-    // Enter sobre el botón: sigue el evento y NO navega.
+    // Enter sobre la campana: abre la hoja de aviso y NO navega.
     await page.keyboard.press("Enter");
-    await expect(
-      page.getByRole("button", { name: `Dejar de seguir: ${titulo}` }),
-    ).toBeFocused();
+    await expect(page.getByRole("dialog", { name: titulo })).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/club/${club.slug}/calendario`));
+
+    // Elegir el aviso desde el teclado sigue el evento.
+    await page.getByRole("radio", { name: "1 hora antes" }).check();
+    await expect(page.getByRole("radio", { name: "1 hora antes" })).toBeChecked();
+
+    // Y al cerrar, el foco vuelve a la campana -- que ya dice lo contrario.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: `Cambiar aviso o dejar de seguir: ${titulo}` }),
+    ).toBeFocused();
 
     // Y Enter sobre el enlace sí abre la ficha.
     await enlace.focus();

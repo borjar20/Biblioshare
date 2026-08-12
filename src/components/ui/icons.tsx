@@ -398,6 +398,27 @@ export function MenuIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Las dos siluetas del toggle de columnas de la agenda. Son el MISMO marco con
+// el corte en distinta dirección: así se leen como dos estados de una cosa y no
+// como dos iconos distintos, que es lo que pide un control segmentado.
+export function OneColumnIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M4 12h16" />
+    </Icon>
+  );
+}
+
+export function TwoColumnsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M12 4v16" />
+    </Icon>
+  );
+}
+
 export function XIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

@@ -222,6 +222,20 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > las 19:00 que aplicaba hasta hoy a todo evento sin hora (§6.3, `decisiones.md` 2026-08-09).
 > Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
 > contra `list_migrations`. **Producción pendiente del merge.**
+>
+> **Delta del 2026-08-12 (recordatorio predeterminado a una semana): aplicado y verificado
+> solo en DEV.** Migración `20260852_event_reminder_default_1w.sql`. Reemplaza DOS funciones
+> para mover el predeterminado de 1440 a 10080: el default del parámetro de
+> `follow_club_event` y el literal del auto-seguimiento del organizador dentro de
+> `create_club_event` (el segundo no pasa por la primera, y es el que se olvida). **Ninguna
+> tabla, columna, política ni grant cambia**, y **ninguna fila existente se toca**: quien ya
+> sigue un evento conserva el offset que eligió. El conjunto de valores válidos no se amplía
+> — `private.valid_event_reminder` ya aceptaba 10080. Verificado contra `pg_proc`
+> (`pg_get_function_arguments` devuelve `DEFAULT 10080`, y `pg_get_functiondef` de las dos
+> funciones ya no contiene ningún 1440), nunca contra `list_migrations`. **Producción
+> pendiente del merge**, y por eso `schema-baseline.sql` —que replica PROD— conserva
+> todavía sus dos 1440. Ver `event-state.ts:DEFAULT_REMINDER_MINUTES`, que es quien manda en
+> la práctica.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -1038,8 +1052,12 @@ verificado con la superficie 6 de `DRIFT-CHECK.md`, que sigue dando las mismas 1
 
 **RPCs** (`20260823_club_event_following_rpcs.sql`):
 
-- `follow_club_event(p_activity_id, p_remind_minutes_before default 1440)` — `on conflict
-  do update`: **idempotente y a prueba de carrera**.
+- `follow_club_event(p_activity_id, p_remind_minutes_before default 10080)` — `on conflict
+  do update`: **idempotente y a prueba de carrera**. El default pasó de 1440 a 10080 (una
+  semana) en `20260852_event_reminder_default_1w.sql`, junto con el auto-seguimiento del
+  organizador dentro de `create_club_event` — son los DOS sitios que lo codifican en SQL, y
+  el segundo no pasa por esta RPC. En la práctica manda `DEFAULT_REMINDER_MINUTES` (TS): la
+  capa de acciones siempre envía el valor explícito.
 - `unfollow_club_event(p_activity_id)` — idempotente; permitido **siempre**, incluso en un
   evento cancelado o pasado.
 - `set_club_event_reminder(p_activity_id, p_remind_minutes_before)` — exige seguirlo ya

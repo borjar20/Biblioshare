@@ -1,5 +1,8 @@
 import { daysInMonth, shiftMonth } from "@/lib/stats/dates";
 import type { ActivityKind } from "./core";
+import type { ItemType } from "@/lib/catalog/types";
+import type { Json } from "@/lib/supabase/database.types";
+import { parseEventConfig, type EventType, type LanzamientoConfig } from "./event-types";
 
 // Una sola forma para las TRES fuentes de fecha de un club: el due_on de los
 // hitos, el starts_on de los eventos y la ventana starts_on/ends_on de las
@@ -36,6 +39,27 @@ export type CalendarMark = {
    * siguen.
    */
   followedByViewer: boolean;
+  /**
+   * Los dos SOLO están puestos en una marca de evento (markKind === "evento").
+   * En hito/inicio/cierre son null, incluido el hito de una actividad evento:
+   * esa marca es del checkpoint, y heredar el tipo del evento la pintaría del
+   * color equivocado.
+   */
+  eventType: EventType | null;
+  /** El medio de un lanzamiento, de `config.item.itemType`. null si no es lanzamiento o no tiene ítem. */
+  medium: ItemType | null;
+  /**
+   * Los tres siguientes SOLO están puestos en una marca de evento; en
+   * hito/inicio/cierre son null. Los pide la hoja de aviso de la agenda, que
+   * necesita decir A QUÉ HORA avisaría y qué hay guardado ahora mismo.
+   *
+   * `remindMinutesBefore` es null tanto cuando NO se sigue el evento como
+   * cuando se sigue sin recordatorio: para saber si se sigue está
+   * `followedByViewer`, que es el campo que responde esa pregunta.
+   */
+  startsAt: string | null;
+  eventTimezone: string | null;
+  remindMinutesBefore: number | null;
 };
 
 export type CalendarActivityRow = {
@@ -45,6 +69,11 @@ export type CalendarActivityRow = {
   status: string;
   startsOn: string | null;
   endsOn: string | null;
+  eventType: EventType | null;
+  config: Json | null;
+  /** El INSTANTE del evento (con zona), no la fecha suelta de `startsOn`. */
+  startsAt: string | null;
+  eventTimezone: string | null;
 };
 
 export type CalendarCheckpointRow = {
@@ -80,9 +109,16 @@ export function buildCalendarMarks(
   checkpoints: CalendarCheckpointRow[],
   today: string,
   clubSlug: string,
-  /** Ids de los eventos que sigue quien mira. Vacío = nadie los sigue o no hay
-   *  sesión; la función sigue siendo pura y no consulta nada. */
-  followedEventIds: ReadonlySet<string> = new Set(),
+  /**
+   * Los eventos que sigue QUIEN MIRA, del id al offset de recordatorio que tiene
+   * guardado (null = los sigue sin aviso). Vacío = no sigue ninguno o no hay
+   * sesión; la función sigue siendo pura y no consulta nada.
+   *
+   * Es un Map y no un Set porque la presencia de la clave y su valor responden a
+   * dos preguntas distintas: `has()` dice si lo sigue, y el valor dice cuándo se
+   * le avisa. Un `get() != null` NO significa «lo sigue».
+   */
+  followedEvents: ReadonlyMap<string, number | null> = new Map(),
 ): CalendarMark[] {
   const marks: CalendarMark[] = [];
 
@@ -92,6 +128,16 @@ export function buildCalendarMarks(
     // Un evento enlaza a su ficha propia, que NO es /actividad/[id].
     if (activity.kind === "evento") {
       if (activity.startsOn) {
+        // El medio sale del parser que ya existe, no de un segundo parser aquí:
+        // `config` es opaca a la BD y `parseEventConfig` es su única puerta
+        // tipada. Dos parsers sobre la misma jsonb son dos verdades.
+        const eventType = activity.eventType;
+        const config = eventType ? parseEventConfig(eventType, activity.config) : null;
+        const medium =
+          eventType === "lanzamiento"
+            ? ((config as LanzamientoConfig).item?.itemType ?? null)
+            : null;
+
         marks.push({
           date: activity.startsOn,
           markKind: "evento",
@@ -101,7 +147,12 @@ export function buildCalendarMarks(
           activityKind: activity.kind,
           href: `/club/${clubSlug}/evento/${activity.id}`,
           past: activity.startsOn < today,
-          followedByViewer: followedEventIds.has(activity.id),
+          followedByViewer: followedEvents.has(activity.id),
+          eventType,
+          medium,
+          startsAt: activity.startsAt,
+          eventTimezone: activity.eventTimezone,
+          remindMinutesBefore: followedEvents.get(activity.id) ?? null,
         });
       }
       // Su ends_on se ignora SIEMPRE: el kind no lo usa.
@@ -121,6 +172,11 @@ export function buildCalendarMarks(
         href,
         past: activity.startsOn < today,
         followedByViewer: false,
+        eventType: null,
+        medium: null,
+        startsAt: null,
+        eventTimezone: null,
+        remindMinutesBefore: null,
       });
     }
     if (activity.endsOn) {
@@ -134,6 +190,11 @@ export function buildCalendarMarks(
         href,
         past: activity.endsOn < today,
         followedByViewer: false,
+        eventType: null,
+        medium: null,
+        startsAt: null,
+        eventTimezone: null,
+        remindMinutesBefore: null,
       });
     }
   }
@@ -155,6 +216,11 @@ export function buildCalendarMarks(
           : `/club/${clubSlug}/actividad/${checkpoint.activityId}`,
       past: checkpoint.dueOn < today,
       followedByViewer: false,
+      eventType: null,
+      medium: null,
+      startsAt: null,
+      eventTimezone: null,
+      remindMinutesBefore: null,
     });
   }
 
@@ -263,4 +329,23 @@ export function parseMonthParam(
 ): string {
   if (raw && /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(raw)) return raw;
   return today.slice(0, 7);
+}
+
+export type DayGroup = { date: string; marks: CalendarMark[] };
+
+/**
+ * Agrupa marcas CONSECUTIVAS del mismo día. No ordena: depende de que `marks`
+ * llegue ya ordenada por fecha ascendente, que es lo que garantiza (y testea)
+ * `buildCalendarMarks`. Reordenar aquí crearía un segundo responsable del orden
+ * y los dos podrían divergir -- el mismo motivo por el que `proximasMarcas`
+ * tampoco reordena.
+ */
+export function groupMarksByDay(marks: CalendarMark[]): DayGroup[] {
+  const grupos: DayGroup[] = [];
+  for (const mark of marks) {
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.date === mark.date) ultimo.marks.push(mark);
+    else grupos.push({ date: mark.date, marks: [mark] });
+  }
+  return grupos;
 }

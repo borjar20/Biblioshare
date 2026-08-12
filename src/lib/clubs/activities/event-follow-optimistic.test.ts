@@ -17,7 +17,10 @@ describe("eventFollowReducer", () => {
     expect(eventFollowReducer(NO_SEGUIDO, { type: "follow" })).toEqual({
       following: true,
       followersCount: 5,
-      remindMinutesBefore: 1440,
+      // Una semana (10080), no 24 h: el predeterminado cambió en la migración
+      // 20260852. Se pone el número a pelo y no la constante a propósito -- un
+      // test que importa la constante que quiere fijar pasa siempre.
+      remindMinutesBefore: 10080,
     });
   });
 

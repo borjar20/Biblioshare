@@ -79,6 +79,32 @@
   --type-movie: #3f6b6e;
   --type-series: #7a5676;
 
+  /* Azul de "fecha destacada" en el calendario del club. Token propio y no un
+     reciclado: los otros siete de la leyenda ya están comprometidos (green =
+     inicio, accent = hito, gold = cierre, event-meetup = encuentro, type-* =
+     los tres medios de lanzamiento), y dos clases con el mismo tono anulan el
+     sentido de colorear por tipo. Azul porque es el hueco que queda tras
+     terracota, teal, púrpura, verde, oro, naranja y beige.
+     Un peldaño más oscuro que el #4a6f9e original: ese daba 4.48:1 sobre su
+     propio tinte al 10% (#edefef), justo por DEBAJO del 4.5:1 de texto -- y
+     este token sí colorea texto (la etiqueta del chip de la agenda, 9px, y el
+     subtítulo de la tira "Próximo"). Con #456895 son 4.92:1, mismo azul. */
+  --event-highlight: #456895;
+
+  /* Color propio de "encuentro" (issue de contraste post-#357): compartía
+     --spine con el nexo de sagas, pero ese token se afinó para el lienzo
+     OSCURO del grafo y sobre el --surface casi blanco del calendario en tema
+     claro medía 2.27:1 -- por debajo del 3:1 que exige WCAG 1.4.1 para un
+     objeto gráfico (aquí, el icono y la muestra de la leyenda). No se puede
+     oscurecer --spine para arreglarlo: lo comparten las sagas y cambiarlo las
+     restilaría, así que --event-meetup nace como hermano del mismo beige.
+     Su primer valor (#94825c) arreglaba el objeto gráfico pero no el TEXTO:
+     3.32:1 sobre su propio tinte al 10%, y este token colorea la etiqueta del
+     chip de la agenda (9px) y el subtítulo de la tira "Próximo" -- ahí manda
+     4.5:1, no 3:1. #756747 da 4.78:1 sobre el tinte y 5.45:1 sobre --surface.
+     Sin coste: no lo consume nada fuera de MARK_ACCENT. */
+  --event-meetup: #756747;
+
   /* Episode rating scale (§7.36). Data colours, but themed: they must stay
      legible against --tier-foreground in both modes. */
   --tier-awesome: #46663c;
@@ -119,6 +145,11 @@
   --type-book: #cf8a54;
   --type-movie: #6bb0b4;
   --type-series: #b592bd;
+  --event-highlight: #7fa8d8;
+  /* Ya NO es el valor de --spine (#8a7d63): ese daba 3.39:1 sobre su propio
+     tinte al 10% (#342c24), por debajo del 4.5:1 que exige el TEXTO que este
+     token colorea. #a89c85 da 4.85:1 sobre el tinte y 5.72:1 sobre --surface. */
+  --event-meetup: #a89c85;
 
   --tier-awesome: #7fa86a;
   --tier-great: #9dbf7a;
@@ -129,6 +160,10 @@
   --tier-foreground: #1f1409;
 }
 
+/* OJO: este bloque ESPEJA .dark entero. Cualquier token que cambie arriba tiene
+   que cambiar aquí también -- mark-accent.test.ts lo comprueba token a token
+   para las claves de MARK_ACCENT, precisamente porque una edición que olvidara
+   el espejo no la cazaba nada. */
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
     --background: #1f1a16;
@@ -159,6 +194,8 @@
     --type-book: #cf8a54;
     --type-movie: #6bb0b4;
     --type-series: #b592bd;
+    --event-highlight: #7fa8d8;
+    --event-meetup: #a89c85;
 
     --tier-awesome: #7fa86a;
     --tier-great: #9dbf7a;
@@ -202,6 +239,8 @@
   --color-type-book: var(--type-book);
   --color-type-movie: var(--type-movie);
   --color-type-series: var(--type-series);
+  --color-event-highlight: var(--event-highlight);
+  --color-event-meetup: var(--event-meetup);
 
   --color-tier-foreground: var(--tier-foreground);
 
