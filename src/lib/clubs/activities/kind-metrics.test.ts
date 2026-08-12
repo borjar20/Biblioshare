@@ -42,6 +42,25 @@ describe("describeProgress", () => {
     expect(labels.collectivePercent).toBe(67);
   });
 
+  // La RPC fija viewer_total=1 SIEMPRE en tierlist: reusar la clave colectiva
+  // aquí producía "0 de 1 han votado", que no es castellano. La fila del
+  // viewer es un sí/no, nunca una fracción (spec §6.4).
+  it("tierlist: la fila del viewer es sí/no, no una fracción", () => {
+    const votó = describeProgress("tierlist", prog({ viewer: { done: 1, total: 1 } }), t);
+    expect(votó.viewerLabel).toBe("metricVotedSelf(yes)");
+    // Sin barra: no hay porcentaje que pintar de un booleano.
+    expect(votó.viewerPercent).toBeNull();
+
+    const noVotó = describeProgress("tierlist", prog({ viewer: { done: 0, total: 1 } }), t);
+    expect(noVotó.viewerLabel).toBe("metricVotedSelf(no)");
+  });
+
+  it("tierlist: sin fila de viewer (no participa), sin sí/no", () => {
+    const labels = describeProgress("tierlist", prog({ viewer: null }), t);
+    expect(labels.viewerLabel).toBeNull();
+    expect(labels.viewerPercent).toBeNull();
+  });
+
   it("sin denominador NO hay barra: nada de un 0% que parece progreso", () => {
     const labels = describeProgress("buddy_read", prog({ collective: null }), t);
     expect(labels.collectiveLabel).toBeNull();

@@ -852,6 +852,7 @@
     "metricCompleted": "{done}/{total} completados",
     "metricAchieved": "{done}/{total} conseguidos",
     "metricVoted": "{done} de {total} han votado",
+    "metricVotedSelf": "{voted, select, yes {Ya has votado} other {Aún no has votado}}",
     "progressGroup": "El grupo",
     "progressViewer": "Tu avance",
     "cardStartsOn": "Empieza el {date}",

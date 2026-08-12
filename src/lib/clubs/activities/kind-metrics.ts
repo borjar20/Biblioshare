@@ -46,14 +46,26 @@ export function describeProgress(
   const key = METRIC_KEY[kind];
   if (!key || !progress) return VACIO;
 
+  // La fila del VIEWER en tierlist es un sí/no ("¿ya has votado?"), no una
+  // fracción: la RPC fija viewer_total=1 SIEMPRE (incluso sin haber votado),
+  // así que reusar metricVoted aquí produce "0 de 1 han votado" -- no es
+  // castellano. La spec (§6.4) pide justo esto: "si el viewer ya votó", nunca
+  // un ratio. Sin porcentaje tampoco: no hay barra que pintar de un booleano.
+  const viewerLabel =
+    kind === "tierlist"
+      ? (progress.viewer
+          ? t("metricVotedSelf", { voted: progress.viewer.done > 0 ? "yes" : "no" })
+          : null)
+      : progress.viewer
+        ? t(key, { done: progress.viewer.done, total: progress.viewer.total })
+        : null;
+
   return {
     collectiveLabel: progress.collective
       ? t(key, { done: progress.collective.done, total: progress.collective.total })
       : null,
-    viewerLabel: progress.viewer
-      ? t(key, { done: progress.viewer.done, total: progress.viewer.total })
-      : null,
+    viewerLabel,
     collectivePercent: percent(progress.collective),
-    viewerPercent: percent(progress.viewer),
+    viewerPercent: kind === "tierlist" ? null : percent(progress.viewer),
   };
 }
