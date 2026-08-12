@@ -25,15 +25,16 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
           rejilla y las tarjetas dejan de llevar ancho fijo. */}
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
         {works.map((work) => (
-          // Todas las tarjetas MIDEN LO MISMO y su fila de nota queda a la
-          // misma altura. Un título de una línea y otro de dos movían cada
-          // fila de nota a su aire y la tira se leía descuadrada: de ahí el
-          // título de altura reservada (`fixedTitleHeight`) y el `mt-auto`,
-          // que ancla la nota al pie aunque algo de arriba crezca.
+          // Todas las tarjetas MIDEN LO MISMO y su fila de estado queda a la
+          // misma altura, porque el título reserva sus dos líneas ocupe una o
+          // dos (`fixedTitleHeight`). Se alinea SUBIENDO lo de abajo, no
+          // empujándolo al pie con `mt-auto`: anclar al pie alineaba igual pero
+          // dejaba un vacío entre el «año · rol» y la nota, que es justo lo que
+          // el dueño reportó al ver el primer arreglo.
           <div
             key={`${work.itemType}-${work.itemId}`}
             data-testid="featured-card"
-            className="flex h-full w-[132px] shrink-0 flex-col gap-1.5 sm:w-auto sm:shrink"
+            className="flex w-[132px] shrink-0 flex-col gap-1.5 sm:w-auto sm:shrink"
           >
             <CoverCard
               href={work.href}
@@ -44,17 +45,26 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
                 .join(" · ")}
               fixedTitleHeight
             />
-            {(work.userRating != null || work.status) && (
-              <div className="mt-auto flex items-center justify-between gap-1">
-                {work.userRating != null ? (
-                  <RatingDots value={work.userRating} size="sm" itemType={work.itemType} />
-                ) : (
-                  <span />
-                )}
-                {work.status && (
-                  <StatusBadge status={work.status} label={t(STATUS_KEY[work.status])} dotOnly />
-                )}
-              </div>
+            {/* UNA sola señal por tarjeta, no dos.
+                - ¿La has puntuado? La nota basta: puntuarla ya dice que la
+                  terminaste, así que el punto verde de «Terminada» al lado era
+                  redundante — y un punto de color suelto, sin texto, obliga a
+                  aprender un código para leer lo que la nota ya cuenta.
+                - ¿Sin nota pero con estado? Ahí sí hay algo que decir, y se
+                  dice CON LETRAS («Pendiente», «En curso»): en una tira de
+                  atajos, un dot mudo no informa a quien no lo tiene aprendido.
+                El estado exacto de una obra puntuada no se pierde: la fila de
+                la filmografía, abajo, lo pinta entero. */}
+            {work.userRating != null ? (
+              <RatingDots value={work.userRating} size="sm" itemType={work.itemType} />
+            ) : (
+              work.status && (
+                // El envoltorio `flex` deja la pastilla a su ancho: como hija
+                // directa de la columna se estiraría de borde a borde.
+                <div className="flex">
+                  <StatusBadge status={work.status} label={t(STATUS_KEY[work.status])} />
+                </div>
+              )
             )}
           </div>
         ))}

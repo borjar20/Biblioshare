@@ -355,13 +355,18 @@ test.describe("ficha de persona · filmografía", () => {
       crypto.randomUUID(),
       crypto.randomUUID(),
       crypto.randomUUID(),
+      crypto.randomUUID(),
     ];
     const titulos = [
       "[E2E] Un título larguísimo que no cabe de ninguna manera en una sola línea",
       "[E2E] Corta",
       "[E2E] Otro título kilométrico de los que parten en dos renglones",
       "[E2E] Breve",
+      "[E2E] Sin puntuar",
     ];
+    // La última va PENDIENTE y sin nota: es la que comprueba la otra regla —
+    // sin nota se dice el estado, y con letras.
+    const sinNota = 4;
     const today = new Date().toISOString().slice(0, 10);
 
     try {
@@ -388,8 +393,8 @@ test.describe("ficha de persona · filmografía", () => {
             role: "director",
           }),
         });
-        // Todas puntuadas: así todas las tarjetas pintan su fila de nota y se
-        // pueden comparar entre sí.
+        // Cuatro puntuadas —así se pueden comparar sus notas entre sí— y una
+        // pendiente sin nota.
         await rest("passes", {
           method: "POST",
           body: JSON.stringify({
@@ -397,12 +402,16 @@ test.describe("ficha de persona · filmografía", () => {
             user_id: user.id,
             item_type: "movie",
             item_id: id,
-            status: "completed",
+            ...(i === sinNota
+              ? { status: "planned" }
+              : {
+                  status: "completed",
+                  started_on: today,
+                  finished_on: today,
+                  rating: 8 - i,
+                }),
             is_active: true,
             position: {},
-            started_on: today,
-            finished_on: today,
-            rating: 8 - i,
           }),
         });
       }
@@ -414,7 +423,7 @@ test.describe("ficha de persona · filmografía", () => {
       const destacadas = page.getByTestId("person-featured");
       await expect(destacadas).toBeVisible();
       const tarjetas = destacadas.getByTestId("featured-card");
-      await expect(tarjetas).toHaveCount(4);
+      await expect(tarjetas).toHaveCount(5);
 
       // 1. MISMA ALTURA todas. Se compara contra la más alta: si una tarjeta se
       //    queda corta porque su título ocupa una línea, aquí salta.
@@ -437,6 +446,39 @@ test.describe("ficha de persona · filmografía", () => {
           topsNotas[0]
         );
       }
+
+      // 3. Y SIN AIRE bajo el «año · rol». Alinear anclando la nota al pie de
+      //    la tarjeta también daba tops iguales, pero abría un vacío entre el
+      //    subtítulo y la nota (reportado por el dueño). El hueco es el `gap`
+      //    de la columna, 6px; se deja margen para el redondeo de subpíxel.
+      const huecos = await destacadas.getByTestId("featured-card").evaluateAll((cards) =>
+        cards
+          .map((card) => {
+            const subtitulo = card.querySelector("span.italic");
+            const nota = card.querySelector('[role="img"][aria-label$="de 5"]');
+            if (!subtitulo || !nota) return null;
+            return Math.round(
+              nota.getBoundingClientRect().top - subtitulo.getBoundingClientRect().bottom
+            );
+          })
+          .filter((n): n is number => n !== null)
+      );
+      expect(huecos).toHaveLength(4);
+      for (const hueco of huecos) {
+        expect(hueco, `hay ${hueco}px de aire entre el «año · rol» y la nota`).toBeLessThanOrEqual(
+          10
+        );
+      }
+
+      // 4. UNA señal por tarjeta: la que has puntuado enseña la NOTA y ya —el
+      //    punto verde de «Terminada» al lado era redundante—, y la que no
+      //    tiene nota dice su estado CON LETRAS, no con un punto de color.
+      const puntuada = tarjetas.filter({ hasText: "[E2E] Corta" });
+      await expect(puntuada.getByRole("img", { name: /de 5$/ })).toBeVisible();
+      await expect(puntuada.getByTestId("status-badge")).toHaveCount(0);
+
+      const pendiente = tarjetas.filter({ hasText: "[E2E] Sin puntuar" });
+      await expect(pendiente.getByTestId("status-badge")).toHaveText("Pendiente");
     } finally {
       for (const id of ids) {
         await del(`passes?item_id=eq.${id}`);
