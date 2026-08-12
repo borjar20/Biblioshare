@@ -91,9 +91,17 @@ export function ActivityCardLarge({
         <span className="label-section">
           {t("participants", { count: participants })}
           {activity.endsOn && ` · ${t("cardEndsOn", { date: formatEventDate(activity.endsOn) })}`}
-          {restantes !== null && restantes >= 0 && ` · ${t("daysLeft", { count: restantes })}`}
+          {/* Solo a partir de un día: el mismo día que termina, "quedan 0 días"
+              es una forma peor de decir lo que la fecha de al lado ya dice. */}
+          {restantes !== null && restantes > 0 && ` · ${t("daysLeft", { count: restantes })}`}
         </span>
-        <span className={buttonLikeClasses}>{cta} →</span>
+        {/* La flecha es adorno: sin aria-hidden se cuela en el nombre accesible
+            del enlace, que es la tarjeta ENTERA -- quien use lector de pantalla
+            oye "Continuar flecha derecha Saltire y Cenizas...". */}
+        <span className={buttonLikeClasses}>
+          {cta}
+          <span aria-hidden> →</span>
+        </span>
       </div>
     </Link>
   );

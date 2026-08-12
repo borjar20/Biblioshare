@@ -47,8 +47,11 @@ export function ActivityCardUpcoming({
         </span>
       </span>
 
+      {/* La flecha es adorno: sin aria-hidden se cuela en el nombre accesible
+          del enlace, que es la tarjeta ENTERA. */}
       <span className="shrink-0 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
-        {t("ctaView")} →
+        {t("ctaView")}
+        <span aria-hidden> →</span>
       </span>
     </Link>
   );
