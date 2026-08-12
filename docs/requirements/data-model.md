@@ -1581,15 +1581,27 @@ actualizar.
 Códigos de error, en el orden en que la función los evalúa (el orden es diseño, no casualidad
 — ver el fallo de seguridad más abajo):
 
-1. `not_found` — la fila no existe, o la RLS no la deja ver a este `auth.uid()`. No se
-   distinguen los dos casos a propósito.
-2. `use_update_club_event` — es un evento.
-3. `forbidden` — ni moderador+ ni (creador Y `proposed`).
-4. `dates_frozen` — estado `finished`/`archived`.
-5. `title_required` — título vacío tras `btrim`.
-6. `invalid_range` — `p_ends_on < p_starts_on` (solo se rechaza la ventana INVERTIDA; una
+1. `forbidden` — **el gate de rol, y va PRIMERO** (#129, ver abajo). No eres el creador ni
+   moderador+ del club dueño. Con la fila inexistente, `v_club_id` y `v_created_by` son nulos,
+   así que también cae aquí: quien no está autorizado recibe `forbidden` y **no aprende nada**,
+   ni si el uuid existe ni de qué tipo es.
+2. `not_found` — la fila no existe. **Inalcanzable hoy**, precisamente porque el gate va antes:
+   se conserva como guarda defensiva, igual que en las cuatro funciones hermanas de
+   `20260831`. Si algún día el gate deja de cubrir el caso nulo, esto lo recoge.
+3. `forbidden` (segunda vez) — eres el creador pero NO moderador, y la actividad ya no está en
+   `proposed`. Va antes que `dates_frozen` a propósito: si no, quien intente editar una
+   finalizada sin permiso creería que el problema es el momento, cuando además le falta el
+   permiso.
+4. `use_update_club_event` — es un evento. Solo se revela **después** de autorizar.
+5. `dates_frozen` — estado `finished`/`archived`.
+6. `title_required` — título vacío tras `btrim`.
+7. `invalid_range` — `p_ends_on < p_starts_on` (solo se rechaza la ventana INVERTIDA; una
    fecha de fin en el pasado es válida — cerrar hoy una lectura con la fecha en que de verdad
    terminó es un uso normal).
+
+**Consecuencia para la interfaz:** quien no puede ver la fila por RLS recibe `forbidden`, NO
+`not_found`. Un formulario que traduzca `not_found` como «esta actividad ya no existe» está
+escribiendo un mensaje que nadie verá.
 
 **Fallo de seguridad corregido antes de aplicar en ningún sitio real (commit `eec82b0e`):**
 la primera versión del código comprobaba el permiso (código 3) DESPUÉS de revelar si la fila

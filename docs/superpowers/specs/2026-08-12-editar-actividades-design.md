@@ -136,13 +136,30 @@ autoridad (la interfaz valida lo mismo antes, solo para no hacer el viaje):
 
 | Situación | Excepción |
 |---|---|
-| La actividad no existe o no es legible | `not found` |
-| `kind = 'evento'` | `use_update_club_event` |
-| Ni creador ni `moderator+` | `forbidden` |
+| **Ni creador ni `moderator+`** — el gate va PRIMERO | `forbidden` |
+| La actividad no existe | `not_found` (guarda defensiva, inalcanzable) |
 | Creador **no** moderador y estado ≠ `proposed` | `forbidden` |
+| `kind = 'evento'` | `use_update_club_event` |
 | Estado ni `proposed` ni `active` | `dates_frozen` |
 | Título vacío tras `trim` | `title_required` |
 | `p_ends_on < p_starts_on` | `invalid_range` |
+
+**El gate de rol va PRIMERO, y esto no es un detalle de estilo.** Esta función es
+`security definer`, así que su `select` no pasa por la RLS: si comprobara la
+existencia o el `kind` antes de autorizar, un `authenticated` que no es miembro
+del club podría distinguir por el código de excepción si un uuid existe y si es
+un evento — reabriendo por la puerta de atrás lo que la RLS de SELECT protege.
+
+Es fuga de INFO, no de escritura, y **el repo ya la arregló una vez**: la
+migración `20260831_club_activity_role_gate_first.sql` (issue #129) corrigió
+exactamente esto en otras cuatro RPC de esta misma tabla. La primera versión de
+esta función la reintrodujo, y la revisión la cazó. Con el gate primero, una fila
+inexistente deja `v_club_id` y `v_created_by` nulos y también cae en `forbidden`,
+así que `not_found` queda inalcanzable — se conserva como guarda, igual que en
+las cuatro hermanas.
+
+Regla, entonces, para la próxima RPC sobre `club_activities`: **el gate de rol
+primero, siempre.**
 
 `revoke execute … from public, anon` y `grant … to authenticated`, como el resto.
 
