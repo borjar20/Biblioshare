@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 
 // Un estado vacío que parece intencionado: dice qué iría aquí y, cuando hay algo
 // que hacer, ofrece hacerlo. Nunca una tarjeta grande hueca para rellenar hueco
@@ -22,10 +23,11 @@ export function ActivityEmptyState({
       <p className="font-serif text-sm font-semibold text-foreground">{title}</p>
       <p className="max-w-sm text-[13px] text-muted-foreground">{body}</p>
       {actionHref && actionLabel && (
-        <Link
-          href={actionHref}
-          className="mt-1 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] tracking-wide text-accent uppercase"
-        >
+        // Mismo estilo que "Proponer actividad" en la cabecera y en móvil
+        // (ProposeActivityLink): la misma acción no debe verse de dos formas
+        // distintas en la misma pantalla -- ahí era buttonVariants("primary")
+        // y aquí era una píldora pequeña aparte.
+        <Link href={actionHref} className={buttonVariants("primary", "mt-1")}>
           <span aria-hidden>+</span> {actionLabel}
         </Link>
       )}
