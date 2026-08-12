@@ -916,13 +916,6 @@ export type Database = {
             referencedRelation: "interaction_targets"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "comments_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "comments"
-            referencedColumns: ["id"]
-          },
         ]
       }
       content_reports: {
@@ -1370,42 +1363,6 @@ export type Database = {
           },
         ]
       }
-      notification_preferences: {
-        Row: {
-          android_push_enabled: boolean
-          category_clubs: boolean
-          category_progress: boolean
-          category_social: boolean
-          category_system: boolean
-          created_at: string
-          updated_at: string
-          user_id: string
-          web_push_enabled: boolean
-        }
-        Insert: {
-          android_push_enabled?: boolean
-          category_clubs?: boolean
-          category_progress?: boolean
-          category_social?: boolean
-          category_system?: boolean
-          created_at?: string
-          updated_at?: string
-          user_id: string
-          web_push_enabled?: boolean
-        }
-        Update: {
-          android_push_enabled?: boolean
-          category_clubs?: boolean
-          category_progress?: boolean
-          category_social?: boolean
-          category_system?: boolean
-          created_at?: string
-          updated_at?: string
-          user_id?: string
-          web_push_enabled?: boolean
-        }
-        Relationships: []
-      }
       notifications: {
         Row: {
           actor_id: string | null
@@ -1452,6 +1409,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_celebrations: {
+        Row: {
+          created_at: string
+          displayed_at: string | null
+          event_key: string
+          event_type: string
+          first_triggered_at: string
+          id: string
+          last_triggered_at: string
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          displayed_at?: string | null
+          event_key: string
+          event_type: string
+          first_triggered_at?: string
+          id?: string
+          last_triggered_at?: string
+          payload?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          displayed_at?: string | null
+          event_key?: string
+          event_type?: string
+          first_triggered_at?: string
+          id?: string
+          last_triggered_at?: string
+          payload?: Json
+          user_id?: string
+        }
+        Relationships: []
       }
       passes: {
         Row: {
@@ -1752,6 +1745,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_preferences: {
+        Row: {
+          android_push_enabled: boolean
+          category_clubs: boolean
+          category_progress: boolean
+          category_social: boolean
+          category_system: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+          web_push_enabled: boolean
+        }
+        Insert: {
+          android_push_enabled?: boolean
+          category_clubs?: boolean
+          category_progress?: boolean
+          category_social?: boolean
+          category_system?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+          web_push_enabled?: boolean
+        }
+        Update: {
+          android_push_enabled?: boolean
+          category_clubs?: boolean
+          category_progress?: boolean
+          category_social?: boolean
+          category_system?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+          web_push_enabled?: boolean
+        }
+        Relationships: []
       }
       push_devices: {
         Row: {
@@ -2355,6 +2384,39 @@ export type Database = {
           },
         ]
       }
+      thoughts: {
+        Row: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["thought_anchor_type"]
+          body: string
+          created_at: string
+          id: string
+          is_spoiler: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["thought_anchor_type"]
+          body: string
+          created_at?: string
+          id?: string
+          is_spoiler?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anchor_id?: string
+          anchor_type?: Database["public"]["Enums"]["thought_anchor_type"]
+          body?: string
+          created_at?: string
+          id?: string
+          is_spoiler?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_blocks: {
         Row: {
           blocked_id: string
@@ -2370,42 +2432,6 @@ export type Database = {
           blocked_id?: string
           blocker_id?: string
           created_at?: string
-        }
-        Relationships: []
-      }
-      user_celebrations: {
-        Row: {
-          created_at: string
-          displayed_at: string | null
-          event_key: string
-          event_type: string
-          first_triggered_at: string
-          id: string
-          last_triggered_at: string
-          payload: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          displayed_at?: string | null
-          event_key: string
-          event_type: string
-          first_triggered_at?: string
-          id?: string
-          last_triggered_at?: string
-          payload?: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          displayed_at?: string | null
-          event_key?: string
-          event_type?: string
-          first_triggered_at?: string
-          id?: string
-          last_triggered_at?: string
-          payload?: Json
-          user_id?: string
         }
         Relationships: []
       }
@@ -2561,6 +2587,16 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
+      related_posts_by_author: {
+        Args: {
+          p_anchor_id: string
+          p_anchor_type: Database["public"]["Enums"]["post_anchor_type"]
+          p_author_id: string
+          p_exclude_post_id: string
+          p_limit?: number
+        }
+        Returns: Database["public"]["Tables"]["posts"]["Row"][]
+      }
       can_view_interaction_target: {
         Args: { p_interaction_target_id: string }
         Returns: boolean
@@ -2573,24 +2609,19 @@ export type Database = {
         }
         Returns: boolean
       }
-      claim_due_event_reminders: {
-        Args: { p_activity_id?: string; p_limit?: number }
+      club_is_private: { Args: { p_club_id: string }; Returns: boolean }
+      pin_comment: {
+        Args: { p_comment_id: string; p_pinned: boolean }
+        Returns: undefined
+      }
+      pull_pending_celebrations: {
+        Args: Record<PropertyKey, never>
         Returns: {
-          activity_id: string
-          club_id: string
-          club_name: string
-          club_slug: string
-          event_timezone: string
-          location: string
-          minutes_before: number
-          modality: Database["public"]["Enums"]["event_modality"]
-          organizer_id: string
-          starts_at: string
-          title: string
-          user_id: string
+          event_key: string
+          event_type: string
+          payload: Json
         }[]
       }
-      club_is_private: { Args: { p_club_id: string }; Returns: boolean }
       club_member_row_exists: { Args: { p_club_id: string }; Returns: boolean }
       club_role: {
         Args: { p_club_id: string }
@@ -2632,6 +2663,23 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_due_event_reminders: {
+        Args: { p_limit?: number }
+        Returns: {
+          activity_id: string
+          club_id: string
+          club_name: string
+          club_slug: string
+          event_timezone: string
+          location: string | null
+          minutes_before: number | null
+          modality: Database["public"]["Enums"]["event_modality"] | null
+          organizer_id: string
+          starts_at: string | null
+          title: string
+          user_id: string
+        }[]
+      }
       create_club_event: {
         Args: {
           p_club_id: string
@@ -2662,7 +2710,10 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      editions_in_use: { Args: { p_edition_ids: string[] }; Returns: string[] }
+      editions_in_use: {
+        Args: { p_edition_ids: string[] }
+        Returns: string[]
+      }
       ensure_club_round: {
         Args: {
           p_club_id: string
@@ -2681,20 +2732,15 @@ export type Database = {
         Returns: undefined
       }
       follow_club_event: {
-        Args: { p_activity_id: string; p_remind_minutes_before?: number }
+        Args: {
+          p_activity_id: string
+          // null es un valor legítimo: significa "sin recordatorio". Postgres no
+          // declara la nulabilidad de un parámetro, así que el generador lo emite
+          // como `number` a secas y hay que admitir null a mano — igual que en
+          // set_club_event_reminder.
+          p_remind_minutes_before?: number | null
+        }
         Returns: undefined
-      }
-      get_activities_progress: {
-        Args: { p_activity_ids: string[] }
-        Returns: {
-          activity_id: string
-          collective_done: number
-          collective_total: number
-          kind: string
-          participants: number
-          viewer_done: number
-          viewer_total: number
-        }[]
       }
       get_activity_diary_passes: {
         Args: { p_activity_id: string }
@@ -2719,6 +2765,18 @@ export type Database = {
           round_prompt: string
         }[]
       }
+      get_activities_progress: {
+        Args: { p_activity_ids: string[] }
+        Returns: {
+          activity_id: string
+          collective_done: number
+          collective_total: number
+          kind: string
+          participants: number
+          viewer_done: number
+          viewer_total: number
+        }[]
+      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
@@ -2728,7 +2786,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_widget_snapshot: { Args: never; Returns: Json }
       has_min_club_role: {
         Args: {
           min: Database["public"]["Enums"]["club_role"]
@@ -2778,19 +2835,7 @@ export type Database = {
         Args: { p_club_id: string }
         Returns: undefined
       }
-      pin_comment: {
-        Args: { p_comment_id: string; p_pinned: boolean }
-        Returns: undefined
-      }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
-      pull_pending_celebrations: {
-        Args: never
-        Returns: {
-          event_key: string
-          event_type: string
-          payload: Json
-        }[]
-      }
       register_book_edition: {
         Args: {
           p_book_id: string
@@ -2802,38 +2847,6 @@ export type Database = {
           p_year?: number
         }
         Returns: string
-      }
-      related_posts_by_author: {
-        Args: {
-          p_anchor_id: string
-          p_anchor_type: Database["public"]["Enums"]["post_anchor_type"]
-          p_author_id: string
-          p_exclude_post_id: string
-          p_limit?: number
-        }
-        Returns: {
-          anchor_id: string
-          anchor_type: Database["public"]["Enums"]["post_anchor_type"]
-          author_id: string
-          body: string | null
-          created_at: string
-          id: string
-          is_spoiler: boolean
-          kind: Database["public"]["Enums"]["post_kind"]
-          source_id: string | null
-          source_kind: Database["public"]["Enums"]["post_source_kind"] | null
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "posts"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      release_event_reminders: {
-        Args: { p_activity_id: string; p_user_ids: string[] }
-        Returns: number
       }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
@@ -2868,8 +2881,12 @@ export type Database = {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
       }
+      release_event_reminders: {
+        Args: { p_activity_id: string; p_user_ids: string[] }
+        Returns: number
+      }
       set_club_event_reminder: {
-        Args: { p_activity_id: string; p_remind_minutes_before: number }
+        Args: { p_activity_id: string; p_remind_minutes_before: number | null }
         Returns: undefined
       }
       set_club_event_state: {
