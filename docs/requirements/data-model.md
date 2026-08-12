@@ -369,7 +369,29 @@ BD**. Son tres peldaños — tarjeta de resultado (memoria) → ficha de obra (s
 son de una tirada, no de la obra.
 
 `people` + `credits` guardan autoría/dirección/reparto, también polimórfico por
-`(item_type, item_id)`.
+`(item_type, item_id)`. `credits` tiene índice **único** sobre
+`(item_type, item_id, person_id, role)` (`credits_item_type_item_id_person_id_role_key`): una
+persona puede tener VARIOS roles en la misma obra (actúa y dirige) pero no el mismo dos veces.
+Ojo al escribir en lote: un `insert` con una sola fila ya presente falla **entero** con 23505 y
+no inserta ninguna de las nuevas — por eso `hydratePersonCredits` va por `upsert` con
+`ignoreDuplicates`.
+
+**`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
+`20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
+2026-08-12** contra `information_schema.column_privileges`). Marca que ya se trajo la obra
+COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o
+`/authors/{key}/works.json` de Open Library—. Con valor, la ficha de persona no vuelve a
+llamar a la API: sirve `credits` y punto.
+
+Lleva **`grant update (credits_hydrated_at) on people to authenticated`** en la misma
+migración: el `UPDATE` de `authenticated` sobre `people` está acotado **por columnas**
+(`bio, birth_date, death_date, photo_url, place_of_birth` antes de esto), y una columna sin su
+grant rompe la escritura ENTERA de la tabla — `enrichTmdbBio` dejaría de guardar biografías,
+no solo el campo nuevo. Ver issue #375 y la superficie 6 de `docs/DRIFT-CHECK.md`.
+
+Antes de esto, «Su obra» de una ficha de persona era solo lo que `ensureItemEnriched` hubiera
+escrito al abrir la ficha de **una obra concreta**: una persona con una sola película abierta
+afirmaba, sin matices, que esa era toda su obra. No era un hueco, era una afirmación falsa.
 
 ## 3. El pase: el hub del estado
 
