@@ -91,10 +91,11 @@ export async function findOrCreateCatalogItemsBulk(
       const queryIds =
         itemType === "book" ? externalIds : externalIds.map((id) => Number(id));
 
-      // TROCEADO a propósito: supabase-js manda el `.in()` en la cadena de
-      // consulta, así que una filmografía de 300 ids son ~11 KB de URL y la
-      // petición vuelve vacía SIN error — con lo que el lote creería que no
-      // existe ninguna y las insertaría todas de nuevo. Ver in-chunks.ts.
+      // TROCEADO por precaución: supabase-js manda el `.in()` en la cadena de
+      // consulta, y una filmografía de 300 ids son ~11 KB de URL. Si esa
+      // petición fallara, el lote creería que no existe ninguna obra y las
+      // insertaría todas de nuevo. No es el arreglo de un fallo observado — ver
+      // el comentario de in-chunks.ts.
       const readExisting = async () => {
         await Promise.all(
           chunkIds<string | number>(queryIds).map(async (ids) => {

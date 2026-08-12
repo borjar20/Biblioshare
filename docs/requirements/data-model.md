@@ -376,6 +376,21 @@ Ojo al escribir en lote: un `insert` con una sola fila ya presente falla **enter
 no inserta ninguna de las nuevas — por eso `hydratePersonCredits` va por `upsert` con
 `ignoreDuplicates`.
 
+⚠️ **La referencia de `credits` a la obra es POLIMÓRFICA y por tanto NO hay FK** — el mismo
+agujero que tenía `passes` (issue #272), pero `credits` **se quedó fuera** del trigger
+`private.forbid_delete_with_passes`. Resultado: hay filas de `credits` apuntando a obras que
+ya no existen. **En dev, medido el 2026-08-12: Damien Chazelle tenía 226 créditos y CERO
+resolvían contra `movies`.** El síntoma no se parece a la causa: la ficha de persona descarta
+el crédito huérfano (con razón) y enseña «Aún no hay obras de esta persona en el catálogo»,
+o sea que no revienta, **miente**. Cuantificar con:
+
+```sql
+select count(*) from credits c
+where c.item_type='movie' and not exists (select 1 from movies m where m.id=c.item_id);
+```
+
+Prod está **sin medir**. Ver issue #609.
+
 **`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
 `20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
 2026-08-12** contra `information_schema.column_privileges`). Marca que ya se trajo la obra

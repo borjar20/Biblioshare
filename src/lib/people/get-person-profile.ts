@@ -113,11 +113,10 @@ export async function getPersonProfile(
   const globalByItem = new Map<string, { sum: number; count: number }>();
   const sagaByItem = new Map<string, { sagaId: string; name: string }>();
 
-  // ⚠️ TODAS las listas de ids van TROCEADAS (`chunkIds`). supabase-js manda el
-  // `.in()` en la cadena de consulta, así que 226 UUIDs son ~8 KB de URL y la
-  // petición vuelve VACÍA sin error: la ficha de una persona prolífica enseñaba
-  // «Aún no hay obras de esta persona en el catálogo», que es mentira. Medido el
-  // 2026-08-12 contra el build de producción. Ver `src/lib/supabase/in-chunks.ts`.
+  // Las listas de ids van TROCEADAS (`chunkIds`) por precaución: supabase-js
+  // manda el `.in()` en la cadena de consulta y una filmografía larga se acerca
+  // al límite de longitud de URL. NO es el arreglo de un fallo observado — ver
+  // el comentario de `src/lib/supabase/in-chunks.ts`.
   const allIds = (Object.keys(idsByType) as ItemType[]).flatMap((t) => idsByType[t]);
 
   await Promise.all([
