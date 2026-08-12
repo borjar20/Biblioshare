@@ -340,4 +340,111 @@ test.describe("ficha de persona · filmografía", () => {
       await sweepDisposableUsers();
     }
   });
+
+  test("las destacadas miden todas lo mismo y sus notas quedan alineadas", async ({ page }) => {
+    // Reportado por el dueño: con el título libre, uno de una línea y otro de
+    // dos dejaban cada tarjeta a una altura y cada fila de nota a la suya. Se
+    // siembran títulos de longitudes MUY distintas a propósito — con títulos
+    // parecidos el descuadre no aparece y el test pasaría con el bug puesto.
+    await sweepDisposableUsers();
+
+    const user = await createOnboardedUser(`${USER_PREFIX}d${Date.now()}`.slice(0, 20));
+    const personId = crypto.randomUUID();
+    const ids = [
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+    ];
+    const titulos = [
+      "[E2E] Un título larguísimo que no cabe de ninguna manera en una sola línea",
+      "[E2E] Corta",
+      "[E2E] Otro título kilométrico de los que parten en dos renglones",
+      "[E2E] Breve",
+    ];
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      await rest("people", {
+        method: "POST",
+        body: JSON.stringify({ id: personId, name: `[E2E] Destacadas ${personId.slice(0, 8)}` }),
+      });
+      for (const [i, id] of ids.entries()) {
+        await rest("movies", {
+          method: "POST",
+          body: JSON.stringify({
+            id,
+            title: `${titulos[i]} ${id.slice(0, 8)}`,
+            cover_url: COVER_URL,
+            release_year: 2000 + i,
+          }),
+        });
+        await rest("credits", {
+          method: "POST",
+          body: JSON.stringify({
+            item_type: "movie",
+            item_id: id,
+            person_id: personId,
+            role: "director",
+          }),
+        });
+        // Todas puntuadas: así todas las tarjetas pintan su fila de nota y se
+        // pueden comparar entre sí.
+        await rest("passes", {
+          method: "POST",
+          body: JSON.stringify({
+            id,
+            user_id: user.id,
+            item_type: "movie",
+            item_id: id,
+            status: "completed",
+            is_active: true,
+            position: {},
+            started_on: today,
+            finished_on: today,
+            rating: 8 - i,
+          }),
+        });
+      }
+
+      await loginAs(page, user.email);
+      await page.setViewportSize({ width: 1700, height: 1000 });
+      await page.goto(`/persona/${personId}`);
+
+      const destacadas = page.getByTestId("person-featured");
+      await expect(destacadas).toBeVisible();
+      const tarjetas = destacadas.getByTestId("featured-card");
+      await expect(tarjetas).toHaveCount(4);
+
+      // 1. MISMA ALTURA todas. Se compara contra la más alta: si una tarjeta se
+      //    queda corta porque su título ocupa una línea, aquí salta.
+      const alturas = await tarjetas.evaluateAll((els) =>
+        els.map((el) => Math.round(el.getBoundingClientRect().height))
+      );
+      const maxAlto = Math.max(...alturas);
+      for (const alto of alturas) {
+        expect(alto, `una destacada mide ${alto}px y la más alta ${maxAlto}px`).toBe(maxAlto);
+      }
+
+      // 2. Y LAS NOTAS, A LA MISMA ALTURA. Es lo que se ve descuadrado: el
+      //    título corto subía su fila de dots y el largo la bajaba.
+      const topsNotas = await destacadas
+        .getByRole("img", { name: /de 5$/ })
+        .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+      expect(topsNotas).toHaveLength(4);
+      for (const top of topsNotas) {
+        expect(top, `las notas de las destacadas no están alineadas: ${topsNotas.join(", ")}`).toBe(
+          topsNotas[0]
+        );
+      }
+    } finally {
+      for (const id of ids) {
+        await del(`passes?item_id=eq.${id}`);
+        await del(`credits?item_id=eq.${id}`);
+        await del(`movies?id=eq.${id}`);
+      }
+      await del(`people?id=eq.${personId}`);
+      await sweepDisposableUsers();
+    }
+  });
 });

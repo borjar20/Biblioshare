@@ -25,9 +25,15 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
           rejilla y las tarjetas dejan de llevar ancho fijo. */}
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
         {works.map((work) => (
+          // Todas las tarjetas MIDEN LO MISMO y su fila de nota queda a la
+          // misma altura. Un título de una línea y otro de dos movían cada
+          // fila de nota a su aire y la tira se leía descuadrada: de ahí el
+          // título de altura reservada (`fixedTitleHeight`) y el `mt-auto`,
+          // que ancla la nota al pie aunque algo de arriba crezca.
           <div
             key={`${work.itemType}-${work.itemId}`}
-            className="flex w-[132px] shrink-0 flex-col gap-1.5 sm:w-auto sm:shrink"
+            data-testid="featured-card"
+            className="flex h-full w-[132px] shrink-0 flex-col gap-1.5 sm:w-auto sm:shrink"
           >
             <CoverCard
               href={work.href}
@@ -36,9 +42,10 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
               subtitle={[work.year, t(ROLE_KEY[strongestRole(work.roles)])]
                 .filter(Boolean)
                 .join(" · ")}
+              fixedTitleHeight
             />
             {(work.userRating != null || work.status) && (
-              <div className="flex items-center justify-between gap-1">
+              <div className="mt-auto flex items-center justify-between gap-1">
                 {work.userRating != null ? (
                   <RatingDots value={work.userRating} size="sm" itemType={work.itemType} />
                 ) : (
