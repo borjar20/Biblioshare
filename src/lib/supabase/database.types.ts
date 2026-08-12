@@ -2922,6 +2922,10 @@ export type Database = {
         Args: { p_club_id: string; p_new_owner_id: string }
         Returns: undefined
       }
+      unconfirm_checkpoint: {
+        Args: { p_checkpoint_id: string }
+        Returns: undefined
+      }
       unfollow_club_event: {
         Args: { p_activity_id: string }
         Returns: undefined
