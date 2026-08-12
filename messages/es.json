@@ -910,6 +910,7 @@
     "kindHint_evento": "Una fecha señalada del club.",
     "checkpointsHint": "Al alcanzar cada hito se abre su chat para comentar hasta ese punto.",
     "checkpointsPickItemFirst": "Elige primero el ítem de la lectura para poder añadir hitos.",
+    "checkpointsFrozenInProposal": "Los hitos se pueden añadir y editar cuando el club active la actividad.",
     "tierlistTierLabel": "Nombre del nivel",
     "tierlistTierColor": "Cambiar color",
     "tierlistAddTier": "Añadir nivel",

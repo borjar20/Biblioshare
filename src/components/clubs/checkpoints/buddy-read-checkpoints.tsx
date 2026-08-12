@@ -9,15 +9,16 @@ import { nextCheckpoint } from "@/lib/clubs/activities/next-checkpoint";
 import { formatPosition } from "@/lib/library/position";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { CheckpointList } from "./checkpoint-list";
+import { BuddyReadCheckpointEditor } from "./checkpoint-editor";
 
 // DetailExtension de buddy_read (registro de kinds, EPIC-05 Bloque H1) --
 // se monta para cualquier miembro del club, no gateado a isParticipant
 // (decisión 7 del diseño: la lista de checkpoints ayuda a decidir si
 // unirse). Estado propio con su propio refresh: los cambios de checkpoints
 // no requieren refrescar el resto de la ficha de actividad (items/opiniones)
-// que gestiona ActivityDetailView. Solo lectura: el alta/edición de hitos vive
-// en "Modificar actividad" (BuddyReadCheckpointEditor).
-export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
+// que gestiona ActivityDetailView. El alta/edición de hitos se gestiona aquí
+// mismo, debajo de la lista, para moderadores (spec 2026-08-12, #597).
+export function BuddyReadCheckpoints({ activity, isModerator, Layout, railExtra }: {
   activity: ActivityDetail;
   viewerId: string;
   isModerator: boolean;
@@ -116,6 +117,18 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
             knownUsernames={view.knownUsernames}
             viewerIsParticipant={activity.viewerIsParticipant}
           />
+
+          {/* Los hitos se gestionan DONDE SE MIRAN (spec 2026-08-12, #597).
+              Antes se veían aquí y se editaban en "Modificar actividad", detrás
+              de un botón que no mencionaba los hitos: un moderador con permiso
+              concluyó que la función no existía. */}
+          {isModerator && (
+            <BuddyReadCheckpointEditor
+              activityId={activity.id}
+              status={activity.status}
+              onChanged={refresh}
+            />
+          )}
         </div>
       }
       railBottom={
