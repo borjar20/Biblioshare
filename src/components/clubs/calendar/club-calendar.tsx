@@ -123,9 +123,19 @@ export function ClubCalendar({
               <ChevronLeftIcon className="h-4 w-4" />
             </button>
 
+            {/* Ancho reservado para el mes MÁS LARGO, centrado dentro. Sin esto
+                el ancho del texto manda ("Mayo 2027" mide bastante menos que
+                "Septiembre 2027") y las flechas y el botón «Hoy» saltan de sitio
+                cada vez que se cambia de mes: se pulsa «siguiente» dos veces y
+                el botón ya no está donde estaba el dedo.
+
+                En `em`, no en px: la reserva escala sola si algún día cambia el
+                `text-[22px]` de al lado. Y es `min-w`, no `w`: si un locale trae
+                un mes más largo, el texto crece en vez de recortarse -- volvería
+                a saltar, que es un defecto menor, pero nunca se corta. */}
             <span
               data-testid="calendar-month"
-              className="font-serif text-[22px] font-semibold whitespace-nowrap text-foreground"
+              className="min-w-[8.5em] text-center font-serif text-[22px] font-semibold whitespace-nowrap text-foreground"
             >
               {formatMonthYear(month)}
             </span>

@@ -44,7 +44,16 @@ export function DaySheet({
       ref={dialogRef}
       onClose={onClose}
       aria-label={date ? formatEventDate(date) : undefined}
-      className="w-full max-w-md rounded-card border border-border bg-surface p-0 text-foreground backdrop:bg-scrim"
+      // `m-auto` no es decorativo: el UA centra un <dialog> modal con
+      // `inset: 0; margin: auto`, y el preflight de Tailwind v4 pone `margin: 0`
+      // a TODO, así que el centrado del navegador se pierde y la hoja se pega
+      // arriba (medido: 0 px de hueco arriba, 563 px abajo). Hay que devolverlo
+      // a mano.
+      //
+      // El ancho deja un respiro lateral (`calc(100% - 2rem)`) en vez de pegarse
+      // a los bordes, y la altura se topa para que un día con muchas marcas
+      // scrollee DENTRO de la hoja en lugar de salirse de la pantalla.
+      className="m-auto max-h-[85svh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-card border border-border bg-surface p-0 text-foreground backdrop:bg-scrim"
     >
       {date && (
         <div className="flex flex-col gap-3 p-4">

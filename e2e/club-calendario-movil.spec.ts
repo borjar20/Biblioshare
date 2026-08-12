@@ -335,6 +335,52 @@ test("calendario móvil: ni la celda ni el chip de la agenda desbordan su caja",
     );
     expect(desbordeHorizontal, "el calendario no debe desbordar a lo ancho a 390 px").toBe(0);
 
+    // ── 6. La hoja del día se abre CENTRADA, no pegada arriba ──
+    //
+    // El UA centra un <dialog> modal con `inset: 0; margin: auto`, y el
+    // preflight de Tailwind v4 pone `margin: 0` a todo: sin devolver el
+    // `m-auto` a mano, la hoja aparece arriba del todo. Se mide el hueco de
+    // arriba contra el de abajo en vez de comprobar la clase, que es lo único
+    // que distingue "centrado" de "tiene una clase que suena a centrado".
+    await page
+      .getByRole("grid")
+      .getByRole("button", { name: new RegExp(`Estreno seguido ${ts}`) })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    const huecos = await page.evaluate(() => {
+      const hoja = document.querySelector("dialog[open]")!.getBoundingClientRect();
+      return { arriba: hoja.top, abajo: window.innerHeight - hoja.bottom };
+    });
+    expect(
+      Math.abs(huecos.arriba - huecos.abajo),
+      `la hoja del día debe quedar centrada (arriba ${Math.round(huecos.arriba)}px, abajo ${Math.round(huecos.abajo)}px)`,
+    ).toBeLessThanOrEqual(2);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+
+    // ── 7. Los controles de mes no se mueven al cambiar de mes ──
+    //
+    // El nombre del mes marcaba el ancho ("Mayo 2027" mide bastante menos que
+    // "Septiembre 2027"), así que la flecha de siguiente y el botón «Hoy»
+    // saltaban de sitio en cada pulsación: se pulsa dos veces seguidas y el
+    // botón ya no está donde estaba el dedo. Se recorren los DOCE meses en vez
+    // de un par: así el test no depende de acertar cuál es el nombre más largo,
+    // ni de que el locale sea el de hoy.
+    const siguiente = page.getByRole("button", { name: /mes siguiente/i });
+    const saltos: string[] = [];
+    let xReferencia: number | null = null;
+    for (let i = 0; i < 12; i++) {
+      const mes = (await page.getByTestId("calendar-month").textContent()) ?? "";
+      const x = Math.round((await siguiente.boundingBox())!.x);
+      if (xReferencia === null) xReferencia = x;
+      else if (Math.abs(x - xReferencia) > 1) saltos.push(`${mes}: ${x - xReferencia}px`);
+      await siguiente.click();
+      await expect(page.getByTestId("calendar-month")).not.toHaveText(mes);
+    }
+    expect(saltos, "la flecha de mes siguiente no debe moverse al cambiar de mes").toEqual(
+      [],
+    );
+
     console.log("CALENDARIO MÓVIL OK:", club.slug);
   } finally {
     // fetch nativo, NO el fixture `request`: ese muere con el contexto del
