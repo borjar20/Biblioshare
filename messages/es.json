@@ -845,6 +845,8 @@
     "tierlistPickTier": "Elige el tier:",
     "tierlistUnplace": "Quitar",
     "groupActive": "Activas · {count}",
+    "groupOngoing": "En curso · {count}",
+    "groupUpcoming": "Próximas · {count}",
     "groupProposed": "Propuestas · esperan moderación · {count}",
     "groupFinished": "Finalizadas",
     "participate": "{count, plural, one {# participa} other {# participan}}",

@@ -33,7 +33,10 @@ export function ActivityList({
   // las actividades frescas. Sin espejo local ni re-fetch cliente.
   const activities = initialActivities;
 
-  const { active, proposed, finished } = groupActivities(activities);
+  const { enCurso, proximas, proposed, finished } = groupActivities(
+    activities,
+    today,
+  );
 
   // El vacío se gatea por los TRES grupos ya filtrados, nunca por
   // `activities.length`: la lista cruda SIGUE trayendo los eventos (es
@@ -42,7 +45,10 @@ export function ActivityList({
   // <Group> devuelven null por vacíos y el mensaje no se pintaba -- se veía el
   // botón "Proponer actividad" sobre un hueco, sin ninguna explicación.
   const sinActividades =
-    active.length === 0 && proposed.length === 0 && finished.length === 0;
+    enCurso.length === 0 &&
+    proximas.length === 0 &&
+    proposed.length === 0 &&
+    finished.length === 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,8 +62,19 @@ export function ActivityList({
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       )}
 
-      <Group title={t("groupActive", { count: active.length })}>
-        {active.map((activity) => (
+      <Group title={t("groupOngoing", { count: enCurso.length })}>
+        {enCurso.map((activity) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            clubSlug={clubSlug}
+            today={today}
+          />
+        ))}
+      </Group>
+
+      <Group title={t("groupUpcoming", { count: proximas.length })}>
+        {proximas.map((activity) => (
           <ActivityCard
             key={activity.id}
             activity={activity}
