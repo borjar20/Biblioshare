@@ -55,6 +55,19 @@ export function ClubCalendar({
   const seguidosDelMes = agendaDelMes.filter((m) => m.followedByViewer);
   const agenda = soloSeguidos ? seguidosDelMes : agendaDelMes;
 
+  // La marca de «seguido» de la leyenda. Se calcula UNA vez aquí porque la
+  // montan las dos ramas de la leyenda (la plegable de móvil y la fija de
+  // escritorio), y solo se pinta si hay algo seguido este mes: una leyenda que
+  // explica un símbolo que no aparece es ruido. Solo la lleva la PRIMERA fila
+  // («marcas»), no las tres.
+  const seguidoBadge =
+    viewerIsMember && seguidosDelMes.length > 0 ? (
+      <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
+        <BellIcon className="h-2.5 w-2.5" aria-hidden />
+        {t("eventFollowedBadge")}
+      </span>
+    ) : null;
+
   function irAlMes(destino: string) {
     // Sin esta guarda, pulsar "Hoy" estando ya en el mes actual apila una
     // entrada de historial idéntica: el usuario pulsa atrás y no ve pasar nada.
@@ -144,40 +157,26 @@ export function ClubCalendar({
                 obliga a adivinar qué significa. Solo se pinta si hay algo
                 seguido este mes -- una leyenda para un símbolo que no aparece es
                 ruido. */}
-            {(() => {
-              const seguidoBadge =
-                viewerIsMember && seguidosDelMes.length > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
-                    <BellIcon className="h-2.5 w-2.5" aria-hidden />
-                    {t("eventFollowedBadge")}
-                  </span>
-                ) : null;
+            {/* Móvil: plegada. Ocupaba ~120 px antes de que empezara la
+                rejilla, que es justo el sitio que la rejilla necesita.
+                <details> nativo: cero JS, disclosure y teclado de serie. NO
+                persiste entre visitas a propósito -- el componente no se
+                remonta al cambiar de mes (el mes viaja por pushState), así que
+                quien la abre la conserva mientras navega de mes, que es el
+                caso real. */}
+            <details className="flex flex-col gap-1.5 lg:hidden">
+              <summary className="w-fit cursor-pointer font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase">
+                {t("legendToggle")}
+              </summary>
+              <div className="mt-1.5 flex flex-col gap-1.5">
+                <LegendRows t={t} seguidoBadge={seguidoBadge} />
+              </div>
+            </details>
 
-              return (
-                <>
-                  {/* Móvil: plegada. Ocupaba ~120 px antes de que empezara la
-                      rejilla, que es justo el sitio que la rejilla necesita.
-                      <details> nativo: cero JS, disclosure y teclado de serie.
-                      NO persiste entre visitas a propósito -- el componente no
-                      se remonta al cambiar de mes (el mes viaja por
-                      pushState), así que quien la abre la conserva mientras
-                      navega de mes, que es el caso real. */}
-                  <details className="flex flex-col gap-1.5 lg:hidden">
-                    <summary className="w-fit cursor-pointer font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase">
-                      {t("legendToggle")}
-                    </summary>
-                    <div className="mt-1.5 flex flex-col gap-1.5">
-                      <LegendRows t={t} seguidoBadge={seguidoBadge} />
-                    </div>
-                  </details>
-
-                  {/* Escritorio: siempre abierta y sin disclosure, como hasta hoy. */}
-                  <div className="hidden lg:ml-auto lg:flex lg:flex-col lg:items-end lg:gap-1.5">
-                    <LegendRows t={t} seguidoBadge={seguidoBadge} />
-                  </div>
-                </>
-              );
-            })()}
+            {/* Escritorio: siempre abierta y sin disclosure, como hasta hoy. */}
+            <div className="hidden lg:ml-auto lg:flex lg:flex-col lg:items-end lg:gap-1.5">
+              <LegendRows t={t} seguidoBadge={seguidoBadge} />
+            </div>
           </div>
 
           <MonthGrid month={month} marks={marks} today={today} />
