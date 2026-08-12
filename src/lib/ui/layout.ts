@@ -74,6 +74,21 @@ export const SHELL_HOME = "max-w-2xl min-[1100px]:max-w-[1440px]";
 export const SHELL_POST = "max-w-2xl min-[1023px]:max-w-[1450px]";
 
 /**
+ * Contenedor de `/persona/[id]`, la ficha de persona en TRES áreas (FICHA ·
+ * OBRAS · RAÍL). Su propio ancho, NO `SHELL_APP`: el centro es un explorador de
+ * obras con filas de cuatro zonas (obra · crédito · estado · valoración), y el
+ * reparto del mockup —308 / fluida / 344 con gap 28 y padding 30— pide un
+ * contenedor de ~1740, muy por encima de los 1200 de `SHELL_APP`.
+ *
+ * Por debajo de 1000 la ficha va en UNA columna y se queda en `max-w-2xl` (672)
+ * —ancho de lectura, no una columna estirada a 1740—; a partir de 1000 crece y
+ * el reparto lo hace `.person-grid` (en `globals.css`), que `page.tsx` y
+ * `loading.tsx` comparten POR NOMBRE para no poder divergir (mismo motivo que
+ * `.post-grid` y `.home-grid`, ver #372/#376).
+ */
+export const SHELL_PERSON = "max-w-2xl min-[1000px]:max-w-[1740px]";
+
+/**
  * Portadas. Celda estrecha con `aspect-[2/3]`: a 1600px caben ocho y siguen
  * leyéndose. Las dos últimas paradas existen para que ensanchar el shell no
  * infle la portada al repartir 1600px entre cinco.
