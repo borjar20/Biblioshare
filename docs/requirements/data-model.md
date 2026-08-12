@@ -224,7 +224,7 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > contra `list_migrations`. **Producción pendiente del merge.**
 >
 > **Delta del 2026-08-12 (recordatorio predeterminado a una semana): aplicado y verificado
-> solo en DEV.** Migración `20260852_event_reminder_default_1w.sql`. Reemplaza DOS funciones
+> en DEV y en PROD.** Migración `20260852_event_reminder_default_1w.sql`. Reemplaza DOS funciones
 > para mover el predeterminado de 1440 a 10080: el default del parámetro de
 > `follow_club_event` y el literal del auto-seguimiento del organizador dentro de
 > `create_club_event` (el segundo no pasa por la primera, y es el que se olvida). **Ninguna
@@ -232,10 +232,14 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > sigue un evento conserva el offset que eligió. El conjunto de valores válidos no se amplía
 > — `private.valid_event_reminder` ya aceptaba 10080. Verificado contra `pg_proc`
 > (`pg_get_function_arguments` devuelve `DEFAULT 10080`, y `pg_get_functiondef` de las dos
-> funciones ya no contiene ningún 1440), nunca contra `list_migrations`. **Producción
-> pendiente del merge**, y por eso `schema-baseline.sql` —que replica PROD— conserva
-> todavía sus dos 1440. Ver `event-state.ts:DEFAULT_REMINDER_MINUTES`, que es quien manda en
-> la práctica.
+> funciones ya no contiene ningún 1440), nunca contra `list_migrations`. **Aplicada a PROD el
+> 2026-08-12** tras comprobar antes que su `create_club_event` vivo era la versión de
+> `20260842` (con `p_event_type`/`p_config`) y que su cuerpo solo difería en esa constante:
+> reemplazar la función sobre una prod más atrasada habría roto la creación de eventos.
+> `schema-baseline.sql` —que replica PROD— pasa a 10080 en sus dos sitios. Comprobado
+> además que **no se movió ninguna fila**: en prod quedan 23 seguimientos con 1440 (los que
+> ya existían) y 3 con 10080. Ver `event-state.ts:DEFAULT_REMINDER_MINUTES`, que es quien
+> manda en la práctica.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
