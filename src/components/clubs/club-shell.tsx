@@ -82,7 +82,7 @@ export async function ClubSidebar({
   pendingProposals,
 }: {
   club: ClubDetail;
-  active: ClubTab | "miembros" | "calendario";
+  active: ClubTab | "miembros";
   canModerate: boolean;
   pendingProposals: number;
 }) {
@@ -91,7 +91,7 @@ export async function ClubSidebar({
   const base = `/club/${club.slug}`;
 
   const items: {
-    key: ClubTab | "miembros" | "calendario";
+    key: ClubTab | "miembros";
     href: string;
     label: string;
     pip?: number;
