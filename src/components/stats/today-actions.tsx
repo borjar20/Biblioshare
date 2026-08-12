@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { setEpisodeWatched } from "@/lib/series/episode-actions";
+import { updateStatus } from "@/lib/library/manage-actions";
+import { itemHref } from "@/lib/catalog/item-href";
 import { clearTimer, elapsedMs, pause, start, toMinutes, writeTimer } from "@/lib/sessions/timer";
 import { hasTime, useTimerState } from "@/lib/sessions/use-timer-state";
 import { ClockIcon, PencilIcon, CheckIcon } from "@/components/ui/icons";
@@ -15,12 +17,15 @@ import { ClockIcon, PencilIcon, CheckIcon } from "@/components/ui/icons";
 //                navegación: pulsas y el reloj corre en la propia tarjeta.
 //   · Serie    → no hay cronómetro: una serie se mide en episodios (§7.14), así
 //                que la acción es marcar el siguiente.
-//   · Película → ni sesión ni episodios: solo Registrar.
+//   · Película → ni sesión ni episodios. Cuando cae en el foco es una elección
+//                del SORTEO en estado «para ver» (in_progress de sistema, ver
+//                decisiones.md 2026-08-12): la acción es marcarla Vista de un
+//                toque, que la salda (completed) y la saca del foco.
 //
 // "Registrar" abre la hoja de sesión (modal, vía ruta interceptada) sin sacarte
 // del inicio, igual que el del cronómetro pero sin tiempo puesto. Solo cae a la
-// pestaña Registro de la ficha cuando NO hay hoja que abrir: películas, o un
-// ítem sin pase activo.
+// pestaña Registro de la ficha cuando NO hay hoja que abrir: un ítem sin pase
+// activo.
 //
 // Es cliente por el cronómetro; los textos llegan traducidos porque `t` no
 // cruza la frontera servidor→cliente.
@@ -32,11 +37,13 @@ export type TodayActionsLabels = {
   notes: string;
   timerLabel: string;
   nextEpisode: string | null;
+  markSeen: string;
 };
 
 export function TodayActions({
   passId,
   itemType,
+  itemId,
   seriesId,
   nextEpisode,
   sessionHref,
@@ -46,6 +53,8 @@ export function TodayActions({
   /** null en datos huérfanos: sin pase activo no hay sesión que abrir. */
   passId: string | null;
   itemType: "book" | "movie" | "series";
+  /** El id de la obra (para «Marcar Vista» de una película del foco). */
+  itemId: string;
   seriesId: string;
   nextEpisode: { season: number; episode: number } | null;
   /** La hoja de sesión: destino del cronómetro y también de "Registrar". */
@@ -56,6 +65,8 @@ export function TodayActions({
 }) {
   const canTime = itemType === "book" && passId !== null && sessionHref !== null;
   const canMark = itemType === "series" && nextEpisode !== null;
+  // Película en el foco = elección del sorteo «para ver»: un toque la marca Vista.
+  const canSeen = itemType === "movie" && passId !== null;
 
   // El hook va incondicional (regla de los hooks); sin pase, readTimer devuelve
   // el reloj a cero y nadie lo mira.
@@ -76,8 +87,11 @@ export function TodayActions({
           label={labels.nextEpisode}
         />
       )}
+      {canSeen && <MarkSeen itemId={itemId} label={labels.markSeen} />}
 
-      {!timing && (
+      {/* «Registrar» de respaldo: no para películas, que ya tienen su acción
+          propia (Marcar Vista) — dos botones a la vez confundirían. */}
+      {!timing && !canSeen && (
         <Link
           href={sessionHref ?? logHref}
           className={`flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold transition-colors hover:bg-surface-muted ${
@@ -113,6 +127,45 @@ function MarkNextEpisode({
         // redirige a la hoja de cierre — por eso no se toca nada aquí después.
         startTransition(async () => {
           await setEpisodeWatched(seriesId, nextEpisode.season, nextEpisode.episode, true);
+        })
+      }
+      className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"
+    >
+      <CheckIcon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
+
+// «Marcar Vista» de la película elegida por el sorteo (foco del home). La saca
+// del estado de sistema «para ver» (in_progress) y la cierra como Vista con el
+// mismo server action que el resto de la app. Igual que marcar Vista EN LA
+// FICHA, encadena la hoja de puntuar/reseñar — pero se abre EN LA FICHA vía
+// `?cerrar=<passId>`, no incrustada en el foco.
+//
+// Por qué en la ficha y no aquí: al completar, la película deja de ser
+// in_progress, así que la revalidación saca su tarjeta del foco; un modal
+// incrustado en esa tarjeta se desmontaría en el acto («salta y se pierde»). La
+// ficha es un host estable y `/pelicula/[id]?cerrar=<passId>` ya abre esa misma
+// hoja (validando que el passId sea el del pase activo). El pase completado
+// sigue `is_active`, así que la validación pasa.
+function MarkSeen({ itemId, label }: { itemId: string; label: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() =>
+        startTransition(async () => {
+          const outcome = await updateStatus("movie", itemId, "completed");
+          if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+            router.push(`${itemHref("movie", itemId)}?cerrar=${outcome.passId}&tab=log`);
+          } else {
+            // Sin cierre no hay nada que puntuar: solo refresca para sacarla del foco.
+            router.refresh();
+          }
         })
       }
       className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"

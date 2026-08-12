@@ -145,7 +145,16 @@
     "timerNotes": "+ Nota",
     "timerLabel": "Tiempo de esta sesión",
     "markEpisode": "T{season} · E{episode}",
-    "focusMini": "Poner {title} arriba"
+    "markSeen": "Marcar Vista",
+    "pickToWatch": "Para ver",
+    "focusMini": "Poner {title} arriba",
+    "nextUpTitle": "¿Qué te apetece hoy?",
+    "startCta": "Empezar",
+    "collectionTitle": "¿Qué empezamos?",
+    "emptyTitle": "Encuentra algo para disfrutar",
+    "emptyBody": "Aún no tienes nada a medias. Busca un título o asómate a tu colección para elegir por dónde seguir.",
+    "emptySearch": "Buscar",
+    "emptyExplore": "Explorar la colección"
   },
   "search": {
     "title": "Buscar",
@@ -1234,7 +1243,7 @@
       "groupLabel": "Tu estado",
       "inProgress": {
         "book": "Leyendo",
-        "movie": "Viendo",
+        "movie": "Para ver",
         "series": "Viendo"
       },
       "completed": {
@@ -1910,7 +1919,11 @@
     "summaryYear": "Este año",
     "summaryStreak": "Racha",
     "summaryBooks": "{count, plural, one {libro} other {libros}}",
-    "summaryDays": "{count, plural, one {día} other {días}}"
+    "summaryDays": "{count, plural, one {día} other {días}}",
+    "welcomeTitle": "Aquí verás cómo vas",
+    "welcomeBody": "Tu semana de lectura, tu año y tu racha aparecerán a medida que registres lo que disfrutas.",
+    "welcomeGoalCta": "Fijar una meta 2026",
+    "welcomeExploreCta": "Explorar la colección"
   },
   "whoToFollow": {
     "title": "A quién seguir",

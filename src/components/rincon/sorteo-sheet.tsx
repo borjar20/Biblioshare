@@ -135,22 +135,29 @@ export function SorteoSheet({
     }
 
     setPhase("spinning");
-    const steps = shelf.length + target + 1;
+    // Duración mínima para que la ruleta se VEA como tal: contar "una vuelta +
+    // target" daba 3–4 ticks (~250 ms) con pocos lomos, imperceptible. Ahora se
+    // gira hasta cubrir MIN_SPIN_MS y, ya cubierto, se para en cuanto el tick
+    // cae sobre el ganador — parada limpia, sin salto del lomo elegido.
+    const MIN_SPIN_MS = 1200;
     let step = 0;
+    let elapsed = 0;
     let delay = 40;
     const run = () => {
-      setTickIndex(step % shelf.length);
+      const idx = step % shelf.length;
+      setTickIndex(idx);
       step += 1;
-      if (step < steps) {
-        delay = Math.min(delay * 1.16, 240);
-        timers.current.push(window.setTimeout(run, delay));
-      } else {
+      if (elapsed >= MIN_SPIN_MS && idx === target) {
         // Pausa con el ganador elevado y el resto atenuado, luego revelado.
         setTickIndex(null);
         setWinner(target);
         setPicked(shelf[target]);
         timers.current.push(window.setTimeout(() => setPhase("revealed"), 520));
+        return;
       }
+      delay = Math.min(delay * 1.16, 240);
+      elapsed += delay;
+      timers.current.push(window.setTimeout(run, delay));
     };
     run();
   }
@@ -183,11 +190,11 @@ export function SorteoSheet({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="m-0 h-dvh max-h-none w-screen max-w-none rounded-none p-0 backdrop:bg-black/60 sm:m-auto sm:h-auto sm:max-h-[92dvh] sm:w-[540px] sm:rounded-[20px]"
+      className="m-0 w-screen max-w-none rounded-none p-0 backdrop:bg-black/60 max-sm:h-dvh sm:m-auto sm:w-[540px] sm:rounded-[20px]"
       style={{ background: "#1f1a16", color: "#f0e8db", border: "1px solid rgba(240,232,219,.12)" }}
       aria-label={t("sorteoTitle")}
     >
-      <div className="flex h-full flex-col overflow-y-auto p-5 sm:p-6">
+      <div className="flex flex-col overflow-y-auto p-5 max-sm:h-full sm:max-h-[92dvh] sm:p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl font-semibold">{t("sorteoTitle")}</h2>
           <button

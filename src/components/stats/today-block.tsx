@@ -6,12 +6,17 @@ import { getTodayFocus, getNextEpisode, type TodayPass } from "@/lib/stats/get-t
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { TodayCard } from "./today-card";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
+import { TodayHeader } from "./today-header";
+import { ProximaLectura } from "./proxima-lectura";
+import { CollectionSuggestions } from "./collection-suggestions";
+import { EmptyDiscovery } from "./empty-discovery";
 
 // Cuántas portadas de la cola se enseñan. En móvil el resto queda tras el
 // scroll; en escritorio caben seis por fila, así que doce son dos filas, la
@@ -21,10 +26,9 @@ const LATER_SHOWN = 12;
 // El bloque "¿Qué has disfrutado hoy?" (frame G). Encabeza el Inicio, sobre el
 // feed: primero lo tuyo a medias, después lo de los demás.
 //
-// Si no tienes nada en curso no se pregunta qué has disfrutado hoy: un bloque
-// que lo pregunta y no ofrece nada que tocar sería un hueco, no una invitación.
-// Pero "Para más tarde" SÍ sobrevive solo, porque es justo cuando más sirve:
-// sin nada a medias, lo que necesitas es elegir lo próximo.
+// Escalera de estados de la columna personal (nunca un hueco): en curso →
+// próxima lectura → sugerencias de colección → descubrimiento. Ver
+// docs/superpowers/specs/2026-08-11-inicio-estado-vacio-columna-personal-design.md.
 //
 // De "Registrar algo nuevo" (el tercer bloque del frame G) no queda nada:
 // descartado por el usuario, 2026-07-17.
@@ -45,7 +49,42 @@ export async function TodayBlock({ userId }: { userId: string }) {
       <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} />
     ) : null;
 
-  if (!focus.featured) return later && <div className="pb-1">{later}</div>;
+  // Escalera de estados: si no hay nada en curso, la columna no queda vacía —
+  // ofrece la próxima lectura, luego sugerencias de colección, luego
+  // descubrimiento. El estado "En curso" (focus.featured) sigue debajo intacto.
+  if (!focus.featured) {
+    if (planned.length > 0) {
+      // La próxima lectura la decide el SORTEO (mismo pool que "Sacar un lomo"
+      // del Rincón: pases planned activos con su estimación). Perezoso: solo se
+      // pide cuando de verdad estamos en el estado 2.
+      const pool = await getSorteoPool(supabase, userId);
+      return (
+        <div className="pb-1">
+          <ProximaLectura pool={pool.items} collections={pool.collections} later={later} />
+        </div>
+      );
+    }
+    // Solo se pide la colección cuando de verdad hace falta (sin en curso y sin
+    // cola): un query menos en el camino feliz. Solo completados — releer es
+    // limpio; los abandonados caerían en la hoja de retomar y por eso van al
+    // estado 4 (ver spec).
+    const collection = await getLibraryItems(supabase, userId, {
+      status: "completed",
+      limit: 3,
+    });
+    if (collection.length > 0) {
+      return (
+        <div className="pb-1">
+          <CollectionSuggestions items={collection} />
+        </div>
+      );
+    }
+    return (
+      <div className="pb-1">
+        <EmptyDiscovery />
+      </div>
+    );
+  }
 
   const passes = [focus.featured, ...focus.rest];
 
@@ -69,32 +108,13 @@ export async function TodayBlock({ userId }: { userId: string }) {
   );
 
   const t = await getTranslations("today");
-  // "Viernes · 17 jul". El español pone el día en minúscula y el frame lo
-  // escribe capitalizado; como el texto ya va en `uppercase` por CSS, la
-  // capitalización solo importa si algún día se quita.
-  const dateLabel = new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-  })
-    .format(new Date())
-    .replace(",", " ·")
-    .replace(/^./, (c) => c.toUpperCase());
 
   return (
     // `today-block`: la sección personal del Inicio. Va SIEMPRE en una columna
     // (destacado arriba, tiras debajo); la fila de tablet a dos columnas se
     // retiró, así que ya no hay container query.
     <section className="today-block flex flex-col gap-3">
-      {/* `today-head`: fecha sobre título, apilado a todos los tamaños. */}
-      <div className="today-head">
-        <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-muted-foreground">
-          {dateLabel}
-        </p>
-        <h2 className="mt-1.5 font-serif text-[26px] leading-[1.02] font-semibold tracking-[-0.01em] max-[639px]:text-[21px]">
-          {t("title")}
-        </h2>
-      </div>
+      <TodayHeader title={t("title")} />
 
       {/* Apilado por TodayPicker (`.today-split`, hoy solo flex-col): en curso →
           continúa → para más tarde. */}
@@ -173,7 +193,9 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
       {/* El "◆ 4 d" del frame ya se puede pintar: la racha es DE ESTE PASE, no
           la global del perfil, así que el rombo dice la verdad. */}
       <div className="mt-1.5 flex items-center justify-between gap-2 font-mono text-[9px] text-muted-foreground">
-        <span className="truncate">{progress ? progress.label : t("noProgress")}</span>
+        <span className="truncate">
+          {progress ? progress.label : item.itemType === "movie" ? t("pickToWatch") : t("noProgress")}
+        </span>
         {pass.streakDays > 0 && (
           <span className="shrink-0 text-gold-ink">{t("streakShort", { count: pass.streakDays })}</span>
         )}
