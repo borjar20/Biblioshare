@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
-export type ClubTab = "feed" | "actividades" | "gestion";
+export type ClubTab = "feed" | "actividades" | "calendario" | "gestion";
 
-export const CLUB_TABS: ClubTab[] = ["feed", "actividades", "gestion"];
+export const CLUB_TABS: ClubTab[] = ["feed", "actividades", "calendario", "gestion"];
+
+// El calendario es una RUTA propia (/club/[slug]/calendario), no un estado de la
+// página del club: sus hermanas viven en `?tab=`, él no. Sin esta distinción la
+// pestaña llevaría a `?tab=calendario`, que la página del club no sabe pintar.
+// El componente tenía asumido que todas las pestañas eran lo primero.
+function tabHref(basePath: string, tab: ClubTab): string {
+  return tab === "calendario" ? `${basePath}/calendario` : `${basePath}?tab=${tab}`;
+}
 
 // El club era un scroll único con cabecera + gestión + actividades + feed
 // apilados. Tres pestañas: cada una responde a una intención distinta.
@@ -29,7 +37,7 @@ export async function ClubTabs({
         return (
           <Link
             key={tab}
-            href={`${basePath}?tab=${tab}`}
+            href={tabHref(basePath, tab)}
             className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
               isActive
                 ? "border-accent text-foreground"

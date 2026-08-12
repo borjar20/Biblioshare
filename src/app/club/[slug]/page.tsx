@@ -86,8 +86,17 @@ export default async function ClubPage({
   const requested = CLUB_TABS.includes(tabParam as ClubTab)
     ? (tabParam as ClubTab)
     : null;
-  const tab: ClubTab =
-    requested === "gestion" && !canModerate ? "feed" : (requested ?? "feed");
+
+  // `calendario` está en CLUB_TABS para que salga como pestaña, pero NO es un
+  // estado de esta página: es otra ruta. Quien llegue con ?tab=calendario (un
+  // enlace viejo, un marcador) va a la ruta de verdad en vez de ver esta página
+  // en blanco.
+  if (requested === "calendario") redirect(`/club/${club.slug}/calendario`);
+
+  const tab: Exclude<ClubTab, "calendario"> =
+    requested === "gestion" && !canModerate
+      ? "feed"
+      : ((requested as Exclude<ClubTab, "calendario">) ?? "feed");
 
   // La cabecera y las pestañas (con su badge) forman el shell: solo necesitan
   // el club y el recuento de actividades. El contenido pesado de cada pestaña
