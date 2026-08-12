@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ClubActivity } from "@/lib/clubs/activities/core";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
+import { ActivityAccentTile } from "./activity-accent-tile";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
 import { formatEventDate } from "@/lib/clubs/activities/format-date";
 import { isPastEvent } from "@/lib/clubs/activities/group-activities";
@@ -66,12 +67,9 @@ export function ActivityCard({
     <>
       {/* El tipo se reconoce por su icono y su color, sin tener que leer.
           Baldosa 40px teñida por tipo, como el .ic del frame 3. */}
-      <span
-        aria-hidden
-        className={`grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
-      >
+      <ActivityAccentTile kind={activity.kind}>
         <accent.Icon className="h-4 w-4" />
-      </span>
+      </ActivityAccentTile>
 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate font-serif text-sm font-semibold text-foreground">

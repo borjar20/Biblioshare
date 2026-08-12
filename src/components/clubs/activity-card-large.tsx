@@ -6,6 +6,7 @@ import type { ClubActivity } from "@/lib/clubs/activities/core";
 import type { ActivityProgress } from "@/lib/clubs/activities/progress";
 import { describeProgress, type Translate } from "@/lib/clubs/activities/kind-metrics";
 import { ACTIVITY_ACCENT } from "@/lib/clubs/activities/kinds/accent";
+import { ActivityAccentTile } from "./activity-accent-tile";
 import { formatEventDate } from "@/lib/clubs/activities/format-date";
 
 // La tarjeta de "En curso" (spec 2026-08-12). La compacta (activity-card.tsx) se
@@ -40,6 +41,14 @@ export function ActivityCardLarge({
 
   const cta = activity.viewerIsParticipant ? t("ctaContinue") : t("ctaJoin");
   const restantes = activity.endsOn ? diasHasta(today, activity.endsOn) : null;
+  const metaParts = [
+    // "0 participantes" en algo a lo que nadie se apunta no informa de nada.
+    participants > 0 ? t("participants", { count: participants }) : null,
+    activity.endsOn ? t("cardEndsOn", { date: formatEventDate(activity.endsOn) }) : null,
+    // Solo a partir de un día: el mismo día que termina, "quedan 0 días" es
+    // una forma peor de decir lo que la fecha de al lado ya dice.
+    restantes !== null && restantes > 0 ? t("daysLeft", { count: restantes }) : null,
+  ].filter((p): p is string => Boolean(p));
 
   return (
     <Link
@@ -47,12 +56,9 @@ export function ActivityCardLarge({
       className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card transition-colors hover:border-accent/40"
     >
       <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className={`grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border ${accent.borderSoft} ${accent.bgSoft} ${accent.text}`}
-        >
+        <ActivityAccentTile kind={activity.kind}>
           <accent.Icon className="h-4 w-4" />
-        </span>
+        </ActivityAccentTile>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="font-serif text-base font-semibold text-foreground">
             {activity.title}
@@ -89,11 +95,9 @@ export function ActivityCardLarge({
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <span className="label-section">
-          {t("participants", { count: participants })}
-          {activity.endsOn && ` · ${t("cardEndsOn", { date: formatEventDate(activity.endsOn) })}`}
-          {/* Solo a partir de un día: el mismo día que termina, "quedan 0 días"
-              es una forma peor de decir lo que la fecha de al lado ya dice. */}
-          {restantes !== null && restantes > 0 && ` · ${t("daysLeft", { count: restantes })}`}
+          {/* "0 participantes" en algo a lo que nadie se apunta no informa de
+              nada -- mismo criterio que activity-card.tsx. */}
+          {metaParts.join(" · ")}
         </span>
         {/* La flecha es adorno: sin aria-hidden se cuela en el nombre accesible
             del enlace, que es la tarjeta ENTERA -- quien use lector de pantalla
