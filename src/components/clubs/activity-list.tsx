@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { type ClubActivity } from "@/lib/clubs/activities/core";
 import { groupActivities } from "@/lib/clubs/activities/group-activities";
-import { ActivityComposer } from "./activity-composer";
+import { ActivityComposer, ProposeActivityLink } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
 import { ProposalModeration } from "./proposal-moderation";
 
@@ -17,6 +17,7 @@ export function ActivityList({
   initialActivities,
   isModerator,
   today,
+  composerOpen,
 }: {
   clubId: string;
   clubSlug: string;
@@ -27,6 +28,9 @@ export function ActivityList({
    *  respondía al huso del visitante y podía contradecir al calendario del club,
    *  que lo lee del servidor (#271). Ahora viaja como prop desde la página. */
   today: string;
+  /** Viene de `?nueva=1`: el botón de "proponer" vive en el shell (Task 10) y el
+   *  asistente aquí, en el contenido — no comparten árbol de React. */
+  composerOpen: boolean;
 }) {
   const t = useTranslations("activity");
   // Deriva de props: proponer/moderar revalida (Fase 1) y la RSC re-ejecuta con
@@ -56,7 +60,12 @@ export function ActivityList({
         clubId={clubId}
         clubSlug={clubSlug}
         isModerator={isModerator}
+        open={composerOpen}
       />
+
+      {/* El botón que antes pintaba el propio composer ahora es un enlace
+          aparte: navega a `?nueva=1`, que es lo que abre el asistente de arriba. */}
+      <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
 
       {sinActividades && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>

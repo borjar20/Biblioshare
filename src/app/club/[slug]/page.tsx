@@ -52,10 +52,10 @@ export default async function ClubPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; nueva?: string }>;
 }) {
   const { slug } = await params;
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, nueva } = await searchParams;
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/club/${slug}`));
@@ -157,6 +157,7 @@ export default async function ClubPage({
             initialActivities={activities}
             isModerator={canModerate}
             today={todayISO()}
+            composerOpen={nueva === "1"}
           />
         </div>
       )}
