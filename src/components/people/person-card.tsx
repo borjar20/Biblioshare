@@ -9,6 +9,7 @@ import {
 import { formatDots } from "@/lib/rating/dots";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { RatingHistogram } from "@/components/detail/rating-histogram";
+import { RatingDots } from "@/components/ui/rating-dots";
 import { BioClamp } from "./bio-clamp";
 import { ROLE_KEY } from "./role-labels";
 
@@ -63,7 +64,14 @@ export async function PersonCard({
 
   return (
     <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-[18px]">
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-surface-muted">
+      {/* `shrink-0` NO es decorativo. A ≥1600 esta card es el contenedor que
+          scrollea (ver `.person-grid` en globals.css), y en un flex column los
+          hijos ENCOGEN antes de provocar desbordamiento. El retrato es un
+          `aspect-square` sin contenido dentro —la Image va absoluta con
+          `fill`—, así que su altura mínima es 0 y era el primero en ceder: al
+          desplegar la biografía con "Ver más", la cara se aplastaba. Con esto
+          el retrato mantiene su cuadrado y lo que crece es el scroll. */}
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-xl bg-surface-muted">
         {person.photoUrl ? (
           <Image
             src={person.photoUrl}
@@ -114,8 +122,10 @@ export async function PersonCard({
 
       {loggedIn && summary.visible && (
         <>
-          <div className="h-px w-full bg-border" />
-          <div className="flex flex-col gap-2">
+          {/* Mismo motivo que el retrato: alturas fijas (la línea de 1px, las
+              barras del histograma) que el flex column aplastaría al scrollear. */}
+          <div className="h-px w-full shrink-0 bg-border" />
+          <div className="flex shrink-0 flex-col gap-2">
             <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
               {t("inYourLibrary")}
             </span>
@@ -137,25 +147,41 @@ export async function PersonCard({
               </div>
             )}
 
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-              {userAverage != null && (
-                // La nota se guarda 1–10 y se ENSEÑA sobre 5, como en toda la
-                // app (`formatDots`); el "/5" lo pone quien pinta.
-                <span>
-                  {t("yourAverage")}: {formatDots(userAverage)} / 5
+            {userAverage != null && (
+              // La media se PINTA con los mismos dots que una nota suelta, no
+              // como "3,5 / 5": es la unidad de medida de toda la app y se lee
+              // de un vistazo. El número se queda al lado porque los dots
+              // cuantizan a media nota (7,4 y 7,0 pintan idénticos) y aquí la
+              // diferencia sí importa: es un promedio, no una nota puesta.
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-muted-foreground">{t("yourAverage")}</span>
+                <RatingDots
+                  value={userAverage}
+                  size="sm"
+                  itemType={dominantItemType(works)}
+                />
+                <span className="text-[12px] text-muted-foreground">
+                  {formatDots(userAverage)}
                 </span>
-              )}
-              {pending > 0 && (
-                <span>
-                  {t("pending")}: {pending}
-                </span>
-              )}
-              {inProgress > 0 && (
-                <span>
-                  {t("inProgress")}: {inProgress}
-                </span>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Con la media fuera de esta fila, puede quedarse vacía —y el
+                `gap` del padre dejaría un hueco de la nada—. */}
+            {(pending > 0 || inProgress > 0) && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+                {pending > 0 && (
+                  <span>
+                    {t("pending")}: {pending}
+                  </span>
+                )}
+                {inProgress > 0 && (
+                  <span>
+                    {t("inProgress")}: {inProgress}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

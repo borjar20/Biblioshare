@@ -3,9 +3,31 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { RatingDots } from "@/components/ui/rating-dots";
 import { formatDots } from "@/lib/rating/dots";
+import type { ItemType } from "@/lib/catalog/types";
+import { dominantItemType } from "@/lib/people/derive-person-works";
 import type { PersonProfile } from "@/lib/people/profile-types";
 import { ROLE_KEY } from "./role-labels";
+
+function AverageRow({
+  label,
+  value,
+  itemType,
+}: {
+  label: string;
+  /** Media en la escala de guardado, 1–10. */
+  value: number;
+  itemType: ItemType;
+}) {
+  return (
+    <span className="flex items-center gap-2">
+      {label}
+      <RatingDots value={value} size="sm" itemType={itemType} />
+      {formatDots(value)}
+    </span>
+  );
+}
 
 function RailCard({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -124,17 +146,23 @@ export async function PersonRail({ profile }: { profile: PersonProfile }) {
                 {t("railLastFinished")}: {lastFinished.title} · {lastFinished.finishedOn}
               </span>
             )}
-            {/* Sobre 5, como en toda la app: la nota se guarda 1–10 y se
-                enseña con cinco dots (`formatDots`). */}
+            {/* Las medias van con DOTS, igual que en la card de la izquierda y
+                que cualquier nota de la app; el número al lado porque el dot
+                cuantiza a media nota y un promedio de 7,4 y otro de 7,0 se
+                pintarían iguales. */}
             {profile.userAverage != null && (
-              <span>
-                {t("yourAverage")}: {formatDots(profile.userAverage)} / 5
-              </span>
+              <AverageRow
+                label={t("yourAverage")}
+                value={profile.userAverage}
+                itemType={dominantItemType(profile.works)}
+              />
             )}
             {profile.globalAverage != null && (
-              <span>
-                {t("railGlobalAverage")}: {formatDots(profile.globalAverage)} / 5
-              </span>
+              <AverageRow
+                label={t("railGlobalAverage")}
+                value={profile.globalAverage}
+                itemType={dominantItemType(profile.works)}
+              />
             )}
           </div>
         </RailCard>
