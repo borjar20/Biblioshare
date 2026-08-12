@@ -25,6 +25,7 @@ import {
 import { markClubRead } from "@/lib/clubs/unread";
 import { ClubFeed } from "@/components/clubs/club-feed";
 import { ActivityList } from "@/components/clubs/activity-list";
+import { isComposerOpen } from "@/components/clubs/activity-composer";
 import {
   ClubShell,
   ClubSidebar,
@@ -157,7 +158,7 @@ export default async function ClubPage({
             initialActivities={activities}
             isModerator={canModerate}
             today={todayISO()}
-            composerOpen={nueva === "1"}
+            composerOpen={isComposerOpen(nueva)}
           />
         </div>
       )}

@@ -1697,8 +1697,12 @@ En `src/app/club/[slug]/page.tsx`:
 ```tsx
 import { getActivitiesProgress } from "@/lib/clubs/activities/progress";
 import { ActivitiesAside } from "@/components/clubs/activities-aside";
-import { ProposeActivityLink } from "@/components/clubs/activity-composer";
+import { ProposeActivityLink, isComposerOpen } from "@/components/clubs/activity-composer";
 ```
+
+`isComposerOpen` ya existe y `page.tsx` ya la usa: la comparación con `"1"` vive
+en **un solo sitio**. No la reimplementes a mano aquí ni en la cabecera — tres
+copias de la misma regla y nada que avise cuando una se queda atrás.
 
 2. Leer el parámetro nuevo — cambiar la firma de `searchParams`:
 
@@ -1716,7 +1720,7 @@ import { ProposeActivityLink } from "@/components/clubs/activity-composer";
         <ClubMainHeader
           title={tt(tab)}
           action={
-            tab === "actividades" && nueva !== "1" ? (
+            tab === "actividades" && !isComposerOpen(nueva) ? (
               <ProposeActivityLink clubSlug={club.slug} />
             ) : undefined
           }
