@@ -27,7 +27,7 @@ import {
 import { markClubRead } from "@/lib/clubs/unread";
 import { ClubFeed } from "@/components/clubs/club-feed";
 import { ActivityList } from "@/components/clubs/activity-list";
-import { ActivitiesAside } from "@/components/clubs/activities-aside";
+import { ActivitiesAside, hasAsideContent } from "@/components/clubs/activities-aside";
 import { ProposeActivityLink } from "@/components/clubs/activity-composer";
 import { isComposerOpen } from "@/lib/clubs/activities/propose-url";
 import {
@@ -289,6 +289,20 @@ async function ClubActivitiesSection({
     getClubCalendarMarks(club.id, club.slug, hoy, userId),
   ]);
 
+  // A diferencia del feed de Inicio, aquí no hay nada JUSTO ENCIMA que ya
+  // enseñe inicios/cierre -- se piden los cuatro tipos de marca, si no un club
+  // cuya única fecha próxima es el cierre de un reto nunca la vería.
+  const asideMarks = proximasMarcas(marks, hoy, 4, ["hito", "evento", "inicio", "cierre"]);
+  // Decidida AQUÍ, no dentro de ActivitiesAside: una pista de grid no
+  // desaparece porque su hijo pinte null, así que ActivityList necesita saber
+  // de antemano si va a haber rail para reservarle o no la columna de 320px.
+  const hasAside = hasAsideContent({
+    marksCount: asideMarks.length,
+    activeCount: enCurso.length,
+    finishedCount: finished.length,
+    memberCount: club.memberCount,
+  });
+
   return (
     <ActivityList
       clubId={club.id}
@@ -298,9 +312,10 @@ async function ClubActivitiesSection({
       today={hoy}
       progress={progress}
       composerOpen={composerOpen}
+      hasAside={hasAside}
       aside={
         <ActivitiesAside
-          marks={proximasMarcas(marks, hoy, 4)}
+          marks={asideMarks}
           clubSlug={club.slug}
           activeCount={enCurso.length}
           finishedCount={finished.length}

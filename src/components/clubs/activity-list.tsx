@@ -26,6 +26,7 @@ export function ActivityList({
   today,
   progress,
   composerOpen,
+  hasAside,
   aside,
 }: {
   clubId: string;
@@ -38,6 +39,11 @@ export function ActivityList({
   /** Solo trae las de "En curso": del resto no se pide progreso. */
   progress: Map<string, ActivityProgress>;
   composerOpen: boolean;
+  /** Si `aside` va a pintar algo. Decidida por quien llama (con la MISMA
+   *  lógica que decide si `aside` es null), porque una pista de grid no
+   *  desaparece porque su hijo pinte null -- sin esto la columna de 320px se
+   *  queda reservada y en blanco, y la principal no se centra. */
+  hasAside: boolean;
   /** El rail, ya resuelto en servidor. null si no tiene nada que decir. */
   aside: ReactNode;
 }) {
@@ -98,7 +104,13 @@ export function ActivityList({
         <>
           {!composerOpen && <ActivitySectionNav sections={sections} />}
 
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+          <div
+            className={
+              hasAside
+                ? "flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7"
+                : "flex flex-col gap-6 lg:mx-auto lg:max-w-3xl"
+            }
+          >
             <div className="flex min-w-0 flex-col gap-6">
               <ProposalModeration
                 proposals={proposed}

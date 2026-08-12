@@ -516,6 +516,33 @@ describe("proximasMarcas", () => {
       "tarde",
     ]);
   });
+
+  // La pestaña Actividades (a diferencia del feed) no tiene nada encima que ya
+  // enseñe los inicios/cierre, así que pide el cuarto parámetro con los cuatro
+  // tipos -- si no, su rail de fechas no puede enseñar NUNCA una actividad que
+  // solo tiene inicio/cierre y ningún hito ni evento.
+  it("con el cuarto parámetro también entran inicio y cierre", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ id: "a-normal", startsOn: "2026-07-23", endsOn: "2026-07-30" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    const todos = proximasMarcas(marks, HOY, 10, ["hito", "evento", "inicio", "cierre"]);
+    expect(todos.map((m) => m.markKind)).toEqual(["inicio", "cierre"]);
+  });
+
+  it("el cuarto parámetro puede acotar a un solo kind", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ id: "a-normal", startsOn: "2026-07-23", endsOn: "2026-07-30" })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(proximasMarcas(marks, HOY, 10, ["cierre"]).map((m) => m.markKind)).toEqual([
+      "cierre",
+    ]);
+  });
 });
 
 describe("marksByDate", () => {
