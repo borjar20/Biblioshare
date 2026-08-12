@@ -139,37 +139,45 @@ export function ClubCalendar({
                 preguntas, y mezcladas en una línea envuelven en móvil. Las tres
                 se DERIVAN de las claves de MARK_ACCENT, así que una clave nueva
                 aparece sola en su sitio. */}
-            <div className="flex flex-col gap-1.5 lg:ml-auto lg:items-end">
-              <div className="flex flex-wrap items-center gap-3">
-                <LegendLabel>{t("legendMarks")}</LegendLabel>
-                {LEYENDA_MARCAS.map((key) => (
-                  <LegendItem key={key} accentKey={key} t={t} />
-                ))}
-                {/* La marca de seguido también en la LEYENDA, no solo en la
-                    rejilla (§17): un icono nuevo en las celdas sin nada que lo
-                    explique obliga a adivinar qué significa. Solo se pinta si
-                    hay algo seguido este mes -- una leyenda para un símbolo que
-                    no aparece es ruido. */}
-                {viewerIsMember && seguidosDelMes.length > 0 && (
+            {/* La marca de seguido también en la LEYENDA, no solo en la rejilla
+                (§17): un icono nuevo en las celdas sin nada que lo explique
+                obliga a adivinar qué significa. Solo se pinta si hay algo
+                seguido este mes -- una leyenda para un símbolo que no aparece es
+                ruido. */}
+            {(() => {
+              const seguidoBadge =
+                viewerIsMember && seguidosDelMes.length > 0 ? (
                   <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-accent uppercase">
                     <BellIcon className="h-2.5 w-2.5" aria-hidden />
                     {t("eventFollowedBadge")}
                   </span>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <LegendLabel>{t("legendEvents")}</LegendLabel>
-                {LEYENDA_EVENTOS.map((key) => (
-                  <LegendItem key={key} accentKey={key} t={t} />
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <LegendLabel>{t("legendPremieres")}</LegendLabel>
-                {LEYENDA_LANZAMIENTOS.map((key) => (
-                  <LegendItem key={key} accentKey={key} t={t} />
-                ))}
-              </div>
-            </div>
+                ) : null;
+
+              return (
+                <>
+                  {/* Móvil: plegada. Ocupaba ~120 px antes de que empezara la
+                      rejilla, que es justo el sitio que la rejilla necesita.
+                      <details> nativo: cero JS, disclosure y teclado de serie.
+                      NO persiste entre visitas a propósito -- el componente no
+                      se remonta al cambiar de mes (el mes viaja por
+                      pushState), así que quien la abre la conserva mientras
+                      navega de mes, que es el caso real. */}
+                  <details className="flex flex-col gap-1.5 lg:hidden">
+                    <summary className="w-fit cursor-pointer font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase">
+                      {t("legendToggle")}
+                    </summary>
+                    <div className="mt-1.5 flex flex-col gap-1.5">
+                      <LegendRows t={t} seguidoBadge={seguidoBadge} />
+                    </div>
+                  </details>
+
+                  {/* Escritorio: siempre abierta y sin disclosure, como hasta hoy. */}
+                  <div className="hidden lg:ml-auto lg:flex lg:flex-col lg:items-end lg:gap-1.5">
+                    <LegendRows t={t} seguidoBadge={seguidoBadge} />
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           <MonthGrid month={month} marks={marks} today={today} />
@@ -250,5 +258,41 @@ function LegendItem({
       <accent.Icon className={`h-2.5 w-2.5 ${accent.text}`} aria-hidden />
       {t(`markAccent_${accentKey}`)}
     </span>
+  );
+}
+
+// Las tres filas, sin envoltorio: las montan DOS sitios -- el <details> de móvil
+// y el bloque siempre-abierto de escritorio. Extraerlas evita la copia que si no
+// haría falta, porque `open` de <details> no tiene variante responsive.
+function LegendRows({
+  t,
+  seguidoBadge,
+}: {
+  t: (key: string) => string;
+  /** La marca de «seguido», que solo se pinta si hay algo seguido este mes. */
+  seguidoBadge: React.ReactNode;
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <LegendLabel>{t("legendMarks")}</LegendLabel>
+        {LEYENDA_MARCAS.map((key) => (
+          <LegendItem key={key} accentKey={key} t={t} />
+        ))}
+        {seguidoBadge}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <LegendLabel>{t("legendEvents")}</LegendLabel>
+        {LEYENDA_EVENTOS.map((key) => (
+          <LegendItem key={key} accentKey={key} t={t} />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <LegendLabel>{t("legendPremieres")}</LegendLabel>
+        {LEYENDA_LANZAMIENTOS.map((key) => (
+          <LegendItem key={key} accentKey={key} t={t} />
+        ))}
+      </div>
+    </>
   );
 }
