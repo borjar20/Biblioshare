@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { confirmCheckpoint, type CheckpointViewModel } from "@/lib/clubs/activities/checkpoints";
+import { confirmCheckpoint, unconfirmCheckpoint, type CheckpointViewModel } from "@/lib/clubs/activities/checkpoints";
+import { unconfirmImpact } from "@/lib/clubs/activities/unconfirm-impact";
 import { formatPosition } from "@/lib/library/position";
 import type { ItemType } from "@/lib/catalog/types";
 import { CheckpointChat } from "./checkpoint-chat";
@@ -54,9 +55,14 @@ export function CheckpointList({
   const t = useTranslations("activity");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Qué hito tiene su pregunta abierta, y para qué. Uno como mucho: abrir la de
+  // un hito cierra cualquier otra, para no dejar dos preguntas a la vez en la
+  // misma lista.
+  const [asking, setAsking] = useState<{ id: string; action: "confirm" | "unconfirm" } | null>(null);
 
   function handleConfirm(checkpointId: string) {
     setError(null);
+    setAsking(null);
     startTransition(async () => {
       try {
         await confirmCheckpoint(checkpointId);
@@ -65,6 +71,45 @@ export function CheckpointList({
         setError(t("confirmCheckpointError"));
       }
     });
+  }
+
+  function handleUnconfirm(checkpointId: string) {
+    setError(null);
+    setAsking(null);
+    startTransition(async () => {
+      try {
+        await unconfirmCheckpoint(checkpointId);
+        onChanged();
+      } catch {
+        setError(t("unconfirmCheckpointError"));
+      }
+    });
+  }
+
+  // El aviso nombra SOLO lo que aplica: los posteriores si los hay, el chat si
+  // escribiste en él. Un aviso que no aplica enseña a ignorar los avisos.
+  function unconfirmMessage(c: CheckpointViewModel): string {
+    const impacto = unconfirmImpact(c, checkpoints);
+    const partes = [t("unconfirmAsk")];
+
+    if (impacto.alsoFalling.length > 0) {
+      const labels = impacto.alsoFalling.join(", ");
+      partes.push(
+        impacto.extraCount > 0
+          ? t("unconfirmAlsoFallingMore", { labels, count: impacto.extraCount })
+          : t("unconfirmAlsoFalling", { labels }),
+      );
+    }
+
+    if (impacto.chat) {
+      partes.push(
+        impacto.chat.count !== null
+          ? t("unconfirmChatCount", { count: impacto.chat.count })
+          : t("unconfirmChat"),
+      );
+    }
+
+    return partes.join(" ");
   }
 
   if (checkpoints.length === 0) {
@@ -112,18 +157,53 @@ export function CheckpointList({
                   <p className="text-[13.5px] font-semibold text-foreground">{c.label}</p>
                   <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{meta}</p>
                 </div>
-                {confirmed ? (
+                {confirmed && viewerIsParticipant ? (
+                  asking?.id === c.id && asking.action === "unconfirm" ? (
+                    <Ask
+                      message={unconfirmMessage(c)}
+                      onYes={() => handleUnconfirm(c.id)}
+                      onNo={() => setAsking(null)}
+                      disabled={isPending}
+                      yesLabel={t("askYes")}
+                      noLabel={t("askNo")}
+                    />
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="font-mono text-[10px] text-green">{t("chatOpen")}</span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="px-3 py-1 text-xs"
+                        disabled={isPending}
+                        onClick={() => setAsking({ id: c.id, action: "unconfirm" })}
+                      >
+                        {t("unconfirmCheckpoint")}
+                      </Button>
+                    </div>
+                  )
+                ) : confirmed ? (
                   <span className="shrink-0 font-mono text-[10px] text-green">{t("chatOpen")}</span>
                 ) : viewerIsParticipant ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="shrink-0 px-3.5 py-1.5 text-xs"
-                    disabled={isPending}
-                    onClick={() => handleConfirm(c.id)}
-                  >
-                    {t("confirmCheckpoint")}
-                  </Button>
+                  asking?.id === c.id && asking.action === "confirm" ? (
+                    <Ask
+                      message={t("confirmCheckpointAsk")}
+                      onYes={() => handleConfirm(c.id)}
+                      onNo={() => setAsking(null)}
+                      disabled={isPending}
+                      yesLabel={t("askYes")}
+                      noLabel={t("askNo")}
+                    />
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="shrink-0 px-3.5 py-1.5 text-xs"
+                      disabled={isPending}
+                      onClick={() => setAsking({ id: c.id, action: "confirm" })}
+                    >
+                      {t("confirmCheckpoint")}
+                    </Button>
+                  )
                 ) : (
                   <LockIcon
                     aria-label={t("checkpointStatus_locked")}
@@ -161,6 +241,50 @@ export function CheckpointList({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// La pregunta en el sitio: el botón se convierte en su propia confirmación, sin
+// abrir un diálogo encima. Dos pulsaciones deliberadas -- marcar un hito es
+// autodeclarativo desde #471 y ya no hay ninguna comprobación de página que
+// respalde el gesto, así que un clic accidental te declara donde no estás.
+//
+// Recibe yesLabel/noLabel ya traducidos en vez de `t`: el tipo genérico de
+// ReturnType<typeof useTranslations<"activity">> no hace falta aquí y evita
+// prestar una firma que no le pertenece a este subcomponente.
+function Ask({
+  message,
+  onYes,
+  onNo,
+  disabled,
+  yesLabel,
+  noLabel,
+}: {
+  message: string;
+  onYes: () => void;
+  onNo: () => void;
+  disabled: boolean;
+  yesLabel: string;
+  noLabel: string;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <span className="max-w-[220px] text-right text-[11px] text-muted-foreground">
+        {message}
+      </span>
+      <Button type="button" className="px-3 py-1 text-xs" disabled={disabled} onClick={onYes}>
+        {yesLabel}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className="px-3 py-1 text-xs"
+        disabled={disabled}
+        onClick={onNo}
+      >
+        {noLabel}
+      </Button>
     </div>
   );
 }
