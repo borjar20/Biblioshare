@@ -14,9 +14,9 @@ import {
 
 function chipClass(active: boolean): string {
   return [
-    // `shrink-0` para que en móvil, dentro del contenedor con scroll horizontal,
-    // los chips no se compriman hasta ser ilegibles.
-    "shrink-0 rounded-full border px-2.5 py-1 text-[12px] transition-colors",
+    // `whitespace-nowrap`: el chip se va entero a la línea siguiente, nunca se
+    // parte por dentro («Dirección · / 10» en dos renglones no se lee).
+    "whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] transition-colors",
     active
       ? "border-accent bg-accent/10 font-medium text-accent"
       : "border-border text-muted-foreground hover:text-foreground",
@@ -76,15 +76,24 @@ export async function PersonFilters({
   if (!showTypes && !showRoles && !showOrder) return null;
 
   return (
-    // `min-w-0 max-w-full` NO es decorativo: un hijo de flex tiene
-    // `min-width:auto`, así que sin esto la tira crece hasta lo que midan sus
-    // chips (`shrink-0`) y el `overflow-x-auto` no llega a recortar nada —
-    // saca la PÁGINA de la ventana en móvil en vez de scrollear ella. Se vio al
-    // añadir los chips de orden, pero el fallo ya estaba: bastaba una persona
-    // con cuatro roles.
-    <div className="flex min-w-0 max-w-full items-center gap-3 overflow-x-auto">
+    // NO hay scroll lateral: los chips ENVUELVEN. Un carrusel horizontal
+    // esconde filtros detrás de un gesto que no se anuncia —en la ficha de
+    // alguien con cuatro roles, «Creación · 2» quedaba fuera de pantalla sin
+    // que nada lo insinuara—, y aquí el alto sobra mientras que el ancho no.
+    // En móvil cada grupo va en su propia línea; desde `sm` vuelven a la misma
+    // fila y envuelven cuando no caben. `min-w-0` sigue siendo necesario: un
+    // hijo de flex tiene `min-width:auto` y sin él la tira estiraba la PÁGINA.
+    //
+    // Los separadores verticales entre grupos se han QUITADO: al envolver
+    // quedaban colgando al final de una línea, separando dos cosas que ya no
+    // estaban una al lado de la otra. Lo que agrupa ahora es la distancia —12px
+    // entre grupos, 6px dentro— y no se rompe al envolver.
+    <div
+      data-testid="person-filters"
+      className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-2"
+    >
       {showTypes && (
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Link
             href={buildHref(basePath, undefined, roleSlug, activeOrder)}
             className={chipClass(!activeType)}
@@ -103,10 +112,8 @@ export async function PersonFilters({
         </div>
       )}
 
-      {showTypes && showRoles && <div className="h-5 w-px shrink-0 bg-border" />}
-
       {showRoles && (
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Link
             href={buildHref(basePath, typeSlug, undefined, activeOrder)}
             className={chipClass(!activeRole)}
@@ -126,20 +133,17 @@ export async function PersonFilters({
       )}
 
       {showOrder && (
-        <>
-          <div className="h-5 w-px shrink-0 bg-border" />
-          <div className="flex shrink-0 items-center gap-1.5">
-            {(["chronology", "role"] as const).map((order) => (
-              <Link
-                key={order}
-                href={buildHref(basePath, typeSlug, roleSlug, order)}
-                className={chipClass(activeOrder === order)}
-              >
-                {t(ORDER_KEY[order])}
-              </Link>
-            ))}
-          </div>
-        </>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(["chronology", "role"] as const).map((order) => (
+            <Link
+              key={order}
+              href={buildHref(basePath, typeSlug, roleSlug, order)}
+              className={chipClass(activeOrder === order)}
+            >
+              {t(ORDER_KEY[order])}
+            </Link>
+          ))}
+        </div>
       )}
     </div>
   );

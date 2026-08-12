@@ -288,6 +288,19 @@ test.describe("ficha de persona", () => {
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
       );
       expect(overflow, `hay scroll horizontal a ${width}px`).toBe(false);
+
+      // Y los filtros tampoco scrollean POR DENTRO: envuelven. Un carrusel
+      // horizontal escondía chips detrás de un gesto que no se anuncia.
+      const filtros = await page.evaluate(() => {
+        const el = document.querySelector('[data-testid="person-filters"]');
+        if (!el) return null;
+        return { scrollW: el.scrollWidth, clientW: el.clientWidth };
+      });
+      if (filtros) {
+        expect(filtros.scrollW, `los filtros scrollean a ${width}px`).toBeLessThanOrEqual(
+          filtros.clientW + 1,
+        );
+      }
     }
   });
 });
