@@ -17,7 +17,7 @@ comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y 
 servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
 argumentos, en dev y en prod; **tanda de seguridad del 2026-07-29 (issues #130, #176, #133)
 aplicada y verificada en dev Y EN PROD** — cuatro migraciones (`20260808`…`20260811`), ninguna
-toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` (§8),
+toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` en esa tanda (§8; **desactualizado, ver el detalle en §8: a 2026-08-13 son 69 funciones, 62 con `pg_temp`**),
 `save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
 defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
 `list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
@@ -2670,12 +2670,18 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
   explícitamente en la lista; con `set search_path = public` a secas, quien pueda crear una
   tabla o un tipo temporal con el nombre de algo que la función referencie sin cualificar la
   secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda. **Estado medido en
-  los dos entornos: 55 funciones `SECURITY DEFINER`, 55 con `pg_temp`.** Tres
+  dev el 2026-08-13: 69 funciones `SECURITY DEFINER`, 62 con `pg_temp`.** El número de
+  55/55 de 2026-07-29 quedó desactualizado por funciones nuevas de otras ramas, no por una
+  regresión de esta migración. Faltan 7, todas deuda de otras ramas (ninguna de esta rama):
+  `archive_club_activity`, `pin_comment`, `ensure_club_round`, `get_club_round_state`,
+  `pull_pending_celebrations`, `get_activities_progress`, `update_activity_details`. Tres
   (`approve_club_join_request`, `club_is_private`, `notify_club_join_request`) conservan su
   `search_path` vacío — más estricto — y quedaron como `"", pg_temp`; la migración preserva
   el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
   `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
-  pg_temp`, pero si alguna se escapa, volver a correr la migración la arregla.
+  pg_temp`, pero si alguna se escapa, **el arreglo es re-ejecutar
+  `20260808_secdef_search_path_pg_temp.sql`** (idempotente) para que las 7 pendientes queden
+  cubiertas también.
 - **Helpers privados de Social fases 0/1**: las funciones `SECURITY DEFINER` nuevas viven en el
   esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
   Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
