@@ -15,6 +15,125 @@ const ID_COLUMN_BY_TYPE = {
   series: "tmdb_id",
 } as const;
 
+// Extraído para que el alta de UNO y el alta EN LOTE construyan exactamente la
+// misma fila y no puedan divergir.
+function catalogInsertPayload(result: SearchResult) {
+  return result.itemType === "book"
+    ? {
+        openlibrary_work_key: result.externalId,
+        title: result.title,
+        author: result.subtitle,
+        cover_url: result.coverUrl,
+        published_year: result.year,
+        // synopsis y genres NO se escriben aquí: la obra nace ligera y la
+        // hidrata ensureBookHydrated al abrir su ficha (peldaño 2). Editorial,
+        // ISBN y páginas tampoco: son de la tirada, y los pone el trigger
+        // desde la edición primaria. Ver el spec de 2026-07-14.
+      }
+    : {
+        tmdb_id: Number(result.externalId),
+        title: result.title,
+        // Título original (idioma de rodaje/emisión) para que el matcher de
+        // importación case aunque `title` esté traducido a es-ES. Ver
+        // decisiones.md 2026-08-02.
+        original_title: result.originalTitle ?? null,
+        cover_url: result.coverUrl,
+        release_year: result.year,
+        synopsis: result.synopsis,
+        genres: result.genres,
+      };
+}
+
+/**
+ * Alta de catálogo EN LOTE: un `select` + un `insert` POR TIPO, en vez de dos
+ * consultas por ítem. Devuelve `${itemType}:${externalId}` -> id de catálogo.
+ *
+ * Existe por la hidratación de la ficha de persona: una filmografía de 300
+ * créditos por el camino de uno-en-uno son ~600 viajes a la base dentro de un
+ * render. Con el lote, la hidratación entera son ~6 consultas.
+ *
+ * NO registra ediciones de libro (`ensureBookEdition`): eso necesita el ISBN de
+ * la tirada que el usuario tiene en la mano y un userId, y el lote no tiene ni
+ * lo uno ni lo otro. Ese camino se queda en `findOrCreateCatalogItem`.
+ *
+ * NUNCA lanza: el llamador es un render de lectura. Si el insert falla se
+ * devuelven los que sí se resolvieron.
+ *   - 42501 = visitante ANÓNIMO sin grant de escritura sobre el catálogo.
+ *     Esperado e inocuo desde la navegación anónima (#359/#360): la ficha se
+ *     pinta igual desde la respuesta de la API y persiste el primer visitante
+ *     con sesión. No se registra.
+ *   - 23505 = otro render insertó los mismos ítems a la vez. Se recuperan los
+ *     ids re-seleccionando el lote entero, igual que findOrCreatePeopleByTmdb.
+ */
+export async function findOrCreateCatalogItemsBulk(
+  supabase: SupabaseServerClient,
+  results: SearchResult[]
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (results.length === 0) return map;
+
+  const byType = new Map<SearchResult["itemType"], Map<string, SearchResult>>();
+  for (const r of results) {
+    let bucket = byType.get(r.itemType);
+    if (!bucket) {
+      bucket = new Map();
+      byType.set(r.itemType, bucket);
+    }
+    if (!bucket.has(r.externalId)) bucket.set(r.externalId, r);
+  }
+
+  await Promise.all(
+    [...byType.entries()].map(async ([itemType, bucket]) => {
+      const table = TABLE_BY_TYPE[itemType];
+      const idColumn = ID_COLUMN_BY_TYPE[itemType];
+      const externalIds = [...bucket.keys()];
+      const queryIds =
+        itemType === "book" ? externalIds : externalIds.map((id) => Number(id));
+
+      const readExisting = async () => {
+        const { data } = await supabase
+          .from(table)
+          .select(`id, ${idColumn}`)
+          .in(idColumn as never, queryIds as never);
+        for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+          map.set(`${itemType}:${String(row[idColumn])}`, row.id as string);
+        }
+      };
+
+      await readExisting();
+
+      const missing = externalIds.filter((id) => !map.has(`${itemType}:${id}`));
+      if (missing.length === 0) return;
+
+      const payload = missing.map((id) => catalogInsertPayload(bucket.get(id)!));
+
+      const { data: inserted, error } = await supabase
+        .from(table)
+        .insert(payload as never)
+        .select(`id, ${idColumn}`);
+
+      if (error) {
+        if (error.code === "23505") {
+          await readExisting();
+        } else if (error.code !== "42501") {
+          console.error("catalog bulk insert failed", {
+            itemType,
+            count: payload.length,
+            error,
+          });
+        }
+        return;
+      }
+
+      for (const row of (inserted ?? []) as unknown as Array<Record<string, unknown>>) {
+        map.set(`${itemType}:${String(row[idColumn])}`, row.id as string);
+      }
+    })
+  );
+
+  return map;
+}
+
 // Shared by the search flow (persists newly-seen API results into the
 // catalog right away, see docs/REQUIREMENTS.md §7.32) and by add-to-library
 // (fallback for results that arrived without a catalogId, e.g. mock mode).
@@ -44,31 +163,7 @@ export async function findOrCreateCatalogItem(
     return existing.id;
   }
 
-  const payload =
-    result.itemType === "book"
-      ? {
-          openlibrary_work_key: result.externalId,
-          title: result.title,
-          author: result.subtitle,
-          cover_url: result.coverUrl,
-          published_year: result.year,
-          // synopsis y genres NO se escriben aquí: la obra nace ligera y la
-          // hidrata ensureBookHydrated al abrir su ficha (peldaño 2). Editorial,
-          // ISBN y páginas tampoco: son de la tirada, y los pone el trigger
-          // desde la edición primaria. Ver el spec de 2026-07-14.
-        }
-      : {
-          tmdb_id: Number(result.externalId),
-          title: result.title,
-          // Título original (idioma de rodaje/emisión) para que el matcher de
-          // importación case aunque `title` esté traducido a es-ES. Ver
-          // decisiones.md 2026-08-02.
-          original_title: result.originalTitle ?? null,
-          cover_url: result.coverUrl,
-          release_year: result.year,
-          synopsis: result.synopsis,
-          genres: result.genres,
-        };
+  const payload = catalogInsertPayload(result);
 
   // The insert shape differs per item type (picked above); this cast is the
   // single spot where the three catalog tables' insert types are reconciled.
