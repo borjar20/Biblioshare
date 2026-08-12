@@ -856,8 +856,8 @@ Dentro del objeto `activity`, junto a las que ya existen:
 "metricVoted": "{done} de {total} han votado",
 "progressGroup": "El grupo",
 "progressViewer": "Tu avance",
-"startsOn": "Empieza el {date}",
-"endsOn": "Termina el {date}",
+"cardStartsOn": "Empieza el {date}",
+"cardEndsOn": "Termina el {date}",
 "daysLeft": "{count, plural, one {queda # día} other {quedan # días}}",
 "ctaContinue": "Continuar",
 "ctaJoin": "Participar",
@@ -883,6 +883,12 @@ parche del llamador compilara. No duplicarlas — si el JSON tuviera la misma cl
 dos veces, la segunda gana en silencio.
 
 La clave `empty` que ya existe se queda: la usa el mensaje viejo hasta que la Task 10 la sustituya por `emptyAllTitle`/`emptyAllBody`. Se borra en la Task 10, no antes. Lo mismo con `groupActive`, huérfana desde la Task 1.
+
+**`startsOn` y `endsOn` ya existen y NO se tocan.** Son las etiquetas de los dos
+campos de fecha del asistente de proponer (`propose-wizard.tsx:319,328`): valen
+«Empieza el» y «Termina el», sin parámetro. Por eso las de la tarjeta se llaman
+`cardStartsOn` / `cardEndsOn`. Convertir las originales en plantillas con
+`{date}` deja las etiquetas del formulario mostrando el marcador literal.
 
 - [ ] **Step 2: Verificar que el JSON sigue siendo válido**
 
@@ -1003,7 +1009,7 @@ export function ActivityCardLarge({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <span className="label-section">
           {t("participants", { count: participants })}
-          {activity.endsOn && ` · ${t("endsOn", { date: formatEventDate(activity.endsOn) })}`}
+          {activity.endsOn && ` · ${t("cardEndsOn", { date: formatEventDate(activity.endsOn) })}`}
           {restantes !== null && restantes >= 0 && ` · ${t("daysLeft", { count: restantes })}`}
         </span>
         <span className={buttonLikeClasses}>{cta} →</span>
