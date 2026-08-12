@@ -66,6 +66,37 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
+// Directores prolíficos de TMDB. Se usa el primero que NO esté ya en `people`:
+// `people.tmdb_id` es único, así que sembrar uno repetido reventaría el alta, y
+// además arruinaría la aserción «de cero créditos a filmografía».
+const TMDB_SEED_CANDIDATES = [
+  { tmdbId: 525, name: "QA Christopher Nolan" },
+  { tmdbId: 1032, name: "QA Martin Scorsese" },
+  { tmdbId: 138, name: "QA Quentin Tarantino" },
+  { tmdbId: 488, name: "QA Steven Spielberg" },
+  { tmdbId: 5655, name: "QA Wes Anderson" },
+];
+
+/** Crea una persona de TMDB nueva, sin un solo crédito. */
+async function seedFreshTmdbPerson(): Promise<{ id: string }> {
+  for (const candidate of TMDB_SEED_CANDIDATES) {
+    const existing = await rest<Array<{ id: string }>>(
+      `people?select=id&tmdb_id=eq.${candidate.tmdbId}`,
+    );
+    if (existing.length > 0) continue;
+
+    const [person] = await rest<Array<{ id: string }>>("people?select=id", {
+      method: "POST",
+      body: { name: `${candidate.name} ${Date.now()}`, tmdb_id: candidate.tmdbId },
+      returnRows: true,
+    });
+    return person;
+  }
+  throw new Error(
+    "todos los tmdb_id semilla ya están en `people`: añade otro a TMDB_SEED_CANDIDATES",
+  );
+}
+
 /**
  * Una persona de TMDB con al menos un crédito que SÍ resuelve contra el
  * catálogo. Devuelve su id y cuántos créditos tiene ahora mismo.
@@ -95,72 +126,79 @@ test.describe("ficha de persona", () => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   test("hidrata la obra completa y la pinta a tres columnas", async ({ page }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
 
-    const target = await findPersonWithRealWork();
+    // ⚠️ El test se SIEMBRA SU PROPIA PERSONA, en vez de reusar una de la base y
+    // ponerle `credits_hydrated_at` a null. Ese atajo no sirve: a alguien ya
+    // hidratado la segunda pasada no le puede CRECER el recuento (el upsert
+    // encuentra las filas ya puestas), así que el test pasaba la primera vez y
+    // fallaba siempre después — «Expected: > 38, Received: 38». Con una persona
+    // nueva de cero créditos, la aserción «de 0 a filmografía» es determinista.
+    const person = await seedFreshTmdbPerson();
 
-    // Se fuerza el estado "sin hidratar" para que este test cubra de verdad el
-    // camino de hidratación aunque otra pasada ya lo hubiera recorrido.
-    await rest(`people?id=eq.${target.id}`, {
-      method: "PATCH",
-      body: { credits_hydrated_at: null },
-    });
+    try {
+      await login(page);
 
-    await login(page);
+      await page.setViewportSize({ width: 1700, height: 1000 });
+      await page.goto(`/persona/${person.id}`);
+      await waitForWorks(page);
 
-    await page.setViewportSize({ width: 1700, height: 1000 });
-    await page.goto(`/persona/${target.id}`);
-    await waitForWorks(page);
+      // 1. EL BUG DE FONDO: la ficha ya no muestra solo lo que alguien hubiera
+      //    abierto alguna vez. Esta persona no tenía NI UN crédito.
+      const after = await rest<Array<{ id: string }>>(
+        `credits?select=id&person_id=eq.${person.id}`,
+      );
+      expect(
+        after.length,
+        "una persona recién creada debería acabar con su filmografía entera",
+      ).toBeGreaterThanOrEqual(10);
 
-    // 1. EL BUG DE FONDO: la ficha ya no muestra solo lo que alguien hubiera
-    //    abierto alguna vez. Tras la visita hay más créditos que antes...
-    const after = await rest<Array<{ id: string }>>(`credits?select=id&person_id=eq.${target.id}`);
-    expect(
-      after.length,
-      `debería tener más créditos que los ${target.credits} de partida`,
-    ).toBeGreaterThan(target.credits);
+      // ...y la marca queda puesta, para que la segunda visita no vuelva a
+      // llamar a la API.
+      const [row] = await rest<Array<{ credits_hydrated_at: string | null }>>(
+        `people?select=credits_hydrated_at&id=eq.${person.id}`,
+      );
+      expect(row.credits_hydrated_at).not.toBeNull();
 
-    // ...y la marca queda puesta, para que la segunda visita no vuelva a llamar
-    // a la API.
-    const [row] = await rest<Array<{ credits_hydrated_at: string | null }>>(
-      `people?select=credits_hydrated_at&id=eq.${target.id}`,
-    );
-    expect(row.credits_hydrated_at).not.toBeNull();
+      // 2. TRES ÁREAS, con la ficha a la izquierda del centro y el ancho del
+      //    mockup (308px), no una fracción elástica.
+      await page.reload();
+      await waitForWorks(page);
+      const ficha = page.locator('[data-area="ficha"]');
+      const obras = page.locator('[data-area="obras"]');
+      await expect(ficha).toBeVisible();
 
-    // 2. TRES ÁREAS, con la ficha a la izquierda del centro y el ancho del
-    //    mockup (308px), no una fracción elástica.
-    await page.reload();
-    await waitForWorks(page);
-    const ficha = page.locator('[data-area="ficha"]');
-    const obras = page.locator('[data-area="obras"]');
-    await expect(ficha).toBeVisible();
+      const fichaBox = (await ficha.boundingBox())!;
+      const obrasBox = (await obras.boundingBox())!;
+      expect(fichaBox.x + fichaBox.width).toBeLessThanOrEqual(obrasBox.x + 1);
+      expect(Math.round(fichaBox.width)).toBe(308);
 
-    const fichaBox = (await ficha.boundingBox())!;
-    const obrasBox = (await obras.boundingBox())!;
-    expect(fichaBox.x + fichaBox.width).toBeLessThanOrEqual(obrasBox.x + 1);
-    expect(Math.round(fichaBox.width)).toBe(308);
+      // 3. Destacadas + «El resto, por año», y LA regla del diseño: una obra
+      //    destacada NO vuelve a salir en la lista de abajo.
+      const featuredBlock = page.getByTestId("person-featured");
+      const restBlocks = page.getByTestId("person-rest");
+      await expect(featuredBlock).toBeVisible();
+      await expect(restBlocks.first()).toBeVisible();
 
-    // 3. Destacadas + «El resto, por año», y LA regla del diseño: una obra
-    //    destacada NO vuelve a salir en la lista de abajo.
-    const featuredBlock = page.getByTestId("person-featured");
-    const restBlocks = page.getByTestId("person-rest");
-    await expect(featuredBlock).toBeVisible();
-    await expect(restBlocks.first()).toBeVisible();
+      const featuredTitles = (await featuredBlock.locator("a span.font-serif").allInnerTexts())
+        .map((s) => s.trim())
+        .filter(Boolean);
+      // Si esto no encuentra nada, la comprobación de abajo sería vacua: el
+      // test tiene que fallar aquí, no pasar por no haber mirado nada.
+      expect(featuredTitles.length).toBeGreaterThan(0);
 
-    const featuredTitles = (await featuredBlock.locator("a span.font-serif").allInnerTexts())
-      .map((s) => s.trim())
-      .filter(Boolean);
-    // Si esto no encuentra nada, la comprobación de abajo sería vacua: el
-    // test tiene que fallar aquí, no pasar por no haber mirado nada.
-    expect(featuredTitles.length).toBeGreaterThan(0);
+      const restTitles = (await restBlocks.locator("a span.font-serif").allInnerTexts())
+        .map((s) => s.trim())
+        .filter(Boolean);
+      expect(restTitles.length).toBeGreaterThan(0);
 
-    const restTitles = (await restBlocks.locator("a span.font-serif").allInnerTexts())
-      .map((s) => s.trim())
-      .filter(Boolean);
-    expect(restTitles.length).toBeGreaterThan(0);
-
-    for (const title of featuredTitles) {
-      expect(restTitles, `«${title}» está destacada y además en la lista`).not.toContain(title);
+      for (const title of featuredTitles) {
+        expect(restTitles, `«${title}» está destacada y además en la lista`).not.toContain(title);
+      }
+    } finally {
+      // Los créditos primero: `credits.person_id` referencia a `people`.
+      await rest(`credits?person_id=eq.${person.id}`, { method: "DELETE" });
+      await rest(`people?id=eq.${person.id}`, { method: "DELETE" });
     }
   });
 
