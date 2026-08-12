@@ -3,59 +3,82 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { type ClubActivity } from "@/lib/clubs/activities/core";
+import type { ActivityProgress } from "@/lib/clubs/activities/progress";
 import { groupActivities } from "@/lib/clubs/activities/group-activities";
-import { ActivityComposer, ProposeActivityLink } from "./activity-composer";
+import { ActivityComposer, ProposeActivityLink, proposeHref } from "./activity-composer";
 import { ActivityCard } from "./activity-card";
+import { ActivityCardLarge } from "./activity-card-large";
+import { ActivityCardUpcoming } from "./activity-card-upcoming";
+import { ActivityEmptyState } from "./activity-empty-state";
+import { ActivitySectionNav } from "./activity-section-nav";
 import { ProposalModeration } from "./proposal-moderation";
 
-// Las actividades se agrupan por estado, no en una lista plana: "esperan
-// moderación" es lo que un moderador viene a resolver, y "activas" lo que un
-// miembro viene a mirar. Mezcladas, ninguna de las dos se encuentra.
+// Las actividades se agrupan por lo que el miembro viene a preguntar --qué toca
+// ahora, qué viene, qué hicimos-- no por el `status` crudo de la fila. Y las
+// propuestas van en su propio bloque: son una cola de moderación, no una
+// actividad programada (spec 2026-08-12).
 export function ActivityList({
   clubId,
   clubSlug,
   initialActivities,
   isModerator,
   today,
+  progress,
   composerOpen,
+  aside,
 }: {
   clubId: string;
   clubSlug: string;
   initialActivities: ClubActivity[];
   isModerator: boolean;
-  /** "Hoy" del SERVIDOR (YYYY-MM-DD). Antes se calculaba con `todayISO()` en el
-   *  navegador, así que el "pasado" del agrupado y de la píldora "Ya pasó"
-   *  respondía al huso del visitante y podía contradecir al calendario del club,
-   *  que lo lee del servidor (#271). Ahora viaja como prop desde la página. */
+  /** "Hoy" del SERVIDOR (YYYY-MM-DD): decide qué es "en curso" y qué "próxima",
+   *  y con el reloj del visitante eso cambiaría según el huso (#271). */
   today: string;
-  /** Viene de `?nueva=1`: el botón de "proponer" vive en el shell (Task 10) y el
-   *  asistente aquí, en el contenido — no comparten árbol de React. */
+  /** Solo trae las de "En curso": del resto no se pide progreso. */
+  progress: Map<string, ActivityProgress>;
   composerOpen: boolean;
+  /** El rail, ya resuelto en servidor. null si no tiene nada que decir. */
+  aside: ReactNode;
 }) {
   const t = useTranslations("activity");
-  // Deriva de props: proponer/moderar revalida (Fase 1) y la RSC re-ejecuta con
-  // las actividades frescas. Sin espejo local ni re-fetch cliente.
-  const activities = initialActivities;
-
+  const tt = useTranslations("club.tabs");
+  // Deriva de props: proponer/moderar revalida y la RSC re-ejecuta con las
+  // actividades frescas. Sin espejo local ni re-fetch cliente.
   const { enCurso, proximas, proposed, finished } = groupActivities(
-    activities,
+    initialActivities,
     today,
   );
 
-  // El vacío se gatea por los CUATRO grupos ya filtrados, nunca por
-  // `activities.length`: la lista cruda SIGUE trayendo los eventos (es
-  // groupActivities quien los descarta, spec 2026-08-11), así que en un club
-  // cuyas únicas actividades son eventos `activities.length` es > 0, los
-  // <Group> devuelven null por vacíos y el mensaje no se pintaba -- se veía el
-  // botón "Proponer actividad" sobre un hueco, sin ninguna explicación.
-  const sinActividades =
+  const sinNada =
     enCurso.length === 0 &&
     proximas.length === 0 &&
     proposed.length === 0 &&
     finished.length === 0;
 
+  const sections = [
+    enCurso.length > 0 ? { id: "en-curso", label: t("navOngoing") } : null,
+    { id: "proximas", label: t("navUpcoming") },
+    { id: "historial", label: t("navHistory") },
+  ].filter((s): s is { id: string; label: string } => s !== null);
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Cabecera propia SOLO en móvil: en escritorio el título y el botón ya
+          están en la cabecera sticky del shell, y repetirlos sería dos veces la
+          misma acción en la misma pantalla. */}
+      <div className="flex flex-col gap-2 lg:hidden">
+        <h1 className="font-serif text-[23px] leading-tight font-semibold text-foreground">
+          {tt("actividades")}
+        </h1>
+        <p className="text-[13px] text-muted-foreground">{t("pageSubtitle")}</p>
+        {/* Escondido mientras el asistente está abierto: el botón y el
+            asistente eran mutuamente excluyentes antes de partirlos, y dos
+            entradas vivas a la misma acción a la vez es peor que ninguna. */}
+        {!composerOpen && (
+          <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+        )}
+      </div>
+
       <ActivityComposer
         clubId={clubId}
         clubSlug={clubSlug}
@@ -63,75 +86,103 @@ export function ActivityList({
         open={composerOpen}
       />
 
-      {/* El botón que antes pintaba el propio composer ahora es un enlace
-          aparte: navega a `?nueva=1`, que es lo que abre el asistente de arriba.
-          Se esconde mientras el asistente está abierto -- antes eran
-          mutuamente excluyentes (un mismo useState decidía cuál pintar), y dos
-          entradas vivas a la misma acción a la vez es peor que ninguna. */}
-      {!composerOpen && (
-        <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+      {sinNada ? (
+        <ActivityEmptyState
+          title={t("emptyAllTitle")}
+          body={t("emptyAllBody")}
+          actionHref={proposeHref(clubSlug)}
+          actionLabel={t("propose")}
+        />
+      ) : (
+        <>
+          {!composerOpen && <ActivitySectionNav sections={sections} />}
+
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+            <div className="flex min-w-0 flex-col gap-6">
+              <ProposalModeration
+                proposals={proposed}
+                clubSlug={clubSlug}
+                canModerate={isModerator}
+                today={today}
+                layout="grid"
+              />
+
+              {enCurso.length > 0 && (
+                <Section id="en-curso" title={t("groupOngoing", { count: enCurso.length })}>
+                  {enCurso.map((activity) => (
+                    <ActivityCardLarge
+                      key={activity.id}
+                      activity={activity}
+                      clubSlug={clubSlug}
+                      progress={progress.get(activity.id)}
+                      today={today}
+                    />
+                  ))}
+                </Section>
+              )}
+
+              <Section id="proximas" title={t("groupUpcoming", { count: proximas.length })}>
+                {proximas.length > 0 ? (
+                  proximas.map((activity) => (
+                    <ActivityCardUpcoming
+                      key={activity.id}
+                      activity={activity}
+                      clubSlug={clubSlug}
+                    />
+                  ))
+                ) : (
+                  <ActivityEmptyState
+                    title={t("emptyUpcomingTitle")}
+                    body={t("emptyUpcomingBody")}
+                    actionHref={proposeHref(clubSlug)}
+                    actionLabel={t("propose")}
+                  />
+                )}
+              </Section>
+
+              <Section id="historial" title={t("groupHistory", { count: finished.length })}>
+                {finished.length > 0 ? (
+                  <div className="grid gap-2 lg:grid-cols-2">
+                    {finished.map((activity) => (
+                      <ActivityCard
+                        key={activity.id}
+                        activity={activity}
+                        clubSlug={clubSlug}
+                        today={today}
+                        muted
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <ActivityEmptyState
+                    title={t("emptyHistoryTitle")}
+                    body={t("emptyHistoryBody")}
+                  />
+                )}
+              </Section>
+            </div>
+
+            {aside}
+          </div>
+        </>
       )}
-
-      {sinActividades && (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      )}
-
-      <Group title={t("groupOngoing", { count: enCurso.length })}>
-        {enCurso.map((activity) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            clubSlug={clubSlug}
-            today={today}
-          />
-        ))}
-      </Group>
-
-      <Group title={t("groupUpcoming", { count: proximas.length })}>
-        {proximas.map((activity) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            clubSlug={clubSlug}
-            today={today}
-          />
-        ))}
-      </Group>
-
-      <ProposalModeration
-        proposals={proposed}
-        clubSlug={clubSlug}
-        canModerate={isModerator}
-        today={today}
-        layout="grid"
-      />
-
-      <Group title={t("groupFinished")}>
-        {finished.map((activity) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            clubSlug={clubSlug}
-            today={today}
-            muted
-          />
-        ))}
-      </Group>
     </div>
   );
 }
 
-// En escritorio (frame 12) las actividades van en rejilla de 2 columnas por
-// estado; en móvil, una sola columna.
-function Group({ title, children }: { title: string; children: ReactNode[] }) {
-  if (children.length === 0) return null;
-
+function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="label-section">
-        {title}
-      </h2>
-      <div className="grid gap-2 lg:grid-cols-2">{children}</div>
+    <section id={id} className="flex scroll-mt-24 flex-col gap-3">
+      <h2 className="label-section">{title}</h2>
+      {children}
     </section>
   );
 }

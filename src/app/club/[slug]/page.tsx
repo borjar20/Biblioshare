@@ -12,6 +12,8 @@ import { listClubActivities } from "@/lib/clubs/activities/core";
 import { getClubCalendarMarks } from "@/lib/clubs/activities/calendar";
 import { proximasMarcas } from "@/lib/clubs/activities/calendar-marks";
 import { todayISO } from "@/lib/stats/dates";
+import { groupActivities } from "@/lib/clubs/activities/group-activities";
+import { getActivitiesProgress } from "@/lib/clubs/activities/progress";
 import { ClubHeader } from "@/components/clubs/club-header";
 import { ClubTabs, CLUB_TABS, type ClubTab } from "@/components/clubs/club-tabs";
 import { ClubSummary } from "@/components/clubs/club-summary";
@@ -25,7 +27,8 @@ import {
 import { markClubRead } from "@/lib/clubs/unread";
 import { ClubFeed } from "@/components/clubs/club-feed";
 import { ActivityList } from "@/components/clubs/activity-list";
-import { isComposerOpen } from "@/components/clubs/activity-composer";
+import { ActivitiesAside } from "@/components/clubs/activities-aside";
+import { ProposeActivityLink, isComposerOpen } from "@/components/clubs/activity-composer";
 import {
   ClubShell,
   ClubSidebar,
@@ -142,7 +145,16 @@ export default async function ClubPage({
           />
         </>
       }
-      desktopHeader={<ClubMainHeader title={tt(tab)} />}
+      desktopHeader={
+        <ClubMainHeader
+          title={tt(tab)}
+          action={
+            tab === "actividades" && !isComposerOpen(nueva) ? (
+              <ProposeActivityLink clubSlug={club.slug} />
+            ) : undefined
+          }
+        />
+      }
     >
       {tab === "feed" && (
         <Suspense fallback={<ClubContentSkeleton />}>
@@ -151,16 +163,15 @@ export default async function ClubPage({
       )}
 
       {tab === "actividades" && (
-        <div className="lg:max-w-4xl">
-          <ActivityList
-            clubId={club.id}
-            clubSlug={club.slug}
-            initialActivities={activities}
-            isModerator={canModerate}
-            today={todayISO()}
+        <Suspense fallback={<ClubContentSkeleton />}>
+          <ClubActivitiesSection
+            club={club}
+            activities={activities}
+            canModerate={canModerate}
+            userId={user.id}
             composerOpen={isComposerOpen(nueva)}
           />
-        </div>
+        </Suspense>
       )}
 
       {tab === "gestion" && canModerate && (
@@ -247,6 +258,55 @@ async function ClubFeedSection({
         />
       </div>
     </div>
+  );
+}
+
+// Pestaña Actividades: el progreso de las que están en curso y las próximas
+// fechas del club se consultan aquí, detrás de su boundary, para que la cabecera
+// y las pestañas pinten sin esperarlos.
+async function ClubActivitiesSection({
+  club,
+  activities,
+  canModerate,
+  userId,
+  composerOpen,
+}: {
+  club: ClubDetail;
+  activities: ClubActivities;
+  canModerate: boolean;
+  userId: string;
+  composerOpen: boolean;
+}) {
+  // UNA sola lectura de "hoy" por respuesta.
+  const hoy = todayISO();
+  const { enCurso, finished } = groupActivities(activities, hoy);
+
+  const [progress, marks] = await Promise.all([
+    // Solo las de "En curso": de una próxima el progreso es 0 por definición y
+    // de una terminada ya no cambia.
+    getActivitiesProgress(enCurso),
+    getClubCalendarMarks(club.id, club.slug, hoy, userId),
+  ]);
+
+  return (
+    <ActivityList
+      clubId={club.id}
+      clubSlug={club.slug}
+      initialActivities={activities}
+      isModerator={canModerate}
+      today={hoy}
+      progress={progress}
+      composerOpen={composerOpen}
+      aside={
+        <ActivitiesAside
+          marks={proximasMarcas(marks, hoy, 4)}
+          clubSlug={club.slug}
+          activeCount={enCurso.length}
+          finishedCount={finished.length}
+          memberCount={club.memberCount}
+        />
+      }
+    />
   );
 }
 
