@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { chunkIds } from "@/lib/supabase/in-chunks";
 import type { SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -90,14 +91,22 @@ export async function findOrCreateCatalogItemsBulk(
       const queryIds =
         itemType === "book" ? externalIds : externalIds.map((id) => Number(id));
 
+      // TROCEADO a propósito: supabase-js manda el `.in()` en la cadena de
+      // consulta, así que una filmografía de 300 ids son ~11 KB de URL y la
+      // petición vuelve vacía SIN error — con lo que el lote creería que no
+      // existe ninguna y las insertaría todas de nuevo. Ver in-chunks.ts.
       const readExisting = async () => {
-        const { data } = await supabase
-          .from(table)
-          .select(`id, ${idColumn}`)
-          .in(idColumn as never, queryIds as never);
-        for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
-          map.set(`${itemType}:${String(row[idColumn])}`, row.id as string);
-        }
+        await Promise.all(
+          chunkIds<string | number>(queryIds).map(async (ids) => {
+            const { data } = await supabase
+              .from(table)
+              .select(`id, ${idColumn}`)
+              .in(idColumn as never, ids as never);
+            for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+              map.set(`${itemType}:${String(row[idColumn])}`, row.id as string);
+            }
+          })
+        );
       };
 
       await readExisting();

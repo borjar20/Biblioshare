@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref, sagaHref } from "@/lib/catalog/item-href";
+import { chunkIds } from "@/lib/supabase/in-chunks";
 import { PERSON_COLUMNS, enrichTmdbBio, toPerson, type PersonRow } from "./get-person";
 import { hydratePersonCredits, needsCreditHydration } from "./hydrate-person-credits";
 import { deriveCollaborators, deriveRoleCounts, type CollaboratorRow } from "./derive-person-works";
@@ -112,92 +113,97 @@ export async function getPersonProfile(
   const globalByItem = new Map<string, { sum: number; count: number }>();
   const sagaByItem = new Map<string, { sagaId: string; name: string }>();
 
+  // ⚠️ TODAS las listas de ids van TROCEADAS (`chunkIds`). supabase-js manda el
+  // `.in()` en la cadena de consulta, así que 226 UUIDs son ~8 KB de URL y la
+  // petición vuelve VACÍA sin error: la ficha de una persona prolífica enseñaba
+  // «Aún no hay obras de esta persona en el catálogo», que es mentira. Medido el
+  // 2026-08-12 contra el build de producción. Ver `src/lib/supabase/in-chunks.ts`.
+  const allIds = (Object.keys(idsByType) as ItemType[]).flatMap((t) => idsByType[t]);
+
   await Promise.all([
     // Catálogo.
-    ...(Object.keys(idsByType) as ItemType[]).map(async (type) => {
-      const ids = idsByType[type];
-      if (ids.length === 0) return;
-      const { data } = await supabase
-        .from(CATALOG_TABLE[type])
-        .select(`id, title, cover_url, ${YEAR_COLUMN[type]}, ${SIZE_COLUMN[type]}`)
-        .in("id", ids);
-      for (const r of (data ?? []) as unknown as Array<Record<string, unknown>>) {
-        meta.set(`${type}:${r.id as string}`, {
-          title: r.title as string,
-          coverUrl: (r.cover_url as string | null) ?? null,
-          year: (r[YEAR_COLUMN[type]] as number | null) ?? null,
-          // En libros el "tamaño" son PÁGINAS y no se pinta como minutos: la
-          // fila usa este campo solo para cine y series.
-          durationMinutes:
-            type === "book" ? null : ((r[SIZE_COLUMN[type]] as number | null) ?? null),
-        });
-      }
-    }),
+    ...(Object.keys(idsByType) as ItemType[]).flatMap((type) =>
+      chunkIds(idsByType[type]).map(async (ids) => {
+        const { data } = await supabase
+          .from(CATALOG_TABLE[type])
+          .select(`id, title, cover_url, ${YEAR_COLUMN[type]}, ${SIZE_COLUMN[type]}`)
+          .in("id", ids);
+        for (const r of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+          meta.set(`${type}:${r.id as string}`, {
+            title: r.title as string,
+            coverUrl: (r.cover_url as string | null) ?? null,
+            year: (r[YEAR_COLUMN[type]] as number | null) ?? null,
+            // En libros el "tamaño" son PÁGINAS y no se pinta como minutos: la
+            // fila usa este campo solo para cine y series.
+            durationMinutes:
+              type === "book" ? null : ((r[SIZE_COLUMN[type]] as number | null) ?? null),
+          });
+        }
+      })
+    ),
 
     // Estado del VISITANTE. Sin sesión, este bloque no corre.
     ...(viewerId
-      ? (Object.keys(idsByType) as ItemType[]).map(async (type) => {
-          const ids = idsByType[type];
-          if (ids.length === 0) return;
-          const { data } = await supabase
-            .from("passes")
-            .select("item_id, status, is_active, rating, finished_on")
-            .eq("user_id", viewerId)
-            .eq("item_type", type)
-            .in("item_id", ids);
-          for (const r of data ?? []) {
-            const key = `${type}:${r.item_id}`;
-            const prev = statusByItem.get(key);
-            // "completed" gana sobre el resto: una relectura en curso no debe
-            // restar avance. Mismo criterio que get-saga-detail.ts.
-            if (r.status === "completed") {
-              statusByItem.set(key, {
-                status: "completed",
-                rating: (r.rating as number | null) ?? prev?.rating ?? null,
-                finishedOn: (r.finished_on as string | null) ?? prev?.finishedOn ?? null,
-              });
-            } else if (prev?.status !== "completed" && r.is_active) {
-              statusByItem.set(key, {
-                status: r.status as WorkStatus,
-                rating: (r.rating as number | null) ?? null,
-                finishedOn: (r.finished_on as string | null) ?? null,
-              });
+      ? (Object.keys(idsByType) as ItemType[]).flatMap((type) =>
+          chunkIds(idsByType[type]).map(async (ids) => {
+            const { data } = await supabase
+              .from("passes")
+              .select("item_id, status, is_active, rating, finished_on")
+              .eq("user_id", viewerId)
+              .eq("item_type", type)
+              .in("item_id", ids);
+            for (const r of data ?? []) {
+              const key = `${type}:${r.item_id}`;
+              const prev = statusByItem.get(key);
+              // "completed" gana sobre el resto: una relectura en curso no debe
+              // restar avance. Mismo criterio que get-saga-detail.ts.
+              if (r.status === "completed") {
+                statusByItem.set(key, {
+                  status: "completed",
+                  rating: (r.rating as number | null) ?? prev?.rating ?? null,
+                  finishedOn: (r.finished_on as string | null) ?? prev?.finishedOn ?? null,
+                });
+              } else if (prev?.status !== "completed" && r.is_active) {
+                statusByItem.set(key, {
+                  status: r.status as WorkStatus,
+                  rating: (r.rating as number | null) ?? null,
+                  finishedOn: (r.finished_on as string | null) ?? null,
+                });
+              }
             }
-          }
-        })
+          })
+        )
       : []),
 
     // Nota de la comunidad. Sin `dropped` y sin `finished_on` nulo, igual que
     // get-saga-detail.ts: apply-transition cierra el pase abandonado con
     // finished_on SIN limpiar el rating, y sin este filtro contaminaría la media.
-    ...(Object.keys(idsByType) as ItemType[]).map(async (type) => {
-      const ids = idsByType[type];
-      if (ids.length === 0) return;
-      const { data } = await supabase
-        .from("passes")
-        .select("item_id, rating")
-        .eq("item_type", type)
-        .in("item_id", ids)
-        .not("rating", "is", null)
-        .not("finished_on", "is", null)
-        .neq("status", "dropped");
-      for (const r of data ?? []) {
-        const key = `${type}:${r.item_id}`;
-        const acc = globalByItem.get(key) ?? { sum: 0, count: 0 };
-        acc.sum += r.rating as number;
-        acc.count += 1;
-        globalByItem.set(key, acc);
-      }
-    }),
+    ...(Object.keys(idsByType) as ItemType[]).flatMap((type) =>
+      chunkIds(idsByType[type]).map(async (ids) => {
+        const { data } = await supabase
+          .from("passes")
+          .select("item_id, rating")
+          .eq("item_type", type)
+          .in("item_id", ids)
+          .not("rating", "is", null)
+          .not("finished_on", "is", null)
+          .neq("status", "dropped");
+        for (const r of data ?? []) {
+          const key = `${type}:${r.item_id}`;
+          const acc = globalByItem.get(key) ?? { sum: 0, count: 0 };
+          acc.sum += r.rating as number;
+          acc.count += 1;
+          globalByItem.set(key, acc);
+        }
+      })
+    ),
 
     // Sagas de sus obras.
-    (async () => {
-      const allIds = (Object.keys(idsByType) as ItemType[]).flatMap((t) => idsByType[t]);
-      if (allIds.length === 0) return;
+    ...chunkIds(allIds).map(async (ids) => {
       const { data } = await supabase
         .from("saga_items")
         .select("saga_id, item_type, item_id, saga:sagas(id, name)")
-        .in("item_id", allIds);
+        .in("item_id", ids);
       for (const r of (data ?? []) as unknown as Array<Record<string, unknown>>) {
         const saga = r.saga as { id: string; name: string } | null;
         if (!saga) continue;
@@ -206,7 +212,7 @@ export async function getPersonProfile(
           name: saga.name,
         });
       }
-    })(),
+    }),
   ]);
 
   // Una fila por OBRA, con todos sus roles juntos.
@@ -256,25 +262,26 @@ export async function getPersonProfile(
 
   // Colaboradores: personas con crédito en las MISMAS obras.
   const collaboratorRows: CollaboratorRow[] = [];
-  {
-    const allIds = works.map((w) => w.itemId);
-    const { data } = await supabase
-      .from("credits")
-      .select("person_id, item_type, item_id, role, person:people(name, photo_url)")
-      .in("item_id", allIds)
-      .neq("person_id", personId);
-    for (const r of (data ?? []) as unknown as Array<Record<string, unknown>>) {
-      const person = r.person as { name: string; photo_url: string | null } | null;
-      if (!person) continue;
-      collaboratorRows.push({
-        personId: r.person_id as string,
-        name: person.name,
-        photoUrl: person.photo_url,
-        role: r.role as CreditRole,
-        itemKey: `${r.item_type as string}:${r.item_id as string}`,
-      });
-    }
-  }
+  await Promise.all(
+    chunkIds(works.map((w) => w.itemId)).map(async (ids) => {
+      const { data } = await supabase
+        .from("credits")
+        .select("person_id, item_type, item_id, role, person:people(name, photo_url)")
+        .in("item_id", ids)
+        .neq("person_id", personId);
+      for (const r of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+        const person = r.person as { name: string; photo_url: string | null } | null;
+        if (!person) continue;
+        collaboratorRows.push({
+          personId: r.person_id as string,
+          name: person.name,
+          photoUrl: person.photo_url,
+          role: r.role as CreditRole,
+          itemKey: `${r.item_type as string}:${r.item_id as string}`,
+        });
+      }
+    })
+  );
 
   // Progreso por saga: sobre las obras DE ESTA PERSONA en cada saga, no sobre la
   // saga entera — el raíl dice "de lo suyo en esta saga, has visto X".
