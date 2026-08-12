@@ -11761,7 +11761,7 @@ begin
   -- ser el organizador. Seguir y organizar siguen siendo cosas distintas: esto
   -- solo declara que quien lo monta también está interesado.
   insert into public.club_event_followers (activity_id, user_id, remind_minutes_before)
-  values (v_id, auth.uid(), 1440)
+  values (v_id, auth.uid(), 10080)
   on conflict (activity_id, user_id) do nothing;
 
   return v_id;
@@ -11919,7 +11919,7 @@ $$;
 -- concurrentes» (§20) en la BD, no en la UI.
 create or replace function public.follow_club_event(
   p_activity_id uuid,
-  p_remind_minutes_before integer default 1440
+  p_remind_minutes_before integer default 10080
 ) returns void
 language plpgsql
 security definer
