@@ -30,7 +30,9 @@ const ROLE_TAG: Record<CreditRole, string> = {
  * **La fila entera es clicable con un enlace en OVERLAY** (`absolute inset-0`),
  * no envolviendo el contenido: dentro hay botones y un menú, y anidar controles
  * dentro de un `<a>` es HTML inválido —y en la práctica se traga los clics del
- * menú—. El overlay va por debajo (`z-0`) y los controles por encima (`z-10`).
+ * menú—. El overlay va por debajo (`z-0`) y los controles después en el DOM,
+ * que ya basta para quedar encima: NO llevan z-index propio, porque eso les
+ * abría un contexto de apilamiento que dejaba el menú preso en su fila.
  */
 export async function PersonTimelineRow({
   work,
@@ -123,7 +125,14 @@ export async function PersonTimelineRow({
             </div>
           </div>
 
-          <div className="relative z-10">
+          {/* `relative` A SECAS, sin `z-10`: basta para quedar sobre el overlay
+              (va después en el DOM y los dos son positioned), y un z-index aquí
+              ENCERRABA el menú en la fila. Un elemento posicionado con z-index
+              abre contexto de apilamiento propio, y entre contextos hermanos
+              con el mismo z-index gana el último del DOM — así que el `z-50`
+              del desplegable no podía salir por encima de la fila de abajo y
+              quedaba tapado por sus botones (reportado por el dueño). */}
+          <div className="relative">
             <WorkStatusControl
               itemType={work.itemType}
               itemId={work.itemId}

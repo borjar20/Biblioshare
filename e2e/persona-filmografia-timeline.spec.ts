@@ -252,6 +252,42 @@ test.describe("ficha de persona · filmografía", () => {
       await filaSinRegistro.getByRole("button", { name: "Pendiente" }).click();
       await expect(filaSinRegistro.getByTestId("status-badge")).toHaveText(/Pendiente/);
 
+      // 5b. EL MENÚ DE UNA FILA SE PINTA POR ENCIMA DE LAS SIGUIENTES.
+      //     Reportado por el dueño: quedaba por debajo de los botones de la
+      //     fila de abajo. Cada fila envolvía sus controles en un `z-10`, que
+      //     abre contexto de apilamiento propio; entre contextos hermanos con
+      //     el MISMO z-index gana el último del DOM, así que el `z-50` del
+      //     menú no podía salir de su fila. Se comprueba con
+      //     `elementFromPoint`, que responde qué se pinta de verdad ahí — un
+      //     test que solo mirase la visibilidad del menú pasaría igual.
+      await filaTerminada.getByRole("button", { name: "Más acciones" }).click();
+      const menu = page.getByRole("menu");
+      await expect(menu).toBeVisible();
+      const tapado = await menu.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        // Rejilla de sondas por la mitad de abajo del menú, que es la parte
+        // que invade las filas siguientes. Barre también a lo ANCHO: el
+        // control de la fila de abajo es estrecho y una sonda por el centro
+        // podía pasar de largo justo por su lado.
+        const sondas: Array<string | null> = [];
+        for (const fx of [0.08, 0.3, 0.5, 0.7, 0.92]) {
+          for (const fy of [0.4, 0.6, 0.8, 0.95]) {
+            const punto = document.elementFromPoint(
+              box.x + box.width * fx,
+              box.y + box.height * fy
+            );
+            sondas.push(punto && el.contains(punto) ? null : (punto?.outerHTML.slice(0, 70) ?? "nada"));
+          }
+        }
+        return sondas;
+      });
+      expect(
+        tapado.filter(Boolean),
+        `algo se pinta por encima del menú: ${tapado.filter(Boolean).join(" | ")}`
+      ).toEqual([]);
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+
       // 6. LA FILA ENTERA ES CLICABLE (enlace en overlay), no solo el título.
       await filaSinRegistro.click({ position: { x: 200, y: 20 } });
       await expect(page).toHaveURL(new RegExp(`/pelicula/${sinRegistro}`));
