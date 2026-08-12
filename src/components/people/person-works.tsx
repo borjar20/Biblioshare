@@ -11,26 +11,64 @@ import {
 import { PersonFilters } from "./person-filters";
 import { PersonFeatured } from "./person-featured";
 import { PersonWorkRow } from "./person-work-row";
+import { PersonWorkCard } from "./person-work-card";
 import { ROLE_KEY } from "./role-labels";
 
 const TYPE_ORDER: ItemType[] = ["movie", "series", "book"];
 
-async function YearList({ works, unknownYearLabel }: { works: ProfileWork[]; unknownYearLabel: string }) {
+/**
+ * La misma lista, en las DOS formas que pide el mockup:
+ *
+ * - **≥640px** (marco 5): gutter de año a la izquierda y filas de cuatro zonas.
+ * - **<640px** (marco 2): rejilla PLANA de 2 columnas con tarjetas, SIN gutter
+ *   de año — a 390px la fila deja ~150px para el título después de portada,
+ *   chip, estado y valoración, y no se lee. El año se mete en la tarjeta.
+ *
+ * Sí, los datos se pintan dos veces en el DOM. Es el precio de que las dos
+ * formas sean estructuralmente distintas (columna con gutter vs rejilla), y es
+ * el mismo patrón que ya usa el repo para los pares `hidden`/`lg:flex`. La
+ * trampa conocida de ese patrón —que las dos instancias se vean a la vez si el
+ * orden de las clases de Tailwind pierde la pelea, como pasó con `RatingDots`—
+ * se evita aquí porque los envoltorios no llevan `flex`/`grid` propio que
+ * compita: el de móvil nace `grid` y muere en `sm:hidden`, el de escritorio nace
+ * `hidden` y revive en `sm:flex`.
+ */
+async function YearList({
+  works,
+  unknownYearLabel,
+}: {
+  works: ProfileWork[];
+  unknownYearLabel: string;
+}) {
+  const byYear = groupByYear(works);
+
   return (
-    <div className="flex flex-col gap-3">
-      {groupByYear(works).map((group) => (
-        <div key={String(group.year)} className="flex gap-3">
-          <span className="w-[46px] shrink-0 pt-2 font-mono text-[11px] text-muted-foreground">
-            {group.year ?? unknownYearLabel}
-          </span>
-          <div className="flex min-w-0 flex-1 flex-col">
-            {group.works.map((work) => (
-              <PersonWorkRow key={`${work.itemType}-${work.itemId}`} work={work} />
-            ))}
+    <>
+      {/* Plana, pero en el MISMO orden que la de escritorio: año descendente,
+          las obras sin año al final. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:hidden">
+        {byYear
+          .flatMap((group) => group.works)
+          .map((work) => (
+            <PersonWorkCard key={`${work.itemType}-${work.itemId}`} work={work} />
+          ))}
+      </div>
+
+      <div className="hidden flex-col gap-3 sm:flex">
+        {byYear.map((group) => (
+          <div key={String(group.year)} className="flex gap-3">
+            <span className="w-[46px] shrink-0 pt-2 font-mono text-[11px] text-muted-foreground">
+              {group.year ?? unknownYearLabel}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              {group.works.map((work) => (
+                <PersonWorkRow key={`${work.itemType}-${work.itemId}`} work={work} />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </>
   );
 }
 

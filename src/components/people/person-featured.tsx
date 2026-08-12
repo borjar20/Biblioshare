@@ -16,9 +16,16 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
       <h3 className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
         {t("featured")}
       </h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Móvil: CARRUSEL horizontal (mockup marco 2). Cinco destacadas en una
+          rejilla de 2 columnas empujarían la lista de abajo fuera de la primera
+          pantalla, que es justo lo que se quiere ver. Desde `sm` vuelve a ser
+          rejilla y las tarjetas dejan de llevar ancho fijo. */}
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
         {works.map((work) => (
-          <div key={`${work.itemType}-${work.itemId}`} className="flex flex-col gap-1.5">
+          <div
+            key={`${work.itemType}-${work.itemId}`}
+            className="flex w-[132px] shrink-0 flex-col gap-1.5 sm:w-auto sm:shrink"
+          >
             <CoverCard
               href={work.href}
               coverUrl={work.coverUrl}
