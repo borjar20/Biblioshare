@@ -51,6 +51,24 @@ describe("unconfirmImpact — qué arrastra desmarcar", () => {
     expect(impacto.extraCount).toBe(2);
   });
 
+  it("con exactamente tres posteriores, uno por encima del tope, cuenta uno", () => {
+    // El caso «justo uno de más»: con dos se nombran los dos y extraCount es 0,
+    // así que este es el primero que ejercita de verdad el recorte.
+    const impacto = unconfirmImpact(cinco[1], cinco);
+    expect(impacto.alsoFalling).toEqual(["Hito 2", "Hito 3"]);
+    expect(impacto.extraCount).toBe(1);
+  });
+
+  it("las etiquetas salen en orden de hito, venga como venga el array", () => {
+    // Sin esto, borrar el `.sort()` de la implementación no rompería ningún
+    // test: los demás casos pasan el array ya ordenado y el orden saldría
+    // «bien» por casualidad.
+    const barajado = [cinco[2], cinco[0], cinco[4], cinco[1], cinco[3]];
+    const impacto = unconfirmImpact(cinco[0], barajado);
+    expect(impacto.alsoFalling).toEqual(["Hito 1", "Hito 2"]);
+    expect(impacto.extraCount).toBe(2);
+  });
+
   it("los hitos ya pendientes no cuentan como que caen", () => {
     const mixto = [
       cp({ order: 0 }),
