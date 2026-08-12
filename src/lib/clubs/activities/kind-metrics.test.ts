@@ -38,6 +38,8 @@ describe("describeProgress", () => {
   it("tierlist cuenta votantes, no ítems", () => {
     const labels = describeProgress("tierlist", prog({ collective: { done: 4, total: 6 } }), t);
     expect(labels.collectiveLabel).toBe("metricVoted(4,6)");
+    // 4/6 = 66.66…: fija el redondeo, que es donde se cuela un floor por descuido.
+    expect(labels.collectivePercent).toBe(67);
   });
 
   it("sin denominador NO hay barra: nada de un 0% que parece progreso", () => {
@@ -46,14 +48,22 @@ describe("describeProgress", () => {
     expect(labels.collectivePercent).toBeNull();
   });
 
-  it("quien no participa no tiene barra propia", () => {
-    expect(describeProgress("buddy_read", prog({ viewer: null }), t).viewerLabel).toBeNull();
+  it("quien no participa no tiene barra propia: ni etiqueta ni porcentaje", () => {
+    const labels = describeProgress("buddy_read", prog({ viewer: null }), t);
+    expect(labels.viewerLabel).toBeNull();
+    expect(labels.viewerPercent).toBeNull();
+    // Y lo colectivo sigue ahí: no participar no te quita ver cómo va el grupo.
+    expect(labels.collectiveLabel).toBe("metricCheckpoints(3,5)");
   });
 
-  it("sin progreso cargado devuelve todo a null, sin reventar", () => {
+  it("sin progreso cargado devuelve LOS CUATRO campos a null, sin reventar", () => {
     const labels = describeProgress("buddy_read", undefined, t);
-    expect(labels.collectiveLabel).toBeNull();
-    expect(labels.viewerPercent).toBeNull();
+    expect(labels).toEqual({
+      collectiveLabel: null,
+      viewerLabel: null,
+      collectivePercent: null,
+      viewerPercent: null,
+    });
   });
 
   it("un evento no tiene métrica: nunca llega a esta tarjeta, pero no debe romper", () => {
