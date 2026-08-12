@@ -178,11 +178,19 @@ escrituras devuelven **42501** y se tragan en silencio, exactamente como `writeS
 (`enrich-item.ts:59`) y por el mismo motivo: la navegación anónima existe (#359/#360) y no
 puede romper la ficha.
 
-Consecuencia deliberada: **el anónimo SÍ ve la filmografía completa** (viene de la API en
-memoria), pero no se persiste ni se marca `credits_hydrated_at`. La persiste el primer
-visitante con sesión. Para el anónimo, las obras que aún no están en catálogo **se pintan
-sin enlace** (no hay id al que enlazar) — es el único sitio donde una fila no es clicable, y
-se marca visualmente como tal.
+**Consecuencia asumida (enmienda del 2026-08-12, durante la implementación):** el anónimo
+**NO ve la filmografía completa hasta que la persista alguien con sesión**. El plan inicial
+decía lo contrario —«el anónimo la ve desde la respuesta de la API, en memoria»—, y se
+descartó al implementarlo: esas obras no tienen id de catálogo, así que habría que pintarlas
+**sin enlace**, con una fila que no es clicable y hay que marcar visualmente como tal. Eso es
+una segunda variante de la fila y un estado a medias en la pantalla, a cambio de un caso de
+paso: la ficha vacía que motiva todo esto la sufre el dueño de la biblioteca, que está
+logueado.
+
+Lo que ve el anónimo, entonces: la ficha completa de la persona (bio, foto, fechas) y las
+obras que YA estén en `credits`. En cuanto entra el primer visitante con sesión, la ficha
+queda hidratada para todos, incluidos los anónimos siguientes. Queda como issue por si el
+caso resulta importar.
 
 ## Nunca lanza
 
