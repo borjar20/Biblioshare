@@ -12,7 +12,7 @@ export async function PersonFeatured({ works }: { works: ProfileWork[] }) {
   const t = await getTranslations("person");
 
   return (
-    <section className="flex flex-col gap-2.5">
+    <section className="flex flex-col gap-2.5" data-testid="person-featured">
       <h3 className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
         {t("featured")}
       </h3>

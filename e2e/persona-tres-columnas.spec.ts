@@ -44,6 +44,20 @@ async function rest<T>(
   return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
+/**
+ * Espera a que el `<Suspense>` haya terminado.
+ *
+ * Es una aserción con valor propio, no solo una espera: mientras el contenido
+ * está en vuelo, el esqueleto y el contenido real conviven en el DOM y hay DOS
+ * `[data-area="obras"]`. Exigir que quede exactamente UNO comprueba que el
+ * esqueleto se retira de verdad — si se quedara pegado bajo la ficha, esto lo
+ * caza.
+ */
+async function waitForWorks(page: Page) {
+  await expect(page.locator('[data-area="obras"]')).toHaveCount(1);
+  await expect(page.locator('[data-area="obras"]')).toBeVisible();
+}
+
 async function login(page: Page) {
   await page.goto("/login");
   await page.fill('input[name="email"]', EMAIL);
@@ -96,7 +110,7 @@ test.describe("ficha de persona", () => {
 
     await page.setViewportSize({ width: 1700, height: 1000 });
     await page.goto(`/persona/${target.id}`);
-    await expect(page.locator('[data-area="obras"]')).toBeVisible();
+    await waitForWorks(page);
 
     // 1. EL BUG DE FONDO: la ficha ya no muestra solo lo que alguien hubiera
     //    abierto alguna vez. Tras la visita hay más créditos que antes...
@@ -116,10 +130,10 @@ test.describe("ficha de persona", () => {
     // 2. TRES ÁREAS, con la ficha a la izquierda del centro y el ancho del
     //    mockup (308px), no una fracción elástica.
     await page.reload();
+    await waitForWorks(page);
     const ficha = page.locator('[data-area="ficha"]');
     const obras = page.locator('[data-area="obras"]');
     await expect(ficha).toBeVisible();
-    await expect(obras).toBeVisible();
 
     const fichaBox = (await ficha.boundingBox())!;
     const obrasBox = (await obras.boundingBox())!;
@@ -128,17 +142,26 @@ test.describe("ficha de persona", () => {
 
     // 3. Destacadas + «El resto, por año», y LA regla del diseño: una obra
     //    destacada NO vuelve a salir en la lista de abajo.
-    await expect(page.getByText("Destacadas")).toBeVisible();
-    await expect(page.getByText("El resto, por año")).toBeVisible();
+    const featuredBlock = page.getByTestId("person-featured");
+    const restBlocks = page.getByTestId("person-rest");
+    await expect(featuredBlock).toBeVisible();
+    await expect(restBlocks.first()).toBeVisible();
 
-    const featured = page.locator('[data-area="obras"] section a span.font-serif').first();
-    const featuredTitle = (await featured.innerText()).trim();
-    expect(featuredTitle).toBeTruthy();
+    const featuredTitles = (await featuredBlock.locator("a span.font-serif").allInnerTexts())
+      .map((s) => s.trim())
+      .filter(Boolean);
+    // Si esto no encuentra nada, la comprobación de abajo sería vacua: el
+    // test tiene que fallar aquí, no pasar por no haber mirado nada.
+    expect(featuredTitles.length).toBeGreaterThan(0);
 
-    const restTitles = await page
-      .locator('[data-area="obras"] > div:last-child a span.font-serif')
-      .allInnerTexts();
-    expect(restTitles.map((t) => t.trim())).not.toContain(featuredTitle);
+    const restTitles = (await restBlocks.locator("a span.font-serif").allInnerTexts())
+      .map((s) => s.trim())
+      .filter(Boolean);
+    expect(restTitles.length).toBeGreaterThan(0);
+
+    for (const title of featuredTitles) {
+      expect(restTitles, `«${title}» está destacada y además en la lista`).not.toContain(title);
+    }
   });
 
   test("los filtros viven en la URL y «atrás» funciona", async ({ page }) => {
@@ -148,7 +171,7 @@ test.describe("ficha de persona", () => {
     await login(page);
     await page.setViewportSize({ width: 1700, height: 1000 });
     await page.goto(`/persona/${target.id}`);
-    await expect(page.locator('[data-area="obras"]')).toBeVisible();
+    await waitForWorks(page);
 
     // Un chip de crédito lleva su recuento y navega cambiando la URL.
     const creditChip = page.getByRole("link", { name: /·\s*\d+$/ }).first();
@@ -198,7 +221,7 @@ test.describe("ficha de persona", () => {
     for (const width of [390, 900, 1300, 1700]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/persona/${target.id}`);
-      await expect(page.locator('[data-area="obras"]')).toBeVisible();
+      await waitForWorks(page);
 
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

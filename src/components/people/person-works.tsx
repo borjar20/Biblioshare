@@ -137,7 +137,7 @@ export async function PersonWorks({
                 );
                 if (sectionRest.length === 0) return null;
                 return (
-                  <div key={section.role} className="flex flex-col gap-2.5">
+                  <div key={section.role} className="flex flex-col gap-2.5" data-testid="person-rest">
                     <h3 className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                       {t("sectionAs", { role: t(ROLE_KEY[section.role]) })}
                       {" · "}
@@ -153,7 +153,7 @@ export async function PersonWorks({
             </div>
           ) : (
             rest.length > 0 && (
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-2.5" data-testid="person-rest">
                 <h3 className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                   {featured.length > 0 ? t("restByYear") : t("byYear")}
                 </h3>
