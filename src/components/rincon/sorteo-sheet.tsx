@@ -135,22 +135,29 @@ export function SorteoSheet({
     }
 
     setPhase("spinning");
-    const steps = shelf.length + target + 1;
+    // Duración mínima para que la ruleta se VEA como tal: contar "una vuelta +
+    // target" daba 3–4 ticks (~250 ms) con pocos lomos, imperceptible. Ahora se
+    // gira hasta cubrir MIN_SPIN_MS y, ya cubierto, se para en cuanto el tick
+    // cae sobre el ganador — parada limpia, sin salto del lomo elegido.
+    const MIN_SPIN_MS = 1200;
     let step = 0;
+    let elapsed = 0;
     let delay = 40;
     const run = () => {
-      setTickIndex(step % shelf.length);
+      const idx = step % shelf.length;
+      setTickIndex(idx);
       step += 1;
-      if (step < steps) {
-        delay = Math.min(delay * 1.16, 240);
-        timers.current.push(window.setTimeout(run, delay));
-      } else {
+      if (elapsed >= MIN_SPIN_MS && idx === target) {
         // Pausa con el ganador elevado y el resto atenuado, luego revelado.
         setTickIndex(null);
         setWinner(target);
         setPicked(shelf[target]);
         timers.current.push(window.setTimeout(() => setPhase("revealed"), 520));
+        return;
       }
+      delay = Math.min(delay * 1.16, 240);
+      elapsed += delay;
+      timers.current.push(window.setTimeout(run, delay));
     };
     run();
   }
