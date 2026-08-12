@@ -182,6 +182,21 @@ test("calendario: crea un evento y navega entre meses", async ({ page, request }
     // ensuciar.
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto(`/club/${CLUB_SLUG}`);
+
+    // La barra de pestañas NO puede desbordar la página a lo ancho. Con cuatro
+    // pestañas (Feed · Actividades · Calendario · Gestión) y en la vista de
+    // MODERADOR —la peor: «Gestión» con su ◈ y el badge de propuestas— la fila
+    // dejó de caber a 390 px y lo que se deslizaba era la página entera.
+    //
+    // Se afirma sobre `documentElement`, no sobre la barra: que la barra scrolle
+    // por dentro es aceptable (está contenida a propósito); que lo haga la
+    // PÁGINA no lo es. Es exactamente el fallo que se reportó, así que va con
+    // red automática en vez de fiarse de mirarlo.
+    const desbordeHorizontal = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(desbordeHorizontal, "la página no debe desbordar a lo ancho a 390 px").toBe(0);
+
     await page.getByRole("link", { name: /^calendario$/i }).click();
     await expect(page).toHaveURL(new RegExp(`/club/${CLUB_SLUG}/calendario$`));
 
