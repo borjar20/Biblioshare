@@ -38,10 +38,10 @@ export function ActivityList({
     today,
   );
 
-  // El vacío se gatea por los TRES grupos ya filtrados, nunca por
+  // El vacío se gatea por los CUATRO grupos ya filtrados, nunca por
   // `activities.length`: la lista cruda SIGUE trayendo los eventos (es
   // groupActivities quien los descarta, spec 2026-08-11), así que en un club
-  // cuyas únicas actividades son eventos `activities.length` es > 0, los tres
+  // cuyas únicas actividades son eventos `activities.length` es > 0, los
   // <Group> devuelven null por vacíos y el mensaje no se pintaba -- se veía el
   // botón "Proponer actividad" sobre un hueco, sin ninguna explicación.
   const sinActividades =
