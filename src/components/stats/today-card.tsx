@@ -49,6 +49,30 @@ export async function TodayCard({
   const sessionHref =
     item.itemType !== "movie" && item.activePassId ? `/sesion/${item.activePassId}` : null;
 
+  const actions = (
+    <TodayActions
+      passId={item.activePassId}
+      itemType={item.itemType}
+      itemId={item.itemId}
+      seriesId={item.itemId}
+      nextEpisode={nextEpisode}
+      sessionHref={sessionHref}
+      logHref={`${itemHref(item.itemType, item.itemId)}?tab=log`}
+      labels={{
+        session: t("session"),
+        log: t("log"),
+        cancel: t("timerCancel"),
+        register: t("timerRegister"),
+        notes: t("timerNotes"),
+        timerLabel: t("timerLabel"),
+        markSeen: t("markSeen"),
+        nextEpisode: nextEpisode
+          ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
+          : null,
+      }}
+    />
+  );
+
   return (
     <article
       className="relative overflow-hidden rounded-[14px] border border-border bg-surface shadow-card"
@@ -156,27 +180,7 @@ export async function TodayCard({
         </div>
       </div>
 
-      <TodayActions
-        passId={item.activePassId}
-        itemType={item.itemType}
-        itemId={item.itemId}
-        seriesId={item.itemId}
-        nextEpisode={nextEpisode}
-        sessionHref={sessionHref}
-        logHref={`${itemHref(item.itemType, item.itemId)}?tab=log`}
-        labels={{
-          session: t("session"),
-          log: t("log"),
-          cancel: t("timerCancel"),
-          register: t("timerRegister"),
-          notes: t("timerNotes"),
-          timerLabel: t("timerLabel"),
-          markSeen: t("markSeen"),
-          nextEpisode: nextEpisode
-            ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
-            : null,
-        }}
-      />
+      {actions}
     </article>
   );
 }
