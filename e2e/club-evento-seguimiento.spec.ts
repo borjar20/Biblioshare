@@ -243,7 +243,17 @@ test("evento: la marca de «seguido» y el filtro «Sigues» de la agenda", asyn
 
     // El texto accesible equivalente a «Evento seguido» aparece (§17): es lo que
     // hace que la marca no dependa solo del color.
-    await expect(page.getByText("Evento seguido").first()).toBeVisible();
+    //
+    // OJO con el `.first()` que había aquí: desde la spec 2026-08-12 la leyenda
+    // se pinta DOS veces en el DOM —la plegable de móvil (`lg:hidden`) y la fija
+    // de escritorio (`hidden lg:flex`)— porque el atributo `open` de <details>
+    // no tiene variante responsive en Tailwind. Solo UNA es visible a la vez,
+    // pero la de móvil va primero en el DOM, así que `.first()` cazaba la
+    // oculta y fallaba a 1280 px. Se filtra por visibilidad en vez de por
+    // posición: así el assert vale a cualquier ancho.
+    await expect(
+      page.getByText("Evento seguido").filter({ visible: true }).first(),
+    ).toBeVisible();
 
     // El filtro «Sigues» deja solo el evento seguido.
     await page.getByRole("tab", { name: /Sigues/ }).click();
