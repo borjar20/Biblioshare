@@ -269,6 +269,18 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > RPC de esta misma tabla. Corregido y verificado en los dos entornos: los tres casos del
 > sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
 
+> **Delta del 2026-08-13 (desmarcar un hito, y el gate de `confirm_checkpoint`
+> reordenado, §6): aplicado y verificado SOLO EN DEV**, contra `pg_proc`, nunca contra
+> `list_migrations`. Migración `20260855_unconfirm_checkpoint.sql`: nueva RPC
+> `unconfirm_checkpoint(uuid)`, simétrica a `confirm_checkpoint` (desmarca el hito N y los
+> posteriores, donde confirmar auto-confirma 1..N), gate de participante comprobado
+> PRIMERO, no mira el estado de la actividad a propósito. Y `confirm_checkpoint` cambia de
+> ORDEN, no de efecto: su gate de participante pasa también a ir primero (issue #129, misma
+> fuga de INFO que corrigió `20260831_club_activity_role_gate_first.sql` en otras cuatro
+> RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
+> columnas, tablas ni cambios de grants. **Producción pendiente**: la decide el usuario, no
+> se aplicó en esta spec. Detalle en §6.
+
 ## 0. Dos renombres que invalidan la doc antigua
 
 **`diary_entries` se llama `passes` desde julio de 2026** (migración `pass_hub_c_rename`).
@@ -928,6 +940,45 @@ visual opcional**: `{}` = hito sin pista, y la app ya no compara posiciones
 (`hasReachedPosition` eliminada de `src/lib/library/position.ts`). El spoiler guard del
 chat no cambia: `can_view_target('activity_checkpoint', …)` sigue exigiendo
 `is_activity_participant` **y** `has_reached_checkpoint`.
+
+### Desmarcar un hito, y el gate de `confirm_checkpoint` reordenado (SOLO EN DEV, 2026-08-13)
+
+`unconfirm_checkpoint(uuid)`, nueva RPC, SECURITY DEFINER, único camino de borrado de
+`club_activity_checkpoint_reads` (la tabla no tiene política de escritura de cliente, a
+propósito — `20260713_activity_checkpoints.sql`). Simétrica a `confirm_checkpoint`: donde
+confirmar el hito N auto-confirma 1..N, desmarcar el hito N desmarca N..último —
+`delete ... where c."order" >= v_order and r.user_id = auth.uid()`. El invariante que
+sostiene la simetría: el progreso de cada participante es siempre un tramo CONTINUO desde
+el principio; permitir huecos daría estados sin sentido («llegué al 5 pero no al 2») que
+además no cambiarían ningún número, porque el tablero de grupo mide por el hito más alto
+alcanzado. Solo borra filas del llamante (`r.user_id = auth.uid()`), nunca las de otro
+participante. Idempotente: desmarcar dos veces seguidas no falla, la segunda borra cero
+filas.
+
+Gate: ser participante (`is_activity_participant`), comprobado PRIMERO — igual que las
+cuatro RPC que corrigió `20260831_club_activity_role_gate_first.sql` (issue #129). **No
+mira el estado de la actividad**, igual que su gemela `confirm_checkpoint`: la asimetría
+sería peor que la permisividad — si puedes marcar un hito en una actividad ya finalizada,
+tienes que poder desmarcarlo. Dos códigos: `forbidden` (no participante, o hito
+inexistente — con `p_checkpoint_id` que no existe, `v_activity_id` es null y el gate ya da
+`false`) y `not_found` (guarda defensiva, inalcanzable con el gate delante; se conserva por
+coherencia con las otras cuatro).
+
+`confirm_checkpoint` cambia de orden, no de efecto: comprobaba `not found` ANTES que el
+permiso, así que un uuid de hito ajeno revelaba su existencia a quien no participa en esa
+actividad — la misma fuga de INFO que #129 cerró en cuatro RPC de `club_activities`. El
+gate de participante pasa a ir primero; la cascada 1..N (el cuerpo) **no cambia**. El
+código de error se normaliza: `'not found'` → `'not_found'`, para que las dos gemelas
+hablen igual.
+
+Migración `20260855_unconfirm_checkpoint.sql`, **aplicada y verificada SOLO EN DEV**
+(sembrando dentro de un bloque que siempre aborta, así no queda basura): confirmar el 5º
+hito crea 5 filas; desmarcar el 3º deja 2; desmarcar dos veces no falla; los CUATRO casos
+de alguien ajeno al club dan `forbidden` — incluido `confirm_checkpoint` sobre un uuid
+inexistente, que antes daba `not found`; y con dos participantes, desmarcar uno deja al
+otro intacto (0 y 3 filas). Antes de reemplazarla se comprobó que el cuerpo vivo en dev de
+`confirm_checkpoint` era el de `20260827` (para no dejarla atrasada con un `create or
+replace`). **Producción pendiente** — la decide el usuario, no forma parte de esta spec.
 
 ### `evento` — actividad no participativa (dev y prod, 2026-07-22)
 
@@ -2607,7 +2658,8 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
   `save_saga_sequence` (§7.5/§7.6), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
-  `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan
+  `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`,
+  `unconfirm_checkpoint`. Los advisors los marcan
   como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` estuvo en esta lista
   hasta la fase 3: dejó de tener llamador en la app cuando la fase 2a retiró su editor (§7.5), y una
   vez la fase 3 derivó el mapa de la curación (§7.7) tampoco quedaba ya ningún lector del grafo que la
