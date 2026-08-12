@@ -205,6 +205,12 @@ test.describe("ficha de persona · retrato y medias", () => {
       // 2. LAS MEDIAS. Dots de verdad (RatingDots pone role="img" con la nota
       //    en el aria-label), y ni rastro del viejo texto «/ 5».
       const ficha = page.locator('[data-area="ficha"]');
+
+      // 3. «En tu biblioteca» habla en PORCENTAJE; el recuento baja al pie de la
+      //    barra, que es donde da la escala sin robarle el sitio.
+      await expect(ficha.getByText("Has visto el 100% de su obra")).toBeVisible();
+      await expect(ficha.getByText("3 de 3 obras")).toBeVisible();
+
       await expect(ficha.getByRole("img", { name: /de 5$/ })).toHaveCount(1);
       await expect(ficha.getByText("4,2")).toBeVisible();
       await expect(ficha.getByText("/ 5")).toHaveCount(0);

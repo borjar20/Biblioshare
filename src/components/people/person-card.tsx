@@ -129,10 +129,19 @@ export async function PersonCard({
             <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
               {t("inYourLibrary")}
             </span>
+            {/* La frase va en PORCENTAJE (petición del dueño): «5 de 33» obliga
+                a dividir para saber si vas por la mitad o empezando. El recuento
+                no se pierde —baja al pie de la barra— porque el porcentaje solo
+                no dice la escala: un 33% de 3 obras y uno de 300 se leen igual y
+                no son lo mismo. */}
             <p className="text-[13px] text-foreground">
-              {t(SUMMARY_KEY[summary.verb], { done: summary.done, total: summary.total })}
+              {t(SUMMARY_KEY[summary.verb], { percent: summary.percent })}
             </p>
-            <ProgressBar current={summary.done} total={summary.total} />
+            <ProgressBar
+              current={summary.done}
+              total={summary.total}
+              label={t("summaryCount", { done: summary.done, total: summary.total })}
+            />
 
             {ratedCount >= 3 && (
               // Mismo histograma que la ficha de obra y el raíl de `/post/[id]`

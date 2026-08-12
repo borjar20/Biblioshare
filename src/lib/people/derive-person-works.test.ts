@@ -5,6 +5,7 @@ import {
   deriveCollaborators,
   deriveDominantType,
   deriveLibrarySummary,
+  libraryPercent,
   deriveRatingBuckets,
   deriveRoleCounts,
   deriveRoleSections,
@@ -166,6 +167,7 @@ describe("deriveLibrarySummary", () => {
       visible: true,
       total: 3,
       done: 1,
+      percent: 33,
       verb: "watched",
     });
   });
@@ -179,6 +181,33 @@ describe("deriveLibrarySummary", () => {
       deriveLibrarySummary([work({ itemId: "1" }), work({ itemId: "2" }), work({ itemId: "3" })])
         .visible
     ).toBe(false);
+  });
+});
+
+describe("libraryPercent", () => {
+  it("redondea al entero", () => {
+    expect(libraryPercent(1, 3)).toBe(33);
+    expect(libraryPercent(2, 3)).toBe(67);
+    expect(libraryPercent(1, 2)).toBe(50);
+  });
+
+  it("nunca 0% habiendo terminado alguna: 1 de 300 es 1%, no 0%", () => {
+    // 0,33% redondearía a 0 y contradiría al propio bloque, que solo se pinta
+    // si hay al menos una terminada.
+    expect(libraryPercent(1, 300)).toBe(1);
+  });
+
+  it("nunca 100% quedando alguna: 299 de 300 es 99%", () => {
+    expect(libraryPercent(299, 300)).toBe(99);
+  });
+
+  it("100% solo con todas", () => {
+    expect(libraryPercent(3, 3)).toBe(100);
+  });
+
+  it("sin terminar ninguna, 0%; y sin obras, 0% sin dividir por cero", () => {
+    expect(libraryPercent(0, 5)).toBe(0);
+    expect(libraryPercent(0, 0)).toBe(0);
   });
 });
 

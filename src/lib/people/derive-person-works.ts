@@ -87,8 +87,26 @@ export type LibrarySummary = {
   visible: boolean;
   total: number;
   done: number;
+  /** 0–100, entero. Lo que se ENSEÑA; `done`/`total` siguen para el progreso. */
+  percent: number;
   verb: DominantType;
 };
+
+/**
+ * El porcentaje que se pinta, con los dos redondeos que importan:
+ *
+ * - **Nunca 0% con algo terminado.** Una de 300 da 0,33% y redondearía a 0,
+ *   contradiciendo al propio bloque, que solo aparece si hay al menos una.
+ * - **Nunca 100% sin haberlas terminado TODAS.** 299 de 300 da 99,67%: decir
+ *   100% y dejar una pendiente es la clase de mentira que hace desconfiar de
+ *   todo lo demás de la pantalla.
+ */
+export function libraryPercent(done: number, total: number): number {
+  if (total <= 0 || done <= 0) return 0;
+  if (done >= total) return 100;
+  const raw = (done / total) * 100;
+  return Math.min(99, Math.max(1, Math.round(raw)));
+}
 
 // "Has visto 0 de 1" no informa de nada y ocupa un bloque entero: el resumen
 // solo aparece con al menos 3 obras y al menos una terminada.
@@ -99,6 +117,7 @@ export function deriveLibrarySummary(works: ProfileWork[]): LibrarySummary {
     visible: total >= 3 && done >= 1,
     total,
     done,
+    percent: libraryPercent(done, total),
     verb: deriveDominantType(works),
   };
 }
