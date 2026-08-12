@@ -631,21 +631,47 @@ body {
   }
 }
 
-/* ≥1600: las tres columnas del mockup (marco 5 · 1e). */
+/* ≥1600: las tres columnas del mockup (marco 5 · 1e).
+
+   La izquierda es 360, no los 308 del mockup (petición del dueño, 2026-08-12):
+   la biografía es el contenido que peor sufre una columna estrecha —a 308px son
+   ~40 caracteres por línea— y el centro puede ceder ese ancho sin apretarse. */
 @media (min-width: 1600px) {
   .person-grid {
-    grid-template-columns: 308px minmax(0, 1fr) 344px;
+    grid-template-columns: 360px minmax(0, 1fr) 344px;
     grid-template-areas: "ficha obras rail";
     gap: 28px;
   }
   /* Las dos laterales se pegan mientras se recorre el centro (la columna alta).
      `align-self:start` para que cada caja tome su alto de contenido y
-     `position:sticky` enganche. Bajo la topbar, que también es sticky. */
+     `position:sticky` enganche. Bajo la topbar, que también es sticky.
+
+     ⚠️ `sticky` NO basta cuando la caja es más alta que la ventana: se pega, sí,
+     pero su parte de abajo queda fuera y solo se alcanza haciendo scroll de la
+     PÁGINA ENTERA — que es justo lo que pasaba al desplegar «Ver más» en una
+     biografía larga. Por eso la caja se topa a la altura visible y la que
+     desborda es ELLA. `min-height:0` en el hijo es imprescindible: sin él, un
+     hijo flex no se deja encoger por debajo de su contenido y el `overflow`
+     nunca llega a activarse.
+
+     El scroll va en el HIJO, no en el envoltorio, para que la barra quede
+     DENTRO del borde redondeado de la tarjeta y no flotando entre columnas.
+     `overscroll-behavior: contain` evita que al llegar al final de la biografía
+     el gesto siga y arrastre la página. */
   .person-grid > [data-area="ficha"],
   .person-grid > [data-area="rail"] {
     position: sticky;
     top: calc(var(--topbar-h) + 16px);
     align-self: start;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - var(--topbar-h) - 32px);
+  }
+  .person-grid > [data-area="ficha"] > *,
+  .person-grid > [data-area="rail"] > * {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
 

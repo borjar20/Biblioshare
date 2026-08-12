@@ -222,7 +222,7 @@ para no poder divergir (la regla que abre `layout.ts`, motivo de #372/#376).
 
 | Ancho de ventana | Reparto |
 |---|---|
-| ≥1600 | Tres columnas: `308px` · fluida · `344px`, `gap 28px`, contenedor `max-w-[1740px]` |
+| ≥1600 | Tres columnas: `360px` · fluida · `344px`, `gap 28px`, contenedor `max-w-[1740px]` |
 | 1000–1600 | Dos columnas: ficha + centro; el raíl se pliega **debajo de la ficha izquierda**, sus cards a ancho de columna |
 | <1000 | Una columna (marco 2): ficha como hero centrado, filtros en fila con scroll horizontal, destacadas en carrusel, resto en rejilla de 2 |
 
@@ -234,7 +234,16 @@ columna ahí desperdiciaría 300px.
 en una columna y se queda en ancho de lectura (672), sin estirarse; mismo criterio que
 `SHELL_POST`.
 
-Las columnas laterales son `position: sticky` con `align-items: start`.
+Las columnas laterales son `position: sticky` con `align-items: start`, y **se topan a la
+altura de la ventana con scroll propio** (`max-height: calc(100dvh - topbar - 32px)` +
+`overflow-y: auto` en su hijo). Enmienda del 2026-08-12 a petición del dueño: `sticky` por sí
+solo no resuelve una caja más alta que la ventana —se pega, pero su parte inferior solo se
+alcanza recorriendo la página entera—, que es lo que pasaba al desplegar «Ver más» en una
+biografía larga.
+
+El ancho de la izquierda sube de los 308px del mockup a **360px**, también a petición del
+dueño: la biografía es lo que peor sufre una columna estrecha (a 308px caben ~40 caracteres
+por línea) y el centro puede ceder ese ancho sin apretarse.
 
 ## Columna izquierda — `PersonCard`
 

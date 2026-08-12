@@ -160,8 +160,8 @@ test.describe("ficha de persona", () => {
       );
       expect(row.credits_hydrated_at).not.toBeNull();
 
-      // 2. TRES ÁREAS, con la ficha a la izquierda del centro y el ancho del
-      //    mockup (308px), no una fracción elástica.
+      // 2. TRES ÁREAS, con la ficha a la izquierda del centro y ancho FIJO
+      //    (360px), no una fracción elástica.
       await page.reload();
       await waitForWorks(page);
       const ficha = page.locator('[data-area="ficha"]');
@@ -171,7 +171,23 @@ test.describe("ficha de persona", () => {
       const fichaBox = (await ficha.boundingBox())!;
       const obrasBox = (await obras.boundingBox())!;
       expect(fichaBox.x + fichaBox.width).toBeLessThanOrEqual(obrasBox.x + 1);
-      expect(Math.round(fichaBox.width)).toBe(308);
+      expect(Math.round(fichaBox.width)).toBe(360);
+
+      // 2b. La columna de la ficha NUNCA pasa de la ventana: si la biografía es
+      //     larga, la que hace scroll es ELLA, no la página. Sin esto, «Ver más»
+      //     obligaba a recorrer la página entera para leer el final.
+      const fichaFits = await page.evaluate(() => {
+        const el = document.querySelector('[data-area="ficha"]') as HTMLElement | null;
+        if (!el) return null;
+        const child = el.firstElementChild as HTMLElement | null;
+        return {
+          alto: Math.round(el.getBoundingClientRect().height),
+          ventana: window.innerHeight,
+          hijoDesplazable: child ? getComputedStyle(child).overflowY : null,
+        };
+      });
+      expect(fichaFits!.alto).toBeLessThanOrEqual(fichaFits!.ventana);
+      expect(fichaFits!.hijoDesplazable).toBe("auto");
 
       // 3. Destacadas + «El resto, por año», y LA regla del diseño: una obra
       //    destacada NO vuelve a salir en la lista de abajo.
