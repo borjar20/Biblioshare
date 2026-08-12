@@ -186,12 +186,76 @@ export function groupActivities(
 Run: `npm test -- src/lib/clubs/activities/group-activities.test.ts`
 Expected: PASS, 9 tests.
 
-`npx tsc --noEmit` fallará en `activity-list.tsx` (usa `active`). Es esperado y lo arregla la Task 10; no tocar ese fichero todavía.
+- [ ] **Step 5: Parche mínimo en el llamador, para que el árbol siga compilando**
 
-- [ ] **Step 5: Commit**
+`activity-list.tsx` es el único llamador de producción y usa `active`, que ya no
+existe. La Task 10 reescribe ese fichero entero, pero **hasta entonces median
+ocho tareas**: dejarlo roto significa ocho commits que no compilan, y quien
+bisecte esa franja —o interrumpa la rama a la mitad— se queda con un árbol que no
+arranca. Se arregla aquí, en diez líneas, y la Task 10 lo sustituye igual.
+
+En `src/components/clubs/activity-list.tsx`, cambiar SOLO la desestructuración y
+añadir el grupo nuevo. Nada más: ni tarjetas nuevas, ni rail, ni estados vacíos
+—eso es la Task 10—.
+
+```tsx
+  const { enCurso, proximas, proposed, finished } = groupActivities(
+    activities,
+    today,
+  );
+
+  const sinActividades =
+    enCurso.length === 0 &&
+    proximas.length === 0 &&
+    proposed.length === 0 &&
+    finished.length === 0;
+```
+
+Y en el JSX, sustituir el `<Group>` de activas por dos, dejando el resto igual:
+
+```tsx
+      <Group title={t("groupOngoing", { count: enCurso.length })}>
+        {enCurso.map((activity) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            clubSlug={clubSlug}
+            today={today}
+          />
+        ))}
+      </Group>
+
+      <Group title={t("groupUpcoming", { count: proximas.length })}>
+        {proximas.map((activity) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            clubSlug={clubSlug}
+            today={today}
+          />
+        ))}
+      </Group>
+```
+
+`groupOngoing` y `groupUpcoming` son de la Task 5, que aún no ha corrido. Añadir
+**solo esas dos claves** a `messages/es.json` ahora (`"groupOngoing": "En curso ·
+{count}"`, `"groupUpcoming": "Próximas · {count}"`); la Task 5 añadirá el resto y
+se encontrará estas ya puestas. La clave `groupActive` queda huérfana: **no
+borrarla aquí** — la Task 10 la retira junto con `empty`, en el mismo commit que
+deja de usarlas.
+
+- [ ] **Step 6: Verificar que compila y que la suite sigue verde**
+
+Run: `npx tsc --noEmit`
+Expected: **sin errores**.
+
+Run: `npm test`
+Expected: PASS.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/lib/clubs/activities/group-activities.ts src/lib/clubs/activities/group-activities.test.ts
+git add src/lib/clubs/activities/group-activities.ts src/lib/clubs/activities/group-activities.test.ts src/components/clubs/activity-list.tsx messages/es.json
 git commit -m "feat(actividades): partir las activas en 'en curso' y 'próximas'"
 ```
 
@@ -814,7 +878,11 @@ Dentro del objeto `activity`, junto a las que ya existen:
 "asideEnds": "Termina {title}"
 ```
 
-La clave `empty` que ya existe se queda: la usa el mensaje viejo hasta que la Task 10 la sustituya por `emptyAllTitle`/`emptyAllBody`. Se borra en la Task 10, no antes.
+**`groupOngoing` y `groupUpcoming` ya están**: las añadió la Task 1 para que su
+parche del llamador compilara. No duplicarlas — si el JSON tuviera la misma clave
+dos veces, la segunda gana en silencio.
+
+La clave `empty` que ya existe se queda: la usa el mensaje viejo hasta que la Task 10 la sustituya por `emptyAllTitle`/`emptyAllBody`. Se borra en la Task 10, no antes. Lo mismo con `groupActive`, huérfana desde la Task 1.
 
 - [ ] **Step 2: Verificar que el JSON sigue siendo válido**
 
@@ -1665,11 +1733,15 @@ async function ClubActivitiesSection({
 import { groupActivities } from "@/lib/clubs/activities/group-activities";
 ```
 
-- [ ] **Step 3: Borrar la clave `empty`, ya sin uso**
+- [ ] **Step 3: Borrar las claves que quedan huérfanas**
 
-Quitar de `messages/es.json` la línea `"empty": "Todavía no hay actividades en este club.",` — la sustituyen `emptyAllTitle` / `emptyAllBody`.
+Quitar de `messages/es.json`:
+- `"empty": "Todavía no hay actividades en este club.",` — la sustituyen `emptyAllTitle` / `emptyAllBody`.
+- `"groupActive": "Activas · {count}",` — huérfana desde la Task 1, que partió el grupo en dos.
 
-Run: `grep -rn '"activity.empty"\|t("empty")' src/` para confirmar que no queda ningún uso.
+Este es el commit en el que dejan de usarse, así que es el commit en el que se borran.
+
+Run: `grep -rn 't("empty")\|t("groupActive")\|groupActive' src/`
 Expected: sin salida.
 
 - [ ] **Step 4: Typecheck y unitarios completos**
