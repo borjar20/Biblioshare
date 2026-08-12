@@ -87,20 +87,27 @@ export function MonthGrid({
                 {esHoy && <span className="sr-only"> ({t("calendarToday")})</span>}
               </span>
 
-              {/* Móvil: puntos. Escritorio: chips con el texto. */}
+              {/* Móvil: el GLIFO de la clase, no un punto de color. Un punto de
+                  6 px obligaba a distinguir por tono —imposible para quien no
+                  lo afina— y además contradecía a la leyenda, que habla de
+                  iconos. Es la MISMA silueta que el chip de escritorio (#147). */}
               {visibles.length > 0 && (
-                <div className="flex flex-wrap items-center gap-0.5 lg:hidden">
-                  {visibles.map((mark, i) => (
-                    <span
-                      key={`${mark.activityId}-${mark.markKind}-${i}`}
-                      aria-hidden
-                      className={`h-1.5 w-1.5 rounded-full ${MARK_ACCENT[accentKeyFor(mark)].bar} ${
-                        mark.followedByViewer ? "ring-1 ring-accent ring-offset-1" : ""
-                      }`}
-                    />
-                  ))}
-                  {/* En móvil no caben chips, así que la campana del día va una
-                      sola vez: con puntos de 6 px, un anillo solo no basta. */}
+                <div className="flex flex-wrap items-center gap-1 lg:hidden">
+                  {visibles.map((mark, i) => {
+                    const accent = MARK_ACCENT[accentKeyFor(mark)];
+                    return (
+                      <accent.Icon
+                        key={`${mark.activityId}-${mark.markKind}-${i}`}
+                        aria-hidden
+                        className={`h-2.5 w-2.5 shrink-0 ${accent.text}`}
+                      />
+                    );
+                  })}
+                  {/* La campana del día va una sola vez, no por marca: con
+                      glifos de 10 px pegados, una campana por marca deja la
+                      celda ilegible -- justo lo que se viene a arreglar. Por lo
+                      mismo desaparece el anillo que rodeaba el punto seguido:
+                      alrededor de un glifo es ruido, y la campana ya lo dice. */}
                   {visibles.some((m) => m.followedByViewer) && (
                     <BellIcon className="h-2 w-2 shrink-0 text-accent" aria-hidden />
                   )}
