@@ -186,24 +186,32 @@ export function MonthGrid({
             </>
           );
 
-          return conMarcas ? (
-            <button
-              key={cell.date}
-              type="button"
-              role="gridcell"
-              // La hoja es de MÓVIL: en escritorio el chip ya lleva el texto.
-              // El botón se queda (no estorba) pero no abre nada desde `lg`.
-              onClick={() => {
-                if (window.matchMedia("(min-width: 1024px)").matches) return;
-                setDiaAbierto(cell.date);
-              }}
-              className={claseCelda}
-            >
-              {contenido}
-            </button>
-          ) : (
-            <div key={cell.date} role="gridcell" className={claseCelda}>
-              {contenido}
+          // El <button> va DENTRO del gridcell, no ES el gridcell: `role` no se
+          // suma, sustituye. Un `<button role="gridcell">` deja de anunciarse
+          // como pulsable, que es justo la capacidad que esta tarea añade -- se
+          // perdería para quien usa lector de pantalla, que es quien más la
+          // necesita (los glifos de la celda no dan el título). Así el árbol de
+          // accesibilidad conserva las dos cosas: la celda de la rejilla (#147)
+          // y el control que la abre.
+          return (
+            <div key={cell.date} role="gridcell" className="contents">
+              {conMarcas ? (
+                <button
+                  type="button"
+                  // La hoja es de MÓVIL: en escritorio el chip ya lleva el
+                  // texto. El botón se queda (no estorba) pero no abre nada
+                  // desde `lg`.
+                  onClick={() => {
+                    if (window.matchMedia("(min-width: 1024px)").matches) return;
+                    setDiaAbierto(cell.date);
+                  }}
+                  className={claseCelda}
+                >
+                  {contenido}
+                </button>
+              ) : (
+                <div className={claseCelda}>{contenido}</div>
+              )}
             </div>
           );
             })}
