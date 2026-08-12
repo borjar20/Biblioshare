@@ -504,6 +504,11 @@ describe("groupMarksByDay", () => {
     const grupos = groupMarksByDay(marks);
     expect(grupos).toHaveLength(1);
     expect(grupos[0].date).toBe("2026-07-04");
+    // "Dos" antes que "Uno" NO es una errata: en igualdad de fecha y clase de
+    // marca, buildCalendarMarks desempata por TÍTULO, y "Dos" < "Uno". Esa es
+    // justamente la prueba de que groupMarksByDay conserva el orden que RECIBE
+    // en vez de reordenar por su cuenta. Si alguien lo "corrige" al orden en que
+    // se construyó el array de entrada, este test deja de probar nada.
     expect(grupos[0].marks.map((m) => m.title)).toEqual(["Dos", "Uno"]);
   });
 
