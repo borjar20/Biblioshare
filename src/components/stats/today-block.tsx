@@ -193,7 +193,9 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
       {/* El "◆ 4 d" del frame ya se puede pintar: la racha es DE ESTE PASE, no
           la global del perfil, así que el rombo dice la verdad. */}
       <div className="mt-1.5 flex items-center justify-between gap-2 font-mono text-[9px] text-muted-foreground">
-        <span className="truncate">{progress ? progress.label : t("noProgress")}</span>
+        <span className="truncate">
+          {progress ? progress.label : item.itemType === "movie" ? t("pickToWatch") : t("noProgress")}
+        </span>
         {pass.streakDays > 0 && (
           <span className="shrink-0 text-gold-ink">{t("streakShort", { count: pass.streakDays })}</span>
         )}

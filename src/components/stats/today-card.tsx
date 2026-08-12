@@ -106,7 +106,16 @@ export async function TodayCard({
               />
             </div>
             <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-              <span>{progress ? progressLabel(item.itemType, progress, t) : t("noProgress")}</span>
+              {/* La película en el foco es una elección del sorteo «para ver»
+                  (in_progress de sistema), no algo a medias: dice «Para ver»,
+                  no «Sin progreso». */}
+              <span>
+                {progress
+                  ? progressLabel(item.itemType, progress, t)
+                  : item.itemType === "movie"
+                    ? t("pickToWatch")
+                    : t("noProgress")}
+              </span>
               {percent != null && <span>{`${percent}%`}</span>}
             </div>
           </div>
@@ -149,6 +158,7 @@ export async function TodayCard({
       <TodayActions
         passId={item.activePassId}
         itemType={item.itemType}
+        itemId={item.itemId}
         seriesId={item.itemId}
         nextEpisode={nextEpisode}
         sessionHref={sessionHref}
@@ -160,6 +170,7 @@ export async function TodayCard({
           register: t("timerRegister"),
           notes: t("timerNotes"),
           timerLabel: t("timerLabel"),
+          markSeen: t("markSeen"),
           nextEpisode: nextEpisode
             ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
             : null,

@@ -145,6 +145,8 @@
     "timerNotes": "+ Nota",
     "timerLabel": "Tiempo de esta sesión",
     "markEpisode": "T{season} · E{episode}",
+    "markSeen": "Marcar Vista",
+    "pickToWatch": "Para ver",
     "focusMini": "Poner {title} arriba",
     "nextUpTitle": "¿Qué te apetece hoy?",
     "startCta": "Empezar",
@@ -1221,7 +1223,7 @@
       "groupLabel": "Tu estado",
       "inProgress": {
         "book": "Leyendo",
-        "movie": "Viendo",
+        "movie": "Para ver",
         "series": "Viendo"
       },
       "completed": {
