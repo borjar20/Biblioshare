@@ -61,6 +61,13 @@ export function AgendaList({
                   <span
                     className={`mb-1.5 inline-flex w-fit items-center gap-1.5 rounded-chip px-2 py-0.5 font-mono text-[9px] tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
                   >
+                    {/* El GLIFO de la clase, no el cuadrito de color que había
+                        antes. Es el mismo cambio que la celda del mes: la
+                        silueta identifica sin depender del tono, y así el chip
+                        de la agenda, el de la rejilla y la muestra de la leyenda
+                        enseñan las tres LA MISMA forma para la misma clase —
+                        que es lo que permite emparejarlas de un vistazo (#147).
+                        Aplica en todos los anchos, escritorio incluido. */}
                     <accent.Icon className="h-2.5 w-2.5 shrink-0" aria-hidden />
                     {markLabel(mark, t)}
                     {/* La marca de seguido lleva icono Y texto accesible: no
