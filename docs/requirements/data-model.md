@@ -236,6 +236,14 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > pendiente del merge**, y por eso `schema-baseline.sql` —que replica PROD— conserva
 > todavía sus dos 1440. Ver `event-state.ts:DEFAULT_REMINDER_MINUTES`, que es quien manda en
 > la práctica.
+>
+> **Delta del 2026-08-12 (progreso en lote de la pestaña Actividades, §6.4): aplicado y
+> verificado solo en DEV.** Migración `20260853_activities_progress.sql`, nueva RPC
+> `get_activities_progress(uuid[])` (`stable security definer`, gate `is_club_member`, más
+> ancho que `is_activity_participant` a propósito — ver §6.4 y `decisiones.md`). Sin columnas
+> ni tablas nuevas ni cambios de grants en tablas existentes. Verificado contra `pg_proc`
+> (`prosecdef=true`, `provolatile='s'`, grants `authenticated` sin `anon`), nunca contra
+> `list_migrations`. **Producción pendiente**, aplicación reservada al usuario.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -1429,6 +1437,64 @@ sola firma por nombre de `create_club_event`/`update_club_event` (12 y 11 argume
 firma de 10 argumentos anterior ya no existe, `to_regtype('public.club_event_type')` no es
 nulo, y `information_schema.column_privileges` para `event_type` es idéntico al de
 `modality`. **Producción pendiente del merge.**
+
+### 6.4 Progreso en lote de la pestaña Actividades: `get_activities_progress()` (SOLO EN DEV, 2026-08-12)
+
+> Spec: `docs/superpowers/specs/2026-08-12-actividades-club-rediseno-design.md` (D3). Migración
+> `20260853_activities_progress.sql`. Decisión de forma en `decisiones.md` (2026-08-12).
+
+RPC `stable security definer` que calcula el progreso de N actividades **en una sola
+consulta** — antes la pestaña Actividades no podía enseñar progreso en la lista de tarjetas
+porque hubiera hecho falta una llamada por tarjeta. Firma:
+
+```sql
+get_activities_progress(p_activity_ids uuid[])
+returns table (
+  activity_id uuid, kind text,
+  collective_done int, collective_total int,
+  viewer_done int, viewer_total int,
+  participants int
+)
+```
+
+**Gate: `is_club_member(club_id)`** — deliberadamente MÁS ANCHO que el de
+`get_list_challenge_progress` (`is_activity_participant`): la tarjeta de progreso la ve
+**todo el club**, no solo quien participa, porque el número colectivo («6 de 9 han
+terminado») es justo la señal que ayuda a decidir si unirse. Es el mismo criterio que ya
+regía los checkpoints de `buddy_read` (visibles a todo el club, no solo a participantes). Lo
+que NO se ensancha es el detalle: la función devuelve exclusivamente **contadores
+agregados**, nunca quién ha completado qué, y `viewer_done`/`viewer_total` son siempre del
+propio `auth.uid()` del llamante, jamás de un tercero.
+
+Cálculo por `kind` (CTEs `buddy`/`list`/`tier` de la migración):
+
+- **`buddy_read`**: `collective_done` replica el «hito seguro del grupo» que ya calcula
+  `getActivityCheckpoints` (`checkpoints.ts:112`) — el MÍNIMO, entre participantes, del
+  MÁXIMO `order` alcanzado por cada uno (+1 porque `order` es 0-based; -1/nadie llegado da
+  0). Se replica esa definición exacta, no una parecida, para que no aparezcan dos números
+  distintos con el mismo nombre en dos pantallas. `viewer_done` cuenta los
+  `club_activity_checkpoint_reads` propios.
+- **`list_challenge`**: mismo criterio de «completado» que `get_list_challenge_progress` —
+  modo `window` exige `finished_on` dentro de `activity_window()`; modo `any` exige el pase
+  activo y `completed`, sin mirar fechas.
+- **`tierlist`**: «ha votado» = al menos una fila propia en `club_activity_placements`;
+  colocar un solo ítem cuenta como haber empezado, no como haber terminado la tierlist.
+
+**`evento` y `criteria_challenge` quedan fuera de la CTE `visibles`, a propósito**
+(`kind not in ('evento', 'criteria_challenge')`): `evento` no es participativo y no tiene
+progreso (§6); `criteria_challenge` sí lo tiene, pero su conteo depende del criterio
+(género/saga) evaluado sobre el catálogo y **no es una consulta** — vive en
+`countForChallenge` (`src/lib/challenges/match.ts`). Reescribirlo en SQL sería un segundo
+motor de conteo que puede divergir del que ya usa la ficha de la actividad; la capa de app
+(`getActivitiesProgress`, `src/lib/clubs/activities/progress.ts`) resuelve esas actividades
+con el motor que ya existe, una llamada por actividad, acotado al grupo «En curso». Esa
+misma función de app documenta en cabecera que **nada de esta cadena lleva `use cache`**:
+`viewer` depende de `auth.uid()`, así que una entrada compartida serviría el progreso de un
+miembro a otro (regla #437 de `AGENTS.md`).
+
+**Aplicada y verificada SOLO EN DEV el 2026-08-12** contra objetos reales (`pg_proc`:
+`prosecdef=true`, `provolatile='s'`; grants `authenticated: EXECUTE`, sin `anon`).
+**Producción pendiente**, aplicación reservada al usuario.
 
 ## 7. Sagas
 
