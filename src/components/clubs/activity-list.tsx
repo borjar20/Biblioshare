@@ -64,8 +64,13 @@ export function ActivityList({
       />
 
       {/* El botón que antes pintaba el propio composer ahora es un enlace
-          aparte: navega a `?nueva=1`, que es lo que abre el asistente de arriba. */}
-      <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+          aparte: navega a `?nueva=1`, que es lo que abre el asistente de arriba.
+          Se esconde mientras el asistente está abierto -- antes eran
+          mutuamente excluyentes (un mismo useState decidía cuál pintar), y dos
+          entradas vivas a la misma acción a la vez es peor que ninguna. */}
+      {!composerOpen && (
+        <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+      )}
 
       {sinActividades && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>

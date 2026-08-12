@@ -24,7 +24,15 @@ export function ProposeActivityLink({
 }) {
   const t = useTranslations("activity");
   return (
-    <Link href={proposeHref(clubSlug)} className={buttonVariants("primary", className)}>
+    // `replace`, no `push`: cerrar el asistente también hace replace, así que un
+    // push aquí dejaría una entrada muerta por cada ciclo abrir/cancelar y la
+    // primera pulsación de "atrás" no cambiaría nada visible. Abrir y cerrar
+    // operan sobre la MISMA entrada de historial.
+    <Link
+      href={proposeHref(clubSlug)}
+      replace
+      className={buttonVariants("primary", className)}
+    >
       {/* El "+" es decoración de la maqueta, no parte del nombre del botón: sin
           aria-hidden se cuela en el nombre accesible y quien use lector de
           pantalla oye el glifo. */}

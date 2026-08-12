@@ -1571,7 +1571,12 @@ export function ActivityList({
           {tt("actividades")}
         </h1>
         <p className="text-[13px] text-muted-foreground">{t("pageSubtitle")}</p>
-        <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+        {/* Escondido mientras el asistente está abierto: el botón y el
+            asistente eran mutuamente excluyentes antes de partirlos, y dos
+            entradas vivas a la misma acción a la vez es peor que ninguna. */}
+        {!composerOpen && (
+          <ProposeActivityLink clubSlug={clubSlug} className="w-full justify-center" />
+        )}
       </div>
 
       <ActivityComposer
@@ -1711,7 +1716,9 @@ import { ProposeActivityLink } from "@/components/clubs/activity-composer";
         <ClubMainHeader
           title={tt(tab)}
           action={
-            tab === "actividades" ? <ProposeActivityLink clubSlug={club.slug} /> : undefined
+            tab === "actividades" && nueva !== "1" ? (
+              <ProposeActivityLink clubSlug={club.slug} />
+            ) : undefined
           }
         />
       }
