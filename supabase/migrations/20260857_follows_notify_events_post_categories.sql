@@ -11,7 +11,11 @@
 --   added                 -> se pierde (anadir no publica post)
 --
 -- Una fila con notify_events vacio SE QUEDA VACIA: quien no queria avisos de
--- alguien sigue sin recibirlos. De ahi el WHERE.
+-- alguien sigue sin recibirlos. Y una fila que YA paso por esta migracion
+-- (su array ya solo tiene milestone|progress|thought) tampoco se toca: el
+-- WHERE exige solapamiento con el vocabulario VIEJO, asi que reejecutar este
+-- fichero sobre una fila ya migrada es un no-op seguro en vez de perder
+-- milestone/progress (que ya no matchean 'finished'/'session'/'episode').
 --
 -- No hay columna nueva, asi que la superficie 6 de docs/DRIFT-CHECK.md (grants
 -- por columna) no aplica: notify_events ya trae el suyo desde
@@ -28,4 +32,7 @@ set notify_events = (
     || array['thought']::text[]
   ) as v
 )
-where cardinality(notify_events) > 0;
+where notify_events && array['finished','session','episode','added']::text[];
+
+comment on column public.follows.notify_events is
+  'Categorías de evento del followee por las que el follower pidió aviso (milestone|progress|thought). Vacío = sin avisos. Escrito por service-role desde setFollowNotify.';
