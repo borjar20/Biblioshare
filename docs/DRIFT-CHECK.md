@@ -236,7 +236,7 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 | `movies` | 11 | 11 | 7 | ídem `books` |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
 | `passes` | 17 | 14 | 11 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables |
-| `people` | 11 | 11 | 5 | ídem `books` |
+| `people` | 12 | 11 | 6 | ídem `books` |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
 | `series` | 13 | 13 | 9 | ídem `books` |
 | `series_episodes` | 10 | 10 | 0 | catálogo de episodios, alta-only |
