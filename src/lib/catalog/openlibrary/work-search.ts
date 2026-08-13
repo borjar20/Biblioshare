@@ -1,5 +1,6 @@
 import type { SearchResult } from "../types";
 import { buildCoverUrl } from "./covers";
+import { normalizeTitleForComparison } from "./normalize";
 
 // PELDAÑO 1 de la escalera de hidratación (ver el spec de 2026-07-14): una
 // tarjeta de resultado muestra portada, título, autor y año — y eso es
@@ -77,17 +78,6 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
   }
 }
 
-// Normaliza un título para comparar: minúsculas, sin marcas diacríticas (NFD +
-// quitar combinantes) y solo letras/dígitos. Deja "El Aleph" y "el-aleph!!"
-// como el mismo valor, que es justo la tolerancia que hace falta para decidir
-// si el primer resultado de una búsqueda fuzzy es de verdad la obra pedida.
-function normalizeTitleForComparison(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\p{L}\p{N}]/gu, "");
-}
 
 // Resolución de la OBRA para un libro que no guardó su work key (alta manual,
 // import de CSV, ISBN que no resolvió). Se pide título y autor por separado
