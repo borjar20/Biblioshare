@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { mapWorkDoc } from "./work-search";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mapWorkDoc, resolveWorkByTitleAuthor } from "./work-search";
 
 describe("mapWorkDoc", () => {
   it("mapea un doc de search.json como OBRA, sin datos de edición", () => {
@@ -36,5 +36,77 @@ describe("mapWorkDoc", () => {
     expect(result.coverUrl).toBeNull();
     expect(result.year).toBeNull();
     expect(result.editionCount).toBe(1);
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("resolveWorkByTitleAuthor", () => {
+  it("devuelve la obra y sus claves de autor del primer resultado", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          docs: [
+            {
+              key: "/works/OL893414W",
+              title: "Dune",
+              author_name: ["Frank Herbert"],
+              author_key: ["OL79034A"],
+            },
+          ],
+        }),
+      })
+    );
+
+    expect(await resolveWorkByTitleAuthor("Dune", "Frank Herbert")).toEqual({
+      workKey: "/works/OL893414W",
+      authorKeys: ["OL79034A"],
+    });
+  });
+
+  it("pide el título y el autor por separado, no en una sola cadena", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ docs: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await resolveWorkByTitleAuthor("Dune", "Frank Herbert");
+
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("title=Dune");
+    expect(url).toContain("author=Frank+Herbert");
+    expect(url).toContain("author_key");
+  });
+
+  it("sin resultados, sin título, o con la API caída devuelve null", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ docs: [] }) }));
+    expect(await resolveWorkByTitleAuthor("Nada de nada", null)).toBeNull();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) }));
+    expect(await resolveWorkByTitleAuthor("Dune", null)).toBeNull();
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
+    expect(await resolveWorkByTitleAuthor("Dune", null)).toBeNull();
+
+    expect(await resolveWorkByTitleAuthor("   ", null)).toBeNull();
+  });
+
+  it("descarta un doc sin key aunque venga primero", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          docs: [{ title: "Dune" }, { key: "/works/OL893414W", title: "Dune", author_key: [] }],
+        }),
+      })
+    );
+
+    expect(await resolveWorkByTitleAuthor("Dune", null)).toEqual({
+      workKey: "/works/OL893414W",
+      authorKeys: [],
+    });
   });
 });

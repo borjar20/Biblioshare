@@ -18,6 +18,11 @@ export type OpenLibraryWorkDoc = {
   key?: string;
   title?: string;
   author_name?: string[];
+  /**
+   * Claves de autor, alineadas con `author_name`. Es identidad, no texto: la
+   * usa la resolución de autores para no tener que adivinar quién es quién.
+   */
+  author_key?: string[];
   cover_i?: number;
   first_publish_year?: number;
   edition_count?: number;
@@ -27,7 +32,8 @@ type WorkSearchResponse = {
   docs?: OpenLibraryWorkDoc[];
 };
 
-const SEARCH_FIELDS = "key,title,author_name,cover_i,first_publish_year,edition_count";
+const SEARCH_FIELDS = "key,title,author_name,author_key,cover_i,first_publish_year,edition_count";
+const REVALIDATE_SECONDS = 3600;
 const SEARCH_LIMIT = 20;
 const FETCH_TIMEOUT_MS = 5000;
 
@@ -59,7 +65,7 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
     url.searchParams.set("fields", SEARCH_FIELDS);
 
     const res = await fetch(url, {
-      next: { revalidate: 3600 },
+      next: { revalidate: REVALIDATE_SECONDS },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return [];
@@ -68,5 +74,45 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
     return (data.docs ?? []).filter((doc) => doc.title && doc.key).map(mapWorkDoc);
   } catch {
     return [];
+  }
+}
+
+// Resolución de la OBRA para un libro que no guardó su work key (alta manual,
+// import de CSV, ISBN que no resolvió). Se pide título y autor por separado
+// —no concatenados en `q`— porque los campos dedicados de OL puntúan mucho
+// mejor que la cadena libre, y de ahí sale además `author_key`: la identidad
+// del autor, gratis y sin una segunda llamada.
+export type ResolvedWork = { workKey: string; authorKeys: string[] };
+
+export async function resolveWorkByTitleAuthor(
+  title: string,
+  author: string | null
+): Promise<ResolvedWork | null> {
+  const trimmedTitle = title?.trim();
+  if (!trimmedTitle) return null;
+
+  try {
+    const url = new URL("https://openlibrary.org/search.json");
+    url.searchParams.set("title", trimmedTitle);
+    if (author?.trim()) url.searchParams.set("author", author.trim());
+    url.searchParams.set("limit", "1");
+    url.searchParams.set("fields", "key,title,author_name,author_key");
+
+    const res = await fetch(url, {
+      next: { revalidate: REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const data: WorkSearchResponse = await res.json();
+    const doc = (data.docs ?? []).find((d) => d.key);
+    if (!doc?.key) return null;
+
+    return {
+      workKey: doc.key,
+      authorKeys: (doc.author_key ?? []).filter((k) => typeof k === "string" && k.length > 0),
+    };
+  } catch {
+    return null;
   }
 }
