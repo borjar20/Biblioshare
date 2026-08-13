@@ -68,7 +68,7 @@ test("A sigue a B, abre la campana de avisos y la categoría marcada persiste", 
     await expect(bell).toBeVisible();
     await bell.click();
 
-    const checkbox = page.getByRole("menu").getByLabel(/termine o reseñe una obra/i);
+    const checkbox = page.getByRole("menu").getByLabel(/empiece, termine o abandone una obra/i);
     await expect(checkbox).not.toBeChecked();
     await checkbox.check();
     await expect(checkbox).toBeChecked();
@@ -76,7 +76,7 @@ test("A sigue a B, abre la campana de avisos y la categoría marcada persiste", 
     await page.reload();
     await page.getByRole("button", { name: /avisos de esta persona/i }).click();
     await expect(
-      page.getByRole("menu").getByLabel(/termine o reseñe una obra/i),
+      page.getByRole("menu").getByLabel(/empiece, termine o abandone una obra/i),
     ).toBeChecked();
   } finally {
     await deleteUser(a.id);
