@@ -5,14 +5,12 @@ import { revalidateFeed } from "@/lib/reactivity/revalidate";
 import type { AnchorType, AnchorRef } from "@/lib/catalog/anchor";
 import { notifyMentions } from "./notify-mentions";
 import { searchAnchors } from "./anchor-search";
+import type { PostKind } from "./post-kinds";
 
-export type PostKind =
-  | "thought"
-  | "progressed"
-  | "started"
-  | "finished"
-  | "dropped"
-  | "watched";
+// La lista vive en post-kinds.ts (sin deps server-only) para que la puedan leer
+// notify-categories.ts y la campana. Se reexporta para no romper a quien ya
+// importa el tipo de aquí (autopost.ts).
+export type { PostKind };
 
 export type CreatePostInput = {
   kind: PostKind;

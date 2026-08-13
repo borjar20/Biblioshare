@@ -164,3 +164,106 @@ describe("notifyFollowersOfEvent — ruteo al post del hito", () => {
     expect(params.interactionTargetId).toBe("it-post-p");
   });
 });
+
+import { notifyFollowersOfPost } from "./notify-followers";
+
+describe("notifyFollowersOfPost — el aviso nace del post", () => {
+  it("guarda el interaction_target del post y nunca un target de ficha", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["progress"] }] }),
+    );
+    const supabase = makeFakeSupabase({});
+
+    await notifyFollowersOfPost(supabase, "autor", {
+      postId: "post-p",
+      kind: "progressed",
+      interactionTargetId: "it-post-p",
+    });
+
+    expect(mocks.notifyMany).toHaveBeenCalledTimes(1);
+    const params = mocks.notifyMany.mock.calls[0][1];
+    expect(params.interactionTargetId).toBe("it-post-p");
+    expect(params.targetType).toBeUndefined();
+    expect(params.targetId).toBeUndefined();
+    expect(params.userIds).toEqual(["seguidor"]);
+    expect(params.actorId).toBe("autor");
+  });
+
+  it("la clave de dedupe cuelga del POST, no del pase: dos posts = dos avisos", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["progress"] }] }),
+    );
+    const supabase = makeFakeSupabase({});
+
+    await notifyFollowersOfPost(supabase, "autor", {
+      postId: "post-1",
+      kind: "progressed",
+      interactionTargetId: "it-1",
+    });
+    await notifyFollowersOfPost(supabase, "autor", {
+      postId: "post-2",
+      kind: "progressed",
+      interactionTargetId: "it-2",
+    });
+
+    expect(mocks.notifyMany.mock.calls[0][1].dedupeKey).toBe("person:followed_session:post-1");
+    expect(mocks.notifyMany.mock.calls[1][1].dedupeKey).toBe("person:followed_session:post-2");
+  });
+
+  it("cada kind emite su tipo y filtra por SU categoría", async () => {
+    const casos = [
+      { kind: "started", categoria: "milestone", tipo: "followed_started" },
+      { kind: "finished", categoria: "milestone", tipo: "followed_finished" },
+      { kind: "dropped", categoria: "milestone", tipo: "followed_dropped" },
+      { kind: "progressed", categoria: "progress", tipo: "followed_session" },
+      { kind: "watched", categoria: "progress", tipo: "followed_episode" },
+      { kind: "thought", categoria: "thought", tipo: "followed_thought" },
+    ] as const;
+
+    for (const caso of casos) {
+      vi.clearAllMocks();
+      mocks.notifyMany.mockResolvedValue(["seguidor"]);
+      mocks.createServiceRoleClient.mockReturnValue(
+        makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: [caso.categoria] }] }),
+      );
+
+      await notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+        postId: "post-1",
+        kind: caso.kind,
+        interactionTargetId: "it-1",
+      });
+
+      expect(mocks.notifyMany, `kind ${caso.kind}`).toHaveBeenCalledTimes(1);
+      expect(mocks.notifyMany.mock.calls[0][1].type, `kind ${caso.kind}`).toBe(caso.tipo);
+    }
+  });
+
+  it("quien no tiene la categoría activa no recibe nada", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["milestone"] }] }),
+    );
+
+    await notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+      postId: "post-p",
+      kind: "progressed",
+      interactionTargetId: "it-post-p",
+    });
+
+    expect(mocks.notifyMany).not.toHaveBeenCalled();
+  });
+
+  it("un fallo leyendo follows no propaga (best-effort)", async () => {
+    mocks.createServiceRoleClient.mockImplementation(() => {
+      throw new Error("service role caído");
+    });
+
+    await expect(
+      notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+        postId: "post-p",
+        kind: "progressed",
+        interactionTargetId: "it-post-p",
+      }),
+    ).resolves.toBeUndefined();
+    expect(mocks.notifyMany).not.toHaveBeenCalled();
+  });
+});
