@@ -132,10 +132,12 @@ causa: la consulta contamina la elección de edición.
 - **`src/lib/catalog/openlibrary/work-search.ts`** — `searchWorks` pasa de una llamada a dos
   en paralelo, `limit=40` cada una, con `language,editions,editions.title,editions.language`
   en `fields` y sin `sort`. **Su firma no cambia.** `resolveWorkByTitleAuthor` no se toca.
-- **`src/lib/catalog/types.ts`** — `SearchResult` gana `altTitles: string[]`. Cine y series lo
-  devuelven vacío.
-- **`src/lib/import/match-row.ts`** — casa contra `[title, ...altTitles]`.
-- Los datos de `MOCK_EXTERNAL_APIS` necesitan el campo nuevo para compilar.
+- **`src/lib/catalog/types.ts`** — `SearchResult` gana `altTitles?: string[]`. **Opcional**, como
+  los otros dos campos de título alternativo del mismo tipo (`originalTitle`, `englishTitle`,
+  que rellena solo la ruta de importación de cine): así no hay que tocar cine, series,
+  catálogo local ni los datos de `MOCK_EXTERNAL_APIS` para que compile.
+- **`src/lib/import/match-row.ts`** — casa contra `[title, ...(altTitles ?? [])]`, que es el
+  mismo patrón que ya usa `matchMovie` con sus tres títulos.
 
 `searchCatalog` no cambia: sigue fusionando con el catálogo local, **y lo local sigue ganando
 el título**. El atajo por ISBN sigue igual. Cine y series, intactos.
@@ -159,7 +161,8 @@ catálogo local, como hoy. `searchWorks` sigue sin lanzar nunca.
 ## Pruebas
 
 Fixtures capturados de `q="hunger games"` y `q="en llamas"`, 40 docs por pasada, commiteados
-junto a los de Collins y Shusterman. Contra ellos:
+junto a los de Collins y Shusterman (`search-hunger-games-{es,en}.json`,
+`search-en-llamas-{es,en}.json`). Contra ellos:
 
 - Mockingjay y Fatta Eld siguen en la lista — regresión del fallo que definió el diseño.
 - `q="en llamas"` devuelve un resultado con `title === "En llamas"` y `"Fatta Eld"` entre sus
