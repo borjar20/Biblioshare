@@ -17,9 +17,15 @@
 --   varios post.kind bajo la misma categoria, asi que una fila con solo
 --   'finished' sale suscrita tambien a 'started'/'dropped' (los tres caen en
 --   milestone), y una fila con 'session' sin 'episode' (o al reves) sale
---   suscrita tambien al otro (los dos caen en progress). Las 8 filas no vacias
---   de prod solo tienen 'finished', asi que las 8 saldran suscritas a TRES
---   tipos de aviso nuevos, no a uno.
+--   suscrita tambien al otro (los dos caen en progress).
+--
+--   MEDIDO AL APLICAR EN PROD (2026-08-13; solo comentario, el SQL no cambia):
+--   esta cabecera decia que las 8 filas no vacias de prod "solo tienen
+--   'finished'" -- FALSO. Las 8 tenian 'finished'+'session'+'episode', y 6 de
+--   ellas ademas 'added'. La conclusion sigue en pie: las 8 salieron suscritas
+--   a TRES tipos de aviso nuevos (followed_started, followed_dropped,
+--   followed_thought), no a uno. Resultado real: 8 filas a
+--   {milestone,progress,thought}, 4 filas vacias intactas.
 --
 -- Una fila con notify_events vacio SE QUEDA VACIA: quien no queria avisos de
 -- alguien sigue sin recibirlos. Y una fila que YA paso por esta migracion
