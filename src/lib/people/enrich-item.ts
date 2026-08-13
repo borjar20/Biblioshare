@@ -33,7 +33,23 @@ function splitAuthors(author: string): string[] {
   return [...new Set(author.split(",").map((n) => n.trim()).filter(Boolean))].slice(0, 4);
 }
 
-async function creditsExist(
+// ⚠️ NO es "¿hay algún crédito?", que es lo que preguntaba antes y estaba MAL.
+//
+// Desde que la ficha de persona hidrata su filmografía entera (2026-08-12,
+// `hydratePersonCredits`), una película puede nacer en el catálogo con UN SOLO
+// crédito: el de la persona por la que se creó. Con el guard viejo, abrir la
+// ficha de esa película veía "ya tiene créditos" y NO pedía nada más — así que
+// se quedaba para siempre sin su reparto ni su equipo, y encima sin su saga (el
+// `return` de abajo va antes de `persistCollectionMembership`).
+//
+// El discriminante exacto ya está en la tabla: un enriquecido COMPLETO escribe
+// `billing_order` en el reparto facturado (0, 1, 2…, ver `mapScreenCredits`),
+// mientras que la siembra desde una ficha de persona lo deja a NULL. O sea que
+// la pregunta correcta es «¿se llegó a traer el reparto facturado?».
+//
+// ⚠️ Si algún día `hydratePersonCredits` empieza a escribir `billing_order`,
+// este guard vuelve a mentir EN SILENCIO. Está cubierto por test.
+async function hasBilledCast(
   supabase: SupabaseServerClient,
   itemType: ItemType,
   itemId: string
@@ -42,7 +58,8 @@ async function creditsExist(
     .from("credits")
     .select("id", { count: "exact", head: true })
     .eq("item_type", itemType)
-    .eq("item_id", itemId);
+    .eq("item_id", itemId)
+    .not("billing_order", "is", null);
   return (count ?? 0) > 0;
 }
 
@@ -108,7 +125,7 @@ export async function ensureItemEnriched(
 ): Promise<void> {
   try {
     const needsSize = needsSizeHydration(itemType, item);
-    const needsCredits = !(await creditsExist(supabase, itemType, item.id));
+    const needsCredits = !(await hasBilledCast(supabase, itemType, item.id));
     if (!needsCredits && !needsSize) return;
 
     if (itemType === "book") {
@@ -133,7 +150,14 @@ export async function ensureItemEnriched(
           billing_order: order++,
         });
       }
-      if (rows.length > 0) await supabase.from("credits").insert(rows);
+      // UPSERT y no INSERT, por el mismo motivo que abajo: el autor puede estar
+      // ya puesto por la hidratación de su ficha de persona.
+      if (rows.length > 0) {
+        await supabase.from("credits").upsert(rows, {
+          onConflict: "item_type,item_id,person_id,role",
+          ignoreDuplicates: true,
+        });
+      }
       return;
     }
 
@@ -174,11 +198,20 @@ export async function ensureItemEnriched(
       .filter((r): r is NonNullable<typeof r> => r !== null);
 
     if (rows.length > 0) {
-      const { error } = await supabase.from("credits").insert(rows);
-      // 23505 = enriquecimiento concurrente (otro render insertó ya estos
-      // créditos); esperado e inocuo. Cualquier otro error sí se registra.
-      if (error && error.code !== "23505") {
-        console.error("credits insert failed", { itemType, id: item.id, count: rows.length, error });
+      // ⚠️ UPSERT, no INSERT. `credits` tiene índice único sobre
+      // (item_type, item_id, person_id, role), así que un `insert` plano falla
+      // ENTERO en cuanto UNA fila ya existe — y no inserta ninguna.
+      //
+      // Con la hidratación por persona eso dejó de ser el caso raro y pasó a ser
+      // el NORMAL: si esta película entró al catálogo desde la ficha de alguien,
+      // esa persona ya tiene su crédito aquí, y aparece otra vez en la respuesta
+      // de TMDB. Con el insert plano, el reparto entero se perdía en silencio.
+      const { error } = await supabase.from("credits").upsert(rows, {
+        onConflict: "item_type,item_id,person_id,role",
+        ignoreDuplicates: true,
+      });
+      if (error) {
+        console.error("credits upsert failed", { itemType, id: item.id, count: rows.length, error });
       }
     }
 

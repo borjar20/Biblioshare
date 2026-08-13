@@ -1,0 +1,528 @@
+import { test, expect, type Page } from "@playwright/test";
+
+// La filmografía de `/persona/[id]` como timeline cronológico: una sola columna
+// vertical, canal de año con línea continua, fila clicable, y el control
+// contextual de estado que sustituyó al enlace «Valorar».
+//
+// Siembra su propio caso —persona SIN ids externos, para no llamar a ninguna API
+// ni depender de la red— con un estado distinto en cada obra, que es justo lo
+// que el control tiene que saber distinguir.
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const CONFIGURED = !!SUPABASE_URL && !!SERVICE_KEY;
+
+const USER_PREFIX = "e2tl";
+const PASSWORD = "TestPassword123!";
+const COVER_URL = "https://covers.openlibrary.org/b/id/12627383-M.jpg";
+
+test.use({ serviceWorkers: "block" });
+
+function adminHeaders() {
+  return {
+    apikey: SERVICE_KEY,
+    Authorization: `Bearer ${SERVICE_KEY}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function rest(path: string, init?: RequestInit) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: { ...adminHeaders(), ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    throw new Error(`REST ${init?.method ?? "GET"} ${path}: ${res.status} — ${await res.text()}`);
+  }
+  return res;
+}
+
+async function del(path: string) {
+  await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method: "DELETE", headers: adminHeaders() });
+}
+
+async function sweepDisposableUsers() {
+  const rows = (await (
+    await rest(`profiles?username=like.${USER_PREFIX}*&select=user_id`)
+  ).json()) as Array<{ user_id: string }>;
+  for (const r of rows) {
+    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${r.user_id}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
+    });
+  }
+}
+
+async function createOnboardedUser(username: string): Promise<{ id: string; email: string }> {
+  const email = `${username}@example.com`;
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ email, password: PASSWORD, email_confirm: true }),
+  });
+  if (!res.ok) throw new Error(`admin/users: ${res.status} — ${await res.text()}`);
+  const user = (await res.json()) as { id: string };
+  await rest("profiles", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: user.id,
+      username,
+      display_name: username,
+      is_public: false,
+      onboarded_at: new Date().toISOString(),
+    }),
+  });
+  return { id: user.id, email };
+}
+
+async function loginAs(page: Page, email: string) {
+  await page.goto("/login");
+  await page.fill('input[name="email"]', email);
+  await page.fill('input[name="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL("/");
+  await page.context().clearCookies({ name: "bs_onb" });
+}
+
+test.describe("ficha de persona · filmografía", () => {
+  test.skip(!CONFIGURED, "SUPABASE_* no configurado");
+  test.setTimeout(180_000);
+
+  test("timeline cronológico, fila clicable y control de estado por obra", async ({ page }) => {
+    await sweepDisposableUsers();
+
+    const user = await createOnboardedUser(`${USER_PREFIX}${Date.now()}`.slice(0, 20));
+    const personId = crypto.randomUUID();
+    // Un estado distinto por obra: sin registro, terminada con nota, pendiente,
+    // y un libro EN CURSO por la página 120 de 400 (el único medio donde el
+    // porcentaje se puede calcular de verdad).
+    const sinRegistro = crypto.randomUUID();
+    const terminada = crypto.randomUUID();
+    const pendiente = crypto.randomUUID();
+    const libro = crypto.randomUUID();
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      await rest("people", {
+        method: "POST",
+        body: JSON.stringify({ id: personId, name: `[E2E] Cineasta ${personId.slice(0, 8)}` }),
+      });
+
+      const movies: Array<{ id: string; year: number; role: string }> = [
+        { id: sinRegistro, year: 2021, role: "director" },
+        { id: terminada, year: 2015, role: "director" },
+        { id: pendiente, year: 2009, role: "cast" },
+      ];
+      for (const m of movies) {
+        await rest("movies", {
+          method: "POST",
+          body: JSON.stringify({
+            id: m.id,
+            title: `[E2E] peli ${m.id.slice(0, 8)}`,
+            cover_url: COVER_URL,
+            release_year: m.year,
+            duration_minutes: 100,
+          }),
+        });
+        await rest("credits", {
+          method: "POST",
+          body: JSON.stringify({
+            item_type: "movie",
+            item_id: m.id,
+            person_id: personId,
+            role: m.role,
+            character: m.role === "cast" ? "Un personaje" : null,
+          }),
+        });
+      }
+
+      await rest("books", {
+        method: "POST",
+        body: JSON.stringify({
+          id: libro,
+          title: `[E2E] libro ${libro.slice(0, 8)}`,
+          author: "[E2E]",
+          cover_url: COVER_URL,
+          published_year: 2018,
+          total_pages: 400,
+        }),
+      });
+      await rest("credits", {
+        method: "POST",
+        body: JSON.stringify({
+          item_type: "book",
+          item_id: libro,
+          person_id: personId,
+          role: "author",
+        }),
+      });
+
+      await rest("passes", {
+        method: "POST",
+        body: JSON.stringify({
+          id: terminada,
+          user_id: user.id,
+          item_type: "movie",
+          item_id: terminada,
+          status: "completed",
+          is_active: true,
+          position: {},
+          started_on: today,
+          finished_on: today,
+          rating: 8,
+        }),
+      });
+      await rest("passes", {
+        method: "POST",
+        body: JSON.stringify({
+          id: pendiente,
+          user_id: user.id,
+          item_type: "movie",
+          item_id: pendiente,
+          status: "planned",
+          is_active: true,
+          position: {},
+        }),
+      });
+      await rest("passes", {
+        method: "POST",
+        body: JSON.stringify({
+          id: libro,
+          user_id: user.id,
+          item_type: "book",
+          item_id: libro,
+          status: "in_progress",
+          is_active: true,
+          position: { page: 120 },
+          started_on: today,
+        }),
+      });
+
+      await loginAs(page, user.email);
+      await page.setViewportSize({ width: 1700, height: 1000 });
+      await page.goto(`/persona/${personId}`);
+
+      const timeline = page.getByTestId("person-rest");
+      await expect(timeline).toBeVisible();
+
+      // 1. UNA LISTA, no una rejilla, y con tope de ancho: sin él la fila se
+      //    estiraba a 1700px y el título quedaba a medio metro del estado.
+      const listWidth = await timeline.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+      expect(listWidth).toBeLessThanOrEqual(860);
+
+      // 2. EL CANAL DEL TIMELINE: cada año abre tramo y la línea es continua
+      //    (el `border-l` de cada fila, que se suelda con el de la siguiente).
+      await expect(timeline.getByText("2021", { exact: true })).toBeVisible();
+      await expect(timeline.getByText("2009", { exact: true })).toBeVisible();
+      const bordes = await timeline.evaluate(
+        (el) =>
+          [...el.querySelectorAll("div")].filter(
+            (d) => getComputedStyle(d).borderLeftWidth === "1px"
+          ).length
+      );
+      expect(bordes, "cada obra aporta su tramo de línea").toBeGreaterThanOrEqual(4);
+
+      // 3. LAS CUATRO ZONAS de la fila, con los roles pegados al título.
+      const filaTerminada = timeline
+        .getByTestId("work-row")
+        .filter({ hasText: `[E2E] peli ${terminada.slice(0, 8)}` });
+      await expect(filaTerminada.getByText("Dirección")).toBeVisible();
+      await expect(filaTerminada.getByTestId("status-badge")).toHaveText(/Terminada/);
+      // «Terminada + valoración»: la nota se pinta con dots, no con un enlace
+      // «Valorar» que desaparecía justo al puntuar.
+      await expect(filaTerminada.getByRole("img", { name: /de 5$/ })).toBeVisible();
+
+      // 4. EL CONTROL CONTEXTUAL dice en qué estás, obra por obra.
+      const filaPendiente = timeline
+        .getByTestId("work-row")
+        .filter({ hasText: `[E2E] peli ${pendiente.slice(0, 8)}` });
+      await expect(filaPendiente.getByTestId("status-badge")).toHaveText(/Pendiente/);
+
+      // El libro en curso dice POR DÓNDE VAS: página 120 de 400 = 30%.
+      const filaLibro = timeline
+        .getByTestId("work-row")
+        .filter({ hasText: `[E2E] libro ${libro.slice(0, 8)}` });
+      await expect(filaLibro.getByText("Pág. 120 · 30%")).toBeVisible();
+
+      // 5. «+ Pendiente» sobre la obra sin registro la mete en la cola.
+      const filaSinRegistro = timeline
+        .getByTestId("work-row")
+        .filter({ hasText: `[E2E] peli ${sinRegistro.slice(0, 8)}` });
+      await expect(filaSinRegistro.getByTestId("status-badge")).toHaveCount(0);
+      await filaSinRegistro.getByRole("button", { name: "Pendiente" }).click();
+      await expect(filaSinRegistro.getByTestId("status-badge")).toHaveText(/Pendiente/);
+
+      // 5b. EL MENÚ DE UNA FILA SE PINTA POR ENCIMA DE LAS SIGUIENTES.
+      //     Reportado por el dueño: quedaba por debajo de los botones de la
+      //     fila de abajo. Cada fila envolvía sus controles en un `z-10`, que
+      //     abre contexto de apilamiento propio; entre contextos hermanos con
+      //     el MISMO z-index gana el último del DOM, así que el `z-50` del
+      //     menú no podía salir de su fila. Se comprueba con
+      //     `elementFromPoint`, que responde qué se pinta de verdad ahí — un
+      //     test que solo mirase la visibilidad del menú pasaría igual.
+      await filaTerminada.getByRole("button", { name: "Más acciones" }).click();
+      const menu = page.getByRole("menu");
+      await expect(menu).toBeVisible();
+      const tapado = await menu.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        // Rejilla de sondas por la mitad de abajo del menú, que es la parte
+        // que invade las filas siguientes. Barre también a lo ANCHO: el
+        // control de la fila de abajo es estrecho y una sonda por el centro
+        // podía pasar de largo justo por su lado.
+        const sondas: Array<string | null> = [];
+        for (const fx of [0.08, 0.3, 0.5, 0.7, 0.92]) {
+          for (const fy of [0.4, 0.6, 0.8, 0.95]) {
+            const punto = document.elementFromPoint(
+              box.x + box.width * fx,
+              box.y + box.height * fy
+            );
+            sondas.push(punto && el.contains(punto) ? null : (punto?.outerHTML.slice(0, 70) ?? "nada"));
+          }
+        }
+        return sondas;
+      });
+      expect(
+        tapado.filter(Boolean),
+        `algo se pinta por encima del menú: ${tapado.filter(Boolean).join(" | ")}`
+      ).toEqual([]);
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+
+      // 6. LA FILA ENTERA ES CLICABLE (enlace en overlay), no solo el título.
+      await filaSinRegistro.click({ position: { x: 200, y: 20 } });
+      await expect(page).toHaveURL(new RegExp(`/pelicula/${sinRegistro}`));
+    } finally {
+      for (const id of [sinRegistro, terminada, pendiente, libro]) {
+        await del(`passes?item_id=eq.${id}`);
+        await del(`credits?item_id=eq.${id}`);
+        await del(`movies?id=eq.${id}`);
+        await del(`books?id=eq.${id}`);
+      }
+      await del(`people?id=eq.${personId}`);
+      await sweepDisposableUsers();
+    }
+  });
+
+  test("se puede ordenar por categoría sin perder ninguna obra", async ({ page }) => {
+    await sweepDisposableUsers();
+
+    const user = await createOnboardedUser(`${USER_PREFIX}o${Date.now()}`.slice(0, 20));
+    const personId = crypto.randomUUID();
+    const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+    const roles = ["director", "writer", "cast"];
+
+    try {
+      await rest("people", {
+        method: "POST",
+        body: JSON.stringify({ id: personId, name: `[E2E] Mixta ${personId.slice(0, 8)}` }),
+      });
+      for (const [i, id] of ids.entries()) {
+        await rest("movies", {
+          method: "POST",
+          body: JSON.stringify({
+            id,
+            title: `[E2E] obra ${id.slice(0, 8)}`,
+            cover_url: COVER_URL,
+            release_year: 2000 + i,
+          }),
+        });
+        await rest("credits", {
+          method: "POST",
+          body: JSON.stringify({
+            item_type: "movie",
+            item_id: id,
+            person_id: personId,
+            role: roles[i],
+          }),
+        });
+      }
+
+      await loginAs(page, user.email);
+      await page.setViewportSize({ width: 1700, height: 1000 });
+      await page.goto(`/persona/${personId}`);
+
+      const timeline = page.getByTestId("person-rest");
+      await expect(timeline).toBeVisible();
+      const titulosCronologia = (await timeline.locator("span.font-serif").allInnerTexts()).sort();
+      expect(titulosCronologia).toHaveLength(3);
+
+      // El orden vive en la URL, como los filtros: es un enlace compartible y
+      // el botón «atrás» funciona.
+      await page.getByRole("link", { name: "Por categoría" }).click();
+      await expect(page).toHaveURL(/orden=rol/);
+
+      // Las tres categorías, en el orden de peso: dirección, guion, reparto.
+      // `innerText` devuelve el texto RENDERIZADO, y las etiquetas van en
+      // versalitas por CSS (`uppercase`): se compara en minúsculas.
+      const encabezados = await timeline.locator("h4").allInnerTexts();
+      expect(encabezados.map((s) => s.trim().toLowerCase())).toEqual([
+        "dirección",
+        "guion",
+        "reparto",
+      ]);
+
+      // Y NO se pierde ni se duplica ninguna obra al cambiar de orden.
+      const titulosPorRol = (await timeline.locator("span.font-serif").allInnerTexts()).sort();
+      expect(titulosPorRol).toEqual(titulosCronologia);
+
+      await page.goBack();
+      await expect(page).not.toHaveURL(/orden=rol/);
+    } finally {
+      for (const id of ids) {
+        await del(`credits?item_id=eq.${id}`);
+        await del(`movies?id=eq.${id}`);
+      }
+      await del(`people?id=eq.${personId}`);
+      await sweepDisposableUsers();
+    }
+  });
+
+  test("las destacadas miden todas lo mismo y sus notas quedan alineadas", async ({ page }) => {
+    // Reportado por el dueño: con el título libre, uno de una línea y otro de
+    // dos dejaban cada tarjeta a una altura y cada fila de nota a la suya. Se
+    // siembran títulos de longitudes MUY distintas a propósito — con títulos
+    // parecidos el descuadre no aparece y el test pasaría con el bug puesto.
+    await sweepDisposableUsers();
+
+    const user = await createOnboardedUser(`${USER_PREFIX}d${Date.now()}`.slice(0, 20));
+    const personId = crypto.randomUUID();
+    const ids = [
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+    ];
+    const titulos = [
+      "[E2E] Un título larguísimo que no cabe de ninguna manera en una sola línea",
+      "[E2E] Corta",
+      "[E2E] Otro título kilométrico de los que parten en dos renglones",
+      "[E2E] Breve",
+      "[E2E] Sin puntuar",
+    ];
+    // La última va PENDIENTE y sin nota: es la que comprueba la otra regla —
+    // sin nota se dice el estado, y con letras.
+    const sinNota = 4;
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      await rest("people", {
+        method: "POST",
+        body: JSON.stringify({ id: personId, name: `[E2E] Destacadas ${personId.slice(0, 8)}` }),
+      });
+      for (const [i, id] of ids.entries()) {
+        await rest("movies", {
+          method: "POST",
+          body: JSON.stringify({
+            id,
+            title: `${titulos[i]} ${id.slice(0, 8)}`,
+            cover_url: COVER_URL,
+            release_year: 2000 + i,
+          }),
+        });
+        await rest("credits", {
+          method: "POST",
+          body: JSON.stringify({
+            item_type: "movie",
+            item_id: id,
+            person_id: personId,
+            role: "director",
+          }),
+        });
+        // Cuatro puntuadas —así se pueden comparar sus notas entre sí— y una
+        // pendiente sin nota.
+        await rest("passes", {
+          method: "POST",
+          body: JSON.stringify({
+            id,
+            user_id: user.id,
+            item_type: "movie",
+            item_id: id,
+            ...(i === sinNota
+              ? { status: "planned" }
+              : {
+                  status: "completed",
+                  started_on: today,
+                  finished_on: today,
+                  rating: 8 - i,
+                }),
+            is_active: true,
+            position: {},
+          }),
+        });
+      }
+
+      await loginAs(page, user.email);
+      await page.setViewportSize({ width: 1700, height: 1000 });
+      await page.goto(`/persona/${personId}`);
+
+      const destacadas = page.getByTestId("person-featured");
+      await expect(destacadas).toBeVisible();
+      const tarjetas = destacadas.getByTestId("featured-card");
+      await expect(tarjetas).toHaveCount(5);
+
+      // 1. MISMA ALTURA todas. Se compara contra la más alta: si una tarjeta se
+      //    queda corta porque su título ocupa una línea, aquí salta.
+      const alturas = await tarjetas.evaluateAll((els) =>
+        els.map((el) => Math.round(el.getBoundingClientRect().height))
+      );
+      const maxAlto = Math.max(...alturas);
+      for (const alto of alturas) {
+        expect(alto, `una destacada mide ${alto}px y la más alta ${maxAlto}px`).toBe(maxAlto);
+      }
+
+      // 2. Y LAS NOTAS, A LA MISMA ALTURA. Es lo que se ve descuadrado: el
+      //    título corto subía su fila de dots y el largo la bajaba.
+      const topsNotas = await destacadas
+        .getByRole("img", { name: /de 5$/ })
+        .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+      expect(topsNotas).toHaveLength(4);
+      for (const top of topsNotas) {
+        expect(top, `las notas de las destacadas no están alineadas: ${topsNotas.join(", ")}`).toBe(
+          topsNotas[0]
+        );
+      }
+
+      // 3. Y SIN AIRE bajo el «año · rol». Alinear anclando la nota al pie de
+      //    la tarjeta también daba tops iguales, pero abría un vacío entre el
+      //    subtítulo y la nota (reportado por el dueño). El hueco es el `gap`
+      //    de la columna, 6px; se deja margen para el redondeo de subpíxel.
+      const huecos = await destacadas.getByTestId("featured-card").evaluateAll((cards) =>
+        cards
+          .map((card) => {
+            const subtitulo = card.querySelector("span.italic");
+            const nota = card.querySelector('[role="img"][aria-label$="de 5"]');
+            if (!subtitulo || !nota) return null;
+            return Math.round(
+              nota.getBoundingClientRect().top - subtitulo.getBoundingClientRect().bottom
+            );
+          })
+          .filter((n): n is number => n !== null)
+      );
+      expect(huecos).toHaveLength(4);
+      for (const hueco of huecos) {
+        expect(hueco, `hay ${hueco}px de aire entre el «año · rol» y la nota`).toBeLessThanOrEqual(
+          10
+        );
+      }
+
+      // 4. UNA señal por tarjeta: la que has puntuado enseña la NOTA y ya —el
+      //    punto verde de «Terminada» al lado era redundante—, y la que no
+      //    tiene nota dice su estado CON LETRAS, no con un punto de color.
+      const puntuada = tarjetas.filter({ hasText: "[E2E] Corta" });
+      await expect(puntuada.getByRole("img", { name: /de 5$/ })).toBeVisible();
+      await expect(puntuada.getByTestId("status-badge")).toHaveCount(0);
+
+      const pendiente = tarjetas.filter({ hasText: "[E2E] Sin puntuar" });
+      await expect(pendiente.getByTestId("status-badge")).toHaveText("Pendiente");
+    } finally {
+      for (const id of ids) {
+        await del(`passes?item_id=eq.${id}`);
+        await del(`credits?item_id=eq.${id}`);
+        await del(`movies?id=eq.${id}`);
+      }
+      await del(`people?id=eq.${personId}`);
+      await sweepDisposableUsers();
+    }
+  });
+});
