@@ -412,6 +412,22 @@ Antes de esto, «Su obra» de una ficha de persona era solo lo que `ensureItemEn
 escrito al abrir la ficha de **una obra concreta**: una persona con una sola película abierta
 afirmaba, sin matices, que esa era toda su obra. No era un hueco, era una afirmación falsa.
 
+> **Delta del 2026-08-13 (`people.aliases`, autores de libro por Open Library key): columna +
+> grant de INSERT aplicados y verificados en DEV** contra
+> `information_schema.column_privileges` (migración `20260853_people_aliases.sql`; prod
+> pendiente). Spec:
+> `docs/superpowers/specs/2026-08-13-autores-libro-datos-design.md`.
+
+| Columna | Tipo | Para qué |
+|---|---|---|
+| `aliases` | `text[] not null default '{}'` | Otras grafías del nombre (otros idiomas y alfabetos). El visible es `name`. Solo lo escribe el alta de autor y el backfill. |
+
+Open Library da un nombre canónico que puede venir en otro alfabeto (`Фёдор Достоевский`) y una
+lista de variantes; se enseña la forma latina y el resto se guarda aquí, que es lo que permite
+reconocer "Dostoievski" y "Fyodor Dostoyevsky" como la MISMA fila en vez de crear una por idioma.
+Igual que `credits_hydrated_at`, **sin grant de `UPDATE` a propósito**: la app no reescribe
+personas, y el backfill que corrige nombres y alias va con `service_role`.
+
 ## 3. El pase: el hub del estado
 
 **`passes` es la tabla central del usuario.** Una fila por *pase* — una lectura o visionado
