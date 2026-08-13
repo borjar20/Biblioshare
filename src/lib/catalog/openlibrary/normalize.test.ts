@@ -116,7 +116,11 @@ describe("normalizeAuthorWorks · filtros", () => {
   it("descarta estuches y omnibus", () => {
     for (const basura of [
       "Gregor the Overlander Box Set",
-      "Hunger Games 5-Book Box Set",
+      // No "Hunger Games 5-Book Box Set": ese title nunca lo emite el
+      // pipeline (esa obra no tiene `language`, así que la regla 2 ya la
+      // descarta). El título REAL que emitiría la obra tetralogía si el
+      // filtro de omnibus desapareciese es este, con "4-Book", no "5-Book":
+      "Tetralogía Los Juegos Del Hambre / the Hunger Games 4-Book Box Set",
       "The Underland Chronicles 5 Volume Set",
     ]) {
       expect(titulos(collins)).not.toContain(basura);
@@ -146,13 +150,21 @@ describe("normalizeAuthorWorks · desduplicación", () => {
   });
 
   it("no fusiona dos libros distintos de una misma saga", () => {
+    // Las tres, exactas: si una fusión falsa se comiese cualquiera de los
+    // tres, este `toEqual` lo detecta. Un `toBeGreaterThanOrEqual(2)` deja
+    // pasar justo el caso que este test existe para atrapar.
     const clave = titulos(shusterman).filter((t) => /^Everlost$|^Everwild$|^Everfound$/.test(t));
-    expect(clave.length).toBeGreaterThanOrEqual(2);
+    expect(clave.sort()).toEqual(["Everfound", "Everlost", "Everwild"]);
   });
 
-  it("no deja dos obras con la misma work key", () => {
-    const keys = collins.map((o) => o.workKey);
-    expect(new Set(keys).size).toBe(keys.length);
+  it("cada obra devuelta tiene una workKey con forma de obra y un título no vacío", () => {
+    // Que no haya dos `workKey` iguales es una garantía de la estructura de
+    // datos (un candidato por entrada de `Map`, indexado por `doc.key`): no
+    // puede fallar y no prueba nada. Esto sí puede fallar.
+    for (const obra of collins) {
+      expect(obra.workKey).toMatch(/^\/works\/OL\d+W$/);
+      expect(obra.title.length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -179,7 +191,26 @@ describe("normalizeAuthorWorks · bordes", () => {
     ).toEqual([]);
   });
 
-  it("respeta el orden de Open Library, no el alfabético", () => {
-    expect(collins[0].title).toBe("Los juegos del hambre");
+  it("respeta el orden de Open Library, no el de ediciones ni el alfabético", () => {
+    // "Los juegos del hambre" tiene 142 ediciones, el máximo: es el primero
+    // tanto en el orden de Open Library como en el de ediciones, así que por
+    // sí solo no distingue una implementación que devolviese el orden de
+    // ediciones (el error exacto que avisa la spec) de una correcta. Las dos
+    // órdenes divergen en el índice 2: Open Library pone ahí "Balada de
+    // pájaros cantores y serpientes" (34 ediciones); por ediciones tocaría
+    // "Sinsajo" (98). Fijar hasta el índice 3 es lo que hace discriminante
+    // este test.
+    expect(collins.slice(0, 4).map((o) => o.title)).toEqual([
+      "Los juegos del hambre",
+      "En llamas",
+      "Balada de pájaros cantores y serpientes",
+      "Sinsajo",
+    ]);
+  });
+
+  it("coverUrl usa el cover_i real de la obra", () => {
+    // "The Hunger Games" (OL5735363W) trae cover_i 12646537 en el fixture.
+    const obra = collins.find((o) => o.title === "Los juegos del hambre");
+    expect(obra?.coverUrl).toBe("https://covers.openlibrary.org/b/id/12646537-M.jpg");
   });
 });

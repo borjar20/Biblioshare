@@ -119,8 +119,10 @@ type Merged = {
 };
 
 /**
- * Las cinco reglas, en orden. Recibe los `docs` de las dos pasadas de
- * `search.json` (`lang=es` y `lang=en`) y devuelve obras únicas y presentables.
+ * Las seis reglas, en el orden en que las aplica el cuerpo de la función:
+ * 1. Juntar. 2. Idioma. 3. Omnibus. 4. Título. 5. Desduplicar. 6. Orden.
+ * Recibe los `docs` de las dos pasadas de `search.json` (`lang=es` y
+ * `lang=en`) y devuelve obras únicas y presentables.
  */
 export function normalizeAuthorWorks(
   docsEs: OpenLibraryAuthorWorkDoc[],
@@ -153,7 +155,7 @@ export function normalizeAuthorWorks(
     const { doc } = entry;
     const workTitle = doc.title as string;
 
-    // 3. Idioma: fuera lo que no tenga ninguna edición en español ni inglés.
+    // 2. Idioma: fuera lo que no tenga ninguna edición en español ni inglés.
     //    Se lleva los tres «Dena sutan» en euskera y los registros fantasma,
     //    que no traen idiomas porque no tienen ediciones.
     const languages = doc.language ?? [];
@@ -163,11 +165,20 @@ export function normalizeAuthorWorks(
       (title): title is string => typeof title === "string" && title.length > 0
     );
 
-    // 4. Omnibus.
+    // 3. Omnibus.
     if (isOmnibus(allTitles)) continue;
 
-    // 2. Título: español, si no inglés, si no el de la obra.
+    // 4. Título: español, si no inglés, si no el de la obra.
     const title = entry.es ?? entry.en ?? workTitle;
+
+    // Un título hecho solo de puntuación («!!!», «—», «...») normaliza a la
+    // cadena vacía. `acceptEditionTitle` ya blinda su propia salida, pero
+    // nada blinda el título de la obra: si la cadena vacía entrase en el
+    // conjunto, casaría con la cadena vacía de CUALQUIER OTRA obra en el
+    // mismo caso y las fusionaría, borrando una de las dos. Se descarta aquí.
+    const titleSet = new Set(
+      allTitles.map(normalizeTitleForComparison).filter((t) => t.length > 0)
+    );
 
     candidates.push({
       work: {
@@ -176,7 +187,7 @@ export function normalizeAuthorWorks(
         year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : null,
         coverUrl: buildCoverUrl(doc.cover_i),
       },
-      titles: new Set(allTitles.map(normalizeTitleForComparison)),
+      titles: titleSet,
       editions: typeof doc.edition_count === "number" ? doc.edition_count : 0,
       order: entry.order,
     });
@@ -185,15 +196,26 @@ export function normalizeAuthorWorks(
   // 5. Desduplicar. Dos obras son la misma si sus conjuntos de títulos se
   //    cruzan — es lo que une «Fatta Eld» con «Catching Fire» y «Amanecer de la
   //    Cosecha» con «Sunrise on the Reaping», que no comparten idioma pero sí
-  //    un título candidato. Sobrevive la de más ediciones, y HEREDA los títulos
-  //    de la fusionada para que una tercera también case.
+  //    un título candidato. Sobrevive la de más ediciones.
+  //
+  //    La fusión exige evidencia DIRECTA contra el conjunto propio del
+  //    superviviente — nunca se amplía ese conjunto con los títulos de la
+  //    obra fusionada. La versión anterior heredaba, así que una tercera obra
+  //    podía casar por un título que el superviviente jamás tuvo: una cadena
+  //    transitiva sin límite que llegó a fusionar (y borrar) obras que entre
+  //    sí no compartían ningún título. Medido contra los 111 works de los dos
+  //    fixtures, la herencia no aportaba ninguna fusión (0 casos) — los
+  //    recuentos (Collins 14, Shusterman 68) son idénticos con y sin ella.
+  //
+  //    Nota: si un candidato cruza con DOS supervivientes distintos, `find`
+  //    se queda con el primero y el otro sobrevive como casi-duplicado. Es un
+  //    fallo seguro (nunca borra un libro) y determinista, porque los
+  //    supervivientes se recorren en orden descendente de ediciones.
   const survivors: typeof candidates = [];
   for (const candidate of [...candidates].sort((a, b) => b.editions - a.editions)) {
-    const twin = survivors.find((s) => [...candidate.titles].some((t) => s.titles.has(t)));
-    if (twin) {
-      for (const t of candidate.titles) twin.titles.add(t);
-      continue;
-    }
+    const candidateTitles = [...candidate.titles];
+    const twin = survivors.find((s) => candidateTitles.some((t) => s.titles.has(t)));
+    if (twin) continue;
     survivors.push(candidate);
   }
 

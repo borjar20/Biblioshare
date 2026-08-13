@@ -130,8 +130,12 @@ diacríticas, y solo `[a-z0-9]`. Validada contra casos reales: casa `Duckling ug
    edición «The Underland Chronicles 5 Volume Set».
 5. **Desduplicar.** El conjunto candidato de una obra son sus títulos normalizados: el de la
    obra, el de la edición española aceptada y el de la inglesa aceptada. **Dos obras son la
-   misma si sus conjuntos se cruzan.** Sobrevive la de más ediciones, y **hereda los candidatos
-   de la fusionada**, para que una tercera también case.
+   misma si sus conjuntos se cruzan.** Sobrevive la de más ediciones. La fusión exige **evidencia
+   directa** contra el conjunto propio del superviviente — no hereda los candidatos de la obra
+   fusionada, porque esa herencia permitía cadenas transitivas sin límite que fusionaban (y
+   borraban) obras que entre sí no compartían ningún título; medido contra los 111 works de los
+   fixtures de prueba, la herencia no ganaba ninguna fusión (0 casos) y los recuentos eran
+   idénticos con y sin ella.
 6. **Orden:** el que da Open Library con `sort=readinglog`, por popularidad. No alfabético.
 
 ### 3. `buscarObrasDeAutor(authorKey)` — la única función con red
