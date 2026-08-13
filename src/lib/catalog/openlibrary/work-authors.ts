@@ -84,39 +84,81 @@ function parseBio(value: unknown): string | null {
   return null;
 }
 
-// Nunca lanza. `null` = no se pudo resolver O el autor no tiene ninguna grafía
-// latina; en ambos casos el llamador lo omite.
-export async function fetchOpenLibraryAuthorByKey(
-  key: string
-): Promise<OpenLibraryAuthor | null> {
-  try {
-    const authorKey = normalizeAuthorKey(key ?? "");
-    if (!authorKey) return null;
+/**
+ * Resultado con el PORQUÉ de no haber autor, que es lo que distingue un
+ * descarte deliberado de un fallo pasajero:
+ *
+ * - `ok`          — ficha traída y con grafía latina.
+ * - `discarded`   — ficha TRAÍDA, pero sin ninguna grafía latina: es el stub en
+ *                   otro alfabeto del mismo humano (Dune lista OL79034A "Frank
+ *                   Herbert" y OL7388009A "Френк Герберт"). Descartarlo es la
+ *                   respuesta CORRECTA y es determinista: repetir la llamada da
+ *                   lo mismo.
+ * - `unreachable` — no se pudo saber: HTTP no-2xx, timeout de 5 s, error de red
+ *                   o JSON ilegible. Es TRANSITORIO: la misma clave puede
+ *                   resolver en la pasada siguiente.
+ *
+ * La app trata los dos últimos igual (omite al autor) y por eso le basta
+ * `fetchOpenLibraryAuthorByKey`. Quien BORRA a partir de este resultado —el
+ * backfill de `scripts/backfill-book-authors.ts`— no puede permitirse
+ * confundirlos: un timeout leído como "este autor no cuenta" le quita el
+ * crédito a un autor real y luego se lleva su fila de `people` por delante
+ * (`credits_person_id_fkey` es ON DELETE CASCADE). De ahí que exista este tipo.
+ */
+export type OpenLibraryAuthorLookup =
+  | { status: "ok"; author: OpenLibraryAuthor }
+  | { status: "discarded" }
+  | { status: "unreachable" };
 
+// Nunca lanza. Ante cualquier duda (JSON raro incluido) devuelve `unreachable`,
+// que es el lado conservador: bloquea borrados en quien los haga.
+export async function lookupOpenLibraryAuthorByKey(
+  key: string
+): Promise<OpenLibraryAuthorLookup> {
+  const authorKey = normalizeAuthorKey(key ?? "");
+  // Clave vacía: no es un descarte razonado, es que no hay nada que consultar.
+  if (!authorKey) return { status: "unreachable" };
+
+  try {
     const res = await fetch(`https://openlibrary.org/authors/${authorKey}.json`, {
       next: { revalidate: REVALIDATE_SECONDS },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { status: "unreachable" };
 
     const detail: AuthorDetailResponse = await res.json();
     const picked = pickDisplayName(detail);
-    if (!picked) return null;
+    if (!picked) return { status: "discarded" };
 
     // Las fotos de autor NO van por el CDN de portadas de libro (/b/id/), sino
     // por /a/id/ — por eso esto no usa buildCoverUrl.
     const photoId = detail.photos?.find((id) => id > 0);
 
     return {
-      key: authorKey,
-      name: picked.name,
-      aliases: picked.aliases,
-      bio: parseBio(detail.bio),
-      photoUrl: photoId ? `https://covers.openlibrary.org/a/id/${photoId}-M.jpg` : null,
-      birthDate: detail.birth_date ?? null,
-      deathDate: detail.death_date ?? null,
+      status: "ok",
+      author: {
+        key: authorKey,
+        name: picked.name,
+        aliases: picked.aliases,
+        bio: parseBio(detail.bio),
+        photoUrl: photoId ? `https://covers.openlibrary.org/a/id/${photoId}-M.jpg` : null,
+        birthDate: detail.birth_date ?? null,
+        deathDate: detail.death_date ?? null,
+      },
     };
   } catch {
-    return null;
+    return { status: "unreachable" };
   }
+}
+
+// Nunca lanza. `null` = no se pudo resolver O el autor no tiene ninguna grafía
+// latina; en ambos casos el llamador lo omite. Es la vista SIMPLE de
+// `lookupOpenLibraryAuthorByKey`, y se mantiene tal cual a propósito: la app
+// (findOrCreateBookAuthorByKey) trata ambos casos igual y no debe complicarse
+// para servir al script de backfill.
+export async function fetchOpenLibraryAuthorByKey(
+  key: string
+): Promise<OpenLibraryAuthor | null> {
+  const lookup = await lookupOpenLibraryAuthorByKey(key);
+  return lookup.status === "ok" ? lookup.author : null;
 }

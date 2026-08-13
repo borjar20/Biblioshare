@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchWorkAuthorKeys, fetchOpenLibraryAuthorByKey } from "./work-authors";
+import {
+  fetchWorkAuthorKeys,
+  fetchOpenLibraryAuthorByKey,
+  lookupOpenLibraryAuthorByKey,
+} from "./work-authors";
 
 function mockJson(payload: unknown, ok = true) {
   return vi.fn().mockResolvedValue({ ok, json: async () => payload });
@@ -97,5 +101,49 @@ describe("fetchOpenLibraryAuthorByKey", () => {
     expect(await fetchOpenLibraryAuthorByKey("OL22161A")).toBeNull();
 
     expect(await fetchOpenLibraryAuthorByKey("")).toBeNull();
+  });
+});
+
+// La app trata igual "no se pudo traer" y "traído y descartado", y le vale con
+// null. Quien BORRA a partir de esto (scripts/backfill-book-authors.ts) no puede
+// confundirlos: un timeout leído como descarte le quita el crédito a un autor
+// real y luego se lleva su fila de `people` por el ON DELETE CASCADE.
+describe("lookupOpenLibraryAuthorByKey", () => {
+  it("distingue el descarte deliberado del fallo de red", async () => {
+    // Sin ninguna grafía latina: es el stub del mismo humano en otro alfabeto.
+    // Descartarlo es la respuesta correcta y es determinista.
+    vi.stubGlobal("fetch", mockJson({ name: "Френк Герберт" }));
+    expect(await lookupOpenLibraryAuthorByKey("OL7388009A")).toEqual({ status: "discarded" });
+
+    // Estos tres son "hoy no se pudo saber": mañana pueden resolver.
+    vi.stubGlobal("fetch", mockJson({}, false));
+    expect(await lookupOpenLibraryAuthorByKey("OL22161A")).toEqual({ status: "unreachable" });
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
+    expect(await lookupOpenLibraryAuthorByKey("OL22161A")).toEqual({ status: "unreachable" });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new Error("JSON ilegible");
+        },
+      })
+    );
+    expect(await lookupOpenLibraryAuthorByKey("OL22161A")).toEqual({ status: "unreachable" });
+
+    // Clave vacía: no hay nada que consultar, tampoco es un descarte razonado.
+    expect(await lookupOpenLibraryAuthorByKey("")).toEqual({ status: "unreachable" });
+  });
+
+  it("devuelve la misma ficha que la vista simple cuando resuelve", async () => {
+    vi.stubGlobal("fetch", mockJson({ name: "H.P. Lovecraft", photos: [6607781] }));
+    const lookup = await lookupOpenLibraryAuthorByKey("/authors/OL22161A");
+    expect(lookup.status).toBe("ok");
+
+    vi.stubGlobal("fetch", mockJson({ name: "H.P. Lovecraft", photos: [6607781] }));
+    const simple = await fetchOpenLibraryAuthorByKey("/authors/OL22161A");
+    expect(lookup.status === "ok" && lookup.author).toEqual(simple);
   });
 });
