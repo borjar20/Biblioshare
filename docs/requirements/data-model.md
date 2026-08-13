@@ -270,16 +270,16 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
 
 > **Delta del 2026-08-13 (desmarcar un hito, y el gate de `confirm_checkpoint`
-> reordenado, §6): aplicado y verificado SOLO EN DEV**, contra `pg_proc`, nunca contra
-> `list_migrations`. Migración `20260855_unconfirm_checkpoint.sql`: nueva RPC
+> reordenado, §6): aplicado y verificado en DEV y en PRODUCCIÓN**, contra `pg_proc`, nunca
+> contra `list_migrations`. Migración `20260855_unconfirm_checkpoint.sql`: nueva RPC
 > `unconfirm_checkpoint(uuid)`, simétrica a `confirm_checkpoint` (desmarca el hito N y los
 > posteriores, donde confirmar auto-confirma 1..N), gate de participante comprobado
 > PRIMERO, no mira el estado de la actividad a propósito. Y `confirm_checkpoint` cambia de
 > ORDEN, no de efecto: su gate de participante pasa también a ir primero (issue #129, misma
 > fuga de INFO que corrigió `20260831_club_activity_role_gate_first.sql` en otras cuatro
 > RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
-> columnas, tablas ni cambios de grants. **Producción pendiente**: la decide el usuario, no
-> se aplicó en esta spec. Detalle en §6.
+> columnas, tablas ni cambios de grants. Las dos con `search_path = public, pg_temp`, como
+> manda la plantilla. Detalle en §6.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -941,7 +941,7 @@ visual opcional**: `{}` = hito sin pista, y la app ya no compara posiciones
 chat no cambia: `can_view_target('activity_checkpoint', …)` sigue exigiendo
 `is_activity_participant` **y** `has_reached_checkpoint`.
 
-### Desmarcar un hito, y el gate de `confirm_checkpoint` reordenado (SOLO EN DEV, 2026-08-13)
+### Desmarcar un hito, y el gate de `confirm_checkpoint` reordenado (DEV Y PROD, 2026-08-13)
 
 `unconfirm_checkpoint(uuid)`, nueva RPC, SECURITY DEFINER, único camino de borrado de
 `club_activity_checkpoint_reads` (la tabla no tiene política de escritura de cliente, a
@@ -971,14 +971,19 @@ gate de participante pasa a ir primero; la cascada 1..N (el cuerpo) **no cambia*
 código de error se normaliza: `'not found'` → `'not_found'`, para que las dos gemelas
 hablen igual.
 
-Migración `20260855_unconfirm_checkpoint.sql`, **aplicada y verificada SOLO EN DEV**
-(sembrando dentro de un bloque que siempre aborta, así no queda basura): confirmar el 5º
-hito crea 5 filas; desmarcar el 3º deja 2; desmarcar dos veces no falla; los CUATRO casos
-de alguien ajeno al club dan `forbidden` — incluido `confirm_checkpoint` sobre un uuid
-inexistente, que antes daba `not found`; y con dos participantes, desmarcar uno deja al
-otro intacto (0 y 3 filas). Antes de reemplazarla se comprobó que el cuerpo vivo en dev de
-`confirm_checkpoint` era el de `20260827` (para no dejarla atrasada con un `create or
-replace`). **Producción pendiente** — la decide el usuario, no forma parte de esta spec.
+Migración `20260855_unconfirm_checkpoint.sql`, **aplicada y verificada en DEV y en
+PRODUCCIÓN** (2026-08-13). La misma batería en los dos entornos, sembrando dentro de un
+bloque que siempre aborta para no dejar basura —comprobado después con un SELECT que no
+quedaba ninguna fila—: confirmar el 5º hito crea 5 filas; desmarcar el 3º deja 2;
+desmarcar dos veces no falla; los CUATRO casos de alguien ajeno al club dan `forbidden` —
+incluido `confirm_checkpoint` sobre un uuid inexistente, que antes daba `not found`; y con
+dos participantes, desmarcar uno deja al otro intacto (0 y 3 filas).
+
+**Antes de reemplazar `confirm_checkpoint` se leyó su cuerpo vivo en cada entorno** y se
+confirmó que era el de `20260827` en los dos: prod no iba por detrás del repo, así que el
+`create or replace` solo reordenó las comprobaciones y añadió `pg_temp`, sin cambiar qué
+escribe. Es la comprobación que evita dejar atrasada una función que ya había avanzado por
+otra vía.
 
 ### `evento` — actividad no participativa (dev y prod, 2026-07-22)
 
