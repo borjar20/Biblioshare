@@ -51,7 +51,7 @@ recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a 
 migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
 bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
 `anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**; **los avisos de seguimiento nacen del post, no del hecho (§5.3), 2026-08-13**: `notification_type` gana `followed_started`/`followed_dropped`/`followed_thought` y `follows.notify_events` cambia de dominio a `milestone|progress|thought`; verificado en dev contra `enum_range` y `follows` reales el 2026-08-13; **en PROD solo el enum** (`20260856`, aplicada y verificada contra `pg_enum` el 2026-08-13, aditiva pura) — **la migración de datos `20260857` queda deliberadamente fuera hasta la ventana de despliegue del código**, porque aplicarla antes deja la campana de los suscriptores en blanco y un toggle en esa ventana corrompe la fila sin remedio (§5.3)]**
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**; **los avisos de seguimiento nacen del post, no del hecho (§5.3), 2026-08-13**: `notification_type` gana `followed_started`/`followed_dropped`/`followed_thought` y `follows.notify_events` cambia de dominio a `milestone|progress|thought`; verificado en dev contra `enum_range` y `follows` reales el 2026-08-13; **las dos migraciones aplicadas y verificadas en PROD el 2026-08-13**: `20260856` (el enum, aditiva pura, verificada contra `pg_enum`) por delante, y `20260857` (la de datos) **después de desplegar el código** (merge de #629 y deploy de producción en verde) — 8 filas a `{milestone,progress,thought}`, 4 vacías intactas, cero filas con vocabulario viejo; el orden importa y está razonado en §5.3]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -952,7 +952,7 @@ p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para re
   post real: 4 filas, no incluye el propio). Solo falta mergear el código (PR #570) que la consume —
   regla de despliegue de §5.1: migración primero (hecho), código después.
 
-### 5.3 Los avisos de seguimiento nacen del post, no del hecho (dev completo; en PROD solo el enum, 2026-08-13)
+### 5.3 Los avisos de seguimiento nacen del post, no del hecho (dev y **PROD**, 2026-08-13)
 
 Spec: `docs/superpowers/specs/2026-08-13-avisos-de-seguidores-desde-el-post-design.md`. Dos
 migraciones, en este orden: `20260856_notification_type_followed_post_kinds.sql` y
@@ -961,52 +961,50 @@ migraciones, en este orden: `20260856_notification_type_followed_post_kinds.sql`
 en dev solo tenía filas con array vacío, así que la transformación de la tabla de abajo no tuvo
 filas que mover en este entorno, pero corrió sin error contra el `where` de solapamiento).
 
-**Estado de prod, deliberadamente partido (decisión del dueño, 2026-08-13):**
+**Estado de prod: las dos migraciones aplicadas y verificadas el 2026-08-13.**
 
-- **`20260856` (el enum) SÍ está en prod**, aplicada y verificada el 2026-08-13 contra `pg_enum`:
+- **`20260856` (el enum)**, aplicada por delante por ser aditiva pura. Verificada contra `pg_enum`:
   la consulta por `enumlabel like 'followed_%'` devuelve los siete (`followed_added`,
   `followed_dropped`, `followed_episode`, `followed_finished`, `followed_session`,
-  `followed_started`, `followed_thought`). Es aditiva pura: añadir valores a un enum no cambia el
-  comportamiento de nada, así que va por delante y quita un paso de la ventana de despliegue.
-- **`20260857` (la de datos) NO está en prod**, a propósito. Es la que abre la ventana peligrosa
-  descrita abajo, así que va **en la misma ventana que el despliegue del código**, no antes.
+  `followed_started`, `followed_thought`).
+- **`20260857` (la de datos)**, aplicada **después de que el código nuevo estuviera desplegado**
+  (merge del PR #629 → deploy de producción de Vercel en verde → migración). Verificada leyendo la
+  tabla entera: las **8** filas no vacías quedaron en `{milestone,progress,thought}` y las **4**
+  vacías siguen vacías. Cero filas matchean ya el `where` de la migración (reejecutarla es no-op) y
+  cero filas contienen un valor fuera de `{milestone,progress,thought}`.
 
-(El Paso 1 de la Task 7 del plan instruía aplicar las dos a la vez; el plan es historia congelada y
-no se toca, pero su instrucción quedó superada por esta decisión.)
+> **Por qué ese orden, y no el contrario** (el análisis que decidió la secuencia; se conserva porque
+> el mismo patrón reaparece en cualquier migración que cambie el DOMINIO de una columna que la UI
+> escribe). Ambos órdenes dejan una ventana muda de unos minutos, pero solo uno se autocura:
+>
+> - **Código primero, datos después** (lo que se hizo): `notifyFollowersOfPost` filtra por
+>   `.contains("notify_events", ["milestone"])` y no matchea nada hasta que corre `20260857`, así
+>   que los avisos quedan mudos durante la ventana. El código nuevo lee un array viejo como `[]`,
+>   pero la migración posterior lo arregla: **la ventana se cierra sola**.
+> - **Datos primero, código después** (descartado): el `parseNotifyCategories` viejo lee un array ya
+>   migrado (`["milestone",…]`) como `[]` porque no reconoce ese vocabulario — la campana se pinta
+>   con las tres casillas SIN marcar. Si esa persona toca cualquier casilla en ese momento, el
+>   formulario viejo escribe de vuelta vocabulario VIEJO sobre una fila ya migrada, y el `where` de
+>   la migración solo matchea vocabulario viejo: reejecutarla **no vuelve a arreglar esa fila**. En
+>   cuanto aterriza el código nuevo, esa campana queda vacía de forma permanente. Con 8 suscriptores,
+>   un solo toque era un octavo de todos ellos.
+>
+> Queda un riesgo residual, aceptado: en la dirección elegida la campana también se pinta vacía
+> durante la ventana (el `parseNotifyCategories` NUEVO tampoco reconoce el vocabulario viejo), así que
+> un toggle hecho ahí dentro escribe vocabulario nuevo sobre una fila vieja y la migración posterior
+> ya no la toca. Esa persona pierde las categorías que no volvió a marcar. Es **menos** grave que la
+> dirección descartada, no inocuo: la fila queda en vocabulario válido y refleja lo último que esa
+> persona pulsó, en vez de quedarse permanentemente vacía y sin arreglo posible. Esa asimetría es la
+> que decide el orden.
+>
+> Comprobado después: las 8 filas salieron en `{milestone,progress,thought}`, es decir, **nadie tocó
+> la campana dentro de la ventana** — ninguna quedó con un subconjunto.
+>
+> Foto de reversión de las 8 filas tomada antes de escribir; ya no hace falta, pero si algo se
+> tuerce, el estado previo era `{finished,session,episode}` (+ `added` en 6 de las 8).
 
-> **Orden de despliegue en prod — léelo antes de aplicar `20260857`.** Verificado contra prod el
-> 2026-08-13: el enum ya tiene los tres valores nuevos (`20260856`, aplicada), pero las **8** filas
-> no vacías de `follows.notify_events` siguen hablando el vocabulario viejo. Lo que queda es la
-> migración de datos, y cualquier orden en que se combine con el despliegue del código deja una
-> ventana muda; una de las dos direcciones deja además un daño que la migración no cura:
->
-> - **Código antes que las migraciones**: `notifyFollowersOfPost` filtra por
->   `.contains("notify_events", ["milestone"])`, que no matchea ninguna fila de prod (todas dicen
->   `finished`, no `milestone`) → **todos** los avisos de seguidores quedan mudos hasta que corra
->   `20260857`.
-> - **Migraciones antes que el código**: el código viejo, aún desplegado, filtra por `["finished"]`
->   — tampoco matchea nada tras la migración (las filas ya dicen `milestone`) → ventana muda
->   igual. Y esta dirección **no se autocura**: durante la ventana, el `parseNotifyCategories`
->   viejo lee un array ya migrado (`["milestone",…]`) como `[]` porque no reconoce ese vocabulario
->   — la campana del usuario se pinta con las tres casillas SIN marcar. Si esa persona toca
->   cualquier casilla en ese momento, el formulario viejo escribe de vuelta el vocabulario VIEJO
->   sobre una fila que ya estaba migrada. El `where` de la migración solo matchea vocabulario viejo,
->   así que reejecutar `20260857` **no vuelve a arreglar esa fila**: en cuanto el código nuevo
->   aterriza, la campana de ese usuario queda vacía de forma permanente. Con 8 suscriptores en prod,
->   un solo toque así es la octava parte de todos ellos.
->
-> **Regla:** `20260856` ya está (era inofensiva). Falta aplicar `20260857` y desplegar el código
-> **en la misma ventana** — no la adelantes a un merge posterior. Un toggle de campana hecho entre
-> las dos mitades no es recuperable reejecutando la migración: solo lo arregla una corrección de
-> datos aparte, o no abrir la ventana.
->
-> **Sitios de la documentación que se vuelven falsos en el instante en que prod recibe
-> `20260857`** — hoy dicen que el dominio de `notify_events` en prod es el viejo, cierto hoy y
-> falso en cuanto se aplique: `docs/requirements/backlog.md:90`, el encabezado y el cuerpo de esta
-> §5.3, y la entrada de `decisiones.md` del 2026-08-13. Actualízalos **todos** en el mismo cambio
-> que aplique la migración, no solo el primero que se te ocurra.
-> (La fila de `notification_type` de la tabla de enums en §9 y el log de deltas de
-> `data-model.md:54` ya se corrigieron al aplicar `20260856`.)
+(El Paso 1 de la Task 7 del plan instruía aplicar las dos a la vez, antes del merge; el plan es
+historia congelada y no se toca, pero su instrucción quedó superada por esta secuencia.)
 
 - **`public.notification_type` gana tres valores**: `followed_started`, `followed_dropped`,
   `followed_thought` (`ALTER TYPE … ADD VALUE`, sin borrar nada). Con los tres que ya existían
@@ -1031,9 +1029,12 @@ no se toca, pero su instrucción quedó superada por esta decisión.)
   (`src/lib/social/notify-categories.ts`) agrupa varios `kind` bajo la misma categoría. Una fila que
   solo tenía `finished` sale suscrita también a `started` y `dropped` (los tres caen en
   `milestone`); una fila con `session` pero sin `episode` (o al revés) sale suscrita también al
-  otro, porque los dos caen en `progress`. Las 8 filas no vacías de prod contienen `finished`, así
-  que las 8 saldrán suscritas a tres tipos de aviso nuevos (`followed_started`, `followed_dropped`,
-  `followed_thought`), no a uno solo.
+  otro, porque los dos caen en `progress`. Medido al aplicar en prod: las 8 filas no vacías tenían
+  las tres viejas (`finished`+`session`+`episode`, y 6 de ellas además `added`), así que las 8
+  salieron suscritas a tres tipos de aviso nuevos (`followed_started`, `followed_dropped`,
+  `followed_thought`), no a uno solo. (El comentario de cabecera de la migración decía que esas
+  filas «solo tienen `finished`» — premisa falsa, corregida el 2026-08-13 al leer la tabla real; la
+  conclusión de los tres tipos nuevos sí se sostiene.)
 - **El disparo se mueve del hecho al post.** `notifyFollowersOfEvent`, `notifyAdded` y
   `resolvePostInteractionTargetId` (la heurística que adivinaba el post de una sesión/pase/episodio
   ya publicado) desaparecen enteros de `src/lib/social/notify-followers.ts`. El único punto de
@@ -2866,7 +2867,7 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 | `club_event_state` | `programado \| cancelado \| pospuesto` (§6.1, 2026-08-04, dev y **prod**). Solo los tres estados que una PERSONA declara: «en curso» y «finalizado» se derivan del reloj y NO se guardan |
 | `event_modality` | `presencial \| online \| hibrida` (§6.1, 2026-08-04, dev y **prod**) |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable · `club_round_proposed \| club_round_commented \| club_round_liked` (§6, la ronda, dev y **prod** 2026-08-04) · **`thought_commented \| thought_liked`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) · **`followed_started \| followed_dropped \| followed_thought`** (§5.3, avisos de seguimiento desde el post, 2026-08-13, migración `20260856_notification_type_followed_post_kinds.sql`, **dev y PROD** — verificado contra `pg_enum` de prod el 2026-08-13: `enumlabel like 'followed_%'` devuelve los siete. Solo el enum: la migración de datos `20260857` sigue **sin aplicar en prod** a propósito, ver §5.3). Junto con los tres `followed_*` que ya existían cubren uno por `post.kind`; `followed_added` queda huérfano desde el mismo delta — el enum lo conserva pero `createPost` ya no lo emite |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable · `club_round_proposed \| club_round_commented \| club_round_liked` (§6, la ronda, dev y **prod** 2026-08-04) · **`thought_commented \| thought_liked`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) · **`followed_started \| followed_dropped \| followed_thought`** (§5.3, avisos de seguimiento desde el post, 2026-08-13, migración `20260856_notification_type_followed_post_kinds.sql`, **dev y PROD** — verificado contra `pg_enum` de prod el 2026-08-13: `enumlabel like 'followed_%'` devuelve los siete. La migración de datos `20260857` también está en prod desde ese día, aplicada después del despliegue del código — ver §5.3). Junto con los tres `followed_*` que ya existían cubren uno por `post.kind`; `followed_added` queda huérfano desde el mismo delta — el enum lo conserva pero `createPost` ya no lo emite |
 | `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
 | `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
