@@ -64,3 +64,140 @@ export function acceptEditionTitle(
 
   return editionTitle;
 }
+
+export type NormalizedWork = {
+  /** "/works/OL5735363W" — el formato que guarda `books.openlibrary_work_key`. */
+  workKey: string;
+  title: string;
+  year: number | null;
+  coverUrl: string | null;
+};
+
+// Estuches y recopilaciones. Se comparan contra el título en minúsculas y sin
+// acentos, y contra TODOS los títulos candidatos de la obra —no solo el
+// elegido—, porque el work titulado «Gregor» solo se delata por su edición
+// «The Underland Chronicles 5 Volume Set».
+//
+// `collection` NO está en la lista a propósito: es el único patrón con riesgo
+// real de tragarse un libro legítimo. Los siete que quedan son inequívocos, y
+// el precio asumido es que un libro que se llame «Omnibus» caería.
+const OMNIBUS_PATTERNS = [
+  "box set",
+  "boxed set",
+  "trilogy",
+  "trilogia",
+  "tetralogia",
+  "volume set",
+  "complete series",
+  "omnibus",
+];
+
+// Minúsculas y sin acentos, PERO conservando espacios: los patrones de arriba
+// son frases, no palabras pegadas.
+function looseTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+function isOmnibus(titles: string[]): boolean {
+  return titles.some((title) => {
+    const loose = looseTitle(title);
+    if (OMNIBUS_PATTERNS.some((pattern) => loose.includes(pattern))) return true;
+    // «The Hunger Games / Catching Fire / Mockingjay / …»: tres o más obras
+    // listadas en el mismo título.
+    return title.split(" / ").filter(Boolean).length >= 3;
+  });
+}
+
+type Merged = {
+  doc: OpenLibraryAuthorWorkDoc;
+  order: number;
+  es: string | null;
+  en: string | null;
+};
+
+/**
+ * Las cinco reglas, en orden. Recibe los `docs` de las dos pasadas de
+ * `search.json` (`lang=es` y `lang=en`) y devuelve obras únicas y presentables.
+ */
+export function normalizeAuthorWorks(
+  docsEs: OpenLibraryAuthorWorkDoc[],
+  docsEn: OpenLibraryAuthorWorkDoc[]
+): NormalizedWork[] {
+  // 1. Juntar las dos pasadas por clave de obra. El orden lo marca la pasada
+  //    española; las obras que solo aparecen en la inglesa van detrás.
+  const merged = new Map<string, Merged>();
+  for (const [docs, want] of [
+    [docsEs, "spa"],
+    [docsEn, "eng"],
+  ] as const) {
+    for (const doc of docs) {
+      if (!doc.key || !doc.title) continue;
+      const entry =
+        merged.get(doc.key) ?? { doc, order: merged.size, es: null, en: null };
+      const edition = doc.editions?.docs?.[0];
+      const accepted = acceptEditionTitle(doc.title, edition?.title, edition?.language, want);
+      if (accepted) {
+        if (want === "spa") entry.es = accepted;
+        else entry.en = accepted;
+      }
+      merged.set(doc.key, entry);
+    }
+  }
+
+  const candidates: Array<{ work: NormalizedWork; titles: Set<string>; editions: number; order: number }> = [];
+
+  for (const entry of merged.values()) {
+    const { doc } = entry;
+    const workTitle = doc.title as string;
+
+    // 3. Idioma: fuera lo que no tenga ninguna edición en español ni inglés.
+    //    Se lleva los tres «Dena sutan» en euskera y los registros fantasma,
+    //    que no traen idiomas porque no tienen ediciones.
+    const languages = doc.language ?? [];
+    if (!languages.includes("spa") && !languages.includes("eng")) continue;
+
+    const allTitles = [workTitle, entry.es, entry.en].filter(
+      (title): title is string => typeof title === "string" && title.length > 0
+    );
+
+    // 4. Omnibus.
+    if (isOmnibus(allTitles)) continue;
+
+    // 2. Título: español, si no inglés, si no el de la obra.
+    const title = entry.es ?? entry.en ?? workTitle;
+
+    candidates.push({
+      work: {
+        workKey: doc.key as string,
+        title,
+        year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : null,
+        coverUrl: buildCoverUrl(doc.cover_i),
+      },
+      titles: new Set(allTitles.map(normalizeTitleForComparison)),
+      editions: typeof doc.edition_count === "number" ? doc.edition_count : 0,
+      order: entry.order,
+    });
+  }
+
+  // 5. Desduplicar. Dos obras son la misma si sus conjuntos de títulos se
+  //    cruzan — es lo que une «Fatta Eld» con «Catching Fire» y «Amanecer de la
+  //    Cosecha» con «Sunrise on the Reaping», que no comparten idioma pero sí
+  //    un título candidato. Sobrevive la de más ediciones, y HEREDA los títulos
+  //    de la fusionada para que una tercera también case.
+  const survivors: typeof candidates = [];
+  for (const candidate of [...candidates].sort((a, b) => b.editions - a.editions)) {
+    const twin = survivors.find((s) => [...candidate.titles].some((t) => s.titles.has(t)));
+    if (twin) {
+      for (const t of candidate.titles) twin.titles.add(t);
+      continue;
+    }
+    survivors.push(candidate);
+  }
+
+  // 6. Orden: el de Open Library (`sort=readinglog`, por popularidad), no el de
+  //    la desduplicación ni el alfabético.
+  return survivors.sort((a, b) => a.order - b.order).map((s) => s.work);
+}
