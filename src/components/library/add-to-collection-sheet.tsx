@@ -97,6 +97,13 @@ export function AddToCollectionSheet({
           count: 0,
           fanCovers: [],
           dominantType: null,
+          typeCounts: {},
+          // La hoja no ordena, pero `CollectionCard` sí lleva estos campos: se
+          // rellenan con lo que de verdad acaba de pasar (creada ahora, sin
+          // posición manual) en vez de con ceros que mentirían si algún día
+          // esta lista se ordena.
+          updatedAt: new Date().toISOString(),
+          position: 0,
           checked: true,
         },
       ]);

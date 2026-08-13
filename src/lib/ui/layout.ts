@@ -28,6 +28,17 @@ export const SHELL_APP = "max-w-2xl lg:max-w-[1200px]";
 /** Rejillas, donde más ancho = más obras a la vista y no hay prosa que se estire. */
 export const SHELL_GRID = "max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[100rem]";
 
+/**
+ * Tarjetas GRANDES con contenido visual dentro, a poca densidad: hoy, el grid de
+ * Colecciones (abanico de portadas + nombre + desglose). Para en 7xl (1280) a
+ * propósito, una parada antes que `SHELL_GRID`: con `TILE_GRID_COLS` son tres
+ * tarjetas de ~400px, que es el ancho que pide el abanico. Estirado a los 1600 de
+ * `SHELL_GRID`, esas mismas tres se van a ~520px y la tarjeta se queda hueca —
+ * que es lo que se temía cuando la pestaña se dejó en `SHELL_READ` (896), solo
+ * que la conclusión de entonces se pasó de frenada en el otro sentido.
+ */
+export const SHELL_TILES = "max-w-4xl lg:max-w-6xl xl:max-w-7xl";
+
 /** Raíl derecho único. Era el valor de las fichas, las pantallas más trabajadas
  *  del rediseño Paper: así son las descolgadas las que se mueven, no ellas. */
 export const RAIL = "340px";
@@ -113,6 +124,14 @@ export const NOTE_GRID_COLS = "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:gri
  * con las de la primera página.
  */
 export const CARD_GRID_COLS = "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+/**
+ * Escalera de `SHELL_TILES` (Colecciones). Dos columnas ya en el móvil —la
+ * tarjeta es vertical y estrecha, y a una sola caben dos colecciones por
+ * pantalla— y tres como techo: la cuarta parada la comería el abanico, que es
+ * justo lo que esta pestaña quiere enseñar grande.
+ */
+export const TILE_GRID_COLS = "grid-cols-2 lg:grid-cols-3";
 
 /**
  * Fichas-formulario que se revisan en tanda (filas sin emparejar al importar,

@@ -51,7 +51,11 @@ test("colecciones: grid + detalle de una colección sembrada", async ({ page }) 
     await page.waitForURL("/");
 
     // ── Grid de Colecciones: la colección sembrada aparece con su recuento ──
-    await page.goto("/coleccion"); // abre en Colecciones (default)
+    // `/coleccion` a secas abre en `Todo`, NO en `Colecciones`: la pestaña hay
+    // que pedirla. Este test navegaba sin `?tab=` y llevaba roto desde que el
+    // defecto cambió — buscaba la tarjeta de la colección en la rejilla de la
+    // biblioteca, donde nunca ha estado.
+    await page.goto("/coleccion?tab=colecciones");
     const card = page.getByRole("link", { name: new RegExp(name) });
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute("href", `/coleccion/c/${colId}`);
