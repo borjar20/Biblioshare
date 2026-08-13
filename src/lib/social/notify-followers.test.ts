@@ -81,14 +81,13 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
 
 const FOLLOWER = { follower_id: "seguidor", followee_id: "autor", status: "accepted" };
 
+// Sin default de `createServiceRoleClient` a propósito: cada test fija el suyo
+// (la fila de `follows` y sus `notify_events` es justo lo que cada uno quiere
+// variar), así que un default aquí nunca gobernaría una aserción -- sería un
+// fixture muerto que invita a leerlo como si importara.
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.notifyMany.mockResolvedValue(["seguidor"]);
-  // El fan-out lee follows por service-role; el resto de tablas (posts, sesiones,
-  // interaction_targets) las lee el cliente de petición que se pasa a la función.
-  mocks.createServiceRoleClient.mockReturnValue(
-    makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["milestone", "progress", "thought"] }] }),
-  );
 });
 
 import { notifyFollowersOfPost } from "./notify-followers";
@@ -176,6 +175,26 @@ describe("notifyFollowersOfPost — el aviso nace del post", () => {
     });
 
     expect(mocks.notifyMany).not.toHaveBeenCalled();
+  });
+
+  it("un follow 'pending' no recibe aviso, solo el 'accepted' (RED/GREEN: comentar el .eq('status','accepted') en notify-followers.ts hace fallar esta prueba)", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({
+        follows: [
+          { follower_id: "aceptado", followee_id: "autor", status: "accepted", notify_events: ["progress"] },
+          { follower_id: "pendiente", followee_id: "autor", status: "pending", notify_events: ["progress"] },
+        ],
+      }),
+    );
+
+    await notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+      postId: "post-p",
+      kind: "progressed",
+      interactionTargetId: "it-post-p",
+    });
+
+    expect(mocks.notifyMany).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyMany.mock.calls[0][1].userIds).toEqual(["aceptado"]);
   });
 
   it("un fallo leyendo follows no propaga (best-effort)", async () => {

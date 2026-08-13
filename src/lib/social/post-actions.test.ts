@@ -428,6 +428,12 @@ describe("createPost — fan-out a seguidores", () => {
     expect(mocks.notifyFollowersOfPost).not.toHaveBeenCalled();
   });
 
+  // Esta prueba fabrica con `mockRejectedValueOnce` un rechazo que la
+  // implementación real de `notifyFollowersOfPost` no puede producir: captura
+  // todos sus errores internamente y `notifyMany` está documentado "nunca
+  // lanza". Lo que fija es la guarda EXTERNA redundante de `createPost` (defensa
+  // en profundidad), no un comportamiento alcanzable en producción. La prueba de
+  // que el fan-out real es seguro vive en notify-followers.test.ts, no aquí.
   it("un fan-out que lanza NO convierte el post en {ok:false}", async () => {
     const { client } = makeClient({
       user: { id: "actor" },

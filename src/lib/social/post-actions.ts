@@ -89,15 +89,23 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
     // (que no — un post de hito no lleva texto).
     let interactionTargetId: string | null = null;
     try {
-      const { data: target } = await supabase
+      const { data: target, error: targetError } = await supabase
         .from("interaction_targets")
         .select("id")
         .eq("kind", "post")
         .eq("source_id", inserted.id)
         .maybeSingle();
+      if (targetError) {
+        // supabase-js RESUELVE con `error` en vez de lanzar: sin este check, un
+        // fallo de RLS o un trigger que no llegó a escribir la fila se leía como
+        // "sin target" (null) y no dejaba ni rastro en el log.
+        console.error("createPost: interaction_target lookup failed (query error)", targetError);
+      }
       interactionTargetId = target?.id ?? null;
     } catch (targetError) {
-      console.error("createPost: interaction_target lookup failed", targetError);
+      // Aquí solo cae un error LANZADO (p. ej. red caída antes de resolver la
+      // promesa) -- el fallo de query normal ya se registra arriba.
+      console.error("createPost: interaction_target lookup failed (thrown)", targetError);
     }
 
     // Menciones @usuario, best-effort. Un fallo aquí nunca debe deshacer el post

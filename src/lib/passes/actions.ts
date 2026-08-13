@@ -137,7 +137,10 @@ export async function closePass(
   }
 
   // Cerrar el pase no avisa: el aviso de «terminó» lo emite createPost cuando
-  // updateStatus autopostea el hito (manage-actions.ts). Ver spec 2026-08-13.
+  // updateStatus autopostea el hito (manage-actions.ts), y solo si el usuario no
+  // desactivó `autopost_finished` (opt-out por defecto activado, ver
+  // src/lib/social/autopost.ts) -- con esa preferencia apagada no hay post y por
+  // tanto tampoco aviso. Ver spec 2026-08-13.
 
   revalidateReadingLog(itemType, itemId);
   return {};

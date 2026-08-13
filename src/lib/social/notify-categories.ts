@@ -1,5 +1,5 @@
 import type { NotificationType } from "./notification-types";
-import { POST_KINDS, type PostKind } from "./post-kinds";
+import type { PostKind } from "./post-kinds";
 
 // Dos ejes distintos, y mezclarlos fue el error del modelo anterior:
 //
@@ -48,5 +48,3 @@ export function parseNotifyCategories(raw: unknown): NotifyCategory[] {
   for (const v of raw) if (typeof v === "string" && VALID.has(v)) seen.add(v as NotifyCategory);
   return [...seen];
 }
-
-export { POST_KINDS, type PostKind };
