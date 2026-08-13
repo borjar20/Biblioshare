@@ -213,4 +213,51 @@ describe("normalizeAuthorWorks · bordes", () => {
     const obra = collins.find((o) => o.title === "Los juegos del hambre");
     expect(obra?.coverUrl).toBe("https://covers.openlibrary.org/b/id/12646537-M.jpg");
   });
+
+  it("dos títulos que normalizan a cadena vacía no se fusionan entre sí", () => {
+    // Antes del arreglo, ambos títulos normalizaban a "" y ese vacío entraba en
+    // el conjunto de candidatos, así que casaban entre sí y uno desaparecía. Los
+    // fixtures reales no tienen ningún título así, por eso este caso es sintético.
+    const obras = normalizeAuthorWorks(
+      [
+        { key: "/works/OLA1W", title: "!!!", language: ["eng"], edition_count: 5 },
+        { key: "/works/OLA2W", title: "???", language: ["eng"], edition_count: 3 },
+      ],
+      []
+    );
+
+    expect(obras).toHaveLength(2);
+    expect(obras.map((o) => o.title)).toEqual(["!!!", "???"]);
+  });
+
+  it("no fusiona en cadena a través de un título heredado", () => {
+    // `Alfa` y `Gamma` no comparten NINGÚN título; solo `Beta` toca a los dos.
+    // Con la herencia vieja, `Alfa` absorbía los títulos de `Beta` y luego se
+    // comía a `Gamma`. El orden importa: la fusión recorre por número de
+    // ediciones descendente, así que el puente va en medio (9 > 8 > 7).
+    const obras = normalizeAuthorWorks(
+      [
+        {
+          key: "/works/OLB1W",
+          title: "Alfa",
+          language: ["spa"],
+          edition_count: 9,
+          editions: { docs: [{ title: "Beta", language: ["spa"] }] },
+        },
+        {
+          key: "/works/OLB2W",
+          title: "Beta",
+          language: ["spa"],
+          edition_count: 8,
+          editions: { docs: [{ title: "Gamma", language: ["spa"] }] },
+        },
+        { key: "/works/OLB3W", title: "Gamma", language: ["spa"], edition_count: 7 },
+      ],
+      []
+    );
+
+    // `Beta` sí se fusiona con `Alfa` —comparten título directamente— pero
+    // `Gamma` sobrevive, que es lo que la herencia se llevaba por delante.
+    expect(obras.map((o) => o.workKey)).toEqual(["/works/OLB1W", "/works/OLB3W"]);
+  });
 });
