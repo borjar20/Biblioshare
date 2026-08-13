@@ -169,9 +169,14 @@ Con las reglas completas, sobre datos reales del 2026-08-13:
  41ed 2003  Las Tierras Bajas              15ed 2018  Nimbo
 ```
 
-Las fusiones que hace, todas correctas: `Fatta Eld` con `Catching Fire`, `Amanecer de la
-Cosecha` con `Sunrise on the Reaping`, los tres `Dread locks` de Shusterman entre sí. **Cero
-fusiones falsas** en las 111 obras de los dos autores.
+Las fusiones que hace, todas correctas: `Amanecer de la Cosecha` con `Sunrise on the Reaping`
+—dos registros de obra del mismo libro, en idiomas distintos— y los tres `Dread locks` de
+Shusterman entre sí. **Cero fusiones falsas** en las 111 obras de los dos autores.
+
+Ojo con un matiz que se presta a confusión: el registro fantasma `Catching Fire` (`OL20357056W`,
+0 ediciones) **no llega a fusionarse** con `Fatta Eld`. Lo elimina antes el filtro de idioma,
+porque sin ediciones no tiene ningún idioma. La desduplicación entre idiomas se comprueba con
+`Amanecer de la Cosecha`, que sí sobrevive al filtro.
 
 ## Límites conocidos
 
