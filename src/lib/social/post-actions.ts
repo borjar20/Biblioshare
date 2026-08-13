@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidateFeed } from "@/lib/reactivity/revalidate";
 import type { AnchorType, AnchorRef } from "@/lib/catalog/anchor";
 import { notifyMentions } from "./notify-mentions";
+import { notifyFollowersOfPost } from "./notify-followers";
 import { searchAnchors } from "./anchor-search";
 import type { PostKind } from "./post-kinds";
 
@@ -82,27 +83,54 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
       .single();
     if (insertError) throw insertError;
 
-    // Menciones @usuario, best-effort: resuelve el target canónico ('post',
-    // materializado por el trigger de 20260844) y delega en notifyMentions. Solo
-    // si hay body -- sin cuerpo no hay nada que escanear. Un fallo aquí nunca
-    // debe deshacer el post ya publicado.
-    if (body) {
+    // El target canónico del post ('post', materializado por el trigger de
+    // 20260844_posts.sql) se resuelve SIEMPRE, no solo cuando hay cuerpo: lo
+    // necesitan las menciones (que sí requieren cuerpo) y el aviso a seguidores
+    // (que no — un post de hito no lleva texto).
+    let interactionTargetId: string | null = null;
+    try {
+      const { data: target } = await supabase
+        .from("interaction_targets")
+        .select("id")
+        .eq("kind", "post")
+        .eq("source_id", inserted.id)
+        .maybeSingle();
+      interactionTargetId = target?.id ?? null;
+    } catch (targetError) {
+      console.error("createPost: interaction_target lookup failed", targetError);
+    }
+
+    // Menciones @usuario, best-effort. Un fallo aquí nunca debe deshacer el post
+    // ya publicado.
+    if (body && interactionTargetId) {
       try {
-        const { data: target } = await supabase
-          .from("interaction_targets")
-          .select("id")
-          .eq("kind", "post")
-          .eq("source_id", inserted.id)
-          .maybeSingle();
-        if (target) {
-          await notifyMentions(supabase, {
-            authorId: user.id,
-            text: body,
-            interactionTargetId: target.id,
-          });
-        }
+        await notifyMentions(supabase, {
+          authorId: user.id,
+          text: body,
+          interactionTargetId,
+        });
       } catch (mentionError) {
         console.error("createPost: notifyMentions failed", mentionError);
+      }
+    }
+
+    // Aviso a los seguidores suscritos a la categoría de este post. Este es EL
+    // punto de disparo de los avisos followed_* (spec 2026-08-13): createPost es
+    // el único sitio que inserta en `posts`, así que el aviso no puede volver a
+    // emitirse antes de que exista el post al que apunta.
+    //
+    // Sin target no se avisa: no debería pasar (lo escribe un trigger AFTER
+    // INSERT en la misma transacción), y si pasa, un aviso sin destino es peor
+    // que ninguno. Misma postura que las menciones.
+    if (interactionTargetId) {
+      try {
+        await notifyFollowersOfPost(supabase, user.id, {
+          postId: inserted.id,
+          kind: input.kind,
+          interactionTargetId,
+        });
+      } catch (notifyError) {
+        console.error("createPost: notifyFollowersOfPost failed", notifyError);
       }
     }
 

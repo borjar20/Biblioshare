@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyMentions } from "@/lib/social/notify-mentions";
-import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -137,13 +136,8 @@ export async function closePass(
     await notifyPublicReviewMentions(supabase, user.id, passId, result.review);
   }
 
-  // Aviso a los seguidores suscritos a "terminó". SOLO en closePass, nunca en
-  // updatePass: editar un pase cerrado no debe re-notificar (misma regla que las
-  // menciones de arriba).
-  await notifyFollowersOfEvent(supabase, user.id, "finished", {
-    targetType: "diary_entry",
-    targetId: passId,
-  });
+  // Cerrar el pase no avisa: el aviso de «terminó» lo emite createPost cuando
+  // updateStatus autopostea el hito (manage-actions.ts). Ver spec 2026-08-13.
 
   revalidateReadingLog(itemType, itemId);
   return {};
